@@ -1,0 +1,616 @@
+:root{
+  --ctaWipe:#2B2B2B;
+  --pageWhite:#FFFFFF;
+}
+
+.product-page{height:calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--bw));
+  min-height:calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--bw));
+  margin-top:calc(var(--navH-fix, var(--navH)) + var(--subH, 0px) + var(--bw));
+  overflow:hidden}
+@media (max-width:960px){
+  .product-page{ height:auto; min-height:0; overflow:visible; }
+}
+
+/* Products index grid */
+.products-index{min-height:calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--bw));
+  margin-top:calc(var(--navH-fix, var(--navH)) + var(--subH, 0px) + var(--bw));
+  /* Tighter gap below the subheader so the grid starts closer */
+  padding:calc(var(--g) * .45) 0 var(--g) 0}
+.products-index .products-grid{display:grid; gap:var(--g); grid-template-columns:repeat(2, minmax(0,1fr))}
+/* Desktop: show 4 across from 1024px and up */
+@media (min-width:1024px){.products-index .products-grid{grid-template-columns:repeat(4, minmax(0,1fr))}}
+@media (max-width:720px){.products-index .products-grid{grid-template-columns:1fr}}
+/* Desktop/default: restore original tall tile height */
+.products-index .tile .m{ height:clamp(420px,72dvh,1000px); }
+.products-index .tile .k{margin:12px 0 6px 0}
+/* Reduce inherited top margin from home grid on the products page */
+.products-index .container > .products-grid{ margin-top: calc(var(--g) * 0.25); }
+.tile-card{display:flex; flex-direction:column; border:var(--bw) solid var(--border); border-radius:10px; overflow:hidden; background:var(--panel); color:inherit; text-decoration:none}
+.tile-media{aspect-ratio: 4/3; background:linear-gradient(180deg, #E9EAEC, #F7F8F9); border-bottom:var(--bw) solid var(--border)}
+.tile-body{padding:12px 14px}
+.tile-group{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#7A7A7A; margin-bottom:6px}
+.tile-title{font-size:18px; font-weight:600; margin-bottom:6px}
+.tile-desc{font-size:13px; color:#666; line-height:1.45}
+/* Make product tiles mimic homepage tiles but with smaller titles */
+.products-index .tile .t{font-size:18px}
+
+/* Contact playful controls */
+.contact-controls{display:grid; --contact-gap: clamp(4px, 0.7vw, 10px); --row-min-height: clamp(100px, 13vh, 150px); --row-compact: calc(var(--row-min-height) * .20); gap:var(--contact-gap); margin:6px 0 2px; max-width:520px; grid-template-columns:1fr 1fr; align-items:start}
+.span-2{grid-column:1 / -1}
+.span-2-sm{grid-column:auto}
+.col-1{grid-column:1}
+.col-2{grid-column:2}
+.row-span-2{grid-row: span 2}
+.row-span-3{grid-row: span 3}
+.row-compact{ min-height: var(--row-compact); }
+.addons-eq{ min-height: calc((var(--row-compact) * 3) + (var(--contact-gap) * 2)); box-sizing: border-box; }
+.contact-controls .hw-tile.equal{ align-self: stretch; min-height: var(--row-min-height); }
+.contact-controls .hw-tile.row-base{ min-height: var(--row-min-height); }
+.hw-tile.equal .vs-group{ height: 100%; box-sizing: border-box; }
+.hw-tile{position:relative; padding:8px; border:var(--bw) solid var(--border); border-radius:0; overflow:hidden;
+  background:linear-gradient(180deg,#ECEFF2,#F7F8F9);
+  box-shadow:none}
+.hw-tile::before{display:none}
+.hw-tile::after{display:none}
+.field{display:grid; grid-template-columns:1fr auto; align-items:end; gap:8px}
+.field label{font-size:clamp(16px, 1.9vw, 20px); line-height:1.15}
+.field output{font-size:clamp(16px, 1.9vw, 20px); line-height:1.15; text-align:right}
+.field input[type="range"]{grid-column:1/span 2; appearance:none; height:8px; background:linear-gradient(180deg,#E6E9EC,#D8DDE2); border:1px solid #C2C8CF; border-radius:6px}
+.field input[type="range"]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 50% 50%, #D5D9DE 40%, #A6ACB3 41%, #8B8F94 100%);border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.10), 0 2px 2px rgba(0,0,0,.15)}
+.field input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 50% 50%, #D5D9DE 40%, #A6ACB3 41%, #8B8F94 100%);border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.10)}
+
+/* Larger width/length tiles */
+.field--big label, .field--big output{ font-size: clamp(18px, 2.2vw, 24px); }
+.field--big{ padding-bottom: 18px; }
+
+.dial{margin-top:6px}
+.dial-head{font-size:14px; letter-spacing:.12em; text-transform:uppercase; color:#7A7A7A; margin-bottom:8px}
+.dial-face{position:relative; width:220px; height:220px; border:var(--bw) solid var(--border); border-radius:50%; background:var(--panel); overflow:hidden; touch-action:none}
+.dial-item{position:absolute; left:50%; top:50%; transform:rotate(calc(var(--rot, 0deg) + var(--a))) translateY(-84px) rotate(calc(-1 * (var(--rot, 0deg) + var(--a))));
+  transform-origin:center center; background:transparent; border:0; color:inherit; font-size:14px; cursor:pointer; transition:opacity .2s ease}
+.dial-item.active{font-weight:600}
+.dial-dot{position:absolute; left:50%; top:20px; width:6px; height:6px; border-radius:50%; background:#4b4f55; transform:translateX(-50%)}
+.input{ padding:12px 14px; border:1px solid #D9DBDE; border-radius:6px }
+/* Input appearance inside chrome tiles */
+.contact-page .input--tile{ width:100%; border:0; background:transparent; outline:none; padding:12px 14px; font-size:16px; }
+.contact-page .send-btn{ width:100%; background:transparent; border:0; outline:none; padding:10px 0; font-size:24px; letter-spacing:.02em; cursor:pointer; color:#111 }
+.contact-page .clear-btn{ width:100%; background:transparent; border:0; outline:none; padding:10px 0; font-size:24px; letter-spacing:.02em; cursor:pointer; color:#111 }
+/* Smaller SEND tile */
+.send-tile{ padding:4px 6px; }
+.send-tile .send-btn{ font-size:18px; padding:6px 0; }
+.send-tile .clear-btn{ font-size:18px; padding:6px 0; }
+/* Larger message area like mock */
+.contact-page textarea.input--tile{ min-height: 220px; font-size:16px; }
+
+/* Mobile variable override for row heights (keeps stacked rows balanced) */
+@media (max-width: 560px){
+  .contact-controls{ --row-min-height: clamp(120px, 20vh, 180px); }
+}
+
+/* Equal-height row tiles (handled via .equal) */
+
+/* Checkbox styling to match mock */
+.vs-check__box{ appearance:none; -webkit-appearance:none; width:22px; height:22px; border:1px solid #777; border-radius:4px; background:linear-gradient(180deg,#F1F3F5,#E6E9EC); box-shadow:inset 0 1px 0 rgba(255,255,255,.6); }
+.vs-check__box:checked{ background: #8E949B; border-color:#6F747A; box-shadow: inset 0 0 0 2px #E6E9EC; }
+
+@media (max-width: 560px){
+  .contact-controls{ grid-template-columns: 1fr; }
+  .span-2, .span-2-sm{ grid-column: 1 / -1; }
+  .addons-tile{ margin-top: 0; }
+  /* Force any explicit column placements to full width on small screens */
+  .contact-controls .col-1,
+  .contact-controls .col-2{ grid-column: 1 / -1 !important; }
+  .contact-controls .row-span-2,
+  .contact-controls .row-span-3{ grid-row: auto; }
+}
+
+/* On small screens, disable inner scrollers so the page scrolls once */
+@media (max-width: 720px){
+  .product-left-scroller, .product-right-scroller{ height:auto; overflow:visible; }
+}
+
+/* Tablet/mobile stacking: stack left, middle, right vertically at <=960px */
+@media (max-width: 960px){
+  .product-split{ grid-template-columns: 1fr; }
+  .contact-rail{ grid-template-columns: 1fr; }
+  .contact-rail__mid{ padding-right: 0; }
+  .contact-rail__mid::after, .contact-rail__mid::before{ display:none; }
+  .contact-rail__right{ padding-left: 0; }
+  /* single scroll */
+  .product-left-scroller, .product-right-scroller{ height:auto; overflow:visible; }
+}
+
+/* Phone: hide the left media column entirely at <=720px */
+@media (max-width: 720px){
+  .contact-page .product-left{ display:none; }
+}
+
+/* Make the right panel controls truly single-column on small devices */
+@media (max-width: 720px){
+  .contact-controls{ grid-template-columns: 1fr; }
+  .contact-controls .span-2,
+  .contact-controls .span-2-sm,
+  .contact-controls .col-1,
+  .contact-controls .col-2{ grid-column: 1 / -1 !important; }
+  .contact-controls .row-span-2,
+  .contact-controls .row-span-3{ grid-row: auto; }
+}
+
+/* Contact page: make left image follow right panel height on desktop */
+@media (min-width: 961px){
+  .contact-page .product-left{ display:flex; }
+  .contact-page .product-left-scroller{ flex:1 1 auto; height:100%; overflow:visible; }
+  .contact-page .img-grid{ flex:1 1 auto; height:100%; }
+  .contact-page .contact-media{ height:100%; }
+}
+
+/* Title row + toggle */
+.title-row{display:flex; align-items:center; gap:12px}
+.toggle{width:46px; height:26px; border:2px solid #555; border-radius:9999px; background:#B8BCC1; position:relative; cursor:pointer; flex:none}
+.toggle::after{content:""; position:absolute; top:50%; left:4px; width:18px; height:18px; border-radius:50%; background:#F4F6F8; border:1px solid #777; transform:translateY(-50%); transition:left .2s ease}
+.toggle.on{background:var(--accentRed)}
+
+/* Ensure the contact page toggle isn't stripped by global button reset */
+.contact-page .toggle{ background:#B8BCC1 !important; border:2px solid #555 !important; padding:0 !important; }
+.contact-page .toggle.on{ background:var(--accentRed) !important; }
+.toggle.on::after{left:24px}
+
+/* Vertical sliders for options */
+.vsliders{display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start}
+.vs-group{display:grid; grid-template-columns:1fr 64px; grid-template-rows:auto 1fr; gap:8px; align-items:start; padding:clamp(10px, 1vw, 14px) clamp(12px, 1.6vw, 18px)}
+.vs-head{grid-column:1/span 2; font-size:clamp(18px, 2.2vw, 24px); letter-spacing:.01em; margin:2px 0 8px; font-weight:400}
+.vs-list{grid-column:1; grid-row:2; list-style:none; margin:0; padding:0; display:grid; gap:8px; justify-content:start; min-height:96px}
+.vs-list li{cursor:pointer; font-size:clamp(16px, 1.9vw, 20px); line-height:1.15; color:#8b8f94}
+.vs-list li.active{font-weight:600; color:#111}
+.vs-list.vs-list--checks li{display:block}
+.vs-check{display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px}
+.vs-check__box{justify-self:end}
+.vs-rail{grid-column:2; grid-row:2; width:48px; height:76px; position:relative; align-self:start; border-radius:0; background:transparent}
+.vs-rail::before{display:none}
+.vs-rail::after{display:none}
+.vs-range{appearance:none; -webkit-appearance:none; width:110px; height:22px; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-90deg); background:transparent; cursor:pointer; z-index:1}
+.vs-range::-webkit-slider-runnable-track{width:100%; height:4px; background:#1F2328; border-radius:2px}
+.vs-range::-webkit-slider-thumb{appearance:none; width:10px; height:30px; border-radius:2px; background:linear-gradient(180deg,#B9BEC5,#8E949B); border:1px solid #6F747A; box-shadow:0 2px 2px rgba(0,0,0,.2); margin-top: calc((4px - 30px)/2);}
+.vs-range::-moz-range-track{width:100%; height:4px; background:#1F2328; border-radius:2px}
+.vs-range::-moz-range-thumb{width:10px; height:30px; border-radius:2px; background:linear-gradient(180deg,#B9BEC5,#8E949B); border:1px solid #6F747A;}
+/* Remove large focus ring and ensure centering across browsers */
+.vs-range:focus{ outline:none; }
+
+/* Typographic tweaks for compact fit on shorter screens */
+.contact-page .product-title{font-size:clamp(22px,2.8vw,32px)}
+.contact-page .product-desc{font-size:13px}
+@media (max-height: 900px){
+  .contact-page .contact-controls{max-width:600px; gap:8px}
+  .contact-page .vs-group{grid-template-columns:1fr 56px}
+  .contact-page .vs-rail{width:56px; height:110px}
+  .contact-page .vs-range{width:100px; height:20px}
+  .contact-page .vs-list li{font-size:16px}
+  .contact-page .field label,.contact-page .field output{font-size:16px}
+}
+
+/* Hover/active emphasis for the chrome tiles */
+.hw-tile:focus-within, .hw-tile:hover{box-shadow:0 0 0 1px rgba(160,165,172,.55), 0 0 14px rgba(160,165,172,.45)}
+
+/* Secondary product sub-header (fixed under main header) */
+.product-subheader{position:fixed; top:var(--navH-fix, var(--navH)); left:0; right:0; height:var(--navH-fix, var(--navH));
+  /* Match primary header’s subtle translucency + blur */
+  background:var(--headerGlassBg, rgba(236,237,238,.86));
+  backdrop-filter:blur(var(--headerGlassBlur, 10px));
+  -webkit-backdrop-filter:blur(var(--headerGlassBlur, 10px));
+  border-top:0; border-bottom:var(--bw) solid var(--border); z-index:3800;
+  /* Put on its own layer like the main header so the blur looks identical */
+  transform:translateZ(0); will-change:transform;
+  transition:transform .28s cubic-bezier(.25,.85,.35,1)}
+.product-subheader.hide{transform:translateZ(0) translateY(calc(-100%))}
+.product-subheader.show{transform:translateZ(0) translateY(0)}
+.product-subheader__inner{position:relative; max-width:none; width:100%; padding:0 var(--g)}
+.product-subnav{position:absolute; left:50vw; transform:translateX(-50%);
+  display:flex; align-items:center; list-style:none; padding:0; margin:0; height:var(--navH-fix, var(--navH)); gap:30.42px}
+.product-subnav__item{white-space:nowrap}
+.product-subnav__link{color:inherit; text-decoration:none; font-size:14px; letter-spacing:.04em; display:inline-block; position:relative;
+  /* Slow fade back to default color when hover ends */
+  transition: color .5s ease}
+/* Selected indicator: small solid square before the active item */
+.product-subnav__link.active::before,
+.product-subnav__link[aria-current="page"]::before{
+  content:""; position:absolute; left:-12px; top:50%; transform:translateY(-50%);
+  width:.28em; height:.28em; background-color:#4B4F55; border-radius:0; transition: background-color .5s ease;
+}
+/* Fade out non-hovered subnav items while keeping hovered one black */
+@media (hover:hover){
+  .product-subnav:has(.product-subnav__link:hover) .product-subnav__link{ color:var(--navFade); transition-duration:.12s }
+  .product-subnav:has(.product-subnav__link:hover) .product-subnav__link:hover{ color:var(--fg); transition-duration:.12s }
+  /* Cross-header fade: when hovering a subheader item, dim primary header links too */
+  body:has(.product-subnav__link:hover) header.site .navlink-btn{ color:var(--navFade); }
+  /* Dim the active square indicator when another item is hovered */
+  .product-subnav:has(.product-subnav__link:hover) .product-subnav__link.active::before,
+  .product-subnav:has(.product-subnav__link:hover) .product-subnav__link[aria-current="page"]::before{ background-color: var(--navFade); transition-duration:.12s }
+  /* If the hovered item is the active one, keep the indicator dark grey */
+  .product-subnav:has(.product-subnav__link:hover) .product-subnav__link.active:hover::before,
+  .product-subnav:has(.product-subnav__link:hover) .product-subnav__link[aria-current="page"]:hover::before{ background-color:#4B4F55; transition-duration:.12s }
+  /* Keep hovered link full contrast */
+  .product-subnav__link:hover{ color:var(--fg); }
+}
+/* Basic hover without :has support: keep hovered item full contrast */
+.product-subnav__link:hover{ opacity:1; color:var(--fg); }
+.product-split{display:grid; grid-template-columns:2fr 1fr; gap:var(--g); padding:0 var(--g) var(--g); width:100%; max-width:100%; height:100%; overflow:hidden}
+.product-left{height:100%; padding-top:calc(var(--g) * .45); overflow:hidden}
+.product-right{height:100%; overflow:hidden}
+.product-left-scroller,.product-right-scroller{height:100%; overflow:auto; overscroll-behavior:contain}
+.product-left-scroller, .product-right-scroller{scrollbar-width:none}
+.product-left-scroller::-webkit-scrollbar, .product-right-scroller::-webkit-scrollbar{display:none}
+.product-left-scroller, .product-right-scroller{ padding-bottom: var(--g); }
+.product-rail{border-left:var(--bw) solid var(--border); width:100%; position:relative}
+.product-wrap{display:block; width:100%}
+.product-page .container.product-wrap{max-width:none !important; width:100% !important}
+.product-body{padding:calc(var(--g) * .45) var(--g) 0}
+.product-kicker{font-size:12px;letter-spacing:.12em;color:#7A7A7A;text-transform:uppercase;margin:0 0 8px}
+.product-kicker--wipe{animation:productKickerIn .38s cubic-bezier(.25,.85,.35,1) both}
+@keyframes productKickerIn{
+  from{opacity:0; transform:translateX(-28px)}
+  to{opacity:1; transform:translateX(0)}
+}
+.product-title{font-size:clamp(22px,2.9vw,34px);line-height:1.12;margin:0 0 6px; font-weight:400}
+.product-desc{margin:0 0 12px;color:#666;max-width:60ch}
+.product-actions{display:flex;gap:10px;flex-wrap:wrap}
+.product-actions .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:999px;border:var(--bw) solid var(--fg);font-size:14px}
+
+/* Placeholder media + text blocks */
+.img-grid{display:grid;gap:var(--g);grid-template-columns:1fr;grid-auto-rows:auto}
+/* Generic placeholder/image wrapper (mobile and non-product contexts keep 16:9) */
+.ph-img{width:100%;aspect-ratio:16/9;background:#F3F4F6;border:var(--bw) solid var(--border);border-radius:2px; position:relative; overflow:hidden}
+/* Product pages keep standard photo proportions and scroll to reveal all images */
+/* (no override here; uses the default 16:9 ratio above) */
+
+/* Mobile product gallery: big main image with selectable thumbnails below */
+.mobile-gallery{ display:none; gap: var(--g); padding: 0 var(--g) var(--g); }
+.mobile-gallery__main{ aspect-ratio: 16/9; }
+/* Square main image variant (e.g., Gable page) */
+.mobile-gallery--square .mobile-gallery__main{ aspect-ratio: 1 / 1; }
+/* Overlay controls on main image */
+.mobile-gallery__main{ position: relative; }
+.mobile-gallery__arrow{ position:absolute; top:50%; transform:translateY(-50%); width:40px; height:40px; border-radius:999px; border:var(--bw) solid rgba(255,255,255,.7); background:rgba(0,0,0,.35); color:#fff; display:grid; place-items:center; cursor:pointer; }
+.mobile-gallery__arrow span{ font-size:24px; line-height:1; }
+.mobile-gallery__arrow--prev{ left:10px; }
+.mobile-gallery__arrow--next{ right:10px; }
+.mobile-gallery__zoom{ position:absolute; right:10px; bottom:10px; width:34px; height:34px; border-radius:999px; border:var(--bw) solid rgba(255,255,255,.7); background:rgba(0,0,0,.35); color:#fff; display:grid; place-items:center; cursor:pointer; font-size:18px; }
+/* Horizontal slider: show two thumbs at once; slide horizontally */
+.mobile-gallery__thumbs{ display:flex; gap: var(--g); overflow-x:auto; padding-bottom: 2px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling: touch; }
+.mobile-gallery__thumbs::-webkit-scrollbar{ display:none; }
+.mobile-gallery__thumb{ flex: 0 0 calc(50% - (var(--g) / 2)); aspect-ratio: 1 / 1; cursor: pointer; border-color: var(--border); background:#F3F4F6; scroll-snap-align:start; }
+.mobile-gallery__thumb.is-active{ outline: 2px solid #111; outline-offset: -2px; }
+
+.text-grid{display:grid;gap:10px;margin-top:18px}
+.ph-text{height:42px;background:#F3F4F6;border:var(--bw) solid var(--border);border-radius:2px}
+
+/* Show mobile gallery and hide desktop stack on small screens */
+@media (max-width: 960px){
+  /* Products index tiles: square and image fits inside on mobile */
+  .products-index .tile .m{ aspect-ratio: 1 / 1; height:auto; background: var(--bg); }
+  .products-index .tile .m img{ object-fit: contain; background: var(--bg); }
+  .product-left-scroller{ padding: 0 0 var(--g) 0; }
+  .mobile-gallery{ display:grid; }
+  .img-grid{ display:none; }
+  /* Flatten product layout to single column so images sit above details */
+  .product-split{ grid-template-columns: 1fr; height:auto; overflow:visible; }
+  .product-left, .product-right{ height:auto; overflow:visible; }
+  .product-rail{ border-left: none; }
+  /* Mobile: extend separator lines to both screen edges */
+  .accordion{ --acc-left: calc(var(--g) * 2); --acc-right: calc(var(--g) * 2); }
+}
+
+/* Zoom overlay */
+.product-zoom{ position: fixed; inset: 0; z-index: 4000; background: rgba(0,0,0,.94); display:flex; align-items:center; justify-content:center; }
+.product-zoom__img{ position: relative; width: 100vw; height: 100vh; }
+.product-zoom__close{ position:absolute; top:10px; right:10px; z-index:1; width:40px; height:40px; border-radius:999px; border:1px solid rgba(255,255,255,.6); background:rgba(0,0,0,.35); color:#fff; font-size:26px; line-height:1; display:grid; place-items:center; cursor:pointer; }
+.product-zoom__nav{ position:absolute; top:50%; transform:translateY(-50%); width:50px; height:50px; border-radius:999px; border:1px solid rgba(255,255,255,.6); background:rgba(0,0,0,.35); color:#fff; display:grid; place-items:center; cursor:pointer; }
+.product-zoom__nav span{ font-size:28px; line-height:1; }
+.product-zoom__nav--prev{ left:20px; }
+.product-zoom__nav--next{ right:20px; }
+
+.product-long{margin-top:18px; font-size:15px; line-height:1.6; color:#2a2a2a}
+.product-long p{margin:0 0 12px}
+
+/* Structured product sections */
+.product-sections{display:grid; gap:14px}
+.product-overview{margin:0 0 4px; color:#2a2a2a}
+.product-section{margin-top:8px}
+.product-section-title{font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:#7A7A7A; margin:6px 0}
+.product-bullets{margin:6px 0 4px; padding-left:18px}
+.product-bullets li{margin:0 0 6px}
+.product-faqs{display:grid; gap:8px}
+.product-faq summary{cursor:pointer; font-weight:600}
+/* Inline media slot inside structured details */
+.product-inline-media{ margin: 8px 0 10px; }
+
+/* Accordion (for gable content) */
+.accordion{ display:block; margin: 8px 0 0; position: relative; 
+  /* Horizontal line reach variables */
+  --acc-left: var(--g);           /* to rail divider on desktop */
+  --acc-right: calc(var(--g) * 2);/* to viewport edge on desktop */
+}
+/* CTA list: remove default top margin so its top line aligns flush */
+.accordion--cta{ margin-top: 0; }
+.accordion__item{ position: relative; }
+/* Extend the top separator line to the rails/edges without shifting content */
+.accordion__item::before{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); top: 0; height:0; border-top: var(--bw) solid var(--border); }
+/* Extend the final bottom separator as well */
+.accordion__item:last-of-type::after{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom: 0; height:0; border-bottom: var(--bw) solid var(--border); }
+/* CTA variant: mimic homepage View full range */
+.accordion--cta .accordion__summary{ text-decoration:none; color:inherit; position:relative; }
+.accordion--cta .accordion__summary::before{
+  content:""; position:absolute; inset:0; background:var(--ctaWipe); transform:scaleX(0); transform-origin:right center; transition:transform .55s ease; pointer-events:none; z-index:0;
+}
+.accordion--cta .accordion__item:hover .accordion__summary::before,
+.accordion--cta .accordion__item:focus-within .accordion__summary::before{ transform: scaleX(1); }
+.accordion--cta .accordion__summary{ color:var(--fg); transition: color .3s ease; }
+.accordion--cta .accordion__item:hover .accordion__summary,
+.accordion--cta .accordion__item:focus-within .accordion__summary{ color: var(--pageWhite); }
+/* Make the CTA hit-area stretch to the extended lines without moving text */
+.accordion--cta .accordion__summary{
+  margin-left: calc(-1 * var(--acc-left));
+  margin-right: calc(-1 * var(--acc-right));
+  padding-left: var(--acc-left);
+  padding-right: var(--acc-right);
+}
+/* Keep text above the wipe */
+.accordion--cta .accordion__summary > *{ position:relative; z-index:1; }
+/* Animate text color in sync with wipe only on hover/focus */
+@property --ctaW{ syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+.accordion--cta .accordion__title{ --ctaW: 0%; transition: --ctaW .7s cubic-bezier(.25,.85,.35,1); color: inherit; background: none; -webkit-background-clip: initial; background-clip: initial; }
+.accordion--cta .accordion__summary:hover .accordion__title,
+.accordion--cta .accordion__summary:focus-visible .accordion__title{
+  color: transparent;
+  -webkit-background-clip: text; background-clip: text;
+  background-image: linear-gradient(to left, var(--bg) var(--ctaW), currentColor var(--ctaW));
+  --ctaW: 100%;
+}
+.accordion__item[data-closing] > .accordion__summary{ pointer-events:none; }
+.accordion__summary{ list-style:none; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:21px 0; outline:none; position:relative; }
+.accordion__summary::-webkit-details-marker{ display:none; }
+/* Title style similar to product section titles but larger weight */
+.accordion__summary{ font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:#4B4F55; font-weight:600; }
+.accordion__title{ flex: 1 1 auto; }
+/* Plus/Minus icon built from two strokes crossing at center */
+.accordion__icon{ position:relative; display:inline-block; width:30.6px; height:30.6px; flex:0 0 auto; }
+.accordion__icon::before,
+.accordion__icon::after{ content:""; position:absolute; left:50%; top:50%; width:20.4px; height:2px; background:#4B4F55; transform: translate(-50%, -50%) rotate(0deg); transition: transform .28s ease; }
+/* Vertical stroke for the "+" (closed state) */
+.accordion__icon::before{ transform: translate(-50%, -50%) rotate(90deg); z-index:1; }
+/* Horizontal stroke is ::after (already at 0deg) */
+/* Open state: only the vertical stroke moves; horizontal stays fixed */
+/* Only the vertical stroke rotates; horizontal stays put and sits above */
+details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(0deg); }
+.accordion__icon::after{ z-index:2; }
+/* Keep ::after (horizontal) unchanged — no transform/opacity changes */
+.accordion__panel{ padding: 0; height: 0; overflow: hidden; transition: height .7s cubic-bezier(.25,.85,.35,1); will-change: height; }
+.accordion__panel p{ margin: 0 0 10px; }
+.accordion__panel ul{ margin:6px 0 10px; padding-left:18px; }
+.accordion__panel li{ margin: 0 0 6px; }
+/* Divider below header while open (anchored to header to avoid gap during animation) */
+details[open] > .accordion__summary::before{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border); }
+/* Move spacing inside so height measurement is stable (no padding animation) */
+.accordion__panel-inner{ padding: 12px 0 14px; }
+
+/* Contact page typography closer to mock */
+.contact-page .product-title{ font-size:clamp(20px, 2.4vw, 30px); line-height:1.12; font-weight:400; }
+.contact-page .product-desc{ color:#6D7176; font-size:12px; }
+.contact-media img{ display:block; width:100%; height:auto; }
+.contact-media{ max-height: 65vh; overflow:hidden; padding:0 }
+/* Contact: make tiles use the site background (no chrome gradient) */
+.contact-page .hw-tile{ background: var(--bg) !important; }
+/* Contact page: make the left media fill the full column height
+   and scale to cover so its bottom aligns with the SEND box */
+.contact-page .img-grid{ height:100%; gap:0; }
+.contact-page .contact-media{ height:100%; max-height:none; border:none !important; background:transparent !important; box-shadow:none !important; border-radius:0 !important; }
+.contact-page .contact-media img{ height:100%; object-fit:cover; }
+/* Desktop-only placeholder "1." before enquiry type is chosen */
+.contact-media__placeholder{ position:absolute; inset:0; display:none; place-items:center; z-index:2; color:#DBDDE0; opacity:1; pointer-events:none; transition: opacity 1.5s ease; }
+.contact-media__placeholder span{
+  font-family: "Inter", "Helvetica Neue", Arial, system-ui, -apple-system, Segoe UI, sans-serif;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(220px, 32vw, 560px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #111;
+  opacity: .08; /* very light like the example background digit */
+}
+@media (min-width: 961px){ .contact-media__placeholder{ display:grid; } }
+/* Image wrapper fades in after selection */
+.contact-media__img{ position:absolute; inset:0; opacity:0; transition: opacity 1.5s ease; }
+.enquiry-picked .contact-media__img{ opacity:1; }
+.enquiry-picked .contact-media__placeholder{ opacity:0; }
+/* Remove extra top padding on the left column for perfect vertical alignment */
+.contact-page .product-left{ padding-top: 0; }
+
+.big-choices{ display:grid; gap:12px; margin:8px 0 12px }
+.big-choice__hint{ font-size:12px; letter-spacing:.12em; color:#7A7A7A; text-transform:uppercase; margin:10px 0 6px }
+.big-choice{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:7px; padding:6px 2px }
+.big-choice__label{ font-size: clamp(16px, 2.6vw, 22px); font-weight:400 }
+/* Enquiry collapse header */
+.enquiry-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; background:transparent; border:0; padding:4px 2px; cursor:pointer; }
+.enquiry-header__text{ font-size:12px; letter-spacing:.12em; color:#7A7A7A; text-transform:uppercase; }
+.enquiry-header__chev{ width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-top:7px solid #7A7A7A; transition: transform .2s ease; }
+.enquiry-header.open .enquiry-header__chev{ transform: rotate(180deg); }
+
+/* Space below contact info and align the opening header nicely */
+.contact-page .contact-info{ margin: 0 0 12px; }
+/* Two-column rail inside the right content area */
+.contact-rail{ --contact-gap: clamp(4px, 0.7vw, 10px); display:grid; grid-template-columns: 1fr 1fr; gap: var(--contact-gap); position: relative; }
+.contact-rail__mid{ position:relative; padding-right: var(--g); }
+.contact-rail__mid::after{ content:""; position:absolute; top: calc(-2 * var(--g)); bottom: -1px; right: 0; width: var(--bw); background: var(--border); }
+.contact-rail__right{ padding-left: var(--g); }
+
+/* When flattened via display: contents, keep mid/right occupying equal thirds */
+@media (min-width: 961px){
+  .contact-rail__mid{ grid-column: 2; }
+  .contact-rail__right{ grid-column: 3; }
+}
+
+/* Mobile: remove the asymmetric inner padding so stacked sections
+   align to the page gutters (equal left/right). Place after base
+   rules to win the cascade on small screens. */
+@media (max-width: 960px){
+  .contact-rail__mid{ padding-right: 0 !important; padding-left: 0 !important; }
+  .contact-rail__right{ padding-left: 0 !important; padding-right: 0 !important; }
+}
+
+/* Make the mid column stretch to the full row height and let its
+   internal grid consume remaining space for flexible sections. */
+@media (min-width: 961px){
+  .contact-rail__mid{ display:flex; flex-direction:column; height:100%; }
+  .contact-rail__mid > .mid-controls{ flex:1 1 auto; min-height:0; }
+}
+
+/* Hide the right divider when customer info is hidden */
+/* Only re-enable the mid/right divider on desktop. On mobile the
+   vertical dividers should never be visible. */
+@media (min-width: 961px){
+  .contact-page.customer-off .contact-rail__mid::after{ display:block; }
+}
+
+/* Mid column small grid */
+.mid-controls{ display:grid; grid-template-columns: 1fr 1fr; gap: var(--contact-gap); margin-top: 8px; margin-bottom: 8px; padding-top: calc(var(--contact-gap) + 2px); border-top: 1px solid #E2E4E7; transition: border-color .25s ease, opacity .25s ease }
+.mid-controls .span-2{ grid-column: 1 / -1 }
+/* When the mid-controls are empty (customer info hidden), keep the rule visible without extra space */
+.mid-controls.is-empty{ grid-template-columns: 1fr; padding-top: 2px; margin-top: 0; margin-bottom: 0; min-height: 0; }
+
+/* Professional uploads: stack that grows to fill remaining height */
+.pro-stack{ grid-column: 1 / -1; display:flex; flex-direction:column; gap: var(--contact-gap); min-height:0; height:100%; }
+.pro-stack .pro-grow{ flex:1 1 0; min-height:0; overflow:auto; }
+
+/* Summary tile */
+.summary{ display:grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: 13px }
+.summary__row .k{ color:#6b6f75 }
+.summary__row .v{ text-align:right }
+
+/* Digital calculator style display box */
+.summary--digital{ position:relative; display:block; font-family: inherit; font-size: calc(16.5px * 0.85); line-height:1.15; letter-spacing: normal; padding: 6px 8px 2.2em; text-transform: uppercase; }
+.summary--digital .digital__type{ font-size: 1em; color:#C23A2B; }
+.summary--digital .digital__style{ font-size: 1em; margin-top: .15em; opacity:.95; }
+.summary--digital .digital__roof{ font-size: 1em; margin-top: .12em; opacity:.95; white-space: nowrap; overflow: hidden; color:#6b6f75; }
+.summary--digital .digital__addons{ font-size: 1em; margin-top: .12em; opacity:.95; white-space: nowrap; overflow: hidden; color:#6b6f75; }
+.summary--digital .digital__dims{ position:absolute; right: 10px; bottom: 10px; font-size: 1em; text-align:right; }
+.summary--digital .digital__dims-label{ position:absolute; left: 10px; bottom: 10px; font-size:.9em; opacity:.75; letter-spacing:.08em; }
+.summary--digital .digital__name{ position:absolute; top: 8px; right: 10px; font-size: 1em; text-align:right; opacity:.95; }
+.summary--digital .digital__label{ font-size:.85em; opacity:.75; margin-right:.35em; text-transform: uppercase; letter-spacing:.08em; }
+
+/* Ensure single-column rail on mobile even if later rules load */
+@media (max-width: 960px){
+  .contact-rail{ grid-template-columns: 1fr !important; }
+}
+
+/* Generic two‑column page; accounts for primary header and optional subheader */
+.two-col-page{
+  min-height:calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px));
+  height:auto;
+  margin-top:calc(var(--navH-fix, var(--navH)) + var(--subH, 0px));
+  overflow:auto;
+  padding-bottom:24px
+}
+
+/* Add a little breathing room below the Resources subheader
+   so the first grid/images don’t butt against it */
+body:has(.product-subheader[aria-label="Resources shortcuts"]) .two-col-page{
+  margin-top:calc(var(--navH-fix, var(--navH)) + var(--subH, 0px) + (var(--g) * 0.25));
+}
+
+@media (max-width: 960px){
+  .product-split{ grid-template-columns:1fr; width:100% !important; max-width:100% !important; overflow:visible !important; }
+  .product-rail{ border-left:none; border-top:var(--bw) solid var(--border); width:100% !important; max-width:100% !important; }
+  .product-right, .product-left{ overflow: visible !important; width:100% !important; }
+  .product-body{ padding:var(--g) var(--g) 0; width:100% !important; max-width:100% !important; }
+  .product-page .container.product-wrap{ width:100% !important; max-width:100% !important; }
+  /* Unify spacing across stacked sections */
+  .contact-rail{ gap: var(--contact-gap) !important; }
+  .mid-controls{ gap: var(--contact-gap) !important; }
+}
+
+/* Contact page layout: three equal thirds on desktop */
+.contact-page .product-split{ grid-template-columns: 1fr 2fr; }
+@media (min-width: 961px){
+  .contact-page .product-split{ grid-template-columns: 1fr 1fr 1fr; }
+  /* Let the grid height grow with content instead of locking to viewport */
+  .contact-page .product-split{ height:auto; overflow:visible; }
+  /* Decouple left image height from middle content: size to viewport */
+  .contact-page .product-left{ align-self:start; }
+  .contact-page .product-left-scroller{ height: calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--g) - 24px); overflow:hidden; }
+  .contact-page .contact-media{ height:100%; }
+  /* Flatten right rail so mid/right become grid items and occupy col 2 and 3 */
+  .contact-page .product-rail{ display: contents; border-left: none; }
+  .contact-page .product-right-scroller{ display: contents; }
+  .contact-page .product-body{ display: contents; }
+  .contact-page .contact-rail{ display: contents; }
+  /* Remove standalone kicker row to avoid vertical offset */
+  .contact-page .product-kicker{ display:none; }
+  /* Align middle column header tightly to top */
+  .contact-page .product-title{ margin-top: 0; }
+.contact-rail__mid{ padding-top: 0; }
+}
+
+/* Slide-up animation for customer info when an enquiry is chosen */
+@keyframes contactEnquiryEnter{
+  from{ transform: translateY(100dvh); opacity: 0; }
+  to{ transform: translateY(0); opacity: 1; }
+}
+.enquiry-picked .mid-controls,
+.enquiry-picked .contact-rail__right{
+  animation: contactEnquiryEnter .6s cubic-bezier(.08,0,.17,1) both;
+}
+
+/* Contact: add a uniform top gutter so left photo and right panels align */
+.contact-page .product-split{ padding-top: var(--g); }
+
+/* Contact: keep standard page gutters on desktop so left/right margins
+   remain visible like other pages. */
+@media (min-width: 961px){
+  .contact-page .product-split{ padding-left: var(--g); padding-right: var(--g); }
+}
+
+/* Desktop: equalize gutters and add two vertical dividers centered between the three panels */
+@media (min-width: 961px){
+  /* No inner padding so both sides of the mid divider are symmetric with the left image */
+  .contact-page .contact-rail__mid{ padding-left: 0; padding-right: 0; }
+  .contact-page .contact-rail__right{ padding-left: 0; }
+  /* Two dividers: between Left|Mid and Mid|Right, both centered in the gap */
+  .contact-page .contact-rail__mid::before,
+  .contact-page .contact-rail__mid::after{
+    content:""; position:absolute; top: calc(-1 * (var(--g) + var(--bw))); bottom: calc(-1 * (var(--g) + var(--bw))); width: var(--bw); background: var(--border); opacity: 1; transition: opacity .25s ease;
+  }
+  .contact-page .contact-rail__mid::before{ left: calc(-1 * var(--g) / 2); }
+  .contact-page .contact-rail__mid::after{ right: calc(-1 * var(--g) / 2); }
+}
+
+/* Ensure Style/Roof row height matches three compact fields on the right */
+.mid-controls .equal .vs-group{ min-height: calc((var(--row-compact) * 3) + (var(--contact-gap, var(--g)) * 2)); }
+/* Slight top nudge to visually center rails under headings */
+.mid-controls .vs-group{ padding-top: 3px; }
+
+/* Professional upload (mid column) */
+.pro-files-list{ min-height: 64px; display: block; }
+.pro-files-empty{ color:#6D7176; font-size:13px; padding:6px 2px; }
+.pro-files{ list-style:none; margin:0; padding:0; display:grid; gap:6px; }
+.pro-file{ display:grid; grid-template-columns: 1fr auto; gap:8px; font-size:13px; align-items:center; }
+.pro-file__name{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pro-file__size{ color:#6D7176; font-variant-numeric: tabular-nums; }
+.pro-dropzone{ display:grid; place-items:center; text-align:center; padding:24px; border:1.5px dashed #C6CBD2; border-radius:6px; color:#6D7176; cursor:pointer; user-select:none; transition: border-color .2s ease, background-color .2s ease }
+.pro-dropzone.drag-over{ border-color:#4B4F55; background: #F3F4F6; }
+.pro-dropzone__hint{ font-size:14px; color:#2a2a2a; }
+.pro-dropzone__sub{ font-size:12px; margin-top:4px; }
+
+/* Mobile: make file list and dropzone comfortably tall for readability */
+@media (max-width: 960px){
+  .pro-files-list{ min-height: 160px; }
+  .pro-dropzone{ min-height: 170px; padding:28px; }
+}
+
+/* Align summary with first input row */
+.summary-tile{ margin-top: 4px; }
+@media (max-width: 960px){
+  .contact-page .product-split{ grid-template-columns: 1fr !important; width:auto; max-width:100%; overflow:visible; }
+  /* iOS fill available to avoid 100vw viewport issue */
+  @supports (-webkit-touch-callout: none){
+    .contact-page .product-split{ width:-webkit-fill-available !important; }
+  }
+}
