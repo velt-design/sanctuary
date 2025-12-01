@@ -7,9 +7,10 @@ export function middleware(req: NextRequest) {
   const host = headers.get('host') || '';
   const isLocal = /localhost|127\.0\.0\.1|\.local(:\d+)?$/i.test(host);
   const isCanonical = host.toLowerCase() === CANONICAL_HOST;
+  const isProd = process.env.VERCEL_ENV === 'production';
 
-  // Force canonical host in production
-  if (!isLocal && host && !isCanonical) {
+  // Force canonical host only in production (so Vercel previews still work)
+  if (isProd && !isLocal && host && !isCanonical) {
     const url = new URL(nextUrl);
     url.hostname = CANONICAL_HOST;
     return NextResponse.redirect(url, 301);
@@ -28,4 +29,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|api).*)',
   ],
 };
-
