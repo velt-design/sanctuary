@@ -1,0 +1,58 @@
+:root{
+  --bg:#ECEDEE; --fg:#0F0F10; --muted:#666; --border:#D6D7D9;
+  --g: clamp(12px, 2.2vw, 28px);
+  --bw: clamp(1px, 0.12vw, 2.5px);
+  --headerH: 72px;   /* JS updates at runtime */
+  --gap: 12px;       /* JS sets */
+  --tile: 280px;     /* JS sets */
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}
+a{color:inherit;text-decoration:none}
+
+#gallery-viewport{
+  position:relative;
+  height:calc(100vh - var(--headerH));   /* fallback */
+  height:calc(100svh - var(--headerH));  /* iOS */
+  height:calc(100dvh - var(--headerH));  /* modern */
+  min-height:360px;
+  overflow:hidden;
+  overscroll-behavior: contain;
+  touch-action: none;
+  background:var(--bg);
+  user-select:none;
+  outline:none;
+  cursor: grab;
+}
+#gallery-viewport.dragging{ cursor: grabbing; }
+
+#pan{ position:absolute; inset:0 auto auto 0; transform:translate3d(0,0,0); will-change:transform; }
+
+.grid{
+  display:grid;
+  grid-template-columns: repeat(10, var(--tile));
+  grid-template-rows: repeat(10, var(--tile));
+  gap: var(--gap);
+  padding: var(--gap);
+  width:max-content; height:max-content;
+}
+
+.cell{
+  width:var(--tile); height:var(--tile);
+  border:1px solid rgba(0,0,0,.06);
+  background:#F5F6F7;
+  position:relative; overflow:hidden; border-radius:2px;
+  -webkit-user-select:none; user-select:none;
+}
+.cell img{
+  width:100%; height:100%; object-fit:cover; object-position:center;
+  display:block; background:#E3E4E6;
+  pointer-events:none; -webkit-user-drag:none;
+}
+.cell .ph{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:#666; letter-spacing:.08em; text-transform:uppercase; pointer-events:none;
+}
+
+@media (prefers-reduced-motion: reduce){ :root{ scroll-behavior:auto } }

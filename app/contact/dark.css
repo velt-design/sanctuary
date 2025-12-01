@@ -1,0 +1,262 @@
+/* app/contact/dark.css – Dark theme overrides for the contact page */
+
+/* Base palette to match SiteFooter */
+.contact-page.contact-dark{
+  background:#121212;
+  color:#f5f6f7;
+  /* Override shared tokens where used */
+  --bg:#121212;
+  --fg:#f5f6f7;
+  --panel:#171717;
+  --border: rgba(245,246,247,.10);
+  /* Vertical scale factor for Style/Roof tiles (no compression) */
+  --midScaleY: 1;
+  --midScaleInv: 1; /* identity */
+}
+
+/* Make sure the grid inherits the page background */
+.contact-page.contact-dark .product-split,
+.contact-page.contact-dark .product-left,
+.contact-page.contact-dark .product-right{ background:transparent; color:inherit; }
+
+/* Typography */
+.contact-page.contact-dark .product-kicker,
+.contact-page.contact-dark .product-title,
+.contact-page.contact-dark .product-desc,
+.contact-page.contact-dark .product-long,
+.contact-page.contact-dark .contact-info{ color:#f5f6f7; }
+.contact-page.contact-dark .contact-info a{ color:#f5f6f7; text-decoration: underline; text-underline-offset: 2px; }
+/* After an enquiry type is chosen, hide phone/email to reclaim space */
+.contact-page.contact-dark.enquiry-picked .contact-info{ display:none !important; }
+/* Pull the enquiry header up a touch when phone/email is hidden */
+.contact-page.contact-dark.enquiry-picked .enquiry-block{ margin-top: 2px; }
+
+/* Chrome tiles to dark */
+.contact-page.contact-dark .hw-tile{
+  background:#171717 !important;
+  border-color: rgba(245,246,247,.10) !important;
+  color:#f5f6f7;
+  /* Avoid clipping slider thumbs/shadows and focus rings */
+  overflow: visible;
+}
+/* Tone down the hover/focus glow on dark */
+.contact-page.contact-dark .hw-tile:focus-within{
+  /* Keep subtle white outline but add a soft red glow for accent */
+  box-shadow:
+    0 0 0 1px rgba(245,246,247,.22),
+    0 0 12px color-mix(in srgb, var(--accentRed) 35%, #000 65%),
+    0 0 0 1px color-mix(in srgb, var(--accentRed) 55%, #ffffff 45%) inset;
+}
+
+@media (hover:hover) and (min-width:1024px){
+  .contact-page.contact-dark .hw-tile:hover{
+    box-shadow:
+      0 0 0 1px rgba(245,246,247,.22),
+      0 0 12px color-mix(in srgb, var(--accentRed) 35%, #000 65%),
+      0 0 0 1px color-mix(in srgb, var(--accentRed) 55%, #ffffff 45%) inset;
+  }
+}
+
+/* Digital summary text shades */
+.contact-page.contact-dark .summary--digital .digital__roof,
+.contact-page.contact-dark .summary--digital .digital__addons{ color: rgba(245,246,247,.65); }
+
+/* Range sliders inside fields (width/depth/height) */
+.contact-page.contact-dark .field label,
+.contact-page.contact-dark .field output{ color:#f5f6f7; }
+/* Use a two‑tone track: left = accent red, right = grey; driven by --pct */
+.contact-page.contact-dark .field input[type="range"]{
+  appearance:none; -webkit-appearance:none;
+  height: var(--track-h, 10px);
+  background: linear-gradient(90deg,
+    var(--accentRed) 0%,
+    var(--accentRed) var(--pct, 0%),
+    #3a3a3a var(--pct, 0%),
+    #3a3a3a 100%);
+  border-color: rgba(245,246,247,.20);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.55), inset 0 -1px 1px rgba(255,255,255,.06);
+}
+.contact-page.contact-dark .field input[type="range"]:focus{ outline:none; box-shadow: inset 0 1px 1px rgba(0,0,0,.55), inset 0 -1px 1px rgba(255,255,255,.06); }
+/* Hide the UA track so our gradient shows */
+.contact-page.contact-dark .field input[type="range"]::-webkit-slider-runnable-track{ background: transparent; }
+.contact-page.contact-dark .field input[type="range"]::-moz-range-track{ background: transparent; }
+/* Keep a neutral, slightly raised thumb */
+.contact-page.contact-dark .field input[type="range"]::-webkit-slider-thumb{
+  appearance:none; width:22px; height:22px; border-radius:50%;
+  background: radial-gradient(circle at 50% 35%, #ffffff 40%, #dfe3e8 60%, #a6acb3 100%);
+  border:1px solid #8e949b; box-shadow: 0 2px 6px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.85);
+  /* Center the thumb on the track; nudge down 1px for visual balance */
+  margin-top: calc(((var(--track-h, 10px) + 2px) - 22px)/2 - 1px);
+}
+.contact-page.contact-dark .field input[type="range"]::-moz-range-thumb{
+  width:22px; height:22px; border-radius:50%;
+  background: radial-gradient(circle at 50% 35%, #ffffff 40%, #dfe3e8 60%, #a6acb3 100%);
+  border:1px solid #8e949b; box-shadow: 0 2px 6px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.85);
+  margin-top: calc(((var(--track-h, 10px) + 2px) - 22px)/2 - 1px);
+}
+
+/* Vertical sliders */
+.contact-page.contact-dark .vs-head{ color:#f5f6f7; }
+.contact-page.contact-dark .vs-list li{ color: rgba(245,246,247,.70); }
+.contact-page.contact-dark .vs-list li.active{ color:#f5f6f7; }
+.contact-page.contact-dark .vs-rail{ background: transparent; }
+.contact-page.contact-dark .vs-range::-webkit-slider-runnable-track{ background: rgba(245,246,247,.28); }
+.contact-page.contact-dark .vs-range::-moz-range-track{ background: rgba(245,246,247,.28); }
+
+/* Checks */
+.contact-page.contact-dark .vs-check__box{
+  background: #242424;
+  border-color: rgba(245,246,247,.28);
+  box-shadow: inset 0 1px 0 rgba(0,0,0,.35);
+}
+.contact-page.contact-dark .vs-check__box:checked{
+  background: var(--accentRed);
+  border-color: color-mix(in srgb, var(--accentRed) 85%, #ffffff 15%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accentRed) 55%, #000 45%) inset,
+              0 0 10px color-mix(in srgb, var(--accentRed) 35%, #000 65%);
+}
+.contact-page.contact-dark .vs-check:has(.vs-check__box:checked) .vs-check__label{ color:#f5f6f7; }
+
+/* Enquiry header/toggle row */
+.contact-page.contact-dark .enquiry-header{ color:#f5f6f7; }
+.contact-page.contact-dark .enquiry-header__text{ color:#f5f6f7; }
+.contact-page.contact-dark .enquiry-header__chev{ border-top-color:#f5f6f7; }
+.contact-page.contact-dark .big-choice__label{ color:#f5f6f7; }
+.contact-page.contact-dark .toggle{ background:#8E949B !important; border-color:#C7CCD3 !important; }
+.contact-page.contact-dark .toggle.on{ background:var(--accentRed) !important; }
+
+/* Inputs inside tiles */
+.contact-page.contact-dark .input{ border-color: rgba(245,246,247,.18); background:#141414; color:#f5f6f7; }
+.contact-page.contact-dark .input--tile{ color:#f5f6f7; }
+.contact-page.contact-dark input::placeholder,
+.contact-page.contact-dark textarea::placeholder{ color: rgba(245,246,247,.55); }
+
+/* Send/Clear buttons */
+.contact-page.contact-dark .send-btn,
+.contact-page.contact-dark .clear-btn{ color:#f5f6f7; }
+
+/* Dividers between mid/right columns */
+@media (min-width: 961px){
+  .contact-page.contact-dark .contact-rail__mid::before,
+  .contact-page.contact-dark .contact-rail__mid::after{ background: rgba(245,246,247,.10); }
+}
+
+/* Left image placeholder number and layer */
+.contact-page.contact-dark .contact-media__placeholder{
+  color: rgba(245,246,247,.16);
+  /* Match the page background so the box blends in */
+  background:#121212;
+}
+.contact-page.contact-dark .contact-media__img{
+  /* Match the page background behind the photo */
+  background:#121212;
+}
+/* Ensure the big placeholder numeral is visible on dark */
+.contact-page.contact-dark .contact-media__placeholder span{
+  color:#f5f6f7 !important;
+  opacity:.18 !important; /* faint but readable on black */
+}
+/* Step numeral + image behaviour */
+/* Hide the number and image entirely on mobile; show on desktop only */
+@media (max-width: 960px){
+  .contact-page .contact-media__placeholder,
+  .contact-page .contact-media__img{
+    display:none !important;
+  }
+}
+@media (min-width: 961px){
+  .contact-page .contact-media__placeholder{
+    display:grid !important;
+  }
+}
+.contact-page .contact-media__placeholder{
+  transition: opacity .15s ease !important;
+}
+.contact-page .contact-media__img{
+  transition: opacity .15s ease, transform .15s ease !important;
+}
+/* Increase desktop numeral size by ~60% compared to the previous override */
+.contact-page .contact-media__placeholder span{
+  font-size: clamp(154px, 22vw, 320px) !important;
+  font-weight: 800 !important;
+  line-height: 1;
+}
+
+/* Force header to match dark page: black bg, white text + divider */
+body:has(.contact-page.contact-dark) header.site{
+  background:#121212 !important;
+  border-bottom-color:#f5f6f7 !important;
+  color:#f5f6f7 !important;
+}
+/* Override footer overlap/at-top sync on this page */
+body.footer-overlap:has(.contact-page.contact-dark) header.site,
+body.footer-at-top:has(.contact-page.contact-dark) header.site{
+  background:#121212 !important;
+  border-bottom-color:#f5f6f7 !important;
+  color:#f5f6f7 !important;
+}
+
+/* Hide global footer on contact page */
+body:has(.contact-page) footer{ display:none !important; }
+
+/* Enquiry type switches: keep original horizontal size/orientation but with higher contrast */
+.contact-page.contact-dark .enquiry-block{ position:relative; overflow:hidden; }
+.contact-page.contact-dark .big-choice .toggle{
+  width:46px !important;
+  height:26px !important;
+  border-radius:9999px !important;
+  position:relative;
+  background:#1c1c1c !important;
+  border:1px solid rgba(245,246,247,.30) !important;
+  box-shadow: inset 0 1px 2px rgba(255,255,255,.06), inset 0 -2px 4px rgba(0,0,0,.65) !important;
+}
+.contact-page.contact-dark .big-choice .toggle.on{
+  background: var(--accentRed) !important;
+  border-color: color-mix(in srgb, var(--accentRed) 60%, #ffffff 40%) !important;
+}
+.contact-page.contact-dark .big-choice .toggle::after{
+  content:"";
+  position:absolute; top:50%; left:4px; transform:translateY(-50%);
+  width:20px; height:20px; border-radius:50%;
+  background: radial-gradient(circle at 50% 35%, #ffffff 40%, #dfe3e8 60%, #a6acb3 100%);
+  border:1px solid #8e949b; box-shadow: 0 2px 6px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.85);
+  transition:left .5s cubic-bezier(.22,.61,.36,1);
+}
+.contact-page.contact-dark .big-choice .toggle.on::after{ left: 24px; }
+.contact-page.contact-dark .big-choice .toggle:focus-visible{ outline:2px solid color-mix(in srgb, var(--accentRed) 65%, #ffffff 35%); outline-offset:4px; }
+body:has(.contact-page.contact-dark) header.site .navbar,
+body:has(.contact-page.contact-dark) header.site .navlink-btn,
+body:has(.contact-page.contact-dark) header.site .site-brand{
+  color:#f5f6f7 !important;
+}
+
+/* Enquiry pick transition: wipe up after the toggle moves */
+.contact-page.contact-dark .enquiry-swipe{
+  position:absolute; left:-1px; right:-1px; bottom:0; top:0;
+  transform: translateY(100%);
+  background: #121212; /* same as page bg to "cover" content */
+  pointer-events:none;
+}
+.contact-page.contact-dark .enquiry-swipe::before{
+  content:""; position:absolute; left:0; right:0; top:-1px; height:1px; background: #f5f6f7; /* white leading line */
+}
+.contact-page.contact-dark.enquiry-animating .enquiry-swipe{ animation: enquiryWipe .75s cubic-bezier(.22,.61,.36,1) .8s forwards; }
+@keyframes enquiryWipe{ from{ transform: translateY(100%);} to{ transform: translateY(0);} }
+
+/* Middle column: visually compress Style and Roof tiles along Y without shrinking contents */
+.contact-page.contact-dark .style-tile,
+.contact-page.contact-dark .roof-tile,
+.contact-page.contact-dark .style-tile .vs-group,
+.contact-page.contact-dark .roof-tile .vs-group{
+  transform:none !important;
+}
+/* Maintain consistent min-height (handled in spacing.css) */
+.contact-page.contact-dark .mid-controls .equal .vs-group{ min-height: calc((var(--row-compact) * 3) + (var(--contact-gap, var(--g)) * 2)); }
+
+/* Make the mid-column control grid use full column width */
+.contact-page.contact-dark .contact-controls{ max-width: none; width:100%; }
+
+/* Right column: smaller message box */
+/* Keep a generous message box so the right column aligns with left image */
+/* Height now driven by StepFlow internal token in spacing.css */
+.contact-page.contact-dark textarea.input--tile{ min-height: unset !important; }

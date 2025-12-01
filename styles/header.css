@@ -1,0 +1,179 @@
+:root{
+  --bg:#ECEDEE;          /* page + dropdown bg */
+  --fg:#0F0F10;
+  --border:#D9DBDE;
+  --panel:#F7F8F9;
+  --g: clamp(12px, 2.2vw, 28px);
+  --bw: clamp(1px, 0.12vw, 2.5px);
+  --navH: 68px; /* default; overridden in header scope */
+  --subH: 0px; /* secondary header height (0 when hidden) */
+  --accentRed:#813F39;
+  --navFade:#AEB4BA;
+  /* Glass background used by both headers */
+  --headerGlassBg: rgba(236,237,238,.86);
+  --headerGlassBlur: 10px;
+}
+
+/* --- Base --- */
+*{box-sizing:border-box;margin:0}
+html,body{background:var(--bg);color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+a{color:inherit;text-decoration:none}
+.container{max-width:1400px !important;width:100% !important;padding-inline:var(--g) !important;margin:0 auto !important}
+/* Header stretches full screen; container inside header is full-width */
+header.site .container{max-width:none !important;width:100% !important}
+
+/* --- Header --- */
+header.site{
+  position:fixed; top:0; left:0; right:0; width:100%; z-index:4000;
+  background:var(--headerGlassBg); backdrop-filter:blur(var(--headerGlassBlur));
+  border-bottom:var(--bw) solid var(--border);
+  transform:translateZ(0);
+  transition:transform .6s cubic-bezier(.21,.8,.35,1), opacity .45s ease, background-color .5s ease, border-color .5s ease;
+}
+.site header{}
+/* Make header bar taller globally */
+header.site{ --navH: 82px; }
+.navbar{position:relative;display:flex;align-items:center;justify-content:space-between;height:var(--navH);gap:18px}
+.site-brand{letter-spacing:.04em;flex-shrink:0;display:flex;align-items:center;height:var(--navH);margin:0;line-height:1; text-transform:uppercase}
+.desktop-nav{margin-left:auto;margin-right:18px;flex:1 1 auto;min-width:0;overflow:visible}
+.desktop-nav{display:flex;align-items:center;justify-content:flex-end}
+/* Center the entire nav group within the header bar on desktop */
+.desktop-nav--center{position:absolute; left:50vw; top:0; transform:translateX(-50%); height:var(--navH); display:flex; align-items:center}
+.desktop-nav--center .nav-list{justify-content:center}
+.navlink-btn.active{color:var(--accentRed)}
+.desktop-nav-grid{position:relative; display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:18px; margin-left:auto; margin-right:18px; flex:1 1 auto; min-width:0}
+.desktop-nav-grid .nav-right .nav-list{justify-content:flex-end}
+.desktop-nav-grid .nav-center{position:absolute; left:50vw; transform:translateX(-50%); display:flex; align-items:center}
+.desktop-nav-grid .nav-center .navlink-btn.active{font-weight:600}
+/* Desktop menu: no transitions, render at its final position; toggle only visibility */
+.desktop-wipe{opacity:0;pointer-events:none}
+.desktop-wipe.open{opacity:1;pointer-events:auto}
+.nav-list{list-style:none;display:flex;gap:18px;align-items:center}
+.nav-list>li{position:relative}
+.navlink-btn{background:transparent;border:0;color:inherit;cursor:pointer;
+  padding:10px 10px;display:flex;align-items:center;gap:6px;border-radius:10px;font-size:14px;letter-spacing:.02em;
+  /* Slow fade back to default color when hover ends */
+  transition: color .5s ease; text-transform:uppercase}
+.chev{width:14px;height:14px;transition:transform .25s ease}
+
+/* Fade out non-hovered header items, keep hovered item black */
+@media (hover:hover){
+  .desktop-nav .nav-list:has(.navlink-btn:hover) .navlink-btn,
+  .desktop-nav--center .nav-list:has(.navlink-btn:hover) .navlink-btn{
+    color:var(--navFade);
+    /* Speed up dimming while hovered; base state controls unhover speed */
+    transition-duration:.12s
+  }
+  /* Ensure the hovered item itself stays at full contrast */
+  .desktop-nav .nav-list:has(.navlink-btn:hover) .navlink-btn:hover,
+  .desktop-nav--center .nav-list:has(.navlink-btn:hover) .navlink-btn:hover{
+    color:var(--fg);
+    transition-duration:.12s
+  }
+  /* Active + hover also stays full contrast */
+  .desktop-nav .nav-list .navlink-btn.active:hover,
+  .desktop-nav--center .nav-list .navlink-btn.active:hover{ color:var(--fg); }
+
+  /* Cross-header fade: when hovering a primary header item, dim subheader links too */
+  body:has(header.site .navlink-btn:hover) .product-subnav__link{ color:var(--navFade); }
+  /* Always keep the actual hovered link full contrast */
+  header.site .navlink-btn:hover{ color:var(--fg); }
+}
+
+/* Centered top nav layout */
+/* remove centered grid if not used */
+
+.mobile-toggle{position:relative;display:inline-flex;width:24px;height:24px;border-radius:999px;border:none;
+  background:#813F39 !important;
+  color:#fff;cursor:pointer;align-items:center;justify-content:center;transition:background .25s ease, transform .25s ease;
+  flex-shrink:0;box-shadow:0 0 0 1px rgba(15,15,16,.12);z-index:32}
+.mobile-toggle:focus-visible{outline:2px solid rgba(15,15,16,.65);outline-offset:4px}
+.mobile-toggle__pulse{position:absolute;inset:0;border-radius:inherit;border:2px solid rgba(255,255,255,.28);
+  opacity:0;transform:scale(.6);transition:transform .3s ease, opacity .3s ease}
+.mobile-toggle.open .mobile-toggle__pulse{opacity:1;transform:scale(1)}
+
+.mobile-menu{display:none;position:fixed;inset:0;background:#000;color:var(--bg);
+  border-bottom:none;box-shadow:none;
+  transform:translateY(-100%);opacity:0;pointer-events:none;transition:transform .32s cubic-bezier(.25,.85,.35,1), opacity .28s ease;
+  z-index:3500;padding-top:var(--navH);}
+.mobile-menu.open{transform:translateY(0);opacity:1;pointer-events:auto}
+.mobile-menu__list{list-style:none;margin:0;padding:calc(var(--g)/2) var(--g) var(--g);
+  display:flex;flex-direction:column;gap:2px}
+.mobile-menu__link{display:flex;align-items:center;justify-content:flex-start;font-size:16px;padding:14px 0;
+  border-bottom:1px solid rgba(236,237,238,.18);letter-spacing:.01em;color:inherit}
+.mobile-menu__link--cta{margin-top:12px;border:var(--bw) solid var(--fg);border-radius:999px;padding:12px 20px;
+  justify-content:center;background:var(--fg);color:var(--bg);border-bottom:none;transition:background .25s ease,color .25s ease}
+
+/* Mobile nested product links */
+.mobile-menu__section{padding-top:8px}
+.mobile-menu__section-title{font-size:12px;letter-spacing:.12em;color:#7A7A7A;text-transform:uppercase;margin:6px 0}
+.mobile-menu__sublist{list-style:none;margin:0 0 6px 0;padding:0}
+.mobile-menu__subitem{margin:6px 0 10px}
+.mobile-menu__sublink{display:block;font-size:16px;padding:8px 0;color:inherit;text-decoration:none}
+.mobile-menu__item-desc{display:block;font-size:13px;color:#777;line-height:1.3}
+
+@media (hover:hover){
+  .mobile-toggle:hover{background:#6F332F !important}
+  .mobile-menu__link:hover{color:var(--bg);opacity:.8}
+  .mobile-menu__link--cta:hover{background:#1B1B1B;color:var(--bg)}
+  .mobile-menu__sublink:hover{color:rgba(15,15,16,.75)}
+}
+
+/* Mobile menu open: dark header treatment similar to footer-at-top */
+body.mobile-menu-open header.site{ background:transparent !important; border-bottom: var(--bw) solid #f5f6f7 !important; }
+body.mobile-menu-open header.site,
+body.mobile-menu-open header.site .navbar,
+body.mobile-menu-open header.site .navlink-btn,
+body.mobile-menu-open header.site .site-brand{ color:#f5f6f7 !important; }
+body.mobile-menu-open .mobile-toggle{ background:#f5f6f7 !important; color:#000 !important; }
+body.mobile-menu-open .mobile-toggle__pulse{ border-color:rgba(245,246,247,.72); }
+
+/* --- Mega: full‑bleed, no gap, square edges --- */
+@media (max-width:720px){
+  .navbar{gap:0}
+  header.site .navbar{align-items:center}
+  header.site .desktop-nav{display:none}
+  .nav-cta{display:none}
+  .mobile-toggle{display:inline-flex}
+  .mobile-menu{display:block}
+}
+
+/* --- Header visibility hooks for projects sequence --- */
+/* Keep header always visible; override any hide/flip animations */
+
+/* === Footer overlap behavior (applies on all pages) === */
+/* Smoothly transition header/links/border colors */
+header.site, header.site .navbar, header.site .navlink-btn, header.site .site-brand{
+  transition: color .5s ease, border-color .5s ease, background-color .5s ease;
+}
+
+/* While footer is under header but not yet at viewport top */
+body.footer-overlap header.site{ background:transparent !important; border-bottom-color: transparent !important; pointer-events:none; }
+body.footer-overlap header.site,
+body.footer-overlap header.site .navbar,
+body.footer-overlap header.site .navlink-btn,
+body.footer-overlap header.site .site-brand{ color: transparent !important; }
+
+/* When footer reaches the very top of the viewport */
+/* Ensure the divider is visible even if another rule set width to 0 */
+/* At footer top: keep header text light, but remove divider line */
+body.footer-at-top header.site{ background:transparent !important; border-bottom: var(--bw) solid #f5f6f7 !important; pointer-events:auto; }
+body.footer-at-top header.site,
+body.footer-at-top header.site .navbar,
+body.footer-at-top header.site .navlink-btn,
+body.footer-at-top header.site .site-brand{ color:#f5f6f7 !important; }
+body.header-hidden header.site{transform:none !important; opacity:1 !important; pointer-events:auto !important}
+body.header-flip header.site{animation:none !important}
+@keyframes headerFlip{
+  0%{transform:rotateX(-90deg) translateY(-20%);opacity:0}
+  100%{transform:rotateX(0deg) translateY(0);opacity:1}
+}
+
+/* Viewer states retain sticky header palette adjustments */
+body.viewer-fullscreen header.site,
+body.viewer-slider header.site{
+  background:rgba(245,246,247,.95);
+  backdrop-filter:none;
+  border-color:rgba(17,17,17,.08);
+}

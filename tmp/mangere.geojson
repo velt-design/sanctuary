@@ -1,0 +1,6 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {"type":"Feature","properties":{"name":"Mangere"},"geometry":{"type":"Point","coordinates":[174.786, -36.973]}}
+  ]
+}

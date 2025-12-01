@@ -1,0 +1,231 @@
+/* app/contact/spacing.css
+   Contact page sizing system: stepped outside gaps + container-based internal spacing.
+*/
+
+/* 1) Stepped, strict outside gaps (between boxes/columns) */
+.contact-page{
+  /* Default step (mobile-first) */
+  --gap-outside: 12px;
+  /* Use the same token to drive any existing contact gaps */
+  --contact-gap: var(--gap-outside);
+  /* For legacy rules that reference --g, align it to the stepped gap */
+  --g: var(--gap-outside);
+  /* Buffer = half of the total clear space (visible gap) */
+  --buffer: calc(var(--gap-outside) * 0.5);
+  /* Simple mode: no separate line buffer; lines sit at half the gap */
+  --line-buffer: 0px;
+  /* Unified gap token for Tailwind wrapper (horizontal) */
+  --gap: 12px;
+  /* Vertical rhythm and inner padding tokens */
+  --vgap: 8px;
+  --pad: 8px;
+  /* Right-column horizontal gap (fields ↔ Add ons) */
+  --right-hgap: 16px;
+}
+
+.two-col-page.contact-page{ min-height:100vh; }
+@media (min-width: 480px){ .contact-page{ --gap-outside: 16px; } }
+@media (min-width: 768px){ .contact-page{ --gap-outside: 16px; --gap: 16px; --vgap: 10px; --pad: 10px; --right-hgap: 16px; } }
+@media (min-width:1024px){ .contact-page{ --gap-outside: 24px; --gap: 24px; --vgap: 12px; --pad: 12px; --right-hgap: 16px; } }
+@media (min-width:1440px){ .contact-page{ --gap-outside: 24px; } }
+
+/* Apply the strict gap to relevant grids and gutters */
+.contact-page .contact-rail,
+.contact-page .contact-controls,
+.contact-page .mid-controls{ gap: var(--gap-outside) !important; }
+/* No side padding on mid/right rails so the divider sits exactly at 0.5 * gap */
+.contact-page .contact-rail__mid{ padding-left: 0 !important; padding-right: 0 !important; }
+.contact-page .contact-rail__right{ padding-left: 0 !important; padding-right: 0 !important; }
+@media (min-width: 961px){
+  .contact-page .contact-rail__right .contact-controls{
+    --contact-gap: var(--gap-outside) !important;
+    column-gap: var(--gap-outside) !important;
+    row-gap: var(--gap-outside) !important;
+  }
+}
+
+/* Disable old pseudo-line system; real rules are grid columns now */
+@media (min-width: 961px){
+  .contact-page .contact-rail__mid::before,
+  .contact-page .contact-rail__mid::after{ display:none !important; content:""; }
+}
+
+/* Removed numeric prefix beside the title per intent */
+
+/* Right column: deterministic grid to eliminate overlap */
+.contact-page .right-locked{
+  display:grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  grid-template-areas:
+    "header header"
+    "fields addons"
+    "textarea textarea"
+    "send send";
+  column-gap: var(--right-hgap, 16px);
+  row-gap: var(--vgap);
+  align-items:start;
+  grid-auto-rows: min-content;
+}
+.contact-page .right-locked__header{ grid-area: header; }
+.contact-page .right-locked__fields{ grid-area: fields; display:grid; gap: var(--vgap); }
+.contact-page .right-locked__addons{ grid-area: addons; align-self:stretch; }
+.contact-page .right-locked__addons .vs-group{ height:100% !important; padding: var(--pad) !important; gap: var(--vgap) !important; }
+.contact-page .right-locked__textarea{
+  grid-area: textarea;
+  margin-bottom: 0;
+}
+.contact-page .right-locked__send{
+  grid-area: send;
+  margin-top: 0;
+}
+
+/* Collapse to one column on tablet/mobile */
+@media (max-width: 1023px){
+  .contact-page .right-locked{
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "fields"
+      "addons"
+      "textarea"
+      "send";
+  }
+}
+
+/* Optional: frame padding aligns with the stepped gap */
+@media (min-width: 961px){
+  .contact-page .product-split{ padding-left: var(--gap-outside) !important; padding-right: var(--gap-outside) !important; }
+}
+
+/* 2) Internal spacing: container-based, proportional within each tile/card */
+.contact-page .hw-tile{
+  /* Make each tile a container so spacing scales with its own width */
+  container-type: inline-size;
+  /* Base internal spacing token */
+  --s: clamp(12px, 1cqw + 8px, 22px);
+  /* Helpful multiples */
+  --s-0_5: calc(var(--s) * .5);
+  --s-1: var(--s);
+  --s-1_25: calc(var(--s) * 1.25);
+  --s-1_5: calc(var(--s) * 1.5);
+  --s-2: calc(var(--s) * 2);
+  /* Uniform inner padding so content never hugs borders */
+  padding: var(--pad) !important;
+}
+@supports not (width: 1cqw){
+  .contact-page .hw-tile{ --s: clamp(12px, 1.2vw + 8px, 22px); }
+}
+
+/* Use the spacing tokens consistently inside tiles */
+.contact-page .field{ gap: var(--s-1) !important; }
+/* Big field keeps content spacing only; outer tile padding is handled by --buffer */
+.contact-page .field--big{ padding: 0 !important; gap: var(--s-1) !important; min-height: auto !important; }
+.contact-page .field--big input[type="range"]{ margin-bottom: var(--s-0_5); }
+/* Range track height follows internal scale for even rhythm */
+.contact-page .field input[type="range"]{ --track-h: clamp(8px, calc(var(--s) * 0.55), 12px); }
+
+/* Additional inner elements that used fixed pixel gaps */
+.contact-page .vs-check{ gap: var(--s-1) !important; }
+.contact-page .vs-list{ gap: var(--s-0_5) !important; }
+.contact-page .vs-head{ margin: calc(var(--s-0_5) * .4) 0 var(--s-0_5) !important; }
+
+/* Contact typography uses container-based sizing so text scales with each card */
+.contact-page .field label,
+.contact-page .field output,
+.contact-page .vs-list li{
+  font-size: clamp(16px, 1cqw + 12px, 20px) !important;
+  line-height: 1.15;
+}
+@supports not (width: 1cqw){
+  .contact-page .field label,
+  .contact-page .field output,
+  .contact-page .vs-list li{
+    font-size: clamp(16px, 1.2vw + 12px, 20px) !important;
+  }
+}
+
+/* No external margins; set explicit top/bottom padding so rule-to-box gap == grid gap */
+.contact-page .mid-controls{
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: var(--vgap) !important;
+  padding-bottom: 0 !important;
+  /* Tighten ONLY the vertical rhythm in the middle column */
+  row-gap: var(--vgap) !important;
+  /* Horizontal gap between Style and Roof should be the tight rhythm */
+  column-gap: var(--vgap) !important;
+}
+/* Give the header block a matching bottom buffer so the line is centered in the total clear space */
+.contact-page .enquiry-block{ padding-bottom: 0 !important; }
+/* Remove stray margins that create off-scale clear space */
+.contact-page .contact-info{ margin: 0 !important; }
+.contact-page .big-choices{ margin: 0 !important; }
+
+.contact-page .vs-group{ gap: var(--s-1) !important; padding: var(--s-1) var(--s-1_5) !important; grid-template-columns: 1fr calc(var(--s) * 3.2) !important; }
+.contact-page .vs-list{ gap: var(--s-0_5) !important; }
+.contact-page .vsliders{ gap: var(--s-1) !important; }
+
+/* Vertical slider sizing tokenised */
+.contact-page .vs-rail{ width: calc(var(--s) * 3.2) !important; height: calc(var(--s) * 5.0) !important; }
+.contact-page .vs-range{ width: calc(var(--s) * 3.0) !important; height: calc(var(--s) * 1.1) !important; }
+
+.contact-page .big-choices{ gap: var(--s-1); margin: var(--s-0_5) 0 var(--s-1); }
+.contact-page .enquiry-header{ gap: var(--s-0_5); padding: calc(var(--s-0_5) * .6) 2px; }
+
+.contact-page .input--tile{ padding: var(--s-1) var(--s-1_25); }
+.contact-page .send-btn{ padding: var(--s-0_5) 0; }
+
+/* Textarea/message box scales with internal spacing, not a fixed px */
+.contact-page textarea.input--tile{ min-height: 132px !important; }
+.contact-page .style-tile,
+.contact-page .roof-tile{ min-height: clamp(210px, 26vw, 260px); }
+.contact-page .style-tile .vs-group,
+.contact-page .roof-tile .vs-group{ height:100%; }
+
+/* 3) Global min-height baseline for visual stability (non‑destructive) */
+/* Use the existing compact track height when available; otherwise no-op. */
+.contact-page .hw-tile{ min-height: var(--row-compact, auto); }
+
+/* 4) Row track sizing derived from the grid container, not viewport height */
+.contact-page .contact-controls{
+  container-type: inline-size;
+  /* Use container width to derive a comfortable row baseline */
+  --row-min-height: clamp(120px, calc(12cqw + 80px), 220px);
+  --row-compact: calc(var(--row-min-height) * .30);
+  max-width: none !important;
+  align-content: start;
+  grid-auto-rows: var(--row-compact) !important;
+  grid-auto-flow: row dense;
+}
+@supports not (width: 1cqw){
+  .contact-page .contact-controls{ --row-min-height: clamp(120px, calc(1.2vw * 12 + 80px), 220px); }
+}
+
+/* Replace short-viewport overrides with container-based values */
+@media (max-height: 900px){
+  .contact-page .contact-rail__right .contact-controls{
+    --contact-gap: var(--gap-outside) !important;
+    column-gap: var(--gap-outside) !important;
+    row-gap: var(--gap-outside) !important;
+  }
+  .contact-page .vs-group{ grid-template-columns: 1fr calc(var(--s) * 3.2) !important; }
+  .contact-page .vs-rail{ width: calc(var(--s) * 3.2) !important; height: calc(var(--s) * 5.0) !important; }
+  .contact-page .vs-range{ width: calc(var(--s) * 3.0) !important; height: calc(var(--s) * 1.1) !important; }
+  .contact-page .field label,
+  .contact-page .field output,
+  .contact-page .vs-list li{ font-size: clamp(16px, 1cqw + 12px, 20px) !important; }
+}
+
+/* Let the contact page scroll naturally on desktop; prevent cropping */
+@media (min-width: 961px){
+  .two-col-page.contact-page{ height:auto !important; overflow:visible !important; padding-bottom: var(--gap-outside) !important; }
+  .contact-page .product-split{ height:auto !important; overflow:visible !important; }
+  .contact-page .product-left-scroller{ height:auto !important; overflow:visible !important; }
+  .contact-page .product-left{ align-self:stretch !important; }
+}
+
+/* Ensure the display box reserves enough space so items below never overlap */
+.contact-page .contact-controls .summary-tile{ min-height: calc(var(--row-min-height) * 1.6) !important; }
+/* Site-wide optional gap token (used by wrapper if desired) */
+:root{ --gap: 1rem; }
+@media (min-width: 1024px){ :root{ --gap: 1.25rem; } }

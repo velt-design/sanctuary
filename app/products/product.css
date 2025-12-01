@@ -1,12 +1,12 @@
-:root{
-  --ctaWipe:#2B2B2B;
-  --pageWhite:#FFFFFF;
-}
-
 .product-page{height:calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--bw));
   min-height:calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--bw));
   margin-top:calc(var(--navH-fix, var(--navH)) + var(--subH, 0px) + var(--bw));
-  overflow:hidden}
+  overflow:hidden;
+  --product-control-icon-size: 30.6px;
+  --product-control-icon-arm: 20.4px;
+  --product-control-icon-stroke: 2px;
+  --product-control-icon-color: #4B4F55;
+}
 @media (max-width:960px){
   .product-page{ height:auto; min-height:0; overflow:visible; }
 }
@@ -34,8 +34,102 @@
 /* Make product tiles mimic homepage tiles but with smaller titles */
 .products-index .tile .t{font-size:18px}
 
+/* Dual-image zoom + parallax hover for products index tiles */
+.products-index .tile{
+  position:relative;
+  transition:transform .4s cubic-bezier(.25,.85,.35,1), box-shadow .4s ease;
+  transform-style:preserve-3d;
+}
+.products-index .tile .m{
+  position:relative;
+}
+.products-index .tile .product-image-stack{
+  position:relative;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
+.products-index .tile .product-image{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+  transition:transform .8s cubic-bezier(.22,.61,.36,1),opacity .55s ease;
+  will-change:transform,opacity;
+}
+.products-index .tile .product-image--base{
+  z-index:1;
+  opacity:1;
+  transform:scale(1) translateX(0);
+}
+.products-index .tile .product-image--hover{
+  z-index:2;
+  opacity:0;
+  transform:scale(1.05) translateX(14%);
+}
+/* Adjust framing for hip render so the structure sits further left */
+.products-index .tile--hip .product-image--base{
+  object-position:center center;
+}
+.products-index .tile--hip .product-image--hover{
+  object-position:right center;
+}
+@media (hover:hover) and (min-width:1024px){
+  .products-index .tile:hover,
+  .products-index .tile:focus-visible{
+    transform:translateY(-6px) rotateX(3deg) rotateY(-3deg);
+    box-shadow:0 18px 40px rgba(0,0,0,.22);
+  }
+  .products-index .tile:hover .product-image--base,
+  .products-index .tile:focus-visible .product-image--base{
+    opacity:0;
+    transform:scale(.96) translateX(-6%);
+  }
+  .products-index .tile:hover .product-image--hover,
+  .products-index .tile:focus-visible .product-image--hover{
+    opacity:1;
+    transform:scale(1.08) translateX(0);
+  }
+  /* Hip tile: invert parallax direction so the hover image moves in from the left
+     and the base render drifts slightly right instead of left. */
+  .products-index .tile--hip:hover .product-image--base,
+  .products-index .tile--hip:focus-visible .product-image--base{
+    transform:scale(.96) translateX(6%);
+  }
+  .products-index .tile--hip .product-image--hover{
+    transform:scale(1.05) translateX(-14%);
+  }
+  .products-index .tile--hip:hover .product-image--hover,
+  .products-index .tile--hip:focus-visible .product-image--hover{
+    transform:scale(1.08) translateX(0);
+  }
+}
+/* Reset global tile zoom so only the parallax swap runs here */
+.products-index .tile:hover:not(.viewall) .m img{
+  transform:none;
+}
+@media (prefers-reduced-motion:reduce){
+  .products-index .tile,
+  .products-index .tile .product-image{
+    transition:none;
+  }
+}
+
 /* Contact playful controls */
-.contact-controls{display:grid; --contact-gap: clamp(4px, 0.7vw, 10px); --row-min-height: clamp(100px, 13vh, 150px); --row-compact: calc(var(--row-min-height) * .20); gap:var(--contact-gap); margin:6px 0 2px; max-width:520px; grid-template-columns:1fr 1fr; align-items:start}
+.contact-controls{display:grid; --contact-gap: clamp(4px, 0.7vw, 10px); --row-min-height: clamp(120px, 16vh, 190px); --row-compact: calc(var(--row-min-height) * .30); gap:var(--contact-gap); margin:0; max-width:520px; grid-template-columns:1fr 1fr; align-items:start; grid-auto-rows: minmax(var(--row-compact), auto); grid-auto-flow: row}
+
+/* Make the right column gutters a touch larger so spacing is
+   clearly visible between tiles on dark backgrounds. */
+@media (min-width: 961px){
+  .contact-page .contact-rail__right .contact-controls{
+    /* Stronger, clearer spacing between tiles on dark theme */
+    --contact-gap: clamp(10px, 1.4vw, 20px);
+    column-gap: calc(var(--contact-gap) * 1.8);
+    row-gap: var(--contact-gap);
+  }
+}
 .span-2{grid-column:1 / -1}
 .span-2-sm{grid-column:auto}
 .col-1{grid-column:1}
@@ -43,7 +137,11 @@
 .row-span-2{grid-row: span 2}
 .row-span-3{grid-row: span 3}
 .row-compact{ min-height: var(--row-compact); }
-.addons-eq{ min-height: calc((var(--row-compact) * 3) + (var(--contact-gap) * 2)); box-sizing: border-box; }
+/* Let CSS Grid determine the exact height by spanning 3 rows.
+   We rely on `grid-auto-rows` above so each track is consistent.
+   Any former hard min-height here can cause off‑by‑pixels. */
+.addons-eq{ min-height: unset; box-sizing: border-box; }
+.addons-eq .vs-group{ height:100%; box-sizing:border-box; }
 .contact-controls .hw-tile.equal{ align-self: stretch; min-height: var(--row-min-height); }
 .contact-controls .hw-tile.row-base{ min-height: var(--row-min-height); }
 .hw-tile.equal .vs-group{ height: 100%; box-sizing: border-box; }
@@ -59,9 +157,12 @@
 .field input[type="range"]::-webkit-slider-thumb{appearance:none;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 50% 50%, #D5D9DE 40%, #A6ACB3 41%, #8B8F94 100%);border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.10), 0 2px 2px rgba(0,0,0,.15)}
 .field input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 50% 50%, #D5D9DE 40%, #A6ACB3 41%, #8B8F94 100%);border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.10)}
 
-/* Larger width/length tiles */
+/* Larger width/length/height tiles: give the text more breathing room
+   and push the slider further down to avoid bottom cutoff */
 .field--big label, .field--big output{ font-size: clamp(18px, 2.2vw, 24px); }
-.field--big{ padding-bottom: 18px; }
+.field--big{ padding: 14px 16px 30px; gap: 14px; min-height: 112px; }
+/* Extra bottom breathing room specifically for the slider */
+.field--big input[type="range"]{ margin-bottom: 6px; }
 
 .dial{margin-top:6px}
 .dial-head{font-size:14px; letter-spacing:.12em; text-transform:uppercase; color:#7A7A7A; margin-bottom:8px}
@@ -84,7 +185,19 @@
 
 /* Mobile variable override for row heights (keeps stacked rows balanced) */
 @media (max-width: 560px){
-  .contact-controls{ --row-min-height: clamp(120px, 20vh, 180px); }
+  /* Keep mobile rows generous to preserve hierarchy */
+  .contact-controls{ --row-min-height: clamp(130px, 22vh, 200px); }
+}
+
+/* Desktop: lock the first three rows to compact height when customer info
+   is shown (Residential/Commercial). The message area that follows remains
+   flexible, and any further implicit rows fall back to compact height. */
+@media (min-width: 961px){
+  .contact-page.customer-on .contact-controls{
+    /* Lock first four rows to the compact height for consistent scale; message stays auto. */
+    grid-template-rows: repeat(4, var(--row-compact)) auto;
+    grid-auto-rows: var(--row-compact);
+  }
 }
 
 /* Equal-height row tiles (handled via .equal) */
@@ -186,10 +299,20 @@
   .contact-page .vs-range{width:100px; height:20px}
   .contact-page .vs-list li{font-size:16px}
   .contact-page .field label,.contact-page .field output{font-size:16px}
+  /* Ensure the right column retains a clear visual gutter even on
+     shorter viewports where the generic gap is reduced. */
+  .contact-page .contact-rail__right .contact-controls{
+    --contact-gap: clamp(10px, 2.2vh, 18px);
+    column-gap: calc(var(--contact-gap) * 1.8);
+    row-gap: var(--contact-gap);
+  }
 }
 
 /* Hover/active emphasis for the chrome tiles */
-.hw-tile:focus-within, .hw-tile:hover{box-shadow:0 0 0 1px rgba(160,165,172,.55), 0 0 14px rgba(160,165,172,.45)}
+.hw-tile:focus-within{box-shadow:0 0 0 1px rgba(160,165,172,.55), 0 0 14px rgba(160,165,172,.45)}
+@media (hover:hover) and (min-width:1024px){
+  .hw-tile:hover{box-shadow:0 0 0 1px rgba(160,165,172,.55), 0 0 14px rgba(160,165,172,.45)}
+}
 
 /* Secondary product sub-header (fixed under main header) */
 .product-subheader{position:fixed; top:var(--navH-fix, var(--navH)); left:0; right:0; height:var(--navH-fix, var(--navH));
@@ -200,12 +323,14 @@
   border-top:0; border-bottom:var(--bw) solid var(--border); z-index:3800;
   /* Put on its own layer like the main header so the blur looks identical */
   transform:translateZ(0); will-change:transform;
-  transition:transform .28s cubic-bezier(.25,.85,.35,1)}
+  transition:transform .28s cubic-bezier(.25,.85,.35,1), background-color .5s ease, border-color .5s ease}
+.product-subheader[aria-label="Resources shortcuts"]{ height: calc((var(--navH-fix, var(--navH))) * .5); }
 .product-subheader.hide{transform:translateZ(0) translateY(calc(-100%))}
 .product-subheader.show{transform:translateZ(0) translateY(0)}
 .product-subheader__inner{position:relative; max-width:none; width:100%; padding:0 var(--g)}
 .product-subnav{position:absolute; left:50vw; transform:translateX(-50%);
   display:flex; align-items:center; list-style:none; padding:0; margin:0; height:var(--navH-fix, var(--navH)); gap:30.42px}
+.product-subheader[aria-label="Resources shortcuts"] .product-subnav{ height: calc((var(--navH-fix, var(--navH))) * .5); }
 .product-subnav__item{white-space:nowrap}
 .product-subnav__link{color:inherit; text-decoration:none; font-size:14px; letter-spacing:.04em; display:inline-block; position:relative;
   /* Slow fade back to default color when hover ends */
@@ -232,18 +357,45 @@
   .product-subnav__link:hover{ color:var(--fg); }
 }
 /* Basic hover without :has support: keep hovered item full contrast */
-.product-subnav__link:hover{ opacity:1; color:var(--fg); }
+@media (hover:hover){
+  .product-subnav__link:hover{ opacity:1; color:var(--fg); }
+}
+
+/* Footer wipe for Resources subheader: hide completely when footer overlaps or reaches top */
+body.footer-overlap .product-subheader[aria-label="Resources shortcuts"],
+body.footer-at-top .product-subheader[aria-label="Resources shortcuts"]{
+  background: transparent !important;
+  border-bottom-color: transparent !important;
+}
+body.footer-overlap .product-subheader[aria-label="Resources shortcuts"] .product-subnav__link,
+body.footer-at-top .product-subheader[aria-label="Resources shortcuts"] .product-subnav__link{
+  color: transparent !important;
+}
+body.footer-overlap .product-subheader[aria-label="Resources shortcuts"] .product-subnav__link::before,
+body.footer-at-top .product-subheader[aria-label="Resources shortcuts"] .product-subnav__link::before{
+  background-color: transparent !important;
+}
 .product-split{display:grid; grid-template-columns:2fr 1fr; gap:var(--g); padding:0 var(--g) var(--g); width:100%; max-width:100%; height:100%; overflow:hidden}
 .product-left{height:100%; padding-top:calc(var(--g) * .45); overflow:hidden}
 .product-right{height:100%; overflow:hidden}
 .product-left-scroller,.product-right-scroller{height:100%; overflow:auto; overscroll-behavior:contain}
+.product-right, .product-right-scroller, .product-body, .accordion__summary{ min-width: 0; }
+/* Keep layout width stable when vertical scrollbars appear/disappear */
+.product-right-scroller{ scrollbar-gutter: stable both-edges; }
+/* Lock horizontal scroll of the right rail to avoid sideways jiggle from
+   extended lines and CTA wipes; keep vertical scrolling intact */
+.product-right-scroller{ overflow-x: hidden; overflow-y: auto; }
 .product-left-scroller, .product-right-scroller{scrollbar-width:none}
 .product-left-scroller::-webkit-scrollbar, .product-right-scroller::-webkit-scrollbar{display:none}
 .product-left-scroller, .product-right-scroller{ padding-bottom: var(--g); }
 .product-rail{border-left:var(--bw) solid var(--border); width:100%; position:relative}
 .product-wrap{display:block; width:100%}
 .product-page .container.product-wrap{max-width:none !important; width:100% !important}
-.product-body{padding:calc(var(--g) * .45) var(--g) 0}
+.product-body{
+  --product-body-pad-top: calc(var(--g) * .45);
+  padding:var(--product-body-pad-top) var(--g) 0;
+  position:relative;
+}
 .product-kicker{font-size:12px;letter-spacing:.12em;color:#7A7A7A;text-transform:uppercase;margin:0 0 8px}
 .product-kicker--wipe{animation:productKickerIn .38s cubic-bezier(.25,.85,.35,1) both}
 @keyframes productKickerIn{
@@ -261,6 +413,11 @@
 .ph-img{width:100%;aspect-ratio:16/9;background:#F3F4F6;border:var(--bw) solid var(--border);border-radius:2px; position:relative; overflow:hidden}
 /* Product pages keep standard photo proportions and scroll to reveal all images */
 /* (no override here; uses the default 16:9 ratio above) */
+
+/* Desktop: make left-column image boxes 15% taller for better presence */
+@media (min-width: 961px){
+  .product-left .img-grid .ph-img{ aspect-ratio: 16 / 10.35; }
+}
 
 /* Mobile product gallery: big main image with selectable thumbnails below */
 .mobile-gallery{ display:none; gap: var(--g); padding: 0 var(--g) var(--g); }
@@ -310,6 +467,36 @@
 
 .product-long{margin-top:18px; font-size:15px; line-height:1.6; color:#2a2a2a}
 .product-long p{margin:0 0 12px}
+.product-close{
+  position:absolute;
+  top:var(--product-body-pad-top, calc(var(--g) * .45));
+  right:var(--g);
+  width:var(--product-control-icon-size, 30.6px);
+  height:var(--product-control-icon-size, 30.6px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+}
+.product-close__icon{
+  position:relative;
+  display:block;
+  width:100%;
+  height:100%;
+}
+.product-close__icon::before,
+.product-close__icon::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:var(--product-control-icon-arm, 20.4px);
+  height:var(--product-control-icon-stroke, 2px);
+  background:var(--product-control-icon-color, #4B4F55);
+  transform-origin:center;
+}
+.product-close__icon::before{ transform:translate(-50%, -50%) rotate(45deg); }
+.product-close__icon::after{ transform:translate(-50%, -50%) rotate(-45deg); }
 
 /* Structured product sections */
 .product-sections{display:grid; gap:14px}
@@ -341,10 +528,8 @@
 .accordion--cta .accordion__summary::before{
   content:""; position:absolute; inset:0; background:var(--ctaWipe); transform:scaleX(0); transform-origin:right center; transition:transform .55s ease; pointer-events:none; z-index:0;
 }
-.accordion--cta .accordion__item:hover .accordion__summary::before,
 .accordion--cta .accordion__item:focus-within .accordion__summary::before{ transform: scaleX(1); }
 .accordion--cta .accordion__summary{ color:var(--fg); transition: color .3s ease; }
-.accordion--cta .accordion__item:hover .accordion__summary,
 .accordion--cta .accordion__item:focus-within .accordion__summary{ color: var(--pageWhite); }
 /* Make the CTA hit-area stretch to the extended lines without moving text */
 .accordion--cta .accordion__summary{
@@ -358,7 +543,6 @@
 /* Animate text color in sync with wipe only on hover/focus */
 @property --ctaW{ syntax: '<percentage>'; inherits: false; initial-value: 0%; }
 .accordion--cta .accordion__title{ --ctaW: 0%; transition: --ctaW .7s cubic-bezier(.25,.85,.35,1); color: inherit; background: none; -webkit-background-clip: initial; background-clip: initial; }
-.accordion--cta .accordion__summary:hover .accordion__title,
 .accordion--cta .accordion__summary:focus-visible .accordion__title{
   color: transparent;
   -webkit-background-clip: text; background-clip: text;
@@ -372,9 +556,9 @@
 .accordion__summary{ font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:#4B4F55; font-weight:600; }
 .accordion__title{ flex: 1 1 auto; }
 /* Plus/Minus icon built from two strokes crossing at center */
-.accordion__icon{ position:relative; display:inline-block; width:30.6px; height:30.6px; flex:0 0 auto; }
+.accordion__icon{ position:relative; display:inline-block; width:var(--product-control-icon-size, 30.6px); height:var(--product-control-icon-size, 30.6px); flex:0 0 auto; }
 .accordion__icon::before,
-.accordion__icon::after{ content:""; position:absolute; left:50%; top:50%; width:20.4px; height:2px; background:#4B4F55; transform: translate(-50%, -50%) rotate(0deg); transition: transform .28s ease; }
+.accordion__icon::after{ content:""; position:absolute; left:50%; top:50%; width:var(--product-control-icon-arm, 20.4px); height:var(--product-control-icon-stroke, 2px); background:var(--product-control-icon-color, #4B4F55); transform: translate(-50%, -50%) rotate(0deg); transition: transform .28s ease; }
 /* Vertical stroke for the "+" (closed state) */
 .accordion__icon::before{ transform: translate(-50%, -50%) rotate(90deg); z-index:1; }
 /* Horizontal stroke is ::after (already at 0deg) */
@@ -391,6 +575,260 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 details[open] > .accordion__summary::before{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border); }
 /* Move spacing inside so height measurement is stable (no padding animation) */
 .accordion__panel-inner{ padding: 12px 0 14px; }
+
+@media (hover:hover) and (min-width:1024px){
+  .accordion--cta .accordion__item:hover .accordion__summary::before{ transform: scaleX(1); }
+  .accordion--cta .accordion__item:hover .accordion__summary{ color: var(--pageWhite); }
+  .accordion--cta .accordion__summary:hover .accordion__title{
+    color: transparent;
+    -webkit-background-clip: text; background-clip: text;
+    background-image: linear-gradient(to left, var(--bg) var(--ctaW), currentColor var(--ctaW));
+    --ctaW: 100%;
+  }
+}
+
+/* Peek control that mimics the next header so users always see
+   there is more content waiting below the current panel. */
+.accordion__peek-bottom{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:10px !important;
+  width:100%;
+  margin:0;
+  padding:21px 0 !important;
+  border:0 !important;
+  cursor:pointer;
+  background: var(--bg, #fff) !important;
+  color: inherit !important;
+  box-shadow: inset 0 1px var(--border);
+  position:relative;
+  user-select:none;
+  font: inherit;
+}
+.accordion__peek-bottom:focus-visible{
+  outline: 2px solid var(--accentRed, #b84c37);
+  outline-offset: 4px;
+}
+.accordion__peek-bottom::before{
+  content:"";
+  position:absolute;
+  left: calc(-1 * var(--acc-left));
+  right: calc(-1 * var(--acc-right));
+  top:0;
+  border-top: var(--bw) solid var(--border);
+}
+.accordion__peek-bottom .accordion__title{ flex:1 1 auto; }
+.accordion__peek-bottom .accordion__icon{ width:var(--product-control-icon-size, 30.6px); height:var(--product-control-icon-size, 30.6px); flex:0 0 auto; }
+
+/* Accordion product pages: shared scroll/peek behaviour */
+@media (min-width: 961px){
+  /* Keep a stable structure (no JS measuring, no display flip). */
+  .product-page--accordion .product-right-scroller{ display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; scrollbar-gutter: stable both-edges; padding-bottom: 0; }
+  .product-page--accordion .product-body{ display:flex; flex-direction:column; min-height:0; }
+  .product-page--accordion .product-long{ flex:1 1 auto; min-height:0; }
+  /* Keep the open tab header visible at the top, and the
+     next tab header visible at the bottom while scrolling */
+  /* Open tab: match site background and mask content */
+  .product-page--accordion details[open] > .accordion__summary{
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg, #fff);
+  }
+  /* Using an explicit bottom 'peek' control; keep the real next
+     header in normal flow to avoid duplicates */
+  .product-page--accordion details[open] + .accordion__item > .accordion__summary{ position: static; bottom: auto; z-index: auto; background: transparent; }
+  /* When using the explicit bottom 'peek' button, make it look like a
+     regular header and pin it to the bottom of the scroll area */
+  .product-page--accordion .accordion__peek-bottom{
+    position: sticky;
+    bottom: 0;
+    z-index: 6;
+    margin-left: calc(-1 * var(--acc-left));
+    margin-right: calc(-1 * var(--acc-right));
+    padding-left: var(--acc-left);
+    padding-right: var(--acc-right);
+    background: var(--bg, #fff);
+  }
+  /* Accordion pages: make summary stretch to rails with negative margins so
+     separator lines are always flush with the vertical rail (left)
+     and to the viewport edge (right), open or closed */
+  .product-page--accordion .accordion__summary{
+    margin-left: calc(-1 * var(--acc-left));
+    margin-right: calc(-1 * var(--acc-right));
+    padding-left: var(--acc-left);
+    padding-right: var(--acc-right);
+  }
+  /* Replace border pseudo-elements with inset shadows on the stretched summary
+     element so lines always meet rails regardless of content width */
+  .product-page--accordion .accordion__item::before,
+  .product-page--accordion details[open] > .accordion__summary::before{ content:none; }
+  .product-page--accordion .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  /* Open header: keep only the top rule; bottom rule is provided by ::after for
+     crisp, single‑source separation from the panel content (avoids doubling). */
+  .product-page--accordion details[open] > .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  /* Reinstate a crisp bottom rule directly under the open header so the
+     boundary above panel content is always visible. */
+  .product-page--accordion details[open] > .accordion__summary::after{
+    content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border);
+  }
+  /* Do not draw another rule at the top of the next header (avoid doubles). */
+  .product-page--accordion details[open] + .accordion__item > .accordion__summary{ box-shadow: none; }
+  .product-page--accordion .product-long > .accordion:has(details[open]) + .accordion.accordion--cta .accordion__summary{ box-shadow: none !important; }
+  /* Avoid double rule between an open row and the next row */
+  /* Bottom rule at end of open content to frame the next header when needed */
+  .product-page--accordion details[open] .accordion__panel{ position: relative; }
+  .product-page--accordion details[open] .accordion__panel::after{
+    content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border);
+  }
+  /* Allow extended header lines to reach rails when all are closed */
+  .product-page--accordion .product-right-scroller:has(.product-long:not(:has(details[open]))){ overflow-x: visible; }
+  .product-page--accordion.is-all-closed .product-right-scroller{ overflow-x: visible; }
+  .product-page--accordion.is-all-closed .product-right{ overflow: visible; }
+  /* Equal-height purely in CSS when all are closed */
+  .product-page--accordion .product-long:not(:has(details[open])){ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); }
+  .product-page--accordion.is-all-closed .product-long{ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); }
+  /* Crisp bottom line in collapsed state using inset shadow (subpixel safe) */
+  .product-page--accordion .product-long:not(:has(details[open])){ box-shadow: inset 0 -1px var(--border); }
+  .product-page--accordion.is-all-closed .product-long{ box-shadow: inset 0 -1px var(--border); }
+  /* Prevent a double bottom line when container draws the final rule */
+  .product-page--accordion .product-long:not(:has(details[open])) .accordion__item:last-of-type::after,
+  .product-page--accordion.is-all-closed .accordion__item:last-of-type::after{ content:none; }
+  /* Flatten inner accordion wrappers so each row participates equally */
+  .product-page--accordion .product-long:not(:has(details[open])) > .accordion{ display:contents; }
+  .product-page--accordion.is-all-closed .product-long > .accordion{ display:contents; }
+  /* Each row: header + (collapsed) panel area; keep structure consistent */
+  .product-page--accordion .product-long:not(:has(details[open])) .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .product-page--accordion.is-all-closed .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  /* Panel area prepared for equal heights; remains collapsed at 0 height */
+  .product-page--accordion .product-long:not(:has(details[open])) .accordion__panel{ min-height:0; overflow:auto; }
+  .product-page--accordion.is-all-closed .accordion__panel{ min-height:0; overflow:auto; }
+  /* Vertically center headers within the taller equal-height rows */
+  .product-page--accordion .product-long:not(:has(details[open])) .accordion__summary{ height:100%; }
+  .product-page--accordion.is-all-closed .accordion__summary{ height:100%; }
+}
+
+/* Pitched page: apply the same visual/behavioral rules as gable */
+@media (min-width: 961px){
+  /* Keep a stable structure (no JS measuring, no display flip). */
+  .product-page--pitched .product-right-scroller{ display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; scrollbar-gutter: stable both-edges; }
+  .product-page--pitched .product-body{ display:flex; flex-direction:column; min-height:0; }
+  .product-page--pitched .product-long{ flex:1 1 auto; min-height:0; }
+  /* Stretch summary to rails and page edge */
+  .product-page--pitched .accordion__summary{
+    margin-left: calc(-1 * var(--acc-left));
+    margin-right: calc(-1 * var(--acc-right));
+    padding-left: var(--acc-left);
+    padding-right: var(--acc-right);
+  }
+  /* Use inset shadows instead of borders to avoid sub-pixel gaps */
+  .product-page--pitched .accordion__item::before,
+  .product-page--pitched details[open] > .accordion__summary::before{ content:none; }
+  .product-page--pitched .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  /* Open header retains only top rule; bottom rule drawn explicitly */
+  .product-page--pitched details[open] > .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  .product-page--pitched details[open] > .accordion__summary::after{
+    content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border);
+  }
+  /* Avoid double lines with next header and CTA wrapper */
+  .product-page--pitched details[open] + .accordion__item > .accordion__summary{ box-shadow: none; }
+  .product-page--pitched .product-long > .accordion:has(details[open]) + .accordion.accordion--cta .accordion__summary{ box-shadow: none !important; }
+  /* Bottom rule at end of open content */
+  .product-page--pitched details[open] .accordion__panel{ position: relative; }
+  .product-page--pitched details[open] .accordion__panel::after{
+    content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border);
+  }
+  /* Allow extended header lines to reach rails when all are closed */
+  .product-page--pitched .product-right-scroller:has(.product-long:not(:has(details[open]))){ overflow-x: visible; }
+  .product-page--pitched.is-all-closed .product-right-scroller{ overflow-x: visible; }
+  .product-page--pitched.is-all-closed .product-right{ overflow: visible; }
+  /* Equal-height purely in CSS when all are closed */
+  .product-page--pitched .product-long:not(:has(details[open])){ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); }
+  .product-page--pitched.is-all-closed .product-long{ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); }
+  /* Crisp bottom line in collapsed state */
+  .product-page--pitched .product-long:not(:has(details[open])){ box-shadow: inset 0 -1px var(--border); }
+  .product-page--pitched.is-all-closed .product-long{ box-shadow: inset 0 -1px var(--border); }
+  /* Prevent a double bottom line when container draws the final rule */
+  .product-page--pitched .product-long:not(:has(details[open])) .accordion__item:last-of-type::after,
+  .product-page--pitched.is-all-closed .accordion__item:last-of-type::after{ content:none; }
+  /* Flatten inner accordion wrappers so each row participates equally */
+  .product-page--pitched .product-long:not(:has(details[open])) > .accordion{ display:contents; }
+  .product-page--pitched.is-all-closed .product-long > .accordion{ display:contents; }
+  /* Each row: header + (collapsed) panel area; keep structure consistent */
+  .product-page--pitched .product-long:not(:has(details[open])) .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .product-page--pitched.is-all-closed .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  /* Panel area prepared for equal heights; remains collapsed at 0 height */
+  .product-page--pitched .product-long:not(:has(details[open])) .accordion__panel{ min-height:0; overflow:auto; }
+  .product-page--pitched.is-all-closed .accordion__panel{ min-height:0; overflow:auto; }
+  /* Vertically center headers within the taller equal-height rows */
+  .product-page--pitched .product-long:not(:has(details[open])) .accordion__summary{ height:100%; }
+  .product-page--pitched.is-all-closed .accordion__summary{ height:100%; }
+}
+
+/* Hip page: same visual/behavioral rules as pitched/gable */
+@media (min-width: 961px){
+  .product-page--hip .product-right-scroller{ display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; scrollbar-gutter: stable both-edges; }
+  .product-page--hip .product-body{ display:flex; flex-direction:column; min-height:0; }
+  .product-page--hip .product-long{ flex:1 1 auto; min-height:0; }
+  .product-page--hip .accordion__summary{ margin-left: calc(-1 * var(--acc-left)); margin-right: calc(-1 * var(--acc-right)); padding-left: var(--acc-left); padding-right: var(--acc-right); }
+  .product-page--hip .accordion__item::before,
+  .product-page--hip details[open] > .accordion__summary::before{ content:none; }
+  .product-page--hip .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  .product-page--hip details[open] > .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  .product-page--hip details[open] > .accordion__summary::after{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border); }
+  .product-page--hip details[open] + .accordion__item > .accordion__summary{ box-shadow: none; }
+  .product-page--hip .product-long > .accordion:has(details[open]) + .accordion.accordion--cta .accordion__summary{ box-shadow: none !important; }
+  .product-page--hip details[open] .accordion__panel{ position: relative; }
+  .product-page--hip details[open] .accordion__panel::after{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border); }
+  .product-page--hip .product-right-scroller:has(.product-long:not(:has(details[open]))){ overflow-x: visible; }
+  .product-page--hip.is-all-closed .product-right-scroller{ overflow-x: visible; }
+  .product-page--hip.is-all-closed .product-right{ overflow: visible; }
+  .product-page--hip .product-long:not(:has(details[open])){ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); box-shadow: inset 0 -1px var(--border); }
+  .product-page--hip.is-all-closed .product-long{ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); box-shadow: inset 0 -1px var(--border); }
+  .product-page--hip .product-long:not(:has(details[open])) .accordion__item:last-of-type::after,
+  .product-page--hip.is-all-closed .accordion__item:last-of-type::after{ content:none; }
+  .product-page--hip .product-long:not(:has(details[open])) > .accordion{ display:contents; }
+  .product-page--hip.is-all-closed .product-long > .accordion{ display:contents; }
+  .product-page--hip .product-long:not(:has(details[open])) .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .product-page--hip.is-all-closed .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .product-page--hip .product-long:not(:has(details[open])) .accordion__panel{ min-height:0; overflow:auto; }
+  .product-page--hip.is-all-closed .accordion__panel{ min-height:0; overflow:auto; }
+  .product-page--hip .product-long:not(:has(details[open])) .accordion__summary{ height:100%; }
+  .product-page--hip.is-all-closed .accordion__summary{ height:100%; }
+}
+
+/* Box-Perimeter page: same visual/behavioral rules */
+@media (min-width: 961px){
+  .product-page--box-perimeter .product-right-scroller{ display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; scrollbar-gutter: stable both-edges; }
+  .product-page--box-perimeter .product-body{ display:flex; flex-direction:column; min-height:0; }
+  .product-page--box-perimeter .product-long{ flex:1 1 auto; min-height:0; }
+  .product-page--box-perimeter .accordion__summary{ margin-left: calc(-1 * var(--acc-left)); margin-right: calc(-1 * var(--acc-right)); padding-left: var(--acc-left); padding-right: var(--acc-right); }
+  .product-page--box-perimeter .accordion__item::before,
+  .product-page--box-perimeter details[open] > .accordion__summary::before{ content:none; }
+  .product-page--box-perimeter .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  .product-page--box-perimeter details[open] > .accordion__summary{ box-shadow: inset 0 1px var(--border); }
+  .product-page--box-perimeter details[open] > .accordion__summary::after{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border); }
+  .product-page--box-perimeter details[open] + .accordion__item > .accordion__summary{ box-shadow: none; }
+  .product-page--box-perimeter .product-long > .accordion:has(details[open]) + .accordion.accordion--cta .accordion__summary{ box-shadow: none !important; }
+  .product-page--box-perimeter details[open] .accordion__panel{ position: relative; }
+  .product-page--box-perimeter details[open] .accordion__panel::after{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border); }
+  .product-page--box-perimeter .product-right-scroller:has(.product-long:not(:has(details[open]))){ overflow-x: visible; }
+  .product-page--box-perimeter.is-all-closed .product-right-scroller{ overflow-x: visible; }
+  .product-page--box-perimeter.is-all-closed .product-right{ overflow: visible; }
+  .product-page--box-perimeter .product-long:not(:has(details[open])){ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); box-shadow: inset 0 -1px var(--border); }
+  .product-page--box-perimeter.is-all-closed .product-long{ display:grid; grid-auto-rows:1fr; min-height:0; --acc-left: var(--g); --acc-right: calc(var(--g) * 2); box-shadow: inset 0 -1px var(--border); }
+  .product-page--box-perimeter .product-long:not(:has(details[open])) .accordion__item:last-of-type::after,
+  .product-page--box-perimeter.is-all-closed .accordion__item:last-of-type::after{ content:none; }
+  .product-page--box-perimeter .product-long:not(:has(details[open])) > .accordion{ display:contents; }
+  .product-page--box-perimeter.is-all-closed .product-long > .accordion{ display:contents; }
+  .product-page--box-perimeter .product-long:not(:has(details[open])) .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .product-page--box-perimeter.is-all-closed .accordion__item{ min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+  .product-page--box-perimeter .product-long:not(:has(details[open])) .accordion__panel{ min-height:0; overflow:auto; }
+  .product-page--box-perimeter.is-all-closed .accordion__panel{ min-height:0; overflow:auto; }
+  .product-page--box-perimeter .product-long:not(:has(details[open])) .accordion__summary{ height:100%; }
+  .product-page--box-perimeter.is-all-closed .accordion__summary{ height:100%; }
+}
 
 /* Contact page typography closer to mock */
 .contact-page .product-title{ font-size:clamp(20px, 2.4vw, 30px); line-height:1.12; font-weight:400; }
@@ -437,7 +875,7 @@ details[open] > .accordion__summary::before{ content:""; position:absolute; left
 /* Space below contact info and align the opening header nicely */
 .contact-page .contact-info{ margin: 0 0 12px; }
 /* Two-column rail inside the right content area */
-.contact-rail{ --contact-gap: clamp(4px, 0.7vw, 10px); display:grid; grid-template-columns: 1fr 1fr; gap: var(--contact-gap); position: relative; }
+.contact-rail{ --contact-gap: clamp(4px, 0.7vw, 10px); --row-min-height: clamp(120px, 16vh, 190px); --row-compact: calc(var(--row-min-height) * .20); display:grid; grid-template-columns: 1fr 1fr; gap: var(--contact-gap); position: relative; }
 .contact-rail__mid{ position:relative; padding-right: var(--g); }
 .contact-rail__mid::after{ content:""; position:absolute; top: calc(-2 * var(--g)); bottom: -1px; right: 0; width: var(--bw); background: var(--border); }
 .contact-rail__right{ padding-left: var(--g); }
@@ -489,7 +927,7 @@ details[open] > .accordion__summary::before{ content:""; position:absolute; left
 .summary--digital{ position:relative; display:block; font-family: inherit; font-size: calc(16.5px * 0.85); line-height:1.15; letter-spacing: normal; padding: 6px 8px 2.2em; text-transform: uppercase; }
 .summary--digital .digital__type{ font-size: 1em; color:#C23A2B; }
 .summary--digital .digital__style{ font-size: 1em; margin-top: .15em; opacity:.95; }
-.summary--digital .digital__roof{ font-size: 1em; margin-top: .12em; opacity:.95; white-space: nowrap; overflow: hidden; color:#6b6f75; }
+.summary--digital .digital__roof{ font-size: 1em; margin-top: .12em; opacity:.95; white-space: nowrap; overflow: hidden; color:#6b6f75; min-height: 1.15em; }
 .summary--digital .digital__addons{ font-size: 1em; margin-top: .12em; opacity:.95; white-space: nowrap; overflow: hidden; color:#6b6f75; }
 .summary--digital .digital__dims{ position:absolute; right: 10px; bottom: 10px; font-size: 1em; text-align:right; }
 .summary--digital .digital__dims-label{ position:absolute; left: 10px; bottom: 10px; font-size:.9em; opacity:.75; letter-spacing:.08em; }
@@ -520,7 +958,7 @@ body:has(.product-subheader[aria-label="Resources shortcuts"]) .two-col-page{
   .product-split{ grid-template-columns:1fr; width:100% !important; max-width:100% !important; overflow:visible !important; }
   .product-rail{ border-left:none; border-top:var(--bw) solid var(--border); width:100% !important; max-width:100% !important; }
   .product-right, .product-left{ overflow: visible !important; width:100% !important; }
-  .product-body{ padding:var(--g) var(--g) 0; width:100% !important; max-width:100% !important; }
+  .product-body{ --product-body-pad-top: var(--g); padding:var(--product-body-pad-top) var(--g) 0; width:100% !important; max-width:100% !important; }
   .product-page .container.product-wrap{ width:100% !important; max-width:100% !important; }
   /* Unify spacing across stacked sections */
   .contact-rail{ gap: var(--contact-gap) !important; }
@@ -530,12 +968,25 @@ body:has(.product-subheader[aria-label="Resources shortcuts"]) .two-col-page{
 /* Contact page layout: three equal thirds on desktop */
 .contact-page .product-split{ grid-template-columns: 1fr 2fr; }
 @media (min-width: 961px){
+  /* Lock the contact page to the viewport on desktop so the
+     page itself never scrolls; internal scrollers handle overflow */
+  .two-col-page.contact-page{
+    height: calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px));
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  /* Allow normal vertical scroll on desktop contact page while preventing horizontal scrollbars */
+  body:has(.two-col-page.contact-page){
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   .contact-page .product-split{ grid-template-columns: 1fr 1fr 1fr; }
-  /* Let the grid height grow with content instead of locking to viewport */
-  .contact-page .product-split{ height:auto; overflow:visible; }
+  /* Lock grid to the page container height; no page scroll */
+  .contact-page .product-split{ height:100%; overflow:hidden; }
   /* Decouple left image height from middle content: size to viewport */
   .contact-page .product-left{ align-self:start; }
-  .contact-page .product-left-scroller{ height: calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--g) - 24px); overflow:hidden; }
+  .contact-page .product-left-scroller{ height: calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--g)); overflow:hidden; }
   .contact-page .contact-media{ height:100%; }
   /* Flatten right rail so mid/right become grid items and occupy col 2 and 3 */
   .contact-page .product-rail{ display: contents; border-left: none; }
@@ -554,8 +1005,8 @@ body:has(.product-subheader[aria-label="Resources shortcuts"]) .two-col-page{
   from{ transform: translateY(100dvh); opacity: 0; }
   to{ transform: translateY(0); opacity: 1; }
 }
-.enquiry-picked .mid-controls,
-.enquiry-picked .contact-rail__right{
+.enquiry-revealed .mid-controls,
+.enquiry-revealed .contact-rail__right{
   animation: contactEnquiryEnter .6s cubic-bezier(.08,0,.17,1) both;
 }
 
@@ -606,7 +1057,10 @@ body:has(.product-subheader[aria-label="Resources shortcuts"]) .two-col-page{
 }
 
 /* Align summary with first input row */
-.summary-tile{ margin-top: 4px; }
+.summary-tile{ margin-top: 0; }
+/* Make the display box a fixed, larger size so choosing Roof doesn't cause a jump */
+.contact-controls .summary-tile{ min-height: calc(var(--row-min-height) * 1.2); }
+.contact-controls .summary-tile .summary--digital{ min-height: 100%; display: block; }
 @media (max-width: 960px){
   .contact-page .product-split{ grid-template-columns: 1fr !important; width:auto; max-width:100%; overflow:visible; }
   /* iOS fill available to avoid 100vw viewport issue */
