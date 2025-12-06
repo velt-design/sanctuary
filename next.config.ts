@@ -16,8 +16,8 @@ const nextConfig: NextConfig = {
     if (process.env.NODE_ENV === 'production') {
       const csp = [
         "default-src 'self'",
-        // Inline scripts are limited to a few known initialisers (Analytics/WebVitals)
-        "script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com",
+        // Allow inline scripts so Next.js runtime and analytics can execute.
+        "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob: https://www.google-analytics.com https://www.sanctuarypergolas.co.nz",
         "font-src 'self' data:",
