@@ -79,19 +79,46 @@
   margin-top: 0;
 }
 
+/* Mobile-specific customer flow */
+.contact-page .contact-mobile{
+  display:none;
+}
+.contact-page .contact-mobile__style-row{
+  display:block;
+}
+
 /* Collapse to one column on tablet/mobile */
 @media (max-width: 1023px){
+  /* Keep right column stacked, but hide on customer flows in favour of mobile stack */
   .contact-page .right-locked{
     grid-template-columns: 1fr;
     grid-template-areas:
-      "addons"
+      "header"
       "fields"
+      "addons"
       "textarea"
       "send";
   }
-  /* Mobile: hide the display/summary box and show Add ons above Name */
+  /* Mobile: hide the display/summary box, keep stacked flow */
   .contact-page .right-locked__header{
     display:none;
+  }
+  /* Residential/Commercial: hide desktop mid/right flows on mobile */
+  .contact-page.customer-on .contact-right{
+    display:none;
+  }
+  .contact-page.customer-on .mid-controls{
+    display:none;
+  }
+  /* Show the dedicated mobile stack for customer flows */
+  .contact-page.customer-on .contact-mobile{
+    display:grid;
+    gap: var(--gap-outside);
+  }
+  .contact-page .contact-mobile__style-row{
+    display:grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+    gap: var(--gap-outside);
   }
 }
 

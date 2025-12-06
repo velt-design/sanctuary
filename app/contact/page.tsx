@@ -255,41 +255,259 @@ export default function ContactPage() {
         <div aria-hidden className="hidden lg:block bg-neutral-600/80 w-px h-full self-stretch" />
 
         {/* Middle column */}
-        <div className="grid gap-y-[var(--vgap)]">
-          <h1 className="product-title text-3xl lg:text-4xl font-semibold">Start your project</h1>
-          <div className="contact-info text-sm">
-            <div><strong>Phone</strong> <a href="tel:+6496349482">+64 9 634 9482</a></div>
-            <div><strong>Email</strong> <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a></div>
+        <div className="contact-mid grid gap-y-[var(--vgap)]">
+          <div className="contact-mid__intro grid gap-y-[var(--vgap)]">
+            <h1 className="product-title text-3xl lg:text-4xl font-semibold">Start your project</h1>
+            <div className="contact-info text-sm">
+              <div><strong>Phone</strong> <a href="tel:+6496349482">+64 9 634 9482</a></div>
+              <div><strong>Email</strong> <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a></div>
+            </div>
+
+            <div className={`enquiry-block ${enquiryExpanded ? 'open' : 'closed'}`}>
+              <button
+                type="button"
+                className={`enquiry-header ${enquiryExpanded ? 'open' : ''}`}
+                aria-expanded={enquiryExpanded}
+                onClick={toggleEnquiryHeader}
+              >
+                <span className="enquiry-header__text">{(!enquiryType || enquiryExpanded) ? 'Which best describes your enquiry' : `${enquiryType} Enquiry`}</span>
+                <span className="enquiry-header__chev" aria-hidden="true" />
+              </button>
+
+              {(enquiryExpanded || !enquiryType) && (
+                <div className="big-choices">
+                  <div className="big-choice">
+                    <div className="big-choice__label">Residential</div>
+                    <button type="button" className={`toggle ${enquiryType === 'Residential' ? 'on' : ''}`} aria-label={enquiryType === 'Residential' ? 'Selected' : 'Select Residential'} aria-pressed={enquiryType === 'Residential'} onClick={()=> chooseEnquiry('Residential')} />
+                  </div>
+                  <div className="big-choice">
+                    <div className="big-choice__label">Commercial</div>
+                    <button type="button" className={`toggle ${enquiryType === 'Commercial' ? 'on' : ''}`} aria-label={enquiryType === 'Commercial' ? 'Selected' : 'Select Commercial'} aria-pressed={enquiryType === 'Commercial'} onClick={()=> chooseEnquiry('Commercial')} />
+                  </div>
+                  <div className="big-choice">
+                    <div className="big-choice__label">Professional</div>
+                    <button type="button" className={`toggle ${enquiryType === 'Professional' ? 'on' : ''}`} aria-label={enquiryType === 'Professional' ? 'Selected' : 'Select Professional'} aria-pressed={enquiryType === 'Professional'} onClick={()=> chooseEnquiry('Professional')} />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className={`enquiry-block ${enquiryExpanded ? 'open' : 'closed'}`}>
-            <button
-              type="button"
-              className={`enquiry-header ${enquiryExpanded ? 'open' : ''}`}
-              aria-expanded={enquiryExpanded}
-              onClick={toggleEnquiryHeader}
-            >
-              <span className="enquiry-header__text">{(!enquiryType || enquiryExpanded) ? 'Which best describes your enquiry' : `${enquiryType} Enquiry`}</span>
-              <span className="enquiry-header__chev" aria-hidden="true" />
-            </button>
+          {/* Mobile-only customer flow: Name → Email → Suburb → sliders → Style → Roof → Add ons → Message → SEND */}
+          {showRightControlsCustomer ? (
+            <section className="contact-mobile space-y-3">
+              {/* Name / Email / Suburb */}
+              <div className="hw-tile">
+                <input
+                  name="name"
+                  placeholder="Name"
+                  required
+                  className="input input--tile"
+                  form="contact-form"
+                  onChange={(e)=>setUserName(e.target.value)}
+                />
+              </div>
+              <div className="hw-tile">
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Email"
+                  required
+                  className="input input--tile"
+                  form="contact-form"
+                  onChange={(e)=>setUserEmail(e.target.value)}
+                />
+              </div>
+              <div className="hw-tile">
+                <input
+                  name="suburb"
+                  placeholder="Suburb"
+                  className="input input--tile"
+                  form="contact-form"
+                  onChange={(e)=>setUserSuburb(e.target.value)}
+                />
+              </div>
 
-            {(enquiryExpanded || !enquiryType) && (
-              <div className="big-choices">
-                <div className="big-choice">
-                  <div className="big-choice__label">Residential</div>
-                  <button type="button" className={`toggle ${enquiryType === 'Residential' ? 'on' : ''}`} aria-label={enquiryType === 'Residential' ? 'Selected' : 'Select Residential'} aria-pressed={enquiryType === 'Residential'} onClick={()=> chooseEnquiry('Residential')} />
-                </div>
-                <div className="big-choice">
-                  <div className="big-choice__label">Commercial</div>
-                  <button type="button" className={`toggle ${enquiryType === 'Commercial' ? 'on' : ''}`} aria-label={enquiryType === 'Commercial' ? 'Selected' : 'Select Commercial'} aria-pressed={enquiryType === 'Commercial'} onClick={()=> chooseEnquiry('Commercial')} />
-                </div>
-                <div className="big-choice">
-                  <div className="big-choice__label">Professional</div>
-                  <button type="button" className={`toggle ${enquiryType === 'Professional' ? 'on' : ''}`} aria-label={enquiryType === 'Professional' ? 'Selected' : 'Select Professional'} aria-pressed={enquiryType === 'Professional'} onClick={()=> chooseEnquiry('Professional')} />
+              {/* Width */}
+              <div className="hw-tile">
+                <div className="field field--big">
+                  <label htmlFor="width-range-mobile">Width</label>
+                  <output aria-live="polite">{width.toFixed(1)}m</output>
+                  <input
+                    id="width-range-mobile"
+                    type="range"
+                    min={widthMin}
+                    max={widthMax}
+                    step={0.1}
+                    value={width}
+                    onChange={(e)=>{ setWidth(parseFloat(e.target.value)); setWidthTouched(true); }}
+                    style={{ ['--pct' as string]: `${((width - widthMin) / (widthMax - widthMin)) * 100}%` }}
+                  />
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Depth */}
+              <div className="hw-tile">
+                <div className="field field--big">
+                  <label htmlFor="length-range-mobile">Depth</label>
+                  <output aria-live="polite">{length.toFixed(1)}m</output>
+                  <input
+                    id="length-range-mobile"
+                    type="range"
+                    min={lengthMin}
+                    max={lengthMax}
+                    step={0.1}
+                    value={length}
+                    onChange={(e)=>{ setLength(parseFloat(e.target.value)); setLengthTouched(true); }}
+                    style={{ ['--pct' as string]: `${((length - lengthMin) / (lengthMax - lengthMin)) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Height */}
+              <div className="hw-tile">
+                <div className="field field--big">
+                  <label htmlFor="height-range-mobile">Height</label>
+                  <output aria-live="polite">{height.toFixed(1)}m</output>
+                  <input
+                    id="height-range-mobile"
+                    type="range"
+                    min={heightMin}
+                    max={heightMax}
+                    step={0.1}
+                    value={height}
+                    onChange={(e)=>{ setHeight(parseFloat(e.target.value)); setHeightTouched(true); }}
+                    style={{ ['--pct' as string]: `${((height - heightMin) / (heightMax - heightMin)) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Style + Roof side by side */}
+              <div className="contact-mobile__style-row">
+                {/* Style */}
+                <div className="hw-tile equal style-tile">
+                  <div className="vs-group">
+                    <div className="vs-head">Style</div>
+                    <ul className="vs-list" aria-hidden="true">
+                      {STYLE_OPTS.map((s,i)=> (
+                        <li
+                          key={s}
+                          className={styleIdx===i? 'active' : ''}
+                          style={{opacity:styleOpacity(i)}}
+                          onClick={()=>setStyleIdxLoop(i)}
+                        >
+                          {s}
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="vs-rail">
+                      <input
+                        className="vs-range"
+                        type="range"
+                        min={0}
+                        max={STYLE_OPTS.length-1}
+                        step={0.01}
+                        value={(STYLE_OPTS.length-1) - stylePos}
+                        onChange={(e)=> {
+                          const v = parseFloat(e.target.value);
+                          setStyleTouched(true);
+                          setStylePos((STYLE_OPTS.length-1) - v);
+                        }}
+                        onMouseUp={()=> setStylePos(styleIdx)}
+                        onTouchEnd={()=> setStylePos(styleIdx)}
+                        onKeyUp={()=> setStylePos(styleIdx)}
+                        aria-label="Style selector"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Roof */}
+                <div className="hw-tile roof-tile equal">
+                  <div className="vs-group">
+                    <div className="vs-head">Roof</div>
+                    <ul className="vs-list vs-list--checks" aria-hidden="false" style={{minHeight:'unset'}}>
+                      {ROOF_OPTS.map((s)=> (
+                        <li key={s}>
+                          <label className="vs-check">
+                            <span className="vs-check__label">{s}</span>
+                            <input
+                              className="vs-check__box"
+                              type="checkbox"
+                              checked={roofSelected.includes(s)}
+                              onChange={(e)=>{
+                                setRoofSelected(prev=> e.target.checked
+                                  ? Array.from(new Set([...prev, s]))
+                                  : prev.filter(x=>x!==s));
+                              }}
+                            />
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                    <div />
+                  </div>
+                </div>
+              </div>
+
+              {/* Add ons – after Roof */}
+              <div className="hw-tile addons-eq">
+                <div className="vs-group">
+                  <div className="vs-head">Add ons</div>
+                  <ul className="vs-list vs-list--checks" aria-hidden="false" style={{minHeight:'unset'}}>
+                    {ADDON_OPTS.map((s)=> (
+                      <li key={s}>
+                        <label className="vs-check">
+                          <span className="vs-check__label">{s}</span>
+                          <input
+                            className="vs-check__box"
+                            type="checkbox"
+                            checked={addonsSelected.includes(s)}
+                            onChange={(e)=>{
+                              setAddonsSelected(prev=> e.target.checked
+                                ? Array.from(new Set([...prev, s]))
+                                : prev.filter(x=>x!==s));
+                            }}
+                          />
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <div />
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="hw-tile">
+                <textarea
+                  name="message"
+                  placeholder="Tell us about your space…"
+                  rows={5}
+                  className="input input--tile"
+                  form="contact-form"
+                  onChange={(e)=>setNotes(e.target.value)}
+                />
+              </div>
+
+              {/* Send */}
+              <div className="hw-tile send-tile">
+                <button
+                  type="submit"
+                  className="send-btn"
+                  form="contact-form"
+                  disabled={submitState==='sending'}
+                >
+                  {submitState==='sending' ? 'SENDING…' : 'SEND'}
+                </button>
+              </div>
+              {submitState==='error' && (
+                <div className="hw-tile" role="alert">
+                  <p><strong>Sorry, we couldn’t send your message.</strong></p>
+                  <p>{submitError}</p>
+                </div>
+              )}
+            </section>
+          ) : null}
 
           <div className={`mid-controls ${hasMidContent ? '' : 'is-empty'} gap-y-[var(--vgap)]`} style={{ borderTop: 0 }}>
                 {submitState === 'success' ? (
@@ -469,7 +687,7 @@ export default function ContactPage() {
         <div aria-hidden className="hidden lg:block bg-neutral-600/80 w-px h-full self-stretch" />
 
         {/* Right column */}
-        <section className="space-y-4 sm:space-y-6">
+        <section className="contact-right space-y-4 sm:space-y-6">
           {showRightControlsCustomer ? (
             <div className="right-locked">
                 {/* Header / summary (spans both columns) */}
