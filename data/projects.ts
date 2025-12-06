@@ -557,7 +557,7 @@ const baseProjects: Project[] = [
   },
   {
     slug: 'waitakere-ranges-lanai',
-    title: 'Waitakere Ranges Courtyard',
+    title: 'Murawai Courtyard',
     location: 'Waitakere Ranges, Auckland',
     region: 'West Auckland',
     type: 'Residential',
@@ -705,7 +705,7 @@ const projectOrder: string[] = [
   'tindalls-bay-pavilion',     // Tindalls Bay - Patio & Carport
   'goodhome-commercial-terrace', // The Good Home Takanini
   'dairy-flat-estate',         // Dairy Flat Estate
-  'waitakere-ranges-lanai',    // Waitakere Ranges Courtyard
+  'waitakere-ranges-lanai',    // Murawai Courtyard
   'st-heliers-townhouse',      // St Heliers Townhouse
   'kiwi-rail-platform',        // KiwiRail Head Office
   'waiheke-coastal-louvre',    // Waiheke Holiday Home

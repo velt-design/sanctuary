@@ -84,11 +84,14 @@
   .contact-page .right-locked{
     grid-template-columns: 1fr;
     grid-template-areas:
-      "header"
-      "fields"
       "addons"
+      "fields"
       "textarea"
       "send";
+  }
+  /* Mobile: hide the display/summary box and show Add ons above Name */
+  .contact-page .right-locked__header{
+    display:none;
   }
 }
 

@@ -39,6 +39,12 @@
   /* Avoid clipping slider thumbs/shadows and focus rings */
   overflow: visible;
 }
+/* Left media tile should blend with the page background when the image is hidden */
+.contact-page.contact-dark .contact-media{
+  background:#121212 !important;
+  border-color: transparent !important;
+  box-shadow:none !important;
+}
 /* Tone down the hover/focus glow on dark */
 .contact-page.contact-dark .hw-tile:focus-within{
   /* Keep subtle white outline but add a soft red glow for accent */
@@ -229,19 +235,6 @@ body:has(.contact-page.contact-dark) header.site .navlink-btn,
 body:has(.contact-page.contact-dark) header.site .site-brand{
   color:#f5f6f7 !important;
 }
-
-/* Enquiry pick transition: wipe up after the toggle moves */
-.contact-page.contact-dark .enquiry-swipe{
-  position:absolute; left:-1px; right:-1px; bottom:0; top:0;
-  transform: translateY(100%);
-  background: #121212; /* same as page bg to "cover" content */
-  pointer-events:none;
-}
-.contact-page.contact-dark .enquiry-swipe::before{
-  content:""; position:absolute; left:0; right:0; top:-1px; height:1px; background: #f5f6f7; /* white leading line */
-}
-.contact-page.contact-dark.enquiry-animating .enquiry-swipe{ animation: enquiryWipe .75s cubic-bezier(.22,.61,.36,1) .8s forwards; }
-@keyframes enquiryWipe{ from{ transform: translateY(100%);} to{ transform: translateY(0);} }
 
 /* Middle column: visually compress Style and Roof tiles along Y without shrinking contents */
 .contact-page.contact-dark .style-tile,

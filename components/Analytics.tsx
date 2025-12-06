@@ -13,15 +13,12 @@ export default function Analytics() {
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
         strategy="afterInteractive"
       />
-      <Script id="ga4-init" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);} 
-          gtag('js', new Date());
-          gtag('config', '${GA_ID}', { anonymize_ip: true, transport_type: 'beacon' });
-        `}
-      </Script>
+      <Script
+        id="ga4-init"
+        src="/ga-init.js"
+        strategy="afterInteractive"
+        data-ga-id={GA_ID}
+      />
     </>
   );
 }
-

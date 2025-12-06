@@ -177,3 +177,19 @@ body.viewer-slider header.site{
   backdrop-filter:none;
   border-color:rgba(17,17,17,.08);
 }
+
+/* Mobile: keep header visible while footer just overlaps; only flip colours
+   when the footer actually reaches the very top of the viewport. */
+@media (max-width:720px){
+  body.footer-overlap header.site{
+    background:var(--headerGlassBg) !important;
+    border-bottom:var(--bw) solid var(--border) !important;
+    pointer-events:auto;
+  }
+  body.footer-overlap header.site,
+  body.footer-overlap header.site .navbar,
+  body.footer-overlap header.site .navlink-btn,
+  body.footer-overlap header.site .site-brand{
+    color:var(--fg) !important;
+  }
+}

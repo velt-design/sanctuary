@@ -39,75 +39,38 @@ export default function ProductItemPage() {
   const isBox = slug === 'box-perimeter';
   const isLedStrip = slug === 'led-strip-lighting';
   const isDropDownBlinds = slug === 'drop-down-blinds';
-  const usesAccordionLayout = isGable || isPitched || isHip || isBox || isLedStrip || isDropDownBlinds;
+  // Only pergola products use the accordion layout; lighting/blinds/screens
+  // use the simpler, non-accordion product details layout.
+  const usesAccordionLayout = isGable || isPitched || isHip || isBox;
   const [zoomOpen, setZoomOpen] = useState(false);
   const mainRef = useRef<HTMLElement | null>(null);
   const leftScrollerRef = useRef<HTMLDivElement | null>(null);
   const rightScrollerRef = useRef<HTMLDivElement | null>(null);
 
-  // Gable-only: keep an "all closed" class in sync and scroll
-  // the left image stack to the panel-linked image when a panel opens.
-  useEffect(() => {
+  // Keep "all closed" layout class and left image stack in sync with the
+  // accordion's open panel, without relying on DOM toggle events.
+  const handleAccordionChange = (idx: number | null) => {
     if (!usesAccordionLayout) return;
     const main = mainRef.current;
     if (!main) return;
     const container = main.querySelector('.product-long');
     if (!container) return;
 
-    const detailsEls = Array.from(container.querySelectorAll<HTMLDetailsElement>('details.accordion__item'));
-    const leftScroller = leftScrollerRef.current;
-
-    const setAllClosedClass = () => {
-      const anyOpen = container.querySelector('details[open]');
-      if (anyOpen) main.classList.remove('is-all-closed');
-      else main.classList.add('is-all-closed');
-    };
-
-    const scrollToIndex = (idx: number) => {
-      setActiveIdx(idx);
-      if (!leftScroller) return;
-      const grid = leftScroller.querySelector('.img-grid');
-      const items = grid ? (Array.from(grid.children) as HTMLElement[]) : [];
-      const target = items[idx];
-      if (target) leftScroller.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
-    };
-
-    // Initial sync (honours defaultOpen)
-    setAllClosedClass();
-    const initiallyOpenIdx = detailsEls.findIndex(d => d.hasAttribute('open'));
-    if (initiallyOpenIdx >= 0) {
-      scrollToIndex(initiallyOpenIdx);
-      const d = detailsEls[initiallyOpenIdx];
-      const summary = d?.querySelector<HTMLElement>('.accordion__summary');
-      const rs = rightScrollerRef.current;
-      if (summary && rs) {
-        const offset = summary.getBoundingClientRect().top - rs.getBoundingClientRect().top + rs.scrollTop;
-        rs.scrollTo({ top: Math.max(0, offset), behavior: 'auto' });
-      }
+    if (idx === null) {
+      main.classList.add('is-all-closed');
+      return;
     }
 
-    const onToggle = (e: Event) => {
-      const d = e.target as HTMLDetailsElement | null;
-      if (!d || d.tagName !== 'DETAILS') return;
-      setAllClosedClass();
-      if (d.hasAttribute('open')) {
-        const idx = detailsEls.indexOf(d);
-        if (idx >= 0) scrollToIndex(idx);
-        // Also align the right scroller so the open header is pinned at the top
-        const summary = d.querySelector<HTMLElement>('.accordion__summary');
-        const rs = rightScrollerRef.current;
-        if (summary && rs) {
-          const offset = summary.getBoundingClientRect().top - rs.getBoundingClientRect().top + rs.scrollTop;
-          rs.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
-        }
-      }
-      // no measuring; CSS handles equal-height when all are closed
-    };
-    container.addEventListener('toggle', onToggle as EventListener, true);
-    return () => {
-      container.removeEventListener('toggle', onToggle as EventListener, true);
-    };
-  }, [usesAccordionLayout, isGable, isPitched, isHip, isBox, isLedStrip, isDropDownBlinds]);
+    main.classList.remove('is-all-closed');
+    setActiveIdx(idx);
+
+    const leftScroller = leftScrollerRef.current;
+    if (!leftScroller) return;
+    const grid = leftScroller.querySelector('.img-grid');
+    const items = grid ? (Array.from(grid.children) as HTMLElement[]) : [];
+    const target = items[idx];
+    if (target) leftScroller.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+  };
 
   const goPrev = () => setActiveIdx((i) => (i - 1 + productImages.length) % productImages.length);
   const goNext = () => setActiveIdx((i) => (i + 1) % productImages.length);
@@ -180,6 +143,37 @@ export default function ProductItemPage() {
 
   const isAccordionVariant = usesAccordionLayout;
 
+  const headerContent = data ? (
+    <>
+      {usesAccordionLayout && (
+        <Link href="/products" className="product-close" aria-label="Back to products">
+          <span className="product-close__icon" aria-hidden="true" />
+        </Link>
+      )}
+      <div className="product-kicker product-kicker--wipe">
+        {data.section === 'Screens & walls' ? 'Slats & Screens' : data.section}
+      </div>
+      {(() => {
+        const baseTitle = data.item.title.replace(/\s*→\s*$/, '');
+        const cleaned = isGable ? baseTitle.replace(/\s*pergola\b/i, '').trim() : baseTitle;
+        return <h1 className="product-title">{cleaned}</h1>;
+      })()}
+    </>
+  ) : null;
+
+  const header = headerContent ? (
+    <div className="product-header">
+      {headerContent}
+    </div>
+  ) : null;
+
+  // Mobile-only header that appears above the image gallery for accordion layouts
+  const mobileHeader = headerContent && usesAccordionLayout ? (
+    <div className="product-header product-header--mobile">
+      {headerContent}
+    </div>
+  ) : null;
+
   return (
     <main
       ref={mainRef}
@@ -240,6 +234,7 @@ export default function ProductItemPage() {
       <div className="product-split">
         <div className="product-left">
           <div className="product-left-scroller" ref={leftScrollerRef}>
+            {mobileHeader}
             {/* Mobile gallery: large main image then selectable thumbs below.
                 Main image is square across all product pages for consistent framing. */}
             <div className="mobile-gallery mobile-gallery--square" aria-hidden={false}>
@@ -303,25 +298,21 @@ export default function ProductItemPage() {
           </div>
         </div>
         <div className="product-right product-rail">
+          {usesAccordionLayout && (
+            <div className="product-body product-body--fixed-header">
+              {header}
+            </div>
+          )}
           <div className="product-right-scroller" ref={rightScrollerRef}>
             <div className="product-body">
-            {usesAccordionLayout && (
-              <Link href="/products" className="product-close" aria-label="Back to products">
-                <span className="product-close__icon" aria-hidden="true" />
-              </Link>
-            )}
-            <div className="product-kicker product-kicker--wipe">{data.section === 'Screens & walls' ? 'Slats & Screens' : data.section}</div>
-            {(() => {
-              const baseTitle = data.item.title.replace(/\s*→\s*$/, '');
-              const cleaned = isGable ? baseTitle.replace(/\s*pergola\b/i, '').trim() : baseTitle;
-              return <h1 className="product-title">{cleaned}</h1>;
-            })()}
+            {!usesAccordionLayout && header}
             {!usesAccordionLayout && <p className="product-desc">{data.item.desc}</p>}
             {/* CTA buttons removed per request */}
             {usesAccordionLayout && structured ? (
               <div className="product-long">
                 <Accordion
                   scrollBehavior={usesAccordionLayout ? 'sticky-panel' : 'default'}
+                  onChange={handleAccordionChange}
                   items={[
                     {
                       title: 'Design description',

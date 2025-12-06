@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: 'Resources For Architects & Builders | Sanctuary Pergolas',
   description:
     'Download CAD blocks, specification clauses, install guides and maintenance sheets to document Sanctuary Pergolas in your projects.',
+  robots: {
+    index: false,
+    follow: true,
+  },
 };
 
 export default function ResourcesLayout({ children }: { children: ReactNode }) {

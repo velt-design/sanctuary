@@ -5,16 +5,10 @@ import Link from 'next/link';
 
 type HomeProductsSectionProps = {
   blurDataUrl: string;
-  revealImages: boolean;
-  pitchedLoaded: boolean;
-  setPitchedLoaded: (loaded: boolean) => void;
 };
 
 export default function HomeProductsSection({
   blurDataUrl,
-  revealImages,
-  pitchedLoaded,
-  setPitchedLoaded,
 }: HomeProductsSectionProps) {
   return (
     <section className="container" id="products">
@@ -25,7 +19,7 @@ export default function HomeProductsSection({
         <Link className="tile" href="/products/pergolas/pitched">
           <p className="k">Pergolas</p>
           <h3 className="t">Pitched</h3>
-          <div className={`m pitched ${pitchedLoaded && revealImages ? 'in' : ''}`}>
+          <div className="m">
             <Image
               src="/images/product-pitched-01.jpg"
               alt="Pitched pergola"
@@ -34,7 +28,6 @@ export default function HomeProductsSection({
               style={{ objectFit: 'cover' }}
               placeholder="blur"
               blurDataURL={blurDataUrl}
-              onLoadingComplete={() => setPitchedLoaded(true)}
             />
           </div>
         </Link>
@@ -85,4 +78,3 @@ export default function HomeProductsSection({
     </section>
   );
 }
-

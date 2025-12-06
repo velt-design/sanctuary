@@ -34,8 +34,6 @@ export default function HomePageClient({
   const [introContactIn, setIntroContactIn] = useState(false);
   const [titleIn, setTitleIn] = useState(false);
   const [contactIn, setContactIn] = useState(false);
-  // Track load state for pitched product image so we can animate it in after other content is ready
-  const [pitchedLoaded, setPitchedLoaded] = useState(false);
   // Mobile hero load state (product-pitched-01)
   const [mobileHeroLoaded, setMobileHeroLoaded] = useState(false);
 
@@ -236,12 +234,7 @@ export default function HomePageClient({
         <div id="gallery" aria-hidden="true" />
 
         <HomeFeatureBar featureItems={featureItems} />
-        <HomeProductsSection
-          blurDataUrl={blurDataUrl}
-          revealImages={revealImages}
-          pitchedLoaded={pitchedLoaded}
-          setPitchedLoaded={setPitchedLoaded}
-        />
+        <HomeProductsSection blurDataUrl={blurDataUrl} />
 
         {/* Word-by-word statement section (after product tiles) */}
         <SpReveal

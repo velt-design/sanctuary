@@ -3,6 +3,41 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
+function updateFooterHeaderState(
+  header: HTMLElement | null,
+  sent: HTMLElement | null,
+  EPS: number,
+) {
+  if (typeof window === 'undefined') return;
+
+  if (!header || !sent) {
+    document.body.classList.remove('footer-at-top', 'footer-overlap');
+    return;
+  }
+
+  const doc = document.documentElement;
+  const scrollTop = window.scrollY || doc.scrollTop || document.body.scrollTop || 0;
+  // If we are at the very top of the page, always use the default header palette
+  if (scrollTop <= EPS) {
+    document.body.classList.remove('footer-at-top', 'footer-overlap');
+    return;
+  }
+
+  const h = header.getBoundingClientRect().height || 0;
+  const top = sent.getBoundingClientRect().top;
+
+  const atTop = top <= EPS;
+  const overlap = !atTop && top <= (h + EPS);
+
+  if (!atTop && !overlap) {
+    document.body.classList.remove('footer-at-top', 'footer-overlap');
+    return;
+  }
+
+  document.body.classList.toggle('footer-at-top', atTop);
+  document.body.classList.toggle('footer-overlap', overlap);
+}
+
 // Sync header styling with footer position so that:
 // - While the footer is beneath the header but not at the top: header is transparent and text/line are hidden
 // - When the footer reaches the top of the viewport: header text + line turn light (white-ish)
@@ -31,12 +66,7 @@ export default function FooterHeaderSync(){
     const EPS = 24; // px tolerance
 
     const apply = () => {
-      const h = header.getBoundingClientRect().height || 0;
-      const top = sent!.getBoundingClientRect().top;
-      const atTop = top <= EPS;
-      const overlap = !atTop && top <= (h + EPS);
-      document.body.classList.toggle('footer-at-top', atTop);
-      document.body.classList.toggle('footer-overlap', overlap);
+      updateFooterHeaderState(header, sent!, EPS);
     };
 
     let ticking = false;
@@ -62,19 +92,9 @@ export default function FooterHeaderSync(){
     // wait for new route layout to commit
     const recalc = () => {
       const sent = document.querySelector<HTMLElement>('footer [data-footer-sentinel]');
-      if (!sent){
-        document.body.classList.remove('footer-at-top', 'footer-overlap');
-        return;
-      }
       const header = document.querySelector<HTMLElement>('header.site');
-      if (!header) return;
       const EPS = 24;
-      const h = header.getBoundingClientRect().height || 0;
-      const top = sent.getBoundingClientRect().top;
-      const atTop = top <= EPS;
-      const overlap = !atTop && top <= (h + EPS);
-      document.body.classList.toggle('footer-at-top', atTop);
-      document.body.classList.toggle('footer-overlap', overlap);
+      updateFooterHeaderState(header, sent, EPS);
     };
     // Double RAF to let Next.js mount and CSS apply
     requestAnimationFrame(() => requestAnimationFrame(recalc));

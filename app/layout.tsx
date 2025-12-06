@@ -10,6 +10,7 @@ import PageTransitions from '@/components/PageTransitions';
 import FooterHeaderSync from '@/components/FooterHeaderSync';
 import Analytics from '@/components/Analytics';
 import WebVitals from '@/components/WebVitals';
+import ScrollReset from '@/components/ScrollReset';
 import { Suspense } from 'react';
 import JsonLd from '@/components/JsonLd';
 
@@ -97,6 +98,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <WebVitals />
         <PageTransitions />
         <FooterHeaderSync />
+        <ScrollReset />
         <Header />
         {/* Wrap searchParams-based subheader to satisfy CSR bailout rules */}
         <Suspense fallback={null}>

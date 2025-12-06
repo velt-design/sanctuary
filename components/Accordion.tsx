@@ -130,10 +130,12 @@ export default function Accordion({
   items,
   showPeekBottom = false,
   scrollBehavior = 'default',
+  onChange,
 }: {
   items: AccordionItem[];
   showPeekBottom?: boolean;
   scrollBehavior?: ScrollBehavior;
+  onChange?: (openIndex: number | null) => void;
 }) {
   const idBase = useId();
   const rowRefs = useRef<(AccordionRowHandle | null)[]>([]);
@@ -150,38 +152,25 @@ export default function Accordion({
         if (i === idx) r.open(); else r.close();
       });
       setOpenIdx(idx);
-    }
-  }, [items]);
-
-  const scrollSummaryIntoView = (idx: number) => {
-    const host = containerRef.current;
-    if (!host) return;
-    const summaries = host.querySelectorAll<HTMLElement>(".accordion__item > .accordion__summary");
-    const target = summaries[idx];
-    if (!target) return;
-    const panel = target.nextElementSibling as HTMLElement | null;
-    const scroller = target.closest('.product-right-scroller') as HTMLElement | null;
-    if (scroller) {
-      const scrollerRect = scroller.getBoundingClientRect();
-      const reference = panel ?? target;
-      const referenceOffset = reference.getBoundingClientRect().top - scrollerRect.top + scroller.scrollTop;
-      let offset = referenceOffset;
-      if (scrollBehavior === 'sticky-panel' && panel) {
-        const headerHeight = target.offsetHeight || 0;
-        const paddingTop = parseFloat(getComputedStyle(panel).paddingTop || '0');
-        offset = referenceOffset - headerHeight + paddingTop;
-      }
-      scroller.scrollTo({ top: Math.max(0, offset), behavior: 'smooth' });
+      onChange?.(idx);
     } else {
-      (panel ?? target).scrollIntoView({ block: 'start', behavior: 'smooth' });
+      rowRefs.current.forEach((r) => r?.close());
+      setOpenIdx(null);
+      onChange?.(null);
     }
-  };
+    // We intentionally run this only once on mount because
+    // callers typically pass a new array literal for `items`
+    // on every render, which would otherwise reset the open
+    // state back to the default item.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleToggle = (idx: number) => {
     const current = openIdx;
     if (current === idx) {
       rowRefs.current[idx]?.close();
       setOpenIdx(null);
+       onChange?.(null);
       return;
     }
     // Close previously open
@@ -189,7 +178,7 @@ export default function Accordion({
     // Open new
     rowRefs.current[idx]?.open();
     setOpenIdx(idx);
-    scrollSummaryIntoView(idx);
+    onChange?.(idx);
   };
 
   const openNext = () => {

@@ -9,6 +9,8 @@ const MAX_IN_WINDOW = 5; // 5 submissions per 10 minutes per IP
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_FIELD_LENGTH = 400;
 
+const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
+
 function isAllowedOrigin(req: Request): boolean {
   const origin = req.headers.get('origin');
   if (!origin) return true;
@@ -37,6 +39,27 @@ function getClientIp(req: Request): string {
   } catch {
     return 'unknown';
   }
+}
+
+function clamp(value: string, max: number): string {
+  return value.length > max ? value.slice(0, max) : value;
+}
+
+function sanitizeSingleLine(value: string, max: number): string {
+  const cleaned = value.replace(/[\r\n]+/g, ' ').replace(CONTROL_CHARS_REGEX, ' ').trim();
+  return clamp(cleaned, max);
+}
+
+function sanitizeMultiline(value: string, max: number): string {
+  const cleaned = value.replace(CONTROL_CHARS_REGEX, ' ').trim();
+  return clamp(cleaned, max);
+}
+
+function escapeForHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 export async function POST(req: Request) {
@@ -78,9 +101,9 @@ export async function POST(req: Request) {
   }
 
   // Minimal validation
-  const name = getField('name').trim().slice(0, MAX_FIELD_LENGTH);
-  const email = getField('email').trim().slice(0, MAX_FIELD_LENGTH);
-  const message = getField('message').trim().slice(0, MAX_MESSAGE_LENGTH);
+  const name = sanitizeSingleLine(getField('name'), MAX_FIELD_LENGTH);
+  const email = sanitizeSingleLine(getField('email'), MAX_FIELD_LENGTH);
+  const message = sanitizeMultiline(getField('message'), MAX_MESSAGE_LENGTH);
   if (!name || !email) {
     return NextResponse.json({ ok: false, error: 'Name and email are required' }, { status: 422 });
   }
@@ -106,18 +129,18 @@ export async function POST(req: Request) {
   const fields = {
     name,
     email,
-    suburb: getField('suburb').trim(),
-    enquiry_type: getField('enquiry_type').trim(),
-    width_m: getField('width_m').trim(),
-    length_m: getField('length_m').trim(),
-    height_m: getField('height_m').trim(),
-    style: getField('style').trim(),
-    roof: getField('roof').trim(),
-    addons: getField('addons').trim(),
+    suburb: sanitizeSingleLine(getField('suburb'), MAX_FIELD_LENGTH),
+    enquiry_type: sanitizeSingleLine(getField('enquiry_type'), MAX_FIELD_LENGTH),
+    width_m: sanitizeSingleLine(getField('width_m'), MAX_FIELD_LENGTH),
+    length_m: sanitizeSingleLine(getField('length_m'), MAX_FIELD_LENGTH),
+    height_m: sanitizeSingleLine(getField('height_m'), MAX_FIELD_LENGTH),
+    style: sanitizeSingleLine(getField('style'), MAX_FIELD_LENGTH),
+    roof: sanitizeSingleLine(getField('roof'), MAX_FIELD_LENGTH),
+    addons: sanitizeSingleLine(getField('addons'), MAX_FIELD_LENGTH),
     message,
     is_homeowner: getField('is_homeowner'),
     is_professional: getField('is_professional'),
-    company: getField('company').trim(),
+    company: sanitizeSingleLine(getField('company'), MAX_FIELD_LENGTH),
   };
 
   const subject = `[Website enquiry] ${fields.enquiry_type || 'General'} – ${fields.name}`;
@@ -138,7 +161,7 @@ export async function POST(req: Request) {
   ].filter(Boolean) as string[];
 
   const html = `<pre style="font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberations Mono, monospace; white-space: pre-wrap">${
-    lines.map(l => String(l)).join('\n')
+    escapeForHtml(lines.map(l => String(l)).join('\n'))
   }</pre>`;
 
   // Send via Resend if configured; otherwise log
@@ -182,7 +205,17 @@ export async function POST(req: Request) {
   const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
   if (SLACK_WEBHOOK_URL) {
     try {
-      const text = `New website enquiry\n*Name:* ${fields.name}\n*Email:* ${fields.email}${fields.company ? `\n*Company:* ${fields.company}` : ''}${fields.suburb ? `\n*Suburb:* ${fields.suburb}` : ''}\n*Enquiry:* ${fields.enquiry_type || 'General'}\n*Size:* ${[fields.width_m, fields.length_m, fields.height_m].filter(Boolean).join(' × ')}\n*Style:* ${fields.style || '-'}\n*Roof:* ${fields.roof || '-'}\n*Addons:* ${fields.addons || '-'}\n*Message:* ${fields.message || '(none)'}\n`;
+      const text = escapeForHtml(
+        `New website enquiry\n*Name:* ${fields.name}\n*Email:* ${fields.email}${
+          fields.company ? `\n*Company:* ${fields.company}` : ''
+        }${fields.suburb ? `\n*Suburb:* ${fields.suburb}` : ''}\n*Enquiry:* ${
+          fields.enquiry_type || 'General'
+        }\n*Size:* ${[fields.width_m, fields.length_m, fields.height_m].filter(Boolean).join(' × ')}\n*Style:* ${
+          fields.style || '-'
+        }\n*Roof:* ${fields.roof || '-'}\n*Addons:* ${fields.addons || '-'}\n*Message:* ${
+          fields.message || '(none)'
+        }\n`
+      );
       await fetch(SLACK_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

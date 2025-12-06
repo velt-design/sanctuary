@@ -19,29 +19,37 @@ export default function ContactPage() {
   type EnquiryType = 'Residential' | 'Commercial' | 'Professional';
   const [enquiryType, setEnquiryType] = useState<EnquiryType | null>(null);
   const [enquiryExpanded, setEnquiryExpanded] = useState(true);
-  // Animated reveal of inputs after picking an enquiry type
-  const [enquiryAnimating, setEnquiryAnimating] = useState(false);
   const [enquiryRevealed, setEnquiryRevealed] = useState(false);
-  // Faster transition: remove swipe and reveal after 0.3s
-  const WIPE_DELAY_MS = 0;   // no header-close delay
-  const WIPE_DUR_MS = 0;     // no swipe duration
-  const EXTRA_REVEAL_DELAY_MS = 300; // start content transition after 0.3s
-  const REVEAL_AFTER_MS = WIPE_DELAY_MS + WIPE_DUR_MS + EXTRA_REVEAL_DELAY_MS; // 300ms
+  // Delay the reveal so the selected enquiry toggle has time to animate
+  const REVEAL_DELAY_MS = 650;
+  const HIDE_AFTER_OPEN_MS = 200;
   const revealTimerRef = useRef<number | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
   const clearRevealTimer = () => {
     if (revealTimerRef.current !== null){
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
   };
-  const startRevealAfterWipe = () => {
+  const clearHideTimer = () => {
+    if (hideTimerRef.current !== null){
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  };
+  const scheduleReveal = () => {
     clearRevealTimer();
-    setEnquiryAnimating(true);
-    setEnquiryRevealed(false);
     revealTimerRef.current = window.setTimeout(() => {
-      setEnquiryAnimating(false);
+      // Collapse the enquiry header and reveal the controls together
+      setEnquiryExpanded(false);
       setEnquiryRevealed(true);
-    }, REVEAL_AFTER_MS);
+    }, REVEAL_DELAY_MS);
+  };
+  const scheduleHideAfterFade = () => {
+    clearHideTimer();
+    hideTimerRef.current = window.setTimeout(() => {
+      setEnquiryRevealed(false);
+    }, HIDE_AFTER_OPEN_MS);
   };
   
   // Vertical sliders replacing dial
@@ -119,6 +127,7 @@ export default function ContactPage() {
     return () => window.removeEventListener('resize', measure);
   }, [roofKey, addonsKey]);
   const enquiryPicked = enquiryType !== null;
+  const enquiryChoosing = enquiryType !== null && enquiryExpanded;
   // Reveal state shared across mid content variants
   const revealReady = enquiryRevealed && !enquiryExpanded;
   // Keep the mid-controls container (for the top rule) whenever any mid content is present
@@ -164,22 +173,14 @@ export default function ContactPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enquiryType]);
 
-  // Helper to select an enquiry type with animation + delayed reveal
+  // Helper to select an enquiry type with a delayed reveal
   const chooseEnquiry = (type: EnquiryType) => {
     // If choosing the same type again, still replay the transition
     setEnquiryType(type);
+    // Keep the enquiry header open so the toggle animation is visible
+    setEnquiryExpanded(true);
     setEnquiryRevealed(false);
-    setEnquiryAnimating(true);
-    // Keep the choices open during the knob slide (0.5s) + pause (0.3s)
-    window.setTimeout(() => {
-      setEnquiryExpanded(false);
-    }, WIPE_DELAY_MS);
-    // Reveal inputs after the wipe completes
-    clearRevealTimer();
-    revealTimerRef.current = window.setTimeout(() => {
-      setEnquiryAnimating(false);
-      setEnquiryRevealed(true);
-    }, REVEAL_AFTER_MS);
+    scheduleReveal();
   };
 
   // Toggle enquiry header open/closed; hide content when opened, show after wipe when closed
@@ -191,20 +192,23 @@ export default function ContactPage() {
     setEnquiryExpanded((open) => {
       const next = !open;
       if (next){
-        // Opening: immediately hide content and stop any running animation
+        // Opening: stop any pending reveal, then hide content after the left image fade completes
         clearRevealTimer();
-        setEnquiryAnimating(false);
-        setEnquiryRevealed(false);
+        scheduleHideAfterFade();
       } else {
-        // Closing: reveal content only after the wipe completes
-        startRevealAfterWipe();
+        // Closing: cancel any pending hide and reveal content after the delay
+        clearHideTimer();
+        scheduleReveal();
       }
       return next;
     });
   };
 
   // Cleanup timer on unmount
-  useEffect(() => () => clearRevealTimer(), []);
+  useEffect(() => () => {
+    clearRevealTimer();
+    clearHideTimer();
+  }, []);
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
@@ -233,7 +237,7 @@ export default function ContactPage() {
   };
 
   return (
-    <main className={`two-col-page contact-page contact-dark ${enquiryAnimating ? 'enquiry-animating' : ''} ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''}`}>
+    <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''}`}>
       <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 grid grid-cols-1 lg:grid-cols-[1fr_1px_1fr_1px_1fr] items-stretch gap-y-[var(--vgap)] lg:gap-y-[var(--vgap)] gap-x-[var(--gap)]">
         {/* Left column */}
         <div className="col-span-1 relative h-full">

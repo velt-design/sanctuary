@@ -396,6 +396,19 @@ body.footer-at-top .product-subheader[aria-label="Resources shortcuts"] .product
   padding:var(--product-body-pad-top) var(--g) 0;
   position:relative;
 }
+.product-body--fixed-header{
+  padding-bottom: 10px;
+}
+.product-header{
+  position:relative;
+  z-index:2;
+  background: var(--bg, #fff);
+  padding: 14px 0 16px;
+  border-bottom: var(--bw) solid var(--border);
+}
+.product-header--mobile{
+  display:none;
+}
 .product-kicker{font-size:12px;letter-spacing:.12em;color:#7A7A7A;text-transform:uppercase;margin:0 0 8px}
 .product-kicker--wipe{animation:productKickerIn .38s cubic-bezier(.25,.85,.35,1) both}
 @keyframes productKickerIn{
@@ -446,6 +459,29 @@ body.footer-at-top .product-subheader[aria-label="Resources shortcuts"] .product
   .products-index .tile .m{ aspect-ratio: 1 / 1; height:auto; background: var(--bg); }
   .products-index .tile .m img{ object-fit: contain; background: var(--bg); }
   .product-left-scroller{ padding: 0 0 var(--g) 0; }
+  .product-header--mobile{
+    display:block;
+    padding-left: var(--g);
+    padding-right: var(--g);
+    border-bottom: var(--bw) solid var(--border);
+    margin-bottom: calc(var(--g) * 0.5);
+  }
+  .product-header--mobile .product-close{
+    top: 0;
+  }
+  /* Hide the fixed header rail on accordion layouts; mobile header sits above gallery instead */
+  .product-page--accordion .product-body--fixed-header{
+    display:none;
+  }
+  /* Restore default top padding for the scroll body when the fixed header is hidden on mobile */
+  .product-page--accordion .product-right-scroller .product-body{
+    padding-top: var(--product-body-pad-top, calc(var(--g) * .45));
+  }
+  /* Keep borders from stacking between header, gallery and first accordion row */
+  .mobile-gallery__main{
+    border-top: 0;
+    border-bottom: 0;
+  }
   .mobile-gallery{ display:grid; }
   .img-grid{ display:none; }
   /* Flatten product layout to single column so images sit above details */
@@ -471,12 +507,13 @@ body.footer-at-top .product-subheader[aria-label="Resources shortcuts"] .product
   position:absolute;
   top:var(--product-body-pad-top, calc(var(--g) * .45));
   right:var(--g);
-  width:var(--product-control-icon-size, 30.6px);
-  height:var(--product-control-icon-size, 30.6px);
+  width:56px;
+  height:56px;
   display:flex;
   align-items:center;
   justify-content:center;
   text-decoration:none;
+  cursor:pointer;
 }
 .product-close__icon{
   position:relative;
@@ -624,27 +661,48 @@ details[open] > .accordion__summary::before{ content:""; position:absolute; left
 /* Accordion product pages: shared scroll/peek behaviour */
 @media (min-width: 961px){
   /* Keep a stable structure (no JS measuring, no display flip). */
-  .product-page--accordion .product-right-scroller{ display:flex; flex-direction:column; overflow-y:auto; overflow-x:hidden; scrollbar-gutter: stable both-edges; padding-bottom: 0; }
+  .product-page--accordion .product-right{
+    display:flex;
+    flex-direction:column;
+  }
+  .product-page--accordion .product-right-scroller{
+    flex:1 1 auto;
+    min-height:0;
+    height:auto;
+    display:flex;
+    flex-direction:column;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-gutter: stable both-edges;
+    padding-bottom: 0;
+  }
   .product-page--accordion .product-body{ display:flex; flex-direction:column; min-height:0; }
   .product-page--accordion .product-long{ flex:1 1 auto; min-height:0; }
-  /* Keep the open tab header visible at the top, and the
-     next tab header visible at the bottom while scrolling */
-  /* Open tab: match site background and mask content */
-  .product-page--accordion details[open] > .accordion__summary{
-    position: sticky;
-    top: 0;
-    z-index: 5;
-    background: var(--bg, #fff);
+  /* Ensure the product header always sits above accordion controls */
+  .product-page--accordion .product-header{ z-index: 10; }
+  /* For pergola pages, the scrollable product body should start
+     immediately under the header, without extra top padding, so
+     sticky accordion headers pin to the bottom of the header box. */
+  .product-page--accordion .product-right-scroller .product-body{
+    padding-top: 0;
+  }
+  /* Keep the open tab header in normal flow for pergola pages so it
+     cannot slide up into the fixed header area above. */
+  .product-page--accordion .product-right-scroller details[open] > .accordion__summary{
+    position: static;
+    top: auto;
+    z-index: auto;
+    background: transparent;
   }
   /* Using an explicit bottom 'peek' control; keep the real next
      header in normal flow to avoid duplicates */
   .product-page--accordion details[open] + .accordion__item > .accordion__summary{ position: static; bottom: auto; z-index: auto; background: transparent; }
   /* When using the explicit bottom 'peek' button, make it look like a
      regular header and pin it to the bottom of the scroll area */
-  .product-page--accordion .accordion__peek-bottom{
+  .product-page--accordion .product-right-scroller .accordion__peek-bottom{
     position: sticky;
     bottom: 0;
-    z-index: 6;
+    z-index: 1;
     margin-left: calc(-1 * var(--acc-left));
     margin-right: calc(-1 * var(--acc-right));
     padding-left: var(--acc-left);
@@ -659,6 +717,13 @@ details[open] > .accordion__summary::before{ content:""; position:absolute; left
     margin-right: calc(-1 * var(--acc-right));
     padding-left: var(--acc-left);
     padding-right: var(--acc-right);
+  }
+  /* First accordion row sits directly under the header box: remove its top
+     rule (to avoid side bleed). The boundary between header and first row is
+     provided by the header's bottom border; the boundary below the row is
+     provided by the next row's top border. */
+  .product-page--accordion .product-long .accordion__item:first-of-type > .accordion__summary{
+    box-shadow: none;
   }
   /* Replace border pseudo-elements with inset shadows on the stretched summary
      element so lines always meet rails regardless of content width */
@@ -843,7 +908,7 @@ details[open] > .accordion__summary::before{ content:""; position:absolute; left
 .contact-page .contact-media{ height:100%; max-height:none; border:none !important; background:transparent !important; box-shadow:none !important; border-radius:0 !important; }
 .contact-page .contact-media img{ height:100%; object-fit:cover; }
 /* Desktop-only placeholder "1." before enquiry type is chosen */
-.contact-media__placeholder{ position:absolute; inset:0; display:none; place-items:center; z-index:2; color:#DBDDE0; opacity:1; pointer-events:none; transition: opacity 1.5s ease; }
+.contact-media__placeholder{ position:absolute; inset:0; display:none; place-items:center; z-index:2; color:#DBDDE0; opacity:1; pointer-events:none; transition: opacity .45s ease; }
 .contact-media__placeholder span{
   font-family: "Inter", "Helvetica Neue", Arial, system-ui, -apple-system, Segoe UI, sans-serif;
   font-weight: 800;
@@ -856,9 +921,12 @@ details[open] > .accordion__summary::before{ content:""; position:absolute; left
 }
 @media (min-width: 961px){ .contact-media__placeholder{ display:grid; } }
 /* Image wrapper fades in after selection */
-.contact-media__img{ position:absolute; inset:0; opacity:0; transition: opacity 1.5s ease; }
+.contact-media__img{ position:absolute; inset:0; opacity:0; transition: opacity .45s ease; }
 .enquiry-picked .contact-media__img{ opacity:1; }
 .enquiry-picked .contact-media__placeholder{ opacity:0; }
+/* When picking again (header open), hide the image with a simple fade */
+.enquiry-picked.enquiry-choosing .contact-media__img{ opacity:0; }
+.enquiry-picked.enquiry-choosing .contact-media__placeholder{ opacity:1; }
 /* Remove extra top padding on the left column for perfect vertical alignment */
 .contact-page .product-left{ padding-top: 0; }
 
@@ -957,6 +1025,11 @@ body:has(.product-subheader[aria-label="Resources shortcuts"]) .two-col-page{
 @media (max-width: 960px){
   .product-split{ grid-template-columns:1fr; width:100% !important; max-width:100% !important; overflow:visible !important; }
   .product-rail{ border-left:none; border-top:var(--bw) solid var(--border); width:100% !important; max-width:100% !important; }
+  /* Product detail pages handle their own section dividers; avoid a
+     second horizontal rule above the accordion stack on mobile. */
+  .product-page .product-rail{
+    border-top: 0;
+  }
   .product-right, .product-left{ overflow: visible !important; width:100% !important; }
   .product-body{ --product-body-pad-top: var(--g); padding:var(--product-body-pad-top) var(--g) 0; width:100% !important; max-width:100% !important; }
   .product-page .container.product-wrap{ width:100% !important; max-width:100% !important; }
@@ -1000,14 +1073,15 @@ body:has(.product-subheader[aria-label="Resources shortcuts"]) .two-col-page{
 .contact-rail__mid{ padding-top: 0; }
 }
 
-/* Slide-up animation for customer info when an enquiry is chosen */
+/* Slide/fade-in animation for enquiry controls when an enquiry is chosen */
 @keyframes contactEnquiryEnter{
-  from{ transform: translateY(100dvh); opacity: 0; }
+  from{ transform: translateY(16px); opacity: 0; }
   to{ transform: translateY(0); opacity: 1; }
 }
 .enquiry-revealed .mid-controls,
-.enquiry-revealed .contact-rail__right{
-  animation: contactEnquiryEnter .6s cubic-bezier(.08,0,.17,1) both;
+.enquiry-revealed .right-locked,
+.enquiry-revealed .contact-controls{
+  animation: contactEnquiryEnter .55s cubic-bezier(.25,.85,.35,1) both;
 }
 
 /* Contact: add a uniform top gutter so left photo and right panels align */

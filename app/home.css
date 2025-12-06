@@ -398,9 +398,9 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
   /* 3) Hide the feature/proof bar on mobile */
   .feature-bar{ display:none; }
 
-  /* 4) Pitched product image: wipe-in from bottom once loaded and after other content is ready */
-  .tile .m.pitched{ transform: translateY(100%); transition: transform 1s ease; }
-  .tile .m.pitched.in{ transform: none; }
+  /* 4) On mobile, lock "View full range" tile in its dark hover state */
+  .tile.viewall .m::before{ transform: scaleX(1); }
+  .tile.viewall .cta-title{ color: var(--pageWhite); }
 
   /* 5) Halve homepage product tile image height on mobile so four tiles are visible */
   #products .tile .m{ height:clamp(210px,36dvh,500px); }
