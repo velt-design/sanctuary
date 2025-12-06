@@ -1,8 +1,6 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  // Enforce ESLint during production builds so issues fail CI.
-  eslint: { ignoreDuringBuilds: false },
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
   async headers() {
