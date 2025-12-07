@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { Project } from '@/data/projects';
 import ProjectDetailContent from './ProjectDetailContent';
+import ProjectsCarouselMobile from './ProjectsCarouselMobile';
 import './projects.css';
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ');
@@ -153,6 +154,21 @@ export default function ProjectsExperience({ projects }: { projects: Project[] }
       router.prefetch(`/projects/${project.slug}`);
     });
   }, [filteredProjects, router, selectedProject]);
+
+  if (isMobileList) {
+    return (
+      <main className="projects-experience projects-experience--mobile" aria-label="Projects">
+        <header className="projects-mobile__header">
+          <p className="projects-mobile__eyebrow">Projects</p>
+          <h1 className="projects-mobile__title">Built pergolas across Auckland and beyond.</h1>
+          <p className="projects-mobile__subtitle">
+            Swipe across the cards below and tap a project for the full case study.
+          </p>
+        </header>
+        <ProjectsCarouselMobile projects={filteredProjects} />
+      </main>
+    );
+  }
 
   return (
     <main className="projects-experience" aria-label="Projects">
