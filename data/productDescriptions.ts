@@ -1,6 +1,6 @@
 export const productDescriptions: Record<string, string> = {
   // Pergolas
-  pitched: `A pitched pergola extends your roofline with a clean, single‑slope canopy that sheds water reliably and keeps headroom where you need it. Built in powder‑coated aluminium, the structure stays light, straight and corrosion‑resistant with spans engineered to your wind zone. Rafters run from a higher wall plate to a lower front beam and roof sheets fix to concealed carriers for a tidy underside.
+  pitched: `A pitched pergola extends your roofline with a clean, single‑slope canopy that sheds water reliably and keeps headroom where you need it. Built in powder‑coated aluminium, the structure stays light, straight and corrosion‑resistant with spans engineered to your wind zone. Rafters run from a higher wall plate to a lower front beam and roof sheets lock into aluminium joiners that sit on long‑run butterfly rubber running the length of each rafter for a tidy underside.
 
 How it works: posts set on footings or a deck subframe support beams that bolt to precision brackets. A head flashing seals to the house while allowing movement. Services, lighting and blinds can be added later without re‑framing.
 
@@ -8,7 +8,7 @@ Why it’s good: the simple geometry suits modern homes, fits neatly under narro
 
 Structure & materials
 • Powder‑coated aluminium beams, rafters and posts
-• Roof sheets on concealed carriers for a clean soffit
+• Roof sheets held in aluminium joiners sitting on long‑run butterfly rubber along each rafter for a clean soffit
 • Engineered brackets and fixings suited to wind zone
 • Integrated head/house flashing with movement allowance
 
@@ -22,15 +22,7 @@ Performance
 • Reliable single‑direction fall for rain control
 • High daylight levels; add tint for glare reduction
 • Strong, straight spans with low visual bulk
-• Quiet, rattle‑free roof fastening via carriers
-
-Recommended for
-• Narrow eaves and modern façades
-• Outdoor dining where headroom and light matter
-
-Not ideal for
-• Sites needing a symmetrical roofline presence
-• Areas demanding maximum cross‑ventilation at ridge
+• Quiet, rattle‑free roof fastening via aluminium joiners on butterfly rubber
 
 Choose this if
 • You want clean lines and efficient drainage under low eaves
@@ -41,21 +33,13 @@ Consider instead if
 • You need wind managed at corners and all‑round fall (see Hip)
 
 Programme
-• Lead time ~4–6 weeks • Install 1–2 days
+• Lead time ~6–8 weeks • Install 2–5 days
 
 Maintenance
 • Hose down frame/roof periodically • Check gutters/flashings annually
 
 Upgrade path
 • Add blinds, screens and lighting now or later
-
-Best paired with
-• Mesh blinds on prevailing wind edge • Perimeter strip for ambience
-• 2–4 downlights over table/BBQ zones
-
-Indicative performance (TBC)
-• Typical bay up to ~3.0–3.6 m depending on wind zone and roofing
-• Post spacing and fixings confirmed at design stage
 
 FAQs
 • Will it darken the room inside? Clear/opal sheets keep high daylight; add tint to cut glare.

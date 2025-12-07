@@ -13,6 +13,51 @@ import { productContent } from '@/data/productContent';
 import JsonLd from '@/components/JsonLd';
 import { absoluteUrl } from '@/lib/seo';
 
+const nonPergolaExtras = [
+  {
+    id: 'slat-screens',
+    name: 'Slat screens',
+    href: '/products/screens-walls/slat-screens',
+    blurb:
+      'give adjustable privacy and wind filtering while keeping airflow and daylight, helping decks feel more enclosed without losing openness.',
+  },
+  {
+    id: 'acrylic-infill-panels',
+    name: 'Acrylic infill panels',
+    href: '/products/screens-walls/acrylic-infill-panels',
+    blurb:
+      'block wind and rain while preserving views and daylight so edges stay usable year‑round.',
+  },
+  {
+    id: 'drop-down-blinds',
+    name: 'Drop-down blinds',
+    href: '/products/screens-walls/drop-down-blinds',
+    blurb:
+      'give on‑demand control of wind, rain and low sun. Fabrics range from clear PVC for weather blocking to open‑weave meshes that cut glare while keeping the view.',
+  },
+  {
+    id: 'downlights',
+    name: 'Downlights',
+    href: '/products/lighting-heating/downlights',
+    blurb:
+      'provide even overhead lighting for dining and task zones so outdoor rooms stay usable after dark.',
+  },
+  {
+    id: 'led-strip-lighting',
+    name: 'LED strip lighting',
+    href: '/products/lighting-heating/led-strip-lighting',
+    blurb:
+      'washes the pergola perimeter with a soft glow that defines edges, improves safety and adds ambience.',
+  },
+  {
+    id: 'patio-heaters',
+    name: 'Patio heaters',
+    href: '/products/lighting-heating/patio-heaters',
+    blurb:
+      'deliver targeted warmth to seating areas so you can comfortably use the space through cooler evenings.',
+  },
+];
+
 const norm = (s: string) => s.toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-');
 
 export default function ProductItemPage() {
@@ -327,7 +372,7 @@ export default function ProductItemPage() {
                             </p>
                           )}
                           {structured.whyItsGood && (
-                            <div>
+                            <div className="product-design-description__why">
                               <p><strong>Why it’s good:</strong></p>
                               {Array.isArray(structured.whyItsGood) ? (
                                 <ul>
@@ -417,17 +462,31 @@ export default function ProductItemPage() {
                       content: (
                         <div>
                           {/* Roofing + infill related options */}
-                          {structured.options?.filter(o => /roof|infill/i.test(o)).length ? (
+                          {(() => {
+                            const roofInfillOptions = isPitched
+                              ? structured.options?.slice(0, 3)
+                              : structured.options?.filter(o => /roof|infill/i.test(o));
+                            return roofInfillOptions?.length ? (
                             <div>
                               <ul>
-                                {structured.options
-                                  .filter(o => /roof|infill/i.test(o))
-                                  .map((it, i) => (
-                                    <li key={i}>{it}</li>
-                                  ))}
+                                {roofInfillOptions
+                                  .map((it, i) => {
+                                    if (isPitched && it.includes(':')) {
+                                      const [label, ...rest] = it.split(':');
+                                      const restText = rest.join(':').trim();
+                                      return (
+                                        <li key={i}>
+                                          <strong>{label.trim()}</strong>
+                                          {restText ? `: ${restText}` : null}
+                                        </li>
+                                      );
+                                    }
+                                    return <li key={i}>{it}</li>;
+                                  })}
                               </ul>
                             </div>
-                          ) : null}
+                            ) : null;
+                          })()}
                           {/* Pitch/sheet tuning bullet from indicative performance */}
                           {structured.indicativePerformance?.find(p => /Pitch and sheet type/i.test(p)) ? (
                             <div>
@@ -458,18 +517,34 @@ export default function ProductItemPage() {
                       title: 'Screens, Lighting & Extras',
                       content: (
                         <div>
+                          <div>
+                            <ul>
+                              {nonPergolaExtras.map(extra => (
+                                <li key={extra.id}>
+                                  <Link href={extra.href}>
+                                    <strong>{extra.name}</strong>
+                                  </Link>{' '}
+                                  {extra.blurb}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                           {/* Non-roof options like lights/blinds */}
-                          {structured.options?.filter(o => !/roof|infill/i.test(o)).length ? (
+                          {(() => {
+                            const nonRoofOptions = isPitched
+                              ? structured.options?.slice(3)
+                              : structured.options?.filter(o => !/roof|infill/i.test(o));
+                            return nonRoofOptions?.length ? (
                             <div>
                               <ul>
-                                {structured.options
-                                  .filter(o => !/roof|infill/i.test(o))
+                                {nonRoofOptions
                                   .map((it, i) => (
                                     <li key={i}>{it}</li>
                                   ))}
                               </ul>
                             </div>
-                          ) : null}
+                            ) : null;
+                          })()}
                           {structured.bestPairedWith?.length ? (
                             <div>
                               <p><strong>Best paired with</strong></p>
@@ -509,12 +584,38 @@ export default function ProductItemPage() {
                       title: 'Downloads',
                       content: (
                         <div>
-                          <ul>
+                          <ul className="product-downloads">
                             <li>
-                              <Link href="/resources">Downloads overview</Link>
+                              <Link
+                                href="/downloads/Sp-Portfolio.pdf"
+                                className="product-download"
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <span className="product-download__icon" aria-hidden="true" />
+                                <span className="product-download__body">
+                                  <span className="product-download__title">Project Portfolio</span>
+                                  <span className="product-download__desc">
+                                    Finished pergola projects with photos and brief case notes.
+                                  </span>
+                                </span>
+                              </Link>
                             </li>
                             <li>
-                              <Link href="/resources/specs-compliance">Specifications</Link>
+                              <Link
+                                href="/downloads/Sanctuary-Pergolas-Brochure.pdf"
+                                className="product-download"
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <span className="product-download__icon" aria-hidden="true" />
+                                <span className="product-download__body">
+                                  <span className="product-download__title">Sanctuary Brochure</span>
+                                  <span className="product-download__desc">
+                                    Overview of pergola styles, options and finishes to share with clients.
+                                  </span>
+                                </span>
+                              </Link>
                             </li>
                           </ul>
                         </div>

@@ -33,22 +33,22 @@ export default function ProductsIndex() {
     switch (slug) {
       case 'pitched':
         return {
-          primary: '/images/pitched-render-05.jpg',
+          primary: '/images/Pitched-111.jpg',
           hover: '/images/product-pitched-01.jpg',
         };
       case 'gable':
         return {
-          primary: '/images/gable-render-03.jpg',
+          primary: '/images/Gable-111.jpg',
           hover: '/images/product-gable-02.jpg',
         };
       case 'hip':
         return {
-          primary: '/images/hip-render-02.jpg',
+          primary: '/images/Hip-111.jpg',
           hover: '/images/product-hip-02.jpg',
         };
       case 'box-perimeter':
         return {
-          primary: '/images/perimeter-render-02.jpg',
+          primary: '/images/Box-perimeter-111.jpg',
           hover: '/images/project-waiheke-02.jpg',
         };
       case 'slat-screens':

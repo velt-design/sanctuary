@@ -192,8 +192,6 @@ export const productContent: Record<string, ProductContent> = {
       'Insulated panels with timber sarking available',
       'Acrylic skylight strips keep spaces bright',
     ],
-    howItWorks:
-      'Posts on footings or a deck subframe carry beams fixed with engineered brackets. A head flashing seals to the house and allows movement. Roof sheets sit on carriers for a tidy soffit and quiet, stress‑free fastening. Where suitable, the roof can pitch toward the house and fix to soffits with brackets so water drains via the existing house gutter (subject to assessment of soffit structure and gutter capacity).',
     whyItsGood: [
       'Choose away‑from‑house or houseward fall to suit site',
       'Houseward pitch unlocks head height and improves convection',
@@ -203,49 +201,26 @@ export const productContent: Record<string, ProductContent> = {
     ],
     structureMaterials: [
       'Powder‑coated aluminium beams, rafters and posts',
-      'Roof sheets on concealed carriers for a clean soffit',
+      'Roof sheets held in aluminium joiners sitting on long‑run butterfly rubber along each rafter for a clean soffit',
       'Engineered brackets and fixings suited to wind zone',
       'Integrated head/house flashing with movement allowance',
     ],
     options: [
-      'Acrylic roofing—clear, light grey, dark grey, or opal (99% UV block; ~30–70% heat reduction depending on tint; opal keeps high daylight while reducing the most heat)',
-      'Insulated roof panels with timber sarking (premium look and strong heat reduction)',
-      'Mixed roof: insulated panels with acrylic skylight strips for balanced daylight',
-      'Orientation: pitch away from or toward the house (soffit‑bracket option)',
-      'Post layouts to suit doors, sliders and paths',
-      'LED downlights or perimeter strip lighting',
-      'Side screens or drop‑down blinds for wind and privacy',
+      'Acrylic: Acrylic roofing—clear, light grey, dark grey, or opal (99% UV block; ~30–70% heat reduction depending on tint; opal keeps high daylight while reducing the most heat)',
+      'Timber: Timber sarking gives a premium look with strong heat‑reduction qualities, creating a warm, comfortable outdoor space.',
+      'Combination: Mixed roof combining insulated panels and acrylic skylight strips so spaces stay bright while the timber sarking adds a premium look and strong heat‑reduction qualities for a warm, comfortable outdoor space.',
     ],
     performance: [
       'Reliable fall for rain control; option to drain to house gutter',
       'High daylight levels; opal/tints curb heat and glare',
       'Acrylic blocks 99% UV; heat cut ~30–70% by tint selection',
       'Insulated panels further reduce heat and soften rain noise',
-      'Strong, straight spans with low visual bulk; quiet, rattle‑free carriers',
+      'Strong, straight spans with low visual bulk; quiet, rattle‑free aluminium joiners on butterfly rubber',
     ],
-    recommendedFor: [
-      'Narrow eaves and modern façades',
-      'Outdoor dining where headroom, light and airflow matter',
-      'Spaces that run hot at midday—tint or insulated options help',
-    ],
-    notIdealFor: [
-      'Sites wanting a symmetrical roofline presence',
-      'Houseward pitch requires adequate soffit structure and gutter capacity',
-    ],
-    install: ['Lead time ~4–6 weeks • Install 1–2 days (houseward pitch subject to soffit/gutter assessment)'],
+    install: ['Lead time ~6–8 weeks • Install 2–5 days (houseward pitch subject to soffit/gutter assessment)'],
     maintenance: ['Hose down periodically • Check gutters/flashings annually'],
-    upgradePath: [
-      'Start with acrylic; add blinds/screens and lighting as needed',
-      'Step up to insulated panels with optional acrylic skylight strips',
-    ],
-    bestPairedWith: [
-      'Mesh blinds on the prevailing‑wind edge',
-      'Perimeter LED strip for ambience; 2–4 downlights over tables',
-    ],
-    indicativePerformance: [
-      'Typical bay up to ~3.0–3.6 m (depends on wind zone and roofing)',
-      'Post spacing and fixings confirmed at design stage',
-    ],
+    upgradePath: [],
+    bestPairedWith: [],
     faqs: [
       {
         q: 'Can we pitch the roof toward the house and use the existing gutter?',

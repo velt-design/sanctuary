@@ -544,6 +544,20 @@ body.footer-at-top .product-subheader[aria-label="Resources shortcuts"] .product
 .product-bullets li{margin:0 0 6px}
 .product-faqs{display:grid; gap:8px}
 .product-faq summary{cursor:pointer; font-weight:600}
+/* Downloads list with icon + label */
+.product-downloads{ list-style:none; margin:6px 0 4px; padding:0; display:grid; gap:8px; }
+.product-download{ display:flex; align-items:flex-start; gap:10px; text-decoration:none; color:inherit; padding:8px 10px; border-radius:6px; border:1px solid rgba(0,0,0,.06); background:rgba(0,0,0,.01); }
+.product-download:hover,
+.product-download:focus-visible{ border-color:rgba(0,0,0,.18); background:rgba(0,0,0,.03); outline:none; }
+.product-download__icon{ width:26px; height:26px; border-radius:999px; border:1px solid rgba(0,0,0,.18); display:inline-flex; align-items:center; justify-content:center; position:relative; }
+.product-download__icon::before,
+.product-download__icon::after{ content:""; position:absolute; background:#4B4F55; }
+/* Download arrow: vertical stem + chevron */
+.product-download__icon::before{ width:2px; height:10px; top:5px; left:50%; transform:translateX(-50%); border-radius:1px; }
+.product-download__icon::after{ width:8px; height:8px; border-radius:2px; border:2px solid #4B4F55; border-top:none; border-left:none; background:transparent; transform:translate(-50%, 0) rotate(45deg); bottom:6px; left:50%; }
+.product-download__body{ display:flex; flex-direction:column; gap:2px; }
+.product-download__title{ font-weight:600; font-size:13px; }
+.product-download__desc{ font-size:13px; color:#555; }
 /* Inline media slot inside structured details */
 .product-inline-media{ margin: 8px 0 10px; }
 
@@ -608,6 +622,8 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 .accordion__panel p{ margin: 0 0 10px; }
 .accordion__panel ul{ margin:6px 0 10px; padding-left:18px; }
 .accordion__panel li{ margin: 0 0 6px; }
+/* Extra breathing room around "Why it's good" block inside Design description */
+.product-design-description__why{ margin:20px 0; }
 /* Divider below header while open (anchored to header to avoid gap during animation) */
 details[open] > .accordion__summary::before{ content:""; position:absolute; left: calc(-1 * var(--acc-left)); right: calc(-1 * var(--acc-right)); bottom:-1px; height:0; border-bottom: var(--bw) solid var(--border); }
 /* Move spacing inside so height measurement is stable (no padding animation) */
