@@ -465,13 +465,15 @@ export default function ProductItemPage() {
                           {(() => {
                             const roofInfillOptions = isPitched
                               ? structured.options?.slice(0, 3)
-                              : structured.options?.filter(o => /roof|infill/i.test(o));
+                              : isGable
+                                ? structured.options
+                                : structured.options?.filter(o => /roof|infill/i.test(o));
                             return roofInfillOptions?.length ? (
                             <div>
                               <ul>
                                 {roofInfillOptions
                                   .map((it, i) => {
-                                    if (isPitched && it.includes(':')) {
+                                    if ((isPitched || isGable) && it.includes(':')) {
                                       const [label, ...rest] = it.split(':');
                                       const restText = rest.join(':').trim();
                                       return (
@@ -533,7 +535,9 @@ export default function ProductItemPage() {
                           {(() => {
                             const nonRoofOptions = isPitched
                               ? structured.options?.slice(3)
-                              : structured.options?.filter(o => !/roof|infill/i.test(o));
+                              : isGable
+                                ? []
+                                : structured.options?.filter(o => !/roof|infill/i.test(o));
                             return nonRoofOptions?.length ? (
                             <div>
                               <ul>

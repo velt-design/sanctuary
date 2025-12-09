@@ -47,7 +47,7 @@ FAQs
 
   gable: `A gable pergola creates a peaked roof that feels tall, bright and airy. Two roof planes meet at a ridge, drawing warm air up and out while larger spans cover dining settings and sliders with ease. The aluminium frame uses deep beams for stiffness with discrete ridge/hip components that carry loads without visual clutter.
 
-How it works: columns are set to centre the ridge; rafters and purlins lock into engineered brackets; roof sheets sit on carriers that manage drainage and movement. Translucent options maximise daylight; integrated lighting supports evening use.
+How it works: columns are set to centre the ridge; rafters and purlins lock into engineered brackets; roof sheets lock into aluminium joiners sitting on long‑run butterfly rubber along each rafter to manage drainage and movement. Translucent options maximise daylight; integrated lighting supports evening use.
 
 Why it’s good: the symmetrical form adds street presence, handles gusty sites well and pairs beautifully with blinds and screens. You get real headroom, excellent airflow and a refined, long‑life finish.
 
@@ -55,19 +55,20 @@ Structure & materials
 • Twin roof planes meeting at a ridge
 • Powder‑coated aluminium frame with deep beams
 • Engineered ridge and hip components
-• Roof sheets on carriers for drainage and movement
+• Roof sheets held in aluminium joiners sitting on long‑run butterfly rubber along each rafter for drainage and movement
 
 Options
-• Clear/opal/tinted roofing combinations for light and glare
-• Feature gable infill (slats, acrylic or open)
-• Integrated downlights and strip lighting
-• Drop‑down blinds or fixed screens to temper wind
+• Acrylic roofing—clear, light grey, dark grey or opal across both roof planes; 99% UV block with tints to tune heat and glare
+• Timber sarking roof panels for a warm, premium ceiling and strong heat‑reduction over dining and lounge zones
+• Combination roof using insulated timber sarking panels with acrylic skylight strips so the ridge stays bright while seating areas stay cooler
+• Gable infills at the ends—open, slatted or acrylic—to temper wind, frame views and help manage weather
 
 Performance
 • Excellent headroom and perceived volume
 • Natural convection via ridge for warm‑weather comfort
 • Stable in gusty conditions with good structural depth
 • Daylight‑rich; glare managed with tint or blinds
+• Quiet, rattle‑free fastening via aluminium joiners on butterfly rubber
 
 Recommended for
 • Larger decks and sliders needing coverage
@@ -86,7 +87,7 @@ Consider instead if
 • Height at the house is very constrained (see Pitched)
 
 Programme
-• Lead time ~6 weeks • Install 2–4 days
+• Lead time ~6–8 weeks • Install 2–5 days
 
 Maintenance
 • Wash down frame/roof • Clear gutters and confirm downpipe flow

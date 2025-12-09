@@ -196,6 +196,23 @@ export default function ProjectDetailContent({
           </section>
         </div>
 
+        {project.videoYoutubeId ? (
+          <section
+            className="project-detail__video"
+            aria-label={`${project.title} project video`}
+          >
+            <div className="project-detail__video-frame">
+              <iframe
+                src={`https://www.youtube.com/embed/${project.videoYoutubeId}?rel=0`}
+                title={`${project.title} project video`}
+                loading="lazy"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </section>
+        ) : null}
+
         {project.gallery.length ? (
           <section className="project-detail__gallery" aria-label="Gallery">
             {project.gallery.map(image => (

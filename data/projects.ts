@@ -33,6 +33,7 @@ export type Project = {
   tags: string[];
   sections: ProjectSection[];
   related?: string[];
+  videoYoutubeId?: string;
 };
 
 const baseProjects: Project[] = [
@@ -639,6 +640,48 @@ const baseProjects: Project[] = [
     ],
   },
   {
+    slug: 'velskov-forest',
+    title: 'Velskov Forest',
+    location: 'Velskov forest farm, Waitakere Ranges',
+    region: 'West Auckland',
+    type: 'Commercial',
+    roof: 'Pitched',
+    year: '—',
+    heroImage: {
+      src: '/images/project-velskov-01.jpg',
+      alt: 'Pitched pergola in the middle of native forest at Velskov',
+    },
+    gallery: [
+      { src: '/images/project-velskov-01.jpg', alt: 'Pergola structure sitting within the native forest at Velskov' },
+      { src: '/images/project-velskov-02.jpg', alt: 'Side view of the Velskov pergola surrounded by bush' },
+      { src: '/images/project-velskov-03.jpg', alt: 'Detail of the pergola in the Velskov forest farm' },
+    ],
+    blurb:
+      'Shallow-pitch commercial pergola set in the middle of a native forest farm, providing sheltered space without competing with the canopy.',
+    description: [
+      'Velskov is a 10-acre natural forest farm just outside Auckland, growing food regeneratively within a biodiverse native bush setting and focusing on agroforestry and ecosystem restoration rather than harvesting trees for timber.',
+      'Our brief here was to create a simple, robust structure that could sit quietly in the middle of the native forest, giving Velskov a dry, usable space for farm activity while keeping the focus on the surrounding ecosystem.',
+      'We set out a 7 m by 6 m pergola at 3.5 m height with a shallow 7° pitched roof so the cover feels generous underneath but keeps a low profile beneath the forest canopy.',
+    ],
+    stats: {
+      width: '7.0 m',
+      depth: '6.0 m',
+      height: '3.5 m',
+      area: '42.0 m²',
+      pitch: '7°',
+    },
+    scope: [
+      'Set out a 7.0 m by 6.0 m pergola footprint within the native forest',
+      'Installed a 3.5 m high pitched frame with a 7° fall',
+      'Coordinated installation to respect existing forest plantings and access',
+    ],
+    extras: [],
+    tags: ['Commercial', 'Pitched', 'Bush'],
+    sections: [],
+    related: ['waitakere-ranges-lanai', 'goodhome-commercial-terrace'],
+    videoYoutubeId: 'e5RXcNdCrD4',
+  },
+  {
     slug: 'st-heliers-townhouse',
     title: 'St Heliers Townhouse',
     location: 'St Heliers, Auckland',
@@ -702,6 +745,7 @@ const baseProjects: Project[] = [
 
 const projectOrder: string[] = [
   'devonport-gable-lightwell', // Lilliput Mini Golf
+  'velskov-forest',            // Velskov Forest
   'tindalls-bay-pavilion',     // Tindalls Bay - Patio & Carport
   'goodhome-commercial-terrace', // The Good Home Takanini
   'dairy-flat-estate',         // Dairy Flat Estate

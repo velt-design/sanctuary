@@ -251,7 +251,7 @@ export const productContent: Record<string, ProductContent> = {
       'Lighting, blinds and gable infills available',
     ],
     howItWorks:
-      'Two roof planes meet at a central ridge. Deep beams and engineered brackets carry loads to posts; roof sheets sit on carriers that manage drainage and movement. Clear, opal or tinted sheets tune light and glare.',
+      'Two roof planes meet at a central ridge. Deep aluminium beams and engineered brackets carry loads to posts; roof sheets lock into aluminium joiners sitting on long‑run butterfly rubber along each rafter to manage drainage and movement. Clear, opal or tinted sheets tune light and glare.',
     whyItsGood: [
       'Feels taller and airier than a single pitch',
       'Handles gusty sites well with good structural depth',
@@ -261,40 +261,28 @@ export const productContent: Record<string, ProductContent> = {
     structureMaterials: [
       'Powder‑coated aluminium beams, rafters and posts',
       'Engineered ridge and hip components',
-      'Roof sheets on carriers for tidy soffit and drainage',
+      'Roof sheets held in aluminium joiners sitting on long‑run butterfly rubber along each rafter for tidy soffit and drainage',
       'Brackets and fixings specified to site wind zone',
     ],
     options: [
-      'Clear / opal / tinted roofing mixes',
-      'Feature gable infill: open, slatted or acrylic',
-      'Integrated downlights and perimeter strip lighting',
-      'Drop‑down blinds or fixed screens to temper wind',
+      'Acrylic: Acrylic roofing—clear, light grey, dark grey, or opal across both roof planes; 99% UV block with tints to tune heat and glare.',
+      'Timber: Timber sarking roof panels give a warm, premium ceiling and strong heat‑reduction over dining and lounge zones.',
+      'Combination: Combination roof using insulated timber sarking panels with acrylic skylight strips so the ridge stays bright while seating areas stay cooler.',
+      'Gable infill: Open, slatted or acrylic infills at the gable ends to temper wind, frame views and help manage weather.',
     ],
     performance: [
       'Excellent headroom and perceived volume',
       'Natural ridge ventilation for warm‑weather comfort',
       'Stable in variable winds; low visual clutter',
-      'Quiet, rattle‑free fastening via carriers',
+      'Quiet, rattle‑free fastening via aluminium joiners on butterfly rubber',
     ],
-    recommendedFor: [
-      'Larger decks and wide sliders',
-      'Homes that benefit from symmetrical rooflines',
-    ],
-    notIdealFor: [
-      'Tight eaves where a single pitch reads cleaner',
-      'Sites with severe height limits at the house junction',
-    ],
-    install: ['Lead time ~6 weeks • Install 2–4 days'],
+    recommendedFor: [],
+    notIdealFor: [],
+    install: ['Lead time ~6–8 weeks • Install 2–5 days'],
     maintenance: ['Wash down periodically • Clear gutters and confirm downpipe flow'],
-    upgradePath: ['Add blinds/screens now or later • Consider heaters for evening use'],
-    bestPairedWith: [
-      'Drop‑down blinds at long faces',
-      'Downlights along the ridge; perimeter strip for ambience',
-    ],
-    indicativePerformance: [
-      'Typical ridge spans ~3.6–5.4 m (depends on bay spacing and wind zone)',
-      'Pitch and sheet type tuned to site conditions',
-    ],
+    upgradePath: [],
+    bestPairedWith: [],
+    indicativePerformance: [],
     faqs: [
       {
         q: 'Is a gable too bright?',
