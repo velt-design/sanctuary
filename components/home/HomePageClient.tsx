@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import SpReveal from '@/components/SpReveal';
+import ProjectsCarouselMobile from '@/app/projects/ProjectsCarouselMobile';
 import HomeHeroSection from '@/components/home/HomeHeroSection';
 import TimberSection from '@/components/home/TimberSection';
 import AcrylicSection from '@/components/home/AcrylicSection';
@@ -10,6 +11,7 @@ import ProjectSpotlightSection from '@/components/home/ProjectSpotlightSection';
 import HomeGallerySection from '@/components/home/HomeGallerySection';
 import HomeFeatureBar from '@/components/home/HomeFeatureBar';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
+import { projects } from '@/data/projects';
 
 export type ProcessStep = { title: string; desc: string };
 
@@ -256,6 +258,12 @@ export default function HomePageClient({
 
         <ProjectSpotlightSection />
         <HomeGallerySection />
+        <ProjectsCarouselMobile
+          projects={projects.slice(0, 4)}
+          seeMoreHref="/projects"
+          seeMoreLabel="See more projects"
+          showNav={false}
+        />
         <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
 
         {/* Removed in-page CTA to use global full-height footer instead */}

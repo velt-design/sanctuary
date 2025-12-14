@@ -7,9 +7,17 @@ import type { Project } from '@/data/projects';
 
 type ProjectsCarouselMobileProps = {
   projects: Project[];
+  seeMoreHref?: string;
+  seeMoreLabel?: string;
+  showNav?: boolean;
 };
 
-export default function ProjectsCarouselMobile({ projects }: ProjectsCarouselMobileProps) {
+export default function ProjectsCarouselMobile({
+  projects,
+  seeMoreHref,
+  seeMoreLabel = 'See more projects',
+  showNav = true,
+}: ProjectsCarouselMobileProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
 
   if (!projects.length) return null;
@@ -63,8 +71,21 @@ export default function ProjectsCarouselMobile({ projects }: ProjectsCarouselMob
             </div>
           </Link>
         ))}
+        {seeMoreHref ? (
+          <Link
+            href={seeMoreHref}
+            className="projects-mobile-card projects-mobile-card--cta"
+            aria-label={seeMoreLabel}
+          >
+            <div className="projects-mobile-card__panel">
+              <p className="projects-mobile-card__title projects-mobile-card__title--cta">
+                {seeMoreLabel}
+              </p>
+            </div>
+          </Link>
+        ) : null}
       </div>
-      {projects.length > 1 && (
+      {projects.length > 1 && showNav !== false && (
         <div className="projects-mobile-carousel__nav" aria-label="Scroll projects">
           <button type="button" onClick={() => scrollByCard(-1)} aria-label="Previous project">
             <span aria-hidden>‹</span>
@@ -77,4 +98,3 @@ export default function ProjectsCarouselMobile({ projects }: ProjectsCarouselMob
     </section>
   );
 }
-

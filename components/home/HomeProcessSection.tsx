@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import type { ProcessStep } from '@/components/home/HomePageClient';
 
 type HomeProcessSectionProps = {
@@ -14,12 +15,14 @@ export default function HomeProcessSection({
 }: HomeProcessSectionProps) {
   const processWrapRef = useRef<HTMLDivElement | null>(null);
   const stepElsRef = useRef<Array<HTMLDivElement | null>>([]);
+  const mobileSummaryRefs = useRef<Array<HTMLElement | null>>([]);
   const [activeStep, setActiveStep] = useState(1);
   const [copyStep, setCopyStep] = useState(1);
   const [mobileOpenStep, setMobileOpenStep] = useState<number | null>(null);
   const [copyVisible, setCopyVisible] = useState(true);
   const ioSeenRef = useRef<Set<number>>(new Set());
   const scrollGateRef = useRef(false);
+  const mobileAnchorRef = useRef<{ index: number; top: number } | null>(null);
 
   // Delay showing copy by 0.5s on step change, with 0.25s fade in/out handled in CSS
   useEffect(() => {
@@ -32,6 +35,15 @@ export default function HomeProcessSection({
   }, [activeStep]);
 
   const handleMobileStepToggle = (stepIndex: number) => {
+    if (typeof window !== 'undefined') {
+      const summaryEl = mobileSummaryRefs.current[stepIndex - 1];
+      if (summaryEl && window.innerWidth <= 720) {
+        const rect = summaryEl.getBoundingClientRect();
+        mobileAnchorRef.current = { index: stepIndex, top: rect.top };
+      } else {
+        mobileAnchorRef.current = null;
+      }
+    }
     setMobileOpenStep((current) => (current === stepIndex ? null : stepIndex));
   };
 
@@ -116,6 +128,32 @@ export default function HomeProcessSection({
     };
   }, [activeStep]);
 
+  // Keep tapped mobile summary anchored in place when its accordion opens/closes
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const anchor = mobileAnchorRef.current;
+    if (!anchor) return;
+    if (window.innerWidth > 720) {
+      mobileAnchorRef.current = null;
+      return;
+    }
+
+    const summaryEl = mobileSummaryRefs.current[anchor.index - 1];
+    if (!summaryEl) {
+      mobileAnchorRef.current = null;
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const rect = summaryEl.getBoundingClientRect();
+      const deltaY = rect.top - anchor.top;
+      if (Math.abs(deltaY) > 1) {
+        window.scrollBy({ top: deltaY, left: 0, behavior: 'auto' });
+      }
+      mobileAnchorRef.current = null;
+    });
+  }, [mobileOpenStep]);
+
   return (
     <>
       <section className="container process-head" aria-label="Process heading">
@@ -178,6 +216,9 @@ export default function HomeProcessSection({
                 >
                   <summary
                     className="process-mobile__summary"
+                    ref={(el) => {
+                      mobileSummaryRefs.current[i] = el;
+                    }}
                     onClick={(e) => {
                       e.preventDefault();
                       handleMobileStepToggle(stepIndex);
@@ -209,6 +250,14 @@ export default function HomeProcessSection({
           </div>
         </div>
       </section>
+
+      <div className="process-cta-bar" aria-hidden={false}>
+        <div className="container process-cta-bar__inner">
+          <Link href="/contact" className="process-cta-bar__link">
+            Contact us
+          </Link>
+        </div>
+      </div>
     </>
   );
 }

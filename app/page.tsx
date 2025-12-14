@@ -2,6 +2,7 @@ import HomePageClient, {
   type HomePageContent,
 } from '@/components/home/HomePageClient';
 import './home.css';
+import './projects/projects.css';
 
 // Simple neutral blur placeholder for LCP images
 const BLUR =
