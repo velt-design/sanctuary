@@ -191,14 +191,14 @@ export default function HomeProcessSection({
                   >
                     <div className="process-mobile__summary-main">
                       <div className="process-mobile__num" aria-hidden>
-                        {String(stepIndex).padStart(2, '0')}
+                        {String(stepIndex)}
                       </div>
                       <div className="process-mobile__text">
                         <h3 className="process-mobile__title">{step.title}</h3>
                         <p className="process-mobile__desc">{step.desc}</p>
                       </div>
+                      <span className="accordion__icon" aria-hidden="true" />
                     </div>
-                    <span className="accordion__icon" aria-hidden="true" />
                   </summary>
                   <div className="process-mobile__panel">
                     <p className="process-mobile__copy">{copyTexts[i]}</p>
