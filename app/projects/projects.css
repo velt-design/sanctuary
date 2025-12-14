@@ -233,7 +233,7 @@
   background:var(--pageWhite,#fff);
   border-radius:18px;
   border:var(--bw) solid var(--border);
-  box-shadow:0 18px 44px rgba(15,15,16,.18);
+  box-shadow:8px 12px 26px rgba(15,15,16,.25);
   overflow:hidden;
   text-decoration:none;
   color:inherit;

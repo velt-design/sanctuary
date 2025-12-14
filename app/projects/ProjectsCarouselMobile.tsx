@@ -22,43 +22,40 @@ export default function ProjectsCarouselMobile({
   const trackRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef({
     active: false,
-    isDragging: false,
+    isDragging: false, // true when movement exceeds tap threshold
     startX: 0,
     startY: 0,
+    lastX: 0,
+    lastY: 0,
   });
 
   const startDrag = (x: number, y: number) => {
-    dragStateRef.current.active = true;
-    dragStateRef.current.isDragging = false;
-    dragStateRef.current.startX = x;
-    dragStateRef.current.startY = y;
+    const state = dragStateRef.current;
+    state.active = true;
+    state.isDragging = false;
+    state.startX = x;
+    state.startY = y;
+    state.lastX = x;
+    state.lastY = y;
   };
 
   const updateDrag = (x: number, y: number) => {
     const state = dragStateRef.current;
-    if (!state.active || state.isDragging) return;
-    const dx = x - state.startX;
-    const dy = y - state.startY;
-    const distance = Math.hypot(dx, dy);
-    if (distance > 10) {
-      state.isDragging = true;
-    }
+    if (!state.active) return;
+    state.lastX = x;
+    state.lastY = y;
   };
 
   const endDrag = () => {
-    dragStateRef.current.active = false;
-  };
-
-  const handlePointerDown: React.PointerEventHandler<HTMLAnchorElement> = event => {
-    startDrag(event.clientX, event.clientY);
-  };
-
-  const handlePointerMove: React.PointerEventHandler<HTMLAnchorElement> = event => {
-    updateDrag(event.clientX, event.clientY);
-  };
-
-  const handlePointerUp: React.PointerEventHandler<HTMLAnchorElement> = () => {
-    endDrag();
+    const state = dragStateRef.current;
+    if (!state.active) return;
+    const dx = state.lastX - state.startX;
+    const dy = state.lastY - state.startY;
+    const distance = Math.hypot(dx, dy);
+    const TAP_THRESHOLD = 14; // px – small jitter allowed
+    // If movement exceeds threshold, treat as swipe/scroll, not a tap
+    state.isDragging = distance > TAP_THRESHOLD;
+    state.active = false;
   };
 
   const handleTouchStart: React.TouchEventHandler<HTMLAnchorElement> = event => {
@@ -89,8 +86,7 @@ export default function ProjectsCarouselMobile({
     if (!projects.length) return;
     if (typeof window === 'undefined') return;
     const isDesktop = window.matchMedia('(min-width: 961px)').matches;
-    const isHomepage = typeof document !== 'undefined' && document.body.classList.contains('homepage');
-    if (!isDesktop || !isHomepage) return;
+    if (!isDesktop) return;
 
     const track = trackRef.current;
     if (!track) return;
@@ -98,16 +94,17 @@ export default function ProjectsCarouselMobile({
     const firstCard = track.querySelector<HTMLElement>('[data-project-card]');
     if (!firstCard) return;
 
-    // On desktop homepage, pad the left side of the track so
-    // the first card sits centered in the viewport with white
-    // space to the left at scrollLeft = 0.
+    // On desktop, pad the left side of the track so the first card
+    // sits centered in the viewport with white space on the left at
+    // scrollLeft = 0. This keeps Velskov Forest visible on the right.
     const cs = getComputedStyle(track);
-    const basePaddingLeft = parseFloat(cs.paddingLeft || '0') || 0;
-    const desired = track.clientWidth / 2 - firstCard.offsetWidth / 2;
-    if (desired > basePaddingLeft) {
-      track.style.paddingLeft = `${desired}px`;
+    const currentRight = cs.paddingRight;
+    const desired = Math.max(0, track.clientWidth / 2 - firstCard.offsetWidth / 2);
+    track.style.paddingLeft = `${desired}px`;
+    // Preserve whatever right padding was configured in CSS
+    if (currentRight) {
+      track.style.paddingRight = currentRight;
     }
-
     track.scrollLeft = 0;
   }, [projects.length]);
 
@@ -142,10 +139,6 @@ export default function ProjectsCarouselMobile({
             className="projects-mobile-card"
             data-project-card
             aria-label={`${project.title} – ${project.location}`}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -176,10 +169,6 @@ export default function ProjectsCarouselMobile({
             href={seeMoreHref}
             className="projects-mobile-card projects-mobile-card--cta"
             aria-label={seeMoreLabel}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
