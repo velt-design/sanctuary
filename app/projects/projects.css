@@ -299,6 +299,15 @@
 }
 .projects-mobile-carousel__nav button span{display:block;transform:translateY(-1px)}
 
+@media (min-width:961px){
+  /* Homepage: slightly larger project tiles on desktop */
+  body.homepage .projects-mobile-card{
+    height:clamp(345px,64.4vh,460px);
+    flex:0 0 calc(1.15 * (100% - clamp(32px,10vw,56px)));
+    max-width:calc(1.15 * 476px);
+  }
+}
+
 @media (hover:hover) and (min-width:1024px){
   .projects-list__item:hover{background:rgba(0,0,0,.04)}
   .project-hero__nav button:hover{background:rgba(0,0,0,.6)}

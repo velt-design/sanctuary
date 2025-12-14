@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -84,6 +84,32 @@ export default function ProjectsCarouselMobile({
       dragStateRef.current.isDragging = false;
     }
   };
+
+  useEffect(() => {
+    if (!projects.length) return;
+    if (typeof window === 'undefined') return;
+    const isDesktop = window.matchMedia('(min-width: 961px)').matches;
+    const isHomepage = typeof document !== 'undefined' && document.body.classList.contains('homepage');
+    if (!isDesktop || !isHomepage) return;
+
+    const track = trackRef.current;
+    if (!track) return;
+
+    const firstCard = track.querySelector<HTMLElement>('[data-project-card]');
+    if (!firstCard) return;
+
+    // On desktop homepage, pad the left side of the track so
+    // the first card sits centered in the viewport with white
+    // space to the left at scrollLeft = 0.
+    const cs = getComputedStyle(track);
+    const basePaddingLeft = parseFloat(cs.paddingLeft || '0') || 0;
+    const desired = track.clientWidth / 2 - firstCard.offsetWidth / 2;
+    if (desired > basePaddingLeft) {
+      track.style.paddingLeft = `${desired}px`;
+    }
+
+    track.scrollLeft = 0;
+  }, [projects.length]);
 
   if (!projects.length) return null;
 

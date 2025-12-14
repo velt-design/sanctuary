@@ -250,14 +250,18 @@ export default function HomeProcessSection({
           </div>
         </div>
       </section>
-
-      <div className="process-cta-bar" aria-hidden={false}>
-        <div className="container process-cta-bar__inner">
-          <Link href="/contact" className="process-cta-bar__link">
-            Contact us
-          </Link>
-        </div>
-      </div>
     </>
+  );
+}
+
+export function HomeProcessCtaBar() {
+  return (
+    <div className="process-cta-bar" aria-hidden={false}>
+      <div className="container process-cta-bar__inner">
+        <Link href="/contact" className="process-cta-bar__link">
+          Contact us
+        </Link>
+      </div>
+    </div>
   );
 }

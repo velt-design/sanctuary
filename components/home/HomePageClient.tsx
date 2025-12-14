@@ -6,8 +6,7 @@ import ProjectsCarouselMobile from '@/app/projects/ProjectsCarouselMobile';
 import HomeHeroSection from '@/components/home/HomeHeroSection';
 import TimberSection from '@/components/home/TimberSection';
 import AcrylicSection from '@/components/home/AcrylicSection';
-import HomeProcessSection from '@/components/home/HomeProcessSection';
-import ProjectSpotlightSection from '@/components/home/ProjectSpotlightSection';
+import HomeProcessSection, { HomeProcessCtaBar } from '@/components/home/HomeProcessSection';
 import HomeFeatureBar from '@/components/home/HomeFeatureBar';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
 import { projects } from '@/data/projects';
@@ -235,9 +234,8 @@ export default function HomePageClient({
         <div id="gallery" aria-hidden="true" />
 
         <HomeFeatureBar featureItems={featureItems} />
-        <HomeProductsSection blurDataUrl={blurDataUrl} />
 
-        {/* Word-by-word statement section (after product tiles) */}
+        {/* Word-by-word statement section (text left + images right) */}
         <SpReveal
           id="sp-reveal-1"
           sentence="Every |angle |resolved. Comfort in any weather. Beautiful from every view. Designed for the {way you live.}| Built for light, life, and leisure. Sanctuary |Pergolas."
@@ -252,19 +250,35 @@ export default function HomePageClient({
           }
         />
 
+        <section className="container materials-head" aria-label="Materials heading">
+          <div className="process-head__inner">
+            <h2 className="process-head__title">Materials</h2>
+          </div>
+        </section>
+
         <TimberSection />
         <AcrylicSection />
 
-        <ProjectSpotlightSection />
+        <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
+
+        <section className="container projects-head" aria-label="Projects heading">
+          <div className="process-head__inner">
+            <h2 className="process-head__title">Projects</h2>
+          </div>
+        </section>
+
         <ProjectsCarouselMobile
           projects={projects.slice(0, 4)}
           seeMoreHref="/projects"
           seeMoreLabel="See more projects"
           showNav={false}
         />
-        <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
 
-        {/* Removed in-page CTA to use global full-height footer instead */}
+        <HomeProductsSection blurDataUrl={blurDataUrl} />
+
+        <HomeProcessCtaBar />
+
+        {/* Contact red bar now appears above the global footer */}
       </main>
     </div>
   );
