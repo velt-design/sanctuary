@@ -106,50 +106,6 @@ h2{font-size:22px}
 
 /* Dedicated mobile hero image (hidden by default) */
 
-.home-gallery{
-  width: 100vw;
-  margin: 0 auto calc(var(--g) * 3.125);
-  padding: 0;
-}
-
-.home-gallery .projects-experience__viewer{
-  width: 100vw;
-  max-width: 100vw;
-  height: clamp(456px, 82vw, 90vh);
-}
-
-.home-gallery .viewer{
-  background: var(--bg);
-}
-
-.home-gallery .viewer .stage{
-  background: var(--bg);
-}
-
-.home-gallery .viewer.mode-slider .slides{
-  gap: clamp(24px, 4vw, 64px);
-  padding-inline: 0;
-}
-
-/* Extra vertical space between gallery images and scrubber on homepage */
-.home-gallery .viewer.mode-slider .scrubber{
-  bottom: clamp(32px, 6vh, 72px);
-}
-
-/* Ensure home-gallery viewer images fully cover their 16:9 box (no white inside) */
-.home-gallery .projects-experience__viewer-actual .viewer.mode-slider .slide img{
-  object-fit: cover;
-  object-position: center;
-  background: transparent;
-}
-
-@media (max-width: 767px){
-  .home-gallery{
-    display: none;
-  }
-}
-
-
 /* Process steps (homepage) */
 .steps-grid{display:grid;grid-template-columns:1fr;gap:var(--g)}
 .container > .steps-grid{margin-top:calc(var(--g) * 1.25)}

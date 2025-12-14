@@ -8,7 +8,6 @@ import TimberSection from '@/components/home/TimberSection';
 import AcrylicSection from '@/components/home/AcrylicSection';
 import HomeProcessSection from '@/components/home/HomeProcessSection';
 import ProjectSpotlightSection from '@/components/home/ProjectSpotlightSection';
-import HomeGallerySection from '@/components/home/HomeGallerySection';
 import HomeFeatureBar from '@/components/home/HomeFeatureBar';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
 import { projects } from '@/data/projects';
@@ -257,7 +256,6 @@ export default function HomePageClient({
         <AcrylicSection />
 
         <ProjectSpotlightSection />
-        <HomeGallerySection />
         <ProjectsCarouselMobile
           projects={projects.slice(0, 4)}
           seeMoreHref="/projects"

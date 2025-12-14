@@ -226,8 +226,8 @@
 .projects-mobile-carousel__track::-webkit-scrollbar{display:none}
 .projects-mobile-card{
   position:relative;
-  flex:0 0 calc(85% - clamp(32px,10vw,56px));
-  max-width:414px;
+  flex:0 0 calc(100% - clamp(32px,10vw,56px));
+  max-width:476px;
   height:clamp(300px,56vh,400px);
   scroll-snap-align:center;
   background:var(--pageWhite,#fff);

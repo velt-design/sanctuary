@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import type React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Project } from '@/data/projects';
@@ -19,6 +20,70 @@ export default function ProjectsCarouselMobile({
   showNav = true,
 }: ProjectsCarouselMobileProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef({
+    active: false,
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+  });
+
+  const startDrag = (x: number, y: number) => {
+    dragStateRef.current.active = true;
+    dragStateRef.current.isDragging = false;
+    dragStateRef.current.startX = x;
+    dragStateRef.current.startY = y;
+  };
+
+  const updateDrag = (x: number, y: number) => {
+    const state = dragStateRef.current;
+    if (!state.active || state.isDragging) return;
+    const dx = x - state.startX;
+    const dy = y - state.startY;
+    const distance = Math.hypot(dx, dy);
+    if (distance > 10) {
+      state.isDragging = true;
+    }
+  };
+
+  const endDrag = () => {
+    dragStateRef.current.active = false;
+  };
+
+  const handlePointerDown: React.PointerEventHandler<HTMLAnchorElement> = event => {
+    startDrag(event.clientX, event.clientY);
+  };
+
+  const handlePointerMove: React.PointerEventHandler<HTMLAnchorElement> = event => {
+    updateDrag(event.clientX, event.clientY);
+  };
+
+  const handlePointerUp: React.PointerEventHandler<HTMLAnchorElement> = () => {
+    endDrag();
+  };
+
+  const handleTouchStart: React.TouchEventHandler<HTMLAnchorElement> = event => {
+    const touch = event.touches[0] || event.changedTouches[0];
+    if (!touch) return;
+    startDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchMove: React.TouchEventHandler<HTMLAnchorElement> = event => {
+    const touch = event.touches[0] || event.changedTouches[0];
+    if (!touch) return;
+    updateDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleTouchEnd: React.TouchEventHandler<HTMLAnchorElement> = () => {
+    endDrag();
+  };
+
+  const handleCardClick: React.MouseEventHandler<HTMLAnchorElement> = event => {
+    if (dragStateRef.current.isDragging) {
+      event.preventDefault();
+      event.stopPropagation();
+      dragStateRef.current.isDragging = false;
+    }
+  };
 
   if (!projects.length) return null;
 
@@ -51,6 +116,15 @@ export default function ProjectsCarouselMobile({
             className="projects-mobile-card"
             data-project-card
             aria-label={`${project.title} – ${project.location}`}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            onClick={handleCardClick}
           >
             <div className="projects-mobile-card__image">
               <Image
@@ -76,6 +150,15 @@ export default function ProjectsCarouselMobile({
             href={seeMoreHref}
             className="projects-mobile-card projects-mobile-card--cta"
             aria-label={seeMoreLabel}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
+            onClick={handleCardClick}
           >
             <div className="projects-mobile-card__panel">
               <p className="projects-mobile-card__title projects-mobile-card__title--cta">
