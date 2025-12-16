@@ -54,7 +54,7 @@ async function optimiseImage(filePath) {
     return;
   }
 
-  const { width, height, format } = metadata;
+  const { width, height, format, orientation } = metadata;
   if (!width || !height) {
     console.warn(`Skipping ${relPath}: unknown dimensions`);
     return;
@@ -62,16 +62,21 @@ async function optimiseImage(filePath) {
 
   const longest = Math.max(width, height);
   const needsResize = longest > MAX_DIMENSION;
+  const needsOrientationFix = typeof orientation === 'number' && orientation !== 1;
 
-  // If it’s already below our target and a JPEG/PNG, leave it alone.
-  if (!needsResize && (format === 'jpeg' || format === 'png')) {
-    console.log(`Skipping ${relPath}: already <= ${MAX_DIMENSION}px`);
+  // If it’s already below our target, has normal orientation and is a JPEG/PNG, leave it alone.
+  if (!needsResize && !needsOrientationFix && (format === 'jpeg' || format === 'png')) {
+    console.log(`Skipping ${relPath}: already <= ${MAX_DIMENSION}px and orientation normal`);
     return;
   }
 
   const originalSize = fs.statSync(filePath).size;
 
   let pipeline = sharp(filePath);
+  // Normalise EXIF orientation when required so pixels are stored upright.
+  if (needsOrientationFix) {
+    pipeline = pipeline.rotate();
+  }
   if (needsResize) {
     if (width >= height) {
       pipeline = pipeline.resize({ width: MAX_DIMENSION });
@@ -102,8 +107,8 @@ async function optimiseImage(filePath) {
     return;
   }
 
-  // If optimisation didn’t reduce size and we didn’t resize, keep original.
-  if (!needsResize && buffer.length >= originalSize * 0.98) {
+  // If optimisation didn’t reduce size and we didn’t resize or fix orientation, keep original.
+  if (!needsResize && !needsOrientationFix && buffer.length >= originalSize * 0.98) {
     console.log(`Skipping ${relPath}: no meaningful size reduction`);
     return;
   }
@@ -145,4 +150,3 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
-
