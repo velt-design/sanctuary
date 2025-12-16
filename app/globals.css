@@ -372,28 +372,6 @@ body.viewer-fullscreen .projects-experience__viewer {
   max-height: none;
 }
 
-/* Footer map: visible only on md+ (match Tailwind breakpoints) */
-.site-footer__map{
-  display:none;
-}
-@media (min-width: 768px){
-  .site-footer__map{
-    display:flex;
-  }
-}
-
-/* Auckland highlight ring position over map */
-.site-footer__auckland-ring{
-  position:absolute;
-  width:96px;
-  height:96px;
-  border-radius:9999px;
-  border:2px solid var(--accentRed, #813F39);
-  top:32%;
-  left:52%;
-  transform:translate(-50%, -50%);
-}
-
 /* === Projects (grid/tiles + controls) === */
 .projects-page { background:#ECEDEE; min-height:100vh; position:relative; }
 

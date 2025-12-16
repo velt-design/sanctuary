@@ -16,15 +16,37 @@ function isAllowedOrigin(req: Request): boolean {
   if (!origin) return true;
   try {
     const { hostname } = new URL(origin);
-    if (
-      hostname === 'localhost' ||
-      hostname === '127.0.0.1' ||
-      hostname === '::1' ||
-      hostname === 'www.sanctuarypergolas.co.nz' ||
-      hostname === 'sanctuarypergolas.co.nz'
-    ) {
+    const host = hostname.toLowerCase();
+
+    // Core allowed hosts for production + local dev
+    const baseAllowed = new Set([
+      'localhost',
+      '127.0.0.1',
+      '::1',
+      'www.sanctuarypergolas.co.nz',
+      'sanctuarypergolas.co.nz',
+    ]);
+
+    // Allow additional hosts from environment (e.g. staging/preview domains)
+    const envHosts = [
+      process.env.VERCEL_URL,
+      process.env.NEXT_PUBLIC_SITE_HOST,
+      ...(process.env.ALLOWED_ORIGINS || '').split(','),
+    ]
+      .map(h => (h || '').trim().toLowerCase())
+      .filter(Boolean);
+
+    envHosts.forEach(h => baseAllowed.add(h));
+
+    if (baseAllowed.has(host)) {
       return true;
     }
+
+    // Optionally allow subdomains of the primary site (e.g. preview.sanctuarypergolas.co.nz)
+    if (host.endsWith('.sanctuarypergolas.co.nz')) {
+      return true;
+    }
+
     return false;
   } catch {
     return false;

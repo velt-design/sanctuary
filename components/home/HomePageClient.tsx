@@ -9,6 +9,7 @@ import AcrylicSection from '@/components/home/AcrylicSection';
 import HomeProcessSection, { HomeProcessCtaBar } from '@/components/home/HomeProcessSection';
 import HomeFeatureBar from '@/components/home/HomeFeatureBar';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
+import HomeWarrantySupportSection from '@/components/home/HomeWarrantySupportSection';
 import { projects } from '@/data/projects';
 
 export type ProcessStep = { title: string; desc: string };
@@ -266,15 +267,20 @@ export default function HomePageClient({
             <h2 className="process-head__title">Projects</h2>
           </div>
         </section>
-
         <ProjectsCarouselMobile
           projects={projects.slice(0, 4)}
           seeMoreHref="/projects"
           seeMoreLabel="See more projects"
           showNav={false}
+          // From the homepage, deep-link into the projects
+          // index with a pre-selected slug rather than
+          // going straight to the standalone detail page.
+          linkVariant="index-with-slug"
         />
 
         <HomeProductsSection blurDataUrl={blurDataUrl} />
+
+        <HomeWarrantySupportSection />
 
         <HomeProcessCtaBar />
 

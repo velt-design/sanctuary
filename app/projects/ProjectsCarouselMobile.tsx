@@ -11,6 +11,22 @@ type ProjectsCarouselMobileProps = {
   seeMoreHref?: string;
   seeMoreLabel?: string;
   showNav?: boolean;
+  /**
+   * Controls how project cards link:
+   * - "detail" (default): /projects/[slug]
+   * - "index-with-slug": /projects?slug=[slug]
+   */
+  linkVariant?: 'detail' | 'index-with-slug';
+  /**
+   * Optional explicit href builder. If provided, this takes precedence
+   * over linkVariant for maximum flexibility.
+   */
+  getHref?: (project: Project) => string;
+  /**
+   * Optional slug to gently bias the initial scroll position toward
+   * a specific project (used when landing on /projects?slug=...).
+   */
+  initialSlug?: string;
 };
 
 export default function ProjectsCarouselMobile({
@@ -18,6 +34,9 @@ export default function ProjectsCarouselMobile({
   seeMoreHref,
   seeMoreLabel = 'See more projects',
   showNav = true,
+  linkVariant = 'detail',
+  getHref,
+  initialSlug,
 }: ProjectsCarouselMobileProps) {
   const trackRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef({
@@ -96,7 +115,7 @@ export default function ProjectsCarouselMobile({
 
     // On desktop, pad the left side of the track so the first card
     // sits centered in the viewport with white space on the left at
-    // scrollLeft = 0. This keeps Velskov Forest visible on the right.
+    // scrollLeft = 0. This keeps the right side visible.
     const cs = getComputedStyle(track);
     const currentRight = cs.paddingRight;
     const desired = Math.max(0, track.clientWidth / 2 - firstCard.offsetWidth / 2);
@@ -107,6 +126,31 @@ export default function ProjectsCarouselMobile({
     }
     track.scrollLeft = 0;
   }, [projects.length]);
+
+  // When an initialSlug is provided (e.g. /projects?slug=foo),
+  // gently scroll the track so that the matching project card
+  // is brought into view on first render.
+  useEffect(() => {
+    if (!initialSlug) return;
+    if (!projects.length) return;
+    const track = trackRef.current;
+    if (!track) return;
+    const target = track.querySelector<HTMLElement>(`[data-project-card][data-project-slug="${initialSlug}"]`);
+    if (!target) return;
+    const trackRect = track.getBoundingClientRect();
+    const cardRect = target.getBoundingClientRect();
+    const delta = cardRect.left - trackRect.left - track.clientWidth * 0.1;
+    track.scrollBy({ left: delta, behavior: 'smooth' });
+  }, [initialSlug, projects.length]);
+
+  const buildHref = (project: Project) => {
+    if (getHref) return getHref(project);
+    if (linkVariant === 'index-with-slug') {
+      const params = new URLSearchParams({ slug: project.slug });
+      return `/projects?${params.toString()}`;
+    }
+    return `/projects/${project.slug}`;
+  };
 
   if (!projects.length) return null;
 
@@ -135,9 +179,10 @@ export default function ProjectsCarouselMobile({
         {projects.map((project, index) => (
           <Link
             key={project.slug}
-            href={`/projects/${project.slug}`}
+            href={buildHref(project)}
             className="projects-mobile-card"
             data-project-card
+            data-project-slug={project.slug}
             aria-label={`${project.title} – ${project.location}`}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}

@@ -90,6 +90,27 @@ export default function ContactPage() {
   // Submit state
   const [submitState, setSubmitState] = useState<'idle'|'sending'|'success'|'error'>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  // Analytics helper (GA4 via window.gtag, if configured)
+  type GtagFn = (...args: any[]) => void;
+  const trackSubmitEvent = (phase:'start'|'success'|'error', extra?:Record<string, unknown>) => {
+    if (typeof window === 'undefined') return;
+    const gtag = (window as typeof window & { gtag?: GtagFn }).gtag;
+    if (typeof gtag !== 'function') return;
+    const base = {
+      event_category: 'contact',
+      event_label: enquiryType ?? 'Unknown',
+      enquiry_type: enquiryType ?? 'Unknown',
+      roof_count: roofSelected.length,
+      addons_count: addonsSelected.length,
+    };
+    try {
+      gtag('event', `contact_${phase}`, { ...base, ...extra });
+    } catch {
+      // Fail silently – analytics should never break form submission
+    }
+  };
 
   // Pick a preview image based on style selection
   const previewImg = useMemo(() => {
@@ -210,13 +231,13 @@ export default function ContactPage() {
     clearHideTimer();
   }, []);
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
-    e.preventDefault();
+  const submitForm = async (form: HTMLFormElement | null) => {
+    if (!form) return;
     if (submitState === 'sending') return;
     setSubmitError(null);
     setSubmitState('sending');
+    trackSubmitEvent('start');
     try {
-      const form = e.currentTarget;
       const fd = new FormData(form);
       // Basic guard to ensure name/email exist
       if (!fd.get('name')) fd.set('name', userName);
@@ -225,29 +246,53 @@ export default function ContactPage() {
       const json = await res.json().catch(() => ({ ok: res.ok }));
       if (res.ok && json?.ok) {
         setSubmitState('success');
+        trackSubmitEvent('success');
         try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
       } else {
         setSubmitState('error');
         setSubmitError(json?.error || 'Unable to send. Please email us directly.');
+        trackSubmitEvent('error', { status: res.status, error: json?.error || 'unknown' });
       }
     } catch {
       setSubmitState('error');
       setSubmitError('Something went wrong. Please try again.');
+      trackSubmitEvent('error', { error: 'network' });
     }
   };
 
+  const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
+    e.preventDefault();
+    await submitForm(e.currentTarget);
+  };
+
+  const isSending = submitState === 'sending';
+  const isSubmitted = submitState === 'success';
+  const sendLabel =
+    submitState === 'sending' ? 'SENDING…' :
+    submitState === 'success' ? 'SENT' :
+    'SEND';
+
+  const handleClickSend: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+    e.preventDefault();
+    submitForm(formRef.current);
+  };
+
   return (
-    <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''}`}>
+    <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''} ${isSubmitted ? 'contact-submitted' : ''}`}>
       <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 grid grid-cols-1 lg:grid-cols-[1fr_1px_1fr_1px_1fr] items-stretch gap-y-[var(--vgap)] lg:gap-y-[var(--vgap)] gap-x-[var(--gap)]">
-        {/* Left column */}
+        {/* Left column (keeps its space; content hides on submit) */}
         <div className="col-span-1 relative h-full">
           <div className="hw-tile contact-media" style={{height:'100%'}}>
-            <div className="contact-media__placeholder" aria-hidden={enquiryPicked}>
-              <span>1</span>
-            </div>
-            <div className="contact-media__img">
-              <Image src={previewImg} alt="Pergola example" fill sizes="(max-width: 960px) 100vw, 33vw" style={{ objectFit: 'cover' }} priority={false} />
-            </div>
+            {!isSubmitted && (
+              <>
+                <div className="contact-media__placeholder" aria-hidden={enquiryPicked}>
+                  <span>1</span>
+                </div>
+                <div className="contact-media__img">
+                  <Image src={previewImg} alt="Pergola example" fill sizes="(max-width: 960px) 100vw, 33vw" style={{ objectFit: 'cover' }} priority={false} />
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -492,12 +537,12 @@ export default function ContactPage() {
               {/* Send */}
               <div className="hw-tile send-tile">
                 <button
-                  type="submit"
+                  type="button"
                   className="send-btn"
-                  form="contact-form"
-                  disabled={submitState==='sending'}
+                  onClick={handleClickSend}
+                  disabled={isSending}
                 >
-                  {submitState==='sending' ? 'SENDING…' : 'SEND'}
+                  {sendLabel}
                 </button>
               </div>
               {submitState==='error' && (
@@ -686,9 +731,9 @@ export default function ContactPage() {
         {/* Rule 2 */}
         <div aria-hidden className="hidden lg:block bg-neutral-600/80 w-px h-full self-stretch" />
 
-        {/* Right column */}
+        {/* Right column (keeps its space; content hides on submit) */}
         <section className="contact-right space-y-4 sm:space-y-6">
-          {showRightControlsCustomer ? (
+          {!isSubmitted && showRightControlsCustomer ? (
             <div className="right-locked">
                 {/* Header / summary (spans both columns) */}
                 <div className="hw-tile summary-tile right-locked__header">
@@ -759,8 +804,13 @@ export default function ContactPage() {
 
                 {/* Submit (spans both) */}
                 <div className="hw-tile send-tile right-locked__send">
-                  <button type="submit" className="send-btn" form="contact-form" disabled={submitState==='sending'}>
-                    {submitState==='sending' ? 'SENDING…' : 'SEND'}
+                  <button
+                    type="button"
+                    className="send-btn"
+                    onClick={handleClickSend}
+                    disabled={isSending}
+                  >
+                    {sendLabel}
                   </button>
                 </div>
                 {submitState==='error' && (
@@ -772,7 +822,7 @@ export default function ContactPage() {
             </div>
           ) : null}
 
-          {enquiryType === 'Professional' && enquiryRevealed && !enquiryExpanded ? (
+          {!isSubmitted && enquiryType === 'Professional' && enquiryRevealed && !enquiryExpanded ? (
             <div className="contact-controls">
                 {/* Company */}
                 <div className="hw-tile span-2">
@@ -796,14 +846,27 @@ export default function ContactPage() {
                 </div>
                 {/* Submit */}
                 <div className="hw-tile span-2 send-tile mt-6">
-                  <button type="submit" className="send-btn" form="contact-form">SEND</button>
+                  <button
+                    type="button"
+                    className="send-btn"
+                    onClick={handleClickSend}
+                    disabled={isSending}
+                  >
+                    {sendLabel}
+                  </button>
                 </div>
+                {submitState==='error' && (
+                  <div className="hw-tile span-2" role="alert">
+                    <p><strong>Sorry, we couldn’t send your message.</strong></p>
+                    <p>{submitError}</p>
+                  </div>
+                )}
             </div>
           ) : null}
         </section>
 
         {/* CONTACT FORM (hidden inputs + target) */}
-        <form id="contact-form" method="post" action="/api/contact" style={{ display: 'contents' }} onSubmit={handleSubmit}>
+        <form ref={formRef} id="contact-form" method="post" action="/api/contact" onSubmit={handleSubmit}>
                 <input type="hidden" name="width_m" value={width.toFixed(1)} />
                 <input type="hidden" name="length_m" value={length.toFixed(1)} />
                 <input type="hidden" name="style" value={STYLE_OPTS[styleIdx]} />

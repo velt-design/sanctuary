@@ -113,8 +113,6 @@ export default function HomeProductsSection({
           </Link>
 
           <Link className="tile viewall" href="/products" aria-label="View full range">
-            <p className="k">.</p>
-            <h3 className="t">.</h3>
             <div className="m">
               <div className="cta-box">
                 <div className="cta-title">
@@ -124,6 +122,8 @@ export default function HomeProductsSection({
                 </div>
               </div>
             </div>
+            <p className="k">Pergolas</p>
+            <h3 className="t">View full range</h3>
           </Link>
         </div>
       </section>

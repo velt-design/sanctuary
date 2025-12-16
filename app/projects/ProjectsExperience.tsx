@@ -165,7 +165,10 @@ export default function ProjectsExperience({ projects }: { projects: Project[] }
             Swipe across the cards below and tap a project for the full case study.
           </p>
         </header>
-        <ProjectsCarouselMobile projects={filteredProjects} />
+        <ProjectsCarouselMobile
+          projects={filteredProjects}
+          initialSlug={selectedSlug}
+        />
       </main>
     );
   }

@@ -80,13 +80,17 @@ h2{font-size:22px}
 @media (min-width:1024px){.products-grid{grid-template-columns:repeat(4,1fr)}}
 @media (min-width:768px) and (max-width:1023px){.products-grid{grid-template-columns:repeat(2,1fr)}}
 
+/* Increase space below products before warranty band */
+#products{
+  padding-bottom: calc(1.25 * var(--g) * 3);
+}
+
 .tile{display:flex;flex-direction:column;min-height:0;cursor:pointer}
 .tile .k{margin:0 0 6px 0;font-size:12px;color:#777;letter-spacing:.10em;text-transform:uppercase}
 .tile .t{margin:0 0 12px 0;font-size:26px;line-height:1.2;display:inline-flex;gap:8px;padding-bottom:4px;border-bottom:var(--bw) solid var(--fg)}
 .tile .m{width:100%;height:clamp(320px,60dvh,920px);border:none;border-radius:0;overflow:hidden;position:relative}
 .tile .m img{width:100%;height:100%;object-fit:cover;object-position:center;transition:transform .9s cubic-bezier(.22,.61,.36,1)}
-.tile.viewall .k,.tile.viewall .t{visibility:hidden;border-color:transparent}
-.tile.viewall .m{background:var(--bg);border-left:none;border-right:none;border-top:var(--bw) solid var(--border);border-bottom:var(--bw) solid var(--border);display:flex;align-items:flex-end;justify-content:flex-start;position:relative;overflow:hidden}
+.tile.viewall .m{background:var(--bg);border:none;display:flex;align-items:flex-end;justify-content:flex-start;position:relative;overflow:hidden}
 .tile.viewall .m::before{content:"";position:absolute;inset:0;background:var(--ctaWipe);transform:scaleX(0);transform-origin:right center;transition:transform .55s ease;pointer-events:none}
 .tile.viewall .cta-box{width:100%;padding:clamp(14px,2.2vw,28px);position:relative;z-index:1}
 .tile.viewall .cta-title{font-size:clamp(18px,2.1vw,29px);line-height:1.15;color:var(--fg);transition:color .3s ease}
@@ -104,11 +108,11 @@ h2{font-size:22px}
 /* Dual-image zoom + parallax hover for homepage products tiles */
 #products .tile{
   position:relative;
-  transition:transform .4s cubic-bezier(.25,.85,.35,1), box-shadow .4s ease;
-  transform-style:preserve-3d;
 }
 #products .tile .m{
   position:relative;
+  transition:transform .4s cubic-bezier(.25,.85,.35,1), box-shadow .4s ease;
+  transform-style:preserve-3d;
 }
 #products .tile .product-image-stack{
   position:relative;
@@ -138,28 +142,46 @@ h2{font-size:22px}
 }
 
 @media (hover:hover) and (min-width:1024px){
-  #products .tile:hover,
-  #products .tile:focus-visible{
+  /* Pointer: only hovering the image box animates */
+  #products .tile .m:hover{
     transform:translateY(-6px) rotateX(3deg) rotateY(-3deg);
     box-shadow:0 18px 40px rgba(0,0,0,.22);
   }
-  #products .tile:hover .product-image--base,
-  #products .tile:focus-visible .product-image--base{
+  #products .tile .m:hover .product-image--base{
     opacity:0;
     transform:scale(.96) translateX(-6%);
   }
-  #products .tile:hover .product-image--hover,
-  #products .tile:focus-visible .product-image--hover{
+  #products .tile .m:hover .product-image--hover{
     opacity:1;
     transform:scale(1.08) translateX(0);
   }
 }
 
 @media (prefers-reduced-motion:reduce){
-  #products .tile,
+  #products .tile .m,
   #products .tile .product-image{
     transition:none;
   }
+}
+
+/* Keyboard focus: keep image box as focus cue, text stays flat */
+#products .tile:focus-visible .m{
+  transform:translateY(-6px) rotateX(3deg) rotateY(-3deg);
+  box-shadow:0 18px 40px rgba(0,0,0,.22);
+}
+#products .tile:focus-visible .product-image--base{
+  opacity:0;
+  transform:scale(.96) translateX(-6%);
+}
+#products .tile:focus-visible .product-image--hover{
+  opacity:1;
+  transform:scale(1.08) translateX(0);
+}
+/* Subtle focus indication on title text without any box/3D effect */
+#products .tile:focus-visible .t{
+  text-decoration:underline;
+  text-decoration-thickness:1px;
+  text-underline-offset:2px;
 }
 
 .hero,#products{will-change:transform;transform:translate3d(0,0,0)}
@@ -264,23 +286,50 @@ h2{font-size:22px}
 .projects-head .process-head__inner{ width:100%; }
 .projects-head .process-head__title{ font-size: clamp(20px, 2.6vw, 32px); font-weight: 500; margin: 0; color:#2B2B2B; text-transform: uppercase; letter-spacing: .08em; text-align:center; }
 
+/* Warranty & Support statement band */
+.warranty-support{
+  position:relative;
+  border-top: var(--bw) solid var(--border);
+  border-bottom: var(--bw) solid var(--border);
+  background: var(--bg, #fff);
+  padding-bottom: 0;
+  margin-bottom: clamp(32px, 5vw, 64px);
+}
+.warranty-support__head{
+  position:relative;
+  height:clamp(96px, 24vh, 220px);
+  display:flex;
+  align-items:center;
+}
+.warranty-support__inner{
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(16px, 2.5vw, 24px) clamp(16px, 5vw, 28px) clamp(32px, 5vw, 48px);
+  text-align: center;
+}
+.warranty-support__body{
+  margin: 0;
+  font-size: calc(1rem * 1.1);
+  line-height: 1.7;
+  color:#444;
+}
+
 /* Process CTA bar (all viewports) */
 .process-cta-bar{
+  display:block;
   background: var(--accentRed, #813F39);
   color: var(--pageWhite, #FDFDFD);
+  text-decoration:none;
 }
 .process-cta-bar__inner{
   display:flex;
   align-items:center;
   justify-content:flex-end;
   padding-block: 14px;
+  color: var(--pageWhite, #FDFDFD);
   font-size: 13px;
   letter-spacing:.12em;
   text-transform:uppercase;
-}
-.process-cta-bar__link{
-  color: inherit;
-  text-decoration:none;
 }
 
 @media (max-width: 720px){
@@ -364,9 +413,9 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
   max-width: 62ch;
 }
 .timber-section__title{
-  font-size: clamp(22px, 2.8vw, 32px);
+  font-size: clamp(28.6px, 3.64vw, 41.6px);
   line-height:1.15;
-  margin:0 0 6px 0;
+  margin:8px 0 12px 0;
   text-transform:uppercase;
 }
 .timber-section__intro{
@@ -472,6 +521,7 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
   /* Keep left image at ~50% of hero height */
   .hero-card{ height:calc((100dvh - var(--headerH, var(--navH))) * .5); }
   .hero-info{ margin-top:calc(var(--g) * 2.5) }
+  .timber-section__inner{ align-items:center; }
 }
 
 /* Word-by-word section (namespaced) */
@@ -503,11 +553,22 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 
 /* Mobile adjustments for split reveal */
 @media (max-width:960px){
-  .sp-reveal{ --sp-offset-top: calc(var(--sp-edge, 24px) + var(--headerH, var(--navH))); --sp-offset-bottom: calc(var(--sp-edge, 24px) * .5); }
+  .sp-reveal{
+    /* Slightly simpler offsets on mobile so the image stack just breathes
+       above and below, without pulling in header height. */
+    --sp-offset-top: var(--sp-edge, 24px);
+    --sp-offset-bottom: var(--sp-edge, 24px);
+  }
   .sp-reveal__sticky{ grid-template-columns: 1fr; }
-  .sp-reveal__text{ align-items:flex-start; padding-top: var(--sp-offset-top); padding-right: var(--sp-edge, clamp(16px,6vw,96px)); }
+  /* Hide the text column on small screens – we only want the images stacked. */
+  .sp-reveal__text{ display:none; }
   .sp-reveal__linebox{ max-width: none; }
-  .sp-reveal__imagepad{ top: var(--sp-offset-top); right: var(--sp-edge, 24px); bottom: var(--sp-offset-bottom); left: var(--sp-edge, 24px); }
+  .sp-reveal__imagepad{
+    top: var(--sp-offset-top);
+    right: var(--sp-edge, 24px);
+    bottom: var(--sp-offset-bottom);
+    left: var(--sp-edge, 24px);
+  }
 }
 
 /* Flow mode: behave like a normal scrolling section */
@@ -521,5 +582,24 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 .sp-reveal.sp-flow .sp-reveal__img:not(:first-child){ display:block; }
 /* Align text column's vertical padding with image pad so tops/bottoms line up */
 .sp-reveal.sp-flow .sp-reveal__text{ align-items: flex-start; padding-top: var(--sp-offset-top); padding-bottom: var(--sp-offset-bottom); }
+
+/* On mobile, match SpReveal image width to the main content column (hero/container) */
+@media (max-width:960px){
+  /* Give the section the same horizontal padding as .container */
+  .sp-reveal.sp-flow{
+    max-width: 1400px;
+    margin: 0 auto;
+    padding-inline: var(--g);
+  }
+  /* Keep layout to a single column when flowing */
+  .sp-reveal.sp-flow .sp-reveal__sticky{
+    grid-template-columns: 1fr;
+  }
+  /* Let the image pad fill the padded width without extra side margins */
+  .sp-reveal.sp-flow .sp-reveal__imagepad{
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
 
 /* Roofing options: legacy styles removed in favor of Tailwind-based two-column layout */

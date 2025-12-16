@@ -37,11 +37,11 @@
 /* Dual-image zoom + parallax hover for products index tiles */
 .products-index .tile{
   position:relative;
-  transition:transform .4s cubic-bezier(.25,.85,.35,1), box-shadow .4s ease;
-  transform-style:preserve-3d;
 }
 .products-index .tile .m{
   position:relative;
+  transition:transform .4s cubic-bezier(.25,.85,.35,1), box-shadow .4s ease;
+  transform-style:preserve-3d;
 }
 .products-index .tile .product-image-stack{
   position:relative;
@@ -77,32 +77,28 @@
   object-position:right center;
 }
 @media (hover:hover) and (min-width:1024px){
-  .products-index .tile:hover,
-  .products-index .tile:focus-visible{
+  /* Pointer: only hovering the image box animates */
+  .products-index .tile .m:hover{
     transform:translateY(-6px) rotateX(3deg) rotateY(-3deg);
     box-shadow:0 18px 40px rgba(0,0,0,.22);
   }
-  .products-index .tile:hover .product-image--base,
-  .products-index .tile:focus-visible .product-image--base{
+  .products-index .tile .m:hover .product-image--base{
     opacity:0;
     transform:scale(.96) translateX(-6%);
   }
-  .products-index .tile:hover .product-image--hover,
-  .products-index .tile:focus-visible .product-image--hover{
+  .products-index .tile .m:hover .product-image--hover{
     opacity:1;
     transform:scale(1.08) translateX(0);
   }
   /* Hip tile: invert parallax direction so the hover image moves in from the left
      and the base render drifts slightly right instead of left. */
-  .products-index .tile--hip:hover .product-image--base,
-  .products-index .tile--hip:focus-visible .product-image--base{
+  .products-index .tile--hip .m:hover .product-image--base{
     transform:scale(.96) translateX(6%);
   }
   .products-index .tile--hip .product-image--hover{
     transform:scale(1.05) translateX(-14%);
   }
-  .products-index .tile--hip:hover .product-image--hover,
-  .products-index .tile--hip:focus-visible .product-image--hover{
+  .products-index .tile--hip .m:hover .product-image--hover{
     transform:scale(1.08) translateX(0);
   }
 }
@@ -111,10 +107,30 @@
   transform:none;
 }
 @media (prefers-reduced-motion:reduce){
-  .products-index .tile,
+  .products-index .tile .m,
   .products-index .tile .product-image{
     transition:none;
   }
+}
+
+/* Keyboard focus: keep image box as cue; text stays flat */
+.products-index .tile:focus-visible .m{
+  transform:translateY(-6px) rotateX(3deg) rotateY(-3deg);
+  box-shadow:0 18px 40px rgba(0,0,0,.22);
+}
+.products-index .tile:focus-visible .product-image--base{
+  opacity:0;
+  transform:scale(.96) translateX(-6%);
+}
+.products-index .tile:focus-visible .product-image--hover{
+  opacity:1;
+  transform:scale(1.08) translateX(0);
+}
+/* Subtle focus indication on title text without any box/3D effect */
+.products-index .tile:focus-visible .t{
+  text-decoration:underline;
+  text-decoration-thickness:1px;
+  text-underline-offset:2px;
 }
 
 /* Contact playful controls */

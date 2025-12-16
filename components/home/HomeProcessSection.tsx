@@ -256,12 +256,10 @@ export default function HomeProcessSection({
 
 export function HomeProcessCtaBar() {
   return (
-    <div className="process-cta-bar" aria-hidden={false}>
+    <Link href="/contact" className="process-cta-bar" aria-label="Contact us">
       <div className="container process-cta-bar__inner">
-        <Link href="/contact" className="process-cta-bar__link">
-          Contact us
-        </Link>
+        Contact us
       </div>
-    </div>
+    </Link>
   );
 }
