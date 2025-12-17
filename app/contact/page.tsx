@@ -300,7 +300,8 @@ export default function ContactPage() {
 
   return (
     <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''} ${isSubmitted ? 'contact-submitted' : ''}`}>
-      <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 grid grid-cols-1 lg:grid-cols-[1fr_1px_1fr_1px_1fr] items-stretch gap-y-[var(--vgap)] lg:gap-y-[var(--vgap)] gap-x-[var(--gap)]">
+      <form ref={formRef} id="contact-form" method="post" action="/api/contact" onSubmit={handleSubmit}>
+        <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 grid grid-cols-1 lg:grid-cols-[1fr_1px_1fr_1px_1fr] items-stretch gap-y-[var(--vgap)] lg:gap-y-[var(--vgap)] gap-x-[var(--gap)]">
         {/* Left column (keeps its space; content hides on submit) */}
         <div className="col-span-1 relative h-full">
           <div className="hw-tile contact-media" style={{height:'100%'}}>
@@ -369,7 +370,6 @@ export default function ContactPage() {
                   placeholder="Name"
                   required
                   className="input input--tile"
-                  form="contact-form"
                   onChange={(e)=>setUserName(e.target.value)}
                 />
               </div>
@@ -380,7 +380,6 @@ export default function ContactPage() {
                   placeholder="Email"
                   required
                   className="input input--tile"
-                  form="contact-form"
                   onChange={(e)=>setUserEmail(e.target.value)}
                 />
               </div>
@@ -389,7 +388,6 @@ export default function ContactPage() {
                   name="suburb"
                   placeholder="Suburb"
                   className="input input--tile"
-                  form="contact-form"
                   onChange={(e)=>setUserSuburb(e.target.value)}
                 />
               </div>
@@ -550,7 +548,6 @@ export default function ContactPage() {
                   placeholder="Tell us about your space…"
                   rows={5}
                   className="input input--tile"
-                  form="contact-form"
                   onChange={(e)=>setNotes(e.target.value)}
                 />
               </div>
@@ -791,13 +788,13 @@ export default function ContactPage() {
                 {/* Fields stack (left subcolumn) */}
                 <div className="right-locked__fields">
                   <div className="hw-tile">
-                    <input name="name" placeholder="Name" required className="input input--tile" form="contact-form" onChange={(e)=>setUserName(e.target.value)} />
+                    <input name="name" placeholder="Name" required className="input input--tile" onChange={(e)=>setUserName(e.target.value)} />
                   </div>
                   <div className="hw-tile">
-                    <input name="email" type="email" placeholder="Email" required className="input input--tile" form="contact-form" onChange={(e)=>setUserEmail(e.target.value)} />
+                    <input name="email" type="email" placeholder="Email" required className="input input--tile" onChange={(e)=>setUserEmail(e.target.value)} />
                   </div>
                   <div className="hw-tile">
-                    <input name="suburb" placeholder="Suburb" className="input input--tile" form="contact-form" onChange={(e)=>setUserSuburb(e.target.value)} />
+                    <input name="suburb" placeholder="Suburb" className="input input--tile" onChange={(e)=>setUserSuburb(e.target.value)} />
                   </div>
                 </div>
 
@@ -823,7 +820,7 @@ export default function ContactPage() {
 
                 {/* Message (spans both) */}
                 <div className="hw-tile right-locked__textarea">
-                  <textarea name="message" placeholder="Tell us about your space…" rows={5} className="input input--tile" form="contact-form" onChange={(e)=>setNotes(e.target.value)} />
+                  <textarea name="message" placeholder="Tell us about your space…" rows={5} className="input input--tile" onChange={(e)=>setNotes(e.target.value)} />
                 </div>
 
                 {/* Submit (spans both) */}
@@ -850,23 +847,23 @@ export default function ContactPage() {
             <div className="contact-controls">
                 {/* Company */}
                 <div className="hw-tile span-2">
-                  <input name="company" placeholder="Company" className="input input--tile" form="contact-form" onChange={(e)=>setUserCompany(e.target.value)} />
+                  <input name="company" placeholder="Company" className="input input--tile" onChange={(e)=>setUserCompany(e.target.value)} />
                 </div>
                 {/* Name */}
                 <div className="hw-tile span-2">
-                  <input name="name" placeholder="Name" required className="input input--tile" form="contact-form" onChange={(e)=>setUserName(e.target.value)} />
+                  <input name="name" placeholder="Name" required className="input input--tile" onChange={(e)=>setUserName(e.target.value)} />
                 </div>
                 {/* Email */}
                 <div className="hw-tile span-2">
-                  <input name="email" type="email" placeholder="Email" required className="input input--tile" form="contact-form" onChange={(e)=>setUserEmail(e.target.value)} />
+                  <input name="email" type="email" placeholder="Email" required className="input input--tile" onChange={(e)=>setUserEmail(e.target.value)} />
                 </div>
                 {/* Suburb */}
                 <div className="hw-tile span-2">
-                  <input name="suburb" placeholder="Suburb" className="input input--tile" form="contact-form" onChange={(e)=>setUserSuburb(e.target.value)} />
+                  <input name="suburb" placeholder="Suburb" className="input input--tile" onChange={(e)=>setUserSuburb(e.target.value)} />
                 </div>
                 {/* Message */}
                 <div className="hw-tile span-2">
-                  <textarea name="message" placeholder="Tell us about your space…" rows={5} className="input input--tile" form="contact-form" onChange={(e)=>setNotes(e.target.value)} />
+                  <textarea name="message" placeholder="Tell us about your space…" rows={5} className="input input--tile" onChange={(e)=>setNotes(e.target.value)} />
                 </div>
                 {/* Submit */}
                 <div className="hw-tile span-2 send-tile mt-6">
@@ -889,23 +886,22 @@ export default function ContactPage() {
           ) : null}
         </section>
 
-        {/* CONTACT FORM (hidden inputs + target) */}
-        <form ref={formRef} id="contact-form" method="post" action="/api/contact" onSubmit={handleSubmit}>
-                <input type="hidden" name="width_m" value={width.toFixed(1)} />
-                <input type="hidden" name="length_m" value={length.toFixed(1)} />
-                <input type="hidden" name="style" value={STYLE_OPTS[styleIdx]} />
-                <input type="hidden" name="height_m" value={height.toFixed(1)} />
-                <input type="hidden" name="roof" value={roofSelected.join(', ')} />
-                <input type="hidden" name="addons" value={addonsSelected.join(', ')} />
-                <input type="hidden" name="attachments" value={proAttachmentsSummary} />
-                {/* Keep legacy flags for compatibility; add new descriptive field */}
-                <input type="hidden" name="is_homeowner" value={enquiryType === 'Residential' ? '1' : '0'} />
-                <input type="hidden" name="is_professional" value={enquiryType === 'Professional' ? '1' : '0'} />
-                <input type="hidden" name="enquiry_type" value={enquiryType ?? ''} />
-                {/* Honeypot field for bots (should remain empty) */}
-                <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }} aria-hidden="true" />
-        </form>
-      </div>
+        {/* Hidden fields attached to the contact form */}
+        <input type="hidden" name="width_m" value={width.toFixed(1)} />
+        <input type="hidden" name="length_m" value={length.toFixed(1)} />
+        <input type="hidden" name="style" value={STYLE_OPTS[styleIdx]} />
+        <input type="hidden" name="height_m" value={height.toFixed(1)} />
+        <input type="hidden" name="roof" value={roofSelected.join(', ')} />
+        <input type="hidden" name="addons" value={addonsSelected.join(', ')} />
+        <input type="hidden" name="attachments" value={proAttachmentsSummary} />
+        {/* Keep legacy flags for compatibility; add new descriptive field */}
+        <input type="hidden" name="is_homeowner" value={enquiryType === 'Residential' ? '1' : '0'} />
+        <input type="hidden" name="is_professional" value={enquiryType === 'Professional' ? '1' : '0'} />
+        <input type="hidden" name="enquiry_type" value={enquiryType ?? ''} />
+        {/* Honeypot field for bots (should remain empty) */}
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }} aria-hidden="true" />
+        </div>
+      </form>
     </main>
   );
 }

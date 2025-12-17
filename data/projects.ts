@@ -558,7 +558,7 @@ const baseProjects: Project[] = [
   },
   {
     slug: 'waitakere-ranges-lanai',
-    title: 'Murawai Courtyard',
+    title: 'Muriwai Courtyard',
     location: 'Waitakere Ranges, Auckland',
     region: 'West Auckland',
     type: 'Residential',
