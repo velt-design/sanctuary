@@ -6,6 +6,7 @@ import { projects } from '@/data/projects';
 import '../projects.css';
 import '../../home.css';
 import '../../products/product.css';
+import { HomeProcessCtaBar } from '@/components/home/HomeProcessSection';
 
 type PageParams = { slug: string };
 
@@ -73,6 +74,7 @@ export default async function ProjectDetailPage({ params }: PageProps) {
           titleAs="h1"
         />
       </div>
+      <HomeProcessCtaBar />
     </main>
   );
 }

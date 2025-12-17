@@ -6,6 +6,7 @@ import '@/styles/header.css';
 import Header from '@/components/Header';
 import ProductSubHeader from '@/components/ProductSubHeader';
 import SiteFooter from '@/components/SiteFooter';
+import FooterVisibilityGate from '@/components/FooterVisibilityGate';
 import PageTransitions from '@/components/PageTransitions';
 import FooterHeaderSync from '@/components/FooterHeaderSync';
 import Analytics from '@/components/Analytics';
@@ -105,7 +106,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ProductSubHeader />
         </Suspense>
         <div className="page-viewport"><div className="page-layer">{children}</div></div>
-        <SiteFooter />
+        <FooterVisibilityGate>
+          <SiteFooter />
+        </FooterVisibilityGate>
       </body>
     </html>
   );

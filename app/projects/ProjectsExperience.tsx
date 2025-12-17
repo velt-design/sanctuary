@@ -43,6 +43,27 @@ export default function ProjectsExperience({ projects }: { projects: Project[] }
     return () => mq.removeEventListener('change', setFromQuery);
   }, []);
 
+  // Lock root page scroll on desktop projects view so only the
+  // left/right columns scroll, not the whole document.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (!isMobileList) {
+      root.classList.add('scroll-locked');
+      body.classList.add('scroll-locked');
+    } else {
+      root.classList.remove('scroll-locked');
+      body.classList.remove('scroll-locked');
+    }
+
+    return () => {
+      root.classList.remove('scroll-locked');
+      body.classList.remove('scroll-locked');
+    };
+  }, [isMobileList]);
+
   const updateUrlSlug = useCallback((slug: string) => {
     if (!pathname) return;
     const current = searchParams ? searchParams.toString() : '';
