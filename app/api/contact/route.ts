@@ -21,6 +21,11 @@ type UploadedAttachment = {
 function isAllowedOrigin(req: Request): boolean {
   const origin = req.headers.get('origin');
   if (!origin) return true;
+  // In non-production Vercel environments (preview/dev), relax origin checks
+  // so that preview URLs and local testing don't get blocked by CORS.
+  if (process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production') {
+    return true;
+  }
   try {
     const { hostname } = new URL(origin);
     const host = hostname.toLowerCase();
