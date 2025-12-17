@@ -30,6 +30,12 @@ function isAllowedOrigin(req: Request): boolean {
     const { hostname } = new URL(origin);
     const host = hostname.toLowerCase();
 
+    // Always allow Vercel-hosted URLs (both preview and production on *.vercel.app)
+    // so that branch/preview deployments can post to this API route without 403s.
+    if (host.endsWith('.vercel.app')) {
+      return true;
+    }
+
     // Core allowed hosts for production + local dev
     const baseAllowed = new Set([
       'localhost',
