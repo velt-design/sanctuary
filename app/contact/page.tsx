@@ -68,9 +68,9 @@ export default function ContactPage() {
   const [addonsSelected, setAddonsSelected] = useState<string[]>([]);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
-  const [, setUserSuburb] = useState('');
-  const [, setNotes] = useState('');
-  const [, setUserCompany] = useState('');
+  const [userSuburb, setUserSuburb] = useState('');
+  const [notes, setNotes] = useState('');
+  const [userCompany, setUserCompany] = useState('');
   // Professional enquiry: drag-and-drop files UI state
   const [proFiles, setProFiles] = useState<File[]>([]);
   const [proDragOver, setProDragOver] = useState(false);
@@ -253,16 +253,37 @@ export default function ContactPage() {
     setSubmitState('sending');
     trackSubmitEvent('start');
     try {
-      const fd = new FormData(form);
+      // Build the payload from React state rather than relying on browser
+      // form serialization. This avoids mobile-browsers quirks with
+      // externally-associated controls and ensures a single canonical
+      // value for each field.
+      const fd = new FormData();
+      // Core contact details
+      fd.set('name', userName);
+      fd.set('email', userEmail);
+      if (userSuburb) fd.set('suburb', userSuburb);
+      if (notes) fd.set('message', notes);
+      if (userCompany) fd.set('company', userCompany);
+      // Dimensional + options
+      fd.set('width_m', width.toFixed(1));
+      fd.set('length_m', length.toFixed(1));
+      fd.set('height_m', height.toFixed(1));
+      fd.set('style', STYLE_OPTS[styleIdx]);
+      fd.set('roof', roofSelected.join(', '));
+      fd.set('addons', addonsSelected.join(', '));
+      fd.set('attachments', proAttachmentsSummary);
+      // Legacy flags + typed enquiry label
+      fd.set('is_homeowner', enquiryType === 'Residential' ? '1' : '0');
+      fd.set('is_professional', enquiryType === 'Professional' ? '1' : '0');
+      fd.set('enquiry_type', enquiryType ?? '');
+      // Honeypot field for bots (left empty intentionally)
+      fd.set('website', '');
       // Attach professional enquiry files so the API can send them on.
       if (enquiryType === 'Professional' && proFiles.length) {
         proFiles.forEach((file) => {
           fd.append('pro_attachments', file);
         });
       }
-      // Basic guard to ensure name/email exist
-      if (!fd.get('name')) fd.set('name', userName);
-      if (!fd.get('email')) fd.set('email', userEmail);
       const res = await fetch('/api/contact', { method: 'POST', body: fd });
       const json = await res.json().catch(() => ({ ok: res.ok }));
       if (res.ok && json?.ok) {
