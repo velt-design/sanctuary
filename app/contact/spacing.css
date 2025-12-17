@@ -195,9 +195,13 @@
 .contact-page .vs-list{ gap: var(--s-0_5) !important; }
 .contact-page .vsliders{ gap: var(--s-1) !important; }
 
-/* Vertical slider sizing tokenised */
+/* Vertical slider sizing tokenised – base contact values */
 .contact-page .vs-rail{ width: calc(var(--s) * 3.2) !important; height: calc(var(--s) * 5.0) !important; }
 .contact-page .vs-range{ width: calc(var(--s) * 3.0) !important; height: calc(var(--s) * 1.1) !important; }
+
+/* Style slider: extend only this rail/track so it visually spans the full option stack */
+.contact-page .style-tile .vs-rail{ height: calc(var(--s) * 6.0) !important; }
+.contact-page .style-tile .vs-range{ width: calc(var(--s) * 6.0) !important; }
 
 .contact-page .big-choices{ gap: var(--s-1); margin: var(--s-0_5) 0 var(--s-1); }
 .contact-page .enquiry-header{ gap: var(--s-0_5); padding: calc(var(--s-0_5) * .6) 2px; }
@@ -241,6 +245,9 @@
   .contact-page .vs-group{ grid-template-columns: 1fr calc(var(--s) * 3.2) !important; }
   .contact-page .vs-rail{ width: calc(var(--s) * 3.2) !important; height: calc(var(--s) * 5.0) !important; }
   .contact-page .vs-range{ width: calc(var(--s) * 3.0) !important; height: calc(var(--s) * 1.1) !important; }
+  /* Keep the Style-specific extension on short viewports too */
+  .contact-page .style-tile .vs-rail{ height: calc(var(--s) * 6.0) !important; }
+  .contact-page .style-tile .vs-range{ width: calc(var(--s) * 6.0) !important; }
   .contact-page .field label,
   .contact-page .field output,
   .contact-page .vs-list li{ font-size: clamp(16px, 1cqw + 12px, 20px) !important; }

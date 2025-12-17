@@ -8,8 +8,15 @@ const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_IN_WINDOW = 5; // 5 submissions per 10 minutes per IP
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_FIELD_LENGTH = 400;
+const MAX_ATTACHMENTS = 8; // cap number of files we forward
+const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20 MB across all files
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
+
+type UploadedAttachment = {
+  filename: string;
+  content: string; // base64
+};
 
 function isAllowedOrigin(req: Request): boolean {
   const origin = req.headers.get('origin');
@@ -84,6 +91,42 @@ function escapeForHtml(text: string): string {
     .replace(/>/g, '&gt;');
 }
 
+async function extractAttachmentsFromFormData(fd: FormData): Promise<UploadedAttachment[]> {
+  const entries = fd.getAll('pro_attachments');
+  const files = entries.filter((entry): entry is File => entry instanceof File);
+  if (!files.length) return [];
+
+  const attachments: UploadedAttachment[] = [];
+  let totalBytes = 0;
+
+  for (const file of files) {
+    if (attachments.length >= MAX_ATTACHMENTS) {
+      break;
+    }
+    try {
+      const size = typeof file.size === 'number' ? file.size : 0;
+      if (!file.name || size <= 0) {
+        continue;
+      }
+      // Enforce a total size cap across all attachments.
+      if (totalBytes + size > MAX_TOTAL_ATTACHMENT_BYTES) {
+        continue;
+      }
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      attachments.push({
+        filename: file.name,
+        content: base64,
+      });
+      totalBytes += size;
+    } catch {
+      // Ignore individual file failures; continue with others.
+    }
+  }
+
+  return attachments;
+}
+
 export async function POST(req: Request) {
   if (!isAllowedOrigin(req)) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
@@ -92,11 +135,13 @@ export async function POST(req: Request) {
   // Accept both JSON and form submissions
   const ct = (req.headers.get('content-type') || '').toLowerCase();
   let data: Record<string, unknown> | null = null;
+  let attachments: UploadedAttachment[] = [];
   try {
     if (ct.includes('application/json')) {
       data = await req.json();
     } else {
       const fd = await req.formData();
+      attachments = await extractAttachmentsFromFormData(fd);
       data = Object.fromEntries(fd.entries());
     }
   } catch {
@@ -163,6 +208,7 @@ export async function POST(req: Request) {
     is_homeowner: getField('is_homeowner'),
     is_professional: getField('is_professional'),
     company: sanitizeSingleLine(getField('company'), MAX_FIELD_LENGTH),
+    attachments: sanitizeSingleLine(getField('attachments'), MAX_FIELD_LENGTH),
   };
 
   const subject = `[Website enquiry] ${fields.enquiry_type || 'General'} – ${fields.name}`;
@@ -177,6 +223,7 @@ export async function POST(req: Request) {
     fields.style ? `Style: ${fields.style}` : null,
     fields.roof ? `Roof: ${fields.roof}` : null,
     fields.addons ? `Addons: ${fields.addons}` : null,
+    fields.attachments ? `Attachments: ${fields.attachments}` : null,
     '',
     'Message:',
     fields.message || '(none)'
@@ -202,19 +249,24 @@ export async function POST(req: Request) {
   let delivered = false;
   if (RESEND_API_KEY) {
     try {
+      const resendPayload: Record<string, unknown> = {
+        from: EMAIL_FROM,
+        to: [targetEmail],
+        reply_to: fields.email,
+        subject,
+        html,
+      };
+      if (attachments.length) {
+        resendPayload.attachments = attachments;
+      }
+
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${RESEND_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          from: EMAIL_FROM,
-          to: [targetEmail],
-          reply_to: fields.email,
-          subject,
-          html,
-        }),
+        body: JSON.stringify(resendPayload),
       });
       if (res.ok) delivered = true;
       else console.warn('Resend error', await res.text());
@@ -234,7 +286,9 @@ export async function POST(req: Request) {
           fields.enquiry_type || 'General'
         }\n*Size:* ${[fields.width_m, fields.length_m, fields.height_m].filter(Boolean).join(' × ')}\n*Style:* ${
           fields.style || '-'
-        }\n*Roof:* ${fields.roof || '-'}\n*Addons:* ${fields.addons || '-'}\n*Message:* ${
+        }\n*Roof:* ${fields.roof || '-'}\n*Addons:* ${fields.addons || '-'}${
+          fields.attachments ? `\n*Attachments:* ${fields.attachments}` : ''
+        }\n*Message:* ${
           fields.message || '(none)'
         }\n`
       );

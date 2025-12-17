@@ -92,6 +92,22 @@ export default function ContactPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
 
+  const proAttachmentsSummary = useMemo(() => {
+    if (!proFiles.length) return '';
+    const MAX_LISTED = 5;
+    const listed = proFiles.slice(0, MAX_LISTED);
+    const moreCount = proFiles.length - listed.length;
+    const parts = listed.map((file) => {
+      const kb = file.size / 1024;
+      const sizeLabel = kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
+      return `${file.name} (${sizeLabel})`;
+    });
+    if (moreCount > 0) {
+      parts.push(`+${moreCount} more file(s)`);
+    }
+    return parts.join('; ');
+  }, [proFiles]);
+
   // Analytics helper (GA4 via window.gtag, if configured)
   type GtagFn = (...args: any[]) => void;
   const trackSubmitEvent = (phase:'start'|'success'|'error', extra?:Record<string, unknown>) => {
@@ -191,7 +207,6 @@ export default function ContactPage() {
       setLength(prev => clamp(prev, lengthMin, 6));
       setHeight(prev => clamp(prev, 2, 6));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enquiryType]);
 
   // Helper to select an enquiry type with a delayed reveal
@@ -239,6 +254,12 @@ export default function ContactPage() {
     trackSubmitEvent('start');
     try {
       const fd = new FormData(form);
+      // Attach professional enquiry files so the API can send them on.
+      if (enquiryType === 'Professional' && proFiles.length) {
+        proFiles.forEach((file) => {
+          fd.append('pro_attachments', file);
+        });
+      }
       // Basic guard to ensure name/email exist
       if (!fd.get('name')) fd.set('name', userName);
       if (!fd.get('email')) fd.set('email', userEmail);
@@ -709,6 +730,9 @@ export default function ContactPage() {
                           Drag and drop images or files here
                         </div>
                         <div className="pro-dropzone__sub">or click to choose</div>
+                        <div className="pro-dropzone__note text-xs text-neutral-400 mt-2">
+                          Up to 8 files, 20MB total.
+                        </div>
                         <input
                           ref={proFileInputRef}
                           type="file"
@@ -873,6 +897,7 @@ export default function ContactPage() {
                 <input type="hidden" name="height_m" value={height.toFixed(1)} />
                 <input type="hidden" name="roof" value={roofSelected.join(', ')} />
                 <input type="hidden" name="addons" value={addonsSelected.join(', ')} />
+                <input type="hidden" name="attachments" value={proAttachmentsSummary} />
                 {/* Keep legacy flags for compatibility; add new descriptive field */}
                 <input type="hidden" name="is_homeowner" value={enquiryType === 'Residential' ? '1' : '0'} />
                 <input type="hidden" name="is_professional" value={enquiryType === 'Professional' ? '1' : '0'} />

@@ -53,7 +53,6 @@ const Row = forwardRef<AccordionRowHandle, { item: AccordionItem; id: string; on
     panel.style.height = `0px`;
     const target = inner.scrollHeight;
     // Force reflow so transition starts from 0
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     panel.offsetHeight;
     panel.style.height = `${target}px`;
     const onEnd = (e: TransitionEvent) => {
@@ -77,7 +76,6 @@ const Row = forwardRef<AccordionRowHandle, { item: AccordionItem; id: string; on
     panel.dataset.open = "false";
     d.setAttribute("data-closing", "true");
     // Force reflow to ensure the next write transitions
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
     panel.offsetHeight;
     panel.style.height = `0px`;
     const onEnd = (e: TransitionEvent) => {
@@ -162,7 +160,6 @@ export default function Accordion({
     // callers typically pass a new array literal for `items`
     // on every render, which would otherwise reset the open
     // state back to the default item.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleToggle = (idx: number) => {

@@ -1,5 +1,4 @@
 // components/Gallery/OriginalViewer.tsx
-/* eslint-disable @next/next/no-img-element */
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';

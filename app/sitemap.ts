@@ -4,7 +4,7 @@ import { projects } from '@/data/projects';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://www.sanctuarypergolas.co.nz';
-  const staticRoutes = ['/', '/products', '/projects', '/about', '/contact', '/privacy', '/resources', '/resources/specs-compliance'];
+  const staticRoutes = ['/', '/products', '/projects', '/contact', '/privacy'];
   const productRoutes = sections.flatMap((section) => section.items.map((item) => item.href));
   const projectRoutes = projects.map((project) => `/projects/${project.slug}`);
   const urls = Array.from(new Set([...staticRoutes, ...productRoutes, ...projectRoutes]));
