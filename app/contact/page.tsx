@@ -110,10 +110,12 @@ export default function ContactPage() {
 
   // Analytics helper (GA4 via window.gtag, if configured)
   type GtagFn = (...args: any[]) => void;
+  type FbqFn = (...args: any[]) => void;
   const trackSubmitEvent = (phase:'start'|'success'|'error', extra?:Record<string, unknown>) => {
     if (typeof window === 'undefined') return;
-    const gtag = (window as typeof window & { gtag?: GtagFn }).gtag;
-    if (typeof gtag !== 'function') return;
+    const w = window as typeof window & { gtag?: GtagFn; fbq?: FbqFn };
+    const gtag = w.gtag;
+    const fbq = w.fbq;
     const base = {
       event_category: 'contact',
       event_label: enquiryType ?? 'Unknown',
@@ -122,7 +124,12 @@ export default function ContactPage() {
       addons_count: addonsSelected.length,
     };
     try {
-      gtag('event', `contact_${phase}`, { ...base, ...extra });
+      if (typeof gtag === 'function') {
+        gtag('event', `contact_${phase}`, { ...base, ...extra });
+      }
+      if (phase === 'success' && typeof fbq === 'function') {
+        fbq('track', 'Lead', { ...base, ...extra });
+      }
     } catch {
       // Fail silently – analytics should never break form submission
     }
