@@ -10,7 +10,27 @@ function updateFooterHeaderState(
 ) {
   if (typeof window === 'undefined') return;
 
-  if (!header || !sent) {
+  // If we have no header/sentinel or they are detached/hidden,
+  // clear any footer-driven header state and bail out.
+  if (
+    !header ||
+    !sent ||
+    !header.isConnected ||
+    !sent.isConnected
+  ) {
+    document.body.classList.remove('footer-at-top', 'footer-overlap');
+    return;
+  }
+
+  // When the footer is display:none (e.g. certain pages hide the global footer),
+  // the sentinel collapses out of layout and reports a zero-sized rect / no offsetParent.
+  // In that case we should treat it as "no footer" and keep the default header palette.
+  const sentRect = sent.getBoundingClientRect();
+  const sentinelHidden =
+    (!sent.offsetParent && !sentRect.top && !sentRect.bottom && !sentRect.left && !sentRect.right) ||
+    (sentRect.width === 0 && sentRect.height === 0);
+
+  if (sentinelHidden) {
     document.body.classList.remove('footer-at-top', 'footer-overlap');
     return;
   }
@@ -24,7 +44,7 @@ function updateFooterHeaderState(
   }
 
   const h = header.getBoundingClientRect().height || 0;
-  const top = sent.getBoundingClientRect().top;
+  const top = sentRect.top;
 
   const atTop = top <= EPS;
   const overlap = !atTop && top <= (h + EPS);

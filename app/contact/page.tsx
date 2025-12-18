@@ -382,7 +382,7 @@ export default function ContactPage() {
           </div>
 
           {/* Mobile-only customer flow: Name → Email → Suburb → sliders → Style → Roof → Add ons → Message → SEND */}
-          {showRightControlsCustomer ? (
+          {showRightControlsCustomer && !isSubmitted ? (
             <section className="contact-mobile space-y-3">
               {/* Name / Email / Suburb */}
               <div className="hw-tile">
