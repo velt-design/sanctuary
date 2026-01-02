@@ -14,6 +14,7 @@ import WebVitals from '@/components/WebVitals';
 import ScrollReset from '@/components/ScrollReset';
 import { Suspense } from 'react';
 import MetaPixel from '@/components/MetaPixel';
+import ArchiproPixel from '@/components/ArchiproPixel';
 import JsonLd from '@/components/JsonLd';
 
 export const metadata: Metadata = {
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <Analytics />
         <MetaPixel />
+        <ArchiproPixel />
         <JsonLd
           data={[
             {

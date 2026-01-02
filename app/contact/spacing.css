@@ -189,7 +189,7 @@
 .contact-page .enquiry-block{ padding-bottom: 0 !important; }
 /* Remove stray margins that create off-scale clear space */
 .contact-page .contact-info{ margin: 0 !important; }
-.contact-page .big-choices{ margin: 0 !important; }
+.contact-page .big-choices{ margin: 0 !important; gap: calc(var(--vgap) * 1.4) !important; }
 
 .contact-page .vs-group{ gap: var(--s-1) !important; padding: var(--s-1) var(--s-1_5) !important; grid-template-columns: 1fr calc(var(--s) * 3.2) !important; }
 .contact-page .vs-list{ gap: var(--s-0_5) !important; }
@@ -203,7 +203,6 @@
 .contact-page .style-tile .vs-rail{ height: calc(var(--s) * 6.0) !important; }
 .contact-page .style-tile .vs-range{ width: calc(var(--s) * 6.0) !important; }
 
-.contact-page .big-choices{ gap: var(--s-1); margin: var(--s-0_5) 0 var(--s-1); }
 .contact-page .enquiry-header{ gap: var(--s-0_5); padding: calc(var(--s-0_5) * .6) 2px; }
 
 .contact-page .input--tile{ padding: var(--s-1) var(--s-1_25); }

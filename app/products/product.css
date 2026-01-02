@@ -964,8 +964,26 @@ details[open] > .accordion__summary::before{ content:""; position:absolute; left
 
 .big-choices{ display:grid; gap:12px; margin:8px 0 12px }
 .big-choice__hint{ font-size:12px; letter-spacing:.12em; color:#7A7A7A; text-transform:uppercase; margin:10px 0 6px }
-.big-choice{ display:grid; grid-template-columns:1fr auto; align-items:center; gap:7px; padding:6px 2px }
-.big-choice__label{ font-size: clamp(16px, 2.6vw, 22px); font-weight:400 }
+.big-choice{ display:grid; grid-template-columns:1fr auto; column-gap:40px; row-gap:8px; align-items:center; padding:6px 2px }
+.big-choice__label{
+  all: unset;
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+  cursor:pointer;
+  font: inherit;
+  font-size: clamp(18.4px, 2.99vw, 25.3px); /* 15% up from clamp(16px, 2.6vw, 22px) */
+  font-weight:400;
+  line-height:1.1;
+  text-align:left;
+  color: inherit;
+}
+.big-choice__copy{ grid-column:1; font-size: clamp(13px, 1.2vw, 14px); line-height:1.35; color:#7A7A7A; max-width:40ch; }
+
+/* Safari: ensure enquiry labels don't use native button chrome */
+@supports (-webkit-appearance: none){
+  .big-choice__label{ -webkit-appearance: none !important; }
+}
 /* Enquiry collapse header */
 .enquiry-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; background:transparent; border:0; padding:4px 2px; cursor:pointer; }
 .enquiry-header__text{ font-size:12px; letter-spacing:.12em; color:#7A7A7A; text-transform:uppercase; }

@@ -9,11 +9,26 @@ const BLUR =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAQAAACENnwnAAAAGElEQVQYV2NkYGD4z0AkYGBg+P8fA4YBAJ3pC3xwV0KpAAAAAElFTkSuQmCC';
 
 const featureItems: HomePageContent['featureItems'] = [
-  'On-site 1–5 days',
-  'Lead time ~6 weeks',
-  'Engineered for wind',
-  'Aluminium, powder-coated',
-  '10-year warranty',
+  {
+    label: 'Install in days',
+    bubble: 'On-site installation is typically completed in 1–5 days.',
+  },
+  {
+    label: 'Lead time 6–8 weeks',
+    bubble: 'From sign-off to installation: typically 6–8 weeks. Timing can vary by season.',
+  },
+  {
+    label: 'Engineered for wind',
+    bubble: 'Designed with wind performance considered from the start, for NZ conditions.',
+  },
+  {
+    label: '4 roof styles',
+    bubble: 'Choose pitched, gable, hip, or box-perimeter to suit your home’s roofline.',
+  },
+  {
+    label: '10-year warranty',
+    bubble: 'Backed by a 10-year warranty, with support after completion.',
+  },
 ];
 
 const processSteps: HomePageContent['processSteps'] = [

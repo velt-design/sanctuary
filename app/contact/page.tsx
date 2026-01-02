@@ -372,16 +372,19 @@ export default function ContactPage() {
               {(enquiryExpanded || !enquiryType) && (
                 <div className="big-choices">
                   <div className="big-choice">
-                    <div className="big-choice__label">Residential</div>
+                    <button type="button" className="big-choice__label" aria-pressed={enquiryType === 'Residential'} onClick={()=> chooseEnquiry('Residential')}>Residential</button>
                     <button type="button" className={`toggle ${enquiryType === 'Residential' ? 'on' : ''}`} aria-label={enquiryType === 'Residential' ? 'Selected' : 'Select Residential'} aria-pressed={enquiryType === 'Residential'} onClick={()=> chooseEnquiry('Residential')} />
+                    <div className="big-choice__copy">For homeowners planning a pergola at home or as part of a renovation.</div>
                   </div>
                   <div className="big-choice">
-                    <div className="big-choice__label">Commercial</div>
+                    <button type="button" className="big-choice__label" aria-pressed={enquiryType === 'Commercial'} onClick={()=> chooseEnquiry('Commercial')}>Commercial</button>
                     <button type="button" className={`toggle ${enquiryType === 'Commercial' ? 'on' : ''}`} aria-label={enquiryType === 'Commercial' ? 'Selected' : 'Select Commercial'} aria-pressed={enquiryType === 'Commercial'} onClick={()=> chooseEnquiry('Commercial')} />
+                    <div className="big-choice__copy">For businesses, property managers, and multi-unit sites.</div>
                   </div>
                   <div className="big-choice">
-                    <div className="big-choice__label">Professional</div>
+                    <button type="button" className="big-choice__label" aria-pressed={enquiryType === 'Professional'} onClick={()=> chooseEnquiry('Professional')}>Professional</button>
                     <button type="button" className={`toggle ${enquiryType === 'Professional' ? 'on' : ''}`} aria-label={enquiryType === 'Professional' ? 'Selected' : 'Select Professional'} aria-pressed={enquiryType === 'Professional'} onClick={()=> chooseEnquiry('Professional')} />
+                    <div className="big-choice__copy">For architects, designers, and builders working on behalf of clients.</div>
                   </div>
                 </div>
               )}

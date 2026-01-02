@@ -23,9 +23,13 @@
 .contact-page.contact-dark .product-kicker,
 .contact-page.contact-dark .product-title,
 .contact-page.contact-dark .product-desc,
-.contact-page.contact-dark .product-long,
-.contact-page.contact-dark .contact-info{ color:#f5f6f7; }
-.contact-page.contact-dark .contact-info a{ color:#f5f6f7; text-decoration: underline; text-underline-offset: 2px; }
+.contact-page.contact-dark .product-long{ color:#f5f6f7; }
+.contact-page.contact-dark .contact-info{
+  color: rgba(245,246,247,.46);
+  font-size: 0.75rem;
+}
+.contact-page.contact-dark .contact-info strong{ font-weight: 500; }
+.contact-page.contact-dark .contact-info a{ color: inherit; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: rgba(245,246,247,.30); }
 /* After an enquiry type is chosen, hide phone/email to reclaim space */
 .contact-page.contact-dark.enquiry-picked .contact-info{ display:none !important; }
 /* Pull the enquiry header up a touch when phone/email is hidden */
@@ -128,6 +132,8 @@
 .contact-page.contact-dark .enquiry-header__text{ color:#f5f6f7; }
 .contact-page.contact-dark .enquiry-header__chev{ border-top-color:#f5f6f7; }
 .contact-page.contact-dark .big-choice__label{ color:#f5f6f7; }
+.contact-page.contact-dark .big-choice__label:focus-visible{ outline:2px solid color-mix(in srgb, var(--accentRed) 65%, #ffffff 35%); outline-offset:4px; border-radius:6px; }
+.contact-page.contact-dark .big-choice__copy{ color: rgba(245,246,247,.46); }
 .contact-page.contact-dark .toggle{ background:#8E949B !important; border-color:#C7CCD3 !important; }
 .contact-page.contact-dark .toggle.on{ background:var(--accentRed) !important; }
 

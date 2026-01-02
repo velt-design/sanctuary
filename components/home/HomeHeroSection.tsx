@@ -109,11 +109,10 @@ export default function HomeHeroSection({
               blurDataURL={blurDataUrl}
               sizes="(max-width: 960px) 100vw, 50vw"
             />
-            <Link href="/products" className="image-cta">Explore Products</Link>
+            <Link href="/contact" className="image-cta">Quick Estimate</Link>
           </div>
         </div>
       </div>
     </section>
   );
 }
-

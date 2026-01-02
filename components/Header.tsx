@@ -12,6 +12,22 @@ const mobileNavItems = [
   { href: '/contact', label: 'Contact' },
 ];
 
+function DesktopQuickEstimateCta({ disableExpand }: { disableExpand?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (disableExpand) return;
+    const timerId = window.setTimeout(() => setExpanded(true), 500);
+    return () => window.clearTimeout(timerId);
+  }, [disableExpand]);
+
+  return (
+    <Link href="/contact" className={`nav-cta ${expanded ? 'expanded' : ''}`}>
+      <span className="nav-cta__label">Quick Estimate</span>
+    </Link>
+  );
+}
+
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -106,16 +122,22 @@ export default function Header() {
               </ul>
             </div>
           </nav>
-          <button
-            type="button"
-            className={`mobile-toggle ${mobileMenuOpen ? 'open' : ''}`}
-            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-            aria-controls="mobile-menu"
-            aria-expanded={mobileMenuOpen}
-            onClick={handleCircleToggle}
-          >
-            <span className="mobile-toggle__pulse" aria-hidden="true" />
-          </button>
+          <div className="header-actions">
+            <DesktopQuickEstimateCta
+              key={pathname}
+              disableExpand={typeof pathname === 'string' && pathname.startsWith('/contact')}
+            />
+            <button
+              type="button"
+              className={`mobile-toggle ${mobileMenuOpen ? 'open' : ''}`}
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-controls="mobile-menu"
+              aria-expanded={mobileMenuOpen}
+              onClick={handleCircleToggle}
+            >
+              <span className="mobile-toggle__pulse" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </header>
 

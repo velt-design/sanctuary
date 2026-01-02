@@ -14,8 +14,10 @@ import { projects } from '@/data/projects';
 
 export type ProcessStep = { title: string; desc: string };
 
+export type FeatureItem = { label: string; bubble: string };
+
 export type HomePageContent = {
-  featureItems: string[];
+  featureItems: FeatureItem[];
   processSteps: ProcessStep[];
   copyTexts: string[];
   blurDataUrl: string;
