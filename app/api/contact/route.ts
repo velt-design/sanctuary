@@ -1,5 +1,6 @@
 // app/api/contact/route.ts
 import { NextResponse } from 'next/server';
+import { createHash, randomUUID } from 'node:crypto';
 
 // Very lightweight, in-memory rate limiter (best-effort; per-instance)
 type Hit = { t: number; n: number };
@@ -10,6 +11,7 @@ const MAX_MESSAGE_LENGTH = 4000;
 const MAX_FIELD_LENGTH = 400;
 const MAX_ATTACHMENTS = 8; // cap number of files we forward
 const MAX_TOTAL_ATTACHMENT_BYTES = 20 * 1024 * 1024; // 20 MB across all files
+const MAX_EVENT_ID_LENGTH = 128;
 
 const CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g;
 
@@ -100,6 +102,93 @@ function escapeForHtml(text: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
+function sha256(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function parseCookies(header: string | null): Record<string, string> {
+  const cookies: Record<string, string> = {};
+  if (!header) return cookies;
+  const parts = header.split(';');
+  for (const part of parts) {
+    const [rawName, ...rawValueParts] = part.trim().split('=');
+    const name = (rawName || '').trim();
+    if (!name) continue;
+    const rawValue = rawValueParts.join('=');
+    if (!rawValue) {
+      cookies[name] = '';
+      continue;
+    }
+    try {
+      cookies[name] = decodeURIComponent(rawValue);
+    } catch {
+      cookies[name] = rawValue;
+    }
+  }
+  return cookies;
+}
+
+async function sendMetaLeadEvent(params: {
+  req: Request;
+  email: string;
+  eventId: string;
+  ip: string;
+  enquiryType?: string;
+}): Promise<void> {
+  const accessToken = process.env.META_CONVERSIONS_API_TOKEN;
+  const pixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
+  if (!accessToken || !pixelId) return;
+
+  const apiVersion = process.env.META_GRAPH_API_VERSION || 'v20.0';
+  const url = `https://graph.facebook.com/${apiVersion}/${encodeURIComponent(pixelId)}/events?access_token=${encodeURIComponent(accessToken)}`;
+
+  const cookies = parseCookies(params.req.headers.get('cookie'));
+  const userAgent = params.req.headers.get('user-agent') || undefined;
+  const referer = params.req.headers.get('referer') || params.req.headers.get('referrer') || undefined;
+
+  const normalizedEmail = normalizeEmail(params.email);
+  const userData: Record<string, unknown> = {};
+  if (normalizedEmail) userData.em = [sha256(normalizedEmail)];
+  if (params.ip && params.ip !== 'unknown') userData.client_ip_address = params.ip;
+  if (userAgent) userData.client_user_agent = userAgent;
+  if (cookies._fbp) userData.fbp = cookies._fbp;
+  if (cookies._fbc) userData.fbc = cookies._fbc;
+
+  const event: Record<string, unknown> = {
+    event_name: 'Lead',
+    event_time: Math.floor(Date.now() / 1000),
+    action_source: 'website',
+    event_id: params.eventId,
+    user_data: userData,
+  };
+  if (referer) event.event_source_url = referer;
+
+  const customData: Record<string, unknown> = {};
+  if (params.enquiryType) customData.content_name = `Website enquiry: ${params.enquiryType}`;
+  if (Object.keys(customData).length) event.custom_data = customData;
+
+  const payload: Record<string, unknown> = { data: [event] };
+  const testCode = process.env.META_CAPI_TEST_EVENT_CODE;
+  if (testCode) payload.test_event_code = testCode;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      console.warn('Meta CAPI error', res.status, await res.text());
+    }
+  } catch (e) {
+    console.warn('Meta CAPI exception', e);
+  }
 }
 
 async function extractAttachmentsFromFormData(fd: FormData): Promise<UploadedAttachment[]> {
@@ -220,6 +309,7 @@ export async function POST(req: Request) {
     is_professional: getField('is_professional'),
     company: sanitizeSingleLine(getField('company'), MAX_FIELD_LENGTH),
     attachments: sanitizeSingleLine(getField('attachments'), MAX_FIELD_LENGTH),
+    event_id: sanitizeSingleLine(getField('event_id'), MAX_EVENT_ID_LENGTH) || randomUUID(),
   };
 
   const subject = `[Website enquiry] ${fields.enquiry_type || 'General'} – ${fields.name}`;
@@ -335,6 +425,14 @@ export async function POST(req: Request) {
   if (!delivered) {
     console.log('Contact submission (no email provider configured):', { subject, ...fields });
   }
+
+  await sendMetaLeadEvent({
+    req,
+    email: fields.email,
+    eventId: fields.event_id,
+    ip,
+    enquiryType: fields.enquiry_type || undefined,
+  });
 
   return NextResponse.json({ ok: true });
 }

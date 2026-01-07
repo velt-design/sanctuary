@@ -108,10 +108,19 @@ export default function ContactPage() {
     return parts.join('; ');
   }, [proFiles]);
 
+  const createEventId = (): string => {
+    try {
+      if (typeof window !== 'undefined' && typeof window.crypto?.randomUUID === 'function') {
+        return window.crypto.randomUUID();
+      }
+    } catch {}
+    return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  };
+
   // Analytics helper (GA4 via window.gtag, if configured)
   type GtagFn = (...args: any[]) => void;
   type FbqFn = (...args: any[]) => void;
-  const trackSubmitEvent = (phase:'start'|'success'|'error', extra?:Record<string, unknown>) => {
+  const trackSubmitEvent = (phase:'start'|'success'|'error', extra?:Record<string, unknown>, eventId?: string) => {
     if (typeof window === 'undefined') return;
     const w = window as typeof window & { gtag?: GtagFn; fbq?: FbqFn };
     const gtag = w.gtag;
@@ -128,7 +137,8 @@ export default function ContactPage() {
         gtag('event', `contact_${phase}`, { ...base, ...extra });
       }
       if (phase === 'success' && typeof fbq === 'function') {
-        fbq('track', 'Lead', { ...base, ...extra });
+        if (eventId) fbq('track', 'Lead', { ...base, ...extra }, { eventID: eventId });
+        else fbq('track', 'Lead', { ...base, ...extra });
       }
     } catch {
       // Fail silently – analytics should never break form submission
@@ -258,6 +268,7 @@ export default function ContactPage() {
     if (submitState === 'sending') return;
     setSubmitError(null);
     setSubmitState('sending');
+    const eventId = createEventId();
     trackSubmitEvent('start');
     try {
       // Build the payload from React state rather than relying on browser
@@ -283,6 +294,7 @@ export default function ContactPage() {
       fd.set('is_homeowner', enquiryType === 'Residential' ? '1' : '0');
       fd.set('is_professional', enquiryType === 'Professional' ? '1' : '0');
       fd.set('enquiry_type', enquiryType ?? '');
+      fd.set('event_id', eventId);
       // Honeypot field for bots (left empty intentionally)
       fd.set('website', '');
       // Attach professional enquiry files so the API can send them on.
@@ -295,7 +307,7 @@ export default function ContactPage() {
       const json = await res.json().catch(() => ({ ok: res.ok }));
       if (res.ok && json?.ok) {
         setSubmitState('success');
-        trackSubmitEvent('success');
+        trackSubmitEvent('success', undefined, eventId);
         try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch {}
       } else {
         setSubmitState('error');
