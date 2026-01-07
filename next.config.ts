@@ -17,11 +17,11 @@ const nextConfig: NextConfig = {
       const csp = [
         "default-src 'self'",
         // Allow inline scripts so Next.js runtime and analytics can execute.
-        "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com https://connect.facebook.net https://pixel.archipro.co.nz",
+        "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://unpkg.com https://connect.facebook.net https://pixel.archipro.co.nz https://static.cloudflareinsights.com",
         "style-src 'self' 'unsafe-inline'",
-        "img-src 'self' data: blob: https://www.google-analytics.com https://www.sanctuarypergolas.co.nz https://www.facebook.com",
+        "img-src 'self' data: blob: https://www.google-analytics.com https://www.sanctuarypergolas.co.nz https://www.facebook.com https://stats.g.doubleclick.net https://www.googleadservices.com",
         "font-src 'self' data:",
-        "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://www.facebook.com https://graph.facebook.com https://pixel.archipro.co.nz",
+        "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.googleadservices.com https://www.facebook.com https://graph.facebook.com https://pixel.archipro.co.nz",
         "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
         "object-src 'none'",
         "base-uri 'self'",
