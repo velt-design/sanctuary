@@ -4,12 +4,46 @@
 @tailwind utilities;
 
 /* === Sanctuary Viewer CSS (from your prototype) === */
-:root { --bar-h:6px; --thumb:14px; --ease: cubic-bezier(.22,.61,.36,1); --ease-slow: cubic-bezier(.2,.8,.2,1); --ease-zoom: cubic-bezier(.08,0,.17,1); --gap-ratio: 0.06; --bar-mult: 2.2; --g: clamp(12px, 2.2vw, 28px); }
+:root { --bar-h:6px; --thumb:14px; --ease: cubic-bezier(.22,.61,.36,1); --ease-slow: cubic-bezier(.2,.8,.2,1); --ease-zoom: cubic-bezier(.08,0,.17,1); --gap-ratio: 0.06; --bar-mult: 2.2; --g: clamp(12px, 2.2vw, 28px); --sp-box-gap: 14px; }
 *,*::before,*::after { box-sizing:border-box; }
 html,body { height:100%; }
 body {
   margin: 0;
   font-family: var(--font-sans, -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif);
+}
+
+/* Portal routes (login + staff) */
+html.portal-mode,
+body.portal-mode {
+  background: var(--bg, #ECEDEE) !important;
+}
+
+body.portal-mode footer {
+  display: none !important;
+}
+
+/* Portal layout utilities */
+.sp-page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-box-gap);
+}
+
+.sp-section-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
+  gap: var(--sp-box-gap);
+  align-items: start;
+}
+
+.sp-section-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .sp-section-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .visually-hidden {
   position: absolute;

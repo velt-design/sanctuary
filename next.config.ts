@@ -3,6 +3,8 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
+  // Ensure Turbopack treats this folder as the workspace root (so `.env.local` is loaded from here).
+  turbopack: { root: __dirname },
   async headers() {
     const securityHeaders: { key: string; value: string }[] = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -33,6 +35,10 @@ const nextConfig: NextConfig = {
     }
 
     return [
+      {
+        source: '/careers/:path*',
+        headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+      },
       {
         source: '/:path*',
         headers: securityHeaders,

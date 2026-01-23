@@ -16,6 +16,8 @@ import { Suspense } from 'react';
 import MetaPixel from '@/components/MetaPixel';
 import ArchiproPixel from '@/components/ArchiproPixel';
 import JsonLd from '@/components/JsonLd';
+import PortalMode from '@/components/PortalMode';
+import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.sanctuarypergolas.co.nz'),
@@ -100,11 +102,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        <PortalMode />
         <WebVitals />
         <PageTransitions />
         <FooterHeaderSync />
         <ScrollReset />
-        <Header />
+        <HeaderVisibilityGate>
+          <Header />
+        </HeaderVisibilityGate>
         {/* Wrap searchParams-based subheader to satisfy CSR bailout rules */}
         <Suspense fallback={null}>
           <ProductSubHeader />

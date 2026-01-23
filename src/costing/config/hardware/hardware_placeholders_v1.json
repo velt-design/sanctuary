@@ -1,0 +1,201 @@
+{
+  "version": "hardware_placeholders_v1_2026-01-08",
+  "currency": "NZD",
+  "basis": {
+    "costs": "ex_gst",
+    "notes": [
+      "These are placeholder costs for items not yet captured in the authoritative materials cost spreadsheet.",
+      "Replace with real supplier costs once you add SKUs to the material cost table.",
+      "Quantities are starting rules; adjust as you refine detailing standards."
+    ]
+  },
+  "items": [
+    {
+      "id": "anchor.chem_m12_each",
+      "label": "M12 chemical anchor (stud + nut/washer + resin allocation)",
+      "unit": "each",
+      "unit_cost_ex_gst": 12.0
+    },
+    {
+      "id": "anchor.wedge_m12_each",
+      "label": "M12 wedge anchor / dynabolt",
+      "unit": "each",
+      "unit_cost_ex_gst": 6.0
+    },
+    {
+      "id": "fixing.coach_screw_m10_each",
+      "label": "M10 coach screw (galv) for timber fixing",
+      "unit": "each",
+      "unit_cost_ex_gst": 2.2
+    },
+    {
+      "id": "fixing.structural_screw_each",
+      "label": "Structural screw (galv) for frame/rafter fixing",
+      "unit": "each",
+      "unit_cost_ex_gst": 0.75
+    },
+    {
+      "id": "fixing.joiner_screw_each",
+      "label": "Joiner fixing screw (for acrylic joiner system)",
+      "unit": "each",
+      "unit_cost_ex_gst": 0.35
+    },
+    {
+      "id": "hardware.deck_bracket_assembly",
+      "label": "Post-to-deck bracket assembly (bracket + fixings allowance)",
+      "unit": "each",
+      "unit_cost_ex_gst": 95.0
+    },
+    {
+      "id": "hardware.slab_base_plate",
+      "label": "Post-to-slab base plate / bracket (excluding anchors)",
+      "unit": "each",
+      "unit_cost_ex_gst": 75.0
+    },
+    {
+      "id": "consumable.silicone_tube",
+      "label": "Neutral cure silicone/sealant tube",
+      "unit": "each",
+      "unit_cost_ex_gst": 9.0
+    },
+    {
+      "id": "consumable.alcohol_wipes_pack",
+      "label": "Cleaning wipes / alcohol wipes pack",
+      "unit": "each",
+      "unit_cost_ex_gst": 5.0
+    },
+    {
+      "id": "consumable.misc_allowance_job",
+      "label": "Misc small consumables allowance (bits, blades, tape)",
+      "unit": "job",
+      "unit_cost_ex_gst": 35.0
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule.deck_bracket_hardware",
+      "applies_when": {
+        "post_connection_type": "deck_bracket"
+      },
+      "lines": [
+        {
+          "item_id": "hardware.deck_bracket_assembly",
+          "qty": "post_count"
+        }
+      ],
+      "notes": "Per post deck bracket assembly cost includes a fixings allowance. Replace with exact bracket SKU pricing later."
+    },
+    {
+      "id": "rule.slab_anchors",
+      "applies_when": {
+        "post_connection_type": "slab_anchors"
+      },
+      "lines": [
+        {
+          "item_id": "hardware.slab_base_plate",
+          "qty": "post_count"
+        },
+        {
+          "item_id": "anchor.chem_m12_each",
+          "qty": "post_count * 4"
+        }
+      ],
+      "notes": "Assumes 4 x M12 chemical anchors per post base."
+    },
+    {
+      "id": "rule.soffit_bracket_fixings",
+      "applies_when": {
+        "house_connection_type": "soffit"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.coach_screw_m10_each",
+          "qty": "bracket_count * 4"
+        }
+      ],
+      "notes": "Assumes timber fixing: 4 coach screws per bracket."
+    },
+    {
+      "id": "rule.fascia_bracket_fixings",
+      "applies_when": {
+        "house_connection_type": "fascia"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.coach_screw_m10_each",
+          "qty": "stringer_fixing_count * 2"
+        }
+      ],
+      "notes": "Assumes direct timber fixing: 2 coach screws per stringer fixing point."
+    },
+    {
+      "id": "rule.facade_bracket_fixings",
+      "applies_when": {
+        "house_connection_type": "facade"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.coach_screw_m10_each",
+          "qty": "stringer_fixing_count * 2"
+        }
+      ],
+      "notes": "Assumes direct timber fixing: 2 coach screws per stringer fixing point. If masonry fixing is needed, add a dedicated subtype later."
+    },
+    {
+      "id": "rule.rafter_fixings",
+      "applies_when": {},
+      "lines": [
+        {
+          "item_id": "fixing.structural_screw_each",
+          "qty": "rafter_count * 8"
+        }
+      ],
+      "notes": "Assumes 8 structural screws per rafter (4 each end). Tune later."
+    },
+    {
+      "id": "rule.acrylic_joiner_fixings",
+      "applies_when": {
+        "roof_material": "acrylic"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.joiner_screw_each",
+          "qty": "rafter_count * 6"
+        }
+      ],
+      "notes": "Acrylic joiner system fixings placeholder: assumes 6 screws per joiner run. Re-measure and replace with exact SKU quantities later."
+    },
+    {
+      "id": "rule.mixed_joiner_fixings",
+      "applies_when": {
+        "roof_material": "mixed"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.joiner_screw_each",
+          "qty": "acrylic_bays_total * 6"
+        }
+      ],
+      "notes": "Mixed roof joiner system fixings placeholder: assumes 6 screws per joiner run. Re-measure and replace with exact SKU quantities later."
+    },
+    {
+      "id": "rule_sealants",
+      "applies_when": {},
+      "lines": [
+        {
+          "item_id": "consumable.silicone_tube",
+          "qty": "2"
+        },
+        {
+          "item_id": "consumable.alcohol_wipes_pack",
+          "qty": "1"
+        },
+        {
+          "item_id": "consumable.misc_allowance_job",
+          "qty": "1"
+        }
+      ],
+      "notes": "Baseline consumables per job. Replace with more explicit line items if you prefer."
+    }
+  ]
+}

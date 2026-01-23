@@ -1,0 +1,1508 @@
+'use client';
+
+import type { CostInputsV1, JobInputsV1, JobOutputV1, RoofType } from '@/src/costing/engine/types';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
+import styles from './CalculatorGrid.module.css';
+import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { Project } from '@/lib/types/project';
+import { getContact } from '@/lib/repo/contactsRepo';
+import { addProjectActivity, getProject } from '@/lib/repo/projectsRepo';
+import { createEstimate, duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
+import { getCostingMeta } from '@/lib/costing/costEngine';
+import { useToast } from '@/components/ui/toast/ToastProvider';
+import Modal from '@/components/ui/modal/Modal';
+import { useSession } from 'next-auth/react';
+
+type FieldSchemaItem = {
+  id: string;
+  label: string;
+  type: FieldTileType;
+  value?: string | boolean;
+  onChange?: (next: string | boolean) => void;
+  options?: FieldOption[];
+  disabled?: boolean;
+  helperText?: string;
+  error?: string;
+  onAction?: () => void;
+  actionLabel?: string;
+};
+
+function toNumber(value: string): number {
+  const n = Number.parseFloat(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function formatMoney(n: number): string {
+  if (!Number.isFinite(n)) return '$0.00';
+  return `$${n.toFixed(2)}`;
+}
+
+function formatMaybeMoney(n: number | undefined): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
+  return formatMoney(n);
+}
+
+function formatMaybeNumber(n: number | undefined, digits = 2): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
+  return n.toFixed(digits);
+}
+
+function inferStockLengthFromLabel(label: string): number | null {
+  const match = String(label ?? '').match(/(\d+(?:\.\d+)?)m\b/i);
+  if (!match) return null;
+  const n = Number.parseFloat(match[1] ?? '');
+  return Number.isFinite(n) ? n : null;
+}
+
+const RAFTER_SPACING_MM_MAX = 642;
+
+function toNonNegativeInt(value: unknown): number {
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string'
+        ? Number.parseInt(value, 10)
+        : Number.parseInt(String(value ?? ''), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : NaN;
+}
+
+function clampInt(n: number, min: number, max: number): number {
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function labelForIssueField(id: string): string {
+  switch (id) {
+    case 'lengthM':
+      return 'Length (m)';
+    case 'projectionM':
+      return 'Projection (m)';
+    case 'hipCornerLengthBM':
+      return 'Wing B length (m)';
+    case 'hipCornerProjectionBM':
+      return 'Wing B projection (m)';
+    case 'postCutHeightM':
+      return 'Post cut height (m)';
+    case 'roofPitchDeg':
+      return 'Roof pitch (deg)';
+    case 'postCount':
+      return 'Post count';
+    case 'fallDistanceMm':
+      return 'Fall distance (mm)';
+    case 'mixedAcrylicBaysMain':
+      return 'Acrylic bays';
+    case 'mixedAcrylicBaysA':
+      return 'Acrylic bays (A)';
+    case 'mixedAcrylicBaysB':
+      return 'Acrylic bays (B)';
+    default:
+      return id;
+  }
+}
+
+function getRoofTypeForModule(module: CalculatorModuleInputs): RoofType {
+  if (module.boxPerimeterEnabled) return module.internalRoofType;
+  if (module.pergolaStyle === 'gable') return 'gable';
+  if (module.pergolaStyle === 'hip') return 'hip';
+  if (module.pergolaStyle === 'hip_corner') return 'hip_corner';
+  return 'pitched';
+}
+
+function computeBayCountsForModule(
+  module: CalculatorModuleInputs,
+): { roofType: RoofType; bayCountMain: number; bayCountA: number; bayCountB: number } {
+  const roofType = getRoofTypeForModule(module);
+
+  const lengthM = toNumber(module.lengthM);
+  const lengthMmA = Number.isFinite(lengthM) && lengthM > 0 ? Math.round(lengthM * 1000) : 0;
+  const rafterCountA = lengthMmA > 0 ? Math.ceil(lengthMmA / RAFTER_SPACING_MM_MAX) + 1 : 0;
+  const bayCountA = Math.max(0, rafterCountA - 1);
+
+  if (roofType === 'hip_corner') {
+    const lengthBM = toNumber(module.hipCornerLengthBM);
+    const lengthMmB = Number.isFinite(lengthBM) && lengthBM > 0 ? Math.round(lengthBM * 1000) : 0;
+    const rafterCountB = lengthMmB > 0 ? Math.ceil(lengthMmB / RAFTER_SPACING_MM_MAX) + 1 : 0;
+    const bayCountB = Math.max(0, rafterCountB - 1);
+    return { roofType, bayCountMain: 0, bayCountA, bayCountB };
+  }
+
+  if (roofType === 'pitched') return { roofType, bayCountMain: bayCountA, bayCountA: 0, bayCountB: 0 };
+  return { roofType, bayCountMain: 0, bayCountA, bayCountB: bayCountA };
+}
+
+function makeDefaultModule(): CalculatorModuleInputs {
+  return {
+    pergolaStyle: 'pitched',
+    roofMaterial: 'acrylic',
+    extrusionColour: 'Black',
+    boxPerimeterEnabled: false,
+    internalRoofType: 'pitched',
+    fallDistanceMm: '0',
+    roofPitchDeg: '',
+    mixedSkylightStripCount: '1',
+    mixedSkylightStripWidthM: '0.62',
+    mixedAcrylicBaysMain: '0',
+    mixedAcrylicBaysA: '0',
+    mixedAcrylicBaysB: '0',
+
+    postCount: '4',
+    houseConnectionType: 'soffit',
+    postConnectionType: 'deck_bracket',
+    ground: 'easy',
+
+    lengthM: '6',
+    projectionM: '3',
+    hipCornerLengthBM: '0',
+    hipCornerProjectionBM: '0',
+    postCutHeightM: '2.4',
+
+    timberRoofAllowanceExGst: '0',
+  };
+}
+
+export default function CalculatorGridClient({
+  email: emailProp,
+  role: roleProp,
+}: {
+  email?: string;
+  role?: 'admin' | 'staff';
+}) {
+  const { data: session } = useSession();
+  const email = typeof emailProp === 'string' ? emailProp : (typeof session?.user?.email === 'string' ? session.user.email : '');
+  const role = (roleProp ?? (((session?.user as any)?.role ?? 'staff') as 'admin' | 'staff')) === 'admin' ? 'admin' : 'staff';
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const toast = useToast();
+  const projectId = searchParams.get('projectId') ?? '';
+  const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
+
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [values, setValues] = useState<CalculatorInputs>(() => ({
+    schemaVersion: 'v2',
+    projectName: '',
+    quoteRef: '',
+    access: 'normal',
+    height: 'single_storey',
+    travelExGst: '0',
+    extrasAllowanceExGst: '0',
+    quoteDiscountPct: '0',
+    modules: [makeDefaultModule()],
+  }));
+  const [activeModuleIndex, setActiveModuleIndex] = useState(0);
+  const [project, setProject] = useState<Project | null>(null);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const [draftNotice, setDraftNotice] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    if (!projectId) {
+      setProject(null);
+      setProjectError(null);
+      return;
+    }
+
+    void (async () => {
+      const p = await getProject(projectId);
+      setProject(p);
+      if (!p) {
+        setProjectError('Project not found (use Projects in the header to create/select one).');
+        return;
+      }
+      setProjectError(null);
+      setValues((prev) => ({
+        ...prev,
+        projectName: p.projectName ?? p.name ?? prev.projectName,
+        quoteRef: p.quoteRef ?? prev.quoteRef,
+      }));
+    })();
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!fromEstimateId) {
+      setDraftNotice(null);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const draft = await duplicateEstimateToDraft(fromEstimateId);
+        setValues({
+          ...draft,
+          schemaVersion: 'v2',
+          modules: (draft.modules ?? []).map((m) => {
+            const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...m };
+            if (merged.roofMaterial !== 'mixed') return merged;
+
+            const bayCounts = computeBayCountsForModule(merged);
+            const hasMain = Object.prototype.hasOwnProperty.call(m as any, 'mixedAcrylicBaysMain');
+            const hasA = Object.prototype.hasOwnProperty.call(m as any, 'mixedAcrylicBaysA');
+            const hasB = Object.prototype.hasOwnProperty.call(m as any, 'mixedAcrylicBaysB');
+
+            if (bayCounts.roofType === 'pitched') {
+              if (!hasMain) merged.mixedAcrylicBaysMain = String(bayCounts.bayCountMain);
+            } else {
+              if (!hasA) merged.mixedAcrylicBaysA = String(bayCounts.bayCountA);
+              if (!hasB) merged.mixedAcrylicBaysB = String(bayCounts.bayCountB);
+            }
+
+            return merged;
+          }),
+        });
+        setActiveModuleIndex(0);
+        const msg = `Draft duplicated from estimate ${fromEstimateId}`;
+        setDraftNotice(msg);
+        toast.success(msg);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to duplicate estimate';
+        setDraftNotice(msg);
+        toast.error(msg);
+      }
+    })();
+  }, [fromEstimateId]);
+
+  useEffect(() => {
+    setActiveModuleIndex((prev) => {
+      const max = Math.max(0, values.modules.length - 1);
+      return Math.min(prev, max);
+    });
+  }, [values.modules.length]);
+
+  const activeModule = values.modules[activeModuleIndex] ?? values.modules[0] ?? makeDefaultModule();
+
+  const errorsByModule = useMemo(() => {
+    return values.modules.map((module) => {
+      const next: Partial<Record<keyof CalculatorModuleInputs, string>> = {};
+
+      const length = toNumber(module.lengthM);
+      if (!Number.isFinite(length) || length <= 0) next.lengthM = 'Enter a length > 0';
+
+      const projection = toNumber(module.projectionM);
+      if (!Number.isFinite(projection) || projection <= 0) next.projectionM = 'Enter a projection > 0';
+
+      if (module.pergolaStyle === 'hip_corner') {
+        const lengthB = toNumber(module.hipCornerLengthBM);
+        if (!Number.isFinite(lengthB) || lengthB <= 0) next.hipCornerLengthBM = 'Wing B length is required';
+
+        const projectionB = toNumber(module.hipCornerProjectionBM);
+        if (!Number.isFinite(projectionB) || projectionB <= 0) next.hipCornerProjectionBM = 'Wing B projection is required';
+      }
+
+      const postHeight = toNumber(module.postCutHeightM);
+      if (!Number.isFinite(postHeight) || postHeight <= 0) next.postCutHeightM = 'Enter a post cut height > 0';
+
+      if (module.roofPitchDeg.trim()) {
+        const pitch = toNumber(module.roofPitchDeg);
+        if (!Number.isFinite(pitch) || pitch < 0 || pitch > 85) next.roofPitchDeg = 'Enter a pitch between 0 and 85';
+      }
+
+      const postCount = toNumber(module.postCount);
+      if (!Number.isFinite(postCount) || postCount <= 0) next.postCount = 'Enter a post count > 0';
+
+      if (module.boxPerimeterEnabled) {
+        const fallMm = toNumber(module.fallDistanceMm);
+        if (!Number.isFinite(fallMm) || fallMm <= 0) next.fallDistanceMm = 'Required when box perimeter is on';
+      }
+
+      if (module.roofMaterial === 'mixed') {
+        const bayCounts = computeBayCountsForModule(module);
+        if (bayCounts.roofType === 'pitched') {
+          const raw = toNonNegativeInt(module.mixedAcrylicBaysMain);
+          const clamped = clampInt(raw, 0, bayCounts.bayCountMain);
+          if (!Number.isFinite(raw) || clamped !== raw) next.mixedAcrylicBaysMain = `Enter an integer between 0 and ${bayCounts.bayCountMain}`;
+        } else if (bayCounts.roofType === 'hip_corner') {
+          const rawA = toNonNegativeInt(module.mixedAcrylicBaysA);
+          const rawB = toNonNegativeInt(module.mixedAcrylicBaysB);
+          const clampedA = clampInt(rawA, 0, bayCounts.bayCountA);
+          const clampedB = clampInt(rawB, 0, bayCounts.bayCountB);
+          if (!Number.isFinite(rawA) || clampedA !== rawA) next.mixedAcrylicBaysA = `Enter an integer between 0 and ${bayCounts.bayCountA}`;
+          if (!Number.isFinite(rawB) || clampedB !== rawB) next.mixedAcrylicBaysB = `Enter an integer between 0 and ${bayCounts.bayCountB}`;
+        } else {
+          const rawA = toNonNegativeInt(module.mixedAcrylicBaysA);
+          const rawB = toNonNegativeInt(module.mixedAcrylicBaysB);
+          const clampedA = clampInt(rawA, 0, bayCounts.bayCountA);
+          const clampedB = clampInt(rawB, 0, bayCounts.bayCountB);
+          if (!Number.isFinite(rawA) || clampedA !== rawA) next.mixedAcrylicBaysA = `Enter an integer between 0 and ${bayCounts.bayCountA}`;
+          if (!Number.isFinite(rawB) || clampedB !== rawB) next.mixedAcrylicBaysB = `Enter an integer between 0 and ${bayCounts.bayCountB}`;
+        }
+      }
+
+      return next;
+    });
+  }, [values.modules]);
+
+  const errors = errorsByModule[activeModuleIndex] ?? {};
+  const hasModuleErrors = errorsByModule.some((map) => Object.values(map).some(Boolean));
+
+  const setJobField = <K extends Exclude<keyof CalculatorInputs, 'modules'>>(key: K, next: CalculatorInputs[K]) => {
+    setValues((prev) => ({ ...prev, [key]: next }));
+  };
+
+  const setModuleField = <K extends keyof CalculatorModuleInputs>(key: K, next: CalculatorModuleInputs[K]) => {
+    setValues((prev) => {
+      const modules = prev.modules.slice();
+      const current = modules[activeModuleIndex] ?? makeDefaultModule();
+      modules[activeModuleIndex] = { ...current, [key]: next };
+      return { ...prev, modules };
+    });
+  };
+
+  const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
+
+  const requestPayload = useMemo<JobInputsV1>(() => {
+    const travel_ex_gst = toNumber(values.travelExGst);
+    const extras_allowance_ex_gst = toNumber(values.extrasAllowanceExGst);
+    const quote_discount_pct = toNumber(values.quoteDiscountPct);
+
+    const modules: CostInputsV1[] = values.modules.map((module) => {
+      const length_m = toNumber(module.lengthM);
+      const projection_m = toNumber(module.projectionM);
+      const post_cut_height_m = toNumber(module.postCutHeightM);
+      const roof_pitch_deg = module.roofPitchDeg.trim() ? toNumber(module.roofPitchDeg) : NaN;
+      const post_count = toNumber(module.postCount);
+
+      const fall_distance_mm = toNumber(module.fallDistanceMm);
+      const hip_corner_length_b_m = toNumber(module.hipCornerLengthBM);
+      const hip_corner_projection_b_m = toNumber(module.hipCornerProjectionBM);
+
+      const isPile = module.postConnectionType === 'pile_1m' || module.postConnectionType === 'pile_1_5m';
+      const bayCounts = computeBayCountsForModule(module);
+
+      return {
+        length_m,
+        projection_m,
+        post_cut_height_m,
+        roof_pitch_deg: Number.isFinite(roof_pitch_deg) ? roof_pitch_deg : undefined,
+        post_count,
+
+        pergola_style: module.pergolaStyle,
+        box_perimeter_enabled: module.boxPerimeterEnabled,
+        internal_roof_type: module.boxPerimeterEnabled ? module.internalRoofType : undefined,
+        fall_distance_mm: module.boxPerimeterEnabled ? fall_distance_mm : undefined,
+
+        roof_material: module.roofMaterial,
+        extrusion_colour: module.extrusionColour,
+        mixed_roof:
+          module.roofMaterial === 'mixed'
+            ? {
+                mode: 'acrylic_bays',
+                acrylic_bays_by_plane: ((): Record<string, number> => {
+                  if (bayCounts.roofType === 'pitched') {
+                    return { main: clampInt(toNonNegativeInt(module.mixedAcrylicBaysMain), 0, bayCounts.bayCountMain) };
+                  }
+                  return {
+                    A: clampInt(toNonNegativeInt(module.mixedAcrylicBaysA), 0, bayCounts.bayCountA),
+                    B: clampInt(toNonNegativeInt(module.mixedAcrylicBaysB), 0, bayCounts.bayCountB),
+                  };
+                })(),
+              }
+            : undefined,
+        hip_corner:
+          module.pergolaStyle === 'hip_corner'
+            ? {
+                length_b_m: Number.isFinite(hip_corner_length_b_m) && hip_corner_length_b_m > 0 ? hip_corner_length_b_m : undefined,
+                projection_b_m:
+                  Number.isFinite(hip_corner_projection_b_m) && hip_corner_projection_b_m > 0 ? hip_corner_projection_b_m : undefined,
+              }
+            : undefined,
+
+        house_connection_type: module.houseConnectionType,
+        post_connection_type: module.postConnectionType,
+        access: values.access,
+        height: values.height,
+        ground: isPile ? module.ground : undefined,
+
+        travel_ex_gst: 0,
+        extras_allowance_ex_gst: 0,
+        quote_discount_pct: 0,
+      };
+    });
+
+    return {
+      modules,
+      travel_ex_gst: Number.isFinite(travel_ex_gst) ? travel_ex_gst : 0,
+      extras_allowance_ex_gst: Number.isFinite(extras_allowance_ex_gst) ? extras_allowance_ex_gst : 0,
+      quote_discount_pct: Number.isFinite(quote_discount_pct) ? quote_discount_pct : 0,
+    };
+  }, [values]);
+
+  const requestPayloadJson = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
+
+  const [result, setResult] = useState<JobOutputV1 | null>(null);
+  const [engineError, setEngineError] = useState<string | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmReady, setConfirmReady] = useState(false);
+  const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
+
+  const issues = useMemo(() => {
+    const out: Array<{ moduleIndex: number; fieldId: string; label: string; message: string }> = [];
+    errorsByModule.forEach((map, moduleIndex) => {
+      Object.entries(map).forEach(([fieldId, message]) => {
+        if (!message) return;
+        out.push({ moduleIndex, fieldId, label: labelForIssueField(fieldId), message });
+      });
+    });
+    return out;
+  }, [errorsByModule]);
+
+  const issuesCount = issues.length;
+
+  useEffect(() => {
+    if (issuesOpen) return;
+    const pending = pendingIssueFocusRef.current;
+    if (!pending) return;
+    if (pending.moduleIndex !== activeModuleIndex) return;
+    pendingIssueFocusRef.current = null;
+
+    const el = document.getElementById(pending.fieldId);
+    if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (typeof (el as any).focus === 'function') {
+      try {
+        (el as any).focus({ preventScroll: true });
+      } catch {
+        (el as any).focus();
+      }
+    }
+  }, [activeModuleIndex, issuesOpen]);
+
+  useEffect(() => {
+    if (!readyToCalculate) {
+      setEngineError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const t = window.setTimeout(async () => {
+      setIsCalculating(true);
+      setEngineError(null);
+
+      try {
+        const res = await fetch('/api/staff/costing/v1/job', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: requestPayloadJson,
+          signal: controller.signal,
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(String(json?.error ?? 'Costing failed'));
+        setResult(json as JobOutputV1);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : 'Costing failed';
+        setEngineError(msg);
+      } finally {
+        if (!controller.signal.aborted) setIsCalculating(false);
+      }
+    }, 200);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(t);
+    };
+  }, [readyToCalculate, requestPayloadJson]);
+
+  const moduleResult = result?.modules[activeModuleIndex] ?? result?.modules[0] ?? null;
+
+  const derivedArea = moduleResult?.derived.area_m2;
+  const derivedRoofArea = moduleResult?.derived.roof_surface_area_m2;
+  const derivedPitchUsed = moduleResult?.derived.roof_pitch_deg_used;
+  const derivedAcrylicArea = moduleResult?.derived.acrylic_area_m2;
+  const derivedTimberArea = (moduleResult?.derived as any)?.timber_area_m2 as number | undefined;
+  const derivedAcrylicBaysTotal = (moduleResult?.derived as any)?.acrylic_bays_total as number | undefined;
+  const derivedSlopeLength = moduleResult?.derived.rafter_length_m;
+  const roofType = moduleResult?.inputs_normalized.roof_type;
+  const rafterCount = moduleResult?.derived.rafter_count;
+  const hipRafterCount = moduleResult?.derived.hip_rafter_count;
+  const bracketCount = moduleResult?.derived.bracket_count;
+  const rafterProfile = moduleResult?.inputs_normalized.rafter_profile;
+  const crewHours = result?.install.totals.crew_hours;
+
+  const materialsEx = result?.materials.totals.materials_ex_gst;
+  const installEx = result?.install.totals.install_ex_gst;
+  const overheadEx = result?.overhead.total_ex_gst;
+  const totalEx = result?.totals.cost_ex_gst;
+  const totalInc = result?.totals.cost_inc_gst;
+  const warningsTyped =
+    result?.totals.warnings ??
+    (result?.totals.notes_and_warnings ?? []).map((message) => ({ level: 'info' as const, message }));
+  const criticalWarnings = warningsTyped.filter((w) => w.level === 'critical');
+  const infoWarnings = warningsTyped.filter((w) => w.level === 'info');
+  const warningsCount = warningsTyped.length;
+
+  const roofingProcurementSummary = useMemo(() => {
+    const lines = moduleResult?.materials?.lines ?? [];
+    if (!Array.isArray(lines) || !lines.length) return '—';
+
+    const cedar = lines.find((l: any) => String(l?.id ?? '') === 'roofing-timber_cedar_sarking_wrc_110cover_12mm_lm');
+    const cedarPart =
+      cedar && typeof cedar.qty === 'number' && Number.isFinite(cedar.qty) ? `Timber: ${formatMaybeNumber(cedar.qty, 2)} lm cedar sarking` : null;
+
+    const sheet = lines.find((l: any) => String(l?.profile ?? '') === 'Plexi sheet 3050×2030');
+    const sheetPart =
+      sheet && typeof sheet.qty === 'number' && Number.isFinite(sheet.qty) ? `Acrylic: ${Math.round(sheet.qty)} × 3050×2030 sheet(s)` : null;
+
+    const stripGroups = new Map<number, number>();
+    for (const l of lines as any[]) {
+      if (String(l?.profile ?? '') !== 'Crystalite 620mm') continue;
+      const len = inferStockLengthFromLabel(String(l?.label ?? '')) ?? 0;
+      if (!len) continue;
+      const qty = typeof l?.qty === 'number' && Number.isFinite(l.qty) ? l.qty : 0;
+      stripGroups.set(len, (stripGroups.get(len) ?? 0) + qty);
+    }
+    const stripPart =
+      stripGroups.size > 0
+        ? `Acrylic: ${Array.from(stripGroups.entries())
+            .sort((a, b) => a[0] - b[0])
+            .map(([len, qty]) => `${Math.round(qty)} × 620mm strip(s) @ ${len}m`)
+            .join(', ')}`
+        : null;
+
+    const acrylicPart = sheetPart ?? stripPart;
+    const parts = [acrylicPart, cedarPart].filter(Boolean);
+    return parts.length ? (parts as string[]).join(' · ') : '—';
+  }, [moduleResult]);
+
+  const rafterCountTotal =
+    typeof rafterCount === 'number'
+      ? roofType === 'gable' || roofType === 'low_gable' || roofType === 'hip'
+        ? rafterCount * 2
+        : rafterCount
+      : null;
+
+  const rafterHelperText =
+    typeof rafterCount === 'number' && (roofType === 'gable' || roofType === 'low_gable')
+      ? `Per side: ${rafterCount}`
+      : typeof rafterCount === 'number' && roofType === 'hip'
+        ? `Per side: ${rafterCount}${typeof hipRafterCount === 'number' && hipRafterCount > 0 ? ` (+${hipRafterCount} hip)` : ''}`
+        : undefined;
+
+  const generateLabel = isGenerating ? 'Generating…' : 'Generate';
+
+  const schema: FieldSchemaItem[] = [
+    {
+      id: 'engine-status',
+      label: 'Cost engine',
+      type: 'readOnly',
+      value: isCalculating ? 'Calculating…' : engineError ? 'Error' : result ? 'Ready' : '—',
+      error: engineError ?? undefined,
+      helperText: engineError ? undefined : 'True cost (ex‑GST)',
+    },
+    {
+      id: 'project-context',
+      label: 'Project',
+      type: 'readOnly',
+      value: project ? project.projectName ?? project.name ?? '—' : projectId ? 'Not found' : 'None',
+      helperText: project ? `Attached: ${project.projectName ?? project.name ?? '—'}` : 'Use Projects in the header to select or create one.',
+      error: projectId && !project ? projectError ?? undefined : undefined,
+    },
+
+    ...(draftNotice
+      ? [
+          {
+            id: 'draft-notice',
+            label: 'Draft',
+            type: 'readOnly',
+            value: 'Active',
+            helperText: draftNotice,
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+
+    ...(projectId && project
+      ? [
+          {
+            id: 'projectName',
+            label: 'Project name',
+            type: 'readOnly',
+            value: project.projectName ?? project.name ?? '—',
+          } satisfies FieldSchemaItem,
+          { id: 'quoteRef', label: 'Quote ref', type: 'readOnly', value: project.quoteRef ?? '—', helperText: 'Internal reference' } satisfies FieldSchemaItem,
+        ]
+      : [
+          {
+            id: 'projectName',
+            label: 'Project name',
+            type: 'text',
+            value: values.projectName,
+            onChange: (v) => setJobField('projectName', String(v)),
+          } satisfies FieldSchemaItem,
+          {
+            id: 'quoteRef',
+            label: 'Quote ref',
+            type: 'text',
+            value: values.quoteRef,
+            onChange: (v) => setJobField('quoteRef', String(v)),
+            helperText: 'Internal reference',
+          } satisfies FieldSchemaItem,
+        ]),
+
+    {
+      id: 'moduleIndex',
+      label: 'Module',
+      type: 'select',
+      value: String(activeModuleIndex),
+      onChange: (v) => {
+        const idx = Number.parseInt(String(v), 10);
+        if (!Number.isFinite(idx)) return;
+        setActiveModuleIndex(Math.max(0, Math.min(values.modules.length - 1, idx)));
+      },
+      options: values.modules.map((_, idx) => ({ label: `Module ${idx + 1}`, value: String(idx) })),
+      helperText: values.modules.length > 1 ? `${values.modules.length} modules in this job` : 'Single module job',
+    },
+    {
+      id: 'addModule',
+      label: 'Add module',
+      type: 'action',
+      actionLabel: 'Add',
+      onAction: () => {
+        setValues((prev) => {
+          const base = prev.modules[activeModuleIndex] ?? prev.modules[0] ?? makeDefaultModule();
+          return { ...prev, modules: [...prev.modules, { ...base }] };
+        });
+        setActiveModuleIndex(values.modules.length);
+      },
+      helperText: 'Duplicates the current module',
+    },
+    ...(values.modules.length > 1
+      ? [
+          {
+            id: 'removeModule',
+            label: 'Remove module',
+            type: 'action',
+            actionLabel: 'Remove',
+            onAction: () => {
+              if (values.modules.length <= 1) return;
+              setValues((prev) => {
+                if (prev.modules.length <= 1) return prev;
+                const nextModules = prev.modules.slice();
+                nextModules.splice(activeModuleIndex, 1);
+                return { ...prev, modules: nextModules };
+              });
+              setActiveModuleIndex(Math.min(activeModuleIndex, Math.max(0, values.modules.length - 2)));
+            },
+            helperText: 'Removes the current module',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+
+    {
+      id: 'pergolaStyle',
+      label: 'Pergola style',
+      type: 'select',
+      value: activeModule.pergolaStyle,
+      onChange: (v) => {
+        const nextStyle = v as CalculatorModuleInputs['pergolaStyle'];
+        setValues((prev) => {
+          const modules = prev.modules.slice();
+          const current = modules[activeModuleIndex] ?? makeDefaultModule();
+          modules[activeModuleIndex] = {
+            ...current,
+            pergolaStyle: nextStyle,
+            ...(nextStyle === 'hip_corner' ? { boxPerimeterEnabled: false } : null),
+          };
+          return { ...prev, modules };
+        });
+      },
+      options: [
+        { label: 'Pitched', value: 'pitched' },
+        { label: 'Gable', value: 'gable' },
+        { label: 'Hip', value: 'hip' },
+        { label: 'Hip (corner)', value: 'hip_corner' },
+      ],
+      helperText:
+        activeModule.pergolaStyle === 'gable' || activeModule.pergolaStyle === 'hip' || activeModule.pergolaStyle === 'hip_corner'
+          ? 'v1 assumptions (check Details)'
+          : undefined,
+    },
+    {
+      id: 'boxPerimeterEnabled',
+      label: 'Box perimeter',
+      type: 'toggle',
+      value: activeModule.boxPerimeterEnabled,
+      onChange: (v) => setModuleField('boxPerimeterEnabled', Boolean(v)),
+      disabled: activeModule.pergolaStyle === 'hip_corner',
+      helperText:
+        activeModule.pergolaStyle === 'hip_corner'
+          ? 'Not supported for hip corner'
+          : activeModule.boxPerimeterEnabled
+            ? 'Box beam = 300x50'
+            : 'Off',
+    },
+    {
+      id: 'roofMaterial',
+      label: 'Roof material',
+      type: 'select',
+      value: activeModule.roofMaterial,
+      onChange: (v) => {
+        const next = v as CalculatorModuleInputs['roofMaterial'];
+        setValues((prev) => {
+          const modules = prev.modules.slice();
+          const current = modules[activeModuleIndex] ?? makeDefaultModule();
+          const updated: CalculatorModuleInputs =
+            next === 'mixed'
+              ? (() => {
+                  const bayCounts = computeBayCountsForModule(current);
+                  return {
+                    ...current,
+                    roofMaterial: next,
+                    ...(bayCounts.roofType === 'pitched'
+                      ? { mixedAcrylicBaysMain: String(bayCounts.bayCountMain) }
+                      : {
+                          mixedAcrylicBaysA: String(bayCounts.bayCountA),
+                          mixedAcrylicBaysB: String(bayCounts.bayCountB),
+                        }),
+                  };
+                })()
+              : { ...current, roofMaterial: next };
+          modules[activeModuleIndex] = updated;
+          return { ...prev, modules };
+        });
+      },
+      options: [
+        { label: 'Acrylic', value: 'acrylic' },
+        { label: 'Timber', value: 'timber' },
+        { label: 'Mixed (Acrylic + Timber)', value: 'mixed' },
+      ],
+    },
+    ...(activeModule.roofMaterial === 'mixed'
+      ? [
+          ...(computeBayCountsForModule(activeModule).roofType === 'pitched'
+            ? [
+                {
+                  id: 'mixedAcrylicBaysMain',
+                  label: 'Acrylic bays (main)',
+                  type: 'number',
+                  value: activeModule.mixedAcrylicBaysMain,
+                  onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysMain', String(v)),
+                  error: errors.mixedAcrylicBaysMain,
+                  helperText: `0–${computeBayCountsForModule(activeModule).bayCountMain}`,
+                } satisfies FieldSchemaItem,
+              ]
+            : computeBayCountsForModule(activeModule).roofType === 'hip_corner'
+              ? [
+                  {
+                    id: 'mixedAcrylicBaysA',
+                    label: 'Acrylic bays (leg A)',
+                    type: 'number',
+                    value: activeModule.mixedAcrylicBaysA,
+                    onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
+                    error: errors.mixedAcrylicBaysA,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
+                  } satisfies FieldSchemaItem,
+                  {
+                    id: 'mixedAcrylicBaysB',
+                    label: 'Acrylic bays (leg B)',
+                    type: 'number',
+                    value: activeModule.mixedAcrylicBaysB,
+                    onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
+                    error: errors.mixedAcrylicBaysB,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
+                  } satisfies FieldSchemaItem,
+                ]
+              : [
+                  {
+                    id: 'mixedAcrylicBaysA',
+                    label: 'Acrylic bays (side A)',
+                    type: 'number',
+                    value: activeModule.mixedAcrylicBaysA,
+                    onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
+                    error: errors.mixedAcrylicBaysA,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
+                  } satisfies FieldSchemaItem,
+                  {
+                    id: 'mixedAcrylicBaysB',
+                    label: 'Acrylic bays (side B)',
+                    type: 'number',
+                    value: activeModule.mixedAcrylicBaysB,
+                    onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
+                    error: errors.mixedAcrylicBaysB,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
+                  } satisfies FieldSchemaItem,
+                ]),
+        ]
+      : []),
+    {
+      id: 'extrusionColour',
+      label: 'Extrusion colour',
+      type: 'select',
+      value: activeModule.extrusionColour,
+      onChange: (v) => setModuleField('extrusionColour', v as CalculatorModuleInputs['extrusionColour']),
+      options: [
+        { label: 'Black', value: 'Black' },
+        { label: 'White', value: 'White' },
+        { label: 'Mill', value: 'Mill' },
+      ],
+    },
+
+    { id: 'lengthM', label: activeModule.pergolaStyle === 'hip_corner' ? 'Length A (m)' : 'Length (m)', type: 'number', value: activeModule.lengthM, onChange: (v) => setModuleField('lengthM', String(v)), error: errors.lengthM },
+    { id: 'projectionM', label: activeModule.pergolaStyle === 'hip_corner' ? 'Projection A (m)' : 'Projection (m)', type: 'number', value: activeModule.projectionM, onChange: (v) => setModuleField('projectionM', String(v)), error: errors.projectionM },
+    ...(activeModule.pergolaStyle === 'hip_corner'
+      ? [
+          {
+            id: 'hipCornerLengthBM',
+            label: 'Length B (m)',
+            type: 'number',
+            value: activeModule.hipCornerLengthBM,
+            onChange: (v: string | boolean) => setModuleField('hipCornerLengthBM', String(v)),
+            error: errors.hipCornerLengthBM,
+          } satisfies FieldSchemaItem,
+          {
+            id: 'hipCornerProjectionBM',
+            label: 'Projection B (m)',
+            type: 'number',
+            value: activeModule.hipCornerProjectionBM,
+            onChange: (v: string | boolean) => setModuleField('hipCornerProjectionBM', String(v)),
+            error: errors.hipCornerProjectionBM,
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    {
+      id: 'roofPitchDeg',
+      label: 'Roof pitch (deg)',
+      type: 'number',
+      value: activeModule.roofPitchDeg,
+      onChange: (v) => setModuleField('roofPitchDeg', String(v)),
+      error: errors.roofPitchDeg,
+      helperText: activeModule.roofPitchDeg.trim() ? 'Overrides default pitch for roof type' : 'Blank = default pitch',
+    },
+    {
+      id: 'postCutHeightM',
+      label: 'Post cut height (m)',
+      type: 'number',
+      value: activeModule.postCutHeightM,
+      onChange: (v) => setModuleField('postCutHeightM', String(v)),
+      error: errors.postCutHeightM,
+    },
+    { id: 'postCount', label: 'Post count', type: 'number', value: activeModule.postCount, onChange: (v) => setModuleField('postCount', String(v)), error: errors.postCount },
+
+    {
+      id: 'houseConnectionType',
+      label: 'House connection',
+      type: 'select',
+      value: activeModule.houseConnectionType,
+      onChange: (v) => setModuleField('houseConnectionType', v as CalculatorModuleInputs['houseConnectionType']),
+      options: [
+        { label: 'Soffit', value: 'soffit' },
+        { label: 'Fascia', value: 'fascia' },
+        { label: 'Facade', value: 'facade' },
+      ],
+    },
+    {
+      id: 'postConnectionType',
+      label: 'Post connection',
+      type: 'select',
+      value: activeModule.postConnectionType,
+      onChange: (v) => setModuleField('postConnectionType', v as CalculatorModuleInputs['postConnectionType']),
+      options: [
+        { label: 'Pile (1m)', value: 'pile_1m' },
+        { label: 'Pile (1.5m)', value: 'pile_1_5m' },
+        { label: 'Deck bracket', value: 'deck_bracket' },
+        { label: 'Slab anchors', value: 'slab_anchors' },
+      ],
+    },
+    ...(activeModule.postConnectionType === 'pile_1m' || activeModule.postConnectionType === 'pile_1_5m'
+      ? [
+          {
+            id: 'ground',
+            label: 'Ground',
+            type: 'select',
+            value: activeModule.ground,
+            onChange: (v: string | boolean) => setModuleField('ground', v as CalculatorModuleInputs['ground']),
+            options: [
+              { label: 'Easy', value: 'easy' },
+              { label: 'Hard', value: 'hard' },
+            ],
+            helperText: 'Applies to concrete pile actions',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    {
+      id: 'access',
+      label: 'Access',
+      type: 'select',
+      value: values.access,
+      onChange: (v) => setJobField('access', v as CalculatorInputs['access']),
+      options: [
+        { label: 'Easy', value: 'easy' },
+        { label: 'Normal', value: 'normal' },
+        { label: 'Hard', value: 'hard' },
+      ],
+    },
+    {
+      id: 'height',
+      label: 'Height',
+      type: 'select',
+      value: values.height,
+      onChange: (v) => setJobField('height', v as CalculatorInputs['height']),
+      options: [
+        { label: 'Single storey', value: 'single_storey' },
+        { label: 'Two storey', value: 'two_storey' },
+      ],
+    },
+
+    ...(activeModule.boxPerimeterEnabled
+      ? [
+          {
+            id: 'internalRoofType',
+            label: 'Internal roof type',
+            type: 'select',
+            value: activeModule.internalRoofType,
+            onChange: (v: string | boolean) => setModuleField('internalRoofType', v as CalculatorModuleInputs['internalRoofType']),
+            options: [
+              { label: 'Pitched', value: 'pitched' },
+              { label: 'Low gable', value: 'low_gable' },
+            ],
+          } satisfies FieldSchemaItem,
+          {
+            id: 'fallDistanceMm',
+            label: 'Fall distance (mm)',
+            type: 'number',
+            value: activeModule.fallDistanceMm,
+            onChange: (v: string | boolean) => setModuleField('fallDistanceMm', String(v)),
+            error: errors.fallDistanceMm,
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+
+    {
+      id: 'travelExGst',
+      label: 'Travel (ex‑GST)',
+      type: 'number',
+      value: values.travelExGst,
+      onChange: (v) => setJobField('travelExGst', String(v)),
+    },
+    {
+      id: 'extrasAllowanceExGst',
+      label: 'Extras allowance (ex‑GST)',
+      type: 'number',
+      value: values.extrasAllowanceExGst,
+      onChange: (v) => setJobField('extrasAllowanceExGst', String(v)),
+    },
+    {
+      id: 'quoteDiscountPct',
+      label: 'Discount (%)',
+      type: 'number',
+      value: values.quoteDiscountPct,
+      onChange: (v) => setJobField('quoteDiscountPct', String(v)),
+      helperText: 'Quote-only (not in true cost)',
+    },
+
+    // === Computed outputs ===
+    { id: 'areaM2', label: 'Area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedArea) },
+    { id: 'roofAreaM2', label: 'Roof area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedRoofArea) },
+    { id: 'acrylicAreaM2', label: 'Acrylic area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedAcrylicArea) },
+    { id: 'timberAreaM2', label: 'Timber area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedTimberArea) },
+    { id: 'acrylicBaysTotal', label: 'Acrylic bays total', type: 'readOnly', value: typeof derivedAcrylicBaysTotal === 'number' ? String(derivedAcrylicBaysTotal) : '—' },
+    { id: 'pitchUsed', label: 'Pitch used (deg)', type: 'readOnly', value: typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—' },
+    { id: 'slopeLengthM', label: 'Slope length (m)', type: 'readOnly', value: formatMaybeNumber(derivedSlopeLength) },
+    { id: 'roofingProcurement', label: 'Roofing', type: 'readOnly', value: moduleResult ? roofingProcurementSummary : '—' },
+    {
+      id: 'rafters',
+      label: 'Rafters',
+      type: 'readOnly',
+      value: rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—',
+      helperText: rafterHelperText,
+    },
+    { id: 'brackets', label: 'Brackets', type: 'readOnly', value: typeof bracketCount === 'number' ? String(bracketCount) : '—' },
+    { id: 'crewHours', label: 'Crew hours', type: 'readOnly', value: typeof crewHours === 'number' ? String(crewHours) : '—' },
+    { id: 'materialsEx', label: 'Materials (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
+    { id: 'installEx', label: 'Install payout (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
+    { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
+    { id: 'totalEx', label: 'Total true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
+    { id: 'totalInc', label: 'Total true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
+    ...(issuesCount
+      ? [
+          {
+            id: 'issues',
+            label: 'Issues',
+            type: 'action',
+            actionLabel: `Errors (${issuesCount})`,
+            onAction: () => setIssuesOpen(true),
+            helperText: 'Click to jump to missing fields',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    {
+      id: 'warnings',
+      label: 'Warnings',
+      type: 'readOnly',
+      value: result ? String(warningsCount) : '—',
+      helperText:
+        warningsCount && criticalWarnings.length
+          ? `Critical: ${criticalWarnings.length} (blocks estimate)`
+          : warningsCount
+            ? 'Review in Generate modal'
+            : undefined,
+    },
+    {
+      id: 'generate-estimate',
+      label: 'Estimate',
+      type: 'action',
+      actionLabel: generateLabel,
+      onAction: async () => {
+        setGenerateError(null);
+
+        if (!projectId) {
+          setGenerateError('Select a project first (use Projects in the header).');
+          return;
+        }
+        if (!project) {
+          setGenerateError('Project not found.');
+          return;
+        }
+        if (!readyToCalculate) {
+          setGenerateError('Fix validation errors before generating.');
+          return;
+        }
+        if (isCalculating) {
+          setGenerateError('Please wait for calculation to finish.');
+          return;
+        }
+        if (engineError) {
+          setGenerateError('Fix cost engine error before generating.');
+          return;
+        }
+        if (!result) {
+          setGenerateError('No calculated result yet.');
+          return;
+        }
+
+        setConfirmReady(false);
+        setConfirmAcknowledgeWarnings(false);
+        setConfirmOpen(true);
+      },
+      helperText: projectId ? 'Create immutable snapshot' : 'Requires project context',
+      error: generateError ?? undefined,
+      disabled: isGenerating,
+    },
+  ];
+
+  const warningsField = schema.find((field) => field.id === 'warnings') ?? null;
+  const generateField = schema.find((field) => field.id === 'generate-estimate') ?? null;
+  const schemaWithoutFooter = schema.filter((field) => field.id !== 'warnings' && field.id !== 'generate-estimate');
+
+  const [gridHeightPx, setGridHeightPx] = useState(0);
+
+  useLayoutEffect(() => {
+    const gridEl = gridRef.current;
+    if (!gridEl) return;
+
+    let raf = 0;
+
+    const compute = () => {
+      cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const computedStyles = window.getComputedStyle(gridEl);
+
+        const pagePad = Number.parseFloat(computedStyles.getPropertyValue('--page-pad')) || 8;
+        const tileMinHeight = Number.parseFloat(computedStyles.getPropertyValue('--tile-min-height')) || 100;
+
+        const rect = gridEl.getBoundingClientRect();
+        const availableHeight = Math.max(tileMinHeight, window.innerHeight - rect.top - pagePad);
+        setGridHeightPx((prev) => (prev === availableHeight ? prev : availableHeight));
+      });
+    };
+
+    const ro = new ResizeObserver(compute);
+    ro.observe(gridEl);
+    window.addEventListener('resize', compute);
+    compute();
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', compute);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  return (
+    <main className={styles.page}>
+      <h1 className="visually-hidden">Calculator</h1>
+      <div
+        ref={gridRef}
+        className={styles.grid}
+        role="form"
+        aria-label="Calculator inputs"
+        style={gridHeightPx ? { height: `${gridHeightPx}px` } : undefined}
+      >
+        {schemaWithoutFooter.map((field) => (
+          <FieldTile
+            key={field.id}
+            id={field.id}
+            label={field.label}
+            type={field.type}
+            value={field.value}
+            onChange={field.onChange}
+            options={field.options}
+            disabled={field.disabled}
+            helperText={field.helperText}
+            error={field.error}
+            onAction={field.onAction}
+            actionLabel={field.actionLabel}
+          />
+        ))}
+
+        {warningsField ? (
+          <FieldTile
+            key={warningsField.id}
+            id={warningsField.id}
+            label={warningsField.label}
+            type={warningsField.type}
+            value={warningsField.value}
+            onChange={warningsField.onChange}
+            options={warningsField.options}
+            disabled={warningsField.disabled}
+            helperText={warningsField.helperText}
+            error={warningsField.error}
+            onAction={warningsField.onAction}
+            actionLabel={warningsField.actionLabel}
+          />
+        ) : null}
+
+        {generateField ? (
+          <FieldTile
+            key={generateField.id}
+            id={generateField.id}
+            label={generateField.label}
+            type={generateField.type}
+            value={generateField.value}
+            onChange={generateField.onChange}
+            options={generateField.options}
+            disabled={generateField.disabled}
+            helperText={generateField.helperText}
+            error={generateField.error}
+            onAction={generateField.onAction}
+            actionLabel={generateField.actionLabel}
+          />
+        ) : null}
+
+      </div>
+
+	      {issuesOpen ? (
+	        <Modal
+	          open
+	          ariaLabel="Validation issues"
+	          onClose={() => setIssuesOpen(false)}
+	          overlayClassName={styles.modalOverlay}
+	          panelClassName={styles.modal}
+	          maxWidthPx={720}
+	        >
+	          <div className={styles.modalHeader}>
+	            <div>
+	              <h2 className={styles.modalTitle}>Issues</h2>
+	              <p className={styles.modalSubtitle}>Click an item to jump to the missing field.</p>
+	            </div>
+	            <button type="button" className={styles.modalClose} onClick={() => setIssuesOpen(false)}>
+	              Close
+	            </button>
+	          </div>
+
+	          <div className={styles.modalBody}>
+	            <section className={styles.modalSection} aria-label="Validation errors">
+	              <h3 className={styles.modalSectionTitle}>Errors</h3>
+	              {issues.length ? (
+	                <ul className={styles.issuesList}>
+	                  {issues.map((issue) => (
+	                    <li key={`${issue.moduleIndex}-${issue.fieldId}`}>
+	                      <button
+	                        type="button"
+	                        className={styles.issueRow}
+	                        onClick={() => {
+	                          pendingIssueFocusRef.current = { moduleIndex: issue.moduleIndex, fieldId: issue.fieldId };
+	                          setActiveModuleIndex(issue.moduleIndex);
+	                          setIssuesOpen(false);
+	                        }}
+	                      >
+	                        <div className={styles.issueMain}>
+	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} · ${issue.label}`}</div>
+	                          <div className={styles.issueMessage}>{issue.message}</div>
+	                        </div>
+	                        <span className={styles.issueJump}>Jump</span>
+	                      </button>
+	                    </li>
+	                  ))}
+	                </ul>
+	              ) : (
+	                <p className={styles.modalNote}>No validation errors.</p>
+	              )}
+	            </section>
+	          </div>
+	        </Modal>
+	      ) : null}
+
+	      {confirmOpen ? (
+	        <Modal
+	          open
+	          ariaLabel="Generate estimate confirmation"
+	          onClose={() => {
+	            setConfirmOpen(false);
+	            setGenerateError(null);
+	          }}
+	          overlayClassName={styles.modalOverlay}
+	          panelClassName={styles.modal}
+	          maxWidthPx={720}
+	        >
+	          <div className={styles.modalHeader}>
+	            <div>
+	              <h2 className={styles.modalTitle}>Generate estimate</h2>
+	              <p className={styles.modalSubtitle}>This will create an immutable snapshot for this project.</p>
+	            </div>
+	            <button
+	              type="button"
+	              className={styles.modalClose}
+	              onClick={() => {
+	                setConfirmOpen(false);
+	                setGenerateError(null);
+	              }}
+	            >
+	              Close
+	            </button>
+	          </div>
+
+            <div className={styles.modalBody}>
+              <section className={styles.modalSection} aria-label="Inputs summary">
+                <h3 className={styles.modalSectionTitle}>Inputs</h3>
+                <div className={styles.modalGrid}>
+                  <div>
+                    <div className={styles.modalKey}>Modules</div>
+                    <div className={styles.modalVal}>{values.modules.length}</div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Active module</div>
+                    <div className={styles.modalVal}>
+                      {`Module ${activeModuleIndex + 1}: ${activeModule.pergolaStyle}`}
+                      {activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Length / projection</div>
+                    <div className={styles.modalVal}>
+                      {activeModule.pergolaStyle === 'hip_corner'
+                        ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
+                        : `${activeModule.lengthM}m × ${activeModule.projectionM}m`}
+                    </div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Roof material</div>
+                    <div className={styles.modalVal}>{activeModule.roofMaterial}</div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Roof pitch</div>
+                    <div className={styles.modalVal}>
+                      {typeof derivedPitchUsed === 'number'
+                        ? `${derivedPitchUsed.toFixed(0)}°`
+                        : activeModule.roofPitchDeg.trim()
+                          ? `${activeModule.roofPitchDeg}°`
+                          : '—'}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className={styles.modalSection} aria-label="Outputs summary">
+                <h3 className={styles.modalSectionTitle}>Outputs</h3>
+                <div className={styles.modalGrid}>
+                  <div>
+                    <div className={styles.modalKey}>Materials (ex‑GST)</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(materialsEx)}</div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Install payout (ex‑GST)</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(installEx)}</div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Overhead (ex‑GST)</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(overheadEx)}</div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Total (ex‑GST)</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(totalEx)}</div>
+                  </div>
+                </div>
+              </section>
+
+              <section className={styles.modalSection} aria-label="Warnings">
+                <h3 className={styles.modalSectionTitle}>Warnings</h3>
+                {warningsTyped.length ? (
+                  <>
+                    {criticalWarnings.length ? (
+                      <>
+                        <div className={styles.modalKey} style={{ marginBottom: 6, color: 'rgb(185, 28, 28)' }}>
+                          Critical (blocks generation)
+                        </div>
+                        <ul className={styles.modalWarnings}>
+                          {criticalWarnings.map((w, idx) => (
+                            <li key={`c-${idx}`}>{w.message}</li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
+                    {infoWarnings.length ? (
+                      <>
+                        <div className={styles.modalKey} style={{ marginTop: 10, marginBottom: 6 }}>
+                          Info
+                        </div>
+                        <ul className={styles.modalWarnings}>
+                          {infoWarnings.map((w, idx) => (
+                            <li key={`i-${idx}`}>{w.message}</li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className={styles.modalNote}>No warnings for this estimate.</p>
+                )}
+              </section>
+
+              {infoWarnings.length ? (
+                <label className={styles.modalCheckboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={confirmAcknowledgeWarnings}
+                    onChange={(e) => setConfirmAcknowledgeWarnings(e.target.checked)}
+                  />
+                  <span>I acknowledge the warnings</span>
+                </label>
+              ) : null}
+
+              <label className={styles.modalCheckboxRow}>
+                <input type="checkbox" checked={confirmReady} onChange={(e) => setConfirmReady(e.target.checked)} />
+                <span>I confirm this estimate is ready to generate</span>
+              </label>
+
+              {generateError ? <p className={styles.modalError}>{generateError}</p> : null}
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.modalButtonSecondary}
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setGenerateError(null);
+                }}
+                disabled={isGenerating}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.modalButtonPrimary}
+                disabled={
+                  criticalWarnings.length > 0 ||
+                  !confirmReady ||
+                  (infoWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
+                  isGenerating
+                }
+                onClick={async () => {
+                  setGenerateError(null);
+
+                  const fail = (msg: string) => {
+                    setGenerateError(msg);
+                    toast.error(msg);
+                  };
+
+                  if (!projectId) {
+                    fail('Select a project first.');
+                    return;
+                  }
+                  if (!project) {
+                    fail('Project not found.');
+                    return;
+                  }
+                  if (!result) {
+                    fail('No calculated result yet.');
+                    return;
+                  }
+
+                  setIsGenerating(true);
+                  try {
+                    if (criticalWarnings.length > 0) {
+                      fail('Resolve critical warnings before generating.');
+                      return;
+                    }
+
+                    const derivedSnapshot = moduleResult?.derived ?? result.modules[0]?.derived;
+                    if (!derivedSnapshot) {
+                      fail('No derived result available for the active module.');
+                      return;
+                    }
+
+                    const meta = await getCostingMeta();
+                    const contact = project.contactId ? await getContact(project.contactId) : null;
+                    if (!contact) {
+                      fail('Project is missing a contact (open the project and select/create one).');
+                      return;
+                    }
+
+                    const projectNameSnapshot = project.projectName ?? project.name ?? values.projectName;
+                    if (!projectNameSnapshot.trim()) {
+                      fail('Project name is missing.');
+                      return;
+                    }
+
+                    const estimate = await createEstimate(projectId, {
+                      status: 'draft',
+                      inputs: values,
+                      derived: derivedSnapshot as any,
+                      projectSnapshot: {
+                        ...project,
+                        updatedAt: project.updatedAt ?? project.createdAt,
+                      },
+                      snapshot: {
+                        contact: {
+                          displayName: contact.displayName,
+                          email: contact.email,
+                          phone: contact.phone,
+                        },
+                        project: {
+                          projectName: projectNameSnapshot,
+                          region: project.region,
+                          siteAddress: project.siteAddress ?? project.address,
+                          quoteRef: project.quoteRef,
+                        },
+                      },
+                      outputs: {
+                        materials: result.materials,
+                        install: result.install,
+                        overhead: result.overhead,
+                        totals: result.totals,
+                        warnings: warningsTyped,
+                      },
+                      configVersions: meta.configVersions,
+                    });
+
+                    await addProjectActivity(projectId, {
+                      type: 'estimate_generated',
+                      message: `Estimate v${estimate.version ?? '—'} generated (ex-GST: ${formatMoney(result.totals.cost_ex_gst)})`,
+                      meta: { estimateId: estimate.id },
+                    });
+
+                    setConfirmOpen(false);
+                    toast.success(`Estimate created (v${estimate.version ?? '—'}).`);
+                    router.push(`/staff/projects/${encodeURIComponent(projectId)}/estimate/${encodeURIComponent(estimate.id)}`);
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : 'Failed to generate estimate';
+                    setGenerateError(msg);
+                    toast.error(msg);
+                  } finally {
+                    setIsGenerating(false);
+                  }
+                }}
+              >
+                Generate estimate
+              </button>
+            </div>
+	        </Modal>
+	      ) : null}
+    </main>
+  );
+}

@@ -1,0 +1,51 @@
+{
+  "version": "overheads_v1_2026-01-08",
+  "currency": "NZD",
+  "cost_basis": "ex_gst",
+  "include_in_total_cost": true,
+  "volumes_basis": {
+    "inquiries_per_year": 252,
+    "won_jobs_per_year": 112,
+    "win_rate": 0.4444444444444444
+  },
+  "pools_per_year": {
+    "ops_delivery": {
+      "items": {
+        "warehouse_rent_per_year": 120000,
+        "business_manager_salary_per_year": 130000,
+        "software_per_year": 15000,
+        "vehicles_running_cost_assumption_per_year": 50000,
+        "insurance_assumption_per_year": 25000
+      },
+      "total": 340000
+    },
+    "sales_design": {
+      "items": {
+        "designer_salary_per_year": 70000,
+        "salesperson_salary_per_year": 100000
+      },
+      "total": 170000
+    }
+  },
+  "assumptions": {
+    "marketing_included": false,
+    "vehicles_running_cost_includes": [
+      "fuel",
+      "RUC",
+      "servicing",
+      "tyres",
+      "rego",
+      "WOF"
+    ],
+    "insurance_note": "Placeholder assumption for company insurance (public liability + general business). Replace with actual."
+  },
+  "allocation_method": {
+    "type": "flat_per_won_job",
+    "notes": "Overhead per job calculated as annual overhead divided by won jobs/year (deposits)."
+  },
+  "computed_per_won_job": {
+    "ops_delivery": 3035.714285714286,
+    "sales_design": 1517.857142857143,
+    "total": 4553.571428571428
+  }
+}

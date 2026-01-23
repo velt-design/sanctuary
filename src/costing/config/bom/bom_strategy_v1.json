@@ -1,0 +1,29 @@
+{
+  "version": "bom_strategy_v1_2026-01-08",
+  "method": "greedy_bin_packing",
+  "principles": [
+    "Order by full-length bars (4m/5m/6m) as priced in the materials pricebook.",
+    "Convert cut pieces into bar counts using greedy bin packing per profile.",
+    "Do not assume offcut reuse across different jobs (conservative true-cost).",
+    "Track and report offcuts as waste for the job; optionally keep for internal salvage later."
+  ],
+  "settings": {
+    "reuse_offcuts_across_jobs": false,
+    "min_offcut_to_report_m": 0.4,
+    "waste_allowance_percent": 0.0,
+    "stock_length_preference_m": [
+      6.0,
+      5.0,
+      4.0
+    ],
+    "tie_breaker": "lowest_cost_per_m_then_least_waste"
+  },
+  "algorithm_outline": [
+    "For each profile, build a list of required cut lengths (m) from derived quantities and detailing rules.",
+    "For each available stock length for that profile (from the pricebook), compute cost_per_m.",
+    "Select the best stock length option set (may be multiple lengths) using the preference order.",
+    "Sort cut lengths descending; place each length into the first bar with enough remaining length; otherwise start a new bar.",
+    "Compute bars_used, total_stock_length, total_cut_length, waste_length = total_stock_length - total_cut_length.",
+    "If waste_allowance_percent > 0, inflate bars_used by that % (rounded up) and recompute waste."
+  ]
+}
