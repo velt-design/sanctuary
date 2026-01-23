@@ -5,6 +5,9 @@ import { usePathname } from 'next/navigation';
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  if (pathname?.startsWith('/staff') || pathname?.startsWith('/admin/costs')) {
+    return <main>{children}</main>;
+  }
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.main

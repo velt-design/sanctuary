@@ -1,0 +1,506 @@
+.page {
+  --page-pad: 8px;
+  --tile-min-width: 240px;
+  --tile-min-height: 100px;
+
+  padding: var(--page-pad);
+  min-height: 100vh;
+
+  /* Design tokens (scoped to this page) */
+  --border: rgba(15, 15, 16, 0.14);
+  --muted: rgba(15, 15, 16, 0.65);
+  --focus: rgba(129, 63, 57, 0.95);
+  --error: rgb(185, 28, 28);
+  --bg: var(--bg, #ECEDEE);
+  --text: #0f0f10;
+
+  color: var(--text);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--tile-min-width), 1fr));
+  grid-auto-rows: minmax(var(--tile-min-height), 1fr);
+  gap: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.tile {
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  padding: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.emptyTile {
+  visibility: hidden;
+}
+
+.tile:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.control {
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  background: #fff;
+  color: inherit;
+  font-size: 14px;
+}
+
+.control:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+}
+
+.control:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: rgba(15, 15, 16, 0.03);
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.toggleBox {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.toggleText {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.readOnlyValue {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  background: rgba(15, 15, 16, 0.03);
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionButton {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  background: #813f39;
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.actionButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.helper,
+.error {
+  margin-top: 6px;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.helper {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}
+
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  background: rgba(15, 15, 16, 0.38);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer {
+  width: min(620px, 100vw);
+  height: 100%;
+  background: #fff;
+  color: var(--text);
+  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.22);
+  padding: 16px;
+  overflow: auto;
+}
+
+.drawerHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+  padding-bottom: 12px;
+}
+
+.drawerTitle {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.drawerSubtitle {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.65);
+}
+
+.drawerClose {
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  background: rgba(15, 15, 16, 0.03);
+  color: inherit;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.drawerClose:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.drawerSection {
+  margin-top: 14px;
+}
+
+.drawerSectionTitle {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.8);
+}
+
+.drawerList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: rgba(15, 15, 16, 0.85);
+}
+
+.drawerRows {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.drawerRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(15, 15, 16, 0.08);
+}
+
+.drawerRow:first-child {
+  border-top: none;
+}
+
+.drawerRowMain {
+  min-width: 0;
+}
+
+.drawerRowLabel {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawerRowMeta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.65);
+}
+
+.drawerRowNotes {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.65);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drawerRowValue {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  align-self: center;
+}
+
+.drawerEmpty {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(15, 15, 16, 0.75);
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4500;
+  background: rgba(15, 15, 16, 0.42);
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.modal {
+  width: min(720px, 100%);
+  max-height: min(88vh, 860px);
+  overflow: auto;
+  background: #fff;
+  color: var(--text);
+  border-radius: 16px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(15, 15, 16, 0.12);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.modalSubtitle {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.65);
+}
+
+.modalClose {
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  background: rgba(15, 15, 16, 0.03);
+  color: inherit;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.modalClose:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.modalBody {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.modalSection {
+  border: 1px solid rgba(15, 15, 16, 0.1);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(15, 15, 16, 0.02);
+}
+
+.modalSectionTitle {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.75);
+}
+
+.modalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.modalKey {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.6);
+}
+
+.modalVal {
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.modalWarnings {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: rgba(15, 15, 16, 0.85);
+}
+
+.issuesList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.issueRow {
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.issueRow:hover {
+  background: rgba(15, 15, 16, 0.03);
+}
+
+.issueRow:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.issueMain {
+  min-width: 0;
+}
+
+.issueTitle {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.issueMessage {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.75);
+}
+
+.issueJump {
+  align-self: center;
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.65);
+}
+
+.modalNote {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(15, 15, 16, 0.75);
+}
+
+.modalCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(15, 15, 16, 0.85);
+}
+
+.modalCheckboxRow input {
+  margin-top: 2px;
+}
+
+.modalError {
+  margin: 0;
+  font-size: 12px;
+  color: rgb(185, 28, 28);
+}
+
+.modalFooter {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 16px;
+  border-top: 1px solid rgba(15, 15, 16, 0.12);
+}
+
+.modalButtonPrimary,
+.modalButtonSecondary {
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.modalButtonPrimary {
+  background: #813f39;
+  color: #fff;
+}
+
+.modalButtonSecondary {
+  background: rgba(15, 15, 16, 0.03);
+  color: inherit;
+}
+
+.modalButtonPrimary:disabled,
+.modalButtonSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.modalButtonPrimary:focus,
+.modalButtonSecondary:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}

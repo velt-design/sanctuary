@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "version": "sanctuary_materials_additions_v1_2026-01-08",
+    "notes": [
+      "Placeholder file (empty): add or override pricebook items by id."
+    ]
+  },
+  "items": [
+    {
+      "id": "roofing-timber_cedar_sarking_wrc_110cover_12mm_lm",
+      "category": "roofing_timber",
+      "name": "Western Red Cedar sarking (110 cover) 12mm - per lineal metre",
+      "unit": "m",
+      "attributes": {
+        "type": "cedar_sarking",
+        "species": "Western Red Cedar",
+        "cover_mm": 110,
+        "thickness_mm": 12,
+        "unit_basis": "lineal_metre"
+      },
+      "notes": "ASSUMPTION: unit cost is placeholder until supplier confirms. Used for timber roof takeoff: lm = roof_area_m2 / 0.11 (+ waste).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 9.5,
+      "cost_inc_gst": 10.93
+    }
+  ]
+}

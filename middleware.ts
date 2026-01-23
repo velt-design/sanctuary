@@ -1,8 +1,17 @@
+import { getToken } from 'next-auth/jwt';
 import { NextRequest, NextResponse } from 'next/server';
 
 const CANONICAL_HOST = 'www.sanctuarypergolas.co.nz';
 
-export function middleware(req: NextRequest) {
+function isStaffPath(pathname: string): boolean {
+  return pathname === '/staff' || pathname.startsWith('/staff/');
+}
+
+function isAdminPath(pathname: string): boolean {
+  return pathname === '/admin' || pathname.startsWith('/admin/');
+}
+
+export async function middleware(req: NextRequest) {
   const { nextUrl, headers } = req;
   const host = headers.get('host') || '';
   const isLocal = /localhost|127\.0\.0\.1|\.local(:\d+)?$/i.test(host);
@@ -15,6 +24,21 @@ export function middleware(req: NextRequest) {
     const url = new URL(nextUrl);
     url.hostname = CANONICAL_HOST;
     return NextResponse.redirect(url, 301);
+  }
+
+  // Protect staff + admin routes.
+  if (isStaffPath(nextUrl.pathname) || isAdminPath(nextUrl.pathname)) {
+    const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+    const token = secret ? await getToken({ req, secret }) : null;
+    if (!token) {
+      const loginUrl = new URL('/login', req.url);
+      loginUrl.searchParams.set('callbackUrl', `${nextUrl.pathname}${nextUrl.search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    if (isAdminPath(nextUrl.pathname) && (token as any).role !== 'admin') {
+      return NextResponse.redirect(new URL('/staff/calculator', req.url));
+    }
   }
 
   // Add noindex for preview deployments if detected
