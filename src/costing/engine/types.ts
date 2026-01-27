@@ -148,6 +148,8 @@ export type DerivedV1 = {
   rafter_run_m_takeoff: number;
   rafter_cut_length_m: number;
   joiner_piece_length_m: number;
+  effective_run_m: number;
+  required_downslope_m: number;
   roof_surface_area_m2: number;
   ridge_length_m: number;
   acrylic_area_m2: number;

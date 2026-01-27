@@ -316,7 +316,7 @@
         "type": "fixed",
         "value": 1
       },
-      "base_minutes": 20,
+      "base_minutes": 30,
       "applies_to": {
         "house_connection_types": [
           "soffit",
@@ -340,7 +340,7 @@
         "type": "driver",
         "key": "derived.bracket_count"
       },
-      "base_minutes": 5,
+      "base_minutes": 20,
       "applies_to": {
         "house_connection_types": [
           "soffit"

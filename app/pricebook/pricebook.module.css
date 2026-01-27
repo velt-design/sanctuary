@@ -1,0 +1,32 @@
+.page {
+  padding: 16px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.tabButton {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  background: rgba(15, 15, 16, 0.03);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tabButtonActive {
+  background: rgba(129, 63, 57, 0.12);
+  border-color: rgba(129, 63, 57, 0.35);
+}
+
+.panel {
+  display: block;
+}
+
+.panelHidden {
+  display: none;
+}

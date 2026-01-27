@@ -9,7 +9,14 @@ type HeaderVisibilityGateProps = {
 
 function shouldHideHeader(pathname: string | null): boolean {
   if (!pathname) return false;
-  return pathname === '/staff' || pathname.startsWith('/staff/') || pathname === '/admin' || pathname.startsWith('/admin/');
+  return (
+    pathname === '/staff' ||
+    pathname.startsWith('/staff/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
+    pathname === '/pricebook' ||
+    pathname.startsWith('/pricebook/')
+  );
 }
 
 export default function HeaderVisibilityGate({ children }: HeaderVisibilityGateProps) {

@@ -10,10 +10,17 @@ type FooterVisibilityGateProps = {
 export default function FooterVisibilityGate({ children }: FooterVisibilityGateProps) {
   const pathname = usePathname();
 
-  if (pathname === '/projects') {
+  if (
+    pathname === '/projects' ||
+    pathname === '/staff' ||
+    pathname.startsWith('/staff/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
+    pathname === '/pricebook' ||
+    pathname.startsWith('/pricebook/')
+  ) {
     return null;
   }
 
   return <>{children}</>;
 }
-

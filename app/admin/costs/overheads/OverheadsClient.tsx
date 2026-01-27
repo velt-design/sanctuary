@@ -50,10 +50,12 @@ export default function OverheadsClient({
   loadedFrom,
   sourceFile,
   overheads,
+  showNav = true,
 }: {
   loadedFrom: string;
   sourceFile: string;
   overheads: unknown;
+  showNav?: boolean;
 }) {
   const inputId = useId();
   const [query, setQuery] = useState('');
@@ -87,7 +89,7 @@ export default function OverheadsClient({
           </div>
         </div>
 
-        <AdminCostsNav />
+        {showNav ? <AdminCostsNav /> : null}
 
         <div className={styles.searchRow}>
           <label className={styles.searchLabel} htmlFor={inputId}>
@@ -130,4 +132,3 @@ export default function OverheadsClient({
     </div>
   );
 }
-

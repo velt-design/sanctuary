@@ -10,7 +10,9 @@ function isPortalPath(pathname: string | null): boolean {
     pathname === '/staff' ||
     pathname.startsWith('/staff/') ||
     pathname === '/admin' ||
-    pathname.startsWith('/admin/')
+    pathname.startsWith('/admin/') ||
+    pathname === '/pricebook' ||
+    pathname.startsWith('/pricebook/')
   );
 }
 

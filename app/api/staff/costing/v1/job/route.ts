@@ -1,4 +1,5 @@
 import { authOptions } from '@/lib/auth';
+import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
 import { calculateJobCostV1 } from '@/src/costing/engine/calculate';
 import type { CostInputsV1, ExtrusionColour, JobInputsV1 } from '@/src/costing/engine/types';
 import { getServerSession } from 'next-auth/next';
@@ -174,7 +175,8 @@ export async function POST(req: Request) {
   };
 
   try {
-    const result = calculateJobCostV1(job);
+    const { config } = await getCostingConfigWithOverrides();
+    const result = calculateJobCostV1(job, config);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Costing failed';
