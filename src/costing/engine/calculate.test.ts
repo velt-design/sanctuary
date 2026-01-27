@@ -227,10 +227,50 @@ describe('calculateCostV1', () => {
 
     const plexiLines = result.materials.lines.filter((l) => l.id.startsWith('roofing-sheet_e1f7673c14'));
     expect(plexiLines.length).toBe(1);
-    expect(plexiLines[0].qty).toBe(4);
+    expect(plexiLines[0].qty).toBe(3);
 
     const crystaliteLines = result.materials.lines.filter((l) => l.id.startsWith('roofing-sheet_d557d79c33'));
     expect(crystaliteLines.length).toBe(0);
+  });
+
+  it('takeoff: pitched acrylic uses 4/5/6m stock options and picks optimal (6m) for joiners/rafters/gutter', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'fascia',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    // Acrylic sheets should be length-based: ceil(6/2.03)=3, down-slope <=3.05 => 1.
+    const plexi = result.materials.lines.find((l) => l.id.startsWith('roofing-sheet_e1f7673c14'));
+    expect(plexi?.qty).toBe(3);
+
+    // No soffit brackets for fascia/facade.
+    expect(result.materials.lines.some((l) => l.id === 'bracket_3f6d3c53fa')).toBe(false);
+    expect(result.materials.lines.some((l) => l.id === 'powdercoating_199231d91b')).toBe(false);
+
+    // Joiners: should select 6m stock and allocate ~2 pieces per bar for this cut length.
+    const joiner = result.materials.lines.find((l) => l.id === 'aluminium-extrusion_e3df86dfcd');
+    expect(joiner?.qty).toBeGreaterThan(0);
+
+    // Rafters (100x50): should select 6m stock for ~2 pieces per bar.
+    const rafters100x50 = result.materials.lines.find((l) => l.id === 'aluminium-extrusion_3873dc13bc');
+    expect(rafters100x50?.qty).toBeGreaterThan(0);
+
+    // SP gutter: required 6m should use a 6m bar.
+    const gutter = result.materials.lines.find((l) => l.id === 'aluminium-extrusion_ddcf7c8b45');
+    expect(gutter?.qty).toBe(1);
   });
 
   it('roofing: pitched acrylic uses 4m strips when rafter length exceeds sheet length', () => {
