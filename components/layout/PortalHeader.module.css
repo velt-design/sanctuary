@@ -18,6 +18,10 @@
   gap: 12px;
 }
 
+.mobileOnly {
+  display: none;
+}
+
 .nav {
   display: flex;
   flex-wrap: wrap;
@@ -156,4 +160,19 @@
 
 .navLinkActive:hover {
   background: #8a463f;
+}
+
+@media (max-width: 768px) {
+  .header {
+    background: var(--headerGlassBg, rgba(236, 237, 238, 0.86));
+    backdrop-filter: blur(var(--headerGlassBlur, 10px));
+  }
+
+  .inner {
+    display: none;
+  }
+
+  .mobileOnly {
+    display: block;
+  }
 }

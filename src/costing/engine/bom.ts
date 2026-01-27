@@ -139,8 +139,7 @@ function selectBestStock(
 } {
   const cutsDesc = [...cutsM].sort((a, b) => b - a);
 
-  let best: { bar: (PricebookItem & { stock_length_m: number }); barsUsed: number; wasteM: number; cost: number; costPerM: number } | null =
-    null;
+  let best: { bar: (PricebookItem & { stock_length_m: number }); barsUsed: number; wasteM: number; cost: number } | null = null;
 
   const candidates = bars
     .filter((b) => preferred.includes(b.stock_length_m))
@@ -149,27 +148,27 @@ function selectBestStock(
   for (const bar of candidates) {
     const unitCost = (bar as any).cost_ex_gst as number;
     if (!Number.isFinite(unitCost)) continue;
+    if (cutsDesc.some((cut) => Number.isFinite(cut) && cut > bar.stock_length_m + 1e-6)) continue;
     const { barsUsed, wasteM } = greedyBinPack(cutsDesc, bar.stock_length_m);
     const cost = barsUsed * unitCost;
-    const costPerM = unitCost / bar.stock_length_m;
 
     if (!best) {
-      best = { bar, barsUsed, wasteM, cost, costPerM };
+      best = { bar, barsUsed, wasteM, cost };
       continue;
     }
 
-    const costDelta = cost - best.cost;
-    if (costDelta < -0.01) {
-      best = { bar, barsUsed, wasteM, cost, costPerM };
+    // Selection: minimise waste first, then cost, then bar count.
+    if (wasteM < best.wasteM - 1e-6) {
+      best = { bar, barsUsed, wasteM, cost };
       continue;
     }
-    if (Math.abs(costDelta) <= 0.01) {
-      if (costPerM < best.costPerM - 1e-6) {
-        best = { bar, barsUsed, wasteM, cost, costPerM };
+    if (Math.abs(wasteM - best.wasteM) <= 1e-6) {
+      if (cost < best.cost - 0.01) {
+        best = { bar, barsUsed, wasteM, cost };
         continue;
       }
-      if (Math.abs(costPerM - best.costPerM) <= 1e-6 && wasteM < best.wasteM - 1e-6) {
-        best = { bar, barsUsed, wasteM, cost, costPerM };
+      if (Math.abs(cost - best.cost) <= 0.01 && barsUsed < best.barsUsed) {
+        best = { bar, barsUsed, wasteM, cost };
       }
     }
   }
@@ -243,19 +242,23 @@ export function buildMaterialsV1(
   const bayCountA = Math.max(0, rafterCountA - 1);
   const bayCountB = isHipCorner ? Math.max(0, rafterCountB - 1) : 0;
 
-  const rafterLengthA = inputs.projection_m / effectiveCos;
-  const rafterLengthB = isHipCorner ? Math.max(0, hipCornerProjectionB) / effectiveCos : 0;
+  const rafterRunTakeoffA = Math.max(0, inputs.projection_m - 0.15);
+  const rafterRunTakeoffB = isHipCorner ? Math.max(0, hipCornerProjectionB - 0.15) : 0;
+  const rafterCutLengthA = rafterRunTakeoffA / effectiveCos;
+  const rafterCutLengthB = isHipCorner ? rafterRunTakeoffB / effectiveCos : 0;
+  const joinerPieceLengthA = rafterCutLengthA + 0.02;
+  const joinerPieceLengthB = isHipCorner ? rafterCutLengthB + 0.02 : 0;
 
   const rafterMultiplier = inputs.roof_type === 'low_gable' || inputs.roof_type === 'gable' || inputs.roof_type === 'hip' ? 2 : 1;
   const rafterPieceCount = Math.max(0, Math.round(derived.rafter_count * rafterMultiplier));
-  const rafterLength = Number((derived as any).rafter_length_m ?? (derived as any).rafter_length_m_assumed ?? inputs.projection_m);
+  const rafterLength = Number((derived as any).rafter_cut_length_m ?? (derived as any).rafter_length_m ?? (derived as any).rafter_length_m_assumed ?? inputs.projection_m);
 
   if (isHipCorner) {
     addCuts(
       inputs.rafter_profile,
       [
-        ...Array.from({ length: rafterCountA }).map(() => rafterLengthA),
-        ...Array.from({ length: rafterCountB }).map(() => rafterLengthB),
+        ...Array.from({ length: rafterCountA }).map(() => rafterCutLengthA),
+        ...Array.from({ length: rafterCountB }).map(() => rafterCutLengthB),
       ],
       'Rafters',
     );
@@ -343,7 +346,14 @@ export function buildMaterialsV1(
     });
   };
 
-  const addAcrylicRoofingPanels = (opts: { requiredLen: number; bayCount: number; note: string; idSuffix?: string }) => {
+  const addAcrylicRoofingPanels = (opts: {
+    requiredLen: number;
+    bayCount: number;
+    note: string;
+    idSuffix?: string;
+    lengthAlongM?: number;
+    sheetQtyMode?: 'plan' | 'bays';
+  }) => {
     const requiredLen = Math.max(0, opts.requiredLen);
     const bayCount = Math.max(0, Math.round(opts.bayCount));
     if (!bayCount || requiredLen <= 0) return;
@@ -359,16 +369,30 @@ export function buildMaterialsV1(
       if (!plexiSheetClear) {
         warnings.push('Plexi sheet 3050mm x2030mm (Clear) not found in materials pricebook; falling back to 620mm strips.');
       } else {
-        const acrossDim = requiredLen <= sheetWidthM + 1e-6 ? sheetLengthM : sheetWidthM;
-        const stripsPerSheet = Math.max(1, Math.floor(acrossDim / Math.max(0.01, bayWidthM)));
-        const sheetsNeeded = Math.max(0, Math.ceil(bayCount / stripsPerSheet));
+        const sheetQtyMode: 'plan' | 'bays' = opts.sheetQtyMode === 'plan' ? 'plan' : 'bays';
+
+        let sheetsNeeded = 0;
+        let sheetNote = '';
+
+        if (sheetQtyMode === 'plan') {
+          const lengthAlongM = Math.max(0, Number(opts.lengthAlongM ?? inputs.length_m));
+          const sheetsAlongLength = Math.max(0, Math.ceil(lengthAlongM / Math.max(0.01, sheetWidthM)));
+          const sheetsDownSlope = Math.max(0, Math.ceil(requiredLen / Math.max(0.01, sheetLengthM)));
+          sheetsNeeded = sheetsAlongLength * sheetsDownSlope;
+          sheetNote = `length ${roundMoney(lengthAlongM)}m → ${sheetsAlongLength} sheet(s) (2.03m); slope ${roundMoney(
+            requiredLen,
+          )}m → ${sheetsDownSlope} sheet(s) (3.05m); total ${sheetsNeeded} sheet(s)`;
+        } else {
+          // Mixed roof / partial acrylic: approximate sheets by acrylic bay count (strip yield).
+          const acrossDim = requiredLen <= sheetWidthM + 1e-6 ? sheetLengthM : sheetWidthM;
+          const stripsPerSheet = Math.max(1, Math.floor(acrossDim / Math.max(0.01, bayWidthM)));
+          sheetsNeeded = Math.max(0, Math.ceil(bayCount / stripsPerSheet));
+          sheetNote = `${bayCount} bay(s), ${stripsPerSheet} strips/sheet → ${sheetsNeeded} sheet(s)`;
+        }
+
         if (sheetsNeeded > 0) {
           const unitCost = (plexiSheetClear as any).cost_ex_gst as number;
           const id = opts.idSuffix ? `${plexiSheetClear.id}.${opts.idSuffix}` : plexiSheetClear.id;
-          const orientation =
-            requiredLen <= sheetWidthM + 1e-6
-              ? `${roundMoney(sheetWidthM)}m down-slope (4 strips from ${roundMoney(sheetLengthM)}m)`
-              : `${roundMoney(sheetLengthM)}m down-slope (3 strips from ${roundMoney(sheetWidthM)}m)`;
           lines.push({
             id,
             label: plexiSheetClear.name,
@@ -377,7 +401,7 @@ export function buildMaterialsV1(
             qty: sheetsNeeded,
             unit_cost_ex_gst: roundMoney(unitCost),
             line_cost_ex_gst: roundMoney(sheetsNeeded * unitCost),
-            notes: `${opts.note} Using sheet mode: ${bayCount} bay(s), ${stripsPerSheet} strips/sheet, ${sheetsNeeded} sheet(s); orientation: ${orientation}.`,
+            notes: `${opts.note} Using sheet mode (${sheetQtyMode}): ${sheetNote}.`,
           });
           return;
         }
@@ -394,9 +418,9 @@ export function buildMaterialsV1(
 
   if (inputs.roof_material === 'acrylic') {
     const joinerCountA = isHipCorner ? rafterCountA : Math.max(0, Math.round(derived.rafter_count));
-    const joinerLengthA = isHipCorner ? rafterLengthA : Math.max(0, rafterLength);
+    const joinerLengthA = isHipCorner ? joinerPieceLengthA : Math.max(0, Number((derived as any).joiner_piece_length_m ?? rafterLength));
     const joinerCountB = isHipCorner ? rafterCountB : 0;
-    const joinerLengthB = isHipCorner ? rafterLengthB : 0;
+    const joinerLengthB = isHipCorner ? joinerPieceLengthB : 0;
 
     if (joinerCountA > 0 && joinerLengthA > 0) {
       addCuts('Joiners', Array.from({ length: joinerCountA }).map(() => joinerLengthA), 'Joiners');
@@ -473,23 +497,28 @@ export function buildMaterialsV1(
 
     if (isHipCorner) {
       addAcrylicRoofingPanels({
-        requiredLen: rafterLengthA,
+        requiredLen: rafterCutLengthA,
         bayCount: bayCountA,
         note: 'Acrylic roofing (wing A).',
         idSuffix: 'wingA',
+        lengthAlongM: inputs.length_m,
+        sheetQtyMode: 'plan',
       });
       addAcrylicRoofingPanels({
-        requiredLen: rafterLengthB,
+        requiredLen: rafterCutLengthB,
         bayCount: bayCountB,
         note: 'Acrylic roofing (wing B).',
         idSuffix: 'wingB',
+        lengthAlongM: hipCornerLengthB,
+        sheetQtyMode: 'plan',
       });
     } else {
       const bayCount = Math.max(0, Math.round((derived as any).bay_count ?? derived.rafter_count - 1));
       addAcrylicRoofingPanels({
-        requiredLen: joinerLengthA,
+        requiredLen: Math.max(0, Number((derived as any).rafter_cut_length_m ?? rafterLength)),
         bayCount,
         note: 'Acrylic roofing.',
+        sheetQtyMode: 'plan',
       });
     }
   } else if (inputs.roof_material === 'mixed') {
@@ -873,6 +902,14 @@ export function buildMaterialsV1(
           (unique.length ? ` Available for colour: ${unique.join(', ')}.` : ''),
       );
       continue;
+    }
+
+    const maxCut = Math.max(0, ...group.cuts_m.filter((n) => Number.isFinite(n) && n > 0));
+    const maxStock = Math.max(0, ...bars.map((b) => b.stock_length_m).filter((n) => Number.isFinite(n) && n > 0));
+    if (maxCut > maxStock + 1e-6) {
+      warnings.push(
+        `Required cut length ${roundMoney(maxCut)}m exceeds max stock length ${roundMoney(maxStock)}m for profile '${group.profile}' (colour '${group.colour}').`,
+      );
     }
 
     const selection = selectBestStock(bars, group.cuts_m, preferredStockLengths);

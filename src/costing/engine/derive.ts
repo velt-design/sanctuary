@@ -23,6 +23,10 @@ const RAFTER_SPACING_MM_MAX = 642;
 const BRACKET_SPACING_MM_MAX = 1500;
 const STRINGER_FIXING_SPACING_MM = 1500;
 
+const RAFTER_HOUSE_SETBACK_M = 0.05;
+const RAFTER_GUTTER_SETBACK_M = 0.1;
+const JOINER_EXTRA_M = 0.02;
+
 const DEFAULT_ACRYLIC_SHEET_LENGTH_M = 3.05;
 const DEFAULT_ACRYLIC_SHEET_WIDTH_M = 2.03;
 const MIXED_ACRYLIC_BAY_WIDTH_M = 0.62;
@@ -320,6 +324,10 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const roofSurfaceAreaM2 = areaM2 / effectiveCos;
   const rafterLengthMAssumed = rafterLengthM;
 
+  const rafterRunTakeoffM = Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
+  const rafterCutLengthM = rafterRunTakeoffM / effectiveCos;
+  const joinerPieceLengthM = rafterCutLengthM + JOINER_EXTRA_M;
+
   const ridgeLengthM =
     roofType === 'low_gable' || roofType === 'gable'
       ? lengthM
@@ -474,6 +482,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roof_pitch_deg_used: roofPitchDegUsed,
     rafter_run_m: rafterRunM,
     rafter_length_m: rafterLengthM,
+    rafter_run_m_takeoff: rafterRunTakeoffM,
+    rafter_cut_length_m: rafterCutLengthM,
+    joiner_piece_length_m: joinerPieceLengthM,
     roof_surface_area_m2: roofSurfaceAreaM2,
     ridge_length_m: ridgeLengthM,
     acrylic_area_m2: acrylicAreaM2,
