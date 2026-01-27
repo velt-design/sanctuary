@@ -4,8 +4,13 @@ let cached: SupabaseClient | null = null;
 let cachedUrl = '';
 let cachedKey = '';
 
-function env(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_ANON_KEY'): string {
-  const value = process.env[name];
+function envSupabaseUrl(): string {
+  const value = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function envSupabaseAnonKey(): string {
+  const value = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   return typeof value === 'string' ? value.trim() : '';
 }
 
@@ -20,15 +25,14 @@ function hydrated(): { url: string; anonKey: string } | null {
 }
 
 export function getSupabaseBrowser(): SupabaseClient {
-  const fromEnv = { url: env('NEXT_PUBLIC_SUPABASE_URL'), key: env('NEXT_PUBLIC_SUPABASE_ANON_KEY') };
-  const fromHydrated = hydrated();
-  const url = fromEnv.url || fromHydrated?.url || '';
-  const key = fromEnv.key || fromHydrated?.anonKey || '';
+  const url = supabaseRuntimeUrl();
+  const key = supabaseRuntimeAnonKey();
 
   if (!url || !key) {
     throw new Error(
       'Supabase env vars are missing: NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY. ' +
-        'If these are set in `.env.local`, restart `npm run dev`.',
+        'On Vercel, set them in Project Settings → Environment Variables (Production/Preview) and redeploy. ' +
+        'For local dev, set them in `.env.local` then restart `npm run dev`.',
     );
   }
 
@@ -43,7 +47,11 @@ export function getSupabaseBrowser(): SupabaseClient {
 }
 
 export function supabaseRuntimeUrl(): string {
-  return env('NEXT_PUBLIC_SUPABASE_URL') || hydrated()?.url || '';
+  return envSupabaseUrl() || hydrated()?.url || '';
+}
+
+export function supabaseRuntimeAnonKey(): string {
+  return envSupabaseAnonKey() || hydrated()?.anonKey || '';
 }
 
 export function supabaseHostFromUrl(url: string): string {
