@@ -3,15 +3,19 @@ import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
-export async function PATCH(req: Request, { params }: { params: { materialId: string } }) {
+type Params = { materialId: string };
+type Ctx = { params: Params | Promise<Params> };
+
+export async function PATCH(req: Request, { params }: Ctx) {
+  const { materialId } = await Promise.resolve(params);
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.response;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return parsed.response;
 
-  const materialId = decodeURIComponent(params.materialId ?? '').trim();
-  if (!materialId) return jsonError('Material id is required', 400);
+  const materialIdDecoded = decodeURIComponent(materialId ?? '').trim();
+  if (!materialIdDecoded) return jsonError('Material id is required', 400);
 
   const costRaw = parsed.body?.cost_ex_gst;
   const cost = typeof costRaw === 'number' ? costRaw : Number.parseFloat(String(costRaw ?? ''));
@@ -24,7 +28,7 @@ export async function PATCH(req: Request, { params }: { params: { materialId: st
     .from('material_cost_overrides')
     .upsert(
       {
-        material_id: materialId,
+        material_id: materialIdDecoded,
         cost_ex_gst_cents: costCents,
         updated_by: updatedBy,
       },

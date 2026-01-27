@@ -3,15 +3,19 @@ import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
-export async function PATCH(req: Request, { params }: { params: { actionId: string } }) {
+type Params = { actionId: string };
+type Ctx = { params: Params | Promise<Params> };
+
+export async function PATCH(req: Request, { params }: Ctx) {
+  const { actionId } = await Promise.resolve(params);
   const auth = await requireAdminSession();
   if (!auth.ok) return auth.response;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return parsed.response;
 
-  const actionId = decodeURIComponent(params.actionId ?? '').trim();
-  if (!actionId) return jsonError('Action id is required', 400);
+  const actionIdDecoded = decodeURIComponent(actionId ?? '').trim();
+  if (!actionIdDecoded) return jsonError('Action id is required', 400);
 
   const minutesRaw = parsed.body?.base_minutes;
   const minutes = typeof minutesRaw === 'number' ? minutesRaw : Number.parseInt(String(minutesRaw ?? ''), 10);
@@ -25,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: { actionId: stri
     .from('install_action_minutes_overrides')
     .upsert(
       {
-        action_id: actionId,
+        action_id: actionIdDecoded,
         base_minutes: minutes,
         updated_by: updatedBy,
       },
