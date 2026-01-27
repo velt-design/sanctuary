@@ -86,8 +86,8 @@ describe('calculateCostV1', () => {
     expect(soffit.derived.stringer_fixing_count).toBe(0);
     expect(soffit.materials.lines.some((l) => l.id === 'bracket_3f6d3c53fa' && l.qty === soffit.derived.bracket_count)).toBe(true);
     expect(soffit.materials.lines.some((l) => l.id === 'powdercoating_199231d91b' && l.qty === soffit.derived.bracket_count)).toBe(true);
-    expect(soffit.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(20, 2);
-    expect(soffit.install.actions.find((a) => a.id === 'house.install_soffit_bracket')?.minutes).toBeCloseTo(soffit.derived.bracket_count * 5, 2);
+    expect(soffit.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(30, 2);
+    expect(soffit.install.actions.find((a) => a.id === 'house.install_soffit_bracket')?.minutes).toBeCloseTo(soffit.derived.bracket_count * 20, 2);
 
     const fascia = calculateCostV1({ ...baseInputs, house_connection_type: 'fascia' as const });
     expect(fascia.derived.bracket_count).toBe(0);
@@ -95,7 +95,7 @@ describe('calculateCostV1', () => {
     expect(fascia.install.actions.some((a) => a.id === 'house.install_soffit_bracket')).toBe(false);
     expect(fascia.materials.lines.some((l) => l.id === 'bracket_3f6d3c53fa')).toBe(false);
     expect(fascia.materials.lines.some((l) => l.id === 'powdercoating_199231d91b')).toBe(false);
-    expect(fascia.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(20, 2);
+    expect(fascia.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(30, 2);
     expect(fascia.install.actions.find((a) => a.id === 'house.install_fascia_connection')?.qty).toBe(5);
     expect(fascia.install.actions.find((a) => a.id === 'house.install_fascia_connection')?.minutes).toBeCloseTo(25, 2);
 
@@ -104,7 +104,7 @@ describe('calculateCostV1', () => {
     expect(facade.derived.stringer_fixing_count).toBe(5);
     expect(facade.install.actions.some((a) => a.id === 'house.install_soffit_bracket')).toBe(false);
     expect(facade.materials.lines.some((l) => l.id === 'anchor.chem_m12_each')).toBe(false);
-    expect(facade.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(20, 2);
+    expect(facade.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(30, 2);
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.qty).toBe(5);
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.minutes).toBeCloseTo(25, 2);
   });

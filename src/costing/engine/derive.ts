@@ -95,6 +95,16 @@ function cosDeg(deg: number): number {
   return Math.cos(degToRad(deg));
 }
 
+function tanDeg(deg: number): number {
+  return Math.tan(degToRad(deg));
+}
+
+function rafterDepthM(profile: RafterProfile): number {
+  if (profile === '80x50') return 0.08;
+  if (profile === '100x50') return 0.1;
+  return 0.15;
+}
+
 function normalizeMixedRoof(
   inputs: CostInputsV1,
   opts: {
@@ -324,9 +334,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const roofSurfaceAreaM2 = areaM2 / effectiveCos;
   const rafterLengthMAssumed = rafterLengthM;
 
-  const rafterRunTakeoffM = Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
-  const rafterCutLengthM = rafterRunTakeoffM / effectiveCos;
-  const joinerPieceLengthM = rafterCutLengthM + JOINER_EXTRA_M;
+  const effectiveRunM = Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
+  const slopeLenM = effectiveRunM / effectiveCos;
+  const angleCutAllowanceM = rafterDepthM(rafterProfile) * tanDeg(roofPitchDegUsed);
+  const requiredDownslopeM = slopeLenM + angleCutAllowanceM;
+  const joinerPieceLengthM = requiredDownslopeM + JOINER_EXTRA_M;
 
   const ridgeLengthM =
     roofType === 'low_gable' || roofType === 'gable'
@@ -482,9 +494,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roof_pitch_deg_used: roofPitchDegUsed,
     rafter_run_m: rafterRunM,
     rafter_length_m: rafterLengthM,
-    rafter_run_m_takeoff: rafterRunTakeoffM,
-    rafter_cut_length_m: rafterCutLengthM,
+    rafter_run_m_takeoff: effectiveRunM,
+    rafter_cut_length_m: requiredDownslopeM,
     joiner_piece_length_m: joinerPieceLengthM,
+    effective_run_m: effectiveRunM,
+    required_downslope_m: requiredDownslopeM,
     roof_surface_area_m2: roofSurfaceAreaM2,
     ridge_length_m: ridgeLengthM,
     acrylic_area_m2: acrylicAreaM2,

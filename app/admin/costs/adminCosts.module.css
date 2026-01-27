@@ -136,3 +136,45 @@
   word-break: break-word;
 }
 
+.editCell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.editButton {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.editButton:hover {
+  text-decoration: underline;
+}
+
+.editInput {
+  width: 96px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 15, 16, 0.2);
+  font-size: 13px;
+}
+
+.overrideBadge {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(129, 63, 57, 0.15);
+  color: rgba(129, 63, 57, 0.9);
+}
+
+.saving {
+  font-size: 11px;
+  color: rgba(15, 15, 16, 0.6);
+}

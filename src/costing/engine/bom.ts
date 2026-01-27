@@ -198,6 +198,14 @@ function findFoamItem(config: CostingConfigV1, colour: InputsNormalizedV1['extru
   );
 }
 
+function rafterDepthM(profile: string): number {
+  const normalized = normaliseProfile(profile);
+  if (normalized === '80x50') return 0.08;
+  if (normalized === '100x50') return 0.1;
+  if (normalized === '150x50') return 0.15;
+  return 0.1;
+}
+
 export function buildMaterialsV1(
   inputs: InputsNormalizedV1,
   derived: DerivedV1,
@@ -242,12 +250,21 @@ export function buildMaterialsV1(
   const bayCountA = Math.max(0, rafterCountA - 1);
   const bayCountB = isHipCorner ? Math.max(0, rafterCountB - 1) : 0;
 
-  const rafterRunTakeoffA = Math.max(0, inputs.projection_m - 0.15);
-  const rafterRunTakeoffB = isHipCorner ? Math.max(0, hipCornerProjectionB - 0.15) : 0;
-  const rafterCutLengthA = rafterRunTakeoffA / effectiveCos;
-  const rafterCutLengthB = isHipCorner ? rafterRunTakeoffB / effectiveCos : 0;
-  const joinerPieceLengthA = rafterCutLengthA + 0.02;
-  const joinerPieceLengthB = isHipCorner ? rafterCutLengthB + 0.02 : 0;
+  const pitchTan = Math.tan((roofPitchDegUsed * Math.PI) / 180);
+  const depthM = rafterDepthM(inputs.rafter_profile);
+  const angleCutAllowanceM = depthM * pitchTan;
+
+  const effectiveRunA = Math.max(0, inputs.projection_m - 0.15);
+  const effectiveRunB = isHipCorner ? Math.max(0, hipCornerProjectionB - 0.15) : 0;
+
+  const slopeLenA = effectiveRunA / effectiveCos;
+  const slopeLenB = isHipCorner ? effectiveRunB / effectiveCos : 0;
+
+  const requiredDownslopeA = slopeLenA + angleCutAllowanceM;
+  const requiredDownslopeB = isHipCorner ? slopeLenB + angleCutAllowanceM : 0;
+
+  const joinerPieceLengthA = requiredDownslopeA + 0.02;
+  const joinerPieceLengthB = isHipCorner ? requiredDownslopeB + 0.02 : 0;
 
   const rafterMultiplier = inputs.roof_type === 'low_gable' || inputs.roof_type === 'gable' || inputs.roof_type === 'hip' ? 2 : 1;
   const rafterPieceCount = Math.max(0, Math.round(derived.rafter_count * rafterMultiplier));
@@ -257,8 +274,8 @@ export function buildMaterialsV1(
     addCuts(
       inputs.rafter_profile,
       [
-        ...Array.from({ length: rafterCountA }).map(() => rafterCutLengthA),
-        ...Array.from({ length: rafterCountB }).map(() => rafterCutLengthB),
+        ...Array.from({ length: rafterCountA }).map(() => requiredDownslopeA),
+        ...Array.from({ length: rafterCountB }).map(() => requiredDownslopeB),
       ],
       'Rafters',
     );
@@ -364,7 +381,8 @@ export function buildMaterialsV1(
       );
     }
 
-    const sheetMode = Number.isFinite(sheetLengthM) && requiredLen <= sheetLengthM + 1e-6;
+    const ACRYLIC_SHEET_MAX_DOWNSLOPE_M = 3.0;
+    const sheetMode = requiredLen <= ACRYLIC_SHEET_MAX_DOWNSLOPE_M + 1e-6;
     if (sheetMode) {
       if (!plexiSheetClear) {
         warnings.push('Plexi sheet 3050mm x2030mm (Clear) not found in materials pricebook; falling back to 620mm strips.');
@@ -377,11 +395,11 @@ export function buildMaterialsV1(
         if (sheetQtyMode === 'plan') {
           const lengthAlongM = Math.max(0, Number(opts.lengthAlongM ?? inputs.length_m));
           const sheetsAlongLength = Math.max(0, Math.ceil(lengthAlongM / Math.max(0.01, sheetWidthM)));
-          const sheetsDownSlope = Math.max(0, Math.ceil(requiredLen / Math.max(0.01, sheetLengthM)));
+          const sheetsDownSlope = Math.max(0, Math.ceil(requiredLen / Math.max(0.01, ACRYLIC_SHEET_MAX_DOWNSLOPE_M)));
           sheetsNeeded = sheetsAlongLength * sheetsDownSlope;
           sheetNote = `length ${roundMoney(lengthAlongM)}m → ${sheetsAlongLength} sheet(s) (2.03m); slope ${roundMoney(
             requiredLen,
-          )}m → ${sheetsDownSlope} sheet(s) (3.05m); total ${sheetsNeeded} sheet(s)`;
+          )}m → ${sheetsDownSlope} sheet(s) (3.0m usable); total ${sheetsNeeded} sheet(s)`;
         } else {
           // Mixed roof / partial acrylic: approximate sheets by acrylic bay count (strip yield).
           const acrossDim = requiredLen <= sheetWidthM + 1e-6 ? sheetLengthM : sheetWidthM;
@@ -401,7 +419,7 @@ export function buildMaterialsV1(
             qty: sheetsNeeded,
             unit_cost_ex_gst: roundMoney(unitCost),
             line_cost_ex_gst: roundMoney(sheetsNeeded * unitCost),
-            notes: `${opts.note} Using sheet mode (${sheetQtyMode}): ${sheetNote}.`,
+            notes: `${opts.note} Using sheet mode (${sheetQtyMode}): required_downslope ${roundMoney(requiredLen)}m ≤ ${ACRYLIC_SHEET_MAX_DOWNSLOPE_M}m; ${sheetNote}.`,
           });
           return;
         }
@@ -497,7 +515,7 @@ export function buildMaterialsV1(
 
     if (isHipCorner) {
       addAcrylicRoofingPanels({
-        requiredLen: rafterCutLengthA,
+        requiredLen: requiredDownslopeA,
         bayCount: bayCountA,
         note: 'Acrylic roofing (wing A).',
         idSuffix: 'wingA',
@@ -505,7 +523,7 @@ export function buildMaterialsV1(
         sheetQtyMode: 'plan',
       });
       addAcrylicRoofingPanels({
-        requiredLen: rafterCutLengthB,
+        requiredLen: requiredDownslopeB,
         bayCount: bayCountB,
         note: 'Acrylic roofing (wing B).',
         idSuffix: 'wingB',
@@ -515,7 +533,7 @@ export function buildMaterialsV1(
     } else {
       const bayCount = Math.max(0, Math.round((derived as any).bay_count ?? derived.rafter_count - 1));
       addAcrylicRoofingPanels({
-        requiredLen: Math.max(0, Number((derived as any).rafter_cut_length_m ?? rafterLength)),
+        requiredLen: Math.max(0, Number((derived as any).required_downslope_m ?? (derived as any).rafter_cut_length_m ?? rafterLength)),
         bayCount,
         note: 'Acrylic roofing.',
         sheetQtyMode: 'plan',
@@ -547,14 +565,23 @@ export function buildMaterialsV1(
           if (!acrylicBays) continue;
 
           const joinerRuns = acrylicBays + 1;
-          const joinerLength = Math.max(0, Number(plane?.rafter_length_m ?? 0));
-          if (joinerRuns > 0 && joinerLength > 0) {
-            addCuts('Joiners', Array.from({ length: joinerRuns }).map(() => joinerLength), `Joiners (${planeLabel}, mixed acrylic bays)`);
-            totalJoinerM += joinerRuns * joinerLength;
+          const planeRafterLen = Math.max(0, Number(plane?.rafter_length_m ?? 0));
+          const planeRunM = planeRafterLen * effectiveCos;
+          const planeEffectiveRunM = Math.max(0, planeRunM - 0.15);
+          const planeRequiredDownslopeM = planeEffectiveRunM / effectiveCos + angleCutAllowanceM;
+          const planeJoinerPieceLenM = planeRequiredDownslopeM + 0.02;
+
+          if (joinerRuns > 0 && planeJoinerPieceLenM > 0) {
+            addCuts(
+              'Joiners',
+              Array.from({ length: joinerRuns }).map(() => planeJoinerPieceLenM),
+              `Joiners (${planeLabel}, mixed acrylic bays)`,
+            );
+            totalJoinerM += joinerRuns * planeJoinerPieceLenM;
           }
 
           addAcrylicRoofingPanels({
-            requiredLen: joinerLength,
+            requiredLen: planeRequiredDownslopeM,
             bayCount: acrylicBays,
             note: `Acrylic roofing (${planeLabel}, mixed roof).`,
             idSuffix: planeId || undefined,

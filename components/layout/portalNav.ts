@@ -12,9 +12,9 @@ export const PORTAL_NAV_ITEMS: readonly PortalNavItem[] = [
   { label: 'Schedule', href: '/staff/schedule' },
   { label: 'Calculator', href: '/staff/calculator' },
   { label: 'Imports', href: '/admin/imports', adminOnly: true },
-  { label: 'Pricebook', href: '/admin/costs/materials', adminOnly: true },
-  { label: 'Actions', href: '/admin/costs/actions', adminOnly: true },
-  { label: 'Overheads', href: '/admin/costs/overheads', adminOnly: true },
+  { label: 'Pricebook', href: '/pricebook#materials', adminOnly: true },
+  { label: 'Actions', href: '/pricebook#actions', adminOnly: true },
+  { label: 'Overheads', href: '/pricebook#overheads', adminOnly: true },
 ] as const;
 
 export function getPortalNavItems(role: PortalRole): PortalNavItem[] {
@@ -23,6 +23,6 @@ export function getPortalNavItems(role: PortalRole): PortalNavItem[] {
 
 export function isPortalNavActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
+  if (href.startsWith('/pricebook') && pathname.startsWith('/pricebook')) return true;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
-
