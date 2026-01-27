@@ -6,18 +6,22 @@ import PortalHeaderWithSession from '@/components/layout/PortalHeaderWithSession
 import NextAuthSessionProvider from '@/components/auth/NextAuthSessionProvider';
 import StaffCacheWarmup from '@/components/sync/StaffCacheWarmup';
 
+export const dynamic = 'force-dynamic';
+
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   return (
-    <NextAuthSessionProvider>
-      <ToastProvider>
-        <PortalHeaderWithSession />
-        <DbGate />
-        <StaffSWRProvider>
-          <StaffCacheWarmup />
-          <SupabaseEnvHydrator />
-          {children}
-        </StaffSWRProvider>
-      </ToastProvider>
-    </NextAuthSessionProvider>
+    <>
+      <SupabaseEnvHydrator />
+      <NextAuthSessionProvider>
+        <ToastProvider>
+          <PortalHeaderWithSession />
+          <DbGate />
+          <StaffSWRProvider>
+            <StaffCacheWarmup />
+            {children}
+          </StaffSWRProvider>
+        </ToastProvider>
+      </NextAuthSessionProvider>
+    </>
   );
 }

@@ -54,10 +54,10 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 }
 
 async function verifyUserPassword(user: EnvUser, password: string): Promise<boolean> {
-  const plain = typeof user.password === 'string' ? user.password : '';
+  const plain = typeof user.password === 'string' ? user.password.trim() : '';
   if (plain) return timingSafeEqualStr(password, plain);
 
-  const hash = typeof user.passwordHash === 'string' ? user.passwordHash : '';
+  const hash = typeof user.passwordHash === 'string' ? user.passwordHash.trim() : '';
   if (hash) return bcrypt.compare(password, hash);
 
   return false;
@@ -80,11 +80,26 @@ export const authOptions: NextAuthOptions = {
         if (!email || !password) return null;
 
         const users = getUsersFromEnv();
+        const configuredEmails = users
+          .map((u) => normalizeEmail(u.email ?? ''))
+          .filter(Boolean);
+        if (!configuredEmails.length) {
+          console.warn('[auth] No staff portal emails configured (check STAFF_ADMIN_EMAIL / STAFF_USER_EMAIL(S)).');
+        }
+
         const matched = users.find((u) => normalizeEmail(u.email ?? '') === email);
-        if (!matched?.email) return null;
+        if (!matched?.email) {
+          console.warn('[auth] Sign-in rejected: email not allowed.', { email });
+          return null;
+        }
 
         const ok = await verifyUserPassword(matched, password);
-        if (!ok) return null;
+        if (!ok) {
+          console.warn('[auth] Sign-in rejected: invalid password.', { email, role: matched.role });
+          return null;
+        }
+
+        console.info('[auth] Sign-in accepted.', { email, role: matched.role });
 
         return { id: matched.email, email: matched.email, role: matched.role } as any;
       },
