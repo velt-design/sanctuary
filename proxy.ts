@@ -11,7 +11,7 @@ function isAdminPath(pathname: string): boolean {
   return pathname === '/admin' || pathname.startsWith('/admin/');
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { nextUrl, headers } = req;
   const host = headers.get('host') || '';
   const isLocal = /localhost|127\.0\.0\.1|\.local(:\d+)?$/i.test(host);

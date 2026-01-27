@@ -79,7 +79,7 @@ export async function getCostingConfigWithOverrides(): Promise<{ config: Costing
       const override = overrides.actionMinutesOverrides[action.id];
       if (!Number.isFinite(override) || override < 0) return action;
       return { ...action, base_minutes: override };
-    }),
+    }) as CostingConfigV1['installActions']['actions'],
   };
 
   const unknownMaterials = [...materialOverrideIds].filter((id) => !base.materials.items.some((item) => item.id === id));

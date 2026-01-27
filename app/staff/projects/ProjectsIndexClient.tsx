@@ -26,6 +26,7 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const [hydrated, setHydrated] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all');
   const [dueOnly, setDueOnly] = useState(false);
@@ -48,6 +49,10 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   const projects = projectsData ?? [];
   const contacts = contactsData ?? [];
   const hasLoadedProjectsOnce = typeof projectsData !== 'undefined';
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     if (isLoadingMode) return;
@@ -182,7 +187,9 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
             </span>
           </div>
           <div className={styles.sectionBody}>
-            {!hasLoadedProjectsOnce && !projectsError ? (
+            {!hydrated ? (
+              <p className={styles.note}>Loading projects…</p>
+            ) : !hasLoadedProjectsOnce && !projectsError ? (
               <p className={styles.note}>Loading projects…</p>
             ) : filteredProjects.length ? (
               <div className={styles.tableWrap}>
