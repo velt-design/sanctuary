@@ -18,6 +18,9 @@ export type CalculatorModuleInputs = {
   internalRoofType: RoofType;
   fallDistanceMm: string;
   roofPitchDeg: string;
+  boxGutterHouseEdge: 'house' | 'our' | 'none';
+  boxGutterFarEdge: 'house' | 'our' | 'none';
+  downpipeCount: string;
   mixedSkylightStripCount: string;
   mixedSkylightStripWidthM: string;
   mixedAcrylicBaysMain: string;
@@ -63,6 +66,9 @@ export type LegacyCalculatorInputsV1 = {
   internalRoofType: RoofType;
   fallDistanceMm: string;
   roofPitchDeg: string;
+  boxGutterHouseEdge?: 'house' | 'our' | 'none';
+  boxGutterFarEdge?: 'house' | 'our' | 'none';
+  downpipeCount?: string;
   mixedSkylightStripCount: string;
   mixedSkylightStripWidthM: string;
   mixedAcrylicBaysMain?: string;
@@ -117,6 +123,9 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         internalRoofType: legacy.internalRoofType,
         fallDistanceMm: legacy.fallDistanceMm,
         roofPitchDeg: legacy.roofPitchDeg,
+        boxGutterHouseEdge: legacy.boxGutterHouseEdge ?? 'house',
+        boxGutterFarEdge: legacy.boxGutterFarEdge ?? 'our',
+        downpipeCount: legacy.downpipeCount ?? '0',
         mixedSkylightStripCount: legacy.mixedSkylightStripCount,
         mixedSkylightStripWidthM: legacy.mixedSkylightStripWidthM,
         mixedAcrylicBaysMain: legacy.mixedAcrylicBaysMain ?? '0',

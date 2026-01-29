@@ -12,7 +12,8 @@ export type RoofType = 'pitched' | 'low_gable' | 'gable' | 'hip' | 'hip_corner';
 
 export type ExtrusionColour = 'Black' | 'White' | 'Mill';
 
-export type GutterType = 'sp_gutter' | 'box_gutter_100x100x3';
+export type GutterType = 'sp_gutter' | 'box_gutter_100x100x3' | 'box_gutter_100x100_cut';
+export type BoxGutterEdge = 'house' | 'our' | 'none';
 
 export type HouseConnectionType = 'soffit' | 'fascia' | 'facade';
 
@@ -83,6 +84,9 @@ export type CostInputsV1 = {
   internal_roof_type?: RoofType;
   fall_distance_mm?: number;
   gutter_length_m?: number;
+  downpipe_count?: number;
+  box_gutter_house_edge?: BoxGutterEdge;
+  box_gutter_far_edge?: BoxGutterEdge;
 
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
@@ -116,6 +120,9 @@ export type InputsNormalizedV1 = {
   box_beam_profile: BoxBeamProfile | null;
   fall_distance_mm: number | null;
   gutter_length_m: number;
+  downpipe_count: number;
+  box_gutter_house_edge: BoxGutterEdge;
+  box_gutter_far_edge: BoxGutterEdge;
 
   rafter_profile: RafterProfile;
   gutter_type: GutterType | null;
@@ -139,6 +146,15 @@ export type DerivedV1 = {
   roof_plane_span_m: number;
   roof_plane_sloped_downslope_m: number;
   roof_area_total_m2: number;
+  box_max_fall_mm?: number;
+  box_effective_run_m?: number;
+  box_pitch_deg_used?: number;
+  box_rise_mm?: number;
+  box_max_supported_run_m_at_min_pitch?: number;
+  box_max_supported_span_m?: number;
+  ridge_beam_profile_used?: RafterProfile | null;
+  our_gutter_length_m?: number;
+  house_gutter_length_m?: number;
   module_count: number;
   hip_corner_length_b_m?: number;
   hip_corner_projection_b_m?: number;

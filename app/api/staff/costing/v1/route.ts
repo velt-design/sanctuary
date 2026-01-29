@@ -16,7 +16,8 @@ const POST_CONNECTIONS = ['pile_1m', 'pile_1_5m', 'deck_bracket', 'slab_anchors'
 const ACCESS_LEVELS = ['easy', 'normal', 'hard'] as const;
 const HEIGHT_CATEGORIES = ['single_storey', 'two_storey'] as const;
 const GROUND_CONDITIONS = ['easy', 'hard'] as const;
-const ROOF_TYPES = ['pitched', 'low_gable'] as const;
+const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
+const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
 
 function isOneOf<const T extends readonly string[]>(allowed: T, value: unknown): value is T[number] {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value);
@@ -50,6 +51,7 @@ export async function POST(req: Request) {
   const projection_m = projection_m_raw !== undefined ? toNumber(projection_m_raw) : NaN;
   const roof_pitch_deg = body.roof_pitch_deg !== undefined ? toNumber(body.roof_pitch_deg) : undefined;
   const gutter_length_m = body.gutter_length_m !== undefined ? toNumber(body.gutter_length_m) : undefined;
+  const downpipe_count = body.downpipe_count !== undefined ? toNumber(body.downpipe_count) : undefined;
 
   if (!Number.isFinite(length_m) || length_m <= 0) return badRequest('length_m must be a number > 0');
   if (roof_span_m_raw === undefined && projection_m_raw === undefined) {
@@ -70,6 +72,9 @@ export async function POST(req: Request) {
   if (gutter_length_m !== undefined && (!Number.isFinite(gutter_length_m) || gutter_length_m < 0)) {
     return badRequest('gutter_length_m must be a number >= 0');
   }
+  if (downpipe_count !== undefined && (!Number.isFinite(downpipe_count) || downpipe_count < 0)) {
+    return badRequest('downpipe_count must be a number >= 0');
+  }
 
   if (!isOneOf(PERGOLA_STYLES, body.pergola_style)) return badRequest('Invalid pergola_style');
   if (!isOneOf(ROOF_MATERIALS, body.roof_material)) return badRequest('Invalid roof_material');
@@ -81,6 +86,12 @@ export async function POST(req: Request) {
 
   if (body.ground !== undefined && !isOneOf(GROUND_CONDITIONS, body.ground)) return badRequest('Invalid ground');
   if (body.internal_roof_type !== undefined && !isOneOf(ROOF_TYPES, body.internal_roof_type)) return badRequest('Invalid internal_roof_type');
+  if (body.box_gutter_house_edge !== undefined && !isOneOf(BOX_GUTTER_EDGES, body.box_gutter_house_edge)) {
+    return badRequest('Invalid box_gutter_house_edge');
+  }
+  if (body.box_gutter_far_edge !== undefined && !isOneOf(BOX_GUTTER_EDGES, body.box_gutter_far_edge)) {
+    return badRequest('Invalid box_gutter_far_edge');
+  }
 
   let mixed_roof: CostInputsV1['mixed_roof'] | undefined;
   if (body.roof_material === 'mixed') {
@@ -181,6 +192,9 @@ export async function POST(req: Request) {
     internal_roof_type: body.internal_roof_type,
     fall_distance_mm: body.fall_distance_mm !== undefined ? toNumber(body.fall_distance_mm) : undefined,
     gutter_length_m,
+    downpipe_count,
+    box_gutter_house_edge: body.box_gutter_house_edge,
+    box_gutter_far_edge: body.box_gutter_far_edge,
 
     roof_material: body.roof_material,
     extrusion_colour: body.extrusion_colour,

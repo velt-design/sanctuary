@@ -34,6 +34,21 @@
       "gable": 25,
       "hip": 25
     },
+    "box_perimeter": {
+      "box_beam_depth_mm": 300,
+      "box_rafter_depth_mm": 80,
+      "box_roof_allow_above_rafter_mm": 20,
+      "box_max_fall_mm": 200,
+      "box_min_pitch_deg": 3,
+      "pitched_setbacks": {
+        "house_setback_mm": 150,
+        "outer_setback_mm": 50
+      },
+      "gable_setbacks": {
+        "eave_setback_mm": 50,
+        "ridge_allowance_mm": 0
+      }
+    },
     "hip_roof": {
       "ridge_length_m_formula": "max(0, length_m - projection_m)  # assumes 45\u00b0 hips and ridge runs along length",
       "hip_rafter_count": 4,
@@ -130,6 +145,7 @@
     ],
     "box_internal_roof_type_options": [
       "pitched",
+      "gable",
       "low_gable"
     ],
     "box_internal_rafter_profile_default": "80x50",
