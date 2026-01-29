@@ -250,27 +250,21 @@ export function buildMaterialsV1(
 
   const roofPitchDegUsed = Number((derived as any).roof_pitch_deg_used ?? 0);
   const effectiveCos = Math.max(0.02, Math.cos((roofPitchDegUsed * Math.PI) / 180));
+  const roofSetbackTotalM = 0.15;
 
   const rafterCountA = Math.max(0, Math.round(Number((derived as any).hip_corner_rafter_count_a ?? derived.rafter_count)));
   const rafterCountB = isHipCorner ? Math.max(0, Math.round(Number((derived as any).hip_corner_rafter_count_b ?? 0))) : 0;
   const bayCountA = Math.max(0, rafterCountA - 1);
   const bayCountB = isHipCorner ? Math.max(0, rafterCountB - 1) : 0;
 
-  const pitchTan = Math.tan((roofPitchDegUsed * Math.PI) / 180);
-  const depthM = rafterDepthM(inputs.rafter_profile);
-  const angleCutAllowanceM = depthM * pitchTan;
+  const effectiveRunA = Math.max(0, inputs.projection_m - roofSetbackTotalM);
+  const effectiveRunB = isHipCorner ? Math.max(0, hipCornerProjectionB - roofSetbackTotalM) : 0;
 
-  const effectiveRunA = Math.max(0, inputs.projection_m - 0.15);
-  const effectiveRunB = isHipCorner ? Math.max(0, hipCornerProjectionB - 0.15) : 0;
+  const cutRafterLengthA = effectiveRunA / effectiveCos;
+  const cutRafterLengthB = isHipCorner ? effectiveRunB / effectiveCos : 0;
 
-  const slopeLenA = effectiveRunA / effectiveCos;
-  const slopeLenB = isHipCorner ? effectiveRunB / effectiveCos : 0;
-
-  const requiredDownslopeA = slopeLenA + angleCutAllowanceM;
-  const requiredDownslopeB = isHipCorner ? slopeLenB + angleCutAllowanceM : 0;
-
-  const joinerPieceLengthA = requiredDownslopeA + 0.02;
-  const joinerPieceLengthB = isHipCorner ? requiredDownslopeB + 0.02 : 0;
+  const joinerPieceLengthA = cutRafterLengthA + 0.02;
+  const joinerPieceLengthB = isHipCorner ? cutRafterLengthB + 0.02 : 0;
 
   const rafterMultiplier = inputs.roof_type === 'low_gable' || inputs.roof_type === 'gable' || inputs.roof_type === 'hip' ? 2 : 1;
   const rafterPieceCount = Math.max(0, Math.round(derived.rafter_count * rafterMultiplier));
@@ -280,8 +274,8 @@ export function buildMaterialsV1(
     addCuts(
       inputs.rafter_profile,
       [
-        ...Array.from({ length: rafterCountA }).map(() => requiredDownslopeA),
-        ...Array.from({ length: rafterCountB }).map(() => requiredDownslopeB),
+        ...Array.from({ length: rafterCountA }).map(() => cutRafterLengthA),
+        ...Array.from({ length: rafterCountB }).map(() => cutRafterLengthB),
       ],
       'Rafters',
     );
@@ -389,6 +383,9 @@ export function buildMaterialsV1(
     sheetQtyMode?: 'plan' | 'bays';
     planeCount?: number;
     totalAreaM2?: number;
+    debugSpanM?: number;
+    debugSetbackM?: number;
+    debugPitchDeg?: number;
   }) => {
     const requiredLen = Math.max(0, opts.requiredLen);
     const bayCount = Math.max(0, Math.round(opts.bayCount));
@@ -397,8 +394,16 @@ export function buildMaterialsV1(
     if (!totalBays || requiredLen <= 0) return;
 
     if (Number.isFinite(acrylicMaxSlopeM) && requiredLen > acrylicMaxSlopeM + 1e-6) {
+      const spanM = Number(opts.debugSpanM ?? inputs.projection_m);
+      const setbacksM = Number(opts.debugSetbackM ?? roofSetbackTotalM);
+      const pitchDeg = Number(opts.debugPitchDeg ?? roofPitchDegUsed);
+      const debug = `computed=${roundMoney(requiredLen)}m, pitch=${roundMoney(pitchDeg)}°, span=${roundMoney(spanM)}m, setbacks=${roundMoney(
+        setbacksM,
+      )}m`;
       warnings.push(
-        `Acrylic slope exceeds ${roundMoney(acrylicMaxSlopeM)}m. Max supported acrylic slope is ${roundMoney(acrylicMaxSlopeM)}m (use design change or timber).`,
+        `Acrylic slope exceeds ${roundMoney(acrylicMaxSlopeM)}m. Max supported acrylic slope is ${roundMoney(
+          acrylicMaxSlopeM,
+        )}m (use design change or timber). (${debug})`,
       );
     }
 
@@ -551,30 +556,39 @@ export function buildMaterialsV1(
 
     if (isHipCorner) {
       addAcrylicRoofingPanels({
-        requiredLen: Math.max(0, inputs.projection_m) / effectiveCos,
+        requiredLen: joinerPieceLengthA,
         bayCount: bayCountA,
         note: 'Acrylic roofing (wing A).',
         idSuffix: 'wingA',
         lengthAlongM: inputs.length_m,
         sheetQtyMode: 'plan',
+        debugSpanM: inputs.projection_m,
+        debugSetbackM: roofSetbackTotalM,
+        debugPitchDeg: roofPitchDegUsed,
       });
       addAcrylicRoofingPanels({
-        requiredLen: Math.max(0, hipCornerProjectionB) / effectiveCos,
+        requiredLen: joinerPieceLengthB,
         bayCount: bayCountB,
         note: 'Acrylic roofing (wing B).',
         idSuffix: 'wingB',
         lengthAlongM: hipCornerLengthB,
         sheetQtyMode: 'plan',
+        debugSpanM: hipCornerProjectionB,
+        debugSetbackM: roofSetbackTotalM,
+        debugPitchDeg: roofPitchDegUsed,
       });
     } else {
       const bayCount = Math.max(0, Math.round((derived as any).bay_count ?? derived.rafter_count - 1));
       addAcrylicRoofingPanels({
-        requiredLen: Math.max(0, Number((derived as any).roof_plane_sloped_downslope_m ?? (derived as any).rafter_length_m ?? 0)),
+        requiredLen: Math.max(0, Number((derived as any).acrylic_required_downslope_m ?? (derived as any).joiner_piece_length_m ?? 0)),
         bayCount,
         note: 'Acrylic roofing.',
         sheetQtyMode: 'plan',
         planeCount: roofPlaneCount,
         totalAreaM2: Math.max(0, Number((derived as any).acrylic_area_m2 ?? 0)),
+        debugSpanM: inputs.projection_m,
+        debugSetbackM: roofSetbackTotalM,
+        debugPitchDeg: roofPitchDegUsed,
       });
     }
   } else if (inputs.roof_material === 'mixed') {
@@ -606,7 +620,7 @@ export function buildMaterialsV1(
           const planeRafterLen = Math.max(0, Number(plane?.rafter_length_m ?? 0));
           const planeRunM = planeRafterLen * effectiveCos;
           const planeEffectiveRunM = Math.max(0, planeRunM - 0.15);
-          const planeRequiredDownslopeM = planeEffectiveRunM / effectiveCos + angleCutAllowanceM;
+          const planeRequiredDownslopeM = planeEffectiveRunM / effectiveCos;
           const planeJoinerPieceLenM = planeRequiredDownslopeM + 0.02;
 
           if (joinerRuns > 0 && planeJoinerPieceLenM > 0) {
@@ -619,10 +633,13 @@ export function buildMaterialsV1(
           }
 
           addAcrylicRoofingPanels({
-            requiredLen: planeRafterLen,
+            requiredLen: planeJoinerPieceLenM,
             bayCount: acrylicBays,
             note: `Acrylic roofing (${planeLabel}, mixed roof).`,
             idSuffix: planeId || undefined,
+            debugSpanM: planeRunM,
+            debugSetbackM: roofSetbackTotalM,
+            debugPitchDeg: roofPitchDegUsed,
           });
         }
 
@@ -778,9 +795,12 @@ export function buildMaterialsV1(
           }
 
           addAcrylicRoofingPanels({
-            requiredLen: Math.max(0, Number((derived as any).roof_plane_sloped_downslope_m ?? (derived as any).rafter_length_m ?? joinerLength)),
+            requiredLen: Math.max(0, Number((derived as any).acrylic_required_downslope_m ?? (derived as any).joiner_piece_length_m ?? joinerLength)),
             bayCount: acrylicBays,
             note: `Mixed roof area override: acrylic bays ≈ ${acrylicBays}/${bayCount} (${Math.round(fraction * 100)}%).`,
+            debugSpanM: inputs.projection_m,
+            debugSetbackM: roofSetbackTotalM,
+            debugPitchDeg: roofPitchDegUsed,
           });
         }
       }
