@@ -14,8 +14,9 @@ export type ExtrusionColour = 'Black' | 'White' | 'Mill';
 
 export type GutterType = 'sp_gutter' | 'box_gutter_100x100x3' | 'box_gutter_100x100_cut';
 export type BoxGutterEdge = 'house' | 'our' | 'none';
-export type OverhangSupportBeamProfile = '150x50' | '200x50';
+export type OverhangSupportBeamProfile = string;
 export type GutterMode = 'default' | 'none' | 'sp_gutter_house_edge' | 'overhang_gutter_front_edge';
+export type GutterAssemblyMode = 'integrated' | 'separate' | 'none';
 export type SlopeDirection = 'away_from_house' | 'toward_house';
 
 export type HouseConnectionType = 'soffit' | 'fascia' | 'facade' | 'none';
@@ -32,9 +33,9 @@ export type HeightCategory = 'single_storey' | 'two_storey';
 
 export type GroundCondition = 'easy' | 'hard';
 
-export type RafterProfile = '80x50' | '100x50' | '150x50';
+export type RafterProfile = string;
 
-export type BoxBeamProfile = '300x50';
+export type BoxBeamProfile = string;
 
 export type MixedRoofMode = 'ridge_skylight' | 'area_override' | 'acrylic_bays';
 
@@ -73,6 +74,9 @@ export type CostInputsV1 = {
   pergola_style: PergolaStyleUi;
   roof_material: RoofMaterial;
   extrusion_colour: ExtrusionColour;
+  powdercoat_standard_colour?: string;
+  powdercoat_is_custom?: boolean;
+  powdercoat_custom_colour?: string;
   mixed_roof?: MixedRoofInputsV1;
   hip_corner?: HipCornerInputsV1;
 
@@ -95,6 +99,16 @@ export type CostInputsV1 = {
   overhang_support_beam_profile?: OverhangSupportBeamProfile;
   inverted_enabled?: boolean;
   inverted_house_gutter?: boolean;
+  separate_gutter_enabled?: boolean;
+  overrides?: {
+    ledger_profile?: string;
+    rafter_profile?: string;
+    post_profile?: string;
+    front_beam_profile?: string;
+    ridge_beam_profile?: string;
+    box_perimeter_beam_profile?: string;
+    overhang_support_beam_profile?: string;
+  };
 
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
@@ -116,6 +130,9 @@ export type InputsNormalizedV1 = {
   roof_material: RoofMaterial;
   roof_type: RoofType;
   extrusion_colour: ExtrusionColour;
+  powdercoat_standard_colour?: string;
+  powdercoat_is_custom?: boolean;
+  powdercoat_custom_colour?: string;
   mixed_roof: MixedRoofNormalizedV1 | null;
 
   post_count: number;
@@ -136,6 +153,7 @@ export type InputsNormalizedV1 = {
   overhang_support_beam_profile: OverhangSupportBeamProfile | null;
   inverted_enabled: boolean;
   inverted_house_gutter: boolean;
+  separate_gutter_enabled: boolean;
 
   rafter_profile: RafterProfile;
   gutter_type: GutterType | null;
@@ -165,21 +183,28 @@ export type DerivedV1 = {
   box_rise_mm?: number;
   box_max_supported_run_m_at_min_pitch?: number;
   box_max_supported_span_m?: number;
-  ridge_beam_profile_used?: RafterProfile | null;
+  ridge_beam_profile_used?: string | null;
+  front_beam_profile_used?: string | null;
+  box_perimeter_beam_profile_used?: string | null;
+  post_profile_used?: string | null;
   our_gutter_length_m?: number;
   house_gutter_length_m?: number;
   overhang_enabled?: boolean;
   overhang_amount_m?: number;
-  overhang_support_beam_profile_used?: OverhangSupportBeamProfile | null;
+  overhang_support_beam_profile_used?: string | null;
   overhang_support_beam_length_m?: number;
-  overhang_stringer_profile_used?: RafterProfile | null;
+  overhang_stringer_profile_used?: string | null;
   overhang_stringer_length_m?: number;
   overhang_end_cap_count?: number;
   inverted_enabled?: boolean;
   inverted_house_gutter?: boolean;
   slope_direction?: SlopeDirection;
   gutter_mode?: GutterMode;
-  ledger_profile_used?: RafterProfile;
+  gutter_assembly_mode?: GutterAssemblyMode;
+  integrated_gutter_beam?: boolean;
+  separate_gutter_enabled?: boolean;
+  separate_gutter_length_m?: number;
+  ledger_profile_used?: string;
   ledger_underside_height_m?: number;
   post_cut_height_house_side_m?: number;
   post_cut_height_outer_side_m?: number;
@@ -213,6 +238,8 @@ export type DerivedV1 = {
   total_rafter_pieces: number;
   joiner_runs_total: number;
   acrylic_plane_count_used?: number;
+  powdercoat_colour_used?: string | null;
+  powdercoat_multiplier?: number | null;
   gutter_length_m: number;
   roof_planes: Array<{
     id: string;

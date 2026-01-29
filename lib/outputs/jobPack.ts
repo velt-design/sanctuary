@@ -222,6 +222,7 @@ function getFirstModule(inputs: CalculatorInputs | LegacyCalculatorInputsV1): Ca
       boxGutterHouseEdge: inputs.boxGutterHouseEdge ?? 'house',
       boxGutterFarEdge: inputs.boxGutterFarEdge ?? 'our',
       downpipeCount: inputs.downpipeCount ?? '0',
+      separateGutterEnabled: inputs.separateGutterEnabled ?? false,
       overhangEnabled: inputs.overhangEnabled ?? false,
       overhangAmountM: inputs.overhangAmountM ?? '0.2',
       overhangSupportBeamProfile: inputs.overhangSupportBeamProfile ?? '150x50',
@@ -242,6 +243,7 @@ function getFirstModule(inputs: CalculatorInputs | LegacyCalculatorInputsV1): Ca
       hipCornerProjectionBM: '0',
       postCutHeightM: inputs.postCutHeightM,
       timberRoofAllowanceExGst: inputs.timberRoofAllowanceExGst,
+      overrides: inputs.overrides ?? {},
     };
   }
   return null;

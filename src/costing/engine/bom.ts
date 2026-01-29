@@ -61,6 +61,25 @@ function findPricebookItemById(config: CostingConfigV1, id: string): PricebookIt
   return config.materials.items.find((it) => it.id === needle) ?? null;
 }
 
+function findPowdercoatBar(config: CostingConfigV1, profile: string, stockLengthM: number): PricebookItem | null {
+  const targetProfile = normaliseProfile(profile);
+  return (
+    config.materials.items.find((item) => {
+      if (item.category !== 'powdercoating' || item.unit !== 'bar') return false;
+      const attrs = item.attributes as Record<string, unknown> | undefined;
+      if (!attrs) return false;
+      const itemProfile = attrs.profile;
+      const itemLength = attrs.length_m;
+      return (
+        typeof itemProfile === 'string' &&
+        normaliseProfile(itemProfile) === targetProfile &&
+        typeof itemLength === 'number' &&
+        Math.abs(itemLength - stockLengthM) < 1e-6
+      );
+    }) ?? null
+  );
+}
+
 function splitIntoStockCuts(totalLengthM: number, stockLengthM: number): number[] {
   if (!Number.isFinite(totalLengthM) || totalLengthM <= 0) return [];
   if (!Number.isFinite(stockLengthM) || stockLengthM <= 0) return [totalLengthM];
@@ -220,6 +239,9 @@ export function buildMaterialsV1(
   const lines: MaterialsLineV1[] = [];
 
   const preferredStockLengths = config.bomStrategy.settings.stock_length_preference_m;
+  const isMillFinish = inputs.extrusion_colour === 'Mill';
+  const powdercoatColourUsed = isMillFinish ? String((derived as any).powdercoat_colour_used ?? '') : '';
+  const powdercoatMultiplier = isMillFinish ? Number((derived as any).powdercoat_multiplier ?? 1) : 1;
 
   const cutGroups = new Map<string, CutGroup>();
 
@@ -271,7 +293,14 @@ export function buildMaterialsV1(
   const rafterLength = Number((derived as any).rafter_cut_length_m ?? (derived as any).rafter_length_m ?? (derived as any).rafter_length_m_assumed ?? inputs.projection_m);
 
   const ledgerProfile = String((derived as any).ledger_profile_used ?? '100x50');
+  const frontBeamProfile = String((derived as any).front_beam_profile_used ?? '');
+  const ridgeBeamProfile = String((derived as any).ridge_beam_profile_used ?? '');
+  const boxBeamProfile = String((derived as any).box_perimeter_beam_profile_used ?? '300x50');
+  const postProfile = String((derived as any).post_profile_used ?? '100x100');
   const gutterMode = String((derived as any).gutter_mode ?? 'default');
+  const gutterAssemblyMode = String((derived as any).gutter_assembly_mode ?? 'none');
+  const integratedGutterBeam = Boolean((derived as any).integrated_gutter_beam);
+  const separateGutterLengthM = Number((derived as any).separate_gutter_length_m ?? 0);
   const overhangEnabled = Boolean((derived as any).overhang_enabled);
   const overhangSupportBeamProfile = (derived as any).overhang_support_beam_profile_used as string | undefined;
   const overhangSupportBeamLength = Number((derived as any).overhang_support_beam_length_m ?? 0);
@@ -293,12 +322,17 @@ export function buildMaterialsV1(
     addCuts(ledgerProfile, [inputs.length_m], 'Ledger');
   }
 
-  addCuts('100x100', Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m), 'Posts');
+  addCuts(postProfile, Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m), 'Posts');
 
   if (inputs.structure_type === 'pitched') {
     if (gutterMode === 'overhang_gutter_front_edge') {
       if (Number.isFinite(inputs.length_m) && inputs.length_m > 0) {
         addCuts('Overhang Gutter 100x100', [inputs.length_m, inputs.length_m], 'Overhang gutter (2× stock)');
+      }
+    } else if (gutterAssemblyMode === 'separate') {
+      if (Number.isFinite(separateGutterLengthM) && separateGutterLengthM > 0) {
+        addCuts('Box Gutter 100x100x3', [separateGutterLengthM, separateGutterLengthM], 'Separate gutter (2× stock)');
+        warnings.push('Separate gutter uses 100x100 cut‑down stock; length doubled to allow for waste.');
       }
     } else if (inputs.gutter_type === 'sp_gutter') {
       if (isHipCorner) {
@@ -310,15 +344,23 @@ export function buildMaterialsV1(
   }
 
   if (inputs.structure_type === 'box_perimeter') {
-    addCuts('300x50', [inputs.length_m, inputs.length_m, inputs.projection_m, inputs.projection_m], 'Box perimeter beams');
-    if (inputs.roof_type === 'gable' && Number.isFinite(derived.ridge_length_m) && derived.ridge_length_m > 0) {
-      addCuts('100x50', [derived.ridge_length_m], 'Ridge beam (box gable)');
+    addCuts(boxBeamProfile, [inputs.length_m, inputs.length_m, inputs.projection_m, inputs.projection_m], 'Box perimeter beams');
+    if (inputs.roof_type === 'gable' && Number.isFinite(derived.ridge_length_m) && derived.ridge_length_m > 0 && ridgeBeamProfile) {
+      addCuts(ridgeBeamProfile, [derived.ridge_length_m], 'Ridge beam (box gable)');
     }
     if (inputs.gutter_type === 'box_gutter_100x100_cut') {
       const gutterLength = Math.max(0, Number(inputs.gutter_length_m ?? 0));
       if (gutterLength > 0) {
         addCuts('Box Gutter 100x100x3', [gutterLength], 'Box perimeter gutter');
       }
+    }
+  }
+
+  if (inputs.structure_type === 'pitched' && frontBeamProfile && !integratedGutterBeam) {
+    if (isHipCorner) {
+      addCuts(frontBeamProfile, [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0), 'Front beam');
+    } else if (Number.isFinite(inputs.length_m) && inputs.length_m > 0) {
+      addCuts(frontBeamProfile, [inputs.length_m], 'Front beam');
     }
   }
 
@@ -991,7 +1033,28 @@ export function buildMaterialsV1(
   }
 
   for (const group of cutGroups.values()) {
-    const bars = pickBarsForProfile(config, group.profile, group.colour);
+    const rawBars = pickBarsForProfile(config, group.profile, group.colour);
+    const bars = isMillFinish
+      ? rawBars.map((bar) => {
+          const baseCost = Number((bar as any).cost_ex_gst ?? 0);
+          const powderItem = findPowdercoatBar(config, group.profile, bar.stock_length_m);
+          if (!powderItem) {
+            warnings.push(
+              `INVALID: Powdercoat pricebook item not found for profile '${group.profile}' (${bar.stock_length_m}m).`,
+            );
+          }
+          const powderCost = powderItem ? Number((powderItem as any).cost_ex_gst ?? 0) : 0;
+          const effectiveCost = baseCost + powderCost * powdercoatMultiplier;
+          return {
+            ...bar,
+            cost_ex_gst: effectiveCost,
+            __powdercoat_base_cost_ex_gst: baseCost,
+            __powdercoat_cost_ex_gst: powderCost,
+            __powdercoat_multiplier: powdercoatMultiplier,
+            __powdercoat_colour_used: powdercoatColourUsed,
+          };
+        })
+      : rawBars;
     if (!bars.length) {
       const candidates = config.materials.items
         .filter((it) => it.category === 'aluminium_extrusion' && it.unit === 'bar')
@@ -1036,6 +1099,10 @@ export function buildMaterialsV1(
 
     const unitCost = (selection.bar as any).cost_ex_gst as number;
     const lineCost = selection.barsUsed * unitCost;
+    const powderBase = (selection.bar as any).__powdercoat_base_cost_ex_gst as number | undefined;
+    const powderCost = (selection.bar as any).__powdercoat_cost_ex_gst as number | undefined;
+    const powderMult = (selection.bar as any).__powdercoat_multiplier as number | undefined;
+    const powderColour = (selection.bar as any).__powdercoat_colour_used as string | undefined;
 
     waste_m_by_profile[group.profile] = roundMoney(selection.wasteM);
     bars_by_profile[group.profile] = {
@@ -1046,11 +1113,27 @@ export function buildMaterialsV1(
     const components = Array.from(group.components).join(', ');
     const totalCutM = roundMoney(sum(group.cuts_m));
     const wasteM = roundMoney(selection.wasteM);
-    const notes = `Cuts ${totalCutM}m from ${selection.barsUsed}×${selection.bar.stock_length_m}m; waste ${wasteM}m (${components})`;
+    let notes = `Cuts ${totalCutM}m from ${selection.barsUsed}×${selection.bar.stock_length_m}m; waste ${wasteM}m (${components})`;
+    let label = selection.bar.name;
+
+    if (isMillFinish && powderColour) {
+      const colourLabel = powderMult && powderMult > 1.01 ? `Custom: ${powderColour}` : powderColour;
+      if (label.toLowerCase().includes('mill')) {
+        label = label.replace(/mill/gi, `Powdercoated ${colourLabel}`);
+      } else {
+        label = `${label} (Powdercoated ${colourLabel})`;
+      }
+      const baseCost = roundMoney(typeof powderBase === 'number' ? powderBase : unitCost);
+      const coatCost = roundMoney(typeof powderCost === 'number' ? powderCost : 0);
+      const mult = typeof powderMult === 'number' && Number.isFinite(powderMult) ? powderMult : 1;
+      const effective = roundMoney(unitCost);
+      const powderNote = `Mill base $${baseCost} + powdercoat $${coatCost} × ${roundMoney(mult)} = $${effective} (powdercoat: ${colourLabel})`;
+      notes = `${notes} | ${powderNote}`;
+    }
 
     lines.push({
       id: selection.bar.id,
-      label: selection.bar.name,
+      label,
       profile: group.profile,
       unit: 'bar',
       qty: selection.barsUsed,

@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { calculateCostV1, calculateJobCostV1 } from './calculate';
+import { loadCostingConfigV1 } from './config';
+
+function roundMoney(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+}
+
+function findPowdercoatForBar(config: ReturnType<typeof loadCostingConfigV1>, barId: string) {
+  const barItem = config.materials.items.find((it) => it.id === barId);
+  if (!barItem) return null;
+  const attrs = barItem.attributes as Record<string, unknown> | undefined;
+  if (!attrs) return null;
+  const profile = attrs.profile;
+  const length = attrs.length_m;
+  if (typeof profile !== 'string' || typeof length !== 'number') return null;
+  const powderItem = config.materials.items.find((it) => {
+    if (it.category !== 'powdercoating' || it.unit !== 'bar') return false;
+    const attrsPowder = it.attributes as Record<string, unknown> | undefined;
+    return attrsPowder?.profile === profile && attrsPowder?.length_m === length;
+  });
+  return { barItem, powderItem };
+}
 
 describe('calculateCostV1', () => {
   it('fixture: pitched, acrylic, 6m × 3m, black, soffit + deck posts, 2.4m', () => {
@@ -293,6 +315,119 @@ describe('calculateCostV1', () => {
     expect(result.materials.lines.some((l) => l.profile === 'Overhang Gutter 100x100')).toBe(false);
     expect(result.materials.lines.some((l) => String(l.label ?? '').includes('Foam'))).toBe(true);
     expect(result.materials.lines.some((l) => l.id === 'placeholder.flashing_material_m')).toBe(true);
+  });
+
+  it('front beam override disables integrated gutter unless SP gutter selected', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      overrides: {
+        front_beam_profile: '150x50',
+      },
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.integrated_gutter_beam).toBe(false);
+    expect(result.derived.gutter_assembly_mode).toBe('none');
+    expect(result.materials.totals.bars_by_profile['SP Gutter']).toBeUndefined();
+    expect(result.materials.totals.bars_by_profile['150x50']).toBeTruthy();
+  });
+
+  it('separate gutter adds 100x100 cut stock when front beam is not a gutter', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      separate_gutter_enabled: true,
+      overrides: {
+        front_beam_profile: '150x50',
+      },
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.gutter_assembly_mode).toBe('separate');
+    expect(result.materials.totals.bars_by_profile['SP Gutter']).toBeUndefined();
+    expect(result.materials.totals.bars_by_profile['Box Gutter 100x100x3']).toBeTruthy();
+  });
+
+  it('ledger override is independent of rafter override', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      overrides: {
+        ledger_profile: '150x50',
+        rafter_profile: '100x50',
+      },
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.inputs_normalized.rafter_profile).toBe('100x50');
+    expect(result.derived.ledger_profile_used).toBe('150x50');
+  });
+
+  it('inverted + house gutter ignores separate gutter selection', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      inverted_enabled: true,
+      inverted_house_gutter: true,
+      separate_gutter_enabled: true,
+      overrides: {
+        front_beam_profile: '150x50',
+      },
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.separate_gutter_enabled).toBe(false);
+    expect(result.derived.gutter_assembly_mode).toBe('none');
+    expect(result.materials.totals.bars_by_profile['Box Gutter 100x100x3']).toBeUndefined();
   });
 
   it('inverted pitched + house gutter: no gutters, outer posts higher', () => {
@@ -909,6 +1044,128 @@ describe('calculateCostV1', () => {
 
     expect(cedarLow?.qty).toBeGreaterThan(0);
     expect(cedarHigh?.qty).toBeGreaterThan(cedarLow?.qty ?? 0);
+  });
+
+  it('mill extrusion adds powdercoat surcharge (standard colour)', () => {
+    const config = loadCostingConfigV1();
+    const result = calculateCostV1(
+      {
+        length_m: 6,
+        projection_m: 3,
+        roof_pitch_deg: 5,
+        post_cut_height_m: 2.4,
+        post_count: 4,
+
+        pergola_style: 'pitched',
+        box_perimeter_enabled: false,
+        roof_material: 'acrylic',
+        extrusion_colour: 'Mill',
+        powdercoat_standard_colour: 'Ironsands',
+        powdercoat_is_custom: false,
+
+        house_connection_type: 'soffit',
+        post_connection_type: 'deck_bracket',
+        access: 'normal',
+        height: 'single_storey',
+      },
+      config,
+    );
+
+    const line = result.materials.lines.find((l) => String(l.id).startsWith('aluminium-extrusion_'));
+    expect(line).toBeTruthy();
+    if (!line) return;
+    const found = findPowdercoatForBar(config, line.id);
+    expect(found?.barItem).toBeTruthy();
+    expect(found?.powderItem).toBeTruthy();
+    if (!found?.barItem || !found.powderItem) return;
+
+    const base = Number((found.barItem as any).cost_ex_gst ?? 0);
+    const powder = Number((found.powderItem as any).cost_ex_gst ?? 0);
+    const expected = roundMoney(base + powder * 1.0);
+    expect(line.unit_cost_ex_gst).toBeCloseTo(expected, 2);
+    expect(String(line.label).toLowerCase()).toContain('powdercoated');
+  });
+
+  it('mill extrusion adds 1.2x powdercoat surcharge for custom colour', () => {
+    const config = loadCostingConfigV1();
+    const result = calculateCostV1(
+      {
+        length_m: 6,
+        projection_m: 3,
+        roof_pitch_deg: 5,
+        post_cut_height_m: 2.4,
+        post_count: 4,
+
+        pergola_style: 'pitched',
+        box_perimeter_enabled: false,
+        roof_material: 'acrylic',
+        extrusion_colour: 'Mill',
+        powdercoat_is_custom: true,
+        powdercoat_custom_colour: 'Custom Grey',
+
+        house_connection_type: 'soffit',
+        post_connection_type: 'deck_bracket',
+        access: 'normal',
+        height: 'single_storey',
+      },
+      config,
+    );
+
+    const line = result.materials.lines.find((l) => String(l.id).startsWith('aluminium-extrusion_'));
+    expect(line).toBeTruthy();
+    if (!line) return;
+    const found = findPowdercoatForBar(config, line.id);
+    expect(found?.barItem).toBeTruthy();
+    expect(found?.powderItem).toBeTruthy();
+    if (!found?.barItem || !found.powderItem) return;
+
+    const base = Number((found.barItem as any).cost_ex_gst ?? 0);
+    const powder = Number((found.powderItem as any).cost_ex_gst ?? 0);
+    const expected = roundMoney(base + powder * 1.2);
+    expect(line.unit_cost_ex_gst).toBeCloseTo(expected, 2);
+    expect(String(line.label)).toContain('Custom');
+  });
+
+  it('warns when powdercoat pricebook item is missing for mill finish', () => {
+    const config = loadCostingConfigV1();
+    const baseInputs = {
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Mill' as const,
+      powdercoat_standard_colour: 'Ironsands',
+      powdercoat_is_custom: false,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const baseline = calculateCostV1(baseInputs, config);
+    const line = baseline.materials.lines.find((l) => String(l.id).startsWith('aluminium-extrusion_'));
+    expect(line).toBeTruthy();
+    if (!line) return;
+    const found = findPowdercoatForBar(config, line.id);
+    expect(found?.powderItem).toBeTruthy();
+    if (!found?.powderItem) return;
+
+    const configMissing = {
+      ...config,
+      materials: {
+        ...config.materials,
+        items: config.materials.items.filter((it) => it.id !== found.powderItem?.id),
+      },
+    };
+
+    const result = calculateCostV1(baseInputs, configMissing as any);
+    expect(result.totals.notes_and_warnings.some((w) => w.includes('INVALID') && w.includes('Powdercoat'))).toBe(true);
   });
 
   it('job rollup: overhead does not double with two modules', () => {
