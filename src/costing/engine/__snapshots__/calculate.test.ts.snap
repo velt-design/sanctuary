@@ -2,8 +2,8 @@
 
 exports[`calculateCostV1 > fixture: box perimeter 300x50, internal pitched roof, same geometry 1`] = `
 {
-  "cost_ex_gst": 11170.75,
-  "cost_inc_gst": 12846.36,
+  "cost_ex_gst": 11150.17,
+  "cost_inc_gst": 12822.7,
   "notes_and_warnings": [
     "Acrylic joiner system assumed (no through-fixing).",
     "Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).",

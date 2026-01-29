@@ -213,6 +213,141 @@ describe('calculateCostV1', () => {
     expect(gutterAction?.qty).toBeCloseTo(result.derived.our_gutter_length_m, 4);
   });
 
+  it('overhang: adds support beam, stringer, extra brackets, end caps, and gutter stock', () => {
+    const base = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      overhang_enabled: true,
+      overhang_amount_m: 0.2,
+      overhang_support_beam_profile: '150x50',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.overhang_support_beam_profile_used).toBe('150x50');
+    expect(result.derived.overhang_stringer_profile_used).toBe(result.inputs_normalized.rafter_profile);
+    expect(result.derived.rafter_cut_length_m).toBeGreaterThan(base.derived.rafter_cut_length_m);
+    expect(result.materials.totals.bars_by_profile['Overhang Gutter 100x100']).toBeTruthy();
+    const midBracket = result.materials.lines.find((l) => l.id === 'bracket_mid_support_rafters');
+    expect(midBracket?.qty).toBe(result.derived.rafter_count);
+    const endCapBeam = result.materials.lines.find((l) => l.id === 'end_cap_overhang_support_beam');
+    const endCapStringer = result.materials.lines.find((l) => l.id === 'end_cap_overhang_stringer');
+    expect(endCapBeam?.qty).toBe(2);
+    expect(endCapStringer?.qty).toBe(2);
+  });
+
+  it('overhang + inverted + house gutter: no gutters, but flashing/foam remain', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      overhang_enabled: true,
+      overhang_amount_m: 0.2,
+      overhang_support_beam_profile: '150x50',
+      inverted_enabled: true,
+      inverted_house_gutter: true,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.inputs_normalized.gutter_type).toBeNull();
+    expect(result.materials.lines.some((l) => l.profile === 'SP Gutter')).toBe(false);
+    expect(result.materials.lines.some((l) => l.profile === 'Overhang Gutter 100x100')).toBe(false);
+    expect(result.materials.lines.some((l) => String(l.label ?? '').includes('Foam'))).toBe(true);
+    expect(result.materials.lines.some((l) => l.id === 'placeholder.flashing_material_m')).toBe(true);
+  });
+
+  it('inverted pitched + house gutter: no gutters, outer posts higher', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      inverted_enabled: true,
+      inverted_house_gutter: true,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.inputs_normalized.gutter_type).toBeNull();
+    expect(result.materials.lines.some((l) => l.profile === 'SP Gutter')).toBe(false);
+    expect(result.derived.post_cut_height_outer_side_m).toBeGreaterThan(result.derived.post_cut_height_house_side_m ?? 0);
+    expect(result.materials.lines.some((l) => l.id === 'placeholder.flashing_material_m')).toBe(true);
+  });
+
+  it('inverted pitched + our gutter: SP gutter at house edge', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      inverted_enabled: true,
+      inverted_house_gutter: false,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.inputs_normalized.gutter_type).toBe('sp_gutter');
+    expect(result.materials.lines.some((l) => l.profile === 'SP Gutter')).toBe(true);
+    expect(result.derived.post_cut_height_outer_side_m).toBeGreaterThan(result.derived.post_cut_height_house_side_m ?? 0);
+  });
+
   it('house connection drivers: soffit uses bracket_count; fascia/facade use stringer_fixing_count', () => {
     const baseInputs = {
       length_m: 6,

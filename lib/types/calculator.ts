@@ -21,6 +21,11 @@ export type CalculatorModuleInputs = {
   boxGutterHouseEdge: 'house' | 'our' | 'none';
   boxGutterFarEdge: 'house' | 'our' | 'none';
   downpipeCount: string;
+  overhangEnabled: boolean;
+  overhangAmountM: string;
+  overhangSupportBeamProfile: '150x50' | '200x50';
+  invertedEnabled: boolean;
+  invertedHouseGutter: boolean;
   mixedSkylightStripCount: string;
   mixedSkylightStripWidthM: string;
   mixedAcrylicBaysMain: string;
@@ -69,6 +74,11 @@ export type LegacyCalculatorInputsV1 = {
   boxGutterHouseEdge?: 'house' | 'our' | 'none';
   boxGutterFarEdge?: 'house' | 'our' | 'none';
   downpipeCount?: string;
+  overhangEnabled?: boolean;
+  overhangAmountM?: string;
+  overhangSupportBeamProfile?: '150x50' | '200x50';
+  invertedEnabled?: boolean;
+  invertedHouseGutter?: boolean;
   mixedSkylightStripCount: string;
   mixedSkylightStripWidthM: string;
   mixedAcrylicBaysMain?: string;
@@ -126,6 +136,11 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         boxGutterHouseEdge: legacy.boxGutterHouseEdge ?? 'house',
         boxGutterFarEdge: legacy.boxGutterFarEdge ?? 'our',
         downpipeCount: legacy.downpipeCount ?? '0',
+        overhangEnabled: legacy.overhangEnabled ?? false,
+        overhangAmountM: legacy.overhangAmountM ?? '0.2',
+        overhangSupportBeamProfile: legacy.overhangSupportBeamProfile ?? '150x50',
+        invertedEnabled: legacy.invertedEnabled ?? false,
+        invertedHouseGutter: legacy.invertedHouseGutter ?? true,
         mixedSkylightStripCount: legacy.mixedSkylightStripCount,
         mixedSkylightStripWidthM: legacy.mixedSkylightStripWidthM,
         mixedAcrylicBaysMain: legacy.mixedAcrylicBaysMain ?? '0',

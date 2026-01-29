@@ -59,6 +59,21 @@
       "id": "consumable.misc_allowance_job",
       "label": "Misc small consumables allowance (bits, blades, tape)",
       "unit": "job"
+    },
+    {
+      "id": "bracket_mid_support_rafters",
+      "label": "Mid-support rafter bracket",
+      "unit": "each"
+    },
+    {
+      "id": "end_cap_overhang_support_beam",
+      "label": "End cap - overhang support beam",
+      "unit": "each"
+    },
+    {
+      "id": "end_cap_overhang_stringer",
+      "label": "End cap - overhang stringer",
+      "unit": "each"
     }
   ],
   "rules": [
@@ -186,6 +201,45 @@
         }
       ],
       "notes": "Baseline consumables per job. Replace with more explicit line items if you prefer."
+    },
+    {
+      "id": "rule.overhang_mid_support_brackets",
+      "applies_when": {
+        "overhang_enabled": true
+      },
+      "lines": [
+        {
+          "item_id": "bracket_mid_support_rafters",
+          "qty": "overhang_mid_bracket_count"
+        }
+      ],
+      "notes": "Overhang: mid-support rafter brackets (one per rafter)."
+    },
+    {
+      "id": "rule.overhang_end_caps_support_beam",
+      "applies_when": {
+        "overhang_enabled": true
+      },
+      "lines": [
+        {
+          "item_id": "end_cap_overhang_support_beam",
+          "qty": "2"
+        }
+      ],
+      "notes": "Overhang support beam end caps (2 per beam)."
+    },
+    {
+      "id": "rule.overhang_end_caps_stringer",
+      "applies_when": {
+        "overhang_enabled": true
+      },
+      "lines": [
+        {
+          "item_id": "end_cap_overhang_stringer",
+          "qty": "2"
+        }
+      ],
+      "notes": "Overhang stringer end caps (2 per stringer)."
     }
   ]
 }

@@ -49,6 +49,11 @@
         "ridge_allowance_mm": 0
       }
     },
+    "overhang": {
+      "default_amount_m": 0.2,
+      "min_amount_m": 0,
+      "max_amount_m": 1.5
+    },
     "hip_roof": {
       "ridge_length_m_formula": "max(0, length_m - projection_m)  # assumes 45\u00b0 hips and ridge runs along length",
       "hip_rafter_count": 4,

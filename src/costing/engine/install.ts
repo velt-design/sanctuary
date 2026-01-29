@@ -38,9 +38,11 @@ function getDriverValue(
   return typeof v === 'number' ? v : Number.parseFloat(String(v ?? ''));
 }
 
-function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1): boolean {
+function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1, derived: Record<string, unknown>): boolean {
   const appliesTo = (action as any).applies_to as Record<string, unknown> | undefined;
   if (!appliesTo) return true;
+
+  const boolToString = (value: unknown): string => (value === true ? 'true' : 'false');
 
   // Context values are keyed to match applies_to keys (plural).
   // If a context value is missing, the action must not apply.
@@ -52,6 +54,11 @@ function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1): boolea
     house_connection_types: inputs.house_connection_type,
     box_beam_profiles: inputs.box_beam_profile,
     gutter_types: inputs.gutter_type,
+    overhang_enabled: boolToString((derived as any).overhang_enabled ?? inputs.overhang_enabled),
+    inverted_enabled: boolToString((derived as any).inverted_enabled ?? inputs.inverted_enabled),
+    inverted_house_gutter: boolToString((derived as any).inverted_house_gutter),
+    gutter_modes: (derived as any).gutter_mode,
+    slope_directions: (derived as any).slope_direction,
   };
 
   for (const [key, allowedRaw] of Object.entries(appliesTo)) {
@@ -198,7 +205,7 @@ export function buildInstallV1(
     const actionScope = String((action as any).scope ?? 'module');
     if (scope !== 'all' && actionScope !== scope) continue;
 
-    if (!actionApplies(action, inputs)) continue;
+    if (!actionApplies(action, inputs, derived)) continue;
 
     const qty = resolveQty(action, inputs, derived);
     if (!Number.isFinite(qty) || qty <= 0) continue;
