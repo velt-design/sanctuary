@@ -225,9 +225,14 @@ describe('calculateCostV1', () => {
   });
 
   it('gable sheet/strip boundary uses per-plane downslope (gable 6×6 matches pitched 6×3)', () => {
+    const projection = 3;
+    const effectiveRun = projection - 0.15;
+    const targetRequired = 3.06;
+    const pitchBoundary = (Math.acos(effectiveRun / (targetRequired - 0.02)) * 180) / Math.PI;
+
     const base = {
       length_m: 6,
-      roof_pitch_deg: 15,
+      roof_pitch_deg: pitchBoundary,
       post_cut_height_m: 2.4,
       post_count: 4,
 
@@ -242,7 +247,7 @@ describe('calculateCostV1', () => {
       height: 'single_storey' as const,
     };
 
-    const pitched6x3 = calculateCostV1({ ...base, pergola_style: 'pitched', projection_m: 3 });
+    const pitched6x3 = calculateCostV1({ ...base, pergola_style: 'pitched', projection_m: projection });
     const gable6x6 = calculateCostV1({ ...base, pergola_style: 'gable', projection_m: 6 });
 
     const acrylicMode = (r: ReturnType<typeof calculateCostV1>) => {
@@ -431,6 +436,108 @@ describe('calculateCostV1', () => {
 
     const crystaliteLines = result.materials.lines.filter((l) => l.id.startsWith('roofing-sheet_d557d79c33'));
     expect(crystaliteLines.length).toBe(0);
+  });
+
+  it('roofing: pitched acrylic uses joiner-based downslope (no 6m warning at 6x6 @ 5°)', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 6,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.acrylic_required_downslope_m).toBeCloseTo(5.89235, 4);
+    expect(result.derived.joiner_piece_length_m).toBeCloseTo(result.derived.acrylic_required_downslope_m, 6);
+    expect(result.derived.cut_rafter_length_m).toBeCloseTo(5.87235, 4);
+
+    const warnings = result.totals.notes_and_warnings.filter((w) => w.toLowerCase().includes('acrylic slope exceeds'));
+    expect(warnings.length).toBe(0);
+  });
+
+  it('roofing: acrylic 6m warning boundary uses joiner downslope', () => {
+    const projection = 6;
+    const effectiveRun = projection - 0.15;
+    const targetUnder = 5.999;
+    const targetOver = 6.001;
+    const pitchUnder = (Math.acos(effectiveRun / (targetUnder - 0.02)) * 180) / Math.PI;
+    const pitchOver = (Math.acos(effectiveRun / (targetOver - 0.02)) * 180) / Math.PI;
+
+    const under = calculateCostV1({
+      length_m: 6,
+      projection_m: projection,
+      roof_pitch_deg: pitchUnder,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const over = calculateCostV1({
+      length_m: 6,
+      projection_m: projection,
+      roof_pitch_deg: pitchOver,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const underWarnings = under.totals.notes_and_warnings.filter((w) => w.toLowerCase().includes('acrylic slope exceeds'));
+    const overWarnings = over.totals.notes_and_warnings.filter((w) => w.toLowerCase().includes('acrylic slope exceeds'));
+
+    expect(under.derived.acrylic_required_downslope_m).toBeLessThan(6);
+    expect(underWarnings.length).toBe(0);
+
+    expect(over.derived.acrylic_required_downslope_m).toBeGreaterThan(6);
+    expect(overWarnings.length).toBe(1);
+  });
+
+  it('roofing: pitched acrylic defaults to 5° when pitch is unset', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.roof_pitch_deg_used).toBeCloseTo(5, 6);
   });
 
   it('takeoff: pitched acrylic uses 4/5/6m stock options and picks optimal (6m) for joiners/rafters/gutter', () => {

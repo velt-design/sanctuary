@@ -353,6 +353,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   // Geometry semantics:
   // - `roofSpanM` (aka legacy `projection_m`) is the total eave-to-eave span.
   // - For gable/low_gable/hip, each roof plane span is half that (`roofSpanM / 2`).
+  // - `cutRafterLengthM` is based on the effective run (house + gutter setbacks removed).
+  // - `joinerPieceLengthM` and `acrylicRequiredDownslopeM` add the 20mm joiner allowance only.
   const rafterRunM =
     roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
   const rafterLengthM = rafterRunM / effectiveCos;
@@ -360,10 +362,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const rafterLengthMAssumed = rafterLengthM;
 
   const effectiveRunM = Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
-  const slopeLenM = effectiveRunM / effectiveCos;
+  const cutRafterLengthM = effectiveRunM / effectiveCos;
   const angleCutAllowanceM = rafterDepthM(rafterProfile) * tanDeg(roofPitchDegUsed);
-  const requiredDownslopeM = slopeLenM + angleCutAllowanceM;
-  const joinerPieceLengthM = requiredDownslopeM + JOINER_EXTRA_M;
+  const joinerPieceLengthM = cutRafterLengthM + JOINER_EXTRA_M;
+  const acrylicRequiredDownslopeM = joinerPieceLengthM;
+  const requiredDownslopeM = acrylicRequiredDownslopeM;
 
   const ridgeLengthM =
     roofType === 'low_gable' || roofType === 'gable'
@@ -538,10 +541,13 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     rafter_run_m: rafterRunM,
     rafter_length_m: rafterLengthM,
     rafter_run_m_takeoff: effectiveRunM,
-    rafter_cut_length_m: requiredDownslopeM,
+    rafter_cut_length_m: cutRafterLengthM,
     joiner_piece_length_m: joinerPieceLengthM,
     effective_run_m: effectiveRunM,
     required_downslope_m: requiredDownslopeM,
+    cut_rafter_length_m: cutRafterLengthM,
+    angle_cut_allowance_m: angleCutAllowanceM,
+    acrylic_required_downslope_m: acrylicRequiredDownslopeM,
     roof_surface_area_m2: roofSurfaceAreaM2,
     ridge_length_m: ridgeLengthM,
     acrylic_area_m2: acrylicAreaM2,
