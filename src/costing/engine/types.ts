@@ -12,7 +12,7 @@ export type RoofType = 'pitched' | 'low_gable' | 'gable' | 'hip' | 'hip_corner';
 
 export type ExtrusionColour = 'Black' | 'White' | 'Mill';
 
-export type GutterType = 'sp_gutter';
+export type GutterType = 'sp_gutter' | 'box_gutter_100x100x3';
 
 export type HouseConnectionType = 'soffit' | 'fascia' | 'facade';
 
@@ -61,7 +61,8 @@ export type MixedRoofNormalizedV1 = {
 
 export type CostInputsV1 = {
   length_m: number;
-  projection_m: number;
+  roof_span_m?: number;
+  projection_m?: number; // legacy alias for roof_span_m
   post_cut_height_m?: number;
   roof_pitch_deg?: number;
 
@@ -81,6 +82,7 @@ export type CostInputsV1 = {
   box_perimeter_enabled?: boolean;
   internal_roof_type?: RoofType;
   fall_distance_mm?: number;
+  gutter_length_m?: number;
 
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
@@ -113,6 +115,7 @@ export type InputsNormalizedV1 = {
 
   box_beam_profile: BoxBeamProfile | null;
   fall_distance_mm: number | null;
+  gutter_length_m: number;
 
   rafter_profile: RafterProfile;
   gutter_type: GutterType | null;
@@ -131,6 +134,11 @@ export type DerivedV1 = {
   area_m2: number;
   length_m: number;
   projection_m: number;
+  roof_length_m: number;
+  roof_span_m: number;
+  roof_plane_span_m: number;
+  roof_plane_sloped_downslope_m: number;
+  roof_area_total_m2: number;
   module_count: number;
   hip_corner_length_b_m?: number;
   hip_corner_projection_b_m?: number;
@@ -154,6 +162,11 @@ export type DerivedV1 = {
   ridge_length_m: number;
   acrylic_area_m2: number;
   timber_area_m2: number;
+  roof_plane_count: number;
+  total_rafter_pieces: number;
+  joiner_runs_total: number;
+  acrylic_plane_count_used?: number;
+  gutter_length_m: number;
   roof_planes: Array<{
     id: string;
     label: string;

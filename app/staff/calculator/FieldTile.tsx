@@ -1,4 +1,5 @@
 import styles from './CalculatorGrid.module.css';
+import type { ReactNode } from 'react';
 
 export type FieldOption = { label: string; value: string };
 
@@ -8,13 +9,15 @@ export type FieldTileType =
   | 'select'
   | 'toggle'
   | 'readOnly'
-  | 'action';
+  | 'action'
+  | 'custom';
 
 type FieldTileProps = {
   id: string;
   label: string;
   type: FieldTileType;
   value?: string | boolean;
+  content?: ReactNode;
   onChange?: (next: string | boolean) => void;
   options?: FieldOption[];
   disabled?: boolean;
@@ -29,6 +32,7 @@ export default function FieldTile({
   label,
   type,
   value,
+  content,
   onChange,
   options,
   disabled,
@@ -44,11 +48,19 @@ export default function FieldTile({
 
   return (
     <div className={styles.tile}>
-      <label htmlFor={id} className={styles.label}>
-        {label}
-      </label>
+      {type === 'custom' ? (
+        <div className={styles.label}>{label}</div>
+      ) : (
+        <label htmlFor={id} className={styles.label}>
+          {label}
+        </label>
+      )}
 
-      {type === 'select' ? (
+      {type === 'custom' ? (
+        <div id={id} className={styles.customContent} aria-describedby={describedBy}>
+          {content}
+        </div>
+      ) : type === 'select' ? (
         <select
           id={id}
           className={styles.control}

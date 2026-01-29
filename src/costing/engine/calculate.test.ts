@@ -64,6 +64,33 @@ describe('calculateCostV1', () => {
     expect(result.totals).toMatchSnapshot();
   });
 
+  it('box perimeter: gutter materials + install action apply', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: true,
+      internal_roof_type: 'pitched',
+      fall_distance_mm: 200,
+
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const gutterLine = result.materials.lines.find((l) => l.profile === 'Box Gutter 100x100x3');
+    expect(gutterLine?.qty).toBeGreaterThan(0);
+    const gutterAction = result.install.actions.find((a) => a.id === 'drain.install_sp_gutter_m');
+    expect(gutterAction?.qty).toBe(result.inputs_normalized.gutter_length_m);
+  });
+
   it('house connection drivers: soffit uses bracket_count; fascia/facade use stringer_fixing_count', () => {
     const baseInputs = {
       length_m: 6,
@@ -107,6 +134,150 @@ describe('calculateCostV1', () => {
     expect(facade.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(30, 2);
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.qty).toBe(5);
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.minutes).toBeCloseTo(25, 2);
+  });
+
+  it('gable acrylic: 6×3 @ 5° matches pitched 6×3 @ 5° for mode + sheet count (no plane doubling)', () => {
+    const base = {
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const pitched = calculateCostV1({ ...base, pergola_style: 'pitched' });
+    const gable = calculateCostV1({ ...base, pergola_style: 'gable' });
+
+    const plexiQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => String(l.profile ?? '') === 'Plexi sheet 3050×2030')?.qty ?? 0;
+    const stripQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines
+        .filter((l) => String(l.profile ?? '') === 'Crystalite 620mm')
+        .reduce((sum, l) => sum + (typeof l.qty === 'number' ? l.qty : 0), 0);
+    const acrylicMode = (r: ReturnType<typeof calculateCostV1>) => (plexiQty(r) > 0 ? 'sheet' : stripQty(r) > 0 ? 'strip' : 'none');
+
+    const foamQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => l.id === 'consumable_04259b1a85')?.qty ?? 0;
+    const flashingQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => l.id === 'placeholder.flashing_material_m')?.qty ?? 0;
+    const joinerScrewsQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => l.id === 'fixing.joiner_screw_each')?.qty ?? 0;
+
+    expect(pitched.derived.roof_plane_count).toBe(1);
+    expect(gable.derived.roof_plane_count).toBe(2);
+
+    expect(acrylicMode(gable)).toBe(acrylicMode(pitched));
+    expect(acrylicMode(gable)).toBe('sheet');
+    expect(plexiQty(gable)).toBe(plexiQty(pitched));
+
+    // Joiner system + edge consumables exist on both planes.
+    expect(joinerScrewsQty(gable)).toBe(joinerScrewsQty(pitched) * 2);
+    expect(foamQty(gable)).toBe(foamQty(pitched) * 2);
+    expect(flashingQty(gable)).toBe(flashingQty(pitched) * 2);
+  });
+
+  it('gable acrylic: 6×6 @ 5° behaves like 2× pitched 6×3 @ 5° (area-based sheets)', () => {
+    const base = {
+      length_m: 6,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const pitched6x3 = calculateCostV1({ ...base, pergola_style: 'pitched', projection_m: 3 });
+    const gable6x6 = calculateCostV1({ ...base, pergola_style: 'gable', projection_m: 6 });
+
+    const plexiQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => String(l.profile ?? '') === 'Plexi sheet 3050×2030')?.qty ?? 0;
+    const stripQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines
+        .filter((l) => String(l.profile ?? '') === 'Crystalite 620mm')
+        .reduce((sum, l) => sum + (typeof l.qty === 'number' ? l.qty : 0), 0);
+    const acrylicMode = (r: ReturnType<typeof calculateCostV1>) => (plexiQty(r) > 0 ? 'sheet' : stripQty(r) > 0 ? 'strip' : 'none');
+
+    const joinerScrewsQty = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => l.id === 'fixing.joiner_screw_each')?.qty ?? 0;
+
+    expect(acrylicMode(gable6x6)).toBe(acrylicMode(pitched6x3));
+    expect(acrylicMode(gable6x6)).toBe('sheet');
+    expect(plexiQty(gable6x6)).toBe(plexiQty(pitched6x3) * 2);
+    expect(joinerScrewsQty(gable6x6)).toBe(joinerScrewsQty(pitched6x3) * 2);
+  });
+
+  it('gable sheet/strip boundary uses per-plane downslope (gable 6×6 matches pitched 6×3)', () => {
+    const base = {
+      length_m: 6,
+      roof_pitch_deg: 15,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const pitched6x3 = calculateCostV1({ ...base, pergola_style: 'pitched', projection_m: 3 });
+    const gable6x6 = calculateCostV1({ ...base, pergola_style: 'gable', projection_m: 6 });
+
+    const acrylicMode = (r: ReturnType<typeof calculateCostV1>) => {
+      const hasSheet = r.materials.lines.some((l) => String(l.profile ?? '') === 'Plexi sheet 3050×2030' && l.qty > 0);
+      const hasStrip = r.materials.lines.some((l) => String(l.profile ?? '') === 'Crystalite 620mm' && l.qty > 0);
+      return hasSheet ? 'sheet' : hasStrip ? 'strip' : 'none';
+    };
+
+    expect(acrylicMode(pitched6x3)).toBe('strip');
+    expect(acrylicMode(gable6x6)).toBe('strip');
+  });
+
+  it('inputs: roof_span_m is accepted as alias for projection_m', () => {
+    const base = {
+      length_m: 6,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const legacy = calculateCostV1({ ...base, projection_m: 3 });
+    const canonical = calculateCostV1({ ...base, roof_span_m: 3 });
+
+    expect(canonical.derived.roof_span_m).toBeCloseTo(legacy.derived.roof_span_m, 6);
+    expect(canonical.materials.totals.materials_ex_gst).toBeCloseTo(legacy.materials.totals.materials_ex_gst, 2);
   });
 
   it('fixture: mixed ridge skylight roof uses acrylic area + timber allowance', () => {
@@ -178,6 +349,35 @@ describe('calculateCostV1', () => {
 
     expect(result.install.actions.some((a) => a.id === 'roof.install_acrylic_roof_m2')).toBe(true);
     expect(result.install.actions.some((a) => a.id === 'roof.install_timber_roof_m2')).toBe(true);
+  });
+
+  it('mixed: joiner fixings include +1 run per acrylic plane', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'gable',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed',
+      mixed_roof: {
+        mode: 'acrylic_bays',
+        acrylic_bays_by_plane: { A: 2, B: 1 },
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const joinerFixings = result.materials.lines.find((l) => l.id === 'fixing.joiner_screw_each')?.qty ?? 0;
+    expect(result.derived.acrylic_bays_total).toBe(3);
+    expect(result.derived.acrylic_plane_count_used).toBe(2);
+    expect(joinerFixings).toBe((3 + 2) * 6);
   });
 
   it('mixed: acrylic bays clamp to plane bay count and warn', () => {

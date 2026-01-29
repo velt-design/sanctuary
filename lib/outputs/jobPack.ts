@@ -292,7 +292,9 @@ export function buildJobPack(estimate: Estimate): JobPack {
   specLines.push(`Estimate: ${estimate.id} (${estimate.createdAt})`);
   specLines.push(`Roof: ${roofType} · ${roofMaterialMode}${pitchDeg !== null ? ` · ${pitchDeg.toFixed(0)}°` : ''}`);
   if (moduleCount > 1 && firstModule) specLines.push(`Modules: ${moduleCount} (module 1: ${formatModuleSummary(firstModule)})`);
-  if (lengthM !== null && projectionM !== null) specLines.push(`Geometry: ${lengthM}m (length) × ${projectionM}m (projection)`);
+  if (lengthM !== null && projectionM !== null) {
+    specLines.push(`Geometry: ${lengthM}m (roof length) × ${projectionM}m (roof span, eave‑to‑eave)`);
+  }
   specLines.push(`Standards: 642mm rafter centres; 1.2m max bracket spacing (assumed)`);
   specLines.push(`Post cut height default: 2.4m (editable)`);
   if (firstModule) {

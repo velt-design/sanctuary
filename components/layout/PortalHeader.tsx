@@ -9,6 +9,8 @@ import HeaderHistoryNav from './HeaderHistoryNav';
 import SaveStatusPill from './SaveStatusPill';
 import { getPortalNavItems, isPortalNavActive, type PortalRole } from './portalNav';
 import MobileHeader from './MobileHeader';
+import Switch from '@/components/ui/Switch';
+import { useCalculatorUiPrefs } from '@/lib/ui/useCalculatorUiPrefs';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -18,9 +20,11 @@ export default function PortalHeader({ email, role }: { email: string; role: Por
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const items = getPortalNavItems(role);
+  const { previewLayoutEnabled, setPreviewLayoutEnabled } = useCalculatorUiPrefs();
 
   useEffect(() => setMounted(true), []);
   const activePathname = mounted ? pathname : null;
+  const showPreviewToggle = mounted && typeof pathname === 'string' && pathname.startsWith('/staff/calculator');
 
   return (
     <header className={styles.header}>
@@ -46,6 +50,16 @@ export default function PortalHeader({ email, role }: { email: string; role: Por
           <HeaderHistoryNav />
           <SaveStatusPill />
           <SessionMenu email={email} role={role} />
+          {showPreviewToggle ? (
+            <div className={styles.previewToggle}>
+              <span className={styles.previewLabel}>Preview</span>
+              <Switch
+                checked={previewLayoutEnabled}
+                onChange={setPreviewLayoutEnabled}
+                ariaLabel="Toggle calculator preview layout"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </header>

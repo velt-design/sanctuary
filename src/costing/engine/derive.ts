@@ -118,6 +118,7 @@ function normalizeMixedRoof(
   acrylicAreaM2: number;
   timberAreaM2: number;
   acrylicBaysTotal: number | null;
+  acrylicPlaneCountUsed: number;
   warnings: string[];
 } {
   const warnings: string[] = [];
@@ -143,6 +144,7 @@ function normalizeMixedRoof(
     let acrylicAreaM2 = 0;
     let timberAreaM2 = 0;
     let acrylicBaysTotal = 0;
+    let acrylicPlaneCountUsed = 0;
 
     const clampedByPlane: Record<string, number> = {};
 
@@ -172,6 +174,7 @@ function normalizeMixedRoof(
       acrylicAreaM2 += acrylicAreaPlane;
       timberAreaM2 += timberAreaPlane;
       acrylicBaysTotal += clamped;
+      if (clamped > 0) acrylicPlaneCountUsed += 1;
     }
 
     return {
@@ -184,6 +187,7 @@ function normalizeMixedRoof(
       acrylicAreaM2,
       timberAreaM2,
       acrylicBaysTotal,
+      acrylicPlaneCountUsed,
       warnings,
     };
   }
@@ -205,6 +209,7 @@ function normalizeMixedRoof(
       acrylicAreaM2: clamped,
       timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - clamped),
       acrylicBaysTotal: null,
+      acrylicPlaneCountUsed: 0,
       warnings,
     };
   }
@@ -235,6 +240,7 @@ function normalizeMixedRoof(
     acrylicAreaM2: clamped,
     timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - clamped),
     acrylicBaysTotal: null,
+    acrylicPlaneCountUsed: 0,
     warnings,
   };
 }
@@ -243,7 +249,23 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const warnings: string[] = [];
 
   const lengthM = toPositiveNumber(inputs.length_m, 1);
-  const projectionM = toPositiveNumber(inputs.projection_m, 1);
+  const roofSpanFromRoofSpanM = toPositiveNumber((inputs as any).roof_span_m, NaN);
+  const roofSpanFromProjectionM = toPositiveNumber((inputs as any).projection_m, NaN);
+  const roofSpanM = Number.isFinite(roofSpanFromRoofSpanM)
+    ? roofSpanFromRoofSpanM
+    : Number.isFinite(roofSpanFromProjectionM)
+      ? roofSpanFromProjectionM
+      : 1;
+
+  if (
+    Number.isFinite(roofSpanFromRoofSpanM) &&
+    Number.isFinite(roofSpanFromProjectionM) &&
+    Math.abs(roofSpanFromRoofSpanM - roofSpanFromProjectionM) > 1e-6
+  ) {
+    warnings.push('Both roof_span_m and projection_m were provided with different values; using roof_span_m.');
+  }
+
+  const projectionM = roofSpanM;
   const postCutHeightM = toPositiveNumber(inputs.post_cut_height_m, DEFAULT_POST_CUT_HEIGHT_M);
   const roofPitchDegRaw = typeof inputs.roof_pitch_deg === 'number' ? inputs.roof_pitch_deg : Number.parseFloat(String(inputs.roof_pitch_deg ?? ''));
   const roofPitchDeg = Number.isFinite(roofPitchDegRaw) ? clamp(roofPitchDegRaw, 0, 85) : null;
@@ -328,6 +350,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const effectiveCos = Math.max(0.02, cosDeg(roofPitchDegUsed));
   if (effectiveCos <= 0.021) warnings.push('Roof pitch is very steep; clamping trig calculation for safety.');
 
+  // Geometry semantics:
+  // - `roofSpanM` (aka legacy `projection_m`) is the total eave-to-eave span.
+  // - For gable/low_gable/hip, each roof plane span is half that (`roofSpanM / 2`).
   const rafterRunM =
     roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
   const rafterLengthM = rafterRunM / effectiveCos;
@@ -348,6 +373,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         : 0;
 
   const hipRafterCount = roofType === 'hip' ? 4 : 0;
+
+  const roofPlaneCount = roofType === 'pitched' ? 1 : 2;
 
   const roofPlanes =
     roofType === 'pitched'
@@ -398,6 +425,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   let acrylicAreaM2 = 0;
   let timberAreaM2 = 0;
   let acrylicBaysTotal: number | undefined = undefined;
+  let acrylicPlaneCountUsed = 0;
   if (inputs.roof_material === 'acrylic') {
     acrylicAreaM2 = roofSurfaceAreaM2;
     timberAreaM2 = 0;
@@ -414,6 +442,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     acrylicAreaM2 = mixed.acrylicAreaM2;
     timberAreaM2 = mixed.timberAreaM2;
     if (typeof mixed.acrylicBaysTotal === 'number') acrylicBaysTotal = mixed.acrylicBaysTotal;
+    acrylicPlaneCountUsed = mixed.acrylicPlaneCountUsed;
     warnings.push(...mixed.warnings);
     if (roofType === 'hip_corner' && mixed.normalized.mode === 'ridge_skylight')
       warnings.push('Hip corner mixed roof assumes ridge length = length A + length B.');
@@ -426,10 +455,18 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
       ? Math.max(0, Math.ceil(acrylicAreaM2 / acrylicSheetAreaM2))
       : 0;
 
+  const coverageMultiplier = roofType === 'pitched' || roofType === 'hip_corner' ? 1 : roofPlaneCount;
+  const baseLinearLength = roofType === 'hip_corner' ? lengthM + hipCornerLengthBM : lengthM;
+  const flashingLengthM = baseLinearLength * coverageMultiplier;
+  const foamLengthM = baseLinearLength * coverageMultiplier;
+
   const travel = toNonNegativeNumber(inputs.travel_ex_gst, 0);
   const extras = toNonNegativeNumber(inputs.extras_allowance_ex_gst, 0);
 
   const quoteDiscountPct = clampNumber(toNonNegativeNumber(inputs.quote_discount_pct, 0), 0, 80);
+
+  const gutterLengthRaw = toNonNegativeNumber(inputs.gutter_length_m, NaN);
+  const gutterLengthM = Number.isFinite(gutterLengthRaw) && gutterLengthRaw > 0 ? gutterLengthRaw : baseLinearLength;
 
   const timberAllowanceRaw = toNonNegativeNumber(inputs.timber_roof_allowance_ex_gst, 0);
   if (timberAllowanceRaw > 0) warnings.push('Timber roof allowance input is deprecated and ignored (timber roof is now a takeoff).');
@@ -458,12 +495,13 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
     box_beam_profile: structureType === 'box_perimeter' ? '300x50' : null,
     fall_distance_mm: fallDistanceMm,
+    gutter_length_m: gutterLengthM,
 
     rafter_profile: rafterProfile,
-    gutter_type: structureType === 'pitched' ? 'sp_gutter' : null,
+    gutter_type: structureType === 'pitched' ? 'sp_gutter' : structureType === 'box_perimeter' ? 'box_gutter_100x100x3' : null,
     acrylic_sheet_count: acrylicSheetCount,
-    flashing_length_m: roofType === 'hip_corner' ? lengthM + hipCornerLengthBM : lengthM,
-    foam_length_m: roofType === 'hip_corner' ? lengthM + hipCornerLengthBM : lengthM,
+    flashing_length_m: flashingLengthM,
+    foam_length_m: foamLengthM,
 
     travel_ex_gst: travel,
     extras_allowance_ex_gst: extras,
@@ -476,6 +514,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     area_m2: areaM2,
     length_m: lengthM,
     projection_m: projectionM,
+    roof_length_m: lengthM,
+    roof_span_m: projectionM,
+    roof_plane_span_m: rafterRunM,
+    roof_plane_sloped_downslope_m: rafterLengthM,
+    roof_area_total_m2: areaM2,
     module_count: 1,
     ...(roofType === 'hip_corner'
       ? {
@@ -503,6 +546,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     ridge_length_m: ridgeLengthM,
     acrylic_area_m2: acrylicAreaM2,
     timber_area_m2: timberAreaM2,
+    roof_plane_count: roofPlaneCount,
+    total_rafter_pieces: roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount,
+    joiner_runs_total: roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount,
+    acrylic_plane_count_used: acrylicPlaneCountUsed,
+    gutter_length_m: gutterLengthM,
     roof_planes: roofPlanes,
     ...(typeof acrylicBaysTotal === 'number' ? { acrylic_bays_total: acrylicBaysTotal } : null),
     hip_rafter_count: hipRafterCount,

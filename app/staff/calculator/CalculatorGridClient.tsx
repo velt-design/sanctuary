@@ -2,7 +2,7 @@
 
 import type { CostInputsV1, JobInputsV1, JobOutputV1, RoofType } from '@/src/costing/engine/types';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
 import styles from './CalculatorGrid.module.css';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
@@ -14,12 +14,15 @@ import { getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
 import { useSession } from 'next-auth/react';
+import { useCalculatorUiPrefs } from '@/lib/ui/useCalculatorUiPrefs';
+import RoofOrientationDiagram from './RoofOrientationDiagram';
 
 type FieldSchemaItem = {
   id: string;
   label: string;
   type: FieldTileType;
   value?: string | boolean;
+  content?: ReactNode;
   onChange?: (next: string | boolean) => void;
   options?: FieldOption[];
   disabled?: boolean;
@@ -76,13 +79,13 @@ function clampInt(n: number, min: number, max: number): number {
 function labelForIssueField(id: string): string {
   switch (id) {
     case 'lengthM':
-      return 'Length (m)';
+      return 'Roof Length (m)';
     case 'projectionM':
-      return 'Projection (m)';
+      return 'Roof Span (Eave‑to‑Eave) (m)';
     case 'hipCornerLengthBM':
-      return 'Wing B length (m)';
+      return 'Roof Length B (m)';
     case 'hipCornerProjectionBM':
-      return 'Wing B projection (m)';
+      return 'Roof Span B (m)';
     case 'postCutHeightM':
       return 'Post cut height (m)';
     case 'roofPitchDeg':
@@ -172,6 +175,7 @@ export default function CalculatorGridClient({
   const { data: session } = useSession();
   const email = typeof emailProp === 'string' ? emailProp : (typeof session?.user?.email === 'string' ? session.user.email : '');
   const role = (roleProp ?? (((session?.user as any)?.role ?? 'staff') as 'admin' | 'staff')) === 'admin' ? 'admin' : 'staff';
+  const { previewLayoutEnabled } = useCalculatorUiPrefs();
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -265,6 +269,19 @@ export default function CalculatorGridClient({
   }, [fromEstimateId]);
 
   useEffect(() => {
+    if (!previewLayoutEnabled) return;
+    const prevHtml = document.documentElement.style.overflow;
+    const prevBody = document.body.style.overflow;
+
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.documentElement.style.overflow = prevHtml;
+      document.body.style.overflow = prevBody;
+    };
+  }, [previewLayoutEnabled]);
+
+  useEffect(() => {
     setActiveModuleIndex((prev) => {
       const max = Math.max(0, values.modules.length - 1);
       return Math.min(prev, max);
@@ -281,14 +298,14 @@ export default function CalculatorGridClient({
       if (!Number.isFinite(length) || length <= 0) next.lengthM = 'Enter a length > 0';
 
       const projection = toNumber(module.projectionM);
-      if (!Number.isFinite(projection) || projection <= 0) next.projectionM = 'Enter a projection > 0';
+      if (!Number.isFinite(projection) || projection <= 0) next.projectionM = 'Enter a roof span > 0';
 
       if (module.pergolaStyle === 'hip_corner') {
         const lengthB = toNumber(module.hipCornerLengthBM);
-        if (!Number.isFinite(lengthB) || lengthB <= 0) next.hipCornerLengthBM = 'Wing B length is required';
+        if (!Number.isFinite(lengthB) || lengthB <= 0) next.hipCornerLengthBM = 'Roof length B is required';
 
         const projectionB = toNumber(module.hipCornerProjectionBM);
-        if (!Number.isFinite(projectionB) || projectionB <= 0) next.hipCornerProjectionBM = 'Wing B projection is required';
+        if (!Number.isFinite(projectionB) || projectionB <= 0) next.hipCornerProjectionBM = 'Roof span B is required';
       }
 
       const postHeight = toNumber(module.postCutHeightM);
@@ -359,7 +376,7 @@ export default function CalculatorGridClient({
 
     const modules: CostInputsV1[] = values.modules.map((module) => {
       const length_m = toNumber(module.lengthM);
-      const projection_m = toNumber(module.projectionM);
+      const roof_span_m = toNumber(module.projectionM);
       const post_cut_height_m = toNumber(module.postCutHeightM);
       const roof_pitch_deg = module.roofPitchDeg.trim() ? toNumber(module.roofPitchDeg) : NaN;
       const post_count = toNumber(module.postCount);
@@ -373,7 +390,7 @@ export default function CalculatorGridClient({
 
       return {
         length_m,
-        projection_m,
+        roof_span_m,
         post_cut_height_m,
         roof_pitch_deg: Number.isFinite(roof_pitch_deg) ? roof_pitch_deg : undefined,
         post_count,
@@ -523,6 +540,7 @@ export default function CalculatorGridClient({
   const bracketCount = moduleResult?.derived.bracket_count;
   const rafterProfile = moduleResult?.inputs_normalized.rafter_profile;
   const crewHours = result?.install.totals.crew_hours;
+  const crewDays = typeof crewHours === 'number' ? crewHours / 8 : undefined;
 
   const materialsEx = result?.materials.totals.materials_ex_gst;
   const installEx = result?.install.totals.install_ex_gst;
@@ -584,6 +602,46 @@ export default function CalculatorGridClient({
         : undefined;
 
   const generateLabel = isGenerating ? 'Generating…' : 'Generate';
+
+  const roofTypeForInputs = getRoofTypeForModule(activeModule);
+  const roofSpanForInputsM = toNumber(activeModule.projectionM);
+  const pitchForInputsDegRaw = toNumber(activeModule.roofPitchDeg);
+  const defaultPitchForInputsDeg =
+    roofTypeForInputs === 'low_gable'
+      ? 10
+      : roofTypeForInputs === 'gable' || roofTypeForInputs === 'hip' || roofTypeForInputs === 'hip_corner'
+        ? 25
+        : 5;
+  const pitchForHintsDeg = Number.isFinite(pitchForInputsDegRaw)
+    ? Math.max(0, Math.min(85, pitchForInputsDegRaw))
+    : defaultPitchForInputsDeg;
+  const cosForHints = Math.max(0.02, Math.cos((pitchForHintsDeg * Math.PI) / 180));
+
+  const perSideSpanM =
+    Number.isFinite(roofSpanForInputsM) && roofSpanForInputsM > 0 ? roofSpanForInputsM / 2 : NaN;
+  const slopedDownslopePerSideM = perSideSpanM / cosForHints;
+
+  const gableHintFields: FieldSchemaItem[] =
+    roofTypeForInputs === 'gable' || roofTypeForInputs === 'low_gable'
+      ? [
+          {
+            id: 'perSideSpanM',
+            label: 'Per‑side span (m)',
+            type: 'readOnly',
+            value: formatMaybeNumber(perSideSpanM, 2),
+            helperText: 'Gable: per-side span = roof span ÷ 2',
+          },
+          {
+            id: 'slopedLengthPerSideM',
+            label: 'Sloped length per side (m)',
+            type: 'readOnly',
+            value: Number.isFinite(slopedDownslopePerSideM)
+              ? `${formatMaybeNumber(slopedDownslopePerSideM, 2)} (at ${pitchForHintsDeg.toFixed(0)}°)`
+              : '—',
+            helperText: 'Sloped length = (roof span ÷ 2) ÷ cos(pitch)',
+          },
+        ]
+      : [];
 
   const schema: FieldSchemaItem[] = [
     {
@@ -841,13 +899,36 @@ export default function CalculatorGridClient({
       ],
     },
 
-    { id: 'lengthM', label: activeModule.pergolaStyle === 'hip_corner' ? 'Length A (m)' : 'Length (m)', type: 'number', value: activeModule.lengthM, onChange: (v) => setModuleField('lengthM', String(v)), error: errors.lengthM },
-    { id: 'projectionM', label: activeModule.pergolaStyle === 'hip_corner' ? 'Projection A (m)' : 'Projection (m)', type: 'number', value: activeModule.projectionM, onChange: (v) => setModuleField('projectionM', String(v)), error: errors.projectionM },
+    {
+      id: 'lengthM',
+      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Length A (m)' : 'Roof Length (m)',
+      type: 'number',
+      value: activeModule.lengthM,
+      onChange: (v) => setModuleField('lengthM', String(v)),
+      error: errors.lengthM,
+      helperText: 'Roof Length: dimension parallel to the ridge / gutter.',
+    },
+    {
+      id: 'projectionM',
+      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eave‑to‑Eave) (m)',
+      type: 'number',
+      value: activeModule.projectionM,
+      onChange: (v) => setModuleField('projectionM', String(v)),
+      error: errors.projectionM,
+      helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
+    },
+    {
+      id: 'roofOrientation',
+      label: 'Orientation',
+      type: 'custom',
+      content: <RoofOrientationDiagram />,
+      helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
+    },
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
           {
             id: 'hipCornerLengthBM',
-            label: 'Length B (m)',
+            label: 'Roof Length B (m)',
             type: 'number',
             value: activeModule.hipCornerLengthBM,
             onChange: (v: string | boolean) => setModuleField('hipCornerLengthBM', String(v)),
@@ -855,7 +936,7 @@ export default function CalculatorGridClient({
           } satisfies FieldSchemaItem,
           {
             id: 'hipCornerProjectionBM',
-            label: 'Projection B (m)',
+            label: 'Roof Span B (m)',
             type: 'number',
             value: activeModule.hipCornerProjectionBM,
             onChange: (v: string | boolean) => setModuleField('hipCornerProjectionBM', String(v)),
@@ -872,6 +953,7 @@ export default function CalculatorGridClient({
       error: errors.roofPitchDeg,
       helperText: activeModule.roofPitchDeg.trim() ? 'Overrides default pitch for roof type' : 'Blank = default pitch',
     },
+    ...gableHintFields,
     {
       id: 'postCutHeightM',
       label: 'Post cut height (m)',
@@ -1088,6 +1170,64 @@ export default function CalculatorGridClient({
   const generateField = schema.find((field) => field.id === 'generate-estimate') ?? null;
   const schemaWithoutFooter = schema.filter((field) => field.id !== 'warnings' && field.id !== 'generate-estimate');
 
+  const schemaMap = useMemo(() => new Map(schema.map((field) => [field.id, field])), [schema]);
+  const pickFields = (ids: string[]): FieldSchemaItem[] =>
+    ids
+      .map((id) => schemaMap.get(id))
+      .filter(Boolean) as FieldSchemaItem[];
+
+  const contextFields = pickFields([
+    'engine-status',
+    'project-context',
+    'draft-notice',
+    'projectName',
+    'quoteRef',
+    'moduleIndex',
+    'addModule',
+    'removeModule',
+  ]);
+
+  const structureFields = pickFields([
+    'pergolaStyle',
+    'boxPerimeterEnabled',
+    'roofMaterial',
+    'mixedAcrylicBaysMain',
+    'mixedAcrylicBaysA',
+    'mixedAcrylicBaysB',
+    'extrusionColour',
+    'lengthM',
+    'projectionM',
+    'roofOrientation',
+    'hipCornerLengthBM',
+    'hipCornerProjectionBM',
+    'roofPitchDeg',
+    'perSideSpanM',
+    'slopedLengthPerSideM',
+    'postCutHeightM',
+    'postCount',
+    'internalRoofType',
+    'fallDistanceMm',
+  ]);
+
+  const connectionFields = pickFields(['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height']);
+
+  const allowanceFields = pickFields(['travelExGst', 'extrasAllowanceExGst', 'quoteDiscountPct']);
+
+  const bomPreview = useMemo(() => {
+    const lines = result?.materials?.lines ?? [];
+    if (!Array.isArray(lines) || lines.length === 0) return [];
+    return lines
+      .slice()
+      .sort((a, b) => (b.line_cost_ex_gst ?? 0) - (a.line_cost_ex_gst ?? 0))
+      .slice(0, 10);
+  }, [result]);
+
+  const labourPreview = useMemo(() => {
+    const actions = result?.install?.actions ?? [];
+    if (!Array.isArray(actions) || actions.length === 0) return [];
+    return actions.slice().sort((a, b) => (b.minutes ?? 0) - (a.minutes ?? 0));
+  }, [result]);
+
   const [gridHeightPx, setGridHeightPx] = useState(0);
 
   useLayoutEffect(() => {
@@ -1123,67 +1263,200 @@ export default function CalculatorGridClient({
   }, []);
 
   return (
-    <main className={styles.page}>
+    <main className={previewLayoutEnabled ? `${styles.page} ${styles.previewPage}` : styles.page}>
       <h1 className="visually-hidden">Calculator</h1>
-      <div
-        ref={gridRef}
-        className={styles.grid}
-        role="form"
-        aria-label="Calculator inputs"
-        style={gridHeightPx ? { height: `${gridHeightPx}px` } : undefined}
-      >
-        {schemaWithoutFooter.map((field) => (
-          <FieldTile
-            key={field.id}
-            id={field.id}
-            label={field.label}
-            type={field.type}
-            value={field.value}
-            onChange={field.onChange}
-            options={field.options}
-            disabled={field.disabled}
-            helperText={field.helperText}
-            error={field.error}
-            onAction={field.onAction}
-            actionLabel={field.actionLabel}
-          />
-        ))}
 
-        {warningsField ? (
-          <FieldTile
-            key={warningsField.id}
-            id={warningsField.id}
-            label={warningsField.label}
-            type={warningsField.type}
-            value={warningsField.value}
-            onChange={warningsField.onChange}
-            options={warningsField.options}
-            disabled={warningsField.disabled}
-            helperText={warningsField.helperText}
-            error={warningsField.error}
-            onAction={warningsField.onAction}
-            actionLabel={warningsField.actionLabel}
-          />
-        ) : null}
+      {previewLayoutEnabled ? (
+        <div className={styles.previewFrame}>
+          <div className={styles.split}>
+            <div className={styles.leftCol}>
+              <FieldGroup title="Context" fields={contextFields} />
+              <FieldGroup title="Structure" fields={structureFields} />
+              <FieldGroup title="Connections & Site" fields={connectionFields} />
+              <FieldGroup title="Allowances" fields={allowanceFields} />
+            </div>
 
-        {generateField ? (
-          <FieldTile
-            key={generateField.id}
-            id={generateField.id}
-            label={generateField.label}
-            type={generateField.type}
-            value={generateField.value}
-            onChange={generateField.onChange}
-            options={generateField.options}
-            disabled={generateField.disabled}
-            helperText={generateField.helperText}
-            error={generateField.error}
-            onAction={generateField.onAction}
-            actionLabel={generateField.actionLabel}
-          />
-        ) : null}
+            <aside className={styles.rightCol} aria-label="Preview outputs">
+              <div className={styles.previewSummary}>
+                <div className={styles.previewSummaryHeader}>
+                  <div>
+                    <div className={styles.previewSummaryTitle}>Preview</div>
+                    <div className={styles.previewSummarySub}>
+                      {isCalculating ? 'Calculating…' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
+                    </div>
+                  </div>
+                  {issuesCount ? (
+                    <button type="button" className={styles.previewIssueButton} onClick={() => setIssuesOpen(true)}>
+                      Errors ({issuesCount})
+                    </button>
+                  ) : null}
+                </div>
 
-      </div>
+                <div className={styles.previewStatGrid}>
+                  <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(totalEx)} />
+                  <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(totalInc)} />
+                  <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
+                  <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
+                  <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
+                  <PreviewStat label="Crew hours" value={formatMaybeNumber(crewHours)} />
+                  <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 1)} />
+                </div>
+
+                {generateField ? (
+                  <div className={styles.previewActions}>
+                    <button
+                      type="button"
+                      className={styles.previewPrimaryAction}
+                      onClick={generateField.onAction}
+                      disabled={generateField.disabled}
+                    >
+                      {generateField.actionLabel ?? 'Generate'}
+                    </button>
+                    {generateField.error ? <p className={styles.previewError}>{generateField.error}</p> : null}
+                  </div>
+                ) : null}
+              </div>
+
+              <section className={styles.previewCard} aria-label="Warnings">
+                <h2 className={styles.previewCardTitle}>Warnings</h2>
+                {warningsTyped.length ? (
+                  <ul className={styles.previewList}>
+                    {warningsTyped.map((warn, idx) => (
+                      <li key={`${warn.level}-${idx}`} className={warn.level === 'critical' ? styles.previewWarnCritical : undefined}>
+                        {warn.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className={styles.previewMuted}>No warnings yet.</p>
+                )}
+              </section>
+
+              <section className={styles.previewCard} aria-label="BOM preview">
+                <h2 className={styles.previewCardTitle}>BOM preview</h2>
+                {bomPreview.length ? (
+                  <div className={styles.previewTable}>
+                    {bomPreview.map((line) => (
+                      <div key={`${line.id}-${line.label}`} className={styles.previewRow}>
+                        <div className={styles.previewRowMain}>
+                          <div className={styles.previewRowLabel}>{line.label}</div>
+                          <div className={styles.previewRowMeta}>
+                            {formatMaybeNumber(line.qty, 2)} {line.unit}
+                          </div>
+                        </div>
+                        <div className={styles.previewRowValue}>{formatMaybeMoney(line.line_cost_ex_gst)}</div>
+                      </div>
+                    ))}
+                    <div className={styles.previewRowTotal}>
+                      <span>Total materials (ex‑GST)</span>
+                      <span>{formatMaybeMoney(materialsEx)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className={styles.previewMuted}>No BOM yet.</p>
+                )}
+              </section>
+
+              <details className={styles.previewDetails}>
+                <summary>Labour breakdown</summary>
+                {labourPreview.length ? (
+                  <div className={styles.previewTable}>
+                    {labourPreview.map((action) => (
+                      <div key={action.id} className={styles.previewRow}>
+                        <div className={styles.previewRowMain}>
+                          <div className={styles.previewRowLabel}>{action.label}</div>
+                          <div className={styles.previewRowMeta}>
+                            {action.category} · {formatMaybeNumber(action.qty, 2)} {action.unit}
+                          </div>
+                        </div>
+                        <div className={styles.previewRowValue}>{formatMaybeNumber(action.minutes, 0)} min</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.previewMuted}>No labour actions yet.</p>
+                )}
+              </details>
+
+              <details className={styles.previewDetails}>
+                <summary>Structure outputs</summary>
+                <div className={styles.previewTable}>
+                  <PreviewRow label="Area (m²)" value={formatMaybeNumber(derivedArea)} />
+                  <PreviewRow label="Roof area (m²)" value={formatMaybeNumber(derivedRoofArea)} />
+                  <PreviewRow label="Acrylic area (m²)" value={formatMaybeNumber(derivedAcrylicArea)} />
+                  <PreviewRow label="Timber area (m²)" value={formatMaybeNumber(derivedTimberArea)} />
+                  <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—'} />
+                  <PreviewRow label="Slope length (m)" value={formatMaybeNumber(derivedSlopeLength)} />
+                  <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—'} />
+                  <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : '—'} />
+                </div>
+              </details>
+            </aside>
+          </div>
+        </div>
+      ) : (
+        <div
+          ref={gridRef}
+          className={styles.grid}
+          role="form"
+          aria-label="Calculator inputs"
+          style={gridHeightPx ? { height: `${gridHeightPx}px` } : undefined}
+        >
+          {schemaWithoutFooter.map((field) => (
+            <FieldTile
+              key={field.id}
+              id={field.id}
+              label={field.label}
+              type={field.type}
+              value={field.value}
+              content={field.content}
+              onChange={field.onChange}
+              options={field.options}
+              disabled={field.disabled}
+              helperText={field.helperText}
+              error={field.error}
+              onAction={field.onAction}
+              actionLabel={field.actionLabel}
+            />
+          ))}
+
+          {warningsField ? (
+            <FieldTile
+              key={warningsField.id}
+              id={warningsField.id}
+              label={warningsField.label}
+              type={warningsField.type}
+              value={warningsField.value}
+              content={warningsField.content}
+              onChange={warningsField.onChange}
+              options={warningsField.options}
+              disabled={warningsField.disabled}
+              helperText={warningsField.helperText}
+              error={warningsField.error}
+              onAction={warningsField.onAction}
+              actionLabel={warningsField.actionLabel}
+            />
+          ) : null}
+
+          {generateField ? (
+            <FieldTile
+              key={generateField.id}
+              id={generateField.id}
+              label={generateField.label}
+              type={generateField.type}
+              value={generateField.value}
+              content={generateField.content}
+              onChange={generateField.onChange}
+              options={generateField.options}
+              disabled={generateField.disabled}
+              helperText={generateField.helperText}
+              error={generateField.error}
+              onAction={generateField.onAction}
+              actionLabel={generateField.actionLabel}
+            />
+          ) : null}
+        </div>
+      )}
 
 	      {issuesOpen ? (
 	        <Modal
@@ -1282,7 +1555,7 @@ export default function CalculatorGridClient({
                     </div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Length / projection</div>
+                    <div className={styles.modalKey}>Roof length / roof span</div>
                     <div className={styles.modalVal}>
                       {activeModule.pergolaStyle === 'hip_corner'
                         ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
@@ -1504,5 +1777,51 @@ export default function CalculatorGridClient({
 	        </Modal>
 	      ) : null}
     </main>
+  );
+}
+
+function FieldGroup({ title, fields }: { title: string; fields: FieldSchemaItem[] }) {
+  if (!fields.length) return null;
+  return (
+    <section className={styles.previewCard} aria-label={title}>
+      <h2 className={styles.previewCardTitle}>{title}</h2>
+      <div className={styles.previewFieldGrid}>
+        {fields.map((field) => (
+          <FieldTile
+            key={field.id}
+            id={field.id}
+            label={field.label}
+            type={field.type}
+            value={field.value}
+            content={field.content}
+            onChange={field.onChange}
+            options={field.options}
+            disabled={field.disabled}
+            helperText={field.helperText}
+            error={field.error}
+            onAction={field.onAction}
+            actionLabel={field.actionLabel}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PreviewStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.previewStat}>
+      <span className={styles.previewStatLabel}>{label}</span>
+      <span className={styles.previewStatValue}>{value}</span>
+    </div>
+  );
+}
+
+function PreviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className={styles.previewRow}>
+      <span className={styles.previewRowLabel}>{label}</span>
+      <span className={styles.previewRowValue}>{value}</span>
+    </div>
   );
 }
