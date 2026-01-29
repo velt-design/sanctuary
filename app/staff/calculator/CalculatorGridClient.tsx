@@ -917,13 +917,17 @@ export default function CalculatorGridClient({
       error: errors.projectionM,
       helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
     },
-    {
-      id: 'roofOrientation',
-      label: 'Orientation',
-      type: 'custom',
-      content: <RoofOrientationDiagram />,
-      helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
-    },
+    ...(previewLayoutEnabled
+      ? [
+          {
+            id: 'roofOrientation',
+            label: 'Orientation',
+            type: 'custom',
+            content: <RoofOrientationDiagram />,
+            helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
           {
