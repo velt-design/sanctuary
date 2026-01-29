@@ -736,7 +736,7 @@
       "base_minutes": 4,
       "applies_to": {
         "gutter_types": [
-          "sp_gutter"
+          "box_gutter_100x100x3"
         ],
         "structure_types": [
           "box_perimeter"
@@ -746,7 +746,7 @@
         "access",
         "height"
       ],
-      "notes": "Box perimeter: gutter installed separately from front beam.",
+      "notes": "Box perimeter: gutter installed separately from front beam (box gutter type).",
       "scope": "module"
     },
     {

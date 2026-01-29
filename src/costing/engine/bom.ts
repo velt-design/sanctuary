@@ -139,7 +139,9 @@ function selectBestStock(
 } {
   const cutsDesc = [...cutsM].sort((a, b) => b - a);
 
-  let best: { bar: (PricebookItem & { stock_length_m: number }); barsUsed: number; wasteM: number; cost: number } | null = null;
+  let best:
+    | { bar: (PricebookItem & { stock_length_m: number }); barsUsed: number; wasteM: number; cost: number; costPerM: number }
+    | null = null;
 
   const candidates = bars
     .filter((b) => preferred.includes(b.stock_length_m))
@@ -151,24 +153,27 @@ function selectBestStock(
     if (cutsDesc.some((cut) => Number.isFinite(cut) && cut > bar.stock_length_m + 1e-6)) continue;
     const { barsUsed, wasteM } = greedyBinPack(cutsDesc, bar.stock_length_m);
     const cost = barsUsed * unitCost;
+    const costPerM = unitCost / Math.max(bar.stock_length_m, 0.0001);
 
     if (!best) {
-      best = { bar, barsUsed, wasteM, cost };
+      best = { bar, barsUsed, wasteM, cost, costPerM };
       continue;
     }
 
-    // Selection: minimise waste first, then cost, then bar count.
-    if (wasteM < best.wasteM - 1e-6) {
-      best = { bar, barsUsed, wasteM, cost };
+    const bestCostPerM = best.costPerM;
+
+    // Selection: minimise cost per metre, then waste, then bar count.
+    if (costPerM < bestCostPerM - 1e-6) {
+      best = { bar, barsUsed, wasteM, cost, costPerM };
       continue;
     }
-    if (Math.abs(wasteM - best.wasteM) <= 1e-6) {
-      if (cost < best.cost - 0.01) {
-        best = { bar, barsUsed, wasteM, cost };
+    if (Math.abs(costPerM - bestCostPerM) <= 1e-6) {
+      if (wasteM < best.wasteM - 1e-6) {
+        best = { bar, barsUsed, wasteM, cost, costPerM };
         continue;
       }
-      if (Math.abs(cost - best.cost) <= 0.01 && barsUsed < best.barsUsed) {
-        best = { bar, barsUsed, wasteM, cost };
+      if (Math.abs(wasteM - best.wasteM) <= 1e-6 && barsUsed < best.barsUsed) {
+        best = { bar, barsUsed, wasteM, cost, costPerM };
       }
     }
   }
@@ -241,6 +246,7 @@ export function buildMaterialsV1(
   const isHipCorner = inputs.roof_type === 'hip_corner';
   const hipCornerLengthB = Number(inputs.hip_corner_length_b_m ?? 0);
   const hipCornerProjectionB = Number(inputs.hip_corner_projection_b_m ?? 0);
+  const roofPlaneCount = Math.max(1, Math.round(Number((derived as any).roof_plane_count ?? 1)));
 
   const roofPitchDegUsed = Number((derived as any).roof_pitch_deg_used ?? 0);
   const effectiveCos = Math.max(0.02, Math.cos((roofPitchDegUsed * Math.PI) / 180));
@@ -297,6 +303,12 @@ export function buildMaterialsV1(
 
   if (inputs.structure_type === 'box_perimeter') {
     addCuts('300x50', [inputs.length_m, inputs.length_m, inputs.projection_m, inputs.projection_m], 'Box perimeter beams');
+    if (inputs.gutter_type === 'box_gutter_100x100x3') {
+      const gutterLength = Math.max(0, Number(inputs.gutter_length_m ?? 0));
+      if (gutterLength > 0) {
+        addCuts('Box Gutter 100x100x3', [gutterLength], 'Box perimeter gutter');
+      }
+    }
   }
 
   // === Joiner system / acrylic components ===
@@ -320,6 +332,11 @@ export function buildMaterialsV1(
     ? stripCfg.available_strip_lengths_m.map((n: unknown) => Number(n)).filter((n: number) => Number.isFinite(n) && n > 0)
     : [4, 5, 6];
 
+  const pickStripStockLen = (requiredLen: number): number => {
+    if (!Number.isFinite(requiredLen) || requiredLen <= 0) return Math.max(...stripLengths, 6);
+    return stripLengths.find((l) => l >= requiredLen) ?? Math.max(...stripLengths, 6);
+  };
+
   const recordCrystalite = (stockLen: number, barsUsed: number, wasteM: number) => {
     waste_m_by_profile['Crystalite 620mm'] = roundMoney((waste_m_by_profile['Crystalite 620mm'] ?? 0) + wasteM);
     const prev = bars_by_profile['Crystalite 620mm'];
@@ -333,12 +350,13 @@ export function buildMaterialsV1(
     };
   };
 
-  const addCrystaliteLine = (opts: { requiredLen: number; qty: number; note: string; idSuffix?: string }) => {
+  const addCrystaliteLine = (opts: { requiredLen: number; qty: number; note: string; idSuffix?: string; cutCount?: number }) => {
     const requiredLen = Math.max(0, opts.requiredLen);
     const qty = Math.max(0, Math.round(opts.qty));
-    if (!qty || requiredLen <= 0) return;
+    const cutCount = Math.max(0, Math.round(opts.cutCount ?? qty));
+    if (!qty || requiredLen <= 0 || !cutCount) return;
 
-    const selectedLen = stripLengths.find((l) => l >= requiredLen) ?? Math.max(...stripLengths, 6);
+    const selectedLen = pickStripStockLen(requiredLen);
     const stripItem = findCrystalite620Item(config, { length_m: selectedLen, colour: 'Clear' });
     if (!stripItem) {
       warnings.push(`Crystalite 620mm (Clear) ${selectedLen}m not found in materials pricebook.`);
@@ -346,8 +364,7 @@ export function buildMaterialsV1(
     }
 
     const unitCost = (stripItem as any).cost_ex_gst as number;
-    const wastePerStrip = Math.max(0, selectedLen - requiredLen);
-    const totalWaste = wastePerStrip * qty;
+    const totalWaste = Math.max(0, qty * selectedLen - cutCount * requiredLen);
     recordCrystalite(selectedLen, qty, totalWaste);
 
     const id = opts.idSuffix ? `${stripItem.id}.${opts.idSuffix}` : stripItem.id;
@@ -370,10 +387,14 @@ export function buildMaterialsV1(
     idSuffix?: string;
     lengthAlongM?: number;
     sheetQtyMode?: 'plan' | 'bays';
+    planeCount?: number;
+    totalAreaM2?: number;
   }) => {
     const requiredLen = Math.max(0, opts.requiredLen);
     const bayCount = Math.max(0, Math.round(opts.bayCount));
-    if (!bayCount || requiredLen <= 0) return;
+    const planeCount = Math.max(1, Math.round(Number(opts.planeCount ?? 1)));
+    const totalBays = bayCount * planeCount;
+    if (!totalBays || requiredLen <= 0) return;
 
     if (Number.isFinite(acrylicMaxSlopeM) && requiredLen > acrylicMaxSlopeM + 1e-6) {
       warnings.push(
@@ -381,8 +402,7 @@ export function buildMaterialsV1(
       );
     }
 
-    const ACRYLIC_SHEET_MAX_DOWNSLOPE_M = 3.0;
-    const sheetMode = requiredLen <= ACRYLIC_SHEET_MAX_DOWNSLOPE_M + 1e-6;
+    const sheetMode = requiredLen <= sheetLengthM + 1e-6;
     if (sheetMode) {
       if (!plexiSheetClear) {
         warnings.push('Plexi sheet 3050mm x2030mm (Clear) not found in materials pricebook; falling back to 620mm strips.');
@@ -393,19 +413,27 @@ export function buildMaterialsV1(
         let sheetNote = '';
 
         if (sheetQtyMode === 'plan') {
-          const lengthAlongM = Math.max(0, Number(opts.lengthAlongM ?? inputs.length_m));
-          const sheetsAlongLength = Math.max(0, Math.ceil(lengthAlongM / Math.max(0.01, sheetWidthM)));
-          const sheetsDownSlope = Math.max(0, Math.ceil(requiredLen / Math.max(0.01, ACRYLIC_SHEET_MAX_DOWNSLOPE_M)));
-          sheetsNeeded = sheetsAlongLength * sheetsDownSlope;
-          sheetNote = `length ${roundMoney(lengthAlongM)}m → ${sheetsAlongLength} sheet(s) (2.03m); slope ${roundMoney(
-            requiredLen,
-          )}m → ${sheetsDownSlope} sheet(s) (3.0m usable); total ${sheetsNeeded} sheet(s)`;
+          const totalAreaM2 = Number(opts.totalAreaM2);
+          if (Number.isFinite(totalAreaM2) && totalAreaM2 > 0) {
+            const sheetAreaM2 = Math.max(0.01, sheetLengthM * sheetWidthM);
+            sheetsNeeded = Math.max(0, Math.ceil(totalAreaM2 / sheetAreaM2));
+            sheetNote = `total area ${roundMoney(totalAreaM2)}m² ÷ sheet area ${roundMoney(sheetAreaM2)}m² → ${sheetsNeeded} sheet(s)`;
+          } else {
+            const lengthAlongM = Math.max(0, Number(opts.lengthAlongM ?? inputs.length_m));
+            const sheetsAlongLength = Math.max(0, Math.ceil(lengthAlongM / Math.max(0.01, sheetWidthM)));
+            const sheetsDownSlope = Math.max(0, Math.ceil(requiredLen / Math.max(0.01, sheetLengthM)));
+            const perPlane = sheetsAlongLength * sheetsDownSlope;
+            sheetsNeeded = perPlane * planeCount;
+            sheetNote = `length ${roundMoney(lengthAlongM)}m → ${sheetsAlongLength} sheet(s) (2.03m); slope ${roundMoney(
+              requiredLen,
+            )}m → ${sheetsDownSlope} sheet(s) (${roundMoney(sheetLengthM)}m); per plane ${perPlane}; total ${sheetsNeeded} sheet(s)`;
+          }
         } else {
           // Mixed roof / partial acrylic: approximate sheets by acrylic bay count (strip yield).
           const acrossDim = requiredLen <= sheetWidthM + 1e-6 ? sheetLengthM : sheetWidthM;
           const stripsPerSheet = Math.max(1, Math.floor(acrossDim / Math.max(0.01, bayWidthM)));
-          sheetsNeeded = Math.max(0, Math.ceil(bayCount / stripsPerSheet));
-          sheetNote = `${bayCount} bay(s), ${stripsPerSheet} strips/sheet → ${sheetsNeeded} sheet(s)`;
+          sheetsNeeded = Math.max(0, Math.ceil(totalBays / stripsPerSheet));
+          sheetNote = `${totalBays} bay(s), ${stripsPerSheet} strips/sheet → ${sheetsNeeded} sheet(s)`;
         }
 
         if (sheetsNeeded > 0) {
@@ -419,23 +447,31 @@ export function buildMaterialsV1(
             qty: sheetsNeeded,
             unit_cost_ex_gst: roundMoney(unitCost),
             line_cost_ex_gst: roundMoney(sheetsNeeded * unitCost),
-            notes: `${opts.note} Using sheet mode (${sheetQtyMode}): required_downslope ${roundMoney(requiredLen)}m ≤ ${ACRYLIC_SHEET_MAX_DOWNSLOPE_M}m; ${sheetNote}.`,
+            notes: `${opts.note} Using sheet mode (${sheetQtyMode}): plane_downslope ${roundMoney(requiredLen)}m ≤ ${roundMoney(sheetLengthM)}m; ${sheetNote}.`,
           });
           return;
         }
       }
     }
 
+    const selectedLen = pickStripStockLen(requiredLen);
+    const cutsPerBar = Math.max(1, Math.floor(selectedLen / Math.max(0.01, requiredLen)));
+    const barsNeeded = Math.max(0, Math.ceil(totalBays / cutsPerBar));
+
     addCrystaliteLine({
       requiredLen,
-      qty: bayCount,
-      note: `${opts.note} Using strip mode (one 620mm strip per bay). Required ${roundMoney(requiredLen)}m sloped.`,
+      qty: barsNeeded,
+      cutCount: totalBays,
+      note: `${opts.note} Using strip mode: ${totalBays} bay(s) × ${roundMoney(requiredLen)}m = ${roundMoney(
+        totalBays * requiredLen,
+      )}m total; using ${barsNeeded}×${selectedLen}m (${cutsPerBar} cut(s)/bar).`,
       idSuffix: opts.idSuffix,
     });
   };
 
   if (inputs.roof_material === 'acrylic') {
-    const joinerCountA = isHipCorner ? rafterCountA : Math.max(0, Math.round(derived.rafter_count));
+    const joinerRunsTotal = Math.max(0, Math.round(Number((derived as any).joiner_runs_total ?? derived.rafter_count)));
+    const joinerCountA = isHipCorner ? rafterCountA : joinerRunsTotal;
     const joinerLengthA = isHipCorner ? joinerPieceLengthA : Math.max(0, Number((derived as any).joiner_piece_length_m ?? rafterLength));
     const joinerCountB = isHipCorner ? rafterCountB : 0;
     const joinerLengthB = isHipCorner ? joinerPieceLengthB : 0;
@@ -480,7 +516,7 @@ export function buildMaterialsV1(
       }
     }
 
-    const foamMetres = Math.max(0, inputs.flashing_length_m);
+    const foamMetres = Math.max(0, inputs.foam_length_m);
     if (foamMetres > 0) {
       const foam = findFoamItem(config, inputs.extrusion_colour);
       if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
@@ -515,7 +551,7 @@ export function buildMaterialsV1(
 
     if (isHipCorner) {
       addAcrylicRoofingPanels({
-        requiredLen: requiredDownslopeA,
+        requiredLen: Math.max(0, inputs.projection_m) / effectiveCos,
         bayCount: bayCountA,
         note: 'Acrylic roofing (wing A).',
         idSuffix: 'wingA',
@@ -523,7 +559,7 @@ export function buildMaterialsV1(
         sheetQtyMode: 'plan',
       });
       addAcrylicRoofingPanels({
-        requiredLen: requiredDownslopeB,
+        requiredLen: Math.max(0, hipCornerProjectionB) / effectiveCos,
         bayCount: bayCountB,
         note: 'Acrylic roofing (wing B).',
         idSuffix: 'wingB',
@@ -533,10 +569,12 @@ export function buildMaterialsV1(
     } else {
       const bayCount = Math.max(0, Math.round((derived as any).bay_count ?? derived.rafter_count - 1));
       addAcrylicRoofingPanels({
-        requiredLen: Math.max(0, Number((derived as any).required_downslope_m ?? (derived as any).rafter_cut_length_m ?? rafterLength)),
+        requiredLen: Math.max(0, Number((derived as any).roof_plane_sloped_downslope_m ?? (derived as any).rafter_length_m ?? 0)),
         bayCount,
         note: 'Acrylic roofing.',
         sheetQtyMode: 'plan',
+        planeCount: roofPlaneCount,
+        totalAreaM2: Math.max(0, Number((derived as any).acrylic_area_m2 ?? 0)),
       });
     }
   } else if (inputs.roof_material === 'mixed') {
@@ -581,7 +619,7 @@ export function buildMaterialsV1(
           }
 
           addAcrylicRoofingPanels({
-            requiredLen: planeRequiredDownslopeM,
+            requiredLen: planeRafterLen,
             bayCount: acrylicBays,
             note: `Acrylic roofing (${planeLabel}, mixed roof).`,
             idSuffix: planeId || undefined,
@@ -621,7 +659,7 @@ export function buildMaterialsV1(
           }
         }
 
-        const foamMetres = Math.max(0, inputs.flashing_length_m);
+        const foamMetres = Math.max(0, inputs.foam_length_m);
         if (foamMetres > 0) {
           const foam = findFoamItem(config, inputs.extrusion_colour);
           if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
@@ -706,7 +744,7 @@ export function buildMaterialsV1(
             }
           }
 
-          const foamMetres = Math.max(0, inputs.flashing_length_m);
+          const foamMetres = Math.max(0, inputs.foam_length_m);
           if (foamMetres > 0) {
             const foam = findFoamItem(config, inputs.extrusion_colour);
             if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
@@ -740,7 +778,7 @@ export function buildMaterialsV1(
           }
 
           addAcrylicRoofingPanels({
-            requiredLen: joinerLength,
+            requiredLen: Math.max(0, Number((derived as any).roof_plane_sloped_downslope_m ?? (derived as any).rafter_length_m ?? joinerLength)),
             bayCount: acrylicBays,
             note: `Mixed roof area override: acrylic bays ≈ ${acrylicBays}/${bayCount} (${Math.round(fraction * 100)}%).`,
           });
@@ -823,7 +861,7 @@ export function buildMaterialsV1(
           }
         }
 
-        const foamMetres = Math.max(0, inputs.flashing_length_m);
+        const foamMetres = Math.max(0, inputs.foam_length_m);
         if (foamMetres > 0) {
           const foam = findFoamItem(config, inputs.extrusion_colour);
           if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
@@ -1011,17 +1049,21 @@ export function buildMaterialsV1(
     }
   }
 
-  // === Hardware placeholders ===
-  const hwItems = new Map(config.hardware.items.map((it) => [it.id, it]));
+  // === Hardware rules (resolved via materials pricebook) ===
+  const materialItems = new Map(config.materials.items.map((it) => [it.id, it]));
   const qtyVars: Record<string, number> = {
     post_count: inputs.post_count,
     bracket_count: derived.bracket_count,
     stringer_fixing_count: derived.stringer_fixing_count,
     rafter_count: derived.rafter_count,
+    total_rafter_pieces: Number((derived as any).total_rafter_pieces ?? derived.rafter_count),
+    joiner_runs_total: Number((derived as any).joiner_runs_total ?? derived.rafter_count),
     acrylic_sheet_count: inputs.acrylic_sheet_count,
     acrylic_bays_total: Number((derived as any).acrylic_bays_total ?? 0) || 0,
+    acrylic_plane_count_used: Number((derived as any).acrylic_plane_count_used ?? 0) || 0,
     length_m: inputs.length_m,
     projection_m: inputs.projection_m,
+    gutter_length_m: Number(inputs.gutter_length_m ?? 0) || 0,
   };
 
   for (const rule of config.hardware.rules) {
@@ -1029,9 +1071,9 @@ export function buildMaterialsV1(
     if (!applies) continue;
 
     for (const line of rule.lines) {
-      const item = hwItems.get(line.item_id);
+      const item = materialItems.get(line.item_id);
       if (!item) {
-        warnings.push(`Hardware placeholder item '${line.item_id}' not found (rule ${rule.id}).`);
+        warnings.push(`Hardware rule item '${line.item_id}' not found in materials pricebook (rule ${rule.id}).`);
         continue;
       }
 
@@ -1045,10 +1087,10 @@ export function buildMaterialsV1(
 
       qty = Math.max(0, qty);
 
-      const unitCost = item.unit_cost_ex_gst;
+      const unitCost = Number((item as any).cost_ex_gst ?? 0);
       lines.push({
         id: item.id,
-        label: item.label,
+        label: item.name,
         unit: item.unit,
         qty,
         unit_cost_ex_gst: roundMoney(unitCost),
@@ -1075,3 +1117,5 @@ export function buildMaterialsV1(
     notes_and_warnings: warnings,
   };
 }
+
+export const __test__ = { selectBestStock };

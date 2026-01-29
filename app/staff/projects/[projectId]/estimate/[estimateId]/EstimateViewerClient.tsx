@@ -170,12 +170,12 @@ function buildReadableInputs(inputs: unknown): {
         { label: 'Style', value: String(m.pergolaStyle ?? '—') },
         { label: 'Roof material', value: String(m.roofMaterial ?? '—') },
         { label: 'Extrusion colour', value: String(m.extrusionColour ?? '—') },
-        { label: 'Length (m)', value: String(m.lengthM ?? '—') },
-        { label: 'Projection (m)', value: String(m.projectionM ?? '—') },
+        { label: 'Roof length (m)', value: String(m.lengthM ?? '—') },
+        { label: 'Roof span (eave‑to‑eave) (m)', value: String(m.projectionM ?? '—') },
         ...(m.pergolaStyle === 'hip_corner'
           ? [
-              { label: 'Length B (m)', value: String((m as any).hipCornerLengthBM ?? '—') },
-              { label: 'Projection B (m)', value: String((m as any).hipCornerProjectionBM ?? '—') },
+              { label: 'Roof length B (m)', value: String((m as any).hipCornerLengthBM ?? '—') },
+              { label: 'Roof span B (m)', value: String((m as any).hipCornerProjectionBM ?? '—') },
             ]
           : []),
         { label: 'Roof pitch (deg)', value: String(m.roofPitchDeg?.trim() ? m.roofPitchDeg : 'default') },
@@ -205,8 +205,8 @@ function buildReadableInputs(inputs: unknown): {
           { label: 'Style', value: String(inputs.pergolaStyle ?? '—') },
           { label: 'Roof material', value: String(inputs.roofMaterial ?? '—') },
           { label: 'Extrusion colour', value: String(inputs.extrusionColour ?? '—') },
-          { label: 'Length (m)', value: String(inputs.lengthM ?? '—') },
-          { label: 'Projection (m)', value: String(inputs.projectionM ?? '—') },
+          { label: 'Roof length (m)', value: String(inputs.lengthM ?? '—') },
+          { label: 'Roof span (eave‑to‑eave) (m)', value: String(inputs.projectionM ?? '—') },
           { label: 'Roof pitch (deg)', value: String(inputs.roofPitchDeg?.trim() ? inputs.roofPitchDeg : 'default') },
           { label: 'House connection', value: String(inputs.houseConnectionType ?? '—') },
           { label: 'Post connection', value: String(inputs.postConnectionType ?? '—') },

@@ -4,8 +4,8 @@
   "basis": {
     "costs": "ex_gst",
     "notes": [
-      "These are placeholder costs for items not yet captured in the authoritative materials cost spreadsheet.",
-      "Replace with real supplier costs once you add SKUs to the material cost table.",
+      "Hardware rules reference real pricebook SKUs by material_id.",
+      "Material costs are sourced from the pricebook + DB overrides (not hardcoded here).",
       "Quantities are starting rules; adjust as you refine detailing standards."
     ]
   },
@@ -13,62 +13,52 @@
     {
       "id": "anchor.chem_m12_each",
       "label": "M12 chemical anchor (stud + nut/washer + resin allocation)",
-      "unit": "each",
-      "unit_cost_ex_gst": 12.0
+      "unit": "each"
     },
     {
       "id": "anchor.wedge_m12_each",
       "label": "M12 wedge anchor / dynabolt",
-      "unit": "each",
-      "unit_cost_ex_gst": 6.0
+      "unit": "each"
     },
     {
       "id": "fixing.coach_screw_m10_each",
       "label": "M10 coach screw (galv) for timber fixing",
-      "unit": "each",
-      "unit_cost_ex_gst": 2.2
+      "unit": "each"
     },
     {
       "id": "fixing.structural_screw_each",
       "label": "Structural screw (galv) for frame/rafter fixing",
-      "unit": "each",
-      "unit_cost_ex_gst": 0.75
+      "unit": "each"
     },
     {
       "id": "fixing.joiner_screw_each",
       "label": "Joiner fixing screw (for acrylic joiner system)",
-      "unit": "each",
-      "unit_cost_ex_gst": 0.35
+      "unit": "each"
     },
     {
       "id": "hardware.deck_bracket_assembly",
       "label": "Post-to-deck bracket assembly (bracket + fixings allowance)",
-      "unit": "each",
-      "unit_cost_ex_gst": 95.0
+      "unit": "each"
     },
     {
       "id": "hardware.slab_base_plate",
       "label": "Post-to-slab base plate / bracket (excluding anchors)",
-      "unit": "each",
-      "unit_cost_ex_gst": 75.0
+      "unit": "each"
     },
     {
       "id": "consumable.silicone_tube",
       "label": "Neutral cure silicone/sealant tube",
-      "unit": "each",
-      "unit_cost_ex_gst": 9.0
+      "unit": "each"
     },
     {
       "id": "consumable.alcohol_wipes_pack",
       "label": "Cleaning wipes / alcohol wipes pack",
-      "unit": "each",
-      "unit_cost_ex_gst": 5.0
+      "unit": "each"
     },
     {
       "id": "consumable.misc_allowance_job",
       "label": "Misc small consumables allowance (bits, blades, tape)",
-      "unit": "job",
-      "unit_cost_ex_gst": 35.0
+      "unit": "job"
     }
   ],
   "rules": [
@@ -147,7 +137,7 @@
       "lines": [
         {
           "item_id": "fixing.structural_screw_each",
-          "qty": "rafter_count * 8"
+          "qty": "total_rafter_pieces * 8"
         }
       ],
       "notes": "Assumes 8 structural screws per rafter (4 each end). Tune later."
@@ -160,7 +150,7 @@
       "lines": [
         {
           "item_id": "fixing.joiner_screw_each",
-          "qty": "rafter_count * 6"
+          "qty": "joiner_runs_total * 6"
         }
       ],
       "notes": "Acrylic joiner system fixings placeholder: assumes 6 screws per joiner run. Re-measure and replace with exact SKU quantities later."
@@ -173,7 +163,7 @@
       "lines": [
         {
           "item_id": "fixing.joiner_screw_each",
-          "qty": "acrylic_bays_total * 6"
+          "qty": "(acrylic_bays_total + acrylic_plane_count_used) * 6"
         }
       ],
       "notes": "Mixed roof joiner system fixings placeholder: assumes 6 screws per joiner run. Re-measure and replace with exact SKU quantities later."

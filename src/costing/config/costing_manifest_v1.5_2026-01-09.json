@@ -14,7 +14,7 @@
     "Load pricebook_materials first, then merge materials_additions (add or override by id).",
     "Hardware placeholders are separate from pricebook materials; include them as a final cost layer after BOM is generated (consumables / fixings).",
     "Install actions produce labour minutes; multiply by contractor hourly rate ($110/h ex-GST) + any multipliers.",
-    "Projection is full house-to-front dimension with no overhang (see costing_rules).",
+    "Roof Span (Eave-to-Eave) is the full house-to-front dimension with no overhang (see costing_rules).",
     "v1.2 adds roof_types gable + hip and mixed roof support; see costing_rules + install_actions for new derived drivers (ridge_length_m, acrylic_area_m2).",
     "Multi-pergola: actions now have scope=job|module; overheads_v1.1 contains fixed+variable method for module_count + total_crew_hours.",
     "v1.3: add roof_pitch_deg input (deg) per module; use rafter_length_m (sloped) in acrylic + rafter labour multipliers; logistics access multiplier applied only to offload + setout.",

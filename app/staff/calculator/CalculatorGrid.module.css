@@ -17,6 +17,18 @@
   color: var(--text);
 }
 
+.previewPage {
+  height: 100dvh;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.previewFrame {
+  height: calc(100dvh - var(--portal-header-height, 76px));
+  overflow: hidden;
+  min-height: 0;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(var(--tile-min-width), 1fr));
@@ -134,17 +146,38 @@
 .error {
   margin-top: 6px;
   font-size: 12px;
+}
+
+.helper {
+  color: var(--muted);
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.error {
+  color: var(--error);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.helper {
-  color: var(--muted);
+.customContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
 }
 
-.error {
-  color: var(--error);
+.roofDiagram {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.roofDiagram svg {
+  width: min(240px, 100%);
+  height: auto;
 }
 
 .drawerOverlay {
@@ -503,4 +536,287 @@
 .modalButtonSecondary:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+/* === Preview layout === */
+.split {
+  display: grid;
+  grid-template-columns: minmax(640px, 1fr) 520px;
+  gap: 16px;
+  height: 100%;
+  overflow: hidden;
+  min-height: 0;
+  min-width: 0;
+}
+
+.leftCol {
+  display: grid;
+  gap: 12px;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  min-width: 0;
+  padding-bottom: 24px;
+  scrollbar-gutter: stable;
+}
+
+.rightCol {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  min-width: 0;
+  padding-bottom: 24px;
+  scrollbar-gutter: stable;
+}
+
+.previewCard {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.previewCardTitle {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.7);
+}
+
+.previewFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.previewFieldGrid .tile {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  height: auto;
+}
+
+.previewFieldGrid .tile:focus-within {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.previewSummary {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 20px rgba(15, 15, 16, 0.08);
+}
+
+.previewSummaryHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.previewSummaryTitle {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.previewSummarySub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.6);
+}
+
+.previewIssueButton {
+  border: 1px solid rgba(185, 28, 28, 0.3);
+  background: rgba(185, 28, 28, 0.08);
+  color: rgb(185, 28, 28);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.previewIssueButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18);
+}
+
+.previewStatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.previewStat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.previewStatLabel {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.55);
+}
+
+.previewStatValue {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.previewActions {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.previewPrimaryAction {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  background: #813f39;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.previewPrimaryAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.previewPrimaryAction:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.previewError {
+  margin: 0;
+  font-size: 12px;
+  color: rgb(185, 28, 28);
+}
+
+.previewMuted {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.6);
+}
+
+.previewList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.85);
+  display: grid;
+  gap: 6px;
+}
+
+.previewWarnCritical {
+  color: rgb(185, 28, 28);
+  font-weight: 600;
+}
+
+.previewTable {
+  display: grid;
+  gap: 8px;
+}
+
+.previewRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.previewRowMain {
+  min-width: 0;
+}
+
+.previewRowLabel {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewRowMeta {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(15, 15, 16, 0.6);
+}
+
+.previewRowValue {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.previewRowTotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(15, 15, 16, 0.12);
+  padding-top: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.previewDetails {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.previewDetails > summary {
+  cursor: pointer;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: rgba(15, 15, 16, 0.7);
+}
+
+.previewDetails[open] > summary {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 1100px) {
+  .previewFrame {
+    height: auto;
+    overflow: visible;
+  }
+
+  .split {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .leftCol,
+  .rightCol {
+    height: auto;
+    overflow: visible;
+  }
 }

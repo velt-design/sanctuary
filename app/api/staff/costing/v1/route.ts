@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 
 const PERGOLA_STYLES = ['pitched', 'gable', 'hip', 'hip_corner', 'box_perimeter'] as const;
 const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed'] as const;
-const MIXED_ROOF_MODES = ['ridge_skylight', 'area_override'] as const;
+const MIXED_ROOF_MODES = ['ridge_skylight', 'area_override', 'acrylic_bays'] as const;
 const EXTRUSION_COLOURS: ExtrusionColour[] = ['Black', 'White', 'Mill'];
 const HOUSE_CONNECTIONS = ['soffit', 'fascia', 'facade'] as const;
 const POST_CONNECTIONS = ['pile_1m', 'pile_1_5m', 'deck_bracket', 'slab_anchors'] as const;
@@ -44,13 +44,31 @@ export async function POST(req: Request) {
   }
 
   const length_m = toNumber(body.length_m);
-  const projection_m = toNumber(body.projection_m);
+  const roof_span_m_raw = body.roof_span_m;
+  const projection_m_raw = body.projection_m;
+  const roof_span_m = roof_span_m_raw !== undefined ? toNumber(roof_span_m_raw) : NaN;
+  const projection_m = projection_m_raw !== undefined ? toNumber(projection_m_raw) : NaN;
   const roof_pitch_deg = body.roof_pitch_deg !== undefined ? toNumber(body.roof_pitch_deg) : undefined;
+  const gutter_length_m = body.gutter_length_m !== undefined ? toNumber(body.gutter_length_m) : undefined;
 
   if (!Number.isFinite(length_m) || length_m <= 0) return badRequest('length_m must be a number > 0');
-  if (!Number.isFinite(projection_m) || projection_m <= 0) return badRequest('projection_m must be a number > 0');
+  if (roof_span_m_raw === undefined && projection_m_raw === undefined) {
+    return badRequest('roof_span_m must be a number > 0 (projection_m accepted for legacy payloads)');
+  }
+  if (roof_span_m_raw !== undefined && (!Number.isFinite(roof_span_m) || roof_span_m <= 0)) {
+    return badRequest('roof_span_m must be a number > 0');
+  }
+  if (roof_span_m_raw === undefined && (!Number.isFinite(projection_m) || projection_m <= 0)) {
+    return badRequest('projection_m must be a number > 0');
+  }
+  if (roof_span_m_raw !== undefined && projection_m_raw !== undefined && Math.abs(roof_span_m - projection_m) > 1e-6) {
+    return badRequest('roof_span_m and projection_m differ; provide only one (or make them equal)');
+  }
   if (roof_pitch_deg !== undefined && (!Number.isFinite(roof_pitch_deg) || roof_pitch_deg < 0 || roof_pitch_deg > 85)) {
     return badRequest('roof_pitch_deg must be a number between 0 and 85');
+  }
+  if (gutter_length_m !== undefined && (!Number.isFinite(gutter_length_m) || gutter_length_m < 0)) {
+    return badRequest('gutter_length_m must be a number >= 0');
   }
 
   if (!isOneOf(PERGOLA_STYLES, body.pergola_style)) return badRequest('Invalid pergola_style');
@@ -73,7 +91,17 @@ export async function POST(req: Request) {
     const mixedBody = (body.mixed_roof ?? {}) as any;
     if (mixedBody.mode !== undefined && !isOneOf(MIXED_ROOF_MODES, mixedBody.mode)) return badRequest('Invalid mixed_roof.mode');
 
-    if (mixedBody.mode === 'area_override') {
+    const inferredMode =
+      mixedBody.mode === 'acrylic_bays' || (mixedBody.acrylic_bays_by_plane && typeof mixedBody.acrylic_bays_by_plane === 'object')
+        ? 'acrylic_bays'
+        : mixedBody.mode === 'area_override'
+          ? 'area_override'
+          : 'ridge_skylight';
+
+    if (inferredMode === 'area_override') {
+      if (body.pergola_style === 'hip_corner') {
+        return badRequest('mixed_roof.area_override is not supported for hip_corner; use acrylic_bays or ridge_skylight');
+      }
       const acrylic_area_m2 = mixedBody.acrylic_area_m2 !== undefined ? toNumber(mixedBody.acrylic_area_m2) : undefined;
       if (acrylic_area_m2 !== undefined && (!Number.isFinite(acrylic_area_m2) || acrylic_area_m2 < 0)) {
         return badRequest('mixed_roof.acrylic_area_m2 must be a number >= 0');
@@ -81,6 +109,23 @@ export async function POST(req: Request) {
       mixed_roof = {
         mode: 'area_override',
         acrylic_area_m2,
+      };
+    } else if (inferredMode === 'acrylic_bays') {
+      const raw = mixedBody.acrylic_bays_by_plane;
+      if (raw === undefined || typeof raw !== 'object' || raw === null) {
+        return badRequest('mixed_roof.acrylic_bays_by_plane must be an object');
+      }
+      const parsed: Record<string, number> = {};
+      for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+        const n = toNumber(value);
+        if (!Number.isFinite(n) || n < 0) {
+          return badRequest('mixed_roof.acrylic_bays_by_plane values must be numbers >= 0');
+        }
+        parsed[key] = Math.round(n);
+      }
+      mixed_roof = {
+        mode: 'acrylic_bays',
+        acrylic_bays_by_plane: parsed,
       };
     } else {
       const ridge = mixedBody.ridge_skylight as any;
@@ -122,9 +167,11 @@ export async function POST(req: Request) {
     hip_corner = { length_b_m, projection_b_m };
   }
 
+  const resolvedRoofSpanM = roof_span_m_raw !== undefined ? roof_span_m : projection_m;
+
   const inputs: CostInputsV1 = {
     length_m,
-    projection_m,
+    roof_span_m: resolvedRoofSpanM,
     post_cut_height_m: body.post_cut_height_m !== undefined ? toNumber(body.post_cut_height_m) : undefined,
     roof_pitch_deg,
     post_count: body.post_count !== undefined ? toNumber(body.post_count) : undefined,
@@ -133,6 +180,7 @@ export async function POST(req: Request) {
     box_perimeter_enabled: body.box_perimeter_enabled === true,
     internal_roof_type: body.internal_roof_type,
     fall_distance_mm: body.fall_distance_mm !== undefined ? toNumber(body.fall_distance_mm) : undefined,
+    gutter_length_m,
 
     roof_material: body.roof_material,
     extrusion_colour: body.extrusion_colour,

@@ -162,8 +162,8 @@ export default function OutputsPanel({ estimate, jobPack }: { estimate: Estimate
                 <tr>
                   <th>Geometry</th>
                   <td className={styles.muted}>
-                    {typeof jobPack.summary.lengthM === 'number' ? `${jobPack.summary.lengthM}m` : '—'} ×{' '}
-                    {typeof jobPack.summary.projectionM === 'number' ? `${jobPack.summary.projectionM}m` : '—'}
+                    {typeof jobPack.summary.lengthM === 'number' ? `${jobPack.summary.lengthM}m (roof length)` : '—'} ×{' '}
+                    {typeof jobPack.summary.projectionM === 'number' ? `${jobPack.summary.projectionM}m (roof span)` : '—'}
                     {typeof jobPack.summary.moduleCount === 'number' ? ` · ${jobPack.summary.moduleCount} module(s)` : ''}
                   </td>
                 </tr>
