@@ -18,7 +18,7 @@ export type OverhangSupportBeamProfile = '150x50' | '200x50';
 export type GutterMode = 'default' | 'none' | 'sp_gutter_house_edge' | 'overhang_gutter_front_edge';
 export type SlopeDirection = 'away_from_house' | 'toward_house';
 
-export type HouseConnectionType = 'soffit' | 'fascia' | 'facade';
+export type HouseConnectionType = 'soffit' | 'fascia' | 'facade' | 'none';
 
 export type PostConnectionType =
   | 'pile_1m'

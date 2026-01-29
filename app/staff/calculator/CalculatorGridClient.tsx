@@ -1128,6 +1128,7 @@ export default function CalculatorGridClient({
         { label: 'Soffit', value: 'soffit' },
         { label: 'Fascia', value: 'fascia' },
         { label: 'Facade', value: 'facade' },
+        { label: 'None', value: 'none' },
       ],
     },
     {
