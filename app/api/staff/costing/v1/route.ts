@@ -18,6 +18,7 @@ const HEIGHT_CATEGORIES = ['single_storey', 'two_storey'] as const;
 const GROUND_CONDITIONS = ['easy', 'hard'] as const;
 const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
 const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
+const OVERHANG_SUPPORT_BEAM_PROFILES = ['150x50', '200x50'] as const;
 
 function isOneOf<const T extends readonly string[]>(allowed: T, value: unknown): value is T[number] {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value);
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
   const roof_pitch_deg = body.roof_pitch_deg !== undefined ? toNumber(body.roof_pitch_deg) : undefined;
   const gutter_length_m = body.gutter_length_m !== undefined ? toNumber(body.gutter_length_m) : undefined;
   const downpipe_count = body.downpipe_count !== undefined ? toNumber(body.downpipe_count) : undefined;
+  const overhang_amount_m = body.overhang_amount_m !== undefined ? toNumber(body.overhang_amount_m) : undefined;
 
   if (!Number.isFinite(length_m) || length_m <= 0) return badRequest('length_m must be a number > 0');
   if (roof_span_m_raw === undefined && projection_m_raw === undefined) {
@@ -75,6 +77,9 @@ export async function POST(req: Request) {
   if (downpipe_count !== undefined && (!Number.isFinite(downpipe_count) || downpipe_count < 0)) {
     return badRequest('downpipe_count must be a number >= 0');
   }
+  if (overhang_amount_m !== undefined && (!Number.isFinite(overhang_amount_m) || overhang_amount_m < 0 || overhang_amount_m > 1.5)) {
+    return badRequest('overhang_amount_m must be a number between 0 and 1.5');
+  }
 
   if (!isOneOf(PERGOLA_STYLES, body.pergola_style)) return badRequest('Invalid pergola_style');
   if (!isOneOf(ROOF_MATERIALS, body.roof_material)) return badRequest('Invalid roof_material');
@@ -91,6 +96,24 @@ export async function POST(req: Request) {
   }
   if (body.box_gutter_far_edge !== undefined && !isOneOf(BOX_GUTTER_EDGES, body.box_gutter_far_edge)) {
     return badRequest('Invalid box_gutter_far_edge');
+  }
+  if (body.overhang_enabled !== undefined && typeof body.overhang_enabled !== 'boolean') {
+    return badRequest('overhang_enabled must be a boolean');
+  }
+  if (body.inverted_enabled !== undefined && typeof body.inverted_enabled !== 'boolean') {
+    return badRequest('inverted_enabled must be a boolean');
+  }
+  if (body.inverted_house_gutter !== undefined && typeof body.inverted_house_gutter !== 'boolean') {
+    return badRequest('inverted_house_gutter must be a boolean');
+  }
+  if (body.overhang_support_beam_profile !== undefined && !isOneOf(OVERHANG_SUPPORT_BEAM_PROFILES, body.overhang_support_beam_profile)) {
+    return badRequest('Invalid overhang_support_beam_profile');
+  }
+  if (body.overhang_enabled === true && body.box_perimeter_enabled === true) {
+    return badRequest('Overhang cannot be used with box_perimeter_enabled');
+  }
+  if (body.inverted_enabled === true && (body.pergola_style !== 'pitched' || body.box_perimeter_enabled === true)) {
+    return badRequest('Inverted option is only available for pitched roofs');
   }
 
   let mixed_roof: CostInputsV1['mixed_roof'] | undefined;
@@ -195,6 +218,11 @@ export async function POST(req: Request) {
     downpipe_count,
     box_gutter_house_edge: body.box_gutter_house_edge,
     box_gutter_far_edge: body.box_gutter_far_edge,
+    overhang_enabled: body.overhang_enabled === true,
+    overhang_amount_m,
+    overhang_support_beam_profile: body.overhang_support_beam_profile,
+    inverted_enabled: body.inverted_enabled === true,
+    inverted_house_gutter: body.inverted_house_gutter === undefined ? undefined : body.inverted_house_gutter === true,
 
     roof_material: body.roof_material,
     extrusion_colour: body.extrusion_colour,

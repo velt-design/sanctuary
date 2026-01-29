@@ -87,11 +87,21 @@ function labelForIssueField(id: string): string {
     case 'hipCornerProjectionBM':
       return 'Roof Span B (m)';
     case 'postCutHeightM':
-      return 'Post cut height (m)';
+      return 'Ledger underside height (m)';
     case 'roofPitchDeg':
       return 'Roof pitch (deg)';
     case 'downpipeCount':
       return 'Downpipes (count)';
+    case 'overhangEnabled':
+      return 'Overhang';
+    case 'overhangAmountM':
+      return 'Overhang amount (m)';
+    case 'overhangSupportBeamProfile':
+      return 'Overhang support beam profile';
+    case 'invertedEnabled':
+      return 'Inverted roof';
+    case 'invertedHouseGutter':
+      return 'Inverted house gutter';
     case 'postCount':
       return 'Post count';
     case 'fallDistanceMm':
@@ -149,6 +159,11 @@ function makeDefaultModule(): CalculatorModuleInputs {
     boxGutterHouseEdge: 'house',
     boxGutterFarEdge: 'our',
     downpipeCount: '0',
+    overhangEnabled: false,
+    overhangAmountM: '0.2',
+    overhangSupportBeamProfile: '150x50',
+    invertedEnabled: false,
+    invertedHouseGutter: true,
     mixedSkylightStripCount: '1',
     mixedSkylightStripWidthM: '0.62',
     mixedAcrylicBaysMain: '0',
@@ -321,6 +336,20 @@ export default function CalculatorGridClient({
         if (!Number.isFinite(pitch) || pitch < 0 || pitch > 85) next.roofPitchDeg = 'Enter a pitch between 0 and 85';
       }
 
+      const roofTypeForModule = getRoofTypeForModule(module);
+      if (module.overhangEnabled && module.boxPerimeterEnabled) {
+        next.overhangEnabled = 'Overhang cannot be used with Box Perimeter.';
+      }
+      if (module.invertedEnabled && (roofTypeForModule !== 'pitched' || module.boxPerimeterEnabled)) {
+        next.invertedEnabled = 'Inverted option is only available for Pitched roofs.';
+      }
+      if (module.overhangEnabled) {
+        const overhangAmount = toNumber(module.overhangAmountM);
+        if (!Number.isFinite(overhangAmount) || overhangAmount < 0 || overhangAmount > 1.5) {
+          next.overhangAmountM = 'Enter an overhang between 0 and 1.5m';
+        }
+      }
+
       const postCount = toNumber(module.postCount);
       if (!Number.isFinite(postCount) || postCount <= 0) next.postCount = 'Enter a post count > 0';
 
@@ -390,6 +419,14 @@ export default function CalculatorGridClient({
           if (current.boxGutterHouseEdge === 'none') updated.boxGutterHouseEdge = 'house';
           if (current.boxGutterFarEdge === 'none') updated.boxGutterFarEdge = 'our';
         }
+        updated.overhangEnabled = false;
+        updated.invertedEnabled = false;
+        updated.invertedHouseGutter = true;
+      }
+
+      if (key === 'pergolaStyle' && next !== 'pitched') {
+        updated.invertedEnabled = false;
+        updated.invertedHouseGutter = true;
       }
 
       modules[activeModuleIndex] = updated;
@@ -433,6 +470,11 @@ export default function CalculatorGridClient({
         box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
         box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
         downpipe_count: Number.isFinite(downpipe_count) ? downpipe_count : undefined,
+        overhang_enabled: module.overhangEnabled,
+        overhang_amount_m: module.overhangEnabled ? toNumber(module.overhangAmountM) : undefined,
+        overhang_support_beam_profile: module.overhangEnabled ? module.overhangSupportBeamProfile : undefined,
+        inverted_enabled: module.invertedEnabled,
+        inverted_house_gutter: module.invertedEnabled ? module.invertedHouseGutter : undefined,
 
         roof_material: module.roofMaterial,
         extrusion_colour: module.extrusionColour,
@@ -999,14 +1041,80 @@ export default function CalculatorGridClient({
           : 'Blank = default pitch',
       disabled: activeModule.boxPerimeterEnabled,
     },
+    ...(roofTypeForInputs === 'pitched' && !activeModule.boxPerimeterEnabled
+      ? [
+          {
+            id: 'invertedEnabled',
+            label: 'Inverted (toward house)',
+            type: 'toggle',
+            value: activeModule.invertedEnabled,
+            onChange: (v: string | boolean) => setModuleField('invertedEnabled', Boolean(v)),
+            error: errors.invertedEnabled,
+            helperText: 'Flip slope so fall runs toward the house',
+          } satisfies FieldSchemaItem,
+          ...(activeModule.invertedEnabled
+            ? [
+                {
+                  id: 'invertedHouseGutter',
+                  label: 'Use house gutter?',
+                  type: 'toggle',
+                  value: activeModule.invertedHouseGutter,
+                  onChange: (v: string | boolean) => setModuleField('invertedHouseGutter', Boolean(v)),
+                  helperText: activeModule.invertedHouseGutter
+                    ? 'No gutter supplied by us (house gutter only)'
+                    : 'Use SP gutter at house edge',
+                } satisfies FieldSchemaItem,
+              ]
+            : []),
+        ]
+      : []),
+    ...(!activeModule.boxPerimeterEnabled
+      ? [
+          {
+            id: 'overhangEnabled',
+            label: 'Overhang',
+            type: 'toggle',
+            value: activeModule.overhangEnabled,
+            onChange: (v: string | boolean) => setModuleField('overhangEnabled', Boolean(v)),
+            error: errors.overhangEnabled,
+            helperText: 'Add overhang support beam + end stringer',
+          } satisfies FieldSchemaItem,
+          ...(activeModule.overhangEnabled
+            ? [
+                {
+                  id: 'overhangAmountM',
+                  label: 'Overhang amount (m)',
+                  type: 'number',
+                  value: activeModule.overhangAmountM,
+                  onChange: (v: string | boolean) => setModuleField('overhangAmountM', String(v)),
+                  error: errors.overhangAmountM,
+                  helperText: 'Default 0.20m (max 1.5m)',
+                } satisfies FieldSchemaItem,
+                {
+                  id: 'overhangSupportBeamProfile',
+                  label: 'Overhang support beam profile',
+                  type: 'select',
+                  value: activeModule.overhangSupportBeamProfile,
+                  onChange: (v: string | boolean) =>
+                    setModuleField('overhangSupportBeamProfile', v as CalculatorModuleInputs['overhangSupportBeamProfile']),
+                  options: [
+                    { label: '150x50', value: '150x50' },
+                    { label: '200x50', value: '200x50' },
+                  ],
+                } satisfies FieldSchemaItem,
+              ]
+            : []),
+        ]
+      : []),
     ...gableHintFields,
     {
       id: 'postCutHeightM',
-      label: 'Post cut height (m)',
+      label: 'Ledger underside height (m)',
       type: 'number',
       value: activeModule.postCutHeightM,
       onChange: (v) => setModuleField('postCutHeightM', String(v)),
       error: errors.postCutHeightM,
+      helperText: 'Clear height to underside of ledger',
     },
     { id: 'postCount', label: 'Post count', type: 'number', value: activeModule.postCount, onChange: (v) => setModuleField('postCount', String(v)), error: errors.postCount },
 
@@ -1288,6 +1396,11 @@ export default function CalculatorGridClient({
     'hipCornerLengthBM',
     'hipCornerProjectionBM',
     'roofPitchDeg',
+    'invertedEnabled',
+    'invertedHouseGutter',
+    'overhangEnabled',
+    'overhangAmountM',
+    'overhangSupportBeamProfile',
     'perSideSpanM',
     'slopedLengthPerSideM',
     'postCutHeightM',

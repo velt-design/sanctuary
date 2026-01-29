@@ -445,6 +445,159 @@
       "scope": "module"
     },
     {
+      "id": "frame.overhang_support_beam_m",
+      "category": "Frame",
+      "label": "Install overhang support beam - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.overhang_support_beam_length_m"
+      },
+      "base_minutes": 8,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Overhang framing: mid support beam.",
+      "scope": "module"
+    },
+    {
+      "id": "frame.overhang_stringer_m",
+      "category": "Frame",
+      "label": "Install overhang end stringer - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.overhang_stringer_length_m"
+      },
+      "base_minutes": 6,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.fit_mid_support_brackets",
+      "category": "Frame",
+      "label": "Fit mid-support rafter brackets (each)",
+      "unit": "bracket",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.rafter_count"
+      },
+      "base_minutes": 20,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Overhang: third bracket point at mid support beam.",
+      "scope": "module"
+    },
+    {
+      "id": "fab.overhang_gutter_workshop_m",
+      "category": "Fabrication",
+      "label": "Fabricate overhang gutter from 100x100 - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.length_m"
+      },
+      "base_minutes": 3,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ],
+        "gutter_modes": [
+          "overhang_gutter_front_edge"
+        ]
+      },
+      "apply_multipliers": [],
+      "notes": "Workshop fabrication allowance for overhang gutter cut-down.",
+      "scope": "module"
+    },
+    {
+      "id": "drain.install_overhang_gutter_m",
+      "category": "Drainage",
+      "label": "Install overhang gutter (100x100 cut) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.length_m"
+      },
+      "base_minutes": 4,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ],
+        "gutter_modes": [
+          "overhang_gutter_front_edge"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "finish.fit_end_caps_overhang",
+      "category": "Finishing",
+      "label": "Fit overhang end caps (each)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.overhang_end_cap_count"
+      },
+      "base_minutes": 3,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ],
+        "overhang_enabled": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Overhang support beam + stringer end caps.",
+      "scope": "module"
+    },
+    {
       "id": "frame.square_level_frame",
       "category": "Frame",
       "label": "Square/level main frame & confirm falls",

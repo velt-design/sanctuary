@@ -14,6 +14,9 @@ export type ExtrusionColour = 'Black' | 'White' | 'Mill';
 
 export type GutterType = 'sp_gutter' | 'box_gutter_100x100x3' | 'box_gutter_100x100_cut';
 export type BoxGutterEdge = 'house' | 'our' | 'none';
+export type OverhangSupportBeamProfile = '150x50' | '200x50';
+export type GutterMode = 'default' | 'none' | 'sp_gutter_house_edge' | 'overhang_gutter_front_edge';
+export type SlopeDirection = 'away_from_house' | 'toward_house';
 
 export type HouseConnectionType = 'soffit' | 'fascia' | 'facade';
 
@@ -87,6 +90,11 @@ export type CostInputsV1 = {
   downpipe_count?: number;
   box_gutter_house_edge?: BoxGutterEdge;
   box_gutter_far_edge?: BoxGutterEdge;
+  overhang_enabled?: boolean;
+  overhang_amount_m?: number;
+  overhang_support_beam_profile?: OverhangSupportBeamProfile;
+  inverted_enabled?: boolean;
+  inverted_house_gutter?: boolean;
 
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
@@ -123,6 +131,11 @@ export type InputsNormalizedV1 = {
   downpipe_count: number;
   box_gutter_house_edge: BoxGutterEdge;
   box_gutter_far_edge: BoxGutterEdge;
+  overhang_enabled: boolean;
+  overhang_amount_m: number;
+  overhang_support_beam_profile: OverhangSupportBeamProfile | null;
+  inverted_enabled: boolean;
+  inverted_house_gutter: boolean;
 
   rafter_profile: RafterProfile;
   gutter_type: GutterType | null;
@@ -155,6 +168,21 @@ export type DerivedV1 = {
   ridge_beam_profile_used?: RafterProfile | null;
   our_gutter_length_m?: number;
   house_gutter_length_m?: number;
+  overhang_enabled?: boolean;
+  overhang_amount_m?: number;
+  overhang_support_beam_profile_used?: OverhangSupportBeamProfile | null;
+  overhang_support_beam_length_m?: number;
+  overhang_stringer_profile_used?: RafterProfile | null;
+  overhang_stringer_length_m?: number;
+  overhang_end_cap_count?: number;
+  inverted_enabled?: boolean;
+  inverted_house_gutter?: boolean;
+  slope_direction?: SlopeDirection;
+  gutter_mode?: GutterMode;
+  ledger_profile_used?: RafterProfile;
+  ledger_underside_height_m?: number;
+  post_cut_height_house_side_m?: number;
+  post_cut_height_outer_side_m?: number;
   module_count: number;
   hip_corner_length_b_m?: number;
   hip_corner_projection_b_m?: number;

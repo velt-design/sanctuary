@@ -270,6 +270,14 @@ export function buildMaterialsV1(
   const rafterPieceCount = Math.max(0, Math.round(derived.rafter_count * rafterMultiplier));
   const rafterLength = Number((derived as any).rafter_cut_length_m ?? (derived as any).rafter_length_m ?? (derived as any).rafter_length_m_assumed ?? inputs.projection_m);
 
+  const ledgerProfile = String((derived as any).ledger_profile_used ?? '100x50');
+  const gutterMode = String((derived as any).gutter_mode ?? 'default');
+  const overhangEnabled = Boolean((derived as any).overhang_enabled);
+  const overhangSupportBeamProfile = (derived as any).overhang_support_beam_profile_used as string | undefined;
+  const overhangSupportBeamLength = Number((derived as any).overhang_support_beam_length_m ?? 0);
+  const overhangStringerProfile = (derived as any).overhang_stringer_profile_used as string | undefined;
+  const overhangStringerLength = Number((derived as any).overhang_stringer_length_m ?? 0);
+
   if (isHipCorner) {
     addCuts(
       inputs.rafter_profile,
@@ -279,19 +287,25 @@ export function buildMaterialsV1(
       ],
       'Rafters',
     );
-    addCuts('100x50', [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0), 'Ledger (assumed)');
+    addCuts(ledgerProfile, [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0), 'Ledger');
   } else {
     addCuts(inputs.rafter_profile, Array.from({ length: rafterPieceCount }).map(() => rafterLength), 'Rafters');
-    addCuts('100x50', [inputs.length_m], 'Ledger (assumed)');
+    addCuts(ledgerProfile, [inputs.length_m], 'Ledger');
   }
 
   addCuts('100x100', Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m), 'Posts');
 
   if (inputs.structure_type === 'pitched') {
-    if (isHipCorner) {
-      addCuts('SP Gutter', [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0), 'Front gutter (assumed)');
-    } else {
-      addCuts('SP Gutter', [inputs.length_m], 'Front gutter (assumed)');
+    if (gutterMode === 'overhang_gutter_front_edge') {
+      if (Number.isFinite(inputs.length_m) && inputs.length_m > 0) {
+        addCuts('Overhang Gutter 100x100', [inputs.length_m, inputs.length_m], 'Overhang gutter (2× stock)');
+      }
+    } else if (inputs.gutter_type === 'sp_gutter') {
+      if (isHipCorner) {
+        addCuts('SP Gutter', [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0), 'SP gutter');
+      } else {
+        addCuts('SP Gutter', [inputs.length_m], gutterMode === 'sp_gutter_house_edge' ? 'SP gutter (house edge)' : 'SP gutter');
+      }
     }
   }
 
@@ -305,6 +319,15 @@ export function buildMaterialsV1(
       if (gutterLength > 0) {
         addCuts('Box Gutter 100x100x3', [gutterLength], 'Box perimeter gutter');
       }
+    }
+  }
+
+  if (overhangEnabled) {
+    if (overhangSupportBeamProfile && overhangSupportBeamLength > 0) {
+      addCuts(overhangSupportBeamProfile, [overhangSupportBeamLength], 'Overhang support beam');
+    }
+    if (overhangStringerProfile && overhangStringerLength > 0) {
+      addCuts(overhangStringerProfile, [overhangStringerLength], 'Overhang end stringer');
     }
   }
 
@@ -1081,6 +1104,8 @@ export function buildMaterialsV1(
     rafter_count: derived.rafter_count,
     total_rafter_pieces: Number((derived as any).total_rafter_pieces ?? derived.rafter_count),
     joiner_runs_total: Number((derived as any).joiner_runs_total ?? derived.rafter_count),
+    overhang_mid_bracket_count: inputs.overhang_enabled ? Math.max(0, derived.rafter_count) : 0,
+    overhang_end_cap_count: inputs.overhang_enabled ? 4 : 0,
     acrylic_sheet_count: inputs.acrylic_sheet_count,
     acrylic_bays_total: Number((derived as any).acrylic_bays_total ?? 0) || 0,
     acrylic_plane_count_used: Number((derived as any).acrylic_plane_count_used ?? 0) || 0,
