@@ -87,8 +87,130 @@ describe('calculateCostV1', () => {
 
     const gutterLine = result.materials.lines.find((l) => l.profile === 'Box Gutter 100x100x3');
     expect(gutterLine?.qty).toBeGreaterThan(0);
-    const gutterAction = result.install.actions.find((a) => a.id === 'drain.install_sp_gutter_m');
-    expect(gutterAction?.qty).toBe(result.inputs_normalized.gutter_length_m);
+    const gutterAction = result.install.actions.find((a) => a.id === 'drain.install_box_gutter_m');
+    expect(gutterAction?.qty).toBe(result.derived.our_gutter_length_m);
+  });
+
+  it('box perimeter pitched: auto pitch within fall envelope (no INVALID warnings)', () => {
+    const result = calculateCostV1({
+      length_m: 3,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: true,
+      internal_roof_type: 'pitched',
+
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const hasInvalid = result.totals.warnings.some((w) => w.message.includes('INVALID'));
+    expect(hasInvalid).toBe(false);
+    expect(result.derived.box_pitch_deg_used).toBeGreaterThanOrEqual(3);
+    expect(result.derived.box_rise_mm).toBeLessThanOrEqual(200.01);
+  });
+
+  it('box perimeter pitched: span too large triggers INVALID warning', () => {
+    const result = calculateCostV1({
+      length_m: 3,
+      projection_m: 4.5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: true,
+      internal_roof_type: 'pitched',
+
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const hasInvalid = result.totals.warnings.some((w) => w.message.includes('INVALID'));
+    expect(hasInvalid).toBe(true);
+  });
+
+  it('box perimeter gable: larger span passes when pitched fails', () => {
+    const pitched = calculateCostV1({
+      length_m: 3,
+      projection_m: 4.5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: true,
+      internal_roof_type: 'pitched',
+
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const gable = calculateCostV1({
+      length_m: 3,
+      projection_m: 4.5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: true,
+      internal_roof_type: 'gable',
+
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(pitched.totals.warnings.some((w) => w.message.includes('INVALID'))).toBe(true);
+    expect(gable.totals.warnings.some((w) => w.message.includes('INVALID'))).toBe(false);
+    expect(gable.derived.box_pitch_deg_used).toBeGreaterThanOrEqual(3);
+  });
+
+  it('box perimeter gable: defaults to house + our gutters when fixed to house', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: true,
+      internal_roof_type: 'gable',
+
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.our_gutter_length_m).toBeCloseTo(6, 4);
+    expect(result.inputs_normalized.gutter_type).toBe('box_gutter_100x100_cut');
+    const gutterLine = result.materials.lines.find((l) => l.profile === 'Box Gutter 100x100x3');
+    expect(gutterLine?.qty).toBeGreaterThan(0);
+    const gutterAction = result.install.actions.find((a) => a.id === 'drain.install_box_gutter_m');
+    expect(gutterAction?.qty).toBeCloseTo(result.derived.our_gutter_length_m, 4);
   });
 
   it('house connection drivers: soffit uses bracket_count; fascia/facade use stringer_fixing_count', () => {

@@ -90,6 +90,8 @@ function labelForIssueField(id: string): string {
       return 'Post cut height (m)';
     case 'roofPitchDeg':
       return 'Roof pitch (deg)';
+    case 'downpipeCount':
+      return 'Downpipes (count)';
     case 'postCount':
       return 'Post count';
     case 'fallDistanceMm':
@@ -144,6 +146,9 @@ function makeDefaultModule(): CalculatorModuleInputs {
     internalRoofType: 'pitched',
     fallDistanceMm: '0',
     roofPitchDeg: '',
+    boxGutterHouseEdge: 'house',
+    boxGutterFarEdge: 'our',
+    downpipeCount: '0',
     mixedSkylightStripCount: '1',
     mixedSkylightStripWidthM: '0.62',
     mixedAcrylicBaysMain: '0',
@@ -319,9 +324,9 @@ export default function CalculatorGridClient({
       const postCount = toNumber(module.postCount);
       if (!Number.isFinite(postCount) || postCount <= 0) next.postCount = 'Enter a post count > 0';
 
-      if (module.boxPerimeterEnabled) {
-        const fallMm = toNumber(module.fallDistanceMm);
-        if (!Number.isFinite(fallMm) || fallMm <= 0) next.fallDistanceMm = 'Required when box perimeter is on';
+      const downpipeCount = toNumber(module.downpipeCount);
+      if (module.boxPerimeterEnabled && module.downpipeCount.trim()) {
+        if (!Number.isFinite(downpipeCount) || downpipeCount < 0) next.downpipeCount = 'Enter a downpipe count >= 0';
       }
 
       if (module.roofMaterial === 'mixed') {
@@ -362,7 +367,32 @@ export default function CalculatorGridClient({
     setValues((prev) => {
       const modules = prev.modules.slice();
       const current = modules[activeModuleIndex] ?? makeDefaultModule();
-      modules[activeModuleIndex] = { ...current, [key]: next };
+      const updated: CalculatorModuleInputs = { ...current, [key]: next };
+      const nextHouseConnection =
+        key === 'houseConnectionType' ? (next as CalculatorModuleInputs['houseConnectionType']) : updated.houseConnectionType;
+      const nextBoxEnabled = key === 'boxPerimeterEnabled' ? Boolean(next) : updated.boxPerimeterEnabled;
+
+      if (key === 'houseConnectionType') {
+        if (nextHouseConnection === 'none') {
+          updated.boxGutterHouseEdge = 'none';
+          updated.boxGutterFarEdge = 'none';
+        } else if (current.houseConnectionType === 'none') {
+          if (current.boxGutterHouseEdge === 'none') updated.boxGutterHouseEdge = 'house';
+          if (current.boxGutterFarEdge === 'none') updated.boxGutterFarEdge = 'our';
+        }
+      }
+
+      if (key === 'boxPerimeterEnabled' && nextBoxEnabled) {
+        if (nextHouseConnection === 'none') {
+          updated.boxGutterHouseEdge = 'none';
+          updated.boxGutterFarEdge = 'none';
+        } else {
+          if (current.boxGutterHouseEdge === 'none') updated.boxGutterHouseEdge = 'house';
+          if (current.boxGutterFarEdge === 'none') updated.boxGutterFarEdge = 'our';
+        }
+      }
+
+      modules[activeModuleIndex] = updated;
       return { ...prev, modules };
     });
   };
@@ -380,6 +410,7 @@ export default function CalculatorGridClient({
       const post_cut_height_m = toNumber(module.postCutHeightM);
       const roof_pitch_deg = module.roofPitchDeg.trim() ? toNumber(module.roofPitchDeg) : NaN;
       const post_count = toNumber(module.postCount);
+      const downpipe_count = toNumber(module.downpipeCount);
 
       const fall_distance_mm = toNumber(module.fallDistanceMm);
       const hip_corner_length_b_m = toNumber(module.hipCornerLengthBM);
@@ -399,6 +430,9 @@ export default function CalculatorGridClient({
         box_perimeter_enabled: module.boxPerimeterEnabled,
         internal_roof_type: module.boxPerimeterEnabled ? module.internalRoofType : undefined,
         fall_distance_mm: module.boxPerimeterEnabled ? fall_distance_mm : undefined,
+        box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
+        box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
+        downpipe_count: Number.isFinite(downpipe_count) ? downpipe_count : undefined,
 
         roof_material: module.roofMaterial,
         extrusion_colour: module.extrusionColour,
@@ -534,6 +568,9 @@ export default function CalculatorGridClient({
   const derivedTimberArea = (moduleResult?.derived as any)?.timber_area_m2 as number | undefined;
   const derivedAcrylicBaysTotal = (moduleResult?.derived as any)?.acrylic_bays_total as number | undefined;
   const derivedSlopeLength = moduleResult?.derived.rafter_length_m;
+  const derivedBoxPitch = (moduleResult?.derived as any)?.box_pitch_deg_used as number | undefined;
+  const derivedBoxRiseMm = (moduleResult?.derived as any)?.box_rise_mm as number | undefined;
+  const derivedBoxMaxFallMm = (moduleResult?.derived as any)?.box_max_fall_mm as number | undefined;
   const roofType = moduleResult?.inputs_normalized.roof_type;
   const rafterCount = moduleResult?.derived.rafter_count;
   const hipRafterCount = moduleResult?.derived.hip_rafter_count;
@@ -955,7 +992,12 @@ export default function CalculatorGridClient({
       value: activeModule.roofPitchDeg,
       onChange: (v) => setModuleField('roofPitchDeg', String(v)),
       error: errors.roofPitchDeg,
-      helperText: activeModule.roofPitchDeg.trim() ? 'Overrides default pitch for roof type' : 'Blank = default pitch',
+      helperText: activeModule.boxPerimeterEnabled
+        ? 'Auto-computed for box perimeter'
+        : activeModule.roofPitchDeg.trim()
+          ? 'Overrides default pitch for roof type'
+          : 'Blank = default pitch',
+      disabled: activeModule.boxPerimeterEnabled,
     },
     ...gableHintFields,
     {
@@ -1043,16 +1085,57 @@ export default function CalculatorGridClient({
             onChange: (v: string | boolean) => setModuleField('internalRoofType', v as CalculatorModuleInputs['internalRoofType']),
             options: [
               { label: 'Pitched', value: 'pitched' },
+              { label: 'Gable', value: 'gable' },
               { label: 'Low gable', value: 'low_gable' },
             ],
           } satisfies FieldSchemaItem,
           {
-            id: 'fallDistanceMm',
-            label: 'Fall distance (mm)',
+            id: 'boxPitchDeg',
+            label: 'Box pitch (deg)',
+            type: 'readOnly',
+            value: typeof derivedBoxPitch === 'number' ? derivedBoxPitch.toFixed(1) : '—',
+            helperText: 'Computed from max fall envelope',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'boxRiseMm',
+            label: 'Box fall (mm)',
+            type: 'readOnly',
+            value: typeof derivedBoxRiseMm === 'number' ? derivedBoxRiseMm.toFixed(0) : '—',
+            helperText:
+              typeof derivedBoxMaxFallMm === 'number' ? `Max allowed: ${Math.round(derivedBoxMaxFallMm)}mm` : 'Max allowed: 200mm',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'boxGutterHouseEdge',
+            label: 'House edge gutter',
+            type: 'select',
+            value: activeModule.boxGutterHouseEdge,
+            onChange: (v: string | boolean) => setModuleField('boxGutterHouseEdge', v as CalculatorModuleInputs['boxGutterHouseEdge']),
+            options: [
+              { label: 'House gutter', value: 'house' },
+              { label: 'Our gutter', value: 'our' },
+              { label: 'None', value: 'none' },
+            ],
+          } satisfies FieldSchemaItem,
+          {
+            id: 'boxGutterFarEdge',
+            label: 'Far edge gutter',
+            type: 'select',
+            value: activeModule.boxGutterFarEdge,
+            onChange: (v: string | boolean) => setModuleField('boxGutterFarEdge', v as CalculatorModuleInputs['boxGutterFarEdge']),
+            options: [
+              { label: 'House gutter', value: 'house' },
+              { label: 'Our gutter', value: 'our' },
+              { label: 'None', value: 'none' },
+            ],
+          } satisfies FieldSchemaItem,
+          {
+            id: 'downpipeCount',
+            label: 'Downpipes (count)',
             type: 'number',
-            value: activeModule.fallDistanceMm,
-            onChange: (v: string | boolean) => setModuleField('fallDistanceMm', String(v)),
-            error: errors.fallDistanceMm,
+            value: activeModule.downpipeCount,
+            onChange: (v: string | boolean) => setModuleField('downpipeCount', String(v)),
+            error: errors.downpipeCount,
+            helperText: 'Default 1 when any "our" gutter edge is set',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -1210,7 +1293,11 @@ export default function CalculatorGridClient({
     'postCutHeightM',
     'postCount',
     'internalRoofType',
-    'fallDistanceMm',
+    'boxPitchDeg',
+    'boxRiseMm',
+    'boxGutterHouseEdge',
+    'boxGutterFarEdge',
+    'downpipeCount',
   ]);
 
   const connectionFields = pickFields(['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height']);

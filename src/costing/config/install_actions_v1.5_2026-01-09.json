@@ -724,19 +724,19 @@
       "scope": "module"
     },
     {
-      "id": "drain.install_sp_gutter_m",
+      "id": "drain.install_box_gutter_m",
       "category": "Drainage",
-      "label": "Install SP gutter - per metre",
+      "label": "Install box gutter (100x100 cut) - per metre",
       "unit": "metre",
       "quantity": {
         "type": "driver",
-        "key": "inputs.gutter_length_m",
-        "fallback": "derived.length_m"
+        "key": "derived.our_gutter_length_m",
+        "fallback": "inputs.gutter_length_m"
       },
       "base_minutes": 4,
       "applies_to": {
         "gutter_types": [
-          "box_gutter_100x100x3"
+          "box_gutter_100x100_cut"
         ],
         "structure_types": [
           "box_perimeter"
@@ -746,7 +746,7 @@
         "access",
         "height"
       ],
-      "notes": "Box perimeter: gutter installed separately from front beam (box gutter type).",
+      "notes": "Box perimeter: install our gutter only (house gutter excluded).",
       "scope": "module"
     },
     {

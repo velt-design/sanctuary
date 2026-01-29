@@ -1,4 +1,5 @@
 import {
+  type BoxGutterEdge,
   type CostInputsV1,
   type DerivedV1,
   type GroundCondition,
@@ -42,6 +43,12 @@ export type DerivedResultV1 = {
 function clampNumber(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, n));
+}
+
+function roundNumber(n: number, decimals = 2): number {
+  if (!Number.isFinite(n)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round(n * factor) / factor;
 }
 
 function toPositiveNumber(value: unknown, fallback: number): number {
@@ -283,9 +290,6 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     typeof inputs.fall_distance_mm === 'number' ? inputs.fall_distance_mm : Number.parseFloat(String(inputs.fall_distance_mm ?? ''));
   const fallDistanceMm =
     structureType === 'box_perimeter' ? (Number.isFinite(fallDistanceMmRaw) && fallDistanceMmRaw > 0 ? fallDistanceMmRaw : 0) : null;
-  if (structureType === 'box_perimeter' && (!Number.isFinite(fallDistanceMmRaw) || fallDistanceMmRaw <= 0)) {
-    warnings.push('Box perimeter fall distance (mm) is required for v1; using 0 for now.');
-  }
 
   const ground: GroundCondition = inputs.ground ?? DEFAULT_GROUND;
 
@@ -340,12 +344,82 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const areaM2 = roofType === 'hip_corner' ? lengthM * projectionM + hipCornerLengthBM * hipCornerProjectionBM : lengthM * projectionM;
 
   const pitchDefaults = (config?.rules as any)?.geometry?.roof_pitch_defaults_deg as Record<string, number> | undefined;
+  const boxRules = (config?.rules as any)?.geometry?.box_perimeter as any;
+  const boxBeamDepthMm = Number(boxRules?.box_beam_depth_mm ?? 300);
+  const boxRafterDepthMm = Number(boxRules?.box_rafter_depth_mm ?? 80);
+  const boxRoofAllowAboveRafterMm = Number(boxRules?.box_roof_allow_above_rafter_mm ?? 20);
+  const boxMaxFallMm = Number(
+    Number.isFinite(boxRules?.box_max_fall_mm)
+      ? boxRules?.box_max_fall_mm
+      : boxBeamDepthMm - (boxRafterDepthMm + boxRoofAllowAboveRafterMm),
+  );
+  const boxMinPitchDeg = Number(boxRules?.box_min_pitch_deg ?? 3);
+  const pitchedSetbacksMm = boxRules?.pitched_setbacks ?? { house_setback_mm: 150, outer_setback_mm: 50 };
+  const gableSetbacksMm = boxRules?.gable_setbacks ?? { eave_setback_mm: 50, ridge_allowance_mm: 0 };
   const defaultPitchRaw = Number(
     pitchDefaults?.[roofType] ??
       (roofType === 'low_gable' ? 10 : roofType === 'gable' || roofType === 'hip' || roofType === 'hip_corner' ? 25 : 5),
   );
   const defaultPitch = Number.isFinite(defaultPitchRaw) ? defaultPitchRaw : 5;
-  const roofPitchDegUsed = roofPitchDeg ?? defaultPitch;
+  const isBoxPerimeter = structureType === 'box_perimeter';
+  const isBoxGable = isBoxPerimeter && (roofType === 'gable' || roofType === 'low_gable');
+  const isBoxPitched = isBoxPerimeter && roofType === 'pitched';
+
+  let boxEffectiveRunM: number | undefined = undefined;
+  let boxPitchDegUsed: number | undefined = undefined;
+  let boxRiseMm: number | undefined = undefined;
+  let boxMaxSupportedRunMAtMinPitch: number | undefined = undefined;
+  let boxMaxSupportedSpanM: number | undefined = undefined;
+
+  if (isBoxPerimeter) {
+    const projectionMm = projectionM * 1000;
+    const houseSetbackMm = Number(pitchedSetbacksMm?.house_setback_mm ?? 150);
+    const outerSetbackMm = Number(pitchedSetbacksMm?.outer_setback_mm ?? 50);
+    const eaveSetbackMm = Number(gableSetbacksMm?.eave_setback_mm ?? 50);
+    const ridgeAllowanceMm = Number(gableSetbacksMm?.ridge_allowance_mm ?? 0);
+
+    const runMm = isBoxGable
+      ? projectionMm / 2 - (eaveSetbackMm + ridgeAllowanceMm)
+      : projectionMm - (houseSetbackMm + outerSetbackMm);
+    const safeRunMm = Math.max(0, runMm);
+    boxEffectiveRunM = safeRunMm / 1000;
+
+    const minPitchRad = degToRad(Math.max(0.01, boxMinPitchDeg));
+    const maxSupportedRunMmAtMinPitch = boxMaxFallMm / Math.tan(minPitchRad);
+    boxMaxSupportedRunMAtMinPitch = maxSupportedRunMmAtMinPitch / 1000;
+    const maxSupportedSpanMm = isBoxGable
+      ? 2 * maxSupportedRunMmAtMinPitch + 2 * (eaveSetbackMm + ridgeAllowanceMm)
+      : maxSupportedRunMmAtMinPitch + (houseSetbackMm + outerSetbackMm);
+    boxMaxSupportedSpanM = maxSupportedSpanMm / 1000;
+
+    const computedPitchRad = safeRunMm > 0 ? Math.atan(boxMaxFallMm / safeRunMm) : degToRad(85);
+    const computedPitchDeg = (computedPitchRad * 180) / Math.PI;
+    const clampedPitchDeg = clamp(computedPitchDeg, boxMinPitchDeg, 85);
+
+    boxPitchDegUsed = clampedPitchDeg;
+    boxRiseMm = Math.tan(degToRad(clampedPitchDeg)) * safeRunMm;
+
+    if (computedPitchDeg < boxMinPitchDeg - 1e-6) {
+      warnings.push(
+        `INVALID: Box perimeter span too large. Even at max fall ${roundNumber(boxMaxFallMm)}mm, pitch would be ${roundNumber(
+          computedPitchDeg,
+        )}°, below minimum ${roundNumber(boxMinPitchDeg)}°. Reduce span or change style. (run ${roundNumber(
+          safeRunMm,
+        )}mm, max_supported_span ${roundNumber(maxSupportedSpanMm)}mm)`,
+      );
+    }
+
+    const riseAtMinPitchMm = Math.tan(minPitchRad) * safeRunMm;
+    if (riseAtMinPitchMm > boxMaxFallMm + 1e-6) {
+      warnings.push(
+        `INVALID: Box perimeter fall exceeds available depth. Required fall ${roundNumber(riseAtMinPitchMm)}mm exceeds max ${roundNumber(
+          boxMaxFallMm,
+        )}mm.`,
+      );
+    }
+  }
+
+  const roofPitchDegUsed = isBoxPerimeter ? boxPitchDegUsed ?? defaultPitch : roofPitchDeg ?? defaultPitch;
 
   const effectiveCos = Math.max(0.02, cosDeg(roofPitchDegUsed));
   if (effectiveCos <= 0.021) warnings.push('Roof pitch is very steep; clamping trig calculation for safety.');
@@ -361,7 +435,14 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const roofSurfaceAreaM2 = areaM2 / effectiveCos;
   const rafterLengthMAssumed = rafterLengthM;
 
-  const effectiveRunM = Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
+  const boxHouseSetbackM = Number(pitchedSetbacksMm?.house_setback_mm ?? 150) / 1000;
+  const boxOuterSetbackM = Number(pitchedSetbacksMm?.outer_setback_mm ?? 50) / 1000;
+  const boxEaveSetbackM = Number(gableSetbacksMm?.eave_setback_mm ?? 50) / 1000;
+  const boxRidgeAllowanceM = Number(gableSetbacksMm?.ridge_allowance_mm ?? 0) / 1000;
+
+  const effectiveRunM = isBoxPerimeter
+    ? Math.max(0, rafterRunM - (isBoxGable ? boxEaveSetbackM + boxRidgeAllowanceM : boxHouseSetbackM + boxOuterSetbackM))
+    : Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
   const cutRafterLengthM = effectiveRunM / effectiveCos;
   const angleCutAllowanceM = rafterDepthM(rafterProfile) * tanDeg(roofPitchDegUsed);
   const joinerPieceLengthM = cutRafterLengthM + JOINER_EXTRA_M;
@@ -469,7 +550,40 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const quoteDiscountPct = clampNumber(toNonNegativeNumber(inputs.quote_discount_pct, 0), 0, 80);
 
   const gutterLengthRaw = toNonNegativeNumber(inputs.gutter_length_m, NaN);
-  const gutterLengthM = Number.isFinite(gutterLengthRaw) && gutterLengthRaw > 0 ? gutterLengthRaw : baseLinearLength;
+
+  const hasHouseConnection = inputs.house_connection_type !== 'none';
+  const defaultBoxGutterHouseEdge: BoxGutterEdge = hasHouseConnection ? 'house' : 'none';
+  const defaultBoxGutterFarEdge: BoxGutterEdge = hasHouseConnection ? 'our' : 'none';
+
+  const boxGutterHouseEdge: BoxGutterEdge =
+    isBoxPerimeter && inputs.box_gutter_house_edge
+      ? inputs.box_gutter_house_edge
+      : isBoxPerimeter
+        ? defaultBoxGutterHouseEdge
+        : 'none';
+  const boxGutterFarEdge: BoxGutterEdge =
+    isBoxPerimeter && inputs.box_gutter_far_edge
+      ? inputs.box_gutter_far_edge
+      : isBoxPerimeter
+        ? defaultBoxGutterFarEdge
+        : 'none';
+
+  const houseGutterLengthM = isBoxPerimeter
+    ? baseLinearLength * (boxGutterHouseEdge === 'house' ? 1 : 0) + baseLinearLength * (boxGutterFarEdge === 'house' ? 1 : 0)
+    : 0;
+  const ourGutterLengthM = isBoxPerimeter
+    ? baseLinearLength * (boxGutterHouseEdge === 'our' ? 1 : 0) + baseLinearLength * (boxGutterFarEdge === 'our' ? 1 : 0)
+    : 0;
+
+  const gutterLengthM = isBoxPerimeter
+    ? ourGutterLengthM
+    : Number.isFinite(gutterLengthRaw) && gutterLengthRaw > 0
+      ? gutterLengthRaw
+      : baseLinearLength;
+
+  const downpipeCountRaw = toNonNegativeNumber(inputs.downpipe_count, NaN);
+  const downpipeCount =
+    Number.isFinite(downpipeCountRaw) && downpipeCountRaw > 0 ? Math.round(downpipeCountRaw) : ourGutterLengthM > 0 ? 1 : 0;
 
   const timberAllowanceRaw = toNonNegativeNumber(inputs.timber_roof_allowance_ex_gst, 0);
   if (timberAllowanceRaw > 0) warnings.push('Timber roof allowance input is deprecated and ignored (timber roof is now a takeoff).');
@@ -499,9 +613,17 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     box_beam_profile: structureType === 'box_perimeter' ? '300x50' : null,
     fall_distance_mm: fallDistanceMm,
     gutter_length_m: gutterLengthM,
+    downpipe_count: downpipeCount,
+    box_gutter_house_edge: boxGutterHouseEdge,
+    box_gutter_far_edge: boxGutterFarEdge,
 
     rafter_profile: rafterProfile,
-    gutter_type: structureType === 'pitched' ? 'sp_gutter' : structureType === 'box_perimeter' ? 'box_gutter_100x100x3' : null,
+    gutter_type:
+      structureType === 'pitched'
+        ? 'sp_gutter'
+        : structureType === 'box_perimeter' && ourGutterLengthM > 0
+          ? 'box_gutter_100x100_cut'
+          : null,
     acrylic_sheet_count: acrylicSheetCount,
     flashing_length_m: flashingLengthM,
     foam_length_m: foamLengthM,
@@ -522,6 +644,19 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roof_plane_span_m: rafterRunM,
     roof_plane_sloped_downslope_m: rafterLengthM,
     roof_area_total_m2: areaM2,
+    ...(isBoxPerimeter
+      ? {
+          box_max_fall_mm: boxMaxFallMm,
+          box_effective_run_m: boxEffectiveRunM ?? effectiveRunM,
+          box_pitch_deg_used: boxPitchDegUsed ?? roofPitchDegUsed,
+          box_rise_mm: boxRiseMm ?? Math.tan(degToRad(roofPitchDegUsed)) * (boxEffectiveRunM ?? effectiveRunM) * 1000,
+          box_max_supported_run_m_at_min_pitch: boxMaxSupportedRunMAtMinPitch,
+          box_max_supported_span_m: boxMaxSupportedSpanM,
+          ridge_beam_profile_used: isBoxGable ? '100x50' : null,
+          our_gutter_length_m: ourGutterLengthM,
+          house_gutter_length_m: houseGutterLengthM,
+        }
+      : null),
     module_count: 1,
     ...(roofType === 'hip_corner'
       ? {

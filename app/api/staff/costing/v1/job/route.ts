@@ -16,7 +16,8 @@ const POST_CONNECTIONS = ['pile_1m', 'pile_1_5m', 'deck_bracket', 'slab_anchors'
 const ACCESS_LEVELS = ['easy', 'normal', 'hard'] as const;
 const HEIGHT_CATEGORIES = ['single_storey', 'two_storey'] as const;
 const GROUND_CONDITIONS = ['easy', 'hard'] as const;
-const ROOF_TYPES = ['pitched', 'low_gable'] as const;
+const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
+const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
 
 function isOneOf<const T extends readonly string[]>(allowed: T, value: unknown): value is T[number] {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value);
@@ -40,6 +41,7 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   const projection_m = projection_m_raw !== undefined ? toNumber(projection_m_raw) : NaN;
   const roof_pitch_deg = raw.roof_pitch_deg !== undefined ? toNumber(raw.roof_pitch_deg) : undefined;
   const gutter_length_m = raw.gutter_length_m !== undefined ? toNumber(raw.gutter_length_m) : undefined;
+  const downpipe_count = raw.downpipe_count !== undefined ? toNumber(raw.downpipe_count) : undefined;
 
   if (!Number.isFinite(length_m) || length_m <= 0) return { error: 'modules[].length_m must be a number > 0' };
   if (roof_span_m_raw === undefined && projection_m_raw === undefined) {
@@ -60,6 +62,9 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   if (gutter_length_m !== undefined && (!Number.isFinite(gutter_length_m) || gutter_length_m < 0)) {
     return { error: 'modules[].gutter_length_m must be a number >= 0' };
   }
+  if (downpipe_count !== undefined && (!Number.isFinite(downpipe_count) || downpipe_count < 0)) {
+    return { error: 'modules[].downpipe_count must be a number >= 0' };
+  }
 
   if (!isOneOf(PERGOLA_STYLES, raw.pergola_style)) return { error: 'Invalid modules[].pergola_style' };
   if (!isOneOf(ROOF_MATERIALS, raw.roof_material)) return { error: 'Invalid modules[].roof_material' };
@@ -72,6 +77,12 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   if (raw.ground !== undefined && !isOneOf(GROUND_CONDITIONS, raw.ground)) return { error: 'Invalid modules[].ground' };
   if (raw.internal_roof_type !== undefined && !isOneOf(ROOF_TYPES, raw.internal_roof_type)) {
     return { error: 'Invalid modules[].internal_roof_type' };
+  }
+  if (raw.box_gutter_house_edge !== undefined && !isOneOf(BOX_GUTTER_EDGES, raw.box_gutter_house_edge)) {
+    return { error: 'Invalid modules[].box_gutter_house_edge' };
+  }
+  if (raw.box_gutter_far_edge !== undefined && !isOneOf(BOX_GUTTER_EDGES, raw.box_gutter_far_edge)) {
+    return { error: 'Invalid modules[].box_gutter_far_edge' };
   }
 
   let mixed_roof: CostInputsV1['mixed_roof'] | undefined;
@@ -173,6 +184,9 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
     internal_roof_type: raw.internal_roof_type,
     fall_distance_mm: raw.fall_distance_mm !== undefined ? toNumber(raw.fall_distance_mm) : undefined,
     gutter_length_m,
+    downpipe_count,
+    box_gutter_house_edge: raw.box_gutter_house_edge,
+    box_gutter_far_edge: raw.box_gutter_far_edge,
 
     roof_material: raw.roof_material,
     extrusion_colour: raw.extrusion_colour,

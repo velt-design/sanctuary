@@ -297,7 +297,10 @@ export function buildMaterialsV1(
 
   if (inputs.structure_type === 'box_perimeter') {
     addCuts('300x50', [inputs.length_m, inputs.length_m, inputs.projection_m, inputs.projection_m], 'Box perimeter beams');
-    if (inputs.gutter_type === 'box_gutter_100x100x3') {
+    if (inputs.roof_type === 'gable' && Number.isFinite(derived.ridge_length_m) && derived.ridge_length_m > 0) {
+      addCuts('100x50', [derived.ridge_length_m], 'Ridge beam (box gable)');
+    }
+    if (inputs.gutter_type === 'box_gutter_100x100_cut') {
       const gutterLength = Math.max(0, Number(inputs.gutter_length_m ?? 0));
       if (gutterLength > 0) {
         addCuts('Box Gutter 100x100x3', [gutterLength], 'Box perimeter gutter');

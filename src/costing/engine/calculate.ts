@@ -23,6 +23,7 @@ function classifyWarningLevel(message: string): WarningLevelV1 {
   if (m.includes('hardware placeholder item') && m.includes('not found')) return 'critical';
   if (m.includes('install action') && m.includes('skipped')) return 'critical';
   if (m.includes('invalid crew hour rate')) return 'critical';
+  if (m.includes('invalid')) return 'critical';
 
   // Required inputs missing.
   if (m.includes('is required') && m.includes('currently set to 0')) return 'critical';
