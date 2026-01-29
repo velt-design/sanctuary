@@ -58,6 +58,7 @@ function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1, derived
     inverted_enabled: boolToString((derived as any).inverted_enabled ?? inputs.inverted_enabled),
     inverted_house_gutter: boolToString((derived as any).inverted_house_gutter),
     gutter_modes: (derived as any).gutter_mode,
+    gutter_assembly_modes: (derived as any).gutter_assembly_mode,
     slope_directions: (derived as any).slope_direction,
   };
 

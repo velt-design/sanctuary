@@ -19,6 +19,15 @@ const GROUND_CONDITIONS = ['easy', 'hard'] as const;
 const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
 const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
 const OVERHANG_SUPPORT_BEAM_PROFILES = ['150x50', '200x50'] as const;
+const POWDERCOAT_STANDARD_COLOURS = [
+  'Ironsands',
+  'Charcoal',
+  'Grey Friars',
+  'Flaxpod',
+  'Rangoon Green',
+  'Gull Grey',
+  'Titania',
+] as const;
 
 function isOneOf<const T extends readonly string[]>(allowed: T, value: unknown): value is T[number] {
   return typeof value === 'string' && (allowed as readonly string[]).includes(value);
@@ -108,6 +117,18 @@ export async function POST(req: Request) {
   }
   if (body.overhang_support_beam_profile !== undefined && !isOneOf(OVERHANG_SUPPORT_BEAM_PROFILES, body.overhang_support_beam_profile)) {
     return badRequest('Invalid overhang_support_beam_profile');
+  }
+  if (
+    body.powdercoat_standard_colour !== undefined &&
+    !isOneOf(POWDERCOAT_STANDARD_COLOURS, body.powdercoat_standard_colour)
+  ) {
+    return badRequest('Invalid powdercoat_standard_colour');
+  }
+  if (body.powdercoat_is_custom !== undefined && typeof body.powdercoat_is_custom !== 'boolean') {
+    return badRequest('powdercoat_is_custom must be a boolean');
+  }
+  if (body.powdercoat_custom_colour !== undefined && typeof body.powdercoat_custom_colour !== 'string') {
+    return badRequest('powdercoat_custom_colour must be a string');
   }
   if (body.overhang_enabled === true && body.box_perimeter_enabled === true) {
     return badRequest('Overhang cannot be used with box_perimeter_enabled');
@@ -226,6 +247,9 @@ export async function POST(req: Request) {
 
     roof_material: body.roof_material,
     extrusion_colour: body.extrusion_colour,
+    powdercoat_standard_colour: body.powdercoat_standard_colour,
+    powdercoat_is_custom: body.powdercoat_is_custom === true,
+    powdercoat_custom_colour: body.powdercoat_custom_colour,
     mixed_roof,
     hip_corner,
 

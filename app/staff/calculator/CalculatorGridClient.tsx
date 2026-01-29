@@ -2,10 +2,18 @@
 
 import type { CostInputsV1, JobInputsV1, JobOutputV1, RoofType } from '@/src/costing/engine/types';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
 import styles from './CalculatorGrid.module.css';
-import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type {
+  BlindFabric as BlindFabricInput,
+  BlindLineItem,
+  BlindSystemType as BlindSystemInput,
+  CalculatorBlindsState,
+  CalculatorInputs,
+  CalculatorModuleInputs,
+} from '@/lib/types/calculator';
+import { normalizeBlindsState } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
 import { getContact } from '@/lib/repo/contactsRepo';
 import { addProjectActivity, getProject } from '@/lib/repo/projectsRepo';
@@ -16,6 +24,11 @@ import Modal from '@/components/ui/modal/Modal';
 import { useSession } from 'next-auth/react';
 import { useCalculatorUiPrefs } from '@/lib/ui/useCalculatorUiPrefs';
 import RoofOrientationDiagram from './RoofOrientationDiagram';
+import {
+  priceAllBlinds,
+  type BlindLineItemInput,
+  type BlindPricingResult,
+} from '@/lib/costing/blinds';
 
 type FieldSchemaItem = {
   id: string;
@@ -40,6 +53,11 @@ function toNumber(value: string): number {
 function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return '$0.00';
   return `$${n.toFixed(2)}`;
+}
+
+function formatCents(cents?: number): string {
+  if (typeof cents !== 'number' || !Number.isFinite(cents)) return '$0.00';
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
 function formatMaybeMoney(n: number | undefined): string {
@@ -78,6 +96,10 @@ function clampInt(n: number, min: number, max: number): number {
 
 function labelForIssueField(id: string): string {
   switch (id) {
+    case 'powdercoatStandardColour':
+      return 'Powdercoat colour';
+    case 'powdercoatCustomColour':
+      return 'Custom powdercoat colour';
     case 'lengthM':
       return 'Roof Length (m)';
     case 'projectionM':
@@ -117,6 +139,67 @@ function labelForIssueField(id: string): string {
   }
 }
 
+function normalizeOverrideValue(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function isGutterBeamProfile(profile: string | undefined): boolean {
+  if (!profile) return false;
+  const normalized = profile.toLowerCase().replace(/\s+/g, '');
+  return normalized.includes('spgutter');
+}
+
+const DEFAULT_OVERRIDE_OPTION: FieldOption = { label: 'Default (auto)', value: '' };
+const RAFTER_PROFILE_OPTIONS: FieldOption[] = [
+  DEFAULT_OVERRIDE_OPTION,
+  { label: '80x50', value: '80x50' },
+  { label: '100x50', value: '100x50' },
+  { label: '150x50', value: '150x50' },
+  { label: '200x50', value: '200x50' },
+];
+const LEDGER_PROFILE_OPTIONS: FieldOption[] = [
+  DEFAULT_OVERRIDE_OPTION,
+  { label: '80x50', value: '80x50' },
+  { label: '100x50', value: '100x50' },
+  { label: '150x50', value: '150x50' },
+  { label: '200x50', value: '200x50' },
+];
+const POST_PROFILE_OPTIONS: FieldOption[] = [
+  DEFAULT_OVERRIDE_OPTION,
+  { label: '100x100', value: '100x100' },
+  { label: '150x150', value: '150x150' },
+];
+const FRONT_BEAM_PROFILE_OPTIONS: FieldOption[] = [
+  DEFAULT_OVERRIDE_OPTION,
+  { label: 'SP Gutter', value: 'SP Gutter' },
+  { label: '100x50', value: '100x50' },
+  { label: '150x50', value: '150x50' },
+  { label: '200x50', value: '200x50' },
+  { label: '300x50', value: '300x50' },
+];
+const RIDGE_BEAM_PROFILE_OPTIONS: FieldOption[] = [
+  DEFAULT_OVERRIDE_OPTION,
+  { label: '100x50', value: '100x50' },
+  { label: '150x50', value: '150x50' },
+  { label: '200x50', value: '200x50' },
+];
+const BOX_BEAM_PROFILE_OPTIONS: FieldOption[] = [
+  DEFAULT_OVERRIDE_OPTION,
+  { label: '300x50', value: '300x50' },
+  { label: '200x50', value: '200x50' },
+];
+const POWDERCOAT_STANDARD_COLOURS = [
+  'Ironsands',
+  'Charcoal',
+  'Grey Friars',
+  'Flaxpod',
+  'Rangoon Green',
+  'Gull Grey',
+  'Titania',
+];
+
 function getRoofTypeForModule(module: CalculatorModuleInputs): RoofType {
   if (module.boxPerimeterEnabled) return module.internalRoofType;
   if (module.pergolaStyle === 'gable') return 'gable';
@@ -152,6 +235,9 @@ function makeDefaultModule(): CalculatorModuleInputs {
     pergolaStyle: 'pitched',
     roofMaterial: 'acrylic',
     extrusionColour: 'Black',
+    powdercoatStandardColour: '',
+    powdercoatIsCustom: false,
+    powdercoatCustomColour: '',
     boxPerimeterEnabled: false,
     internalRoofType: 'pitched',
     fallDistanceMm: '0',
@@ -159,6 +245,7 @@ function makeDefaultModule(): CalculatorModuleInputs {
     boxGutterHouseEdge: 'house',
     boxGutterFarEdge: 'our',
     downpipeCount: '0',
+    separateGutterEnabled: false,
     overhangEnabled: false,
     overhangAmountM: '0.2',
     overhangSupportBeamProfile: '150x50',
@@ -182,7 +269,36 @@ function makeDefaultModule(): CalculatorModuleInputs {
     postCutHeightM: '2.4',
 
     timberRoofAllowanceExGst: '0',
+
+    overrides: {},
   };
+}
+
+function makeBlindId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `blind-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function makeDefaultBlindItem(overrides?: Partial<BlindLineItem>): BlindLineItem {
+  return {
+    id: makeBlindId(),
+    system: 'ZIPTRAK',
+    widthMm: '',
+    coverLengthMm: '',
+    fabric: 'MESH',
+    motorised: 'NONE',
+    ...overrides,
+  };
+}
+
+function makeDefaultBlinds(): CalculatorBlindsState {
+  return { items: [makeDefaultBlindItem()] };
+}
+
+function normalizeBlindsStateForUi(value: unknown): CalculatorBlindsState {
+  const normalized = normalizeBlindsState(value);
+  if (normalized && Array.isArray(normalized.items) && normalized.items.length > 0) return normalized;
+  return makeDefaultBlinds();
 }
 
 export default function CalculatorGridClient({
@@ -214,6 +330,7 @@ export default function CalculatorGridClient({
     extrasAllowanceExGst: '0',
     quoteDiscountPct: '0',
     modules: [makeDefaultModule()],
+    blinds: makeDefaultBlinds(),
   }));
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
   const [project, setProject] = useState<Project | null>(null);
@@ -254,6 +371,8 @@ export default function CalculatorGridClient({
     void (async () => {
       try {
         const draft = await duplicateEstimateToDraft(fromEstimateId);
+        const mergedBlinds = normalizeBlindsStateForUi((draft as any).blinds);
+
         setValues({
           ...draft,
           schemaVersion: 'v2',
@@ -275,6 +394,7 @@ export default function CalculatorGridClient({
 
             return merged;
           }),
+          blinds: mergedBlinds,
         });
         setActiveModuleIndex(0);
         const msg = `Draft duplicated from estimate ${fromEstimateId}`;
@@ -358,6 +478,14 @@ export default function CalculatorGridClient({
         if (!Number.isFinite(downpipeCount) || downpipeCount < 0) next.downpipeCount = 'Enter a downpipe count >= 0';
       }
 
+      if (module.extrusionColour === 'Mill') {
+        if (module.powdercoatIsCustom) {
+          if (!module.powdercoatCustomColour?.trim()) next.powdercoatCustomColour = 'Enter a custom powdercoat colour';
+        } else if (!module.powdercoatStandardColour?.trim()) {
+          next.powdercoatStandardColour = 'Select a powdercoat colour';
+        }
+      }
+
       if (module.roofMaterial === 'mixed') {
         const bayCounts = computeBayCountsForModule(module);
         if (bayCounts.roofType === 'pitched') {
@@ -388,6 +516,18 @@ export default function CalculatorGridClient({
   const errors = errorsByModule[activeModuleIndex] ?? {};
   const hasModuleErrors = errorsByModule.some((map) => Object.values(map).some(Boolean));
 
+  useEffect(() => {
+    if (activeModule.extrusionColour !== 'Mill') return;
+    if (activeModule.powdercoatIsCustom) return;
+    if (activeModule.powdercoatStandardColour?.trim()) return;
+    setModuleField('powdercoatStandardColour', 'Ironsands');
+  }, [
+    activeModule.extrusionColour,
+    activeModule.powdercoatIsCustom,
+    activeModule.powdercoatStandardColour,
+    activeModuleIndex,
+  ]);
+
   const setJobField = <K extends Exclude<keyof CalculatorInputs, 'modules'>>(key: K, next: CalculatorInputs[K]) => {
     setValues((prev) => ({ ...prev, [key]: next }));
   };
@@ -400,6 +540,17 @@ export default function CalculatorGridClient({
       const nextHouseConnection =
         key === 'houseConnectionType' ? (next as CalculatorModuleInputs['houseConnectionType']) : updated.houseConnectionType;
       const nextBoxEnabled = key === 'boxPerimeterEnabled' ? Boolean(next) : updated.boxPerimeterEnabled;
+
+      if (key === 'extrusionColour') {
+        if (next === 'Mill' && !updated.powdercoatIsCustom && !updated.powdercoatStandardColour) {
+          updated.powdercoatStandardColour = 'Ironsands';
+        }
+      }
+      if (key === 'powdercoatIsCustom') {
+        if (!next && updated.extrusionColour === 'Mill' && !updated.powdercoatStandardColour) {
+          updated.powdercoatStandardColour = 'Ironsands';
+        }
+      }
 
       if (key === 'houseConnectionType') {
         if (nextHouseConnection === 'none') {
@@ -422,15 +573,94 @@ export default function CalculatorGridClient({
         updated.overhangEnabled = false;
         updated.invertedEnabled = false;
         updated.invertedHouseGutter = true;
+        updated.separateGutterEnabled = false;
       }
 
       if (key === 'pergolaStyle' && next !== 'pitched') {
         updated.invertedEnabled = false;
         updated.invertedHouseGutter = true;
+        updated.separateGutterEnabled = false;
+      }
+
+      if (key === 'overhangEnabled' && Boolean(next)) {
+        updated.separateGutterEnabled = false;
+      }
+
+      if (key === 'invertedEnabled' && Boolean(next)) {
+        updated.separateGutterEnabled = false;
+      }
+
+      if (key === 'invertedHouseGutter' && updated.invertedEnabled && Boolean(next)) {
+        updated.separateGutterEnabled = false;
+      }
+
+      const frontBeamOverride = normalizeOverrideValue(updated.overrides?.frontBeamProfile);
+      const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
+      if (isGutterBeamProfile(frontBeamProfileUsed)) {
+        updated.separateGutterEnabled = false;
       }
 
       modules[activeModuleIndex] = updated;
       return { ...prev, modules };
+    });
+  };
+
+  const setModuleOverride = (key: keyof NonNullable<CalculatorModuleInputs['overrides']>, value: string) => {
+    setValues((prev) => {
+      const modules = prev.modules.slice();
+      const current = modules[activeModuleIndex] ?? makeDefaultModule();
+      const overrides = { ...(current.overrides ?? {}) };
+      if (value) overrides[key] = value;
+      else delete overrides[key];
+      const updated: CalculatorModuleInputs = { ...current, overrides };
+
+      if (key === 'frontBeamProfile') {
+        const frontBeamProfileUsed = normalizeOverrideValue(overrides.frontBeamProfile) ?? 'SP Gutter';
+        if (isGutterBeamProfile(frontBeamProfileUsed)) {
+          updated.separateGutterEnabled = false;
+        }
+      }
+
+      modules[activeModuleIndex] = updated;
+      return { ...prev, modules };
+    });
+  };
+
+  const blindsState = normalizeBlindsStateForUi(values.blinds);
+
+  useEffect(() => {
+    if (values.blinds !== blindsState) {
+      setValues((prev) => ({ ...prev, blinds: blindsState }));
+    }
+  }, [values.blinds, blindsState]);
+
+  const setBlindItem = (id: string, patch: Partial<BlindLineItem>) => {
+    setValues((prev) => {
+      const current = normalizeBlindsStateForUi(prev.blinds);
+      const items = current.items.map((item) => (item.id === id ? { ...item, ...patch } : item));
+      return { ...prev, blinds: { items } };
+    });
+  };
+
+  const addBlind = (seed?: Partial<BlindLineItem>) => {
+    setValues((prev) => {
+      const current = normalizeBlindsStateForUi(prev.blinds);
+      const nextItem = makeDefaultBlindItem(seed);
+      return { ...prev, blinds: { items: [...current.items, nextItem] } };
+    });
+  };
+
+  const duplicateBlind = (id: string) => {
+    const current = blindsState.items.find((item) => item.id === id);
+    if (!current) return;
+    addBlind({ ...current, id: makeBlindId(), label: current.label ? `${current.label} (copy)` : undefined });
+  };
+
+  const removeBlind = (id: string) => {
+    setValues((prev) => {
+      const current = normalizeBlindsStateForUi(prev.blinds);
+      const items = current.items.filter((item) => item.id !== id);
+      return { ...prev, blinds: { items: items.length ? items : [makeDefaultBlindItem()] } };
     });
   };
 
@@ -455,6 +685,7 @@ export default function CalculatorGridClient({
 
       const isPile = module.postConnectionType === 'pile_1m' || module.postConnectionType === 'pile_1_5m';
       const bayCounts = computeBayCountsForModule(module);
+      const overrides = module.overrides ?? {};
 
       return {
         length_m,
@@ -470,14 +701,27 @@ export default function CalculatorGridClient({
         box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
         box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
         downpipe_count: Number.isFinite(downpipe_count) ? downpipe_count : undefined,
+        separate_gutter_enabled: module.separateGutterEnabled,
         overhang_enabled: module.overhangEnabled,
         overhang_amount_m: module.overhangEnabled ? toNumber(module.overhangAmountM) : undefined,
         overhang_support_beam_profile: module.overhangEnabled ? module.overhangSupportBeamProfile : undefined,
         inverted_enabled: module.invertedEnabled,
         inverted_house_gutter: module.invertedEnabled ? module.invertedHouseGutter : undefined,
+        overrides: {
+          ledger_profile: normalizeOverrideValue(overrides.ledgerProfile),
+          rafter_profile: normalizeOverrideValue(overrides.rafterProfile),
+          post_profile: normalizeOverrideValue(overrides.postProfile),
+          front_beam_profile: normalizeOverrideValue(overrides.frontBeamProfile),
+          ridge_beam_profile: normalizeOverrideValue(overrides.ridgeBeamProfile),
+          box_perimeter_beam_profile: normalizeOverrideValue(overrides.boxPerimeterBeamProfile),
+          overhang_support_beam_profile: normalizeOverrideValue(overrides.overhangSupportBeamProfile),
+        },
 
         roof_material: module.roofMaterial,
         extrusion_colour: module.extrusionColour,
+        powdercoat_standard_colour: module.powdercoatStandardColour?.trim() || undefined,
+        powdercoat_is_custom: module.powdercoatIsCustom === true,
+        powdercoat_custom_colour: module.powdercoatCustomColour?.trim() || undefined,
         mixed_roof:
           module.roofMaterial === 'mixed'
             ? {
@@ -532,6 +776,7 @@ export default function CalculatorGridClient({
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
+  const blindFieldPrefix = useId();
 
   const issues = useMemo(() => {
     const out: Array<{ moduleIndex: number; fieldId: string; label: string; message: string }> = [];
@@ -626,6 +871,27 @@ export default function CalculatorGridClient({
   const overheadEx = result?.overhead.total_ex_gst;
   const totalEx = result?.totals.cost_ex_gst;
   const totalInc = result?.totals.cost_inc_gst;
+
+  const blindInputs = useMemo<BlindLineItemInput[]>(
+    () =>
+      blindsState.items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        system: item.system as BlindSystemInput,
+        widthMm: Number.isFinite(toNumber(item.widthMm)) ? toNumber(item.widthMm) : null,
+        coverLengthMm: Number.isFinite(toNumber(item.coverLengthMm)) ? toNumber(item.coverLengthMm) : null,
+        fabric: item.fabric as BlindFabricInput,
+        motorised: item.motorised === 'YES' ? true : null,
+      })),
+    [blindsState],
+  );
+
+  const blindsPricing = useMemo<BlindPricingResult>(() => priceAllBlinds(blindInputs), [blindInputs]);
+  const blindsTotals = blindsPricing.totals;
+  const blindsTotalEx = blindsTotals ? blindsTotals.totalExCents / 100 : 0;
+  const blindsTotalInc = blindsTotals ? blindsTotals.totalIncCents / 100 : 0;
+  const totalExWithBlinds = typeof totalEx === 'number' ? totalEx + blindsTotalEx : undefined;
+  const totalIncWithBlinds = typeof totalInc === 'number' ? totalInc + blindsTotalInc : undefined;
   const warningsTyped =
     result?.totals.warnings ??
     (result?.totals.notes_and_warnings ?? []).map((message) => ({ level: 'info' as const, message }));
@@ -721,6 +987,148 @@ export default function CalculatorGridClient({
           },
         ]
       : [];
+
+  const moduleOverrides = activeModule.overrides ?? {};
+  const frontBeamOverride = normalizeOverrideValue(moduleOverrides.frontBeamProfile);
+  const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
+  const integratedGutterBeamUi = isGutterBeamProfile(frontBeamProfileUsed);
+  const showSeparateGutterToggle =
+    !activeModule.boxPerimeterEnabled && !activeModule.overhangEnabled && !activeModule.invertedEnabled && !integratedGutterBeamUi;
+
+  const blindItemPricing = blindsPricing.items;
+
+  const blindsListContent = (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {blindsState.items.map((item, idx) => {
+        const pricing = blindItemPricing.find((p) => p.id === item.id);
+        const errors = pricing?.errors ?? [];
+        const hasErrors = errors.length > 0;
+        const isMissingDims = errors.some((err) => err.toLowerCase().includes('enter width'));
+        const widthTooLarge = errors.some((err) => err.toLowerCase().includes('max width'));
+        const lengthTooLarge = errors.some((err) => err.toLowerCase().includes('max cover length'));
+        const statusMessage = isMissingDims
+          ? 'Enter dimensions to price this blind.'
+          : widthTooLarge
+            ? 'Add another blind and split widths manually.'
+            : lengthTooLarge
+              ? 'Manual quote required.'
+              : hasErrors
+                ? errors[0]
+                : '';
+        const statusClassName = hasErrors && !isMissingDims ? styles.error : styles.helper;
+        const showStatus = Boolean(statusMessage);
+        const isPriceable = pricing ? pricing.errors.length === 0 : false;
+        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : '—';
+        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : '—';
+        const domIdBase = `${blindFieldPrefix}-blind-${idx + 1}`;
+        return (
+          <div key={item.id} className={styles.previewCard} style={{ padding: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <strong>Blind {idx + 1}</strong>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className={styles.drawerClose}
+                  style={{ padding: '6px 10px', fontSize: 11 }}
+                  onClick={() => duplicateBlind(item.id)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className={styles.drawerClose}
+                  style={{ padding: '6px 10px', fontSize: 11 }}
+                  onClick={() => removeBlind(item.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: 8, marginTop: 10 }}>
+              <FieldTile
+                id={`${domIdBase}-label`}
+                label="Label"
+                type="text"
+                value={item.label ?? ''}
+                onChange={(v) => setBlindItem(item.id, { label: String(v) })}
+              />
+              <FieldTile
+                id={`${domIdBase}-system`}
+                label="System"
+                type="select"
+                value={item.system}
+                onChange={(v) => setBlindItem(item.id, { system: v as BlindSystemInput })}
+                options={[
+                  { label: 'Ziptrak', value: 'ZIPTRAK' },
+                  { label: 'Omni', value: 'OMNI' },
+                ]}
+              />
+              <FieldTile
+                id={`${domIdBase}-width`}
+                label="Width (mm)"
+                type="number"
+                value={item.widthMm}
+                onChange={(v) => setBlindItem(item.id, { widthMm: String(v) })}
+              />
+              <FieldTile
+                id={`${domIdBase}-cover`}
+                label="Cover length (mm)"
+                type="number"
+                value={item.coverLengthMm}
+                onChange={(v) => setBlindItem(item.id, { coverLengthMm: String(v) })}
+              />
+              <FieldTile
+                id={`${domIdBase}-fabric`}
+                label="Fabric"
+                type="select"
+                value={item.fabric}
+                onChange={(v) => setBlindItem(item.id, { fabric: v as BlindFabricInput })}
+                options={[
+                  { label: 'Mesh', value: 'MESH' },
+                  { label: 'PVC', value: 'PVC' },
+                  { label: 'Fine mesh', value: 'FINE_MESH' },
+                  { label: 'None (Mesh)', value: 'NONE' },
+                ]}
+              />
+              <FieldTile
+                id={`${domIdBase}-motor`}
+                label="Motorised"
+                type="toggle"
+                value={item.motorised === 'YES'}
+                onChange={(v) => setBlindItem(item.id, { motorised: v ? 'YES' : 'NONE' })}
+              />
+              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={totalExLabel} />
+              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={totalIncLabel} />
+            </div>
+            {showStatus ? <div className={statusClassName}>{statusMessage}</div> : null}
+          </div>
+        );
+      })}
+
+      <div className={styles.previewCard} style={{ padding: 12 }}>
+        <button
+          type="button"
+          className={styles.drawerClose}
+          style={{ width: '100%', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}
+          onClick={() => addBlind()}
+        >
+          Add blind
+        </button>
+      </div>
+
+      <div className={styles.previewCard} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Blinds total (ex‑GST)</span>
+          <span>{formatCents(blindsTotals?.totalExCents ?? 0)}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>Blinds total (inc‑GST)</span>
+          <span>{formatCents(blindsTotals?.totalIncCents ?? 0)}</span>
+        </div>
+        <div className={styles.helper}>Totals round to cents; pricing uses banded size lookup.</div>
+      </div>
+    </div>
+  );
 
   const schema: FieldSchemaItem[] = [
     {
@@ -977,6 +1385,42 @@ export default function CalculatorGridClient({
         { label: 'Mill', value: 'Mill' },
       ],
     },
+    ...(activeModule.extrusionColour === 'Mill'
+      ? [
+          {
+            id: 'powdercoatStandardColour',
+            label: 'Powdercoat colour',
+            type: 'select',
+            value: activeModule.powdercoatStandardColour ?? '',
+            onChange: (v) => setModuleField('powdercoatStandardColour', String(v)),
+            options: [
+              { label: 'Select', value: '' },
+              ...POWDERCOAT_STANDARD_COLOURS.map((colour) => ({ label: colour, value: colour })),
+            ],
+            disabled: Boolean(activeModule.powdercoatIsCustom),
+            error: errors.powdercoatStandardColour,
+          } satisfies FieldSchemaItem,
+          {
+            id: 'powdercoatIsCustom',
+            label: 'Custom powdercoat colour',
+            type: 'toggle',
+            value: Boolean(activeModule.powdercoatIsCustom),
+            onChange: (v) => setModuleField('powdercoatIsCustom', Boolean(v)),
+          } satisfies FieldSchemaItem,
+          ...(activeModule.powdercoatIsCustom
+            ? [
+                {
+                  id: 'powdercoatCustomColour',
+                  label: 'Custom powdercoat colour name',
+                  type: 'text',
+                  value: activeModule.powdercoatCustomColour ?? '',
+                  onChange: (v) => setModuleField('powdercoatCustomColour', String(v)),
+                  error: errors.powdercoatCustomColour,
+                } satisfies FieldSchemaItem,
+              ]
+            : []),
+        ]
+      : []),
 
     {
       id: 'lengthM',
@@ -1090,20 +1534,104 @@ export default function CalculatorGridClient({
                   error: errors.overhangAmountM,
                   helperText: 'Default 0.20m (max 1.5m)',
                 } satisfies FieldSchemaItem,
-                {
-                  id: 'overhangSupportBeamProfile',
-                  label: 'Overhang support beam profile',
-                  type: 'select',
-                  value: activeModule.overhangSupportBeamProfile,
-                  onChange: (v: string | boolean) =>
-                    setModuleField('overhangSupportBeamProfile', v as CalculatorModuleInputs['overhangSupportBeamProfile']),
-                  options: [
-                    { label: '150x50', value: '150x50' },
-                    { label: '200x50', value: '200x50' },
-                  ],
-                } satisfies FieldSchemaItem,
               ]
             : []),
+        ]
+      : []),
+    ...(activeModule.boxPerimeterEnabled
+      ? [
+          {
+            id: 'boxPerimeterBeamProfileOverride',
+            label: 'Box perimeter beam override',
+            type: 'select',
+            value: moduleOverrides.boxPerimeterBeamProfile ?? '',
+            onChange: (v) => setModuleOverride('boxPerimeterBeamProfile', String(v)),
+            options: BOX_BEAM_PROFILE_OPTIONS,
+            helperText: 'Overrides box perimeter beam profile (default 300x50)',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    {
+      id: 'ledgerProfileOverride',
+      label: 'Ledger override',
+      type: 'select',
+      value: moduleOverrides.ledgerProfile ?? '',
+      onChange: (v) => setModuleOverride('ledgerProfile', String(v)),
+      options: LEDGER_PROFILE_OPTIONS,
+      helperText: 'Override ledger/stringer profile',
+    },
+    {
+      id: 'rafterProfileOverride',
+      label: 'Rafter override',
+      type: 'select',
+      value: moduleOverrides.rafterProfile ?? '',
+      onChange: (v) => setModuleOverride('rafterProfile', String(v)),
+      options: RAFTER_PROFILE_OPTIONS,
+      helperText: 'Override auto rafter profile selection',
+    },
+    {
+      id: 'postProfileOverride',
+      label: 'Post override',
+      type: 'select',
+      value: moduleOverrides.postProfile ?? '',
+      onChange: (v) => setModuleOverride('postProfile', String(v)),
+      options: POST_PROFILE_OPTIONS,
+      helperText: 'Override post profile (default 100x100)',
+    },
+    ...(!activeModule.boxPerimeterEnabled
+      ? [
+          {
+            id: 'frontBeamProfileOverride',
+            label: 'Front beam override',
+            type: 'select',
+            value: moduleOverrides.frontBeamProfile ?? '',
+            onChange: (v) => setModuleOverride('frontBeamProfile', String(v)),
+            options: FRONT_BEAM_PROFILE_OPTIONS,
+            helperText: integratedGutterBeamUi
+              ? 'SP gutter selected = integrated gutter beam'
+              : 'Select a non‑gutter beam to allow a separate gutter',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    ...(roofTypeForInputs === 'gable' || roofTypeForInputs === 'low_gable' || roofTypeForInputs === 'hip'
+      ? [
+          {
+            id: 'ridgeBeamProfileOverride',
+            label: 'Ridge beam override',
+            type: 'select',
+            value: moduleOverrides.ridgeBeamProfile ?? '',
+            onChange: (v) => setModuleOverride('ridgeBeamProfile', String(v)),
+            options: RIDGE_BEAM_PROFILE_OPTIONS,
+            helperText: 'Overrides ridge beam profile when applicable',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    ...(activeModule.overhangEnabled
+      ? [
+          {
+            id: 'overhangSupportBeamProfile',
+            label: 'Overhang support beam profile',
+            type: 'select',
+            value: activeModule.overhangSupportBeamProfile,
+            onChange: (v: string | boolean) =>
+              setModuleField('overhangSupportBeamProfile', v as CalculatorModuleInputs['overhangSupportBeamProfile']),
+            options: [
+              { label: '150x50', value: '150x50' },
+              { label: '200x50', value: '200x50' },
+            ],
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    ...(showSeparateGutterToggle
+      ? [
+          {
+            id: 'separateGutterEnabled',
+            label: 'Separate gutter (100x100 cut)',
+            type: 'toggle',
+            value: activeModule.separateGutterEnabled,
+            onChange: (v: string | boolean) => setModuleField('separateGutterEnabled', Boolean(v)),
+            helperText: 'Adds separate 100x100 cut‑down gutter (stock doubled for waste)',
+          } satisfies FieldSchemaItem,
         ]
       : []),
     ...gableHintFields,
@@ -1250,6 +1778,14 @@ export default function CalculatorGridClient({
       : []),
 
     {
+      id: 'blindsList',
+      label: 'Blinds',
+      type: 'custom',
+      content: blindsListContent,
+      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} · totals update live`,
+    },
+
+    {
       id: 'travelExGst',
       label: 'Travel (ex‑GST)',
       type: 'number',
@@ -1295,6 +1831,10 @@ export default function CalculatorGridClient({
     { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
     { id: 'totalEx', label: 'Total true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
     { id: 'totalInc', label: 'Total true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
+    { id: 'blindsTotalEx', label: 'Blinds add‑on (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(blindsTotalEx) },
+    { id: 'blindsTotalInc', label: 'Blinds add‑on (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(blindsTotalInc) },
+    { id: 'totalExWithBlinds', label: 'Total incl blinds (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalExWithBlinds) },
+    { id: 'totalIncWithBlinds', label: 'Total incl blinds (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalIncWithBlinds) },
     ...(issuesCount
       ? [
           {
@@ -1391,6 +1931,9 @@ export default function CalculatorGridClient({
     'mixedAcrylicBaysA',
     'mixedAcrylicBaysB',
     'extrusionColour',
+    'powdercoatStandardColour',
+    'powdercoatIsCustom',
+    'powdercoatCustomColour',
     'lengthM',
     'projectionM',
     'roofOrientation',
@@ -1401,7 +1944,6 @@ export default function CalculatorGridClient({
     'invertedHouseGutter',
     'overhangEnabled',
     'overhangAmountM',
-    'overhangSupportBeamProfile',
     'perSideSpanM',
     'slopedLengthPerSideM',
     'postCutHeightM',
@@ -1413,6 +1955,19 @@ export default function CalculatorGridClient({
     'boxGutterFarEdge',
     'downpipeCount',
   ]);
+
+  const overrideFields = pickFields([
+    'ledgerProfileOverride',
+    'rafterProfileOverride',
+    'postProfileOverride',
+    'frontBeamProfileOverride',
+    'ridgeBeamProfileOverride',
+    'boxPerimeterBeamProfileOverride',
+    'overhangSupportBeamProfile',
+    'separateGutterEnabled',
+  ]);
+
+  const blindFields = pickFields(['blindsList']);
 
   const connectionFields = pickFields(['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height']);
 
@@ -1477,6 +2032,8 @@ export default function CalculatorGridClient({
             <div className={styles.leftCol}>
               <FieldGroup title="Context" fields={contextFields} />
               <FieldGroup title="Structure" fields={structureFields} />
+              <FieldGroup title="Overrides" fields={overrideFields} />
+              <FieldGroup title="Blinds" fields={blindFields} />
               <FieldGroup title="Connections & Site" fields={connectionFields} />
               <FieldGroup title="Allowances" fields={allowanceFields} />
             </div>
@@ -1498,11 +2055,12 @@ export default function CalculatorGridClient({
                 </div>
 
                 <div className={styles.previewStatGrid}>
-                  <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(totalEx)} />
-                  <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(totalInc)} />
+                  <PreviewStat label="Total incl blinds (ex‑GST)" value={formatMaybeMoney(totalExWithBlinds)} />
+                  <PreviewStat label="Total incl blinds (inc‑GST)" value={formatMaybeMoney(totalIncWithBlinds)} />
                   <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
                   <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
                   <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
+                  <PreviewStat label="Blinds add‑on" value={formatMaybeMoney(blindsTotalEx)} />
                   <PreviewStat label="Crew hours" value={formatMaybeNumber(crewHours)} />
                   <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 1)} />
                 </div>
@@ -1802,6 +2360,14 @@ export default function CalculatorGridClient({
                   <div>
                     <div className={styles.modalKey}>Total (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(totalEx)}</div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Blinds add‑on (ex‑GST)</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(blindsTotalEx)}</div>
+                  </div>
+                  <div>
+                    <div className={styles.modalKey}>Total incl blinds (ex‑GST)</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(totalExWithBlinds)}</div>
                   </div>
                 </div>
               </section>
