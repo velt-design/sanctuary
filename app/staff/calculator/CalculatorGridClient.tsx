@@ -29,6 +29,7 @@ import {
   type BlindLineItemInput,
   type BlindPricingResult,
 } from '@/lib/costing/blinds';
+import { buildAddonsTotals, computeDisplayTotals } from './calcTotals';
 
 type FieldSchemaItem = {
   id: string;
@@ -201,7 +202,6 @@ const POWDERCOAT_STANDARD_COLOURS = [
 ];
 
 function getRoofTypeForModule(module: CalculatorModuleInputs): RoofType {
-  if (module.boxPerimeterEnabled) return module.internalRoofType;
   if (module.pergolaStyle === 'gable') return 'gable';
   if (module.pergolaStyle === 'hip') return 'hip';
   if (module.pergolaStyle === 'hip_corner') return 'hip_corner';
@@ -696,7 +696,7 @@ export default function CalculatorGridClient({
 
         pergola_style: module.pergolaStyle,
         box_perimeter_enabled: module.boxPerimeterEnabled,
-        internal_roof_type: module.boxPerimeterEnabled ? module.internalRoofType : undefined,
+        internal_roof_type: module.boxPerimeterEnabled ? undefined : module.internalRoofType,
         fall_distance_mm: module.boxPerimeterEnabled ? fall_distance_mm : undefined,
         box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
         box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
@@ -890,8 +890,8 @@ export default function CalculatorGridClient({
   const blindsTotals = blindsPricing.totals;
   const blindsTotalEx = blindsTotals ? blindsTotals.totalExCents / 100 : 0;
   const blindsTotalInc = blindsTotals ? blindsTotals.totalIncCents / 100 : 0;
-  const totalExWithBlinds = typeof totalEx === 'number' ? totalEx + blindsTotalEx : undefined;
-  const totalIncWithBlinds = typeof totalInc === 'number' ? totalInc + blindsTotalInc : undefined;
+  const addonsTotals = buildAddonsTotals(blindsTotalEx, blindsTotalInc);
+  const { coreEx: coreTotalEx, coreInc: coreTotalInc } = computeDisplayTotals(totalEx, totalInc, addonsTotals);
   const warningsTyped =
     result?.totals.warnings ??
     (result?.totals.notes_and_warnings ?? []).map((message) => ({ level: 'info' as const, message }));
@@ -1715,18 +1715,6 @@ export default function CalculatorGridClient({
     ...(activeModule.boxPerimeterEnabled
       ? [
           {
-            id: 'internalRoofType',
-            label: 'Internal roof type',
-            type: 'select',
-            value: activeModule.internalRoofType,
-            onChange: (v: string | boolean) => setModuleField('internalRoofType', v as CalculatorModuleInputs['internalRoofType']),
-            options: [
-              { label: 'Pitched', value: 'pitched' },
-              { label: 'Gable', value: 'gable' },
-              { label: 'Low gable', value: 'low_gable' },
-            ],
-          } satisfies FieldSchemaItem,
-          {
             id: 'boxPitchDeg',
             label: 'Box pitch (deg)',
             type: 'readOnly',
@@ -1831,10 +1819,10 @@ export default function CalculatorGridClient({
     { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
     { id: 'totalEx', label: 'Total true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
     { id: 'totalInc', label: 'Total true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
-    { id: 'blindsTotalEx', label: 'Blinds add‑on (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(blindsTotalEx) },
-    { id: 'blindsTotalInc', label: 'Blinds add‑on (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(blindsTotalInc) },
-    { id: 'totalExWithBlinds', label: 'Total incl blinds (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalExWithBlinds) },
-    { id: 'totalIncWithBlinds', label: 'Total incl blinds (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalIncWithBlinds) },
+    { id: 'blindsTotalEx', label: 'Blinds (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
+    { id: 'blindsTotalInc', label: 'Blinds (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
+    { id: 'coreTotalEx', label: 'Total (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
+    { id: 'coreTotalInc', label: 'Total (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
     ...(issuesCount
       ? [
           {
@@ -1948,7 +1936,6 @@ export default function CalculatorGridClient({
     'slopedLengthPerSideM',
     'postCutHeightM',
     'postCount',
-    'internalRoofType',
     'boxPitchDeg',
     'boxRiseMm',
     'boxGutterHouseEdge',
@@ -2055,14 +2042,27 @@ export default function CalculatorGridClient({
                 </div>
 
                 <div className={styles.previewStatGrid}>
-                  <PreviewStat label="Total incl blinds (ex‑GST)" value={formatMaybeMoney(totalExWithBlinds)} />
-                  <PreviewStat label="Total incl blinds (inc‑GST)" value={formatMaybeMoney(totalIncWithBlinds)} />
+                  <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
+                  <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
                   <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
                   <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
                   <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
-                  <PreviewStat label="Blinds add‑on" value={formatMaybeMoney(blindsTotalEx)} />
                   <PreviewStat label="Crew hours" value={formatMaybeNumber(crewHours)} />
                   <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 1)} />
+                </div>
+
+                <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
+                  <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
+                    Add‑ons (informational)
+                  </div>
+                  <div className={styles.previewRow}>
+                    <span className={styles.previewRowLabel}>Blinds (ex‑GST)</span>
+                    <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
+                  </div>
+                  <div className={styles.previewRow}>
+                    <span className={styles.previewRowLabel}>Blinds (inc‑GST)</span>
+                    <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
+                  </div>
                 </div>
 
                 {generateField ? (
@@ -2359,15 +2359,11 @@ export default function CalculatorGridClient({
                   </div>
                   <div>
                     <div className={styles.modalKey}>Total (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(totalEx)}</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(coreTotalEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Blinds add‑on (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(blindsTotalEx)}</div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Total incl blinds (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(totalExWithBlinds)}</div>
+                    <div className={styles.modalKey}>Blinds (ex‑GST)</div>
+                    <div className={styles.modalVal}>{formatMaybeMoney(addonsTotals.blinds.ex)}</div>
                   </div>
                 </div>
               </section>
