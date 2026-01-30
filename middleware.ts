@@ -68,6 +68,22 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(dest, 308);
   }
 
+  // Main domain: redirect /staff/* to portal clean paths
+  if (url.pathname === '/staff' || url.pathname.startsWith('/staff/')) {
+    const stripped = url.pathname.replace(/^\/staff/, '') || '/';
+    const dest = new URL(`https://portal.sanctuarypergolas.co.nz${stripped}`);
+    dest.search = url.search;
+    return NextResponse.redirect(dest, 308);
+  }
+
+  // Main domain: redirect /admin/* to portal subdomain
+  if (url.pathname === '/admin' || url.pathname.startsWith('/admin/')) {
+    const stripped = url.pathname.replace(/^\/admin/, '') || '/admin';
+    const dest = new URL(`https://portal.sanctuarypergolas.co.nz${stripped}`);
+    dest.search = url.search;
+    return NextResponse.redirect(dest, 308);
+  }
+
   // Main domain marketing: do nothing
   const res = NextResponse.next();
   res.headers.set('x-portal-host', hostname);

@@ -68,6 +68,7 @@ export default function ContactPage() {
   const [addonsSelected, setAddonsSelected] = useState<string[]>([]);
   const [userName, setUserName] = useState('');
   const [userEmail, setUserEmail] = useState('');
+  const [userPhone, setUserPhone] = useState('');
   const [userSuburb, setUserSuburb] = useState('');
   const [notes, setNotes] = useState('');
   const [userCompany, setUserCompany] = useState('');
@@ -92,22 +93,6 @@ export default function ContactPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
 
-  const proAttachmentsSummary = useMemo(() => {
-    if (!proFiles.length) return '';
-    const MAX_LISTED = 5;
-    const listed = proFiles.slice(0, MAX_LISTED);
-    const moreCount = proFiles.length - listed.length;
-    const parts = listed.map((file) => {
-      const kb = file.size / 1024;
-      const sizeLabel = kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
-      return `${file.name} (${sizeLabel})`;
-    });
-    if (moreCount > 0) {
-      parts.push(`+${moreCount} more file(s)`);
-    }
-    return parts.join('; ');
-  }, [proFiles]);
-
   const createEventId = (): string => {
     try {
       if (typeof window !== 'undefined' && typeof window.crypto?.randomUUID === 'function') {
@@ -115,6 +100,18 @@ export default function ContactPage() {
       }
     } catch {}
     return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  };
+
+  const getUtmPayload = (): Record<string, string> => {
+    if (typeof window === 'undefined') return {};
+    const params = new URLSearchParams(window.location.search);
+    const utm: Record<string, string> = {};
+    for (const [key, value] of params.entries()) {
+      if (key.toLowerCase().startsWith('utm_')) {
+        if (value) utm[key] = value;
+      }
+    }
+    return utm;
   };
 
   // Analytics helper (GA4 via window.gtag, if configured)
@@ -271,39 +268,44 @@ export default function ContactPage() {
     const eventId = createEventId();
     trackSubmitEvent('start');
     try {
-      // Build the payload from React state rather than relying on browser
-      // form serialization. This avoids mobile-browsers quirks with
-      // externally-associated controls and ensures a single canonical
-      // value for each field.
-      const fd = new FormData();
-      // Core contact details
-      fd.set('name', userName);
-      fd.set('email', userEmail);
-      if (userSuburb) fd.set('suburb', userSuburb);
-      if (notes) fd.set('message', notes);
-      if (userCompany) fd.set('company', userCompany);
-      // Dimensional + options
-      fd.set('width_m', width.toFixed(1));
-      fd.set('length_m', length.toFixed(1));
-      fd.set('height_m', height.toFixed(1));
-      fd.set('style', STYLE_OPTS[styleIdx]);
-      fd.set('roof', roofSelected.join(', '));
-      fd.set('addons', addonsSelected.join(', '));
-      fd.set('attachments', proAttachmentsSummary);
-      // Legacy flags + typed enquiry label
-      fd.set('is_homeowner', enquiryType === 'Residential' ? '1' : '0');
-      fd.set('is_professional', enquiryType === 'Professional' ? '1' : '0');
-      fd.set('enquiry_type', enquiryType ?? '');
-      fd.set('event_id', eventId);
-      // Honeypot field for bots (left empty intentionally)
-      fd.set('website', '');
-      // Attach professional enquiry files so the API can send them on.
-      if (enquiryType === 'Professional' && proFiles.length) {
-        proFiles.forEach((file) => {
-          fd.append('pro_attachments', file);
-        });
-      }
-      const res = await fetch('/api/contact', { method: 'POST', body: fd });
+      const enquiryTypeValue = enquiryType ? enquiryType.toLowerCase() : '';
+      const addOnsPayload = {
+        blinds: addonsSelected.includes('Blinds'),
+        slats: addonsSelected.includes('Slats'),
+        lighting: addonsSelected.includes('Lighting'),
+        heating: addonsSelected.includes('Heating'),
+      };
+      const filesPayload =
+        enquiryType === 'Professional'
+          ? proFiles.map((file) => ({ name: file.name, size: file.size, type: file.type }))
+          : [];
+      const payload = {
+        enquiryType: enquiryTypeValue,
+        name: userName.trim(),
+        email: userEmail.trim(),
+        phone: userPhone.trim(),
+        suburb: userSuburb.trim(),
+        message: notes.trim(),
+        dimensions: {
+          widthM: Number(width.toFixed(1)),
+          depthM: Number(length.toFixed(1)),
+          heightM: Number(height.toFixed(1)),
+        },
+        style: (STYLE_OPTS[styleIdx] || '').toLowerCase(),
+        roofMaterials: roofSelected.map((r) => r.toLowerCase()),
+        addOns: addOnsPayload,
+        company: enquiryType === 'Professional' ? userCompany.trim() || null : null,
+        files: filesPayload,
+        utm: getUtmPayload(),
+        page: typeof window !== 'undefined' ? window.location.pathname : '',
+        source: 'website',
+        honeypot: '',
+      };
+      const res = await fetch('/api/enquiry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
       const json = await res.json().catch(() => ({ ok: res.ok }));
       if (res.ok && json?.ok) {
         setSubmitState('success');
@@ -340,7 +342,7 @@ export default function ContactPage() {
 
   return (
     <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''} ${isSubmitted ? 'contact-submitted' : ''}`}>
-      <form ref={formRef} id="contact-form" method="post" action="/api/contact" onSubmit={handleSubmit}>
+      <form ref={formRef} id="contact-form" method="post" action="/api/enquiry" onSubmit={handleSubmit}>
         <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 grid grid-cols-1 lg:grid-cols-[1fr_1px_1fr_1px_1fr] items-stretch gap-y-[var(--vgap)] lg:gap-y-[var(--vgap)] gap-x-[var(--gap)]">
         {/* Left column (keeps its space; content hides on submit) */}
         <div className="col-span-1 relative h-full">
@@ -421,9 +423,17 @@ export default function ContactPage() {
                   name="email"
                   type="email"
                   placeholder="Email"
-                  required
                   className="input input--tile"
                   onChange={(e)=>setUserEmail(e.target.value)}
+                />
+              </div>
+              <div className="hw-tile">
+                <input
+                  name="phone"
+                  type="tel"
+                  placeholder="Phone"
+                  className="input input--tile"
+                  onChange={(e)=>setUserPhone(e.target.value)}
                 />
               </div>
               <div className="hw-tile">
@@ -834,7 +844,10 @@ export default function ContactPage() {
                     <input name="name" placeholder="Name" required className="input input--tile" onChange={(e)=>setUserName(e.target.value)} />
                   </div>
                   <div className="hw-tile">
-                    <input name="email" type="email" placeholder="Email" required className="input input--tile" onChange={(e)=>setUserEmail(e.target.value)} />
+                    <input name="email" type="email" placeholder="Email" className="input input--tile" onChange={(e)=>setUserEmail(e.target.value)} />
+                  </div>
+                  <div className="hw-tile">
+                    <input name="phone" type="tel" placeholder="Phone" className="input input--tile" onChange={(e)=>setUserPhone(e.target.value)} />
                   </div>
                   <div className="hw-tile">
                     <input name="suburb" placeholder="Suburb" className="input input--tile" onChange={(e)=>setUserSuburb(e.target.value)} />
@@ -898,7 +911,11 @@ export default function ContactPage() {
                 </div>
                 {/* Email */}
                 <div className="hw-tile span-2">
-                  <input name="email" type="email" placeholder="Email" required className="input input--tile" onChange={(e)=>setUserEmail(e.target.value)} />
+                  <input name="email" type="email" placeholder="Email" className="input input--tile" onChange={(e)=>setUserEmail(e.target.value)} />
+                </div>
+                {/* Phone */}
+                <div className="hw-tile span-2">
+                  <input name="phone" type="tel" placeholder="Phone" className="input input--tile" onChange={(e)=>setUserPhone(e.target.value)} />
                 </div>
                 {/* Suburb */}
                 <div className="hw-tile span-2">
@@ -929,20 +946,6 @@ export default function ContactPage() {
           ) : null}
         </section>
 
-        {/* Hidden fields attached to the contact form */}
-        <input type="hidden" name="width_m" value={width.toFixed(1)} />
-        <input type="hidden" name="length_m" value={length.toFixed(1)} />
-        <input type="hidden" name="style" value={STYLE_OPTS[styleIdx]} />
-        <input type="hidden" name="height_m" value={height.toFixed(1)} />
-        <input type="hidden" name="roof" value={roofSelected.join(', ')} />
-        <input type="hidden" name="addons" value={addonsSelected.join(', ')} />
-        <input type="hidden" name="attachments" value={proAttachmentsSummary} />
-        {/* Keep legacy flags for compatibility; add new descriptive field */}
-        <input type="hidden" name="is_homeowner" value={enquiryType === 'Residential' ? '1' : '0'} />
-        <input type="hidden" name="is_professional" value={enquiryType === 'Professional' ? '1' : '0'} />
-        <input type="hidden" name="enquiry_type" value={enquiryType ?? ''} />
-        {/* Honeypot field for bots (should remain empty) */}
-        <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }} aria-hidden="true" />
         </div>
       </form>
     </main>
