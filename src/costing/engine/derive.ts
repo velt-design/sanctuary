@@ -75,7 +75,6 @@ function pickStructureType(style: PergolaStyleUi, boxEnabled: boolean | undefine
 }
 
 function pickRoofType(style: PergolaStyleUi, structureType: StructureType, roofType: RoofType | undefined): RoofType {
-  if (structureType === 'box_perimeter') return roofType ?? DEFAULT_ROOF_TYPE;
   if (style === 'gable') return 'gable';
   if (style === 'hip') return 'hip';
   if (style === 'hip_corner') return 'hip_corner';
