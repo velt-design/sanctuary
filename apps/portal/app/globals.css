@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --portal-header-height: 72px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --portal-header-height: 56px;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  background: var(--bg, #ECEDEE);
+}
+
+/* Portal layout utilities */
+.sp-page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-box-gap, 14px);
+}
+
+.sp-section-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
+  gap: var(--sp-box-gap, 14px);
+  align-items: start;
+}
+
+.sp-section-grid > * {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .sp-section-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Global scroll lock helper (applied to html/body) */
+html.scroll-locked, body.scroll-locked {
+  overflow: hidden !important;
+  height: 100% !important;
+  overscroll-behavior: none;
+}
+
+@media (max-width: 960px) {
+  html, body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+}

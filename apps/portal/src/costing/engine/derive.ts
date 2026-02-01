@@ -1,0 +1,910 @@
+import {
+  type BoxGutterEdge,
+  type CostInputsV1,
+  type DerivedV1,
+  type GutterAssemblyMode,
+  type GutterMode,
+  type GroundCondition,
+  type InputsNormalizedV1,
+  type MixedRoofMode,
+  type MixedRoofNormalizedV1,
+  type OverhangSupportBeamProfile,
+  type PergolaStyleUi,
+  type RafterProfile,
+  type RoofType,
+  type SlopeDirection,
+  type StructureType,
+} from './types';
+import type { CostingConfigV1 } from './config';
+
+const GST_RATE = 0.15;
+const DEFAULT_POST_CUT_HEIGHT_M = 2.4;
+const DEFAULT_POST_COUNT = 4;
+const DEFAULT_GROUND: GroundCondition = 'easy';
+const DEFAULT_ROOF_TYPE: RoofType = 'pitched';
+const DEFAULT_MIXED_MODE: MixedRoofMode = 'ridge_skylight';
+
+const RAFTER_SPACING_MM_MAX = 642;
+const BRACKET_SPACING_MM_MAX = 1500;
+const STRINGER_FIXING_SPACING_MM = 1500;
+
+const RAFTER_HOUSE_SETBACK_M = 0.05;
+const RAFTER_GUTTER_SETBACK_M = 0.1;
+const JOINER_EXTRA_M = 0.02;
+
+const DEFAULT_ACRYLIC_SHEET_LENGTH_M = 3.05;
+const DEFAULT_ACRYLIC_SHEET_WIDTH_M = 2.03;
+const MIXED_ACRYLIC_BAY_WIDTH_M = 0.62;
+
+export type DerivedResultV1 = {
+  inputs_normalized: InputsNormalizedV1;
+  derived: DerivedV1 & {
+    box_corner_count?: number;
+  };
+  notes_and_warnings: string[];
+};
+
+function clampNumber(n: number, min: number, max: number): number {
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+function roundNumber(n: number, decimals = 2): number {
+  if (!Number.isFinite(n)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round(n * factor) / factor;
+}
+
+function toPositiveNumber(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+function toNonNegativeNumber(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+  return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+function normalizePergolaStyle(style: PergolaStyleUi): { style: PergolaStyleUi; warnings: string[] } {
+  return { style, warnings: [] };
+}
+
+function pickStructureType(style: PergolaStyleUi, boxEnabled: boolean | undefined): StructureType {
+  if (style === 'box_perimeter') return 'box_perimeter';
+  return boxEnabled ? 'box_perimeter' : 'pitched';
+}
+
+function pickRoofType(style: PergolaStyleUi, structureType: StructureType, roofType: RoofType | undefined): RoofType {
+  if (style === 'gable') return 'gable';
+  if (style === 'hip') return 'hip';
+  if (style === 'hip_corner') return 'hip_corner';
+  return 'pitched';
+}
+
+function pickRafterProfile(projectionM: number): { profile: RafterProfile; warnings: string[] } {
+  if (projectionM <= 2) {
+    return {
+      profile: '80x50',
+      warnings: [],
+    };
+  }
+  if (projectionM <= 4) return { profile: '100x50', warnings: [] };
+  return { profile: '150x50', warnings: [] };
+}
+
+function normalizeOverrideProfile(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function isGutterBeamProfile(profile: string | null | undefined): boolean {
+  if (!profile) return false;
+  const normalized = profile.toLowerCase().replace(/\s+/g, '');
+  return normalized.includes('spgutter');
+}
+
+function clamp(n: number, min: number, max: number): number {
+  if (!Number.isFinite(n)) return min;
+  return Math.min(max, Math.max(min, n));
+}
+
+function degToRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+function cosDeg(deg: number): number {
+  return Math.cos(degToRad(deg));
+}
+
+function tanDeg(deg: number): number {
+  return Math.tan(degToRad(deg));
+}
+
+function rafterDepthM(profile: string): number {
+  const raw = String(profile ?? '').trim();
+  const match = raw.match(/(\d+(?:\.\d+)?)\s*x/i);
+  if (match) {
+    const depthMm = Number.parseFloat(match[1] ?? '');
+    if (Number.isFinite(depthMm) && depthMm > 0) return depthMm / 1000;
+  }
+  if (raw === '80x50') return 0.08;
+  if (raw === '100x50') return 0.1;
+  if (raw === '150x50') return 0.15;
+  return 0.1;
+}
+
+function normalizeMixedRoof(
+  inputs: CostInputsV1,
+  opts: {
+    lengthM: number;
+    roofSurfaceAreaM2: number;
+    roofPlanes: Array<{ id: string; label: string; bay_count: number; rafter_length_m: number; roof_area_m2: number }>;
+    config?: Pick<CostingConfigV1, 'rules'>;
+  },
+): {
+  normalized: MixedRoofNormalizedV1;
+  acrylicAreaM2: number;
+  timberAreaM2: number;
+  acrylicBaysTotal: number | null;
+  acrylicPlaneCountUsed: number;
+  warnings: string[];
+} {
+  const warnings: string[] = [];
+
+  const rulesDefaults = (opts.config?.rules as any)?.defaults as any;
+  const defaultModeRaw = String(rulesDefaults?.default_mixed_mode ?? DEFAULT_MIXED_MODE);
+  const mode: MixedRoofMode =
+    defaultModeRaw === 'area_override' ? 'area_override' : defaultModeRaw === 'acrylic_bays' ? 'acrylic_bays' : 'ridge_skylight';
+
+  const requestedModeRaw = String(inputs.mixed_roof?.mode ?? mode);
+  const hasAcrylicBaysByPlane = Boolean(inputs.mixed_roof?.acrylic_bays_by_plane && typeof inputs.mixed_roof?.acrylic_bays_by_plane === 'object');
+  const requestedMode: MixedRoofMode =
+    requestedModeRaw === 'area_override'
+      ? 'area_override'
+      : requestedModeRaw === 'acrylic_bays' || hasAcrylicBaysByPlane
+        ? 'acrylic_bays'
+        : 'ridge_skylight';
+
+  if (requestedMode === 'acrylic_bays') {
+    const raw = inputs.mixed_roof?.acrylic_bays_by_plane;
+    const byPlane = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+
+    let acrylicAreaM2 = 0;
+    let timberAreaM2 = 0;
+    let acrylicBaysTotal = 0;
+    let acrylicPlaneCountUsed = 0;
+
+    const clampedByPlane: Record<string, number> = {};
+
+    for (const plane of opts.roofPlanes) {
+      const rawValue = byPlane[plane.id];
+      const parsed =
+        typeof rawValue === 'number'
+          ? rawValue
+          : typeof rawValue === 'string'
+            ? Number.parseInt(rawValue, 10)
+            : NaN;
+      const requested = Number.isFinite(parsed) ? Math.round(parsed) : plane.bay_count;
+      const clamped = Math.max(0, Math.min(plane.bay_count, requested));
+      clampedByPlane[plane.id] = clamped;
+
+      if (requested > plane.bay_count) {
+        warnings.push(`Mixed roof acrylic bays exceed bay count for ${plane.label}; clamping to ${plane.bay_count}.`);
+      }
+
+      if (Number.isFinite(plane.rafter_length_m) && plane.rafter_length_m > 6 + 1e-6 && clamped > 0) {
+        warnings.push('Acrylic slope exceeds 6.0m max.');
+      }
+
+      const acrylicAreaPlane = clamped * MIXED_ACRYLIC_BAY_WIDTH_M * Math.max(0, plane.rafter_length_m);
+      const timberAreaPlane = Math.max(0, Math.max(0, plane.roof_area_m2) - acrylicAreaPlane);
+
+      acrylicAreaM2 += acrylicAreaPlane;
+      timberAreaM2 += timberAreaPlane;
+      acrylicBaysTotal += clamped;
+      if (clamped > 0) acrylicPlaneCountUsed += 1;
+    }
+
+    return {
+      normalized: {
+        mode: 'acrylic_bays',
+        ridge_skylight: null,
+        acrylic_area_m2_override: null,
+        acrylic_bays_by_plane: clampedByPlane,
+      },
+      acrylicAreaM2,
+      timberAreaM2,
+      acrylicBaysTotal,
+      acrylicPlaneCountUsed,
+      warnings,
+    };
+  }
+
+  if (requestedMode === 'area_override') {
+    const override = toNonNegativeNumber(inputs.mixed_roof?.acrylic_area_m2, 0);
+    if (!override) warnings.push('Mixed roof mode is area override but acrylic area is 0; no acrylic will be costed.');
+
+    const clamped = Math.min(override, opts.roofSurfaceAreaM2);
+    if (override > opts.roofSurfaceAreaM2 + 1e-6) warnings.push('Mixed roof acrylic area exceeds roof area; clamping to roof area.');
+
+    return {
+      normalized: {
+        mode: 'area_override',
+        ridge_skylight: null,
+        acrylic_area_m2_override: override,
+        acrylic_bays_by_plane: null,
+      },
+      acrylicAreaM2: clamped,
+      timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - clamped),
+      acrylicBaysTotal: null,
+      acrylicPlaneCountUsed: 0,
+      warnings,
+    };
+  }
+
+  const defaultStripWidth = Number(rulesDefaults?.default_ridge_skylight_strip_width_m ?? 0.62);
+  const stripWidth = toPositiveNumber(inputs.mixed_roof?.ridge_skylight?.strip_width_m, defaultStripWidth);
+
+  const defaultStripCount = Number(rulesDefaults?.default_ridge_skylight_strip_count ?? 1);
+  const stripCountRaw = typeof inputs.mixed_roof?.ridge_skylight?.strip_count === 'number'
+    ? inputs.mixed_roof?.ridge_skylight?.strip_count
+    : Number.parseInt(String(inputs.mixed_roof?.ridge_skylight?.strip_count ?? ''), 10);
+  const stripCount = Number.isFinite(stripCountRaw) && stripCountRaw > 0 ? Math.round(stripCountRaw) : Math.max(1, Math.round(defaultStripCount || 1));
+
+  const acrylicArea = stripCount * stripWidth * opts.lengthM;
+  const clamped = Math.min(acrylicArea, opts.roofSurfaceAreaM2);
+  if (acrylicArea > opts.roofSurfaceAreaM2 + 1e-6) warnings.push('Mixed roof skylight area exceeds roof area; clamping to roof area.');
+
+  return {
+    normalized: {
+      mode: 'ridge_skylight',
+      ridge_skylight: {
+        strip_count: stripCount,
+        strip_width_m: stripWidth,
+      },
+      acrylic_area_m2_override: null,
+      acrylic_bays_by_plane: null,
+    },
+    acrylicAreaM2: clamped,
+    timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - clamped),
+    acrylicBaysTotal: null,
+    acrylicPlaneCountUsed: 0,
+    warnings,
+  };
+}
+
+export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<CostingConfigV1, 'rules'>): DerivedResultV1 {
+  const warnings: string[] = [];
+
+  const lengthM = toPositiveNumber(inputs.length_m, 1);
+  const roofSpanFromRoofSpanM = toPositiveNumber((inputs as any).roof_span_m, NaN);
+  const roofSpanFromProjectionM = toPositiveNumber((inputs as any).projection_m, NaN);
+  const roofSpanM = Number.isFinite(roofSpanFromRoofSpanM)
+    ? roofSpanFromRoofSpanM
+    : Number.isFinite(roofSpanFromProjectionM)
+      ? roofSpanFromProjectionM
+      : 1;
+
+  if (
+    Number.isFinite(roofSpanFromRoofSpanM) &&
+    Number.isFinite(roofSpanFromProjectionM) &&
+    Math.abs(roofSpanFromRoofSpanM - roofSpanFromProjectionM) > 1e-6
+  ) {
+    warnings.push('Both roof_span_m and projection_m were provided with different values; using roof_span_m.');
+  }
+
+  const projectionM = roofSpanM;
+  const postCutHeightM = toPositiveNumber(inputs.post_cut_height_m, DEFAULT_POST_CUT_HEIGHT_M);
+  const roofPitchDegRaw = typeof inputs.roof_pitch_deg === 'number' ? inputs.roof_pitch_deg : Number.parseFloat(String(inputs.roof_pitch_deg ?? ''));
+  const roofPitchDeg = Number.isFinite(roofPitchDegRaw) ? clamp(roofPitchDegRaw, 0, 85) : null;
+
+  const postCountRaw = typeof inputs.post_count === 'number' ? inputs.post_count : Number.parseInt(String(inputs.post_count ?? ''), 10);
+  const postCount = Number.isFinite(postCountRaw) && postCountRaw > 0 ? Math.round(postCountRaw) : DEFAULT_POST_COUNT;
+
+  const styleNormalized = normalizePergolaStyle(inputs.pergola_style);
+  warnings.push(...styleNormalized.warnings);
+
+  const structureType = pickStructureType(styleNormalized.style, inputs.box_perimeter_enabled);
+  const roofType = pickRoofType(styleNormalized.style, structureType, inputs.internal_roof_type);
+  const isBoxPerimeter = structureType === 'box_perimeter';
+
+  const fallDistanceMmRaw =
+    typeof inputs.fall_distance_mm === 'number' ? inputs.fall_distance_mm : Number.parseFloat(String(inputs.fall_distance_mm ?? ''));
+  const fallDistanceMm =
+    structureType === 'box_perimeter' ? (Number.isFinite(fallDistanceMmRaw) && fallDistanceMmRaw > 0 ? fallDistanceMmRaw : 0) : null;
+
+  const overhangRules = (config?.rules as any)?.geometry?.overhang as any;
+  const overhangDefaultM = Number(overhangRules?.default_amount_m ?? 0.2);
+  const overhangMinM = Number(overhangRules?.min_amount_m ?? 0);
+  const overhangMaxM = Number(overhangRules?.max_amount_m ?? 1.5);
+
+  const overhangEnabledRaw = inputs.overhang_enabled === true;
+  const invertedEnabledRaw = inputs.inverted_enabled === true;
+  const overhangEnabled = overhangEnabledRaw && !isBoxPerimeter;
+  const invertedEnabled = invertedEnabledRaw && roofType === 'pitched';
+
+  if (overhangEnabledRaw && isBoxPerimeter) {
+    warnings.push('INVALID: Overhang cannot be used with Box Perimeter.');
+  }
+  if (invertedEnabledRaw && roofType !== 'pitched') {
+    warnings.push('INVALID: Inverted option is only available for Pitched roofs.');
+  }
+
+  const ground: GroundCondition = inputs.ground ?? DEFAULT_GROUND;
+
+  const hipCornerLengthBM = toNonNegativeNumber(inputs.hip_corner?.length_b_m, 0);
+  const hipCornerProjectionBM = toNonNegativeNumber(inputs.hip_corner?.projection_b_m, 0);
+
+  if (roofType === 'hip_corner') {
+    if (hipCornerLengthBM <= 0) warnings.push('Hip corner: wing B length is required and currently set to 0.');
+    if (hipCornerProjectionBM <= 0) warnings.push('Hip corner: wing B projection is required and currently set to 0.');
+    warnings.push('Hip corner is approximated as two pitched wings meeting at a corner (v1).');
+  }
+
+  const effectiveSpanM =
+    roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
+  const overrides = (inputs as any).overrides ?? {};
+  const { profile: rafterProfileAuto, warnings: profileWarnings } =
+    structureType === 'box_perimeter' ? { profile: '80x50' as const, warnings: [] } : pickRafterProfile(effectiveSpanM);
+  warnings.push(...profileWarnings);
+
+  const overrideRafterProfile = normalizeOverrideProfile(overrides.rafter_profile);
+  const rafterProfile = overrideRafterProfile ?? rafterProfileAuto;
+
+  const overrideLedgerProfile = normalizeOverrideProfile(overrides.ledger_profile);
+  const overridePostProfile = normalizeOverrideProfile(overrides.post_profile);
+  const overrideFrontBeamProfile = normalizeOverrideProfile(overrides.front_beam_profile);
+  const overrideRidgeBeamProfile = normalizeOverrideProfile(overrides.ridge_beam_profile);
+  const overrideBoxPerimeterBeamProfile = normalizeOverrideProfile(overrides.box_perimeter_beam_profile);
+  const overrideOverhangSupportBeamProfile = normalizeOverrideProfile(overrides.overhang_support_beam_profile);
+
+  const overhangAmountRaw = toNonNegativeNumber((inputs as any).overhang_amount_m, NaN);
+  let overhangAmountM = overhangEnabled
+    ? Number.isFinite(overhangAmountRaw)
+      ? overhangAmountRaw
+      : overhangDefaultM
+    : 0;
+  overhangAmountM = clampNumber(overhangAmountM, overhangMinM, overhangMaxM);
+  if (
+    overhangEnabled &&
+    Number.isFinite(overhangAmountRaw) &&
+    (overhangAmountRaw < overhangMinM - 1e-6 || overhangAmountRaw > overhangMaxM + 1e-6)
+  ) {
+    warnings.push(
+      `Overhang amount clamped to ${roundNumber(overhangAmountM, 2)}m (allowed ${roundNumber(overhangMinM, 2)}–${roundNumber(
+        overhangMaxM,
+        2,
+      )}m).`,
+    );
+  }
+
+  const overhangSupportBeamProfile: OverhangSupportBeamProfile | string | null = overhangEnabled
+    ? overrideOverhangSupportBeamProfile ??
+      (inputs.overhang_support_beam_profile === '200x50' ? '200x50' : inputs.overhang_support_beam_profile === '150x50' ? '150x50' : '150x50')
+    : null;
+
+  const lengthMmA = Math.round(lengthM * 1000);
+  const lengthMmB = Math.round(hipCornerLengthBM * 1000);
+
+  const rafterCountA = Math.ceil(lengthMmA / RAFTER_SPACING_MM_MAX) + 1;
+  const rafterCountB = roofType === 'hip_corner' && hipCornerLengthBM > 0 ? Math.ceil(lengthMmB / RAFTER_SPACING_MM_MAX) + 1 : 0;
+  const bayCountA = Math.max(0, rafterCountA - 1);
+  const bayCountB = roofType === 'hip_corner' ? Math.max(0, rafterCountB - 1) : 0;
+
+  const bracketCountA = inputs.house_connection_type === 'soffit' ? Math.ceil(lengthMmA / BRACKET_SPACING_MM_MAX) + 1 : 0;
+  const bracketCountB =
+    roofType === 'hip_corner' && inputs.house_connection_type === 'soffit'
+      ? hipCornerLengthBM > 0
+        ? Math.ceil(lengthMmB / BRACKET_SPACING_MM_MAX) + 1
+        : 0
+      : 0;
+
+  const stringerFixingCountA =
+    inputs.house_connection_type === 'fascia' || inputs.house_connection_type === 'facade'
+      ? Math.ceil(lengthMmA / STRINGER_FIXING_SPACING_MM) + 1
+      : 0;
+  const stringerFixingCountB =
+    roofType === 'hip_corner' && (inputs.house_connection_type === 'fascia' || inputs.house_connection_type === 'facade')
+      ? hipCornerLengthBM > 0
+        ? Math.ceil(lengthMmB / STRINGER_FIXING_SPACING_MM) + 1
+        : 0
+      : 0;
+
+  const rafterCount = roofType === 'hip_corner' ? rafterCountA + rafterCountB : rafterCountA;
+  const bayCount = roofType === 'hip_corner' ? bayCountA + bayCountB : bayCountA;
+  const bracketCount = roofType === 'hip_corner' ? bracketCountA + bracketCountB : bracketCountA;
+  const stringerFixingCount =
+    roofType === 'hip_corner' ? stringerFixingCountA + stringerFixingCountB : stringerFixingCountA;
+
+  const projectionWithOverhangM = projectionM + (overhangEnabled ? overhangAmountM : 0);
+  const areaM2 =
+    roofType === 'hip_corner'
+      ? lengthM * projectionWithOverhangM + hipCornerLengthBM * hipCornerProjectionBM
+      : lengthM * projectionWithOverhangM;
+
+  const pitchDefaults = (config?.rules as any)?.geometry?.roof_pitch_defaults_deg as Record<string, number> | undefined;
+  const boxRules = (config?.rules as any)?.geometry?.box_perimeter as any;
+  const boxBeamDepthMm = Number(boxRules?.box_beam_depth_mm ?? 300);
+  const boxRafterDepthMm = Number(boxRules?.box_rafter_depth_mm ?? 80);
+  const boxRoofAllowAboveRafterMm = Number(boxRules?.box_roof_allow_above_rafter_mm ?? 20);
+  const boxMaxFallMm = Number(
+    Number.isFinite(boxRules?.box_max_fall_mm)
+      ? boxRules?.box_max_fall_mm
+      : boxBeamDepthMm - (boxRafterDepthMm + boxRoofAllowAboveRafterMm),
+  );
+  const boxMinPitchDeg = Number(boxRules?.box_min_pitch_deg ?? 3);
+  const pitchedSetbacksMm = boxRules?.pitched_setbacks ?? { house_setback_mm: 150, outer_setback_mm: 50 };
+  const gableSetbacksMm = boxRules?.gable_setbacks ?? { eave_setback_mm: 50, ridge_allowance_mm: 0 };
+  const defaultPitchRaw = Number(
+    pitchDefaults?.[roofType] ??
+      (roofType === 'low_gable' ? 10 : roofType === 'gable' || roofType === 'hip' || roofType === 'hip_corner' ? 25 : 5),
+  );
+  const defaultPitch = Number.isFinite(defaultPitchRaw) ? defaultPitchRaw : 5;
+  const isBoxGable = isBoxPerimeter && (roofType === 'gable' || roofType === 'low_gable');
+  const isBoxPitched = isBoxPerimeter && roofType === 'pitched';
+
+  let boxEffectiveRunM: number | undefined = undefined;
+  let boxPitchDegUsed: number | undefined = undefined;
+  let boxRiseMm: number | undefined = undefined;
+  let boxMaxSupportedRunMAtMinPitch: number | undefined = undefined;
+  let boxMaxSupportedSpanM: number | undefined = undefined;
+
+  if (isBoxPerimeter) {
+    const projectionMm = projectionM * 1000;
+    const houseSetbackMm = Number(pitchedSetbacksMm?.house_setback_mm ?? 150);
+    const outerSetbackMm = Number(pitchedSetbacksMm?.outer_setback_mm ?? 50);
+    const eaveSetbackMm = Number(gableSetbacksMm?.eave_setback_mm ?? 50);
+    const ridgeAllowanceMm = Number(gableSetbacksMm?.ridge_allowance_mm ?? 0);
+
+    const runMm = isBoxGable
+      ? projectionMm / 2 - (eaveSetbackMm + ridgeAllowanceMm)
+      : projectionMm - (houseSetbackMm + outerSetbackMm);
+    const safeRunMm = Math.max(0, runMm);
+    boxEffectiveRunM = safeRunMm / 1000;
+
+    const minPitchRad = degToRad(Math.max(0.01, boxMinPitchDeg));
+    const maxSupportedRunMmAtMinPitch = boxMaxFallMm / Math.tan(minPitchRad);
+    boxMaxSupportedRunMAtMinPitch = maxSupportedRunMmAtMinPitch / 1000;
+    const maxSupportedSpanMm = isBoxGable
+      ? 2 * maxSupportedRunMmAtMinPitch + 2 * (eaveSetbackMm + ridgeAllowanceMm)
+      : maxSupportedRunMmAtMinPitch + (houseSetbackMm + outerSetbackMm);
+    boxMaxSupportedSpanM = maxSupportedSpanMm / 1000;
+
+    const computedPitchRad = safeRunMm > 0 ? Math.atan(boxMaxFallMm / safeRunMm) : degToRad(85);
+    const computedPitchDeg = (computedPitchRad * 180) / Math.PI;
+    const clampedPitchDeg = clamp(computedPitchDeg, boxMinPitchDeg, 85);
+
+    boxPitchDegUsed = clampedPitchDeg;
+    boxRiseMm = Math.tan(degToRad(clampedPitchDeg)) * safeRunMm;
+
+    if (computedPitchDeg < boxMinPitchDeg - 1e-6) {
+      warnings.push(
+        `INVALID: Box perimeter span too large. Even at max fall ${roundNumber(boxMaxFallMm)}mm, pitch would be ${roundNumber(
+          computedPitchDeg,
+        )}°, below minimum ${roundNumber(boxMinPitchDeg)}°. Reduce span or change style. (run ${roundNumber(
+          safeRunMm,
+        )}mm, max_supported_span ${roundNumber(maxSupportedSpanMm)}mm)`,
+      );
+    }
+
+    const riseAtMinPitchMm = Math.tan(minPitchRad) * safeRunMm;
+    if (riseAtMinPitchMm > boxMaxFallMm + 1e-6) {
+      warnings.push(
+        `INVALID: Box perimeter fall exceeds available depth. Required fall ${roundNumber(riseAtMinPitchMm)}mm exceeds max ${roundNumber(
+          boxMaxFallMm,
+        )}mm.`,
+      );
+    }
+  }
+
+  const roofPitchDegUsed = isBoxPerimeter ? boxPitchDegUsed ?? defaultPitch : roofPitchDeg ?? defaultPitch;
+
+  const effectiveCos = Math.max(0.02, cosDeg(roofPitchDegUsed));
+  if (effectiveCos <= 0.021) warnings.push('Roof pitch is very steep; clamping trig calculation for safety.');
+
+  // Geometry semantics:
+  // - `roofSpanM` (aka legacy `projection_m`) is the total eave-to-eave span.
+  // - For gable/low_gable/hip, each roof plane span is half that (`roofSpanM / 2`).
+  // - `cutRafterLengthM` is based on the effective run (house + gutter setbacks removed).
+  // - `joinerPieceLengthM` and `acrylicRequiredDownslopeM` add the 20mm joiner allowance only.
+  const rafterRunM =
+    roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
+  const roofSurfaceAreaM2 = areaM2 / effectiveCos;
+
+  const boxHouseSetbackM = Number(pitchedSetbacksMm?.house_setback_mm ?? 150) / 1000;
+  const boxOuterSetbackM = Number(pitchedSetbacksMm?.outer_setback_mm ?? 50) / 1000;
+  const boxEaveSetbackM = Number(gableSetbacksMm?.eave_setback_mm ?? 50) / 1000;
+  const boxRidgeAllowanceM = Number(gableSetbacksMm?.ridge_allowance_mm ?? 0) / 1000;
+
+  const baseEffectiveRunM = isBoxPerimeter
+    ? Math.max(0, rafterRunM - (isBoxGable ? boxEaveSetbackM + boxRidgeAllowanceM : boxHouseSetbackM + boxOuterSetbackM))
+    : Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
+  const effectiveRunM = baseEffectiveRunM + (overhangEnabled ? overhangAmountM : 0);
+  const rafterLengthM = (overhangEnabled ? effectiveRunM : rafterRunM) / effectiveCos;
+  const rafterLengthMAssumed = rafterLengthM;
+  const cutRafterLengthM = effectiveRunM / effectiveCos;
+  const angleCutAllowanceM = rafterDepthM(rafterProfile) * tanDeg(roofPitchDegUsed);
+  const joinerPieceLengthM = cutRafterLengthM + JOINER_EXTRA_M;
+  const acrylicRequiredDownslopeM = joinerPieceLengthM;
+  const requiredDownslopeM = acrylicRequiredDownslopeM;
+
+  const slopeDirection: SlopeDirection = invertedEnabled ? 'toward_house' : 'away_from_house';
+  const ledgerProfileUsed: string = overrideLedgerProfile ?? rafterProfile;
+  const ledgerUndersideHeightM = postCutHeightM;
+  const fallM = !isBoxPerimeter && roofType === 'pitched' ? Math.max(0, baseEffectiveRunM) * tanDeg(roofPitchDegUsed) : 0;
+  const postCutHeightHouseSideM = ledgerUndersideHeightM;
+  const postCutHeightOuterSideRawM =
+    Number.isFinite(fallM) && Number.isFinite(ledgerUndersideHeightM)
+      ? ledgerUndersideHeightM + (slopeDirection === 'toward_house' ? fallM : -fallM)
+      : ledgerUndersideHeightM;
+  const postCutHeightOuterSideM = Math.max(0, postCutHeightOuterSideRawM);
+
+  const ridgeLengthM =
+    roofType === 'low_gable' || roofType === 'gable'
+      ? lengthM
+      : roofType === 'hip'
+        ? Math.max(0, lengthM - projectionM)
+        : 0;
+
+  const hipRafterCount = roofType === 'hip' ? 4 : 0;
+
+  const roofPlaneCount = roofType === 'pitched' ? 1 : 2;
+
+  const roofPlanes =
+    roofType === 'pitched'
+      ? [
+          {
+            id: 'main',
+            label: 'Main',
+            bay_count: bayCountA,
+            rafter_length_m: projectionM / effectiveCos,
+            roof_area_m2: (lengthM * projectionM) / effectiveCos,
+          },
+        ]
+      : roofType === 'hip_corner'
+        ? [
+            {
+              id: 'A',
+              label: 'Leg A',
+              bay_count: bayCountA,
+              rafter_length_m: projectionM / effectiveCos,
+              roof_area_m2: (lengthM * projectionM) / effectiveCos,
+            },
+            {
+              id: 'B',
+              label: 'Leg B',
+              bay_count: bayCountB,
+              rafter_length_m: Math.max(0, hipCornerProjectionBM) / effectiveCos,
+              roof_area_m2: (hipCornerLengthBM * hipCornerProjectionBM) / effectiveCos,
+            },
+          ]
+        : [
+            {
+              id: 'A',
+              label: 'Side A',
+              bay_count: bayCountA,
+              rafter_length_m: (projectionM / 2) / effectiveCos,
+              roof_area_m2: ((lengthM * projectionM) / 2) / effectiveCos,
+            },
+            {
+              id: 'B',
+              label: 'Side B',
+              bay_count: bayCountA,
+              rafter_length_m: (projectionM / 2) / effectiveCos,
+              roof_area_m2: ((lengthM * projectionM) / 2) / effectiveCos,
+            },
+          ];
+
+  let mixedRoofNormalized: MixedRoofNormalizedV1 | null = null;
+  let acrylicAreaM2 = 0;
+  let timberAreaM2 = 0;
+  let acrylicBaysTotal: number | undefined = undefined;
+  let acrylicPlaneCountUsed = 0;
+  if (inputs.roof_material === 'acrylic') {
+    acrylicAreaM2 = roofSurfaceAreaM2;
+    timberAreaM2 = 0;
+    acrylicBaysTotal = bayCount;
+    warnings.push('Acrylic joiner system assumed (no through-fixing).');
+  } else if (inputs.roof_material === 'timber') {
+    acrylicAreaM2 = 0;
+    timberAreaM2 = roofSurfaceAreaM2;
+    acrylicBaysTotal = 0;
+  } else if (inputs.roof_material === 'mixed') {
+    const mixedLengthM = roofType === 'hip_corner' ? lengthM + hipCornerLengthBM : lengthM;
+    const mixed = normalizeMixedRoof(inputs, { lengthM: mixedLengthM, roofSurfaceAreaM2, roofPlanes, config });
+    mixedRoofNormalized = mixed.normalized;
+    acrylicAreaM2 = mixed.acrylicAreaM2;
+    timberAreaM2 = mixed.timberAreaM2;
+    if (typeof mixed.acrylicBaysTotal === 'number') acrylicBaysTotal = mixed.acrylicBaysTotal;
+    acrylicPlaneCountUsed = mixed.acrylicPlaneCountUsed;
+    warnings.push(...mixed.warnings);
+    if (roofType === 'hip_corner' && mixed.normalized.mode === 'ridge_skylight')
+      warnings.push('Hip corner mixed roof assumes ridge length = length A + length B.');
+    if (acrylicAreaM2 > 0) warnings.push('Acrylic joiner system assumed (no through-fixing).');
+  }
+
+  const acrylicSheetAreaM2 = DEFAULT_ACRYLIC_SHEET_LENGTH_M * DEFAULT_ACRYLIC_SHEET_WIDTH_M;
+  const acrylicSheetCount =
+    inputs.roof_material === 'acrylic' || inputs.roof_material === 'mixed'
+      ? Math.max(0, Math.ceil(acrylicAreaM2 / acrylicSheetAreaM2))
+      : 0;
+
+  const coverageMultiplier = roofType === 'pitched' || roofType === 'hip_corner' ? 1 : roofPlaneCount;
+  const baseLinearLength = roofType === 'hip_corner' ? lengthM + hipCornerLengthBM : lengthM;
+  const flashingLengthM = baseLinearLength * coverageMultiplier;
+  const foamLengthM = baseLinearLength * coverageMultiplier;
+
+  const travel = toNonNegativeNumber(inputs.travel_ex_gst, 0);
+  const extras = toNonNegativeNumber(inputs.extras_allowance_ex_gst, 0);
+
+  const quoteDiscountPct = clampNumber(toNonNegativeNumber(inputs.quote_discount_pct, 0), 0, 80);
+
+  const structureDefaults = (config?.rules as any)?.defaults?.structure_defaults ?? {};
+  const pitchedDefaults = structureDefaults?.pitched ?? {};
+  const boxDefaults = structureDefaults?.box_perimeter ?? {};
+
+  const defaultFrontBeamProfile = String(pitchedDefaults?.front_beam_profile ?? 'SP Gutter');
+  const defaultBoxBeamProfile = String(boxDefaults?.perimeter_beam_profile_default ?? '300x50');
+  const defaultPostProfile = String(pitchedDefaults?.posts_profile ?? '100x100');
+
+  const frontBeamProfileUsed = structureType === 'pitched' ? overrideFrontBeamProfile ?? defaultFrontBeamProfile : null;
+  const integratedGutterBeam = structureType === 'pitched' && isGutterBeamProfile(frontBeamProfileUsed);
+  const separateGutterEnabledRaw = inputs.separate_gutter_enabled === true;
+
+  const invertedHouseGutter = invertedEnabled ? inputs.inverted_house_gutter !== false : false;
+  let gutterMode: GutterMode = 'default';
+  if (invertedEnabled && invertedHouseGutter) gutterMode = 'none';
+  else if (invertedEnabled && !invertedHouseGutter) gutterMode = 'sp_gutter_house_edge';
+  else if (overhangEnabled) gutterMode = 'overhang_gutter_front_edge';
+  else if (!integratedGutterBeam) gutterMode = 'none';
+
+  const separateGutterEnabled =
+    separateGutterEnabledRaw &&
+    !integratedGutterBeam &&
+    !overhangEnabled &&
+    !invertedEnabled &&
+    !isBoxPerimeter;
+
+  if (separateGutterEnabledRaw && !separateGutterEnabled) {
+    warnings.push('Separate gutter ignored because gutters are integrated, inverted, overhang, or box perimeter.');
+  }
+
+  let gutterAssemblyMode: GutterAssemblyMode = 'none';
+  if (!invertedEnabled && !overhangEnabled && !isBoxPerimeter) {
+    if (integratedGutterBeam) gutterAssemblyMode = 'integrated';
+    else if (separateGutterEnabled) gutterAssemblyMode = 'separate';
+  }
+
+  const boxPerimeterBeamProfileUsed = isBoxPerimeter ? overrideBoxPerimeterBeamProfile ?? defaultBoxBeamProfile : null;
+  const postProfileUsed = overridePostProfile ?? defaultPostProfile;
+  const ridgeBeamProfileUsed = isBoxGable ? overrideRidgeBeamProfile ?? '100x50' : overrideRidgeBeamProfile ?? null;
+
+  const gutterLengthRaw = toNonNegativeNumber(inputs.gutter_length_m, NaN);
+
+  const hasHouseConnection = inputs.house_connection_type !== 'none';
+  const defaultBoxGutterHouseEdge: BoxGutterEdge = hasHouseConnection ? 'house' : 'none';
+  const defaultBoxGutterFarEdge: BoxGutterEdge = hasHouseConnection ? 'our' : 'none';
+
+  const boxGutterHouseEdge: BoxGutterEdge =
+    isBoxPerimeter && inputs.box_gutter_house_edge
+      ? inputs.box_gutter_house_edge
+      : isBoxPerimeter
+        ? defaultBoxGutterHouseEdge
+        : 'none';
+  const boxGutterFarEdge: BoxGutterEdge =
+    isBoxPerimeter && inputs.box_gutter_far_edge
+      ? inputs.box_gutter_far_edge
+      : isBoxPerimeter
+        ? defaultBoxGutterFarEdge
+        : 'none';
+
+  const houseGutterLengthM = isBoxPerimeter
+    ? baseLinearLength * (boxGutterHouseEdge === 'house' ? 1 : 0) + baseLinearLength * (boxGutterFarEdge === 'house' ? 1 : 0)
+    : 0;
+  const ourGutterLengthM = isBoxPerimeter
+    ? baseLinearLength * (boxGutterHouseEdge === 'our' ? 1 : 0) + baseLinearLength * (boxGutterFarEdge === 'our' ? 1 : 0)
+    : 0;
+
+  const separateGutterLengthM = separateGutterEnabled
+    ? Number.isFinite(gutterLengthRaw) && gutterLengthRaw > 0
+      ? gutterLengthRaw
+      : baseLinearLength
+    : 0;
+
+  const gutterLengthM = isBoxPerimeter
+    ? ourGutterLengthM
+    : gutterMode === 'none'
+      ? 0
+      : gutterMode === 'sp_gutter_house_edge' || gutterMode === 'overhang_gutter_front_edge'
+        ? baseLinearLength
+        : Number.isFinite(gutterLengthRaw) && gutterLengthRaw > 0
+          ? gutterLengthRaw
+          : baseLinearLength;
+
+  const downpipeCountRaw = toNonNegativeNumber(inputs.downpipe_count, NaN);
+  const downpipeCount =
+    Number.isFinite(downpipeCountRaw) && downpipeCountRaw > 0 ? Math.round(downpipeCountRaw) : ourGutterLengthM > 0 ? 1 : 0;
+
+  const timberAllowanceRaw = toNonNegativeNumber(inputs.timber_roof_allowance_ex_gst, 0);
+  if (timberAllowanceRaw > 0) warnings.push('Timber roof allowance input is deprecated and ignored (timber roof is now a takeoff).');
+
+  const powdercoatStandardRaw =
+    typeof inputs.powdercoat_standard_colour === 'string' ? inputs.powdercoat_standard_colour.trim() : '';
+  const powdercoatCustomRaw =
+    typeof inputs.powdercoat_custom_colour === 'string' ? inputs.powdercoat_custom_colour.trim() : '';
+  const powdercoatIsCustom = inputs.powdercoat_is_custom === true;
+
+  let powdercoatColourUsed: string | null = null;
+  let powdercoatMultiplier: number | null = null;
+
+  if (inputs.extrusion_colour === 'Mill') {
+    if (powdercoatIsCustom && powdercoatCustomRaw) {
+      powdercoatColourUsed = powdercoatCustomRaw;
+      powdercoatMultiplier = 1.2;
+    } else if (!powdercoatIsCustom && powdercoatStandardRaw) {
+      powdercoatColourUsed = powdercoatStandardRaw;
+      powdercoatMultiplier = 1.0;
+    } else {
+      warnings.push('INVALID: Mill finish selected but powdercoat colour not specified (raw mill not permitted).');
+      powdercoatColourUsed = powdercoatStandardRaw || 'Ironsands';
+      powdercoatMultiplier = 1.0;
+    }
+  }
+
+  const inputsNormalized: InputsNormalizedV1 = {
+    length_m: lengthM,
+    projection_m: projectionM,
+    hip_corner_length_b_m: roofType === 'hip_corner' ? hipCornerLengthBM : null,
+    hip_corner_projection_b_m: roofType === 'hip_corner' ? hipCornerProjectionBM : null,
+    post_cut_height_m: postCutHeightOuterSideM,
+    roof_pitch_deg: roofPitchDeg,
+
+    structure_type: structureType,
+    pergola_style_ui: styleNormalized.style,
+    roof_material: inputs.roof_material,
+    roof_type: roofType,
+    extrusion_colour: inputs.extrusion_colour,
+    powdercoat_standard_colour: powdercoatStandardRaw || undefined,
+    powdercoat_is_custom: powdercoatIsCustom || undefined,
+    powdercoat_custom_colour: powdercoatCustomRaw || undefined,
+    mixed_roof: mixedRoofNormalized,
+
+    post_count: postCount,
+    house_connection_type: inputs.house_connection_type,
+    post_connection_type: inputs.post_connection_type,
+    access: inputs.access,
+    height: inputs.height,
+    ground,
+
+    box_beam_profile: structureType === 'box_perimeter' ? boxPerimeterBeamProfileUsed : null,
+    fall_distance_mm: fallDistanceMm,
+    gutter_length_m: gutterLengthM,
+    downpipe_count: downpipeCount,
+    box_gutter_house_edge: boxGutterHouseEdge,
+    box_gutter_far_edge: boxGutterFarEdge,
+    overhang_enabled: overhangEnabled,
+    overhang_amount_m: overhangAmountM,
+    overhang_support_beam_profile: overhangSupportBeamProfile,
+    inverted_enabled: invertedEnabled,
+    inverted_house_gutter: invertedHouseGutter,
+    separate_gutter_enabled: separateGutterEnabled,
+
+    rafter_profile: rafterProfile,
+    gutter_type:
+      structureType === 'box_perimeter'
+        ? ourGutterLengthM > 0
+          ? 'box_gutter_100x100_cut'
+          : null
+        : gutterMode === 'sp_gutter_house_edge' || (gutterMode === 'default' && gutterAssemblyMode === 'integrated')
+          ? 'sp_gutter'
+          : null,
+    acrylic_sheet_count: acrylicSheetCount,
+    flashing_length_m: flashingLengthM,
+    foam_length_m: foamLengthM,
+
+    travel_ex_gst: travel,
+    extras_allowance_ex_gst: extras,
+    timber_roof_allowance_ex_gst: 0,
+
+    quote_discount_pct: quoteDiscountPct,
+  };
+
+  const derived: DerivedResultV1['derived'] = {
+    area_m2: areaM2,
+    length_m: lengthM,
+    projection_m: projectionM,
+    roof_length_m: lengthM,
+    roof_span_m: projectionM,
+    roof_plane_span_m: rafterRunM,
+    roof_plane_sloped_downslope_m: rafterLengthM,
+    roof_area_total_m2: areaM2,
+    overhang_enabled: overhangEnabled,
+    overhang_amount_m: overhangAmountM,
+    overhang_support_beam_profile_used: overhangSupportBeamProfile,
+    overhang_support_beam_length_m: overhangEnabled ? lengthM : 0,
+    overhang_stringer_profile_used: overhangEnabled ? rafterProfile : null,
+    overhang_stringer_length_m: overhangEnabled ? lengthM : 0,
+    overhang_end_cap_count: overhangEnabled ? 4 : 0,
+    inverted_enabled: invertedEnabled,
+    inverted_house_gutter: invertedHouseGutter,
+    slope_direction: slopeDirection,
+    gutter_mode: gutterMode,
+    gutter_assembly_mode: gutterAssemblyMode,
+    integrated_gutter_beam: integratedGutterBeam,
+    separate_gutter_enabled: separateGutterEnabled,
+    separate_gutter_length_m: separateGutterLengthM,
+    ledger_profile_used: ledgerProfileUsed,
+    front_beam_profile_used: frontBeamProfileUsed,
+    ridge_beam_profile_used: ridgeBeamProfileUsed,
+    box_perimeter_beam_profile_used: boxPerimeterBeamProfileUsed,
+    post_profile_used: postProfileUsed,
+    ledger_underside_height_m: ledgerUndersideHeightM,
+    post_cut_height_house_side_m: postCutHeightHouseSideM,
+    post_cut_height_outer_side_m: postCutHeightOuterSideM,
+    ...(isBoxPerimeter
+      ? {
+          box_max_fall_mm: boxMaxFallMm,
+          box_effective_run_m: boxEffectiveRunM ?? effectiveRunM,
+          box_pitch_deg_used: boxPitchDegUsed ?? roofPitchDegUsed,
+          box_rise_mm: boxRiseMm ?? Math.tan(degToRad(roofPitchDegUsed)) * (boxEffectiveRunM ?? effectiveRunM) * 1000,
+          box_max_supported_run_m_at_min_pitch: boxMaxSupportedRunMAtMinPitch,
+          box_max_supported_span_m: boxMaxSupportedSpanM,
+          our_gutter_length_m: ourGutterLengthM,
+          house_gutter_length_m: houseGutterLengthM,
+        }
+      : null),
+    module_count: 1,
+    ...(roofType === 'hip_corner'
+      ? {
+          hip_corner_length_b_m: hipCornerLengthBM,
+          hip_corner_projection_b_m: hipCornerProjectionBM,
+          hip_corner_rafter_count_a: rafterCountA,
+          hip_corner_rafter_count_b: rafterCountB,
+        }
+      : null),
+    rafter_count: rafterCount,
+    bracket_count: bracketCount,
+    stringer_fixing_count: stringerFixingCount,
+    bay_count: bayCount,
+    rafter_profile_auto: rafterProfileAuto,
+    rafter_length_m_assumed: rafterLengthMAssumed,
+    roof_pitch_deg_used: roofPitchDegUsed,
+    rafter_run_m: rafterRunM,
+    rafter_length_m: rafterLengthM,
+    rafter_run_m_takeoff: effectiveRunM,
+    rafter_cut_length_m: cutRafterLengthM,
+    joiner_piece_length_m: joinerPieceLengthM,
+    effective_run_m: effectiveRunM,
+    required_downslope_m: requiredDownslopeM,
+    cut_rafter_length_m: cutRafterLengthM,
+    angle_cut_allowance_m: angleCutAllowanceM,
+    acrylic_required_downslope_m: acrylicRequiredDownslopeM,
+    roof_surface_area_m2: roofSurfaceAreaM2,
+    ridge_length_m: ridgeLengthM,
+    acrylic_area_m2: acrylicAreaM2,
+    timber_area_m2: timberAreaM2,
+    roof_plane_count: roofPlaneCount,
+    total_rafter_pieces: roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount,
+    joiner_runs_total: roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount,
+    acrylic_plane_count_used: acrylicPlaneCountUsed,
+    powdercoat_colour_used: powdercoatColourUsed,
+    powdercoat_multiplier: powdercoatMultiplier,
+    gutter_length_m: gutterLengthM,
+    roof_planes: roofPlanes,
+    ...(typeof acrylicBaysTotal === 'number' ? { acrylic_bays_total: acrylicBaysTotal } : null),
+    hip_rafter_count: hipRafterCount,
+    ...(structureType === 'box_perimeter' ? { box_perimeter_m: 2 * (lengthM + projectionM), box_corner_count: 4 } : null),
+  };
+
+  return {
+    inputs_normalized: inputsNormalized,
+    derived,
+    notes_and_warnings: warnings,
+  };
+}
+
+export function applyGst(exGst: number): number {
+  if (!Number.isFinite(exGst)) return 0;
+  return exGst * (1 + GST_RATE);
+}
