@@ -5,6 +5,7 @@ import MaterialsClient from '../admin/costs/materials/MaterialsClient';
 import ActionsClient from '../admin/costs/actions/ActionsClient';
 import OverheadsClient from '../admin/costs/overheads/OverheadsClient';
 import styles from './pricebook.module.css';
+import PageHeader from '@/components/layout/PageHeader';
 
 type MaterialsItem = Parameters<typeof MaterialsClient>[0]['items'];
 type ActionsItem = Parameters<typeof ActionsClient>[0]['actions'];
@@ -67,6 +68,7 @@ export default function PricebookHub(props: PricebookHubProps) {
 
   return (
     <div className={styles.page}>
+      <PageHeader title="Pricebook" />
       <div className={styles.tabs} role="tablist" aria-label="Pricebook tabs">
         {tabs.map((tab) => (
           <button

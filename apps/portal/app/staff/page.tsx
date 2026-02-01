@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function StaffIndexPage() {
-  redirect('/staff/projects');
+  redirect('/dashboard');
 }
-

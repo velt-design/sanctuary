@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import PageHeader from '@/components/portal/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 import styles from '@/app/staff/projects/projects.module.css';
 import { importExportFile, readJsonFile, type ImportResult } from '@/lib/export/json';
 import { persistImportResultToDb } from '@/lib/export/importPersist';
@@ -181,13 +182,19 @@ export default function ImportsClient() {
     <main className={styles.page}>
       <PageHeader
         title="Imports"
-        subtitle="Upload JSON exports from the old portal and import them into Supabase."
-        primaryAction={{
-          label: 'Select JSON files',
-          onClick: () => fileInputRef.current?.click(),
-          disabled: busy,
-        }}
-        meta={<span className={styles.muted}>{busy ? 'Working…' : `${sources.length} file(s)`}</span>}
+        right={
+          <HeaderActions>
+            <span className={styles.muted}>{busy ? 'Working…' : `${sources.length} file(s)`}</span>
+            <button
+              type="button"
+              className={styles.button}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy}
+            >
+              Select JSON files
+            </button>
+          </HeaderActions>
+        }
       />
 
       <input
@@ -345,4 +352,3 @@ export default function ImportsClient() {
     </main>
   );
 }
-

@@ -3,12 +3,13 @@
 @tailwind utilities;
 
 :root {
-  --portal-header-height: 72px;
+  --portal-header-height: 48px;
+  --accentRed: #813f39;
 }
 
 @media (max-width: 768px) {
   :root {
-    --portal-header-height: 56px;
+    --portal-header-height: 48px;
   }
 }
 

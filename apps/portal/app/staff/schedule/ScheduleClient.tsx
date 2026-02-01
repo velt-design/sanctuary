@@ -18,6 +18,8 @@ import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/sched
 import { addDaysYmd, diffDaysYmd, isYmd, todayYmd } from '@/lib/scheduling/date';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
 import { SupabaseRepoError } from '@/lib/supabase/repoError';
@@ -690,6 +692,32 @@ export default function ScheduleClient() {
     estimatesError?: string;
   } | null>(null);
   const [syncing, setSyncing] = useState(false);
+
+  const setScheduleView = (next: 'board' | 'gantt' | 'site_visits') => {
+    const qs = new URLSearchParams(searchParams.toString());
+    qs.set('view', next === 'site_visits' ? 'site-visits' : next);
+    router.replace(`/staff/schedule?${qs.toString()}`);
+    setView(next);
+  };
+
+  const scheduleTabs = (
+    <>
+      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'board'} onClick={() => setScheduleView('board')}>
+        Board
+      </button>
+      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'gantt'} onClick={() => setScheduleView('gantt')}>
+        Gantt
+      </button>
+      <button
+        type="button"
+        className={styles.buttonSecondary}
+        aria-pressed={view === 'site_visits'}
+        onClick={() => setScheduleView('site_visits')}
+      >
+        Site visits
+      </button>
+    </>
+  );
 
   type ScheduleSnapshotV1 = {
     generatedAt: string;
@@ -1723,56 +1751,17 @@ export default function ScheduleClient() {
   if (view === 'site_visits') {
     return (
       <main className={styles.page}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>Schedule</h1>
-            <p className={styles.subtitle}>
-              Site visit calendar (cached-first).
-            </p>
-          </div>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              aria-pressed={false}
-              onClick={() => {
-                const qs = new URLSearchParams(searchParams.toString());
-                qs.set('view', 'board');
-                router.replace(`/staff/schedule?${qs.toString()}`);
-                setView('board');
-              }}
-            >
-              Board
-            </button>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              aria-pressed={false}
-              onClick={() => {
-                const qs = new URLSearchParams(searchParams.toString());
-                qs.set('view', 'gantt');
-                router.replace(`/staff/schedule?${qs.toString()}`);
-                setView('gantt');
-              }}
-            >
-              Gantt
-            </button>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              aria-pressed
-              onClick={() => {
-                const qs = new URLSearchParams(searchParams.toString());
-                qs.set('view', 'site-visits');
-                router.replace(`/staff/schedule?${qs.toString()}`);
-                setView('site_visits');
-              }}
-            >
-              Site visits
-            </button>
-          </div>
+        <PageHeader
+          title="Schedule"
+          right={
+            <HeaderActions>
+              {scheduleTabs}
+            </HeaderActions>
+          }
+        />
+        <div className={styles.stack}>
+          <SiteVisitsView />
         </div>
-        <SiteVisitsView />
       </main>
     );
   }
@@ -1780,13 +1769,17 @@ export default function ScheduleClient() {
   if (!hydrated) {
     return (
       <main className={styles.page}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>Schedule</h1>
-            <p className={styles.subtitle}>Loading…</p>
-          </div>
+        <PageHeader
+          title="Schedule"
+          right={
+            <HeaderActions>
+              {scheduleTabs}
+            </HeaderActions>
+          }
+        />
+        <div className={styles.stack}>
+          <p className={styles.note}>Loading schedule data from the portal database…</p>
         </div>
-        <p className={styles.note}>Loading schedule data from the portal database…</p>
       </main>
     );
   }
@@ -1808,236 +1801,198 @@ export default function ScheduleClient() {
 
     return (
       <main className={styles.page}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>Schedule</h1>
-            <p className={styles.subtitle}>Couldn’t load schedule data.</p>
-          </div>
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.buttonSecondary}
-              onClick={() => {
-                setHydrated(false);
-                setReloadNonce((n) => n + 1);
-              }}
-            >
-              Retry
-            </button>
-          </div>
+        <PageHeader
+          title="Schedule"
+          right={
+            <HeaderActions>
+              {scheduleTabs}
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                onClick={() => {
+                  setHydrated(false);
+                  setReloadNonce((n) => n + 1);
+                }}
+              >
+                Retry
+              </button>
+            </HeaderActions>
+          }
+        />
+        <div className={styles.stack}>
+          <p className={styles.note}>
+            {loadError.table ? (
+              <>
+                Failed to query <strong>public.{loadError.table}</strong>
+                {supabaseHostLabel}{' '}
+                {loadError.code ? <span className={styles.muted}>({loadError.code})</span> : null}
+                <br />
+                {loadError.message}
+                <br />
+                Run <code>{schemaFixFile}</code> in Supabase SQL editor, then refresh.
+                {schemaFixFile === 'supabase/schedule.sql' ? (
+                  <>
+                    <br />
+                    If it errors on missing <code>public.projects</code> or <code>public.estimates</code>, run <code>supabase/portal_schema.sql</code> first.
+                    <br />
+                    Then run <code>supabase/seed_schedule_crews.sql</code> to seed default crews.
+                  </>
+                ) : (
+                  <>
+                    <br />
+                    Then run <code>supabase/seed_schedule_crews.sql</code> to seed default crews (if empty).
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                {loadError.message}
+                {supabaseHost ? (
+                  <>
+                    <br />
+                    Host: <strong>{supabaseHost}</strong>
+                  </>
+                ) : null}
+                <br />
+                Run <code>supabase/portal_schema.sql</code> (or <code>supabase/schedule.sql</code>) in Supabase SQL editor, then refresh.
+              </>
+            )}
+          </p>
+          {diagnosticsPanel}
         </div>
-        <p className={styles.note}>
-          {loadError.table ? (
-            <>
-              Failed to query <strong>public.{loadError.table}</strong>
-              {supabaseHostLabel}{' '}
-              {loadError.code ? <span className={styles.muted}>({loadError.code})</span> : null}
-              <br />
-              {loadError.message}
-              <br />
-              Run <code>{schemaFixFile}</code> in Supabase SQL editor, then refresh.
-              {schemaFixFile === 'supabase/schedule.sql' ? (
-                <>
-                  <br />
-                  If it errors on missing <code>public.projects</code> or <code>public.estimates</code>, run <code>supabase/portal_schema.sql</code> first.
-                  <br />
-                  Then run <code>supabase/seed_schedule_crews.sql</code> to seed default crews.
-                </>
-              ) : (
-                <>
-                  <br />
-                  Then run <code>supabase/seed_schedule_crews.sql</code> to seed default crews (if empty).
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              {loadError.message}
-              {supabaseHost ? (
-                <>
-                  <br />
-                  Host: <strong>{supabaseHost}</strong>
-                </>
-              ) : null}
-              <br />
-              Run <code>supabase/portal_schema.sql</code> (or <code>supabase/schedule.sql</code>) in Supabase SQL editor, then refresh.
-            </>
-          )}
-        </p>
-        {diagnosticsPanel}
       </main>
     );
   }
 
   return (
     <main className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Schedule</h1>
-          <p className={styles.subtitle}>
-            Drag approved jobs onto installer lanes. Mon–Fri, {WORK_HOURS_PER_DAY}h/day.
-            {syncing ? <span className={styles.muted}> Syncing…</span> : null}
-          </p>
-        </div>
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
-            aria-pressed={view === 'board'}
-            onClick={() => {
-              const qs = new URLSearchParams(searchParams.toString());
-              qs.set('view', 'board');
-              router.replace(`/staff/schedule?${qs.toString()}`);
-              setView('board');
-            }}
-          >
-            Board
-          </button>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
-            aria-pressed={view === 'gantt'}
-            onClick={() => {
-              const qs = new URLSearchParams(searchParams.toString());
-              qs.set('view', 'gantt');
-              router.replace(`/staff/schedule?${qs.toString()}`);
-              setView('gantt');
-            }}
-          >
-            Gantt
-          </button>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
-            aria-pressed={false}
-            onClick={() => {
-              const qs = new URLSearchParams(searchParams.toString());
-              qs.set('view', 'site-visits');
-              router.replace(`/staff/schedule?${qs.toString()}`);
-              setView('site_visits');
-            }}
-          >
-            Site visits
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Schedule"
+        right={
+          <HeaderActions>
+            {syncing ? <span className={styles.muted}>Syncing…</span> : null}
+            {scheduleTabs}
+          </HeaderActions>
+        }
+      />
 
-      {schedulingIssues.length ? (
-        <section className={styles.issues} aria-label="Scheduling issues">
-          <div className={styles.issuesHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <h2 className={styles.panelTitle}>Scheduling issues</h2>
-              <span className={styles.muted}>{schedulingIssues.length}</span>
+      <div className={styles.stack}>
+        {schedulingIssues.length ? (
+          <section className={styles.issues} aria-label="Scheduling issues">
+            <div className={styles.issuesHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <h2 className={styles.panelTitle}>Scheduling issues</h2>
+                <span className={styles.muted}>{schedulingIssues.length}</span>
+              </div>
+              <div className={styles.actions}>
+                <button
+                  type="button"
+                  className={styles.buttonSecondary}
+                  disabled={cleanupBusy || !orphanedScheduleItems.length}
+                  onClick={() => void handleRemoveOrphanedScheduleItems()}
+                  title={
+                    orphanedScheduleItems.length
+                      ? `Remove ${orphanedScheduleItems.length} orphaned schedule item(s)`
+                      : 'No orphaned schedule items found'
+                  }
+                >
+                  {cleanupBusy ? 'Removing orphaned schedule items…' : orphanedScheduleItems.length ? 'Remove orphaned schedule items' : 'No orphaned items'}
+                </button>
+              </div>
             </div>
-            <div className={styles.actions}>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                disabled={cleanupBusy || !orphanedScheduleItems.length}
-                onClick={() => void handleRemoveOrphanedScheduleItems()}
-                title={
-                  orphanedScheduleItems.length
-                    ? `Remove ${orphanedScheduleItems.length} orphaned schedule item(s)`
-                    : 'No orphaned schedule items found'
-                }
-              >
-                {cleanupBusy ? 'Removing orphaned schedule items…' : orphanedScheduleItems.length ? 'Remove orphaned schedule items' : 'No orphaned items'}
-              </button>
-            </div>
-          </div>
-          <div className={styles.issuesBody}>
-            <ul className={styles.issueList}>
-              {schedulingIssues.slice(0, 10).map((i, idx) => (
-                <li key={`${idx}-${i.message}`} className={styles.issueItem}>
-                  <span className={styles.warnBadge}>{i.level}</span>
-                  <span>{i.message}</span>
-                </li>
-              ))}
-            </ul>
-            {schedulingIssues.length > 10 ? <p className={styles.hint}>Showing first 10 issues.</p> : null}
-          </div>
-        </section>
-      ) : null}
-
-      {diagnosticsPanel}
-
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={(e) => setActiveDragId(String(e.active.id))}
-        onDragOver={(e: DragOverEvent) => {
-          const nextOverId = e.over ? String(e.over.id) : null;
-          setOverId(nextOverId);
-          if (!nextOverId) {
-            setOverLaneId(null);
-            return;
-          }
-          if (nextOverId.startsWith('lane:')) {
-            setOverLaneId(nextOverId.slice('lane:'.length));
-            return;
-          }
-          const overItem = scheduleItems.find((i) => i.id === nextOverId);
-          setOverLaneId(overItem?.installerId ?? null);
-        }}
-        onDragMove={handleDragMove}
-        onDragCancel={() => {
-          setActiveDragId(null);
-          setOverId(null);
-          setOverLaneId(null);
-        }}
-        onDragEnd={handleDragEnd}
-      >
-        <div className={styles.panels}>
-          <aside className={styles.leftPanel} aria-label="Unscheduled jobs">
-            <div className={styles.panelHeader}>
-              <h2 className={styles.panelTitle}>Unscheduled</h2>
-              <span className={styles.muted}>{unscheduledJobs.length}</span>
-            </div>
-
-            <div className={styles.filters}>
-              <input
-                className={styles.input}
-                placeholder="Search projects…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <select className={styles.input} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                <option value="all">All statuses</option>
-                {PROJECT_STATUS_ORDER.map((status) => (
-                  <option key={status} value={status}>
-                    {projectStatusLabel(status)}
-                  </option>
+            <div className={styles.issuesBody}>
+              <ul className={styles.issueList}>
+                {schedulingIssues.slice(0, 10).map((i, idx) => (
+                  <li key={`${idx}-${i.message}`} className={styles.issueItem}>
+                    <span className={styles.warnBadge}>{i.level}</span>
+                    <span>{i.message}</span>
+                  </li>
                 ))}
-              </select>
-              <p className={styles.hint}>Only projects with an approved estimate appear here.</p>
+              </ul>
+              {schedulingIssues.length > 10 ? <p className={styles.hint}>Showing first 10 issues.</p> : null}
             </div>
+          </section>
+        ) : null}
 
-            <UnscheduledDropZone onMount={(node) => (unscheduledBodyRef.current = node)}>
-              {unscheduledJobs.length ? (
-                <div className={styles.cardList}>
-                  {unscheduledJobs.map((job) => (
-                    <UnscheduledJobCard key={job.id} job={job} />
+        {diagnosticsPanel}
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={(e) => setActiveDragId(String(e.active.id))}
+          onDragOver={(e: DragOverEvent) => {
+            const nextOverId = e.over ? String(e.over.id) : null;
+            setOverId(nextOverId);
+            if (!nextOverId) {
+              setOverLaneId(null);
+              return;
+            }
+            if (nextOverId.startsWith('lane:')) {
+              setOverLaneId(nextOverId.slice('lane:'.length));
+              return;
+            }
+            const overItem = scheduleItems.find((i) => i.id === nextOverId);
+            setOverLaneId(overItem?.installerId ?? null);
+          }}
+          onDragMove={handleDragMove}
+          onDragCancel={() => {
+            setActiveDragId(null);
+            setOverId(null);
+            setOverLaneId(null);
+          }}
+          onDragEnd={handleDragEnd}
+        >
+          <div className={styles.panels}>
+            <aside className={styles.leftPanel} aria-label="Unscheduled jobs">
+              <div className={styles.panelHeader}>
+                <h2 className={styles.panelTitle}>Unscheduled</h2>
+                <span className={styles.muted}>{unscheduledJobs.length}</span>
+              </div>
+
+              <div className={styles.filters}>
+                <input
+                  className={styles.input}
+                  placeholder="Search projects…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                />
+                <select className={styles.input} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                  <option value="all">All statuses</option>
+                  {PROJECT_STATUS_ORDER.map((status) => (
+                    <option key={status} value={status}>
+                      {projectStatusLabel(status)}
+                    </option>
                   ))}
-                </div>
-              ) : (
-                <div>
-                  {unscheduledJobsAll.length === 0 ? (
-                    <>
-                      <p className={styles.note}>No unscheduled approved projects.</p>
-                      <p className={styles.hint}>Approve an estimate to make it schedulable.</p>
-                    </>
-                  ) : (
-                    <p className={styles.note}>No projects match this filter.</p>
-                  )}
-                </div>
-              )}
-            </UnscheduledDropZone>
+                </select>
+                <p className={styles.hint}>Only projects with an approved estimate appear here.</p>
+              </div>
 
-            {process.env.NODE_ENV === 'development' ? (
-              <details className={styles.debugDetails}>
-                <summary className={styles.debugSummary}>Debug: schedulable jobs</summary>
-                <div className={styles.debugBody}>
-                  <div className={styles.debugRow}>
+              <UnscheduledDropZone onMount={(node) => (unscheduledBodyRef.current = node)}>
+                {unscheduledJobs.length ? (
+                  <div className={styles.cardList}>
+                    {unscheduledJobs.map((job) => (
+                      <UnscheduledJobCard key={job.id} job={job} />
+                    ))}
+                  </div>
+                ) : (
+                  <div>
+                    {unscheduledJobsAll.length === 0 ? (
+                      <>
+                        <p className={styles.note}>No unscheduled approved projects.</p>
+                        <p className={styles.hint}>Approve an estimate to make it schedulable.</p>
+                      </>
+                    ) : (
+                      <p className={styles.note}>No projects match this filter.</p>
+                    )}
+                  </div>
+                )}
+              </UnscheduledDropZone>
+
+              {process.env.NODE_ENV === 'development' ? (
+                <details className={styles.debugDetails}>
+                  <summary className={styles.debugSummary}>Debug: schedulable jobs</summary>
+                  <div className={styles.debugBody}>
+                    <div className={styles.debugRow}>
                     <span className={styles.muted}>Projects</span>
                     <span>{schedulable.debug.totalProjects}</span>
                   </div>
@@ -2472,6 +2427,7 @@ export default function ScheduleClient() {
           </div>
         </Modal>
       ) : null}
+      </div>
     </main>
   );
 }

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import NextAuthSessionProvider from '@/components/auth/NextAuthSessionProvider';
 import { ToastProvider } from '@/components/ui/toast/ToastProvider';
-import PortalHeaderWithSession from '@/components/layout/PortalHeaderWithSession';
+import PortalShell from '@/components/layout/PortalShell';
 import { Suspense } from 'react';
 
 export const metadata: Metadata = {
@@ -17,9 +17,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <NextAuthSessionProvider>
           <ToastProvider>
             <Suspense fallback={null}>
-              <PortalHeaderWithSession />
+              <PortalShell>{children}</PortalShell>
             </Suspense>
-            {children}
           </ToastProvider>
         </NextAuthSessionProvider>
       </body>

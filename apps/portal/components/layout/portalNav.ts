@@ -7,6 +7,7 @@ export type PortalNavItem = {
 };
 
 export const PORTAL_NAV_ITEMS: readonly PortalNavItem[] = [
+  { label: 'Dashboard', href: '/dashboard' },
   { label: 'Projects', href: '/staff/projects' },
   { label: 'Contacts', href: '/staff/contacts' },
   { label: 'Schedule', href: '/staff/schedule' },

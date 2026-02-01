@@ -25,11 +25,19 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  // Clean: /imports -> /admin/imports
+  if (path === '/imports' || path.startsWith('/imports/')) {
+    const stripped = path.replace(/^\/imports/, '');
+    url.pathname = stripped ? `/admin/imports${stripped}` : '/admin/imports';
+    return NextResponse.rewrite(url);
+  }
+
   // Keep these routes as-is
   if (
     path === '/staff' || path.startsWith('/staff/') ||
     path === '/admin' || path.startsWith('/admin/') ||
     path === '/pricebook' || path.startsWith('/pricebook/') ||
+    path === '/dashboard' || path.startsWith('/dashboard/') ||
     path === '/login' || path.startsWith('/login/')
   ) {
     return NextResponse.next();
@@ -37,8 +45,8 @@ export function middleware(req: NextRequest) {
 
   // Clean root -> staff projects
   if (path === '/') {
-    url.pathname = '/staff/projects';
-    return NextResponse.rewrite(url);
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url, 308);
   }
 
   // Clean paths -> /staff/*

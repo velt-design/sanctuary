@@ -23,7 +23,9 @@ import { downloadJson, importExportFile, makeProjectExportFile, readJsonFile } f
 import { persistImportResultToDb } from '@/lib/export/importPersist';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import PipelineStepper from './PipelineStepper';
-import PageHeader from '@/components/portal/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
+import MoreMenu from '@/components/portal/MoreMenu';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { NEXT_ACTION_TYPE_ORDER, nextActionTypeLabel, PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import Modal from '@/components/ui/modal/Modal';
@@ -247,7 +249,16 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
   if (!project) {
     return (
       <main className={styles.page}>
-        <PageHeader title="Project" subtitle="Not found." back={{ label: 'Projects', href: '/staff/projects' }} />
+        <PageHeader
+          title="Project"
+          right={
+            <HeaderActions>
+              <Link className={styles.buttonSecondary} href="/staff/projects">
+                Projects
+              </Link>
+            </HeaderActions>
+          }
+        />
         <p className={styles.note}>This project doesn’t exist in the portal database.</p>
       </main>
     );
@@ -257,64 +268,66 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
     <main className={styles.page}>
       <PageHeader
         title={project.projectName ?? project.name ?? 'Project'}
-        subtitle={`Project ID: ${project.id}${
-          (project.nextActionDate ?? project.followUpDate)
-            ? ` · Next action: ${project.nextActionDate ?? project.followUpDate}${project.nextActionType ? ` (${nextActionTypeLabel(project.nextActionType as any)})` : ''}`
-            : ''
-        }`}
-        back={{ label: 'Projects', href: '/staff/projects' }}
-        meta={
-          <button
-            type="button"
-            className={styles.buttonSecondary}
-            disabled={!estimates.length || Boolean(busy)}
-            onClick={() => openCreateQuoteModal()}
-          >
-            New Quote
-          </button>
-        }
-        primaryAction={{
-          label: 'New Estimate',
-          href: `/staff/calculator?projectId=${encodeURIComponent(projectId)}`,
-        }}
-        secondaryActions={[
-          {
-            label: 'Export Project JSON',
-            onClick: async () => {
-              try {
-                const file = await makeProjectExportFile(project, estimates);
-                downloadJson(`project_${project.id}.json`, file);
-                toast.success('Project JSON exported.');
-              } catch (err) {
-                const msg = err instanceof Error ? err.message : 'Export failed';
-                toast.error(msg);
-              }
-            },
-            disabled: Boolean(busy),
-          },
-          {
-            label: 'Import JSON',
-            onClick: () => {
-              setError(null);
-              importRef.current?.click();
-            },
-            disabled: Boolean(busy),
-          },
-          ...(isAdmin
-            ? [
+        right={
+          <HeaderActions>
+            <Link className={styles.buttonSecondary} href="/staff/projects">
+              Projects
+            </Link>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              disabled={!estimates.length || Boolean(busy)}
+              onClick={() => openCreateQuoteModal()}
+            >
+              New Quote
+            </button>
+            <Link className={styles.button} href={`/staff/calculator?projectId=${encodeURIComponent(projectId)}`}>
+              New Estimate
+            </Link>
+            {isAdmin ? (
+              <button
+                type="button"
+                className={styles.buttonDanger}
+                disabled={Boolean(busy)}
+                onClick={() => {
+                  setDeleteProjectText('');
+                  setDeleteProjectOpen(true);
+                }}
+              >
+                Delete project
+              </button>
+            ) : null}
+            <MoreMenu
+              items={[
                 {
-                  label: 'Delete Project',
-                  danger: true,
-                  onClick: () => {
-                    setDeleteProjectText('');
-                    setDeleteProjectOpen(true);
+                  label: 'Export Project JSON',
+                  onClick: async () => {
+                    try {
+                      const file = await makeProjectExportFile(project, estimates);
+                      downloadJson(`project_${project.id}.json`, file);
+                      toast.success('Project JSON exported.');
+                    } catch (err) {
+                      const msg = err instanceof Error ? err.message : 'Export failed';
+                      toast.error(msg);
+                    }
                   },
                   disabled: Boolean(busy),
                 },
-              ]
-            : []),
-        ]}
+                {
+                  label: 'Import JSON',
+                  onClick: () => {
+                    setError(null);
+                    importRef.current?.click();
+                  },
+                  disabled: Boolean(busy),
+                },
+              ]}
+              disabled={Boolean(busy)}
+            />
+          </HeaderActions>
+        }
       />
+      <div className="mt-1 mb-3 text-xs text-zinc-500">Project ID: {project.id}</div>
 
       <input
         ref={importRef}

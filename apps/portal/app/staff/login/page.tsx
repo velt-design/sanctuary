@@ -6,7 +6,7 @@ import LoginPage from '@/app/login/page';
 export default async function StaffLoginPage() {
   const session = await getServerSession(authOptions);
   if (session?.user) {
-    redirect('/staff/projects');
+    redirect('/dashboard');
   }
 
   return <LoginPage />;

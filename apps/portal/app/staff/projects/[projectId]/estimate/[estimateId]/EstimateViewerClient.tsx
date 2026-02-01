@@ -14,7 +14,9 @@ import EstimateWarnings from '@/components/estimates/EstimateWarnings';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import { buildJobPack } from '@/lib/outputs/jobPack';
 import OutputsPanel from '@/components/outputs/OutputsPanel';
-import PageHeader from '@/components/portal/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
+import MoreMenu from '@/components/portal/MoreMenu';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
 import type { CalculatorInputs } from '@/lib/types/calculator';
@@ -259,11 +261,6 @@ export default function EstimateViewerClient({
     })();
   }, [estimateId]);
 
-  const subtitle = useMemo(() => {
-    if (!estimate) return '';
-    return `${new Date(estimate.createdAt).toLocaleString()} · ${estimate.status}`;
-  }, [estimate]);
-
   const inputRows = useMemo(() => {
     if (!estimate) return [];
     const inputs = (estimate as any).inputs as unknown;
@@ -298,7 +295,16 @@ export default function EstimateViewerClient({
   if (!estimate) {
     return (
       <main className={styles.page}>
-        <PageHeader title="Estimate" subtitle="Not found." back={{ label: 'Project', href: `/staff/projects/${encodeURIComponent(projectId)}` }} />
+        <PageHeader
+          title="Estimate"
+          right={
+            <HeaderActions>
+              <Link className={styles.buttonSecondary} href={`/staff/projects/${encodeURIComponent(projectId)}`}>
+                Project
+              </Link>
+            </HeaderActions>
+          }
+        />
         <p className={styles.note}>This estimate doesn’t exist in the portal database.</p>
       </main>
     );
@@ -316,98 +322,108 @@ export default function EstimateViewerClient({
     <main className={styles.page}>
       <PageHeader
         title="Estimate"
-        subtitle={subtitle}
-        back={{ label: 'Project', href: `/staff/projects/${encodeURIComponent(projectId)}` }}
-        primaryAction={{
-          label: 'Duplicate to Draft',
-          href: `/staff/calculator?projectId=${encodeURIComponent(projectId)}&fromEstimateId=${encodeURIComponent(estimateId)}`,
-        }}
-        secondaryActions={[
-          {
-            label: 'Create Quote',
-            onClick: () => {
-              if (estimate.status !== 'approved') {
-                toast.info('Creating a quote from a non-approved estimate.');
-              }
-              setCreateQuoteOpen(true);
-            },
-            disabled: Boolean(busy),
-          },
-          {
-            label: 'Export Estimate JSON',
-            onClick: async () => {
-              try {
-                const file = await makeEstimateExportFile(estimate);
-                downloadJson(`estimate_${estimate.id}.json`, file);
-                toast.success('Estimate JSON exported.');
-              } catch (err) {
-                const msg = err instanceof Error ? err.message : 'Export failed';
-                toast.error(msg);
-              }
-            },
-            disabled: Boolean(busy),
-          },
-          {
-            label: 'Import JSON',
-            onClick: () => {
-              setDeleteError(null);
-              importRef.current?.click();
-            },
-            disabled: Boolean(busy),
-          },
-          {
-            label: 'Export BOM CSV',
-            onClick: () => {
-              const rows = mapBOMLinesToCsvRows(estimate.outputs.materials.lines);
-              downloadCsv(
-                `bom_${projectId}_${estimateId}.csv`,
-                rows,
-                [
-                  { key: 'item', header: 'Item' },
-                  { key: 'profile', header: 'Profile' },
-                  { key: 'unit', header: 'Unit' },
-                  { key: 'quantity', header: 'Quantity' },
-                  { key: 'cost_ex_gst', header: 'Cost ex-GST' },
-                  { key: 'notes', header: 'Notes' },
-                ],
-              );
-              toast.success('BOM CSV exported.');
-            },
-            disabled: Boolean(busy),
-          },
-          {
-            label: 'Export Install CSV',
-            onClick: () => {
-              const rows = mapInstallActionsToCsvRows(estimate.outputs.install.actions);
-              downloadCsv(
-                `install_${projectId}_${estimateId}.csv`,
-                rows,
-                [
-                  { key: 'action', header: 'Action' },
-                  { key: 'scope', header: 'Scope' },
-                  { key: 'quantity', header: 'Quantity' },
-                  { key: 'minutes', header: 'Minutes' },
-                  { key: 'cost_ex_gst', header: 'Cost ex-GST' },
-                ],
-              );
-              toast.success('Install CSV exported.');
-            },
-            disabled: Boolean(busy),
-          },
-          ...(isAdmin
-            ? [
+        right={
+          <HeaderActions>
+            <Link className={styles.buttonSecondary} href={`/staff/projects/${encodeURIComponent(projectId)}`}>
+              Project
+            </Link>
+            <Link
+              className={styles.button}
+              href={`/staff/calculator?projectId=${encodeURIComponent(projectId)}&fromEstimateId=${encodeURIComponent(estimateId)}`}
+            >
+              Duplicate to Draft
+            </Link>
+            <MoreMenu
+              items={[
                 {
-                  label: 'Delete Estimate',
-                  danger: true,
+                  label: 'Create Quote',
                   onClick: () => {
-                    setDeleteError(null);
-                    setDeleteOpen(true);
+                    if (estimate.status !== 'approved') {
+                      toast.info('Creating a quote from a non-approved estimate.');
+                    }
+                    setCreateQuoteOpen(true);
                   },
                   disabled: Boolean(busy),
                 },
-              ]
-            : []),
-        ]}
+                {
+                  label: 'Export Estimate JSON',
+                  onClick: async () => {
+                    try {
+                      const file = await makeEstimateExportFile(estimate);
+                      downloadJson(`estimate_${estimate.id}.json`, file);
+                      toast.success('Estimate JSON exported.');
+                    } catch (err) {
+                      const msg = err instanceof Error ? err.message : 'Export failed';
+                      toast.error(msg);
+                    }
+                  },
+                  disabled: Boolean(busy),
+                },
+                {
+                  label: 'Import JSON',
+                  onClick: () => {
+                    setDeleteError(null);
+                    importRef.current?.click();
+                  },
+                  disabled: Boolean(busy),
+                },
+                {
+                  label: 'Export BOM CSV',
+                  onClick: () => {
+                    const rows = mapBOMLinesToCsvRows(estimate.outputs.materials.lines);
+                    downloadCsv(
+                      `bom_${projectId}_${estimateId}.csv`,
+                      rows,
+                      [
+                        { key: 'item', header: 'Item' },
+                        { key: 'profile', header: 'Profile' },
+                        { key: 'unit', header: 'Unit' },
+                        { key: 'quantity', header: 'Quantity' },
+                        { key: 'cost_ex_gst', header: 'Cost ex-GST' },
+                        { key: 'notes', header: 'Notes' },
+                      ],
+                    );
+                    toast.success('BOM CSV exported.');
+                  },
+                  disabled: Boolean(busy),
+                },
+                {
+                  label: 'Export Install CSV',
+                  onClick: () => {
+                    const rows = mapInstallActionsToCsvRows(estimate.outputs.install.actions);
+                    downloadCsv(
+                      `install_${projectId}_${estimateId}.csv`,
+                      rows,
+                      [
+                        { key: 'action', header: 'Action' },
+                        { key: 'scope', header: 'Scope' },
+                        { key: 'quantity', header: 'Quantity' },
+                        { key: 'minutes', header: 'Minutes' },
+                        { key: 'cost_ex_gst', header: 'Cost ex-GST' },
+                      ],
+                    );
+                    toast.success('Install CSV exported.');
+                  },
+                  disabled: Boolean(busy),
+                },
+                ...(isAdmin
+                  ? [
+                      {
+                        label: 'Delete Estimate',
+                        danger: true,
+                        onClick: () => {
+                          setDeleteError(null);
+                          setDeleteOpen(true);
+                        },
+                        disabled: Boolean(busy),
+                      },
+                    ]
+                  : []),
+              ]}
+              disabled={Boolean(busy)}
+            />
+          </HeaderActions>
+        }
       />
 
       <input

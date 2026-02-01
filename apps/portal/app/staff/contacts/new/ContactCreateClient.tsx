@@ -6,6 +6,8 @@ import { useMemo, useState } from 'react';
 import { createContact } from '@/lib/repo/contactsRepo';
 import styles from '../../projects/projects.module.css';
 import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 
 type Draft = {
   displayName: string;
@@ -29,17 +31,16 @@ export default function ContactCreateClient() {
 
   return (
     <main className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>New Contact</h1>
-          <p className={styles.subtitle}>Create a primary contact.</p>
-        </div>
-        <div className={styles.actions}>
-          <Link className={styles.buttonSecondary} href="/staff/contacts">
-            Back
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="New Contact"
+        right={
+          <HeaderActions>
+            <Link className={styles.buttonSecondary} href="/staff/contacts">
+              Contacts
+            </Link>
+          </HeaderActions>
+        }
+      />
 
       <section className={styles.section} aria-label="Contact form">
         <div className={styles.sectionHeader}>

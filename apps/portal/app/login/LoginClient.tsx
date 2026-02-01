@@ -4,7 +4,7 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
-const DEFAULT_CALLBACK_URL = '/staff/calculator';
+const DEFAULT_CALLBACK_URL = '/dashboard';
 
 function getSafeCallbackUrl(raw: string | null): string {
   if (!raw) return DEFAULT_CALLBACK_URL;

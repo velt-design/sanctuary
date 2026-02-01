@@ -44,7 +44,7 @@ export default function MobileHeader({ email, role }: { email: string; role: Por
     <>
       <div className={styles.bar}>
         <Link
-          href="/staff/projects"
+          href="/dashboard"
           className={styles.brand}
           aria-label="Sanctuary Pergolas portal home"
           onClick={() => setOpen(false)}
