@@ -1,0 +1,22 @@
+:root {
+  --bg:#ECEDEE;
+  --fg:#0F0F10;
+  --muted:#666;
+  --border:#D6D7D9;
+  --darkGrey:#3A3A3A;
+  --panel:#F7F8F9;
+  --g: clamp(12px, 2.2vw, 28px);
+  --bw: clamp(1px, 0.12vw, 2.5px);
+  --navH: 68px;
+  --ctaWipe:#2B2B2B;
+  --pageWhite:#FFFFFF;
+  --barPad: 12px;
+  --barScale: 2.5;
+  --slowMult: 10;
+  --gap: 2rem;
+  --pad: 1.25rem;
+}
+
+@media (min-width: 1024px){
+  :root{ --pad: 1.5rem; }
+}

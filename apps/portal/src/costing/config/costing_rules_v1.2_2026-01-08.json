@@ -1,0 +1,183 @@
+{
+  "meta": {
+    "version": "costing_rules_v1.2_2026-01-08",
+    "currency": "NZD",
+      "notes": [
+        "Projection = full house-to-front dimension with NO overhang. House stringer, rafters, and front beam/gutter all fit within projection.",
+        "Default box-perimeter internal rafters use 100x50 unless overridden.",
+        "Default aluminium stock length = 6.0m for cut optimisation.",
+        "Acrylic roofing is held by aluminium joiners fixed to rafters; no roofing screws/washers.",
+        "Added roof_type gable + hip, mixed roof options (acrylic+timber), and ridge length rules for hip. v1 assumptions; calibrate later."
+      ],
+    "generated_at": "2026-01-08T04:35:46.116547"
+  },
+  "geometry": {
+    "inputs_expected_mm": [
+      "length_mm",
+      "projection_mm"
+    ],
+    "derived": {
+      "length_m": "length_mm / 1000",
+      "projection_m": "projection_mm / 1000",
+      "area_m2": "(length_mm/1000) * (projection_mm/1000)",
+      "rafter_count": "ceil(length_mm / 642) + 1  # max 642mm centres",
+      "bay_count": "rafter_count - 1"
+    },
+    "roof_pitch_defaults_deg": {
+      "pitched": 5,
+      "low_gable": 10,
+      "gable": 25,
+      "hip": 25
+    },
+    "hip_roof": {
+      "ridge_length_m_formula": "max(0, length_m - projection_m)  # assumes 45\u00b0 hips and ridge runs along length",
+      "hip_rafter_count": 4,
+      "hip_run_m_formula": "(projection_m / 2) * sqrt(2)  # plan run for each hip rafter to ridge end"
+    }
+  },
+  "defaults": {
+    "post_cut_height_m": 2.4,
+    "rafter_spacing_mm_max": 642,
+    "soffit_bracket_spacing_mm_max": 1200,
+    "aluminium_stock_length_m": 6.0,
+    "finish_to_colour_map": {
+      "Matte black": "Black",
+      "Black": "Black",
+      "White": "White",
+      "Mill": "Mill"
+    },
+    "structure_defaults": {
+      "pitched": {
+        "posts_profile": "100x100",
+        "house_stringer_profile": "100x50",
+        "front_beam_profile": "SP Gutter"
+      },
+      "box_perimeter": {
+        "perimeter_beam_profile_default": "300x50",
+        "internal_roof_profile_default": "100x50"
+      }
+    },
+    "default_roof_type": "pitched",
+    "default_roof_material_mode": "acrylic",
+    "default_mixed_mode": "ridge_skylight",
+    "default_ridge_skylight_strip_width_m": 0.62,
+    "default_ridge_skylight_strip_count": 1
+  },
+  "selection_rules": {
+    "pitched_rafter_profile_by_projection_m": [
+      {
+        "max_m": 2.0,
+        "profile": "100x50"
+      },
+      {
+        "max_m": 4.0,
+        "profile": "100x50"
+      },
+      {
+        "max_m": 6.0,
+        "profile": "150x50"
+      }
+    ],
+    "box_internal_roof_type_options": [
+      "pitched",
+      "low_gable"
+    ],
+    "box_internal_rafter_profile_default": "100x50",
+    "box_perimeter_beam_options": [
+      "300x50"
+    ],
+    "effective_span_m_by_roof_type": {
+      "pitched": "projection_m",
+      "low_gable": "projection_m / 2",
+      "gable": "projection_m / 2",
+      "hip": "projection_m / 2  # hip common rafters treated as half-span like gable"
+    },
+    "hip_rafter_profile_upgrade": {
+      "80x50": "100x50",
+      "100x50": "150x50",
+      "150x50": "150x50",
+      "200x50": "200x50"
+    }
+  },
+  "roofing": {
+    "acrylic": {
+      "thickness_mm": 6,
+      "formats": {
+        "sheet_2x3": {
+          "sheet_size_m": [
+            2.0,
+            3.0
+          ],
+          "source_note": "Cost currently uses Plexi sheet 3050x2030 pricebook item as the closest match until 2x3 supplier price is added."
+        },
+        "strip_620": {
+          "strip_width_m": 0.62,
+          "available_lengths_m": [
+            4.0,
+            5.0,
+            6.0
+          ],
+          "selection": "choose smallest available length >= projection_m"
+        }
+      },
+      "default_format": "strip_620",
+      "joiner_system": {
+        "joiner_profile": "Joiners",
+        "joiner_stock_length_m": 6.0,
+        "joiner_count": "rafter_count  # one joiner line per rafter",
+        "joiner_cut_length_m": "projection_m",
+        "rubbers": {
+          "top_v_rubber_item_profile": "Top V rubber",
+          "bottom_flat_rubber_item_profile": "Bottom flat rubber",
+          "multiplier_per_joiner": 2,
+          "notes": "Assumes rubbers on both sides of each joiner for both top and bottom pieces. Tune once confirmed."
+        }
+      },
+      "fasteners": {
+        "method": "joiner_system",
+        "notes": "No screws/washers through acrylic. Joiner-to-rafter fixings are counted as a placeholder in hardware_placeholders."
+      }
+    },
+    "timber": {
+      "mode": "manual_allowance",
+      "notes": "Keep timber roof costing as manual allowance for now."
+    },
+    "mixed": {
+      "supported": true,
+      "modes": [
+        "ridge_skylight",
+        "area_override"
+      ],
+      "ridge_skylight": {
+        "description": "Timber roof with one or more 620mm acrylic strips as a skylight running along the ridge (Johanna Smith example).",
+        "strip_width_m": 0.62,
+        "default_strip_count": 1,
+        "strip_length_m_formula": "length_m  # ridge runs along length",
+        "available_strip_lengths_m": [
+          4,
+          5,
+          6
+        ],
+        "acrylic_area_m2_formula": "strip_count * strip_width_m * strip_length_m",
+        "joiner_edge_metres_formula": "strip_count * 2 * strip_length_m  # edges only; not full-roof joiner grid"
+      },
+      "area_override": {
+        "description": "User provides acrylic_area_m2 directly (e.g., custom skylight).",
+        "acrylic_area_m2_input_key": "inputs.mixed_roof.acrylic_area_m2"
+      },
+      "timber_remainder": {
+        "timber_area_m2_formula": "total_roof_area_m2 - acrylic_area_m2",
+        "note": "Timber costing remains manual in v1 unless timber pricebook is added."
+      }
+    }
+  },
+  "notes": [
+    {
+      "topic": "Roof types added",
+      "details": [
+        "gable: ridge along length; rafters counted both sides (2x rafter_count); ridge_length_m = length_m",
+        "hip: ridge_length_m = max(0, length_m - projection_m) (assumes 45\u00b0 hips); add 4 hip rafters; jack trimming handled via labour multiplier for now"
+      ]
+    }
+  ]
+}

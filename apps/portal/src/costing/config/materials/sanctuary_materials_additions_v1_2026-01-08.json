@@ -1,0 +1,349 @@
+{
+  "meta": {
+    "version": "sanctuary_materials_additions_v1_2026-01-08",
+    "notes": [
+      "Placeholder file (empty): add or override pricebook items by id."
+    ]
+  },
+  "items": [
+    {
+      "id": "roofing-timber_cedar_sarking_wrc_110cover_12mm_lm",
+      "category": "roofing_timber",
+      "name": "Western Red Cedar sarking (110 cover) 12mm - per lineal metre",
+      "unit": "m",
+      "attributes": {
+        "type": "cedar_sarking",
+        "species": "Western Red Cedar",
+        "cover_mm": 110,
+        "thickness_mm": 12,
+        "unit_basis": "lineal_metre"
+      },
+      "notes": "ASSUMPTION: unit cost is placeholder until supplier confirms. Used for timber roof takeoff: lm = roof_area_m2 / 0.11 (+ waste).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 9.5,
+      "cost_inc_gst": 10.93
+    },
+    {
+      "id": "anchor.chem_m12_each",
+      "category": "fixing",
+      "name": "M12 chemical anchor (stud + nut/washer + resin allocation)",
+      "unit": "each",
+      "attributes": {
+        "type": "chemical_anchor",
+        "size": "M12"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 12.0,
+      "cost_inc_gst": 13.8
+    },
+    {
+      "id": "anchor.wedge_m12_each",
+      "category": "fixing",
+      "name": "M12 wedge anchor / dynabolt",
+      "unit": "each",
+      "attributes": {
+        "type": "wedge_anchor",
+        "size": "M12"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "fixing.coach_screw_m10_each",
+      "category": "fixing",
+      "name": "M10 coach screw (galv) for timber fixing",
+      "unit": "each",
+      "attributes": {
+        "type": "coach_screw",
+        "size": "M10"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 2.2,
+      "cost_inc_gst": 2.53
+    },
+    {
+      "id": "fixing.structural_screw_each",
+      "category": "fixing",
+      "name": "Structural screw (galv) for frame/rafter fixing",
+      "unit": "each",
+      "attributes": {
+        "type": "structural_screw"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.75,
+      "cost_inc_gst": 0.8625
+    },
+    {
+      "id": "fixing.joiner_screw_each",
+      "category": "fixing",
+      "name": "Joiner fixing screw (for acrylic joiner system)",
+      "unit": "each",
+      "attributes": {
+        "type": "joiner_screw"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.35,
+      "cost_inc_gst": 0.4025
+    },
+    {
+      "id": "hardware.deck_bracket_assembly",
+      "category": "bracket",
+      "name": "Post-to-deck bracket assembly (bracket + fixings allowance)",
+      "unit": "each",
+      "attributes": {
+        "type": "deck_bracket_assembly"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 95.0,
+      "cost_inc_gst": 109.25
+    },
+    {
+      "id": "hardware.slab_base_plate",
+      "category": "bracket",
+      "name": "Post-to-slab base plate / bracket (excluding anchors)",
+      "unit": "each",
+      "attributes": {
+        "type": "slab_base_plate"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 75.0,
+      "cost_inc_gst": 86.25
+    },
+    {
+      "id": "consumable.silicone_tube",
+      "category": "consumable",
+      "name": "Neutral cure silicone/sealant tube",
+      "unit": "each",
+      "attributes": {},
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 9.0,
+      "cost_inc_gst": 10.35
+    },
+    {
+      "id": "consumable.alcohol_wipes_pack",
+      "category": "consumable",
+      "name": "Cleaning wipes / alcohol wipes pack",
+      "unit": "each",
+      "attributes": {},
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 5.0,
+      "cost_inc_gst": 5.75
+    },
+    {
+      "id": "consumable.misc_allowance_job",
+      "category": "consumable",
+      "name": "Misc small consumables allowance (bits, blades, tape)",
+      "unit": "job",
+      "attributes": {},
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 35.0,
+      "cost_inc_gst": 40.25
+    },
+    {
+      "id": "aluminium-extrusion_box_gutter_100x100x3_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "Box gutter 100x100x3 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_box_gutter_100x100x3_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "Box gutter 100x100x3 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_box_gutter_100x100x3_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Box gutter 100x100x3 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 142.2783,
+      "cost_inc_gst": 163.62
+    },
+    {
+      "id": "bracket_mid_support_rafters",
+      "category": "bracket",
+      "name": "Mid-support rafter bracket",
+      "unit": "each",
+      "attributes": {
+        "type": "mid_support_rafter_bracket"
+      },
+      "notes": "Assumption: priced same as soffit bracket.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 22.0,
+      "cost_inc_gst": 25.3
+    },
+    {
+      "id": "end_cap_overhang_support_beam",
+      "category": "hardware",
+      "name": "End cap - overhang support beam",
+      "unit": "each",
+      "attributes": {
+        "type": "end_cap_overhang_support_beam"
+      },
+      "notes": "Placeholder SKU (confirm supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "end_cap_overhang_stringer",
+      "category": "hardware",
+      "name": "End cap - overhang stringer",
+      "unit": "each",
+      "attributes": {
+        "type": "end_cap_overhang_stringer"
+      },
+      "notes": "Placeholder SKU (confirm supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "aluminium-extrusion_overhang_gutter_100x100_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "Overhang gutter stock 100x100 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Overhang Gutter 100x100",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_overhang_gutter_100x100_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "Overhang gutter stock 100x100 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Overhang Gutter 100x100",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 154.2,
+      "cost_inc_gst": 177.33
+    },
+    {
+      "id": "aluminium-extrusion_overhang_gutter_100x100_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Overhang gutter stock 100x100 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Overhang Gutter 100x100",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "Assumption: priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "100x100 6m"
+      },
+      "cost_ex_gst": 142.2783,
+      "cost_inc_gst": 163.62
+    }
+  ]
+}

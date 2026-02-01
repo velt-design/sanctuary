@@ -1,0 +1,1828 @@
+{
+  "meta": {
+    "source_file": "Material Costs list Nov 25.xlsx",
+    "source_sheet": "Sheet1",
+    "as_of": "2025-11",
+    "currency": "NZD",
+    "prices_include_gst": false,
+    "gst_rate": 0.15,
+    "notes": [
+      "Spreadsheet states PRICES INCLUDE GST; price_ex_gst computed as price_inc_gst/1.15.",
+      "Powdercoating surcharges appear on Mill rows for extrusions/joiners/gutter.",
+      "User confirmed: calculator should use costs ex-GST internally; extrusion/joiner/gutter prices are for full lengths.",
+      "User clarified 'Sealant/adhesive can' is Dulux touch-up spray paint can.",
+      "User clarified foam should be priced per metre (white 12mm $2.30/m inc GST; black 12mm $1.73/m inc GST); removed ambiguous 'per sheet' foam item."
+    ],
+    "cost_basis": "ex_gst",
+    "conventions": {
+      "currency": "NZD",
+      "gst_rate": 0.15,
+      "extrusion_pricing": "full_length_bar",
+      "units": {
+        "bar": "Full extrusion length (e.g., 4m/5m/6m as per attributes.length_m)",
+        "metre": "Per metre",
+        "sheet": "Per sheet",
+        "each": "Per each item",
+        "job": "Per job/allowance",
+        "can": "Per aerosol can"
+      }
+    },
+    "field_mapping": {
+      "cost_ex_gst": "cost_ex_gst",
+      "cost_inc_gst": "cost_inc_gst"
+    }
+  },
+  "items": [
+    {
+      "id": "aluminium-extrusion_231f87a53a",
+      "category": "aluminium_extrusion",
+      "name": "50x50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "50x50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 8
+      },
+      "cost_inc_gst": 81.81,
+      "cost_ex_gst": 71.1391
+    },
+    {
+      "id": "aluminium-extrusion_73350756ce",
+      "category": "aluminium_extrusion",
+      "name": "50x50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "50x50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 9
+      },
+      "cost_inc_gst": 81.81,
+      "cost_ex_gst": 71.1391
+    },
+    {
+      "id": "aluminium-extrusion_b75e92b2e5",
+      "category": "aluminium_extrusion",
+      "name": "50x50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "50x50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 10
+      },
+      "cost_inc_gst": 75.49,
+      "cost_ex_gst": 65.6435
+    },
+    {
+      "id": "powdercoating_619e167427",
+      "category": "powdercoating",
+      "name": "Powdercoating for 50x50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "50x50",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 10
+      },
+      "cost_inc_gst": 20.01,
+      "cost_ex_gst": 17.4
+    },
+    {
+      "id": "aluminium-extrusion_532ece747d",
+      "category": "aluminium_extrusion",
+      "name": "80x 50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "80x 50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 12
+      },
+      "cost_inc_gst": 107.94,
+      "cost_ex_gst": 93.8609
+    },
+    {
+      "id": "aluminium-extrusion_373d314738",
+      "category": "aluminium_extrusion",
+      "name": "80x 50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "80x 50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 13
+      },
+      "cost_inc_gst": 107.94,
+      "cost_ex_gst": 93.8609
+    },
+    {
+      "id": "aluminium-extrusion_7063e24e6a",
+      "category": "aluminium_extrusion",
+      "name": "80x 50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "80x 50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 14
+      },
+      "cost_inc_gst": 100.94,
+      "cost_ex_gst": 87.7739
+    },
+    {
+      "id": "powdercoating_6e2e0226c5",
+      "category": "powdercoating",
+      "name": "Powdercoating for 80x 50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "80x 50",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 14
+      },
+      "cost_inc_gst": 22.77,
+      "cost_ex_gst": 19.8
+    },
+    {
+      "id": "aluminium-extrusion_3873dc13bc",
+      "category": "aluminium_extrusion",
+      "name": "100x50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 16
+      },
+      "cost_inc_gst": 131.61,
+      "cost_ex_gst": 114.4435
+    },
+    {
+      "id": "aluminium-extrusion_4fbd86d86c",
+      "category": "aluminium_extrusion",
+      "name": "100x50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 17
+      },
+      "cost_inc_gst": 131.61,
+      "cost_ex_gst": 114.4435
+    },
+    {
+      "id": "aluminium-extrusion_dfd3a00f84",
+      "category": "aluminium_extrusion",
+      "name": "100x50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 18
+      },
+      "cost_inc_gst": 123.61,
+      "cost_ex_gst": 107.487
+    },
+    {
+      "id": "powdercoating_10cfa0aabf",
+      "category": "powdercoating",
+      "name": "Powdercoating for 100x50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 18
+      },
+      "cost_inc_gst": 32.17,
+      "cost_ex_gst": 27.9739
+    },
+    {
+      "id": "aluminium-extrusion_e2d2f3eb5d",
+      "category": "aluminium_extrusion",
+      "name": "100x50 5m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 5.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 20
+      },
+      "cost_inc_gst": 109.66,
+      "cost_ex_gst": 95.3565
+    },
+    {
+      "id": "aluminium-extrusion_5212669d85",
+      "category": "aluminium_extrusion",
+      "name": "100x50 5m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 5.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 21
+      },
+      "cost_inc_gst": 109.66,
+      "cost_ex_gst": 95.3565
+    },
+    {
+      "id": "aluminium-extrusion_c5ecb640d7",
+      "category": "aluminium_extrusion",
+      "name": "100x50 5m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 5.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 22
+      },
+      "cost_inc_gst": 101.18,
+      "cost_ex_gst": 87.9826
+    },
+    {
+      "id": "powdercoating_1bad05db0c",
+      "category": "powdercoating",
+      "name": "Powdercoating for 100x50 5m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 5.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 22
+      },
+      "cost_inc_gst": 26.7,
+      "cost_ex_gst": 23.2174
+    },
+    {
+      "id": "aluminium-extrusion_1f0b82254f",
+      "category": "aluminium_extrusion",
+      "name": "100x50 4m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 4.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 24
+      },
+      "cost_inc_gst": 87.72,
+      "cost_ex_gst": 76.2783
+    },
+    {
+      "id": "aluminium-extrusion_96c8181d6b",
+      "category": "aluminium_extrusion",
+      "name": "100x50 4m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 4.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 25
+      },
+      "cost_inc_gst": 87.72,
+      "cost_ex_gst": 76.2783
+    },
+    {
+      "id": "aluminium-extrusion_a80e48a9f7",
+      "category": "aluminium_extrusion",
+      "name": "100x50 4m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 4.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 26
+      },
+      "cost_inc_gst": 79.72,
+      "cost_ex_gst": 69.3217
+    },
+    {
+      "id": "powdercoating_2beaba4d4c",
+      "category": "powdercoating",
+      "name": "Powdercoating for 100x50 4m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x50",
+        "length_m": 4.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 26
+      },
+      "cost_inc_gst": 21.36,
+      "cost_ex_gst": 18.5739
+    },
+    {
+      "id": "aluminium-extrusion_7ea9643131",
+      "category": "aluminium_extrusion",
+      "name": "150x50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 28
+      },
+      "cost_inc_gst": 168.94,
+      "cost_ex_gst": 146.9043
+    },
+    {
+      "id": "aluminium-extrusion_f718e73381",
+      "category": "aluminium_extrusion",
+      "name": "150x50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 29
+      },
+      "cost_inc_gst": 168.94,
+      "cost_ex_gst": 146.9043
+    },
+    {
+      "id": "aluminium-extrusion_30405cc879",
+      "category": "aluminium_extrusion",
+      "name": "150x50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 30
+      },
+      "cost_inc_gst": 155.87,
+      "cost_ex_gst": 135.5391
+    },
+    {
+      "id": "powdercoating_6c85a05e6b",
+      "category": "powdercoating",
+      "name": "Powdercoating for 150x50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 30
+      },
+      "cost_inc_gst": 37.95,
+      "cost_ex_gst": 33.0
+    },
+    {
+      "id": "aluminium-extrusion_d34cfe5d61",
+      "category": "aluminium_extrusion",
+      "name": "150x50 5m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 5.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 32
+      },
+      "cost_inc_gst": 140.76,
+      "cost_ex_gst": 122.4
+    },
+    {
+      "id": "aluminium-extrusion_b05d4a7a9e",
+      "category": "aluminium_extrusion",
+      "name": "150x50 5m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 5.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 33
+      },
+      "cost_inc_gst": 140.76,
+      "cost_ex_gst": 122.4
+    },
+    {
+      "id": "aluminium-extrusion_88f0b86d59",
+      "category": "aluminium_extrusion",
+      "name": "150x50 5m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 5.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 34
+      },
+      "cost_inc_gst": 129.88,
+      "cost_ex_gst": 112.9391
+    },
+    {
+      "id": "powdercoating_49ff448932",
+      "category": "powdercoating",
+      "name": "Powdercoating for 150x50 5m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 5.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 34
+      },
+      "cost_inc_gst": 31.63,
+      "cost_ex_gst": 27.5043
+    },
+    {
+      "id": "aluminium-extrusion_e0d11c5111",
+      "category": "aluminium_extrusion",
+      "name": "150x50 4m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 4.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 36
+      },
+      "cost_inc_gst": 112.61,
+      "cost_ex_gst": 97.9217
+    },
+    {
+      "id": "aluminium-extrusion_ca8392f001",
+      "category": "aluminium_extrusion",
+      "name": "150x50 4m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 4.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 37
+      },
+      "cost_inc_gst": 112.61,
+      "cost_ex_gst": 97.9217
+    },
+    {
+      "id": "aluminium-extrusion_7d5a1b7aa1",
+      "category": "aluminium_extrusion",
+      "name": "150x50 4m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 4.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 38
+      },
+      "cost_inc_gst": 103.91,
+      "cost_ex_gst": 90.3565
+    },
+    {
+      "id": "powdercoating_59a9512d19",
+      "category": "powdercoating",
+      "name": "Powdercoating for 150x50 4m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x50",
+        "length_m": 4.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 38
+      },
+      "cost_inc_gst": 25.3,
+      "cost_ex_gst": 22.0
+    },
+    {
+      "id": "aluminium-extrusion_ddcf7c8b45",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 40
+      },
+      "cost_inc_gst": 295.55,
+      "cost_ex_gst": 257.0
+    },
+    {
+      "id": "aluminium-extrusion_b6a01911dc",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 41
+      },
+      "cost_inc_gst": 295.55,
+      "cost_ex_gst": 257.0
+    },
+    {
+      "id": "aluminium-extrusion_05cd721bf6",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 42
+      },
+      "cost_inc_gst": 272.71,
+      "cost_ex_gst": 237.1391
+    },
+    {
+      "id": "powdercoating_bc297a825a",
+      "category": "powdercoating",
+      "name": "Powdercoating for SP Gutter 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 42
+      },
+      "cost_inc_gst": 36.09,
+      "cost_ex_gst": 31.3826
+    },
+    {
+      "id": "aluminium-extrusion_9dcac6d705",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 5m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 5.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 44
+      },
+      "cost_inc_gst": 246.26,
+      "cost_ex_gst": 214.1391
+    },
+    {
+      "id": "aluminium-extrusion_214bd227d9",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 5m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 5.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 45
+      },
+      "cost_inc_gst": 246.26,
+      "cost_ex_gst": 214.1391
+    },
+    {
+      "id": "aluminium-extrusion_aa0e8cc0ed",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 5m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 5.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 46
+      },
+      "cost_inc_gst": 227.24,
+      "cost_ex_gst": 197.6
+    },
+    {
+      "id": "powdercoating_fbabe047df",
+      "category": "powdercoating",
+      "name": "Powdercoating for SP Gutter 5m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 5.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 46
+      },
+      "cost_inc_gst": 30.05,
+      "cost_ex_gst": 26.1304
+    },
+    {
+      "id": "aluminium-extrusion_98c1a3ef3b",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 4m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 4.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 48
+      },
+      "cost_inc_gst": 197.04,
+      "cost_ex_gst": 171.3391
+    },
+    {
+      "id": "aluminium-extrusion_f76dcb876f",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 4m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 4.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 49
+      },
+      "cost_inc_gst": 197.04,
+      "cost_ex_gst": 171.3391
+    },
+    {
+      "id": "aluminium-extrusion_20d1803eab",
+      "category": "aluminium_extrusion",
+      "name": "SP Gutter 4m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 4.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 50
+      },
+      "cost_inc_gst": 181.82,
+      "cost_ex_gst": 158.1043
+    },
+    {
+      "id": "powdercoating_ecb33abe4e",
+      "category": "powdercoating",
+      "name": "Powdercoating for SP Gutter 4m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "SP Gutter",
+        "length_m": 4.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 50
+      },
+      "cost_inc_gst": 24.04,
+      "cost_ex_gst": 20.9043
+    },
+    {
+      "id": "aluminium-extrusion_18418ef36b",
+      "category": "aluminium_extrusion",
+      "name": "100x100 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x100",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 8
+      },
+      "cost_inc_gst": 177.33,
+      "cost_ex_gst": 154.2
+    },
+    {
+      "id": "aluminium-extrusion_c665a94ad2",
+      "category": "aluminium_extrusion",
+      "name": "100x100 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x100",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 9
+      },
+      "cost_inc_gst": 177.33,
+      "cost_ex_gst": 154.2
+    },
+    {
+      "id": "aluminium-extrusion_fd82fbc2f9",
+      "category": "aluminium_extrusion",
+      "name": "100x100 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x100",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 10
+      },
+      "cost_inc_gst": 163.62,
+      "cost_ex_gst": 142.2783
+    },
+    {
+      "id": "powdercoating_64c4bcffdb",
+      "category": "powdercoating",
+      "name": "Powdercoating for 100x100 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "100x100",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 10
+      },
+      "cost_inc_gst": 40.02,
+      "cost_ex_gst": 34.8
+    },
+    {
+      "id": "aluminium-extrusion_bd4d31ceda",
+      "category": "aluminium_extrusion",
+      "name": "150x100 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x100",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 12
+      },
+      "cost_inc_gst": 177.67,
+      "cost_ex_gst": 154.4957
+    },
+    {
+      "id": "aluminium-extrusion_705cb276ea",
+      "category": "aluminium_extrusion",
+      "name": "150x100 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x100",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 13
+      },
+      "cost_inc_gst": 177.67,
+      "cost_ex_gst": 154.4957
+    },
+    {
+      "id": "aluminium-extrusion_9d28f54569",
+      "category": "aluminium_extrusion",
+      "name": "150x100 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x100",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 14
+      },
+      "cost_inc_gst": 164.13,
+      "cost_ex_gst": 142.7217
+    },
+    {
+      "id": "powdercoating_6066cebbb9",
+      "category": "powdercoating",
+      "name": "Powdercoating for 150x100 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x100",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 14
+      },
+      "cost_inc_gst": 41.75,
+      "cost_ex_gst": 36.3043
+    },
+    {
+      "id": "aluminium-extrusion_8135c54f30",
+      "category": "aluminium_extrusion",
+      "name": "200x50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "200x50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 16
+      },
+      "cost_inc_gst": 212.4,
+      "cost_ex_gst": 184.6957
+    },
+    {
+      "id": "aluminium-extrusion_d778e87ea5",
+      "category": "aluminium_extrusion",
+      "name": "200x50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "200x50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 17
+      },
+      "cost_inc_gst": 212.4,
+      "cost_ex_gst": 184.6957
+    },
+    {
+      "id": "aluminium-extrusion_4ceba85f32",
+      "category": "aluminium_extrusion",
+      "name": "200x50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "200x50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 18
+      },
+      "cost_inc_gst": 195.98,
+      "cost_ex_gst": 170.4174
+    },
+    {
+      "id": "aluminium-extrusion_7faf4c4937",
+      "category": "aluminium_extrusion",
+      "name": "300x50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "300x50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 20
+      },
+      "cost_inc_gst": 450.8,
+      "cost_ex_gst": 392.0
+    },
+    {
+      "id": "aluminium-extrusion_0302735132",
+      "category": "aluminium_extrusion",
+      "name": "300x50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "300x50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 21
+      },
+      "cost_inc_gst": 450.8,
+      "cost_ex_gst": 392.0
+    },
+    {
+      "id": "aluminium-extrusion_00a9b75aa6",
+      "category": "aluminium_extrusion",
+      "name": "300x50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "300x50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 22
+      },
+      "cost_inc_gst": 425.0,
+      "cost_ex_gst": 369.5652
+    },
+    {
+      "id": "powdercoating_208736a5df",
+      "category": "powdercoating",
+      "name": "Powdercoating for 300x50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "300x50",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 22
+      },
+      "cost_inc_gst": 64.03,
+      "cost_ex_gst": 55.6783
+    },
+    {
+      "id": "aluminium-extrusion_e3df86dfcd",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 25
+      },
+      "cost_inc_gst": 20.7,
+      "cost_ex_gst": 18.0
+    },
+    {
+      "id": "aluminium-extrusion_4fa5266b0e",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 26
+      },
+      "cost_inc_gst": 20.7,
+      "cost_ex_gst": 18.0
+    },
+    {
+      "id": "aluminium-extrusion_b8f954489b",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 27
+      },
+      "cost_inc_gst": 19.11,
+      "cost_ex_gst": 16.6174
+    },
+    {
+      "id": "powdercoating_da184ef4b6",
+      "category": "powdercoating",
+      "name": "Powdercoating for Joiners 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 27
+      },
+      "cost_inc_gst": 10.02,
+      "cost_ex_gst": 8.713
+    },
+    {
+      "id": "aluminium-extrusion_77b2b6df36",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 5m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 5.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 29
+      },
+      "cost_inc_gst": 17.25,
+      "cost_ex_gst": 15.0
+    },
+    {
+      "id": "aluminium-extrusion_30b472f034",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 5m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 5.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 30
+      },
+      "cost_inc_gst": 17.25,
+      "cost_ex_gst": 15.0
+    },
+    {
+      "id": "aluminium-extrusion_7dea5754bb",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 5m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 5.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 31
+      },
+      "cost_inc_gst": 15.94,
+      "cost_ex_gst": 13.8609
+    },
+    {
+      "id": "powdercoating_84e6a54999",
+      "category": "powdercoating",
+      "name": "Powdercoating for Joiners 5m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 5.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 31
+      },
+      "cost_inc_gst": 8.35,
+      "cost_ex_gst": 7.2609
+    },
+    {
+      "id": "aluminium-extrusion_50d03b43ca",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 4m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 4.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 33
+      },
+      "cost_inc_gst": 13.8,
+      "cost_ex_gst": 12.0
+    },
+    {
+      "id": "aluminium-extrusion_0c61c17c59",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 4m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 4.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 34
+      },
+      "cost_inc_gst": 13.8,
+      "cost_ex_gst": 12.0
+    },
+    {
+      "id": "aluminium-extrusion_2da9b09761",
+      "category": "aluminium_extrusion",
+      "name": "Joiners 4m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 4.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 35
+      },
+      "cost_inc_gst": 12.74,
+      "cost_ex_gst": 11.0783
+    },
+    {
+      "id": "powdercoating_b31e277729",
+      "category": "powdercoating",
+      "name": "Powdercoating for Joiners 4m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Joiners",
+        "length_m": 4.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 35
+      },
+      "cost_inc_gst": 6.67,
+      "cost_ex_gst": 5.8
+    },
+    {
+      "id": "aluminium-extrusion_5f1e011de4",
+      "category": "aluminium_extrusion",
+      "name": "150x150 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 37
+      },
+      "cost_inc_gst": 255.98,
+      "cost_ex_gst": 222.5913
+    },
+    {
+      "id": "aluminium-extrusion_a020159557",
+      "category": "aluminium_extrusion",
+      "name": "150x150 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 38
+      },
+      "cost_inc_gst": 255.98,
+      "cost_ex_gst": 222.5913
+    },
+    {
+      "id": "aluminium-extrusion_8fac05be00",
+      "category": "aluminium_extrusion",
+      "name": "150x150 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 39
+      },
+      "cost_inc_gst": 236.14,
+      "cost_ex_gst": 205.3391
+    },
+    {
+      "id": "powdercoating_acecc75917",
+      "category": "powdercoating",
+      "name": "Powdercoating for 150x150 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 6.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 39
+      },
+      "cost_inc_gst": 56.03,
+      "cost_ex_gst": 48.7217
+    },
+    {
+      "id": "aluminium-extrusion_d14e71447b",
+      "category": "aluminium_extrusion",
+      "name": "150x150 5m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 5.0,
+        "colour": "Black"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 41
+      },
+      "cost_inc_gst": 213.28,
+      "cost_ex_gst": 185.4609
+    },
+    {
+      "id": "aluminium-extrusion_5ed7e600b3",
+      "category": "aluminium_extrusion",
+      "name": "150x150 5m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 5.0,
+        "colour": "White"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 42
+      },
+      "cost_inc_gst": 213.28,
+      "cost_ex_gst": 185.4609
+    },
+    {
+      "id": "aluminium-extrusion_874d87a959",
+      "category": "aluminium_extrusion",
+      "name": "150x150 5m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 5.0,
+        "colour": "Mill"
+      },
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 43
+      },
+      "cost_inc_gst": 196.79,
+      "cost_ex_gst": 171.1217
+    },
+    {
+      "id": "powdercoating_ba1f881f94",
+      "category": "powdercoating",
+      "name": "Powdercoating for 150x150 5m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "150x150",
+        "length_m": 5.0
+      },
+      "notes": "Powdercoating surcharge listed for Mill pricing rows; apply when ordering Mill and powdercoating.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 43
+      },
+      "cost_inc_gst": 46.69,
+      "cost_ex_gst": 40.6
+    },
+    {
+      "id": "rubber_b148f37dfa",
+      "category": "rubber",
+      "name": "Top V Rubber",
+      "unit": "metre",
+      "attributes": {},
+      "notes": "Per metre",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 8
+      },
+      "cost_inc_gst": 0.76,
+      "cost_ex_gst": 0.6609
+    },
+    {
+      "id": "rubber_4c529ec2b5",
+      "category": "rubber",
+      "name": "Bottom Flat Rubbers",
+      "unit": "metre",
+      "attributes": {},
+      "notes": "Per metre",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 10
+      },
+      "cost_inc_gst": 0.95,
+      "cost_ex_gst": 0.8261
+    },
+    {
+      "id": "roofing-sheet_cca74a79f5",
+      "category": "roofing_sheet",
+      "name": "Plexi sheet 3050mm x2030mm (Light Grey)",
+      "unit": "sheet",
+      "attributes": {},
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 15
+      },
+      "cost_inc_gst": 483.0,
+      "cost_ex_gst": 420.0
+    },
+    {
+      "id": "roofing-sheet_3032ecd37c",
+      "category": "roofing_sheet",
+      "name": "Plexi sheet 3050mm x2030mm (Dark Grey)",
+      "unit": "sheet",
+      "attributes": {},
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 16
+      },
+      "cost_inc_gst": 483.0,
+      "cost_ex_gst": 420.0
+    },
+    {
+      "id": "roofing-sheet_e1f7673c14",
+      "category": "roofing_sheet",
+      "name": "Plexi sheet 3050mm x2030mm (Clear)",
+      "unit": "sheet",
+      "attributes": {},
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 17
+      },
+      "cost_inc_gst": 448.5,
+      "cost_ex_gst": 390.0
+    },
+    {
+      "id": "roofing-sheet_a6bf22470f",
+      "category": "roofing_sheet",
+      "name": "Crystalite sheet 620mm (Grey) 4m",
+      "unit": "bar",
+      "attributes": {
+        "product": "Crystalite 620mm",
+        "colour": "Grey",
+        "length_m": 4.0
+      },
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 23
+      },
+      "cost_inc_gst": 247.53,
+      "cost_ex_gst": 215.2435
+    },
+    {
+      "id": "roofing-sheet_d2e6f5ad30",
+      "category": "roofing_sheet",
+      "name": "Crystalite sheet 620mm (Opal) 5m",
+      "unit": "bar",
+      "attributes": {
+        "product": "Crystalite 620mm",
+        "colour": "Opal",
+        "length_m": 5.0
+      },
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 24
+      },
+      "cost_inc_gst": 322.0,
+      "cost_ex_gst": 280.0
+    },
+    {
+      "id": "roofing-sheet_3787ccb7d6",
+      "category": "roofing_sheet",
+      "name": "Crystalite sheet 620mm (Opal) 6m",
+      "unit": "bar",
+      "attributes": {
+        "product": "Crystalite 620mm",
+        "colour": "Opal",
+        "length_m": 6.0
+      },
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 25
+      },
+      "cost_inc_gst": 404.51,
+      "cost_ex_gst": 351.7478
+    },
+    {
+      "id": "roofing-sheet_d557d79c33",
+      "category": "roofing_sheet",
+      "name": "Crystalite sheet 620mm (Clear) 4m",
+      "unit": "bar",
+      "attributes": {
+        "product": "Crystalite 620mm",
+        "colour": "Clear",
+        "length_m": 4.0
+      },
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 27
+      },
+      "cost_inc_gst": 239.76,
+      "cost_ex_gst": 208.487
+    },
+    {
+      "id": "roofing-sheet_e44611b74a",
+      "category": "roofing_sheet",
+      "name": "Crystalite sheet 620mm (Clear) 5m",
+      "unit": "bar",
+      "attributes": {
+        "product": "Crystalite 620mm",
+        "colour": "Clear",
+        "length_m": 5.0
+      },
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 28
+      },
+      "cost_inc_gst": 297.44,
+      "cost_ex_gst": 258.6435
+    },
+    {
+      "id": "roofing-sheet_8f7b84638c",
+      "category": "roofing_sheet",
+      "name": "Crystalite sheet 620mm (Clear) 6m",
+      "unit": "bar",
+      "attributes": {
+        "product": "Crystalite 620mm",
+        "colour": "Clear",
+        "length_m": 6.0
+      },
+      "notes": "Acrylic roofing",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 29
+      },
+      "cost_inc_gst": 379.44,
+      "cost_ex_gst": 329.9478
+    },
+    {
+      "id": "consumable_63bb512d0b",
+      "category": "consumable",
+      "name": "Dulux touch-up spray paint can",
+      "unit": "can",
+      "attributes": {},
+      "notes": "Touch-up spray paint (Dulux). Typically 1\u20132 cans per job.",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 36
+      },
+      "cost_inc_gst": 20.77,
+      "cost_ex_gst": 18.0609
+    },
+    {
+      "id": "consumable_87c420cfcc",
+      "category": "consumable",
+      "name": "Dab sticks",
+      "unit": "each",
+      "attributes": {},
+      "notes": "Each",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 37
+      },
+      "cost_inc_gst": 6.9,
+      "cost_ex_gst": 6.0
+    },
+    {
+      "id": "consumable_ed86e239bd",
+      "category": "consumable",
+      "name": "Foam 12mm (White)",
+      "unit": "metre",
+      "attributes": {},
+      "notes": "From sheet text",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 44
+      },
+      "cost_inc_gst": 2.3,
+      "cost_ex_gst": 2.0
+    },
+    {
+      "id": "consumable_04259b1a85",
+      "category": "consumable",
+      "name": "Foam 12mm (Black)",
+      "unit": "metre",
+      "attributes": {},
+      "notes": "From sheet text",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 45
+      },
+      "cost_inc_gst": 1.73,
+      "cost_ex_gst": 1.5043
+    },
+    {
+      "id": "fixing_fc1e43dc77",
+      "category": "fixing",
+      "name": "Galv fixings",
+      "unit": "each",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 8
+      },
+      "cost_inc_gst": 0.4,
+      "cost_ex_gst": 0.3478
+    },
+    {
+      "id": "fixing_9fab40ad83",
+      "category": "fixing",
+      "name": "Stainless Steel Fixings",
+      "unit": "each",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 10
+      },
+      "cost_inc_gst": 0.6,
+      "cost_ex_gst": 0.5217
+    },
+    {
+      "id": "fixing_d33a5e1f4c",
+      "category": "fixing",
+      "name": "80mm white PVC downpipe -each",
+      "unit": "each",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 24
+      },
+      "cost_inc_gst": 40.64,
+      "cost_ex_gst": 35.3391
+    },
+    {
+      "id": "fixing_228d1cecd7",
+      "category": "fixing",
+      "name": "80mm white PVC 90 Bend",
+      "unit": "each",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 25
+      },
+      "cost_inc_gst": 9.85,
+      "cost_ex_gst": 8.5652
+    },
+    {
+      "id": "fixing_a0dca3b5cd",
+      "category": "fixing",
+      "name": "80mm white PVC Junction T",
+      "unit": "each",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 26
+      },
+      "cost_inc_gst": 16.77,
+      "cost_ex_gst": 14.5826
+    },
+    {
+      "id": "fixing_e98ba7b131",
+      "category": "fixing",
+      "name": "80mm white PVC dropper",
+      "unit": "each",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 27
+      },
+      "cost_inc_gst": 9.16,
+      "cost_ex_gst": 7.9652
+    },
+    {
+      "id": "material_c600319202",
+      "category": "material",
+      "name": "Bracket material (approx one length per job)",
+      "unit": "bar",
+      "attributes": {},
+      "notes": "See sheet: 'Bracket material' + 'Approx one length per job'",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 18
+      },
+      "cost_inc_gst": 43.14,
+      "cost_ex_gst": 37.513
+    },
+    {
+      "id": "bracket_3f6d3c53fa",
+      "category": "bracket",
+      "name": "Soffit bracket 700x300 L-Bracket",
+      "unit": "each",
+      "attributes": {},
+      "notes": "Mill",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 54
+      },
+      "cost_inc_gst": 25.3,
+      "cost_ex_gst": 22.0
+    },
+    {
+      "id": "powdercoating_199231d91b",
+      "category": "powdercoating",
+      "name": "Powdercoating for soffit bracket",
+      "unit": "each",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 55
+      },
+      "cost_inc_gst": 7.48,
+      "cost_ex_gst": 6.5043
+    },
+    {
+      "id": "allowance_e5cbd5a6cc",
+      "category": "allowance",
+      "name": "Health and Safety allowance",
+      "unit": "job",
+      "attributes": {},
+      "notes": null,
+      "source": {
+        "sheet": "Sheet1",
+        "row": 56
+      },
+      "cost_inc_gst": 40.0,
+      "cost_ex_gst": 34.7826
+    },
+    {
+      "id": "service_f618fb02f7",
+      "category": "service",
+      "name": "Scaffold hire (as required)",
+      "unit": "job",
+      "attributes": {},
+      "notes": "From sheet: Sanctuary scaffold hire charge per job",
+      "source": {
+        "sheet": "Sheet1",
+        "row": 50
+      },
+      "cost_inc_gst": 100.0,
+      "cost_ex_gst": 86.9565
+    }
+  ]
+}
