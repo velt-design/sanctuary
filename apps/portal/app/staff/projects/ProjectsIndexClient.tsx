@@ -7,9 +7,10 @@ import { listContacts } from '@/lib/repo/contactsRepo';
 import { listProjects } from '@/lib/repo/projectsRepo';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { PROJECT_STATUS_ORDER, nextActionTypeLabel, projectStatusLabel } from '@/lib/types/project';
+import { normalizeProjectStatus, PROJECT_STATUS_ORDER, nextActionTypeLabel, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
-import PageHeader from '@/components/portal/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import useSWR from 'swr';
 import { contactsSWRKey } from '@/lib/cache/contactsCache';
@@ -29,7 +30,7 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   const [hydrated, setHydrated] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all');
-  const [dueOnly, setDueOnly] = useState(false);
+  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>('all');
 
   const projectsKey = useMemo(() => projectsSWRKey(), []);
   const contactsKey = useMemo(() => contactsSWRKey(), []);
@@ -53,6 +54,33 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    const statusParam = (searchParams.get('status') || '').trim();
+    if (!statusParam) {
+      setStatusFilter('all');
+    } else if (statusParam.toLowerCase() === 'all') {
+      setStatusFilter('all');
+    } else {
+      const normalized = normalizeProjectStatus(statusParam);
+      setStatusFilter(normalized.status ?? 'all');
+    }
+
+    const queryParam = (searchParams.get('q') || '').trim();
+    setQuery(queryParam);
+
+    const dueParam = (searchParams.get('due') || '').trim().toLowerCase();
+    const dueFlag = (searchParams.get('nextActionDue') || '').trim().toLowerCase();
+    if (dueParam === 'overdue' || dueParam === 'today') {
+      setDueFilter(dueParam as 'overdue' | 'today');
+    } else if (['1', 'true', 'yes', 'y'].includes(dueFlag)) {
+      setDueFilter('due');
+    } else if (dueParam === 'due') {
+      setDueFilter('due');
+    } else {
+      setDueFilter('all');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isLoadingMode) return;
@@ -105,9 +133,11 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
       if (statusFilter !== 'all' && (p.status ?? 'NEW') !== statusFilter) return false;
 
       const nextAction = toYmd(p.nextActionDate ?? p.followUpDate);
-      if (dueOnly) {
+      if (dueFilter !== 'all') {
         if (!nextAction) return false;
-        if (nextAction > todayYmd) return false;
+        if (dueFilter === 'due' && nextAction > todayYmd) return false;
+        if (dueFilter === 'overdue' && nextAction >= todayYmd) return false;
+        if (dueFilter === 'today' && nextAction !== todayYmd) return false;
       }
 
       if (!needle) return true;
@@ -127,14 +157,19 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
 
       return text.includes(needle);
     });
-  }, [contactsById, dueOnly, projects, query, statusFilter, todayYmd]);
+  }, [contactsById, dueFilter, projects, query, statusFilter, todayYmd]);
 
   return (
     <main className={styles.page}>
       <PageHeader
         title="Projects"
-        subtitle="Job list stored in the portal database."
-        primaryAction={{ label: 'New Project', href: '/staff/projects/new' }}
+        right={
+          <HeaderActions>
+            <Link className={styles.button} href="/staff/projects/new">
+              New Project
+            </Link>
+          </HeaderActions>
+        }
       />
 
       <div className={styles.stack}>
@@ -168,11 +203,19 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
 
               <div className={styles.field} style={{ display: 'flex', flexDirection: 'column' }}>
                 <label className={styles.checkboxRow}>
-                  <input type="checkbox" checked={dueOnly} onChange={(e) => setDueOnly(e.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={dueFilter !== 'all'}
+                    onChange={(e) => setDueFilter(e.target.checked ? 'due' : 'all')}
+                  />
                   <span className={styles.checkboxText}>Next action due (today + overdue)</span>
                 </label>
                 <div className={styles.muted} style={{ marginTop: 6, fontSize: 12 }}>
-                  Shows projects with next action date ≤ today
+                  {dueFilter === 'overdue'
+                    ? 'Shows overdue actions only'
+                    : dueFilter === 'today'
+                      ? 'Shows actions due today'
+                      : 'Shows projects with next action date ≤ today'}
                 </div>
               </div>
             </div>

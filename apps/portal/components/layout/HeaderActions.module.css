@@ -1,0 +1,22 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+  Force "header CTA" sizing without relying on Tailwind utilities.
+  This targets the common shapes in the portal:
+  - direct <button>/<a>
+  - MoreMenu trigger nested as <div><button/></div>
+*/
+.root > button,
+.root > a,
+.root > div > button,
+.root > div > a {
+  height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+

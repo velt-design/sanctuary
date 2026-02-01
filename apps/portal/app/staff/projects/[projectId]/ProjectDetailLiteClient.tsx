@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import PageHeader from '@/components/portal/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
@@ -170,7 +171,16 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
   if (!project) {
     return (
       <main className={styles.page}>
-        <PageHeader title="Project" subtitle="Loading…" back={{ label: 'Projects', href: '/staff/projects' }} />
+        <PageHeader
+          title="Project"
+          right={
+            <HeaderActions>
+              <Link className={styles.buttonSecondary} href="/staff/projects">
+                Projects
+              </Link>
+            </HeaderActions>
+          }
+        />
         <p className={styles.note}>Loading project details…</p>
       </main>
     );
@@ -243,17 +253,16 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
     <main className={styles.page}>
       <PageHeader
         title={project.projectName ?? project.name ?? 'Project'}
-        subtitle={`Project ID: ${project.id}${
-          (project.nextActionDate ?? project.followUpDate)
-            ? ` · Next action: ${project.nextActionDate ?? project.followUpDate}${project.nextActionType ? ` (${nextActionTypeLabel(project.nextActionType as any)})` : ''}`
-            : ''
-        }`}
-        back={{ label: 'Projects', href: '/staff/projects' }}
-        primaryAction={
-          isAdmin
-            ? {
-                label: 'Delete Project',
-                onClick: () => {
+        right={
+          <HeaderActions>
+            <Link className={styles.buttonSecondary} href="/staff/projects">
+              Projects
+            </Link>
+            {isAdmin ? (
+              <button
+                type="button"
+                className={styles.buttonDanger}
+                onClick={() => {
                   void run('deleteProject', async () => {
                     if (typeof window !== 'undefined') {
                       const ok = window.confirm('Delete this project? This cannot be undone.');
@@ -263,11 +272,15 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                     toast.success('Project deleted.');
                     router.push('/staff/projects?toast=project_deleted');
                   });
-                },
-              }
-            : undefined
+                }}
+              >
+                Delete project
+              </button>
+            ) : null}
+          </HeaderActions>
         }
       />
+      <div className="mt-1 mb-3 text-xs text-zinc-500">Project ID: {project.id}</div>
 
       {error ? <p className={styles.error}>{error}</p> : null}
       {stageSaveError ? <p className={styles.error}>{stageSaveError}</p> : null}

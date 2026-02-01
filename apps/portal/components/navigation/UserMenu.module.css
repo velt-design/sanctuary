@@ -1,0 +1,55 @@
+.trigger {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  color: #fff;
+}
+
+.trigger:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.trigger:focus {
+  outline: none;
+}
+
+.trigger:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+}
+
+.icon {
+  color: #fff;
+  opacity: 0.9;
+}
+
+.labelContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.email {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f0f10;
+}
+
+.role {
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.6);
+}
+
+.signOutItem {
+  font-weight: 600;
+}
+
+.signOutIcon {
+  margin-right: 8px;
+}

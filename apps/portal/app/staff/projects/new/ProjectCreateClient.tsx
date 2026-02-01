@@ -7,7 +7,8 @@ import { createContact, listContacts } from '@/lib/repo/contactsRepo';
 import { createProject } from '@/lib/repo/projectsRepo';
 import type { Contact } from '@/lib/types/contact';
 import styles from '../projects.module.css';
-import PageHeader from '@/components/portal/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError } from '@/lib/supabase/repoError';
@@ -95,8 +96,13 @@ export default function ProjectCreateClient() {
     <main className={styles.page}>
       <PageHeader
         title="New Project"
-        subtitle="Create a job record."
-        back={{ label: 'Projects', href: '/staff/projects' }}
+        right={
+          <HeaderActions>
+            <Link className={styles.buttonSecondary} href="/staff/projects">
+              Projects
+            </Link>
+          </HeaderActions>
+        }
       />
 
       <section className={styles.section} aria-label="Project form">

@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import useSWR from 'swr';
 import { contactsSWRKey } from '@/lib/cache/contactsCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 
 type Draft = {
   displayName: string;
@@ -77,17 +79,16 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
   if (typeof contact === 'undefined') {
     return (
       <main className={styles.page}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>Contact</h1>
-            <p className={styles.subtitle}>Loading…</p>
-          </div>
-          <div className={styles.actions}>
-            <Link className={styles.buttonSecondary} href="/staff/contacts">
-              Back
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          title="Contact"
+          right={
+            <HeaderActions>
+              <Link className={styles.buttonSecondary} href="/staff/contacts">
+                Contacts
+              </Link>
+            </HeaderActions>
+          }
+        />
         <p className={styles.note}>Loading contact details…</p>
       </main>
     );
@@ -96,17 +97,16 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
   if (!contact) {
     return (
       <main className={styles.page}>
-        <div className={styles.header}>
-          <div>
-            <h1 className={styles.title}>Contact</h1>
-            <p className={styles.subtitle}>Not found.</p>
-          </div>
-          <div className={styles.actions}>
-            <Link className={styles.buttonSecondary} href="/staff/contacts">
-              Back
-            </Link>
-          </div>
-        </div>
+        <PageHeader
+          title="Contact"
+          right={
+            <HeaderActions>
+              <Link className={styles.buttonSecondary} href="/staff/contacts">
+                Contacts
+              </Link>
+            </HeaderActions>
+          }
+        />
         <p className={styles.note}>This contact doesn’t exist in the portal database.</p>
       </main>
     );
@@ -114,20 +114,20 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
 
   return (
     <main className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>{contact.displayName}</h1>
-          <p className={styles.subtitle}>Contact ID: {contact.id}</p>
-        </div>
-        <div className={styles.actions}>
-          <Link className={styles.buttonSecondary} href="/staff/contacts">
-            Contacts
-          </Link>
-          <Link className={styles.button} href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>
-            Create Project
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title={contact.displayName}
+        right={
+          <HeaderActions>
+            <Link className={styles.buttonSecondary} href="/staff/contacts">
+              Contacts
+            </Link>
+            <Link className={styles.button} href={`/staff/projects/new?contactId=${encodeURIComponent(contact.id)}`}>
+              Create Project
+            </Link>
+          </HeaderActions>
+        }
+      />
+      <div className="mt-1 mb-3 text-xs text-zinc-500">Contact ID: {contact.id}</div>
 
       {error ? <p className={styles.error}>{error}</p> : null}
 

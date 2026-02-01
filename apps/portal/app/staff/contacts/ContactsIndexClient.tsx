@@ -10,6 +10,8 @@ import { parseContactsCsv, planContactsImport } from '@/lib/import/contactsCsv';
 import Modal from '@/components/ui/modal/Modal';
 import useSWR from 'swr';
 import { contactsSWRKey } from '@/lib/cache/contactsCache';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
 
 export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading' }) {
   const toast = useToast();
@@ -63,27 +65,26 @@ export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading
 
   return (
     <main className={styles.page}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Contacts</h1>
-          <p className={styles.subtitle}>Primary contacts stored in the portal database.</p>
-        </div>
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
-            onClick={() => {
-              setImportError(null);
-              importRef.current?.click();
-            }}
-          >
-            Import CSV
-          </button>
-          <Link className={styles.button} href="/staff/contacts/new">
-            New Contact
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        title="Contacts"
+        right={
+          <HeaderActions>
+            <button
+              type="button"
+              className={styles.buttonSecondary}
+              onClick={() => {
+                setImportError(null);
+                importRef.current?.click();
+              }}
+            >
+              Import CSV
+            </button>
+            <Link className={styles.button} href="/staff/contacts/new">
+              New Contact
+            </Link>
+          </HeaderActions>
+        }
+      />
 
       <input
         ref={importRef}

@@ -39,6 +39,14 @@ function getUsersFromEnv(): EnvUser[] {
     });
   }
 
+  for (const u of users) {
+    const hash = typeof u.passwordHash === 'string' ? u.passwordHash.trim() : '';
+    if (hash && !hash.startsWith('$2')) {
+      // Common cause: dotenv-expand interprets bcrypt `$2b$...` as env var expansion when reading from .env files.
+      console.warn('[auth] Password hash looks malformed. If stored in a .env file, escape each $ as \\$.', { role: u.role });
+    }
+  }
+
   return users;
 }
 

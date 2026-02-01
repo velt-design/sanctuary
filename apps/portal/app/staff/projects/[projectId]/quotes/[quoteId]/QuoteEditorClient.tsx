@@ -6,7 +6,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Quote, QuoteContent } from '@/lib/types/quote';
 import { quoteCustomerTotalIncGst, quoteLabel, quoteStatusLabel } from '@/lib/types/quote';
 import { deleteQuote, duplicateQuoteAsRevision, getQuote, markQuotePaid, markQuoteSent, quoteIsLocked, updateQuote } from '@/lib/repo/quotesRepo';
-import PageHeader from '@/components/portal/PageHeader';
+import PageHeader from '@/components/layout/PageHeader';
+import HeaderActions from '@/components/layout/HeaderActions';
+import MoreMenu from '@/components/portal/MoreMenu';
 import styles from '../../../projects.module.css';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
@@ -77,18 +79,19 @@ export default function QuoteEditorClient({
     }
   };
 
-  const subtitle = useMemo(() => {
-    if (!quote) return '';
-    const dates: string[] = [];
-    if (quote.status === 'sent' && quote.sentAt) dates.push(`Sent ${new Date(quote.sentAt).toLocaleDateString()}`);
-    if (quote.status === 'paid' && quote.paidAt) dates.push(`Paid ${new Date(quote.paidAt).toLocaleDateString()}`);
-    return `${quoteStatusLabel(quote.status)}${dates.length ? ` · ${dates.join(' · ')}` : ''}`;
-  }, [quote]);
-
   if (!quote) {
     return (
       <main className={styles.page}>
-        <PageHeader title="Quote" subtitle="Not found." back={{ label: 'Project', href: `/staff/projects/${encodeURIComponent(projectId)}` }} />
+        <PageHeader
+          title="Quote"
+          right={
+            <HeaderActions>
+              <Link className={styles.buttonSecondary} href={`/staff/projects/${encodeURIComponent(projectId)}`}>
+                Project
+              </Link>
+            </HeaderActions>
+          }
+        />
         <p className={styles.note}>This quote doesn’t exist in the portal database.</p>
       </main>
     );
@@ -135,55 +138,65 @@ export default function QuoteEditorClient({
     <main className={styles.page}>
       <PageHeader
         title={title}
-        subtitle={subtitle}
-        back={{ label: 'Project', href: `/staff/projects/${encodeURIComponent(projectId)}` }}
-        primaryAction={{
-          label: 'Print',
-          href: `/staff/projects/${encodeURIComponent(projectId)}/quotes/${encodeURIComponent(quote.id)}/print`,
-        }}
-        secondaryActions={[
-          ...(quote.status === 'draft'
-            ? [
-                {
-                  label: dirty ? 'Save' : 'Saved',
-                  onClick: () => save(),
-                  disabled: Boolean(busy) || !dirty,
-                },
-                {
-                  label: 'Mark Sent',
-                  onClick: () => setConfirm({ kind: 'sent' }),
-                  disabled: Boolean(busy),
-                },
-              ]
-            : quote.status === 'sent'
-              ? [
-                  {
-                    label: 'Mark Paid',
-                    onClick: () => setConfirm({ kind: 'paid' }),
-                    disabled: Boolean(busy),
-                  },
-                ]
-              : []),
-          ...(quote.status !== 'draft'
-            ? [
-                {
-                  label: 'Duplicate as Revision',
-                  onClick: () => setConfirm({ kind: 'duplicate' }),
-                  disabled: Boolean(busy),
-                },
-              ]
-            : []),
-          ...(isAdmin
-            ? [
-                {
-                  label: 'Delete Quote',
-                  danger: true,
-                  onClick: () => setConfirm({ kind: 'delete' }),
-                  disabled: Boolean(busy),
-                },
-              ]
-            : []),
-        ]}
+        right={
+          <HeaderActions>
+            <Link className={styles.buttonSecondary} href={`/staff/projects/${encodeURIComponent(projectId)}`}>
+              Project
+            </Link>
+            <Link
+              className={styles.button}
+              href={`/staff/projects/${encodeURIComponent(projectId)}/quotes/${encodeURIComponent(quote.id)}/print`}
+            >
+              Print
+            </Link>
+            <MoreMenu
+              items={[
+                ...(quote.status === 'draft'
+                  ? [
+                      {
+                        label: dirty ? 'Save' : 'Saved',
+                        onClick: () => save(),
+                        disabled: Boolean(busy) || !dirty,
+                      },
+                      {
+                        label: 'Mark Sent',
+                        onClick: () => setConfirm({ kind: 'sent' }),
+                        disabled: Boolean(busy),
+                      },
+                    ]
+                  : quote.status === 'sent'
+                    ? [
+                        {
+                          label: 'Mark Paid',
+                          onClick: () => setConfirm({ kind: 'paid' }),
+                          disabled: Boolean(busy),
+                        },
+                      ]
+                    : []),
+                ...(quote.status !== 'draft'
+                  ? [
+                      {
+                        label: 'Duplicate as Revision',
+                        onClick: () => setConfirm({ kind: 'duplicate' }),
+                        disabled: Boolean(busy),
+                      },
+                    ]
+                  : []),
+                ...(isAdmin
+                  ? [
+                      {
+                        label: 'Delete Quote',
+                        danger: true,
+                        onClick: () => setConfirm({ kind: 'delete' }),
+                        disabled: Boolean(busy),
+                      },
+                    ]
+                  : []),
+              ]}
+              disabled={Boolean(busy)}
+            />
+          </HeaderActions>
+        }
       />
 
       {locked ? (
