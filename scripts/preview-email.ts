@@ -2,15 +2,15 @@ import { render } from '@react-email/render';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { toIndicativeRangeOneSided } from '../lib/pricing/enquiryEstimate';
-import { getCallWindowText } from '../src/emails/utils/callWindow';
-import type { ResidentialOrCommercial, Professional } from '../src/emails/types';
+import { getCallWindowText } from '../apps/marketing/emails/utils/callWindow';
+import type { ResidentialOrCommercial, Professional } from '../apps/marketing/emails/types';
 
-import { CustomerResidentialEmail } from '../src/emails/templates/customerResidential';
-import { CustomerCommercialEmail } from '../src/emails/templates/customerCommercial';
-import { CustomerProfessionalEmail } from '../src/emails/templates/customerProfessional';
-import { InternalResidentialEmail } from '../src/emails/templates/internalResidential';
-import { InternalCommercialEmail } from '../src/emails/templates/internalCommercial';
-import { InternalProfessionalEmail } from '../src/emails/templates/internalProfessional';
+import { CustomerResidentialEmail } from '../apps/marketing/emails/templates/customerResidential';
+import { CustomerCommercialEmail } from '../apps/marketing/emails/templates/customerCommercial';
+import { CustomerProfessionalEmail } from '../apps/marketing/emails/templates/customerProfessional';
+import { InternalResidentialEmail } from '../apps/marketing/emails/templates/internalResidential';
+import { InternalCommercialEmail } from '../apps/marketing/emails/templates/internalCommercial';
+import { InternalProfessionalEmail } from '../apps/marketing/emails/templates/internalProfessional';
 
 const now = new Date();
 const callWindowText = getCallWindowText(now);
