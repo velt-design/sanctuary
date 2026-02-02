@@ -520,6 +520,69 @@
       "scope": "module"
     },
     {
+      "id": "join.splice_join_each",
+      "category": "Joinery",
+      "label": "Install splice join (bracket + screws)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.splice_join_count",
+        "default": 0
+      },
+      "base_minutes": 10,
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Includes bracket + 6 screws.",
+      "scope": "module"
+    },
+    {
+      "id": "frame.install_tie_beam_m",
+      "category": "Frame",
+      "label": "Install tie beam - per metre",
+      "unit": "m",
+      "quantity": {
+        "expr": "derived.tie_beam_length_m * derived.gable_end_frame_count",
+        "default": 0
+      },
+      "base_minutes": 6,
+      "applies_to": {
+        "roof_types": [
+          "gable"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.install_kingpost_strut_each",
+      "category": "Frame",
+      "label": "Install king-post strut (each)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.gable_end_frame_count",
+        "default": 0
+      },
+      "base_minutes": 18,
+      "applies_to": {
+        "roof_types": [
+          "gable"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
       "id": "fab.overhang_gutter_workshop_m",
       "category": "Fabrication",
       "label": "Fabricate overhang gutter from 100x100 - per metre",
@@ -1122,6 +1185,177 @@
         "roof_type"
       ],
       "notes": "Assumed v1 value. Scales with derived.timber_area_m2 (timber portion for mixed roofs, full area for timber roofs). Tune minutes with field data.",
+      "scope": "module"
+    },
+    {
+      "id": "rafters.install_edge_rafter_timber_each",
+      "category": "Rafters",
+      "label": "Install timber edge rafters (200x50) - each",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.timber_edge_rafter_count_total",
+        "default": 0
+      },
+      "base_minutes": 18,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Edge rafters for timber roofs (200x50).",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_purlins_m",
+      "category": "Roof",
+      "label": "Install timber purlins (50x50) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "driver": "derived.timber_purlin_total_m",
+        "default": 0
+      },
+      "base_minutes": 2,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof purlins at 500mm centres.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_insulated_panels_m2",
+      "category": "Roof",
+      "label": "Install insulated roof panels - per m\u00b2",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.timber_roof_above_area_m2",
+        "default": 0
+      },
+      "base_minutes": 8,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "insulated_panels"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof above: insulated panels.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_steel_corrugated_m2",
+      "category": "Roof",
+      "label": "Install steel corrugated roof - per m\u00b2",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.timber_roof_above_area_m2",
+        "default": 0
+      },
+      "base_minutes": 10,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_corrugated"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof above: steel corrugated.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_steel_tray_m2",
+      "category": "Roof",
+      "label": "Install steel tray roof - per m\u00b2",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.timber_roof_above_area_m2",
+        "default": 0
+      },
+      "base_minutes": 11,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_tray"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Timber roof above: steel tray.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_covertek_m2",
+      "category": "Roof",
+      "label": "Install Covertek 407 underlay - per m\u00b2",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.covertek_area_m2",
+        "default": 0
+      },
+      "base_minutes": 2,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_corrugated",
+          "steel_tray"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Underlay for timber roof steel options.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_polystyrene_m2",
+      "category": "Roof",
+      "label": "Install polystyrene insulation - per m\u00b2",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.polystyrene_area_m2",
+        "default": 0
+      },
+      "base_minutes": 4,
+      "applies_to": {
+        "roof_materials": [
+          "timber"
+        ],
+        "timber_roof_above_types": [
+          "steel_corrugated",
+          "steel_tray"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Polystyrene insulation between rafters (steel roofs).",
       "scope": "module"
     },
     {

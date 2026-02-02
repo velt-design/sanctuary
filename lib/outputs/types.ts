@@ -1,4 +1,4 @@
-import type { InstallActionV1, MaterialsLineV1 } from '@/src/costing/engine/types';
+import type { InstallActionV1, MaterialsLineV1 } from '@sp/costing';
 
 export type PowdercoatLine = {
   profile: string;

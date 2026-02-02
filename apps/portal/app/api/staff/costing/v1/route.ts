@@ -1,7 +1,7 @@
 import { authOptions } from '@/lib/auth';
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
-import { calculateCostV1 } from '@/src/costing/engine/calculate';
-import type { CostInputsV1, ExtrusionColour } from '@/src/costing/engine/types';
+import { calculateCostV1 } from '@sp/costing';
+import type { CostInputsV1, ExtrusionColour } from '@sp/costing';
 import { getServerSession } from 'next-auth/next';
 import { NextResponse } from 'next/server';
 
@@ -9,8 +9,11 @@ export const runtime = 'nodejs';
 
 const PERGOLA_STYLES = ['pitched', 'gable', 'hip', 'hip_corner', 'box_perimeter'] as const;
 const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed'] as const;
+const TIMBER_ROOF_ABOVE_TYPES = ['insulated_panels', 'steel_corrugated', 'steel_tray'] as const;
+const TIMBER_TRAY_WIDTHS = [400, 500, 600] as const;
 const MIXED_ROOF_MODES = ['ridge_skylight', 'area_override', 'acrylic_bays'] as const;
 const EXTRUSION_COLOURS: ExtrusionColour[] = ['Black', 'White', 'Mill'];
+const GABLE_END_FRAMES = ['none', 'outer_end_only', 'both_ends'] as const;
 const HOUSE_CONNECTIONS = ['soffit', 'fascia', 'facade', 'none'] as const;
 const POST_CONNECTIONS = ['pile_1m', 'pile_1_5m', 'deck_bracket', 'slab_anchors'] as const;
 const ACCESS_LEVELS = ['easy', 'normal', 'hard'] as const;
@@ -92,7 +95,25 @@ export async function POST(req: Request) {
 
   if (!isOneOf(PERGOLA_STYLES, body.pergola_style)) return badRequest('Invalid pergola_style');
   if (!isOneOf(ROOF_MATERIALS, body.roof_material)) return badRequest('Invalid roof_material');
+  if (body.timber_roof_above_type !== undefined && !isOneOf(TIMBER_ROOF_ABOVE_TYPES, body.timber_roof_above_type)) {
+    return badRequest('Invalid timber_roof_above_type');
+  }
+  if (body.timber_insulated_panel_thickness_mm !== undefined) {
+    const thickness = toNumber(body.timber_insulated_panel_thickness_mm);
+    if (!Number.isFinite(thickness) || thickness <= 0) {
+      return badRequest('timber_insulated_panel_thickness_mm must be a number > 0');
+    }
+  }
+  if (body.timber_tray_width_mm !== undefined) {
+    const trayWidth = toNumber(body.timber_tray_width_mm);
+    if (!Number.isFinite(trayWidth) || !TIMBER_TRAY_WIDTHS.includes(Math.round(trayWidth) as any)) {
+      return badRequest('timber_tray_width_mm must be one of 400, 500, 600');
+    }
+  }
   if (!EXTRUSION_COLOURS.includes(body.extrusion_colour)) return badRequest('Invalid extrusion_colour');
+  if (body.gable_end_frames_mode !== undefined && !isOneOf(GABLE_END_FRAMES, body.gable_end_frames_mode)) {
+    return badRequest('Invalid gable_end_frames_mode');
+  }
   if (!isOneOf(HOUSE_CONNECTIONS, body.house_connection_type)) return badRequest('Invalid house_connection_type');
   if (!isOneOf(POST_CONNECTIONS, body.post_connection_type)) return badRequest('Invalid post_connection_type');
   if (!isOneOf(ACCESS_LEVELS, body.access)) return badRequest('Invalid access');
@@ -135,6 +156,43 @@ export async function POST(req: Request) {
   }
   if (body.inverted_enabled === true && (body.pergola_style !== 'pitched' || body.box_perimeter_enabled === true)) {
     return badRequest('Inverted option is only available for pitched roofs');
+  }
+  if (body.overhang_enabled === true) {
+    const spanForGuard = roof_span_m_raw !== undefined ? roof_span_m : projection_m;
+    if (Number.isFinite(spanForGuard) && overhang_amount_m !== undefined && overhang_amount_m >= spanForGuard) {
+      return badRequest('overhang_amount_m must be less than roof_span_m');
+    }
+  }
+
+  let overrides: CostInputsV1['overrides'] | undefined;
+  if (body.overrides !== undefined) {
+    if (typeof body.overrides !== 'object' || body.overrides === null) {
+      return badRequest('overrides must be an object');
+    }
+    const raw = body.overrides as Record<string, unknown>;
+    const next: CostInputsV1['overrides'] = {};
+    const assign = (key: keyof NonNullable<CostInputsV1['overrides']>) => {
+      if (raw[key] === undefined) return;
+      if (typeof raw[key] !== 'string') {
+        throw new Error(`Invalid overrides.${key}`);
+      }
+      (next as any)[key] = raw[key] as string;
+    };
+    try {
+      assign('ledger_profile');
+      assign('rafter_profile');
+      assign('post_profile');
+      assign('front_beam_profile');
+      assign('ridge_beam_profile');
+      assign('box_perimeter_beam_profile');
+      assign('overhang_support_beam_profile');
+      assign('tie_beam_profile');
+      assign('strut_profile');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Invalid overrides';
+      return badRequest(msg);
+    }
+    if (Object.keys(next).length > 0) overrides = next;
   }
 
   let mixed_roof: CostInputsV1['mixed_roof'] | undefined;
@@ -244,14 +302,20 @@ export async function POST(req: Request) {
     overhang_support_beam_profile: body.overhang_support_beam_profile,
     inverted_enabled: body.inverted_enabled === true,
     inverted_house_gutter: body.inverted_house_gutter === undefined ? undefined : body.inverted_house_gutter === true,
+    gable_end_frames_mode: body.gable_end_frames_mode,
 
     roof_material: body.roof_material,
     extrusion_colour: body.extrusion_colour,
+    timber_roof_above_type: body.timber_roof_above_type,
+    timber_insulated_panel_thickness_mm:
+      body.timber_insulated_panel_thickness_mm !== undefined ? toNumber(body.timber_insulated_panel_thickness_mm) : undefined,
+    timber_tray_width_mm: body.timber_tray_width_mm !== undefined ? toNumber(body.timber_tray_width_mm) : undefined,
     powdercoat_standard_colour: body.powdercoat_standard_colour,
     powdercoat_is_custom: body.powdercoat_is_custom === true,
     powdercoat_custom_colour: body.powdercoat_custom_colour,
     mixed_roof,
     hip_corner,
+    overrides,
 
     house_connection_type: body.house_connection_type,
     post_connection_type: body.post_connection_type,

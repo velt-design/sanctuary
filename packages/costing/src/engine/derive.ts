@@ -2,6 +2,7 @@ import {
   type BoxGutterEdge,
   type CostInputsV1,
   type DerivedV1,
+  type GableEndFramesMode,
   type GutterAssemblyMode,
   type GutterMode,
   type GroundCondition,
@@ -25,6 +26,10 @@ const DEFAULT_ROOF_TYPE: RoofType = 'pitched';
 const DEFAULT_MIXED_MODE: MixedRoofMode = 'ridge_skylight';
 
 const RAFTER_SPACING_MM_MAX = 642;
+const TIMBER_RAFTER_SPACING_MM_MAX = 500;
+const TIMBER_EDGE_RAFTER_PROFILE = '200x50';
+const TIMBER_COMMON_RAFTER_DEFAULT_PROFILE = '80x50';
+const TIMBER_PURLIN_PROFILE = '50x50';
 const BRACKET_SPACING_MM_MAX = 1500;
 const STRINGER_FIXING_SPACING_MM = 1500;
 
@@ -75,6 +80,7 @@ function pickStructureType(style: PergolaStyleUi, boxEnabled: boolean | undefine
 }
 
 function pickRoofType(style: PergolaStyleUi, structureType: StructureType, roofType: RoofType | undefined): RoofType {
+  if (structureType === 'box_perimeter' && roofType) return roofType;
   if (style === 'gable') return 'gable';
   if (style === 'hip') return 'hip';
   if (style === 'hip_corner') return 'hip_corner';
@@ -132,6 +138,16 @@ function rafterDepthM(profile: string): number {
   if (raw === '100x50') return 0.1;
   if (raw === '150x50') return 0.15;
   return 0.1;
+}
+
+function profileWidthM(profile: string): number {
+  const raw = String(profile ?? '').trim();
+  const match = raw.match(/x\s*(\d+(?:\.\d+)?)/i);
+  if (match) {
+    const widthMm = Number.parseFloat(match[1] ?? '');
+    if (Number.isFinite(widthMm) && widthMm > 0) return widthMm / 1000;
+  }
+  return 0.05;
 }
 
 function normalizeMixedRoof(
@@ -309,6 +325,14 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const roofType = pickRoofType(styleNormalized.style, structureType, inputs.internal_roof_type);
   const isBoxPerimeter = structureType === 'box_perimeter';
 
+  const defaultGableEndFramesMode: GableEndFramesMode =
+    inputs.house_connection_type !== 'none' ? 'outer_end_only' : 'both_ends';
+  const gableEndFramesModeRaw = String((inputs as any).gable_end_frames_mode ?? '').trim();
+  const gableEndFramesMode: GableEndFramesMode =
+    gableEndFramesModeRaw === 'none' || gableEndFramesModeRaw === 'outer_end_only' || gableEndFramesModeRaw === 'both_ends'
+      ? (gableEndFramesModeRaw as GableEndFramesMode)
+      : defaultGableEndFramesMode;
+
   const fallDistanceMmRaw =
     typeof inputs.fall_distance_mm === 'number' ? inputs.fall_distance_mm : Number.parseFloat(String(inputs.fall_distance_mm ?? ''));
   const fallDistanceMm =
@@ -345,11 +369,12 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const effectiveSpanM =
     roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
   const overrides = (inputs as any).overrides ?? {};
-  const { profile: rafterProfileAuto, warnings: profileWarnings } =
+  const { profile: rafterProfileAutoBase, warnings: profileWarnings } =
     structureType === 'box_perimeter' ? { profile: '80x50' as const, warnings: [] } : pickRafterProfile(effectiveSpanM);
   warnings.push(...profileWarnings);
 
   const overrideRafterProfile = normalizeOverrideProfile(overrides.rafter_profile);
+  const rafterProfileAuto = inputs.roof_material === 'timber' ? TIMBER_COMMON_RAFTER_DEFAULT_PROFILE : rafterProfileAutoBase;
   const rafterProfile = overrideRafterProfile ?? rafterProfileAuto;
 
   const overrideLedgerProfile = normalizeOverrideProfile(overrides.ledger_profile);
@@ -358,6 +383,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const overrideRidgeBeamProfile = normalizeOverrideProfile(overrides.ridge_beam_profile);
   const overrideBoxPerimeterBeamProfile = normalizeOverrideProfile(overrides.box_perimeter_beam_profile);
   const overrideOverhangSupportBeamProfile = normalizeOverrideProfile(overrides.overhang_support_beam_profile);
+  const overrideTieBeamProfile = normalizeOverrideProfile(overrides.tie_beam_profile);
+  const overrideStrutProfile = normalizeOverrideProfile(overrides.strut_profile);
 
   const overhangAmountRaw = toNonNegativeNumber((inputs as any).overhang_amount_m, NaN);
   let overhangAmountM = overhangEnabled
@@ -376,6 +403,12 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         overhangMaxM,
         2,
       )}m).`,
+    );
+  }
+
+  if (overhangEnabled && overhangAmountM >= projectionM - 1e-6) {
+    warnings.push(
+      `INVALID: Overhang amount ${roundNumber(overhangAmountM, 2)}m must be less than roof span ${roundNumber(projectionM, 2)}m.`,
     );
   }
 
@@ -417,11 +450,10 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const stringerFixingCount =
     roofType === 'hip_corner' ? stringerFixingCountA + stringerFixingCountB : stringerFixingCountA;
 
-  const projectionWithOverhangM = projectionM + (overhangEnabled ? overhangAmountM : 0);
   const areaM2 =
     roofType === 'hip_corner'
-      ? lengthM * projectionWithOverhangM + hipCornerLengthBM * hipCornerProjectionBM
-      : lengthM * projectionWithOverhangM;
+      ? lengthM * projectionM + hipCornerLengthBM * hipCornerProjectionBM
+      : lengthM * projectionM;
 
   const pitchDefaults = (config?.rules as any)?.geometry?.roof_pitch_defaults_deg as Record<string, number> | undefined;
   const boxRules = (config?.rules as any)?.geometry?.box_perimeter as any;
@@ -512,6 +544,44 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roofType === 'hip_corner' ? Math.max(projectionM, hipCornerProjectionBM) : roofType === 'pitched' ? projectionM : projectionM / 2;
   const roofSurfaceAreaM2 = areaM2 / effectiveCos;
 
+  const timberRoofAboveTypeRaw = String(inputs.timber_roof_above_type ?? '');
+  const timberRoofAboveType =
+    timberRoofAboveTypeRaw === 'steel_corrugated' || timberRoofAboveTypeRaw === 'steel_tray' || timberRoofAboveTypeRaw === 'insulated_panels'
+      ? timberRoofAboveTypeRaw
+      : 'insulated_panels';
+  const timberInsulatedPanelThicknessMm = Math.max(
+    0,
+    Math.round(toNonNegativeNumber(inputs.timber_insulated_panel_thickness_mm, 50)),
+  );
+  const timberTrayWidthRaw = Math.round(toNonNegativeNumber(inputs.timber_tray_width_mm, 500));
+  const timberTrayWidthMm = timberTrayWidthRaw === 400 || timberTrayWidthRaw === 500 || timberTrayWidthRaw === 600 ? timberTrayWidthRaw : 500;
+
+  const timberPlaneCount = roofType === 'gable' || roofType === 'hip' || roofType === 'low_gable' ? 2 : 1;
+  const timberEdgeRafterCountPerPlane = 2;
+  const timberEdgeRafterCountTotal = timberEdgeRafterCountPerPlane * timberPlaneCount;
+  const timberEffectiveLengthMm = Math.max(lengthMmA - 100, 0);
+  const timberCommonRafterCountPerPlane = Math.ceil(timberEffectiveLengthMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1;
+  const timberCommonRafterCountTotal = timberCommonRafterCountPerPlane * timberPlaneCount;
+  const timberRunPerPlaneM = timberPlaneCount === 2 ? projectionM / 2 : projectionM;
+  const timberSlopeLenPerPlaneM = timberRunPerPlaneM / effectiveCos;
+  const timberSlopeLenPerPlaneMm = timberSlopeLenPerPlaneM * 1000;
+  const timberAvailableMm = Math.max(timberSlopeLenPerPlaneMm - 200, 0);
+  const timberPurlinLinesPerPlane = Math.ceil(timberAvailableMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1;
+  const timberPurlinTotalM = timberPurlinLinesPerPlane * lengthM * timberPlaneCount;
+  const timberHiddenFinish = 'mill';
+  const roofSlopeAreaM2 = roofSurfaceAreaM2;
+  const timberRoofAboveAreaM2 = roofSlopeAreaM2;
+  const timberInsulatedPanelCountPerPlane = Math.ceil(lengthM / 1.2);
+  const timberInsulatedPanelCountTotal = timberInsulatedPanelCountPerPlane * timberPlaneCount;
+  const timberTrayWidthM = Math.max(0.1, timberTrayWidthMm / 1000);
+  const timberTraySheetCountPerPlane = Math.ceil(lengthM / timberTrayWidthM);
+  const timberTraySheetCountTotal = timberTraySheetCountPerPlane * timberPlaneCount;
+  const covertekAreaM2 = timberRoofAboveAreaM2 * 1.1;
+  const polystyreneAreaM2 = timberRoofAboveAreaM2;
+  const timberRoofingScrewsSteelCount = Math.ceil(timberRoofAboveAreaM2 * 6);
+  const timberRoofingScrewsInsulatedCount = Math.ceil(timberRoofAboveAreaM2 * 4);
+  const rafterCountUsed = inputs.roof_material === 'timber' ? timberCommonRafterCountPerPlane : rafterCount;
+
   const boxHouseSetbackM = Number(pitchedSetbacksMm?.house_setback_mm ?? 150) / 1000;
   const boxOuterSetbackM = Number(pitchedSetbacksMm?.outer_setback_mm ?? 50) / 1000;
   const boxEaveSetbackM = Number(gableSetbacksMm?.eave_setback_mm ?? 50) / 1000;
@@ -520,8 +590,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const baseEffectiveRunM = isBoxPerimeter
     ? Math.max(0, rafterRunM - (isBoxGable ? boxEaveSetbackM + boxRidgeAllowanceM : boxHouseSetbackM + boxOuterSetbackM))
     : Math.max(0, rafterRunM - (RAFTER_HOUSE_SETBACK_M + RAFTER_GUTTER_SETBACK_M));
-  const effectiveRunM = baseEffectiveRunM + (overhangEnabled ? overhangAmountM : 0);
-  const rafterLengthM = (overhangEnabled ? effectiveRunM : rafterRunM) / effectiveCos;
+  const effectiveRunM = baseEffectiveRunM;
+  const rafterLengthM = rafterRunM / effectiveCos;
   const rafterLengthMAssumed = rafterLengthM;
   const cutRafterLengthM = effectiveRunM / effectiveCos;
   const angleCutAllowanceM = rafterDepthM(rafterProfile) * tanDeg(roofPitchDegUsed);
@@ -529,10 +599,15 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const acrylicRequiredDownslopeM = joinerPieceLengthM;
   const requiredDownslopeM = acrylicRequiredDownslopeM;
 
+  const supportRunM = overhangEnabled ? projectionM - overhangAmountM : baseEffectiveRunM;
+  if (overhangEnabled && supportRunM <= 0) {
+    warnings.push('INVALID: Overhang amount must be less than the roof span.');
+  }
+
   const slopeDirection: SlopeDirection = invertedEnabled ? 'toward_house' : 'away_from_house';
   const ledgerProfileUsed: string = overrideLedgerProfile ?? rafterProfile;
   const ledgerUndersideHeightM = postCutHeightM;
-  const fallM = !isBoxPerimeter && roofType === 'pitched' ? Math.max(0, baseEffectiveRunM) * tanDeg(roofPitchDegUsed) : 0;
+  const fallM = !isBoxPerimeter && roofType === 'pitched' ? Math.max(0, supportRunM) * tanDeg(roofPitchDegUsed) : 0;
   const postCutHeightHouseSideM = ledgerUndersideHeightM;
   const postCutHeightOuterSideRawM =
     Number.isFinite(fallM) && Number.isFinite(ledgerUndersideHeightM)
@@ -676,6 +751,24 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     else if (separateGutterEnabled) gutterAssemblyMode = 'separate';
   }
 
+  const gableEndFrameCount =
+    roofType === 'gable'
+      ? gableEndFramesMode === 'both_ends'
+        ? 2
+        : gableEndFramesMode === 'outer_end_only'
+          ? 1
+          : 0
+      : 0;
+  const tieBeamProfileDefault = integratedGutterBeam ? '150x50' : frontBeamProfileUsed ?? '150x50';
+  const tieBeamProfileUsed = overrideTieBeamProfile ?? tieBeamProfileDefault;
+  const strutProfileUsed = overrideStrutProfile ?? '50x50';
+  const houseEdgeIsSpOrHouse = gutterMode === 'sp_gutter_house_edge' || invertedHouseGutter;
+  const farEdgeIsSpGutter = integratedGutterBeam;
+  const houseEdgeAllowanceM = houseEdgeIsSpOrHouse ? 0.1 : profileWidthM(ledgerProfileUsed);
+  const farEdgeAllowanceM = farEdgeIsSpGutter ? 0.1 : profileWidthM(frontBeamProfileUsed ?? tieBeamProfileUsed);
+  const tieBeamLengthM = Math.max(0, projectionM - houseEdgeAllowanceM - farEdgeAllowanceM);
+  const kingpostStrutLengthM = Math.max(0, tanDeg(roofPitchDegUsed) * (projectionM / 2));
+
   const boxPerimeterBeamProfileUsed = isBoxPerimeter ? overrideBoxPerimeterBeamProfile ?? defaultBoxBeamProfile : null;
   const postProfileUsed = overridePostProfile ?? defaultPostProfile;
   const ridgeBeamProfileUsed = isBoxGable ? overrideRidgeBeamProfile ?? '100x50' : overrideRidgeBeamProfile ?? null;
@@ -765,6 +858,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roof_material: inputs.roof_material,
     roof_type: roofType,
     extrusion_colour: inputs.extrusion_colour,
+    gable_end_frames_mode: gableEndFramesMode,
     powdercoat_standard_colour: powdercoatStandardRaw || undefined,
     powdercoat_is_custom: powdercoatIsCustom || undefined,
     powdercoat_custom_colour: powdercoatCustomRaw || undefined,
@@ -806,9 +900,20 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     travel_ex_gst: travel,
     extras_allowance_ex_gst: extras,
     timber_roof_allowance_ex_gst: 0,
+    timber_roof_above_type: timberRoofAboveType,
+    timber_insulated_panel_thickness_mm: timberInsulatedPanelThicknessMm,
+    timber_tray_width_mm: timberTrayWidthMm,
 
     quote_discount_pct: quoteDiscountPct,
   };
+
+  const totalRafterPieces =
+    inputs.roof_material === 'timber'
+      ? timberCommonRafterCountTotal + timberEdgeRafterCountTotal
+      : roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip'
+        ? rafterCount * 2
+        : rafterCount;
+  const joinerRunsTotal = roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount;
 
   const derived: DerivedResultV1['derived'] = {
     area_m2: areaM2,
@@ -836,6 +941,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     separate_gutter_length_m: separateGutterLengthM,
     ledger_profile_used: ledgerProfileUsed,
     front_beam_profile_used: frontBeamProfileUsed,
+    tie_beam_profile_used: tieBeamProfileUsed,
+    strut_profile_used: strutProfileUsed,
     ridge_beam_profile_used: ridgeBeamProfileUsed,
     box_perimeter_beam_profile_used: boxPerimeterBeamProfileUsed,
     post_profile_used: postProfileUsed,
@@ -863,7 +970,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
           hip_corner_rafter_count_b: rafterCountB,
         }
       : null),
-    rafter_count: rafterCount,
+    rafter_count: rafterCountUsed,
     bracket_count: bracketCount,
     stringer_fixing_count: stringerFixingCount,
     bay_count: bayCount,
@@ -884,10 +991,33 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     ridge_length_m: ridgeLengthM,
     acrylic_area_m2: acrylicAreaM2,
     timber_area_m2: timberAreaM2,
+    timber_plane_count: timberPlaneCount,
+    timber_edge_rafter_count_per_plane: timberEdgeRafterCountPerPlane,
+    timber_edge_rafter_count_total: timberEdgeRafterCountTotal,
+    timber_common_rafter_count_per_plane: timberCommonRafterCountPerPlane,
+    timber_common_rafter_count_total: timberCommonRafterCountTotal,
+    timber_run_per_plane_m: timberRunPerPlaneM,
+    timber_slope_len_per_plane_m: timberSlopeLenPerPlaneM,
+    timber_purlin_lines_per_plane: timberPurlinLinesPerPlane,
+    timber_purlin_total_m: timberPurlinTotalM,
+    timber_hidden_finish: timberHiddenFinish,
+    roof_slope_area_m2: roofSlopeAreaM2,
+    timber_roof_above_area_m2: timberRoofAboveAreaM2,
+    timber_insulated_panel_count_per_plane: timberInsulatedPanelCountPerPlane,
+    timber_insulated_panel_count_total: timberInsulatedPanelCountTotal,
+    timber_tray_sheet_count_per_plane: timberTraySheetCountPerPlane,
+    timber_tray_sheet_count_total: timberTraySheetCountTotal,
+    covertek_area_m2: covertekAreaM2,
+    polystyrene_area_m2: polystyreneAreaM2,
+    timber_roofing_screws_steel_count: timberRoofingScrewsSteelCount,
+    timber_roofing_screws_insulated_count: timberRoofingScrewsInsulatedCount,
     roof_plane_count: roofPlaneCount,
-    total_rafter_pieces: roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount,
-    joiner_runs_total: roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount,
+    total_rafter_pieces: totalRafterPieces,
+    joiner_runs_total: joinerRunsTotal,
     acrylic_plane_count_used: acrylicPlaneCountUsed,
+    gable_end_frame_count: gableEndFrameCount,
+    tie_beam_length_m: tieBeamLengthM,
+    kingpost_strut_length_m: kingpostStrutLengthM,
     powdercoat_colour_used: powdercoatColourUsed,
     powdercoat_multiplier: powdercoatMultiplier,
     gutter_length_m: gutterLengthM,

@@ -1,4 +1,4 @@
-import type { InstallActionV1, MaterialsLineV1 } from '@/src/costing/engine/types';
+import type { InstallActionV1, MaterialsLineV1 } from '@sp/costing';
 import type { AcrylicLine, HardwareLine, InstallPhase, PowdercoatLine } from '@/lib/outputs/types';
 
 export type BomCsvRow = {

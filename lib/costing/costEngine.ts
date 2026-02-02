@@ -1,4 +1,4 @@
-import type { CostInputsV1, CostOutputV1, JobInputsV1, JobOutputV1 } from '@/src/costing/engine/types';
+import type { CostInputsV1, CostOutputV1, JobInputsV1, JobOutputV1 } from '@sp/costing';
 
 export type CostingConfigVersions = {
   pricebook: string;

@@ -1,10 +1,13 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  experimental: { externalDir: true },
+  transpilePackages: ['@sp/costing'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
-  // Ensure Turbopack treats this app folder as the workspace root.
-  turbopack: { root: __dirname },
+  // Allow monorepo package resolution for @sp/costing.
+  turbopack: { root: path.resolve(__dirname, '../..') },
   async headers() {
     const securityHeaders: { key: string; value: string }[] = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },

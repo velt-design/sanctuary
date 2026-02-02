@@ -24,7 +24,7 @@
 }
 
 .previewFrame {
-  height: calc(100dvh - var(--portal-header-height, 76px));
+  height: 100%;
   overflow: hidden;
   min-height: 0;
 }

@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { supabaseServer } from '@/lib/supabaseClient';
-import { loadCostingConfigV1, type CostingConfigV1 } from '@/src/costing/engine/config';
+import { loadCostingConfigV1, type CostingConfigV1 } from '@sp/costing';
 
 export type CostingOverrides = {
   materialCostOverrides: Record<string, number>;

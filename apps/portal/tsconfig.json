@@ -21,6 +21,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@sp/costing": [
+        "../../packages/costing/src/index.ts"
+      ],
+      "@sp/costing/*": [
+        "../../packages/costing/src/*"
       ]
     },
     "plugins": [

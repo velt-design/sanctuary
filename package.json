@@ -2,6 +2,10 @@
   "name": "my-site",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "node -e \"console.log('Use: npm run dev:marketing OR npm run dev:portal')\"",
     "dev:marketing": "npm --prefix apps/marketing run dev",

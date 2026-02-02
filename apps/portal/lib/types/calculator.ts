@@ -8,7 +8,7 @@ import type {
   PostConnectionType,
   RoofMaterial,
   RoofType,
-} from '@/src/costing/engine/types';
+} from '@sp/costing';
 
 export type BlindSystemType = 'ZIPTRAK' | 'OMNI';
 export type BlindFabric = 'MESH' | 'PVC' | 'FINE_MESH' | 'NONE';
@@ -46,6 +46,8 @@ export type CalculatorModuleOverrides = {
   ridgeBeamProfile?: string;
   boxPerimeterBeamProfile?: string;
   overhangSupportBeamProfile?: string;
+  tieBeamProfile?: string;
+  strutProfile?: string;
 };
 
 export type CalculatorModuleInputs = {
@@ -59,6 +61,7 @@ export type CalculatorModuleInputs = {
   internalRoofType: RoofType;
   fallDistanceMm: string;
   roofPitchDeg: string;
+  gableEndFramesMode: 'none' | 'outer_end_only' | 'both_ends';
   boxGutterHouseEdge: 'house' | 'our' | 'none';
   boxGutterFarEdge: 'house' | 'our' | 'none';
   downpipeCount: string;
@@ -73,6 +76,9 @@ export type CalculatorModuleInputs = {
   mixedAcrylicBaysMain: string;
   mixedAcrylicBaysA: string;
   mixedAcrylicBaysB: string;
+  timberRoofAboveType: 'insulated_panels' | 'steel_corrugated' | 'steel_tray';
+  timberInsulatedPanelThicknessMm: string;
+  timberTrayWidthMm: string;
 
   postCount: string;
   houseConnectionType: HouseConnectionType;
@@ -221,6 +227,7 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         internalRoofType: legacy.internalRoofType,
         fallDistanceMm: legacy.fallDistanceMm,
         roofPitchDeg: legacy.roofPitchDeg,
+        gableEndFramesMode: legacy.houseConnectionType !== 'none' ? 'outer_end_only' : 'both_ends',
         boxGutterHouseEdge: legacy.boxGutterHouseEdge ?? 'house',
         boxGutterFarEdge: legacy.boxGutterFarEdge ?? 'our',
         downpipeCount: legacy.downpipeCount ?? '0',
@@ -235,6 +242,9 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         mixedAcrylicBaysMain: legacy.mixedAcrylicBaysMain ?? '0',
         mixedAcrylicBaysA: legacy.mixedAcrylicBaysA ?? '0',
         mixedAcrylicBaysB: legacy.mixedAcrylicBaysB ?? '0',
+        timberRoofAboveType: 'insulated_panels',
+        timberInsulatedPanelThicknessMm: '50',
+        timberTrayWidthMm: '500',
         postCount: legacy.postCount,
         houseConnectionType: legacy.houseConnectionType,
         postConnectionType: legacy.postConnectionType,

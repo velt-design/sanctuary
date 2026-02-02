@@ -110,6 +110,38 @@
       "cost_inc_gst": 0.4025
     },
     {
+      "id": "hardware.splice_join_bracket",
+      "category": "bracket",
+      "name": "Splice join bracket",
+      "unit": "each",
+      "attributes": {
+        "type": "splice_join_bracket"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 12.0,
+      "cost_inc_gst": 13.8
+    },
+    {
+      "id": "fixing.splice_join_screw_each",
+      "category": "fixing",
+      "name": "Splice join screw",
+      "unit": "each",
+      "attributes": {
+        "type": "splice_join_screw"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.5,
+      "cost_inc_gst": 0.575
+    },
+    {
       "id": "hardware.deck_bracket_assembly",
       "category": "bracket",
       "name": "Post-to-deck bracket assembly (bracket + fixings allowance)",

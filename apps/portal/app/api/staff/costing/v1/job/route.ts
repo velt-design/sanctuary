@@ -1,7 +1,7 @@
 import { authOptions } from '@/lib/auth';
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
-import { calculateJobCostV1 } from '@/src/costing/engine/calculate';
-import type { CostInputsV1, ExtrusionColour, JobInputsV1 } from '@/src/costing/engine/types';
+import { calculateJobCostV1 } from '@sp/costing';
+import type { CostInputsV1, ExtrusionColour, JobInputsV1 } from '@sp/costing';
 import { getServerSession } from 'next-auth/next';
 import { NextResponse } from 'next/server';
 
@@ -9,8 +9,11 @@ export const runtime = 'nodejs';
 
 const PERGOLA_STYLES = ['pitched', 'gable', 'hip', 'hip_corner', 'box_perimeter'] as const;
 const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed'] as const;
+const TIMBER_ROOF_ABOVE_TYPES = ['insulated_panels', 'steel_corrugated', 'steel_tray'] as const;
+const TIMBER_TRAY_WIDTHS = [400, 500, 600] as const;
 const MIXED_ROOF_MODES = ['ridge_skylight', 'area_override', 'acrylic_bays'] as const;
 const EXTRUSION_COLOURS: ExtrusionColour[] = ['Black', 'White', 'Mill'];
+const GABLE_END_FRAMES = ['none', 'outer_end_only', 'both_ends'] as const;
 const HOUSE_CONNECTIONS = ['soffit', 'fascia', 'facade', 'none'] as const;
 const POST_CONNECTIONS = ['pile_1m', 'pile_1_5m', 'deck_bracket', 'slab_anchors'] as const;
 const ACCESS_LEVELS = ['easy', 'normal', 'hard'] as const;
@@ -82,7 +85,25 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
 
   if (!isOneOf(PERGOLA_STYLES, raw.pergola_style)) return { error: 'Invalid modules[].pergola_style' };
   if (!isOneOf(ROOF_MATERIALS, raw.roof_material)) return { error: 'Invalid modules[].roof_material' };
+  if (raw.timber_roof_above_type !== undefined && !isOneOf(TIMBER_ROOF_ABOVE_TYPES, raw.timber_roof_above_type)) {
+    return { error: 'Invalid modules[].timber_roof_above_type' };
+  }
+  if (raw.timber_insulated_panel_thickness_mm !== undefined) {
+    const thickness = toNumber(raw.timber_insulated_panel_thickness_mm);
+    if (!Number.isFinite(thickness) || thickness <= 0) {
+      return { error: 'modules[].timber_insulated_panel_thickness_mm must be a number > 0' };
+    }
+  }
+  if (raw.timber_tray_width_mm !== undefined) {
+    const trayWidth = toNumber(raw.timber_tray_width_mm);
+    if (!Number.isFinite(trayWidth) || !TIMBER_TRAY_WIDTHS.includes(Math.round(trayWidth) as any)) {
+      return { error: 'modules[].timber_tray_width_mm must be one of 400, 500, 600' };
+    }
+  }
   if (!EXTRUSION_COLOURS.includes(raw.extrusion_colour)) return { error: 'Invalid modules[].extrusion_colour' };
+  if (raw.gable_end_frames_mode !== undefined && !isOneOf(GABLE_END_FRAMES, raw.gable_end_frames_mode)) {
+    return { error: 'Invalid modules[].gable_end_frames_mode' };
+  }
   if (!isOneOf(HOUSE_CONNECTIONS, raw.house_connection_type)) return { error: 'Invalid modules[].house_connection_type' };
   if (!isOneOf(POST_CONNECTIONS, raw.post_connection_type)) return { error: 'Invalid modules[].post_connection_type' };
   if (!isOneOf(ACCESS_LEVELS, raw.access)) return { error: 'Invalid modules[].access' };
@@ -127,6 +148,43 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   }
   if (raw.inverted_enabled === true && (raw.pergola_style !== 'pitched' || raw.box_perimeter_enabled === true)) {
     return { error: 'Inverted option is only available for pitched roofs' };
+  }
+  if (raw.overhang_enabled === true) {
+    const spanForGuard = roof_span_m_raw !== undefined ? roof_span_m : projection_m;
+    if (Number.isFinite(spanForGuard) && overhang_amount_m !== undefined && overhang_amount_m >= spanForGuard) {
+      return { error: 'modules[].overhang_amount_m must be less than roof_span_m' };
+    }
+  }
+
+  let overrides: CostInputsV1['overrides'] | undefined;
+  if (raw.overrides !== undefined) {
+    if (typeof raw.overrides !== 'object' || raw.overrides === null) {
+      return { error: 'modules[].overrides must be an object' };
+    }
+    const rawOverrides = raw.overrides as Record<string, unknown>;
+    const next: CostInputsV1['overrides'] = {};
+    const assign = (key: keyof NonNullable<CostInputsV1['overrides']>) => {
+      if (rawOverrides[key] === undefined) return;
+      if (typeof rawOverrides[key] !== 'string') {
+        throw new Error(`Invalid modules[].overrides.${key}`);
+      }
+      (next as any)[key] = rawOverrides[key] as string;
+    };
+    try {
+      assign('ledger_profile');
+      assign('rafter_profile');
+      assign('post_profile');
+      assign('front_beam_profile');
+      assign('ridge_beam_profile');
+      assign('box_perimeter_beam_profile');
+      assign('overhang_support_beam_profile');
+      assign('tie_beam_profile');
+      assign('strut_profile');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Invalid modules[].overrides';
+      return { error: msg };
+    }
+    if (Object.keys(next).length > 0) overrides = next;
   }
 
   let mixed_roof: CostInputsV1['mixed_roof'] | undefined;
@@ -236,14 +294,20 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
     overhang_support_beam_profile: raw.overhang_support_beam_profile,
     inverted_enabled: raw.inverted_enabled === true,
     inverted_house_gutter: raw.inverted_house_gutter === undefined ? undefined : raw.inverted_house_gutter === true,
+    gable_end_frames_mode: raw.gable_end_frames_mode,
 
     roof_material: raw.roof_material,
     extrusion_colour: raw.extrusion_colour,
+    timber_roof_above_type: raw.timber_roof_above_type,
+    timber_insulated_panel_thickness_mm:
+      raw.timber_insulated_panel_thickness_mm !== undefined ? toNumber(raw.timber_insulated_panel_thickness_mm) : undefined,
+    timber_tray_width_mm: raw.timber_tray_width_mm !== undefined ? toNumber(raw.timber_tray_width_mm) : undefined,
     powdercoat_standard_colour: raw.powdercoat_standard_colour,
     powdercoat_is_custom: raw.powdercoat_is_custom === true,
     powdercoat_custom_colour: raw.powdercoat_custom_colour,
     mixed_roof,
     hip_corner,
+    overrides,
 
     house_connection_type: raw.house_connection_type,
     post_connection_type: raw.post_connection_type,
