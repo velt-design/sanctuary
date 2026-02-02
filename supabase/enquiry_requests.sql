@@ -35,12 +35,28 @@ create table if not exists public.enquiry_requests (
   utm jsonb not null default '{}'::jsonb,
   raw_payload jsonb not null default '{}'::jsonb,
 
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
+
+alter table public.enquiry_requests
+  add column if not exists created_at timestamptz not null default now();
+
+alter table public.enquiry_requests
+  add column if not exists updated_at timestamptz not null default now();
 
 create index if not exists enquiry_requests_contact_id_idx on public.enquiry_requests(contact_id);
 create index if not exists enquiry_requests_project_id_idx on public.enquiry_requests(project_id);
 create index if not exists enquiry_requests_created_at_idx on public.enquiry_requests(created_at);
+
+do $$
+begin
+  if to_regclass('public.set_updated_at') is not null then
+    drop trigger if exists enquiry_requests_set_updated_at on public.enquiry_requests;
+    create trigger enquiry_requests_set_updated_at before update on public.enquiry_requests
+    for each row execute function public.set_updated_at();
+  end if;
+end $$;
 
 -- Prompt PostgREST to refresh its schema cache after DDL changes.
 notify pgrst, 'reload schema';
