@@ -21,6 +21,12 @@ create table if not exists public.enquiry_requests (
   roof_materials text[],
   add_ons jsonb not null default '{}'::jsonb,
 
+  base_budget_low_inc_gst integer,
+  base_budget_high_inc_gst integer,
+  blinds_budget_low_inc_gst integer,
+  blinds_budget_high_inc_gst integer,
+  budget_basis text,
+
   company text,
   files jsonb not null default '[]'::jsonb,
 

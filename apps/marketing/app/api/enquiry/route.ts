@@ -2,6 +2,23 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+import { calculateCostV1 } from '../../../../../src/costing/engine/calculate';
+import type { CostInputsV1 } from '../../../../../src/costing/engine/types';
+import {
+  QUOTE_MULTIPLIER,
+  toIndicativeRangeOneSided,
+  type EnquiryType as EstimateEnquiryType,
+  type MoneyRange,
+} from '../../../../../lib/pricing/enquiryEstimate';
+import {
+  autoSplitByMaxWidth,
+  getBlindSystemLimits,
+  priceAllBlinds,
+  type BlindLineItemInput,
+} from '../../../../../lib/costing/blinds';
+import { sendCustomerAutoresponder } from '../../../../../lib/email/sendCustomerAutoresponder';
+import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '../../../../../src/emails/types';
+
 type Hit = { t: number; n: number };
 const hits = new Map<string, Hit>();
 const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
@@ -107,12 +124,197 @@ function normalizeList(value: unknown): string[] {
   return [];
 }
 
+function toTitleCase(value: string): string {
+  const v = value.trim();
+  if (!v) return '';
+  return v.charAt(0).toUpperCase() + v.slice(1);
+}
+
+function formatStyleLabel(styleRaw: string): string {
+  const s = String(styleRaw ?? '').trim().toLowerCase();
+  if (!s) return '';
+  if (s.includes('gable')) return 'Gable';
+  if (s.includes('hip')) return 'Hip';
+  if (s.includes('perimeter') || s.includes('box')) return 'Perimeter';
+  return 'Pitched';
+}
+
+function formatRoofLabel(roofMaterials: string[]): string {
+  const mats = roofMaterials.map((m) => String(m ?? '').trim().toLowerCase()).filter(Boolean);
+  if (!mats.length) return 'Not selected';
+  const hasAcrylic = mats.includes('acrylic');
+  const hasTimber = mats.includes('timber');
+  if (hasAcrylic && hasTimber) return 'Both';
+  if (hasTimber) return 'Timber';
+  return 'Acrylic';
+}
+
+function addOnLabels(addOns: Record<string, unknown>): string[] {
+  const labels: string[] = [];
+  if (isTruthy(addOns?.blinds)) labels.push('Blinds');
+  if (isTruthy(addOns?.slats)) labels.push('Slats');
+  if (isTruthy(addOns?.lighting)) labels.push('Lighting');
+  if (isTruthy(addOns?.heating)) labels.push('Heating');
+  return labels;
+}
+
 function safeJsonPayload(value: Record<string, unknown>): Record<string, unknown> {
   try {
     return JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
   } catch {
     return {};
   }
+}
+
+function isTruthy(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === 'number') return value === 1;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    return v === 'true' || v === '1' || v === 'yes' || v === 'y';
+  }
+  return false;
+}
+
+function pergolaStyleForCosting(styleRaw: string): CostInputsV1['pergola_style'] {
+  const s = String(styleRaw ?? '').trim().toLowerCase();
+  if (s === 'gable') return 'gable';
+  if (s === 'hip') return 'hip';
+  if (s === 'hip_corner') return 'hip_corner';
+  if (s === 'box_perimeter' || s === 'perimeter') return 'box_perimeter';
+  return 'pitched';
+}
+
+function roofMaterialForCosting(roofMaterials: string[]): CostInputsV1['roof_material'] {
+  const mats = roofMaterials.map((m) => String(m ?? '').trim().toLowerCase()).filter(Boolean);
+  const hasAcrylic = mats.includes('acrylic');
+  const hasTimber = mats.includes('timber');
+  if (hasAcrylic && hasTimber) return 'mixed';
+  if (hasTimber) return 'timber';
+  return 'acrylic';
+}
+
+function heightCategoryForCosting(heightM: number | null): CostInputsV1['height'] {
+  if (typeof heightM === 'number' && Number.isFinite(heightM) && heightM >= 3) return 'two_storey';
+  return 'single_storey';
+}
+
+function estimateBaseTrueCostIncGst(params: {
+  widthM: number | null;
+  depthM: number | null;
+  heightM: number | null;
+  style: string;
+  roofMaterials: string[];
+}): number | null {
+  if (!Number.isFinite(params.widthM ?? NaN) || !Number.isFinite(params.depthM ?? NaN)) return null;
+
+  const lengthM = Math.max(0.1, Number(params.widthM));
+  const projectionM = Math.max(0.1, Number(params.depthM));
+  const postCutHeightM = Number.isFinite(params.heightM ?? NaN) ? Math.max(1, Number(params.heightM)) : 2.4;
+
+  const inputs: CostInputsV1 = {
+    length_m: lengthM,
+    projection_m: projectionM,
+    post_cut_height_m: postCutHeightM,
+    pergola_style: pergolaStyleForCosting(params.style),
+    roof_material: roofMaterialForCosting(params.roofMaterials),
+    extrusion_colour: 'Black',
+    house_connection_type: 'fascia',
+    post_connection_type: 'deck_bracket',
+    access: 'normal',
+    height: heightCategoryForCosting(params.heightM),
+    ground: 'easy',
+  };
+
+  try {
+    const result = calculateCostV1(inputs);
+    const totalInc = result?.totals?.cost_inc_gst;
+    return typeof totalInc === 'number' && Number.isFinite(totalInc) && totalInc > 0 ? totalInc : null;
+  } catch {
+    // Estimation should never block submission; treat pricing as unavailable.
+    return null;
+  }
+}
+
+function estimateBlindsQuoteIncGst(params: {
+  widthM: number | null;
+  depthM: number | null;
+  heightM: number | null;
+}): number | null {
+  if (!Number.isFinite(params.widthM ?? NaN) || !Number.isFinite(params.depthM ?? NaN)) return null;
+
+  const system: BlindLineItemInput['system'] = 'ZIPTRAK';
+  const { maxWidthMm, maxCoverLengthMm } = getBlindSystemLimits(system);
+
+  const heightMmRaw = Number.isFinite(params.heightM ?? NaN) ? Math.round(Math.max(1, Number(params.heightM)) * 1000) : 2400;
+  const coverLengthMm = Math.min(Math.max(1000, heightMmRaw), maxCoverLengthMm);
+
+  const widthMm = Math.round(Number(params.widthM) * 1000);
+  const depthMm = Math.round(Number(params.depthM) * 1000);
+
+  // Assume blinds on 3 open faces (front + 2 sides). House side is excluded.
+  const facesMm = [widthMm, depthMm, depthMm].filter((v) => Number.isFinite(v) && v > 0);
+
+  const items: BlindLineItemInput[] = [];
+  let idSeq = 1;
+  for (const faceWidthMm of facesMm) {
+    const split = autoSplitByMaxWidth(faceWidthMm, maxWidthMm) ?? [faceWidthMm];
+    for (const panelWidthMm of split) {
+      items.push({
+        id: `b${idSeq++}`,
+        system,
+        widthMm: panelWidthMm,
+        coverLengthMm,
+        fabric: 'MESH',
+        motorised: false,
+      });
+    }
+  }
+
+  if (!items.length) return null;
+
+  const priced = priceAllBlinds(items);
+  const totalInc = priced?.totals?.totalIncCents ? priced.totals.totalIncCents / 100 : 0;
+  return Number.isFinite(totalInc) && totalInc > 0 ? totalInc : null;
+}
+
+function estimateIndicativeBudgets(params: {
+  enquiryType: string;
+  widthM: number | null;
+  depthM: number | null;
+  heightM: number | null;
+  style: string;
+  roofMaterials: string[];
+  addOns: Record<string, unknown>;
+}): { baseRange: MoneyRange | null; blindsRange: MoneyRange | null; budgetBasis: string | null } {
+  if (params.enquiryType !== 'residential' && params.enquiryType !== 'commercial') {
+    return { baseRange: null, blindsRange: null, budgetBasis: null };
+  }
+
+  const enquiryType = params.enquiryType as EstimateEnquiryType;
+
+  const baseTrueCostIncGst = estimateBaseTrueCostIncGst({
+    widthM: params.widthM,
+    depthM: params.depthM,
+    heightM: params.heightM,
+    style: params.style,
+    roofMaterials: params.roofMaterials,
+  });
+
+  const baseRange = baseTrueCostIncGst ? toIndicativeRangeOneSided(baseTrueCostIncGst, enquiryType) : null;
+
+  const blindsSelected = isTruthy(params.addOns?.blinds);
+  const blindsQuoteIncGst = blindsSelected
+    ? estimateBlindsQuoteIncGst({ widthM: params.widthM, depthM: params.depthM, heightM: params.heightM })
+    : null;
+
+  const blindsTrueCostIncGst = blindsQuoteIncGst ? blindsQuoteIncGst / QUOTE_MULTIPLIER : null;
+  const blindsRange = blindsTrueCostIncGst ? toIndicativeRangeOneSided(blindsTrueCostIncGst, enquiryType) : null;
+
+  const budgetBasis =
+    baseRange || blindsRange ? 'website ballpark: 1.25x true cost, baseline->+15%, fascia assumption' : null;
+
+  return { baseRange, blindsRange, budgetBasis };
 }
 
 async function readBody(req: Request): Promise<Record<string, unknown> | null> {
@@ -172,8 +374,8 @@ export async function POST(req: Request) {
   if (!name) {
     return NextResponse.json({ ok: false, error: 'Name is required' }, { status: 422 });
   }
-  if (!email && !phone) {
-    return NextResponse.json({ ok: false, error: 'Email or phone is required' }, { status: 422 });
+  if (!phone) {
+    return NextResponse.json({ ok: false, error: 'Phone is required' }, { status: 422 });
   }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ ok: false, error: 'Invalid email' }, { status: 422 });
@@ -313,32 +515,151 @@ export async function POST(req: Request) {
 
   const projectId = projectRow.id;
 
-  const { data: enquiryRow, error: enquiryError } = await supabase
-    .from('enquiry_requests')
-    .insert({
-      contact_id: contactId,
-      project_id: projectId,
-      enquiry_type: enquiryType,
-      suburb: suburb || null,
-      message: message || null,
-      width_m: widthM,
-      depth_m: depthM,
-      height_m: heightM,
-      style: style || null,
-      roof_materials: roofMaterials.length ? roofMaterials : null,
-      add_ons: addOns,
-      company: company || null,
-      files,
-      source,
-      page: page || null,
-      utm,
-      raw_payload: rawPayload,
-    })
-    .select('id')
-    .single();
+  const budgets = estimateIndicativeBudgets({
+    enquiryType,
+    widthM,
+    depthM,
+    heightM,
+    style,
+    roofMaterials,
+    addOns,
+  });
+
+  const insertBase: Record<string, unknown> = {
+    contact_id: contactId,
+    project_id: projectId,
+    enquiry_type: enquiryType,
+    suburb: suburb || null,
+    message: message || null,
+    width_m: widthM,
+    depth_m: depthM,
+    height_m: heightM,
+    style: style || null,
+    roof_materials: roofMaterials.length ? roofMaterials : null,
+    add_ons: addOns,
+    company: company || null,
+    files,
+    source,
+    page: page || null,
+    utm,
+    raw_payload: rawPayload,
+  };
+
+  const insertWithBudgets: Record<string, unknown> = {
+    ...insertBase,
+    ...(budgets.baseRange
+      ? {
+          base_budget_low_inc_gst: budgets.baseRange.lowIncGst,
+          base_budget_high_inc_gst: budgets.baseRange.highIncGst,
+        }
+      : {}),
+    ...(budgets.blindsRange
+      ? {
+          blinds_budget_low_inc_gst: budgets.blindsRange.lowIncGst,
+          blinds_budget_high_inc_gst: budgets.blindsRange.highIncGst,
+        }
+      : {}),
+    ...(budgets.budgetBasis ? { budget_basis: budgets.budgetBasis } : {}),
+  };
+
+  const isMissingColumnError = (error: unknown): boolean => {
+    const e = error as any;
+    const code = typeof e?.code === 'string' ? e.code : '';
+    const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
+    return code === '42703' || code === 'PGRST204' || (message.includes('column') && message.includes('does not exist'));
+  };
+
+  let insertRes = await supabase.from('enquiry_requests').insert(insertWithBudgets).select('id').single();
+
+  if (insertRes.error && isMissingColumnError(insertRes.error)) {
+    // DB schema may not yet include the budget columns; fall back to a schema-compatible insert.
+    insertRes = await supabase.from('enquiry_requests').insert(insertBase).select('id').single();
+  }
+
+  const enquiryRow = insertRes.data;
+  const enquiryError = insertRes.error;
 
   if (enquiryError || !enquiryRow?.id) {
     return NextResponse.json({ ok: false, error: enquiryError?.message || 'Failed to create enquiry request' }, { status: 500 });
+  }
+
+  if (email) {
+    try {
+      const submittedAt = new Date();
+      const utmSource =
+        typeof (utm as any)?.utm_source === 'string'
+          ? String((utm as any).utm_source)
+          : typeof (utm as any)?.utmSource === 'string'
+            ? String((utm as any).utmSource)
+            : undefined;
+      const utmMedium =
+        typeof (utm as any)?.utm_medium === 'string'
+          ? String((utm as any).utm_medium)
+          : typeof (utm as any)?.utmMedium === 'string'
+            ? String((utm as any).utmMedium)
+            : undefined;
+      const utmCampaign =
+        typeof (utm as any)?.utm_campaign === 'string'
+          ? String((utm as any).utm_campaign)
+          : typeof (utm as any)?.utmCampaign === 'string'
+            ? String((utm as any).utmCampaign)
+            : undefined;
+
+      let emailPayload: EnquiryPayload;
+
+      if (enquiryType === 'professional') {
+        const filesCount = Array.isArray(files) ? files.length : 0;
+        emailPayload = {
+          leadId: enquiryRow.id,
+          submittedAt,
+          enquiryType: 'professional',
+          name,
+          email,
+          phone: phoneRaw,
+          suburb,
+          message: message || undefined,
+          utmSource,
+          utmMedium,
+          utmCampaign,
+          landingUrl: page || undefined,
+          company: company || undefined,
+          filesReceivedCount: filesCount,
+        } satisfies Professional;
+      } else {
+        if (!budgets.baseRange) {
+          throw new Error('Missing base estimate range for autoresponder.');
+        }
+        const addons = addOnLabels(addOns);
+        const blindsSelected = isTruthy(addOns?.blinds);
+        emailPayload = {
+          leadId: enquiryRow.id,
+          submittedAt,
+          enquiryType: enquiryType as ResidentialOrCommercial['enquiryType'],
+          name,
+          email,
+          phone: phoneRaw,
+          suburb,
+          message: message || undefined,
+          utmSource,
+          utmMedium,
+          utmCampaign,
+          landingUrl: page || undefined,
+          widthM: Number.isFinite(widthM ?? NaN) ? Number(widthM) : 0,
+          depthM: Number.isFinite(depthM ?? NaN) ? Number(depthM) : 0,
+          heightM: Number.isFinite(heightM ?? NaN) ? Number(heightM) : 0,
+          style: formatStyleLabel(style),
+          roof: formatRoofLabel(roofMaterials),
+          addons,
+          blindsSelected,
+          baseRange: budgets.baseRange,
+          ...(budgets.blindsRange ? { blindsRange: budgets.blindsRange } : {}),
+        } satisfies ResidentialOrCommercial;
+      }
+
+      await sendCustomerAutoresponder(emailPayload);
+    } catch (err) {
+      console.error('Autoresponder send failed', err);
+    }
   }
 
   return NextResponse.json({
