@@ -16,8 +16,8 @@ import {
   priceAllBlinds,
   type BlindLineItemInput,
 } from '../../../../../lib/costing/blinds';
-import { sendCustomerAutoresponder } from '../../../../../lib/email/sendCustomerAutoresponder';
-import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '../../../../../src/emails/types';
+import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';
+import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
 
 type Hit = { t: number; n: number };
 const hits = new Map<string, Hit>();

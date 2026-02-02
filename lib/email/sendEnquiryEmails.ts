@@ -1,15 +1,15 @@
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
-import { getCallWindowText } from '@/src/emails/utils/callWindow';
-import type { EnquiryPayload, ResidentialOrCommercial, Professional } from '@/src/emails/types';
+import { getCallWindowText } from '@/apps/marketing/emails/utils/callWindow';
+import type { EnquiryPayload, ResidentialOrCommercial, Professional } from '@/apps/marketing/emails/types';
 
-import { CustomerResidentialEmail } from '@/src/emails/templates/customerResidential';
-import { CustomerCommercialEmail } from '@/src/emails/templates/customerCommercial';
-import { CustomerProfessionalEmail } from '@/src/emails/templates/customerProfessional';
+import { CustomerResidentialEmail } from '@/apps/marketing/emails/templates/customerResidential';
+import { CustomerCommercialEmail } from '@/apps/marketing/emails/templates/customerCommercial';
+import { CustomerProfessionalEmail } from '@/apps/marketing/emails/templates/customerProfessional';
 
-import { InternalResidentialEmail } from '@/src/emails/templates/internalResidential';
-import { InternalCommercialEmail } from '@/src/emails/templates/internalCommercial';
-import { InternalProfessionalEmail } from '@/src/emails/templates/internalProfessional';
+import { InternalResidentialEmail } from '@/apps/marketing/emails/templates/internalResidential';
+import { InternalCommercialEmail } from '@/apps/marketing/emails/templates/internalCommercial';
+import { InternalProfessionalEmail } from '@/apps/marketing/emails/templates/internalProfessional';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

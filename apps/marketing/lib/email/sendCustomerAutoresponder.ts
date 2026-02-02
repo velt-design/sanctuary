@@ -1,12 +1,12 @@
 import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import type { ReactElement } from 'react';
-import { getCallWindowText } from '../../src/emails/utils/callWindow';
-import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '../../src/emails/types';
+import { getCallWindowText } from '@/emails/utils/callWindow';
+import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
 
-import { CustomerResidentialEmail } from '../../src/emails/templates/customerResidential';
-import { CustomerCommercialEmail } from '../../src/emails/templates/customerCommercial';
-import { CustomerProfessionalEmail } from '../../src/emails/templates/customerProfessional';
+import { CustomerResidentialEmail } from '@/emails/templates/customerResidential';
+import { CustomerCommercialEmail } from '@/emails/templates/customerCommercial';
+import { CustomerProfessionalEmail } from '@/emails/templates/customerProfessional';
 
 const FROM = 'Sanctuary Pergolas <info@sanctuarypergolas.co.nz>';
 const REPLY_TO = 'info@sanctuarypergolas.co.nz';
