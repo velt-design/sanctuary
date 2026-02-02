@@ -1,6 +1,7 @@
 import { render } from '@react-email/render';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { toIndicativeRangeOneSided } from '../lib/pricing/enquiryEstimate';
 import { getCallWindowText } from '../src/emails/utils/callWindow';
 import type { ResidentialOrCommercial, Professional } from '../src/emails/types';
 
@@ -28,7 +29,12 @@ const baseLead = {
   landingUrl: 'https://sanctuarypergolas.co.nz/contact',
 } as const;
 
-const residentialLead: ResidentialOrCommercial = {
+const residentialBaseRange = toIndicativeRangeOneSided(22000, 'residential');
+const residentialBlindsRange = toIndicativeRangeOneSided(6000, 'residential');
+const commercialBaseRange = toIndicativeRangeOneSided(42000, 'commercial');
+const commercialBlindsRange = toIndicativeRangeOneSided(12800, 'commercial');
+
+const residentialWithBlinds: ResidentialOrCommercial = {
   ...baseLead,
   enquiryType: 'residential',
   widthM: 4.2,
@@ -36,13 +42,19 @@ const residentialLead: ResidentialOrCommercial = {
   heightM: 2.7,
   style: 'Gable',
   roof: 'Acrylic',
-  addons: ['Lighting', 'Heating'],
+  addons: ['Blinds', 'Lighting', 'Heating'],
   blindsSelected: true,
-  baseRange: { lowIncGst: 18500, highIncGst: 25500 },
-  blindsRange: { lowIncGst: 4200, highIncGst: 6800 },
+  baseRange: residentialBaseRange,
+  blindsRange: residentialBlindsRange,
 };
 
-const commercialLead: ResidentialOrCommercial = {
+const residentialNoBlinds: ResidentialOrCommercial = {
+  ...residentialWithBlinds,
+  addons: ['Lighting', 'Heating'],
+  blindsSelected: false,
+};
+
+const commercialNoBlinds: ResidentialOrCommercial = {
   ...baseLead,
   enquiryType: 'commercial',
   widthM: 8.5,
@@ -52,7 +64,14 @@ const commercialLead: ResidentialOrCommercial = {
   roof: 'Both',
   addons: ['Lighting', 'Fans'],
   blindsSelected: false,
-  baseRange: { lowIncGst: 42000, highIncGst: 62000 },
+  baseRange: commercialBaseRange,
+};
+
+const commercialWithBlinds: ResidentialOrCommercial = {
+  ...commercialNoBlinds,
+  addons: ['Blinds', 'Lighting', 'Fans'],
+  blindsSelected: true,
+  blindsRange: commercialBlindsRange,
 };
 
 const professionalLead: Professional = {
@@ -65,11 +84,19 @@ const professionalLead: Professional = {
 const templates = {
   'customer-residential': {
     file: 'customer-residential.html',
-    render: () => CustomerResidentialEmail({ ...residentialLead, callWindowText }),
+    render: () => CustomerResidentialEmail({ ...residentialWithBlinds, callWindowText }),
+  },
+  'customer-residential-no-blinds': {
+    file: 'customer-residential-no-blinds.html',
+    render: () => CustomerResidentialEmail({ ...residentialNoBlinds, callWindowText }),
   },
   'customer-commercial': {
     file: 'customer-commercial.html',
-    render: () => CustomerCommercialEmail({ ...commercialLead, callWindowText }),
+    render: () => CustomerCommercialEmail({ ...commercialNoBlinds, callWindowText }),
+  },
+  'customer-commercial-with-blinds': {
+    file: 'customer-commercial-with-blinds.html',
+    render: () => CustomerCommercialEmail({ ...commercialWithBlinds, callWindowText }),
   },
   'customer-professional': {
     file: 'customer-professional.html',
@@ -77,11 +104,11 @@ const templates = {
   },
   'internal-residential': {
     file: 'internal-residential.html',
-    render: () => InternalResidentialEmail({ ...residentialLead, callWindowText }),
+    render: () => InternalResidentialEmail({ ...residentialWithBlinds, callWindowText }),
   },
   'internal-commercial': {
     file: 'internal-commercial.html',
-    render: () => InternalCommercialEmail({ ...commercialLead, callWindowText }),
+    render: () => InternalCommercialEmail({ ...commercialNoBlinds, callWindowText }),
   },
   'internal-professional': {
     file: 'internal-professional.html',
@@ -91,25 +118,11 @@ const templates = {
 
 type TemplateKey = keyof typeof templates;
 
-async function main() {
-  const templateKey = (process.argv[2] as TemplateKey | undefined) ?? 'customer-residential';
-  const selected = templates[templateKey];
+async function writePreview(outputDir: string, fileName: string, reactEmail: JSX.Element) {
+  const html = await render(reactEmail);
+  const text = await render(reactEmail, { plainText: true });
 
-  if (!selected) {
-    console.error(`Unknown template: ${process.argv[2]}`);
-    console.error('Available templates:');
-    Object.keys(templates).forEach((key) => console.error(`- ${key}`));
-    process.exitCode = 1;
-    return;
-  }
-
-  const outputDir = path.join(process.cwd(), 'tmp', 'email-previews');
-  await mkdir(outputDir, { recursive: true });
-
-  const html = await render(selected.render());
-  const text = await render(selected.render(), { plainText: true });
-
-  const htmlPath = path.join(outputDir, selected.file);
+  const htmlPath = path.join(outputDir, fileName);
   const textPath = htmlPath.replace(/\.html$/, '.txt');
 
   await writeFile(htmlPath, html, 'utf8');
@@ -117,6 +130,41 @@ async function main() {
 
   console.log(`Wrote ${htmlPath}`);
   console.log(`Wrote ${textPath}`);
+}
+
+async function main() {
+  const arg = (process.argv[2] ?? '').trim();
+  const outputDir = path.join(process.cwd(), 'tmp', 'email-previews');
+  await mkdir(outputDir, { recursive: true });
+
+  if (arg === 'enquiry-variants') {
+    const keys: TemplateKey[] = [
+      'customer-residential',
+      'customer-residential-no-blinds',
+      'customer-commercial-with-blinds',
+      'customer-commercial',
+    ];
+
+    for (const key of keys) {
+      const selected = templates[key];
+      await writePreview(outputDir, selected.file, selected.render());
+    }
+    return;
+  }
+
+  const templateKey = (arg as TemplateKey | '') || 'customer-residential';
+  const selected = templates[templateKey as TemplateKey];
+
+  if (!selected) {
+    console.error(`Unknown template: ${process.argv[2]}`);
+    console.error('Available templates:');
+    Object.keys(templates).forEach((key) => console.error(`- ${key}`));
+    console.error('- enquiry-variants');
+    process.exitCode = 1;
+    return;
+  }
+
+  await writePreview(outputDir, selected.file, selected.render());
 }
 
 main().catch((error) => {

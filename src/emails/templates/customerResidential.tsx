@@ -8,14 +8,14 @@ import { formatNZD } from '../utils/money';
 import type { ResidentialOrCommercial } from '../types';
 
 export function CustomerResidentialEmail(props: ResidentialOrCommercial & { callWindowText: string }) {
-  const baseLine = `Base pergola structure: ${formatNZD(props.baseRange.lowIncGst)} - ${formatNZD(
+  const baseLine = `Base pergola structure: from ${formatNZD(props.baseRange.lowIncGst)} to ${formatNZD(
     props.baseRange.highIncGst,
   )} (incl. GST)`;
   const lines = [baseLine];
 
   if (props.blindsSelected && props.blindsRange) {
     lines.push(
-      `Blinds (separate): ${formatNZD(props.blindsRange.lowIncGst)} - ${formatNZD(
+      `Blinds (separate): from ${formatNZD(props.blindsRange.lowIncGst)} to ${formatNZD(
         props.blindsRange.highIncGst,
       )} (incl. GST)`,
     );
@@ -35,9 +35,9 @@ export function CustomerResidentialEmail(props: ResidentialOrCommercial & { call
       </Text>
 
       <EstimateCard
-        title="Estimated investment range (installed)"
+        title="Indicative investment range (installed, incl. GST)"
         lines={lines}
-        note="Generated from your size and selections using standard assumptions (normal access, standard fixings/colour, fascia connection). Final pricing is confirmed after a quick check of site conditions and connection details."
+        note="The lower figure reflects a base structure under standard assumptions (normal access, standard fixings/colour, fascia connection). Final pricing is confirmed after a quick check of site conditions and connection details."
       />
 
       <Summary
