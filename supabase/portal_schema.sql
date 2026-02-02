@@ -19,6 +19,8 @@ create table if not exists public.contacts (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.contacts
+  add column if not exists updated_at timestamptz not null default now();
 drop trigger if exists contacts_set_updated_at on public.contacts;
 create trigger contacts_set_updated_at before update on public.contacts
 for each row execute function public.set_updated_at();
@@ -37,6 +39,8 @@ create table if not exists public.projects (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.projects
+  add column if not exists updated_at timestamptz not null default now();
 drop trigger if exists projects_set_updated_at on public.projects;
 create trigger projects_set_updated_at before update on public.projects
 for each row execute function public.set_updated_at();
@@ -73,6 +77,8 @@ create table if not exists public.estimates (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.estimates
+  add column if not exists updated_at timestamptz not null default now();
 drop trigger if exists estimates_set_updated_at on public.estimates;
 create trigger estimates_set_updated_at before update on public.estimates
 for each row execute function public.set_updated_at();
@@ -90,6 +96,8 @@ create table if not exists public.schedule_crews (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.schedule_crews
+  add column if not exists updated_at timestamptz not null default now();
 drop trigger if exists schedule_crews_set_updated_at on public.schedule_crews;
 create trigger schedule_crews_set_updated_at before update on public.schedule_crews
 for each row execute function public.set_updated_at();
@@ -109,6 +117,8 @@ create table if not exists public.schedule_items (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table public.schedule_items
+  add column if not exists updated_at timestamptz not null default now();
 drop trigger if exists schedule_items_set_updated_at on public.schedule_items;
 create trigger schedule_items_set_updated_at before update on public.schedule_items
 for each row execute function public.set_updated_at();
@@ -123,4 +133,3 @@ alter default privileges in schema public grant select, insert, update, delete o
 
 -- Force schema reload
 select pg_notify('pgrst', 'reload schema');
-

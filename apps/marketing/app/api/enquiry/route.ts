@@ -88,6 +88,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function isMissingColumnError(error: unknown): boolean {
+  const e = error as any;
+  const code = typeof e?.code === 'string' ? e.code : '';
+  const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
+  return code === '42703' || code === 'PGRST204' || (message.includes('column') && message.includes('does not exist'));
+}
+
 function maybeParseJson(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
@@ -478,7 +485,10 @@ export async function POST(req: Request) {
     if (Object.keys(patch).length) {
       const { error } = await supabase.from('contacts').update(patch).eq('id', contactId);
       if (error) {
-        return NextResponse.json({ ok: false, error: error.message || 'Failed to update contact' }, { status: 500 });
+        if (!isMissingColumnError(error)) {
+          return NextResponse.json({ ok: false, error: error.message || 'Failed to update contact' }, { status: 500 });
+        }
+        console.warn('Skipping contact update because updated_at column is missing.', error);
       }
     }
   } else {
@@ -560,13 +570,6 @@ export async function POST(req: Request) {
         }
       : {}),
     ...(budgets.budgetBasis ? { budget_basis: budgets.budgetBasis } : {}),
-  };
-
-  const isMissingColumnError = (error: unknown): boolean => {
-    const e = error as any;
-    const code = typeof e?.code === 'string' ? e.code : '';
-    const message = typeof e?.message === 'string' ? e.message.toLowerCase() : '';
-    return code === '42703' || code === 'PGRST204' || (message.includes('column') && message.includes('does not exist'));
   };
 
   let insertRes = await supabase.from('enquiry_requests').insert(insertWithBudgets).select('id').single();
