@@ -26,21 +26,21 @@ function bar(stockLengthM: number, costExGst: number): TestBar {
 describe('selectBestStock tie-breaker', () => {
   it('prefers lower cost per metre even with higher waste', () => {
     const bars = [bar(4, 8), bar(6, 15)];
-    const cuts = [3, 3];
+    const cuts = [3, 3].map((length_m) => ({ length_m, join_policy: 'joinable' as const, component: 'Test' }));
     const result = selectBestStock(bars as any, cuts, [6, 4]);
     expect(result.bar?.stock_length_m).toBe(4);
   });
 
   it('prefers lower waste when cost per metre ties', () => {
     const bars = [bar(4, 8), bar(6, 12)];
-    const cuts = [3, 3];
+    const cuts = [3, 3].map((length_m) => ({ length_m, join_policy: 'joinable' as const, component: 'Test' }));
     const result = selectBestStock(bars as any, cuts, [6, 4]);
     expect(result.bar?.stock_length_m).toBe(6);
   });
 
   it('prefers fewer bars when cost and waste tie', () => {
     const bars = [bar(4, 8), bar(6, 12)];
-    const cuts = [3, 3, 3];
+    const cuts = [3, 3, 3].map((length_m) => ({ length_m, join_policy: 'joinable' as const, component: 'Test' }));
     const result = selectBestStock(bars as any, cuts, [6, 4]);
     expect(result.bar?.stock_length_m).toBe(6);
   });

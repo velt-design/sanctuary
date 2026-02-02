@@ -27,6 +27,87 @@
       "cost_inc_gst": 10.93
     },
     {
+      "id": "roof.insulated_panel_50mm_m2",
+      "category": "roofing_panel",
+      "name": "Insulated roof panel 50mm - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "insulated_panel",
+        "thickness_mm": 50
+      },
+      "notes": "Placeholder SKU for timber roof above (insulated panels).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 120.0,
+      "cost_inc_gst": 138.0
+    },
+    {
+      "id": "roof.steel_corrugated_m2",
+      "category": "roofing_steel",
+      "name": "Steel corrugated roofing - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "steel_corrugated"
+      },
+      "notes": "Placeholder SKU for timber roof above (steel corrugated).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 45.0,
+      "cost_inc_gst": 51.75
+    },
+    {
+      "id": "roof.steel_tray_m2",
+      "category": "roofing_steel",
+      "name": "Steel tray roofing - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "steel_tray"
+      },
+      "notes": "Placeholder SKU for timber roof above (steel tray).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 65.0,
+      "cost_inc_gst": 74.75
+    },
+    {
+      "id": "underlay.covertek_407_m2",
+      "category": "underlay",
+      "name": "Covertek 407 underlay - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "covertek_407"
+      },
+      "notes": "Placeholder SKU for timber roof above underlay.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 6.0,
+      "cost_inc_gst": 6.9
+    },
+    {
+      "id": "insulation.polystyrene_m2",
+      "category": "insulation",
+      "name": "Polystyrene insulation - per m\u00b2",
+      "unit": "m2",
+      "attributes": {
+        "type": "polystyrene"
+      },
+      "notes": "Placeholder SKU for timber roof above insulation.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 8.0,
+      "cost_inc_gst": 9.2
+    },
+    {
       "id": "anchor.chem_m12_each",
       "category": "fixing",
       "name": "M12 chemical anchor (stud + nut/washer + resin allocation)",
@@ -108,6 +189,70 @@
       },
       "cost_ex_gst": 0.35,
       "cost_inc_gst": 0.4025
+    },
+    {
+      "id": "fixing.purlin_screw_each",
+      "category": "fixing",
+      "name": "Purlin fixing screw",
+      "unit": "each",
+      "attributes": {
+        "type": "purlin_screw"
+      },
+      "notes": "Placeholder SKU for timber purlin fixings.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.45,
+      "cost_inc_gst": 0.5175
+    },
+    {
+      "id": "fixing.roofing_screw_each",
+      "category": "fixing",
+      "name": "Roofing screw",
+      "unit": "each",
+      "attributes": {
+        "type": "roofing_screw"
+      },
+      "notes": "Placeholder SKU for timber roof above fixings.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.45,
+      "cost_inc_gst": 0.5175
+    },
+    {
+      "id": "hardware.splice_join_bracket",
+      "category": "bracket",
+      "name": "Splice join bracket",
+      "unit": "each",
+      "attributes": {
+        "type": "splice_join_bracket"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 12.0,
+      "cost_inc_gst": 13.8
+    },
+    {
+      "id": "fixing.splice_join_screw_each",
+      "category": "fixing",
+      "name": "Splice join screw",
+      "unit": "each",
+      "attributes": {
+        "type": "splice_join_screw"
+      },
+      "notes": "Placeholder SKU (migrate to supplier pricing).",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 0.5,
+      "cost_inc_gst": 0.575
     },
     {
       "id": "hardware.deck_bracket_assembly",

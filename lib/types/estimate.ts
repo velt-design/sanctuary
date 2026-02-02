@@ -1,5 +1,5 @@
 import type { CalculatorInputs } from './calculator';
-import type { DerivedV1, InstallV1, MaterialsV1, OverheadV1, TotalsV1, WarningV1 } from '@/src/costing/engine/types';
+import type { DerivedV1, InstallV1, MaterialsV1, OverheadV1, TotalsV1, WarningV1 } from '@sp/costing';
 import type { Contact } from './contact';
 import type { Project } from './project';
 

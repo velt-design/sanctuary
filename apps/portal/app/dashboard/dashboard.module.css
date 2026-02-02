@@ -330,45 +330,64 @@
 
 .pipelineGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(112px, 1fr);
+  min-width: max-content;
+  gap: 0;
 }
 
-@media (min-width: 640px) {
-  .pipelineGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .pipelineGrid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
-}
-
-.pipelineItem {
+.pipelineStrip {
+  border: 1px solid var(--border);
   border-radius: 12px;
+  background: var(--bg);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 8px;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable;
+}
+
+.pipelineCell {
   padding: 10px 12px;
-  background: rgba(15, 15, 16, 0.03);
+  background: transparent;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   text-decoration: none;
   color: inherit;
+  text-align: left;
   transition: background 150ms ease;
 }
 
-.pipelineItem:hover {
-  background: rgba(15, 15, 16, 0.06);
+.pipelineCell + .pipelineCell {
+  border-left: 1px solid rgba(15, 15, 16, 0.08);
 }
 
-.pipelineItem:focus-visible {
+.pipelineCell:hover {
+  background: rgba(15, 15, 16, 0.03);
+}
+
+.pipelineCell:focus-visible {
   outline: 2px solid rgba(15, 15, 16, 0.12);
   outline-offset: -2px;
+}
+
+.pipelineCellActive {
+  background: rgba(15, 15, 16, 0.03);
+}
+
+.pipelineLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
 }
 
 .pipelineCount {
   font-size: 22px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .pipelineCountMuted {

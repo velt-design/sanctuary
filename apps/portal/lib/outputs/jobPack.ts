@@ -1,7 +1,7 @@
 import type { Estimate } from '@/lib/types/estimate';
 import type { CalculatorInputs, CalculatorModuleInputs, LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
-import type { InstallActionV1, MaterialsLineV1 } from '@/src/costing/engine/types';
+import type { InstallActionV1, MaterialsLineV1 } from '@sp/costing';
 import type { AcrylicLine, HardwareLine, InstallPhase, JobPack, PowdercoatLine } from './types';
 
 function toNumber(value: unknown): number | null {
@@ -219,6 +219,7 @@ function getFirstModule(inputs: CalculatorInputs | LegacyCalculatorInputsV1): Ca
       internalRoofType: inputs.internalRoofType,
       fallDistanceMm: inputs.fallDistanceMm,
       roofPitchDeg: inputs.roofPitchDeg,
+      gableEndFramesMode: inputs.houseConnectionType !== 'none' ? 'outer_end_only' : 'both_ends',
       boxGutterHouseEdge: inputs.boxGutterHouseEdge ?? 'house',
       boxGutterFarEdge: inputs.boxGutterFarEdge ?? 'our',
       downpipeCount: inputs.downpipeCount ?? '0',

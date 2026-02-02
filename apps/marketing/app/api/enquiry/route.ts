@@ -2,8 +2,8 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import { calculateCostV1 } from '../../../../../src/costing/engine/calculate';
-import type { CostInputsV1 } from '../../../../../src/costing/engine/types';
+import { calculateCostV1 } from '@sp/costing';
+import type { CostInputsV1 } from '@sp/costing';
 import {
   QUOTE_MULTIPLIER,
   toIndicativeRangeOneSided,

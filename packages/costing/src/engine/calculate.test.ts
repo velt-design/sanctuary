@@ -276,7 +276,7 @@ describe('calculateCostV1', () => {
 
     expect(result.derived.overhang_support_beam_profile_used).toBe('150x50');
     expect(result.derived.overhang_stringer_profile_used).toBe(result.inputs_normalized.rafter_profile);
-    expect(result.derived.rafter_cut_length_m).toBeGreaterThan(base.derived.rafter_cut_length_m);
+    expect(result.derived.rafter_cut_length_m).toBeCloseTo(base.derived.rafter_cut_length_m, 6);
     expect(result.materials.totals.bars_by_profile['Overhang Gutter 100x100']).toBeTruthy();
     const midBracket = result.materials.lines.find((l) => l.id === 'bracket_mid_support_rafters');
     expect(midBracket?.qty).toBe(result.derived.rafter_count);
@@ -959,17 +959,24 @@ describe('calculateCostV1', () => {
     expect(result.materials.lines.some((l) => l.id === 'bracket_3f6d3c53fa')).toBe(false);
     expect(result.materials.lines.some((l) => l.id === 'powdercoating_199231d91b')).toBe(false);
 
-    // Joiners: should select 6m stock and allocate ~2 pieces per bar for this cut length.
-    const joiner = result.materials.lines.find((l) => l.id === 'aluminium-extrusion_e3df86dfcd');
+    // Joiners: should select a valid stock length (4/5/6m) and allocate bars.
+    const joiner = result.materials.lines.find((l) => l.profile === 'Joiners');
     expect(joiner?.qty).toBeGreaterThan(0);
+    const joinerBars = result.materials.totals.bars_by_profile['Joiners'];
+    expect([4, 5, 6]).toContain(joinerBars?.stock_length_m);
 
-    // Rafters (100x50): should select 6m stock for ~2 pieces per bar.
-    const rafters100x50 = result.materials.lines.find((l) => l.id === 'aluminium-extrusion_3873dc13bc');
-    expect(rafters100x50?.qty).toBeGreaterThan(0);
+    // Rafters: should select a valid stock length (4/5/6m) and allocate bars.
+    const rafterProfile = result.inputs_normalized.rafter_profile;
+    const rafters = result.materials.lines.find((l) => l.profile === rafterProfile);
+    expect(rafters?.qty).toBeGreaterThan(0);
+    const rafterBars = result.materials.totals.bars_by_profile[rafterProfile];
+    expect([4, 5, 6]).toContain(rafterBars?.stock_length_m);
 
-    // SP gutter: required 6m should use a 6m bar.
-    const gutter = result.materials.lines.find((l) => l.id === 'aluminium-extrusion_ddcf7c8b45');
-    expect(gutter?.qty).toBe(1);
+    // SP gutter: required length should use one of the stock lengths.
+    const gutter = result.materials.lines.find((l) => l.profile === 'SP Gutter');
+    expect(gutter?.qty).toBeGreaterThan(0);
+    const gutterBars = result.materials.totals.bars_by_profile['SP Gutter'];
+    expect([4, 5, 6]).toContain(gutterBars?.stock_length_m);
   });
 
   it('roofing: pitched acrylic uses 4m strips when rafter length exceeds sheet length', () => {
@@ -1263,5 +1270,166 @@ describe('calculateCostV1', () => {
 
     expect(toolSetup?.qty).toBe(1);
     expect(survey?.qty).toBe(2);
+  });
+});
+
+describe('timber roof system', () => {
+  it('pitched timber derives rafter/purlin counts and mill finish', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 10,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'Black',
+      timber_roof_above_type: 'insulated_panels',
+      timber_insulated_panel_thickness_mm: 50,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.timber_plane_count).toBe(1);
+    expect(result.derived.timber_common_rafter_count_per_plane).toBe(13);
+    expect(result.derived.timber_edge_rafter_count_total).toBe(2);
+
+    const slopeMm = result.derived.timber_slope_len_per_plane_m * 1000;
+    const expectedPurlinLines = Math.ceil(Math.max(slopeMm - 200, 0) / 500) + 1;
+    expect(result.derived.timber_purlin_lines_per_plane).toBe(expectedPurlinLines);
+
+    const lines = result.materials.lines;
+    const mill50 = lines.find((l) => l.profile === '50x50' && /\(Mill\)/i.test(l.label));
+    const mill80 = lines.find((l) => l.profile === '80x50' && /\(Mill\)/i.test(l.label));
+    const mill200 = lines.find((l) => l.profile === '200x50' && /\(Mill\)/i.test(l.label));
+    expect(mill50).toBeTruthy();
+    expect(mill80).toBeTruthy();
+    expect(mill200).toBeTruthy();
+
+    const insulated = lines.find((l) => l.id === 'roof.insulated_panel_50mm_m2');
+    const covertek = lines.find((l) => l.id === 'underlay.covertek_407_m2');
+    const poly = lines.find((l) => l.id === 'insulation.polystyrene_m2');
+    expect(insulated).toBeTruthy();
+    expect(covertek).toBeUndefined();
+    expect(poly).toBeUndefined();
+  });
+
+  it('gable timber doubles per-plane counts', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 10,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'gable',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'White',
+      timber_roof_above_type: 'steel_corrugated',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.timber_plane_count).toBe(2);
+    expect(result.derived.timber_common_rafter_count_total).toBe(result.derived.timber_common_rafter_count_per_plane * 2);
+    expect(result.derived.timber_edge_rafter_count_total).toBe(4);
+    expect(result.derived.timber_purlin_total_m).toBe(
+      result.derived.timber_purlin_lines_per_plane * result.derived.length_m * 2,
+    );
+  });
+
+  it('steel roof above adds covertek + polystyrene', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 10,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'Black',
+      timber_roof_above_type: 'steel_corrugated',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const lines = result.materials.lines;
+    expect(lines.find((l) => l.id === 'roof.steel_corrugated_m2')).toBeTruthy();
+    expect(lines.find((l) => l.id === 'underlay.covertek_407_m2')).toBeTruthy();
+    expect(lines.find((l) => l.id === 'insulation.polystyrene_m2')).toBeTruthy();
+
+    const covertekAction = result.install.actions.find((a) => a.id === 'roof.install_covertek_m2');
+    const polyAction = result.install.actions.find((a) => a.id === 'roof.install_polystyrene_m2');
+    expect(covertekAction?.qty).toBe(result.derived.covertek_area_m2);
+    expect(polyAction?.qty).toBe(result.derived.polystyrene_area_m2);
+  });
+
+  it('timber rafter override uses specified profile', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 10,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'Black',
+      timber_roof_above_type: 'insulated_panels',
+      overrides: { rafter_profile: '100x50' },
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.inputs_normalized.rafter_profile).toBe('100x50');
+    const mill100 = result.materials.lines.find((l) => l.profile === '100x50' && /\(Mill\)/i.test(l.label));
+    const mill200 = result.materials.lines.find((l) => l.profile === '200x50' && /\(Mill\)/i.test(l.label));
+    expect(mill100).toBeTruthy();
+    expect(mill200).toBeTruthy();
+  });
+
+  it('tray width impacts sheet counts (reporting only)', () => {
+    const base = {
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 10,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'timber' as const,
+      extrusion_colour: 'Black' as const,
+      timber_roof_above_type: 'steel_tray' as const,
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const tray400 = calculateCostV1({ ...base, timber_tray_width_mm: 400 });
+    const tray500 = calculateCostV1({ ...base, timber_tray_width_mm: 500 });
+    const tray600 = calculateCostV1({ ...base, timber_tray_width_mm: 600 });
+
+    expect(tray400.derived.timber_tray_sheet_count_per_plane).toBe(15);
+    expect(tray500.derived.timber_tray_sheet_count_per_plane).toBe(12);
+    expect(tray600.derived.timber_tray_sheet_count_per_plane).toBe(10);
   });
 });

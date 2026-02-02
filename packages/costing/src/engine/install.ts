@@ -60,6 +60,7 @@ function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1, derived
     gutter_modes: (derived as any).gutter_mode,
     gutter_assembly_modes: (derived as any).gutter_assembly_mode,
     slope_directions: (derived as any).slope_direction,
+    timber_roof_above_types: (inputs as any).timber_roof_above_type,
   };
 
   for (const [key, allowedRaw] of Object.entries(appliesTo)) {

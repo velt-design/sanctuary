@@ -1,13 +1,13 @@
 import { authOptions } from '@/lib/auth';
-import { ACTIVE_COSTING_MANIFEST_PATH, loadCostingConfigV1 } from '@/src/costing/engine/config';
+import { ACTIVE_COSTING_MANIFEST_PATH, loadCostingConfigV1 } from '@sp/costing';
 import { getServerSession } from 'next-auth/next';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
 function resolveConfigPath(relativePath: string): string {
-  if (relativePath.startsWith('src/')) return relativePath;
-  return `src/costing/config/${relativePath}`;
+  if (relativePath.startsWith('packages/')) return relativePath;
+  return `packages/costing/src/config/${relativePath}`;
 }
 
 export async function GET() {
@@ -31,4 +31,3 @@ export async function GET() {
     },
   });
 }
-

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostInputsV1, JobInputsV1, JobOutputV1, RoofType } from '@/src/costing/engine/types';
+import type { CostInputsV1, JobInputsV1, JobOutputV1, RoofType } from '@sp/costing';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
@@ -125,6 +125,8 @@ function labelForIssueField(id: string): string {
       return 'Inverted roof';
     case 'invertedHouseGutter':
       return 'Inverted house gutter';
+    case 'gableEndFramesMode':
+      return 'Gable end frames';
     case 'postCount':
       return 'Post count';
     case 'fallDistanceMm':
@@ -135,6 +137,12 @@ function labelForIssueField(id: string): string {
       return 'Acrylic bays (A)';
     case 'mixedAcrylicBaysB':
       return 'Acrylic bays (B)';
+    case 'timberRoofAboveType':
+      return 'Timber roof above';
+    case 'timberInsulatedPanelThicknessMm':
+      return 'Insulated panel thickness (mm)';
+    case 'timberTrayWidthMm':
+      return 'Steel tray width (mm)';
     default:
       return id;
   }
@@ -191,6 +199,19 @@ const BOX_BEAM_PROFILE_OPTIONS: FieldOption[] = [
   { label: '300x50', value: '300x50' },
   { label: '200x50', value: '200x50' },
 ];
+const STRUT_PROFILE_OPTIONS: FieldOption[] = [
+  DEFAULT_OVERRIDE_OPTION,
+  { label: '50x50', value: '50x50' },
+  { label: '80x50', value: '80x50' },
+  { label: '100x50', value: '100x50' },
+  { label: '150x50', value: '150x50' },
+  { label: '200x50', value: '200x50' },
+];
+const GABLE_END_FRAME_OPTIONS: FieldOption[] = [
+  { label: 'None', value: 'none' },
+  { label: 'Outer end only', value: 'outer_end_only' },
+  { label: 'Both ends', value: 'both_ends' },
+];
 const POWDERCOAT_STANDARD_COLOURS = [
   'Ironsands',
   'Charcoal',
@@ -242,6 +263,7 @@ function makeDefaultModule(): CalculatorModuleInputs {
     internalRoofType: 'pitched',
     fallDistanceMm: '0',
     roofPitchDeg: '',
+    gableEndFramesMode: 'outer_end_only',
     boxGutterHouseEdge: 'house',
     boxGutterFarEdge: 'our',
     downpipeCount: '0',
@@ -256,6 +278,9 @@ function makeDefaultModule(): CalculatorModuleInputs {
     mixedAcrylicBaysMain: '0',
     mixedAcrylicBaysA: '0',
     mixedAcrylicBaysB: '0',
+    timberRoofAboveType: 'insulated_panels',
+    timberInsulatedPanelThicknessMm: '50',
+    timberTrayWidthMm: '500',
 
     postCount: '4',
     houseConnectionType: 'soffit',
@@ -467,6 +492,11 @@ export default function CalculatorGridClient({
         const overhangAmount = toNumber(module.overhangAmountM);
         if (!Number.isFinite(overhangAmount) || overhangAmount < 0 || overhangAmount > 1.5) {
           next.overhangAmountM = 'Enter an overhang between 0 and 1.5m';
+        } else {
+          const span = toNumber(module.projectionM);
+          if (Number.isFinite(span) && overhangAmount >= span) {
+            next.overhangAmountM = `Overhang must be less than roof span (${span}m)`;
+          }
         }
       }
 
@@ -506,6 +536,24 @@ export default function CalculatorGridClient({
           const clampedB = clampInt(rawB, 0, bayCounts.bayCountB);
           if (!Number.isFinite(rawA) || clampedA !== rawA) next.mixedAcrylicBaysA = `Enter an integer between 0 and ${bayCounts.bayCountA}`;
           if (!Number.isFinite(rawB) || clampedB !== rawB) next.mixedAcrylicBaysB = `Enter an integer between 0 and ${bayCounts.bayCountB}`;
+        }
+      }
+
+      if (module.roofMaterial === 'timber') {
+        if (!['insulated_panels', 'steel_corrugated', 'steel_tray'].includes(module.timberRoofAboveType)) {
+          next.timberRoofAboveType = 'Select a timber roof above type';
+        }
+        if (module.timberRoofAboveType === 'insulated_panels') {
+          const thickness = toNumber(module.timberInsulatedPanelThicknessMm);
+          if (!Number.isFinite(thickness) || thickness <= 0) {
+            next.timberInsulatedPanelThicknessMm = 'Enter a panel thickness > 0';
+          }
+        }
+        if (module.timberRoofAboveType === 'steel_tray') {
+          const trayWidth = toNumber(module.timberTrayWidthMm);
+          if (![400, 500, 600].includes(Number.isFinite(trayWidth) ? Math.round(trayWidth) : NaN)) {
+            next.timberTrayWidthMm = 'Choose 400, 500, or 600';
+          }
         }
       }
 
@@ -559,6 +607,14 @@ export default function CalculatorGridClient({
         } else if (current.houseConnectionType === 'none') {
           if (current.boxGutterHouseEdge === 'none') updated.boxGutterHouseEdge = 'house';
           if (current.boxGutterFarEdge === 'none') updated.boxGutterFarEdge = 'our';
+        }
+
+        if (updated.pergolaStyle === 'gable') {
+          const prevDefault = current.houseConnectionType !== 'none' ? 'outer_end_only' : 'both_ends';
+          const nextDefault = nextHouseConnection !== 'none' ? 'outer_end_only' : 'both_ends';
+          if (updated.gableEndFramesMode === prevDefault) {
+            updated.gableEndFramesMode = nextDefault;
+          }
         }
       }
 
@@ -695,6 +751,7 @@ export default function CalculatorGridClient({
         post_count,
 
         pergola_style: module.pergolaStyle,
+        gable_end_frames_mode: module.gableEndFramesMode,
         box_perimeter_enabled: module.boxPerimeterEnabled,
         internal_roof_type: module.boxPerimeterEnabled ? undefined : module.internalRoofType,
         fall_distance_mm: module.boxPerimeterEnabled ? fall_distance_mm : undefined,
@@ -715,10 +772,21 @@ export default function CalculatorGridClient({
           ridge_beam_profile: normalizeOverrideValue(overrides.ridgeBeamProfile),
           box_perimeter_beam_profile: normalizeOverrideValue(overrides.boxPerimeterBeamProfile),
           overhang_support_beam_profile: normalizeOverrideValue(overrides.overhangSupportBeamProfile),
+          tie_beam_profile: normalizeOverrideValue(overrides.tieBeamProfile),
+          strut_profile: normalizeOverrideValue(overrides.strutProfile),
         },
 
         roof_material: module.roofMaterial,
         extrusion_colour: module.extrusionColour,
+        timber_roof_above_type: module.roofMaterial === 'timber' ? module.timberRoofAboveType : undefined,
+        timber_insulated_panel_thickness_mm:
+          module.roofMaterial === 'timber' && module.timberRoofAboveType === 'insulated_panels'
+            ? toNumber(module.timberInsulatedPanelThicknessMm)
+            : undefined,
+        timber_tray_width_mm:
+          module.roofMaterial === 'timber' && module.timberRoofAboveType === 'steel_tray'
+            ? toNumber(module.timberTrayWidthMm)
+            : undefined,
         powdercoat_standard_colour: module.powdercoatStandardColour?.trim() || undefined,
         powdercoat_is_custom: module.powdercoatIsCustom === true,
         powdercoat_custom_colour: module.powdercoatCustomColour?.trim() || undefined,
@@ -1373,6 +1441,75 @@ export default function CalculatorGridClient({
                 ]),
         ]
       : []),
+    ...(activeModule.roofMaterial === 'timber'
+      ? [
+          {
+            id: 'timberSystemHeading',
+            label: 'TIMBER SYSTEM (ceiling + roof above)',
+            type: 'readOnly',
+            value: '—',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'timberNoteRafters',
+            label: 'Timber rafters',
+            type: 'readOnly',
+            value: 'max 500mm centres',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'timberNotePurlins',
+            label: 'Purlins',
+            type: 'readOnly',
+            value: '50x50 @ max 500mm centres, first/last 100mm from eave + ridge (per plane)',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'timberNoteEdgeRafters',
+            label: 'Edge rafters',
+            type: 'readOnly',
+            value: '200x50 each side + common rafters 80x50 (default)',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'timberRoofAboveType',
+            label: 'Roof above type',
+            type: 'select',
+            value: activeModule.timberRoofAboveType,
+            onChange: (v) => setModuleField('timberRoofAboveType', v as CalculatorModuleInputs['timberRoofAboveType']),
+            options: [
+              { label: 'Insulated panels', value: 'insulated_panels' },
+              { label: 'Steel corrugated', value: 'steel_corrugated' },
+              { label: 'Steel tray', value: 'steel_tray' },
+            ],
+            error: errors.timberRoofAboveType,
+          } satisfies FieldSchemaItem,
+          ...(activeModule.timberRoofAboveType === 'insulated_panels'
+            ? [
+                {
+                  id: 'timberInsulatedPanelThicknessMm',
+                  label: 'Insulated panel thickness (mm)',
+                  type: 'readOnly',
+                  value: activeModule.timberInsulatedPanelThicknessMm,
+                  error: errors.timberInsulatedPanelThicknessMm,
+                } satisfies FieldSchemaItem,
+              ]
+            : []),
+          ...(activeModule.timberRoofAboveType === 'steel_tray'
+            ? [
+                {
+                  id: 'timberTrayWidthMm',
+                  label: 'Steel tray width (mm)',
+                  type: 'select',
+                  value: activeModule.timberTrayWidthMm,
+                  onChange: (v) => setModuleField('timberTrayWidthMm', String(v)),
+                  options: [
+                    { label: '400', value: '400' },
+                    { label: '500', value: '500' },
+                    { label: '600', value: '600' },
+                  ],
+                  error: errors.timberTrayWidthMm,
+                } satisfies FieldSchemaItem,
+              ]
+            : []),
+        ]
+      : []),
     {
       id: 'extrusionColour',
       label: 'Extrusion colour',
@@ -1485,6 +1622,19 @@ export default function CalculatorGridClient({
           : 'Blank = default pitch',
       disabled: activeModule.boxPerimeterEnabled,
     },
+    ...(activeModule.pergolaStyle === 'gable'
+      ? [
+          {
+            id: 'gableEndFramesMode',
+            label: 'Gable end frames',
+            type: 'select',
+            value: activeModule.gableEndFramesMode,
+            onChange: (v) => setModuleField('gableEndFramesMode', v as CalculatorModuleInputs['gableEndFramesMode']),
+            options: GABLE_END_FRAME_OPTIONS,
+            helperText: 'Adds tie beam + king-post strut at selected gable end(s).',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
     ...(roofTypeForInputs === 'pitched' && !activeModule.boxPerimeterEnabled
       ? [
           {
@@ -1532,7 +1682,7 @@ export default function CalculatorGridClient({
                   value: activeModule.overhangAmountM,
                   onChange: (v: string | boolean) => setModuleField('overhangAmountM', String(v)),
                   error: errors.overhangAmountM,
-                  helperText: 'Default 0.20m (max 1.5m)',
+                  helperText: 'Overhang is within the roof footprint (L×W unchanged). It moves the post beam inboard.',
                 } satisfies FieldSchemaItem,
               ]
             : []),
@@ -1603,6 +1753,28 @@ export default function CalculatorGridClient({
             onChange: (v) => setModuleOverride('ridgeBeamProfile', String(v)),
             options: RIDGE_BEAM_PROFILE_OPTIONS,
             helperText: 'Overrides ridge beam profile when applicable',
+          } satisfies FieldSchemaItem,
+        ]
+      : []),
+    ...(activeModule.pergolaStyle === 'gable'
+      ? [
+          {
+            id: 'tieBeamProfileOverride',
+            label: 'Tie beam override',
+            type: 'select',
+            value: moduleOverrides.tieBeamProfile ?? '',
+            onChange: (v) => setModuleOverride('tieBeamProfile', String(v)),
+            options: FRONT_BEAM_PROFILE_OPTIONS,
+            helperText: 'Overrides tie beam profile when applicable',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'strutProfileOverride',
+            label: 'King-post strut override',
+            type: 'select',
+            value: moduleOverrides.strutProfile ?? '',
+            onChange: (v) => setModuleOverride('strutProfile', String(v)),
+            options: STRUT_PROFILE_OPTIONS,
+            helperText: 'Overrides king-post strut profile when applicable',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -1918,6 +2090,13 @@ export default function CalculatorGridClient({
     'mixedAcrylicBaysMain',
     'mixedAcrylicBaysA',
     'mixedAcrylicBaysB',
+    'timberSystemHeading',
+    'timberNoteRafters',
+    'timberNotePurlins',
+    'timberNoteEdgeRafters',
+    'timberRoofAboveType',
+    'timberInsulatedPanelThicknessMm',
+    'timberTrayWidthMm',
     'extrusionColour',
     'powdercoatStandardColour',
     'powdercoatIsCustom',
@@ -1928,6 +2107,7 @@ export default function CalculatorGridClient({
     'hipCornerLengthBM',
     'hipCornerProjectionBM',
     'roofPitchDeg',
+    'gableEndFramesMode',
     'invertedEnabled',
     'invertedHouseGutter',
     'overhangEnabled',
@@ -1949,6 +2129,8 @@ export default function CalculatorGridClient({
     'postProfileOverride',
     'frontBeamProfileOverride',
     'ridgeBeamProfileOverride',
+    'tieBeamProfileOverride',
+    'strutProfileOverride',
     'boxPerimeterBeamProfileOverride',
     'overhangSupportBeamProfile',
     'separateGutterEnabled',

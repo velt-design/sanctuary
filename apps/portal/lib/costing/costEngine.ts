@@ -1,4 +1,7 @@
-import type { CostInputsV1, CostOutputV1, JobInputsV1, JobOutputV1 } from '@/src/costing/engine/types';
+import { COSTING_PACKAGE_SMOKE } from '@sp/costing';
+import type { CostInputsV1, CostOutputV1, JobInputsV1, JobOutputV1 } from '@sp/costing';
+
+void COSTING_PACKAGE_SMOKE;
 
 export type CostingConfigVersions = {
   pricebook: string;

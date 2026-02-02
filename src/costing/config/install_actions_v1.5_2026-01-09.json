@@ -520,6 +520,69 @@
       "scope": "module"
     },
     {
+      "id": "join.splice_join_each",
+      "category": "Joinery",
+      "label": "Install splice join (bracket + screws)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.splice_join_count",
+        "default": 0
+      },
+      "base_minutes": 10,
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Includes bracket + 6 screws.",
+      "scope": "module"
+    },
+    {
+      "id": "frame.install_tie_beam_m",
+      "category": "Frame",
+      "label": "Install tie beam - per metre",
+      "unit": "m",
+      "quantity": {
+        "expr": "derived.tie_beam_length_m * derived.gable_end_frame_count",
+        "default": 0
+      },
+      "base_minutes": 6,
+      "applies_to": {
+        "roof_types": [
+          "gable"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
+      "id": "frame.install_kingpost_strut_each",
+      "category": "Frame",
+      "label": "Install king-post strut (each)",
+      "unit": "each",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.gable_end_frame_count",
+        "default": 0
+      },
+      "base_minutes": 18,
+      "applies_to": {
+        "roof_types": [
+          "gable"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "module"
+    },
+    {
       "id": "fab.overhang_gutter_workshop_m",
       "category": "Fabrication",
       "label": "Fabricate overhang gutter from 100x100 - per metre",

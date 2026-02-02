@@ -36,6 +36,16 @@
       "unit": "each"
     },
     {
+      "id": "fixing.purlin_screw_each",
+      "label": "Purlin fixing screw (timber roof)",
+      "unit": "each"
+    },
+    {
+      "id": "fixing.roofing_screw_each",
+      "label": "Roofing screw (timber roof above)",
+      "unit": "each"
+    },
+    {
       "id": "hardware.deck_bracket_assembly",
       "label": "Post-to-deck bracket assembly (bracket + fixings allowance)",
       "unit": "each"
@@ -182,6 +192,61 @@
         }
       ],
       "notes": "Mixed roof joiner system fixings placeholder: assumes 6 screws per joiner run. Re-measure and replace with exact SKU quantities later."
+    },
+    {
+      "id": "rule.timber_purlin_fixings",
+      "applies_when": {
+        "roof_material": "timber"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.purlin_screw_each",
+          "qty": "(timber_purlin_lines_per_plane * timber_common_rafter_count_per_plane) * timber_plane_count * 2"
+        }
+      ],
+      "notes": "Timber purlin-to-rafter fixings: 2 screws per intersection."
+    },
+    {
+      "id": "rule.timber_roofing_screws_insulated",
+      "applies_when": {
+        "roof_material": "timber",
+        "timber_roof_above_type": "insulated_panels"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.roofing_screw_each",
+          "qty": "timber_roofing_screws_insulated_count"
+        }
+      ],
+      "notes": "Timber roof above (insulated panels): placeholder 4 screws per m² (ceiled)."
+    },
+    {
+      "id": "rule.timber_roofing_screws_steel_corrugated",
+      "applies_when": {
+        "roof_material": "timber",
+        "timber_roof_above_type": "steel_corrugated"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.roofing_screw_each",
+          "qty": "timber_roofing_screws_steel_count"
+        }
+      ],
+      "notes": "Timber roof above (steel corrugated): placeholder 6 screws per m² (ceiled)."
+    },
+    {
+      "id": "rule.timber_roofing_screws_steel_tray",
+      "applies_when": {
+        "roof_material": "timber",
+        "timber_roof_above_type": "steel_tray"
+      },
+      "lines": [
+        {
+          "item_id": "fixing.roofing_screw_each",
+          "qty": "timber_roofing_screws_steel_count"
+        }
+      ],
+      "notes": "Timber roof above (steel tray): placeholder 6 screws per m² (ceiled)."
     },
     {
       "id": "rule_sealants",
