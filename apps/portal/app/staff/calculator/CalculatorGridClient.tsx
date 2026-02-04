@@ -96,7 +96,7 @@ function clampInt(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
-function hasNonEmptyValue(value: string | undefined): boolean {
+function hasNonEmptyValue(value: string | undefined): value is string {
   return value !== undefined && value !== null && String(value).trim() !== '';
 }
 
