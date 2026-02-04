@@ -710,6 +710,33 @@ describe('calculateCostV1', () => {
     expect(result.totals.cost_ex_gst).toBeGreaterThan(0);
   });
 
+  it('mixed: defaults acrylic bays to 2 when missing', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed',
+      mixed_roof: {
+        mode: 'acrylic_bays',
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.acrylic_bays_total).toBe(2);
+    expect(result.derived.acrylic_area_m2).toBeGreaterThan(0);
+    expect(result.derived.timber_area_m2).toBeGreaterThan(0);
+  });
+
   it('mixed: acrylic bays per plane drive derived areas, BOM panels, and labour', () => {
     const result = calculateCostV1({
       length_m: 5,
@@ -746,6 +773,85 @@ describe('calculateCostV1', () => {
 
     expect(result.install.actions.some((a) => a.id === 'roof.install_acrylic_roof_m2')).toBe(true);
     expect(result.install.actions.some((a) => a.id === 'roof.install_timber_roof_m2')).toBe(true);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_purlins_m')).toBe(true);
+  });
+
+  it('mixed: timber purlins scale with timber portion', () => {
+    const mixed = calculateCostV1({
+      length_m: 5,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed',
+      mixed_roof: {
+        mode: 'acrylic_bays',
+        acrylic_bays_by_plane: { main: 4 },
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const timber = calculateCostV1({
+      length_m: 5,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const fraction = mixed.derived.timber_area_m2 / mixed.derived.roof_surface_area_m2;
+    expect(mixed.derived.timber_purlin_total_m).toBeCloseTo(timber.derived.timber_purlin_total_m * fraction, 4);
+  });
+
+  it('mixed: steel roof above adds covertek + polystyrene', () => {
+    const base = {
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed' as const,
+      mixed_roof: {
+        mode: 'acrylic_bays' as const,
+        acrylic_bays_by_plane: { main: 2 },
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    };
+
+    const steel = calculateCostV1({ ...base, timber_roof_above_type: 'steel_corrugated' as const });
+    expect(steel.derived.timber_roof_above_area_m2).toBeCloseTo(steel.derived.timber_area_m2, 4);
+    expect(steel.materials.lines.find((l) => l.id === 'underlay.covertek_407_m2')?.qty ?? 0).toBeGreaterThan(0);
+    expect(steel.materials.lines.find((l) => l.id === 'insulation.polystyrene_m2')?.qty ?? 0).toBeGreaterThan(0);
+
+    const insulated = calculateCostV1({ ...base, timber_roof_above_type: 'insulated_panels' as const });
+    expect(insulated.materials.lines.find((l) => l.id === 'underlay.covertek_407_m2')).toBeUndefined();
+    expect(insulated.materials.lines.find((l) => l.id === 'insulation.polystyrene_m2')).toBeUndefined();
   });
 
   it('mixed: joiner fixings include +1 run per acrylic plane', () => {
@@ -1051,6 +1157,121 @@ describe('calculateCostV1', () => {
 
     expect(cedarLow?.qty).toBeGreaterThan(0);
     expect(cedarHigh?.qty).toBeGreaterThan(cedarLow?.qty ?? 0);
+  });
+
+  it('timber: edge rafters use visible finish and hidden members remain mill', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 10,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'Mill',
+      powdercoat_standard_colour: 'Ironsands',
+      powdercoat_is_custom: false,
+      timber_roof_above_type: 'insulated_panels',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const lines = result.materials.lines;
+    const edge150 = lines.find((l) => l.profile === '150x50' && /powdercoated/i.test(l.label));
+    const mill80 = lines.find((l) => l.profile === '80x50' && /\(Mill\)/i.test(l.label));
+    const mill50 = lines.find((l) => l.profile === '50x50' && /\(Mill\)/i.test(l.label));
+
+    expect(edge150).toBeTruthy();
+    expect(mill80).toBeTruthy();
+    expect(mill50).toBeTruthy();
+  });
+
+  it('timber: gable edge rafters double per-plane count', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 10,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'gable',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'Mill',
+      powdercoat_standard_colour: 'Ironsands',
+      powdercoat_is_custom: false,
+      timber_roof_above_type: 'steel_corrugated',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.timber_edge_rafter_count_total).toBe(4);
+    expect(result.materials.lines.find((l) => l.profile === '150x50' && /powdercoated/i.test(l.label))).toBeTruthy();
+  });
+
+  it('downpipe elbows ignored without our gutter', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      inverted_enabled: true,
+      inverted_house_gutter: true,
+
+      downpipe_elbow_count: 3,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect((result.derived as any).has_our_gutter).toBe(false);
+    expect((result.derived as any).downpipe_elbow_count_used).toBe(0);
+  });
+
+  it('downpipe elbows apply when our gutter exists', () => {
+    const job = calculateJobCostV1({
+      modules: [
+        {
+          length_m: 6,
+          projection_m: 3,
+          roof_pitch_deg: 5,
+          post_cut_height_m: 2.4,
+          post_count: 4,
+
+          pergola_style: 'pitched',
+          box_perimeter_enabled: false,
+          roof_material: 'acrylic',
+          extrusion_colour: 'Black',
+          downpipe_elbow_count: 2,
+
+          house_connection_type: 'soffit',
+          post_connection_type: 'deck_bracket',
+          access: 'normal',
+          height: 'single_storey',
+        },
+      ],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    expect(job.install.actions.find((a) => a.id === 'job.drain.gutter_startup_job')?.qty).toBe(1);
+    expect(job.install.actions.find((a) => a.id === 'm1.drain.dp_elbow_each')?.qty).toBe(2);
   });
 
   it('mill extrusion adds powdercoat surcharge (standard colour)', () => {

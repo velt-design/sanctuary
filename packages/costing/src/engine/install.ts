@@ -9,6 +9,14 @@ type InstallResultV1 = {
   notes_and_warnings: string[];
 };
 
+export const DAY_CYCLE_ACTION_IDS = [
+  'day_cycle.setup_tools',
+  'day_cycle.pack_down_tools',
+  'day_cycle.daily_tidy',
+] as const;
+
+type DayCycleActionId = (typeof DAY_CYCLE_ACTION_IDS)[number];
+
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100) / 100;
@@ -61,6 +69,7 @@ function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1, derived
     gutter_assembly_modes: (derived as any).gutter_assembly_mode,
     slope_directions: (derived as any).slope_direction,
     timber_roof_above_types: (inputs as any).timber_roof_above_type,
+    has_our_gutter: boolToString((derived as any).has_our_gutter),
   };
 
   for (const [key, allowedRaw] of Object.entries(appliesTo)) {
@@ -189,14 +198,22 @@ function resolveQty(action: ActionConfig, inputs: InputsNormalizedV1, derived: R
   return 0;
 }
 
+export function computeSiteDays(baseCrewHours: number, config: CostingConfigV1): number {
+  const rawCrewDayHours = Number((config.overheads as any)?.allocation_method_v1_1?.crew_day_hours ?? 9);
+  const crewDayHours = Number.isFinite(rawCrewDayHours) && rawCrewDayHours > 0 ? rawCrewDayHours : 9;
+  if (!Number.isFinite(baseCrewHours) || baseCrewHours <= 0) return 1;
+  return Math.max(1, Math.ceil(baseCrewHours / crewDayHours));
+}
+
 export function buildInstallV1(
   inputs: InputsNormalizedV1,
   derived: Record<string, unknown>,
   config: CostingConfigV1,
-  opts?: { scope?: 'job' | 'module' | 'all' },
+  opts?: { scope?: 'job' | 'module' | 'all'; excludeActionIds?: readonly string[] },
 ): InstallResultV1 {
   const warnings: string[] = [];
   const scope = opts?.scope ?? 'all';
+  const excluded = new Set(opts?.excludeActionIds ?? []);
 
   const crewRateExGst = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 110);
   if (!Number.isFinite(crewRateExGst) || crewRateExGst <= 0) warnings.push('Invalid crew hour rate in install actions config; defaulting to 110.');
@@ -204,6 +221,7 @@ export function buildInstallV1(
   const actionsOut: InstallActionV1[] = [];
 
   for (const action of config.installActions.actions) {
+    if (excluded.has(action.id)) continue;
     const actionScope = String((action as any).scope ?? 'module');
     if (scope !== 'all' && actionScope !== scope) continue;
 
@@ -221,6 +239,86 @@ export function buildInstallV1(
     const { factor, applied } = resolveMultipliers(action, inputs, derived, config);
     const minutes = roundMinutes(qty * baseMinutes * factor);
     const cost = roundMoney((minutes / 60) * crewRateExGst);
+
+    actionsOut.push({
+      id: action.id,
+      category: action.category,
+      label: action.label,
+      scope: actionScope === 'job' ? 'job' : 'module',
+      unit: action.unit,
+      qty,
+      minutes,
+      applied_multipliers: applied,
+      cost_ex_gst: cost,
+    });
+  }
+
+  actionsOut.sort((a, b) => a.id.localeCompare(b.id));
+
+  const crewMinutes = roundMinutes(actionsOut.reduce((acc, a) => acc + a.minutes, 0));
+  const crewHours = roundMinutes(crewMinutes / 60);
+  const installExGst = roundMoney(actionsOut.reduce((acc, a) => acc + a.cost_ex_gst, 0));
+
+  return {
+    install: {
+      actions: actionsOut,
+      totals: {
+        crew_minutes: crewMinutes,
+        crew_hours: crewHours,
+        install_ex_gst: installExGst,
+      },
+    },
+    notes_and_warnings: warnings,
+  };
+}
+
+export function buildDayCycleActions(
+  inputs: InputsNormalizedV1,
+  derived: Record<string, unknown>,
+  config: CostingConfigV1,
+  siteDays: number,
+): InstallResultV1 {
+  const warnings: string[] = [];
+  const actionsOut: InstallActionV1[] = [];
+
+  const crewRateExGst = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 110);
+  if (!Number.isFinite(crewRateExGst) || crewRateExGst <= 0) warnings.push('Invalid crew hour rate in install actions config; defaulting to 110.');
+
+  const qty = Number.isFinite(siteDays) && siteDays > 0 ? Math.round(siteDays) : 0;
+  if (qty <= 0) {
+    return {
+      install: {
+        actions: [],
+        totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 },
+      },
+      notes_and_warnings: warnings,
+    };
+  }
+
+  const actionsById = new Map<DayCycleActionId, ActionConfig>();
+  for (const action of config.installActions.actions) {
+    if ((DAY_CYCLE_ACTION_IDS as readonly string[]).includes(action.id)) actionsById.set(action.id as DayCycleActionId, action);
+  }
+
+  for (const id of DAY_CYCLE_ACTION_IDS) {
+    const action = actionsById.get(id);
+    if (!action) {
+      warnings.push(`Install action '${id}' not found in config; day cycle skipped.`);
+      continue;
+    }
+
+    if (!actionApplies(action, inputs, derived)) continue;
+
+    const baseMinutes = resolveBaseMinutes(action, inputs);
+    if (!Number.isFinite(baseMinutes) || baseMinutes <= 0) {
+      warnings.push(`Install action '${action.id}' has no valid base_minutes; skipped.`);
+      continue;
+    }
+
+    const { factor, applied } = resolveMultipliers(action, inputs, derived, config);
+    const minutes = roundMinutes(qty * baseMinutes * factor);
+    const cost = roundMoney((minutes / 60) * crewRateExGst);
+    const actionScope = String((action as any).scope ?? 'job');
 
     actionsOut.push({
       id: action.id,

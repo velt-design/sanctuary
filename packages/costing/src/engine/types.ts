@@ -97,6 +97,8 @@ export type CostInputsV1 = {
   fall_distance_mm?: number;
   gutter_length_m?: number;
   downpipe_count?: number;
+  downpipe_join_count?: number;
+  downpipe_elbow_count?: number;
   box_gutter_house_edge?: BoxGutterEdge;
   box_gutter_far_edge?: BoxGutterEdge;
   overhang_enabled?: boolean;
@@ -157,6 +159,8 @@ export type InputsNormalizedV1 = {
   fall_distance_mm: number | null;
   gutter_length_m: number;
   downpipe_count: number;
+  downpipe_join_count: number;
+  downpipe_elbow_count: number;
   box_gutter_house_edge: BoxGutterEdge;
   box_gutter_far_edge: BoxGutterEdge;
   overhang_enabled: boolean;
@@ -218,6 +222,9 @@ export type DerivedV1 = {
   gutter_mode?: GutterMode;
   gutter_assembly_mode?: GutterAssemblyMode;
   integrated_gutter_beam?: boolean;
+  has_our_gutter?: boolean;
+  downpipe_join_count_used?: number;
+  downpipe_elbow_count_used?: number;
   separate_gutter_enabled?: boolean;
   separate_gutter_length_m?: number;
   ledger_profile_used?: string;
@@ -225,6 +232,7 @@ export type DerivedV1 = {
   post_cut_height_house_side_m?: number;
   post_cut_height_outer_side_m?: number;
   module_count: number;
+  site_days?: number;
   hip_corner_length_b_m?: number;
   hip_corner_projection_b_m?: number;
   hip_corner_rafter_count_a?: number;
@@ -246,11 +254,15 @@ export type DerivedV1 = {
   acrylic_required_downslope_m: number;
   effective_run_m: number;
   required_downslope_m: number;
+  total_roof_area_m2: number;
   roof_surface_area_m2: number;
   ridge_length_m: number;
   acrylic_area_m2: number;
   timber_area_m2: number;
   timber_plane_count: number;
+  visible_finish_used: string;
+  timber_edge_rafter_profile_used: string;
+  timber_edge_rafter_finish_used: string;
   timber_edge_rafter_count_per_plane: number;
   timber_edge_rafter_count_total: number;
   timber_common_rafter_count_per_plane: number;

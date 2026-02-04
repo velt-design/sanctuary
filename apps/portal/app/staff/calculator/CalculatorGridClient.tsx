@@ -79,6 +79,7 @@ function inferStockLengthFromLabel(label: string): number | null {
 }
 
 const RAFTER_SPACING_MM_MAX = 642;
+const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
 
 function toNonNegativeInt(value: unknown): number {
   const parsed =
@@ -93,6 +94,27 @@ function toNonNegativeInt(value: unknown): number {
 function clampInt(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+function hasNonEmptyValue(value: string | undefined): boolean {
+  return value !== undefined && value !== null && String(value).trim() !== '';
+}
+
+function defaultMixedAcrylicBays(bayCount: number): string {
+  return String(clampInt(DEFAULT_MIXED_ACRYLIC_BAYS, 0, bayCount));
+}
+
+function computeHasOurGutter(module: CalculatorModuleInputs): boolean {
+  if (module.invertedEnabled && module.invertedHouseGutter) return false;
+  if (module.boxPerimeterEnabled) {
+    return module.boxGutterHouseEdge === 'our' || module.boxGutterFarEdge === 'our';
+  }
+  if (module.overhangEnabled) return true;
+  if (module.separateGutterEnabled) return true;
+  if (module.invertedEnabled && !module.invertedHouseGutter) return true;
+  const frontBeamOverride = normalizeOverrideValue(module.overrides?.frontBeamProfile);
+  const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
+  return isGutterBeamProfile(frontBeamProfileUsed);
 }
 
 function labelForIssueField(id: string): string {
@@ -115,6 +137,10 @@ function labelForIssueField(id: string): string {
       return 'Roof pitch (deg)';
     case 'downpipeCount':
       return 'Downpipes (count)';
+    case 'downpipeJoinCount':
+      return 'DP joins';
+    case 'downpipeElbowCount':
+      return 'DP elbows';
     case 'overhangEnabled':
       return 'Overhang';
     case 'overhangAmountM':
@@ -207,6 +233,8 @@ const STRUT_PROFILE_OPTIONS: FieldOption[] = [
   { label: '150x50', value: '150x50' },
   { label: '200x50', value: '200x50' },
 ];
+const DP_JOIN_OPTIONS: FieldOption[] = Array.from({ length: 11 }, (_, i) => ({ label: String(i), value: String(i) }));
+const DP_ELBOW_OPTIONS: FieldOption[] = Array.from({ length: 21 }, (_, i) => ({ label: String(i), value: String(i) }));
 const GABLE_END_FRAME_OPTIONS: FieldOption[] = [
   { label: 'None', value: 'none' },
   { label: 'Outer end only', value: 'outer_end_only' },
@@ -267,6 +295,8 @@ function makeDefaultModule(): CalculatorModuleInputs {
     boxGutterHouseEdge: 'house',
     boxGutterFarEdge: 'our',
     downpipeCount: '0',
+    downpipeJoinCount: '0',
+    downpipeElbowCount: '0',
     separateGutterEnabled: false,
     overhangEnabled: false,
     overhangAmountM: '0.2',
@@ -275,9 +305,9 @@ function makeDefaultModule(): CalculatorModuleInputs {
     invertedHouseGutter: true,
     mixedSkylightStripCount: '1',
     mixedSkylightStripWidthM: '0.62',
-    mixedAcrylicBaysMain: '0',
-    mixedAcrylicBaysA: '0',
-    mixedAcrylicBaysB: '0',
+    mixedAcrylicBaysMain: '',
+    mixedAcrylicBaysA: '',
+    mixedAcrylicBaysB: '',
     timberRoofAboveType: 'insulated_panels',
     timberInsulatedPanelThicknessMm: '50',
     timberTrayWidthMm: '500',
@@ -411,10 +441,10 @@ export default function CalculatorGridClient({
             const hasB = Object.prototype.hasOwnProperty.call(m as any, 'mixedAcrylicBaysB');
 
             if (bayCounts.roofType === 'pitched') {
-              if (!hasMain) merged.mixedAcrylicBaysMain = String(bayCounts.bayCountMain);
+              if (!hasMain) merged.mixedAcrylicBaysMain = defaultMixedAcrylicBays(bayCounts.bayCountMain);
             } else {
-              if (!hasA) merged.mixedAcrylicBaysA = String(bayCounts.bayCountA);
-              if (!hasB) merged.mixedAcrylicBaysB = String(bayCounts.bayCountB);
+              if (!hasA) merged.mixedAcrylicBaysA = defaultMixedAcrylicBays(bayCounts.bayCountA);
+              if (!hasB) merged.mixedAcrylicBaysB = defaultMixedAcrylicBays(bayCounts.bayCountB);
             }
 
             return merged;
@@ -504,8 +534,21 @@ export default function CalculatorGridClient({
       if (!Number.isFinite(postCount) || postCount <= 0) next.postCount = 'Enter a post count > 0';
 
       const downpipeCount = toNumber(module.downpipeCount);
-      if (module.boxPerimeterEnabled && module.downpipeCount.trim()) {
+      if (module.downpipeCount.trim()) {
         if (!Number.isFinite(downpipeCount) || downpipeCount < 0) next.downpipeCount = 'Enter a downpipe count >= 0';
+      }
+
+      const downpipeJoinCount = toNonNegativeInt(module.downpipeJoinCount);
+      if (!Number.isFinite(downpipeJoinCount) || downpipeJoinCount < 0 || downpipeJoinCount > 10) {
+        next.downpipeJoinCount = 'Choose 0–10';
+      }
+
+      const hasOurGutter = computeHasOurGutter(module);
+      if (hasOurGutter) {
+        const downpipeElbowCount = toNonNegativeInt(module.downpipeElbowCount);
+        if (!Number.isFinite(downpipeElbowCount) || downpipeElbowCount < 0 || downpipeElbowCount > 20) {
+          next.downpipeElbowCount = 'Choose 0–20';
+        }
       }
 
       if (module.extrusionColour === 'Mill') {
@@ -539,7 +582,7 @@ export default function CalculatorGridClient({
         }
       }
 
-      if (module.roofMaterial === 'timber') {
+      if (module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') {
         if (!['insulated_panels', 'steel_corrugated', 'steel_tray'].includes(module.timberRoofAboveType)) {
           next.timberRoofAboveType = 'Select a timber roof above type';
         }
@@ -734,6 +777,8 @@ export default function CalculatorGridClient({
       const roof_pitch_deg = module.roofPitchDeg.trim() ? toNumber(module.roofPitchDeg) : NaN;
       const post_count = toNumber(module.postCount);
       const downpipe_count = toNumber(module.downpipeCount);
+      const downpipe_join_count = toNumber(module.downpipeJoinCount);
+      const downpipe_elbow_count = toNumber(module.downpipeElbowCount);
 
       const fall_distance_mm = toNumber(module.fallDistanceMm);
       const hip_corner_length_b_m = toNumber(module.hipCornerLengthBM);
@@ -758,6 +803,8 @@ export default function CalculatorGridClient({
         box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
         box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
         downpipe_count: Number.isFinite(downpipe_count) ? downpipe_count : undefined,
+        downpipe_join_count: Number.isFinite(downpipe_join_count) ? downpipe_join_count : undefined,
+        downpipe_elbow_count: Number.isFinite(downpipe_elbow_count) ? downpipe_elbow_count : undefined,
         separate_gutter_enabled: module.separateGutterEnabled,
         overhang_enabled: module.overhangEnabled,
         overhang_amount_m: module.overhangEnabled ? toNumber(module.overhangAmountM) : undefined,
@@ -778,13 +825,13 @@ export default function CalculatorGridClient({
 
         roof_material: module.roofMaterial,
         extrusion_colour: module.extrusionColour,
-        timber_roof_above_type: module.roofMaterial === 'timber' ? module.timberRoofAboveType : undefined,
+        timber_roof_above_type: module.roofMaterial === 'timber' || module.roofMaterial === 'mixed' ? module.timberRoofAboveType : undefined,
         timber_insulated_panel_thickness_mm:
-          module.roofMaterial === 'timber' && module.timberRoofAboveType === 'insulated_panels'
+          (module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') && module.timberRoofAboveType === 'insulated_panels'
             ? toNumber(module.timberInsulatedPanelThicknessMm)
             : undefined,
         timber_tray_width_mm:
-          module.roofMaterial === 'timber' && module.timberRoofAboveType === 'steel_tray'
+          (module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') && module.timberRoofAboveType === 'steel_tray'
             ? toNumber(module.timberTrayWidthMm)
             : undefined,
         powdercoat_standard_colour: module.powdercoatStandardColour?.trim() || undefined,
@@ -926,13 +973,16 @@ export default function CalculatorGridClient({
   const derivedBoxPitch = (moduleResult?.derived as any)?.box_pitch_deg_used as number | undefined;
   const derivedBoxRiseMm = (moduleResult?.derived as any)?.box_rise_mm as number | undefined;
   const derivedBoxMaxFallMm = (moduleResult?.derived as any)?.box_max_fall_mm as number | undefined;
+  const derivedHasOurGutter = (moduleResult?.derived as any)?.has_our_gutter as boolean | undefined;
   const roofType = moduleResult?.inputs_normalized.roof_type;
   const rafterCount = moduleResult?.derived.rafter_count;
   const hipRafterCount = moduleResult?.derived.hip_rafter_count;
   const bracketCount = moduleResult?.derived.bracket_count;
   const rafterProfile = moduleResult?.inputs_normalized.rafter_profile;
   const crewHours = result?.install.totals.crew_hours;
-  const crewDays = typeof crewHours === 'number' ? crewHours / 8 : undefined;
+  const siteDays = moduleResult?.derived?.site_days ?? result?.modules?.[0]?.derived?.site_days;
+  const hasOurGutterUi = typeof derivedHasOurGutter === 'boolean' ? derivedHasOurGutter : computeHasOurGutter(activeModule);
+  const crewDays = typeof siteDays === 'number' ? siteDays : undefined;
 
   const materialsEx = result?.materials.totals.materials_ex_gst;
   const installEx = result?.install.totals.install_ex_gst;
@@ -966,6 +1016,12 @@ export default function CalculatorGridClient({
   const criticalWarnings = warningsTyped.filter((w) => w.level === 'critical');
   const infoWarnings = warningsTyped.filter((w) => w.level === 'info');
   const warningsCount = warningsTyped.length;
+
+  useEffect(() => {
+    if (hasOurGutterUi) return;
+    if (activeModule.downpipeElbowCount === '0') return;
+    setModuleField('downpipeElbowCount', '0');
+  }, [hasOurGutterUi, activeModule.downpipeElbowCount, activeModuleIndex]);
 
   const roofingProcurementSummary = useMemo(() => {
     const lines = moduleResult?.materials?.lines ?? [];
@@ -1362,14 +1418,16 @@ export default function CalculatorGridClient({
             next === 'mixed'
               ? (() => {
                   const bayCounts = computeBayCountsForModule(current);
+                  const withDefault = (value: string | undefined, bayCount: number) =>
+                    hasNonEmptyValue(value) ? value : defaultMixedAcrylicBays(bayCount);
                   return {
                     ...current,
                     roofMaterial: next,
                     ...(bayCounts.roofType === 'pitched'
-                      ? { mixedAcrylicBaysMain: String(bayCounts.bayCountMain) }
+                      ? { mixedAcrylicBaysMain: withDefault(current.mixedAcrylicBaysMain, bayCounts.bayCountMain) }
                       : {
-                          mixedAcrylicBaysA: String(bayCounts.bayCountA),
-                          mixedAcrylicBaysB: String(bayCounts.bayCountB),
+                          mixedAcrylicBaysA: withDefault(current.mixedAcrylicBaysA, bayCounts.bayCountA),
+                          mixedAcrylicBaysB: withDefault(current.mixedAcrylicBaysB, bayCounts.bayCountB),
                         }),
                   };
                 })()
@@ -1441,7 +1499,7 @@ export default function CalculatorGridClient({
                 ]),
         ]
       : []),
-    ...(activeModule.roofMaterial === 'timber'
+    ...(activeModule.roofMaterial === 'timber' || activeModule.roofMaterial === 'mixed'
       ? [
           {
             id: 'timberSystemHeading',
@@ -1453,19 +1511,19 @@ export default function CalculatorGridClient({
             id: 'timberNoteRafters',
             label: 'Timber rafters',
             type: 'readOnly',
-            value: 'max 500mm centres',
+            value: 'Common rafters 80x50 @ max 500mm centres (mill finish)',
           } satisfies FieldSchemaItem,
           {
             id: 'timberNotePurlins',
             label: 'Purlins',
             type: 'readOnly',
-            value: '50x50 @ max 500mm centres, first/last 100mm from eave + ridge (per plane)',
+            value: '50x50 @ max 500mm centres, first/last 100mm from eave + ridge (mill finish)',
           } satisfies FieldSchemaItem,
           {
             id: 'timberNoteEdgeRafters',
             label: 'Edge rafters',
             type: 'readOnly',
-            value: '200x50 each side + common rafters 80x50 (default)',
+            value: '150x50 each side (match frame finish)',
           } satisfies FieldSchemaItem,
           {
             id: 'timberRoofAboveType',
@@ -1925,14 +1983,41 @@ export default function CalculatorGridClient({
               { label: 'None', value: 'none' },
             ],
           } satisfies FieldSchemaItem,
+        ]
+      : []),
+
+    {
+      id: 'downpipeCount',
+      label: 'Downpipes (count)',
+      type: 'number',
+      value: activeModule.downpipeCount,
+      onChange: (v: string | boolean) => setModuleField('downpipeCount', String(v)),
+      error: errors.downpipeCount,
+      helperText: activeModule.boxPerimeterEnabled
+        ? 'Default 1 when any "our" gutter edge is set'
+        : 'Default 1 when any "our" gutter is used',
+    } satisfies FieldSchemaItem,
+    {
+      id: 'downpipeJoinCount',
+      label: 'DP joins',
+      type: 'select',
+      value: activeModule.downpipeJoinCount,
+      onChange: (v: string | boolean) => setModuleField('downpipeJoinCount', String(v)),
+      options: DP_JOIN_OPTIONS,
+      error: errors.downpipeJoinCount,
+      helperText: 'Joins/couplers for downpipe sections (10 min each).',
+    } satisfies FieldSchemaItem,
+    ...(hasOurGutterUi
+      ? [
           {
-            id: 'downpipeCount',
-            label: 'Downpipes (count)',
-            type: 'number',
-            value: activeModule.downpipeCount,
-            onChange: (v: string | boolean) => setModuleField('downpipeCount', String(v)),
-            error: errors.downpipeCount,
-            helperText: 'Default 1 when any "our" gutter edge is set',
+            id: 'downpipeElbowCount',
+            label: 'DP elbows',
+            type: 'select',
+            value: activeModule.downpipeElbowCount,
+            onChange: (v: string | boolean) => setModuleField('downpipeElbowCount', String(v)),
+            options: DP_ELBOW_OPTIONS,
+            error: errors.downpipeElbowCount,
+            helperText: 'Elbows/fittings (10 min each). Only applicable when our gutter is used.',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -2121,6 +2206,8 @@ export default function CalculatorGridClient({
     'boxGutterHouseEdge',
     'boxGutterFarEdge',
     'downpipeCount',
+    'downpipeJoinCount',
+    'downpipeElbowCount',
   ]);
 
   const overrideFields = pickFields([
@@ -2230,7 +2317,7 @@ export default function CalculatorGridClient({
                   <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
                   <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
                   <PreviewStat label="Crew hours" value={formatMaybeNumber(crewHours)} />
-                  <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 1)} />
+                  <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 0)} />
                 </div>
 
                 <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
