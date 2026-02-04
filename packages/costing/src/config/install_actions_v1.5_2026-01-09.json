@@ -196,6 +196,60 @@
       "scope": "job"
     },
     {
+      "id": "day_cycle.setup_tools",
+      "category": "Mobilisation",
+      "label": "Daily setup / tool unload & staging",
+      "unit": "day",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 25,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "day_cycle.pack_down_tools",
+      "category": "Mobilisation",
+      "label": "Daily pack down / tool load-out",
+      "unit": "day",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 25,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
+      "id": "day_cycle.daily_tidy",
+      "category": "Mobilisation",
+      "label": "Daily tidy up",
+      "unit": "day",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 15,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "",
+      "scope": "job"
+    },
+    {
       "id": "mob.offload_materials",
       "category": "Mobilisation",
       "label": "Materials offloaded & staged",
@@ -1033,6 +1087,64 @@
       "scope": "module"
     },
     {
+      "id": "drain.dp_join_each",
+      "category": "Drainage",
+      "label": "Downpipe join / coupler",
+      "unit": "each",
+      "quantity": {
+        "type": "expr",
+        "expr": "derived.downpipe_join_count_used"
+      },
+      "base_minutes": 10,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Downpipe joins/couplers (10 min each).",
+      "scope": "module"
+    },
+    {
+      "id": "drain.dp_elbow_each",
+      "category": "Drainage",
+      "label": "Downpipe elbow / fitting",
+      "unit": "each",
+      "quantity": {
+        "type": "expr",
+        "expr": "derived.downpipe_elbow_count_used"
+      },
+      "base_minutes": 10,
+      "applies_to": {},
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Downpipe elbows/fittings (10 min each).",
+      "scope": "module"
+    },
+    {
+      "id": "drain.gutter_startup_job",
+      "category": "Drainage",
+      "label": "Gutter startup (end caps + droppers/outlets)",
+      "unit": "job",
+      "quantity": {
+        "type": "fixed",
+        "value": 1
+      },
+      "base_minutes": 30,
+      "applies_to": {
+        "has_our_gutter": [
+          "true"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Gutter startup allowance when our gutter is used.",
+      "scope": "job"
+    },
+    {
       "id": "finish.touchups",
       "category": "Finishing",
       "label": "Touch-ups / sealant / final adjustments",
@@ -1190,7 +1302,7 @@
     {
       "id": "rafters.install_edge_rafter_timber_each",
       "category": "Rafters",
-      "label": "Install timber edge rafters (200x50) - each",
+      "label": "Install timber edge rafters (150x50) - each",
       "unit": "each",
       "quantity": {
         "driver": "derived.timber_edge_rafter_count_total",
@@ -1206,7 +1318,7 @@
         "access",
         "height"
       ],
-      "notes": "Edge rafters for timber roofs (200x50).",
+      "notes": "Edge rafters for timber roofs (150x50).",
       "scope": "module"
     },
     {

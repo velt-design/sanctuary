@@ -54,7 +54,9 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   const projection_m = projection_m_raw !== undefined ? toNumber(projection_m_raw) : NaN;
   const roof_pitch_deg = raw.roof_pitch_deg !== undefined ? toNumber(raw.roof_pitch_deg) : undefined;
   const gutter_length_m = raw.gutter_length_m !== undefined ? toNumber(raw.gutter_length_m) : undefined;
-  const downpipe_count = raw.downpipe_count !== undefined ? toNumber(raw.downpipe_count) : undefined;
+    const downpipe_count = raw.downpipe_count !== undefined ? toNumber(raw.downpipe_count) : undefined;
+    const downpipe_join_count = raw.downpipe_join_count !== undefined ? toNumber(raw.downpipe_join_count) : undefined;
+    const downpipe_elbow_count = raw.downpipe_elbow_count !== undefined ? toNumber(raw.downpipe_elbow_count) : undefined;
   const overhang_amount_m = raw.overhang_amount_m !== undefined ? toNumber(raw.overhang_amount_m) : undefined;
 
   if (!Number.isFinite(length_m) || length_m <= 0) return { error: 'modules[].length_m must be a number > 0' };
@@ -76,9 +78,15 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   if (gutter_length_m !== undefined && (!Number.isFinite(gutter_length_m) || gutter_length_m < 0)) {
     return { error: 'modules[].gutter_length_m must be a number >= 0' };
   }
-  if (downpipe_count !== undefined && (!Number.isFinite(downpipe_count) || downpipe_count < 0)) {
-    return { error: 'modules[].downpipe_count must be a number >= 0' };
-  }
+    if (downpipe_count !== undefined && (!Number.isFinite(downpipe_count) || downpipe_count < 0)) {
+      return { error: 'modules[].downpipe_count must be a number >= 0' };
+    }
+    if (downpipe_join_count !== undefined && (!Number.isFinite(downpipe_join_count) || downpipe_join_count < 0)) {
+      return { error: 'modules[].downpipe_join_count must be a number >= 0' };
+    }
+    if (downpipe_elbow_count !== undefined && (!Number.isFinite(downpipe_elbow_count) || downpipe_elbow_count < 0)) {
+      return { error: 'modules[].downpipe_elbow_count must be a number >= 0' };
+    }
   if (overhang_amount_m !== undefined && (!Number.isFinite(overhang_amount_m) || overhang_amount_m < 0 || overhang_amount_m > 1.5)) {
     return { error: 'modules[].overhang_amount_m must be a number between 0 and 1.5' };
   }
@@ -287,6 +295,8 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
     fall_distance_mm: raw.fall_distance_mm !== undefined ? toNumber(raw.fall_distance_mm) : undefined,
     gutter_length_m,
     downpipe_count,
+    downpipe_join_count,
+    downpipe_elbow_count,
     box_gutter_house_edge: raw.box_gutter_house_edge,
     box_gutter_far_edge: raw.box_gutter_far_edge,
     overhang_enabled: raw.overhang_enabled === true,

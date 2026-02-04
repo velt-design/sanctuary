@@ -64,7 +64,9 @@ export async function POST(req: Request) {
   const projection_m = projection_m_raw !== undefined ? toNumber(projection_m_raw) : NaN;
   const roof_pitch_deg = body.roof_pitch_deg !== undefined ? toNumber(body.roof_pitch_deg) : undefined;
   const gutter_length_m = body.gutter_length_m !== undefined ? toNumber(body.gutter_length_m) : undefined;
-  const downpipe_count = body.downpipe_count !== undefined ? toNumber(body.downpipe_count) : undefined;
+    const downpipe_count = body.downpipe_count !== undefined ? toNumber(body.downpipe_count) : undefined;
+    const downpipe_join_count = body.downpipe_join_count !== undefined ? toNumber(body.downpipe_join_count) : undefined;
+    const downpipe_elbow_count = body.downpipe_elbow_count !== undefined ? toNumber(body.downpipe_elbow_count) : undefined;
   const overhang_amount_m = body.overhang_amount_m !== undefined ? toNumber(body.overhang_amount_m) : undefined;
 
   if (!Number.isFinite(length_m) || length_m <= 0) return badRequest('length_m must be a number > 0');
@@ -86,9 +88,15 @@ export async function POST(req: Request) {
   if (gutter_length_m !== undefined && (!Number.isFinite(gutter_length_m) || gutter_length_m < 0)) {
     return badRequest('gutter_length_m must be a number >= 0');
   }
-  if (downpipe_count !== undefined && (!Number.isFinite(downpipe_count) || downpipe_count < 0)) {
-    return badRequest('downpipe_count must be a number >= 0');
-  }
+    if (downpipe_count !== undefined && (!Number.isFinite(downpipe_count) || downpipe_count < 0)) {
+      return badRequest('downpipe_count must be a number >= 0');
+    }
+    if (downpipe_join_count !== undefined && (!Number.isFinite(downpipe_join_count) || downpipe_join_count < 0)) {
+      return badRequest('downpipe_join_count must be a number >= 0');
+    }
+    if (downpipe_elbow_count !== undefined && (!Number.isFinite(downpipe_elbow_count) || downpipe_elbow_count < 0)) {
+      return badRequest('downpipe_elbow_count must be a number >= 0');
+    }
   if (overhang_amount_m !== undefined && (!Number.isFinite(overhang_amount_m) || overhang_amount_m < 0 || overhang_amount_m > 1.5)) {
     return badRequest('overhang_amount_m must be a number between 0 and 1.5');
   }
@@ -295,6 +303,8 @@ export async function POST(req: Request) {
     fall_distance_mm: body.fall_distance_mm !== undefined ? toNumber(body.fall_distance_mm) : undefined,
     gutter_length_m,
     downpipe_count,
+    downpipe_join_count,
+    downpipe_elbow_count,
     box_gutter_house_edge: body.box_gutter_house_edge,
     box_gutter_far_edge: body.box_gutter_far_edge,
     overhang_enabled: body.overhang_enabled === true,

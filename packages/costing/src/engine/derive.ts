@@ -27,7 +27,7 @@ const DEFAULT_MIXED_MODE: MixedRoofMode = 'ridge_skylight';
 
 const RAFTER_SPACING_MM_MAX = 642;
 const TIMBER_RAFTER_SPACING_MM_MAX = 500;
-const TIMBER_EDGE_RAFTER_PROFILE = '200x50';
+const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_COMMON_RAFTER_DEFAULT_PROFILE = '80x50';
 const TIMBER_PURLIN_PROFILE = '50x50';
 const BRACKET_SPACING_MM_MAX = 1500;
@@ -40,6 +40,7 @@ const JOINER_EXTRA_M = 0.02;
 const DEFAULT_ACRYLIC_SHEET_LENGTH_M = 3.05;
 const DEFAULT_ACRYLIC_SHEET_WIDTH_M = 2.03;
 const MIXED_ACRYLIC_BAY_WIDTH_M = 0.62;
+const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
 
 export type DerivedResultV1 = {
   inputs_normalized: InputsNormalizedV1;
@@ -185,9 +186,9 @@ function normalizeMixedRoof(
   if (requestedMode === 'acrylic_bays') {
     const raw = inputs.mixed_roof?.acrylic_bays_by_plane;
     const byPlane = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+    const defaultBays = Math.max(0, Math.round(DEFAULT_MIXED_ACRYLIC_BAYS));
 
     let acrylicAreaM2 = 0;
-    let timberAreaM2 = 0;
     let acrylicBaysTotal = 0;
     let acrylicPlaneCountUsed = 0;
 
@@ -195,17 +196,19 @@ function normalizeMixedRoof(
 
     for (const plane of opts.roofPlanes) {
       const rawValue = byPlane[plane.id];
-      const parsed =
-        typeof rawValue === 'number'
+      const hasRaw = rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== '';
+      const parsed = hasRaw
+        ? typeof rawValue === 'number'
           ? rawValue
           : typeof rawValue === 'string'
             ? Number.parseInt(rawValue, 10)
-            : NaN;
-      const requested = Number.isFinite(parsed) ? Math.round(parsed) : plane.bay_count;
+            : NaN
+        : NaN;
+      const requested = Number.isFinite(parsed) ? Math.round(parsed) : defaultBays;
       const clamped = Math.max(0, Math.min(plane.bay_count, requested));
       clampedByPlane[plane.id] = clamped;
 
-      if (requested > plane.bay_count) {
+      if (Number.isFinite(parsed) && requested > plane.bay_count) {
         warnings.push(`Mixed roof acrylic bays exceed bay count for ${plane.label}; clamping to ${plane.bay_count}.`);
       }
 
@@ -214,13 +217,22 @@ function normalizeMixedRoof(
       }
 
       const acrylicAreaPlane = clamped * MIXED_ACRYLIC_BAY_WIDTH_M * Math.max(0, plane.rafter_length_m);
-      const timberAreaPlane = Math.max(0, Math.max(0, plane.roof_area_m2) - acrylicAreaPlane);
-
       acrylicAreaM2 += acrylicAreaPlane;
-      timberAreaM2 += timberAreaPlane;
       acrylicBaysTotal += clamped;
       if (clamped > 0) acrylicPlaneCountUsed += 1;
     }
+
+    const totalRoofAreaM2 = Math.max(0, opts.roofSurfaceAreaM2);
+    let acrylicAreaClamped = acrylicAreaM2;
+    if (!Number.isFinite(acrylicAreaClamped) || acrylicAreaClamped < 0) {
+      warnings.push('Mixed roof acrylic area was negative; clamping to 0.');
+      acrylicAreaClamped = 0;
+    }
+    if (acrylicAreaClamped > totalRoofAreaM2 + 1e-6) {
+      warnings.push('Mixed roof acrylic area exceeds roof area; clamping to roof area.');
+      acrylicAreaClamped = totalRoofAreaM2;
+    }
+    const timberAreaM2 = Math.max(0, totalRoofAreaM2 - acrylicAreaClamped);
 
     return {
       normalized: {
@@ -229,7 +241,7 @@ function normalizeMixedRoof(
         acrylic_area_m2_override: null,
         acrylic_bays_by_plane: clampedByPlane,
       },
-      acrylicAreaM2,
+      acrylicAreaM2: acrylicAreaClamped,
       timberAreaM2,
       acrylicBaysTotal,
       acrylicPlaneCountUsed,
@@ -243,6 +255,7 @@ function normalizeMixedRoof(
 
     const clamped = Math.min(override, opts.roofSurfaceAreaM2);
     if (override > opts.roofSurfaceAreaM2 + 1e-6) warnings.push('Mixed roof acrylic area exceeds roof area; clamping to roof area.');
+    if (clamped < 0) warnings.push('Mixed roof acrylic area was negative; clamping to 0.');
 
     return {
       normalized: {
@@ -251,8 +264,8 @@ function normalizeMixedRoof(
         acrylic_area_m2_override: override,
         acrylic_bays_by_plane: null,
       },
-      acrylicAreaM2: clamped,
-      timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - clamped),
+      acrylicAreaM2: Math.max(0, clamped),
+      timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - Math.max(0, clamped)),
       acrylicBaysTotal: null,
       acrylicPlaneCountUsed: 0,
       warnings,
@@ -271,6 +284,7 @@ function normalizeMixedRoof(
   const acrylicArea = stripCount * stripWidth * opts.lengthM;
   const clamped = Math.min(acrylicArea, opts.roofSurfaceAreaM2);
   if (acrylicArea > opts.roofSurfaceAreaM2 + 1e-6) warnings.push('Mixed roof skylight area exceeds roof area; clamping to roof area.');
+  if (clamped < 0) warnings.push('Mixed roof acrylic area was negative; clamping to 0.');
 
   return {
     normalized: {
@@ -282,8 +296,8 @@ function normalizeMixedRoof(
       acrylic_area_m2_override: null,
       acrylic_bays_by_plane: null,
     },
-    acrylicAreaM2: clamped,
-    timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - clamped),
+    acrylicAreaM2: Math.max(0, clamped),
+    timberAreaM2: Math.max(0, opts.roofSurfaceAreaM2 - Math.max(0, clamped)),
     acrylicBaysTotal: null,
     acrylicPlaneCountUsed: 0,
     warnings,
@@ -557,30 +571,32 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const timberTrayWidthMm = timberTrayWidthRaw === 400 || timberTrayWidthRaw === 500 || timberTrayWidthRaw === 600 ? timberTrayWidthRaw : 500;
 
   const timberPlaneCount = roofType === 'gable' || roofType === 'hip' || roofType === 'low_gable' ? 2 : 1;
-  const timberEdgeRafterCountPerPlane = 2;
-  const timberEdgeRafterCountTotal = timberEdgeRafterCountPerPlane * timberPlaneCount;
+  const timberEdgeRafterCountPerPlaneBase = 2;
   const timberEffectiveLengthMm = Math.max(lengthMmA - 100, 0);
-  const timberCommonRafterCountPerPlane = Math.ceil(timberEffectiveLengthMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1;
-  const timberCommonRafterCountTotal = timberCommonRafterCountPerPlane * timberPlaneCount;
+  const timberCommonRafterCountPerPlaneBase = Math.ceil(timberEffectiveLengthMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1;
   const timberRunPerPlaneM = timberPlaneCount === 2 ? projectionM / 2 : projectionM;
   const timberSlopeLenPerPlaneM = timberRunPerPlaneM / effectiveCos;
   const timberSlopeLenPerPlaneMm = timberSlopeLenPerPlaneM * 1000;
   const timberAvailableMm = Math.max(timberSlopeLenPerPlaneMm - 200, 0);
   const timberPurlinLinesPerPlane = Math.ceil(timberAvailableMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1;
-  const timberPurlinTotalM = timberPurlinLinesPerPlane * lengthM * timberPlaneCount;
   const timberHiddenFinish = 'mill';
   const roofSlopeAreaM2 = roofSurfaceAreaM2;
-  const timberRoofAboveAreaM2 = roofSlopeAreaM2;
-  const timberInsulatedPanelCountPerPlane = Math.ceil(lengthM / 1.2);
-  const timberInsulatedPanelCountTotal = timberInsulatedPanelCountPerPlane * timberPlaneCount;
   const timberTrayWidthM = Math.max(0.1, timberTrayWidthMm / 1000);
-  const timberTraySheetCountPerPlane = Math.ceil(lengthM / timberTrayWidthM);
-  const timberTraySheetCountTotal = timberTraySheetCountPerPlane * timberPlaneCount;
-  const covertekAreaM2 = timberRoofAboveAreaM2 * 1.1;
-  const polystyreneAreaM2 = timberRoofAboveAreaM2;
-  const timberRoofingScrewsSteelCount = Math.ceil(timberRoofAboveAreaM2 * 6);
-  const timberRoofingScrewsInsulatedCount = Math.ceil(timberRoofAboveAreaM2 * 4);
-  const rafterCountUsed = inputs.roof_material === 'timber' ? timberCommonRafterCountPerPlane : rafterCount;
+  let timberRoofAboveAreaM2 = roofSlopeAreaM2;
+  let timberLengthEquivalentM = lengthM;
+  let timberCommonRafterCountPerPlane = timberCommonRafterCountPerPlaneBase;
+  let timberCommonRafterCountTotal = timberCommonRafterCountPerPlane * timberPlaneCount;
+  let timberEdgeRafterCountPerPlane = timberEdgeRafterCountPerPlaneBase;
+  let timberEdgeRafterCountTotal = timberEdgeRafterCountPerPlane * timberPlaneCount;
+  let timberPurlinTotalM = timberPurlinLinesPerPlane * timberLengthEquivalentM * timberPlaneCount;
+  let timberInsulatedPanelCountPerPlane = Math.ceil(timberLengthEquivalentM / 1.2);
+  let timberInsulatedPanelCountTotal = timberInsulatedPanelCountPerPlane * timberPlaneCount;
+  let timberTraySheetCountPerPlane = Math.ceil(timberLengthEquivalentM / timberTrayWidthM);
+  let timberTraySheetCountTotal = timberTraySheetCountPerPlane * timberPlaneCount;
+  let covertekAreaM2 = timberRoofAboveAreaM2 * 1.1;
+  let polystyreneAreaM2 = timberRoofAboveAreaM2;
+  let timberRoofingScrewsSteelCount = Math.ceil(timberRoofAboveAreaM2 * 6);
+  let timberRoofingScrewsInsulatedCount = Math.ceil(timberRoofAboveAreaM2 * 4);
 
   const boxHouseSetbackM = Number(pitchedSetbacksMm?.house_setback_mm ?? 150) / 1000;
   const boxOuterSetbackM = Number(pitchedSetbacksMm?.outer_setback_mm ?? 50) / 1000;
@@ -699,6 +715,35 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     if (acrylicAreaM2 > 0) warnings.push('Acrylic joiner system assumed (no through-fixing).');
   }
 
+  if (inputs.roof_material === 'mixed') {
+    timberRoofAboveAreaM2 = Math.max(0, timberAreaM2);
+    const slopeAreaPerPlane = timberSlopeLenPerPlaneM * timberPlaneCount;
+    const lengthEquivalentRaw =
+      timberRoofAboveAreaM2 > 0 && Number.isFinite(slopeAreaPerPlane) && slopeAreaPerPlane > 0
+        ? timberRoofAboveAreaM2 / slopeAreaPerPlane
+        : 0;
+    timberLengthEquivalentM = clampNumber(lengthEquivalentRaw, 0, lengthM);
+
+    const effectiveLengthMm = Math.max(timberLengthEquivalentM * 1000 - 100, 0);
+    timberCommonRafterCountPerPlane =
+      timberRoofAboveAreaM2 > 0 ? Math.ceil(effectiveLengthMm / TIMBER_RAFTER_SPACING_MM_MAX) + 1 : 0;
+    timberCommonRafterCountTotal = timberCommonRafterCountPerPlane * timberPlaneCount;
+    timberEdgeRafterCountPerPlane = timberRoofAboveAreaM2 > 0 ? timberEdgeRafterCountPerPlaneBase : 0;
+    timberEdgeRafterCountTotal = timberEdgeRafterCountPerPlane * timberPlaneCount;
+    timberPurlinTotalM =
+      timberRoofAboveAreaM2 > 0 ? timberPurlinLinesPerPlane * timberLengthEquivalentM * timberPlaneCount : 0;
+    timberInsulatedPanelCountPerPlane = timberRoofAboveAreaM2 > 0 ? Math.ceil(timberLengthEquivalentM / 1.2) : 0;
+    timberInsulatedPanelCountTotal = timberInsulatedPanelCountPerPlane * timberPlaneCount;
+    timberTraySheetCountPerPlane = timberRoofAboveAreaM2 > 0 ? Math.ceil(timberLengthEquivalentM / timberTrayWidthM) : 0;
+    timberTraySheetCountTotal = timberTraySheetCountPerPlane * timberPlaneCount;
+    covertekAreaM2 = timberRoofAboveAreaM2 * 1.1;
+    polystyreneAreaM2 = timberRoofAboveAreaM2;
+    timberRoofingScrewsSteelCount = Math.ceil(timberRoofAboveAreaM2 * 6);
+    timberRoofingScrewsInsulatedCount = Math.ceil(timberRoofAboveAreaM2 * 4);
+  }
+
+  const rafterCountUsed = inputs.roof_material === 'timber' ? timberCommonRafterCountPerPlane : rafterCount;
+
   const acrylicSheetAreaM2 = DEFAULT_ACRYLIC_SHEET_LENGTH_M * DEFAULT_ACRYLIC_SHEET_WIDTH_M;
   const acrylicSheetCount =
     inputs.roof_material === 'acrylic' || inputs.roof_material === 'mixed'
@@ -815,9 +860,30 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
           ? gutterLengthRaw
           : baseLinearLength;
 
+  const hasOurGutterBox = isBoxPerimeter && (boxGutterHouseEdge === 'our' || boxGutterFarEdge === 'our');
+  let hasOurGutter = false;
+  if (invertedEnabled && invertedHouseGutter) {
+    hasOurGutter = false;
+  } else if (hasOurGutterBox) {
+    hasOurGutter = true;
+  } else if (gutterAssemblyMode === 'integrated' || gutterAssemblyMode === 'separate') {
+    hasOurGutter = true;
+  } else if (gutterMode === 'overhang_gutter_front_edge') {
+    hasOurGutter = true;
+  } else if (invertedEnabled && !invertedHouseGutter) {
+    hasOurGutter = true;
+  }
+
   const downpipeCountRaw = toNonNegativeNumber(inputs.downpipe_count, NaN);
   const downpipeCount =
     Number.isFinite(downpipeCountRaw) && downpipeCountRaw > 0 ? Math.round(downpipeCountRaw) : ourGutterLengthM > 0 ? 1 : 0;
+  const downpipeJoinCountRaw = toNonNegativeNumber(inputs.downpipe_join_count, 0);
+  const downpipeJoinCountUsed = clampNumber(Math.round(downpipeJoinCountRaw), 0, 20);
+  const downpipeElbowCountRaw = toNonNegativeNumber(inputs.downpipe_elbow_count, 0);
+  const downpipeElbowCountUsed = hasOurGutter ? clampNumber(Math.round(downpipeElbowCountRaw), 0, 40) : 0;
+  if (!hasOurGutter && downpipeElbowCountRaw > 0) {
+    warnings.push('DP elbows ignored because no gutter is selected.');
+  }
 
   const timberAllowanceRaw = toNonNegativeNumber(inputs.timber_roof_allowance_ex_gst, 0);
   if (timberAllowanceRaw > 0) warnings.push('Timber roof allowance input is deprecated and ignored (timber roof is now a takeoff).');
@@ -844,6 +910,10 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
       powdercoatMultiplier = 1.0;
     }
   }
+
+  const visibleFinishUsed = 'default';
+  const timberEdgeRafterProfileUsed = TIMBER_EDGE_RAFTER_PROFILE;
+  const timberEdgeRafterFinishUsed = visibleFinishUsed;
 
   const inputsNormalized: InputsNormalizedV1 = {
     length_m: lengthM,
@@ -875,6 +945,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     fall_distance_mm: fallDistanceMm,
     gutter_length_m: gutterLengthM,
     downpipe_count: downpipeCount,
+    downpipe_join_count: downpipeJoinCountUsed,
+    downpipe_elbow_count: downpipeElbowCountUsed,
     box_gutter_house_edge: boxGutterHouseEdge,
     box_gutter_far_edge: boxGutterFarEdge,
     overhang_enabled: overhangEnabled,
@@ -937,6 +1009,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     gutter_mode: gutterMode,
     gutter_assembly_mode: gutterAssemblyMode,
     integrated_gutter_beam: integratedGutterBeam,
+    has_our_gutter: hasOurGutter,
     separate_gutter_enabled: separateGutterEnabled,
     separate_gutter_length_m: separateGutterLengthM,
     ledger_profile_used: ledgerProfileUsed,
@@ -987,11 +1060,15 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     cut_rafter_length_m: cutRafterLengthM,
     angle_cut_allowance_m: angleCutAllowanceM,
     acrylic_required_downslope_m: acrylicRequiredDownslopeM,
+    total_roof_area_m2: roofSurfaceAreaM2,
     roof_surface_area_m2: roofSurfaceAreaM2,
     ridge_length_m: ridgeLengthM,
     acrylic_area_m2: acrylicAreaM2,
     timber_area_m2: timberAreaM2,
     timber_plane_count: timberPlaneCount,
+    visible_finish_used: visibleFinishUsed,
+    timber_edge_rafter_profile_used: timberEdgeRafterProfileUsed,
+    timber_edge_rafter_finish_used: timberEdgeRafterFinishUsed,
     timber_edge_rafter_count_per_plane: timberEdgeRafterCountPerPlane,
     timber_edge_rafter_count_total: timberEdgeRafterCountTotal,
     timber_common_rafter_count_per_plane: timberCommonRafterCountPerPlane,
@@ -1021,6 +1098,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     powdercoat_colour_used: powdercoatColourUsed,
     powdercoat_multiplier: powdercoatMultiplier,
     gutter_length_m: gutterLengthM,
+    downpipe_join_count_used: downpipeJoinCountUsed,
+    downpipe_elbow_count_used: downpipeElbowCountUsed,
     roof_planes: roofPlanes,
     ...(typeof acrylicBaysTotal === 'number' ? { acrylic_bays_total: acrylicBaysTotal } : null),
     hip_rafter_count: hipRafterCount,

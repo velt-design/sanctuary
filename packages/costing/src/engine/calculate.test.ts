@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calculateCostV1, calculateJobCostV1 } from './calculate';
 import { loadCostingConfigV1 } from './config';
+import { DAY_CYCLE_ACTION_IDS } from './install';
 
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
@@ -21,6 +22,37 @@ function findPowdercoatForBar(config: ReturnType<typeof loadCostingConfigV1>, ba
     return attrsPowder?.profile === profile && attrsPowder?.length_m === length;
   });
   return { barItem, powderItem };
+}
+
+function buildTestConfig(baseMinutes: number, baseScope: 'module' | 'job' = 'module') {
+  const cfg = loadCostingConfigV1();
+  const dayCycleActions = cfg.installActions.actions.filter((action) =>
+    (DAY_CYCLE_ACTION_IDS as readonly string[]).includes(action.id),
+  );
+  if (dayCycleActions.length !== DAY_CYCLE_ACTION_IDS.length) {
+    throw new Error('Day cycle actions missing from config.');
+  }
+
+  const baseAction = {
+    id: 'test.base_action',
+    category: 'Test',
+    label: 'Test base action',
+    unit: 'job',
+    quantity: { type: 'fixed', value: 1 },
+    base_minutes: baseMinutes,
+    applies_to: {},
+    apply_multipliers: [],
+    notes: '',
+    scope: baseScope,
+  } as const;
+
+  return {
+    ...cfg,
+    installActions: {
+      ...cfg.installActions,
+      actions: [baseAction, ...dayCycleActions],
+    },
+  };
 }
 
 describe('calculateCostV1', () => {
@@ -710,6 +742,33 @@ describe('calculateCostV1', () => {
     expect(result.totals.cost_ex_gst).toBeGreaterThan(0);
   });
 
+  it('mixed: defaults acrylic bays to 2 when missing', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed',
+      mixed_roof: {
+        mode: 'acrylic_bays',
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.acrylic_bays_total).toBe(2);
+    expect(result.derived.acrylic_area_m2).toBeGreaterThan(0);
+    expect(result.derived.timber_area_m2).toBeGreaterThan(0);
+  });
+
   it('mixed: acrylic bays per plane drive derived areas, BOM panels, and labour', () => {
     const result = calculateCostV1({
       length_m: 5,
@@ -746,6 +805,87 @@ describe('calculateCostV1', () => {
 
     expect(result.install.actions.some((a) => a.id === 'roof.install_acrylic_roof_m2')).toBe(true);
     expect(result.install.actions.some((a) => a.id === 'roof.install_timber_roof_m2')).toBe(true);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_purlins_m')).toBe(true);
+  });
+
+  it('mixed: timber purlins scale with timber portion', () => {
+    const mixed = calculateCostV1({
+      length_m: 5,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed',
+      mixed_roof: {
+        mode: 'acrylic_bays',
+        acrylic_bays_by_plane: { main: 4 },
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const timber = calculateCostV1({
+      length_m: 5,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'timber',
+      extrusion_colour: 'Mill',
+      powdercoat_standard_colour: 'Ironsands',
+      powdercoat_is_custom: false,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const fraction = mixed.derived.timber_area_m2 / mixed.derived.roof_surface_area_m2;
+    expect(mixed.derived.timber_purlin_total_m).toBeCloseTo(timber.derived.timber_purlin_total_m * fraction, 4);
+  });
+
+  it('mixed: steel roof above adds covertek + polystyrene', () => {
+    const base = {
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed' as const,
+      mixed_roof: {
+        mode: 'acrylic_bays' as const,
+        acrylic_bays_by_plane: { main: 2 },
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    };
+
+    const steel = calculateCostV1({ ...base, timber_roof_above_type: 'steel_corrugated' as const });
+    expect(steel.derived.timber_roof_above_area_m2).toBeCloseTo(steel.derived.timber_area_m2, 4);
+    expect(steel.materials.lines.find((l) => l.id === 'underlay.covertek_407_m2')?.qty ?? 0).toBeGreaterThan(0);
+    expect(steel.materials.lines.find((l) => l.id === 'insulation.polystyrene_m2')?.qty ?? 0).toBeGreaterThan(0);
+
+    const insulated = calculateCostV1({ ...base, timber_roof_above_type: 'insulated_panels' as const });
+    expect(insulated.materials.lines.find((l) => l.id === 'underlay.covertek_407_m2')).toBeUndefined();
+    expect(insulated.materials.lines.find((l) => l.id === 'insulation.polystyrene_m2')).toBeUndefined();
   });
 
   it('mixed: joiner fixings include +1 run per acrylic plane', () => {
@@ -1274,7 +1414,7 @@ describe('calculateCostV1', () => {
 });
 
 describe('timber roof system', () => {
-  it('pitched timber derives rafter/purlin counts and mill finish', () => {
+  it('pitched timber derives rafter/purlin counts with visible edge rafters', () => {
     const result = calculateCostV1({
       length_m: 6,
       projection_m: 3,
@@ -1285,7 +1425,9 @@ describe('timber roof system', () => {
       pergola_style: 'pitched',
       box_perimeter_enabled: false,
       roof_material: 'timber',
-      extrusion_colour: 'Black',
+      extrusion_colour: 'Mill',
+      powdercoat_standard_colour: 'Ironsands',
+      powdercoat_is_custom: false,
       timber_roof_above_type: 'insulated_panels',
       timber_insulated_panel_thickness_mm: 50,
 
@@ -1306,10 +1448,10 @@ describe('timber roof system', () => {
     const lines = result.materials.lines;
     const mill50 = lines.find((l) => l.profile === '50x50' && /\(Mill\)/i.test(l.label));
     const mill80 = lines.find((l) => l.profile === '80x50' && /\(Mill\)/i.test(l.label));
-    const mill200 = lines.find((l) => l.profile === '200x50' && /\(Mill\)/i.test(l.label));
+    const edge150 = lines.find((l) => l.profile === '150x50' && /powdercoated/i.test(l.label));
     expect(mill50).toBeTruthy();
     expect(mill80).toBeTruthy();
-    expect(mill200).toBeTruthy();
+    expect(edge150).toBeTruthy();
 
     const insulated = lines.find((l) => l.id === 'roof.insulated_panel_50mm_m2');
     const covertek = lines.find((l) => l.id === 'underlay.covertek_407_m2');
@@ -1330,7 +1472,9 @@ describe('timber roof system', () => {
       pergola_style: 'gable',
       box_perimeter_enabled: false,
       roof_material: 'timber',
-      extrusion_colour: 'White',
+      extrusion_colour: 'Mill',
+      powdercoat_standard_colour: 'Ironsands',
+      powdercoat_is_custom: false,
       timber_roof_above_type: 'steel_corrugated',
 
       house_connection_type: 'soffit',
@@ -1345,6 +1489,7 @@ describe('timber roof system', () => {
     expect(result.derived.timber_purlin_total_m).toBe(
       result.derived.timber_purlin_lines_per_plane * result.derived.length_m * 2,
     );
+    expect(result.materials.lines.find((l) => l.profile === '150x50' && /powdercoated/i.test(l.label))).toBeTruthy();
   });
 
   it('steel roof above adds covertek + polystyrene', () => {
@@ -1401,9 +1546,9 @@ describe('timber roof system', () => {
 
     expect(result.inputs_normalized.rafter_profile).toBe('100x50');
     const mill100 = result.materials.lines.find((l) => l.profile === '100x50' && /\(Mill\)/i.test(l.label));
-    const mill200 = result.materials.lines.find((l) => l.profile === '200x50' && /\(Mill\)/i.test(l.label));
+    const edge150 = result.materials.lines.find((l) => l.profile === '150x50');
     expect(mill100).toBeTruthy();
-    expect(mill200).toBeTruthy();
+    expect(edge150).toBeTruthy();
   });
 
   it('tray width impacts sheet counts (reporting only)', () => {
@@ -1431,5 +1576,234 @@ describe('timber roof system', () => {
     expect(tray400.derived.timber_tray_sheet_count_per_plane).toBe(15);
     expect(tray500.derived.timber_tray_sheet_count_per_plane).toBe(12);
     expect(tray600.derived.timber_tray_sheet_count_per_plane).toBe(10);
+  });
+});
+
+describe('downpipe allowances', () => {
+  it('no our gutter: elbows forced to 0 and gutter startup skipped', () => {
+    const module = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      inverted_enabled: true,
+      inverted_house_gutter: true,
+
+      downpipe_join_count: 2,
+      downpipe_elbow_count: 3,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect((module.derived as any).has_our_gutter).toBe(false);
+    expect((module.derived as any).downpipe_elbow_count_used).toBe(0);
+
+    const joinAction = module.install.actions.find((a) => a.id === 'drain.dp_join_each');
+    const elbowAction = module.install.actions.find((a) => a.id === 'drain.dp_elbow_each');
+    expect(joinAction?.qty).toBe(2);
+    expect(elbowAction).toBeUndefined();
+
+    const job = calculateJobCostV1({
+      modules: [
+        {
+          length_m: 6,
+          projection_m: 3,
+          roof_pitch_deg: 5,
+          post_cut_height_m: 2.4,
+          post_count: 4,
+
+          pergola_style: 'pitched',
+          box_perimeter_enabled: false,
+          roof_material: 'acrylic',
+          extrusion_colour: 'Black',
+          inverted_enabled: true,
+          inverted_house_gutter: true,
+
+          downpipe_join_count: 2,
+          downpipe_elbow_count: 3,
+
+          house_connection_type: 'soffit',
+          post_connection_type: 'deck_bracket',
+          access: 'normal',
+          height: 'single_storey',
+        },
+      ],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    expect(job.install.actions.find((a) => a.id === 'job.drain.gutter_startup_job')).toBeUndefined();
+  });
+
+  it('our gutter: elbows allowed and gutter startup applies once', () => {
+    const job = calculateJobCostV1({
+      modules: [
+        {
+          length_m: 6,
+          projection_m: 3,
+          roof_pitch_deg: 5,
+          post_cut_height_m: 2.4,
+          post_count: 4,
+
+          pergola_style: 'pitched',
+          box_perimeter_enabled: false,
+          roof_material: 'acrylic',
+          extrusion_colour: 'Black',
+
+          downpipe_join_count: 1,
+          downpipe_elbow_count: 4,
+
+          house_connection_type: 'soffit',
+          post_connection_type: 'deck_bracket',
+          access: 'normal',
+          height: 'single_storey',
+        },
+      ],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    const moduleActions = job.install.actions.filter((a) => a.id.startsWith('m1.'));
+    expect(moduleActions.find((a) => a.id === 'm1.drain.dp_elbow_each')?.qty).toBe(4);
+
+    const gutterStartup = job.install.actions.find((a) => a.id === 'job.drain.gutter_startup_job');
+    expect(gutterStartup?.qty).toBe(1);
+  });
+
+  it('multi-module: gutter startup appears once when any module has our gutter', () => {
+    const job = calculateJobCostV1({
+      modules: [
+        {
+          length_m: 6,
+          projection_m: 3,
+          roof_pitch_deg: 5,
+          post_cut_height_m: 2.4,
+          post_count: 4,
+
+          pergola_style: 'pitched',
+          box_perimeter_enabled: false,
+          roof_material: 'acrylic',
+          extrusion_colour: 'Black',
+          inverted_enabled: true,
+          inverted_house_gutter: true,
+
+          house_connection_type: 'soffit',
+          post_connection_type: 'deck_bracket',
+          access: 'normal',
+          height: 'single_storey',
+        },
+        {
+          length_m: 6,
+          projection_m: 3,
+          roof_pitch_deg: 5,
+          post_cut_height_m: 2.4,
+          post_count: 4,
+
+          pergola_style: 'pitched',
+          box_perimeter_enabled: false,
+          roof_material: 'acrylic',
+          extrusion_colour: 'Black',
+
+          house_connection_type: 'soffit',
+          post_connection_type: 'deck_bracket',
+          access: 'normal',
+          height: 'single_storey',
+        },
+      ],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    const gutterStartup = job.install.actions.filter((a) => a.id === 'job.drain.gutter_startup_job');
+    expect(gutterStartup.length).toBe(1);
+  });
+});
+
+describe('install day cycle', () => {
+  const baseInputs = {
+    length_m: 6,
+    projection_m: 3,
+    post_cut_height_m: 2.4,
+    post_count: 4,
+    pergola_style: 'pitched' as const,
+    box_perimeter_enabled: false,
+    roof_material: 'acrylic' as const,
+    extrusion_colour: 'Black' as const,
+    house_connection_type: 'soffit' as const,
+    post_connection_type: 'deck_bracket' as const,
+    access: 'normal' as const,
+    height: 'single_storey' as const,
+    travel_ex_gst: 0,
+    extras_allowance_ex_gst: 0,
+    quote_discount_pct: 0,
+  };
+
+  const dayCycleMinutesPerDay = 25 + 25 + 15;
+
+  it('single-module: site days clamps to 1 and day-cycle qty is 1', () => {
+    const cfg = buildTestConfig(300);
+    const result = calculateCostV1(baseInputs, cfg);
+
+    expect(result.derived.site_days).toBe(1);
+    for (const id of DAY_CYCLE_ACTION_IDS) {
+      expect(result.install.actions.find((a) => a.id === id)?.qty).toBe(1);
+    }
+
+    const dayCycleMinutes = result.install.actions
+      .filter((a) => (DAY_CYCLE_ACTION_IDS as readonly string[]).includes(a.id))
+      .reduce((acc, a) => acc + a.minutes, 0);
+    expect(dayCycleMinutes).toBe(dayCycleMinutesPerDay);
+    expect(result.install.totals.crew_minutes).toBe(300 + dayCycleMinutesPerDay);
+  });
+
+  it('single-module: multi-day job scales day-cycle qty', () => {
+    const cfg = buildTestConfig(1250);
+    const result = calculateCostV1(baseInputs, cfg);
+
+    expect(result.derived.site_days).toBe(3);
+    for (const id of DAY_CYCLE_ACTION_IDS) {
+      expect(result.install.actions.find((a) => a.id === id)?.qty).toBe(3);
+    }
+    expect(result.install.totals.crew_minutes).toBe(1250 + dayCycleMinutesPerDay * 3);
+  });
+
+  it('single-module: boundary iteration bumps site days', () => {
+    const cfg = buildTestConfig(1070);
+    const result = calculateCostV1(baseInputs, cfg);
+
+    expect(result.derived.site_days).toBe(3);
+    for (const id of DAY_CYCLE_ACTION_IDS) {
+      expect(result.install.actions.find((a) => a.id === id)?.qty).toBe(3);
+    }
+    expect(result.install.totals.crew_minutes).toBe(1070 + dayCycleMinutesPerDay * 3);
+  });
+
+  it('multi-module job: day-cycle actions appear once at job scope', () => {
+    const cfg = buildTestConfig(300);
+    const job = calculateJobCostV1(
+      {
+        modules: [baseInputs, baseInputs],
+        travel_ex_gst: 0,
+        extras_allowance_ex_gst: 0,
+      },
+      cfg,
+    );
+
+    const dayCycleIds = DAY_CYCLE_ACTION_IDS.map((id) => `job.${id}`);
+    for (const id of dayCycleIds) {
+      expect(job.install.actions.find((a) => a.id === id)?.qty).toBe(2);
+    }
+    expect(job.install.actions.some((a) => a.id.startsWith('m1.day_cycle.'))).toBe(false);
+    expect(job.install.actions.some((a) => a.id.startsWith('m2.day_cycle.'))).toBe(false);
+    expect(job.modules[0].derived.site_days).toBe(2);
   });
 });

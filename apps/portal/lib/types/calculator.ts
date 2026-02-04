@@ -65,6 +65,8 @@ export type CalculatorModuleInputs = {
   boxGutterHouseEdge: 'house' | 'our' | 'none';
   boxGutterFarEdge: 'house' | 'our' | 'none';
   downpipeCount: string;
+  downpipeJoinCount: string;
+  downpipeElbowCount: string;
   separateGutterEnabled: boolean;
   overhangEnabled: boolean;
   overhangAmountM: string;
@@ -128,6 +130,8 @@ export type LegacyCalculatorInputsV1 = {
   boxGutterHouseEdge?: 'house' | 'our' | 'none';
   boxGutterFarEdge?: 'house' | 'our' | 'none';
   downpipeCount?: string;
+  downpipeJoinCount?: string;
+  downpipeElbowCount?: string;
   separateGutterEnabled?: boolean;
   overhangEnabled?: boolean;
   overhangAmountM?: string;
@@ -231,6 +235,8 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         boxGutterHouseEdge: legacy.boxGutterHouseEdge ?? 'house',
         boxGutterFarEdge: legacy.boxGutterFarEdge ?? 'our',
         downpipeCount: legacy.downpipeCount ?? '0',
+        downpipeJoinCount: legacy.downpipeJoinCount ?? '0',
+        downpipeElbowCount: legacy.downpipeElbowCount ?? '0',
         separateGutterEnabled: legacy.separateGutterEnabled ?? false,
         overhangEnabled: legacy.overhangEnabled ?? false,
         overhangAmountM: legacy.overhangAmountM ?? '0.2',

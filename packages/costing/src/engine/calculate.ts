@@ -1,7 +1,7 @@
 import { loadCostingConfigV1, type CostingConfigV1 } from './config';
 import { applyGst, normalizeAndDeriveV1 } from './derive';
 import { buildMaterialsV1 } from './bom';
-import { buildInstallV1 } from './install';
+import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
 import { buildOverheadV1 } from './overheads';
 import type { CostInputsV1, CostOutputV1, JobInputsV1, JobOutputV1, InstallActionV1, MaterialsLineV1, WarningLevelV1, WarningV1 } from './types';
 
@@ -47,6 +47,45 @@ function toWarnings(messages: string[]): WarningV1[] {
   return warnings;
 }
 
+type InstallResult = ReturnType<typeof buildInstallV1>;
+
+function mergeInstallResults(base: InstallResult, extra: InstallResult): InstallResult {
+  const actions = [...base.install.actions, ...extra.install.actions].sort((a, b) => a.id.localeCompare(b.id));
+  const crewMinutes = roundMoney(actions.reduce((acc, a) => acc + a.minutes, 0));
+  const crewHours = roundMoney(crewMinutes / 60);
+  const installExGst = roundMoney(actions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
+  return {
+    install: {
+      actions,
+      totals: {
+        crew_minutes: crewMinutes,
+        crew_hours: crewHours,
+        install_ex_gst: installExGst,
+      },
+    },
+    notes_and_warnings: [...base.notes_and_warnings, ...extra.notes_and_warnings],
+  };
+}
+
+function computeDayCycle(
+  inputs: CostOutputV1['inputs_normalized'],
+  derived: Record<string, unknown>,
+  config: CostingConfigV1,
+  baseCrewHours: number,
+): { siteDays: number; dayCycle: InstallResult } {
+  const siteDays0 = computeSiteDays(baseCrewHours, config);
+  let dayCycle = buildDayCycleActions(inputs, derived, config, siteDays0);
+  let siteDays = siteDays0;
+
+  const siteDays1 = computeSiteDays(baseCrewHours + dayCycle.install.totals.crew_hours, config);
+  if (siteDays1 > siteDays0) {
+    siteDays = siteDays1;
+    dayCycle = buildDayCycleActions(inputs, derived, config, siteDays);
+  }
+
+  return { siteDays, dayCycle };
+}
+
 export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1): CostOutputV1 {
   const cfg = config ?? loadCostingConfigV1();
 
@@ -54,7 +93,15 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
 
   const materialsResult = buildMaterialsV1(derivedResult.inputs_normalized, derivedResult.derived, cfg);
   const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
-  const installResult = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg);
+
+  const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
+    excludeActionIds: DAY_CYCLE_ACTION_IDS,
+  });
+  const { siteDays, dayCycle } = computeDayCycle(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, baseInstall.install.totals.crew_hours);
+  const installResult = mergeInstallResults(baseInstall, dayCycle);
+
+  derivedWithPatch.site_days = siteDays;
+
   const overheadResult = buildOverheadV1(cfg, { module_count: 1, total_crew_hours: installResult.install.totals.crew_hours });
 
   const notes_and_warnings = [
@@ -162,7 +209,10 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
 
     const materialsResult = buildMaterialsV1(derivedResult.inputs_normalized, derivedResult.derived, cfg);
     const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
-    const installResult = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, { scope: 'module' });
+    const installResult = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
+      scope: 'module',
+      excludeActionIds: DAY_CYCLE_ACTION_IDS,
+    });
 
     const moduleWarnings = [
       ...derivedResult.notes_and_warnings,
@@ -223,9 +273,13 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
 
   // Job-scoped actions run once (if configured).
   const jobScopedActions = new Map<string, InstallActionV1>();
+  const jobHasOurGutter = modules.some((module) => Boolean((module.derived as any).has_our_gutter));
   for (const module of modules) {
-    const jobDerived = { ...module.derived, module_count: modules.length };
-    const jobInstall = buildInstallV1(module.inputs_normalized, jobDerived as any, cfg, { scope: 'job' });
+    const jobDerived = { ...module.derived, module_count: modules.length, has_our_gutter: jobHasOurGutter };
+    const jobInstall = buildInstallV1(module.inputs_normalized, jobDerived as any, cfg, {
+      scope: 'job',
+      excludeActionIds: DAY_CYCLE_ACTION_IDS,
+    });
     for (const action of jobInstall.install.actions) {
       const existing = jobScopedActions.get(action.id);
       if (!existing || action.minutes > existing.minutes) jobScopedActions.set(action.id, action);
@@ -238,13 +292,60 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     jobInstallActions.push({ ...action, id: `job.${action.id}`, label: `[Job] ${action.label}` });
   }
 
-  const crewMinutesTotal = roundMoney(
+  const baseCrewMinutes = roundMoney(
     modules.reduce((acc, m) => acc + m.install.totals.crew_minutes, 0) + jobActions.reduce((acc, a) => acc + a.minutes, 0),
   );
+  const baseCrewHours = roundMoney(baseCrewMinutes / 60);
+
+  const buildJobDayCycle = (siteDays: number) => {
+    const dayCycleActions = new Map<string, InstallActionV1>();
+    const dayWarnings: string[] = [];
+
+    for (const module of modules) {
+      const jobDerived = { ...module.derived, module_count: modules.length };
+      const dayResult = buildDayCycleActions(module.inputs_normalized, jobDerived as any, cfg, siteDays);
+      for (const action of dayResult.install.actions) {
+        const existing = dayCycleActions.get(action.id);
+        if (!existing || action.minutes > existing.minutes) dayCycleActions.set(action.id, action);
+      }
+      dayWarnings.push(...dayResult.notes_and_warnings.map((w) => `[Job] ${w}`));
+    }
+
+    const actions = Array.from(dayCycleActions.values()).sort((a, b) => a.id.localeCompare(b.id));
+    const crewMinutes = roundMoney(actions.reduce((acc, a) => acc + a.minutes, 0));
+    const crewHours = roundMoney(crewMinutes / 60);
+    const installExGst = roundMoney(actions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
+
+    return { actions, crewMinutes, crewHours, installExGst, warnings: dayWarnings };
+  };
+
+  let siteDays = computeSiteDays(baseCrewHours, cfg);
+  let dayCycle = buildJobDayCycle(siteDays);
+  const siteDaysRecalc = computeSiteDays(baseCrewHours + dayCycle.crewHours, cfg);
+  if (siteDaysRecalc > siteDays) {
+    siteDays = siteDaysRecalc;
+    dayCycle = buildJobDayCycle(siteDays);
+  }
+
+  warnings.push(...dayCycle.warnings);
+
+  for (const action of dayCycle.actions) {
+    jobInstallActions.push({ ...action, id: `job.${action.id}`, label: `[Job] ${action.label}` });
+  }
+
+  for (const module of modules) {
+    module.derived = { ...module.derived, site_days: siteDays };
+  }
+
+  const crewMinutesTotal = roundMoney(baseCrewMinutes + dayCycle.crewMinutes);
   const crewHoursTotal = roundMoney(crewMinutesTotal / 60);
 
   const materialsTotal = roundMoney(modules.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0));
-  const installTotal = roundMoney(modules.reduce((acc, m) => acc + m.install.totals.install_ex_gst, 0) + jobActions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
+  const installTotal = roundMoney(
+    modules.reduce((acc, m) => acc + m.install.totals.install_ex_gst, 0) +
+      jobActions.reduce((acc, a) => acc + a.cost_ex_gst, 0) +
+      dayCycle.installExGst,
+  );
 
   const overheadResult = buildOverheadV1(cfg, { module_count: modules.length, total_crew_hours: crewHoursTotal });
   warnings.push(...overheadResult.notes_and_warnings.map((w) => `[Overhead] ${w}`));

@@ -261,7 +261,7 @@ function rafterDepthM(profile: string): number {
   return 0.1;
 }
 
-const TIMBER_EDGE_RAFTER_PROFILE = '200x50';
+const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_PURLIN_PROFILE = '50x50';
 
 export function buildMaterialsV1(
@@ -335,11 +335,16 @@ export function buildMaterialsV1(
   const rafterPieceCount = Math.max(0, Math.round(derived.rafter_count * rafterMultiplier));
   const rafterLength = Number((derived as any).rafter_cut_length_m ?? (derived as any).rafter_length_m ?? (derived as any).rafter_length_m_assumed ?? inputs.projection_m);
   const isTimberRoof = inputs.roof_material === 'timber';
+  const isMixedRoof = inputs.roof_material === 'mixed';
   const timberSlopeLenPerPlaneM = Number((derived as any).timber_slope_len_per_plane_m ?? rafterLength);
   const timberCommonRafterCountTotal = Math.max(0, Math.round(Number((derived as any).timber_common_rafter_count_total ?? 0)));
   const timberEdgeRafterCountTotal = Math.max(0, Math.round(Number((derived as any).timber_edge_rafter_count_total ?? 0)));
   const timberPurlinLinesPerPlane = Math.max(0, Math.round(Number((derived as any).timber_purlin_lines_per_plane ?? 0)));
   const timberPlaneCount = Math.max(1, Math.round(Number((derived as any).timber_plane_count ?? 1)));
+  const timberPurlinTotalM = Math.max(0, Number((derived as any).timber_purlin_total_m ?? 0));
+  const timberEdgeRafterProfileUsed = String((derived as any).timber_edge_rafter_profile_used ?? TIMBER_EDGE_RAFTER_PROFILE);
+  const timberEdgeRafterFinishRaw = String((derived as any).timber_edge_rafter_finish_used ?? 'default');
+  const timberEdgeRafterFinish: FinishMode = timberEdgeRafterFinishRaw === 'raw_mill' ? 'raw_mill' : 'default';
 
   const ledgerProfile = String((derived as any).ledger_profile_used ?? '100x50');
   const frontBeamProfile = String((derived as any).front_beam_profile_used ?? '');
@@ -371,15 +376,6 @@ export function buildMaterialsV1(
         { colour: 'Mill', finish: 'raw_mill' },
       );
     }
-    if (timberEdgeRafterCountTotal > 0) {
-      addCuts(
-        TIMBER_EDGE_RAFTER_PROFILE,
-        Array.from({ length: timberEdgeRafterCountTotal }).map(() => timberSlopeLenPerPlaneM),
-        'Timber edge rafters',
-        'single',
-        { colour: 'Mill', finish: 'raw_mill' },
-      );
-    }
   } else if (isHipCorner) {
     addCuts(
       inputs.rafter_profile,
@@ -405,15 +401,30 @@ export function buildMaterialsV1(
     addCuts(ledgerProfile, [inputs.length_m], 'Ledger', 'joinable');
   }
 
-  if (isTimberRoof && timberPurlinLinesPerPlane > 0) {
+  if ((isTimberRoof || isMixedRoof) && timberEdgeRafterCountTotal > 0) {
+    addCuts(
+      timberEdgeRafterProfileUsed,
+      Array.from({ length: timberEdgeRafterCountTotal }).map(() => timberSlopeLenPerPlaneM),
+      'Timber edge rafters',
+      'single',
+      { colour: inputs.extrusion_colour, finish: timberEdgeRafterFinish },
+    );
+  }
+
+  if ((isTimberRoof || isMixedRoof) && timberPurlinLinesPerPlane > 0 && timberPurlinTotalM > 0) {
     const purlinPieces = timberPurlinLinesPerPlane * timberPlaneCount;
+    const pieceLengthM = timberPurlinTotalM / Math.max(1, purlinPieces);
+    if (!Number.isFinite(pieceLengthM) || pieceLengthM <= 0) {
+      warnings.push('Invalid timber purlin length derived; skipping timber purlins.');
+    } else {
     addCuts(
       TIMBER_PURLIN_PROFILE,
-      Array.from({ length: purlinPieces }).map(() => inputs.length_m),
+      Array.from({ length: purlinPieces }).map(() => pieceLengthM),
       'Timber purlins',
       'joinable',
       { colour: 'Mill', finish: 'raw_mill' },
     );
+    }
   }
 
   addCuts(postProfile, Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m), 'Posts', 'single');
@@ -1171,7 +1182,7 @@ export function buildMaterialsV1(
     }
   }
 
-  if (inputs.roof_material === 'timber') {
+  if (inputs.roof_material === 'timber' || inputs.roof_material === 'mixed') {
     const roofAboveArea = Math.max(0, Number((derived as any).timber_roof_above_area_m2 ?? 0));
     const roofAboveType = inputs.timber_roof_above_type ?? 'insulated_panels';
     if (roofAboveArea > 0) {
