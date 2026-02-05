@@ -2,6 +2,8 @@ import Link from 'next/link';
 import type { QueueMode, WorkQueueItem } from '@/lib/dashboard/types';
 import styles from '@/app/staff/projects/projects.module.css';
 import WorkQueueTable from './WorkQueueTable';
+import dash from '../dashboard.module.css';
+import { projectsHref } from '@/lib/dashboard/links';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -14,9 +16,14 @@ export default function WorkQueueCard(props: {
   hrefNext7: string;
   hrefAllDue: string;
 }) {
+  const maxItems = 5;
+  const visibleItems = props.items.slice(0, maxItems);
+  const hasMore = props.items.length > maxItems;
+  const viewAllHref = projectsHref({ nextActionDue: true });
+
   return (
-    <section className={styles.section} aria-label="Work queue">
-      <div className={styles.sectionHeader}>
+    <section className={`${styles.section} ${dash.card} ${dash.cardCompact}`} aria-label="Work queue">
+      <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <div>
           <h2 className={styles.sectionTitle}>Work Queue</h2>
           <div className={styles.muted} style={{ fontSize: 12 }}>
@@ -35,8 +42,15 @@ export default function WorkQueueCard(props: {
           </Link>
         </div>
       </div>
-      <div className={styles.sectionBody} style={{ paddingTop: 8 }}>
-        <WorkQueueTable items={props.items} />
+      <div className={`${styles.sectionBody} ${dash.cardBody}`}>
+        <WorkQueueTable items={visibleItems} />
+        {hasMore ? (
+          <div className={dash.flatListFooter}>
+            <Link className={dash.flatRowLink} href={viewAllHref}>
+              View all actions
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
   );
