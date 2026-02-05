@@ -13,8 +13,8 @@ function CrewAvailabilityList(props: {
     return <div className={dash.sectionMeta}>No crews available yet.</div>;
   }
 
-  const rows = props.rows.slice(0, 6);
-  const hasMore = props.rows.length > 6;
+  const rows = props.rows.slice(0, 4);
+  const hasMore = props.rows.length > 4;
 
   return (
     <div className={dash.flatList}>
@@ -36,28 +36,28 @@ function CrewAvailabilityList(props: {
 }
 
 export default function InstallScheduleCard({ schedule }: { schedule: ScheduleSnapshot }) {
+  const startingSoon = schedule.startingSoon.slice(0, 4);
+  const hasMoreStarting = schedule.startingSoon.length > 4;
+
   return (
-    <section className={styles.section} aria-label="Install schedule">
-      <div className={styles.sectionHeader}>
+    <section className={`${styles.section} ${dash.card}`} aria-label="Install schedule">
+      <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Install schedule</h2>
         <div className={styles.actions}>
           <Link className={styles.buttonSecondary} href={schedule.hrefBoard}>
-            Board
-          </Link>
-          <Link className={styles.buttonSecondary} href={schedule.hrefGantt}>
-            Gantt
+            Open schedule
           </Link>
         </div>
       </div>
-      <div className={styles.sectionBody}>
+      <div className={`${styles.sectionBody} ${dash.cardBody}`}>
         <div className={dash.twoColumn}>
           <div>
             <div className={dash.sectionMeta} style={{ marginBottom: 8 }}>
               Starting soon
             </div>
-            {schedule.startingSoon.length ? (
+            {startingSoon.length ? (
               <div className={dash.flatList}>
-                {schedule.startingSoon.map((item) => (
+                {startingSoon.map((item) => (
                   <div key={`${item.projectId}-${item.startDate}`} className={dash.flatRow}>
                     <div className={dash.flatRowMain}>
                       <div className={dash.flatRowTitle}>
@@ -74,6 +74,13 @@ export default function InstallScheduleCard({ schedule }: { schedule: ScheduleSn
                     <div className={dash.flatRowMeta}>{formatShortDate(item.startDate)}</div>
                   </div>
                 ))}
+                {hasMoreStarting ? (
+                  <div className={dash.flatListFooter}>
+                    <Link className={dash.flatRowLink} href={schedule.hrefBoard}>
+                      View full schedule
+                    </Link>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className={dash.sectionMeta}>No installs starting in the next 7 days.</div>

@@ -44,7 +44,7 @@ export default function WorkQueueTable({ items }: { items: WorkQueueItem[] }) {
   }
 
   return (
-    <div className={styles.tableWrap}>
+    <div className={`${styles.tableWrap} ${styles.tableWrapScrollX}`}>
       <table className={styles.table}>
         <thead>
           <tr>

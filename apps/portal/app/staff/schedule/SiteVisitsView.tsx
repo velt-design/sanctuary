@@ -1,24 +1,32 @@
 'use client';
 
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
-import { DndContext, PointerSensor, useDroppable, useDraggable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import styles from './schedule.module.css';
 import type { SiteVisitCalendarItem, SiteVisitsSnapshotV1 } from '@/lib/types/siteVisits';
+import UnscheduledSiteVisitCard from './UnscheduledSiteVisitCard';
 import { siteVisitsSnapshotSWRKey } from '@/lib/cache/siteVisitsCache';
 import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
+import SiteVisitModal, { type SiteVisitModalFormValues } from '@/components/schedule/site-visits/SiteVisitModal';
+import SlotSelectPopover from '@/components/schedule/site-visits/SlotSelectPopover';
+import {
+  DEFAULT_DURATION_MINUTES,
+  DAY_MINUTES,
+  HOUR_HEIGHT_PX,
+  MINUTES_STEP,
+  SLOT_HEIGHT_PX,
+  START_SCROLL_HOUR,
+  WORK_END_HOUR,
+  WORK_START_HOUR,
+} from '@/components/schedule/site-visits/siteVisits.constants';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { ApiError } from '@/lib/repo/apiClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 
-const SLOT_MINUTES = 30;
-const SLOT_PX = 22;
-const START_HOUR = 8;
-const END_HOUR = 18;
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function parseYmd(ymd: string): { y: number; m: number; d: number } | null {
   const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -59,12 +67,12 @@ function startOfWeekMonday(ymd: string): string {
 }
 
 function slotCount(): number {
-  return Math.ceil(((END_HOUR - START_HOUR) * 60) / SLOT_MINUTES);
+  return Math.ceil(DAY_MINUTES / MINUTES_STEP);
 }
 
 function slotStartIso(ymd: string, slotIdx: number): string {
   const base = toLocalDateFromYmd(ymd) ?? new Date();
-  const mins = START_HOUR * 60 + slotIdx * SLOT_MINUTES;
+  const mins = clamp(slotIdx, 0, slotCount() - 1) * MINUTES_STEP;
   const dt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0);
   dt.setMinutes(mins);
   return dt.toISOString();
@@ -76,11 +84,8 @@ function addMinutesIso(iso: string, minutes: number): string {
   return dt.toISOString();
 }
 
-function formatTimeLabel(slotIdx: number): string {
-  const mins = START_HOUR * 60 + slotIdx * SLOT_MINUTES;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  const label = new Date(2000, 0, 1, h, m).toLocaleTimeString('en-NZ', { hour: 'numeric', minute: '2-digit' });
+function formatTimeLabel(hour: number): string {
+  const label = new Date(2000, 0, 1, hour, 0).toLocaleTimeString('en-NZ', { hour: 'numeric', minute: '2-digit' });
   return label;
 }
 
@@ -109,7 +114,7 @@ function toLocalDayKey(iso: string | null): string | null {
 
 function minutesSinceStart(iso: string): number {
   const dt = new Date(iso);
-  const start = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), START_HOUR, 0, 0, 0);
+  const start = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0);
   return Math.round((dt.getTime() - start.getTime()) / 60000);
 }
 
@@ -117,132 +122,44 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-function DraggableCard({ item, onBook }: { item: SiteVisitCalendarItem; onBook: () => void }) {
-  const id = `unscheduled:${item.id}`;
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
-    id,
-    data: { kind: 'unscheduled', itemId: item.id },
-  });
-  const style = transform ? { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.6 : 1 } : undefined;
-  const title = (item.project.name || '').trim() || item.projectId || 'Untitled project';
-
-  return (
-    <div ref={setNodeRef} className={styles.siteVisitCard} style={style}>
-      <div
-        ref={setActivatorNodeRef}
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}
-        {...attributes}
-        {...listeners}
-      >
-        <div className={styles.siteVisitCardTitle}>{title}</div>
-        <div className={styles.muted} style={{ fontSize: 12, cursor: 'grab', userSelect: 'none' }}>
-          Drag
-        </div>
-      </div>
-      <div className={styles.siteVisitCardMeta}>
-        <span className={styles.muted}>{item.project.region || '—'}</span>
-        {item.project.siteAddress ? <span className={styles.muted}> · {item.project.siteAddress}</span> : null}
-      </div>
-      <div className={styles.siteVisitCardMeta} style={{ marginTop: 6 }}>
-        <span className={styles.muted}>{item.contact.name || '—'}</span>
-        {item.contact.phone ? <span className={styles.muted}> · {item.contact.phone}</span> : null}
-      </div>
-      <div className={styles.siteVisitCardMeta} style={{ marginTop: 6 }}>
-        {(() => {
-          const created = item.createdAt ? new Date(item.createdAt) : null;
-          const ageDays = created && Number.isFinite(created.getTime()) ? Math.floor((Date.now() - created.getTime()) / 86400000) : null;
-          const label = typeof ageDays === 'number' && ageDays >= 0 ? `${ageDays}d waiting` : '—';
-          return <span className={styles.muted}>Waiting {label}</span>;
-        })()}
-      </div>
-      <div className={styles.siteVisitCardActions}>
-        <button
-          type="button"
-          className={styles.buttonSecondary}
-          onPointerDownCapture={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBook();
-          }}
-        >
-          Book…
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DroppableSlot({ id, children }: { id: string; children?: React.ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  return (
-    <div ref={setNodeRef} className={isOver ? styles.siteVisitSlotOver : styles.siteVisitSlot}>
-      {children}
-    </div>
-  );
-}
-
-function DraggableEvent({ item, onClick }: { item: SiteVisitCalendarItem; onClick: () => void }) {
-  const id = `event:${item.id}`;
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
-    id,
-    data: { kind: 'event', itemId: item.id },
-  });
-
-  const style = transform
-    ? { position: 'relative' as const, transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.65 : 1 }
-    : { position: 'relative' as const, opacity: isDragging ? 0.65 : 1 };
-
+function SiteVisitEvent({ item, onClick }: { item: SiteVisitCalendarItem; onClick: () => void }) {
   return (
     <button
       type="button"
-      ref={setNodeRef}
       className={`${styles.siteVisitEvent} ${eventStatusClass(item.status)}`}
-      style={style}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
     >
-      <span
-        ref={setActivatorNodeRef}
-        {...attributes}
-        {...listeners}
-        onPointerDownCapture={(e) => e.stopPropagation()}
-        style={{
-          position: 'absolute',
-          left: 6,
-          top: 6,
-          width: 12,
-          height: 12,
-          borderRadius: 6,
-          background: 'rgba(255,255,255,0.35)',
-          cursor: 'grab',
-        }}
-        aria-hidden
-      />
       <div className={styles.siteVisitEventTitle}>{(item.project.name || '').trim() || item.projectId || 'Untitled'}</div>
       <div className={styles.siteVisitEventSub}>{item.project.siteAddress || item.project.region || '—'}</div>
     </button>
   );
 }
 
-type BookingDraft = {
-  projectId: string;
-  projectName: string;
-  salespersonId: string;
-  startIso: string;
-  durationMins: number;
-  notes: string;
-  tentative: boolean;
+type SiteVisitFormPreset = {
+  salespersonId?: string;
+  date?: string;
+  time?: string;
+  durationMins?: number;
+  title?: string;
+  address?: string;
+  phone?: string;
+  notes?: string;
 };
 
-function toLocalHm(iso: string): string | null {
-  const dt = new Date(iso);
-  if (!Number.isFinite(dt.getTime())) return null;
-  const h = String(dt.getHours()).padStart(2, '0');
-  const m = String(dt.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
-}
+type ModalState =
+  | { kind: 'closed' }
+  | { kind: 'create'; preset?: SiteVisitFormPreset }
+  | { kind: 'edit'; item: SiteVisitCalendarItem; preset?: SiteVisitFormPreset };
+
+type SlotPopoverState = {
+  day: string;
+  laneId: string;
+  slotIdx: number;
+  anchorRect: DOMRect;
+};
 
 function isoFromLocalInputs(ymd: string, hm: string): string | null {
   const d = parseYmd(ymd);
@@ -257,6 +174,20 @@ function isoFromLocalInputs(ymd: string, hm: string): string | null {
   return new Date(d.y, d.m - 1, d.d, hour, minute, 0, 0).toISOString();
 }
 
+function hmFromMinutes(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+function isWorkingHour(hour: number): boolean {
+  return hour >= WORK_START_HOUR && hour < WORK_END_HOUR;
+}
+
+function isLocalItem(item: SiteVisitCalendarItem): boolean {
+  return item.id.startsWith('local:');
+}
+
 export default function SiteVisitsView() {
   const toast = useToast();
   const router = useRouter();
@@ -268,6 +199,17 @@ export default function SiteVisitsView() {
   const { data: cachedSnapshot, mutate: mutateSnapshot } = useSWR<SiteVisitsSnapshotV1>(snapshotKey, null);
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (didInitScroll.current) return;
+    const el = calendarScrollRef.current;
+    if (!el) return;
+    didInitScroll.current = true;
+    requestAnimationFrame(() => {
+      el.scrollTop = START_SCROLL_HOUR * HOUR_HEIGHT_PX;
+    });
+  }, [mounted]);
 
   const viewWeek = useMemo(() => {
     const raw = (searchParams.get('week') || '').trim();
@@ -283,18 +225,32 @@ export default function SiteVisitsView() {
   const [snapshot, setSnapshot] = useState<SiteVisitsSnapshotV1 | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const [booking, setBooking] = useState<BookingDraft | null>(null);
+  const [modal, setModal] = useState<ModalState>({ kind: 'closed' });
   const [assigning, setAssigning] = useState<{ item: SiteVisitCalendarItem; salespersonId: string } | null>(null);
-  const [activeEventId, setActiveEventId] = useState<string | null>(null);
-  const [confirmMove, setConfirmMove] = useState<
-    null | { item: SiteVisitCalendarItem; nextStart: string; nextEnd: string; nextSalespersonId: string; notify: boolean }
-  >(null);
+  const [slotPopover, setSlotPopover] = useState<SlotPopoverState | null>(null);
+  const [localEvents, setLocalEvents] = useState<SiteVisitCalendarItem[]>([]);
+
+  const calendarScrollRef = useRef<HTMLDivElement | null>(null);
+  const didInitScroll = useRef(false);
 
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDaysLocal(viewWeek, i)), [viewWeek]);
 
   const slotIndices = useMemo(() => Array.from({ length: slotCount() }, (_, i) => i), []);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const slotPreset = useMemo(() => {
+    if (!slotPopover) return null;
+    return {
+      date: slotPopover.day,
+      time: hmFromMinutes(slotPopover.slotIdx * MINUTES_STEP),
+      salespersonId: slotPopover.laneId,
+      durationMins: DEFAULT_DURATION_MINUTES,
+    } as SiteVisitFormPreset;
+  }, [slotPopover]);
+
+  const slotLabel = useMemo(() => {
+    if (!slotPopover || !slotPreset) return '';
+    return `${fmtDayLabel(slotPopover.day)} ${slotPreset.time}`;
+  }, [slotPopover, slotPreset]);
 
   // Sales lanes are authoritative from config (Steve/Bruce), not from cached snapshots.
   // This avoids stale lane headers/IDs breaking drag+drop and salesperson assignment.
@@ -311,7 +267,7 @@ export default function SiteVisitsView() {
 
   const fetchFresh = async () => {
     const from = new Date(slotStartIso(days[0], 0)).toISOString();
-    const to = new Date(addMinutesIso(slotStartIso(days[6], slotCount() - 1), SLOT_MINUTES)).toISOString();
+    const to = new Date(addMinutesIso(slotStartIso(days[6], slotCount() - 1), MINUTES_STEP)).toISOString();
 
     const qs = new URLSearchParams();
     qs.set('from', from);
@@ -352,12 +308,17 @@ export default function SiteVisitsView() {
     void fetchFresh();
   }, [mounted, viewWeek, salesOwnerId]);
 
+  useEffect(() => {
+    setSlotPopover(null);
+  }, [viewWeek, salesOwnerId]);
+
   const data = snapshot ?? cachedSnapshot;
   const unscheduled = data?.unscheduled ?? [];
   const events = data?.events ?? [];
+  const eventsWithLocal = useMemo(() => [...events, ...localEvents], [events, localEvents]);
 
   const orphanEventCandidates = useMemo(() => events.filter((ev) => !(ev.project.name || '').trim()), [events]);
-  const renderableEvents = useMemo(() => events.filter((ev) => (ev.project.name || '').trim()), [events]);
+  const renderableEvents = useMemo(() => eventsWithLocal.filter((ev) => (ev.project.name || '').trim()), [eventsWithLocal]);
   const needsAssignmentEvents = useMemo(() => {
     return renderableEvents
       .filter((ev) => {
@@ -437,8 +398,6 @@ export default function SiteVisitsView() {
     }
   };
 
-  const activeEvent = useMemo(() => (activeEventId ? events.find((e) => e.id === activeEventId) ?? null : null), [activeEventId, events]);
-
   const openWeek = (weekYmd: string) => {
     const qs = new URLSearchParams(searchParams.toString());
     qs.set('view', 'site-visits');
@@ -466,10 +425,41 @@ export default function SiteVisitsView() {
     router.replace(`/staff/schedule?${qs.toString()}`);
   };
 
-  const bookFromDraft = async (draft: BookingDraft) => {
+  const upsertLocalEvent = (next: SiteVisitCalendarItem) => {
+    setLocalEvents((prev) => {
+      const idx = prev.findIndex((ev) => ev.id === next.id);
+      if (idx === -1) return [...prev, next];
+      const clone = [...prev];
+      clone[idx] = next;
+      return clone;
+    });
+  };
+
+  const applyOptimisticReschedule = (base: SiteVisitsSnapshotV1, next: SiteVisitCalendarItem) => {
+    const nextEvents = (base.events ?? []).map((e) => (e.id === next.id ? next : e));
+    setAndCacheSnapshot({ ...base, events: nextEvents });
+  };
+
+  const openEditModal = (item: SiteVisitCalendarItem, preset?: SiteVisitFormPreset) => {
+    setSlotPopover(null);
+    setModal({ kind: 'edit', item, preset });
+  };
+
+  const openCreateModal = (preset?: SiteVisitFormPreset) => {
+    setSlotPopover(null);
+    setModal({ kind: 'create', preset });
+  };
+
+  const closeModal = () => setModal({ kind: 'closed' });
+
+  const openSlotPopover = (params: { day: string; laneId: string; slotIdx: number; rect: DOMRect }) => {
+    setSlotPopover({ day: params.day, laneId: params.laneId, slotIdx: params.slotIdx, anchorRect: params.rect });
+  };
+
+  const handleModalSave = async (values: SiteVisitModalFormValues) => {
     try {
       setActionError(null);
-      const salespersonId = draft.salespersonId.trim();
+      const salespersonId = values.salespersonId.trim();
       if (!salespersonId) {
         toast.error('Salesperson is required.');
         return;
@@ -478,55 +468,146 @@ export default function SiteVisitsView() {
         toast.error('Invalid salesperson.');
         return;
       }
-      const endIso = addMinutesIso(draft.startIso, draft.durationMins);
-      const body = {
-        start: draft.startIso,
-        end: endIso,
-        salespersonId,
-        tentative: draft.tentative,
-        notes: draft.notes,
-      };
 
-      const res = await apiJson<any>(`/api/staff/v1/projects/${encodeURIComponent(draft.projectId)}/action/site-visit/book`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-
-      const base = snapshot ?? cachedSnapshot;
-      if (base) {
-        const now = new Date().toISOString();
-        const returnedId = typeof res?.siteVisitEventId === 'string' && res.siteVisitEventId.trim() ? res.siteVisitEventId.trim() : null;
-        const fromUnscheduled = (base.unscheduled ?? []).find((u) => u.projectId === draft.projectId) ?? null;
-        const existingEvent = (base.events ?? []).find((e) => e.projectId === draft.projectId) ?? null;
-        const id = returnedId ?? fromUnscheduled?.id ?? existingEvent?.id ?? null;
-        if (id) {
-          const seed = fromUnscheduled ?? existingEvent;
-          const booked: SiteVisitCalendarItem = {
-            ...(seed as any),
-            id,
-            projectId: draft.projectId,
-            status: draft.tentative ? 'TENTATIVE' : 'CONFIRMED',
-            scheduledStart: draft.startIso,
-            scheduledEnd: endIso,
-            salespersonId: body.salespersonId,
-            notes: body.notes || null,
-            customerNotified: !draft.tentative,
-            lastNotifiedAt: !draft.tentative ? now : seed?.lastNotifiedAt ?? null,
-            cancelReason: null,
-            updatedAt: now,
-            createdAt: seed?.createdAt ?? now,
-            project: seed?.project ?? { id: draft.projectId, name: draft.projectName, region: null, siteAddress: null, pipelineStage: 'SITE_VISIT' },
-            contact: seed?.contact ?? { id: null, name: null, email: null, phone: null },
-          };
-          applyOptimisticBooking({ base, fromUnscheduledId: fromUnscheduled?.id ?? null, booked });
-        }
+      const startIso = isoFromLocalInputs(values.date, values.time);
+      if (!startIso) {
+        toast.error('Date and start time are required.');
+        return;
       }
 
-      toast.success('Booked.');
-      setBooking(null);
+      const durationMins = Number(values.durationMins) || DEFAULT_DURATION_MINUTES;
+      const endIso = addMinutesIso(startIso, durationMins);
+
+      if (modal.kind === 'create') {
+        if (!values.title.trim()) {
+          toast.error('Title is required.');
+          return;
+        }
+        const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? `local:${crypto.randomUUID()}` : `local:${Date.now()}`;
+        const now = new Date().toISOString();
+        const title = values.title.trim() || 'New site visit';
+        const localEvent: SiteVisitCalendarItem = {
+          id,
+          projectId: id,
+          status: 'TENTATIVE',
+          scheduledStart: startIso,
+          scheduledEnd: endIso,
+          salespersonId,
+          notes: values.notes.trim() || null,
+          customerNotified: false,
+          lastNotifiedAt: null,
+          cancelReason: null,
+          createdAt: now,
+          updatedAt: now,
+          project: {
+            id,
+            name: title,
+            region: null,
+            siteAddress: values.address.trim() || null,
+            pipelineStage: 'SITE_VISIT',
+          },
+          contact: {
+            id: null,
+            name: null,
+            email: null,
+            phone: values.phone.trim() || null,
+          },
+        };
+
+        upsertLocalEvent(localEvent);
+        toast.success('Site visit created (local only).');
+        closeModal();
+        return;
+      }
+
+      if (modal.kind !== 'edit') return;
+      const item = modal.item;
+
+      if (isLocalItem(item)) {
+        const nextLocal: SiteVisitCalendarItem = {
+          ...item,
+          scheduledStart: startIso,
+          scheduledEnd: endIso,
+          salespersonId,
+          notes: values.notes.trim() || null,
+          updatedAt: new Date().toISOString(),
+          project: {
+            ...item.project,
+            name: values.title.trim() || item.project.name,
+            siteAddress: values.address.trim() || item.project.siteAddress,
+          },
+          contact: {
+            ...item.contact,
+            phone: values.phone.trim() || item.contact.phone,
+          },
+        };
+        upsertLocalEvent(nextLocal);
+        toast.success('Site visit updated (local only).');
+        closeModal();
+        return;
+      }
+
+      const base = snapshot ?? cachedSnapshot;
+      if (!base) return;
+
+      if (!item.scheduledStart || String(item.status).toUpperCase() === 'UNSCHEDULED') {
+        const res = await apiJson<any>(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/book`, {
+          method: 'POST',
+          body: JSON.stringify({
+            start: startIso,
+            end: endIso,
+            salespersonId,
+            tentative: true,
+            notes: values.notes.trim(),
+          }),
+        });
+
+        const now = new Date().toISOString();
+        const returnedId = typeof res?.siteVisitEventId === 'string' && res.siteVisitEventId.trim() ? res.siteVisitEventId.trim() : null;
+        const fromUnscheduled = (base.unscheduled ?? []).find((u) => u.id === item.id) ?? null;
+        const existingEvent = (base.events ?? []).find((e) => e.projectId === item.projectId) ?? null;
+        const id = returnedId ?? fromUnscheduled?.id ?? existingEvent?.id ?? item.id;
+        const seed = fromUnscheduled ?? existingEvent ?? item;
+
+        const booked: SiteVisitCalendarItem = {
+          ...seed,
+          id,
+          status: 'TENTATIVE',
+          scheduledStart: startIso,
+          scheduledEnd: endIso,
+          salespersonId,
+          notes: values.notes.trim() || null,
+          customerNotified: false,
+          lastNotifiedAt: seed.lastNotifiedAt ?? null,
+          cancelReason: null,
+          updatedAt: now,
+        };
+        applyOptimisticBooking({ base, fromUnscheduledId: fromUnscheduled?.id ?? null, booked });
+
+        toast.success('Booked.');
+        closeModal();
+        await fetchFresh();
+        return;
+      }
+
+      await apiJson(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ siteVisitEventId: item.id, start: startIso, end: endIso, notifyCustomer: false, salespersonId }),
+      });
+
+      applyOptimisticReschedule(base, {
+        ...item,
+        scheduledStart: startIso,
+        scheduledEnd: endIso,
+        salespersonId,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast.success('Booking updated.');
+      closeModal();
       await fetchFresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to book site visit.';
+      const msg = err instanceof Error ? err.message : 'Failed to save site visit.';
       const extra =
         err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
       setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
@@ -572,159 +653,6 @@ export default function SiteVisitsView() {
     }
   };
 
-  const confirmBooking = async (item: SiteVisitCalendarItem) => {
-    try {
-      setActionError(null);
-      await apiJson(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/confirm`, {
-        method: 'POST',
-        body: JSON.stringify({ siteVisitEventId: item.id }),
-      });
-      toast.success('Booking confirmed.');
-      setActiveEventId(null);
-      highlight(null);
-      await fetchFresh();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to confirm booking.';
-      const extra =
-        err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
-      setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
-      toast.error(msg);
-    }
-  };
-
-  const cancelBooking = async (item: SiteVisitCalendarItem, notifyCustomer: boolean, reason: string) => {
-    try {
-      setActionError(null);
-      await apiJson(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/cancel`, {
-        method: 'POST',
-        body: JSON.stringify({ siteVisitEventId: item.id, notifyCustomer, reason }),
-      });
-      toast.success('Booking cancelled.');
-      setActiveEventId(null);
-      highlight(null);
-      await fetchFresh();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to cancel booking.';
-      const extra =
-        err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
-      setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
-      toast.error(msg);
-    }
-  };
-
-  const rescheduleBooking = async (
-    item: SiteVisitCalendarItem,
-    startIso: string,
-    endIso: string,
-    notifyCustomer: boolean,
-    salespersonIdRaw?: string,
-  ) => {
-    try {
-      setActionError(null);
-      const salespersonId = typeof salespersonIdRaw === 'string' ? salespersonIdRaw.trim() : '';
-      if (salespersonId && !laneIds.includes(salespersonId)) {
-        toast.error('Invalid salesperson.');
-        return;
-      }
-      await apiJson(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/reschedule`, {
-        method: 'POST',
-        body: JSON.stringify({ siteVisitEventId: item.id, start: startIso, end: endIso, notifyCustomer, ...(salespersonId ? { salespersonId } : {}) }),
-      });
-      toast.success('Booking updated.');
-      setConfirmMove(null);
-      setActiveEventId(null);
-      highlight(null);
-      await fetchFresh();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to reschedule booking.';
-      const extra =
-        err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
-      setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
-      toast.error(msg);
-    }
-  };
-
-  const onDragEnd = (event: DragEndEvent) => {
-    const activeId = String(event.active.id);
-    const overId = event.over ? String(event.over.id) : '';
-    if (!overId) return;
-
-    const overMatch = overId.match(/^slot:(\d{4}-\d{2}-\d{2})::([^:]+)::(\d+)$/);
-    if (!overMatch) return;
-
-    const day = overMatch[1];
-    const lane = overMatch[2];
-    const slotIdx = Number(overMatch[3]);
-    if (!laneIds.includes(lane)) return;
-    const startIso = slotStartIso(day, clamp(slotIdx, 0, slotCount() - 1));
-
-    if (activeId.startsWith('unscheduled:')) {
-      const itemId = activeId.slice('unscheduled:'.length);
-      const item = unscheduled.find((u) => u.id === itemId) ?? null;
-      if (!item) return;
-      void (async () => {
-        try {
-          setActionError(null);
-          const res = await apiJson<{ ok: boolean; siteVisitEventId: string | null }>(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/book`, {
-            method: 'POST',
-            body: JSON.stringify({
-              start: startIso,
-              end: addMinutesIso(startIso, 60),
-              salespersonId: lane,
-              tentative: true,
-              notes: '',
-            }),
-          });
-
-          const base = snapshot ?? cachedSnapshot;
-          if (base) {
-            const now = new Date().toISOString();
-            const booked: SiteVisitCalendarItem = {
-              ...item,
-              id: res?.siteVisitEventId || item.id,
-              status: 'TENTATIVE',
-              scheduledStart: startIso,
-              scheduledEnd: addMinutesIso(startIso, 60),
-              salespersonId: lane,
-              notes: null,
-              updatedAt: now,
-            };
-            applyOptimisticBooking({ base, fromUnscheduledId: item.id, booked });
-          }
-
-          toast.success('Booked.');
-          await fetchFresh();
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Failed to book site visit.';
-          const extra =
-            err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any)
-              ? String((err.body as any).error)
-              : '';
-          setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
-          toast.error(msg);
-        }
-      })();
-      return;
-    }
-
-    if (activeId.startsWith('event:')) {
-      const itemId = activeId.slice('event:'.length);
-      const item = renderableEvents.find((e) => e.id === itemId) ?? null;
-      if (!item) return;
-      const endIso = addMinutesIso(startIso, 60);
-      const nextSalespersonId = lane;
-
-      const isConfirmed = String(item.status).toUpperCase() === 'CONFIRMED';
-      if (!isConfirmed) {
-        void rescheduleBooking(item, startIso, endIso, false, nextSalespersonId);
-        return;
-      }
-
-      setConfirmMove({ item, nextStart: startIso, nextEnd: endIso, nextSalespersonId, notify: false });
-      return;
-    }
-  };
-
   if (!mounted) {
     return (
       <section className={styles.siteVisitsShell} aria-label="Site visits calendar">
@@ -743,7 +671,11 @@ export default function SiteVisitsView() {
     <section
       className={styles.siteVisitsShell}
       aria-label="Site visits calendar"
-      style={{ ['--site-visits-lane-count' as any]: laneIds.length }}
+      style={{
+        ['--site-visits-lane-count' as any]: laneIds.length,
+        ['--site-visits-slot-h' as any]: `${SLOT_HEIGHT_PX}px`,
+        ['--site-visits-hour-h' as any]: `${HOUR_HEIGHT_PX}px`,
+      }}
     >
       <div className={styles.siteVisitsTopBar}>
         <div className={styles.siteVisitsControls}>
@@ -783,302 +715,224 @@ export default function SiteVisitsView() {
         </div>
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className={styles.siteVisitsPanels}>
-        <aside className={styles.siteVisitsQueue} aria-label="Unscheduled site visits">
-          <div className={styles.siteVisitsQueueHeader}>
-            <div>
-              <div className={styles.siteVisitsQueueTitle}>Unscheduled site visits</div>
-              <div className={styles.muted}>{unscheduledFiltered.length} waiting</div>
+      <div className={styles.siteVisitsContent}>
+        <div className={styles.siteVisitsPanels}>
+          <aside className={styles.siteVisitsQueue} aria-label="Unscheduled site visits">
+            <div className={styles.siteVisitsQueueHeader}>
+              <div>
+                <div className={styles.siteVisitsQueueTitle}>Unscheduled site visits</div>
+                <div className={styles.muted}>{unscheduledFiltered.length} waiting</div>
+              </div>
             </div>
-            <div className={styles.siteVisitsQueueSearch}>
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search…"
-                className={styles.siteVisitsSearchInput}
-              />
+            <div className={styles.siteVisitsQueueSearchRow}>
+              <div className={styles.siteVisitsQueueSearch}>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search…"
+                  className={styles.siteVisitsSearchInput}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className={styles.siteVisitsQueueBody}>
-            {orphanEventCandidates.length ? (
-              <div className={styles.issues}>
-                <div className={styles.issuesHeader}>
-                  <div style={{ display: 'grid', gap: 2 }}>
-                    <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Issues</strong>
-                    <span className={styles.muted} style={{ fontSize: 12 }}>
-                      {orphanEventCandidates.length} site visit record{orphanEventCandidates.length === 1 ? '' : 's'} missing project details
-                    </span>
+            <div className={styles.siteVisitsQueueBody}>
+              {orphanEventCandidates.length ? (
+                <div className={styles.issues}>
+                  <div className={styles.issuesHeader}>
+                    <div style={{ display: 'grid', gap: 2 }}>
+                      <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Issues</strong>
+                      <span className={styles.muted} style={{ fontSize: 12 }}>
+                        {orphanEventCandidates.length} site visit record{orphanEventCandidates.length === 1 ? '' : 's'} missing project details
+                      </span>
+                    </div>
+                    <button type="button" className={styles.buttonSecondary} onClick={() => void removeOrphans()}>
+                      Remove orphaned
+                    </button>
                   </div>
-                  <button type="button" className={styles.buttonSecondary} onClick={() => void removeOrphans()}>
-                    Remove orphaned
+                  <div className={styles.issuesBody}>
+                    <p className={styles.muted} style={{ margin: 0, fontSize: 12 }}>
+                      These are not shown on the calendar. This usually means a `site_visit_events` row references a project that no longer exists.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+              {needsAssignmentEvents.length ? (
+                <div className={styles.issues}>
+                  <div className={styles.issuesHeader}>
+                    <div style={{ display: 'grid', gap: 2 }}>
+                      <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Needs assignment</strong>
+                      <span className={styles.muted} style={{ fontSize: 12 }}>
+                        {needsAssignmentEvents.length} scheduled site visit{needsAssignmentEvents.length === 1 ? '' : 's'} missing salesperson
+                      </span>
+                    </div>
+                  </div>
+                  <div className={styles.issuesBody}>
+                    <ul className={styles.issueList}>
+                      {needsAssignmentEvents.map((item) => (
+                        <li key={item.id} className={styles.issueItem} style={{ justifyContent: 'space-between' }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 800 }}>
+                              {(item.project.name || '').trim() || item.projectId || 'Untitled project'}
+                            </div>
+                            <div className={styles.muted} style={{ fontSize: 12 }}>
+                              {item.scheduledStart ? new Date(item.scheduledStart).toLocaleString('en-NZ') : '—'}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className={styles.buttonSecondary}
+                            onClick={() => setAssigning({ item, salespersonId: defaultSalespersonId })}
+                          >
+                            Assign…
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : null}
+              {unscheduledFiltered.length ? (
+                unscheduledFiltered.map((item) => <UnscheduledSiteVisitCard key={item.id} item={item} onBook={() => openEditModal(item)} />)
+              ) : (
+                <p className={styles.muted} style={{ margin: 0 }}>
+                  No unscheduled site visits.
+                </p>
+              )}
+            </div>
+          </aside>
+
+          <main className={styles.siteVisitsCalendar} aria-label="Site visits week calendar">
+            {actionError ? (
+              <div style={{ padding: 10, borderBottom: '1px solid rgba(15,15,16,0.08)', background: 'rgba(185,28,28,0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                  <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Booking error</strong>
+                  <button type="button" className={styles.buttonSecondary} onClick={() => setActionError(null)}>
+                    Dismiss
                   </button>
                 </div>
-                <div className={styles.issuesBody}>
-                  <p className={styles.muted} style={{ margin: 0, fontSize: 12 }}>
-                    These are not shown on the calendar. This usually means a `site_visit_events` row references a project that no longer exists.
-                  </p>
-                </div>
+                <pre style={{ margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12 }}>
+                  {actionError}
+                </pre>
               </div>
             ) : null}
-            {needsAssignmentEvents.length ? (
-              <div className={styles.issues}>
-                <div className={styles.issuesHeader}>
-                  <div style={{ display: 'grid', gap: 2 }}>
-                    <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Needs assignment</strong>
-                    <span className={styles.muted} style={{ fontSize: 12 }}>
-                      {needsAssignmentEvents.length} scheduled site visit{needsAssignmentEvents.length === 1 ? '' : 's'} missing salesperson
-                    </span>
-                  </div>
-                </div>
-                <div className={styles.issuesBody}>
-                  <ul className={styles.issueList}>
-                    {needsAssignmentEvents.map((item) => (
-                      <li key={item.id} className={styles.issueItem} style={{ justifyContent: 'space-between' }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 800 }}>
-                            {(item.project.name || '').trim() || item.projectId || 'Untitled project'}
-                          </div>
-                          <div className={styles.muted} style={{ fontSize: 12 }}>
-                            {item.scheduledStart ? new Date(item.scheduledStart).toLocaleString('en-NZ') : '—'}
-                          </div>
+            <div className={styles.siteVisitsCalendarScroll} ref={calendarScrollRef} onScroll={() => setSlotPopover(null)}>
+              <div className={styles.siteVisitsCalendarHeader}>
+                <div className={styles.siteVisitsTimeHeader} />
+                {days.map((day) => (
+                  <div key={day} className={styles.siteVisitsDayHeader}>
+                    <div className={styles.siteVisitsDayTitle}>{fmtDayLabel(day)}</div>
+                    <div className={styles.siteVisitsLaneHeaderRow}>
+                      {salesPeople.map((p) => (
+                        <div key={`${day}:${p.id}`} className={styles.siteVisitsLaneHeaderCell}>
+                          {p.name}
                         </div>
-                        <button
-                          type="button"
-                          className={styles.buttonSecondary}
-                          onClick={() => setAssigning({ item, salespersonId: defaultSalespersonId })}
-                        >
-                          Assign…
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : null}
-            {unscheduledFiltered.length ? (
-              unscheduledFiltered.map((item) => (
-                <DraggableCard
-                  key={item.id}
-                  item={item}
-                  onBook={() =>
-                    setBooking({
-                      projectId: item.projectId,
-                      projectName: (item.project.name || '').trim() || item.projectId || 'Untitled project',
-                      salespersonId: item.salespersonId && laneIds.includes(item.salespersonId) ? item.salespersonId : defaultSalespersonId,
-                      startIso: new Date().toISOString(),
-                      durationMins: 60,
-                      notes: '',
-                      tentative: true,
-                    })
-                  }
-                />
-              ))
-            ) : (
-              <p className={styles.muted} style={{ margin: 0 }}>
-                No unscheduled site visits.
-              </p>
-            )}
-          </div>
-        </aside>
-
-        <main className={styles.siteVisitsCalendar} aria-label="Site visits week calendar">
-          {actionError ? (
-            <div style={{ padding: 10, borderBottom: '1px solid rgba(15,15,16,0.08)', background: 'rgba(185,28,28,0.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Booking error</strong>
-                <button type="button" className={styles.buttonSecondary} onClick={() => setActionError(null)}>
-                  Dismiss
-                </button>
-              </div>
-              <pre style={{ margin: '8px 0 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12 }}>
-                {actionError}
-              </pre>
-            </div>
-          ) : null}
-            <div className={styles.siteVisitsCalendarHeader}>
-              <div className={styles.siteVisitsTimeHeader} />
-              {days.map((day) => (
-                <div key={day} className={styles.siteVisitsDayHeader}>
-                  <div className={styles.siteVisitsDayTitle}>{fmtDayLabel(day)}</div>
-                  <div className={styles.siteVisitsLaneHeaderRow}>
-                    {salesPeople.map((p) => (
-                      <div key={`${day}:${p.id}`} className={styles.siteVisitsLaneHeaderCell}>
-                        {p.name}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className={styles.siteVisitsCalendarBody}>
-              <div className={styles.siteVisitsTimeColumn}>
-                {slotIndices.map((slotIdx) => (
-                  <div key={slotIdx} className={styles.siteVisitsTimeCell} style={{ height: SLOT_PX }}>
-                    {slotIdx % 2 === 0 ? formatTimeLabel(slotIdx) : ''}
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
 
-              {days.map((day) => (
-                <div key={day} className={styles.siteVisitsDayColumn}>
-                  <div className={styles.siteVisitsLaneGrid}>
-                    {laneIds.map((laneId) => (
-                      <div key={`${day}:${laneId}`} className={styles.siteVisitsLaneColumn}>
-                        {slotIndices.map((slotIdx) => (
-                          <DroppableSlot key={slotIdx} id={`slot:${day}::${laneId}::${slotIdx}`} />
-                        ))}
+              <div className={styles.siteVisitsCalendarBody}>
+                <div className={styles.siteVisitsTimeColumn}>
+                  {HOURS.map((hour) => (
+                    <div
+                      key={hour}
+                      className={`${styles.siteVisitsTimeCell} ${isWorkingHour(hour) ? '' : styles.siteVisitsTimeCellOffHours}`}
+                      style={{ height: HOUR_HEIGHT_PX }}
+                    >
+                      {formatTimeLabel(hour)}
+                    </div>
+                  ))}
+                </div>
 
-                        <div className={styles.siteVisitsLaneEvents} style={{ height: slotCount() * SLOT_PX }}>
-                          {(eventsByLaneDay.get(`${day}::${laneId}`) ?? []).map((item) => {
-                            if (!item.scheduledStart) return null;
-                            const mins = clamp(minutesSinceStart(item.scheduledStart), 0, (END_HOUR - START_HOUR) * 60);
-                            const top = (mins / SLOT_MINUTES) * SLOT_PX;
-                            const endIso = item.scheduledEnd ?? addMinutesIso(item.scheduledStart, 60);
-                            const durMins = clamp(minutesSinceStart(endIso) - minutesSinceStart(item.scheduledStart), SLOT_MINUTES, (END_HOUR - START_HOUR) * 60);
-                            const height = (durMins / SLOT_MINUTES) * SLOT_PX;
-
-                            const isHighlighted = highlightId === item.id;
-
+                {days.map((day) => (
+                  <div key={day} className={styles.siteVisitsDayColumn}>
+                    <div className={styles.siteVisitsLaneGrid}>
+                      {laneIds.map((laneId) => (
+                        <div key={`${day}:${laneId}`} className={styles.siteVisitsLaneColumn}>
+                          {slotIndices.map((slotIdx) => {
+                            const slotHour = Math.floor((slotIdx * MINUTES_STEP) / 60);
+                            const timeLabel = hmFromMinutes(slotIdx * MINUTES_STEP);
                             return (
-                              <div
-                                key={item.id}
-                                className={isHighlighted ? styles.siteVisitEventHighlight : undefined}
-                                style={{ position: 'absolute', left: 4, right: 4, top, height }}
-                              >
-                                <DraggableEvent
-                                  item={item}
-                                  onClick={() => {
-                                    setActiveEventId(item.id);
-                                    highlight(item.id);
-                                  }}
-                                />
-                              </div>
+                              <button
+                                key={slotIdx}
+                                type="button"
+                                className={`${styles.siteVisitSlot} ${isWorkingHour(slotHour) ? '' : styles.siteVisitSlotOffHours}`}
+                                onClick={(e) => {
+                                  openSlotPopover({ day, laneId, slotIdx, rect: e.currentTarget.getBoundingClientRect() });
+                                }}
+                                aria-label={`Book ${day} ${timeLabel}`}
+                              />
                             );
                           })}
+
+                          <div className={styles.siteVisitsLaneEvents} style={{ height: slotCount() * SLOT_HEIGHT_PX }}>
+                            {(eventsByLaneDay.get(`${day}::${laneId}`) ?? []).map((item) => {
+                              if (!item.scheduledStart) return null;
+                              const mins = clamp(minutesSinceStart(item.scheduledStart), 0, DAY_MINUTES);
+                              const top = (mins / MINUTES_STEP) * SLOT_HEIGHT_PX;
+                              const endIso = item.scheduledEnd ?? addMinutesIso(item.scheduledStart, 60);
+                              const durMins = clamp(minutesSinceStart(endIso) - minutesSinceStart(item.scheduledStart), MINUTES_STEP, DAY_MINUTES);
+                              const height = (durMins / MINUTES_STEP) * SLOT_HEIGHT_PX;
+
+                              const isHighlighted = highlightId === item.id;
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  className={isHighlighted ? styles.siteVisitEventHighlight : undefined}
+                                  style={{ position: 'absolute', left: 4, right: 4, top, height }}
+                                >
+                                  <SiteVisitEvent
+                                    item={item}
+                                    onClick={() => {
+                                      openEditModal(item);
+                                      highlight(item.id);
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-        </main>
+          </main>
+        </div>
       </div>
-      </DndContext>
 
-      {booking ? (
-        <Modal
+      {slotPopover ? (
+        <SlotSelectPopover
           open
-          ariaLabel="Book site visit"
-          onClose={() => setBooking(null)}
-          maxWidthPx={620}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Book site visit</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setBooking(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Project: <strong>{booking.projectName}</strong>
-            </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-              <div style={{ display: 'grid', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Salesperson</label>
-                <select
-                  className={styles.input}
-                  value={booking.salespersonId}
-                  onChange={(e) => setBooking((p) => (p ? { ...p, salespersonId: e.target.value } : p))}
-                >
-                  {salesPeople.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Date</label>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={toLocalDayKey(booking.startIso) ?? ''}
-                  onChange={(e) => {
-                    const nextYmd = e.target.value;
-                    setBooking((p) => {
-                      if (!p) return p;
-                      const hm = toLocalHm(p.startIso) ?? `${String(START_HOUR).padStart(2, '0')}:00`;
-                      const nextIso = isoFromLocalInputs(nextYmd, hm);
-                      if (!nextIso) return p;
-                      return { ...p, startIso: nextIso };
-                    });
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Time</label>
-                <input
-                  type="time"
-                  step={SLOT_MINUTES * 60}
-                  className={styles.input}
-                  value={toLocalHm(booking.startIso) ?? ''}
-                  onChange={(e) => {
-                    const nextHm = e.target.value;
-                    setBooking((p) => {
-                      if (!p) return p;
-                      const ymd = toLocalDayKey(p.startIso) ?? toYmdLocal(new Date());
-                      const nextIso = isoFromLocalInputs(ymd, nextHm);
-                      if (!nextIso) return p;
-                      return { ...p, startIso: nextIso };
-                    });
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Duration</label>
-                <select
-                  className={styles.input}
-                  value={String(booking.durationMins)}
-                  onChange={(e) => setBooking((p) => (p ? { ...p, durationMins: Number(e.target.value) } : p))}
-                >
-                  <option value="30">30 min</option>
-                  <option value="45">45 min</option>
-                  <option value="60">60 min</option>
-                  <option value="90">90 min</option>
-                </select>
-              </div>
-
-              <div style={{ gridColumn: '1 / -1', display: 'grid', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Notes</label>
-                <textarea
-                  className={styles.input}
-                  value={booking.notes}
-                  onChange={(e) => setBooking((p) => (p ? { ...p, notes: e.target.value } : p))}
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            <div className={styles.actions} style={{ justifyContent: 'flex-end', marginTop: 14 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => void bookFromDraft({ ...booking, tentative: true })}>
-                Save tentative
-              </button>
-              <button type="button" className={styles.buttonSecondary} onClick={() => void bookFromDraft({ ...booking, tentative: false })}>
-                Save &amp; confirm
-              </button>
-            </div>
-          </div>
-        </Modal>
+          anchorRect={slotPopover.anchorRect}
+          unscheduled={unscheduledFiltered}
+          label={slotLabel}
+          onClose={() => setSlotPopover(null)}
+          onSelectUnscheduled={(item) => {
+            if (!slotPreset) return;
+            openEditModal(item, slotPreset);
+          }}
+          onCreateNew={() => {
+            if (!slotPreset) return;
+            openCreateModal(slotPreset);
+          }}
+        />
       ) : null}
+
+      <SiteVisitModal
+        open={modal.kind !== 'closed'}
+        mode={modal.kind === 'edit' ? 'edit' : 'create'}
+        item={modal.kind === 'edit' ? modal.item : null}
+        preset={modal.kind === 'closed' ? undefined : modal.preset}
+        salesPeople={salesPeople}
+        defaultSalespersonId={defaultSalespersonId}
+        onClose={closeModal}
+        onSave={handleModalSave}
+      />
 
       {assigning ? (
         <Modal open ariaLabel="Assign salesperson" onClose={() => setAssigning(null)} maxWidthPx={560}>
@@ -1124,123 +978,6 @@ export default function SiteVisitsView() {
         </Modal>
       ) : null}
 
-      {activeEvent ? (
-        <Modal
-          open
-          ariaLabel="Site visit details"
-          onClose={() => {
-            setActiveEventId(null);
-            highlight(null);
-          }}
-          maxWidthPx={680}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Site visit</h2>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => {
-                  setActiveEventId(null);
-                  highlight(null);
-                }}
-              >
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              <strong>{activeEvent.project.name || 'Untitled project'}</strong> · {String(activeEvent.status).toUpperCase()}
-            </p>
-            <p className={styles.muted} style={{ marginTop: 8, marginBottom: 0 }}>
-              {activeEvent.scheduledStart ? new Date(activeEvent.scheduledStart).toLocaleString('en-NZ') : '—'} →{' '}
-              {activeEvent.scheduledEnd ? new Date(activeEvent.scheduledEnd).toLocaleString('en-NZ') : '—'}
-            </p>
-
-            <div className={styles.actions} style={{ justifyContent: 'flex-start', marginTop: 12 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => router.push(`/staff/projects/${encodeURIComponent(activeEvent.projectId)}`)}>
-                Open project
-              </button>
-              {String(activeEvent.status).toUpperCase() === 'TENTATIVE' ? (
-                <button type="button" className={styles.buttonSecondary} onClick={() => void confirmBooking(activeEvent)}>
-                  Confirm booking
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => {
-                  if (!activeEvent.scheduledStart) return;
-                  setBooking({
-                    projectId: activeEvent.projectId,
-                    projectName: activeEvent.project.name || 'Untitled project',
-                    salespersonId:
-                      activeEvent.salespersonId && laneIds.includes(activeEvent.salespersonId) ? activeEvent.salespersonId : defaultSalespersonId,
-                    startIso: activeEvent.scheduledStart,
-                    durationMins: 60,
-                    notes: activeEvent.notes ?? '',
-                    tentative: String(activeEvent.status).toUpperCase() !== 'CONFIRMED',
-                  });
-                }}
-              >
-                Reschedule…
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => {
-                  if (typeof window === 'undefined') return;
-                  const notify = window.confirm('Notify customer? OK = Yes, Cancel = No');
-                  const reason = window.prompt('Cancel reason (optional):', '') ?? '';
-                  void cancelBooking(activeEvent, notify, reason);
-                }}
-              >
-                Cancel…
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {confirmMove ? (
-        <Modal
-          open
-          ariaLabel="Reschedule confirmed site visit"
-          onClose={() => setConfirmMove(null)}
-          maxWidthPx={560}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Reschedule</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setConfirmMove(null)}>
-                Close
-              </button>
-            </div>
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              <strong>{confirmMove.item.project.name}</strong>
-            </p>
-            <p className={styles.muted} style={{ marginTop: 8, marginBottom: 0 }}>
-              New time: {new Date(confirmMove.nextStart).toLocaleString('en-NZ')}
-            </p>
-            <div className={styles.actions} style={{ justifyContent: 'flex-end', marginTop: 14 }}>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => void rescheduleBooking(confirmMove.item, confirmMove.nextStart, confirmMove.nextEnd, false, confirmMove.nextSalespersonId)}
-              >
-                Reschedule (internal)
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => void rescheduleBooking(confirmMove.item, confirmMove.nextStart, confirmMove.nextEnd, true, confirmMove.nextSalespersonId)}
-              >
-                Reschedule + notify
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
     </section>
   );
 }
