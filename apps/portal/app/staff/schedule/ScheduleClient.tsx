@@ -1750,7 +1750,7 @@ export default function ScheduleClient() {
 
   if (view === 'site_visits') {
     return (
-      <main className={styles.page}>
+      <main className={cx(styles.page, styles.pageLocked)}>
         <PageHeader
           title="Schedule"
           right={
@@ -1759,7 +1759,7 @@ export default function ScheduleClient() {
             </HeaderActions>
           }
         />
-        <div className={styles.stack}>
+        <div className={cx(styles.stack, styles.stackLocked)}>
           <SiteVisitsView />
         </div>
       </main>

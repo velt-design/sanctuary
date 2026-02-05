@@ -21,12 +21,12 @@ export default function PipelineCountsCard({ counts }: { counts: PipelineCounts 
   }
 
   return (
-    <section className={styles.section} aria-label="Pipeline counts">
-      <div className={styles.sectionHeader}>
+    <section className={`${styles.section} ${dash.card}`} aria-label="Pipeline counts">
+      <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Pipeline</h2>
         <span className={dash.sectionMeta}>Counts by stage</span>
       </div>
-      <div className={styles.sectionBody}>
+      <div className={`${styles.sectionBody} ${dash.cardBody} ${dash.cardBodyNoScroll}`}>
         <div className={dash.pipelineStrip}>
           <div className={dash.pipelineGrid}>
             {PIPELINE_STAGES.map((stage) => {
