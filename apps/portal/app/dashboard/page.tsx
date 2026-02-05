@@ -29,11 +29,11 @@ export default async function DashboardPage({
     <main className={dash.page}>
       <PageHeader title="Dashboard" />
 
-      <div className={dash.stack}>
+      <div className={dash.layout}>
         <KpiStrip kpis={data.kpis} />
 
         <div className={dash.grid}>
-          <div className={dash.stack}>
+          <div className={dash.columnStack}>
             <AttentionCard items={data.attention} />
             <WorkQueueCard
               mode={queue}
@@ -44,7 +44,7 @@ export default async function DashboardPage({
             />
           </div>
 
-          <div className={dash.stack}>
+          <div className={dash.columnStack}>
             <InstallScheduleCard schedule={data.schedule} />
             <SiteVisitsCard siteVisits={data.siteVisits} />
           </div>

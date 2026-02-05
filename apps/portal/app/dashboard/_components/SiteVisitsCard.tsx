@@ -6,15 +6,21 @@ import { formatShortDateTime } from '@/lib/dashboard/format';
 import { projectDetailHref } from '@/lib/dashboard/links';
 
 export default function SiteVisitsCard({ siteVisits }: { siteVisits: SiteVisitsSnapshot }) {
+  const maxItems = 3;
+  const todayItems = siteVisits.today.slice(0, maxItems);
+  const next7Items = siteVisits.next7.slice(0, maxItems);
+  const todayHasMore = siteVisits.today.length > maxItems;
+  const next7HasMore = siteVisits.next7.length > maxItems;
+
   return (
-    <section className={styles.section} aria-label="Site visits">
-      <div className={styles.sectionHeader}>
+    <section className={`${styles.section} ${dash.card} ${dash.cardCompact}`} aria-label="Site visits">
+      <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Site visits</h2>
         <Link className={styles.link} href={siteVisits.hrefSiteVisits}>
           Open calendar
         </Link>
       </div>
-      <div className={styles.sectionBody}>
+      <div className={`${styles.sectionBody} ${dash.cardBody}`}>
         <div className={dash.sectionMeta} style={{ marginBottom: 10 }}>
           Unscheduled visits: <strong>{siteVisits.unscheduledCount}</strong>
         </div>
@@ -24,9 +30,9 @@ export default function SiteVisitsCard({ siteVisits }: { siteVisits: SiteVisitsS
             <div className={dash.sectionMeta} style={{ marginBottom: 8 }}>
               Today
             </div>
-            {siteVisits.today.length ? (
+            {todayItems.length ? (
               <ul className={dash.list}>
-                {siteVisits.today.map((visit) => (
+                {todayItems.map((visit) => (
                   <li key={visit.id} className={dash.listItem}>
                     <div className={dash.listMain}>
                       <div className={dash.listTitle}>
@@ -51,15 +57,22 @@ export default function SiteVisitsCard({ siteVisits }: { siteVisits: SiteVisitsS
             ) : (
               <div className={dash.sectionMeta}>No site visits today.</div>
             )}
+            {todayHasMore ? (
+              <div className={dash.sectionMeta} style={{ marginTop: 8 }}>
+                <Link className={dash.flatRowLink} href={siteVisits.hrefSiteVisits}>
+                  View all visits
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           <div>
             <div className={dash.sectionMeta} style={{ marginBottom: 8 }}>
               Next 7 days
             </div>
-            {siteVisits.next7.length ? (
+            {next7Items.length ? (
               <ul className={dash.list}>
-                {siteVisits.next7.map((visit) => (
+                {next7Items.map((visit) => (
                   <li key={visit.id} className={dash.listItem}>
                     <div className={dash.listMain}>
                       <div className={dash.listTitle}>
@@ -84,6 +97,13 @@ export default function SiteVisitsCard({ siteVisits }: { siteVisits: SiteVisitsS
             ) : (
               <div className={dash.sectionMeta}>No upcoming site visits.</div>
             )}
+            {next7HasMore ? (
+              <div className={dash.sectionMeta} style={{ marginTop: 8 }}>
+                <Link className={dash.flatRowLink} href={siteVisits.hrefSiteVisits}>
+                  View all visits
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
