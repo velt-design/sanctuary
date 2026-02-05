@@ -59,7 +59,7 @@ export default function SiteVisitModal({
   mode: 'create' | 'edit';
   item: SiteVisitCalendarItem | null;
   preset?: Partial<SiteVisitModalFormValues>;
-  salesPeople: SiteVisitCalendarPerson[];
+  salesPeople: readonly SiteVisitCalendarPerson[];
   defaultSalespersonId?: string;
   onClose: () => void;
   onSave: (values: SiteVisitModalFormValues) => Promise<void> | void;
