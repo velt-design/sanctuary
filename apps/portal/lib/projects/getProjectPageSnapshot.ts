@@ -190,6 +190,13 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
       .limit(50),
   ]);
 
+  if (emailRes?.error) {
+    console.error('[project_snapshot] email_outbox query failed', emailRes.error);
+  }
+  if (auditRes?.error) {
+    console.error('[project_snapshot] audit_events query failed', auditRes.error);
+  }
+
   const contact = contactRes?.data ?? null;
   const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
   const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
