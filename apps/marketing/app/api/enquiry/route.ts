@@ -46,9 +46,14 @@ function requiredEnv(name: string): string {
 }
 
 function serviceSupabaseUrl(): string {
-  return process.env.SUPABASE_URL?.trim()
-    || process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-    || requiredEnv('SUPABASE_URL');
+  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || '';
+  const serviceUrl = process.env.SUPABASE_URL?.trim() || '';
+  if (publicUrl && serviceUrl && publicUrl !== serviceUrl) {
+    console.error('[supabase] URL mismatch', { publicUrl, serviceUrl });
+  }
+  if (publicUrl) return publicUrl;
+  if (serviceUrl) return serviceUrl;
+  return requiredEnv('SUPABASE_URL');
 }
 
 function getServiceSupabase(): SupabaseClient {

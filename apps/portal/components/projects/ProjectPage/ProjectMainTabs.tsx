@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ActivityTab from './tabs/ActivityTab';
 import EmailsTab from './tabs/EmailsTab';
@@ -42,13 +43,19 @@ export default function ProjectMainTabs({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const activeTab = coerceTab(tab);
+  const tabFromUrl = useMemo(() => coerceTab(searchParams.get('tab') ?? tab), [searchParams, tab]);
+  const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl);
   const activeMode = coerceMode(mode);
+
+  useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
 
   const updateParams = (next: Partial<{ tab: TabKey }>) => {
     const qs = new URLSearchParams(searchParams.toString());
     if (next.tab) qs.set('tab', next.tab);
     const query = qs.toString();
+    if (next.tab) setActiveTab(next.tab);
     router.replace(`${pathname}${query ? `?${query}` : ''}`);
   };
 
