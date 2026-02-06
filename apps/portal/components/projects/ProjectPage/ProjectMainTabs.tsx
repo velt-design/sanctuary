@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ActivityTab from './tabs/ActivityTab';
 import EmailsTab from './tabs/EmailsTab';
 import PlaceholderTab from './tabs/PlaceholderTab';
@@ -17,7 +17,6 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
-
 type ModeKey = 'general' | 'focus';
 
 function coerceTab(value: string | undefined): TabKey {
@@ -41,14 +40,16 @@ export default function ProjectMainTabs({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const activeTab = coerceTab(tab);
   const activeMode = coerceMode(mode);
 
   const updateParams = (next: Partial<{ tab: TabKey }>) => {
-    const qs = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
+    const qs = new URLSearchParams(searchParams.toString());
     if (next.tab) qs.set('tab', next.tab);
     const query = qs.toString();
-    router.push(`${pathname}${query ? `?${query}` : ''}`);
+    router.replace(`${pathname}${query ? `?${query}` : ''}`);
   };
 
   return (
@@ -73,6 +74,7 @@ export default function ProjectMainTabs({
             })}
           </div>
         </div>
+
         <div className={legacy.actions}>
           <div className={legacy.tabsPill} role="group" aria-label="Mode toggle">
             {(['general', 'focus'] as const).map((value) => {
@@ -95,24 +97,15 @@ export default function ProjectMainTabs({
 
       <div className={legacy.sectionBody}>
         {activeTab === 'activity' ? <ActivityTab activity={snapshot.activity} /> : null}
-        {activeTab === 'emails' ? <EmailsTab emails={snapshot.emails} /> : null}
+        {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
         {activeTab === 'estimates' ? (
-          <PlaceholderTab
-            title="Estimates"
-            description="Estimate summaries and approvals will live here."
-          />
+          <PlaceholderTab title="Estimates" description="Estimate summaries and approvals will live here." />
         ) : null}
         {activeTab === 'quotes' ? (
-          <PlaceholderTab
-            title="Quotes"
-            description="Quote drafts, versions, and status updates will appear here."
-          />
+          <PlaceholderTab title="Quotes" description="Quote drafts, versions, and status updates will appear here." />
         ) : null}
         {activeTab === 'files' ? (
-          <PlaceholderTab
-            title="Files"
-            description="Upload and manage project files once storage is wired up."
-          />
+          <PlaceholderTab title="Files" description="Upload and manage project files once storage is wired up." />
         ) : null}
       </div>
     </section>

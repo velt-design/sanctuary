@@ -17,6 +17,12 @@ import {
   type BlindLineItemInput,
 } from '../../../../../lib/costing/blinds';
 import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';
+import {
+  EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
+  EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
+  EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
+} from '@/lib/sharedEmails';
+import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
 
 type Hit = { t: number; n: number };
@@ -659,7 +665,161 @@ export async function POST(req: Request) {
         } satisfies ResidentialOrCommercial;
       }
 
-      await sendCustomerAutoresponder(emailPayload);
+      const callWindowText = getCallWindowText(submittedAt);
+
+      const templateId =
+        enquiryType === 'commercial'
+          ? EMAIL_WEBSITE_AUTORESPONDER_COM_V1
+          : enquiryType === 'professional'
+            ? EMAIL_WEBSITE_AUTORESPONDER_PRO_V1
+            : EMAIL_WEBSITE_AUTORESPONDER_RES_V1;
+
+      const subject =
+        enquiryType === 'commercial'
+          ? 'Commercial enquiry received - estimate and next steps'
+          : enquiryType === 'professional'
+            ? 'Professional enquiry received - next steps'
+            : 'Your pergola enquiry - estimate and next steps';
+
+      const emailType =
+        enquiryType === 'professional' ? 'WEBSITE_PROFESSIONAL_AUTORESPONDER' : 'WEBSITE_ESTIMATE_AUTORESPONDER';
+
+      const idempotencyKey = `website:autoresponder:${enquiryRow.id}`;
+      const supabaseHost = (() => {
+        try {
+          return new URL(serviceSupabaseUrl()).host;
+        } catch {
+          return 'unknown';
+        }
+      })();
+
+      // Store only variables; HTML is rendered from repo code in the portal preview endpoint.
+      const variables = safeJsonPayload({ ...(emailPayload as any), callWindowText });
+
+      let sendError: Error | null = null;
+      try {
+        await sendCustomerAutoresponder(emailPayload);
+      } catch (err) {
+        sendError = err instanceof Error ? err : new Error('Autoresponder send failed');
+        console.error('Autoresponder send failed', err);
+      }
+
+      // Best-effort log (do not block submission)
+      try {
+        const nowIso = new Date().toISOString();
+
+        const templateSeedRes = await supabase
+          .from('email_templates')
+          .upsert(
+            {
+              id: templateId,
+              subject,
+              body_html: '<p>(Rendered in app code)</p>',
+              body_text: null,
+              variables: [],
+            } as any,
+            { onConflict: 'id' } as any,
+          );
+
+        console.log('[email_templates] upsert result', { data: templateSeedRes.data, error: templateSeedRes.error });
+
+        if (templateSeedRes.error) {
+          throw templateSeedRes.error;
+        }
+
+        console.log('[email_outbox] about to upsert', {
+          projectId,
+          contactId,
+          to: email,
+          enquiryId: enquiryRow.id,
+        });
+
+        const outboxRes = await supabase
+          .from('email_outbox')
+          .upsert(
+            {
+              project_id: projectId,
+              contact_id: contactId,
+              email_type: emailType,
+              to_email: email,
+              subject,
+              template_id: templateId,
+              variables,
+              status: sendError ? 'FAILED' : 'SENT',
+              error: sendError ? sendError.message : null,
+              idempotency_key: idempotencyKey,
+              sent_at: sendError ? null : nowIso,
+            } as any,
+            { onConflict: 'idempotency_key' } as any,
+          );
+
+        console.log('[email_outbox] upsert result', { data: outboxRes.data, error: outboxRes.error });
+
+        if (outboxRes.error) {
+          const outboxError = outboxRes.error;
+          await supabase
+            .from('audit_events')
+            .upsert(
+              {
+                project_id: projectId,
+                type: 'email_failed',
+                idempotency_key: `audit:${idempotencyKey}:outbox_failed`,
+                payload: {
+                  to: email,
+                  subject,
+                  templateId,
+                  kind: emailType,
+                  supabaseHost,
+                  error: outboxError.message ?? 'email_outbox upsert failed',
+                },
+                created_at: nowIso,
+              } as any,
+              { onConflict: 'idempotency_key' } as any,
+            );
+          throw outboxError;
+        }
+
+        await supabase
+          .from('audit_events')
+          .upsert(
+            {
+              project_id: projectId,
+              type: sendError ? 'email_failed' : 'email_sent',
+              idempotency_key: `audit:${idempotencyKey}`,
+              payload: { to: email, subject, templateId, kind: emailType, supabaseHost },
+              created_at: nowIso,
+            } as any,
+            { onConflict: 'idempotency_key' } as any,
+          );
+      } catch (e) {
+        console.error('Failed to log autoresponder in email_outbox/audit_events', e);
+        try {
+          const fallbackIso = new Date().toISOString();
+          const errorMessage = e instanceof Error ? e.message : 'email_outbox logging failed';
+          await supabase
+            .from('audit_events')
+            .upsert(
+              {
+                project_id: projectId,
+                type: 'email_failed',
+                idempotency_key: `audit:${idempotencyKey}:log_failed`,
+                payload: {
+                  to: email,
+                  subject,
+                  templateId,
+                  kind: emailType,
+                  supabaseHost,
+                  error: errorMessage,
+                },
+                created_at: fallbackIso,
+              } as any,
+              { onConflict: 'idempotency_key' } as any,
+            );
+        } catch (auditErr) {
+          console.error('Failed to log email_outbox error to audit_events', auditErr);
+        }
+        throw e;
+      }
     } catch (err) {
       console.error('Autoresponder send failed', err);
     }
