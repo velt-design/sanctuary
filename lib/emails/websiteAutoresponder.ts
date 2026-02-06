@@ -1,4 +1,5 @@
 import { render } from '@react-email/render';
+import type { ReactElement } from 'react';
 import { getCallWindowText } from '../../apps/marketing/emails/utils/callWindow';
 
 import { CustomerResidentialEmail } from '../../apps/marketing/emails/templates/customerResidential';
@@ -49,7 +50,7 @@ export async function renderWebsiteAutoresponder(
 
   const subject = subjectFor(templateId);
 
-  let reactEmail: JSX.Element;
+  let reactEmail: ReactElement;
   if (templateId === EMAIL_WEBSITE_AUTORESPONDER_RES_V1) {
     reactEmail = CustomerResidentialEmail({ ...(variables as any), callWindowText } as any);
   } else if (templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1) {
