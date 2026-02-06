@@ -1,6 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export type ProjectViewMode = 'general' | 'focus';
 
@@ -9,28 +10,27 @@ function normalize(value: string | null): ProjectViewMode {
 }
 
 export function useProjectViewMode(initialMode?: ProjectViewMode) {
-  const [mode, setModeState] = useState<ProjectViewMode>(() => {
-    if (typeof window === 'undefined') return initialMode ?? 'general';
-    const url = new URL(window.location.href);
-    return normalize(url.searchParams.get('mode'));
-  });
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const modeFromUrl = useMemo(() => normalize(searchParams.get('mode')), [searchParams]);
+  const [mode, setModeState] = useState<ProjectViewMode>(() => initialMode ?? 'general');
 
   useEffect(() => {
-    const onPopState = () => {
-      const url = new URL(window.location.href);
-      setModeState(normalize(url.searchParams.get('mode')));
-    };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+    setModeState(modeFromUrl);
+  }, [modeFromUrl]);
 
-  const setMode = useCallback((next: ProjectViewMode) => {
-    setModeState(next);
-    const url = new URL(window.location.href);
-    if (next === 'general') url.searchParams.delete('mode');
-    else url.searchParams.set('mode', 'focus');
-    window.history.pushState({}, '', url.toString());
-  }, []);
+  const setMode = useCallback(
+    (next: ProjectViewMode) => {
+      const qs = new URLSearchParams(searchParams.toString());
+      if (next === 'general') qs.delete('mode');
+      else qs.set('mode', 'focus');
+      const query = qs.toString();
+      router.replace(`${pathname}${query ? `?${query}` : ''}`);
+    },
+    [pathname, router, searchParams],
+  );
 
   return { mode, setMode };
 }

@@ -3,7 +3,7 @@ import 'server-only';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
-import type { ProjectEmailLog, ProjectPageSnapshot } from '@/lib/projects/types';
+import type { ProjectActivityItem, ProjectEmailLog, ProjectPageSnapshot } from '@/lib/projects/types';
 
 function pickString(...values: Array<unknown>): string | null {
   for (const value of values) {
@@ -65,6 +65,77 @@ function mapEmail(row: any): ProjectEmailLog {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function mapOutboxToActivity(row: any): ProjectActivityItem | null {
+  const at =
+    typeof row?.sent_at === 'string'
+      ? row.sent_at
+      : typeof row?.created_at === 'string'
+        ? row.created_at
+        : '';
+  if (!at) return null;
+
+  const statusRaw = typeof row?.status === 'string' ? row.status.toUpperCase() : '';
+  const title = statusRaw === 'FAILED' ? 'Email failed' : statusRaw === 'QUEUED' ? 'Email queued' : 'Email sent';
+
+  const toEmail = typeof row?.to_email === 'string' ? row.to_email : '';
+  const subject = typeof row?.subject === 'string' ? row.subject : '';
+  const detailParts = [];
+  if (toEmail) detailParts.push(`To: ${toEmail}`);
+  if (subject) detailParts.push(subject);
+
+  return {
+    id: `outbox:${String(row?.id ?? '')}`,
+    at,
+    type: 'email_sent',
+    title,
+    detail: detailParts.length ? detailParts.join(' — ') : undefined,
+  };
+}
+
+function mapAuditToActivity(row: any): ProjectActivityItem | null {
+  const at = typeof row?.created_at === 'string' ? row.created_at : '';
+  if (!at) return null;
+
+  const typeRaw = typeof row?.type === 'string' ? row.type : 'note';
+  const payload = isRecord(row?.payload) ? (row.payload as Record<string, unknown>) : {};
+
+  if (typeRaw === 'email_sent' || typeRaw === 'email_failed') {
+    const title = typeRaw === 'email_failed' ? 'Email failed' : 'Email sent';
+    const to = typeof payload.to === 'string' ? payload.to : '';
+    const subject = typeof payload.subject === 'string' ? payload.subject : '';
+    return {
+      id: String(row?.id ?? ''),
+      at,
+      type: 'email_sent',
+      title,
+      detail: [to ? `To: ${to}` : '', subject].filter(Boolean).join(' — ') || undefined,
+    };
+  }
+
+  if (typeRaw === 'dashboard.next_action_note') {
+    const note = typeof payload.note === 'string' ? payload.note : '';
+    return {
+      id: String(row?.id ?? ''),
+      at,
+      type: 'note',
+      title: 'Note added',
+      detail: note || undefined,
+    };
+  }
+
+  return {
+    id: String(row?.id ?? ''),
+    at,
+    type: 'note',
+    title: typeRaw,
+    detail: undefined,
+  };
+}
+
 export async function getProjectPageSnapshot(projectId: string): Promise<ProjectPageSnapshot | null> {
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
   if (!projectUuid) return null;
@@ -97,7 +168,7 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
     projectRow.followUpDate,
   );
 
-  const [contactRes, tasksRes, emailRes] = await Promise.all([
+  const [contactRes, tasksRes, emailRes, auditRes] = await Promise.all([
     contactUuid
       ? supabaseServer.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -111,7 +182,20 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
       .select('id,subject,to_email,status,sent_at,created_at,email_type')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false }),
+    supabaseServer
+      .from('audit_events')
+      .select('id,type,payload,created_at')
+      .eq('project_id', projectUuid)
+      .order('created_at', { ascending: false })
+      .limit(50),
   ]);
+
+  if (emailRes?.error) {
+    console.error('[project_snapshot] email_outbox query failed', emailRes.error);
+  }
+  if (auditRes?.error) {
+    console.error('[project_snapshot] audit_events query failed', auditRes.error);
+  }
 
   const contact = contactRes?.data ?? null;
   const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
@@ -119,6 +203,14 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
   const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);
   const tasks = (Array.isArray(tasksRes?.data) ? tasksRes.data : []).map(mapTask);
   const emails = (Array.isArray(emailRes?.data) ? emailRes.data : []).map(mapEmail);
+  const outboxActivity = (Array.isArray(emailRes?.data) ? emailRes.data : [])
+    .map(mapOutboxToActivity)
+    .filter(Boolean) as ProjectActivityItem[];
+  const auditActivity = (Array.isArray(auditRes?.data) ? auditRes.data : [])
+    .map(mapAuditToActivity)
+    .filter(Boolean) as ProjectActivityItem[];
+
+  const activity = [...outboxActivity, ...auditActivity].sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
   return {
     project: {
@@ -135,7 +227,7 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
       ...(nextActionDate ? { nextActionDate } : null),
     },
     tasks,
-    activity: [],
+    activity,
     emails,
   };
 }
