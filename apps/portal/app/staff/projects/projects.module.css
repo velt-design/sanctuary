@@ -353,6 +353,22 @@
   outline-offset: -2px;
 }
 
+/* Selected row styling (subtle, not "error") */
+.rowSelected td {
+  background: rgba(129, 63, 57, 0.08);
+}
+
+.rowSelected td:first-child {
+  box-shadow: inset 3px 0 0 rgba(129, 63, 57, 0.9);
+}
+
+/* Wrap long values (emails/addresses) without cropping */
+.cellWrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
 .link {
   color: #813f39;
   text-decoration: underline;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectEmailLog } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 
@@ -15,6 +15,8 @@ export default function EmailsTab({ projectId, emails }: { projectId: string; em
   const initial = useMemo(() => (emails.length ? emails[0].id : ''), [emails]);
   const [selectedId, setSelectedId] = useState<string>(initial);
 
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeHeight, setIframeHeight] = useState<number>(640);
   const [html, setHtml] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,7 @@ export default function EmailsTab({ projectId, emails }: { projectId: string; em
           throw new Error(msg);
         }
         setHtml(typeof body?.html === 'string' ? body.html : '');
+        requestAnimationFrame(() => sizeIframe());
       })
       .catch((e) => {
         if (ac.signal.aborted) return;
@@ -57,6 +60,22 @@ export default function EmailsTab({ projectId, emails }: { projectId: string; em
   if (!emails.length) {
     return <p className={legacy.note}>No emails recorded yet. Automated emails sent to the client will appear here.</p>;
   }
+
+  const sizeIframe = () => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+
+    const h = Math.max(
+      doc.documentElement?.scrollHeight ?? 0,
+      doc.body?.scrollHeight ?? 0,
+      200,
+    );
+
+    // avoid tiny reflow loops
+    setIframeHeight((prev) => (Math.abs(prev - h) > 8 ? h : prev));
+  };
 
   return (
     <div>
@@ -77,9 +96,8 @@ export default function EmailsTab({ projectId, emails }: { projectId: string; em
               return (
                 <tr
                   key={email.id}
-                  className={legacy.rowClickable}
+                  className={`${legacy.rowClickable} ${isActive ? legacy.rowSelected : ''}`}
                   onClick={() => setSelectedId(email.id)}
-                  style={isActive ? { outline: '2px solid rgba(129, 63, 57, 0.35)', outlineOffset: '-2px' } : undefined}
                 >
                   <td className={legacy.muted}>{email.toEmail || '—'}</td>
                   <td>{email.subject || 'Untitled email'}</td>
@@ -94,20 +112,29 @@ export default function EmailsTab({ projectId, emails }: { projectId: string; em
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <div className={legacy.tableWrap} style={{ height: 520, overflow: 'hidden' }}>
-          {loading ? <p className={legacy.note}>Loading preview…</p> : null}
-          {error ? <p className={legacy.note}>{error}</p> : null}
-          {!loading && !error && !html ? <p className={legacy.note}>Select an email to preview.</p> : null}
+        {loading ? <p className={legacy.note}>Loading preview…</p> : null}
+        {error ? <p className={legacy.note}>{error}</p> : null}
+        {!loading && !error && !html ? <p className={legacy.note}>Select an email to preview.</p> : null}
 
-          {!loading && !error && html ? (
+        {!loading && !error && html ? (
+          <div className={legacy.tableWrap} style={{ marginTop: 10 }}>
             <iframe
+              ref={iframeRef}
               title="Email preview"
-              sandbox="allow-popups allow-popups-to-escape-sandbox"
-              style={{ width: '100%', height: 520, border: 0, background: '#fff' }}
+              // allow-same-origin is required so we can measure scrollHeight
+              sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+              style={{ width: '100%', height: iframeHeight, border: 0, background: '#fff', display: 'block' }}
               srcDoc={html}
+              onLoad={() => {
+                sizeIframe();
+                // second pass helps after fonts/images
+                setTimeout(sizeIframe, 50);
+                setTimeout(sizeIframe, 250);
+              }}
+              scrolling="no"
             />
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
