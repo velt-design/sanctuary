@@ -214,7 +214,7 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               </tr>
               <tr>
                 <th>Email</th>
-                <td className={legacy.muted}>{current.contactEmail || '—'}</td>
+                <td className={`${legacy.muted} ${legacy.cellWrap}`}>{current.contactEmail || '—'}</td>
               </tr>
               <tr>
                 <th>Phone</th>
@@ -226,7 +226,7 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               </tr>
               <tr>
                 <th>Site address</th>
-                <td>{current.siteAddress || '—'}</td>
+                <td className={legacy.cellWrap}>{current.siteAddress || '—'}</td>
               </tr>
               <tr>
                 <th>Region</th>
