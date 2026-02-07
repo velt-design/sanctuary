@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiJson } from '@/lib/repo/apiClient';
@@ -52,7 +53,7 @@ function formatSavedLabel(value: string | null | undefined): string | null {
   return time ? `Saved ${time}` : 'Saved';
 }
 
-function renderValue(value: string | null | undefined): JSX.Element | string {
+function renderValue(value: string | null | undefined): ReactNode {
   if (!value || value === '—') return <span className={styles.mutedValue}>Not set</span>;
   return value;
 }
