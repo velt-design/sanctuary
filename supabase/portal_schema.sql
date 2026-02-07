@@ -50,9 +50,21 @@ create table if not exists public.estimates (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
 
-  -- statuses used by UI: draft/approved/archived
+  -- statuses used by UI
   status text not null default 'draft'
-    check (status in ('draft','approved','archived')),
+    check (status in ('draft','in_review','approved','rejected','superseded','archived')),
+
+  created_by text,
+  summary_json jsonb,
+  internal_notes text,
+
+  approval_requested_at timestamptz,
+  approval_requested_by text,
+  approved_at timestamptz,
+  approved_by text,
+  rejected_at timestamptz,
+  rejected_by text,
+  approval_comment text,
 
   -- summary fields for lists + schedule
   summary text,
@@ -79,6 +91,21 @@ create table if not exists public.estimates (
 );
 alter table public.estimates
   add column if not exists updated_at timestamptz not null default now();
+alter table public.estimates
+  add column if not exists created_by text,
+  add column if not exists summary_json jsonb,
+  add column if not exists internal_notes text,
+  add column if not exists approval_requested_at timestamptz,
+  add column if not exists approval_requested_by text,
+  add column if not exists approved_at timestamptz,
+  add column if not exists approved_by text,
+  add column if not exists rejected_at timestamptz,
+  add column if not exists rejected_by text,
+  add column if not exists approval_comment text;
+alter table public.estimates
+  drop constraint if exists estimates_status_check;
+alter table public.estimates
+  add constraint estimates_status_check check (status in ('draft','in_review','approved','rejected','superseded','archived'));
 drop trigger if exists estimates_set_updated_at on public.estimates;
 create trigger estimates_set_updated_at before update on public.estimates
 for each row execute function public.set_updated_at();

@@ -2797,7 +2797,11 @@ export default function CalculatorGridClient({
 
                     setConfirmOpen(false);
                     toast.success(`Estimate created (v${estimate.version ?? '—'}).`);
-                    router.push(`/staff/projects/${encodeURIComponent(projectId)}/estimate/${encodeURIComponent(estimate.id)}`);
+                    if (projectId) {
+                      router.push(
+                        `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}`,
+                      );
+                    }
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : 'Failed to generate estimate';
                     setGenerateError(msg);
