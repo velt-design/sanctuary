@@ -57,14 +57,14 @@ async function updateWithUnknownColumnRetry(
   return { data: null, error: { message: 'Supabase update failed after retries', code: 'CLIENT_RETRY' } };
 }
 
-export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
   const session = await requireStaffSession();
   if (!session) return jsonError('Unauthorized', 401);
 
   let projectUuid: string;
   try {
-    const { id } = await ctx.params;
-    projectUuid = uuidFromAppId(id, 'proj');
+    const { projectId } = await ctx.params;
+    projectUuid = uuidFromAppId(projectId, 'proj');
   } catch {
     return jsonError('Invalid project id', 400);
   }

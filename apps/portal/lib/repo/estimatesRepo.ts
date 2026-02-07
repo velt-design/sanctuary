@@ -41,6 +41,9 @@ function wrapError(table: string, error: unknown): SupabaseRepoError {
 function normaliseStatus(value: unknown): EstimateStatus {
   const raw = typeof value === 'string' ? value.trim().toLowerCase() : '';
   if (raw === 'approved') return 'approved';
+  if (raw === 'in_review') return 'in_review';
+  if (raw === 'rejected') return 'rejected';
+  if (raw === 'superseded') return 'superseded';
   if (raw === 'archived') return 'archived';
   return 'draft';
 }

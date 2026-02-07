@@ -296,7 +296,7 @@ export default function EstimateViewerClient({
     return (
       <main className={styles.page}>
         <PageHeader
-          title="Estimate"
+          title="Job pack"
           right={
             <HeaderActions>
               <Link className={styles.buttonSecondary} href={`/staff/projects/${encodeURIComponent(projectId)}`}>
@@ -305,7 +305,8 @@ export default function EstimateViewerClient({
             </HeaderActions>
           }
         />
-        <p className={styles.note}>This estimate doesn’t exist in the portal database.</p>
+        <p className={styles.note}>Ordering + install outputs (read-only snapshot).</p>
+        <p className={styles.note}>This job pack doesn’t exist in the portal database.</p>
       </main>
     );
   }
@@ -321,7 +322,7 @@ export default function EstimateViewerClient({
   return (
     <main className={styles.page}>
       <PageHeader
-        title="Estimate"
+        title="Job pack"
         right={
           <HeaderActions>
             <Link className={styles.buttonSecondary} href={`/staff/projects/${encodeURIComponent(projectId)}`}>
@@ -460,7 +461,9 @@ export default function EstimateViewerClient({
 
       {deleteError ? <p className={styles.error}>{deleteError}</p> : null}
 
-      <section className={styles.section} aria-label="Estimate summary">
+      <p className={styles.note}>Ordering + install outputs (read-only snapshot).</p>
+
+      <section className={styles.section} aria-label="Job pack summary">
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Summary</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -536,7 +539,7 @@ export default function EstimateViewerClient({
         </div>
       </section>
 
-      <div className={styles.tabsBar} aria-label="Estimate sections">
+      <div className={styles.tabsBar} aria-label="Job pack sections">
         <div className={styles.tabsBarInner}>
           <div className={styles.tabsGroup}>
             {(['overview', 'materials', 'install', 'overheads', 'outputs', 'inputs', 'warnings'] as const).map((k) => (
@@ -556,7 +559,7 @@ export default function EstimateViewerClient({
         </div>
       </div>
 
-      <section className={styles.section} aria-label="Estimate section" style={{ marginTop: 14 }}>
+      <section className={styles.section} aria-label="Job pack section" style={{ marginTop: 14 }}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>{titleForSection(active)}</h2>
         </div>

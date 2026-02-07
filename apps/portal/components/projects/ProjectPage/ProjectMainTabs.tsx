@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import ActivityTab from './tabs/ActivityTab';
 import EmailsTab from './tabs/EmailsTab';
+import EstimatesTab from './tabs/EstimatesTab';
 import PlaceholderTab from './tabs/PlaceholderTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
@@ -105,9 +106,7 @@ export default function ProjectMainTabs({
       <div className={legacy.sectionBody}>
         {activeTab === 'activity' ? <ActivityTab activity={snapshot.activity} /> : null}
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
-        {activeTab === 'estimates' ? (
-          <PlaceholderTab title="Estimates" description="Estimate summaries and approvals will live here." />
-        ) : null}
+        {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} mode={activeMode} /> : null}
         {activeTab === 'quotes' ? (
           <PlaceholderTab title="Quotes" description="Quote drafts, versions, and status updates will appear here." />
         ) : null}
