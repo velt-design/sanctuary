@@ -290,6 +290,7 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
 
   const quoteUuid = String(quoteRes.data.id ?? '');
   if (!quoteUuid) return [];
+  const quoteRef = String(quoteRes.data.quote_ref ?? '');
 
   const versionsRes = await supabaseServer
     .from('quote_versions')
@@ -304,7 +305,9 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
 
   const estimateLabels = await loadEstimateLabels(projectUuid);
   const rows = Array.isArray(versionsRes.data) ? versionsRes.data : [];
-  return rows.map((row) => mapQuoteVersionRow({ ...row, quotes: { quote_ref: quoteRes.data.quote_ref, id: quoteUuid } }, estimateLabels, projectId));
+  return rows.map((row) =>
+    mapQuoteVersionRow({ ...row, quotes: { quote_ref: quoteRef, id: quoteUuid } }, estimateLabels, projectId),
+  );
 }
 
 export async function getQuoteVersionDetail(quoteVersionId: string): Promise<QuoteVersionDetail | null> {
