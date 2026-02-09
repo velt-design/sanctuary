@@ -366,8 +366,17 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
     pricing.items.forEach((priced, idx) => {
       const qty = 1;
       const unitPrice = priced.errors.length ? 0 : priced.blindSellIncCents;
+      const source = pricingInputs[idx];
       lineItems.push({
-        description: buildBlindDescription(priced, idx, priced.label, priced.errors),
+        description: buildBlindDescription(source ?? {
+          id: priced.id,
+          label: priced.label,
+          system: priced.system,
+          widthMm: priced.widthMm,
+          coverLengthMm: priced.coverLengthMm,
+          fabric: 'NONE',
+          motorised: null,
+        }, idx, priced.label, priced.errors),
         qty,
         unitPriceIncGstCents: unitPrice,
         lineTotalIncGstCents: lineTotalCents(qty, unitPrice),
