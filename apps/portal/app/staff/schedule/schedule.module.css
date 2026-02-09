@@ -84,6 +84,28 @@
   box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
 }
 
+.buttonDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  background: rgba(185, 28, 28, 0.08);
+  color: rgba(185, 28, 28, 0.9);
+}
+
+.buttonDanger:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18);
+}
 .buttonSecondary:disabled {
   opacity: 0.65;
   cursor: not-allowed;
@@ -572,7 +594,7 @@
 
 .siteVisitsCalendarHeader {
   display: grid;
-  grid-template-columns: 64px repeat(7, minmax(260px, 1fr));
+  grid-template-columns: 33.6px repeat(7, minmax(136.5px, 1fr));
   border-bottom: 1px solid rgba(15, 15, 16, 0.08);
   background: rgba(255, 255, 255, 0.95);
   position: sticky;
@@ -633,7 +655,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 64px repeat(7, minmax(260px, 1fr));
+  grid-template-columns: 33.6px repeat(7, minmax(136.5px, 1fr));
   overflow: visible;
 }
 
@@ -691,19 +713,31 @@
   padding: 0;
   margin: 0;
   appearance: none;
-  border: none;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.06);
-  background: #fff;
+  border: 0;
+  background: transparent;
   cursor: pointer;
+  border-radius: 6px;
+  position: relative;
+  z-index: 1;
+  box-shadow: inset 0 -1px 0 rgba(15, 15, 16, 0.06);
 }
 
-.siteVisitSlot:focus-visible {
+.siteVisitSlot:not(.siteVisitSlotOffHours):hover {
+  background: rgba(129, 63, 57, 0.06);
+  box-shadow: inset 0 -1px 0 rgba(15, 15, 16, 0.06), inset 0 0 0 1px rgba(129, 63, 57, 0.18);
+}
+
+.siteVisitSlot:not(.siteVisitSlotOffHours):focus-visible {
   outline: none;
-  box-shadow: inset 0 0 0 2px rgba(129, 63, 57, 0.35);
+  box-shadow:
+    inset 0 -1px 0 rgba(15, 15, 16, 0.06),
+    inset 0 0 0 1px rgba(129, 63, 57, 0.28),
+    0 0 0 3px rgba(129, 63, 57, 0.12);
 }
 
 .siteVisitSlotOffHours {
-  background: rgba(15, 15, 16, 0.03);
+  cursor: default;
+  opacity: 0.35;
 }
 
 .siteVisitsLaneEvents {
@@ -712,6 +746,7 @@
   left: 0;
   right: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .siteVisitEvent {
@@ -720,16 +755,23 @@
   height: 100%;
   border-radius: 10px;
   border: 1px solid rgba(15, 15, 16, 0.12);
-  text-align: left;
-  padding: 8px 8px;
+  text-align: center;
+  padding: 0;
   cursor: pointer;
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .siteVisitEventTitle {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 10px;
   line-height: 1.1;
 }
 

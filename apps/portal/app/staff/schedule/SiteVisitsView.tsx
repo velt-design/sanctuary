@@ -11,6 +11,7 @@ import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
 import SiteVisitEventModal, { LINK_NONE, type SiteVisitEventFormValues } from '@/components/schedule/site-visits/SiteVisitEventModal';
+import SiteVisitHoverPopover from '@/components/schedule/site-visits/SiteVisitHoverPopover';
 import SlotSelectPopover from '@/components/schedule/site-visits/SlotSelectPopover';
 import {
   DEFAULT_DURATION_MINUTES,
@@ -98,6 +99,17 @@ function fmtDayLabel(ymd: string): string {
   return new Intl.DateTimeFormat('en-NZ', { weekday: 'short', day: '2-digit', month: 'short' }).format(dt);
 }
 
+function firstName(value: string | null | undefined): string {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+  const beforeDash = raw.split(/[-–—]/)[0].trim();
+  return beforeDash.split(/\s+/)[0] ?? '';
+}
+
+function siteVisitLabel(item: SiteVisitCalendarItem): string {
+  return firstName(item.contact?.name) || firstName(item.project?.name) || item.projectId || '\u2014';
+}
+
 function eventStatusClass(status: SiteVisitCalendarItem['status']): string {
   const s = String(status).toUpperCase();
   if (s === 'TENTATIVE') return styles.siteVisitEventTentative;
@@ -125,7 +137,17 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-function SiteVisitEvent({ item, onClick }: { item: SiteVisitCalendarItem; onClick: () => void }) {
+function SiteVisitEvent({
+  item,
+  onClick,
+  onHover,
+  onUnhover,
+}: {
+  item: SiteVisitCalendarItem;
+  onClick: () => void;
+  onHover?: (item: SiteVisitCalendarItem, rect: DOMRect) => void;
+  onUnhover?: () => void;
+}) {
   return (
     <button
       type="button"
@@ -134,9 +156,12 @@ function SiteVisitEvent({ item, onClick }: { item: SiteVisitCalendarItem; onClic
         e.stopPropagation();
         onClick();
       }}
+      onMouseEnter={(e) => onHover?.(item, e.currentTarget.getBoundingClientRect())}
+      onMouseLeave={() => onUnhover?.()}
+      onFocus={(e) => onHover?.(item, e.currentTarget.getBoundingClientRect())}
+      onBlur={() => onUnhover?.()}
     >
-      <div className={styles.siteVisitEventTitle}>{(item.project.name || '').trim() || item.projectId || 'Untitled'}</div>
-      <div className={styles.siteVisitEventSub}>{item.project.siteAddress || item.project.region || '—'}</div>
+      <div className={styles.siteVisitEventTitle}>{siteVisitLabel(item)}</div>
     </button>
   );
 }
@@ -238,6 +263,7 @@ export default function SiteVisitsView() {
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' });
   const [assigning, setAssigning] = useState<{ item: SiteVisitCalendarItem; salespersonId: string } | null>(null);
   const [slotPopover, setSlotPopover] = useState<SlotPopoverState | null>(null);
+  const [hoveredEvent, setHoveredEvent] = useState<{ item: SiteVisitCalendarItem; anchorRect: DOMRect } | null>(null);
   const [localEvents, setLocalEvents] = useState<SiteVisitCalendarItem[]>([]);
 
   const calendarScrollRef = useRef<HTMLDivElement | null>(null);
@@ -321,6 +347,7 @@ export default function SiteVisitsView() {
 
   useEffect(() => {
     setSlotPopover(null);
+    setHoveredEvent(null);
   }, [viewWeek, salesOwnerId]);
 
   const data = snapshot ?? cachedSnapshot;
@@ -452,11 +479,13 @@ export default function SiteVisitsView() {
   };
 
   const openEditModal = (item: SiteVisitCalendarItem, preset?: SiteVisitFormPreset) => {
+    setHoveredEvent(null);
     setSlotPopover(null);
     setModal({ kind: 'edit', item, preset });
   };
 
   const openCreateModal = (params?: { preset?: SiteVisitFormPreset; initialLinkValue?: string; focusLinked?: boolean }) => {
+    setHoveredEvent(null);
     setSlotPopover(null);
     setModal({ kind: 'create', preset: params?.preset, initialLinkValue: params?.initialLinkValue, focusLinked: params?.focusLinked });
   };
@@ -464,6 +493,7 @@ export default function SiteVisitsView() {
   const closeModal = () => setModal({ kind: 'closed' });
 
   const openSlotPopover = (params: { day: string; laneId: string; slotIdx: number; rect: DOMRect }) => {
+    setHoveredEvent(null);
     setSlotPopover({ day: params.day, laneId: params.laneId, slotIdx: params.slotIdx, anchorRect: params.rect });
   };
 
@@ -623,9 +653,9 @@ export default function SiteVisitsView() {
             end: endIso,
             salespersonId,
             tentative: true,
-          notes: values.notes.trim(),
-        }),
-      });
+            notes: values.notes.trim(),
+          }),
+        });
 
         const now = new Date().toISOString();
         const returnedId = typeof res?.siteVisitEventId === 'string' && res.siteVisitEventId.trim() ? res.siteVisitEventId.trim() : null;
@@ -715,6 +745,46 @@ export default function SiteVisitsView() {
         err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
       setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
       toast.error(msg);
+    }
+  };
+
+  const unscheduleSiteVisit = async (item: SiteVisitCalendarItem) => {
+    try {
+      setActionError(null);
+
+      await apiJson(`/api/staff/v1/projects/${encodeURIComponent(item.projectId)}/action/site-visit/unschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ siteVisitEventId: item.id }),
+      });
+
+      const base = snapshot ?? cachedSnapshot;
+      if (base) {
+        const now = new Date().toISOString();
+        const moved: SiteVisitCalendarItem = {
+          ...item,
+          status: 'UNSCHEDULED',
+          scheduledStart: null,
+          scheduledEnd: null,
+          salespersonId: null,
+          updatedAt: now,
+        };
+
+        setAndCacheSnapshot({
+          ...base,
+          events: (base.events ?? []).filter((e) => e.id !== item.id),
+          unscheduled: [...(base.unscheduled ?? []).filter((u) => u.id !== item.id), moved],
+        });
+      }
+
+      toast.success('Unscheduled.');
+      await fetchFresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to unschedule site visit.';
+      const extra =
+        err instanceof ApiError && err.body && typeof err.body === 'object' && 'error' in (err.body as any) ? String((err.body as any).error) : '';
+      setActionError(extra && extra !== msg ? `${msg}\n${extra}` : msg);
+      toast.error(msg);
+      throw err;
     }
   };
 
@@ -886,7 +956,14 @@ export default function SiteVisitsView() {
                 </pre>
               </div>
             ) : null}
-            <div className={styles.siteVisitsCalendarScroll} ref={calendarScrollRef} onScroll={() => setSlotPopover(null)}>
+            <div
+              className={styles.siteVisitsCalendarScroll}
+              ref={calendarScrollRef}
+              onScroll={() => {
+                setSlotPopover(null);
+                setHoveredEvent(null);
+              }}
+            >
               <div className={styles.siteVisitsCalendarHeader}>
                 <div className={styles.siteVisitsTimeHeader} />
                 {days.map((day) => (
@@ -933,6 +1010,7 @@ export default function SiteVisitsView() {
                                   openSlotPopover({ day, laneId, slotIdx, rect: e.currentTarget.getBoundingClientRect() });
                                 }}
                                 aria-label={`Book ${day} ${timeLabel}`}
+                                title={`${fmtDayLabel(day)} ${timeLabel}`}
                               />
                             );
                           })}
@@ -957,9 +1035,12 @@ export default function SiteVisitsView() {
                                   <SiteVisitEvent
                                     item={item}
                                     onClick={() => {
+                                      setHoveredEvent(null);
                                       openEditModal(item);
                                       highlight(item.id);
                                     }}
+                                    onHover={(it, rect) => setHoveredEvent({ item: it, anchorRect: rect })}
+                                    onUnhover={() => setHoveredEvent(null)}
                                   />
                                 </div>
                               );
@@ -994,6 +1075,10 @@ export default function SiteVisitsView() {
           />
         ) : null}
 
+        {hoveredEvent ? (
+          <SiteVisitHoverPopover open anchorRect={hoveredEvent.anchorRect} item={hoveredEvent.item} salesPeople={salesPeople} />
+        ) : null}
+
       <SiteVisitEventModal
         open={modal.kind !== 'closed'}
         mode={modal.kind === 'edit' ? 'edit' : 'create'}
@@ -1006,6 +1091,11 @@ export default function SiteVisitsView() {
         focusLinked={modal.kind === 'create' ? modal.focusLinked : undefined}
         onClose={closeModal}
         onSave={handleModalSave}
+        onUnschedule={
+          modal.kind === 'edit' && modal.item && !isLocalItem(modal.item) && modal.item.scheduledStart
+            ? () => unscheduleSiteVisit(modal.item)
+            : undefined
+        }
       />
 
       {assigning ? (

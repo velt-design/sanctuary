@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { EstimateDetail, EstimateMeta, EstimateStatus, EstimateSummary } from '@/lib/estimates/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
+import { createQuoteFromEstimate, listQuoteVersions } from '@/lib/quotes/quotesRepo';
+import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './EstimatesTab.module.css';
@@ -20,13 +22,6 @@ function formatMoney(value: number | null | undefined): string | null {
 function formatPercent(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return `${value.toFixed(1)}%`;
-}
-
-function formatDate(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleString();
 }
 
 function formatDateShort(value: string | null | undefined): string | null {
@@ -413,14 +408,31 @@ type FocusGroup = {
   total?: number | null;
 };
 
-type ApprovalStepKey = 'draft' | 'in_review' | 'decision';
+function quoteStatusLabel(status: QuoteStatus): string {
+  switch (status) {
+    case 'SENT':
+      return 'SENT';
+    case 'ACCEPTED':
+      return 'ACCEPTED';
+    case 'DECLINED':
+      return 'DECLINED';
+    default:
+      return 'DRAFT';
+  }
+}
 
-type ApprovalStep = {
-  key: ApprovalStepKey;
-  label: string;
-  timestamp?: string | null;
-  by?: string | null;
-};
+function quoteStatusClass(status: QuoteStatus): string {
+  switch (status) {
+    case 'SENT':
+      return styles.quoteStatusSent;
+    case 'ACCEPTED':
+      return styles.quoteStatusAccepted;
+    case 'DECLINED':
+      return styles.quoteStatusDeclined;
+    default:
+      return styles.quoteStatusDraft;
+  }
+}
 
 function buildFocusGroups(categories: BreakdownCategory[]): FocusGroup[] {
   if (!categories.length) return [];
@@ -501,14 +513,28 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const [notesDraft, setNotesDraft] = useState('');
   const [notesDirty, setNotesDirty] = useState(false);
   const [notesSavedAt, setNotesSavedAt] = useState<string | null>(null);
-  const [approvalComment, setApprovalComment] = useState('');
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [focusCategory, setFocusCategory] = useState('');
+  const [quoteVersions, setQuoteVersions] = useState<QuoteVersion[]>([]);
+  const [quotesLoading, setQuotesLoading] = useState(false);
+  const [quotesError, setQuotesError] = useState<string | null>(null);
+  const [quoteBusy, setQuoteBusy] = useState(false);
 
   const urlEstimateId = useMemo(() => {
     const raw = searchParams?.get('estimateId') ?? '';
     return raw.trim();
   }, [searchParams]);
+
+  const updateParams = useCallback(
+    (next: { tab?: string; quoteId?: string | null }) => {
+      const qs = new URLSearchParams(searchParams.toString());
+      if (next.tab) qs.set('tab', next.tab);
+      if (next.quoteId === null) qs.delete('quoteId');
+      else if (next.quoteId) qs.set('quoteId', next.quoteId);
+      router.replace(`?${qs.toString()}`);
+    },
+    [router, searchParams],
+  );
 
   const selectedMeta = useMemo(
     () => (selectedId ? estimates.find((e) => e.id === selectedId) ?? null : null),
@@ -536,6 +562,20 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     }
   }, [projectId, urlEstimateId]);
 
+  const refreshQuotes = useCallback(async () => {
+    setQuotesLoading(true);
+    setQuotesError(null);
+    try {
+      const list = await listQuoteVersions(projectId);
+      setQuoteVersions(Array.isArray(list) ? list : []);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to load quotes';
+      setQuotesError(msg);
+    } finally {
+      setQuotesLoading(false);
+    }
+  }, [projectId]);
+
   const loadDetail = useCallback(
     async (id: string) => {
       if (!id) return;
@@ -558,7 +598,8 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
 
   useEffect(() => {
     refreshList();
-  }, [refreshList]);
+    refreshQuotes();
+  }, [refreshList, refreshQuotes]);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -571,7 +612,6 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     setNotesDraft(selectedDetail.internalNotes ?? '');
     setNotesDirty(false);
     setNotesSavedAt(null);
-    setApprovalComment('');
     setWarningsOpen(isFocus);
   }, [isFocus, selectedDetail?.id]);
 
@@ -697,60 +737,25 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     [assumptions, exclusions, warnings],
   );
 
-  const decisionLabel =
-    selectedMeta?.status === 'approved' ? 'Approved' : selectedMeta?.status === 'rejected' ? 'Rejected' : 'Decision';
-
-  const approvalSteps = useMemo<ApprovalStep[]>(() => {
-    if (!selectedMeta) return [];
-    return [
-      {
-        key: 'draft',
-        label: 'Draft',
-        timestamp: selectedMeta.createdAt,
-        by: selectedMeta.createdBy ?? null,
-      },
-      {
-        key: 'in_review',
-        label: 'In review',
-        timestamp: selectedDetail?.approvalRequestedAt ?? null,
-        by: selectedDetail?.approvalRequestedBy ?? null,
-      },
-      {
-        key: 'decision',
-        label: decisionLabel,
-        timestamp: selectedMeta.status === 'approved' ? selectedDetail?.approvedAt ?? null : selectedDetail?.rejectedAt ?? null,
-        by: selectedMeta.status === 'approved' ? selectedDetail?.approvedBy ?? null : selectedDetail?.rejectedBy ?? null,
-      },
-    ];
-  }, [
-    decisionLabel,
-    selectedDetail?.approvalRequestedAt,
-    selectedDetail?.approvalRequestedBy,
-    selectedDetail?.approvedAt,
-    selectedDetail?.approvedBy,
-    selectedDetail?.rejectedAt,
-    selectedDetail?.rejectedBy,
-    selectedMeta,
-  ]);
-
-  const currentApprovalKey = useMemo<ApprovalStepKey>(() => {
-    if (!selectedMeta) return 'draft';
-    if (selectedMeta.status === 'approved' || selectedMeta.status === 'rejected') return 'decision';
-    if (selectedMeta.status === 'in_review') return 'in_review';
-    return 'draft';
-  }, [selectedMeta]);
-
   const createdMeta = selectedMeta
     ? [formatDateShort(selectedMeta.createdAt), formatTime(selectedMeta.createdAt), selectedMeta.createdBy]
         .filter(Boolean)
         .join(' · ')
     : '';
 
-  const stepState = (key: ApprovalStepKey) => {
-    if (key === currentApprovalKey) return 'current';
-    const order: ApprovalStepKey[] = ['draft', 'in_review', 'decision'];
-    return order.indexOf(key) < order.indexOf(currentApprovalKey) ? 'complete' : 'pending';
-  };
+  const relatedQuotes = useMemo(() => {
+    if (!selectedMeta) return [];
+    return quoteVersions.filter((quote) => quote.sourceEstimateVersionId === selectedMeta.id);
+  }, [quoteVersions, selectedMeta]);
+
+  const relatedQuotesSorted = useMemo(() => {
+    return [...relatedQuotes].sort((a, b) => {
+      if (a.versionNumber !== b.versionNumber) return b.versionNumber - a.versionNumber;
+      return b.createdAt.localeCompare(a.createdAt);
+    });
+  }, [relatedQuotes]);
+
+  const relatedQuotesPreview = relatedQuotesSorted.slice(0, 3);
 
   const upsertEstimate = useCallback((detail: EstimateDetail, opts?: { prepend?: boolean }) => {
     setDetailsById((prev) => ({ ...prev, [detail.id]: detail }));
@@ -790,32 +795,29 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     }
   };
 
-  const handleStatusAction = async (action: 'request_approval' | 'approve' | 'reject') => {
-    if (!selectedId || actionBusy) return;
-    if (action === 'reject' && !approvalComment.trim()) {
-      toast.error('Please add a rejection comment before rejecting.');
-      return;
-    }
-    setActionBusy(true);
+  const handleCreateQuote = async () => {
+    if (!selectedMeta || quoteBusy) return;
+    setQuoteBusy(true);
     try {
-      const body: Record<string, unknown> = { action };
-      if (action === 'approve' || action === 'reject') body.comment = approvalComment.trim();
-      const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(selectedId)}`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify(body),
-        },
-      );
-      if (!res.estimate) throw new Error('Estimate not updated');
-      upsertEstimate(res.estimate);
-      if (action === 'approve' || action === 'reject') setApprovalComment('');
-      toast.success('Estimate status updated.');
+      const created = await createQuoteFromEstimate(projectId, selectedMeta.id);
+      await refreshQuotes();
+      updateParams({ tab: 'quotes', quoteId: created.id });
+      router.refresh();
+      toast.success('Draft quote created.');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to update status';
+      const msg = err instanceof Error ? err.message : 'Failed to create quote';
       toast.error(msg);
     } finally {
-      setActionBusy(false);
+      setQuoteBusy(false);
     }
+  };
+
+  const handleViewAllQuotes = () => {
+    updateParams({ tab: 'quotes', quoteId: null });
+  };
+
+  const handleOpenQuote = (quoteId: string) => {
+    updateParams({ tab: 'quotes', quoteId });
   };
 
   const handleSaveNotes = async () => {
@@ -867,7 +869,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
         <div className={styles.header}>
           <div>
             <h3 className={styles.title}>Estimates</h3>
-            <p className={styles.subtitle}>Versions, approvals, and estimate detail snapshots.</p>
+            <p className={styles.subtitle}>Versions and estimate detail snapshots.</p>
           </div>
           <div className={legacy.actions}>
             <Link className={legacy.button} href={calculatorHref}>
@@ -1068,93 +1070,43 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
               <section className={styles.card}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardHeaderGroup}>
-                    <h4 className={styles.cardTitle}>Approvals</h4>
-                    <span className={styles.cardSubTitle}>Internal status</span>
+                    <h4 className={styles.cardTitle}>Quote</h4>
+                    <span className={styles.cardSubTitle}>From this estimate</span>
                   </div>
                 </div>
-                <div className={styles.stepper}>
-                  {approvalSteps.map((step, idx) => {
-                    const state = stepState(step.key);
-                    const stepClass =
-                      state === 'current' ? styles.stepCurrent : state === 'complete' ? styles.stepComplete : styles.stepPending;
-                    const meta = [formatDate(step.timestamp ?? null), step.by].filter(Boolean).join(' · ');
-                    const fallback =
-                      step.key === 'decision' ? 'Not decided' : step.key === 'in_review' ? 'Waiting' : 'Not started';
-                    const metaText = meta || (state === 'pending' ? fallback : null);
-                    return (
-                      <div key={step.key} className={`${styles.step} ${stepClass}`}>
-                        <div className={styles.stepMarker}>{idx + 1}</div>
-                        <div className={styles.stepContent}>
-                          <div className={styles.stepTitle}>{step.label}</div>
-                          <div className={styles.stepMeta}>{renderValue(metaText)}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                {quotesLoading ? <p className={legacy.note}>Loading quotes…</p> : null}
+                {quotesError ? <p className={legacy.error}>{quotesError}</p> : null}
+
+                {relatedQuotesPreview.length ? (
+                  <div className={styles.quoteList}>
+                    {relatedQuotesPreview.map((quote) => (
+                      <button
+                        type="button"
+                        key={quote.id}
+                        className={styles.quoteRow}
+                        onClick={() => handleOpenQuote(quote.id)}
+                      >
+                        <div className={styles.quoteRowLabel}>{`${quote.quoteRef} • v${quote.versionNumber}`}</div>
+                        <span className={`${styles.quoteStatusPill} ${quoteStatusClass(quote.status)}`}>
+                          {quoteStatusLabel(quote.status)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.quoteEmpty}>Create a quote from this estimate.</p>
+                )}
+
+                <div className={styles.quoteActions}>
+                  {relatedQuotesPreview.length ? (
+                    <button type="button" className={legacy.buttonSecondary} onClick={handleViewAllQuotes}>
+                      View all quotes
+                    </button>
+                  ) : null}
+                  <button type="button" className={legacy.button} onClick={handleCreateQuote} disabled={quoteBusy}>
+                    {quoteBusy ? 'Creating…' : 'Create quote'}
+                  </button>
                 </div>
-
-                {selectedDetail?.approvalComment ? (
-                  <div className={styles.noteBlock}>
-                    <div className={styles.summaryLabel}>Approval comment</div>
-                    <p className={styles.metaValue}>{selectedDetail.approvalComment}</p>
-                  </div>
-                ) : null}
-
-                {selectedMeta.status === 'draft' ? (
-                  <div className={styles.cardActions}>
-                    <button
-                      type="button"
-                      className={legacy.button}
-                      onClick={() => handleStatusAction('request_approval')}
-                      disabled={actionBusy}
-                    >
-                      Request approval
-                    </button>
-                  </div>
-                ) : null}
-
-                {selectedMeta.status === 'in_review' ? (
-                  <div className={styles.cardActionsStack}>
-                    <textarea
-                      className={styles.textarea}
-                      value={approvalComment}
-                      onChange={(e) => setApprovalComment(e.target.value)}
-                      rows={3}
-                      placeholder="Approval comment (required for rejection)"
-                    />
-                    <div className={styles.cardActions}>
-                      <button
-                        type="button"
-                        className={legacy.button}
-                        onClick={() => handleStatusAction('approve')}
-                        disabled={actionBusy}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        className={legacy.buttonDanger}
-                        onClick={() => handleStatusAction('reject')}
-                        disabled={actionBusy || !approvalComment.trim()}
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-
-                {(selectedMeta.status === 'approved' || selectedMeta.status === 'rejected') ? (
-                  <div className={styles.cardActions}>
-                    <button
-                      type="button"
-                      className={legacy.button}
-                      onClick={handleDuplicate}
-                      disabled={actionBusy}
-                    >
-                      Duplicate to revise
-                    </button>
-                  </div>
-                ) : null}
               </section>
 
               <section className={styles.card}>

@@ -1,23 +1,12 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
-import { buildVersionLabelMap, mapEstimateDetail, normaliseEstimateStatus } from '@/lib/estimates/server';
+import { buildVersionLabelMap, mapEstimateDetail } from '@/lib/estimates/server';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
 type AnyRecord = Record<string, unknown>;
-
-type ActionKind = 'request_approval' | 'approve' | 'reject';
-
-function parseAction(value: unknown): ActionKind | null {
-  const raw = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (!raw) return null;
-  if (raw === 'request_approval' || raw === 'request-approval') return 'request_approval';
-  if (raw === 'approve') return 'approve';
-  if (raw === 'reject') return 'reject';
-  return null;
-}
 
 function parseNote(value: unknown): string | null {
   if (value == null) return null;
@@ -101,53 +90,17 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
   if (res.error) return jsonError(res.error.message ?? 'Failed to load estimate', 500);
   if (!res.data) return jsonError('Estimate not found', 404);
 
-  const currentStatus = normaliseEstimateStatus(res.data.status);
-  const action = parseAction(body.action);
-  const comment = parseNote(body.comment ?? body.approval_comment);
   const internalNotes = parseNote(body.internal_notes ?? body.internalNotes);
+  if (body.action) {
+    return jsonError('Estimate approvals are no longer supported.', 400);
+  }
 
   const now = new Date().toISOString();
-  const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
 
   const patch: Record<string, any> = {};
 
   if (internalNotes !== null) {
     patch.internal_notes = internalNotes || null;
-  }
-
-  if (action) {
-    if (action === 'request_approval') {
-      if (currentStatus !== 'draft') return jsonError('Approval can only be requested from draft.', 409);
-      patch.status = 'in_review';
-      patch.approval_requested_at = now;
-      patch.approval_requested_by = actor;
-      patch.approved_at = null;
-      patch.approved_by = null;
-      patch.rejected_at = null;
-      patch.rejected_by = null;
-    }
-
-    if (action === 'approve') {
-      if (currentStatus !== 'in_review') return jsonError('Approve requires in_review status.', 409);
-      patch.status = 'approved';
-      patch.approved_at = now;
-      patch.approved_by = actor;
-      patch.rejected_at = null;
-      patch.rejected_by = null;
-    }
-
-    if (action === 'reject') {
-      if (currentStatus !== 'in_review') return jsonError('Reject requires in_review status.', 409);
-      patch.status = 'rejected';
-      patch.rejected_at = now;
-      patch.rejected_by = actor;
-      patch.approved_at = null;
-      patch.approved_by = null;
-    }
-
-    if ((action === 'approve' || action === 'reject') && comment !== null) {
-      patch.approval_comment = comment || null;
-    }
   }
 
   if (!Object.keys(patch).length) {

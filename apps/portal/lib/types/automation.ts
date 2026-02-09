@@ -6,6 +6,7 @@ export type TaskType =
   | 'BOOK_SITE_VISIT'
   | 'ATTEND_SITE_VISIT'
   | 'FINALIZE_SEND_QUOTE'
+  | 'CREATE_INVOICE_XERO'
   | 'FOLLOWUP_CALL'
   | 'FOLLOWUP_EMAIL'
   | 'SCHEDULE_INSTALL_WINDOW'
@@ -90,4 +91,3 @@ export type AuditEvent = {
   payload: unknown;
   createdAt: string;
 };
-

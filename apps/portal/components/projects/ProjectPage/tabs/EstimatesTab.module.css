@@ -706,6 +706,94 @@
   margin-top: 10px;
 }
 
+.quoteList {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.quoteRow {
+  border: 1px solid rgba(15, 15, 16, 0.1);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quoteRow:hover {
+  border-color: rgba(15, 15, 16, 0.22);
+  box-shadow: 0 4px 10px rgba(15, 15, 16, 0.06);
+}
+
+.quoteRow:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+}
+
+.quoteRowLabel {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.quoteStatusPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  background: rgba(15, 15, 16, 0.03);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.quoteStatusDraft {
+  background: rgba(15, 15, 16, 0.03);
+  border-color: rgba(15, 15, 16, 0.14);
+  color: rgba(15, 15, 16, 0.75);
+}
+
+.quoteStatusSent {
+  background: rgba(2, 132, 199, 0.12);
+  border-color: rgba(2, 132, 199, 0.28);
+  color: rgba(7, 89, 133, 0.95);
+}
+
+.quoteStatusAccepted {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: rgba(22, 163, 74, 0.28);
+  color: rgba(12, 74, 22, 0.95);
+}
+
+.quoteStatusDeclined {
+  background: rgba(185, 28, 28, 0.12);
+  border-color: rgba(185, 28, 28, 0.28);
+  color: rgb(185, 28, 28);
+}
+
+.quoteEmpty {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: rgba(15, 15, 16, 0.72);
+}
+
+.quoteActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .stepper {
   display: grid;
   gap: 10px;
