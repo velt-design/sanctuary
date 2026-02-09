@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
 import type { SiteVisitCalendarItem, SiteVisitCalendarPerson } from '@/lib/types/siteVisits';
 import styles from '@/app/staff/schedule/schedule.module.css';
-import { DEFAULT_DURATION_MINUTES, MINUTES_STEP } from '@/components/schedule/site-visits/siteVisits.constants';
+import { DEFAULT_DURATION_MINUTES, MINUTES_STEP, WORK_END_HOUR, WORK_START_HOUR } from '@/components/schedule/site-visits/siteVisits.constants';
 
 const LINK_NONE = '__none__';
 
@@ -82,6 +82,7 @@ export default function SiteVisitEventModal({
   focusLinked,
   onClose,
   onSave,
+  onUnschedule,
 }: {
   open: boolean;
   mode: 'create' | 'edit';
@@ -94,6 +95,7 @@ export default function SiteVisitEventModal({
   focusLinked?: boolean;
   onClose: () => void;
   onSave: (values: SiteVisitEventFormValues) => Promise<void> | void;
+  onUnschedule?: () => Promise<void> | void;
 }) {
   const linkedSelectRef = useRef<HTMLSelectElement | null>(null);
   const [form, setForm] = useState<SiteVisitEventFormValues>({
@@ -111,13 +113,14 @@ export default function SiteVisitEventModal({
   const [saving, setSaving] = useState(false);
 
   const timeOptions = useMemo(() => {
-    const total = 24 * 60;
+    const minMins = WORK_START_HOUR * 60;
+    const maxMins = WORK_END_HOUR * 60;
     const opts: string[] = [];
-    for (let mins = 0; mins < total; mins += MINUTES_STEP) {
+    for (let mins = minMins; mins <= maxMins; mins += MINUTES_STEP) {
       opts.push(minutesToHm(mins));
     }
     return opts;
-  }, []);
+  }, [MINUTES_STEP, WORK_END_HOUR, WORK_START_HOUR]);
 
   const linkedLabel = useMemo(() => {
     if (!item) return '';
@@ -133,6 +136,7 @@ export default function SiteVisitEventModal({
   const isEditMode = mode === 'edit' && Boolean(item);
   const isLocalItem = Boolean(item?.id && item.id.startsWith('local:'));
   const isLinkedLocked = Boolean(isEditMode);
+  const canUnschedule = Boolean(onUnschedule && isEditMode && item && !isLocalItem && item.scheduledStart);
 
   useEffect(() => {
     if (!open) return;
@@ -204,8 +208,18 @@ export default function SiteVisitEventModal({
 
     const startMins = toMinutes(form.startTime);
     const endMins = toMinutes(form.endTime);
-    if (startMins != null && endMins != null && endMins <= startMins) {
-      next.endTime = 'End time must be after start time.';
+    const minMins = WORK_START_HOUR * 60;
+    const maxMins = WORK_END_HOUR * 60;
+    if (startMins != null && (startMins < minMins || startMins > maxMins)) {
+      next.startTime = `Start time must be between ${minutesToHm(minMins)} and ${minutesToHm(maxMins)}.`;
+    }
+    if (endMins != null && (endMins < minMins || endMins > maxMins)) {
+      next.endTime = `End time must be between ${minutesToHm(minMins)} and ${minutesToHm(maxMins)}.`;
+    }
+    if (startMins != null && endMins != null) {
+      if (endMins <= startMins) {
+        next.endTime = 'End time must be after start time.';
+      }
     }
 
     if (!isEditMode) {
@@ -243,6 +257,21 @@ export default function SiteVisitEventModal({
     }
   };
 
+  const handleUnschedule = async () => {
+    if (!onUnschedule || saving) return;
+    if (typeof window !== 'undefined') {
+      const ok = window.confirm('Unschedule this site visit? It will return to the Unscheduled list.');
+      if (!ok) return;
+    }
+    setSaving(true);
+    try {
+      await onUnschedule();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const heading = mode === 'edit' && item?.scheduledStart ? 'Site visit' : 'New site visit';
 
   return (
@@ -256,6 +285,11 @@ export default function SiteVisitEventModal({
     >
       <div className={styles.eventModalHeader}>
         <div className={styles.eventModalActions}>
+          {canUnschedule ? (
+            <button type="button" className={styles.buttonDanger} onClick={handleUnschedule} disabled={saving}>
+              Unschedule
+            </button>
+          ) : null}
           <button type="button" className={styles.buttonPrimary} onClick={handleSave} disabled={saving}>
             {saving ? 'Saving…' : 'Save'}
           </button>

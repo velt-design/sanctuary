@@ -33,7 +33,12 @@ export type ProjectActivityItem = {
     | 'email_sent'
     | 'file_uploaded'
     | 'quote_created'
-    | 'quote_sent';
+    | 'quote_sent'
+    | 'quote_resent'
+    | 'quote_revised'
+    | 'quote_accepted'
+    | 'quote_declined'
+    | 'quote_deleted';
   title: string;
   detail?: string;
 };

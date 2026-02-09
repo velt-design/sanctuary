@@ -6,6 +6,7 @@ import ActivityTab from './tabs/ActivityTab';
 import EmailsTab from './tabs/EmailsTab';
 import EstimatesTab from './tabs/EstimatesTab';
 import PlaceholderTab from './tabs/PlaceholderTab';
+import QuotesTab from './tabs/QuotesTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
@@ -107,9 +108,7 @@ export default function ProjectMainTabs({
         {activeTab === 'activity' ? <ActivityTab activity={snapshot.activity} /> : null}
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
         {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} mode={activeMode} /> : null}
-        {activeTab === 'quotes' ? (
-          <PlaceholderTab title="Quotes" description="Quote drafts, versions, and status updates will appear here." />
-        ) : null}
+        {activeTab === 'quotes' ? <QuotesTab projectId={snapshot.project.id} /> : null}
         {activeTab === 'files' ? (
           <PlaceholderTab title="Files" description="Upload and manage project files once storage is wired up." />
         ) : null}

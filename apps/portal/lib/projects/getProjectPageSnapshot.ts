@@ -124,6 +124,30 @@ function mapAuditToActivity(row: any): ProjectActivityItem | null {
     };
   }
 
+  if (typeRaw.startsWith('quote.')) {
+    const toList = Array.isArray(payload.to) ? payload.to : typeof payload.to === 'string' ? [payload.to] : [];
+    const toDetail = toList.length ? `To: ${toList.join(', ')}` : undefined;
+
+    switch (typeRaw) {
+      case 'quote.created':
+        return { id: String(row?.id ?? ''), at, type: 'quote_created', title: 'Quote created' };
+      case 'quote.sent':
+        return { id: String(row?.id ?? ''), at, type: 'quote_sent', title: 'Quote sent', detail: toDetail };
+      case 'quote.resent':
+        return { id: String(row?.id ?? ''), at, type: 'quote_resent', title: 'Quote resent', detail: toDetail };
+      case 'quote.revised':
+        return { id: String(row?.id ?? ''), at, type: 'quote_revised', title: 'Quote revised' };
+      case 'quote.accepted':
+        return { id: String(row?.id ?? ''), at, type: 'quote_accepted', title: 'Quote accepted' };
+      case 'quote.declined':
+        return { id: String(row?.id ?? ''), at, type: 'quote_declined', title: 'Quote declined' };
+      case 'quote.deleted':
+        return { id: String(row?.id ?? ''), at, type: 'quote_deleted', title: 'Quote deleted' };
+      default:
+        break;
+    }
+  }
+
   return {
     id: String(row?.id ?? ''),
     at,

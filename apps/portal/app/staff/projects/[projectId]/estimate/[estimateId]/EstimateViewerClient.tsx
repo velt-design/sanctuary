@@ -339,9 +339,6 @@ export default function EstimateViewerClient({
                 {
                   label: 'Create Quote',
                   onClick: () => {
-                    if (estimate.status !== 'approved') {
-                      toast.info('Creating a quote from a non-approved estimate.');
-                    }
                     setCreateQuoteOpen(true);
                   },
                   disabled: Boolean(busy),

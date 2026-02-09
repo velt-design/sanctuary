@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import styles from './Modal.module.css';
 
 export const MODAL_DEFAULTS = {
   closeOnBackdrop: true,
@@ -61,17 +62,11 @@ export default function Modal({
   const portalRoot = typeof document === 'undefined' ? null : document.body;
 
   const overlayClasses = useMemo(() => {
-    return (
-      overlayClassName ??
-      'fixed inset-0 z-[5000] grid place-items-center bg-black/40 backdrop-blur-[2px] p-4'
-    );
+    return overlayClassName ?? styles.overlay;
   }, [overlayClassName]);
 
   const panelClasses = useMemo(() => {
-    return (
-      panelClassName ??
-      'w-full overflow-auto rounded-2xl border border-black/15 bg-white shadow-[0_22px_60px_rgba(0,0,0,0.28)]'
-    );
+    return panelClassName ?? styles.panel;
   }, [panelClassName]);
 
   useEffect(() => {
@@ -138,7 +133,7 @@ export default function Modal({
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        style={{ maxWidth: maxWidthPx, maxHeight: 'calc(100vh - 2rem)' }}
+        style={{ maxWidth: maxWidthPx }}
       >
         {children}
       </div>
