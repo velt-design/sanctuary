@@ -18,18 +18,18 @@ function parseMode(value: string | string[] | undefined): string {
   return raw === 'focus' ? 'focus' : 'general';
 }
 
+type SearchParams = { [key: string]: string | string[] | undefined };
+type PageParams = { projectId: string };
+
 export default async function ProjectDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ projectId: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined } | Promise<{ [key: string]: string | string[] | undefined }>;
+  params: PageParams | Promise<PageParams>;
+  searchParams?: SearchParams | Promise<SearchParams>;
 }) {
   const { projectId } = await params;
-  const resolvedSearchParams =
-    searchParams && typeof (searchParams as any)?.then === 'function'
-      ? await (searchParams as Promise<{ [key: string]: string | string[] | undefined }>)
-      : searchParams;
+  const resolvedSearchParams = await searchParams;
   const tab = parseTab(resolvedSearchParams?.tab);
   const mode = parseMode(resolvedSearchParams?.mode);
 
