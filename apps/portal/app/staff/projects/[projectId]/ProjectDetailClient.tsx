@@ -30,6 +30,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { NEXT_ACTION_TYPE_ORDER, nextActionTypeLabel, PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import Modal from '@/components/ui/modal/Modal';
 import ConflictModal from '@/components/ui/ConflictModal';
+import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 import {
   createQuoteFromEstimate,
   deleteQuote,
@@ -76,7 +77,6 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [error, setError] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement | null>(null);
-  const statusConfirmCancelRef = useRef<HTMLButtonElement | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -1503,47 +1503,37 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
       ) : null}
 
       {statusConfirm ? (
-        <Modal
+        <PipelineModal
           open
-          ariaLabel="Change project status confirmation"
-          onClose={() => setStatusConfirm(null)}
-          overlayClassName={styles.modalOverlay}
-          panelClassName={styles.modal}
-          maxWidthPx={520}
-          initialFocusRef={statusConfirmCancelRef}
-        >
-          <div className={styles.modalHeader}>
-            <h2 className={styles.modalTitle}>Change status?</h2>
-            <button type="button" className={styles.modalClose} onClick={() => setStatusConfirm(null)}>
-              Close
-            </button>
-          </div>
-          <p className={styles.note}>
-            Change project status to <strong>{statusConfirm.label}</strong>?
-          </p>
-          <div className={styles.modalFooter}>
-            <button
-              ref={statusConfirmCancelRef}
-              type="button"
-              className={styles.buttonSecondary}
-              onClick={() => setStatusConfirm(null)}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.button}
-              disabled={Boolean(busy)}
-              onClick={() => {
-                const next = statusConfirm.next;
-                setStatusConfirm(null);
-                applyStatus(next);
-              }}
-            >
-              Confirm
-            </button>
-          </div>
-        </Modal>
+          onOpenChange={(open) => {
+            if (!open) setStatusConfirm(null);
+          }}
+          title="Move stage"
+          description={`Move this project from ${projectStatusLabel((project.status ?? 'NEW') as any)} to ${statusConfirm.label}?`}
+          actions={
+            <>
+              <button
+                type="button"
+                className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                disabled={Boolean(busy)}
+                onClick={() => {
+                  const next = statusConfirm.next;
+                  setStatusConfirm(null);
+                  applyStatus(next);
+                }}
+              >
+                Move to {statusConfirm.label}
+              </button>
+              <button
+                type="button"
+                className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                onClick={() => setStatusConfirm(null)}
+              >
+                Cancel
+              </button>
+            </>
+          }
+        />
       ) : null}
 
       {conflict ? (

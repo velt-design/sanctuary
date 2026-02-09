@@ -36,7 +36,7 @@ export default function ProjectPageShell({
       </section>
 
       <aside className={`${styles.sticky} ${styles.sidebarRight} ${isFocus ? styles.hidden : ''}`}>
-        <ProjectTasksSidebar tasks={snapshot.tasks} />
+        <ProjectTasksSidebar projectId={snapshot.project.id} tasks={snapshot.tasks} />
       </aside>
     </div>
   );

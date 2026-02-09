@@ -1,16 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { PROJECT_STATUS_ORDER, projectStatusLabel, type ProjectStatus } from '@/lib/types/project';
-import type { ProjectStage } from '@/lib/projects/types';
+import { PIPELINE_STAGES, type PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import legacy from '@/app/staff/projects/projects.module.css';
 
 type StepState = 'done' | 'current' | 'todo' | 'inactive';
 
-function stepState(current: ProjectStatus, step: ProjectStatus): StepState {
+const STAGE_KEYS = PIPELINE_STAGES.map((stage) => stage.key);
+
+function stepState(current: PipelineStageKey, step: PipelineStageKey): StepState {
   if (current === step) return 'current';
-  const curIdx = PROJECT_STATUS_ORDER.indexOf(current);
-  const stepIdx = PROJECT_STATUS_ORDER.indexOf(step);
+  const curIdx = STAGE_KEYS.indexOf(current);
+  const stepIdx = STAGE_KEYS.indexOf(step);
   if (curIdx === -1 || stepIdx === -1) return 'todo';
   return stepIdx < curIdx ? 'done' : 'todo';
 }
@@ -29,7 +30,7 @@ function classForState(state: StepState): string {
   }
 }
 
-export default function LegacyChevronPipeline({ stage }: { stage: ProjectStage }) {
+export default function LegacyChevronPipeline({ stage }: { stage: PipelineStageKey }) {
   const stripRef = useRef<HTMLDivElement | null>(null);
   const [fade, setFade] = useState({ left: false, right: false });
 
@@ -80,9 +81,9 @@ export default function LegacyChevronPipeline({ stage }: { stage: ProjectStage }
       aria-label="Project pipeline"
     >
       <ol className={legacy.pipeline} role="list">
-        {PROJECT_STATUS_ORDER.map((status, idx) => {
-          const label = projectStatusLabel(status);
-          const state = stepState(stage as ProjectStatus, status);
+        {PIPELINE_STAGES.map((stageDef, idx) => {
+          const label = stageDef.label;
+          const state = stepState(stage, stageDef.key);
           const isFirst = idx === 0;
           const classes = [legacy.pipelineButton, isFirst && legacy.pipelineButtonFirst, classForState(state)]
             .filter(Boolean)
@@ -90,7 +91,7 @@ export default function LegacyChevronPipeline({ stage }: { stage: ProjectStage }
 
           return (
             <li
-              key={status}
+              key={stageDef.key}
               className={legacy.pipelineStep}
               style={{
                 zIndex: state === 'current' ? 4 : state === 'done' ? 3 : state === 'todo' ? 2 : 1,

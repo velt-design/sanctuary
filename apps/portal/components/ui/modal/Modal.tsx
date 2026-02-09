@@ -63,7 +63,7 @@ export default function Modal({
   const overlayClasses = useMemo(() => {
     return (
       overlayClassName ??
-      'fixed inset-0 z-[5000] grid place-items-center bg-black/55 p-4'
+      'fixed inset-0 z-[5000] grid place-items-center bg-black/40 backdrop-blur-[2px] p-4'
     );
   }, [overlayClassName]);
 
@@ -146,4 +146,3 @@ export default function Modal({
     portalRoot,
   );
 }
-
