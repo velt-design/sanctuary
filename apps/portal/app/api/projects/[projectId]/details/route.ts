@@ -117,6 +117,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
     projectPatch.next_action_date = nextActionField.value;
   }
 
+  const archivedField = readDateField(projectBody, ['archivedAt', 'archived_at']);
+  if (archivedField.has) {
+    if (!archivedField.valid) return jsonError('Invalid archivedAt (expected ISO date)', 400);
+    projectPatch.archived_at = archivedField.value;
+  }
+
   const contactNameField = readStringField(contactBody, ['name', 'contactName', 'contact_name']);
   const contactEmailField = readStringField(contactBody, ['email', 'contactEmail', 'contact_email']);
   const contactPhoneField = readStringField(contactBody, ['phone', 'contactPhone', 'contact_phone']);

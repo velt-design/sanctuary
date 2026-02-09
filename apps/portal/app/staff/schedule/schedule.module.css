@@ -84,6 +84,34 @@
   box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
 }
 
+.buttonSecondary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.buttonPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  background: #813f39;
+  color: #fff;
+}
+
+.buttonPrimary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .issues {
   margin: 0;
   border: 1px solid rgba(185, 28, 28, 0.22);
@@ -198,6 +226,98 @@
   outline: none;
   border-color: var(--focus);
   box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+}
+
+.eventModalPanel {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  background: #fff;
+  box-shadow: 0 22px 60px rgba(15, 15, 16, 0.22);
+}
+
+.eventModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(15, 15, 16, 0.55);
+}
+
+.eventModalHeader {
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  display: grid;
+  gap: 10px;
+}
+
+.eventModalTitle {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.eventModalSubtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.6);
+}
+
+.eventModalActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.eventModalBody {
+  padding: 18px;
+  display: grid;
+  gap: 14px;
+  max-height: calc(80vh - 100px);
+  overflow: auto;
+}
+
+.eventModalSection {
+  display: grid;
+  gap: 6px;
+}
+
+.eventModalLabel {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.8);
+}
+
+.eventModalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.eventModalField {
+  display: grid;
+  gap: 6px;
+}
+
+.eventModalReadOnly {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  background: rgba(15, 15, 16, 0.03);
+  font-size: 13px;
+}
+
+.eventModalError {
+  font-size: 12px;
+  color: rgb(185, 28, 28);
 }
 
 .hint {

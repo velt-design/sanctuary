@@ -10,11 +10,13 @@ import { siteVisitsSnapshotSWRKey } from '@/lib/cache/siteVisitsCache';
 import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
-import SiteVisitModal, { type SiteVisitModalFormValues } from '@/components/schedule/site-visits/SiteVisitModal';
+import SiteVisitEventModal, { LINK_NONE, type SiteVisitEventFormValues } from '@/components/schedule/site-visits/SiteVisitEventModal';
 import SlotSelectPopover from '@/components/schedule/site-visits/SlotSelectPopover';
 import {
   DEFAULT_DURATION_MINUTES,
+  DAY_END_HOUR,
   DAY_MINUTES,
+  DAY_START_HOUR,
   HOUR_HEIGHT_PX,
   MINUTES_STEP,
   SLOT_HEIGHT_PX,
@@ -26,7 +28,8 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { ApiError } from '@/lib/repo/apiClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const HOURS = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, i) => i + DAY_START_HOUR);
+const DAY_START_MINUTES = DAY_START_HOUR * 60;
 
 function parseYmd(ymd: string): { y: number; m: number; d: number } | null {
   const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -72,7 +75,7 @@ function slotCount(): number {
 
 function slotStartIso(ymd: string, slotIdx: number): string {
   const base = toLocalDateFromYmd(ymd) ?? new Date();
-  const mins = clamp(slotIdx, 0, slotCount() - 1) * MINUTES_STEP;
+  const mins = DAY_START_MINUTES + clamp(slotIdx, 0, slotCount() - 1) * MINUTES_STEP;
   const dt = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0);
   dt.setMinutes(mins);
   return dt.toISOString();
@@ -114,7 +117,7 @@ function toLocalDayKey(iso: string | null): string | null {
 
 function minutesSinceStart(iso: string): number {
   const dt = new Date(iso);
-  const start = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), 0, 0, 0, 0);
+  const start = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate(), DAY_START_HOUR, 0, 0, 0);
   return Math.round((dt.getTime() - start.getTime()) / 60000);
 }
 
@@ -141,17 +144,13 @@ function SiteVisitEvent({ item, onClick }: { item: SiteVisitCalendarItem; onClic
 type SiteVisitFormPreset = {
   salespersonId?: string;
   date?: string;
-  time?: string;
-  durationMins?: number;
-  title?: string;
-  address?: string;
-  phone?: string;
-  notes?: string;
+  startTime?: string;
+  endTime?: string;
 };
 
 type ModalState =
   | { kind: 'closed' }
-  | { kind: 'create'; preset?: SiteVisitFormPreset }
+  | { kind: 'create'; preset?: SiteVisitFormPreset; initialLinkValue?: string; focusLinked?: boolean }
   | { kind: 'edit'; item: SiteVisitCalendarItem; preset?: SiteVisitFormPreset };
 
 type SlotPopoverState = {
@@ -178,6 +177,16 @@ function hmFromMinutes(totalMinutes: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+function addMinutesToHm(hm: string, minutes: number): string {
+  const match = hm.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return hm;
+  const h = Number(match[1]);
+  const m = Number(match[2]);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hm;
+  const total = ((h * 60 + m + minutes) % 1440 + 1440) % 1440;
+  return hmFromMinutes(total);
 }
 
 function isWorkingHour(hour: number): boolean {
@@ -207,7 +216,8 @@ export default function SiteVisitsView() {
     if (!el) return;
     didInitScroll.current = true;
     requestAnimationFrame(() => {
-      el.scrollTop = START_SCROLL_HOUR * HOUR_HEIGHT_PX;
+      const offsetHours = Math.max(0, START_SCROLL_HOUR - DAY_START_HOUR);
+      el.scrollTop = offsetHours * HOUR_HEIGHT_PX;
     });
   }, [mounted]);
 
@@ -239,17 +249,18 @@ export default function SiteVisitsView() {
 
   const slotPreset = useMemo(() => {
     if (!slotPopover) return null;
+    const startTime = hmFromMinutes(DAY_START_MINUTES + slotPopover.slotIdx * MINUTES_STEP);
     return {
       date: slotPopover.day,
-      time: hmFromMinutes(slotPopover.slotIdx * MINUTES_STEP),
+      startTime,
+      endTime: addMinutesToHm(startTime, DEFAULT_DURATION_MINUTES),
       salespersonId: slotPopover.laneId,
-      durationMins: DEFAULT_DURATION_MINUTES,
     } as SiteVisitFormPreset;
   }, [slotPopover]);
 
   const slotLabel = useMemo(() => {
     if (!slotPopover || !slotPreset) return '';
-    return `${fmtDayLabel(slotPopover.day)} ${slotPreset.time}`;
+    return `${fmtDayLabel(slotPopover.day)} ${slotPreset.startTime}`;
   }, [slotPopover, slotPreset]);
 
   // Sales lanes are authoritative from config (Steve/Bruce), not from cached snapshots.
@@ -445,9 +456,9 @@ export default function SiteVisitsView() {
     setModal({ kind: 'edit', item, preset });
   };
 
-  const openCreateModal = (preset?: SiteVisitFormPreset) => {
+  const openCreateModal = (params?: { preset?: SiteVisitFormPreset; initialLinkValue?: string; focusLinked?: boolean }) => {
     setSlotPopover(null);
-    setModal({ kind: 'create', preset });
+    setModal({ kind: 'create', preset: params?.preset, initialLinkValue: params?.initialLinkValue, focusLinked: params?.focusLinked });
   };
 
   const closeModal = () => setModal({ kind: 'closed' });
@@ -456,7 +467,7 @@ export default function SiteVisitsView() {
     setSlotPopover({ day: params.day, laneId: params.laneId, slotIdx: params.slotIdx, anchorRect: params.rect });
   };
 
-  const handleModalSave = async (values: SiteVisitModalFormValues) => {
+  const handleModalSave = async (values: SiteVisitEventFormValues) => {
     try {
       setActionError(null);
       const salespersonId = values.salespersonId.trim();
@@ -469,23 +480,77 @@ export default function SiteVisitsView() {
         return;
       }
 
-      const startIso = isoFromLocalInputs(values.date, values.time);
+      const startIso = isoFromLocalInputs(values.date, values.startTime);
       if (!startIso) {
         toast.error('Date and start time are required.');
         return;
       }
 
-      const durationMins = Number(values.durationMins) || DEFAULT_DURATION_MINUTES;
-      const endIso = addMinutesIso(startIso, durationMins);
+      const endIso = isoFromLocalInputs(values.date, values.endTime);
+      if (!endIso) {
+        toast.error('End time is required.');
+        return;
+      }
+      if (new Date(endIso).getTime() <= new Date(startIso).getTime()) {
+        toast.error('End time must be after start time.');
+        return;
+      }
 
       if (modal.kind === 'create') {
-        if (!values.title.trim()) {
-          toast.error('Title is required.');
+        if (values.linkMode === 'unscheduled') {
+          if (!values.linkedUnscheduledId) {
+            toast.error('Select an unscheduled visit.');
+            return;
+          }
+          const base = snapshot ?? cachedSnapshot;
+          if (!base) return;
+          const fromUnscheduled = (base.unscheduled ?? []).find((u) => u.id === values.linkedUnscheduledId) ?? null;
+          if (!fromUnscheduled) {
+            toast.error('Selected visit is no longer available.');
+            return;
+          }
+
+          const res = await apiJson<any>(`/api/staff/v1/projects/${encodeURIComponent(fromUnscheduled.projectId)}/action/site-visit/book`, {
+            method: 'POST',
+            body: JSON.stringify({
+              start: startIso,
+              end: endIso,
+              salespersonId,
+              tentative: true,
+              notes: values.notes.trim(),
+            }),
+          });
+
+          const now = new Date().toISOString();
+          const returnedId = typeof res?.siteVisitEventId === 'string' && res.siteVisitEventId.trim() ? res.siteVisitEventId.trim() : null;
+          const existingEvent = (base.events ?? []).find((e) => e.projectId === fromUnscheduled.projectId) ?? null;
+          const id = returnedId ?? fromUnscheduled.id ?? existingEvent?.id ?? fromUnscheduled.id;
+          const seed = fromUnscheduled ?? existingEvent ?? fromUnscheduled;
+
+          const booked: SiteVisitCalendarItem = {
+            ...seed,
+            id,
+            status: 'TENTATIVE',
+            scheduledStart: startIso,
+            scheduledEnd: endIso,
+            salespersonId,
+            notes: values.notes.trim() || null,
+            customerNotified: false,
+            lastNotifiedAt: seed.lastNotifiedAt ?? null,
+            cancelReason: null,
+            updatedAt: now,
+          };
+
+          applyOptimisticBooking({ base, fromUnscheduledId: fromUnscheduled.id, booked });
+          toast.success('Booked.');
+          closeModal();
+          await fetchFresh();
           return;
         }
+
         const id = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? `local:${crypto.randomUUID()}` : `local:${Date.now()}`;
         const now = new Date().toISOString();
-        const title = values.title.trim() || 'New site visit';
+        const title = values.address.trim() || 'Site visit (no project)';
         const localEvent: SiteVisitCalendarItem = {
           id,
           projectId: id,
@@ -533,7 +598,7 @@ export default function SiteVisitsView() {
           updatedAt: new Date().toISOString(),
           project: {
             ...item.project,
-            name: values.title.trim() || item.project.name,
+            name: item.project.name,
             siteAddress: values.address.trim() || item.project.siteAddress,
           },
           contact: {
@@ -558,9 +623,9 @@ export default function SiteVisitsView() {
             end: endIso,
             salespersonId,
             tentative: true,
-            notes: values.notes.trim(),
-          }),
-        });
+          notes: values.notes.trim(),
+        }),
+      });
 
         const now = new Date().toISOString();
         const returnedId = typeof res?.siteVisitEventId === 'string' && res.siteVisitEventId.trim() ? res.siteVisitEventId.trim() : null;
@@ -792,7 +857,13 @@ export default function SiteVisitsView() {
                 </div>
               ) : null}
               {unscheduledFiltered.length ? (
-                unscheduledFiltered.map((item) => <UnscheduledSiteVisitCard key={item.id} item={item} onBook={() => openEditModal(item)} />)
+                unscheduledFiltered.map((item) => (
+                  <UnscheduledSiteVisitCard
+                    key={item.id}
+                    item={item}
+                    onBook={() => openCreateModal({ initialLinkValue: item.id })}
+                  />
+                ))
               ) : (
                 <p className={styles.muted} style={{ margin: 0 }}>
                   No unscheduled site visits.
@@ -851,8 +922,8 @@ export default function SiteVisitsView() {
                       {laneIds.map((laneId) => (
                         <div key={`${day}:${laneId}`} className={styles.siteVisitsLaneColumn}>
                           {slotIndices.map((slotIdx) => {
-                            const slotHour = Math.floor((slotIdx * MINUTES_STEP) / 60);
-                            const timeLabel = hmFromMinutes(slotIdx * MINUTES_STEP);
+                            const slotHour = Math.floor((slotIdx * MINUTES_STEP) / 60) + DAY_START_HOUR;
+                            const timeLabel = hmFromMinutes(DAY_START_MINUTES + slotIdx * MINUTES_STEP);
                             return (
                               <button
                                 key={slotIdx}
@@ -905,31 +976,34 @@ export default function SiteVisitsView() {
         </div>
       </div>
 
-      {slotPopover ? (
-        <SlotSelectPopover
-          open
-          anchorRect={slotPopover.anchorRect}
-          unscheduled={unscheduledFiltered}
-          label={slotLabel}
-          onClose={() => setSlotPopover(null)}
-          onSelectUnscheduled={(item) => {
-            if (!slotPreset) return;
-            openEditModal(item, slotPreset);
-          }}
-          onCreateNew={() => {
-            if (!slotPreset) return;
-            openCreateModal(slotPreset);
-          }}
-        />
-      ) : null}
+        {slotPopover ? (
+          <SlotSelectPopover
+            open
+            anchorRect={slotPopover.anchorRect}
+            unscheduledCount={unscheduled.length}
+            label={slotLabel}
+            onClose={() => setSlotPopover(null)}
+            onBookUnscheduled={() => {
+              if (!slotPreset) return;
+              openCreateModal({ preset: slotPreset, focusLinked: true });
+            }}
+            onCreateNoProject={() => {
+              if (!slotPreset) return;
+              openCreateModal({ preset: slotPreset, initialLinkValue: LINK_NONE });
+            }}
+          />
+        ) : null}
 
-      <SiteVisitModal
+      <SiteVisitEventModal
         open={modal.kind !== 'closed'}
         mode={modal.kind === 'edit' ? 'edit' : 'create'}
         item={modal.kind === 'edit' ? modal.item : null}
+        unscheduled={unscheduled}
         preset={modal.kind === 'closed' ? undefined : modal.preset}
         salesPeople={salesPeople}
         defaultSalespersonId={defaultSalespersonId}
+        initialLinkValue={modal.kind === 'create' ? modal.initialLinkValue : undefined}
+        focusLinked={modal.kind === 'create' ? modal.focusLinked : undefined}
         onClose={closeModal}
         onSave={handleModalSave}
       />

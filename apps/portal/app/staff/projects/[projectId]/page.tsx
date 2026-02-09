@@ -23,11 +23,15 @@ export default async function ProjectDetailPage({
   searchParams,
 }: {
   params: Promise<{ projectId: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams?: { [key: string]: string | string[] | undefined } | Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const { projectId } = await params;
-  const tab = parseTab(searchParams?.tab);
-  const mode = parseMode(searchParams?.mode);
+  const resolvedSearchParams =
+    searchParams && typeof (searchParams as any)?.then === 'function'
+      ? await (searchParams as Promise<{ [key: string]: string | string[] | undefined }>)
+      : searchParams;
+  const tab = parseTab(resolvedSearchParams?.tab);
+  const mode = parseMode(resolvedSearchParams?.mode);
 
   const snapshot = await getProjectPageSnapshot(projectId);
   if (!snapshot) {
@@ -54,7 +58,7 @@ export default async function ProjectDetailPage({
   return (
     <main className={styles.page}>
       <ProjectHeader project={snapshot.project} />
-      <ProjectPipelineBar stage={snapshot.project.stage} />
+      <ProjectPipelineBar stage={snapshot.pipeline.stage} />
       <ProjectPageShell snapshot={snapshot} tab={tab} mode={mode} />
     </main>
   );

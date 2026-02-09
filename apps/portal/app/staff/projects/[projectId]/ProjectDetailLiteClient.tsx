@@ -8,7 +8,7 @@ import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { nextActionTypeLabel, type NextActionType, type ProjectStatus } from '@/lib/types/project';
+import { nextActionTypeLabel, projectStatusLabel, type NextActionType, type ProjectStatus } from '@/lib/types/project';
 import { addProjectActivity, deleteProject, getProject, setProjectFollowUpDate, setProjectStatus, updateProjectFields } from '@/lib/repo/projectsRepo';
 import { getContact } from '@/lib/repo/contactsRepo';
 import { listEstimates, updateEstimateStatus } from '@/lib/repo/estimatesRepo';
@@ -33,6 +33,7 @@ import { projectsSWRKey } from '@/lib/cache/projectsCache';
 import type { Project as ProjectType } from '@/lib/types/project';
 import { useCacheFirstResource } from '@/lib/ui/useCacheFirstResource';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 
 type Draft = {
   projectName: string;
@@ -75,6 +76,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
   const [optimisticStage, setOptimisticStage] = useState<ProjectStatus | null>(null);
   const [isStageSaving, setIsStageSaving] = useState(false);
   const [stageSaveError, setStageSaveError] = useState<string | null>(null);
+  const [stageConfirm, setStageConfirm] = useState<{ next: ProjectStatus; label: string } | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -294,20 +296,9 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
         <div className={styles.sectionBody}>
           <PipelineStepper
             currentStatus={displayStatus as any}
-            onRequestChange={(next) => {
+            onRequestChange={(next, label) => {
               if (busy || isStageSaving) return;
-              void runStageTransition({
-                key: 'setStatus',
-                toStage: next as any,
-                action: async () => {
-                  if (typeof window !== 'undefined') {
-                    const ok = window.confirm(`Set pipeline stage to ${next}?`);
-                    if (!ok) return;
-                  }
-                  const updated = await setProjectStatus(project.id, next as any);
-                  setProject(updated);
-                },
-              });
+              setStageConfirm({ next: next as any, label });
             }}
           />
 
@@ -784,10 +775,26 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                       )
                       .map((t) => {
                         const done = t.status === 'DONE';
+                        const taskTitle = t.title || t.type;
+                        const isBookSiteVisit = /book site visit/i.test(taskTitle);
+                        const siteVisitHref = (() => {
+                          const qs = new URLSearchParams();
+                          qs.set('view', 'site-visits');
+                          if (siteVisit?.id) qs.set('highlightSiteVisitId', siteVisit.id);
+                          return `/staff/schedule?${qs.toString()}`;
+                        })();
                         return (
                           <tr key={t.id}>
                             <td>
-                              <div style={{ fontWeight: 700 }}>{t.title || t.type}</div>
+                              <div style={{ fontWeight: 700 }}>
+                                {isBookSiteVisit ? (
+                                  <Link className={styles.link} href={siteVisitHref}>
+                                    {taskTitle}
+                                  </Link>
+                                ) : (
+                                  taskTitle
+                                )}
+                              </div>
                               <div className={styles.muted} style={{ fontSize: 12 }}>
                                 {t.type}
                               </div>
@@ -1155,6 +1162,47 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
         </div>
       </section>
       </div>
+
+      {stageConfirm ? (
+        <PipelineModal
+          open
+          onOpenChange={(open) => {
+            if (!open) setStageConfirm(null);
+          }}
+          title="Move stage"
+          description={`Move this project from ${projectStatusLabel(displayStatus)} to ${stageConfirm.label}?`}
+          actions={
+            <>
+              <button
+                type="button"
+                className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                disabled={Boolean(busy) || isStageSaving}
+                onClick={() => {
+                  const next = stageConfirm.next;
+                  setStageConfirm(null);
+                  void runStageTransition({
+                    key: 'setStatus',
+                    toStage: next as any,
+                    action: async () => {
+                      const updated = await setProjectStatus(project.id, next as any);
+                      setProject(updated);
+                    },
+                  });
+                }}
+              >
+                Move to {stageConfirm.label}
+              </button>
+              <button
+                type="button"
+                className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                onClick={() => setStageConfirm(null)}
+              >
+                Cancel
+              </button>
+            </>
+          }
+        />
+      ) : null}
     </main>
   );
 }

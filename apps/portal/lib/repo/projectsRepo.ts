@@ -85,6 +85,7 @@ function projectFromRow(row: any): Project {
   const siteAddress = typeof row?.site_address === 'string' ? row.site_address : '';
   const status = typeof row?.pipeline_stage === 'string' ? row.pipeline_stage : 'NEW';
   const followUpDate = typeof row?.follow_up_date === 'string' ? row.follow_up_date : null;
+  const isArchived = Boolean(row?.archived_at);
   const notes = typeof row?.notes === 'string' ? row.notes : '';
 
   return normaliseProjectShape({
@@ -99,6 +100,7 @@ function projectFromRow(row: any): Project {
     siteAddress: siteAddress || undefined,
     address: siteAddress || undefined,
     status: status as any,
+    isArchived,
     nextActionDate: followUpDate,
     followUpDate,
     notes,
@@ -176,7 +178,15 @@ async function updateWithUnknownColumnRetry(uuid: string, payloadIn: Record<stri
 
 export async function listProjects(): Promise<Project[]> {
   const supabase = getSupabaseBrowser();
-  const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+  let { data, error } = await supabase.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
+  if (error) {
+    const missing = missingColumnFromError(error);
+    if (missing === 'archived_at') {
+      const fallback = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+      data = fallback.data ?? [];
+      error = fallback.error;
+    }
+  }
   if (error) throw wrapError('projects', error);
   const projects = (Array.isArray(data) ? data : []).map(projectFromRow);
   return projects.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -185,11 +195,24 @@ export async function listProjects(): Promise<Project[]> {
 export async function listProjectsForContact(contactId: string): Promise<Project[]> {
   const supabase = getSupabaseBrowser();
   const contactUuid = uuidFromAppId(contactId, 'ct');
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('projects')
     .select('*')
     .eq('contact_id', contactUuid)
+    .is('archived_at', null)
     .order('created_at', { ascending: false });
+  if (error) {
+    const missing = missingColumnFromError(error);
+    if (missing === 'archived_at') {
+      const fallback = await supabase
+        .from('projects')
+        .select('*')
+        .eq('contact_id', contactUuid)
+        .order('created_at', { ascending: false });
+      data = fallback.data ?? [];
+      error = fallback.error;
+    }
+  }
   if (error) throw wrapError('projects', error);
   const projects = (Array.isArray(data) ? data : []).map(projectFromRow);
   return projects.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
