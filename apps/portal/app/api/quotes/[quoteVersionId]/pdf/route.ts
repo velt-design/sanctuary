@@ -16,7 +16,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ quoteVersionId
 
   try {
     const pdf = await downloadQuotePdf(id, actor);
-    const body = pdf.bytes.buffer.slice(pdf.bytes.byteOffset, pdf.bytes.byteOffset + pdf.bytes.byteLength);
+    const body = new Uint8Array(pdf.bytes);
     return new NextResponse(body, {
       status: 200,
       headers: {
