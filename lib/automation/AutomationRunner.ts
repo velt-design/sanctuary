@@ -386,6 +386,38 @@ async function upsertSiteVisitEvent(projectId: string, patch: Record<string, unk
   throw new Error('site_visit_events upsert failed after retries');
 }
 
+async function ensureUnscheduledSiteVisit(projectId: string): Promise<void> {
+  const selectRes = await supabaseServer
+    .from('site_visit_events')
+    .select('id,status,scheduled_start,scheduled_end')
+    .eq('project_id', projectId)
+    .maybeSingle();
+
+  if (selectRes.error) {
+    if (isMissingColumnError(selectRes.error)) return;
+    throw selectRes.error;
+  }
+
+  const row: any = selectRes.data;
+  if (!row) {
+    await upsertSiteVisitEvent(projectId, { status: 'UNSCHEDULED' });
+    return;
+  }
+
+  const status = String(row?.status ?? '').toUpperCase();
+  const scheduledStart = typeof row?.scheduled_start === 'string' ? row.scheduled_start : null;
+
+  if (scheduledStart && ['TENTATIVE', 'CONFIRMED', 'RESCHEDULED', 'COMPLETED'].includes(status)) {
+    return;
+  }
+
+  if (status === 'UNSCHEDULED') {
+    return;
+  }
+
+  await upsertSiteVisitEvent(projectId, { status: 'UNSCHEDULED', scheduled_start: null, scheduled_end: null });
+}
+
 async function upsertDesignTicket(projectId: string, patch: Record<string, unknown>): Promise<{ id: string } | null> {
   const res = await supabaseServer
     .from('design_package_tickets')
@@ -794,6 +826,11 @@ export class AutomationRunner {
     const quoteId = typeof payload.quoteId === 'string' ? payload.quoteId.trim() : '';
     const quoteUuidRaw = quoteId ? (quoteId.includes('_') ? quoteId.split('_').at(-1) ?? '' : quoteId) : '';
     const quoteUuid = quoteUuidRaw && isUuid(quoteUuidRaw) ? quoteUuidRaw : null;
+
+    if (toStage === 'SITE_VISIT') {
+      await ensureUnscheduledSiteVisit(projectId);
+      return;
+    }
 
     if (toStage === 'SENT') {
       const plan = await ensureFollowupPlanActive(projectId, quoteUuid);

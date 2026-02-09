@@ -3,18 +3,18 @@ import type { PipelineCounts } from '@/lib/dashboard/types';
 import styles from '@/app/staff/projects/projects.module.css';
 import dash from '../dashboard.module.css';
 import { statusHref } from '@/lib/dashboard/links';
-import { PIPELINE_STAGES, normalizePipelineStageId, toCanonicalStageCounts } from '@/lib/dashboard/pipelineStages';
+import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } from '@/lib/projects/pipelineDefinition';
 
 export default function PipelineCountsCard({ counts }: { counts: PipelineCounts }) {
   const normalized = toCanonicalStageCounts(counts);
 
   if (process.env.NODE_ENV !== 'production') {
-    const keys = PIPELINE_STAGES.map((s) => s.id);
+    const keys = PIPELINE_STAGES.map((s) => s.key);
     if (new Set(keys).size !== keys.length) {
       console.warn('PIPELINE_STAGES contains duplicates', keys);
     }
 
-    const unknown = Object.keys(counts ?? {}).filter((key) => !normalizePipelineStageId(key));
+    const unknown = Object.keys(counts ?? {}).filter((key) => !normalizePipelineStageKey(key));
     if (unknown.length) {
       console.warn('Unknown pipeline stage keys:', unknown);
     }
@@ -30,12 +30,12 @@ export default function PipelineCountsCard({ counts }: { counts: PipelineCounts 
         <div className={dash.pipelineStrip}>
           <div className={dash.pipelineGrid}>
             {PIPELINE_STAGES.map((stage) => {
-              const count = normalized[stage.id] ?? 0;
+              const count = normalized[stage.key] ?? 0;
               return (
                 <Link
-                  key={stage.id}
+                  key={stage.key}
                   className={`${dash.pipelineCell} ${count > 0 ? dash.pipelineCellActive : ''}`}
-                  href={statusHref(stage.id)}
+                  href={statusHref(stage.key)}
                 >
                   <span className={dash.pipelineLabel}>{stage.label}</span>
                   <span className={`${dash.pipelineCount} ${count === 0 ? dash.pipelineCountMuted : ''}`}>{count}</span>

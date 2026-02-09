@@ -35,12 +35,15 @@ create table if not exists public.projects (
   site_address text,
   pipeline_stage text not null default 'New',
   follow_up_date date,
+  archived_at timestamptz,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 alter table public.projects
   add column if not exists updated_at timestamptz not null default now();
+alter table public.projects
+  add column if not exists archived_at timestamptz;
 drop trigger if exists projects_set_updated_at on public.projects;
 create trigger projects_set_updated_at before update on public.projects
 for each row execute function public.set_updated_at();

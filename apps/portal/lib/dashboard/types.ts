@@ -1,15 +1,8 @@
+import type { ProjectStatus as CoreProjectStatus } from '@/lib/types/project';
+
 export type QueueMode = 'today' | 'next7' | 'alldue';
 
-export type ProjectStatus =
-  | 'NEW'
-  | 'CONTACTED'
-  | 'SITE_VISIT'
-  | 'QUOTING'
-  | 'SENT'
-  | 'DEPOSIT'
-  | 'SCHEDULED'
-  | 'COMPLETED'
-  | 'PAID';
+export type ProjectStatus = CoreProjectStatus;
 
 export type AttentionKey =
   | 'overdue'
