@@ -17,11 +17,15 @@ declare
   tomorrow_start timestamptz;
   next7_start timestamptz;
   has_next_action_type boolean;
+  has_archived_at boolean;
+  archived_filter text;
   follow_up_col text;
   actions_due_count int;
   overdue_count int;
   due_today_count int;
   oldest_overdue_days int;
+  new_leads_count int;
+  quotes_to_send_count int;
   kpis_json jsonb;
   attention_json jsonb;
   pipeline_json jsonb;
@@ -63,29 +67,43 @@ begin
   order by case when column_name = 'follow_up_date' then 1 else 2 end
   limit 1;
 
+  select exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'projects'
+      and column_name = 'archived_at'
+  ) into has_archived_at;
+
+  archived_filter := case when has_archived_at then ' and p.archived_at is null' else '' end;
+
   if follow_up_col is not null then
     execute format(
-      'select count(*) from projects p where p.%I is not null and p.%I <= $1',
+      'select count(*) from projects p where p.%I is not null and p.%I <= $1%s',
       follow_up_col,
-      follow_up_col
+      follow_up_col,
+      archived_filter
     ) into actions_due_count using today_date;
 
     execute format(
-      'select count(*) from projects p where p.%I is not null and p.%I < $1',
+      'select count(*) from projects p where p.%I is not null and p.%I < $1%s',
       follow_up_col,
-      follow_up_col
+      follow_up_col,
+      archived_filter
     ) into overdue_count using today_date;
 
     execute format(
-      'select count(*) from projects p where p.%I = $1',
-      follow_up_col
+      'select count(*) from projects p where p.%I = $1%s',
+      follow_up_col,
+      archived_filter
     ) into due_today_count using today_date;
 
     execute format(
-      'select ($1::date - min(p.%I))::int from projects p where p.%I is not null and p.%I < $1',
+      'select ($1::date - min(p.%I))::int from projects p where p.%I is not null and p.%I < $1%s',
       follow_up_col,
       follow_up_col,
-      follow_up_col
+      follow_up_col,
+      archived_filter
     ) into oldest_overdue_days using today_date;
   else
     actions_due_count := 0;
@@ -94,18 +112,20 @@ begin
     oldest_overdue_days := null;
   end if;
 
+  execute format(
+    'select count(*) from projects p where p.pipeline_stage = ''NEW''%s',
+    archived_filter
+  ) into new_leads_count;
+
+  execute format(
+    'select count(*) from projects p where p.pipeline_stage = ''QUOTING''%s',
+    archived_filter
+  ) into quotes_to_send_count;
+
   select jsonb_build_object(
     'actions_due', actions_due_count,
-    'new_leads', (
-      select count(*)
-      from projects p
-      where p.pipeline_stage = 'NEW'
-    ),
-    'quotes_to_send', (
-      select count(*)
-      from projects p
-      where p.pipeline_stage = 'QUOTING'
-    ),
+    'new_leads', new_leads_count,
+    'quotes_to_send', quotes_to_send_count,
     'installs_this_week', (
       select count(*)
       from schedule_items si
@@ -137,11 +157,7 @@ begin
       from site_visit_events sv
       where sv.status = 'UNSCHEDULED'
     ),
-    'quotes_to_send', (
-      select count(*)
-      from projects p
-      where p.pipeline_stage = 'QUOTING'
-    ),
+    'quotes_to_send', quotes_to_send_count,
     'email_failures', (
       select count(*)
       from email_outbox eo
@@ -150,13 +166,16 @@ begin
   )
   into attention_json;
 
-  select coalesce(jsonb_object_agg(stage, cnt), '{}'::jsonb)
-  into pipeline_json
-  from (
-    select p.pipeline_stage as stage, count(*)::int as cnt
-    from projects p
-    group by p.pipeline_stage
-  ) s;
+  execute format(
+    'select coalesce(jsonb_object_agg(stage, cnt), ''{}''::jsonb)
+     from (
+       select p.pipeline_stage as stage, count(*)::int as cnt
+       from projects p
+       where 1=1%s
+       group by p.pipeline_stage
+     ) s',
+    archived_filter
+  ) into pipeline_json;
 
   if follow_up_col is null then
     work_queue_json := '[]'::jsonb;
@@ -174,12 +193,14 @@ begin
         from projects p
         left join contacts c on c.id = p.contact_id
         where p.%I is not null
+          %s
           and ($1::date is null or p.%I <= $1)
         order by p.%I asc
         limit 15
       ) x',
       follow_up_col,
       follow_up_col,
+      archived_filter,
       follow_up_col,
       follow_up_col
     )
@@ -199,12 +220,14 @@ begin
         from projects p
         left join contacts c on c.id = p.contact_id
         where p.%I is not null
+          %s
           and ($1::date is null or p.%I <= $1)
         order by p.%I asc
         limit 15
       ) x',
       follow_up_col,
       follow_up_col,
+      archived_filter,
       follow_up_col,
       follow_up_col
     )
@@ -212,23 +235,44 @@ begin
     using queue_to;
   end if;
 
-  select coalesce(jsonb_agg(row_to_json(x)::jsonb), '[]'::jsonb)
-  into schedule_starting_json
-  from (
-    select
-      si.start_date,
-      si.duration_days,
-      sc.name as crew_name,
-      p.id as project_id,
-      p.name as project_name
-    from schedule_items si
-    join schedule_crews sc on sc.id = si.crew_id
-    join projects p on p.id = si.project_id
-    where si.start_date >= today_date
-      and si.start_date < next7_date
-    order by si.start_date asc
-    limit 10
-  ) x;
+  if has_archived_at then
+    select coalesce(jsonb_agg(row_to_json(x)::jsonb), '[]'::jsonb)
+    into schedule_starting_json
+    from (
+      select
+        si.start_date,
+        si.duration_days,
+        sc.name as crew_name,
+        p.id as project_id,
+        p.name as project_name
+      from schedule_items si
+      join schedule_crews sc on sc.id = si.crew_id
+      join projects p on p.id = si.project_id
+      where si.start_date >= today_date
+        and si.start_date < next7_date
+        and p.archived_at is null
+      order by si.start_date asc
+      limit 10
+    ) x;
+  else
+    select coalesce(jsonb_agg(row_to_json(x)::jsonb), '[]'::jsonb)
+    into schedule_starting_json
+    from (
+      select
+        si.start_date,
+        si.duration_days,
+        sc.name as crew_name,
+        p.id as project_id,
+        p.name as project_name
+      from schedule_items si
+      join schedule_crews sc on sc.id = si.crew_id
+      join projects p on p.id = si.project_id
+      where si.start_date >= today_date
+        and si.start_date < next7_date
+      order by si.start_date asc
+      limit 10
+    ) x;
+  end if;
 
   select coalesce(jsonb_agg(row_to_json(x)::jsonb), '[]'::jsonb)
   into crew_next_json
@@ -242,58 +286,115 @@ begin
     order by sc.name asc
   ) x;
 
-  select jsonb_build_object(
-    'unscheduled_count', (
-      select count(*)
-      from site_visit_events sv
-      where sv.status = 'UNSCHEDULED'
-    ),
-    'today', coalesce((
-      select jsonb_agg(row_to_json(x)::jsonb)
-      from (
-        select
-          sv.id,
-          sv.scheduled_start as starts_at,
-          sv.assigned_sales_owner_id as assigned_to,
-          p.id as project_id,
-          p.name as project_name,
-          p.site_address as location_label,
-          c.name as client_name
+  if has_archived_at then
+    select jsonb_build_object(
+      'unscheduled_count', (
+        select count(*)
         from site_visit_events sv
-        join projects p on p.id = sv.project_id
-        left join contacts c on c.id = p.contact_id
-        where sv.status in ('TENTATIVE','CONFIRMED','COMPLETED','RESCHEDULED')
-          and sv.scheduled_start is not null
-          and sv.scheduled_start >= today_start
-          and sv.scheduled_start < tomorrow_start
-        order by sv.scheduled_start asc
-        limit 15
-      ) x
-    ), '[]'::jsonb),
-    'next7', coalesce((
-      select jsonb_agg(row_to_json(x)::jsonb)
-      from (
-        select
-          sv.id,
-          sv.scheduled_start as starts_at,
-          sv.assigned_sales_owner_id as assigned_to,
-          p.id as project_id,
-          p.name as project_name,
-          p.site_address as location_label,
-          c.name as client_name
+        where sv.status = 'UNSCHEDULED'
+      ),
+      'today', coalesce((
+        select jsonb_agg(row_to_json(x)::jsonb)
+        from (
+          select
+            sv.id,
+            sv.scheduled_start as starts_at,
+            sv.assigned_sales_owner_id as assigned_to,
+            p.id as project_id,
+            p.name as project_name,
+            p.site_address as location_label,
+            c.name as client_name
+          from site_visit_events sv
+          join projects p on p.id = sv.project_id
+          left join contacts c on c.id = p.contact_id
+          where sv.status in ('TENTATIVE','CONFIRMED','COMPLETED','RESCHEDULED')
+            and sv.scheduled_start is not null
+            and sv.scheduled_start >= today_start
+            and sv.scheduled_start < tomorrow_start
+            and p.archived_at is null
+          order by sv.scheduled_start asc
+          limit 15
+        ) x
+      ), '[]'::jsonb),
+      'next7', coalesce((
+        select jsonb_agg(row_to_json(x)::jsonb)
+        from (
+          select
+            sv.id,
+            sv.scheduled_start as starts_at,
+            sv.assigned_sales_owner_id as assigned_to,
+            p.id as project_id,
+            p.name as project_name,
+            p.site_address as location_label,
+            c.name as client_name
+          from site_visit_events sv
+          join projects p on p.id = sv.project_id
+          left join contacts c on c.id = p.contact_id
+          where sv.status in ('TENTATIVE','CONFIRMED','COMPLETED','RESCHEDULED')
+            and sv.scheduled_start is not null
+            and sv.scheduled_start >= today_start
+            and sv.scheduled_start < next7_start
+            and p.archived_at is null
+          order by sv.scheduled_start asc
+          limit 15
+        ) x
+      ), '[]'::jsonb)
+    )
+    into site_visits_json;
+  else
+    select jsonb_build_object(
+      'unscheduled_count', (
+        select count(*)
         from site_visit_events sv
-        join projects p on p.id = sv.project_id
-        left join contacts c on c.id = p.contact_id
-        where sv.status in ('TENTATIVE','CONFIRMED','COMPLETED','RESCHEDULED')
-          and sv.scheduled_start is not null
-          and sv.scheduled_start >= today_start
-          and sv.scheduled_start < next7_start
-        order by sv.scheduled_start asc
-        limit 15
-      ) x
-    ), '[]'::jsonb)
-  )
-  into site_visits_json;
+        where sv.status = 'UNSCHEDULED'
+      ),
+      'today', coalesce((
+        select jsonb_agg(row_to_json(x)::jsonb)
+        from (
+          select
+            sv.id,
+            sv.scheduled_start as starts_at,
+            sv.assigned_sales_owner_id as assigned_to,
+            p.id as project_id,
+            p.name as project_name,
+            p.site_address as location_label,
+            c.name as client_name
+          from site_visit_events sv
+          join projects p on p.id = sv.project_id
+          left join contacts c on c.id = p.contact_id
+          where sv.status in ('TENTATIVE','CONFIRMED','COMPLETED','RESCHEDULED')
+            and sv.scheduled_start is not null
+            and sv.scheduled_start >= today_start
+            and sv.scheduled_start < tomorrow_start
+          order by sv.scheduled_start asc
+          limit 15
+        ) x
+      ), '[]'::jsonb),
+      'next7', coalesce((
+        select jsonb_agg(row_to_json(x)::jsonb)
+        from (
+          select
+            sv.id,
+            sv.scheduled_start as starts_at,
+            sv.assigned_sales_owner_id as assigned_to,
+            p.id as project_id,
+            p.name as project_name,
+            p.site_address as location_label,
+            c.name as client_name
+          from site_visit_events sv
+          join projects p on p.id = sv.project_id
+          left join contacts c on c.id = p.contact_id
+          where sv.status in ('TENTATIVE','CONFIRMED','COMPLETED','RESCHEDULED')
+            and sv.scheduled_start is not null
+            and sv.scheduled_start >= today_start
+            and sv.scheduled_start < next7_start
+          order by sv.scheduled_start asc
+          limit 15
+        ) x
+      ), '[]'::jsonb)
+    )
+    into site_visits_json;
+  end if;
 
   select jsonb_build_object(
     'updated_at', now(),

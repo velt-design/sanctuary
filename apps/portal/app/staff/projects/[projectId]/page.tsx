@@ -18,16 +18,20 @@ function parseMode(value: string | string[] | undefined): string {
   return raw === 'focus' ? 'focus' : 'general';
 }
 
+type SearchParams = { [key: string]: string | string[] | undefined };
+type PageParams = { projectId: string };
+
 export default async function ProjectDetailPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ projectId: string }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: PageParams | Promise<PageParams>;
+  searchParams?: SearchParams | Promise<SearchParams>;
 }) {
   const { projectId } = await params;
-  const tab = parseTab(searchParams?.tab);
-  const mode = parseMode(searchParams?.mode);
+  const resolvedSearchParams = await searchParams;
+  const tab = parseTab(resolvedSearchParams?.tab);
+  const mode = parseMode(resolvedSearchParams?.mode);
 
   const snapshot = await getProjectPageSnapshot(projectId);
   if (!snapshot) {
@@ -54,7 +58,7 @@ export default async function ProjectDetailPage({
   return (
     <main className={styles.page}>
       <ProjectHeader project={snapshot.project} />
-      <ProjectPipelineBar stage={snapshot.project.stage} />
+      <ProjectPipelineBar stage={snapshot.pipeline.stage} />
       <ProjectPageShell snapshot={snapshot} tab={tab} mode={mode} />
     </main>
   );

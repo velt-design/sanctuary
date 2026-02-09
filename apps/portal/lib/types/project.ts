@@ -1,53 +1,18 @@
+import { PIPELINE_STAGES, normalizePipelineStageKey, type PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 import { warnOnce } from '@/lib/utils/warnOnce';
 
-export type ProjectStatus =
-  | 'NEW'
-  | 'CONTACTED'
-  | 'SITE_VISIT'
-  | 'QUOTING'
-  | 'SENT'
-  | 'DEPOSIT'
-  | 'SCHEDULED'
-  | 'COMPLETED'
-  | 'PAID';
+export type ProjectStatus = Uppercase<PipelineStageKey>;
 
-export const PROJECT_STATUS_ORDER: readonly ProjectStatus[] = [
-  'NEW',
-  'CONTACTED',
-  'SITE_VISIT',
-  'QUOTING',
-  'SENT',
-  'DEPOSIT',
-  'SCHEDULED',
-  'COMPLETED',
-  'PAID',
-] as const;
+export const PROJECT_STATUS_ORDER: readonly ProjectStatus[] = PIPELINE_STAGES.map(
+  (stage) => stage.key.toUpperCase() as ProjectStatus,
+);
+
+const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = Object.fromEntries(
+  PIPELINE_STAGES.map((stage) => [stage.key.toUpperCase(), stage.label]),
+) as Record<ProjectStatus, string>;
 
 export function projectStatusLabel(status: ProjectStatus): string {
-  switch (status) {
-    case 'NEW':
-      return 'New';
-    case 'CONTACTED':
-      return 'Contacted';
-    case 'SITE_VISIT':
-      return 'Site Visit';
-    case 'QUOTING':
-      return 'Quoting';
-    case 'SENT':
-      return 'Sent';
-    case 'DEPOSIT':
-      return 'Deposit';
-    case 'SCHEDULED':
-      return 'Scheduled';
-    case 'COMPLETED':
-      return 'Completed';
-    case 'PAID':
-      return 'Paid';
-    default: {
-      const _exhaustive: never = status;
-      return _exhaustive;
-    }
-  }
+  return PROJECT_STATUS_LABELS[status] ?? status;
 }
 
 export type LegacyProjectStatus =
@@ -70,57 +35,33 @@ export type NormalizedProjectStatus = {
 
 export function normalizeProjectStatus(raw: unknown): NormalizedProjectStatus {
   const statusRaw = typeof raw === 'string' ? raw.trim() : '';
-  const key = statusRaw
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+  const key = statusRaw.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
   if (!key) return { status: 'NEW', isLost: false, isArchived: false };
 
-  // Canonical statuses (accept "Site Visit", "site-visit", etc.).
-  const canonical = key.toUpperCase();
-  if (
-    canonical === 'NEW' ||
-    canonical === 'CONTACTED' ||
-    canonical === 'SITE_VISIT' ||
-    canonical === 'QUOTING' ||
-    canonical === 'SENT' ||
-    canonical === 'DEPOSIT' ||
-    canonical === 'SCHEDULED' ||
-    canonical === 'COMPLETED' ||
-    canonical === 'PAID'
-  ) {
+  if (key === 'lost') {
+    return { status: 'SENT', isLost: true, isArchived: false, legacyStatus: statusRaw };
+  }
+
+  if (key === 'archived') {
+    return { status: 'SENT', isLost: false, isArchived: true, legacyStatus: statusRaw };
+  }
+
+  const stageKey = normalizePipelineStageKey(statusRaw);
+  if (stageKey) {
+    const status = stageKey.toUpperCase() as ProjectStatus;
     return {
-      status: canonical as ProjectStatus,
+      status,
       isLost: false,
       isArchived: false,
-      ...(canonical !== statusRaw ? { legacyStatus: statusRaw } : null),
+      ...(statusRaw && statusRaw.toUpperCase() !== status ? { legacyStatus: statusRaw } : null),
     };
   }
 
-  // Legacy / variant mappings.
-  switch (key) {
-    case 'sitevisit':
-    case 'site_visits':
-      return { status: 'SITE_VISIT', isLost: false, isArchived: false, legacyStatus: statusRaw };
-    case 'follow_up':
-    case 'followup':
-      // Legacy meaning: follow up after quote sent.
-      return { status: 'SENT', isLost: false, isArchived: false, legacyStatus: statusRaw };
-    case 'won':
-      // Legacy meaning: accepted/won; mapped to DEPOSIT in the new funnel.
-      return { status: 'DEPOSIT', isLost: false, isArchived: false, legacyStatus: statusRaw };
-    case 'lost':
-      return { status: 'SENT', isLost: true, isArchived: false, legacyStatus: statusRaw };
-    case 'archived':
-      return { status: 'SENT', isLost: false, isArchived: true, legacyStatus: statusRaw };
-    default: {
-      if (statusRaw) {
-        warnOnce(`legacy_project_status:${statusRaw}`, `Unknown legacy project status '${statusRaw}', defaulting to NEW.`);
-      }
-      return { status: 'NEW', isLost: false, isArchived: false, legacyStatus: statusRaw || undefined };
-    }
+  if (statusRaw) {
+    warnOnce(`legacy_project_status:${statusRaw}`, `Unknown legacy project status '${statusRaw}', defaulting to NEW.`);
   }
+  return { status: 'NEW', isLost: false, isArchived: false, legacyStatus: statusRaw || undefined };
 }
 
 export type ActivityEventType =

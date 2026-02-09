@@ -1,13 +1,15 @@
-export type ProjectStage =
-  | 'NEW'
-  | 'CONTACTED'
-  | 'SITE_VISIT'
-  | 'QUOTING'
-  | 'SENT'
-  | 'DEPOSIT'
-  | 'SCHEDULED'
-  | 'COMPLETED'
-  | 'PAID';
+import type { PipelineStageKey, TaskKey, TaskKind } from '@/lib/projects/pipelineDefinition';
+
+export type ProjectStage = PipelineStageKey;
+
+export type ProjectTaskItem = {
+  key: TaskKey;
+  label: string;
+  kind: TaskKind;
+  isDone: boolean;
+  isManualDone?: boolean;
+  cta?: { label: string; href: string };
+};
 
 export type ProjectEmailLog = {
   id: string;
@@ -50,12 +52,13 @@ export type ProjectPageSnapshot = {
     quoteRef?: string;
     nextActionDate?: string;
   };
-  tasks: Array<{
-    id: string;
-    title: string;
-    status: 'todo' | 'done';
-    dueAt?: string;
-  }>;
+  pipeline: {
+    stage: ProjectStage;
+  };
+  tasks: {
+    stage: ProjectStage;
+    items: ProjectTaskItem[];
+  };
   activity: ProjectActivityItem[];
   emails: ProjectEmailLog[]; // may be empty for now
 };

@@ -3,6 +3,13 @@ import 'server-only';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
+import {
+  isManualTaskKey,
+  normalizePipelineStageKey,
+  resolveStageTasks,
+  type TaskContext,
+  type TaskKey,
+} from '@/lib/projects/pipelineDefinition';
 import type { ProjectActivityItem, ProjectEmailLog, ProjectPageSnapshot } from '@/lib/projects/types';
 
 function pickString(...values: Array<unknown>): string | null {
@@ -18,16 +25,6 @@ function safeUuidFromAppId(value: string, prefix: string): string | null {
   } catch {
     return null;
   }
-}
-
-function mapTask(row: any): ProjectPageSnapshot['tasks'][number] {
-  const statusRaw = String(row?.status ?? '').toUpperCase();
-  return {
-    id: String(row?.id ?? ''),
-    title: String(row?.title ?? row?.type ?? 'Task'),
-    status: statusRaw === 'DONE' ? 'done' : 'todo',
-    ...(typeof row?.due_at === 'string' && row.due_at.trim() ? { dueAt: row.due_at } : null),
-  };
 }
 
 function mapEmailStatus(status: string): ProjectEmailLog['status'] {
@@ -148,7 +145,8 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
 
   if (projectError || !projectRow) return null;
 
-  const stage = normalizeProjectStatus(projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW').status;
+  const normalizedStage = normalizeProjectStatus(projectRow.pipeline_stage ?? projectRow.status ?? projectRow.legacy_status ?? 'NEW').status;
+  const stage = normalizePipelineStageKey(normalizedStage) ?? 'new';
   const contactIdRaw = pickString(projectRow.contact_id, projectRow.contactId);
   const contactUuid = contactIdRaw ? safeUuidFromAppId(contactIdRaw, 'ct') : null;
   const projectIdOut = (() => {
@@ -168,15 +166,29 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
     projectRow.followUpDate,
   );
 
-  const [contactRes, tasksRes, emailRes, auditRes] = await Promise.all([
+  const [contactRes, siteVisitRes, estimateRes, scheduleRes, manualRes, emailRes, auditRes] = await Promise.all([
     contactUuid
       ? supabaseServer.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     supabaseServer
-      .from('tasks')
-      .select('id,title,status,due_at,type,created_at')
+      .from('site_visit_events')
+      .select('id,status,scheduled_start')
       .eq('project_id', projectUuid)
-      .order('created_at', { ascending: false }),
+      .maybeSingle(),
+    supabaseServer
+      .from('estimates')
+      .select('id')
+      .eq('project_id', projectUuid)
+      .limit(1),
+    supabaseServer
+      .from('schedule_items')
+      .select('id,start_date')
+      .eq('project_id', projectUuid)
+      .limit(1),
+    supabaseServer
+      .from('project_task_checks')
+      .select('task_key')
+      .eq('project_id', projectUuid),
     supabaseServer
       .from('email_outbox')
       .select('id,subject,to_email,status,sent_at,created_at,email_type')
@@ -196,12 +208,23 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
   if (auditRes?.error) {
     console.error('[project_snapshot] audit_events query failed', auditRes.error);
   }
+  if (siteVisitRes?.error) {
+    console.error('[project_snapshot] site_visit_events query failed', siteVisitRes.error);
+  }
+  if (estimateRes?.error) {
+    console.error('[project_snapshot] estimates query failed', estimateRes.error);
+  }
+  if (scheduleRes?.error) {
+    console.error('[project_snapshot] schedule_items query failed', scheduleRes.error);
+  }
+  if (manualRes?.error) {
+    console.error('[project_snapshot] project_task_checks query failed', manualRes.error);
+  }
 
   const contact = contactRes?.data ?? null;
   const contactName = pickString(contact?.name, projectRow.contact_name, projectRow.contactName);
   const contactEmail = pickString(contact?.email, projectRow.contact_email, projectRow.contactEmail);
   const contactPhone = pickString(contact?.phone, projectRow.contact_phone, projectRow.contactPhone);
-  const tasks = (Array.isArray(tasksRes?.data) ? tasksRes.data : []).map(mapTask);
   const emails = (Array.isArray(emailRes?.data) ? emailRes.data : []).map(mapEmail);
   const outboxActivity = (Array.isArray(emailRes?.data) ? emailRes.data : [])
     .map(mapOutboxToActivity)
@@ -212,11 +235,38 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
 
   const activity = [...outboxActivity, ...auditActivity].sort((a, b) => String(b.at).localeCompare(String(a.at)));
 
+  const siteVisitRow = siteVisitRes?.data ?? null;
+  const siteVisitStatus = typeof (siteVisitRow as any)?.status === 'string' ? String((siteVisitRow as any).status).toUpperCase() : '';
+  const hasBookedSiteVisit =
+    Boolean((siteVisitRow as any)?.scheduled_start) &&
+    ['TENTATIVE', 'CONFIRMED', 'COMPLETED', 'RESCHEDULED'].includes(siteVisitStatus);
+
+  const hasGeneratedCosting = Array.isArray(estimateRes?.data) ? estimateRes.data.length > 0 : Boolean(estimateRes?.data);
+  const hasScheduledInstall = Array.isArray(scheduleRes?.data) ? scheduleRes.data.length > 0 : Boolean(scheduleRes?.data);
+
+  const manualCompleted = new Set<TaskKey>();
+  for (const row of Array.isArray(manualRes?.data) ? manualRes.data : []) {
+    const key = typeof (row as any)?.task_key === 'string' ? String((row as any).task_key) : '';
+    if (isManualTaskKey(key)) manualCompleted.add(key);
+  }
+
+  const taskContext: TaskContext = {
+    projectId: projectIdOut,
+    manualDone: manualCompleted,
+    hasBookedSiteVisit,
+    hasGeneratedCosting,
+    hasScheduledInstall,
+    nextActionDate,
+  };
+
+  const taskItems = resolveStageTasks(stage, taskContext, manualCompleted);
+  const finalStage = stage;
+
   return {
     project: {
       id: projectIdOut,
       name: projectName,
-      stage,
+      stage: finalStage,
       ...(contactUuid ? { contactId: appIdFromUuid('ct', contactUuid) } : null),
       ...(contactName ? { contactName } : null),
       ...(contactEmail ? { contactEmail } : null),
@@ -226,7 +276,13 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
       ...(quoteRef ? { quoteRef } : null),
       ...(nextActionDate ? { nextActionDate } : null),
     },
-    tasks,
+    pipeline: {
+      stage: finalStage,
+    },
+    tasks: {
+      stage: finalStage,
+      items: taskItems,
+    },
     activity,
     emails,
   };

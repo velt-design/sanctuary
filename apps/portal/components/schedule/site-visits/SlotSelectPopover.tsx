@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import type { SiteVisitCalendarItem } from '@/lib/types/siteVisits';
 import styles from '@/app/staff/schedule/schedule.module.css';
 
 const POPOVER_WIDTH = 280;
@@ -12,17 +11,17 @@ const POPOVER_MARGIN = 12;
 export default function SlotSelectPopover({
   open,
   anchorRect,
-  unscheduled,
-  onSelectUnscheduled,
-  onCreateNew,
+  unscheduledCount,
+  onBookUnscheduled,
+  onCreateNoProject,
   onClose,
   label,
 }: {
   open: boolean;
   anchorRect: DOMRect;
-  unscheduled: SiteVisitCalendarItem[];
-  onSelectUnscheduled: (item: SiteVisitCalendarItem) => void;
-  onCreateNew: () => void;
+  unscheduledCount: number;
+  onBookUnscheduled: () => void;
+  onCreateNoProject: () => void;
   onClose: () => void;
   label?: string;
 }) {
@@ -99,49 +98,27 @@ export default function SlotSelectPopover({
             type="button"
             className={styles.buttonSecondary}
             onClick={() => {
-              onCreateNew();
+              onBookUnscheduled();
+              onClose();
+            }}
+            disabled={unscheduledCount === 0}
+          >
+            Book unscheduled site visit…
+          </button>
+          <button
+            type="button"
+            className={styles.buttonSecondary}
+            onClick={() => {
+              onCreateNoProject();
               onClose();
             }}
           >
-            Create new site visit…
+            Create site visit (no project)
           </button>
         </div>
 
-        <div style={{ fontSize: 11, color: 'rgba(15,15,16,0.6)', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Unscheduled
-        </div>
-        <div style={{ overflow: 'auto', display: 'grid', gap: 6, maxHeight: 180 }}>
-          {unscheduled.length ? (
-            unscheduled.map((item) => {
-              const title = (item.project.name || '').trim() || item.projectId || 'Untitled project';
-              const sub = item.project.region || item.project.siteAddress || '';
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    onSelectUnscheduled(item);
-                    onClose();
-                  }}
-                  style={{
-                    textAlign: 'left',
-                    border: '1px solid rgba(15, 15, 16, 0.12)',
-                    borderRadius: 10,
-                    padding: '6px 8px',
-                    background: 'rgba(15, 15, 16, 0.02)',
-                    cursor: 'pointer',
-                    display: 'grid',
-                    gap: 2,
-                  }}
-                >
-                  <span style={{ fontSize: 12, fontWeight: 700 }}>{title}</span>
-                  {sub ? <span style={{ fontSize: 11, color: 'rgba(15,15,16,0.6)' }}>{sub}</span> : null}
-                </button>
-              );
-            })
-          ) : (
-            <div style={{ fontSize: 12, color: 'rgba(15,15,16,0.6)' }}>No unscheduled visits.</div>
-          )}
+        <div style={{ fontSize: 11, color: 'rgba(15,15,16,0.6)' }}>
+          {unscheduledCount === 0 ? 'No unscheduled visits available.' : `${unscheduledCount} unscheduled visit${unscheduledCount === 1 ? '' : 's'} available.`}
         </div>
       </div>
     </div>,
