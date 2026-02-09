@@ -19,6 +19,8 @@ const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
 
 let resendClient: Resend | null = null;
 
+type ResendSendResponse = Awaited<ReturnType<Resend['emails']['send']>>;
+
 export class EmailProviderConfigError extends Error {
   status = 503;
   code = 'EMAIL_PROVIDER_NOT_CONFIGURED';
@@ -45,7 +47,7 @@ async function attemptSend(params: {
 }): Promise<{ id?: string } | null> {
   const html = params.bodyHtml ?? params.bodyText.replace(/\n/g, '<br />');
   const client = getResendClient();
-  return client.emails.send({
+  const response: ResendSendResponse = await client.emails.send({
     from: FROM_EMAIL,
     to: params.to,
     cc: params.cc,
@@ -56,6 +58,14 @@ async function attemptSend(params: {
     text: params.bodyText,
     attachments: [{ filename: params.attachmentName, content: params.attachmentContent, contentType: 'application/pdf' }],
   });
+  if ('error' in response && response.error) {
+    const message = response.error.message ?? 'Failed to send email';
+    const err = new Error(message);
+    (err as any).code = response.error.name ?? 'RESEND_ERROR';
+    throw err;
+  }
+  const id = (response as any)?.data?.id;
+  return id ? { id } : null;
 }
 
 export async function sendQuote(
