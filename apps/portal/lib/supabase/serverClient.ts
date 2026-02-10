@@ -12,10 +12,10 @@ function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_AN
   );
 }
 
-export function getSupabaseServerAuth(): SupabaseClient {
+export async function getSupabaseServerAuth(): Promise<SupabaseClient> {
   const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
   const key = requiredEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient(url, key, {
     cookies: {
