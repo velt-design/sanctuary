@@ -2,13 +2,24 @@ import 'server-only';
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import fontkit from './fontkit';
 import { PDFDocument, rgb, type Color } from 'pdf-lib';
+import fontkit from './fontkit';
 import type { QuoteStatus, QuoteVersionDetail } from './types';
 import { fromCents } from './utils';
 
 const PAGE_WIDTH = 595.28; // A4
 const PAGE_HEIGHT = 841.89;
+
+const MARGIN_L = 56;
+const MARGIN_R = 56;
+const MARGIN_B = 48;
+const TOP_BAR_HEIGHT = 18;
+const CONTENT_TOP_Y = PAGE_HEIGHT - TOP_BAR_HEIGHT - 24;
+
+const MONEY_FORMAT = new Intl.NumberFormat('en-NZ', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 type PdfQuoteViewModel = {
   header: {
@@ -18,21 +29,17 @@ type PdfQuoteViewModel = {
   };
   client: {
     name?: string;
-    email?: string;
-    phone?: string;
-  };
-  project: {
-    name?: string;
-    address?: string;
-    suburb?: string;
   };
   issueDate?: string;
   expiryDate?: string;
   intro?: string;
   items: Array<{
-    titleLeft: string;
-    amountIncGst: string;
+    heading: string;
     bullets: string[];
+    qty: number;
+    qtyText: string;
+    unitPrice: string;
+    amount: string;
   }>;
   totals: {
     inc: string;
@@ -44,46 +51,67 @@ type PdfQuoteViewModel = {
 };
 
 const theme = {
-  page: {
-    width: PAGE_WIDTH,
-    height: PAGE_HEIGHT,
-    marginX: 56,
-    marginTop: 64,
-    marginBottom: 64,
-  },
-  spacing: {
-    xs: 4,
-    sm: 8,
-    md: 12,
-    lg: 16,
-    xl: 24,
-    xxl: 32,
-  },
-  fonts: {
-    logo: 9,
-    title: 28,
-    subtitle: 12,
-    body: 10.5,
-    small: 9,
-    label: 9,
-    itemTitle: 12,
-    totalValue: 18,
-  },
-  lineHeights: {
-    logo: 12,
-    title: 32,
-    subtitle: 16,
-    body: 14,
-    small: 12,
-    label: 12,
-    itemTitle: 16,
-    totalValue: 22,
-  },
   colors: {
     textPrimary: rgb(0.1, 0.1, 0.12),
-    textMuted: rgb(0.46, 0.46, 0.48),
-    rule: rgb(0.86, 0.86, 0.88),
+    textMuted: rgb(0.42, 0.42, 0.42),
+    rule: rgb(0.84, 0.84, 0.84),
     accent: rgb(0.502, 0.251, 0.224),
+  },
+  sizes: {
+    brand: 12,
+    title: 18,
+    ref: 10,
+    status: 9,
+    section: 9,
+    tableHeader: 8.5,
+    descHeading: 8.5,
+    bullet: 8,
+    numeric: 8.5,
+    totalsLabel: 8.5,
+    totalsValue: 8.5,
+    totalsTotal: 10,
+    terms: 8.5,
+    footer: 8,
+    client: 12,
+    date: 8.5,
+    miniHeader: 10,
+    intro: 8.5,
+  },
+  lineHeights: {
+    brand: 14,
+    title: 22,
+    ref: 13,
+    status: 12,
+    section: 12,
+    tableHeader: 11,
+    descHeading: 11,
+    bullet: 10,
+    numeric: 11,
+    totalsLabel: 11,
+    totalsValue: 11,
+    totalsTotal: 13,
+    terms: 11,
+    footer: 10,
+    client: 14,
+    date: 11,
+    miniHeader: 12,
+    intro: 11,
+  },
+  spacing: {
+    headerBrandToQuote: 2,
+    headerQuoteToRef: 12,
+    headerRefToStatus: 10,
+    headerToItems: 18,
+    sectionToHeader: 6,
+    headerToRows: 6,
+    rowGap: 6,
+    bulletGap: 2,
+    footerTerms: 16,
+    termsTotals: 18,
+    totalsItems: 18,
+    introGap: 12,
+    totalsRuleGap: 6,
+    continuationHeaderGap: 12,
   },
 };
 
@@ -117,7 +145,7 @@ async function readFontFile(filename: string): Promise<Uint8Array> {
 }
 
 function formatMoneyFromCents(cents: number): string {
-  return `$${fromCents(cents).toFixed(2)}`;
+  return MONEY_FORMAT.format(fromCents(cents));
 }
 
 function formatDate(value: string | null | undefined): string | null {
@@ -163,6 +191,21 @@ function toTitleCaseToken(value: string): string {
     .replace(/\s+/g, ' ')
     .trim()
     .replace(/(^|\s)\S/g, (m) => m.toUpperCase());
+}
+
+function ensureTrailingColon(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return 'Item:';
+  return trimmed.endsWith(':') ? trimmed : `${trimmed}:`;
+}
+
+function formatHeadingValue(value: string): string {
+  const clean = sanitizeText(value) ?? value.trim();
+  if (!clean) return value;
+  if (clean === clean.toLowerCase() || /[_-]/.test(clean)) {
+    return toTitleCaseToken(clean);
+  }
+  return clean;
 }
 
 const CONNECTION_KEY_LABELS: Record<string, string> = {
@@ -234,36 +277,105 @@ function sanitizeBulletLine(raw: string): string[] {
   return clean ? [clean] : [];
 }
 
+function buildItemDescription(raw: string, index: number): { heading: string; bullets: string[] } {
+  const lines = String(raw ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const rawTitle = lines[0] ?? `Item ${index + 1}`;
+  const title = sanitizeText(rawTitle) ?? `Item ${index + 1}`;
+
+  const bullets: string[] = [];
+  lines.slice(1).forEach((line) => {
+    const expanded = sanitizeBulletLine(line);
+    expanded.forEach((bullet) => {
+      const clean = sanitizeText(bullet);
+      if (clean) bullets.push(clean);
+    });
+  });
+
+  let styleValue: string | null = null;
+  let styleIndex = -1;
+  let locationValue: string | null = null;
+  let locationIndex = -1;
+
+  bullets.forEach((bullet, idx) => {
+    const styleMatch = bullet.match(/^Style:\s*(.+)$/i);
+    if (styleMatch && styleIndex === -1) {
+      styleValue = styleMatch[1].trim();
+      styleIndex = idx;
+      return;
+    }
+    const locationMatch = bullet.match(/^(Location|Position|Placement):\s*(.+)$/i);
+    if (locationMatch && locationIndex === -1) {
+      locationValue = locationMatch[2].trim();
+      locationIndex = idx;
+    }
+  });
+
+  let heading = title;
+  let usedStyle = false;
+  let usedLocation = false;
+
+  const lowerTitle = title.toLowerCase();
+  if (lowerTitle.includes('electrical')) {
+    heading = 'Electrical and Lighting';
+  } else if (lowerTitle.includes('blind')) {
+    if (locationValue) {
+      heading = `${formatHeadingValue(locationValue)} Blind`;
+      usedLocation = true;
+    }
+  } else if (lowerTitle.includes('pergola')) {
+    const baseTitle = title.replace(/module/gi, '').replace(/\s+/g, ' ').trim();
+    if (styleValue) {
+      const style = formatHeadingValue(styleValue);
+      if (/pergola/i.test(style)) {
+        heading = style;
+      } else {
+        heading = `${style} Pergola`;
+      }
+      usedStyle = true;
+    } else {
+      heading = baseTitle || 'Pergola';
+    }
+  }
+
+  heading = ensureTrailingColon(heading);
+
+  const drop = new Set<number>();
+  if (usedStyle && styleIndex >= 0) drop.add(styleIndex);
+  if (usedLocation && locationIndex >= 0) drop.add(locationIndex);
+
+  const filteredBullets = bullets.filter((_, idx) => !drop.has(idx));
+
+  return { heading, bullets: filteredBullets };
+}
+
 function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
   const issueDate = quote.sentAt ? formatDate(quote.sentAt) : null;
-  let expiryDate = formatDate(quote.expiresAt ?? null);
-  if (!expiryDate && quote.status === 'SENT' && quote.sentAt) {
-    const fallback = addDays(quote.sentAt, 30);
-    expiryDate = fallback ? formatDate(fallback) : null;
+  let expiryDate: string | null = null;
+  if (issueDate && quote.sentAt) {
+    expiryDate = formatDate(quote.expiresAt ?? null);
+    if (!expiryDate) {
+      const fallback = addDays(quote.sentAt, 30);
+      expiryDate = fallback ? formatDate(fallback) : null;
+    }
   }
 
   const items = quote.lineItems.map((item, index) => {
-    const lines = String(item.description ?? '')
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-
-    const rawTitle = lines[0] ?? `Item ${index + 1}`;
-    const titleLeft = sanitizeText(rawTitle) ?? `Item ${index + 1}`;
-    const bullets: string[] = [];
-
-    lines.slice(1).forEach((line) => {
-      const expanded = sanitizeBulletLine(line);
-      expanded.forEach((bullet) => {
-        const clean = sanitizeText(bullet);
-        if (clean) bullets.push(clean);
-      });
-    });
-
+    const { heading, bullets } = buildItemDescription(item.description, index);
+    const rawQty = Number.isFinite(item.qty) ? item.qty : 0;
+    const displayQty = Math.ceil(rawQty);
+    const amountCents = Number.isFinite(item.lineTotalIncGstCents) ? item.lineTotalIncGstCents : 0;
+    const unitPriceCents = displayQty > 0 ? Math.round(amountCents / displayQty) : 0;
     return {
-      titleLeft,
-      amountIncGst: formatMoneyFromCents(item.lineTotalIncGstCents),
+      heading,
       bullets,
+      qty: displayQty,
+      qtyText: String(displayQty),
+      unitPrice: formatMoneyFromCents(unitPriceCents),
+      amount: formatMoneyFromCents(amountCents),
     };
   });
 
@@ -277,14 +389,6 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
 
   const client = {
     name: sanitizeText(quote.contact.name) ?? undefined,
-    email: sanitizeText(quote.contact.email) ?? undefined,
-    phone: sanitizeText(quote.contact.phone ?? '') ?? undefined,
-  };
-
-  const project = {
-    name: sanitizeText(quote.project.name) ?? undefined,
-    address: sanitizeText(quote.project.siteAddress ?? '') ?? undefined,
-    suburb: sanitizeText(quote.project.region ?? '') ?? undefined,
   };
 
   return {
@@ -294,7 +398,6 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
       status: quote.status,
     },
     client,
-    project,
     issueDate: issueDate ?? undefined,
     expiryDate: expiryDate ?? undefined,
     intro: sanitizeText(quote.introText ?? '') ?? undefined,
@@ -310,6 +413,7 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
 }
 
 function wrapText(font: any, text: string, fontSize: number, maxWidth: number): string[] {
+  if (maxWidth <= 0) return [text];
   const lines: string[] = [];
   const safeText = typeof text === 'string' ? text : '';
   const paragraphs = safeText.split('\n');
@@ -358,15 +462,99 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
 
   const vm = buildPdfQuoteViewModel(quote);
 
-  const contentWidth = theme.page.width - theme.page.marginX * 2;
-  const leftX = theme.page.marginX;
-  const rightX = leftX + contentWidth;
-  const metaWidth = 190;
-  const metaX = rightX - metaWidth;
+  const contentWidth = PAGE_WIDTH - MARGIN_L - MARGIN_R;
+  const leftX = MARGIN_L;
+  const rightX = PAGE_WIDTH - MARGIN_R;
 
-  let page = pdfDoc.addPage([theme.page.width, theme.page.height]);
-  let cursorY = theme.page.height - theme.page.marginTop;
-  let pageIndex = 0;
+  const tableWidth = contentWidth;
+  const descW = tableWidth * 0.62;
+  const qtyW = tableWidth * 0.12;
+  const unitW = tableWidth * 0.13;
+  const amtW = tableWidth * 0.13;
+  const descX = leftX;
+  const qtyX = descX + descW;
+  const unitX = qtyX + qtyW;
+  const amtX = unitX + unitW;
+  const qtyRight = qtyX + qtyW;
+  const unitRight = unitX + unitW;
+  const amtRight = amtX + amtW;
+  const bulletIndent = fontRegular.widthOfTextAtSize('- ', theme.sizes.bullet) + 2;
+
+  type RowLayout = {
+    headingLines: string[];
+    bulletLines: string[][];
+    bulletLineCount: number;
+    contentHeight: number;
+    qtyText: string;
+    unitPrice: string;
+    amount: string;
+  };
+
+  const rowLayouts: RowLayout[] = vm.items.map((item) => {
+    const headingLines = wrapText(fontMedium, item.heading, theme.sizes.descHeading, descW);
+    const bulletLines = item.bullets.map((bullet) =>
+      wrapText(fontRegular, bullet, theme.sizes.bullet, descW - bulletIndent),
+    );
+    const bulletLineCount = bulletLines.reduce((sum, lines) => sum + lines.length, 0);
+    const contentHeight =
+      headingLines.length * theme.lineHeights.descHeading +
+      (bulletLineCount ? theme.spacing.bulletGap + bulletLineCount * theme.lineHeights.bullet : 0);
+    return {
+      headingLines,
+      bulletLines,
+      bulletLineCount,
+      contentHeight,
+      qtyText: item.qtyText,
+      unitPrice: item.unitPrice,
+      amount: item.amount,
+    };
+  });
+
+  const rowsHeight = rowLayouts.length
+    ? rowLayouts.reduce((sum, row) => sum + row.contentHeight, 0) + theme.spacing.rowGap * (rowLayouts.length - 1)
+    : 0;
+
+  const tableHeaderHeight =
+    theme.lineHeights.section + theme.spacing.sectionToHeader + theme.lineHeights.tableHeader + theme.spacing.headerToRows;
+
+  const tableHeight = rowLayouts.length ? tableHeaderHeight + rowsHeight : 0;
+
+  const termsLines: string[] = [];
+  vm.terms.forEach((term) => {
+    const wrapped = wrapText(fontRegular, term, theme.sizes.terms, contentWidth);
+    termsLines.push(...wrapped);
+  });
+
+  const footerLines = vm.footer;
+  const footerTopY = footerLines.length
+    ? MARGIN_B + (footerLines.length - 1) * theme.lineHeights.footer
+    : MARGIN_B;
+
+  const termsBlockHeight = termsLines.length
+    ? theme.lineHeights.section + theme.spacing.sectionToHeader + theme.lineHeights.terms * Math.max(termsLines.length - 1, 0)
+    : 0;
+
+  const termsBottomY = termsLines.length ? footerTopY + theme.spacing.footerTerms : footerTopY;
+  const termsTopY = termsLines.length ? termsBottomY + termsBlockHeight : termsBottomY;
+
+  const totalsBlockHeight = (() => {
+    let y = 0;
+    y -= theme.lineHeights.section;
+    y -= theme.spacing.totalsRuleGap;
+    y -= theme.spacing.totalsRuleGap;
+    y -= theme.lineHeights.totalsLabel;
+    y -= theme.lineHeights.totalsLabel;
+    y -= theme.spacing.totalsRuleGap;
+    y -= theme.lineHeights.totalsTotal;
+    return -y + 2;
+  })();
+
+  const totalsBottomY = termsTopY + theme.spacing.termsTotals;
+  const totalsTopY = totalsBottomY + totalsBlockHeight;
+  const itemsRegionBottomY = totalsTopY + theme.spacing.totalsItems;
+
+  let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  const firstPage = page;
 
   const toText = (value: unknown): string | null => {
     if (typeof value === 'string') return value;
@@ -386,68 +574,11 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     return font.widthOfTextAtSize(text, size);
   };
 
-  const drawTextBlock = (params: {
-    lines: string[];
-    x: number;
-    y: number;
-    lineHeight: number;
-    color: Color;
-    font: any;
-    size: number;
-  }) => {
-    let y = params.y;
-    params.lines.forEach((line) => {
-      drawTextSafe(line, {
-        x: params.x,
-        y,
-        size: params.size,
-        font: params.font,
-        color: params.color,
-      });
-      y -= params.lineHeight;
-    });
-    return y;
-  };
-
-  const drawKeyValue = (params: {
-    key: string;
-    value: string;
-    x: number;
-    y: number;
-    keyWidth: number;
-    keyFont?: any;
-    valueFont?: any;
-    keySize?: number;
-    valueSize?: number;
-    keyColor?: Color;
-    valueColor?: Color;
-    lineHeight?: number;
-  }) => {
-    const keyFont = params.keyFont ?? fontMedium;
-    const valueFont = params.valueFont ?? fontRegular;
-    const keySize = params.keySize ?? theme.fonts.label;
-    const valueSize = params.valueSize ?? theme.fonts.body;
-    const keyColor = params.keyColor ?? theme.colors.textMuted;
-    const valueColor = params.valueColor ?? theme.colors.textPrimary;
-    const lineHeight = params.lineHeight ?? theme.lineHeights.label;
-
-    drawTextSafe(params.key, {
-      x: params.x,
-      y: params.y,
-      size: keySize,
-      font: keyFont,
-      color: keyColor,
-    });
-
-    drawTextSafe(params.value, {
-      x: params.x + params.keyWidth,
-      y: params.y,
-      size: valueSize,
-      font: valueFont,
-      color: valueColor,
-    });
-
-    return params.y - lineHeight;
+  const drawRightAligned = (value: unknown, xRight: number, y: number, size: number, font: any, color: Color) => {
+    const text = toText(value);
+    if (!text) return;
+    const width = font.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: xRight - width, y, size, font, color });
   };
 
   const drawDivider = (params: { x: number; y: number; width: number; color: Color }) => {
@@ -459,10 +590,20 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     });
   };
 
+  const drawTopBar = () => {
+    page.drawRectangle({
+      x: 0,
+      y: PAGE_HEIGHT - TOP_BAR_HEIGHT,
+      width: PAGE_WIDTH,
+      height: TOP_BAR_HEIGHT,
+      color: theme.colors.accent,
+    });
+  };
+
   const drawStatusBadge = (text: string, x: number, y: number) => {
     const safeText = toText(text) ?? 'DRAFT';
-    const size = theme.fonts.small;
-    const paddingX = 6;
+    const size = theme.sizes.status;
+    const paddingX = 5;
     const paddingY = 2;
     const width = measureText(fontMedium, safeText, size) + paddingX * 2;
     const height = size + paddingY * 2;
@@ -484,347 +625,347 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
       color: theme.colors.accent,
     });
 
-    return height;
+    return y - paddingY;
   };
 
-  const drawContinuationHeader = () => {
-    const headerText = `Quote ${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
-    drawTextSafe(headerText, {
+  const drawItemsTable = (params: {
+    topY: number;
+    rows: RowLayout[];
+    sectionTitle: string;
+  }) => {
+    let y = params.topY;
+
+    drawTextSafe(params.sectionTitle, {
       x: leftX,
-      y: cursorY,
-      size: theme.fonts.subtitle,
+      y,
+      size: theme.sizes.section,
       font: fontMedium,
-      color: theme.colors.textMuted,
+      color: theme.colors.accent,
     });
-    cursorY -= theme.lineHeights.subtitle;
-    cursorY -= theme.spacing.sm;
-    drawDivider({ x: leftX, y: cursorY, width: contentWidth, color: theme.colors.rule });
-    cursorY -= theme.spacing.lg;
-  };
+    y -= theme.lineHeights.section;
+    y -= theme.spacing.sectionToHeader;
 
-  const startNewPage = () => {
-    pageIndex += 1;
-    page = pdfDoc.addPage([theme.page.width, theme.page.height]);
-    cursorY = theme.page.height - theme.page.marginTop;
-    drawContinuationHeader();
-  };
+    const headerY = y;
+    drawTextSafe('Description', {
+      x: descX,
+      y: headerY,
+      size: theme.sizes.tableHeader,
+      font: fontMedium,
+      color: theme.colors.textPrimary,
+    });
+    drawRightAligned('Quantity', qtyRight, headerY, theme.sizes.tableHeader, fontMedium, theme.colors.textPrimary);
+    drawRightAligned('Unit Price', unitRight, headerY, theme.sizes.tableHeader, fontMedium, theme.colors.textPrimary);
+    drawRightAligned('Amount NZD', amtRight, headerY, theme.sizes.tableHeader, fontMedium, theme.colors.textPrimary);
 
-  const ensureSpace = (heightNeeded: number) => {
-    if (cursorY - heightNeeded < theme.page.marginBottom) {
-      startNewPage();
-    }
-  };
+    y = headerY - theme.lineHeights.tableHeader;
+    drawDivider({ x: leftX, y: y - 2, width: tableWidth, color: theme.colors.rule });
+    y -= theme.spacing.headerToRows;
 
-  const drawItemBlock = (params: { titleLeft: string; amountIncGst: string; bullets: string[] }) => {
-    const amountReserve = 90;
-    const titleMaxWidth = Math.max(120, contentWidth - amountReserve - theme.spacing.sm);
-    const titleLines = wrapText(fontMedium, params.titleLeft, theme.fonts.itemTitle, titleMaxWidth);
-
-    const bulletIndent = 10;
-    const bulletLineGroups = params.bullets.map((bullet) =>
-      wrapText(fontRegular, bullet, theme.fonts.body, contentWidth - bulletIndent),
-    );
-    const bulletLineCount = bulletLineGroups.reduce((sum, lines) => sum + lines.length, 0);
-
-    const titleHeight = titleLines.length * theme.lineHeights.itemTitle;
-    const bulletHeight = bulletLineCount ? theme.spacing.xs + bulletLineCount * theme.lineHeights.body : 0;
-    const blockHeight = titleHeight + bulletHeight + theme.spacing.md;
-
-    ensureSpace(blockHeight);
-
-    let y = cursorY;
-
-    titleLines.forEach((line, idx) => {
-      drawTextSafe(line, {
-        x: leftX,
-        y,
-        size: theme.fonts.itemTitle,
-        font: fontMedium,
-        color: theme.colors.textPrimary,
-      });
-
-      if (idx === 0) {
-        const amountWidth = measureText(fontSemiBold, params.amountIncGst, theme.fonts.itemTitle);
-        drawTextSafe(params.amountIncGst, {
-          x: rightX - amountWidth,
-          y,
-          size: theme.fonts.itemTitle,
-          font: fontSemiBold,
+    params.rows.forEach((row, idx) => {
+      let rowY = y;
+      row.headingLines.forEach((line, lineIndex) => {
+        drawTextSafe(line, {
+          x: descX,
+          y: rowY,
+          size: theme.sizes.descHeading,
+          font: fontMedium,
           color: theme.colors.textPrimary,
         });
-      }
 
-      y -= theme.lineHeights.itemTitle;
-    });
+        if (lineIndex === 0) {
+          drawRightAligned(row.qtyText, qtyRight, rowY, theme.sizes.numeric, fontRegular, theme.colors.textPrimary);
+          drawRightAligned(row.unitPrice, unitRight, rowY, theme.sizes.numeric, fontRegular, theme.colors.textPrimary);
+          drawRightAligned(row.amount, amtRight, rowY, theme.sizes.numeric, fontRegular, theme.colors.textPrimary);
+        }
 
-    cursorY = y;
+        rowY -= theme.lineHeights.descHeading;
+      });
 
-    if (bulletLineCount) {
-      cursorY -= theme.spacing.xs;
-      params.bullets.forEach((bullet, bulletIndex) => {
-        const bulletLines = bulletLineGroups[bulletIndex] ?? [];
-        bulletLines.forEach((line, lineIndex) => {
-          if (lineIndex === 0) {
-            drawTextSafe('•', {
-              x: leftX,
-              y: cursorY,
-              size: theme.fonts.body,
+      if (row.bulletLineCount) {
+        rowY -= theme.spacing.bulletGap;
+        row.bulletLines.forEach((lines) => {
+          lines.forEach((line, lineIndex) => {
+            if (lineIndex === 0) {
+              drawTextSafe('- ', {
+                x: descX,
+                y: rowY,
+                size: theme.sizes.bullet,
+                font: fontRegular,
+                color: theme.colors.textMuted,
+              });
+            }
+            drawTextSafe(line, {
+              x: descX + bulletIndent,
+              y: rowY,
+              size: theme.sizes.bullet,
               font: fontRegular,
               color: theme.colors.textMuted,
             });
-          }
-          drawTextSafe(line, {
-            x: leftX + bulletIndent,
-            y: cursorY,
-            size: theme.fonts.body,
-            font: fontRegular,
-            color: theme.colors.textMuted,
+            rowY -= theme.lineHeights.bullet;
           });
-          cursorY -= theme.lineHeights.body;
         });
-      });
-    }
+      }
 
-    cursorY -= theme.spacing.md;
+      const contentBottomY = rowY;
+      if (idx < params.rows.length - 1) {
+        drawDivider({ x: leftX, y: contentBottomY - 3, width: tableWidth, color: theme.colors.rule });
+        rowY = contentBottomY - theme.spacing.rowGap;
+      }
+
+      y = rowY;
+    });
+
+    return y;
   };
 
-  // Header
-  const headerStartY = cursorY;
-  const metaRows: Array<{ key: string; value: string }> = [];
-  if (vm.client.name) metaRows.push({ key: 'Client', value: vm.client.name });
+  const drawTotalsBlock = (topY: number) => {
+    const blockWidth = 210;
+    const labelX = rightX - blockWidth;
+    let y = topY;
 
-  const projectLine = vm.project.name ?? vm.project.address ?? vm.project.suburb;
-  if (projectLine) metaRows.push({ key: 'Project', value: projectLine });
-
-  if (vm.issueDate) metaRows.push({ key: 'Issue date', value: vm.issueDate });
-  if (vm.expiryDate) metaRows.push({ key: 'Expiry date', value: vm.expiryDate });
-
-  const metaRowHeight = theme.lineHeights.label + theme.spacing.xs;
-  const metaHeight = metaRows.length ? metaRows.length * metaRowHeight - theme.spacing.xs : 0;
-
-  const statusHeight = theme.fonts.small + 4;
-  const headerLeftHeight =
-    theme.lineHeights.logo +
-    theme.spacing.xs +
-    theme.lineHeights.title +
-    theme.spacing.xs +
-    theme.lineHeights.subtitle +
-    theme.spacing.sm +
-    statusHeight;
-
-  const headerHeight = Math.max(headerLeftHeight, metaHeight);
-
-  let leftY = headerStartY;
-  drawTextSafe('SANCTUARY PERGOLAS', {
-    x: leftX,
-    y: leftY,
-    size: theme.fonts.logo,
-    font: fontMedium,
-    color: theme.colors.textMuted,
-  });
-  leftY -= theme.lineHeights.logo;
-  leftY -= theme.spacing.xs;
-
-  drawTextSafe('Quote', {
-    x: leftX,
-    y: leftY,
-    size: theme.fonts.title,
-    font: fontSemiBold,
-    color: theme.colors.textPrimary,
-  });
-  leftY -= theme.lineHeights.title;
-  leftY -= theme.spacing.xs;
-
-  const refLine = `${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
-  drawTextSafe(refLine, {
-    x: leftX,
-    y: leftY,
-    size: theme.fonts.subtitle,
-    font: fontMedium,
-    color: theme.colors.textMuted,
-  });
-  leftY -= theme.lineHeights.subtitle;
-  leftY -= theme.spacing.sm;
-
-  drawStatusBadge(vm.header.status, leftX, leftY);
-
-  let metaY = headerStartY;
-  metaRows.forEach((row, idx) => {
-    drawKeyValue({
-      key: row.key,
-      value: row.value,
-      x: metaX,
-      y: metaY,
-      keyWidth: 70,
-      keySize: theme.fonts.label,
-      valueSize: theme.fonts.body,
-    });
-    metaY -= theme.lineHeights.label;
-    if (idx < metaRows.length - 1) metaY -= theme.spacing.xs;
-  });
-
-  cursorY = headerStartY - headerHeight - theme.spacing.lg;
-
-  drawDivider({ x: leftX, y: cursorY, width: contentWidth, color: theme.colors.rule });
-  cursorY -= theme.spacing.lg;
-
-  if (vm.intro) {
-    const introLines = wrapText(fontRegular, vm.intro, theme.fonts.body, contentWidth);
-    ensureSpace(introLines.length * theme.lineHeights.body + theme.spacing.lg);
-    cursorY = drawTextBlock({
-      lines: introLines,
+    drawTextSafe('TOTALS', {
       x: leftX,
-      y: cursorY,
-      lineHeight: theme.lineHeights.body,
-      font: fontRegular,
-      size: theme.fonts.body,
-      color: theme.colors.textMuted,
-    });
-    cursorY -= theme.spacing.lg;
-  }
-
-  if (vm.items.length) {
-    ensureSpace(theme.lineHeights.label + theme.spacing.sm);
-    drawTextSafe('ITEMS', {
-      x: leftX,
-      y: cursorY,
-      size: theme.fonts.label,
+      y,
+      size: theme.sizes.section,
       font: fontMedium,
       color: theme.colors.accent,
     });
-    cursorY -= theme.lineHeights.label;
-    cursorY -= theme.spacing.sm;
 
-    vm.items.forEach((item) => {
-      drawItemBlock(item);
+    y -= theme.lineHeights.section;
+    y -= theme.spacing.totalsRuleGap;
+    drawDivider({ x: labelX, y, width: blockWidth, color: theme.colors.rule });
+    y -= theme.spacing.totalsRuleGap;
+
+    drawTextSafe('SUBTOTAL NZD', {
+      x: labelX,
+      y,
+      size: theme.sizes.totalsLabel,
+      font: fontMedium,
+      color: theme.colors.textPrimary,
     });
-  }
+    drawRightAligned(vm.totals.ex, rightX, y, theme.sizes.totalsValue, fontRegular, theme.colors.textPrimary);
+    y -= theme.lineHeights.totalsLabel;
 
-  ensureSpace(theme.spacing.lg + theme.lineHeights.label);
-  drawDivider({ x: leftX, y: cursorY, width: contentWidth, color: theme.colors.rule });
-  cursorY -= theme.spacing.lg;
-
-  const totalsLabelHeight = theme.lineHeights.label + theme.spacing.sm;
-  const totalsHeight =
-    totalsLabelHeight + theme.lineHeights.totalValue + theme.spacing.xs + theme.lineHeights.body * 2 + theme.spacing.md;
-  ensureSpace(totalsHeight);
-
-  drawTextSafe('TOTALS', {
-    x: leftX,
-    y: cursorY,
-    size: theme.fonts.label,
-    font: fontMedium,
-    color: theme.colors.accent,
-  });
-  cursorY -= theme.lineHeights.label;
-  cursorY -= theme.spacing.sm;
-
-  const totalsLabelX = rightX - 210;
-
-  drawTextSafe('Total (inc GST)', {
-    x: totalsLabelX,
-    y: cursorY,
-    size: theme.fonts.body,
-    font: fontMedium,
-    color: theme.colors.textMuted,
-  });
-  const totalIncWidth = measureText(fontSemiBold, vm.totals.inc, theme.fonts.totalValue);
-  drawTextSafe(vm.totals.inc, {
-    x: rightX - totalIncWidth,
-    y: cursorY,
-    size: theme.fonts.totalValue,
-    font: fontSemiBold,
-    color: theme.colors.textPrimary,
-  });
-  cursorY -= theme.lineHeights.totalValue;
-
-  drawTextSafe('Total (ex GST)', {
-    x: totalsLabelX,
-    y: cursorY,
-    size: theme.fonts.body,
-    font: fontMedium,
-    color: theme.colors.textMuted,
-  });
-  const totalExWidth = measureText(fontMedium, vm.totals.ex, theme.fonts.body);
-  drawTextSafe(vm.totals.ex, {
-    x: rightX - totalExWidth,
-    y: cursorY,
-    size: theme.fonts.body,
-    font: fontMedium,
-    color: theme.colors.textPrimary,
-  });
-  cursorY -= theme.lineHeights.body;
-
-  drawTextSafe('GST (15%)', {
-    x: totalsLabelX,
-    y: cursorY,
-    size: theme.fonts.body,
-    font: fontMedium,
-    color: theme.colors.textMuted,
-  });
-  const gstWidth = measureText(fontMedium, vm.totals.gst, theme.fonts.body);
-  drawTextSafe(vm.totals.gst, {
-    x: rightX - gstWidth,
-    y: cursorY,
-    size: theme.fonts.body,
-    font: fontMedium,
-    color: theme.colors.textPrimary,
-  });
-  cursorY -= theme.lineHeights.body;
-  cursorY -= theme.spacing.md;
-
-  if (vm.terms.length) {
-    const termsLines: string[] = [];
-    vm.terms.forEach((term) => {
-      const wrapped = wrapText(fontRegular, term, theme.fonts.body, contentWidth);
-      termsLines.push(...wrapped);
+    drawTextSafe('INCLUDES GST 15%', {
+      x: labelX,
+      y,
+      size: theme.sizes.totalsLabel,
+      font: fontMedium,
+      color: theme.colors.textPrimary,
     });
+    drawRightAligned(vm.totals.gst, rightX, y, theme.sizes.totalsValue, fontRegular, theme.colors.textPrimary);
+    y -= theme.lineHeights.totalsLabel;
 
-    ensureSpace(theme.lineHeights.label + theme.spacing.sm + termsLines.length * theme.lineHeights.body + theme.spacing.lg);
+    drawDivider({ x: labelX, y: y - 2, width: blockWidth, color: theme.colors.rule });
+    y -= theme.spacing.totalsRuleGap;
 
+    drawTextSafe('TOTAL NZD', {
+      x: labelX,
+      y,
+      size: theme.sizes.totalsLabel,
+      font: fontMedium,
+      color: theme.colors.textPrimary,
+    });
+    drawRightAligned(vm.totals.inc, rightX, y, theme.sizes.totalsTotal, fontSemiBold, theme.colors.textPrimary);
+    y -= theme.lineHeights.totalsTotal;
+
+    drawDivider({ x: labelX, y: y - 2, width: blockWidth, color: theme.colors.rule });
+
+    return y - 2;
+  };
+
+  const drawTermsBlock = (topY: number) => {
+    if (!termsLines.length) return topY;
+    let y = topY;
     drawTextSafe('TERMS', {
       x: leftX,
-      y: cursorY,
-      size: theme.fonts.label,
+      y,
+      size: theme.sizes.section,
       font: fontMedium,
       color: theme.colors.accent,
     });
-    cursorY -= theme.lineHeights.label;
-    cursorY -= theme.spacing.sm;
-
-    cursorY = drawTextBlock({
-      lines: termsLines,
-      x: leftX,
-      y: cursorY,
-      lineHeight: theme.lineHeights.body,
-      font: fontRegular,
-      size: theme.fonts.body,
-      color: theme.colors.textMuted,
-    });
-    cursorY -= theme.spacing.lg;
-  }
-
-  const footerHeight = vm.footer.length
-    ? vm.footer.length * theme.lineHeights.small + (vm.footer.length - 1) * theme.spacing.xs + theme.spacing.lg
-    : 0;
-
-  if (vm.footer.length) {
-    ensureSpace(footerHeight);
-    drawDivider({ x: leftX, y: cursorY, width: contentWidth, color: theme.colors.rule });
-    cursorY -= theme.spacing.md;
-
-    vm.footer.forEach((line) => {
+    y -= theme.lineHeights.section;
+    y -= theme.spacing.sectionToHeader;
+    termsLines.forEach((line) => {
       drawTextSafe(line, {
         x: leftX,
-        y: cursorY,
-        size: theme.fonts.small,
+        y,
+        size: theme.sizes.terms,
+        font: fontRegular,
+        color: theme.colors.textPrimary,
+      });
+      y -= theme.lineHeights.terms;
+    });
+    return y + theme.lineHeights.terms;
+  };
+
+  const drawFooterBlock = (bottomY: number) => {
+    if (!footerLines.length) return bottomY;
+    let y = bottomY;
+    for (let i = footerLines.length - 1; i >= 0; i -= 1) {
+      drawTextSafe(footerLines[i], {
+        x: leftX,
+        y,
+        size: theme.sizes.footer,
         font: fontRegular,
         color: theme.colors.textMuted,
       });
-      cursorY -= theme.lineHeights.small;
-      cursorY -= theme.spacing.xs;
+      y += theme.lineHeights.footer;
+    }
+    return y - theme.lineHeights.footer;
+  };
+
+  const drawContinuationHeader = () => {
+    let y = CONTENT_TOP_Y;
+    drawTextSafe('SANCTUARY PERGOLAS', {
+      x: leftX,
+      y,
+      size: theme.sizes.miniHeader,
+      font: fontMedium,
+      color: theme.colors.textMuted,
     });
+    const refLine = `${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
+    drawRightAligned(refLine, rightX, y, theme.sizes.miniHeader, fontMedium, theme.colors.textMuted);
+    y -= theme.lineHeights.miniHeader;
+    y -= theme.spacing.continuationHeaderGap;
+    return y;
+  };
+
+  const fitRowsToHeight = (availableHeight: number, rows: RowLayout[]) => {
+    let used = 0;
+    let count = 0;
+    rows.forEach((row) => {
+      const add = row.contentHeight + (count > 0 ? theme.spacing.rowGap : 0);
+      if (used + add <= availableHeight) {
+        used += add;
+        count += 1;
+      }
+    });
+    return count;
+  };
+
+  drawTopBar();
+
+  // Header stack (top-left)
+  const brandY = CONTENT_TOP_Y;
+  drawTextSafe('SANCTUARY PERGOLAS', {
+    x: leftX,
+    y: brandY,
+    size: theme.sizes.brand,
+    font: fontMedium,
+    color: theme.colors.textMuted,
+  });
+
+  // Client name + dates (top-right)
+  let rightBottomY = brandY;
+  let rightCursorY = brandY;
+  const showDates = Boolean(vm.issueDate);
+  if (vm.client.name) {
+    drawRightAligned(vm.client.name, rightX, rightCursorY, theme.sizes.client, fontSemiBold, theme.colors.textPrimary);
+    rightBottomY = rightCursorY;
+    rightCursorY -= theme.lineHeights.client;
+    if (showDates) rightCursorY -= 4;
   }
+
+  if (vm.issueDate) {
+    drawRightAligned(`Issue date ${vm.issueDate}`, rightX, rightCursorY, theme.sizes.date, fontRegular, theme.colors.textMuted);
+    rightBottomY = rightCursorY;
+    rightCursorY -= theme.lineHeights.date;
+  }
+  if (vm.expiryDate) {
+    drawRightAligned(`Expiry ${vm.expiryDate}`, rightX, rightCursorY, theme.sizes.date, fontRegular, theme.colors.textMuted);
+    rightBottomY = rightCursorY;
+  }
+
+  const quoteY = brandY - theme.lineHeights.brand - theme.spacing.headerBrandToQuote;
+  drawTextSafe('Quote', {
+    x: leftX,
+    y: quoteY,
+    size: theme.sizes.title,
+    font: fontSemiBold,
+    color: theme.colors.textPrimary,
+  });
+
+  const refY = quoteY - theme.lineHeights.title - theme.spacing.headerQuoteToRef;
+  const refLine = `${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
+  drawTextSafe(refLine, {
+    x: leftX,
+    y: refY,
+    size: theme.sizes.ref,
+    font: fontMedium,
+    color: theme.colors.textMuted,
+  });
+
+  const statusY = refY - theme.lineHeights.ref - theme.spacing.headerRefToStatus;
+  const leftBottomY = drawStatusBadge(vm.header.status, leftX, statusY);
+
+  let headerBottomY = Math.min(leftBottomY, rightBottomY);
+
+  if (vm.intro) {
+    const introLines = wrapText(fontRegular, vm.intro, theme.sizes.intro, contentWidth);
+    if (introLines.length) {
+      let y = headerBottomY - theme.spacing.introGap;
+      introLines.forEach((line) => {
+        drawTextSafe(line, {
+          x: leftX,
+          y,
+          size: theme.sizes.intro,
+          font: fontRegular,
+          color: theme.colors.textMuted,
+        });
+        y -= theme.lineHeights.intro;
+      });
+      headerBottomY = y + theme.lineHeights.intro;
+    }
+  }
+
+  const itemsRegionTopY = headerBottomY - theme.spacing.headerToItems;
+
+  if (rowLayouts.length) {
+    const regionHeight = itemsRegionTopY - itemsRegionBottomY;
+    const fitsOnPage = tableHeight <= regionHeight;
+
+    if (fitsOnPage) {
+      const tableTopY = itemsRegionBottomY + tableHeight;
+      drawItemsTable({ topY: tableTopY, rows: rowLayouts, sectionTitle: 'ITEMS' });
+    } else {
+      const tableTopY = itemsRegionTopY;
+      const availableRowsHeight = Math.max(0, itemsRegionTopY - itemsRegionBottomY - tableHeaderHeight);
+      const rowsOnPage = fitRowsToHeight(availableRowsHeight, rowLayouts);
+      const pageRows = rowLayouts.slice(0, rowsOnPage);
+      const remainingRows = rowLayouts.slice(rowsOnPage);
+
+      drawItemsTable({ topY: tableTopY, rows: pageRows, sectionTitle: 'ITEMS' });
+
+      if (remainingRows.length) {
+        let overflowRows = remainingRows;
+        while (overflowRows.length) {
+          page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+          drawTopBar();
+
+          const continuationTopY = drawContinuationHeader();
+          const continuationAvailable = Math.max(
+            0,
+            continuationTopY - MARGIN_B - tableHeaderHeight,
+          );
+          const rowsCount = fitRowsToHeight(continuationAvailable, overflowRows);
+          const nextRows = overflowRows.slice(0, rowsCount);
+          overflowRows = overflowRows.slice(rowsCount);
+
+          drawItemsTable({
+            topY: continuationTopY,
+            rows: nextRows,
+            sectionTitle: 'ITEMS (continued)',
+          });
+        }
+      }
+    }
+  }
+
+  page = firstPage;
+  drawTotalsBlock(totalsTopY);
+  drawTermsBlock(termsTopY);
+  drawFooterBlock(MARGIN_B);
 
   return pdfDoc.save();
 }

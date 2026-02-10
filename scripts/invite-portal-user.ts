@@ -64,21 +64,59 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
 });
 
+async function findUserIdByEmail(targetEmail: string): Promise<string | null> {
+  const emailNeedle = targetEmail.trim().toLowerCase();
+  if (!emailNeedle) return null;
+
+  const perPage = 200;
+  // Small portals typically have few users; this keeps the script simple and reliable.
+  for (let page = 1; page <= 50; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users ?? [];
+    const match = users.find((u) => String(u.email ?? '').trim().toLowerCase() === emailNeedle);
+    if (match?.id) return match.id;
+    if (users.length < perPage) return null;
+  }
+
+  return null;
+}
+
 async function main() {
   let userId: string | undefined;
 
   if (password) {
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
-    if (error) throw error;
-    userId = data.user?.id;
+    const existingUserId = await findUserIdByEmail(email);
+    if (existingUserId) {
+      const { data, error } = await supabase.auth.admin.updateUserById(existingUserId, {
+        password,
+        email_confirm: true,
+      });
+      if (error) throw error;
+      userId = data.user?.id ?? existingUserId;
+      console.log(`🔐 Updated password for existing user: ${email}`);
+    } else {
+      const { data, error } = await supabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+      if (error) throw error;
+      userId = data.user?.id;
+      console.log(`👤 Created user with password: ${email}`);
+    }
   } else {
-    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
-    if (error) throw error;
-    userId = data.user?.id;
+    const existingUserId = await findUserIdByEmail(email);
+    if (existingUserId) {
+      userId = existingUserId;
+      console.log(`ℹ️ User already exists: ${email}`);
+      console.log('   No invite was sent. If they cannot sign in, re-run with --password to set a password.');
+    } else {
+      const { data, error } = await supabase.auth.admin.inviteUserByEmail(email);
+      if (error) throw error;
+      userId = data.user?.id;
+      console.log(`✉️ Invite sent: ${email} (check Supabase Auth email/SMTP settings).`);
+    }
   }
 
   if (!userId) {
