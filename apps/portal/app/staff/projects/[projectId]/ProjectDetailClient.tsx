@@ -90,6 +90,8 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
   const [deleteProjectText, setDeleteProjectText] = useState('');
   const [deleteEstimateId, setDeleteEstimateId] = useState<string | null>(null);
   const [statusConfirm, setStatusConfirm] = useState<{ next: Project['status']; label: string } | null>(null);
+  const [siteVisitTier, setSiteVisitTier] = useState<1 | 2 | null>(null);
+  const [siteVisitTierError, setSiteVisitTierError] = useState<string | null>(null);
   const [createQuoteOpen, setCreateQuoteOpen] = useState(false);
   const [createQuoteEstimateId, setCreateQuoteEstimateId] = useState<string>('');
   const [createQuoteNumber, setCreateQuoteNumber] = useState<string>('');
@@ -126,6 +128,13 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
       setQuotes(await listQuotesByProject(projectId));
     })();
   }, [projectId]);
+
+  useEffect(() => {
+    if (!statusConfirm || statusConfirm.next !== 'SITE_VISIT') {
+      setSiteVisitTier(null);
+      setSiteVisitTierError(null);
+    }
+  }, [statusConfirm]);
 
   useEffect(() => {
     if (!project) return;
@@ -184,13 +193,15 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
     setCreateQuoteTotalOverride(selectedQuoteEstimate.outputs.totals.cost_inc_gst.toFixed(2));
   }, [createQuoteOpen, createQuoteTotalTouched, selectedQuoteEstimate]);
 
-  const applyStatus = async (next: Project['status']) => {
+  const applyStatus = async (next: Project['status'], opts?: { siteVisitPriorityTier?: 1 | 2 | null }) => {
     if (!project) return;
     if (!next) return;
 
     setError(null);
     try {
-      const updated = await setProjectStatus(projectId, next as any);
+      const updated = await setProjectStatus(projectId, next as any, {
+        siteVisitPriorityTier: opts?.siteVisitPriorityTier ?? null,
+      });
       setProject(updated);
       toast.success('Status updated.');
 
@@ -219,7 +230,10 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
         setConflict({
           details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
           retry: async () => {
-            const updated = await setProjectStatus(projectId, next as any, { force: true });
+            const updated = await setProjectStatus(projectId, next as any, {
+              force: true,
+              siteVisitPriorityTier: opts?.siteVisitPriorityTier ?? null,
+            });
             setProject(updated);
           },
         });
@@ -396,7 +410,12 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                 id="projectStatus"
                 value={project.status ?? 'NEW'}
                 onChange={(e) => {
-                  applyStatus(e.target.value as any);
+                  const next = e.target.value as any;
+                  if (next === 'SITE_VISIT') {
+                    setStatusConfirm({ next, label: projectStatusLabel(next) });
+                    return;
+                  }
+                  applyStatus(next);
                 }}
               >
                 {PROJECT_STATUS_ORDER.map((status) => (
@@ -1506,7 +1525,11 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
         <PipelineModal
           open
           onOpenChange={(open) => {
-            if (!open) setStatusConfirm(null);
+            if (!open) {
+              setStatusConfirm(null);
+              setSiteVisitTier(null);
+              setSiteVisitTierError(null);
+            }
           }}
           title="Move stage"
           description={`Move this project from ${projectStatusLabel((project.status ?? 'NEW') as any)} to ${statusConfirm.label}?`}
@@ -1518,8 +1541,12 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                 disabled={Boolean(busy)}
                 onClick={() => {
                   const next = statusConfirm.next;
+                  if (next === 'SITE_VISIT' && !siteVisitTier) {
+                    setSiteVisitTierError('Select Tier 1 or Tier 2 to proceed to Site Visit.');
+                    return;
+                  }
                   setStatusConfirm(null);
-                  applyStatus(next);
+                  applyStatus(next, { siteVisitPriorityTier: next === 'SITE_VISIT' ? siteVisitTier : null });
                 }}
               >
                 Move to {statusConfirm.label}
@@ -1533,7 +1560,51 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
               </button>
             </>
           }
-        />
+        >
+          {statusConfirm.next === 'SITE_VISIT' ? (
+            <div className={styles.stageModalSection}>
+              <div className={styles.stageModalLabel}>Site visit priority (required)</div>
+              <div className={styles.stageModalHelper}>Budget + timeline only.</div>
+              <div className={styles.stageModalRadioGroup}>
+                <label className={styles.stageModalRadio}>
+                  <input
+                    type="radio"
+                    name="siteVisitTier"
+                    checked={siteVisitTier === 1}
+                    onChange={() => {
+                      setSiteVisitTier(1);
+                      setSiteVisitTierError(null);
+                    }}
+                  />
+                  <div>
+                    <div className={styles.stageModalRadioTitle}>Tier 1 — Qualified + urgent</div>
+                    <div className={styles.stageModalRadioSub}>
+                      Budget: Yes · Timeline: ASAP / 0–8 weeks · Site visit in 2–3 days
+                    </div>
+                  </div>
+                </label>
+                <label className={styles.stageModalRadio}>
+                  <input
+                    type="radio"
+                    name="siteVisitTier"
+                    checked={siteVisitTier === 2}
+                    onChange={() => {
+                      setSiteVisitTier(2);
+                      setSiteVisitTierError(null);
+                    }}
+                  />
+                  <div>
+                    <div className={styles.stageModalRadioTitle}>Tier 2 — Qualified + near-term</div>
+                    <div className={styles.stageModalRadioSub}>
+                      Budget: Yes · Timeline: 2–6 months · Site visit in 2–3 weeks
+                    </div>
+                  </div>
+                </label>
+              </div>
+              {siteVisitTierError ? <div className={styles.stageModalError}>{siteVisitTierError}</div> : null}
+            </div>
+          ) : null}
+        </PipelineModal>
       ) : null}
 
       {conflict ? (

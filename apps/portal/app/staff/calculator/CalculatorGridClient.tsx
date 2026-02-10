@@ -347,12 +347,12 @@ function makeDefaultBlindItem(overrides?: Partial<BlindLineItem>): BlindLineItem
 }
 
 function makeDefaultBlinds(): CalculatorBlindsState {
-  return { items: [makeDefaultBlindItem()] };
+  return { items: [] };
 }
 
 function normalizeBlindsStateForUi(value: unknown): CalculatorBlindsState {
   const normalized = normalizeBlindsState(value);
-  if (normalized && Array.isArray(normalized.items) && normalized.items.length > 0) return normalized;
+  if (normalized && Array.isArray(normalized.items)) return normalized;
   return makeDefaultBlinds();
 }
 
@@ -759,7 +759,7 @@ export default function CalculatorGridClient({
     setValues((prev) => {
       const current = normalizeBlindsStateForUi(prev.blinds);
       const items = current.items.filter((item) => item.id !== id);
-      return { ...prev, blinds: { items: items.length ? items : [makeDefaultBlindItem()] } };
+      return { ...prev, blinds: { items } };
     });
   };
 

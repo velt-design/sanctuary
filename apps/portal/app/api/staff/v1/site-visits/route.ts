@@ -35,11 +35,15 @@ function nowIso(): string {
 
 function mapRow(row: any): any {
   const project = row?.projects ?? row?.project ?? null;
-  const contact = project?.contacts ?? project?.contact ?? null;
+  const projectObj = Array.isArray(project) ? project[0] : project;
+  const contact = projectObj?.contacts ?? projectObj?.contact ?? null;
   const contactObj = Array.isArray(contact) ? contact[0] : contact;
 
-  const projectUuid = String(row?.project_id ?? project?.id ?? '');
-  const contactUuid = typeof project?.contact_id === 'string' ? project.contact_id : typeof contactObj?.id === 'string' ? contactObj.id : '';
+  const projectUuid = String(row?.project_id ?? projectObj?.id ?? '');
+  const contactUuid =
+    typeof projectObj?.contact_id === 'string' ? projectObj.contact_id : typeof contactObj?.id === 'string' ? contactObj.id : '';
+  const tierRaw = projectObj?.site_visit_priority_tier ?? projectObj?.siteVisitPriorityTier ?? null;
+  const priorityTier = tierRaw === 1 || tierRaw === '1' ? 1 : tierRaw === 2 || tierRaw === '2' ? 2 : null;
 
   const salespersonId =
     typeof row?.assigned_sales_owner_id === 'string'
@@ -63,12 +67,13 @@ function mapRow(row: any): any {
     cancelReason: typeof row?.cancel_reason === 'string' ? row.cancel_reason : null,
     createdAt: typeof row?.created_at === 'string' ? row.created_at : '',
     updatedAt: typeof row?.updated_at === 'string' ? row.updated_at : '',
+    priorityTier,
     project: {
       id: appIdFromUuid('proj', projectUuid),
-      name: typeof project?.name === 'string' ? project.name : '',
-      region: typeof project?.region === 'string' ? project.region : null,
-      siteAddress: typeof project?.site_address === 'string' ? project.site_address : null,
-      pipelineStage: typeof project?.pipeline_stage === 'string' ? project.pipeline_stage : null,
+      name: typeof projectObj?.name === 'string' ? projectObj.name : '',
+      region: typeof projectObj?.region === 'string' ? projectObj.region : null,
+      siteAddress: typeof projectObj?.site_address === 'string' ? projectObj.site_address : null,
+      pipelineStage: typeof projectObj?.pipeline_stage === 'string' ? projectObj.pipeline_stage : null,
     },
     contact: {
       id: contactUuid ? appIdFromUuid('ct', contactUuid) : null,
@@ -93,11 +98,18 @@ export async function GET(req: Request) {
   const selectVariants = [
     // Preferred select (avoid schema drift, like missing `projects.region`).
     'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
-      ' projects!inner( id, name, site_address, pipeline_stage, contact_id, contacts ( id, name, email, phone ) )',
+      ' projects!inner( id, name, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )',
     // Full select for DBs that include `projects.region`.
+    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
+      ' projects!inner( id, name, region, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )',
+    // Fallbacks without tier for older schemas.
+    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
+      ' projects!inner( id, name, site_address, pipeline_stage, contact_id, contacts ( id, name, email, phone ) )',
     'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
       ' projects!inner( id, name, region, site_address, pipeline_stage, contact_id, contacts ( id, name, email, phone ) )',
     // site_visit_events may still have legacy `assigned_sales_owner` column name.
+    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner, notes, created_at, updated_at,' +
+      ' projects!inner( id, name, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )',
     'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner, notes, created_at, updated_at,' +
       ' projects!inner( id, name, site_address, pipeline_stage, contact_id, contacts ( id, name, email, phone ) )',
   ] as const;

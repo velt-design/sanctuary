@@ -34,6 +34,7 @@ create table if not exists public.projects (
   region text,
   site_address text,
   pipeline_stage text not null default 'New',
+  site_visit_priority_tier smallint,
   follow_up_date date,
   archived_at timestamptz,
   notes text,
@@ -44,6 +45,20 @@ alter table public.projects
   add column if not exists updated_at timestamptz not null default now();
 alter table public.projects
   add column if not exists archived_at timestamptz;
+alter table public.projects
+  add column if not exists site_visit_priority_tier smallint;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'projects_site_visit_priority_tier_check'
+  ) then
+    alter table public.projects
+      add constraint projects_site_visit_priority_tier_check
+      check (site_visit_priority_tier is null or site_visit_priority_tier in (1,2));
+  end if;
+end $$;
 drop trigger if exists projects_set_updated_at on public.projects;
 create trigger projects_set_updated_at before update on public.projects
 for each row execute function public.set_updated_at();

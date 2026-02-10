@@ -705,6 +705,18 @@ async function loadFileContent(fileUuid: string): Promise<{ filename: string; co
 }
 
 export async function ensurePdfForSend(detail: QuoteVersionDetail, actor: string | null): Promise<{ fileUuid: string; filename: string; content: Buffer }> {
+  const unpriced = detail.lineItems
+    .map((item, idx) => {
+      const title = String(item.description ?? '').split('\n')[0]?.trim() || `Line item ${idx + 1}`;
+      return { item, title };
+    })
+    .filter(({ item }) => item.unitPriceIncGstCents === 0 || item.lineTotalIncGstCents === 0);
+
+  if (unpriced.length) {
+    const example = unpriced[0]?.title || 'Line item';
+    throw new Error(`Quote contains unpriced items (e.g. ${example}). Price or remove before sending.`);
+  }
+
   const existingFileId = detail.pdfFileId ? uuidFromAppId(detail.pdfFileId, 'file') : null;
 
   if (existingFileId && detail.status !== 'DRAFT') {

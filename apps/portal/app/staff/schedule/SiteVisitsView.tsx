@@ -120,6 +120,12 @@ function eventStatusClass(status: SiteVisitCalendarItem['status']): string {
   return styles.siteVisitEventTentative;
 }
 
+function eventTierClass(tier: SiteVisitCalendarItem['priorityTier']): string {
+  if (tier === 1) return styles.siteVisitEventTier1;
+  if (tier === 2) return styles.siteVisitEventTier2;
+  return '';
+}
+
 function toLocalDayKey(iso: string | null): string | null {
   if (!iso) return null;
   const dt = new Date(iso);
@@ -151,7 +157,7 @@ function SiteVisitEvent({
   return (
     <button
       type="button"
-      className={`${styles.siteVisitEvent} ${eventStatusClass(item.status)}`}
+      className={`${styles.siteVisitEvent} ${eventStatusClass(item.status)} ${eventTierClass(item.priorityTier ?? null)}`}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
@@ -406,6 +412,16 @@ export default function SiteVisitsView() {
       return text.includes(needle);
     });
   }, [query, unscheduled]);
+
+  const unscheduledSorted = useMemo(() => {
+    const list = [...unscheduledFiltered];
+    list.sort((a, b) => {
+      const ta = a.priorityTier ?? 99;
+      const tb = b.priorityTier ?? 99;
+      return ta - tb;
+    });
+    return list;
+  }, [unscheduledFiltered]);
 
   const eventsByLaneDay = useMemo(() => {
     const map = new Map<string, SiteVisitCalendarItem[]>();
@@ -926,8 +942,8 @@ export default function SiteVisitsView() {
                   </div>
                 </div>
               ) : null}
-              {unscheduledFiltered.length ? (
-                unscheduledFiltered.map((item) => (
+              {unscheduledSorted.length ? (
+                unscheduledSorted.map((item) => (
                   <UnscheduledSiteVisitCard
                     key={item.id}
                     item={item}
