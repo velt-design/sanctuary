@@ -3,7 +3,7 @@ import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import fontkit from './fontkit';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, type Color } from 'pdf-lib';
 import type { QuoteStatus, QuoteVersionDetail } from './types';
 import { fromCents } from './utils';
 
@@ -375,7 +375,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     return null;
   };
 
-  const drawTextSafe = (value: unknown, options: { x: number; y: number; size: number; font: any; color: { r: number; g: number; b: number } }) => {
+  const drawTextSafe = (value: unknown, options: { x: number; y: number; size: number; font: any; color: Color }) => {
     const text = toText(value);
     if (!text) return;
     page.drawText(text, options);
@@ -391,7 +391,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     x: number;
     y: number;
     lineHeight: number;
-    color: { r: number; g: number; b: number };
+    color: Color;
     font: any;
     size: number;
   }) => {
@@ -419,8 +419,8 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     valueFont?: any;
     keySize?: number;
     valueSize?: number;
-    keyColor?: { r: number; g: number; b: number };
-    valueColor?: { r: number; g: number; b: number };
+    keyColor?: Color;
+    valueColor?: Color;
     lineHeight?: number;
   }) => {
     const keyFont = params.keyFont ?? fontMedium;
@@ -450,7 +450,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     return params.y - lineHeight;
   };
 
-  const drawDivider = (params: { x: number; y: number; width: number; color: { r: number; g: number; b: number } }) => {
+  const drawDivider = (params: { x: number; y: number; width: number; color: Color }) => {
     page.drawLine({
       start: { x: params.x, y: params.y },
       end: { x: params.x + params.width, y: params.y },
@@ -515,7 +515,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     }
   };
 
-  const drawItemBlock = (params: { titleLeft: string; amountRight: string; bullets: string[] }) => {
+  const drawItemBlock = (params: { titleLeft: string; amountIncGst: string; bullets: string[] }) => {
     const amountReserve = 90;
     const titleMaxWidth = Math.max(120, contentWidth - amountReserve - theme.spacing.sm);
     const titleLines = wrapText(fontMedium, params.titleLeft, theme.fonts.itemTitle, titleMaxWidth);
@@ -544,8 +544,8 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
       });
 
       if (idx === 0) {
-        const amountWidth = measureText(fontSemiBold, params.amountRight, theme.fonts.itemTitle);
-        drawTextSafe(params.amountRight, {
+        const amountWidth = measureText(fontSemiBold, params.amountIncGst, theme.fonts.itemTitle);
+        drawTextSafe(params.amountIncGst, {
           x: rightX - amountWidth,
           y,
           size: theme.fonts.itemTitle,
