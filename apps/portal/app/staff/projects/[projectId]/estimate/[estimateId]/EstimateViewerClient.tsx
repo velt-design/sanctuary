@@ -22,7 +22,7 @@ import Modal from '@/components/ui/modal/Modal';
 import type { CalculatorInputs } from '@/lib/types/calculator';
 import { createQuoteFromEstimate } from '@/lib/repo/quotesRepo';
 import { quoteLabel } from '@/lib/types/quote';
-import { useSession } from 'next-auth/react';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 type SectionKey = 'overview' | 'materials' | 'install' | 'overheads' | 'inputs' | 'warnings' | 'outputs';
 
@@ -232,8 +232,8 @@ export default function EstimateViewerClient({
   estimateId: string;
   isAdmin?: boolean;
 }) {
-  const { data: session } = useSession();
-  const isAdmin = typeof isAdminProp === 'boolean' ? isAdminProp : (((session?.user as any)?.role ?? 'staff') as string) === 'admin';
+  const { role } = usePortalSession();
+  const isAdmin = typeof isAdminProp === 'boolean' ? isAdminProp : (role ?? 'staff') === 'admin';
 
   const router = useRouter();
   const toast = useToast();

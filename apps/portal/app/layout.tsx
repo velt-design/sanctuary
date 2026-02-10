@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import NextAuthSessionProvider from '@/components/auth/NextAuthSessionProvider';
+import PortalAuthProvider from '@/components/auth/PortalAuthProvider';
 import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import PortalShell from '@/components/layout/PortalShell';
 import { Suspense } from 'react';
@@ -14,13 +14,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        <NextAuthSessionProvider>
+        <PortalAuthProvider>
           <ToastProvider>
             <Suspense fallback={null}>
               <PortalShell>{children}</PortalShell>
             </Suspense>
           </ToastProvider>
-        </NextAuthSessionProvider>
+        </PortalAuthProvider>
       </body>
     </html>
   );

@@ -28,7 +28,7 @@ import {
 import { getSiteVisitEventForProject } from '@/lib/repo/siteVisitEventsRepo';
 import type { AuditEvent, DesignTicket, EmailOutboxItem, FollowupTask, Task } from '@/lib/types/automation';
 import { apiJson } from '@/lib/repo/apiClient';
-import { useSession } from 'next-auth/react';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { projectsSWRKey } from '@/lib/cache/projectsCache';
 import type { Project as ProjectType } from '@/lib/types/project';
 import { useCacheFirstResource } from '@/lib/ui/useCacheFirstResource';
@@ -63,8 +63,8 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
-  const { data: session } = useSession();
-  const isAdmin = (((session?.user as any)?.role ?? 'staff') as string) === 'admin';
+  const { role } = usePortalSession();
+  const isAdmin = (role ?? 'staff') === 'admin';
   const [mounted, setMounted] = useState(false);
 
   const [project, setProject] = useState<Project | null>(null);

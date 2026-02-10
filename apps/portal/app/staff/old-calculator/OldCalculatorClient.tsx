@@ -1,7 +1,7 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
 import { useMemo, useState } from 'react';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 export default function OldCalculatorClient({
   email,
@@ -10,6 +10,7 @@ export default function OldCalculatorClient({
   email: string;
   role: 'admin' | 'staff';
 }) {
+  const { signOut } = usePortalSession();
   const [length, setLength] = useState<number>(3);
   const [width, setWidth] = useState<number>(3);
   const [rate, setRate] = useState<number>(1000);
@@ -36,7 +37,7 @@ export default function OldCalculatorClient({
               Signed in as {email} ({role})
             </p>
           </div>
-          <button onClick={() => signOut({ callbackUrl: '/login' })}>Sign out</button>
+          <button onClick={() => void signOut('/login')}>Sign out</button>
         </div>
 
         <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>

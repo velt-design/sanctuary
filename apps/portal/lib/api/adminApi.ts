@@ -1,7 +1,6 @@
 import 'server-only';
 
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth/next';
+import { getPortalSession } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export function jsonError(message: string, status = 400) {
@@ -13,10 +12,9 @@ export function jsonOk<T extends Record<string, unknown>>(payload: T, status = 2
 }
 
 export async function requireAdminSession() {
-  const session = await getServerSession(authOptions);
+  const session = await getPortalSession();
   if (!session) return { ok: false as const, response: jsonError('Unauthorized', 401) };
-  const role = (session.user as any)?.role as string | undefined;
-  if (role !== 'admin') return { ok: false as const, response: jsonError('Forbidden', 403) };
+  if (session.role !== 'admin') return { ok: false as const, response: jsonError('Forbidden', 403) };
   return { ok: true as const, session };
 }
 

@@ -17,10 +17,13 @@ Vercel does **not** use your local `.env.local`.
 
 In Vercel → **Project Settings** → **Environment Variables**, add the same variables (at least `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`) for **Production** and **Preview**, then redeploy.
 
-## 2) Create tables
+## 2) Create tables + portal auth
 
-In Supabase dashboard → **SQL Editor**, run:
+If you’re using migrations, apply everything in `supabase/migrations/` (includes `portal_users` + RLS).
 
-- `supabase/contacts_projects.sql`
+If you prefer manual SQL in Supabase dashboard → **SQL Editor**, run:
+
+- `supabase/portal_schema.sql`
+- `supabase/migrations/20260210_000002_portal_auth.sql`
 
 If the portal shows **“schema cache”** / **“Could not find the table `public.contacts`”**, re-run the SQL and refresh after ~10 seconds.

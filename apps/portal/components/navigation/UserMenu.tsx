@@ -1,7 +1,6 @@
 'use client';
 
 import { CircleUser, LogOut } from 'lucide-react';
-import { signOut } from 'next-auth/react';
 import styles from './UserMenu.module.css';
 import {
   DropdownMenu,
@@ -11,8 +10,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 export default function UserMenu({ email, roleLabel }: { email?: string; roleLabel?: string }) {
+  const { signOut } = usePortalSession();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -34,7 +36,7 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
         <DropdownMenuItem
           className={styles.signOutItem}
           onSelect={() => {
-            signOut({ callbackUrl: '/login' });
+            void signOut('/login');
           }}
         >
           <LogOut aria-hidden="true" className={styles.signOutIcon} size={16} strokeWidth={2} />
