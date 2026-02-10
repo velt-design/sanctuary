@@ -1,13 +1,14 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
 import { useEffect, useId, useRef, useState } from 'react';
 import styles from './SessionMenu.module.css';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 export default function SessionMenu({ email, role }: { email: string; role: 'admin' | 'staff' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const baseId = useId();
+  const { signOut } = usePortalSession();
 
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
@@ -60,7 +61,7 @@ export default function SessionMenu({ email, role }: { email: string; role: 'adm
             className={styles.menuButton}
             onClick={() => {
               setOpen(false);
-              signOut({ callbackUrl: '/login' });
+              void signOut('/login');
             }}
           >
             Sign out
@@ -70,4 +71,3 @@ export default function SessionMenu({ email, role }: { email: string; role: 'adm
     </div>
   );
 }
-

@@ -1,6 +1,5 @@
-import { authOptions } from '@/lib/auth';
+import { getPortalSession } from '@/lib/auth';
 import { ACTIVE_COSTING_MANIFEST_PATH, loadCostingConfigV1 } from '@sp/costing';
-import { getServerSession } from 'next-auth/next';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -11,7 +10,7 @@ function resolveConfigPath(relativePath: string): string {
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  const session = await getPortalSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const config = loadCostingConfigV1();

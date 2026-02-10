@@ -1,7 +1,6 @@
 import 'server-only';
 
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth/next';
+import { getPortalSession } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export function jsonError(message: string, status = 400) {
@@ -13,7 +12,7 @@ export function jsonOk<T extends Record<string, unknown>>(payload: T, status = 2
 }
 
 export async function requireStaffSession() {
-  const session = await getServerSession(authOptions);
+  const session = await getPortalSession();
   return session ?? null;
 }
 
@@ -25,4 +24,3 @@ export async function parseJsonBody(req: Request): Promise<{ ok: true; body: any
     return { ok: false, error: 'Invalid JSON body' };
   }
 }
-

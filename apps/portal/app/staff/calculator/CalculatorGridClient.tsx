@@ -21,7 +21,7 @@ import { createEstimate, duplicateEstimateToDraft } from '@/lib/repo/estimatesRe
 import { getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
-import { useSession } from 'next-auth/react';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useCalculatorUiPrefs } from '@/lib/ui/useCalculatorUiPrefs';
 import RoofOrientationDiagram from './RoofOrientationDiagram';
 import {
@@ -363,9 +363,9 @@ export default function CalculatorGridClient({
   email?: string;
   role?: 'admin' | 'staff';
 }) {
-  const { data: session } = useSession();
-  const email = typeof emailProp === 'string' ? emailProp : (typeof session?.user?.email === 'string' ? session.user.email : '');
-  const role = (roleProp ?? (((session?.user as any)?.role ?? 'staff') as 'admin' | 'staff')) === 'admin' ? 'admin' : 'staff';
+  const { email: sessionEmail, role: sessionRole } = usePortalSession();
+  const email = typeof emailProp === 'string' ? emailProp : (sessionEmail ?? '');
+  const role = (roleProp ?? (sessionRole ?? 'staff')) === 'admin' ? 'admin' : 'staff';
   const { previewLayoutEnabled } = useCalculatorUiPrefs();
 
   const router = useRouter();

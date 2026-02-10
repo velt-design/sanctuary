@@ -1,55 +1,55 @@
-# Staff portal auth (NextAuth Credentials)
+# Staff portal auth (Supabase)
 
-The staff portal uses NextAuth “Credentials” (email + password) and **requires env vars** in production.
+The staff portal now uses **Supabase Auth (email + password)** and a `portal_users` table for roles.
 
 ## Required env vars (Vercel)
 
-Set these in **Vercel → Project Settings → Environment Variables** for **Production** (and usually **Preview** too):
+Set these in **Vercel → Project Settings → Environment Variables** for **Production** (and **Preview**):
 
-- `NEXTAUTH_URL` (production: `https://www.sanctuarypergolas.co.nz`)
-- `NEXTAUTH_SECRET`
-- `STAFF_ADMIN_EMAIL`
-- `STAFF_ADMIN_PASSWORD` (or `STAFF_ADMIN_HASH`)
-- `STAFF_USER_EMAILS` (or `STAFF_USER_EMAIL`)
-- `STAFF_USER_PASSWORD` (or `STAFF_USER_HASH`)
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (required for invite tooling + server-side admin actions)
 
-If `NEXTAUTH_SECRET` is missing in production, NextAuth will 500 and you’ll see the generic **“Server error / problem with the server configuration”** page.
+## Supabase dashboard setup
 
-## Generate values
+1) **Auth → Providers**
+- Enable **Email**
 
-### 1) `NEXTAUTH_SECRET`
+2) **Auth → URL Configuration**
+- **Site URL**: your portal base URL (e.g. `https://portal.sanctuarypergolas.co.nz`)
+- **Redirect URLs**: include
+  - `https://portal.sanctuarypergolas.co.nz/*`
+  - `http://localhost:3001/*` (local dev)
+  - Any Vercel preview domains you use
 
-Run locally:
+## Create users + assign roles
 
-```sh
-openssl rand -base64 32
-```
+### Recommended (script)
 
-Paste the output into Vercel as `NEXTAUTH_SECRET`.
-
-### 2) Plaintext passwords (quickest)
-
-Set:
-
-- `STAFF_ADMIN_PASSWORD` to whatever you want
-- `STAFF_USER_PASSWORD` to whatever you want
-- `STAFF_USER_EMAILS` to a comma-separated list of staff emails (all share the same password)
-
-### 3) Password hashes (recommended)
-
-Instead of plaintext, you can store bcrypt hashes in env vars.
-
-Run locally from the repo root:
+From the repo root:
 
 ```sh
-node -e "const bcrypt=require('bcryptjs'); bcrypt.hash('YOUR_PASSWORD', 12).then(console.log)"
+npm run portal:invite -- --email user@domain.com --role admin
+npm run portal:invite -- --email user@domain.com --role staff --password TEMP_PASSWORD
 ```
 
-Paste the output into `STAFF_ADMIN_HASH` / `STAFF_USER_HASH` (and leave the plaintext vars empty).
+- Without `--password`, Supabase sends an invite email so the user sets their own password.
+- With `--password`, the user can sign in immediately (and you can ask them to reset it).
 
-## Verification
+### Manual (Supabase UI + SQL)
 
-After saving env vars, click **Redeploy** (or push a new commit), then verify:
+1) **Auth → Users** → “Add user” or “Invite user”
+2) Insert a role row (SQL Editor):
 
-- `https://www.sanctuarypergolas.co.nz/api/auth/session` returns `200` (not `500`)
-- `/login` successfully signs in and redirects to `/staff/*`
+```sql
+insert into public.portal_users (user_id, role)
+values ('AUTH_USER_ID_HERE', 'admin');
+```
+
+## Verification checklist
+
+- `/login` signs in successfully
+- Admin users can access `/admin/*`
+- Staff users are redirected away from admin-only routes
+
+If a user can sign in but sees no data, check that they have a row in `public.portal_users`.

@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
 import { createPortal } from 'react-dom';
 import { useEffect, useId, useMemo, useState } from 'react';
 import styles from './MobileHeader.module.css';
 import { getPortalNavItems, isPortalNavActive, type PortalRole } from './portalNav';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -17,6 +17,7 @@ export default function MobileHeader({ email, role }: { email: string; role: Por
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const menuId = useId();
+  const { signOut } = usePortalSession();
 
   const items = useMemo(() => getPortalNavItems(role), [role]);
   const activePathname = mounted ? pathname : null;
@@ -118,7 +119,7 @@ export default function MobileHeader({ email, role }: { email: string; role: Por
                       className={styles.logout}
                       onClick={() => {
                         setOpen(false);
-                        signOut({ callbackUrl: '/login' });
+                        void signOut('/login');
                       }}
                     >
                       Logout

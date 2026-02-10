@@ -1,8 +1,7 @@
-import { authOptions } from '@/lib/auth';
+import { getPortalSession } from '@/lib/auth';
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
 import { calculateCostV1 } from '@sp/costing';
 import type { CostInputsV1, ExtrusionColour } from '@sp/costing';
-import { getServerSession } from 'next-auth/next';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -47,7 +46,7 @@ function badRequest(message: string) {
 }
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
+  const session = await getPortalSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   let body: any;

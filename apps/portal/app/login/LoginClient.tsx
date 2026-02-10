@@ -1,8 +1,9 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 const DEFAULT_CALLBACK_URL = '/dashboard';
 
@@ -14,17 +15,20 @@ function getSafeCallbackUrl(raw: string | null): string {
 
 export default function LoginClient() {
   const params = useSearchParams();
-  const error = params.get('error');
+  const router = useRouter();
   const callbackUrl = getSafeCallbackUrl(params.get('callbackUrl'));
+  const { status } = usePortalSession();
+
+  const supabase = useMemo(() => getSupabaseBrowser(), []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const errorMessage = useMemo(() => {
-    if (!error) return null;
-    if (error === 'CredentialsSignin') return 'Invalid email or password.';
-    return 'Unable to sign in.';
-  }, [error]);
+  useEffect(() => {
+    if (status === 'authenticated') router.replace(callbackUrl);
+  }, [callbackUrl, router, status]);
 
   return (
     <main
@@ -67,13 +71,37 @@ export default function LoginClient() {
         ) : null}
 
         <form
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            signIn('credentials', {
-              email,
+            if (submitting) return;
+            setSubmitting(true);
+            setErrorMessage(null);
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email: email.trim(),
               password,
-              callbackUrl,
             });
+
+            if (error || !data.session || !data.user) {
+              setErrorMessage('Invalid email or password.');
+              setSubmitting(false);
+              return;
+            }
+
+            const { data: portalUser, error: portalError } = await supabase
+              .from('portal_users')
+              .select('role')
+              .eq('user_id', data.user.id)
+              .maybeSingle();
+
+            if (portalError || !portalUser?.role) {
+              await supabase.auth.signOut();
+              setErrorMessage('Your account does not have portal access yet.');
+              setSubmitting(false);
+              return;
+            }
+
+            router.replace(callbackUrl);
           }}
           style={{ marginTop: 16 }}
         >
@@ -120,6 +148,7 @@ export default function LoginClient() {
 
             <button
               type="submit"
+              disabled={submitting}
               style={{
                 marginTop: 4,
                 width: '100%',
@@ -131,10 +160,11 @@ export default function LoginClient() {
                 fontWeight: 600,
                 letterSpacing: '0.02em',
                 textTransform: 'uppercase',
-                cursor: 'pointer',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                opacity: submitting ? 0.7 : 1,
               }}
             >
-              Sign in
+              {submitting ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
         </form>

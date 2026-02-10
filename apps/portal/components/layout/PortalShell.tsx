@@ -1,19 +1,19 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import SidebarRail from '@/components/navigation/SidebarRail';
 import { SIDEBAR_WIDTH_PX } from '@/components/navigation/navItems';
 import styles from './PortalShell.module.css';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 export default function PortalShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { data, status } = useSession();
+  const { status, email, role } = usePortalSession();
 
   const isLogin = typeof pathname === 'string' && pathname.startsWith('/login');
-  const email = typeof data?.user?.email === 'string' ? data.user.email : undefined;
+  const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';
 
   useEffect(() => {
     if (isLogin) return;
@@ -25,7 +25,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   return (
     <div className={styles.shell}>
-      <SidebarRail email={email} roleLabel="Admin access" />
+      <SidebarRail email={email ?? undefined} roleLabel={roleLabel} />
       <div className={styles.content} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
         {children}
       </div>
