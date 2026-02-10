@@ -20,6 +20,7 @@ const RAIL_WIDTH = 9;
 const CONTENT_X0 = MARGIN_LEFT;
 const CONTENT_X1 = PAGE_WIDTH - MARGIN_RIGHT;
 const CONTENT_W = CONTENT_X1 - CONTENT_X0;
+const TOTALS_BLOCK_WIDTH = 240;
 
 const MONEY_FORMAT = new Intl.NumberFormat('en-NZ', {
   minimumFractionDigits: 2,
@@ -59,8 +60,10 @@ const theme = {
   colors: {
     textPrimary: rgb(0.1, 0.1, 0.12),
     textMuted: rgb(0.42, 0.42, 0.42),
-    rule: rgb(0.84, 0.84, 0.84),
     accent: rgb(0.502, 0.251, 0.224),
+    ruleTier1: rgb(0.816, 0.816, 0.816), // #D0D0D0
+    ruleTier2: rgb(0.847, 0.847, 0.847), // #D8D8D8
+    ruleTier3: rgb(0.878, 0.878, 0.878), // #E0E0E0
   },
   sizes: {
     brand: 13.5,
@@ -112,11 +115,17 @@ const theme = {
     headerToRows: 6,
     rowGap: 6,
     bulletGap: 2,
-    footerTerms: 16,
-    termsTotals: 18,
-    totalsItems: 18,
+    itemsToTotalsRule: 18,
+    ruleToTotalsLabel: 8,
+    totalsToTerms: 20,
+    termsToFooter: 16,
     totalsRuleGap: 6,
     continuationHeaderGap: 12,
+  },
+  rules: {
+    tier1: { width: 0.75, color: 'ruleTier1' as const },
+    tier2: { width: 0.5, color: 'ruleTier2' as const },
+    tier3: { width: 0.5, color: 'ruleTier3' as const },
   },
 };
 
@@ -467,12 +476,14 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
 
   const vm = buildPdfQuoteViewModel(quote);
 
-  const tableWidth = CONTENT_W;
+  const tableX0 = CONTENT_X0;
+  const tableX1 = CONTENT_X1;
+  const tableWidth = tableX1 - tableX0;
   const descW = tableWidth * 0.62;
   const qtyW = tableWidth * 0.12;
   const unitW = tableWidth * 0.13;
   const amtW = tableWidth * 0.13;
-  const descX = CONTENT_X0;
+  const descX = tableX0;
   const qtyX = descX + descW;
   const unitX = qtyX + qtyW;
   const amtX = unitX + unitW;
@@ -480,6 +491,10 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
   const unitRight = unitX + unitW;
   const amtRight = amtX + amtW;
   const bulletIndent = fontRegular.widthOfTextAtSize('- ', theme.sizes.bullet) + 2;
+  const totalsValueRightX = CONTENT_X1;
+  const totalsLabelLeftX = totalsValueRightX - TOTALS_BLOCK_WIDTH;
+  const totalsX0 = totalsLabelLeftX;
+  const totalsX1 = totalsValueRightX;
 
   type RowLayout = {
     headingLines: string[];
@@ -525,24 +540,25 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     ? MARGIN_BOTTOM + (footerLines.length - 1) * theme.lineHeights.footer
     : MARGIN_BOTTOM;
 
-  const termsBottomY = footerTopY + theme.spacing.footerTerms;
+  const termsBottomY = footerTopY + theme.spacing.termsToFooter;
   const termsTopY = termsLines.length
-    ? termsBottomY + theme.lineHeights.section + theme.spacing.sectionToHeader + theme.lineHeights.terms * (termsLines.length - 1)
+    ? termsBottomY + theme.lineHeights.section + theme.spacing.sectionToHeader + theme.lineHeights.terms * Math.max(termsLines.length - 1, 0)
     : termsBottomY;
 
   const totalsBlockHeight =
     theme.lineHeights.section +
-    theme.spacing.totalsRuleGap +
-    theme.spacing.totalsRuleGap +
+    theme.spacing.sectionToHeader +
     theme.lineHeights.totalsLabel +
     theme.lineHeights.totalsLabel +
+    2 +
     theme.spacing.totalsRuleGap +
     theme.lineHeights.totalsTotal +
     2;
 
-  const totalsBottomY = termsTopY + theme.spacing.termsTotals;
-  const totalsTopY = totalsBottomY + totalsBlockHeight;
-  const itemsBottomY = totalsTopY + theme.spacing.totalsItems;
+  const totalsBlockBottomY = termsTopY + theme.spacing.totalsToTerms;
+  const totalsTopY = totalsBlockBottomY + totalsBlockHeight;
+  const totalsCeilingY = totalsTopY + theme.spacing.ruleToTotalsLabel;
+  const itemsBottomY = totalsCeilingY - theme.spacing.itemsToTotalsRule;
 
   let page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
   const firstPage = page;
@@ -572,13 +588,19 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     page.drawText(text, { x: xRight - width, y, size, font, color });
   };
 
-  const drawDivider = (params: { x: number; y: number; width: number; color: Color }) => {
+  const drawDivider = (params: { x: number; y: number; width: number; color: Color; thickness: number }) => {
     page.drawLine({
       start: { x: params.x, y: params.y },
       end: { x: params.x + params.width, y: params.y },
-      thickness: 0.6,
+      thickness: params.thickness,
       color: params.color,
     });
+  };
+
+  const drawRule = (params: { x0: number; x1: number; y: number; tier: keyof typeof theme.rules }) => {
+    const rule = theme.rules[params.tier];
+    const color = theme.colors[rule.color];
+    drawDivider({ x: params.x0, y: params.y, width: params.x1 - params.x0, color, thickness: rule.width });
   };
 
   const drawLeftRail = () => {
@@ -649,7 +671,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     drawRightAligned('Amount NZD', amtRight, headerY, theme.sizes.tableHeader, fontMedium, theme.colors.textPrimary);
 
     y = headerY - theme.lineHeights.tableHeader;
-    drawDivider({ x: CONTENT_X0, y: y - 2, width: tableWidth, color: theme.colors.rule });
+    drawRule({ x0: tableX0, x1: tableX1, y: y - 2, tier: 'tier2' });
     y -= theme.spacing.headerToRows;
 
     params.rows.forEach((row, idx) => {
@@ -699,7 +721,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
 
       const contentBottomY = rowY;
       if (idx < params.rows.length - 1) {
-        drawDivider({ x: CONTENT_X0, y: contentBottomY - 2, width: tableWidth, color: theme.colors.rule });
+        drawRule({ x0: tableX0, x1: tableX1, y: contentBottomY - 2, tier: 'tier2' });
         rowY = contentBottomY - theme.spacing.rowGap;
       }
 
@@ -710,8 +732,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
   };
 
   const drawTotalsBlock = (topY: number) => {
-    const blockWidth = 210;
-    const labelX = CONTENT_X1 - blockWidth;
+    const labelX = totalsX0;
     let y = topY;
 
     drawTextSafe('TOTALS', {
@@ -723,9 +744,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
     });
 
     y -= theme.lineHeights.section;
-    y -= theme.spacing.totalsRuleGap;
-    drawDivider({ x: labelX, y, width: blockWidth, color: theme.colors.rule });
-    y -= theme.spacing.totalsRuleGap;
+    y -= theme.spacing.sectionToHeader;
 
     drawTextSafe('SUBTOTAL NZD', {
       x: labelX,
@@ -734,7 +753,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
       font: fontMedium,
       color: theme.colors.textPrimary,
     });
-    drawRightAligned(vm.totals.ex, CONTENT_X1, y, theme.sizes.totalsValue, fontRegular, theme.colors.textPrimary);
+    drawRightAligned(vm.totals.ex, totalsX1, y, theme.sizes.totalsValue, fontRegular, theme.colors.textPrimary);
     y -= theme.lineHeights.totalsLabel;
 
     drawTextSafe('INCLUDES GST 15%', {
@@ -744,11 +763,11 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
       font: fontMedium,
       color: theme.colors.textPrimary,
     });
-    drawRightAligned(vm.totals.gst, CONTENT_X1, y, theme.sizes.totalsValue, fontRegular, theme.colors.textPrimary);
+    drawRightAligned(vm.totals.gst, totalsX1, y, theme.sizes.totalsValue, fontRegular, theme.colors.textPrimary);
     y -= theme.lineHeights.totalsLabel;
 
-    drawDivider({ x: labelX, y: y - 2, width: blockWidth, color: theme.colors.rule });
-    y -= theme.spacing.totalsRuleGap;
+    drawRule({ x0: totalsX0, x1: totalsX1, y: y - 2, tier: 'tier3' });
+    y = (y - 2) - theme.spacing.totalsRuleGap;
 
     drawTextSafe('TOTAL NZD', {
       x: labelX,
@@ -757,10 +776,10 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
       font: fontMedium,
       color: theme.colors.textPrimary,
     });
-    drawRightAligned(vm.totals.inc, CONTENT_X1, y, theme.sizes.totalsTotal, fontSemiBold, theme.colors.textPrimary);
+    drawRightAligned(vm.totals.inc, totalsX1, y, theme.sizes.totalsTotal, fontSemiBold, theme.colors.textPrimary);
     y -= theme.lineHeights.totalsTotal;
 
-    drawDivider({ x: labelX, y: y - 2, width: blockWidth, color: theme.colors.rule });
+    drawRule({ x0: totalsX0, x1: totalsX1, y: y - 2, tier: 'tier3' });
 
     return y - 2;
   };
@@ -958,6 +977,7 @@ export async function generateQuotePdfBytes(quote: QuoteVersionDetail): Promise<
   }
 
   page = firstPage;
+  drawRule({ x0: totalsX0, x1: totalsX1, y: totalsCeilingY, tier: 'tier1' });
   drawTotalsBlock(totalsTopY);
   drawTermsBlock(termsTopY);
   drawFooterBlock(MARGIN_BOTTOM);

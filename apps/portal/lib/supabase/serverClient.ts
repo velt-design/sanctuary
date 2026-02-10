@@ -19,21 +19,16 @@ export async function getSupabaseServerAuth(): Promise<SupabaseClient> {
 
   return createServerClient(url, key, {
     cookies: {
-      get(name) {
-        return cookieStore.get(name)?.value;
+      getAll() {
+        return cookieStore.getAll();
       },
-      set(name, value, options) {
+      setAll(cookiesToSet) {
         try {
-          cookieStore.set({ name, value, ...options });
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set({ name, value, ...options });
+          });
         } catch {
           // Ignore cookie set failures in read-only contexts.
-        }
-      },
-      remove(name, options) {
-        try {
-          cookieStore.set({ name, value: '', ...options });
-        } catch {
-          // Ignore cookie remove failures in read-only contexts.
         }
       },
     },
