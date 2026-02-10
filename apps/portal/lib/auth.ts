@@ -10,7 +10,7 @@ export type PortalSession = {
 };
 
 export async function getPortalSession(): Promise<PortalSession | null> {
-  const supabase = getSupabaseServerAuth();
+  const supabase = await getSupabaseServerAuth();
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) return null;
 
