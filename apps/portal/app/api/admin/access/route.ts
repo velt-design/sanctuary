@@ -3,6 +3,24 @@ import { getSupabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
+async function findAuthUserIdByEmail(supabase: ReturnType<typeof getSupabaseServer>, email: string): Promise<string | null> {
+  const needle = email.trim().toLowerCase();
+  if (!needle) return null;
+
+  const perPage = 200;
+  // Supabase JS doesn't currently provide admin.getUserByEmail; page and scan.
+  for (let page = 1; page <= 50; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users ?? [];
+    const match = users.find((u) => String(u.email ?? '').trim().toLowerCase() === needle);
+    if (match?.id) return match.id;
+    if (users.length < perPage) return null;
+  }
+
+  return null;
+}
+
 function getAdminClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!serviceKey) {
@@ -38,13 +56,18 @@ export async function POST(req: Request) {
     return jsonError(message, 500);
   }
 
-  const { data: existing, error: findError } = await supabase.auth.admin.getUserByEmail(email);
-  if (findError) return jsonError(findError.message ?? 'Failed to lookup user.', 500);
+  let existingUserId: string | null = null;
+  try {
+    existingUserId = await findAuthUserIdByEmail(supabase, email);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to lookup user.';
+    return jsonError(message, 500);
+  }
 
   let userId: string | undefined;
 
-  if (existing?.user?.id) {
-    userId = existing.user.id;
+  if (existingUserId) {
+    userId = existingUserId;
     const { error: updateError } = await supabase.auth.admin.updateUserById(userId, {
       password,
       email_confirm: true,
@@ -73,6 +96,6 @@ export async function POST(req: Request) {
     user_id: userId,
     email,
     role,
-    existing: Boolean(existing?.user?.id),
+    existing: Boolean(existingUserId),
   });
 }
