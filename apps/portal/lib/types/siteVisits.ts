@@ -40,6 +40,7 @@ export type SiteVisitCalendarItem = {
   cancelReason: string | null;
   createdAt: string;
   updatedAt: string;
+  priorityTier?: 1 | 2 | null;
   project: SiteVisitProjectInfo;
   contact: SiteVisitContactInfo;
 };
@@ -57,4 +58,3 @@ export type SiteVisitsSnapshotV1 = SiteVisitsApiResponse & {
   rangeTo: string;
   salesOwnerId: string | null;
 };
-

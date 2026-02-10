@@ -77,6 +77,8 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
   const [isStageSaving, setIsStageSaving] = useState(false);
   const [stageSaveError, setStageSaveError] = useState<string | null>(null);
   const [stageConfirm, setStageConfirm] = useState<{ next: ProjectStatus; label: string } | null>(null);
+  const [siteVisitTier, setSiteVisitTier] = useState<1 | 2 | null>(null);
+  const [siteVisitTierError, setSiteVisitTierError] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -94,6 +96,13 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
     setIsStageSaving(false);
     setStageSaveError(null);
   }, [projectId]);
+
+  useEffect(() => {
+    if (!stageConfirm || stageConfirm.next !== 'SITE_VISIT') {
+      setSiteVisitTier(null);
+      setSiteVisitTierError(null);
+    }
+  }, [stageConfirm]);
 
   useEffect(() => {
     setTaskTab(taskTabFromUrl);
@@ -1167,7 +1176,11 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
         <PipelineModal
           open
           onOpenChange={(open) => {
-            if (!open) setStageConfirm(null);
+            if (!open) {
+              setStageConfirm(null);
+              setSiteVisitTier(null);
+              setSiteVisitTierError(null);
+            }
           }}
           title="Move stage"
           description={`Move this project from ${projectStatusLabel(displayStatus)} to ${stageConfirm.label}?`}
@@ -1179,12 +1192,18 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                 disabled={Boolean(busy) || isStageSaving}
                 onClick={() => {
                   const next = stageConfirm.next;
+                  if (next === 'SITE_VISIT' && !siteVisitTier) {
+                    setSiteVisitTierError('Select Tier 1 or Tier 2 to proceed to Site Visit.');
+                    return;
+                  }
                   setStageConfirm(null);
                   void runStageTransition({
                     key: 'setStatus',
                     toStage: next as any,
                     action: async () => {
-                      const updated = await setProjectStatus(project.id, next as any);
+                      const updated = await setProjectStatus(project.id, next as any, {
+                        siteVisitPriorityTier: next === 'SITE_VISIT' ? siteVisitTier : null,
+                      });
                       setProject(updated);
                     },
                   });
@@ -1201,7 +1220,51 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
               </button>
             </>
           }
-        />
+        >
+          {stageConfirm.next === 'SITE_VISIT' ? (
+            <div className={styles.stageModalSection}>
+              <div className={styles.stageModalLabel}>Site visit priority (required)</div>
+              <div className={styles.stageModalHelper}>Budget + timeline only.</div>
+              <div className={styles.stageModalRadioGroup}>
+                <label className={styles.stageModalRadio}>
+                  <input
+                    type="radio"
+                    name="siteVisitTier"
+                    checked={siteVisitTier === 1}
+                    onChange={() => {
+                      setSiteVisitTier(1);
+                      setSiteVisitTierError(null);
+                    }}
+                  />
+                  <div>
+                    <div className={styles.stageModalRadioTitle}>Tier 1 — Qualified + urgent</div>
+                    <div className={styles.stageModalRadioSub}>
+                      Budget: Yes · Timeline: ASAP / 0–8 weeks · Site visit in 2–3 days
+                    </div>
+                  </div>
+                </label>
+                <label className={styles.stageModalRadio}>
+                  <input
+                    type="radio"
+                    name="siteVisitTier"
+                    checked={siteVisitTier === 2}
+                    onChange={() => {
+                      setSiteVisitTier(2);
+                      setSiteVisitTierError(null);
+                    }}
+                  />
+                  <div>
+                    <div className={styles.stageModalRadioTitle}>Tier 2 — Qualified + near-term</div>
+                    <div className={styles.stageModalRadioSub}>
+                      Budget: Yes · Timeline: 2–6 months · Site visit in 2–3 weeks
+                    </div>
+                  </div>
+                </label>
+              </div>
+              {siteVisitTierError ? <div className={styles.stageModalError}>{siteVisitTierError}</div> : null}
+            </div>
+          ) : null}
+        </PipelineModal>
       ) : null}
     </main>
   );

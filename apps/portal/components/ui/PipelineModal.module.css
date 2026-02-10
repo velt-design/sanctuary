@@ -9,6 +9,13 @@
   gap: 16px;
 }
 
+.headerMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
 .headerText {
   min-width: 0;
 }
@@ -40,12 +47,36 @@
   cursor: pointer;
 }
 
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(15, 15, 16, 0.6);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .closeButton:hover {
   background: rgba(15, 15, 16, 0.06);
   color: #0f0f10;
 }
 
+.backButton:hover {
+  background: rgba(15, 15, 16, 0.06);
+  color: #0f0f10;
+}
+
 .closeButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(15, 15, 16, 0.2);
+}
+
+.backButton:focus {
   outline: none;
   box-shadow: 0 0 0 2px rgba(15, 15, 16, 0.2);
 }

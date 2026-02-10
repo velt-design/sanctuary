@@ -31,9 +31,12 @@ export default function ProjectTasksSidebarClient({
   const [stageModalOpen, setStageModalOpen] = useState(false);
   const [stageModalError, setStageModalError] = useState<string | null>(null);
   const [stageModalBusy, setStageModalBusy] = useState(false);
+  const [stageModalStep, setStageModalStep] = useState<'default' | 'siteVisitTier'>('default');
   const [pendingAction, setPendingAction] = useState<StageCompleteAction | null>(null);
   const [pendingDate, setPendingDate] = useState('');
   const [confirmArchive, setConfirmArchive] = useState(false);
+  const [siteVisitTier, setSiteVisitTier] = useState<1 | 2 | null>(null);
+  const [siteVisitTierError, setSiteVisitTierError] = useState<string | null>(null);
   const lastOpenCount = useRef<number | null>(null);
   const suppressStageComplete = useRef(false);
   const pendingRefresh = useRef(false);
@@ -45,15 +48,21 @@ export default function ProjectTasksSidebarClient({
   const stageKey = normalizePipelineStageKey(tasks.stage) ?? tasks.stage;
   const stageLabel = PIPELINE_STAGE_LABELS[stageKey as keyof typeof PIPELINE_STAGE_LABELS] ?? String(tasks.stage);
   const stageActions = STAGE_COMPLETE_MODAL[stageKey as keyof typeof STAGE_COMPLETE_MODAL] ?? [];
+  const hasSiteVisitAction = stageActions.some((action) => 'toStage' in action && action.toStage === 'site_visit');
+  const siteVisitAction =
+    stageActions.find((action) => 'toStage' in action && action.toStage === 'site_visit') ?? null;
   const canShowStageModal = stageKey !== 'paid';
 
   useEffect(() => {
     lastOpenCount.current = null;
     setStageModalOpen(false);
+    setStageModalStep('default');
     setStageModalError(null);
     setPendingAction(null);
     setPendingDate('');
     setConfirmArchive(false);
+    setSiteVisitTier(null);
+    setSiteVisitTierError(null);
   }, [projectId, tasks.stage]);
 
   const { todoTasks, completedTasks } = useMemo(() => {
@@ -100,11 +109,34 @@ export default function ProjectTasksSidebarClient({
     setPendingDate('');
     setStageModalError(null);
     setConfirmArchive(false);
+    setStageModalStep('default');
+    setSiteVisitTier(null);
+    setSiteVisitTierError(null);
     if (pendingRefresh.current) {
       pendingRefresh.current = false;
       router.refresh();
     }
   }, [stageModalOpen]);
+
+  useEffect(() => {
+    if (!hasSiteVisitAction) {
+      setStageModalStep('default');
+      setSiteVisitTier(null);
+      setSiteVisitTierError(null);
+    }
+  }, [hasSiteVisitAction]);
+
+  const returnToDefaultStep = () => {
+    setStageModalStep('default');
+    setStageModalError(null);
+    setSiteVisitTierError(null);
+  };
+
+  const openSiteVisitStep = () => {
+    setStageModalStep('siteVisitTier');
+    setStageModalError(null);
+    setSiteVisitTierError(null);
+  };
 
   const toggleManualTask = async (taskKey: string, completed: boolean) => {
     if (isSaving) return;
@@ -172,12 +204,25 @@ export default function ProjectTasksSidebarClient({
   const runStageAction = async (action: StageCompleteAction) => {
     if (stageModalBusy) return;
     setStageModalError(null);
+    setSiteVisitTierError(null);
 
     if (action.kind === 'call_later' || action.kind === 'set_reminder') {
       setPendingAction(action);
       setPendingDate('');
       setConfirmArchive(false);
+      returnToDefaultStep();
       return;
+    }
+
+    if ('toStage' in action && action.toStage === 'site_visit') {
+      if (stageModalStep === 'default') {
+        openSiteVisitStep();
+        return;
+      }
+      if (!siteVisitTier) {
+        setSiteVisitTierError('Select Tier 1 or Tier 2 to proceed to Site Visit.');
+        return;
+      }
     }
 
     setStageModalBusy(true);
@@ -194,10 +239,14 @@ export default function ProjectTasksSidebarClient({
           throw new Error(msg);
         }
       } else {
+        const payload: Record<string, unknown> = { toStage: stageKeyToStatus(action.toStage) };
+        if (action.toStage === 'site_visit') {
+          payload.site_visit_priority_tier = siteVisitTier;
+        }
         const res = await fetch(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/stage`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ toStage: stageKeyToStatus(action.toStage) }),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const body = await res.json().catch(() => null);
@@ -286,6 +335,7 @@ export default function ProjectTasksSidebarClient({
   const reminderTitle = pendingAction?.kind === 'call_later' ? 'Call later' : 'Set reminder';
   const reminderDescription = 'Choose a date/time to keep this stage active.';
   const stageDescription = `No open tasks for ${stageLabel}.`;
+  const isTierStep = stageModalStep === 'siteVisitTier';
 
   return (
     <>
@@ -397,9 +447,16 @@ export default function ProjectTasksSidebarClient({
       {stageModalOpen ? (
         <PipelineModal
           open={stageModalOpen}
-          onOpenChange={setStageModalOpen}
+          onOpenChange={(open) => {
+            if (!open && isTierStep) {
+              returnToDefaultStep();
+              return;
+            }
+            setStageModalOpen(open);
+          }}
           title={pendingAction ? reminderTitle : 'Stage complete'}
           description={pendingAction ? reminderDescription : stageDescription}
+          onBack={isTierStep ? returnToDefaultStep : undefined}
           actions={
             pendingAction && (pendingAction.kind === 'call_later' || pendingAction.kind === 'set_reminder') ? (
               <>
@@ -421,69 +478,84 @@ export default function ProjectTasksSidebarClient({
                 </button>
               </>
             ) : hasStageActions ? (
-              <>
-                {primaryAction ? (
-                  <button
-                    type="button"
-                    className={PIPELINE_MODAL_ACTION_CLASSES.primary}
-                    onClick={() => runStageAction(primaryAction)}
-                    disabled={stageModalBusy}
-                  >
-                    {primaryAction.label}
-                  </button>
-                ) : null}
-                {secondaryActions.map((action) => {
-                  const key = 'toStage' in action ? `${action.kind}:${action.toStage}` : `${action.kind}:${action.label}`;
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
-                      onClick={() => runStageAction(action)}
-                      disabled={stageModalBusy}
-                    >
-                      {action.label}
-                    </button>
-                  );
-                })}
-                {archiveAction ? (
-                  confirmArchive ? (
-                    <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                      <div className="text-sm font-medium text-neutral-900">Archive this lead?</div>
-                      <div className="mt-1 text-sm text-neutral-600">
-                        This will move it out of active projects.
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          type="button"
-                          className="h-10 flex-1 rounded-lg border border-neutral-200 bg-white text-sm font-medium hover:bg-neutral-100"
-                          onClick={() => setConfirmArchive(false)}
-                          disabled={stageModalBusy}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          className="h-10 flex-1 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700"
-                          onClick={() => runStageAction(archiveAction)}
-                          disabled={stageModalBusy}
-                        >
-                          Archive
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+              isTierStep ? (
+                <button
+                  type="button"
+                  className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                  onClick={() => {
+                    if (!siteVisitAction) return;
+                    runStageAction(siteVisitAction);
+                  }}
+                  disabled={!siteVisitTier || stageModalBusy || !siteVisitAction}
+                >
+                  Confirm
+                </button>
+              ) : (
+                <>
+                  {primaryAction ? (
                     <button
                       type="button"
-                      className={PIPELINE_MODAL_ACTION_CLASSES.danger}
-                      onClick={() => setConfirmArchive(true)}
+                      className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                      onClick={() => runStageAction(primaryAction)}
                       disabled={stageModalBusy}
                     >
-                      {archiveAction.label}
+                      {primaryAction.label}
                     </button>
-                  )
-                ) : null}
-              </>
+                  ) : null}
+                  {secondaryActions.map((action) => {
+                    const key =
+                      'toStage' in action ? `${action.kind}:${action.toStage}` : `${action.kind}:${action.label}`;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                        onClick={() => runStageAction(action)}
+                        disabled={stageModalBusy}
+                      >
+                        {action.label}
+                      </button>
+                    );
+                  })}
+                  {archiveAction ? (
+                    confirmArchive ? (
+                      <div className="mt-2 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+                        <div className="text-sm font-medium text-neutral-900">Archive this lead?</div>
+                        <div className="mt-1 text-sm text-neutral-600">
+                          This will move it out of active projects.
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            className="h-10 flex-1 rounded-lg border border-neutral-200 bg-white text-sm font-medium hover:bg-neutral-100"
+                            onClick={() => setConfirmArchive(false)}
+                            disabled={stageModalBusy}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="h-10 flex-1 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700"
+                            onClick={() => runStageAction(archiveAction)}
+                            disabled={stageModalBusy}
+                          >
+                            Archive
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className={PIPELINE_MODAL_ACTION_CLASSES.danger}
+                        onClick={() => setConfirmArchive(true)}
+                        disabled={stageModalBusy}
+                      >
+                        {archiveAction.label}
+                      </button>
+                    )
+                  ) : null}
+                </>
+              )
             ) : (
               <button
                 type="button"
@@ -497,6 +569,49 @@ export default function ProjectTasksSidebarClient({
           }
         >
           {stageModalError ? <p className="text-sm text-red-600">{stageModalError}</p> : null}
+          {hasSiteVisitAction && isTierStep ? (
+            <div className={legacy.stageModalSection}>
+              <div className={legacy.stageModalLabel}>Site visit priority (required)</div>
+              <div className={legacy.stageModalHelper}>Budget + timeline only.</div>
+              <div className={legacy.stageModalRadioGroup}>
+                <label className={legacy.stageModalRadio}>
+                  <input
+                    type="radio"
+                    name="siteVisitTier"
+                    checked={siteVisitTier === 1}
+                    onChange={() => {
+                      setSiteVisitTier(1);
+                      setSiteVisitTierError(null);
+                    }}
+                  />
+                  <div>
+                    <div className={legacy.stageModalRadioTitle}>Tier 1 — Qualified + urgent</div>
+                    <div className={legacy.stageModalRadioSub}>
+                      Budget: Yes · Timeline: ASAP / 0–8 weeks · Site visit in 2–3 days
+                    </div>
+                  </div>
+                </label>
+                <label className={legacy.stageModalRadio}>
+                  <input
+                    type="radio"
+                    name="siteVisitTier"
+                    checked={siteVisitTier === 2}
+                    onChange={() => {
+                      setSiteVisitTier(2);
+                      setSiteVisitTierError(null);
+                    }}
+                  />
+                  <div>
+                    <div className={legacy.stageModalRadioTitle}>Tier 2 — Qualified + near-term</div>
+                    <div className={legacy.stageModalRadioSub}>
+                      Budget: Yes · Timeline: 2–6 months · Site visit in 2–3 weeks
+                    </div>
+                  </div>
+                </label>
+              </div>
+              {siteVisitTierError ? <div className={legacy.stageModalError}>{siteVisitTierError}</div> : null}
+            </div>
+          ) : null}
           {pendingAction && (pendingAction.kind === 'call_later' || pendingAction.kind === 'set_reminder') ? (
             <label className="mt-4 block text-sm font-medium text-neutral-900">
               <span className="block text-xs uppercase tracking-[0.08em] text-neutral-500">

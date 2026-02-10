@@ -284,6 +284,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
 
   const openSendModal = (mode: 'send' | 'resend') => {
     if (!detail) return;
+    if (mode === 'send' && draftDirty) {
+      toast.error('Save the draft before sending.');
+      return;
+    }
     const contactName = detail.contact?.name ?? '';
     const to = detail.contact?.email ?? '';
     setSendMode(mode);
@@ -296,6 +300,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
 
   const handleSend = async () => {
     if (!detail || sendBusy) return;
+    if (sendMode === 'send' && draftDirty) {
+      toast.error('Save the draft before sending.');
+      return;
+    }
     const to = sendTo.split(',').map((v) => v.trim()).filter(Boolean);
     if (!to.length) {
       toast.error('Recipient email is required.');

@@ -17,10 +17,12 @@ export default function UnscheduledSiteVisitCard({ item, onBook }: { item: SiteV
   const address = (item.project.siteAddress || '').trim();
   const phone = (item.contact.phone || '').trim();
   const waiting = waitingLabel(item.createdAt ?? null);
+  const tier = item.priorityTier ?? null;
+  const tierClass = tier === 1 ? styles.siteVisitCardTier1 : tier === 2 ? styles.siteVisitCardTier2 : styles.siteVisitCardTierNone;
 
   return (
     <div
-      className={styles.siteVisitCard}
+      className={`${styles.siteVisitCard} ${tierClass}`}
       role="button"
       tabIndex={0}
       onClick={onBook}
@@ -42,16 +44,19 @@ export default function UnscheduledSiteVisitCard({ item, onBook }: { item: SiteV
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          className={styles.siteVisitCardBook}
-          onClick={(e) => {
-            e.stopPropagation();
-            onBook();
-          }}
-        >
-          Book
-        </button>
+        <div className={styles.siteVisitCardActions}>
+          {tier ? <div className={tier === 1 ? styles.siteVisitTierPill1 : styles.siteVisitTierPill2}>{tier === 1 ? 'T1' : 'T2'}</div> : null}
+          <button
+            type="button"
+            className={styles.siteVisitCardBook}
+            onClick={(e) => {
+              e.stopPropagation();
+              onBook();
+            }}
+          >
+            Book
+          </button>
+        </div>
       </div>
       <div className={styles.siteVisitCardMetaRow}>
         <div className={styles.siteVisitCardMeta} title={phone}>

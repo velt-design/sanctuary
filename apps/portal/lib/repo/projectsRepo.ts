@@ -389,15 +389,23 @@ export async function addProjectActivity(
   return p;
 }
 
-export async function setProjectStatus(projectId: string, status: ProjectStatus, opts?: { force?: boolean }): Promise<Project> {
+export async function setProjectStatus(
+  projectId: string,
+  status: ProjectStatus,
+  opts?: { force?: boolean; siteVisitPriorityTier?: 1 | 2 | null },
+): Promise<Project> {
   const prev = await getProject(projectId);
   if (!prev) throw new Error('Project not found');
   if (prev.status === status) return prev;
 
   try {
+    const payload: Record<string, unknown> = { toStage: status, reason: opts?.force ? 'force' : null };
+    if (status === 'SITE_VISIT' && opts?.siteVisitPriorityTier) {
+      payload.site_visit_priority_tier = opts.siteVisitPriorityTier;
+    }
     const res = await apiJson<{ project: any }>(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/stage`, {
       method: 'POST',
-      body: JSON.stringify({ toStage: status, reason: opts?.force ? 'force' : null }),
+      body: JSON.stringify(payload),
     });
     if (res?.project) return projectFromRow(res.project);
   } catch (err) {

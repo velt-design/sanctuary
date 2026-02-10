@@ -27,6 +27,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const reason = typeof body.reason === 'string' ? body.reason : null;
   const meta = body.meta ?? null;
   const quoteId = typeof body.quoteId === 'string' ? body.quoteId : null;
+  const tierRaw = body.site_visit_priority_tier ?? body.siteVisitPriorityTier ?? null;
+  const siteVisitTier = tierRaw === 1 || tierRaw === '1' ? 1 : tierRaw === 2 || tierRaw === '2' ? 2 : null;
+  if (toStage === 'SITE_VISIT' && !siteVisitTier) {
+    return jsonError('Site visit priority tier is required.', 400);
+  }
 
   let projectUuid: string;
   try {
@@ -41,9 +46,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const fromStage = normaliseStage(prevRes.data.pipeline_stage) ?? 'NEW';
 
+  const updatePayload: Record<string, unknown> = { pipeline_stage: toStage };
+  if (toStage === 'SITE_VISIT') {
+    updatePayload.site_visit_priority_tier = siteVisitTier;
+  }
+
   const updateRes = await supabaseServer
     .from('projects')
-    .update({ pipeline_stage: toStage } as any)
+    .update(updatePayload as any)
     .eq('id', projectUuid)
     .select('*')
     .single();
@@ -59,4 +69,3 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   return jsonOk({ project: updateRes.data });
 }
-

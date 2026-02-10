@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { X } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import Modal from '@/components/ui/modal/Modal';
 import styles from './PipelineModal.module.css';
 
@@ -19,6 +19,8 @@ type PipelineModalProps = {
   hint?: React.ReactNode;
 
   size?: 'sm' | 'md';
+
+  onBack?: () => void;
 };
 
 export const PIPELINE_MODAL_ACTION_CLASSES = {
@@ -36,6 +38,7 @@ export function PipelineModal({
   actions,
   hint,
   size = 'md',
+  onBack,
 }: PipelineModalProps) {
   const maxWidthPx = size === 'sm' ? 460 : 560;
 
@@ -48,11 +51,23 @@ export function PipelineModal({
     >
       <div className={styles.body}>
         <div className={styles.header}>
-          <div className={styles.headerText}>
-            <div className={styles.title}>{title}</div>
-            {description ? (
-              <div className={styles.description}>{description}</div>
+          <div className={styles.headerMain}>
+            {onBack ? (
+              <button
+                type="button"
+                aria-label="Back"
+                className={styles.backButton}
+                onClick={onBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
             ) : null}
+            <div className={styles.headerText}>
+              <div className={styles.title}>{title}</div>
+              {description ? (
+                <div className={styles.description}>{description}</div>
+              ) : null}
+            </div>
           </div>
 
           <button

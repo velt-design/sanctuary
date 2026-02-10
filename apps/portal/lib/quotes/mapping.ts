@@ -251,6 +251,31 @@ function buildBlindDescription(item: BlindLineItemInput, idx: number, label?: st
   return lines.join('\n');
 }
 
+function isMeaningfulBlindItem(item: {
+  label?: string;
+  system?: string;
+  fabric?: string;
+  motorised?: string | boolean | null;
+  widthMm?: unknown;
+  coverLengthMm?: unknown;
+}): boolean {
+  const hasLabel = typeof item.label === 'string' && item.label.trim().length > 0;
+  const width = toNumber(item.widthMm);
+  const cover = toNumber(item.coverLengthMm);
+  const hasWidth = Number.isFinite(width) && width > 0;
+  const hasCover = Number.isFinite(cover) && cover > 0;
+
+  const system = typeof item.system === 'string' ? item.system.toUpperCase() : 'ZIPTRAK';
+  const fabric = typeof item.fabric === 'string' ? item.fabric.toUpperCase() : 'MESH';
+  const motorisedRaw = typeof item.motorised === 'string' ? item.motorised.toUpperCase() : item.motorised ? 'YES' : 'NONE';
+  const hasNonDefault =
+    system !== 'ZIPTRAK' ||
+    (fabric !== 'MESH' && fabric !== 'NONE') ||
+    motorisedRaw === 'YES';
+
+  return hasLabel || hasWidth || hasCover || hasNonDefault;
+}
+
 function extractLightingTotalCents(estimate: Estimate): number | null {
   const inputs: any = (estimate as any).inputs ?? {};
   const outputs: any = (estimate as any).outputs ?? {};
@@ -350,7 +375,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
   }
 
   const blindsState = normalizeBlindsState((inputs as any)?.blinds);
-  const blindItems = blindsState?.items ?? [];
+  const blindItems = (blindsState?.items ?? []).filter((item) => isMeaningfulBlindItem(item as any));
   if (blindItems.length) {
     const pricingInputs: BlindLineItemInput[] = blindItems.map((item) => ({
       id: item.id,
