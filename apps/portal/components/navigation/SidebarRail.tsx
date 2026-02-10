@@ -27,15 +27,24 @@ function isActive(pathname: string, href: string) {
   return matches.some((match) => pathname === match || pathname.startsWith(`${match}/`));
 }
 
-export default function SidebarRail({ email, roleLabel }: { email?: string; roleLabel?: string }) {
+export default function SidebarRail({
+  email,
+  roleLabel,
+  role,
+}: {
+  email?: string;
+  roleLabel?: string;
+  role?: 'admin' | 'staff';
+}) {
   const pathname = usePathname();
+  const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
 
   return (
     <TooltipProvider delayDuration={150}>
       <aside className={styles.rail} style={{ width: SIDEBAR_WIDTH_PX }}>
         <div className={styles.section}>
           <nav className={styles.nav} aria-label="Portal navigation">
-            {NAV_ITEMS.map(({ key, label, href, Icon }) => {
+            {visibleItems.map(({ key, label, href, Icon }) => {
               const active = isActive(pathname, href);
 
               return (

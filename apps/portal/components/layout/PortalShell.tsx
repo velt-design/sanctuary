@@ -25,7 +25,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   return (
     <div className={styles.shell}>
-      <SidebarRail email={email ?? undefined} roleLabel={roleLabel} />
+      <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
       <div className={styles.content} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
         {children}
       </div>
