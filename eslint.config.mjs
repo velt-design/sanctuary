@@ -66,12 +66,41 @@ const config = [
   }
 ];
 
+const legacyCostingImportPatterns = [
+  {
+    group: [
+      'src/costing/*',
+      'src/costing/**',
+      '@/src/costing/*',
+      '@/src/costing/**',
+      'apps/portal/src/costing/*',
+      'apps/portal/src/costing/**',
+      '@/src/costing/engine/*',
+      '@/src/costing/config/*'
+    ],
+    message: 'Do not import legacy costing. Use @sp/costing.'
+  }
+];
+
+const banLegacyCostingImports = {
+  files: ['**/*.{js,jsx,ts,tsx}'],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        patterns: legacyCostingImportPatterns
+      }
+    ]
+  }
+};
+
 const banLegacyCachingImports = {
   files: ['apps/portal/**/*.{js,jsx,ts,tsx}'],
   rules: {
     'no-restricted-imports': [
       'error',
       {
+        patterns: legacyCostingImportPatterns,
         paths: [
           { name: 'swr', message: 'Do not use SWR. Use TanStack Query (@tanstack/react-query).' },
           { name: 'react-query', message: 'Legacy react-query is not allowed. Use @tanstack/react-query.' },
@@ -96,6 +125,6 @@ const banSupabaseReadsInPortalUI = {
   },
 };
 
-config.push(banLegacyCachingImports, banSupabaseReadsInPortalUI);
+config.push(banLegacyCostingImports, banLegacyCachingImports, banSupabaseReadsInPortalUI);
 
 export default config;
