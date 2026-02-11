@@ -13,7 +13,7 @@ import type {
   CalculatorInputs,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
-import { normalizeBlindsState } from '@/lib/types/calculator';
+import { isCalculatorInputsV2, normalizeBlindsState } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
 import { getContact } from '@/lib/repo/contactsRepo';
 import { addProjectActivity, getProject } from '@/lib/repo/projectsRepo';
@@ -355,6 +355,53 @@ function normalizeBlindsStateForUi(value: unknown): CalculatorBlindsState {
   return makeDefaultBlinds();
 }
 
+const CALCULATOR_DRAFT_SESSION_PREFIX = 'sanctuary-portal:calculator:draft:v1';
+
+type CalculatorDraftSessionSnapshot = {
+  activeModuleIndex: number;
+  updatedAt: number;
+  values: CalculatorInputs;
+};
+
+function calculatorDraftSessionKey(projectId: string, fromEstimateId: string): string {
+  return [CALCULATOR_DRAFT_SESSION_PREFIX, projectId || 'none', fromEstimateId || 'none'].join(':');
+}
+
+function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
+  const source = value && typeof value === 'object' ? (value as Partial<CalculatorModuleInputs>) : {};
+  const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...source };
+
+  if (merged.roofMaterial !== 'mixed') return merged;
+
+  const bayCounts = computeBayCountsForModule(merged);
+  const hasMain = Object.prototype.hasOwnProperty.call(source, 'mixedAcrylicBaysMain');
+  const hasA = Object.prototype.hasOwnProperty.call(source, 'mixedAcrylicBaysA');
+  const hasB = Object.prototype.hasOwnProperty.call(source, 'mixedAcrylicBaysB');
+
+  if (bayCounts.roofType === 'pitched') {
+    if (!hasMain) merged.mixedAcrylicBaysMain = defaultMixedAcrylicBays(bayCounts.bayCountMain);
+  } else {
+    if (!hasA) merged.mixedAcrylicBaysA = defaultMixedAcrylicBays(bayCounts.bayCountA);
+    if (!hasB) merged.mixedAcrylicBaysB = defaultMixedAcrylicBays(bayCounts.bayCountB);
+  }
+
+  return merged;
+}
+
+function normalizeModulesForUi(value: unknown): CalculatorModuleInputs[] {
+  if (!Array.isArray(value) || value.length === 0) return [makeDefaultModule()];
+  return value.map((item) => normalizeModuleForUi(item));
+}
+
+function normalizeCalculatorInputsForUi(value: CalculatorInputs): CalculatorInputs {
+  return {
+    ...value,
+    schemaVersion: 'v2',
+    modules: normalizeModulesForUi(value.modules),
+    blinds: normalizeBlindsStateForUi((value as any).blinds),
+  };
+}
+
 export default function CalculatorGridClient({
   email: emailProp,
   role: roleProp,
@@ -371,6 +418,8 @@ export default function CalculatorGridClient({
   const toast = useToast();
   const projectId = searchParams.get('projectId') ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
+  const draftSessionKey = useMemo(() => calculatorDraftSessionKey(projectId, fromEstimateId), [projectId, fromEstimateId]);
+  const restoredDraftForKeyRef = useRef(false);
 
   const [values, setValues] = useState<CalculatorInputs>(() => ({
     schemaVersion: 'v2',
@@ -390,6 +439,34 @@ export default function CalculatorGridClient({
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [draftHydrated, setDraftHydrated] = useState(false);
+
+  useEffect(() => {
+    restoredDraftForKeyRef.current = false;
+    setDraftHydrated(false);
+
+    if (typeof window === 'undefined') return;
+
+    try {
+      const raw = window.sessionStorage.getItem(draftSessionKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<CalculatorDraftSessionSnapshot>;
+      if (!isCalculatorInputsV2(parsed.values)) return;
+
+      const normalized = normalizeCalculatorInputsForUi(parsed.values);
+      const parsedIndex = Number.isFinite(Number(parsed.activeModuleIndex)) ? Math.trunc(Number(parsed.activeModuleIndex)) : 0;
+      const safeIndex = Math.max(0, Math.min(normalized.modules.length - 1, parsedIndex));
+
+      setValues(normalized);
+      setActiveModuleIndex(safeIndex);
+      setDraftNotice('Restored unsaved calculator inputs.');
+      restoredDraftForKeyRef.current = true;
+    } catch {
+      window.sessionStorage.removeItem(draftSessionKey);
+    } finally {
+      setDraftHydrated(true);
+    }
+  }, [draftSessionKey]);
 
   useEffect(() => {
     if (!projectId) {
@@ -415,39 +492,25 @@ export default function CalculatorGridClient({
   }, [projectId]);
 
   useEffect(() => {
+    if (!draftHydrated) return;
+
     if (!fromEstimateId) {
       setDraftNotice(null);
       return;
     }
+    if (restoredDraftForKeyRef.current) return;
 
     void (async () => {
       try {
         const draft = await duplicateEstimateToDraft(fromEstimateId);
-        const mergedBlinds = normalizeBlindsStateForUi((draft as any).blinds);
-
-        setValues({
+        const normalizedDraft = normalizeCalculatorInputsForUi({
           ...draft,
           schemaVersion: 'v2',
-          modules: (draft.modules ?? []).map((m) => {
-            const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...m };
-            if (merged.roofMaterial !== 'mixed') return merged;
+          modules: Array.isArray(draft.modules) ? draft.modules : [],
+          blinds: normalizeBlindsStateForUi((draft as any).blinds),
+        } as CalculatorInputs);
 
-            const bayCounts = computeBayCountsForModule(merged);
-            const hasMain = Object.prototype.hasOwnProperty.call(m as any, 'mixedAcrylicBaysMain');
-            const hasA = Object.prototype.hasOwnProperty.call(m as any, 'mixedAcrylicBaysA');
-            const hasB = Object.prototype.hasOwnProperty.call(m as any, 'mixedAcrylicBaysB');
-
-            if (bayCounts.roofType === 'pitched') {
-              if (!hasMain) merged.mixedAcrylicBaysMain = defaultMixedAcrylicBays(bayCounts.bayCountMain);
-            } else {
-              if (!hasA) merged.mixedAcrylicBaysA = defaultMixedAcrylicBays(bayCounts.bayCountA);
-              if (!hasB) merged.mixedAcrylicBaysB = defaultMixedAcrylicBays(bayCounts.bayCountB);
-            }
-
-            return merged;
-          }),
-          blinds: mergedBlinds,
-        });
+        setValues(normalizedDraft);
         setActiveModuleIndex(0);
         const msg = `Draft duplicated from estimate ${fromEstimateId}`;
         setDraftNotice(msg);
@@ -458,7 +521,24 @@ export default function CalculatorGridClient({
         toast.error(msg);
       }
     })();
-  }, [fromEstimateId]);
+  }, [draftHydrated, fromEstimateId]);
+
+  useEffect(() => {
+    if (!draftHydrated) return;
+    if (typeof window === 'undefined') return;
+
+    const snapshot: CalculatorDraftSessionSnapshot = {
+      activeModuleIndex,
+      updatedAt: Date.now(),
+      values,
+    };
+
+    try {
+      window.sessionStorage.setItem(draftSessionKey, JSON.stringify(snapshot));
+    } catch {
+      void 0;
+    }
+  }, [activeModuleIndex, draftHydrated, draftSessionKey, values]);
 
   useEffect(() => {
     const prevHtml = document.documentElement.style.overflow;
