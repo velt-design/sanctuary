@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
@@ -8,6 +8,48 @@ import { fetchPortalRole } from '@/lib/queries/auth';
 import type { PortalRole } from '@/lib/authTypes';
 
 type PortalAuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+const ROLE_CACHE_KEY = 'sanctuary-portal:portal-role-cache:v1';
+
+type CachedRole = {
+  userId: string;
+  role: PortalRole;
+  verifiedAt: number;
+};
+
+function readCachedRole(userId: string): CachedRole | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(ROLE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CachedRole>;
+    if (parsed.userId !== userId) return null;
+    if (parsed.role !== 'admin' && parsed.role !== 'staff') return null;
+    if (typeof parsed.verifiedAt !== 'number' || !Number.isFinite(parsed.verifiedAt)) return null;
+    return { userId: parsed.userId, role: parsed.role, verifiedAt: parsed.verifiedAt };
+  } catch {
+    window.localStorage.removeItem(ROLE_CACHE_KEY);
+    return null;
+  }
+}
+
+function writeCachedRole(entry: CachedRole) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    void 0;
+  }
+}
+
+function clearCachedRole() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(ROLE_CACHE_KEY);
+  } catch {
+    void 0;
+  }
+}
 
 type PortalAuthState = {
   status: PortalAuthStatus;
@@ -24,6 +66,7 @@ const PortalAuthContext = createContext<PortalAuthState | null>(null);
 export default function PortalAuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
+  const applyNonceRef = useRef(0);
   const [state, setState] = useState<{ status: PortalAuthStatus; user: User | null; role: PortalRole | null }>({
     status: 'loading',
     user: null,
@@ -32,20 +75,55 @@ export default function PortalAuthProvider({ children }: { children: React.React
 
   const applySession = useCallback(
     async (session: Session | null) => {
+      const applyNonce = (applyNonceRef.current += 1);
+      const stillCurrent = () => applyNonceRef.current === applyNonce;
+
       if (!session?.user) {
+        clearCachedRole();
         setState({ status: 'unauthenticated', user: null, role: null });
         return;
       }
 
-      setState((prev) => ({ ...prev, status: 'loading', user: session.user }));
-      const role = await fetchPortalRole(session.user.id);
+      const user = session.user;
+      const cached = readCachedRole(user.id);
+
+      if (cached?.role) {
+        setState({ status: 'authenticated', user, role: cached.role });
+      } else {
+        setState({ status: 'loading', user, role: null });
+      }
+
+      let role: PortalRole | null = null;
+      try {
+        role = await fetchPortalRole(user.id);
+      } catch {
+        try {
+          const { data, error } = await supabase.auth.refreshSession();
+          if (error) throw error;
+          role = await fetchPortalRole(data.session?.user?.id ?? user.id);
+        } catch {
+          // Transient failure (offline / Safari resume / token race). Keep cached role if we have it.
+          if (!stillCurrent()) return;
+          if (cached?.role) {
+            setState({ status: 'authenticated', user, role: cached.role });
+          } else {
+            setState({ status: 'loading', user, role: null });
+          }
+          return;
+        }
+      }
+
+      if (!stillCurrent()) return;
       if (!role) {
+        clearCachedRole();
         await supabase.auth.signOut();
+        if (!stillCurrent()) return;
         setState({ status: 'unauthenticated', user: null, role: null });
         return;
       }
 
-      setState({ status: 'authenticated', user: session.user, role });
+      writeCachedRole({ userId: user.id, role, verifiedAt: Date.now() });
+      setState({ status: 'authenticated', user, role });
     },
     [supabase],
   );
@@ -57,6 +135,7 @@ export default function PortalAuthProvider({ children }: { children: React.React
 
   const signOut = useCallback(
     async (redirectTo?: string) => {
+      clearCachedRole();
       await supabase.auth.signOut();
       setState({ status: 'unauthenticated', user: null, role: null });
       if (redirectTo) router.replace(redirectTo);
