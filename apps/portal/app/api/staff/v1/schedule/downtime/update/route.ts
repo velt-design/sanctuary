@@ -1,0 +1,122 @@
+import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { isYmd } from '@/lib/scheduling/date';
+import {
+  applyJobForecastUpdates,
+  buildCrewContext,
+  buildJobMetaMap,
+  computeCommitImpacts,
+  formatCrewScheduleBlocks,
+  isMissingSchemaError,
+  loadScheduleContext,
+  recomputeForCrew,
+} from '@/lib/scheduling/scheduleV2Server';
+import { supabaseServer } from '@/lib/supabaseClient';
+
+export const runtime = 'nodejs';
+
+function normalizeReason(value: unknown): string | null {
+  if (value == null) return null;
+  const allowed = new Set(['weather', 'materials', 'site', 'staff', 'travel', 'other']);
+  const v = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  return allowed.has(v) ? v : 'other';
+}
+
+export async function POST(req: Request) {
+  const session = await requireStaffSession();
+  if (!session) return jsonError('Unauthorized', 401);
+
+  const parsed = await parseJsonBody(req);
+  if (!parsed.ok) return jsonError(parsed.error, 400);
+  const body = parsed.body ?? {};
+
+  const downtimeId = typeof body.downtime_id === 'string' ? body.downtime_id.trim() : '';
+  const durationRaw = body.duration_days;
+  const reason = normalizeReason(body.reason);
+  const note = typeof body.note === 'string' ? body.note.trim() : null;
+  const force = Boolean(body.force);
+
+  if (!downtimeId) return jsonError('downtime_id is required', 400);
+
+  const downtimeRes = await supabaseServer.from('crew_downtimes').select('*').eq('id', downtimeId).maybeSingle();
+  if (downtimeRes.error) {
+    if (isMissingSchemaError(downtimeRes.error)) {
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+    }
+    return jsonError('Failed to load downtime', 500);
+  }
+  const downtimeRow = downtimeRes.data;
+  if (!downtimeRow) return jsonError('Downtime not found', 404);
+
+  const crewId = String(downtimeRow.crew_id);
+
+  let ctx;
+  try {
+    ctx = await loadScheduleContext({ crewId, today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
+  } catch (err) {
+    if (isMissingSchemaError(err)) {
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+    }
+    return jsonError('Failed to load schedule data', 500);
+  }
+
+  const crewCtx = buildCrewContext(ctx, crewId);
+  if (!crewCtx) return jsonError('Crew not found', 404);
+
+  const durationDays = typeof durationRaw === 'number' && Number.isFinite(durationRaw) ? Math.max(1, Math.trunc(durationRaw)) : crewCtx.downtimesById.get(downtimeId)?.durationDays ?? 1;
+
+  const downtimes = crewCtx.downtimes.map((dt) =>
+    dt.id === downtimeId
+      ? {
+          ...dt,
+          durationDays,
+          reason: reason ?? dt.reason,
+          note: note ?? dt.note,
+        }
+      : dt,
+  );
+
+  const afterRecompute = recomputeForCrew({
+    crewRow: crewCtx.crewRow,
+    items: crewCtx.items,
+    jobs: crewCtx.jobs,
+    downtimes,
+    calendar: ctx.calendar,
+    today: ctx.today,
+  });
+
+  const impacts = computeCommitImpacts({
+    before: crewCtx.recompute,
+    after: afterRecompute,
+    jobMetaById: buildJobMetaMap(crewCtx.jobs),
+    today: ctx.today,
+    horizonDays: 10,
+    region: crewCtx.crewRow.calendar_region || 'Auckland',
+    calendar: ctx.calendar,
+  });
+
+  if (impacts.length && !force) {
+    return jsonOk({ requires_confirmation: true, impacts });
+  }
+
+  const update: Record<string, any> = { duration_days: durationDays };
+  if (reason != null) update.reason = reason;
+  if (note != null) update.note = note;
+  await supabaseServer.from('crew_downtimes').update(update as any).eq('id', downtimeId);
+
+  await applyJobForecastUpdates(afterRecompute.job_updates);
+
+  const formatted = formatCrewScheduleBlocks({
+    crewRow: crewCtx.crewRow,
+    recompute: afterRecompute,
+    jobsById: crewCtx.jobsById,
+    downtimesById: new Map(downtimes.map((dt) => [dt.id, dt])),
+  });
+
+  return jsonOk({
+    ok: true,
+    crew_id: crewId,
+    schedule: formatted,
+    conflicts: formatted.conflicts,
+    next_available_date: formatted.next_available_date,
+  });
+}

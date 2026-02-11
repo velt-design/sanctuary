@@ -3,8 +3,6 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { listContacts } from '@/lib/repo/contactsRepo';
-import { listProjects } from '@/lib/repo/projectsRepo';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { normalizeProjectStatus, PROJECT_STATUS_ORDER, nextActionTypeLabel, projectStatusLabel } from '@/lib/types/project';
@@ -12,9 +10,10 @@ import styles from './projects.module.css';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import useSWR from 'swr';
-import { contactsSWRKey } from '@/lib/cache/contactsCache';
-import { projectsSWRKey } from '@/lib/cache/projectsCache';
+import { useQuery } from '@tanstack/react-query';
+import { contactsListQueryOptions } from '@/lib/queries/contacts';
+import { projectsListQueryOptions } from '@/lib/queries/projects';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 function toYmd(value: string | null | undefined): string | null {
   const raw = (value ?? '').trim();
@@ -32,20 +31,19 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all');
   const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>('all');
 
-  const projectsKey = useMemo(() => projectsSWRKey(), []);
-  const contactsKey = useMemo(() => contactsSWRKey(), []);
+  const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const isLoadingMode = mode === 'loading';
-  const { data: projectsData, error: projectsError } = useSWR<Project[]>(
-    projectsKey,
-    isLoadingMode ? null : () => listProjects(),
-    isLoadingMode ? { revalidateOnMount: false } : { revalidateOnMount: true },
-  );
-  const { data: contactsData, error: contactsError } = useSWR<Contact[]>(
-    contactsKey,
-    isLoadingMode ? null : () => listContacts(),
-    isLoadingMode ? { revalidateOnMount: false } : { revalidateOnMount: true },
-  );
+  const { data: projectsData, error: projectsError } = useQuery({
+    ...projectsListQueryOptions(host),
+    enabled: !isLoadingMode,
+    refetchOnMount: !isLoadingMode,
+  });
+  const { data: contactsData, error: contactsError } = useQuery({
+    ...contactsListQueryOptions(host),
+    enabled: !isLoadingMode,
+    refetchOnMount: !isLoadingMode,
+  });
 
   const projects = projectsData ?? [];
   const contacts = contactsData ?? [];

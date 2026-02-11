@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
+import { fetchPortalRole } from '@/lib/queries/auth';
 
 const DEFAULT_CALLBACK_URL = '/dashboard';
 
@@ -88,13 +89,8 @@ export default function LoginClient() {
               return;
             }
 
-            const { data: portalUser, error: portalError } = await supabase
-              .from('portal_users')
-              .select('role')
-              .eq('user_id', data.user.id)
-              .maybeSingle();
-
-            if (portalError || !portalUser?.role) {
+            const role = await fetchPortalRole(data.user.id);
+            if (!role) {
               await supabase.auth.signOut();
               setErrorMessage('Your account does not have portal access yet.');
               setSubmitting(false);

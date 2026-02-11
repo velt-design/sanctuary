@@ -1,4 +1,23 @@
-# Schedule (v3) — Manual QA Checklist
+# Schedule — Manual QA Checklist
+
+## Schedule V2 (Board + Gantt)
+1. Assign job to crew: start is a working day; planned baseline set.
+2. Reorder two jobs: downstream dates ripple.
+3. Insert downtime (weather) for 2 days: downstream shifts by 2 working days.
+4. Drag a job bar to a holiday/weekend: snaps to next working day, becomes pinned.
+5. Create pinned collision: conflict appears (Gantt + Board).
+6. Inside commit horizon, attempt reorder: confirmation modal appears with preview.
+7. Mark job in progress, set days remaining: downstream shifts.
+8. Mark done early: prompt appears; choose pull forward; verify shifts + commit horizon prompt if needed.
+9. Choose keep schedule: buffer downtime inserted; verify downstream unchanged.
+
+## Schedule V2 — Automated Tests (Minimum)
+1. Calendar math tests: `lib/scheduling/workingDays.test.ts` and `apps/portal/lib/scheduling/workingDays.test.ts`
+2. Recompute tests: `lib/scheduling/recompute.test.ts` and `apps/portal/lib/scheduling/recompute.test.ts`
+3. Suggested command:
+```bash
+npx vitest run lib/scheduling/workingDays.test.ts lib/scheduling/recompute.test.ts apps/portal/lib/scheduling/workingDays.test.ts apps/portal/lib/scheduling/recompute.test.ts
+```
 
 ## Board (Crew Columns)
 1. Open ` /staff/schedule ` and stay on **Board**.

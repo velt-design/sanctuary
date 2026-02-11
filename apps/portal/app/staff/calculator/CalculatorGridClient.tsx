@@ -2,7 +2,7 @@
 
 import type { CostInputsV1, JobInputsV1, JobOutputV1, RoofType } from '@sp/costing';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
 import styles from './CalculatorGrid.module.css';
 import type {
@@ -22,7 +22,6 @@ import { getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import { useCalculatorUiPrefs } from '@/lib/ui/useCalculatorUiPrefs';
 import RoofOrientationDiagram from './RoofOrientationDiagram';
 import {
   priceAllBlinds,
@@ -366,7 +365,6 @@ export default function CalculatorGridClient({
   const { email: sessionEmail, role: sessionRole } = usePortalSession();
   const email = typeof emailProp === 'string' ? emailProp : (sessionEmail ?? '');
   const role = (roleProp ?? (sessionRole ?? 'staff')) === 'admin' ? 'admin' : 'staff';
-  const { previewLayoutEnabled } = useCalculatorUiPrefs();
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -374,7 +372,6 @@ export default function CalculatorGridClient({
   const projectId = searchParams.get('projectId') ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
 
-  const gridRef = useRef<HTMLDivElement | null>(null);
   const [values, setValues] = useState<CalculatorInputs>(() => ({
     schemaVersion: 'v2',
     projectName: '',
@@ -464,7 +461,6 @@ export default function CalculatorGridClient({
   }, [fromEstimateId]);
 
   useEffect(() => {
-    if (!previewLayoutEnabled) return;
     const prevHtml = document.documentElement.style.overflow;
     const prevBody = document.body.style.overflow;
 
@@ -474,7 +470,7 @@ export default function CalculatorGridClient({
       document.documentElement.style.overflow = prevHtml;
       document.body.style.overflow = prevBody;
     };
-  }, [previewLayoutEnabled]);
+  }, []);
 
   useEffect(() => {
     setActiveModuleIndex((prev) => {
@@ -1635,17 +1631,13 @@ export default function CalculatorGridClient({
       error: errors.projectionM,
       helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
     },
-    ...(previewLayoutEnabled
-      ? [
-          {
-            id: 'roofOrientation',
-            label: 'Orientation',
-            type: 'custom',
-            content: <RoofOrientationDiagram />,
-            helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
-          } satisfies FieldSchemaItem,
-        ]
-      : []),
+    {
+      id: 'roofOrientation',
+      label: 'Orientation',
+      type: 'custom',
+      content: <RoofOrientationDiagram />,
+      helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
+    } satisfies FieldSchemaItem,
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
           {
@@ -2147,9 +2139,7 @@ export default function CalculatorGridClient({
     },
   ];
 
-  const warningsField = schema.find((field) => field.id === 'warnings') ?? null;
   const generateField = schema.find((field) => field.id === 'generate-estimate') ?? null;
-  const schemaWithoutFooter = schema.filter((field) => field.id !== 'warnings' && field.id !== 'generate-estimate');
 
   const schemaMap = useMemo(() => new Map(schema.map((field) => [field.id, field])), [schema]);
   const pickFields = (ids: string[]): FieldSchemaItem[] =>
@@ -2244,251 +2234,153 @@ export default function CalculatorGridClient({
     return actions.slice().sort((a, b) => (b.minutes ?? 0) - (a.minutes ?? 0));
   }, [result]);
 
-  const [gridHeightPx, setGridHeightPx] = useState(0);
-
-  useLayoutEffect(() => {
-    const gridEl = gridRef.current;
-    if (!gridEl) return;
-
-    let raf = 0;
-
-    const compute = () => {
-      cancelAnimationFrame(raf);
-      raf = window.requestAnimationFrame(() => {
-        const computedStyles = window.getComputedStyle(gridEl);
-
-        const pagePad = Number.parseFloat(computedStyles.getPropertyValue('--page-pad')) || 8;
-        const tileMinHeight = Number.parseFloat(computedStyles.getPropertyValue('--tile-min-height')) || 100;
-
-        const rect = gridEl.getBoundingClientRect();
-        const availableHeight = Math.max(tileMinHeight, window.innerHeight - rect.top - pagePad);
-        setGridHeightPx((prev) => (prev === availableHeight ? prev : availableHeight));
-      });
-    };
-
-    const ro = new ResizeObserver(compute);
-    ro.observe(gridEl);
-    window.addEventListener('resize', compute);
-    compute();
-
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', compute);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
-
   return (
-    <main className={previewLayoutEnabled ? `${styles.page} ${styles.previewPage}` : styles.page}>
+    <main className={`${styles.page} ${styles.previewPage}`}>
       <h1 className="visually-hidden">Calculator</h1>
 
-      {previewLayoutEnabled ? (
-        <div className={styles.previewFrame}>
-          <div className={styles.split}>
-            <div className={styles.leftCol}>
-              <FieldGroup title="Context" fields={contextFields} />
-              <FieldGroup title="Structure" fields={structureFields} />
-              <FieldGroup title="Overrides" fields={overrideFields} />
-              <FieldGroup title="Blinds" fields={blindFields} />
-              <FieldGroup title="Connections & Site" fields={connectionFields} />
-              <FieldGroup title="Allowances" fields={allowanceFields} />
-            </div>
+      <div className={styles.previewFrame}>
+        <div className={styles.split}>
+          <div className={styles.leftCol}>
+            <FieldGroup title="Context" fields={contextFields} />
+            <FieldGroup title="Structure" fields={structureFields} />
+            <FieldGroup title="Overrides" fields={overrideFields} />
+            <FieldGroup title="Blinds" fields={blindFields} />
+            <FieldGroup title="Connections & Site" fields={connectionFields} />
+            <FieldGroup title="Allowances" fields={allowanceFields} />
+          </div>
 
-            <aside className={styles.rightCol} aria-label="Preview outputs">
-              <div className={styles.previewSummary}>
-                <div className={styles.previewSummaryHeader}>
-                  <div>
-                    <div className={styles.previewSummaryTitle}>Preview</div>
-                    <div className={styles.previewSummarySub}>
-                      {isCalculating ? 'Calculating…' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
-                    </div>
-                  </div>
-                  {issuesCount ? (
-                    <button type="button" className={styles.previewIssueButton} onClick={() => setIssuesOpen(true)}>
-                      Errors ({issuesCount})
-                    </button>
-                  ) : null}
-                </div>
-
-                <div className={styles.previewStatGrid}>
-                  <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
-                  <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
-                  <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
-                  <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
-                  <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
-                  <PreviewStat label="Crew hours" value={formatMaybeNumber(crewHours)} />
-                  <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 0)} />
-                </div>
-
-                <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
-                  <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
-                    Add‑ons (informational)
-                  </div>
-                  <div className={styles.previewRow}>
-                    <span className={styles.previewRowLabel}>Blinds (ex‑GST)</span>
-                    <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
-                  </div>
-                  <div className={styles.previewRow}>
-                    <span className={styles.previewRowLabel}>Blinds (inc‑GST)</span>
-                    <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
+          <aside className={styles.rightCol} aria-label="Preview outputs">
+            <div className={styles.previewSummary}>
+              <div className={styles.previewSummaryHeader}>
+                <div>
+                  <div className={styles.previewSummaryTitle}>Preview</div>
+                  <div className={styles.previewSummarySub}>
+                    {isCalculating ? 'Calculating…' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
                   </div>
                 </div>
-
-                {generateField ? (
-                  <div className={styles.previewActions}>
-                    <button
-                      type="button"
-                      className={styles.previewPrimaryAction}
-                      onClick={generateField.onAction}
-                      disabled={generateField.disabled}
-                    >
-                      {generateField.actionLabel ?? 'Generate'}
-                    </button>
-                    {generateField.error ? <p className={styles.previewError}>{generateField.error}</p> : null}
-                  </div>
+                {issuesCount ? (
+                  <button type="button" className={styles.previewIssueButton} onClick={() => setIssuesOpen(true)}>
+                    Errors ({issuesCount})
+                  </button>
                 ) : null}
               </div>
 
-              <section className={styles.previewCard} aria-label="Warnings">
-                <h2 className={styles.previewCardTitle}>Warnings</h2>
-                {warningsTyped.length ? (
-                  <ul className={styles.previewList}>
-                    {warningsTyped.map((warn, idx) => (
-                      <li key={`${warn.level}-${idx}`} className={warn.level === 'critical' ? styles.previewWarnCritical : undefined}>
-                        {warn.message}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className={styles.previewMuted}>No warnings yet.</p>
-                )}
-              </section>
+              <div className={styles.previewStatGrid}>
+                <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
+                <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
+                <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
+                <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
+                <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
+                <PreviewStat label="Crew hours" value={formatMaybeNumber(crewHours)} />
+                <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 0)} />
+              </div>
 
-              <section className={styles.previewCard} aria-label="BOM preview">
-                <h2 className={styles.previewCardTitle}>BOM preview</h2>
-                {bomPreview.length ? (
-                  <div className={styles.previewTable}>
-                    {bomPreview.map((line) => (
-                      <div key={`${line.id}-${line.label}`} className={styles.previewRow}>
-                        <div className={styles.previewRowMain}>
-                          <div className={styles.previewRowLabel}>{line.label}</div>
-                          <div className={styles.previewRowMeta}>
-                            {formatMaybeNumber(line.qty, 2)} {line.unit}
-                          </div>
-                        </div>
-                        <div className={styles.previewRowValue}>{formatMaybeMoney(line.line_cost_ex_gst)}</div>
-                      </div>
-                    ))}
-                    <div className={styles.previewRowTotal}>
-                      <span>Total materials (ex‑GST)</span>
-                      <span>{formatMaybeMoney(materialsEx)}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className={styles.previewMuted}>No BOM yet.</p>
-                )}
-              </section>
-
-              <details className={styles.previewDetails}>
-                <summary>Labour breakdown</summary>
-                {labourPreview.length ? (
-                  <div className={styles.previewTable}>
-                    {labourPreview.map((action) => (
-                      <div key={action.id} className={styles.previewRow}>
-                        <div className={styles.previewRowMain}>
-                          <div className={styles.previewRowLabel}>{action.label}</div>
-                          <div className={styles.previewRowMeta}>
-                            {action.category} · {formatMaybeNumber(action.qty, 2)} {action.unit}
-                          </div>
-                        </div>
-                        <div className={styles.previewRowValue}>{formatMaybeNumber(action.minutes, 0)} min</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className={styles.previewMuted}>No labour actions yet.</p>
-                )}
-              </details>
-
-              <details className={styles.previewDetails}>
-                <summary>Structure outputs</summary>
-                <div className={styles.previewTable}>
-                  <PreviewRow label="Area (m²)" value={formatMaybeNumber(derivedArea)} />
-                  <PreviewRow label="Roof area (m²)" value={formatMaybeNumber(derivedRoofArea)} />
-                  <PreviewRow label="Acrylic area (m²)" value={formatMaybeNumber(derivedAcrylicArea)} />
-                  <PreviewRow label="Timber area (m²)" value={formatMaybeNumber(derivedTimberArea)} />
-                  <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—'} />
-                  <PreviewRow label="Slope length (m)" value={formatMaybeNumber(derivedSlopeLength)} />
-                  <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—'} />
-                  <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : '—'} />
+              <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
+                <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
+                  Add‑ons (informational)
                 </div>
-              </details>
-            </aside>
-          </div>
-        </div>
-      ) : (
-        <div
-          ref={gridRef}
-          className={styles.grid}
-          role="form"
-          aria-label="Calculator inputs"
-          style={gridHeightPx ? { height: `${gridHeightPx}px` } : undefined}
-        >
-          {schemaWithoutFooter.map((field) => (
-            <FieldTile
-              key={field.id}
-              id={field.id}
-              label={field.label}
-              type={field.type}
-              value={field.value}
-              content={field.content}
-              onChange={field.onChange}
-              options={field.options}
-              disabled={field.disabled}
-              helperText={field.helperText}
-              error={field.error}
-              onAction={field.onAction}
-              actionLabel={field.actionLabel}
-            />
-          ))}
+                <div className={styles.previewRow}>
+                  <span className={styles.previewRowLabel}>Blinds (ex‑GST)</span>
+                  <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
+                </div>
+                <div className={styles.previewRow}>
+                  <span className={styles.previewRowLabel}>Blinds (inc‑GST)</span>
+                  <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
+                </div>
+              </div>
 
-          {warningsField ? (
-            <FieldTile
-              key={warningsField.id}
-              id={warningsField.id}
-              label={warningsField.label}
-              type={warningsField.type}
-              value={warningsField.value}
-              content={warningsField.content}
-              onChange={warningsField.onChange}
-              options={warningsField.options}
-              disabled={warningsField.disabled}
-              helperText={warningsField.helperText}
-              error={warningsField.error}
-              onAction={warningsField.onAction}
-              actionLabel={warningsField.actionLabel}
-            />
-          ) : null}
+              {generateField ? (
+                <div className={styles.previewActions}>
+                  <button
+                    type="button"
+                    className={styles.previewPrimaryAction}
+                    onClick={generateField.onAction}
+                    disabled={generateField.disabled}
+                  >
+                    {generateField.actionLabel ?? 'Generate'}
+                  </button>
+                  {generateField.error ? <p className={styles.previewError}>{generateField.error}</p> : null}
+                </div>
+              ) : null}
+            </div>
 
-          {generateField ? (
-            <FieldTile
-              key={generateField.id}
-              id={generateField.id}
-              label={generateField.label}
-              type={generateField.type}
-              value={generateField.value}
-              content={generateField.content}
-              onChange={generateField.onChange}
-              options={generateField.options}
-              disabled={generateField.disabled}
-              helperText={generateField.helperText}
-              error={generateField.error}
-              onAction={generateField.onAction}
-              actionLabel={generateField.actionLabel}
-            />
-          ) : null}
+            <section className={styles.previewCard} aria-label="Warnings">
+              <h2 className={styles.previewCardTitle}>Warnings</h2>
+              {warningsTyped.length ? (
+                <ul className={styles.previewList}>
+                  {warningsTyped.map((warn, idx) => (
+                    <li key={`${warn.level}-${idx}`} className={warn.level === 'critical' ? styles.previewWarnCritical : undefined}>
+                      {warn.message}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.previewMuted}>No warnings yet.</p>
+              )}
+            </section>
+
+            <section className={styles.previewCard} aria-label="BOM preview">
+              <h2 className={styles.previewCardTitle}>BOM preview</h2>
+              {bomPreview.length ? (
+                <div className={styles.previewTable}>
+                  {bomPreview.map((line) => (
+                    <div key={`${line.id}-${line.label}`} className={styles.previewRow}>
+                      <div className={styles.previewRowMain}>
+                        <div className={styles.previewRowLabel}>{line.label}</div>
+                        <div className={styles.previewRowMeta}>
+                          {formatMaybeNumber(line.qty, 2)} {line.unit}
+                        </div>
+                      </div>
+                      <div className={styles.previewRowValue}>{formatMaybeMoney(line.line_cost_ex_gst)}</div>
+                    </div>
+                  ))}
+                  <div className={styles.previewRowTotal}>
+                    <span>Total materials (ex‑GST)</span>
+                    <span>{formatMaybeMoney(materialsEx)}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className={styles.previewMuted}>No BOM yet.</p>
+              )}
+            </section>
+
+            <details className={styles.previewDetails}>
+              <summary>Labour breakdown</summary>
+              {labourPreview.length ? (
+                <div className={styles.previewTable}>
+                  {labourPreview.map((action) => (
+                    <div key={action.id} className={styles.previewRow}>
+                      <div className={styles.previewRowMain}>
+                        <div className={styles.previewRowLabel}>{action.label}</div>
+                        <div className={styles.previewRowMeta}>
+                          {action.category} · {formatMaybeNumber(action.qty, 2)} {action.unit}
+                        </div>
+                      </div>
+                      <div className={styles.previewRowValue}>{formatMaybeNumber(action.minutes, 0)} min</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.previewMuted}>No labour actions yet.</p>
+              )}
+            </details>
+
+            <details className={styles.previewDetails}>
+              <summary>Structure outputs</summary>
+              <div className={styles.previewTable}>
+                <PreviewRow label="Area (m²)" value={formatMaybeNumber(derivedArea)} />
+                <PreviewRow label="Roof area (m²)" value={formatMaybeNumber(derivedRoofArea)} />
+                <PreviewRow label="Acrylic area (m²)" value={formatMaybeNumber(derivedAcrylicArea)} />
+                <PreviewRow label="Timber area (m²)" value={formatMaybeNumber(derivedTimberArea)} />
+                <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—'} />
+                <PreviewRow label="Slope length (m)" value={formatMaybeNumber(derivedSlopeLength)} />
+                <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—'} />
+                <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : '—'} />
+              </div>
+            </details>
+          </aside>
         </div>
-      )}
+      </div>
 
 	      {issuesOpen ? (
 	        <Modal

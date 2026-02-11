@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import ActivityTab from './tabs/ActivityTab';
 import EmailsTab from './tabs/EmailsTab';
 import EstimatesTab from './tabs/EstimatesTab';
@@ -10,6 +11,9 @@ import QuotesTab from './tabs/QuotesTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
+import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
+import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 const TABS = [
   { key: 'activity', label: 'Activity' },
@@ -44,6 +48,10 @@ export default function ProjectMainTabs({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+
+  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const projectId = snapshot.project.id;
 
   const tabFromUrl = useMemo(() => coerceTab(searchParams.get('tab') ?? tab), [searchParams, tab]);
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl);
@@ -61,6 +69,39 @@ export default function ProjectMainTabs({
     router.replace(`${pathname}${query ? `?${query}` : ''}`);
   };
 
+  const prefetchTabData = (tabKey: TabKey) => {
+    if (tabKey === 'estimates') {
+      void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
+      return;
+    }
+    if (tabKey === 'quotes') {
+      void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
+      void queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
+    }
+  };
+
+  useEffect(() => {
+    const key = `sp_project_tabs_warmup_v1:${hostKey}:${projectId}`;
+    if (typeof window === 'undefined') return;
+    if (window.sessionStorage.getItem(key) === '1') return;
+    window.sessionStorage.setItem(key, '1');
+
+    const run = async () => {
+      await Promise.allSettled([
+        queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId)),
+        queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId)),
+      ]);
+    };
+
+    const ric = (window as any).requestIdleCallback as ((cb: () => void, opts?: { timeout: number }) => number) | undefined;
+    if (typeof ric === 'function') {
+      ric(() => void run(), { timeout: 2500 });
+      return;
+    }
+    const t = window.setTimeout(() => void run(), 200);
+    return () => window.clearTimeout(t);
+  }, [hostKey, projectId, queryClient]);
+
   return (
     <section className={legacy.section} aria-label="Project tabs">
       <div className={legacy.sectionHeader}>
@@ -73,6 +114,8 @@ export default function ProjectMainTabs({
                   key={tabItem.key}
                   type="button"
                   onClick={() => updateParams({ tab: tabItem.key })}
+                  onMouseEnter={() => prefetchTabData(tabItem.key)}
+                  onFocus={() => prefetchTabData(tabItem.key)}
                   className={`${legacy.tabButton} ${isActive ? legacy.tabButtonActive : ''}`}
                   aria-selected={isActive}
                   role="tab"

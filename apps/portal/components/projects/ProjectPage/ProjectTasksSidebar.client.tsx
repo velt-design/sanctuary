@@ -372,7 +372,7 @@ export default function ProjectTasksSidebarClient({
               {visibleTasks.map((task) => {
                 const isManual = task.kind === 'manual';
                 const isDone = isCompleted(task);
-                const toggleNext = () => toggleManualTask(task.key, !Boolean(task.isManualDone ?? task.isDone));
+                const toggleNext = () => toggleManualTask(task.key, !(task.isManualDone ?? task.isDone));
                 const handleRowClick = (event: MouseEvent<HTMLDivElement>) => {
                   const target = event.target as HTMLElement | null;
                   if (target?.closest('input,button,a')) return;

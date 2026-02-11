@@ -1,5 +1,4 @@
 import DbGate from '@/components/sync/DbGate';
-import StaffSWRProvider from '@/components/sync/StaffSWRProvider';
 import SupabaseEnvHydrator from '@/components/diagnostics/SupabaseEnvHydrator';
 import StaffCacheWarmup from '@/components/sync/StaffCacheWarmup';
 
@@ -10,10 +9,8 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     <>
       <SupabaseEnvHydrator />
       <DbGate />
-      <StaffSWRProvider>
-        <StaffCacheWarmup />
-        {children}
-      </StaffSWRProvider>
+      <StaffCacheWarmup />
+      {children}
     </>
   );
 }

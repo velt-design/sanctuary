@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import styles from '@/app/staff/projects/projects.module.css';
 import { NEXT_ACTION_TYPE_ORDER, nextActionTypeLabel } from '@/lib/types/project';
 import { setNextAction } from '../actions';
@@ -16,6 +17,7 @@ export default function SetNextActionModal(props: {
   projectId: string;
   initial?: { actionLabel?: string; dueDate?: string };
 }) {
+  const queryClient = useQueryClient();
   const [pending, startTransition] = useTransition();
   const [actionLabel, setActionLabel] = useState(props.initial?.actionLabel ?? '');
   const [dueDate, setDueDate] = useState(props.initial?.dueDate ?? '');
@@ -108,6 +110,10 @@ export default function SetNextActionModal(props: {
                     dueDate: dueDate.trim(),
                     note: note.trim() ? note.trim() : undefined,
                   });
+                  await Promise.allSettled([
+                    queryClient.invalidateQueries({ queryKey: ['dashboard', 'data'] }),
+                    queryClient.invalidateQueries({ queryKey: ['projects'] }),
+                  ]);
                   props.onOpenChange(false);
                 } catch (err) {
                   const msg = err instanceof Error ? err.message : 'Failed to update next action.';

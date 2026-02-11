@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { apiJson } from '@/lib/repo/apiClient';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './QuotesTab.module.css';
@@ -12,8 +12,6 @@ import type { QuoteLineItem, QuoteStatus, QuoteVersion, QuoteVersionDetail } fro
 import {
   createQuoteFromEstimate,
   deleteDraftQuoteVersion,
-  getQuoteVersion,
-  listQuoteVersions,
   markQuoteAccepted,
   markQuoteDeclined,
   quotePdfUrl,
@@ -22,6 +20,10 @@ import {
   sendQuote,
   updateDraftQuoteVersion,
 } from '@/lib/quotes/quotesRepo';
+import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
+import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
+import { qk } from '@/lib/queries/keys';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 function formatMoneyFromCents(value: number): string {
   if (!Number.isFinite(value)) return '—';
@@ -119,22 +121,34 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const queryClient = useQueryClient();
+
+  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const selectedFromUrl = useMemo(() => {
     const raw = searchParams.get('quoteId') ?? '';
     return raw.trim() || null;
   }, [searchParams]);
 
-  const [quotes, setQuotes] = useState<QuoteVersion[]>([]);
-  const [quotesLoading, setQuotesLoading] = useState(false);
-  const [quotesError, setQuotesError] = useState<string | null>(null);
-
-  const [estimates, setEstimates] = useState<EstimateMeta[]>([]);
-  const [estimatesLoading, setEstimatesLoading] = useState(false);
-
   const [selectedId, setSelectedId] = useState<string | null>(selectedFromUrl);
-  const [detail, setDetail] = useState<QuoteVersionDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+
+  const quotesQuery = useQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
+  const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
+
+  const quotes = quotesQuery.data ?? [];
+  const quotesLoading = quotesQuery.isPending;
+  const quotesError =
+    quotesQuery.error instanceof Error ? quotesQuery.error.message : quotesQuery.error ? String(quotesQuery.error) : null;
+
+  const estimates = estimatesQuery.data ?? [];
+  const estimatesLoading = estimatesQuery.isPending;
+
+  const quoteDetailQuery = useQuery({
+    ...quoteVersionDetailQueryOptions(hostKey, selectedId || ''),
+    enabled: Boolean(selectedId),
+  });
+  const detailLoading = Boolean(selectedId) && quoteDetailQuery.isPending;
+  const detail = quoteDetailQuery.data ?? null;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createEstimateId, setCreateEstimateId] = useState('');
@@ -160,61 +174,38 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [savingDraft, setSavingDraft] = useState(false);
 
   const refreshQuotes = useCallback(async () => {
-    setQuotesLoading(true);
-    setQuotesError(null);
-    try {
-      const list = await listQuoteVersions(projectId);
-      setQuotes(list);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load quotes';
-      setQuotesError(msg);
-    } finally {
-      setQuotesLoading(false);
-    }
-  }, [projectId]);
+    await queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(hostKey, projectId) });
+  }, [hostKey, projectId, queryClient]);
 
-  const refreshEstimates = useCallback(async () => {
-    setEstimatesLoading(true);
-    try {
-      const res = await apiJson<{ estimates: EstimateMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
-      setEstimates(Array.isArray(res.estimates) ? res.estimates : []);
-    } finally {
-      setEstimatesLoading(false);
-    }
-  }, [projectId]);
-
+  const detailErrorNotifiedRef = useRef<string | null>(null);
   useEffect(() => {
-    void refreshQuotes();
-    void refreshEstimates();
-  }, [refreshQuotes, refreshEstimates]);
+    if (!selectedId) {
+      detailErrorNotifiedRef.current = null;
+      return;
+    }
+    if (!quoteDetailQuery.error) {
+      detailErrorNotifiedRef.current = null;
+      return;
+    }
+    const msg = quoteDetailQuery.error instanceof Error ? quoteDetailQuery.error.message : String(quoteDetailQuery.error);
+    if (!msg) return;
+    if (detailErrorNotifiedRef.current === msg) return;
+    detailErrorNotifiedRef.current = msg;
+    toast.error(msg);
+  }, [quoteDetailQuery.error, selectedId, toast]);
 
   useEffect(() => {
     setSelectedId(selectedFromUrl);
   }, [selectedFromUrl]);
 
   useEffect(() => {
-    if (!selectedId) {
-      setDetail(null);
-      return;
-    }
-    setDetailLoading(true);
-    void (async () => {
-      try {
-        const next = await getQuoteVersion(selectedId);
-        setDetail(next);
-        setDraftItems(next.lineItems);
-        setDraftReference(next.reference ?? '');
-        setDraftIntro(next.introText ?? '');
-        setDraftTerms(next.termsText ?? '');
-        setDraftExpiry(next.expiresAt ?? '');
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to load quote';
-        toast.error(msg);
-      } finally {
-        setDetailLoading(false);
-      }
-    })();
-  }, [selectedId, toast]);
+    if (!detail) return;
+    setDraftItems(detail.lineItems);
+    setDraftReference(detail.reference ?? '');
+    setDraftIntro(detail.introText ?? '');
+    setDraftTerms(detail.termsText ?? '');
+    setDraftExpiry(detail.expiresAt ?? '');
+  }, [detail?.id]);
 
   const updateParams = (next: { quoteId?: string | null }) => {
     const qs = new URLSearchParams(searchParams.toString());
@@ -270,11 +261,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!createEstimateId) return;
     try {
       const created = await createQuoteFromEstimate(projectId, createEstimateId);
+      queryClient.setQueryData(qk.quotes.detail(hostKey, created.id), created);
       await refreshQuotes();
       setCreateOpen(false);
       setSelectedId(created.id);
       updateParams({ quoteId: created.id });
-      router.refresh();
       toast.success('Draft quote created.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create quote';
@@ -324,12 +315,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       const updated = sendMode === 'send'
         ? await sendQuote(detail.id, { to, subject: sendSubject, bodyText: sendBody })
         : await resendQuote(detail.id, { to, subject: sendSubject, bodyText: sendBody });
-      setDetail(updated);
+      queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
       setSendOpen(false);
       setSendError(null);
       await refreshQuotes();
-      router.refresh();
       toast.success(sendMode === 'send' ? 'Quote sent.' : 'Quote resent.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to send quote';
@@ -344,6 +334,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!detail) return;
     try {
       const revised = await reviseQuote(detail.id);
+      queryClient.setQueryData(qk.quotes.detail(hostKey, revised.id), revised);
       await refreshQuotes();
       setSelectedId(revised.id);
       updateParams({ quoteId: revised.id });
@@ -389,7 +380,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
           unitPriceIncGstCents: item.unitPriceIncGstCents,
         })),
       });
-      setDetail(updated);
+      queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
       setDraftReference(updated.reference ?? '');
       setDraftIntro(updated.introText ?? '');
@@ -409,8 +400,8 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!detail) return;
     try {
       await deleteDraftQuoteVersion(detail.id);
+      queryClient.removeQueries({ queryKey: qk.quotes.detail(hostKey, detail.id) });
       setDeleteConfirmOpen(false);
-      setDetail(null);
       setSelectedId(null);
       updateParams({ quoteId: null });
       await refreshQuotes();
@@ -425,9 +416,8 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!detail) return;
     try {
       const updated = await markQuoteAccepted(detail.id);
-      setDetail(updated);
+      queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       await refreshQuotes();
-      router.refresh();
       toast.success('Quote marked accepted.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to mark accepted';
@@ -439,7 +429,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!detail) return;
     try {
       const updated = await markQuoteDeclined(detail.id);
-      setDetail(updated);
+      queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       await refreshQuotes();
       toast.success('Quote marked declined.');
     } catch (err) {

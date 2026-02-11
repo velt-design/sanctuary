@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { getContact, updateContact } from '@/lib/repo/contactsRepo';
-import { listProjectsForContact } from '@/lib/repo/projectsRepo';
+import { updateContact } from '@/lib/repo/contactsRepo';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import styles from '../../projects/projects.module.css';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import useSWR from 'swr';
-import { contactsSWRKey } from '@/lib/cache/contactsCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { contactDetailQueryOptions } from '@/lib/queries/contacts';
+import { projectsByContactQueryOptions } from '@/lib/queries/projects';
+import { qk } from '@/lib/queries/keys';
 
 type Draft = {
   displayName: string;
@@ -31,28 +32,23 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const cachedContactsKey = useMemo(() => contactsSWRKey(), []);
-  const { data: cachedContacts } = useSWR<Contact[]>(cachedContactsKey, null);
-  const cachedContact = useMemo(() => (Array.isArray(cachedContacts) ? cachedContacts.find((c) => c.id === contactId) ?? null : null), [cachedContacts, contactId]);
+  const cachedContacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
+  const cachedContact = useMemo(
+    () => (Array.isArray(cachedContacts) ? cachedContacts.find((c) => c.id === contactId) ?? null : null),
+    [cachedContacts, contactId],
+  );
 
-  const contactKey = useMemo(() => ['contact_detail', host, contactId] as const, [contactId, host]);
   const {
     data: contact,
     error: contactError,
-    mutate: mutateContact,
-  } = useSWR<Contact | null>(contactKey, () => getContact(contactId), {
-    fallbackData: cachedContact ?? undefined,
-    revalidateOnMount: true,
+  } = useQuery({
+    ...contactDetailQueryOptions(host, contactId),
+    initialData: cachedContact ?? undefined,
   });
 
-  const projectsKey = useMemo(() => ['contact_projects', host, contactId] as const, [contactId, host]);
-  const {
-    data: projectsData,
-    error: projectsError,
-  } = useSWR<Project[]>(projectsKey, () => listProjectsForContact(contactId), {
-    revalidateOnMount: true,
-  });
+  const { data: projectsData, error: projectsError } = useQuery(projectsByContactQueryOptions(host, contactId));
 
   const projects = projectsData ?? [];
 
@@ -150,7 +146,14 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                         email: draft.email.trim(),
                         phone: draft.phone.trim(),
                       });
-                      await mutateContact(updated, { revalidate: false });
+                      queryClient.setQueryData(qk.contacts.detail(host, contactId), updated);
+                      queryClient.setQueryData(qk.contacts.list(host), (prev) => {
+                        if (!Array.isArray(prev)) return prev;
+                        const next = prev.filter((c) => c.id !== updated.id);
+                        next.push(updated);
+                        next.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
+                        return next;
+                      });
                       setIsEditing(false);
                       setDraft(null);
                     } catch (err) {

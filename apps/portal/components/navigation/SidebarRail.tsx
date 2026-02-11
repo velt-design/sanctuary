@@ -2,10 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useCallback, useMemo, useRef } from 'react';
 import { NAV_ITEMS, SIDEBAR_WIDTH_PX } from './navItems';
 import UserMenu from './UserMenu';
 import styles from './SidebarRail.module.css';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useQueryClient } from '@tanstack/react-query';
+import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
+import { todayYmd } from '@/lib/scheduling/date';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -38,6 +43,22 @@ export default function SidebarRail({
 }) {
   const pathname = usePathname();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
+  const queryClient = useQueryClient();
+
+  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const today = useMemo(() => todayYmd(), []);
+  const prefetchedRef = useRef(new Set<string>());
+
+  const prefetchFor = useCallback(
+    (key: string) => {
+      if (key !== 'schedule') return;
+      const token = `${key}:${hostKey}:${today}`;
+      if (prefetchedRef.current.has(token)) return;
+      prefetchedRef.current.add(token);
+      void queryClient.prefetchQuery(scheduleV2SnapshotQueryOptions(hostKey, today));
+    },
+    [hostKey, queryClient, today],
+  );
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -55,6 +76,8 @@ export default function SidebarRail({
                       aria-label={label}
                       aria-current={active ? 'page' : undefined}
                       className={cx(styles.iconButton, active && styles.iconButtonActive)}
+                      onMouseEnter={() => prefetchFor(key)}
+                      onFocus={() => prefetchFor(key)}
                     >
                       {active ? <span className={styles.activeBar} aria-hidden="true" /> : null}
                       <Icon
