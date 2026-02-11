@@ -101,6 +101,8 @@ export type CostInputsV1 = {
   downpipe_elbow_count?: number;
   box_gutter_house_edge?: BoxGutterEdge;
   box_gutter_far_edge?: BoxGutterEdge;
+  gable_house_edge_gutter?: 'house' | 'our';
+  gable_outer_edge_gutter?: 'house' | 'our';
   overhang_enabled?: boolean;
   overhang_amount_m?: number;
   overhang_support_beam_profile?: OverhangSupportBeamProfile;
@@ -163,6 +165,8 @@ export type InputsNormalizedV1 = {
   downpipe_elbow_count: number;
   box_gutter_house_edge: BoxGutterEdge;
   box_gutter_far_edge: BoxGutterEdge;
+  gable_house_edge_gutter?: 'house' | 'our';
+  gable_outer_edge_gutter?: 'house' | 'our';
   overhang_enabled: boolean;
   overhang_amount_m: number;
   overhang_support_beam_profile: OverhangSupportBeamProfile | null;
@@ -223,11 +227,14 @@ export type DerivedV1 = {
   gutter_assembly_mode?: GutterAssemblyMode;
   integrated_gutter_beam?: boolean;
   has_our_gutter?: boolean;
+  sp_gutter_run_count?: number;
   downpipe_join_count_used?: number;
   downpipe_elbow_count_used?: number;
   separate_gutter_enabled?: boolean;
   separate_gutter_length_m?: number;
   ledger_profile_used?: string;
+  has_ledger?: boolean;
+  ledger_length_m?: number;
   ledger_underside_height_m?: number;
   post_cut_height_house_side_m?: number;
   post_cut_height_outer_side_m?: number;

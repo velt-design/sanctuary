@@ -62,6 +62,8 @@ export type CalculatorModuleInputs = {
   fallDistanceMm: string;
   roofPitchDeg: string;
   gableEndFramesMode: 'none' | 'outer_end_only' | 'both_ends';
+  gableHouseEdgeGutter: 'house' | 'our';
+  gableOuterEdgeGutter: 'house' | 'our';
   boxGutterHouseEdge: 'house' | 'our' | 'none';
   boxGutterFarEdge: 'house' | 'our' | 'none';
   downpipeCount: string;

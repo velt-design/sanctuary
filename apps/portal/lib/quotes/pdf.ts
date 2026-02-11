@@ -116,8 +116,9 @@ const theme = {
     introToItems: 18,
     sectionToHeader: 6,
     headerToRows: 6,
-    rowGap: 6,
     bulletGap: 2,
+    itemSeparatorOffset: 8,
+    itemSeparatorGap: 10,
     itemsToTotalsRule: 18,
     ruleToTotalsLabel: 12,
     totalsToTerms: 18,
@@ -157,7 +158,7 @@ async function readFontFile(filename: string): Promise<Uint8Array> {
 }
 
 function formatMoneyFromCents(cents: number): string {
-  return MONEY_FORMAT.format(fromCents(cents));
+  return `$${MONEY_FORMAT.format(fromCents(cents))}`;
 }
 
 function formatDate(value: string | null | undefined): string | null {
@@ -280,13 +281,42 @@ function sanitizeBulletLine(raw: string): string[] {
     const key = sanitizeText(kvMatch[1]);
     const value = sanitizeText(kvMatch[2]);
     if (!key || !value) return [];
-    const valueLabel = mapTokenValue(value);
+    let valueLabel = mapTokenValue(value);
     if (!sanitizeText(valueLabel)) return [];
+    if (/^size$/i.test(key)) {
+      valueLabel = normalizeSizeValue(valueLabel);
+    }
     return [`${key}: ${valueLabel}`];
   }
 
   const clean = sanitizeText(stripped);
   return clean ? [clean] : [];
+}
+
+const PERGOLA_BULLET_PRIORITY = ['size', 'roof', 'colour', 'posts', 'house connection', 'post fixings'] as const;
+const PERGOLA_BULLET_INDEX = new Map(PERGOLA_BULLET_PRIORITY.map((key, idx) => [key, idx]));
+
+function normalizeSizeValue(value: string): string {
+  const withTimes = value.replace(/\s[xX]\s/g, ' × ');
+  return withTimes.replace(/\s{2,}/g, ' ').trim();
+}
+
+function sortPergolaBullets(bullets: string[]): string[] {
+  if (bullets.length <= 1) return bullets;
+  const buckets: string[][] = Array.from({ length: PERGOLA_BULLET_PRIORITY.length + 1 }, () => []);
+
+  bullets.forEach((bullet) => {
+    const match = bullet.match(/^([^:]+):/);
+    const key = match ? match[1].trim().toLowerCase() : null;
+    const index = key ? PERGOLA_BULLET_INDEX.get(key) : undefined;
+    if (typeof index === 'number') {
+      buckets[index].push(bullet);
+    } else {
+      buckets[PERGOLA_BULLET_PRIORITY.length].push(bullet);
+    }
+  });
+
+  return buckets.flat();
 }
 
 function buildItemDescription(raw: string, index: number): { heading: string; bullets: string[] } {
@@ -331,6 +361,7 @@ function buildItemDescription(raw: string, index: number): { heading: string; bu
   let usedLocation = false;
 
   const lowerTitle = title.toLowerCase();
+  const isPergola = lowerTitle.includes('pergola');
   if (lowerTitle.includes('electrical')) {
     heading = 'Electrical and Lighting';
   } else if (lowerTitle.includes('blind')) {
@@ -360,8 +391,9 @@ function buildItemDescription(raw: string, index: number): { heading: string; bu
   if (usedLocation && locationIndex >= 0) drop.add(locationIndex);
 
   const filteredBullets = bullets.filter((_, idx) => !drop.has(idx));
+  const orderedBullets = isPergola ? sortPergolaBullets(filteredBullets) : filteredBullets;
 
-  return { heading, bullets: filteredBullets };
+  return { heading, bullets: orderedBullets };
 }
 
 function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
@@ -396,6 +428,7 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
     .map((line) => line.replace(/^[-•]\s*/, '').trim())
     .map((line) => sanitizeText(line))
     .filter((line): line is string => Boolean(line));
+  const adjustedTerms = adjustTermsForDraft(terms, quote.sentAt);
 
   const footer: string[] = ['sanctuarypergolas.co.nz', 'info@sanctuarypergolas.co.nz'];
 
@@ -419,9 +452,18 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
       ex: formatMoneyFromCents(quote.totals.totalExGstCents),
       gst: formatMoneyFromCents(quote.totals.gstCents),
     },
-    terms,
+    terms: adjustedTerms,
     footer,
   };
+}
+
+const DRAFT_TERMS_PATTERN = /this quote is valid for 30 days from the issue date\.?/i;
+
+function adjustTermsForDraft(terms: string[], sentAt?: string | null): string[] {
+  if (sentAt) return terms;
+  return terms.map((line) =>
+    line.replace(DRAFT_TERMS_PATTERN, 'This quote will be valid for 30 days from the issue date.'),
+  );
 }
 
 function wrapText(font: any, text: string, fontSize: number, maxWidth: number): string[] {
@@ -460,6 +502,7 @@ export function quotePdfFilename(quoteRef: string, versionNumber: number): strin
 
 type QuotePdfLayoutPage = {
   hasLeftRail: boolean;
+  headerClientName?: { text: string; xRight: number; y: number };
   tableBounds?: TableBounds | null;
   totalsBounds?: TotalsBounds | null;
   rules: RuleDrawn[];
@@ -528,7 +571,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     headingLines: string[];
     bulletLines: string[][];
     bulletLineCount: number;
-    contentHeight: number;
+    blockHeight: number;
     qtyText: string;
     unitPrice: string;
     amount: string;
@@ -543,11 +586,13 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     const contentHeight =
       headingLines.length * theme.lineHeights.descHeading +
       (bulletLineCount ? theme.spacing.bulletGap + bulletLineCount * theme.lineHeights.bullet : 0);
+    const lastLineHeight = bulletLineCount ? theme.lineHeights.bullet : theme.lineHeights.descHeading;
+    const blockHeight = contentHeight - lastLineHeight + theme.spacing.itemSeparatorOffset;
     return {
       headingLines,
       bulletLines,
       bulletLineCount,
-      contentHeight,
+      blockHeight,
       qtyText: item.qtyText,
       unitPrice: item.unitPrice,
       amount: item.amount,
@@ -574,7 +619,6 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     : termsBottomY;
 
   const totalsRuleInset = 2;
-  const totalsRuleAboveRatio = 0.55;
   const totalsRuleBelowRatio = 0.7;
   const totalsRowGap = theme.lineHeights.totalsLabel;
   const totalsBlockHeight =
@@ -712,12 +756,14 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         });
       }
 
-      const contentBottomY = rowY;
-      bottomBaselineY = lastBaselineY;
+      const itemSeparatorY = lastBaselineY - theme.spacing.itemSeparatorOffset;
+      rowRuleYs.push(itemSeparatorY);
+      bottomBaselineY = itemSeparatorY;
+
       if (idx < params.rows.length - 1) {
-        const rowRuleY = contentBottomY - theme.spacing.rowGap / 2;
-        rowRuleYs.push(rowRuleY);
-        rowY = contentBottomY - theme.spacing.rowGap;
+        rowY = itemSeparatorY - theme.spacing.itemSeparatorGap;
+      } else {
+        rowY = itemSeparatorY;
       }
 
       y = rowY;
@@ -768,7 +814,9 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
 
     params.rows.forEach((row, idx) => {
       let rowY = y;
+      let lastBaselineY = rowY;
       row.headingLines.forEach((line, lineIndex) => {
+        lastBaselineY = rowY;
         drawTextSafe(line, {
           x: descX,
           y: rowY,
@@ -790,6 +838,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         rowY -= theme.spacing.bulletGap;
         row.bulletLines.forEach((lines) => {
           lines.forEach((line, lineIndex) => {
+            lastBaselineY = rowY;
             if (lineIndex === 0) {
               drawTextSafe('- ', {
                 x: descX,
@@ -811,14 +860,13 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         });
       }
 
-      const contentBottomY = rowY;
+      const ruleY = params.bounds.rowRuleYs[ruleIndex] ?? (lastBaselineY - theme.spacing.itemSeparatorOffset);
+      recordRule('itemsRowSeparator', { x0: tableX0, x1: tableX1, y: ruleY });
+      ruleIndex += 1;
       if (idx < params.rows.length - 1) {
-        const ruleY = params.bounds.rowRuleYs[ruleIndex];
-        if (typeof ruleY === 'number') {
-          recordRule('itemsRowSeparator', { x0: tableX0, x1: tableX1, y: ruleY });
-        }
-        ruleIndex += 1;
-        rowY = contentBottomY - theme.spacing.rowGap;
+        rowY = ruleY - theme.spacing.itemSeparatorGap;
+      } else {
+        rowY = ruleY;
       }
 
       y = rowY;
@@ -830,9 +878,17 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     const subtotalBaselineY = headerBaselineY - theme.lineHeights.section - theme.spacing.sectionToHeader;
     const gstBaselineY = subtotalBaselineY - theme.lineHeights.totalsLabel;
     const totalBaselineY = gstBaselineY - theme.lineHeights.totalsLabel - totalsRuleInset - theme.spacing.totalsRuleGap;
-    const rowGap = subtotalBaselineY - gstBaselineY;
     const ceilingRuleY = headerBaselineY + theme.spacing.ruleToTotalsLabel;
-    const aboveTotalRuleY = totalBaselineY + rowGap * totalsRuleAboveRatio;
+    const minClearance = 3;
+    const gstTextY = gstBaselineY;
+    const totalTextY = totalBaselineY;
+    const totalFontSize = Math.max(theme.sizes.totalsLabel, theme.sizes.totalsTotal);
+    const totalTopY = totalTextY + totalFontSize;
+    const gstBottomY = gstTextY;
+    const gap = gstBottomY - totalTopY;
+    const aboveTotalRuleY =
+      gap > 2 * minClearance ? totalTopY + gap / 2 : totalTopY + minClearance;
+    const rowGap = subtotalBaselineY - gstBaselineY;
     const belowTotalRuleY = totalBaselineY - rowGap * totalsRuleBelowRatio;
 
     return {
@@ -971,7 +1027,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     let used = 0;
     let count = 0;
     rows.forEach((row) => {
-      const add = row.contentHeight + (count > 0 ? theme.spacing.rowGap : 0);
+      const add = row.blockHeight + (count > 0 ? theme.spacing.itemSeparatorGap : 0);
       if (used + add <= availableHeight) {
         used += add;
         count += 1;
@@ -1028,6 +1084,10 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
 
   if (vm.client.name) {
     drawRightAligned(vm.client.name, CONTENT_X1, rightY, theme.sizes.client, fontSemiBold, theme.colors.textPrimary);
+    const layoutPage = currentLayoutPage();
+    if (layoutPage) {
+      layoutPage.headerClientName = { text: vm.client.name, xRight: CONTENT_X1, y: rightY };
+    }
     rightBottomY = rightY;
     rightY -= theme.lineHeights.client;
     if (vm.issueDate) rightY -= 4;
@@ -1064,8 +1124,71 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     }
   }
 
-  const itemsTopY = cursorY - theme.spacing.introToItems;
+  const GAP_ITEMS_TO_TOTALS_MIN = 36;
+  const GAP_ITEMS_TO_TOTALS_MAX = 72;
+  const GAP_ITEMS_TO_TOTALS_TARGET = 54;
+  const ITEMS_START_SHIFT_LIMIT = 24;
+  const INTRO_ITEMS_GAP_MIN = 12;
+  const INTRO_ITEMS_GAP_MAX = 30;
+
+  const clampValue = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const introBottomY = cursorY;
+  const itemsTopY = introBottomY - theme.spacing.introToItems;
   const totalsBounds = layoutTotalsBlock(totalsTopY);
+  const itemsBottomLimitY = totalsBounds.ceilingRuleY + GAP_ITEMS_TO_TOTALS_MIN;
+  let itemsStartY = itemsTopY;
+
+  const planItemsLayout = (startY: number, rows: RowLayout[]) => {
+    const availableHeight = startY - itemsBottomLimitY;
+    const availableRowsHeight = Math.max(0, availableHeight - tableHeaderHeight);
+    let rowsOnPage = fitRowsToHeight(availableRowsHeight, rows);
+
+    if (rowsOnPage === 0 && rows.length && availableRowsHeight > 0) {
+      rowsOnPage = 1;
+    }
+
+    let tableBounds = rowsOnPage ? layoutItemsTable({ topY: startY, rows: rows.slice(0, rowsOnPage) }) : null;
+    while (rowsOnPage > 0 && tableBounds && tableBounds.bottomY < itemsBottomLimitY) {
+      rowsOnPage -= 1;
+      tableBounds = rowsOnPage ? layoutItemsTable({ topY: startY, rows: rows.slice(0, rowsOnPage) }) : null;
+    }
+
+    const pageRows = rows.slice(0, rowsOnPage);
+    const remainingRows = rows.slice(rowsOnPage);
+
+    return { tableBounds, pageRows, remainingRows };
+  };
+
+  let plannedLayout = rowLayouts.length ? planItemsLayout(itemsStartY, rowLayouts) : null;
+  if (plannedLayout?.tableBounds && plannedLayout.remainingRows.length === 0) {
+    const lastItemBottomY = plannedLayout.tableBounds.bottomY;
+    const totalsCeilingY = totalsBounds.ceilingRuleY;
+    const currentGap = lastItemBottomY - totalsCeilingY;
+
+    let deltaY = 0;
+    if (currentGap > GAP_ITEMS_TO_TOTALS_MAX) {
+      const shiftDown = Math.min(currentGap - GAP_ITEMS_TO_TOTALS_TARGET, currentGap - GAP_ITEMS_TO_TOTALS_MIN);
+      deltaY = -shiftDown;
+    } else if (currentGap < GAP_ITEMS_TO_TOTALS_MIN) {
+      const shiftUp = Math.min(GAP_ITEMS_TO_TOTALS_MIN - currentGap, GAP_ITEMS_TO_TOTALS_TARGET - currentGap);
+      deltaY = shiftUp;
+    }
+
+    if (deltaY !== 0) {
+      deltaY = clampValue(deltaY, -ITEMS_START_SHIFT_LIMIT, ITEMS_START_SHIFT_LIMIT);
+      const minStartY = introBottomY - INTRO_ITEMS_GAP_MAX;
+      const maxStartY = introBottomY - INTRO_ITEMS_GAP_MIN;
+      const adjustedStartY = clampValue(itemsStartY + deltaY, minStartY, maxStartY);
+      if (adjustedStartY !== itemsStartY) {
+        const adjustedLayout = planItemsLayout(adjustedStartY, rowLayouts);
+        if (adjustedLayout.remainingRows.length === 0) {
+          itemsStartY = adjustedStartY;
+          plannedLayout = adjustedLayout;
+        }
+      }
+    }
+  }
   let pageOneTableBounds: TableBounds | null = null;
   const pageOneLayout = currentLayoutPage();
   if (pageOneLayout) {
@@ -1073,26 +1196,11 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   }
 
   if (rowLayouts.length) {
-    const itemsBottomY = totalsBounds.ceilingRuleY + theme.spacing.itemsToTotalsRule;
-    const availableHeight = itemsTopY - itemsBottomY;
-    const availableRowsHeight = Math.max(0, availableHeight - tableHeaderHeight);
-    let rowsOnPage = fitRowsToHeight(availableRowsHeight, rowLayouts);
-
-    if (rowsOnPage === 0 && rowLayouts.length && availableRowsHeight > 0) {
-      rowsOnPage = 1;
-    }
-
-    let tableBounds = rowsOnPage ? layoutItemsTable({ topY: itemsTopY, rows: rowLayouts.slice(0, rowsOnPage) }) : null;
-    while (rowsOnPage > 0 && tableBounds && tableBounds.bottomY < itemsBottomY) {
-      rowsOnPage -= 1;
-      tableBounds = rowsOnPage ? layoutItemsTable({ topY: itemsTopY, rows: rowLayouts.slice(0, rowsOnPage) }) : null;
-    }
-
-    const pageRows = rowLayouts.slice(0, rowsOnPage);
-    const remainingRows = rowLayouts.slice(rowsOnPage);
+    const effectiveLayout = plannedLayout ?? planItemsLayout(itemsStartY, rowLayouts);
+    const { tableBounds, pageRows, remainingRows } = effectiveLayout;
 
     if (pageRows.length && tableBounds) {
-      drawItemsTable({ topY: itemsTopY, rows: pageRows, sectionTitle: 'ITEMS', bounds: tableBounds });
+      drawItemsTable({ topY: itemsStartY, rows: pageRows, sectionTitle: 'ITEMS', bounds: tableBounds });
       pageOneTableBounds = tableBounds;
       const layoutPage = currentLayoutPage();
       if (layoutPage) {

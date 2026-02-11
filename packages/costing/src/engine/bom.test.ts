@@ -72,6 +72,43 @@ describe('selectBestStock continuous runs', () => {
   });
 });
 
+describe('acrylic sheet mode strip-yield enforcement', () => {
+  const getSheetQty = (result: ReturnType<typeof calculateCostV1>) =>
+    result.materials.lines.find((line) => line.id === 'roofing-sheet_e1f7673c14')?.qty ?? 0;
+
+  it('sheet mode, requiredLen > 2.03 uses strip-yield (not area)', () => {
+    const result = calculateCostV1({ ...baseInputs, length_m: 8.5, projection_m: 2.5 });
+    const totalBays = Math.max(0, Math.round(Number((result.derived as any).bay_count ?? 0)));
+    const expectedSheets = Math.ceil(totalBays / 3);
+
+    const requiredLen = Number((result.derived as any).acrylic_required_downslope_m ?? 0);
+    expect(requiredLen).toBeGreaterThan(2.03);
+    expect(requiredLen).toBeLessThanOrEqual(3.05 + 1e-6);
+
+    expect(getSheetQty(result)).toBe(expectedSheets);
+  });
+
+  it('sheet mode, requiredLen <= 2.03 may use area mode', () => {
+    const result = calculateCostV1({ ...baseInputs, length_m: 8.5, projection_m: 2.0 });
+    const requiredLen = Number((result.derived as any).acrylic_required_downslope_m ?? 0);
+    expect(requiredLen).toBeLessThanOrEqual(2.03 + 1e-6);
+
+    const totalAreaM2 = Number((result.derived as any).acrylic_area_m2 ?? 0);
+    const sheetAreaM2 = 3.05 * 2.03;
+    const expectedSheets = Math.ceil(totalAreaM2 / sheetAreaM2);
+
+    expect(getSheetQty(result)).toBe(expectedSheets);
+  });
+
+  it('regression: 8.5×2.5 and 8.5×3.0 both yield 5 sheets', () => {
+    const result25 = calculateCostV1({ ...baseInputs, length_m: 8.5, projection_m: 2.5 });
+    const result30 = calculateCostV1({ ...baseInputs, length_m: 8.5, projection_m: 3.0 });
+
+    expect(getSheetQty(result25)).toBe(5);
+    expect(getSheetQty(result30)).toBe(5);
+  });
+});
+
 describe('buildMaterialsV1 splice joins', () => {
   it('does not add splice joins when all joinable members fit stock', () => {
     const result = calculateCostV1({ ...baseInputs, projection_m: 3 });
