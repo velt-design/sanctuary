@@ -20,6 +20,7 @@ const HEIGHT_CATEGORIES = ['single_storey', 'two_storey'] as const;
 const GROUND_CONDITIONS = ['easy', 'hard'] as const;
 const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
 const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
+const GABLE_GUTTER_EDGES = ['house', 'our'] as const;
 const OVERHANG_SUPPORT_BEAM_PROFILES = ['150x50', '200x50'] as const;
 const POWDERCOAT_STANDARD_COLOURS = [
   'Ironsands',
@@ -125,6 +126,12 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
   }
   if (raw.box_gutter_far_edge !== undefined && !isOneOf(BOX_GUTTER_EDGES, raw.box_gutter_far_edge)) {
     return { error: 'Invalid modules[].box_gutter_far_edge' };
+  }
+  if (raw.gable_house_edge_gutter !== undefined && !isOneOf(GABLE_GUTTER_EDGES, raw.gable_house_edge_gutter)) {
+    return { error: 'Invalid modules[].gable_house_edge_gutter' };
+  }
+  if (raw.gable_outer_edge_gutter !== undefined && !isOneOf(GABLE_GUTTER_EDGES, raw.gable_outer_edge_gutter)) {
+    return { error: 'Invalid modules[].gable_outer_edge_gutter' };
   }
   if (raw.overhang_enabled !== undefined && typeof raw.overhang_enabled !== 'boolean') {
     return { error: 'modules[].overhang_enabled must be a boolean' };
@@ -298,6 +305,8 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
     downpipe_elbow_count,
     box_gutter_house_edge: raw.box_gutter_house_edge,
     box_gutter_far_edge: raw.box_gutter_far_edge,
+    gable_house_edge_gutter: raw.gable_house_edge_gutter,
+    gable_outer_edge_gutter: raw.gable_outer_edge_gutter,
     overhang_enabled: raw.overhang_enabled === true,
     overhang_amount_m,
     overhang_support_beam_profile: raw.overhang_support_beam_profile,

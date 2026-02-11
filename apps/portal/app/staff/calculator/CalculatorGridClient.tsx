@@ -108,6 +108,9 @@ function computeHasOurGutter(module: CalculatorModuleInputs): boolean {
   if (module.boxPerimeterEnabled) {
     return module.boxGutterHouseEdge === 'our' || module.boxGutterFarEdge === 'our';
   }
+  if (module.pergolaStyle === 'gable') {
+    return module.gableHouseEdgeGutter === 'our' || module.gableOuterEdgeGutter === 'our';
+  }
   if (module.overhangEnabled) return true;
   if (module.separateGutterEnabled) return true;
   if (module.invertedEnabled && !module.invertedHouseGutter) return true;
@@ -152,6 +155,10 @@ function labelForIssueField(id: string): string {
       return 'Inverted house gutter';
     case 'gableEndFramesMode':
       return 'Gable end frames';
+    case 'gableHouseEdgeGutter':
+      return 'House-side eave gutter';
+    case 'gableOuterEdgeGutter':
+      return 'Outer-side eave gutter';
     case 'postCount':
       return 'Post count';
     case 'fallDistanceMm':
@@ -239,6 +246,10 @@ const GABLE_END_FRAME_OPTIONS: FieldOption[] = [
   { label: 'Outer end only', value: 'outer_end_only' },
   { label: 'Both ends', value: 'both_ends' },
 ];
+const GABLE_GUTTER_OPTIONS: FieldOption[] = [
+  { label: 'House gutter', value: 'house' },
+  { label: 'Our gutter (SP)', value: 'our' },
+];
 const POWDERCOAT_STANDARD_COLOURS = [
   'Ironsands',
   'Charcoal',
@@ -291,6 +302,8 @@ function makeDefaultModule(): CalculatorModuleInputs {
     fallDistanceMm: '0',
     roofPitchDeg: '',
     gableEndFramesMode: 'outer_end_only',
+    gableHouseEdgeGutter: 'house',
+    gableOuterEdgeGutter: 'our',
     boxGutterHouseEdge: 'house',
     boxGutterFarEdge: 'our',
     downpipeCount: '0',
@@ -370,6 +383,11 @@ function calculatorDraftSessionKey(projectId: string, fromEstimateId: string): s
 function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   const source = value && typeof value === 'object' ? (value as Partial<CalculatorModuleInputs>) : {};
   const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...source };
+
+  if (merged.pergolaStyle === 'gable' && merged.houseConnectionType === 'none') {
+    merged.gableHouseEdgeGutter = 'our';
+    merged.gableOuterEdgeGutter = 'our';
+  }
 
   if (merged.roofMaterial !== 'mixed') return merged;
 
@@ -729,6 +747,14 @@ export default function CalculatorGridClient({
         }
 
         if (updated.pergolaStyle === 'gable') {
+          if (nextHouseConnection === 'none') {
+            updated.gableHouseEdgeGutter = 'our';
+            updated.gableOuterEdgeGutter = 'our';
+          } else if (current.houseConnectionType === 'none') {
+            if (current.gableHouseEdgeGutter === 'our') updated.gableHouseEdgeGutter = 'house';
+            if (current.gableOuterEdgeGutter === 'our') updated.gableOuterEdgeGutter = 'our';
+          }
+
           const prevDefault = current.houseConnectionType !== 'none' ? 'outer_end_only' : 'both_ends';
           const nextDefault = nextHouseConnection !== 'none' ? 'outer_end_only' : 'both_ends';
           if (updated.gableEndFramesMode === prevDefault) {
@@ -755,6 +781,11 @@ export default function CalculatorGridClient({
         updated.invertedEnabled = false;
         updated.invertedHouseGutter = true;
         updated.separateGutterEnabled = false;
+      }
+
+      if (key === 'pergolaStyle' && next === 'gable') {
+        updated.gableHouseEdgeGutter = nextHouseConnection === 'none' ? 'our' : 'house';
+        updated.gableOuterEdgeGutter = 'our';
       }
 
       if (key === 'overhangEnabled' && Boolean(next)) {
@@ -878,6 +909,8 @@ export default function CalculatorGridClient({
         fall_distance_mm: module.boxPerimeterEnabled ? fall_distance_mm : undefined,
         box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
         box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
+        gable_house_edge_gutter: module.pergolaStyle === 'gable' ? module.gableHouseEdgeGutter : undefined,
+        gable_outer_edge_gutter: module.pergolaStyle === 'gable' ? module.gableOuterEdgeGutter : undefined,
         downpipe_count: Number.isFinite(downpipe_count) ? downpipe_count : undefined,
         downpipe_join_count: Number.isFinite(downpipe_join_count) ? downpipe_join_count : undefined,
         downpipe_elbow_count: Number.isFinite(downpipe_elbow_count) ? downpipe_elbow_count : undefined,
@@ -1194,6 +1227,8 @@ export default function CalculatorGridClient({
   const integratedGutterBeamUi = isGutterBeamProfile(frontBeamProfileUsed);
   const showSeparateGutterToggle =
     !activeModule.boxPerimeterEnabled && !activeModule.overhangEnabled && !activeModule.invertedEnabled && !integratedGutterBeamUi;
+  const gableGutterOptions =
+    activeModule.houseConnectionType === 'none' ? [GABLE_GUTTER_OPTIONS[1]] : GABLE_GUTTER_OPTIONS;
 
   const blindItemPricing = blindsPricing.items;
 
@@ -1763,6 +1798,24 @@ export default function CalculatorGridClient({
             options: GABLE_END_FRAME_OPTIONS,
             helperText: 'Adds tie beam + king-post strut at selected gable end(s).',
           } satisfies FieldSchemaItem,
+          {
+            id: 'gableHouseEdgeGutter',
+            label: 'House-side eave gutter',
+            type: 'select',
+            value: activeModule.gableHouseEdgeGutter,
+            onChange: (v) => setModuleField('gableHouseEdgeGutter', v as CalculatorModuleInputs['gableHouseEdgeGutter']),
+            options: gableGutterOptions,
+            helperText: 'Choose whether the house-side eave uses house gutter or our SP gutter support.',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'gableOuterEdgeGutter',
+            label: 'Outer-side eave gutter',
+            type: 'select',
+            value: activeModule.gableOuterEdgeGutter,
+            onChange: (v) => setModuleField('gableOuterEdgeGutter', v as CalculatorModuleInputs['gableOuterEdgeGutter']),
+            options: gableGutterOptions,
+            helperText: 'Choose whether the outer eave uses house gutter or our SP gutter support.',
+          } satisfies FieldSchemaItem,
         ]
       : []),
     ...(roofTypeForInputs === 'pitched' && !activeModule.boxPerimeterEnabled
@@ -2263,6 +2316,8 @@ export default function CalculatorGridClient({
     'hipCornerProjectionBM',
     'roofPitchDeg',
     'gableEndFramesMode',
+    'gableHouseEdgeGutter',
+    'gableOuterEdgeGutter',
     'invertedEnabled',
     'invertedHouseGutter',
     'overhangEnabled',

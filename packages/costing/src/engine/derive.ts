@@ -152,6 +152,14 @@ function profileWidthM(profile: string): number {
   return 0.05;
 }
 
+function oneSizeUpProfile(profile: string): string {
+  const raw = String(profile ?? '').trim();
+  const normalized = raw.toLowerCase().replace(/\s+/g, '');
+  if (normalized === '80x50') return '100x50';
+  if (normalized === '100x50') return '150x50';
+  return raw || profile;
+}
+
 function normalizeMixedRoof(
   inputs: CostInputsV1,
   opts: {
@@ -636,7 +644,25 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   }
 
   const slopeDirection: SlopeDirection = invertedEnabled ? 'toward_house' : 'away_from_house';
-  const ledgerProfileUsed: string = overrideLedgerProfile ?? rafterProfile;
+  const isGableRoof = roofType === 'gable' || roofType === 'low_gable';
+  const defaultGableHouseEdgeGutter: 'house' | 'our' =
+    inputs.house_connection_type === 'none' ? 'our' : 'house';
+  const defaultGableOuterEdgeGutter: 'house' | 'our' = inputs.house_connection_type === 'none' ? 'our' : 'our';
+  const gableHouseEdgeGutterUsed: 'house' | 'our' | null = isGableRoof
+    ? inputs.house_connection_type === 'none'
+      ? 'our'
+      : inputs.gable_house_edge_gutter ?? defaultGableHouseEdgeGutter
+    : null;
+  const gableOuterEdgeGutterUsed: 'house' | 'our' | null = isGableRoof
+    ? inputs.house_connection_type === 'none'
+      ? 'our'
+      : inputs.gable_outer_edge_gutter ?? defaultGableOuterEdgeGutter
+    : null;
+  const spGutterRunCount =
+    isGableRoof && gableHouseEdgeGutterUsed && gableOuterEdgeGutterUsed
+      ? (gableHouseEdgeGutterUsed === 'our' ? 1 : 0) + (gableOuterEdgeGutterUsed === 'our' ? 1 : 0)
+      : 0;
+
   const ledgerUndersideHeightM = postCutHeightM;
   const fallM = !isBoxPerimeter && roofType === 'pitched' ? Math.max(0, supportRunM) * tanDeg(roofPitchDegUsed) : 0;
   const postCutHeightHouseSideM = ledgerUndersideHeightM;
@@ -811,6 +837,24 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     else if (separateGutterEnabled) gutterAssemblyMode = 'separate';
   }
 
+  let hasLedger = inputs.house_connection_type !== 'none';
+  if (isGableRoof) {
+    if (inputs.house_connection_type === 'none') {
+      hasLedger = false;
+    } else if (gableHouseEdgeGutterUsed === 'our') {
+      hasLedger = false;
+    } else if (gableHouseEdgeGutterUsed === 'house') {
+      hasLedger = true;
+    }
+  } else if (roofType === 'pitched' && gutterMode === 'sp_gutter_house_edge') {
+    hasLedger = false;
+  }
+
+  const ledgerProfileDefault = roofPitchDegUsed <= 5 ? rafterProfile : oneSizeUpProfile(rafterProfile);
+  const ledgerProfileAuto = hasLedger ? ledgerProfileDefault : rafterProfile;
+  const ledgerProfileUsed: string = overrideLedgerProfile ?? ledgerProfileAuto;
+  const ledgerLengthM = hasLedger ? lengthM : 0;
+
   const gableEndFrameCount =
     roofType === 'gable'
       ? gableEndFramesMode === 'both_ends'
@@ -822,8 +866,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const tieBeamProfileDefault = integratedGutterBeam ? '150x50' : frontBeamProfileUsed ?? '150x50';
   const tieBeamProfileUsed = overrideTieBeamProfile ?? tieBeamProfileDefault;
   const strutProfileUsed = overrideStrutProfile ?? '50x50';
-  const houseEdgeIsSpOrHouse = gutterMode === 'sp_gutter_house_edge' || invertedHouseGutter;
-  const farEdgeIsSpGutter = integratedGutterBeam;
+  const houseEdgeIsSpOrHouse =
+    gutterMode === 'sp_gutter_house_edge' || invertedHouseGutter || (isGableRoof && gableHouseEdgeGutterUsed === 'our');
+  const farEdgeIsSpGutter = isGableRoof ? gableOuterEdgeGutterUsed === 'our' : integratedGutterBeam;
   const houseEdgeAllowanceM = houseEdgeIsSpOrHouse ? 0.1 : profileWidthM(ledgerProfileUsed);
   const farEdgeAllowanceM = farEdgeIsSpGutter ? 0.1 : profileWidthM(frontBeamProfileUsed ?? tieBeamProfileUsed);
   const tieBeamLengthM = Math.max(0, projectionM - houseEdgeAllowanceM - farEdgeAllowanceM);
@@ -852,12 +897,38 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         ? defaultBoxGutterFarEdge
         : 'none';
 
-  const houseGutterLengthM = isBoxPerimeter
+  const boxHouseGutterLengthM = isBoxPerimeter
     ? baseLinearLength * (boxGutterHouseEdge === 'house' ? 1 : 0) + baseLinearLength * (boxGutterFarEdge === 'house' ? 1 : 0)
     : 0;
-  const ourGutterLengthM = isBoxPerimeter
+  const boxOurGutterLengthM = isBoxPerimeter
     ? baseLinearLength * (boxGutterHouseEdge === 'our' ? 1 : 0) + baseLinearLength * (boxGutterFarEdge === 'our' ? 1 : 0)
     : 0;
+  const gableHouseGutterLengthM =
+    isGableRoof && gableHouseEdgeGutterUsed === 'house' ? baseLinearLength : 0;
+  const gableOuterGutterLengthM =
+    isGableRoof && gableOuterEdgeGutterUsed === 'house' ? baseLinearLength : 0;
+  const houseGutterLengthM = isGableRoof ? gableHouseGutterLengthM + gableOuterGutterLengthM : boxHouseGutterLengthM;
+
+  const gutterRunLengthM = baseLinearLength;
+  const spGutterRunCountUsed =
+    isGableRoof
+      ? spGutterRunCount
+      : gutterMode === 'sp_gutter_house_edge' || (gutterMode === 'default' && gutterAssemblyMode === 'integrated')
+        ? 1
+        : 0;
+  let ourGutterLengthM = 0;
+  if (isBoxPerimeter) {
+    ourGutterLengthM = boxOurGutterLengthM;
+  } else if (isGableRoof) {
+    ourGutterLengthM = gutterRunLengthM * spGutterRunCountUsed;
+  } else if (
+    gutterMode === 'sp_gutter_house_edge' ||
+    gutterAssemblyMode === 'integrated' ||
+    gutterAssemblyMode === 'separate' ||
+    gutterMode === 'overhang_gutter_front_edge'
+  ) {
+    ourGutterLengthM = gutterRunLengthM;
+  }
 
   const separateGutterLengthM = separateGutterEnabled
     ? Number.isFinite(gutterLengthRaw) && gutterLengthRaw > 0
@@ -875,19 +946,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
           ? gutterLengthRaw
           : baseLinearLength;
 
-  const hasOurGutterBox = isBoxPerimeter && (boxGutterHouseEdge === 'our' || boxGutterFarEdge === 'our');
-  let hasOurGutter = false;
-  if (invertedEnabled && invertedHouseGutter) {
-    hasOurGutter = false;
-  } else if (hasOurGutterBox) {
-    hasOurGutter = true;
-  } else if (gutterAssemblyMode === 'integrated' || gutterAssemblyMode === 'separate') {
-    hasOurGutter = true;
-  } else if (gutterMode === 'overhang_gutter_front_edge') {
-    hasOurGutter = true;
-  } else if (invertedEnabled && !invertedHouseGutter) {
-    hasOurGutter = true;
-  }
+  const hasOurGutter = ourGutterLengthM > 0;
 
   const downpipeCountRaw = toNonNegativeNumber(inputs.downpipe_count, NaN);
   const downpipeCount =
@@ -964,6 +1023,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     downpipe_elbow_count: downpipeElbowCountUsed,
     box_gutter_house_edge: boxGutterHouseEdge,
     box_gutter_far_edge: boxGutterFarEdge,
+    gable_house_edge_gutter: gableHouseEdgeGutterUsed ?? undefined,
+    gable_outer_edge_gutter: gableOuterEdgeGutterUsed ?? undefined,
     overhang_enabled: overhangEnabled,
     overhang_amount_m: overhangAmountM,
     overhang_support_beam_profile: overhangSupportBeamProfile,
@@ -977,7 +1038,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         ? ourGutterLengthM > 0
           ? 'box_gutter_100x100_cut'
           : null
-        : gutterMode === 'sp_gutter_house_edge' || (gutterMode === 'default' && gutterAssemblyMode === 'integrated')
+        : (isGableRoof ? spGutterRunCountUsed > 0 : gutterMode === 'sp_gutter_house_edge' || (gutterMode === 'default' && gutterAssemblyMode === 'integrated'))
           ? 'sp_gutter'
           : null,
     acrylic_sheet_count: acrylicSheetCount,
@@ -1027,9 +1088,14 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     gutter_assembly_mode: gutterAssemblyMode,
     integrated_gutter_beam: integratedGutterBeam,
     has_our_gutter: hasOurGutter,
+    our_gutter_length_m: ourGutterLengthM,
+    house_gutter_length_m: houseGutterLengthM,
+    sp_gutter_run_count: spGutterRunCountUsed,
     separate_gutter_enabled: separateGutterEnabled,
     separate_gutter_length_m: separateGutterLengthM,
     ledger_profile_used: ledgerProfileUsed,
+    has_ledger: hasLedger,
+    ledger_length_m: ledgerLengthM,
     front_beam_profile_used: frontBeamProfileUsed,
     tie_beam_profile_used: tieBeamProfileUsed,
     strut_profile_used: strutProfileUsed,

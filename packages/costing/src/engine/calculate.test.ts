@@ -560,7 +560,7 @@ describe('calculateCostV1', () => {
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.minutes).toBeCloseTo(25, 2);
   });
 
-  it('gable acrylic: 6×3 @ 5° matches pitched 6×3 @ 5° for mode + sheet count (no plane doubling)', () => {
+  it('gable acrylic: 6×3 @ 5° stays sheet-mode but can use plan vs strip-yield', () => {
     const base = {
       length_m: 6,
       projection_m: 3,
@@ -584,6 +584,8 @@ describe('calculateCostV1', () => {
 
     const plexiQty = (r: ReturnType<typeof calculateCostV1>) =>
       r.materials.lines.find((l) => String(l.profile ?? '') === 'Plexi sheet 3050×2030')?.qty ?? 0;
+    const plexiNote = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => String(l.profile ?? '') === 'Plexi sheet 3050×2030')?.notes ?? '';
     const stripQty = (r: ReturnType<typeof calculateCostV1>) =>
       r.materials.lines
         .filter((l) => String(l.profile ?? '') === 'Crystalite 620mm')
@@ -600,9 +602,18 @@ describe('calculateCostV1', () => {
     expect(pitched.derived.roof_plane_count).toBe(1);
     expect(gable.derived.roof_plane_count).toBe(2);
 
-    expect(acrylicMode(gable)).toBe(acrylicMode(pitched));
     expect(acrylicMode(gable)).toBe('sheet');
-    expect(plexiQty(gable)).toBe(plexiQty(pitched));
+    expect(acrylicMode(pitched)).toBe('sheet');
+    expect(plexiNote(gable)).toContain('plan');
+    expect(plexiNote(pitched)).toContain('forced strip-yield');
+
+    const sheetAreaM2 = 3.05 * 2.03;
+    const gableAreaM2 = Number(gable.derived.acrylic_area_m2 ?? 0);
+    const expectedGableSheets = Math.ceil(gableAreaM2 / sheetAreaM2);
+    const pitchedBays = Math.max(0, Math.round(Number(pitched.derived.bay_count ?? 0)));
+    const expectedPitchedSheets = Math.ceil(pitchedBays / 3);
+    expect(plexiQty(gable)).toBe(expectedGableSheets);
+    expect(plexiQty(pitched)).toBe(expectedPitchedSheets);
 
     // Joiner system + edge consumables exist on both planes.
     expect(joinerScrewsQty(gable)).toBe(joinerScrewsQty(pitched) * 2);
@@ -610,7 +621,7 @@ describe('calculateCostV1', () => {
     expect(flashingQty(gable)).toBe(flashingQty(pitched) * 2);
   });
 
-  it('gable acrylic: 6×6 @ 5° behaves like 2× pitched 6×3 @ 5° (area-based sheets)', () => {
+  it('gable acrylic: 6×6 @ 5° uses strip-yield from total bays', () => {
     const base = {
       length_m: 6,
       roof_pitch_deg: 5,
@@ -633,6 +644,8 @@ describe('calculateCostV1', () => {
 
     const plexiQty = (r: ReturnType<typeof calculateCostV1>) =>
       r.materials.lines.find((l) => String(l.profile ?? '') === 'Plexi sheet 3050×2030')?.qty ?? 0;
+    const plexiNote = (r: ReturnType<typeof calculateCostV1>) =>
+      r.materials.lines.find((l) => String(l.profile ?? '') === 'Plexi sheet 3050×2030')?.notes ?? '';
     const stripQty = (r: ReturnType<typeof calculateCostV1>) =>
       r.materials.lines
         .filter((l) => String(l.profile ?? '') === 'Crystalite 620mm')
@@ -642,9 +655,13 @@ describe('calculateCostV1', () => {
     const joinerScrewsQty = (r: ReturnType<typeof calculateCostV1>) =>
       r.materials.lines.find((l) => l.id === 'fixing.joiner_screw_each')?.qty ?? 0;
 
-    expect(acrylicMode(gable6x6)).toBe(acrylicMode(pitched6x3));
     expect(acrylicMode(gable6x6)).toBe('sheet');
-    expect(plexiQty(gable6x6)).toBe(plexiQty(pitched6x3) * 2);
+    expect(acrylicMode(pitched6x3)).toBe('sheet');
+    expect(plexiNote(gable6x6)).toContain('forced strip-yield');
+    const gableBays = Math.max(0, Math.round(Number(gable6x6.derived.bay_count ?? 0)));
+    const gablePlaneCount = Math.max(1, Math.round(Number(gable6x6.derived.roof_plane_count ?? 1)));
+    const expectedSheets = Math.ceil((gableBays * gablePlaneCount) / 3);
+    expect(plexiQty(gable6x6)).toBe(expectedSheets);
     expect(joinerScrewsQty(gable6x6)).toBe(joinerScrewsQty(pitched6x3) * 2);
   });
 
@@ -964,7 +981,8 @@ describe('calculateCostV1', () => {
 
     const plexiLines = result.materials.lines.filter((l) => l.id.startsWith('roofing-sheet_e1f7673c14'));
     expect(plexiLines.length).toBe(1);
-    expect(plexiLines[0].qty).toBe(3);
+    expect(plexiLines[0].qty).toBe(4);
+    expect(plexiLines[0].notes ?? '').toContain('forced strip-yield');
 
     const crystaliteLines = result.materials.lines.filter((l) => l.id.startsWith('roofing-sheet_d557d79c33'));
     expect(crystaliteLines.length).toBe(0);
@@ -1091,9 +1109,9 @@ describe('calculateCostV1', () => {
       height: 'single_storey',
     });
 
-    // Acrylic sheets should be length-based: ceil(6/2.03)=3, down-slope <=3.05 => 1.
+    // Acrylic sheets should use strip-yield when downslope exceeds 2.03m (3 strips/sheet).
     const plexi = result.materials.lines.find((l) => l.id.startsWith('roofing-sheet_e1f7673c14'));
-    expect(plexi?.qty).toBe(3);
+    expect(plexi?.qty).toBe(4);
 
     // No soffit brackets for fascia/facade.
     expect(result.materials.lines.some((l) => l.id === 'bracket_3f6d3c53fa')).toBe(false);
@@ -1375,6 +1393,129 @@ describe('calculateCostV1', () => {
     expect(result.install.actions.find((a) => a.id === 'roof.install_flashing_m')?.qty).toBe(10);
     expect(result.install.actions.find((a) => a.id === 'roof.apply_foam_seal_m')?.qty).toBe(10);
     expect(result.totals.cost_ex_gst).toBeGreaterThan(0);
+  });
+
+  it('gable: house edge our + outer edge our removes ledger and adds two SP gutter runs', () => {
+    const result = calculateCostV1({
+      length_m: 8.5,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'gable',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      gable_house_edge_gutter: 'our',
+      gable_outer_edge_gutter: 'our',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.has_ledger).toBe(false);
+    expect(result.derived.ledger_length_m).toBe(0);
+    expect(result.derived.sp_gutter_run_count).toBe(2);
+    expect(result.derived.our_gutter_length_m).toBeCloseTo(17, 6);
+
+    const hasLedgerLine = result.materials.lines.some((line) => line.notes?.includes('Ledger'));
+    expect(hasLedgerLine).toBe(false);
+
+    const spGutterLine = result.materials.lines.find((line) => line.profile === 'SP Gutter');
+    expect(spGutterLine).toBeTruthy();
+
+    const stringerInstall = result.install.actions.find((a) => a.id === 'frame.house_stringer_install_m');
+    expect(stringerInstall).toBeFalsy();
+
+    const spGutterInstall = result.install.actions.find((a) => a.id === 'frame.front_beam_sp_gutter_install_m');
+    expect(spGutterInstall?.qty).toBeCloseTo(17, 6);
+  });
+
+  it('gable: house edge house + outer edge our keeps ledger and one SP gutter run', () => {
+    const result = calculateCostV1({
+      length_m: 8.5,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'gable',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      gable_house_edge_gutter: 'house',
+      gable_outer_edge_gutter: 'our',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.has_ledger).toBe(true);
+    expect(result.derived.ledger_length_m).toBeCloseTo(8.5, 6);
+    expect(result.derived.sp_gutter_run_count).toBe(1);
+    expect(result.derived.our_gutter_length_m).toBeCloseTo(8.5, 6);
+
+    const hasLedgerLine = result.materials.lines.some((line) => line.notes?.includes('Ledger'));
+    expect(hasLedgerLine).toBe(true);
+  });
+
+  it('gable: freestanding defaults to two SP gutter runs and no ledger', () => {
+    const result = calculateCostV1({
+      length_m: 8.5,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'gable',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'none',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.has_ledger).toBe(false);
+    expect(result.derived.sp_gutter_run_count).toBe(2);
+    expect(result.derived.our_gutter_length_m).toBeCloseTo(17, 6);
+
+    const hasLedgerLine = result.materials.lines.some((line) => line.notes?.includes('Ledger'));
+    expect(hasLedgerLine).toBe(false);
+  });
+
+  it('pitched inverted + our gutter removes ledger', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      inverted_enabled: true,
+      inverted_house_gutter: false,
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.has_ledger).toBe(false);
+    expect(result.derived.ledger_length_m).toBe(0);
+
+    const hasLedgerLine = result.materials.lines.some((line) => line.notes?.includes('Ledger'));
+    expect(hasLedgerLine).toBe(false);
+
+    const spGutterLine = result.materials.lines.find((line) => line.profile === 'SP Gutter');
+    expect(spGutterLine).toBeTruthy();
   });
 
   it('job rollup: job-scoped actions appear once and scale with module_count', () => {
