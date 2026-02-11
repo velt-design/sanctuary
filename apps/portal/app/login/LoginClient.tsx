@@ -89,7 +89,21 @@ export default function LoginClient() {
               return;
             }
 
-            const role = await fetchPortalRole(data.user.id);
+            let role: string | null = null;
+            try {
+              role = await fetchPortalRole(data.user.id);
+            } catch {
+              try {
+                const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+                if (refreshError) throw refreshError;
+                role = await fetchPortalRole(refreshed.session?.user?.id ?? data.user.id);
+              } catch {
+                setErrorMessage('Signed in, but could not verify portal access. Check your connection and try again.');
+                setSubmitting(false);
+                return;
+              }
+            }
+
             if (!role) {
               await supabase.auth.signOut();
               setErrorMessage('Your account does not have portal access yet.');

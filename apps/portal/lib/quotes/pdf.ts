@@ -294,7 +294,7 @@ function sanitizeBulletLine(raw: string): string[] {
 }
 
 const PERGOLA_BULLET_PRIORITY = ['size', 'roof', 'colour', 'posts', 'house connection', 'post fixings'] as const;
-const PERGOLA_BULLET_INDEX = new Map(PERGOLA_BULLET_PRIORITY.map((key, idx) => [key, idx]));
+const PERGOLA_BULLET_INDEX = new Map<string, number>(PERGOLA_BULLET_PRIORITY.map((key, idx) => [key, idx]));
 
 function normalizeSizeValue(value: string): string {
   const withTimes = value.replace(/\s[xX]\s/g, ' × ');
