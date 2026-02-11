@@ -1,6 +1,4 @@
 'use server';
-
-import { revalidatePath } from 'next/cache';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
@@ -112,7 +110,4 @@ export async function setNextAction(input: {
     }
   }
 
-  revalidatePath('/dashboard');
-  revalidatePath('/staff/projects');
-  revalidatePath(`/staff/projects/${input.projectId}`);
 }

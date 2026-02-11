@@ -15,25 +15,18 @@ import { listEstimates, updateEstimateStatus } from '@/lib/repo/estimatesRepo';
 import type { Estimate } from '@/lib/types/estimate';
 import styles from '../projects.module.css';
 import PipelineStepper from './PipelineStepper';
-import useSWR from 'swr';
-import {
-  getDesignTicket,
-  listAuditEvents,
-  listEmailOutbox,
-  listFollowupTasks,
-  listProjectTasks,
-  setFollowupTaskDone,
-  setTaskDone,
-} from '@/lib/repo/automationRepo';
+import { setFollowupTaskDone, setTaskDone } from '@/lib/repo/automationRepo';
 import { getSiteVisitEventForProject } from '@/lib/repo/siteVisitEventsRepo';
 import type { AuditEvent, DesignTicket, EmailOutboxItem, FollowupTask, Task } from '@/lib/types/automation';
 import { apiJson } from '@/lib/repo/apiClient';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import { projectsSWRKey } from '@/lib/cache/projectsCache';
 import type { Project as ProjectType } from '@/lib/types/project';
-import { useCacheFirstResource } from '@/lib/ui/useCacheFirstResource';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
+import { useQueryClient } from '@tanstack/react-query';
+import { useQueryResource } from '@/lib/react-query/useQueryResource';
+import { auditEventsQueryOptions, designTicketQueryOptions, emailOutboxQueryOptions, followupTasksQueryOptions, projectTasksQueryOptions } from '@/lib/queries/automation';
+import { qk } from '@/lib/queries/keys';
 
 type Draft = {
   projectName: string;
@@ -65,6 +58,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
   const toast = useToast();
   const { role } = usePortalSession();
   const isAdmin = (role ?? 'staff') === 'admin';
+  const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
 
   const [project, setProject] = useState<Project | null>(null);
@@ -109,11 +103,16 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
   }, [taskTabFromUrl]);
 
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const tasksRes = useCacheFirstResource<Task[]>(`spcache:tasks:${hostKey}:${projectId}`, () => listProjectTasks(projectId));
-  const ticketRes = useCacheFirstResource<DesignTicket | null>(`spcache:designTicket:${hostKey}:${projectId}`, () => getDesignTicket(projectId));
-  const followupsRes = useCacheFirstResource<FollowupTask[]>(`spcache:followups:${hostKey}:${projectId}`, () => listFollowupTasks(projectId));
-  const outboxRes = useCacheFirstResource<EmailOutboxItem[]>(`spcache:outbox:${hostKey}:${projectId}`, () => listEmailOutbox(projectId));
-  const auditRes = useCacheFirstResource<AuditEvent[]>(`spcache:audit:${hostKey}:${projectId}`, () => listAuditEvents(projectId, 30));
+  const tasksQuery = projectTasksQueryOptions(hostKey, projectId);
+  const ticketQuery = designTicketQueryOptions(hostKey, projectId);
+  const followupsQuery = followupTasksQueryOptions(hostKey, projectId);
+  const outboxQuery = emailOutboxQueryOptions(hostKey, projectId);
+  const auditQuery = auditEventsQueryOptions(hostKey, projectId, 30);
+  const tasksRes = useQueryResource({ queryKey: tasksQuery.queryKey, queryFn: tasksQuery.queryFn! });
+  const ticketRes = useQueryResource({ queryKey: ticketQuery.queryKey, queryFn: ticketQuery.queryFn! });
+  const followupsRes = useQueryResource({ queryKey: followupsQuery.queryKey, queryFn: followupsQuery.queryFn! });
+  const outboxRes = useQueryResource({ queryKey: outboxQuery.queryKey, queryFn: outboxQuery.queryFn! });
+  const auditRes = useQueryResource({ queryKey: auditQuery.queryKey, queryFn: auditQuery.queryFn! });
 
   const tasks = tasksRes.data ?? [];
   const ticketData = ticketRes.data ?? null;
@@ -125,8 +124,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
   const completedTasks = useMemo(() => tasks.filter((t) => String(t.status).toUpperCase() === 'DONE'), [tasks]);
   const activeTasks = taskTab === 'completed' ? completedTasks : todoTasks;
 
-  const cachedProjectsKey = useMemo(() => projectsSWRKey(), []);
-  const { data: cachedProjects } = useSWR<ProjectType[]>(cachedProjectsKey, null);
+  const cachedProjects = queryClient.getQueryData<ProjectType[]>(qk.projects.list(hostKey));
 
   const run = async (key: string, fn: () => void | Promise<void>) => {
     if (busy) return;

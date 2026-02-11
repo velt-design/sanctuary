@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { Session, User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
+import { fetchPortalRole } from '@/lib/queries/auth';
 import type { PortalRole } from '@/lib/authTypes';
 
 type PortalAuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
@@ -19,13 +20,6 @@ type PortalAuthState = {
 };
 
 const PortalAuthContext = createContext<PortalAuthState | null>(null);
-
-async function fetchRole(userId: string): Promise<PortalRole | null> {
-  const supabase = getSupabaseBrowser();
-  const { data, error } = await supabase.from('portal_users').select('role').eq('user_id', userId).maybeSingle();
-  if (error || !data?.role) return null;
-  return data.role === 'admin' ? 'admin' : 'staff';
-}
 
 export default function PortalAuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -44,7 +38,7 @@ export default function PortalAuthProvider({ children }: { children: React.React
       }
 
       setState((prev) => ({ ...prev, status: 'loading', user: session.user }));
-      const role = await fetchRole(session.user.id);
+      const role = await fetchPortalRole(session.user.id);
       if (!role) {
         await supabase.auth.signOut();
         setState({ status: 'unauthenticated', user: null, role: null });

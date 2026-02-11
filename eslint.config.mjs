@@ -5,12 +5,16 @@ import tsParser from '@typescript-eslint/parser';
 const config = [
   {
     ignores: [
-      'node_modules/**',
-      '.next/**',
-      'out/**',
-      'build/**',
+      '**/node_modules/**',
+      '**/.next/**',
+      '**/.turbo/**',
+      '**/out/**',
+      '**/build/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '**/vendor/**',
       'next-env.d.ts',
-      'public/**',
+      '**/public/**',
       'scripts/**',
       'tmp/**',
       'tsconfig.tsbuildinfo'
@@ -61,5 +65,37 @@ const config = [
     }
   }
 ];
+
+const banLegacyCachingImports = {
+  files: ['apps/portal/**/*.{js,jsx,ts,tsx}'],
+  rules: {
+    'no-restricted-imports': [
+      'error',
+      {
+        paths: [
+          { name: 'swr', message: 'Do not use SWR. Use TanStack Query (@tanstack/react-query).' },
+          { name: 'react-query', message: 'Legacy react-query is not allowed. Use @tanstack/react-query.' },
+          { name: 'next/cache', message: 'Do not use next/cache for portal server-data caching. Use TanStack Query.' },
+        ],
+      },
+    ],
+  },
+};
+
+const banSupabaseReadsInPortalUI = {
+  files: ['apps/portal/app/**/*.{ts,tsx}', 'apps/portal/components/**/*.{ts,tsx}'],
+  ignores: ['apps/portal/app/api/**/*', '**/route.ts', '**/route.tsx', 'apps/portal/lib/queries/**/*'],
+  rules: {
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: "CallExpression[callee.object.name='supabase'][callee.property.name='from']",
+        message: 'Do not call supabase.from() in portal UI. Move reads into apps/portal/lib/queries and use useQuery.',
+      },
+    ],
+  },
+};
+
+config.push(banLegacyCachingImports, banSupabaseReadsInPortalUI);
 
 export default config;

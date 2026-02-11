@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createContact, listContacts, updateContact } from '@/lib/repo/contactsRepo';
+import { createContact, updateContact } from '@/lib/repo/contactsRepo';
 import type { Contact } from '@/lib/types/contact';
 import styles from '../projects/projects.module.css';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { parseContactsCsv, planContactsImport } from '@/lib/import/contactsCsv';
 import Modal from '@/components/ui/modal/Modal';
-import useSWR from 'swr';
-import { contactsSWRKey } from '@/lib/cache/contactsCache';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { contactsListQueryOptions } from '@/lib/queries/contacts';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading' }) {
   const toast = useToast();
@@ -24,13 +25,14 @@ export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading
   const [importPayload, setImportPayload] = useState<ReturnType<typeof parseContactsCsv> | null>(null);
   const [importFilename, setImportFilename] = useState<string>('');
 
-  const swrKey = useMemo(() => contactsSWRKey(), []);
+  const queryClient = useQueryClient();
+  const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const isLoadingMode = mode === 'loading';
-  const { data, error, mutate } = useSWR<Contact[]>(
-    swrKey,
-    isLoadingMode ? null : () => listContacts(),
-    isLoadingMode ? { revalidateOnMount: false } : { revalidateOnMount: true },
-  );
+  const { data, error } = useQuery({
+    ...contactsListQueryOptions(host),
+    enabled: !isLoadingMode,
+    refetchOnMount: !isLoadingMode,
+  });
 
   const contacts = data ?? [];
   const hasLoadedOnce = typeof data !== 'undefined';
@@ -335,7 +337,7 @@ export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading
                       }
                     }
 
-                    await mutate();
+                    await queryClient.invalidateQueries({ queryKey: ['contacts'] });
                     setImportOpen(false);
                     setImportPayload(null);
                     setImportFilename('');

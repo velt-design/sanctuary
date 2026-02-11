@@ -29,6 +29,21 @@ export type ScheduleItem = {
   startDateOverride?: string; // YYYY-MM-DD
   durationHoursOverride?: number;
 
+  // Schedule v2 extensions (optional).
+  itemType?: 'job' | 'downtime';
+  scheduledJobId?: string;
+  forecastStart?: string | null;
+  forecastEndExclusive?: string | null;
+  forecastDurationDays?: number | null;
+  plannedStart?: string | null;
+  plannedDurationDays?: number | null;
+  mode?: 'floating' | 'pinned';
+  jobStatus?: 'not_started' | 'in_progress' | 'paused' | 'done' | null;
+  daysRemaining?: number | null;
+  downtimeId?: string | null;
+  downtimeReason?: string | null;
+  downtimeNote?: string | null;
+
   updatedAt: string; // ISO datetime
 };
 

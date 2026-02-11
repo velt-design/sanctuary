@@ -1,18 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { EstimateDetail, EstimateMeta, EstimateStatus, EstimateSummary } from '@/lib/estimates/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
-import { createQuoteFromEstimate, listQuoteVersions } from '@/lib/quotes/quotesRepo';
+import { createQuoteFromEstimate } from '@/lib/quotes/quotesRepo';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './EstimatesTab.module.css';
 import EstimateVersionTabs from './_components/EstimateVersionTabs';
+import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
+import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
+import { qk } from '@/lib/queries/keys';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 function formatMoney(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -501,29 +506,44 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const router = useRouter();
   const toast = useToast();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const isFocus = mode === 'focus';
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [estimates, setEstimates] = useState<EstimateMeta[]>([]);
-  const [selectedId, setSelectedId] = useState('');
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailsById, setDetailsById] = useState<Record<string, EstimateDetail>>({});
+  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+
+  const estimatesKey = useMemo(() => qk.estimates.metaByProject(hostKey, projectId), [hostKey, projectId]);
+  const cachedEstimates = queryClient.getQueryData<EstimateMeta[]>(estimatesKey) ?? [];
+
+  const [selectedId, setSelectedId] = useState(() => cachedEstimates[0]?.id ?? '');
   const [actionBusy, setActionBusy] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
   const [notesDirty, setNotesDirty] = useState(false);
   const [notesSavedAt, setNotesSavedAt] = useState<string | null>(null);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [focusCategory, setFocusCategory] = useState('');
-  const [quoteVersions, setQuoteVersions] = useState<QuoteVersion[]>([]);
-  const [quotesLoading, setQuotesLoading] = useState(false);
-  const [quotesError, setQuotesError] = useState<string | null>(null);
   const [quoteBusy, setQuoteBusy] = useState(false);
 
   const urlEstimateId = useMemo(() => {
     const raw = searchParams?.get('estimateId') ?? '';
     return raw.trim();
   }, [searchParams]);
+
+  const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
+  const quotesQuery = useQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
+
+  const estimates = estimatesQuery.data ?? [];
+  const quoteVersions = quotesQuery.data ?? [];
+  const quotesLoading = quotesQuery.isPending;
+  const quotesError =
+    quotesQuery.error instanceof Error ? quotesQuery.error.message : quotesQuery.error ? String(quotesQuery.error) : null;
+
+  const selectedEstimateDetailQuery = useQuery({
+    ...estimateDetailQueryOptions(hostKey, selectedId),
+    enabled: Boolean(selectedId),
+  });
+
+  const detailLoading = Boolean(selectedId) && selectedEstimateDetailQuery.isPending;
+  const selectedDetail = selectedEstimateDetailQuery.data ?? null;
 
   const updateParams = useCallback(
     (next: { tab?: string; quoteId?: string | null }) => {
@@ -536,76 +556,41 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     [router, searchParams],
   );
 
+  useEffect(() => {
+    if (!estimates.length) {
+      setSelectedId('');
+      return;
+    }
+    setSelectedId((prev) => {
+      const preferred = urlEstimateId && estimates.some((e) => e.id === urlEstimateId) ? urlEstimateId : '';
+      if (preferred) return preferred;
+      if (prev && estimates.some((e) => e.id === prev)) return prev;
+      return estimates[0]?.id ?? '';
+    });
+  }, [estimates, urlEstimateId]);
+
   const selectedMeta = useMemo(
     () => (selectedId ? estimates.find((e) => e.id === selectedId) ?? null : null),
     [estimates, selectedId],
   );
 
-  const selectedDetail = selectedId ? detailsById[selectedId] ?? null : null;
-
-  const refreshList = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await apiJson<{ estimates: EstimateMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
-      const list = Array.isArray(res.estimates) ? res.estimates : [];
-      setEstimates(list);
-      const preferred = urlEstimateId && list.some((e) => e.id === urlEstimateId) ? urlEstimateId : '';
-      setSelectedId((prev) => preferred || prev || (list[0]?.id ?? ''));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load estimates';
-      setError(msg);
-      setEstimates([]);
-      setSelectedId('');
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId, urlEstimateId]);
-
-  const refreshQuotes = useCallback(async () => {
-    setQuotesLoading(true);
-    setQuotesError(null);
-    try {
-      const list = await listQuoteVersions(projectId);
-      setQuoteVersions(Array.isArray(list) ? list : []);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to load quotes';
-      setQuotesError(msg);
-    } finally {
-      setQuotesLoading(false);
-    }
-  }, [projectId]);
-
-  const loadDetail = useCallback(
-    async (id: string) => {
-      if (!id) return;
-      setDetailLoading(true);
-      try {
-        const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(id)}`);
-        const estimate = res.estimate;
-        if (estimate) {
-          setDetailsById((prev) => ({ ...prev, [estimate.id]: estimate }));
+  const upsertEstimate = useCallback(
+    (detail: EstimateDetail, opts?: { prepend?: boolean }) => {
+      queryClient.setQueryData(qk.estimates.detail(hostKey, detail.id), detail);
+      queryClient.setQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId), (prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        const nextMeta = detailToMeta(detail);
+        const idx = list.findIndex((e) => e.id === detail.id);
+        if (idx >= 0) {
+          const next = list.slice();
+          next[idx] = nextMeta;
+          return next;
         }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Failed to load estimate';
-        toast.error(msg);
-      } finally {
-        setDetailLoading(false);
-      }
+        return opts?.prepend ? [nextMeta, ...list] : [...list, nextMeta];
+      });
     },
-    [toast],
+    [hostKey, projectId, queryClient],
   );
-
-  useEffect(() => {
-    refreshList();
-    refreshQuotes();
-  }, [refreshList, refreshQuotes]);
-
-  useEffect(() => {
-    if (!selectedId) return;
-    if (detailsById[selectedId]) return;
-    loadDetail(selectedId);
-  }, [detailsById, loadDetail, selectedId]);
 
   useEffect(() => {
     if (!selectedDetail) return;
@@ -757,20 +742,6 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
 
   const relatedQuotesPreview = relatedQuotesSorted.slice(0, 3);
 
-  const upsertEstimate = useCallback((detail: EstimateDetail, opts?: { prepend?: boolean }) => {
-    setDetailsById((prev) => ({ ...prev, [detail.id]: detail }));
-    setEstimates((prev) => {
-      const nextMeta = detailToMeta(detail);
-      const idx = prev.findIndex((e) => e.id === detail.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = nextMeta;
-        return next;
-      }
-      return opts?.prepend ? [nextMeta, ...prev] : [...prev, nextMeta];
-    });
-  }, []);
-
   const calculatorHref = `/staff/calculator?projectId=${encodeURIComponent(projectId)}`;
   const handleCreateFromTabs = useCallback(() => {
     router.push(calculatorHref);
@@ -800,9 +771,9 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     setQuoteBusy(true);
     try {
       const created = await createQuoteFromEstimate(projectId, selectedMeta.id);
-      await refreshQuotes();
+      queryClient.setQueryData(qk.quotes.detail(hostKey, created.id), created);
+      await queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(hostKey, projectId) });
       updateParams({ tab: 'quotes', quoteId: created.id });
-      router.refresh();
       toast.success('Draft quote created.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create quote';
@@ -843,12 +814,19 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     }
   };
 
-  if (loading) {
+  const listError =
+    estimatesQuery.error instanceof Error
+      ? estimatesQuery.error.message
+      : estimatesQuery.error
+        ? String(estimatesQuery.error)
+        : null;
+
+  if (estimatesQuery.isPending) {
     return <p className={legacy.note}>Loading estimates…</p>;
   }
 
-  if (error) {
-    return <p className={legacy.note}>{error}</p>;
+  if (listError) {
+    return <p className={legacy.note}>{listError}</p>;
   }
 
   if (!estimates.length) {

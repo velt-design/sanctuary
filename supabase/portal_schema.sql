@@ -71,6 +71,7 @@ create table if not exists public.estimates (
   -- statuses used by UI
   status text not null default 'draft'
     check (status in ('draft','in_review','approved','rejected','superseded','archived')),
+  version int not null default 1,
 
   created_by text,
   summary_json jsonb,
@@ -111,6 +112,7 @@ alter table public.estimates
   add column if not exists updated_at timestamptz not null default now();
 alter table public.estimates
   add column if not exists created_by text,
+  add column if not exists version int not null default 1,
   add column if not exists summary_json jsonb,
   add column if not exists internal_notes text,
   add column if not exists approval_requested_at timestamptz,

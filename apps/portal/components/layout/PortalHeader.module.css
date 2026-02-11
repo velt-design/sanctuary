@@ -29,20 +29,6 @@
   flex: 0 0 auto;
 }
 
-.previewToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding-left: 4px;
-}
-
-.previewLabel {
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.7);
-}
-
 .historyCapsule {
   display: flex;
   align-items: center;
@@ -130,12 +116,6 @@
 
 .saveLabel {
   white-space: nowrap;
-}
-
-@media (max-width: 1200px) {
-  .previewLabel {
-    display: none;
-  }
 }
 
 @media (max-width: 768px) {

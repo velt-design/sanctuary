@@ -2,11 +2,9 @@
 
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import useSWR from 'swr';
 import styles from './schedule.module.css';
 import type { SiteVisitCalendarItem, SiteVisitsSnapshotV1 } from '@/lib/types/siteVisits';
 import UnscheduledSiteVisitCard from './UnscheduledSiteVisitCard';
-import { siteVisitsSnapshotSWRKey } from '@/lib/cache/siteVisitsCache';
 import { apiJson } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
@@ -28,6 +26,8 @@ import {
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { ApiError } from '@/lib/repo/apiClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/lib/queries/keys';
 
 const HOURS = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, i) => i + DAY_START_HOUR);
 const DAY_START_MINUTES = DAY_START_HOUR * 60;
@@ -232,11 +232,11 @@ export default function SiteVisitsView() {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const [mounted, setMounted] = useState(false);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()), []);
-  const snapshotKey = useMemo(() => siteVisitsSnapshotSWRKey(), []);
-  const { data: cachedSnapshot, mutate: mutateSnapshot } = useSWR<SiteVisitsSnapshotV1>(snapshotKey, null);
+  const hostKey = host || 'unknown';
 
   useEffect(() => setMounted(true), []);
 
@@ -262,8 +262,6 @@ export default function SiteVisitsView() {
   const highlightId = useMemo(() => (searchParams.get('highlightSiteVisitId') || '').trim() || null, [searchParams]);
 
   const [query, setQuery] = useState('');
-  const [syncing, setSyncing] = useState(false);
-  const [snapshot, setSnapshot] = useState<SiteVisitsSnapshotV1 | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [modal, setModal] = useState<ModalState>({ kind: 'closed' });
@@ -303,12 +301,10 @@ export default function SiteVisitsView() {
   const salesOwnerId = useMemo(() => (salesOwnerIdRaw && laneIds.includes(salesOwnerIdRaw) ? salesOwnerIdRaw : null), [laneIds, salesOwnerIdRaw]);
   const defaultSalespersonId = useMemo(() => salesOwnerId ?? laneIds[0] ?? '', [laneIds, salesOwnerId]);
 
-  useEffect(() => {
-    if (snapshot) return;
-    if (cachedSnapshot) setSnapshot(cachedSnapshot);
-  }, [cachedSnapshot, snapshot]);
+  const rangeKey = useMemo(() => `${days[0]}:${days[6]}:${salesOwnerId ?? 'all'}`, [days, salesOwnerId]);
+  const snapshotKey = useMemo(() => qk.siteVisits.snapshot(hostKey, rangeKey), [hostKey, rangeKey]);
 
-  const fetchFresh = async () => {
+  const fetchSnapshot = async (): Promise<SiteVisitsSnapshotV1> => {
     const from = new Date(slotStartIso(days[0], 0)).toISOString();
     const to = new Date(addMinutesIso(slotStartIso(days[6], slotCount() - 1), MINUTES_STEP)).toISOString();
 
@@ -317,46 +313,49 @@ export default function SiteVisitsView() {
     qs.set('to', to);
     if (salesOwnerId) qs.set('salesOwnerId', salesOwnerId);
 
-    setSyncing(true);
-    try {
-      const res = await apiJson<{ unscheduled: SiteVisitCalendarItem[]; events: SiteVisitCalendarItem[]; salesPeople: any[]; generatedAt: string }>(
-        `/api/staff/v1/site-visits?${qs.toString()}`,
-      );
-      const next: SiteVisitsSnapshotV1 = {
-        host: host ?? null,
-        rangeFrom: from,
-        rangeTo: to,
-        salesOwnerId,
-        generatedAt: res.generatedAt,
-        unscheduled: res.unscheduled,
-        events: res.events,
-        salesPeople: res.salesPeople,
-      };
-      setSnapshot(next);
-      await mutateSnapshot(next, { revalidate: false });
-      setSyncing(false);
-    } catch (err) {
-      setSyncing(false);
-      if (snapshot?.unscheduled?.length || snapshot?.events?.length || cachedSnapshot?.unscheduled?.length || cachedSnapshot?.events?.length) {
-        toast.error("Couldn't refresh site visits (showing last saved).");
-        return;
-      }
-      const msg = err instanceof Error ? err.message : 'Failed to load site visits.';
-      toast.error(msg);
-    }
+    const res = await apiJson<{ unscheduled: SiteVisitCalendarItem[]; events: SiteVisitCalendarItem[]; salesPeople: any[]; generatedAt: string }>(
+      `/api/staff/v1/site-visits?${qs.toString()}`,
+    );
+    return {
+      host: host ?? null,
+      rangeFrom: from,
+      rangeTo: to,
+      salesOwnerId,
+      generatedAt: res.generatedAt,
+      unscheduled: res.unscheduled,
+      events: res.events,
+      salesPeople: res.salesPeople,
+    };
   };
 
+  const { data: snapshot, error: snapshotError, isFetching, refetch } = useQuery({
+    queryKey: snapshotKey,
+    queryFn: fetchSnapshot,
+    enabled: mounted,
+  });
+
+  const syncing = isFetching;
+
   useEffect(() => {
-    if (!mounted) return;
-    void fetchFresh();
-  }, [mounted, viewWeek, salesOwnerId]);
+    if (!snapshotError) return;
+    if (snapshot?.unscheduled?.length || snapshot?.events?.length) {
+      toast.error("Couldn't refresh site visits (showing last saved).");
+      return;
+    }
+    const msg = snapshotError instanceof Error ? snapshotError.message : 'Failed to load site visits.';
+    toast.error(msg);
+  }, [snapshotError, snapshot, toast]);
+
+  const fetchFresh = async () => {
+    await refetch();
+  };
 
   useEffect(() => {
     setSlotPopover(null);
     setHoveredEvent(null);
   }, [viewWeek, salesOwnerId]);
 
-  const data = snapshot ?? cachedSnapshot;
+  const data = snapshot;
   const unscheduled = data?.unscheduled ?? [];
   const events = data?.events ?? [];
   const eventsWithLocal = useMemo(() => [...events, ...localEvents], [events, localEvents]);
@@ -379,8 +378,7 @@ export default function SiteVisitsView() {
   );
 
   const setAndCacheSnapshot = (next: SiteVisitsSnapshotV1) => {
-    setSnapshot(next);
-    void mutateSnapshot(next, { revalidate: false });
+    queryClient.setQueryData(snapshotKey, next);
   };
 
   const applyOptimisticBooking = (params: {
@@ -548,7 +546,7 @@ export default function SiteVisitsView() {
             toast.error('Select an unscheduled visit.');
             return;
           }
-          const base = snapshot ?? cachedSnapshot;
+          const base = snapshot;
           if (!base) return;
           const fromUnscheduled = (base.unscheduled ?? []).find((u) => u.id === values.linkedUnscheduledId) ?? null;
           if (!fromUnscheduled) {
@@ -658,7 +656,7 @@ export default function SiteVisitsView() {
         return;
       }
 
-      const base = snapshot ?? cachedSnapshot;
+      const base = snapshot;
       if (!base) return;
 
       if (!item.scheduledStart || String(item.status).toUpperCase() === 'UNSCHEDULED') {
@@ -744,7 +742,7 @@ export default function SiteVisitsView() {
         body: JSON.stringify({ siteVisitEventId: item.id, salespersonId }),
       });
 
-      const base = snapshot ?? cachedSnapshot;
+      const base = snapshot;
       if (base) {
         setAndCacheSnapshot({
           ...base,
@@ -773,7 +771,7 @@ export default function SiteVisitsView() {
         body: JSON.stringify({ siteVisitEventId: item.id }),
       });
 
-      const base = snapshot ?? cachedSnapshot;
+      const base = snapshot;
       if (base) {
         const now = new Date().toISOString();
         const moved: SiteVisitCalendarItem = {

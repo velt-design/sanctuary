@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { useSWRConfig } from 'swr';
-import { contactsSWRKey } from '@/lib/cache/contactsCache';
-import { projectsSWRKey } from '@/lib/cache/projectsCache';
-import { listContacts } from '@/lib/repo/contactsRepo';
-import { listProjects } from '@/lib/repo/projectsRepo';
+import { useQueryClient } from '@tanstack/react-query';
+import { contactsListQueryOptions } from '@/lib/queries/contacts';
+import { projectsListQueryOptions } from '@/lib/queries/projects';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 function safeHost(): string {
@@ -13,7 +11,7 @@ function safeHost(): string {
 }
 
 export default function StaffCacheWarmup() {
-  const { mutate } = useSWRConfig();
+  const queryClient = useQueryClient();
   const host = useMemo(() => safeHost(), []);
 
   useEffect(() => {
@@ -23,13 +21,10 @@ export default function StaffCacheWarmup() {
     window.sessionStorage.setItem(key, '1');
 
     const run = async () => {
-      const [contactsRes, projectsRes] = await Promise.allSettled([listContacts(), listProjects()]);
-      if (contactsRes.status === 'fulfilled') {
-        await mutate(contactsSWRKey(), contactsRes.value, { revalidate: false });
-      }
-      if (projectsRes.status === 'fulfilled') {
-        await mutate(projectsSWRKey(), projectsRes.value, { revalidate: false });
-      }
+      await Promise.allSettled([
+        queryClient.prefetchQuery(contactsListQueryOptions(host)),
+        queryClient.prefetchQuery(projectsListQueryOptions(host)),
+      ]);
     };
 
     const ric = (window as any).requestIdleCallback as ((cb: () => void, opts?: { timeout: number }) => number) | undefined;
@@ -39,8 +34,7 @@ export default function StaffCacheWarmup() {
     }
     const t = window.setTimeout(() => void run(), 150);
     return () => window.clearTimeout(t);
-  }, [host, mutate]);
+  }, [host, queryClient]);
 
   return null;
 }
-
