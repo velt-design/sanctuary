@@ -26,6 +26,7 @@ const DEFAULT_ROOF_TYPE: RoofType = 'pitched';
 const DEFAULT_MIXED_MODE: MixedRoofMode = 'ridge_skylight';
 
 const RAFTER_SPACING_MM_MAX = 642;
+const RAFTER_THICKNESS_MM = 50;
 const TIMBER_RAFTER_SPACING_MM_MAX = 500;
 const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_COMMON_RAFTER_DEFAULT_PROFILE = '80x50';
@@ -434,10 +435,24 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const lengthMmA = Math.round(lengthM * 1000);
   const lengthMmB = Math.round(hipCornerLengthBM * 1000);
 
-  const rafterCountA = Math.ceil(lengthMmA / RAFTER_SPACING_MM_MAX) + 1;
-  const rafterCountB = roofType === 'hip_corner' && hipCornerLengthBM > 0 ? Math.ceil(lengthMmB / RAFTER_SPACING_MM_MAX) + 1 : 0;
-  const bayCountA = Math.max(0, rafterCountA - 1);
-  const bayCountB = roofType === 'hip_corner' ? Math.max(0, rafterCountB - 1) : 0;
+  const isAcrylicRoof = inputs.roof_material === 'acrylic';
+  const calcRafterSpacing = (lengthMm: number) => {
+    if (isAcrylicRoof) {
+      const clearLenMm = Math.max(0, lengthMm - RAFTER_THICKNESS_MM);
+      const bays = Math.max(1, Math.ceil(clearLenMm / RAFTER_SPACING_MM_MAX));
+      return { rafterCount: bays + 1, bayCount: bays, clearLenMm };
+    }
+    const rafterCount = Math.ceil(lengthMm / RAFTER_SPACING_MM_MAX) + 1;
+    return { rafterCount, bayCount: Math.max(0, rafterCount - 1), clearLenMm: lengthMm };
+  };
+
+  const rafterA = calcRafterSpacing(lengthMmA);
+  const rafterCountA = rafterA.rafterCount;
+  const bayCountA = rafterA.bayCount;
+
+  const rafterB = roofType === 'hip_corner' && hipCornerLengthBM > 0 ? calcRafterSpacing(lengthMmB) : null;
+  const rafterCountB = rafterB ? rafterB.rafterCount : 0;
+  const bayCountB = roofType === 'hip_corner' ? (rafterB ? rafterB.bayCount : 0) : 0;
 
   const bracketCountA = inputs.house_connection_type === 'soffit' ? Math.ceil(lengthMmA / BRACKET_SPACING_MM_MAX) + 1 : 0;
   const bracketCountB =
@@ -986,6 +1001,8 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         ? rafterCount * 2
         : rafterCount;
   const joinerRunsTotal = roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount;
+  const rafterClearLenMm = isAcrylicRoof ? rafterA.clearLenMm : 0;
+  const rafterSpacingMm = isAcrylicRoof && rafterCountA > 1 ? rafterA.clearLenMm / (rafterCountA - 1) : 0;
 
   const derived: DerivedResultV1['derived'] = {
     area_m2: areaM2,
@@ -1044,6 +1061,12 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
         }
       : null),
     rafter_count: rafterCountUsed,
+    ...(isAcrylicRoof
+      ? {
+          rafter_clear_len_mm: rafterClearLenMm,
+          rafter_spacing_mm: rafterSpacingMm,
+        }
+      : null),
     bracket_count: bracketCount,
     stringer_fixing_count: stringerFixingCount,
     bay_count: bayCount,

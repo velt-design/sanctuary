@@ -1,47 +1,117 @@
 import { describe, expect, it } from 'vitest';
+import { calculateCostV1 } from './calculate';
 import { __test__ } from './bom';
 
-const { selectBestStock } = __test__;
+const baseInputs = {
+  length_m: 3,
+  projection_m: 3,
+  post_cut_height_m: 2.4,
+  post_count: 4,
 
-type TestBar = {
-  id: string;
-  category: string;
-  unit: string;
-  attributes: { profile: string; length_m: number; colour: string };
-  cost_ex_gst: number;
-  stock_length_m: number;
+  pergola_style: 'pitched' as const,
+  box_perimeter_enabled: false,
+  roof_material: 'acrylic' as const,
+  extrusion_colour: 'Black' as const,
+
+  house_connection_type: 'soffit' as const,
+  post_connection_type: 'deck_bracket' as const,
+  access: 'normal' as const,
+  height: 'single_storey' as const,
 };
 
-function bar(stockLengthM: number, costExGst: number): TestBar {
-  return {
-    id: `bar_${stockLengthM}`,
-    category: 'aluminium_extrusion',
-    unit: 'bar',
-    attributes: { profile: 'test', length_m: stockLengthM, colour: 'Black' },
-    cost_ex_gst: costExGst,
-    stock_length_m: stockLengthM,
-  };
-}
+describe('selectBestStock continuous runs', () => {
+  const makeBar = (stock_length_m: number, cost_ex_gst: number) =>
+    ({
+      id: `bar_${stock_length_m}`,
+      category: 'aluminium_extrusion',
+      unit: 'bar',
+      attributes: { length_m: stock_length_m },
+      cost_ex_gst,
+      stock_length_m,
+    }) as any;
 
-describe('selectBestStock tie-breaker', () => {
-  it('prefers lower cost per metre even with higher waste', () => {
-    const bars = [bar(4, 8), bar(6, 15)];
-    const cuts = [3, 3].map((length_m) => ({ length_m, join_policy: 'joinable' as const, component: 'Test' }));
-    const result = selectBestStock(bars as any, cuts, [6, 4]);
+  const makeCut = (length_m: number, component: string, join_policy: 'joinable' | 'single' = 'joinable') =>
+    ({
+      length_m,
+      origin_id: `${component.toLowerCase().replace(/\s+/g, '_')}_0`,
+      origin_len_m: length_m,
+      join_policy,
+      segment_index: 0,
+      component,
+      finish: 'default',
+    }) as any;
+
+  it('prefers exact-fit for gutter run', () => {
+    const bars = [makeBar(5, 214.14), makeBar(6, 257)];
+    const cuts = [makeCut(6, 'SP gutter')];
+
+    const result = __test__.selectBestStock(bars, cuts, [6, 5]);
+
+    expect(result.bar?.stock_length_m).toBe(6);
+    expect(result.barsUsed).toBe(1);
+  });
+
+  it('continuous run chooses lowest total cost even if costPerM is slightly higher', () => {
+    const bars = [makeBar(5, 214.14), makeBar(6, 257)];
+    const cuts = [makeCut(5.5, 'Ledger')];
+
+    const result = __test__.selectBestStock(bars, cuts, [6, 5]);
+
+    expect(result.bar?.stock_length_m).toBe(6);
+    expect(result.barsUsed).toBe(1);
+  });
+
+  it('non-continuous group remains costPerM-first', () => {
+    const bars = [makeBar(6, 6.6), makeBar(4, 4)];
+    const cuts = [makeCut(2.6, 'Rafters', 'single'), makeCut(2.6, 'Rafters', 'single')];
+
+    const result = __test__.selectBestStock(bars, cuts, [6, 4]);
+
     expect(result.bar?.stock_length_m).toBe(4);
+    expect(result.barsUsed).toBe(2);
+  });
+});
+
+describe('buildMaterialsV1 splice joins', () => {
+  it('does not add splice joins when all joinable members fit stock', () => {
+    const result = calculateCostV1({ ...baseInputs, projection_m: 3 });
+
+    expect(result.derived.splice_join_count ?? 0).toBe(0);
+    expect(result.materials.lines.some((line) => line.id === 'hardware.splice_join_bracket')).toBe(false);
+    expect(result.materials.lines.some((line) => line.id === 'fixing.splice_join_screw_each')).toBe(false);
   });
 
-  it('prefers lower waste when cost per metre ties', () => {
-    const bars = [bar(4, 8), bar(6, 12)];
-    const cuts = [3, 3].map((length_m) => ({ length_m, join_policy: 'joinable' as const, component: 'Test' }));
-    const result = selectBestStock(bars as any, cuts, [6, 4]);
-    expect(result.bar?.stock_length_m).toBe(6);
+  it('counts one join per joiner when joiners exceed stock length', () => {
+    const result = calculateCostV1({ ...baseInputs, projection_m: 7 });
+
+    const joinerBars = result.materials.totals.bars_by_profile['Joiners'];
+    expect(joinerBars).toBeTruthy();
+
+    const stockLen = joinerBars?.stock_length_m ?? 0;
+    const joinerLen = Number(result.derived.joiner_piece_length_m ?? 0);
+    const joinerRuns = Math.max(0, Math.round(Number(result.derived.joiner_runs_total ?? result.derived.rafter_count)));
+
+    const joinsPerMember = joinerLen > stockLen + 1e-6 ? Math.ceil(joinerLen / stockLen) - 1 : 0;
+    expect(joinsPerMember).toBe(1);
+
+    const expectedJoins = joinerRuns * joinsPerMember;
+    expect(result.derived.splice_join_count).toBe(expectedJoins);
   });
 
-  it('prefers fewer bars when cost and waste tie', () => {
-    const bars = [bar(4, 8), bar(6, 12)];
-    const cuts = [3, 3, 3].map((length_m) => ({ length_m, join_policy: 'joinable' as const, component: 'Test' }));
-    const result = selectBestStock(bars as any, cuts, [6, 4]);
-    expect(result.bar?.stock_length_m).toBe(6);
+  it('counts multiple joins per joiner when joiners far exceed stock length', () => {
+    const result = calculateCostV1({ ...baseInputs, projection_m: 12.5 });
+
+    const joinerBars = result.materials.totals.bars_by_profile['Joiners'];
+    expect(joinerBars).toBeTruthy();
+
+    const stockLen = joinerBars?.stock_length_m ?? 0;
+    const joinerLen = Number(result.derived.joiner_piece_length_m ?? 0);
+    const joinerRuns = Math.max(0, Math.round(Number(result.derived.joiner_runs_total ?? result.derived.rafter_count)));
+
+    const joinsPerMember = joinerLen > stockLen + 1e-6 ? Math.ceil(joinerLen / stockLen) - 1 : 0;
+    expect(joinsPerMember).toBeGreaterThanOrEqual(2);
+
+    const expectedJoins = joinerRuns * joinsPerMember;
+    expect(result.derived.splice_join_count).toBe(expectedJoins);
   });
 });

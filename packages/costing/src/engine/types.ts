@@ -238,6 +238,8 @@ export type DerivedV1 = {
   hip_corner_rafter_count_a?: number;
   hip_corner_rafter_count_b?: number;
   rafter_count: number;
+  rafter_clear_len_mm?: number;
+  rafter_spacing_mm?: number;
   bracket_count: number;
   stringer_fixing_count: number;
   bay_count: number;

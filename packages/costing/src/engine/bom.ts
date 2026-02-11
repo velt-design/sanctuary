@@ -16,7 +16,10 @@ type FinishMode = 'default' | 'raw_mill';
 
 type CutItem = {
   length_m: number;
+  origin_id: string;
+  origin_len_m: number;
   join_policy: JoinPolicy;
+  segment_index: number;
   component: string;
   finish: FinishMode;
 };
@@ -26,6 +29,7 @@ type CutGroup = {
   colour: InputsNormalizedV1['extrusion_colour'];
   finish: FinishMode;
   cuts: CutItem[];
+  originals_joinable: Map<string, number>;
   components: Set<string>;
 };
 
@@ -44,6 +48,8 @@ function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100) / 100;
 }
+
+const isContinuousRunComponent = (component?: string) => /gutter|ledger|beam|stringer/i.test(String(component ?? ''));
 
 function findRubberItem(config: CostingConfigV1, name: string): PricebookItem | null {
   return (
@@ -92,18 +98,33 @@ function findPowdercoatBar(config: CostingConfigV1, profile: string, stockLength
   );
 }
 
-function splitIntoStockCuts(totalLengthM: number, stockLengthM: number): number[] {
-  if (!Number.isFinite(totalLengthM) || totalLengthM <= 0) return [];
-  if (!Number.isFinite(stockLengthM) || stockLengthM <= 0) return [totalLengthM];
-
-  const cuts: number[] = [];
-  let remaining = totalLengthM;
-  while (remaining > stockLengthM + 1e-6) {
-    cuts.push(stockLengthM);
-    remaining -= stockLengthM;
+function splitIntoStockCuts(cut: CutItem, stockLengthM: number): CutItem[] {
+  const originLen = Number(cut.origin_len_m ?? cut.length_m ?? 0);
+  if (!Number.isFinite(originLen) || originLen <= 0) return [];
+  if (!Number.isFinite(stockLengthM) || stockLengthM <= 0) {
+    return [{ ...cut, length_m: originLen, segment_index: 0 }];
   }
-  if (remaining > 1e-6) cuts.push(remaining);
-  return cuts;
+
+  if (originLen <= stockLengthM + 1e-6) {
+    return [{ ...cut, length_m: originLen, segment_index: 0 }];
+  }
+
+  if (cut.join_policy === 'single') {
+    return [{ ...cut, length_m: originLen, segment_index: 0 }];
+  }
+
+  const segments: CutItem[] = [];
+  let remaining = originLen;
+  let segmentIndex = 0;
+  while (remaining > stockLengthM + 1e-6) {
+    segments.push({ ...cut, length_m: stockLengthM, segment_index: segmentIndex });
+    remaining -= stockLengthM;
+    segmentIndex += 1;
+  }
+  if (remaining > 1e-6) {
+    segments.push({ ...cut, length_m: remaining, segment_index: segmentIndex });
+  }
+  return segments;
 }
 
 function pickBarsForProfile(
@@ -159,19 +180,19 @@ function greedyBinPack(cutsDesc: number[], stockLengthM: number): { barsUsed: nu
   return { barsUsed, wasteM };
 }
 
-function expandCutsForStock(cuts: CutItem[], stockLengthM: number): number[] | null {
+function expandCutsForStock(cuts: CutItem[], stockLengthM: number): CutItem[] | null {
   if (!Number.isFinite(stockLengthM) || stockLengthM <= 0) return null;
-  const expanded: number[] = [];
+  const expanded: CutItem[] = [];
 
   for (const cut of cuts) {
-    const len = Number(cut.length_m ?? 0);
-    if (!Number.isFinite(len) || len <= 0) continue;
-    if (len <= stockLengthM + 1e-6) {
-      expanded.push(len);
+    const originLen = Number(cut.origin_len_m ?? cut.length_m ?? 0);
+    if (!Number.isFinite(originLen) || originLen <= 0) continue;
+    if (originLen <= stockLengthM + 1e-6) {
+      expanded.push({ ...cut, length_m: originLen, segment_index: 0 });
       continue;
     }
     if (cut.join_policy === 'single') return null;
-    expanded.push(...splitIntoStockCuts(len, stockLengthM));
+    expanded.push(...splitIntoStockCuts(cut, stockLengthM));
   }
 
   return expanded;
@@ -186,10 +207,27 @@ function selectBestStock(
   barsUsed: number;
   wasteM: number;
 } {
+  const EPS = 1e-6;
+  const hasContinuousRun = cuts.some((cut) => isContinuousRunComponent(cut.component));
+  const targets = new Set<number>();
+  if (hasContinuousRun) {
+    for (const cut of cuts) {
+      if (!isContinuousRunComponent(cut.component)) continue;
+      const len = Number(cut.length_m);
+      if (!Number.isFinite(len) || len <= 0) continue;
+      targets.add(len);
+    }
+  }
 
-  let best:
-    | { bar: (PricebookItem & { stock_length_m: number }); barsUsed: number; wasteM: number; cost: number; costPerM: number }
-    | null = null;
+  type Candidate = {
+    bar: PricebookItem & { stock_length_m: number };
+    barsUsed: number;
+    wasteM: number;
+    totalCost: number;
+    costPerM: number;
+    isExactFit: boolean;
+  };
+  const evaluated: Candidate[] = [];
 
   const candidates = bars
     .filter((b) => preferred.includes(b.stock_length_m))
@@ -200,35 +238,73 @@ function selectBestStock(
     if (!Number.isFinite(unitCost)) continue;
     const expanded = expandCutsForStock(cuts, bar.stock_length_m);
     if (!expanded || expanded.length === 0) continue;
-    const cutsDesc = [...expanded].sort((a, b) => b - a);
+    const cutsDesc = [...expanded]
+      .map((cut) => cut.length_m)
+      .filter((len) => Number.isFinite(len) && len > 0)
+      .sort((a, b) => b - a);
     const { barsUsed, wasteM } = greedyBinPack(cutsDesc, bar.stock_length_m);
-    const cost = barsUsed * unitCost;
+    const totalCost = barsUsed * unitCost;
     const costPerM = unitCost / Math.max(bar.stock_length_m, 0.0001);
+    const isExactFit = hasContinuousRun && Array.from(targets).some((t) => Math.abs(t - bar.stock_length_m) <= EPS);
 
-    if (!best) {
-      best = { bar, barsUsed, wasteM, cost, costPerM };
+    evaluated.push({ bar, barsUsed, wasteM, totalCost, costPerM, isExactFit });
+  }
+
+  if (!evaluated.length) return { bar: null, barsUsed: 0, wasteM: 0 };
+
+  const anyExactFit = hasContinuousRun && evaluated.some((candidate) => candidate.isExactFit);
+  let best = evaluated[0];
+
+  for (let i = 1; i < evaluated.length; i += 1) {
+    const candidate = evaluated[i];
+
+    if (hasContinuousRun) {
+      if (anyExactFit) {
+        if (candidate.isExactFit && !best.isExactFit) {
+          best = candidate;
+          continue;
+        }
+        if (!candidate.isExactFit && best.isExactFit) continue;
+      }
+
+      if (candidate.totalCost < best.totalCost - EPS) {
+        best = candidate;
+        continue;
+      }
+      if (Math.abs(candidate.totalCost - best.totalCost) <= EPS) {
+        if (candidate.barsUsed < best.barsUsed) {
+          best = candidate;
+          continue;
+        }
+        if (candidate.barsUsed === best.barsUsed) {
+          if (candidate.wasteM < best.wasteM - EPS) {
+            best = candidate;
+            continue;
+          }
+          if (Math.abs(candidate.wasteM - best.wasteM) <= EPS && candidate.costPerM < best.costPerM - EPS) {
+            best = candidate;
+          }
+        }
+      }
       continue;
     }
 
     const bestCostPerM = best.costPerM;
-
-    // Selection: minimise cost per metre, then waste, then bar count.
-    if (costPerM < bestCostPerM - 1e-6) {
-      best = { bar, barsUsed, wasteM, cost, costPerM };
+    if (candidate.costPerM < bestCostPerM - EPS) {
+      best = candidate;
       continue;
     }
-    if (Math.abs(costPerM - bestCostPerM) <= 1e-6) {
-      if (wasteM < best.wasteM - 1e-6) {
-        best = { bar, barsUsed, wasteM, cost, costPerM };
+    if (Math.abs(candidate.costPerM - bestCostPerM) <= EPS) {
+      if (candidate.wasteM < best.wasteM - EPS) {
+        best = candidate;
         continue;
       }
-      if (Math.abs(wasteM - best.wasteM) <= 1e-6 && barsUsed < best.barsUsed) {
-        best = { bar, barsUsed, wasteM, cost, costPerM };
+      if (Math.abs(candidate.wasteM - best.wasteM) <= EPS && candidate.barsUsed < best.barsUsed) {
+        best = candidate;
       }
     }
   }
 
-  if (!best) return { bar: null, barsUsed: 0, wasteM: 0 };
   return { bar: best.bar, barsUsed: best.barsUsed, wasteM: best.wasteM };
 }
 
@@ -277,21 +353,54 @@ export function buildMaterialsV1(
   const powdercoatMultiplier = Number((derived as any).powdercoat_multiplier ?? 1);
 
   const cutGroups = new Map<string, CutGroup>();
+  const originIdCounters = new Map<string, number>();
+
+  const normaliseOriginPrefix = (value: string) => {
+    const safe = String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    return safe || 'member';
+  };
+
+  const nextOriginId = (prefix: string) => {
+    const safePrefix = normaliseOriginPrefix(prefix);
+    const current = originIdCounters.get(safePrefix) ?? 0;
+    originIdCounters.set(safePrefix, current + 1);
+    return `${safePrefix}_${current}`;
+  };
 
   const addCuts = (
     profile: string,
     cutsM: number[],
     component: string,
     joinPolicy: JoinPolicy,
-    opts?: { colour?: InputsNormalizedV1['extrusion_colour']; finish?: FinishMode },
+    opts?: { colour?: InputsNormalizedV1['extrusion_colour']; finish?: FinishMode; origin_prefix?: string },
   ) => {
     if (!cutsM.length) return;
     const colour = opts?.colour ?? inputs.extrusion_colour;
     const finish: FinishMode = opts?.finish ?? 'default';
+    const originPrefix = opts?.origin_prefix ?? component;
     const key = `${profile}__${colour}__${finish}`;
     const existing = cutGroups.get(key);
     if (existing) {
-      cutsM.forEach((c) => existing.cuts.push({ length_m: c, join_policy: joinPolicy, component, finish }));
+      cutsM.forEach((c) => {
+        const originId = nextOriginId(originPrefix);
+        const cutItem: CutItem = {
+          length_m: c,
+          origin_id: originId,
+          origin_len_m: c,
+          join_policy: joinPolicy,
+          segment_index: 0,
+          component,
+          finish,
+        };
+        existing.cuts.push(cutItem);
+        if (joinPolicy === 'joinable' && Number.isFinite(c) && c > 0) {
+          existing.originals_joinable.set(originId, c);
+        }
+      });
       existing.components.add(component);
       return;
     }
@@ -299,9 +408,31 @@ export function buildMaterialsV1(
       profile,
       colour,
       finish,
-      cuts: cutsM.map((c) => ({ length_m: c, join_policy: joinPolicy, component, finish })),
+      cuts: cutsM.map((c) => {
+        const originId = nextOriginId(originPrefix);
+        return {
+          length_m: c,
+          origin_id: originId,
+          origin_len_m: c,
+          join_policy: joinPolicy,
+          segment_index: 0,
+          component,
+          finish,
+        };
+      }),
+      originals_joinable: new Map<string, number>(),
       components: new Set([component]),
     });
+    if (joinPolicy === 'joinable') {
+      const group = cutGroups.get(key);
+      if (group) {
+        group.cuts.forEach((cut) => {
+          if (Number.isFinite(cut.origin_len_m) && cut.origin_len_m > 0) {
+            group.originals_joinable.set(cut.origin_id, cut.origin_len_m);
+          }
+        });
+      }
+    }
   };
 
   // === Extrusions (v1 assumptions) ===
@@ -373,7 +504,7 @@ export function buildMaterialsV1(
         Array.from({ length: timberCommonRafterCountTotal }).map(() => timberSlopeLenPerPlaneM),
         'Timber common rafters',
         'single',
-        { colour: 'Mill', finish: 'raw_mill' },
+        { colour: 'Mill', finish: 'raw_mill', origin_prefix: 'timber_common_rafter' },
       );
     }
   } else if (isHipCorner) {
@@ -385,9 +516,16 @@ export function buildMaterialsV1(
       ],
       'Rafters',
       'single',
+      { origin_prefix: 'rafter' },
     );
   } else {
-    addCuts(inputs.rafter_profile, Array.from({ length: rafterPieceCount }).map(() => rafterLength), 'Rafters', 'single');
+    addCuts(
+      inputs.rafter_profile,
+      Array.from({ length: rafterPieceCount }).map(() => rafterLength),
+      'Rafters',
+      'single',
+      { origin_prefix: 'rafter' },
+    );
   }
 
   if (isHipCorner) {
@@ -396,9 +534,10 @@ export function buildMaterialsV1(
       [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
       'Ledger',
       'joinable',
+      { origin_prefix: 'ledger' },
     );
   } else {
-    addCuts(ledgerProfile, [inputs.length_m], 'Ledger', 'joinable');
+    addCuts(ledgerProfile, [inputs.length_m], 'Ledger', 'joinable', { origin_prefix: 'ledger' });
   }
 
   if ((isTimberRoof || isMixedRoof) && timberEdgeRafterCountTotal > 0) {
@@ -407,7 +546,7 @@ export function buildMaterialsV1(
       Array.from({ length: timberEdgeRafterCountTotal }).map(() => timberSlopeLenPerPlaneM),
       'Timber edge rafters',
       'single',
-      { colour: inputs.extrusion_colour, finish: timberEdgeRafterFinish },
+      { colour: inputs.extrusion_colour, finish: timberEdgeRafterFinish, origin_prefix: 'timber_edge_rafter' },
     );
   }
 
@@ -417,26 +556,44 @@ export function buildMaterialsV1(
     if (!Number.isFinite(pieceLengthM) || pieceLengthM <= 0) {
       warnings.push('Invalid timber purlin length derived; skipping timber purlins.');
     } else {
-    addCuts(
-      TIMBER_PURLIN_PROFILE,
-      Array.from({ length: purlinPieces }).map(() => pieceLengthM),
-      'Timber purlins',
-      'joinable',
-      { colour: 'Mill', finish: 'raw_mill' },
-    );
+      addCuts(
+        TIMBER_PURLIN_PROFILE,
+        Array.from({ length: purlinPieces }).map(() => pieceLengthM),
+        'Timber purlins',
+        'joinable',
+        { colour: 'Mill', finish: 'raw_mill', origin_prefix: 'timber_purlin' },
+      );
     }
   }
 
-  addCuts(postProfile, Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m), 'Posts', 'single');
+  addCuts(
+    postProfile,
+    Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m),
+    'Posts',
+    'single',
+    { origin_prefix: 'post' },
+  );
 
   if (inputs.structure_type === 'pitched') {
     if (gutterMode === 'overhang_gutter_front_edge') {
       if (Number.isFinite(inputs.length_m) && inputs.length_m > 0) {
-        addCuts('Overhang Gutter 100x100', [inputs.length_m, inputs.length_m], 'Overhang gutter (2× stock)', 'joinable');
+        addCuts(
+          'Overhang Gutter 100x100',
+          [inputs.length_m, inputs.length_m],
+          'Overhang gutter (2× stock)',
+          'joinable',
+          { origin_prefix: 'overhang_gutter_run' },
+        );
       }
     } else if (gutterAssemblyMode === 'separate') {
       if (Number.isFinite(separateGutterLengthM) && separateGutterLengthM > 0) {
-        addCuts('Box Gutter 100x100x3', [separateGutterLengthM, separateGutterLengthM], 'Separate gutter (2× stock)', 'joinable');
+        addCuts(
+          'Box Gutter 100x100x3',
+          [separateGutterLengthM, separateGutterLengthM],
+          'Separate gutter (2× stock)',
+          'joinable',
+          { origin_prefix: 'separate_gutter_run' },
+        );
         warnings.push('Separate gutter uses 100x100 cut‑down stock; length doubled to allow for waste.');
       }
     } else if (inputs.gutter_type === 'sp_gutter') {
@@ -446,6 +603,7 @@ export function buildMaterialsV1(
           [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
           'SP gutter',
           'joinable',
+          { origin_prefix: 'sp_gutter_run' },
         );
       } else {
         addCuts(
@@ -453,6 +611,7 @@ export function buildMaterialsV1(
           [inputs.length_m],
           gutterMode === 'sp_gutter_house_edge' ? 'SP gutter (house edge)' : 'SP gutter',
           'joinable',
+          { origin_prefix: 'sp_gutter_run' },
         );
       }
     }
@@ -461,17 +620,27 @@ export function buildMaterialsV1(
   if (inputs.structure_type === 'box_perimeter') {
     addCuts(
       boxBeamProfile,
-      [inputs.length_m, inputs.length_m, inputs.projection_m, inputs.projection_m],
+      [inputs.length_m, inputs.length_m],
       'Box perimeter beams',
       'joinable',
+      { origin_prefix: 'box_beam_sidea' },
+    );
+    addCuts(
+      boxBeamProfile,
+      [inputs.projection_m, inputs.projection_m],
+      'Box perimeter beams',
+      'joinable',
+      { origin_prefix: 'box_beam_sideb' },
     );
     if (inputs.roof_type === 'gable' && Number.isFinite(derived.ridge_length_m) && derived.ridge_length_m > 0 && ridgeBeamProfile) {
-      addCuts(ridgeBeamProfile, [derived.ridge_length_m], 'Ridge beam (box gable)', 'joinable');
+      addCuts(ridgeBeamProfile, [derived.ridge_length_m], 'Ridge beam (box gable)', 'joinable', { origin_prefix: 'ridge_beam' });
     }
     if (inputs.gutter_type === 'box_gutter_100x100_cut') {
       const gutterLength = Math.max(0, Number(inputs.gutter_length_m ?? 0));
       if (gutterLength > 0) {
-        addCuts('Box Gutter 100x100x3', [gutterLength], 'Box perimeter gutter', 'joinable');
+        addCuts('Box Gutter 100x100x3', [gutterLength], 'Box perimeter gutter', 'joinable', {
+          origin_prefix: 'box_gutter_run',
+        });
       }
     }
   }
@@ -483,9 +652,10 @@ export function buildMaterialsV1(
         [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
         'Front beam',
         'joinable',
+        { origin_prefix: 'front_beam' },
       );
     } else if (Number.isFinite(inputs.length_m) && inputs.length_m > 0) {
-      addCuts(frontBeamProfile, [inputs.length_m], 'Front beam', 'joinable');
+      addCuts(frontBeamProfile, [inputs.length_m], 'Front beam', 'joinable', { origin_prefix: 'front_beam' });
     }
   }
 
@@ -496,6 +666,7 @@ export function buildMaterialsV1(
         Array.from({ length: gableEndFrameCount }).map(() => tieBeamLength),
         'Gable tie beam',
         'joinable',
+        { origin_prefix: 'tie_beam' },
       );
     }
     if (strutProfile && kingpostStrutLength > 0) {
@@ -504,16 +675,21 @@ export function buildMaterialsV1(
         Array.from({ length: gableEndFrameCount }).map(() => kingpostStrutLength),
         'King-post strut',
         'joinable',
+        { origin_prefix: 'kingpost_strut' },
       );
     }
   }
 
   if (overhangEnabled) {
     if (overhangSupportBeamProfile && overhangSupportBeamLength > 0) {
-      addCuts(overhangSupportBeamProfile, [overhangSupportBeamLength], 'Overhang support beam', 'joinable');
+      addCuts(overhangSupportBeamProfile, [overhangSupportBeamLength], 'Overhang support beam', 'joinable', {
+        origin_prefix: 'overhang_support_beam',
+      });
     }
     if (overhangStringerProfile && overhangStringerLength > 0) {
-      addCuts(overhangStringerProfile, [overhangStringerLength], 'Overhang end stringer', 'joinable');
+      addCuts(overhangStringerProfile, [overhangStringerLength], 'Overhang end stringer', 'joinable', {
+        origin_prefix: 'overhang_stringer',
+      });
     }
   }
 
@@ -694,10 +870,14 @@ export function buildMaterialsV1(
     const joinerLengthB = isHipCorner ? joinerPieceLengthB : 0;
 
     if (joinerCountA > 0 && joinerLengthA > 0) {
-      addCuts('Joiners', Array.from({ length: joinerCountA }).map(() => joinerLengthA), 'Joiners', 'joinable');
+      addCuts('Joiners', Array.from({ length: joinerCountA }).map(() => joinerLengthA), 'Joiners', 'joinable', {
+        origin_prefix: 'joiner',
+      });
     }
     if (joinerCountB > 0 && joinerLengthB > 0) {
-      addCuts('Joiners', Array.from({ length: joinerCountB }).map(() => joinerLengthB), 'Joiners', 'joinable');
+      addCuts('Joiners', Array.from({ length: joinerCountB }).map(() => joinerLengthB), 'Joiners', 'joinable', {
+        origin_prefix: 'joiner',
+      });
     }
 
     const rubberMultiplier = 2; // both sides
@@ -836,11 +1016,13 @@ export function buildMaterialsV1(
           const planeJoinerPieceLenM = planeRequiredDownslopeM + 0.02;
 
           if (joinerRuns > 0 && planeJoinerPieceLenM > 0) {
+            const planeOriginPrefix = `joiner_mixed_${planeId || planeLabel || 'plane'}`;
             addCuts(
               'Joiners',
               Array.from({ length: joinerRuns }).map(() => planeJoinerPieceLenM),
               `Joiners (${planeLabel}, mixed acrylic bays)`,
               'joinable',
+              { origin_prefix: planeOriginPrefix },
             );
             totalJoinerM += joinerRuns * planeJoinerPieceLenM;
           }
@@ -943,6 +1125,7 @@ export function buildMaterialsV1(
               Array.from({ length: joinerCount }).map(() => joinerLength),
               'Joiners (mixed roof area override; acrylic bays)',
               'joinable',
+              { origin_prefix: 'joiner_mixed_override' },
             );
           }
 
@@ -1059,12 +1242,9 @@ export function buildMaterialsV1(
 
       if (stripCount > 0 && requiredLen > 0) {
         const joinerLines = stripCount * 2;
-        const joinerStock = 6;
-        const joinerCuts: number[] = [];
-        for (let i = 0; i < joinerLines; i += 1) {
-          joinerCuts.push(...splitIntoStockCuts(requiredLen, joinerStock));
-        }
-        if (joinerCuts.length) addCuts('Joiners', joinerCuts, 'Joiners (skylight edges)', 'joinable');
+        const joinerCuts = Array.from({ length: joinerLines }).map(() => requiredLen);
+        if (joinerCuts.length)
+          addCuts('Joiners', joinerCuts, 'Joiners (skylight edges)', 'joinable', { origin_prefix: 'joiner_skylight_edge' });
 
         const rubberMultiplier = 2; // both sides
         const rubberMetres = joinerLines * requiredLen * rubberMultiplier;
@@ -1351,12 +1531,12 @@ export function buildMaterialsV1(
     const powderMult = (selection.bar as any).__powdercoat_multiplier as number | undefined;
     const powderColour = (selection.bar as any).__powdercoat_colour_used as string | undefined;
 
-    for (const cut of group.cuts) {
-      if (cut.join_policy !== 'joinable') continue;
-      const len = Number(cut.length_m ?? 0);
-      if (!Number.isFinite(len) || len <= selection.bar.stock_length_m + 1e-6) continue;
-      spliceJoinCount += Math.max(0, Math.ceil(len / selection.bar.stock_length_m) - 1);
+    let joinCountForGroup = 0;
+    for (const originLen of group.originals_joinable.values()) {
+      if (!Number.isFinite(originLen) || originLen <= selection.bar.stock_length_m + 1e-6) continue;
+      joinCountForGroup += Math.max(0, Math.ceil(originLen / selection.bar.stock_length_m) - 1);
     }
+    spliceJoinCount += joinCountForGroup;
 
     waste_m_by_profile[group.profile] = roundMoney(selection.wasteM);
     bars_by_profile[group.profile] = {
