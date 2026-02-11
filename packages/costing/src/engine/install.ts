@@ -70,6 +70,7 @@ function actionApplies(action: ActionConfig, inputs: InputsNormalizedV1, derived
     slope_directions: (derived as any).slope_direction,
     timber_roof_above_types: (inputs as any).timber_roof_above_type,
     has_our_gutter: boolToString((derived as any).has_our_gutter),
+    has_ledger: boolToString((derived as any).has_ledger),
   };
 
   for (const [key, allowedRaw] of Object.entries(appliesTo)) {

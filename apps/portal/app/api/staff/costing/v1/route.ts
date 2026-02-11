@@ -20,6 +20,7 @@ const HEIGHT_CATEGORIES = ['single_storey', 'two_storey'] as const;
 const GROUND_CONDITIONS = ['easy', 'hard'] as const;
 const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
 const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
+const GABLE_GUTTER_EDGES = ['house', 'our'] as const;
 const OVERHANG_SUPPORT_BEAM_PROFILES = ['150x50', '200x50'] as const;
 const POWDERCOAT_STANDARD_COLOURS = [
   'Ironsands',
@@ -133,6 +134,12 @@ export async function POST(req: Request) {
   }
   if (body.box_gutter_far_edge !== undefined && !isOneOf(BOX_GUTTER_EDGES, body.box_gutter_far_edge)) {
     return badRequest('Invalid box_gutter_far_edge');
+  }
+  if (body.gable_house_edge_gutter !== undefined && !isOneOf(GABLE_GUTTER_EDGES, body.gable_house_edge_gutter)) {
+    return badRequest('Invalid gable_house_edge_gutter');
+  }
+  if (body.gable_outer_edge_gutter !== undefined && !isOneOf(GABLE_GUTTER_EDGES, body.gable_outer_edge_gutter)) {
+    return badRequest('Invalid gable_outer_edge_gutter');
   }
   if (body.overhang_enabled !== undefined && typeof body.overhang_enabled !== 'boolean') {
     return badRequest('overhang_enabled must be a boolean');
@@ -306,6 +313,8 @@ export async function POST(req: Request) {
     downpipe_elbow_count,
     box_gutter_house_edge: body.box_gutter_house_edge,
     box_gutter_far_edge: body.box_gutter_far_edge,
+    gable_house_edge_gutter: body.gable_house_edge_gutter,
+    gable_outer_edge_gutter: body.gable_outer_edge_gutter,
     overhang_enabled: body.overhang_enabled === true,
     overhang_amount_m,
     overhang_support_beam_profile: body.overhang_support_beam_profile,

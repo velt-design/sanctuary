@@ -311,6 +311,24 @@ function nextWorkdayAfter(ymd: string): string {
   return d;
 }
 
+function snapToWeekdayYmd(ymd: string): string {
+  const dt = parseYmd(ymd);
+  if (!dt) return ymd;
+  const day = dt.getUTCDay(); // 0 Sun, 6 Sat
+  if (day !== 0 && day !== 6) return ymd;
+
+  // snap forward to Monday
+  let d = ymd;
+  for (let i = 0; i < 3; i += 1) {
+    d = addDaysYmd(d, 1);
+    const nd = parseYmd(d);
+    if (!nd) return d;
+    const dow = nd.getUTCDay();
+    if (dow !== 0 && dow !== 6) return d;
+  }
+  return d;
+}
+
 function formatShortDate(ymd: string): string {
   const dt = parseYmd(ymd);
   if (!dt) return ymd;
@@ -395,6 +413,176 @@ function getJobDescriptorFromEstimate(estimate: Estimate): string {
     return `${base}${dims}${pitchLabel}`;
   }
   return '—';
+}
+
+function renormalizeLane(items: ScheduleItem[], installerId: string): ScheduleItem[] {
+  const lane = items
+    .filter((i) => i.installerId === installerId)
+    .slice()
+    .sort((a, b) => a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt));
+
+  const laneIds = new Set(lane.map((i) => i.id));
+  const others = items.filter((i) => !laneIds.has(i.id));
+
+  const now = new Date().toISOString();
+  const normalizedLane = lane.map((it, idx) => (it.sortIndex === idx ? it : { ...it, sortIndex: idx, updatedAt: now }));
+
+  return [...others, ...normalizedLane];
+}
+
+function optimisticReorderCrew(items: ScheduleItem[], installerId: string, orderedIds: string[]): ScheduleItem[] {
+  const now = new Date().toISOString();
+
+  // keep only ids that exist in this lane
+  const laneSet = new Set(items.filter((i) => i.installerId === installerId).map((i) => i.id));
+  const nextLane = orderedIds.filter((id) => laneSet.has(id));
+
+  const nextItems = items.map((i) => {
+    if (i.installerId !== installerId) return i;
+    const pos = nextLane.indexOf(i.id);
+    if (pos < 0) return i;
+    return i.sortIndex === pos ? i : { ...i, sortIndex: pos, updatedAt: now };
+  });
+
+  return renormalizeLane(nextItems, installerId);
+}
+
+function optimisticMoveBetweenCrews(
+  items: ScheduleItem[],
+  activeId: string,
+  fromInstallerId: string,
+  toInstallerId: string,
+  insertAt: number,
+): ScheduleItem[] {
+  const now = new Date().toISOString();
+
+  const source = items
+    .filter((i) => i.installerId === fromInstallerId)
+    .slice()
+    .sort((a, b) => a.sortIndex - b.sortIndex);
+
+  const dest = items
+    .filter((i) => i.installerId === toInstallerId)
+    .slice()
+    .sort((a, b) => a.sortIndex - b.sortIndex);
+
+  const moving = items.find((i) => i.id === activeId);
+  if (!moving) return items;
+
+  const nextSourceIds = source.map((i) => i.id).filter((id) => id !== activeId);
+  const nextDestIds = dest.map((i) => i.id);
+  nextDestIds.splice(Math.max(0, Math.min(insertAt, nextDestIds.length)), 0, activeId);
+
+  const next = items.map((i) => {
+    if (i.id === activeId) {
+      return { ...i, installerId: toInstallerId, updatedAt: now };
+    }
+    return i;
+  });
+
+  // assign indices for affected lanes
+  const byId = new Map(next.map((i) => [i.id, i] as const));
+  for (let idx = 0; idx < nextSourceIds.length; idx += 1) {
+    const it = byId.get(nextSourceIds[idx]);
+    if (it && it.sortIndex !== idx) byId.set(it.id, { ...it, sortIndex: idx, updatedAt: now });
+  }
+  for (let idx = 0; idx < nextDestIds.length; idx += 1) {
+    const it = byId.get(nextDestIds[idx]);
+    if (!it) continue;
+    const installerId = it.id === activeId ? toInstallerId : it.installerId;
+    const updated = { ...it, installerId, sortIndex: idx, updatedAt: now };
+    byId.set(it.id, updated);
+  }
+
+  return Array.from(byId.values());
+}
+
+function optimisticAssignUnscheduled(
+  items: ScheduleItem[],
+  job: SchedulableJob,
+  installerId: string,
+  insertAt: number,
+): ScheduleItem[] {
+  const now = new Date().toISOString();
+  const tmpId = `tmp_${newId('sch')}`;
+
+  const lane = items
+    .filter((i) => i.installerId === installerId)
+    .slice()
+    .sort((a, b) => a.sortIndex - b.sortIndex);
+
+  const nextLaneIds = lane.map((i) => i.id);
+  nextLaneIds.splice(Math.max(0, Math.min(insertAt, nextLaneIds.length)), 0, tmpId);
+
+  const tmp: ScheduleItem = {
+    id: tmpId,
+    installerId,
+    projectId: job.projectId,
+    estimateId: job.estimateId,
+    sortIndex: insertAt,
+    scheduleStatus: 'TENTATIVE',
+    locked: false,
+    updatedAt: now,
+    itemType: 'job',
+    // keep date fields blank; board move is the priority
+    forecastStart: null,
+    forecastEndExclusive: null,
+    forecastDurationDays: Math.max(1, Math.round(job.durationHours / WORK_HOURS_PER_DAY)),
+    durationHoursOverride: job.durationHours,
+    mode: 'floating',
+    scheduledJobId: null as any,
+  };
+
+  const next = [...items, tmp];
+
+  // renormalize that lane indices
+  const byId = new Map(next.map((i) => [i.id, i] as const));
+  for (let idx = 0; idx < nextLaneIds.length; idx += 1) {
+    const it = byId.get(nextLaneIds[idx]);
+    if (!it) continue;
+    byId.set(it.id, { ...it, sortIndex: idx, updatedAt: now });
+  }
+
+  return Array.from(byId.values());
+}
+
+function optimisticUnassign(
+  items: ScheduleItem[],
+  unscheduledSeed: SchedulableJob[],
+  scheduleItemId: string,
+  projectsById: Map<string, Project>,
+): { items: ScheduleItem[]; unscheduledSeed: SchedulableJob[] } {
+  const it = items.find((i) => i.id === scheduleItemId);
+  if (!it || it.itemType === 'downtime') return { items, unscheduledSeed };
+
+  const project = projectsById.get(it.projectId) ?? null;
+  const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
+  const status = project?.status ?? 'NEW';
+
+  const durationDays =
+    typeof it.forecastDurationDays === 'number' && it.forecastDurationDays > 0
+      ? it.forecastDurationDays
+      : Math.max(1, Math.ceil((it.durationHoursOverride ?? WORK_HOURS_PER_DAY) / WORK_HOURS_PER_DAY));
+
+  const durationHours = durationDays * WORK_HOURS_PER_DAY;
+
+  const back: SchedulableJob = {
+    id: makeJobId(it.projectId, it.estimateId),
+    projectId: it.projectId,
+    estimateId: it.estimateId,
+    projectName,
+    descriptor: '',
+    status: normalizeProjectStatus(status).status,
+    durationHours,
+    durationLabel: formatDuration(durationHours),
+    durationTitle: formatHours(durationHours),
+    warnings: [],
+  };
+
+  return {
+    items: items.filter((x) => x.id !== scheduleItemId),
+    unscheduledSeed: [...unscheduledSeed, back].sort((a, b) => a.projectName.localeCompare(b.projectName)),
+  };
 }
 
 function LaneDropZone({
@@ -792,6 +980,10 @@ export default function ScheduleClient() {
   const laneBodyRefs = useRef(new Map<string, HTMLDivElement | null>());
   const unscheduledBodyRef = useRef<HTMLDivElement | null>(null);
   const hydratedFromCacheRef = useRef(false);
+  const scheduleItemsRef = useRef<ScheduleItem[]>([]);
+  const unscheduledJobsSeedRef = useRef<SchedulableJob[]>([]);
+  const scheduleConflictsRef = useRef<any[]>([]);
+  const nextAvailRef = useRef<Map<string, string>>(new Map());
 
   const today = useMemo(() => todayYmd(), []);
 
@@ -879,6 +1071,45 @@ export default function ScheduleClient() {
   const ganttDragDeltaRef = useRef(0);
   const ganttDragMovedRef = useRef(false);
   const ganttClickBlockUntilRef = useRef(0);
+
+  useEffect(() => {
+    scheduleItemsRef.current = scheduleItems;
+  }, [scheduleItems]);
+
+  useEffect(() => {
+    unscheduledJobsSeedRef.current = unscheduledJobsSeed;
+  }, [unscheduledJobsSeed]);
+
+  useEffect(() => {
+    scheduleConflictsRef.current = scheduleConflicts;
+  }, [scheduleConflicts]);
+
+  useEffect(() => {
+    nextAvailRef.current = nextAvailableByInstallerId;
+  }, [nextAvailableByInstallerId]);
+
+  type ScheduleLocalSnapshot = {
+    scheduleItems: ScheduleItem[];
+    unscheduledJobsSeed: SchedulableJob[];
+    scheduleConflicts: any[];
+    nextAvailableByInstallerId: Map<string, string>;
+  };
+
+  function takeLocalSnapshot(): ScheduleLocalSnapshot {
+    return {
+      scheduleItems: scheduleItemsRef.current,
+      unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+      scheduleConflicts: scheduleConflictsRef.current,
+      nextAvailableByInstallerId: nextAvailRef.current,
+    };
+  }
+
+  function restoreLocalSnapshot(s: ScheduleLocalSnapshot) {
+    setScheduleItems(s.scheduleItems);
+    setUnscheduledJobsSeed(s.unscheduledJobsSeed);
+    setScheduleConflicts(s.scheduleConflicts);
+    setNextAvailableByInstallerId(s.nextAvailableByInstallerId);
+  }
 
   const setScheduleView = (next: 'board' | 'gantt' | 'site_visits') => {
     const qs = new URLSearchParams(searchParams.toString());
@@ -1979,24 +2210,75 @@ export default function ScheduleClient() {
       const todayValue = todayRef.current;
 
       if (ganttDrag.mode === 'move') {
-        const nextStart = addDaysYmd(ganttDrag.startDate, deltaDays);
-        void runWithCommitConfirmationRef.current(
-          (force) => pinJob({ job_id: jobUuid, requested_start_date: nextStart, force, today: todayValue }),
-          { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
+        const snap = takeLocalSnapshot();
+        const requested = addDaysYmd(ganttDrag.startDate, deltaDays);
+        const snapped = snapToWeekdayYmd(requested);
+
+        setScheduleItems((prev) =>
+          prev.map((it) => {
+            if (it.id !== ganttDrag.id) return it;
+            if (it.itemType === 'downtime') return it;
+            const dur = Math.max(1, ganttDrag.durationDays);
+            const endExcl = addDaysYmd(snapped, dur);
+            return {
+              ...it,
+              mode: 'pinned',
+              forecastStart: snapped,
+              forecastEndExclusive: endExcl,
+              forecastDurationDays: dur,
+              startDateOverride: snapped,
+              durationHoursOverride: dur * WORK_HOURS_PER_DAY,
+              updatedAt: new Date().toISOString(),
+            };
+          }),
         );
+
+        void (async () => {
+          const ok = await runWithCommitConfirmationRef.current(
+            (force) => pinJob({ job_id: jobUuid, requested_start_date: snapped, force, today: todayValue }),
+            { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
+          );
+          if (!ok) restoreLocalSnapshot(snap);
+        })();
         return;
       }
 
+      const snap = takeLocalSnapshot();
       const nextDuration = Math.max(1, ganttDrag.durationDays + deltaDays);
+      const baseStart = item.forecastStart ?? ganttDrag.startDate;
+      const snappedStart = snapToWeekdayYmd(baseStart);
+
+      setScheduleItems((prev) =>
+        prev.map((it) => {
+          if (it.id !== ganttDrag.id) return it;
+          if (it.itemType === 'downtime') return it;
+          const endExcl = addDaysYmd(snappedStart, nextDuration);
+          return {
+            ...it,
+            mode: 'pinned',
+            forecastStart: snappedStart,
+            forecastEndExclusive: endExcl,
+            forecastDurationDays: nextDuration,
+            startDateOverride: snappedStart,
+            durationHoursOverride: nextDuration * WORK_HOURS_PER_DAY,
+            updatedAt: new Date().toISOString(),
+          };
+        }),
+      );
+
       void (async () => {
         const ok = await runWithCommitConfirmationRef.current(
           (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDuration, force, today: todayValue }),
           { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
         );
-        if (!ok) return;
-        if (item.mode === 'pinned') return;
+        if (!ok) {
+          restoreLocalSnapshot(snap);
+          return;
+        }
+
+        // server pins too (keep consistent). If this fails, rollback is not required; refetch will correct.
         await runWithCommitConfirmationRef.current(
-          (force) => pinJob({ job_id: jobUuid, requested_start_date: ganttDrag.startDate, force, today: todayValue }),
+          (force) => pinJob({ job_id: jobUuid, requested_start_date: snappedStart, force, today: todayValue }),
           { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
         );
       })();
@@ -2120,36 +2402,35 @@ export default function ScheduleClient() {
     }
   }
 
-  async function handleUnschedule(id: string) {
+  async function handleUnschedule(id: string): Promise<boolean> {
     if (scheduleMode === 'v2') {
       const item = scheduleItemById.get(id) ?? null;
-      if (!item || item.itemType === 'downtime') return;
+      if (!item || item.itemType === 'downtime') return false;
       const status = scheduleStatusById.get(id) ?? 'TENTATIVE';
       if (isLockedScheduleStatus(status) && typeof window !== 'undefined') {
         const ok = window.confirm(`This job is ${scheduleStatusLabel(status)}. Unschedule anyway?`);
-        if (!ok) return;
+        if (!ok) return false;
       }
       let projectUuid: string;
       try {
         projectUuid = uuidFromAppId(item.projectId, 'proj');
       } catch {
         toast.error('Invalid project ID for unscheduling.');
-        return;
+        return false;
       }
-      await runWithCommitConfirmation((force) => unassignJob({ job_id: projectUuid, force, today }), {
+      return await runWithCommitConfirmation((force) => unassignJob({ job_id: projectUuid, force, today }), {
         successToast: 'Job unscheduled.',
         errorToast: 'Failed to unschedule job.',
       });
-      return;
     }
 
     const status = scheduleStatusById.get(id) ?? 'TENTATIVE';
     if (isLockedScheduleStatus(status) && typeof window !== 'undefined') {
       const ok = window.confirm(`This job is ${scheduleStatusLabel(status)}. Unschedule anyway?`);
-      if (!ok) return;
+      if (!ok) return false;
     }
     const next = scheduleItems.filter((i) => i.id !== id);
-    await persist(next, { successToast: 'Job unscheduled.', errorToast: 'Failed to unschedule job.' });
+    return await persist(next, { successToast: 'Job unscheduled.', errorToast: 'Failed to unschedule job.' });
   }
 
   async function handleConfirmSchedule(id: string) {
@@ -2424,7 +2705,18 @@ export default function ScheduleClient() {
 
     if (scheduleMode === 'v2') {
       if (overId === 'unscheduled') {
-        if (isScheduled) void handleUnschedule(activeId);
+        if (!isScheduled) return;
+
+        const snap = takeLocalSnapshot();
+        const optimistic = optimisticUnassign(scheduleItemsRef.current, unscheduledJobsSeedRef.current, activeId, projectsById);
+        setScheduleItems(optimistic.items);
+        setUnscheduledJobsSeed(optimistic.unscheduledSeed);
+
+        void (async () => {
+          const ok = await handleUnschedule(activeId);
+          if (!ok) restoreLocalSnapshot(snap);
+        })();
+
         return;
       }
 
@@ -2449,10 +2741,21 @@ export default function ScheduleClient() {
           toast.error('Failed to map job/crew IDs for scheduling.');
           return;
         }
-        void runWithCommitConfirmation(
-          (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex < 0 ? existing.length : destIndex, force, today }),
-          { successToast: 'Job scheduled.', errorToast: 'Failed to schedule job.' },
-        );
+
+        const snap = takeLocalSnapshot();
+
+        // optimistic UI
+        setScheduleItems((prev) => optimisticAssignUnscheduled(prev, job, destInstallerId, destIndex));
+        setUnscheduledJobsSeed((prev) => prev.filter((j) => j.id !== activeId));
+
+        void (async () => {
+          const ok = await runWithCommitConfirmation(
+            (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex < 0 ? existing.length : destIndex, force, today }),
+            { successToast: 'Job scheduled.', errorToast: 'Failed to schedule job.' },
+          );
+
+          if (!ok) restoreLocalSnapshot(snap);
+        })();
         return;
       }
 
@@ -2511,10 +2814,19 @@ export default function ScheduleClient() {
             return null;
           }
         }).filter(Boolean) as string[];
-        void runWithCommitConfirmation(
-          (force) => reorderScheduleItemsV2({ crew_id: crewUuid, ordered_item_ids: ordered, force, today }),
-          { successToast: 'Schedule updated.', errorToast: 'Failed to reorder schedule.' },
-        );
+
+        const snap = takeLocalSnapshot();
+
+        // optimistic reorder
+        setScheduleItems((prev) => optimisticReorderCrew(prev, destInstallerId, nextDest));
+
+        void (async () => {
+          const ok = await runWithCommitConfirmation(
+            (force) => reorderScheduleItemsV2({ crew_id: crewUuid, ordered_item_ids: ordered, force, today }),
+            { successToast: 'Schedule updated.', errorToast: 'Failed to reorder schedule.' },
+          );
+          if (!ok) restoreLocalSnapshot(snap);
+        })();
         return;
       }
 
@@ -2529,10 +2841,17 @@ export default function ScheduleClient() {
           toast.error('Failed to map job/crew IDs for move.');
           return;
         }
-        void runWithCommitConfirmation(
-          (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
-          { successToast: 'Job moved.', errorToast: 'Failed to move job.' },
-        );
+
+        const snap = takeLocalSnapshot();
+        setScheduleItems((prev) => optimisticMoveBetweenCrews(prev, activeId, sourceInstallerId, destInstallerId, insertAt));
+
+        void (async () => {
+          const ok = await runWithCommitConfirmation(
+            (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
+            { successToast: 'Job moved.', errorToast: 'Failed to move job.' },
+          );
+          if (!ok) restoreLocalSnapshot(snap);
+        })();
       }
       return;
     }

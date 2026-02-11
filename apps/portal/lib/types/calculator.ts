@@ -62,6 +62,8 @@ export type CalculatorModuleInputs = {
   fallDistanceMm: string;
   roofPitchDeg: string;
   gableEndFramesMode: 'none' | 'outer_end_only' | 'both_ends';
+  gableHouseEdgeGutter: 'house' | 'our';
+  gableOuterEdgeGutter: 'house' | 'our';
   boxGutterHouseEdge: 'house' | 'our' | 'none';
   boxGutterFarEdge: 'house' | 'our' | 'none';
   downpipeCount: string;
@@ -231,6 +233,8 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         internalRoofType: legacy.internalRoofType,
         fallDistanceMm: legacy.fallDistanceMm,
         roofPitchDeg: legacy.roofPitchDeg,
+        gableHouseEdgeGutter: legacy.houseConnectionType === 'none' ? 'our' : 'house',
+        gableOuterEdgeGutter: 'our',
         gableEndFramesMode: legacy.houseConnectionType !== 'none' ? 'outer_end_only' : 'both_ends',
         boxGutterHouseEdge: legacy.boxGutterHouseEdge ?? 'house',
         boxGutterFarEdge: legacy.boxGutterFarEdge ?? 'our',

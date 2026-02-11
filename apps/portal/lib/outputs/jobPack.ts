@@ -222,6 +222,8 @@ function getFirstModule(inputs: CalculatorInputs | LegacyCalculatorInputsV1): Ca
       internalRoofType: inputs.internalRoofType,
       fallDistanceMm: inputs.fallDistanceMm,
       roofPitchDeg: inputs.roofPitchDeg,
+      gableHouseEdgeGutter: inputs.houseConnectionType === 'none' ? 'our' : 'house',
+      gableOuterEdgeGutter: 'our',
       gableEndFramesMode: inputs.houseConnectionType !== 'none' ? 'outer_end_only' : 'both_ends',
       boxGutterHouseEdge: inputs.boxGutterHouseEdge ?? 'house',
       boxGutterFarEdge: inputs.boxGutterFarEdge ?? 'our',
