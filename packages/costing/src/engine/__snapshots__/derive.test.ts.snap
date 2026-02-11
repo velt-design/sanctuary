@@ -1,0 +1,7 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`normalizeAndDeriveV1 (rafter spacing) > non-acrylic roofs keep rafter_count behavior (snapshot) 1`] = `
+{
+  "rafter_count": 6,
+}
+`;
