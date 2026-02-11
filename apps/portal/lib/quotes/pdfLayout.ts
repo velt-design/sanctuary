@@ -22,9 +22,10 @@ export type TotalsBounds = BoundsX & {
 
 export type RuleStyle = { width: number; color: Color };
 
-export const RULE_TIER1: RuleStyle = { width: 0.75, color: rgbFromHex('#D0D0D0') };
+export const RULE_TIER1: RuleStyle = { width: 1.0, color: rgbFromHex('#C9C9C9') };
 export const RULE_TIER2: RuleStyle = { width: 0.5, color: rgbFromHex('#D8D8D8') };
 export const RULE_TIER3: RuleStyle = { width: 0.5, color: rgbFromHex('#E0E0E0') };
+export const RULE_TABLE_HEADER: RuleStyle = { width: 0.85, color: rgbFromHex('#CFCFCF') };
 
 export type RuleKind =
   | 'itemsHeaderUnderline'
@@ -34,7 +35,7 @@ export type RuleKind =
   | 'totalsBelowTotal';
 
 const RULE_KIND_STYLE: Record<RuleKind, RuleStyle> = {
-  itemsHeaderUnderline: RULE_TIER2,
+  itemsHeaderUnderline: RULE_TABLE_HEADER,
   itemsRowSeparator: RULE_TIER2,
   totalsCeiling: RULE_TIER1,
   totalsAboveTotal: RULE_TIER3,

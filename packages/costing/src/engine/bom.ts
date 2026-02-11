@@ -478,6 +478,7 @@ export function buildMaterialsV1(
   const timberEdgeRafterFinish: FinishMode = timberEdgeRafterFinishRaw === 'raw_mill' ? 'raw_mill' : 'default';
 
   const ledgerProfile = String((derived as any).ledger_profile_used ?? '100x50');
+  const ledgerLengthM = Math.max(0, Number((derived as any).ledger_length_m ?? 0));
   const frontBeamProfile = String((derived as any).front_beam_profile_used ?? '');
   const tieBeamProfile = String((derived as any).tie_beam_profile_used ?? '');
   const strutProfile = String((derived as any).strut_profile_used ?? '');
@@ -528,16 +529,18 @@ export function buildMaterialsV1(
     );
   }
 
-  if (isHipCorner) {
-    addCuts(
-      ledgerProfile,
-      [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
-      'Ledger',
-      'joinable',
-      { origin_prefix: 'ledger' },
-    );
-  } else {
-    addCuts(ledgerProfile, [inputs.length_m], 'Ledger', 'joinable', { origin_prefix: 'ledger' });
+  if (ledgerLengthM > 0) {
+    if (isHipCorner) {
+      addCuts(
+        ledgerProfile,
+        [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
+        'Ledger',
+        'joinable',
+        { origin_prefix: 'ledger' },
+      );
+    } else {
+      addCuts(ledgerProfile, [ledgerLengthM], 'Ledger', 'joinable', { origin_prefix: 'ledger' });
+    }
   }
 
   if ((isTimberRoof || isMixedRoof) && timberEdgeRafterCountTotal > 0) {
@@ -606,13 +609,26 @@ export function buildMaterialsV1(
           { origin_prefix: 'sp_gutter_run' },
         );
       } else {
-        addCuts(
-          'SP Gutter',
-          [inputs.length_m],
-          gutterMode === 'sp_gutter_house_edge' ? 'SP gutter (house edge)' : 'SP gutter',
-          'joinable',
-          { origin_prefix: 'sp_gutter_run' },
-        );
+        const runCountRaw = Number((derived as any).sp_gutter_run_count ?? NaN);
+        const runCount =
+          Number.isFinite(runCountRaw) && runCountRaw >= 0 ? Math.round(runCountRaw) : 1;
+        if (runCount === 1) {
+          addCuts(
+            'SP Gutter',
+            [inputs.length_m],
+            gutterMode === 'sp_gutter_house_edge' ? 'SP gutter (house edge)' : 'SP gutter',
+            'joinable',
+            { origin_prefix: 'sp_gutter_run' },
+          );
+        } else if (runCount >= 2) {
+          addCuts(
+            'SP Gutter',
+            [inputs.length_m, inputs.length_m],
+            'SP gutter (2 eaves)',
+            'joinable',
+            { origin_prefix: 'sp_gutter_run' },
+          );
+        }
       }
     }
   }
@@ -805,7 +821,18 @@ export function buildMaterialsV1(
         let sheetsNeeded = 0;
         let sheetNote = '';
 
-        if (sheetQtyMode === 'plan') {
+        const forceStripYield = requiredLen > sheetWidthM + 1e-6;
+
+        if (forceStripYield) {
+          const STRIP_WIDTH_M = 0.62;
+          const stripsPerSheet = Math.floor(sheetWidthM / STRIP_WIDTH_M);
+          if (stripsPerSheet < 1) {
+            warnings.push('INVALID: Acrylic sheet strip yield invalid (sheet width too small for 620mm strips).');
+            return;
+          }
+          sheetsNeeded = Math.max(0, Math.ceil(totalBays / stripsPerSheet));
+          sheetNote = `forced strip-yield: ${totalBays} bay(s), ${stripsPerSheet} strips/sheet → ${sheetsNeeded} sheet(s)`;
+        } else if (sheetQtyMode === 'plan') {
           const totalAreaM2 = Number(opts.totalAreaM2);
           if (Number.isFinite(totalAreaM2) && totalAreaM2 > 0) {
             const sheetAreaM2 = Math.max(0.01, sheetLengthM * sheetWidthM);
@@ -832,6 +859,7 @@ export function buildMaterialsV1(
         if (sheetsNeeded > 0) {
           const unitCost = (plexiSheetClear as any).cost_ex_gst as number;
           const id = opts.idSuffix ? `${plexiSheetClear.id}.${opts.idSuffix}` : plexiSheetClear.id;
+          const sheetQtyModeLabel = forceStripYield ? 'forced strip-yield' : sheetQtyMode;
           lines.push({
             id,
             label: plexiSheetClear.name,
@@ -840,7 +868,9 @@ export function buildMaterialsV1(
             qty: sheetsNeeded,
             unit_cost_ex_gst: roundMoney(unitCost),
             line_cost_ex_gst: roundMoney(sheetsNeeded * unitCost),
-            notes: `${opts.note} Using sheet mode (${sheetQtyMode}): plane_downslope ${roundMoney(requiredLen)}m ≤ ${roundMoney(sheetLengthM)}m; ${sheetNote}.`,
+            notes: `${opts.note} Using sheet mode (${sheetQtyModeLabel}): plane_downslope ${roundMoney(
+              requiredLen,
+            )}m ≤ ${roundMoney(sheetLengthM)}m; ${sheetNote}.`,
           });
           return;
         }

@@ -464,6 +464,9 @@
       "applies_to": {
         "structure_types": [
           "pitched"
+        ],
+        "has_ledger": [
+          "true"
         ]
       },
       "apply_multipliers": [
@@ -476,11 +479,11 @@
     {
       "id": "frame.front_beam_sp_gutter_install_m",
       "category": "Frame",
-      "label": "Install front beam SP gutter - per metre",
+      "label": "Install SP gutter run - per metre",
       "unit": "metre",
       "quantity": {
         "type": "driver",
-        "key": "derived.length_m"
+        "key": "derived.our_gutter_length_m"
       },
       "base_minutes": 8,
       "applies_to": {
