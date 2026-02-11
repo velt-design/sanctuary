@@ -5,7 +5,5 @@ export default async function PricebookLayout({ children }: { children: React.Re
   const session = await getPortalSession();
   if (!session) redirect('/login?callbackUrl=/pricebook');
 
-  if (session.role !== 'admin') redirect('/staff/calculator');
-
   return children;
 }

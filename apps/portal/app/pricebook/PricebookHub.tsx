@@ -20,6 +20,7 @@ type PricebookHubProps = {
   overheads: unknown;
   materialOverrides: Record<string, number>;
   actionOverrides: Record<string, number>;
+  isAdmin: boolean;
 };
 
 type TabKey = 'materials' | 'actions' | 'overheads';
@@ -95,7 +96,7 @@ export default function PricebookHub(props: PricebookHubProps) {
           sourceFile={props.materialsSourceFile}
           items={props.materials}
           overrides={props.materialOverrides}
-          isAdmin
+          isAdmin={props.isAdmin}
           showNav={false}
         />
       </div>
@@ -110,7 +111,7 @@ export default function PricebookHub(props: PricebookHubProps) {
           sourceFile={props.actionsSourceFile}
           actions={props.actions}
           overrides={props.actionOverrides}
-          isAdmin
+          isAdmin={props.isAdmin}
           showNav={false}
         />
       </div>

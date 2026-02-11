@@ -1,3 +1,4 @@
+import { getPortalSession } from '@/lib/auth';
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
 import { ACTIVE_COSTING_MANIFEST_PATH } from '@sp/costing';
 import PricebookHub from './PricebookHub';
@@ -5,6 +6,8 @@ import PricebookHub from './PricebookHub';
 export const runtime = 'nodejs';
 
 export default async function PricebookPage() {
+  const session = await getPortalSession();
+  const isAdmin = session?.role === 'admin';
   const { config, overrides } = await getCostingConfigWithOverrides();
   const files = config.manifest.files;
 
@@ -19,6 +22,7 @@ export default async function PricebookPage() {
       overheads={config.overheads as any}
       materialOverrides={overrides.materialCostOverrides}
       actionOverrides={overrides.actionMinutesOverrides}
+      isAdmin={isAdmin}
     />
   );
 }
