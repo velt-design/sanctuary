@@ -2,8 +2,8 @@
   "version": "v1.5",
   "currency": "NZD",
   "basis": {
-    "crew_hour_rate_ex_gst": 110.0,
-    "crew_hour_rate_inc_gst": 126.5,
+    "crew_hour_rate_ex_gst": 100.0,
+    "crew_hour_rate_inc_gst": 115.0,
     "notes": [
       "Crew-hour model: contractor payout cost is based on total crew time, not crew size.",
       "All minutes are starting assumptions to be tuned over time.",

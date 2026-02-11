@@ -215,8 +215,8 @@ export function buildInstallV1(
   const scope = opts?.scope ?? 'all';
   const excluded = new Set(opts?.excludeActionIds ?? []);
 
-  const crewRateExGst = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 110);
-  if (!Number.isFinite(crewRateExGst) || crewRateExGst <= 0) warnings.push('Invalid crew hour rate in install actions config; defaulting to 110.');
+  const crewRateExGst = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 100);
+  if (!Number.isFinite(crewRateExGst) || crewRateExGst <= 0) warnings.push('Invalid crew hour rate in install actions config; defaulting to 100.');
 
   const actionsOut: InstallActionV1[] = [];
 
@@ -281,8 +281,8 @@ export function buildDayCycleActions(
   const warnings: string[] = [];
   const actionsOut: InstallActionV1[] = [];
 
-  const crewRateExGst = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 110);
-  if (!Number.isFinite(crewRateExGst) || crewRateExGst <= 0) warnings.push('Invalid crew hour rate in install actions config; defaulting to 110.');
+  const crewRateExGst = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 100);
+  if (!Number.isFinite(crewRateExGst) || crewRateExGst <= 0) warnings.push('Invalid crew hour rate in install actions config; defaulting to 100.');
 
   const qty = Number.isFinite(siteDays) && siteDays > 0 ? Math.round(siteDays) : 0;
   if (qty <= 0) {
