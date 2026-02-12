@@ -53,6 +53,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const push = useCallback(
     (kind: ToastKind, message: string) => {
+      // Site-wide policy: only show error toasts (success/info are intentionally suppressed).
+      if (kind !== 'error') return;
+
       const trimmed = String(message ?? '').trim();
       if (!trimmed) return;
       const id = newToastId();
@@ -62,7 +65,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         return next.slice(0, 5);
       });
 
-      const handle = window.setTimeout(() => remove(id), kind === 'error' ? 6000 : 3500);
+      const handle = window.setTimeout(() => remove(id), 6000);
       timers.current.set(id, handle);
     },
     [remove],
@@ -112,4 +115,3 @@ export function useToast(): ToastApi {
   if (!ctx) throw new Error('useToast must be used within <ToastProvider>.');
   return ctx;
 }
-
