@@ -229,6 +229,9 @@ const LEDGER_PROFILE_OPTIONS: FieldOption[] = [
 ];
 const POST_PROFILE_OPTIONS: FieldOption[] = [
   DEFAULT_OVERRIDE_OPTION,
+  { label: '80x50', value: '80x50' },
+  { label: '100x50', value: '100x50' },
+  { label: '150x100', value: '150x100' },
   { label: '100x100', value: '100x100' },
   { label: '150x150', value: '150x150' },
 ];

@@ -321,8 +321,20 @@ function selectBestStock(
     totalCost: number;
     costPerM: number;
     isExactFit: boolean;
+    spliceJoins: number;
   };
   const evaluated: Candidate[] = [];
+  const computeSpliceJoins = (stockLen: number): number => {
+    if (!Number.isFinite(stockLen) || stockLen <= 0) return 0;
+    let joins = 0;
+    for (const cut of cuts) {
+      if (cut.join_policy !== 'joinable') continue;
+      const originLen = Number(cut.origin_len_m ?? cut.length_m ?? 0);
+      if (!Number.isFinite(originLen) || originLen <= 0) continue;
+      if (originLen > stockLen + EPS) joins += Math.max(0, Math.ceil(originLen / stockLen) - 1);
+    }
+    return joins;
+  };
 
   const candidates = bars
     .filter((b) => preferred.includes(b.stock_length_m))
@@ -343,8 +355,9 @@ function selectBestStock(
     const totalCost = barsUsed * unitCost;
     const costPerM = unitCost / Math.max(bar.stock_length_m, 0.0001);
     const isExactFit = hasContinuousRun && Array.from(targets).some((t) => Math.abs(t - bar.stock_length_m) <= EPS);
+    const spliceJoins = computeSpliceJoins(bar.stock_length_m);
 
-    evaluated.push({ bar, barsUsed, wasteM, totalCost, costPerM, isExactFit });
+    evaluated.push({ bar, barsUsed, wasteM, totalCost, costPerM, isExactFit, spliceJoins });
   }
 
   if (!evaluated.length) return { bar: null, barsUsed: 0, wasteM: 0 };
@@ -356,6 +369,12 @@ function selectBestStock(
     const candidate = evaluated[i];
 
     if (hasContinuousRun) {
+      if (candidate.spliceJoins < best.spliceJoins) {
+        best = candidate;
+        continue;
+      }
+      if (candidate.spliceJoins > best.spliceJoins) continue;
+
       if (anyExactFit) {
         if (candidate.isExactFit && !best.isExactFit) {
           best = candidate;
@@ -418,15 +437,17 @@ function selectBestStock(
         total_cost_ex_gst: roundMoney(candidate.totalCost),
         cost_per_m: roundMoney(candidate.costPerM),
         is_exact_fit: candidate.isExactFit,
+        splice_joins: candidate.spliceJoins,
       })),
       chosen: {
         item_id: String(best.bar.id),
         stock_length_m: best.bar.stock_length_m,
         bars_used: best.barsUsed,
         waste_m: roundMoney(best.wasteM),
+        splice_joins: best.spliceJoins,
       },
       rule: hasContinuousRun
-        ? 'continuous-run: prefer exact-fit stock lengths, then total-cost, then bars-used, then waste, then cost-per-m'
+        ? 'continuous-run: prefer least splice-joins, then exact-fit, then total-cost, then bars-used, then waste, then cost-per-m'
         : 'non-continuous: prefer lowest cost-per-m, then waste, then bars-used',
     });
   }
