@@ -127,6 +127,7 @@ export async function GET(req: Request) {
     id: crew.id,
     name: crew.name,
     color: crew.color,
+    is_active: typeof crew.is_active === 'boolean' ? crew.is_active : true,
     sort_order: crew.sort_order,
     calendar_region: crew.calendar_region,
     base_available_date: crew.base_available_date,

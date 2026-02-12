@@ -428,7 +428,7 @@ export default function AccessClient() {
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Schedule crews</h2>
           <p className={styles.sectionHelper}>
-            Manage the crews shown in Schedule (Board/Gantt). Deactivating hides a crew but keeps history.
+            Manage the crews shown in Schedule (Board/Gantt). Deactivation is blocked while a crew has jobs visible on the board.
           </p>
         </div>
 
@@ -502,7 +502,7 @@ export default function AccessClient() {
                   <th>Region</th>
                   <th>Base available</th>
                   <th>Active</th>
-                  <th>Scheduled items</th>
+                  <th>Board jobs</th>
                   <th>Actions</th>
                 </tr>
               </thead>

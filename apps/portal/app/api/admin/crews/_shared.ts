@@ -24,6 +24,13 @@ function isMissingRelationError(error: unknown): boolean {
   return code === '42P01' || code === 'PGRST205' || message.includes('does not exist') || message.includes('relation');
 }
 
+function isMissingArchivedAtError(error: unknown): boolean {
+  const e = error as { code?: unknown; message?: unknown };
+  const code = toStringValue(e?.code).trim();
+  const message = toStringValue(e?.message).toLowerCase();
+  return code === '42703' || (message.includes('archived_at') && message.includes('column'));
+}
+
 function normalizeCrewRow(row: any): Omit<AdminCrew, 'scheduled_item_count'> {
   return {
     id: String(row?.id ?? ''),
@@ -36,14 +43,89 @@ function normalizeCrewRow(row: any): Omit<AdminCrew, 'scheduled_item_count'> {
   };
 }
 
-export async function countScheduledItemsForCrew(crewId: string): Promise<number> {
-  const v2 = await supabaseServer.from('crew_schedule_items').select('*', { count: 'exact', head: true }).eq('crew_id', crewId);
-  if (!v2.error) return typeof v2.count === 'number' ? v2.count : 0;
-  if (!isMissingRelationError(v2.error)) throw v2.error;
+async function loadVisibleProjectIds(projectIds: string[]): Promise<Set<string>> {
+  if (!projectIds.length) return new Set<string>();
 
-  const legacy = await supabaseServer.from('schedule_items').select('*', { count: 'exact', head: true }).eq('crew_id', crewId);
-  if (!legacy.error) return typeof legacy.count === 'number' ? legacy.count : 0;
-  if (!isMissingRelationError(legacy.error)) throw legacy.error;
+  let projectsRes = await supabaseServer.from('projects').select('id').in('id', projectIds).is('archived_at', null);
+  if (projectsRes.error && isMissingArchivedAtError(projectsRes.error)) {
+    projectsRes = await supabaseServer.from('projects').select('id').in('id', projectIds);
+  }
+  if (projectsRes.error) throw projectsRes.error;
+
+  const visibleIds = new Set<string>();
+  for (const row of Array.isArray(projectsRes.data) ? projectsRes.data : []) {
+    if (typeof row?.id === 'string' && row.id) visibleIds.add(row.id);
+  }
+  return visibleIds;
+}
+
+async function countV2BoardJobsForCrew(crewId: string): Promise<number | null> {
+  const itemRowsRes = await supabaseServer.from('crew_schedule_items').select('job_id').eq('crew_id', crewId).eq('item_type', 'job');
+  if (itemRowsRes.error) {
+    if (isMissingRelationError(itemRowsRes.error)) return null;
+    throw itemRowsRes.error;
+  }
+
+  const itemRows = Array.isArray(itemRowsRes.data) ? itemRowsRes.data : [];
+  const scheduledJobIds = Array.from(
+    new Set(itemRows.map((row: any) => (typeof row?.job_id === 'string' ? row.job_id : '')).filter(Boolean)),
+  );
+  if (!scheduledJobIds.length) return 0;
+
+  const jobsRes = await supabaseServer.from('scheduled_jobs').select('id,job_id').in('id', scheduledJobIds).eq('crew_id', crewId);
+  if (jobsRes.error) throw jobsRes.error;
+
+  const scheduledJobs = Array.isArray(jobsRes.data) ? jobsRes.data : [];
+  const projectIds = Array.from(
+    new Set(scheduledJobs.map((row: any) => (typeof row?.job_id === 'string' ? row.job_id : '')).filter(Boolean)),
+  );
+  const visibleProjectIds = await loadVisibleProjectIds(projectIds);
+  if (!visibleProjectIds.size) return 0;
+
+  const projectByScheduledJobId = new Map<string, string>();
+  for (const row of scheduledJobs) {
+    const scheduledJobId = typeof row?.id === 'string' ? row.id : '';
+    const projectId = typeof row?.job_id === 'string' ? row.job_id : '';
+    if (!scheduledJobId || !projectId) continue;
+    projectByScheduledJobId.set(scheduledJobId, projectId);
+  }
+
+  let count = 0;
+  for (const row of itemRows) {
+    const scheduledJobId = typeof row?.job_id === 'string' ? row.job_id : '';
+    if (!scheduledJobId) continue;
+    const projectId = projectByScheduledJobId.get(scheduledJobId) ?? '';
+    if (projectId && visibleProjectIds.has(projectId)) count += 1;
+  }
+  return count;
+}
+
+async function countLegacyBoardJobsForCrew(crewId: string): Promise<number | null> {
+  const rowsRes = await supabaseServer.from('schedule_items').select('project_id').eq('crew_id', crewId);
+  if (rowsRes.error) {
+    if (isMissingRelationError(rowsRes.error)) return null;
+    throw rowsRes.error;
+  }
+
+  const rows = Array.isArray(rowsRes.data) ? rowsRes.data : [];
+  const projectIds = Array.from(new Set(rows.map((row: any) => (typeof row?.project_id === 'string' ? row.project_id : '')).filter(Boolean)));
+  const visibleProjectIds = await loadVisibleProjectIds(projectIds);
+  if (!visibleProjectIds.size) return 0;
+
+  let count = 0;
+  for (const row of rows) {
+    const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
+    if (projectId && visibleProjectIds.has(projectId)) count += 1;
+  }
+  return count;
+}
+
+export async function countScheduledItemsForCrew(crewId: string): Promise<number> {
+  const v2Count = await countV2BoardJobsForCrew(crewId);
+  if (typeof v2Count === 'number') return v2Count;
+
+  const legacyCount = await countLegacyBoardJobsForCrew(crewId);
+  if (typeof legacyCount === 'number') return legacyCount;
 
   return 0;
 }
