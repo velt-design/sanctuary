@@ -556,6 +556,7 @@ function buildMaterialsV1Internal(
       colour?: InputsNormalizedV1['extrusion_colour'];
       finish?: FinishMode;
       origin_prefix?: string;
+      group_key?: string;
       explain?: { formula: string; deps: Record<string, unknown> };
     },
   ) => {
@@ -563,7 +564,9 @@ function buildMaterialsV1Internal(
     const colour = opts?.colour ?? inputs.extrusion_colour;
     const finish: FinishMode = opts?.finish ?? 'default';
     const originPrefix = opts?.origin_prefix ?? component;
-    const key = `${profile}__${colour}__${finish}`;
+    const groupKeyRaw = opts?.group_key ?? opts?.origin_prefix ?? component;
+    const componentKey = normaliseOriginPrefix(groupKeyRaw);
+    const key = `${profile}__${colour}__${finish}__${componentKey}`;
     const nextCallIdx = addCutsCallCounters.get(key) ?? 0;
     addCutsCallCounters.set(key, nextCallIdx + 1);
     const generatedLengthMode: AddCutsExplain['generated_length_mode'] =
@@ -667,6 +670,30 @@ function buildMaterialsV1Internal(
   // === Extrusions (v1 assumptions) ===
   const waste_m_by_profile: Record<string, number> = {};
   const bars_by_profile: Record<string, { stock_length_m: number; bars_used: number }> = {};
+  const waste_m_by_cut_group: Record<string, number> = {};
+  const bars_by_cut_group: Record<string, { stock_length_m: number; bars_used: number }> = {};
+  const bars_used_by_profile: Record<string, number> = {};
+  const bars_used_by_profile_by_len: Record<string, Record<string, number>> = {};
+
+  const addProfileWaste = (profile: string, wasteM: number) => {
+    const waste = Number.isFinite(wasteM) ? wasteM : 0;
+    waste_m_by_profile[profile] = roundMoney((waste_m_by_profile[profile] ?? 0) + waste);
+  };
+
+  const addProfileBars = (profile: string, stockLengthM: number, barsUsed: number) => {
+    const used = Number.isFinite(barsUsed) ? barsUsed : 0;
+    const stockLen = Number.isFinite(stockLengthM) ? stockLengthM : 0;
+    if (used <= 0 || stockLen <= 0) return;
+    bars_used_by_profile[profile] = (bars_used_by_profile[profile] ?? 0) + used;
+    if (!bars_used_by_profile_by_len[profile]) bars_used_by_profile_by_len[profile] = {};
+    const lenKey = String(stockLen);
+    bars_used_by_profile_by_len[profile][lenKey] = (bars_used_by_profile_by_len[profile][lenKey] ?? 0) + used;
+  };
+
+  const addProfileTotals = (profile: string, stockLengthM: number, barsUsed: number, wasteM: number) => {
+    addProfileWaste(profile, wasteM);
+    addProfileBars(profile, stockLengthM, barsUsed);
+  };
 
   const isHipCorner = inputs.roof_type === 'hip_corner';
   const hipCornerLengthB = Number(inputs.hip_corner_length_b_m ?? 0);
@@ -794,6 +821,7 @@ function buildMaterialsV1Internal(
           colour: 'Mill',
           finish: 'raw_mill',
           origin_prefix: 'timber_common_rafter',
+          group_key: 'rafters',
           explain: {
             formula: 'cuts = repeat(timberCommonRafterCountTotal, timberSlopeLenPerPlaneM)',
             deps: { timberCommonRafterCountTotal, timberSlopeLenPerPlaneM },
@@ -812,6 +840,7 @@ function buildMaterialsV1Internal(
       'single',
       {
         origin_prefix: 'rafter',
+        group_key: 'rafters',
         explain: {
           formula: 'cuts = repeat(rafterCountA, cutRafterLengthA) + repeat(rafterCountB, cutRafterLengthB)',
           deps: { rafterCountA, cutRafterLengthA, rafterCountB, cutRafterLengthB },
@@ -826,6 +855,7 @@ function buildMaterialsV1Internal(
       'single',
       {
         origin_prefix: 'rafter',
+        group_key: 'rafters',
         explain: {
           formula:
             "rafterMultiplier = roof_type in {low_gable,gable,hip} ? 2 : 1; rafterPieceCount = round(derived.rafter_count * rafterMultiplier); cuts = repeat(rafterPieceCount, rafterLength)",
@@ -850,6 +880,7 @@ function buildMaterialsV1Internal(
         'joinable',
         {
           origin_prefix: 'ledger',
+          group_key: 'ledger',
           explain: {
             formula: 'cuts = [inputs.length_m, hipCornerLengthB] filtered > 0',
             deps: { 'inputs.length_m': inputs.length_m, hipCornerLengthB },
@@ -859,6 +890,7 @@ function buildMaterialsV1Internal(
     } else {
       addCuts(ledgerProfile, [ledgerLengthM], 'Ledger', 'joinable', {
         origin_prefix: 'ledger',
+        group_key: 'ledger',
         explain: {
           formula: 'cuts = [ledgerLengthM]',
           deps: { ledgerLengthM },
@@ -877,6 +909,7 @@ function buildMaterialsV1Internal(
         colour: inputs.extrusion_colour,
         finish: timberEdgeRafterFinish,
         origin_prefix: 'timber_edge_rafter',
+        group_key: 'timber_edge_rafters',
         explain: {
           formula: 'cuts = repeat(timberEdgeRafterCountTotal, timberSlopeLenPerPlaneM)',
           deps: { timberEdgeRafterCountTotal, timberSlopeLenPerPlaneM },
@@ -900,6 +933,7 @@ function buildMaterialsV1Internal(
           colour: 'Mill',
           finish: 'raw_mill',
           origin_prefix: 'timber_purlin',
+          group_key: 'timber_purlins',
           explain: {
             formula: 'purlinPieces = timberPurlinLinesPerPlane * timberPlaneCount; pieceLengthM = timberPurlinTotalM / purlinPieces; cuts = repeat(purlinPieces, pieceLengthM)',
             deps: { timberPurlinLinesPerPlane, timberPlaneCount, timberPurlinTotalM, purlinPieces, pieceLengthM },
@@ -916,6 +950,7 @@ function buildMaterialsV1Internal(
     'single',
     {
       origin_prefix: 'post',
+      group_key: 'posts',
       explain: {
         formula: 'cuts = repeat(inputs.post_count, inputs.post_cut_height_m)',
         deps: { 'inputs.post_count': inputs.post_count, 'inputs.post_cut_height_m': inputs.post_cut_height_m },
@@ -931,7 +966,7 @@ function buildMaterialsV1Internal(
           [inputs.length_m, inputs.length_m],
           'Overhang gutter (2× stock)',
           'joinable',
-          { origin_prefix: 'overhang_gutter_run' },
+          { origin_prefix: 'overhang_gutter_run', group_key: 'overhang_gutter' },
         );
       }
     } else if (gutterAssemblyMode === 'separate') {
@@ -941,7 +976,7 @@ function buildMaterialsV1Internal(
           [separateGutterLengthM, separateGutterLengthM],
           'Separate gutter (2× stock)',
           'joinable',
-          { origin_prefix: 'separate_gutter_run' },
+          { origin_prefix: 'separate_gutter_run', group_key: 'separate_gutter' },
         );
         pushWarning('Separate gutter uses 100x100 cut‑down stock; length doubled to allow for waste.');
       }
@@ -952,7 +987,7 @@ function buildMaterialsV1Internal(
           [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
           'SP gutter',
           'joinable',
-          { origin_prefix: 'sp_gutter_run' },
+          { origin_prefix: 'sp_gutter_run', group_key: 'sp_gutter' },
         );
       } else {
         const runCountRaw = Number((derived as any).sp_gutter_run_count ?? NaN);
@@ -964,7 +999,7 @@ function buildMaterialsV1Internal(
             [inputs.length_m],
             gutterMode === 'sp_gutter_house_edge' ? 'SP gutter (house edge)' : 'SP gutter',
             'joinable',
-            { origin_prefix: 'sp_gutter_run' },
+            { origin_prefix: 'sp_gutter_run', group_key: 'sp_gutter' },
           );
         } else if (runCount >= 2) {
           addCuts(
@@ -972,7 +1007,7 @@ function buildMaterialsV1Internal(
             [inputs.length_m, inputs.length_m],
             'SP gutter (2 eaves)',
             'joinable',
-            { origin_prefix: 'sp_gutter_run' },
+            { origin_prefix: 'sp_gutter_run', group_key: 'sp_gutter' },
           );
         }
       }
@@ -985,23 +1020,27 @@ function buildMaterialsV1Internal(
       [inputs.length_m, inputs.length_m],
       'Box perimeter beams',
       'joinable',
-      { origin_prefix: 'box_beam_sidea' },
+      { origin_prefix: 'box_beam_sidea', group_key: 'box_perimeter_beams' },
     );
     addCuts(
       boxBeamProfile,
       [inputs.projection_m, inputs.projection_m],
       'Box perimeter beams',
       'joinable',
-      { origin_prefix: 'box_beam_sideb' },
+      { origin_prefix: 'box_beam_sideb', group_key: 'box_perimeter_beams' },
     );
     if (inputs.roof_type === 'gable' && Number.isFinite(derived.ridge_length_m) && derived.ridge_length_m > 0 && ridgeBeamProfile) {
-      addCuts(ridgeBeamProfile, [derived.ridge_length_m], 'Ridge beam (box gable)', 'joinable', { origin_prefix: 'ridge_beam' });
+      addCuts(ridgeBeamProfile, [derived.ridge_length_m], 'Ridge beam (box gable)', 'joinable', {
+        origin_prefix: 'ridge_beam',
+        group_key: 'ridge_beam',
+      });
     }
     if (inputs.gutter_type === 'box_gutter_100x100_cut') {
       const gutterLength = Math.max(0, Number(inputs.gutter_length_m ?? 0));
       if (gutterLength > 0) {
         addCuts('Box Gutter 100x100x3', [gutterLength], 'Box perimeter gutter', 'joinable', {
           origin_prefix: 'box_gutter_run',
+          group_key: 'box_perimeter_gutter',
         });
       }
     }
@@ -1014,10 +1053,13 @@ function buildMaterialsV1Internal(
         [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
         'Front beam',
         'joinable',
-        { origin_prefix: 'front_beam' },
+        { origin_prefix: 'front_beam', group_key: 'front_beam' },
       );
     } else if (Number.isFinite(inputs.length_m) && inputs.length_m > 0) {
-      addCuts(frontBeamProfile, [inputs.length_m], 'Front beam', 'joinable', { origin_prefix: 'front_beam' });
+      addCuts(frontBeamProfile, [inputs.length_m], 'Front beam', 'joinable', {
+        origin_prefix: 'front_beam',
+        group_key: 'front_beam',
+      });
     }
   }
 
@@ -1028,7 +1070,7 @@ function buildMaterialsV1Internal(
         Array.from({ length: gableEndFrameCount }).map(() => tieBeamLength),
         'Gable tie beam',
         'joinable',
-        { origin_prefix: 'tie_beam' },
+        { origin_prefix: 'tie_beam', group_key: 'tie_beam' },
       );
     }
     if (strutProfile && kingpostStrutLength > 0) {
@@ -1037,7 +1079,7 @@ function buildMaterialsV1Internal(
         Array.from({ length: gableEndFrameCount }).map(() => kingpostStrutLength),
         'King-post strut',
         'joinable',
-        { origin_prefix: 'kingpost_strut' },
+        { origin_prefix: 'kingpost_strut', group_key: 'kingpost_strut' },
       );
     }
   }
@@ -1046,11 +1088,13 @@ function buildMaterialsV1Internal(
     if (overhangSupportBeamProfile && overhangSupportBeamLength > 0) {
       addCuts(overhangSupportBeamProfile, [overhangSupportBeamLength], 'Overhang support beam', 'joinable', {
         origin_prefix: 'overhang_support_beam',
+        group_key: 'overhang_support_beam',
       });
     }
     if (overhangStringerProfile && overhangStringerLength > 0) {
       addCuts(overhangStringerProfile, [overhangStringerLength], 'Overhang end stringer', 'joinable', {
         origin_prefix: 'overhang_stringer',
+        group_key: 'overhang_end_stringer',
       });
     }
   }
@@ -1082,16 +1126,7 @@ function buildMaterialsV1Internal(
   };
 
   const recordCrystalite = (stockLen: number, barsUsed: number, wasteM: number) => {
-    waste_m_by_profile['Crystalite 620mm'] = roundMoney((waste_m_by_profile['Crystalite 620mm'] ?? 0) + wasteM);
-    const prev = bars_by_profile['Crystalite 620mm'];
-    if (!prev) {
-      bars_by_profile['Crystalite 620mm'] = { stock_length_m: stockLen, bars_used: barsUsed };
-      return;
-    }
-    bars_by_profile['Crystalite 620mm'] = {
-      stock_length_m: Math.max(prev.stock_length_m, stockLen),
-      bars_used: prev.bars_used + barsUsed,
-    };
+    addProfileTotals('Crystalite 620mm', stockLen, barsUsed, wasteM);
   };
 
   const addCrystaliteLine = (opts: { requiredLen: number; qty: number; note: string; idSuffix?: string; cutCount?: number }) => {
@@ -1299,11 +1334,13 @@ function buildMaterialsV1Internal(
     if (joinerCountA > 0 && joinerLengthA > 0) {
       addCuts('Joiners', Array.from({ length: joinerCountA }).map(() => joinerLengthA), 'Joiners', 'joinable', {
         origin_prefix: 'joiner',
+        group_key: 'joiners_roof',
       });
     }
     if (joinerCountB > 0 && joinerLengthB > 0) {
       addCuts('Joiners', Array.from({ length: joinerCountB }).map(() => joinerLengthB), 'Joiners', 'joinable', {
         origin_prefix: 'joiner',
+        group_key: 'joiners_roof',
       });
     }
 
@@ -1449,7 +1486,7 @@ function buildMaterialsV1Internal(
               Array.from({ length: joinerRuns }).map(() => planeJoinerPieceLenM),
               `Joiners (${planeLabel}, mixed acrylic bays)`,
               'joinable',
-              { origin_prefix: planeOriginPrefix },
+              { origin_prefix: planeOriginPrefix, group_key: 'joiners_mixed' },
             );
             totalJoinerM += joinerRuns * planeJoinerPieceLenM;
           }
@@ -1552,7 +1589,7 @@ function buildMaterialsV1Internal(
               Array.from({ length: joinerCount }).map(() => joinerLength),
               'Joiners (mixed roof area override; acrylic bays)',
               'joinable',
-              { origin_prefix: 'joiner_mixed_override' },
+              { origin_prefix: 'joiner_mixed_override', group_key: 'joiners_mixed' },
             );
           }
 
@@ -1652,8 +1689,7 @@ function buildMaterialsV1Internal(
         const totalStock = barsUsed * selectedLen;
         const totalWaste = Math.max(0, totalStock - totalRequired);
 
-        waste_m_by_profile['Crystalite 620mm'] = roundMoney((waste_m_by_profile['Crystalite 620mm'] ?? 0) + totalWaste);
-        bars_by_profile['Crystalite 620mm'] = { stock_length_m: selectedLen, bars_used: barsUsed };
+        addProfileTotals('Crystalite 620mm', selectedLen, barsUsed, totalWaste);
 
         lines.push({
           id: stripItem.id,
@@ -1671,7 +1707,10 @@ function buildMaterialsV1Internal(
         const joinerLines = stripCount * 2;
         const joinerCuts = Array.from({ length: joinerLines }).map(() => requiredLen);
         if (joinerCuts.length)
-          addCuts('Joiners', joinerCuts, 'Joiners (skylight edges)', 'joinable', { origin_prefix: 'joiner_skylight_edge' });
+          addCuts('Joiners', joinerCuts, 'Joiners (skylight edges)', 'joinable', {
+            origin_prefix: 'joiner_skylight_edge',
+            group_key: 'joiners_skylight_edges',
+          });
 
         const rubberMultiplier = 2; // both sides
         const rubberMetres = joinerLines * requiredLen * rubberMultiplier;
@@ -2014,11 +2053,12 @@ function buildMaterialsV1Internal(
     trace?.joinableOriginals(groupKey, joinableExplainRows);
     spliceJoinCount += joinCountForGroup;
 
-    waste_m_by_profile[group.profile] = roundMoney(selection.wasteM);
-    bars_by_profile[group.profile] = {
+    waste_m_by_cut_group[groupKey] = roundMoney(selection.wasteM);
+    bars_by_cut_group[groupKey] = {
       stock_length_m: selection.bar.stock_length_m,
       bars_used: selection.barsUsed,
     };
+    addProfileTotals(group.profile, selection.bar.stock_length_m, selection.barsUsed, selection.wasteM);
 
     const components = Array.from(group.components).join(', ');
     const totalCutM = roundMoney(sum(group.cuts.map((cut) => cut.length_m).filter((n) => Number.isFinite(n) && n > 0)));
@@ -2306,6 +2346,28 @@ function buildMaterialsV1Internal(
     });
   }
 
+  for (const [profile, totalBarsUsed] of Object.entries(bars_used_by_profile)) {
+    const byLen = bars_used_by_profile_by_len[profile] ?? {};
+    let dominantLen = 0;
+    let dominantBars = -1;
+
+    for (const [lenKey, barsUsedAtLen] of Object.entries(byLen)) {
+      const stockLen = Number(lenKey);
+      const barsUsed = Number(barsUsedAtLen);
+      if (!Number.isFinite(stockLen) || stockLen <= 0 || !Number.isFinite(barsUsed) || barsUsed <= 0) continue;
+      if (barsUsed > dominantBars || (barsUsed === dominantBars && stockLen > dominantLen)) {
+        dominantBars = barsUsed;
+        dominantLen = stockLen;
+      }
+    }
+
+    if (dominantLen <= 0) continue;
+    bars_by_profile[profile] = {
+      stock_length_m: dominantLen,
+      bars_used: roundMoney(totalBarsUsed),
+    };
+  }
+
   const materialsExGst = roundMoney(lines.reduce((acc, l) => acc + l.line_cost_ex_gst, 0));
 
   return {
@@ -2315,6 +2377,8 @@ function buildMaterialsV1Internal(
         materials_ex_gst: materialsExGst,
         waste_m_by_profile,
         bars_by_profile,
+        waste_m_by_cut_group,
+        bars_by_cut_group,
       },
     },
     notes_and_warnings: warnings,
