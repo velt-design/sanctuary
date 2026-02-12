@@ -2475,15 +2475,13 @@ export default function ScheduleClient() {
     opts?: { successToast?: string; errorToast?: string },
   ): Promise<boolean> {
     try {
-      const res = await run(false);
-      if (res && res.requires_confirmation) {
-        const impacts = Array.isArray(res.impacts) ? res.impacts : [];
-        const preview = impacts.length ? `\n\n${formatCommitImpactList(impacts)}` : '';
-        const ok = typeof window !== 'undefined' ? window.confirm(`This change impacts jobs inside the next 10 working days.${preview}\n\nProceed?`) : false;
-        if (!ok) return false;
-        const confirmed = await run(true);
-        if (!confirmed?.ok) throw new Error('Failed to apply changes after confirmation.');
-      } else if (res && !res.ok) {
+      // Commit-horizon confirmations are intentionally disabled.
+      const res = await run(true);
+
+      if (res?.requires_confirmation) {
+        throw new Error('Schedule change still requires confirmation.');
+      }
+      if (res && res.ok === false) {
         throw new Error('Request failed.');
       }
 
@@ -3098,10 +3096,6 @@ export default function ScheduleClient() {
         return;
       }
       if (res?.requires_confirmation) {
-        const impacts = Array.isArray(res.impacts) ? res.impacts : [];
-        const preview = impacts.length ? `\n\n${formatCommitImpactList(impacts)}` : '';
-        const ok = typeof window !== 'undefined' ? window.confirm(`This change impacts jobs inside the next 10 working days.${preview}\n\nProceed?`) : false;
-        if (!ok) return;
         const confirmed: any = await markJobDone({ job_id: jobUuid, force: true, today });
         if (!confirmed?.ok) throw new Error('Failed to mark job done.');
       } else if (res && !res.ok) {
