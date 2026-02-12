@@ -329,6 +329,8 @@ export type MaterialsTotalsV1 = {
   materials_ex_gst: number;
   waste_m_by_profile: Record<string, number>;
   bars_by_profile: Record<string, { stock_length_m: number; bars_used: number }>;
+  waste_m_by_cut_group?: Record<string, number>;
+  bars_by_cut_group?: Record<string, { stock_length_m: number; bars_used: number }>;
 };
 
 export type MaterialsV1 = {

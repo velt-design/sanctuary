@@ -249,13 +249,9 @@ function round(n: number, digits = 4): number {
   return Math.round(n * m) / m;
 }
 
-function keyToDefaultGroupMeta(groupKey: string): { profile: string; colour: string; finish: 'default' | 'raw_mill' } {
-  const [profile = '', colour = '', finish = 'default'] = String(groupKey).split('__');
-  return {
-    profile,
-    colour,
-    finish: finish === 'raw_mill' ? 'raw_mill' : 'default',
-  };
+function keyToDefaultGroupMeta(_groupKey: string): { profile: string; colour: string; finish: 'default' | 'raw_mill' } {
+  // Group keys are opaque identifiers; authoritative meta comes from cutGroupMeta/addCuts trace payloads.
+  return { profile: '', colour: '', finish: 'default' };
 }
 
 function createCutGroup(groupKey: string): CutGroupExplain {

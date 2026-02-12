@@ -53,6 +53,27 @@ describe('materials explain', () => {
     });
   });
 
+  it('splits same-profile rafters and ledger into separate cut groups with independent selections', () => {
+    const { cfg, derived } = buildMaterials({
+      ...baseInputs,
+      overrides: {
+        rafter_profile: '100x50',
+        ledger_profile: '100x50',
+      },
+    });
+    const withExplain = buildMaterialsV1Explain(derived.inputs_normalized, derived.derived, cfg, { detail: 'summary' });
+    const groups = Object.entries(withExplain.explain.cut_groups);
+
+    const rafterGroup = groups.find(([key, group]) => key.endsWith('__rafters') && group.components.includes('Rafters'));
+    const ledgerGroup = groups.find(([key, group]) => key.endsWith('__ledger') && group.components.includes('Ledger'));
+
+    expect(rafterGroup).toBeTruthy();
+    expect(ledgerGroup).toBeTruthy();
+    expect(rafterGroup?.[0]).not.toBe(ledgerGroup?.[0]);
+    expect(rafterGroup?.[1].selection).toBeTruthy();
+    expect(ledgerGroup?.[1].selection).toBeTruthy();
+  });
+
   it('enforces summary caps for cut sampling', () => {
     const { cfg, derived } = buildMaterials(baseInputs);
     const withExplain = buildMaterialsV1Explain(derived.inputs_normalized, derived.derived, cfg, {
