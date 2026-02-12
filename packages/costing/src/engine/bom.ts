@@ -2,6 +2,17 @@ import type { CostingConfigV1 } from './config';
 import type { DerivedV1, InputsNormalizedV1, MaterialsLineV1, MaterialsV1 } from './types';
 import { evalArithmeticExpr } from './expr';
 import { normaliseColour, normaliseProfile } from './normalise';
+import {
+  createMaterialsExplainCollector,
+  type AddCutsExplain,
+  type BinPackPlanExplain,
+  type CutItemExplain,
+  type MaterialsExplainCollector,
+  type MaterialsExplainOptions,
+  type MaterialsExplainV1,
+  snapshotDerived,
+  snapshotInputs,
+} from './materials_explain';
 
 type PricebookItem = CostingConfigV1['materials']['items'][number];
 
@@ -22,6 +33,7 @@ type CutItem = {
   segment_index: number;
   component: string;
   finish: FinishMode;
+  source_call_index?: number;
 };
 
 type CutGroup = {
@@ -38,6 +50,20 @@ function evalQtyExpression(expr: string, vars: Record<string, number>): number {
     if (!Object.prototype.hasOwnProperty.call(vars, id)) throw new Error(`Unknown variable '${id}'`);
     return vars[id];
   });
+}
+
+function evalQtyExpressionExplain(
+  expr: string,
+  vars: Record<string, number>,
+): { result: number; accessed: Record<string, number> } {
+  const accessed: Record<string, number> = {};
+  const result = evalArithmeticExpr(expr, (id) => {
+    if (!Object.prototype.hasOwnProperty.call(vars, id)) throw new Error(`Unknown variable '${id}'`);
+    const value = vars[id];
+    accessed[id] = value;
+    return value;
+  });
+  return { result, accessed };
 }
 
 function sum(nums: number[]): number {
@@ -180,6 +206,74 @@ function greedyBinPack(cutsDesc: number[], stockLengthM: number): { barsUsed: nu
   return { barsUsed, wasteM };
 }
 
+function greedyBinPackPlan(cutsDesc: CutItem[], stockLengthM: number): BinPackPlanExplain {
+  const cuts = [...cutsDesc]
+    .filter((cut) => Number.isFinite(cut.length_m) && cut.length_m > 0)
+    .sort((a, b) => b.length_m - a.length_m);
+  const bars: Array<{
+    used_m: number;
+    remaining_m: number;
+    cuts: Array<{ origin_id: string; component: string; segment_index: number; length_m: number }>;
+  }> = [];
+
+  for (const cut of cuts) {
+    let placed = false;
+    for (let i = 0; i < bars.length; i += 1) {
+      if (bars[i].remaining_m + 1e-6 >= cut.length_m) {
+        bars[i].remaining_m -= cut.length_m;
+        bars[i].used_m += cut.length_m;
+        bars[i].cuts.push({
+          origin_id: cut.origin_id,
+          component: cut.component,
+          segment_index: cut.segment_index,
+          length_m: cut.length_m,
+        });
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) {
+      bars.push({
+        used_m: cut.length_m,
+        remaining_m: stockLengthM - cut.length_m,
+        cuts: [
+          {
+            origin_id: cut.origin_id,
+            component: cut.component,
+            segment_index: cut.segment_index,
+            length_m: cut.length_m,
+          },
+        ],
+      });
+    }
+  }
+
+  const totalCutM = sum(cuts.map((cut) => cut.length_m));
+  const totalStockM = bars.length * stockLengthM;
+  const wasteM = Math.max(0, totalStockM - totalCutM);
+  return {
+    algorithm: 'first_fit_descending',
+    stock_length_m: stockLengthM,
+    bars: bars.map((bar, idx) => ({
+      index: idx,
+      used_m: roundMoney(bar.used_m),
+      remaining_m: roundMoney(Math.max(0, bar.remaining_m)),
+      cuts: bar.cuts.map((cut) => ({
+        origin_id: cut.origin_id,
+        component: cut.component,
+        segment_index: cut.segment_index,
+        length_m: roundMoney(cut.length_m),
+      })),
+    })),
+    totals: {
+      total_cut_m: roundMoney(totalCutM),
+      total_stock_m: roundMoney(totalStockM),
+      waste_m: roundMoney(wasteM),
+    },
+    truncated: false,
+  };
+}
+
 function expandCutsForStock(cuts: CutItem[], stockLengthM: number): CutItem[] | null {
   if (!Number.isFinite(stockLengthM) || stockLengthM <= 0) return null;
   const expanded: CutItem[] = [];
@@ -202,6 +296,7 @@ function selectBestStock(
   bars: Array<PricebookItem & { stock_length_m: number }>,
   cuts: CutItem[],
   preferred: number[],
+  opts?: { trace?: MaterialsExplainCollector; groupKey?: string },
 ): {
   bar: (PricebookItem & { stock_length_m: number }) | null;
   barsUsed: number;
@@ -237,7 +332,9 @@ function selectBestStock(
     const unitCost = (bar as any).cost_ex_gst as number;
     if (!Number.isFinite(unitCost)) continue;
     const expanded = expandCutsForStock(cuts, bar.stock_length_m);
-    if (!expanded || expanded.length === 0) continue;
+    if (!expanded || expanded.length === 0) {
+      continue;
+    }
     const cutsDesc = [...expanded]
       .map((cut) => cut.length_m)
       .filter((len) => Number.isFinite(len) && len > 0)
@@ -305,6 +402,35 @@ function selectBestStock(
     }
   }
 
+  if (opts?.trace && opts.groupKey) {
+    const preferredStockLengths = preferred.filter((n) => Number.isFinite(n) && n > 0);
+    const targetLengths = Array.from(targets).sort((a, b) => a - b);
+    opts.trace.stockSelection(opts.groupKey, {
+      preferred_stock_lengths_m: preferredStockLengths,
+      has_continuous_run: hasContinuousRun,
+      continuous_run_targets_m: targetLengths,
+      evaluated: evaluated.map((candidate) => ({
+        stock_length_m: candidate.bar.stock_length_m,
+        unit_cost_ex_gst: roundMoney(Number((candidate.bar as any).cost_ex_gst ?? 0)),
+        expanded_cuts_count: expandCutsForStock(cuts, candidate.bar.stock_length_m)?.length ?? 0,
+        bars_used: candidate.barsUsed,
+        waste_m: roundMoney(candidate.wasteM),
+        total_cost_ex_gst: roundMoney(candidate.totalCost),
+        cost_per_m: roundMoney(candidate.costPerM),
+        is_exact_fit: candidate.isExactFit,
+      })),
+      chosen: {
+        item_id: String(best.bar.id),
+        stock_length_m: best.bar.stock_length_m,
+        bars_used: best.barsUsed,
+        waste_m: roundMoney(best.wasteM),
+      },
+      rule: hasContinuousRun
+        ? 'continuous-run: prefer exact-fit stock lengths, then total-cost, then bars-used, then waste, then cost-per-m'
+        : 'non-continuous: prefer lowest cost-per-m, then waste, then bars-used',
+    });
+  }
+
   return { bar: best.bar, barsUsed: best.barsUsed, wasteM: best.wasteM };
 }
 
@@ -340,13 +466,41 @@ function rafterDepthM(profile: string): number {
 const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_PURLIN_PROFILE = '50x50';
 
-export function buildMaterialsV1(
+type PendingLineExplain =
+  | { kind: 'extrusion_bar'; cut_group_key: string; notes_formula?: string }
+  | { kind: 'acrylic_sheet_or_strip'; formula: string; deps: Record<string, unknown> }
+  | {
+      kind: 'rule_hardware';
+      rule_id: string;
+      applies_when: Record<string, unknown>;
+      applied: boolean;
+      expr: string;
+      vars_used: Record<string, number>;
+      result_qty: number;
+    }
+  | { kind: 'simple'; formula: string; deps: Record<string, unknown> };
+
+function buildMaterialsV1Internal(
   inputs: InputsNormalizedV1,
   derived: DerivedV1,
   config: CostingConfigV1,
+  trace?: MaterialsExplainCollector,
+  explainOpts?: MaterialsExplainOptions,
 ): BuildMaterialsResultV1 {
   const warnings: string[] = [];
   const lines: MaterialsLineV1[] = [];
+  const lineExplainByRef = trace ? new Map<MaterialsLineV1, PendingLineExplain>() : null;
+  const selectedExpandedCutsByGroup = trace ? new Map<string, { expandedCuts: CutItem[]; stockLengthM: number }>() : null;
+
+  const pushWarning = (message: string) => {
+    warnings.push(message);
+    trace?.warn(message);
+  };
+
+  const annotateLine = (line: MaterialsLineV1, explain?: PendingLineExplain) => {
+    if (!trace || !lineExplainByRef || !explain) return;
+    lineExplainByRef.set(line, explain);
+  };
 
   const preferredStockLengths = config.bomStrategy.settings.stock_length_preference_m;
   const powdercoatColourUsed = String((derived as any).powdercoat_colour_used ?? '');
@@ -354,6 +508,7 @@ export function buildMaterialsV1(
 
   const cutGroups = new Map<string, CutGroup>();
   const originIdCounters = new Map<string, number>();
+  const addCutsCallCounters = new Map<string, number>();
 
   const normaliseOriginPrefix = (value: string) => {
     const safe = String(value ?? '')
@@ -376,13 +531,43 @@ export function buildMaterialsV1(
     cutsM: number[],
     component: string,
     joinPolicy: JoinPolicy,
-    opts?: { colour?: InputsNormalizedV1['extrusion_colour']; finish?: FinishMode; origin_prefix?: string },
+    opts?: {
+      colour?: InputsNormalizedV1['extrusion_colour'];
+      finish?: FinishMode;
+      origin_prefix?: string;
+      explain?: { formula: string; deps: Record<string, unknown> };
+    },
   ) => {
     if (!cutsM.length) return;
     const colour = opts?.colour ?? inputs.extrusion_colour;
     const finish: FinishMode = opts?.finish ?? 'default';
     const originPrefix = opts?.origin_prefix ?? component;
     const key = `${profile}__${colour}__${finish}`;
+    const nextCallIdx = addCutsCallCounters.get(key) ?? 0;
+    addCutsCallCounters.set(key, nextCallIdx + 1);
+    const generatedLengthMode: AddCutsExplain['generated_length_mode'] =
+      cutsM.length > 1 && cutsM.some((len) => Math.abs(len - cutsM[0]) > 1e-6) ? 'list' : 'uniform';
+    const addCutsExplain: AddCutsExplain = {
+      component,
+      profile,
+      colour,
+      finish,
+      join_policy: joinPolicy,
+      origin_prefix: originPrefix,
+      formula: opts?.explain?.formula ?? `cuts = [${cutsM.slice(0, 6).map((n) => roundMoney(n)).join(', ')}${cutsM.length > 6 ? ', ...' : ''}]`,
+      deps: {
+        ...(opts?.explain?.deps ?? {}),
+        generated_count: cutsM.length,
+      },
+      generated_count: cutsM.length,
+      generated_length_mode: generatedLengthMode,
+      uniform_length_m: generatedLengthMode === 'uniform' ? cutsM[0] : undefined,
+      list_sample_m: generatedLengthMode === 'list' ? cutsM.slice(0, 12).map((n) => roundMoney(n)) : undefined,
+    };
+    trace?.cutGroupMeta(key, { profile, colour, finish, component });
+    trace?.addCuts(key, addCutsExplain);
+
+    const generatedCutExplain: CutItemExplain[] = [];
     const existing = cutGroups.get(key);
     if (existing) {
       cutsM.forEach((c) => {
@@ -395,34 +580,57 @@ export function buildMaterialsV1(
           segment_index: 0,
           component,
           finish,
+          source_call_index: nextCallIdx,
         };
         existing.cuts.push(cutItem);
+        generatedCutExplain.push({
+          origin_id: originId,
+          component,
+          join_policy: joinPolicy,
+          origin_len_m: c,
+          length_m: c,
+          segment_index: 0,
+          source_call_index: nextCallIdx,
+        });
         if (joinPolicy === 'joinable' && Number.isFinite(c) && c > 0) {
           existing.originals_joinable.set(originId, c);
         }
       });
       existing.components.add(component);
+      if (generatedCutExplain.length) trace?.cutGroupCuts(key, generatedCutExplain, 'append');
       return;
     }
+    const groupCuts = cutsM.map((c) => {
+      const originId = nextOriginId(originPrefix);
+      generatedCutExplain.push({
+        origin_id: originId,
+        component,
+        join_policy: joinPolicy,
+        origin_len_m: c,
+        length_m: c,
+        segment_index: 0,
+        source_call_index: nextCallIdx,
+      });
+      return {
+        length_m: c,
+        origin_id: originId,
+        origin_len_m: c,
+        join_policy: joinPolicy,
+        segment_index: 0,
+        component,
+        finish,
+        source_call_index: nextCallIdx,
+      };
+    });
     cutGroups.set(key, {
       profile,
       colour,
       finish,
-      cuts: cutsM.map((c) => {
-        const originId = nextOriginId(originPrefix);
-        return {
-          length_m: c,
-          origin_id: originId,
-          origin_len_m: c,
-          join_policy: joinPolicy,
-          segment_index: 0,
-          component,
-          finish,
-        };
-      }),
+      cuts: groupCuts,
       originals_joinable: new Map<string, number>(),
       components: new Set([component]),
     });
+    if (generatedCutExplain.length) trace?.cutGroupCuts(key, generatedCutExplain, 'append');
     if (joinPolicy === 'joinable') {
       const group = cutGroups.get(key);
       if (group) {
@@ -498,6 +706,62 @@ export function buildMaterialsV1(
   const overhangStringerProfile = (derived as any).overhang_stringer_profile_used as string | undefined;
   const overhangStringerLength = Number((derived as any).overhang_stringer_length_m ?? 0);
 
+  if (trace) {
+    trace.value('roofSetbackTotalM', {
+      label: 'Roof setback total',
+      formula: '0.15',
+      deps: {},
+      result: roofSetbackTotalM,
+      units: 'm',
+    });
+    trace.value('joinerPieceLengthA', {
+      label: 'Joiner piece length A',
+      formula: 'cutRafterLengthA + 0.02',
+      deps: { cutRafterLengthA },
+      result: joinerPieceLengthA,
+      units: 'm',
+    });
+    trace.value('joinerPieceLengthB', {
+      label: 'Joiner piece length B',
+      formula: 'cutRafterLengthB + 0.02',
+      deps: { cutRafterLengthB, isHipCorner },
+      result: joinerPieceLengthB,
+      units: 'm',
+    });
+    trace.decision({
+      label: 'Rafter multiplier rule',
+      condition: "inputs.roof_type in {'low_gable','gable','hip'}",
+      deps: { 'inputs.roof_type': inputs.roof_type },
+      result: rafterMultiplier === 2,
+      branch_taken: rafterMultiplier === 2 ? 'double-rafters' : 'single-rafters',
+    });
+    trace.value('rafterMultiplier', {
+      label: 'Rafter multiplier',
+      formula: "inputs.roof_type in {'low_gable','gable','hip'} ? 2 : 1",
+      deps: { 'inputs.roof_type': inputs.roof_type },
+      result: rafterMultiplier,
+    });
+    trace.value('rafterPieceCount', {
+      label: 'Rafter piece count',
+      formula: 'round(derived.rafter_count * rafterMultiplier)',
+      deps: { 'derived.rafter_count': derived.rafter_count, rafterMultiplier },
+      result: rafterPieceCount,
+      units: 'count',
+    });
+    trace.value('rafterLength', {
+      label: 'Rafter cut length fallback',
+      formula: 'derived.rafter_cut_length_m ?? derived.rafter_length_m ?? derived.rafter_length_m_assumed ?? inputs.projection_m',
+      deps: {
+        'derived.rafter_cut_length_m': (derived as any).rafter_cut_length_m,
+        'derived.rafter_length_m': (derived as any).rafter_length_m,
+        'derived.rafter_length_m_assumed': (derived as any).rafter_length_m_assumed,
+        'inputs.projection_m': inputs.projection_m,
+      },
+      result: rafterLength,
+      units: 'm',
+    });
+  }
+
   if (isTimberRoof) {
     if (timberCommonRafterCountTotal > 0) {
       addCuts(
@@ -505,7 +769,15 @@ export function buildMaterialsV1(
         Array.from({ length: timberCommonRafterCountTotal }).map(() => timberSlopeLenPerPlaneM),
         'Timber common rafters',
         'single',
-        { colour: 'Mill', finish: 'raw_mill', origin_prefix: 'timber_common_rafter' },
+        {
+          colour: 'Mill',
+          finish: 'raw_mill',
+          origin_prefix: 'timber_common_rafter',
+          explain: {
+            formula: 'cuts = repeat(timberCommonRafterCountTotal, timberSlopeLenPerPlaneM)',
+            deps: { timberCommonRafterCountTotal, timberSlopeLenPerPlaneM },
+          },
+        },
       );
     }
   } else if (isHipCorner) {
@@ -517,7 +789,13 @@ export function buildMaterialsV1(
       ],
       'Rafters',
       'single',
-      { origin_prefix: 'rafter' },
+      {
+        origin_prefix: 'rafter',
+        explain: {
+          formula: 'cuts = repeat(rafterCountA, cutRafterLengthA) + repeat(rafterCountB, cutRafterLengthB)',
+          deps: { rafterCountA, cutRafterLengthA, rafterCountB, cutRafterLengthB },
+        },
+      },
     );
   } else {
     addCuts(
@@ -525,7 +803,20 @@ export function buildMaterialsV1(
       Array.from({ length: rafterPieceCount }).map(() => rafterLength),
       'Rafters',
       'single',
-      { origin_prefix: 'rafter' },
+      {
+        origin_prefix: 'rafter',
+        explain: {
+          formula:
+            "rafterMultiplier = roof_type in {low_gable,gable,hip} ? 2 : 1; rafterPieceCount = round(derived.rafter_count * rafterMultiplier); cuts = repeat(rafterPieceCount, rafterLength)",
+          deps: {
+            'inputs.roof_type': inputs.roof_type,
+            'derived.rafter_count': derived.rafter_count,
+            rafterMultiplier,
+            rafterPieceCount,
+            rafterLength,
+          },
+        },
+      },
     );
   }
 
@@ -536,10 +827,22 @@ export function buildMaterialsV1(
         [inputs.length_m, hipCornerLengthB].filter((n) => Number.isFinite(n) && n > 0),
         'Ledger',
         'joinable',
-        { origin_prefix: 'ledger' },
+        {
+          origin_prefix: 'ledger',
+          explain: {
+            formula: 'cuts = [inputs.length_m, hipCornerLengthB] filtered > 0',
+            deps: { 'inputs.length_m': inputs.length_m, hipCornerLengthB },
+          },
+        },
       );
     } else {
-      addCuts(ledgerProfile, [ledgerLengthM], 'Ledger', 'joinable', { origin_prefix: 'ledger' });
+      addCuts(ledgerProfile, [ledgerLengthM], 'Ledger', 'joinable', {
+        origin_prefix: 'ledger',
+        explain: {
+          formula: 'cuts = [ledgerLengthM]',
+          deps: { ledgerLengthM },
+        },
+      });
     }
   }
 
@@ -549,7 +852,15 @@ export function buildMaterialsV1(
       Array.from({ length: timberEdgeRafterCountTotal }).map(() => timberSlopeLenPerPlaneM),
       'Timber edge rafters',
       'single',
-      { colour: inputs.extrusion_colour, finish: timberEdgeRafterFinish, origin_prefix: 'timber_edge_rafter' },
+      {
+        colour: inputs.extrusion_colour,
+        finish: timberEdgeRafterFinish,
+        origin_prefix: 'timber_edge_rafter',
+        explain: {
+          formula: 'cuts = repeat(timberEdgeRafterCountTotal, timberSlopeLenPerPlaneM)',
+          deps: { timberEdgeRafterCountTotal, timberSlopeLenPerPlaneM },
+        },
+      },
     );
   }
 
@@ -557,14 +868,22 @@ export function buildMaterialsV1(
     const purlinPieces = timberPurlinLinesPerPlane * timberPlaneCount;
     const pieceLengthM = timberPurlinTotalM / Math.max(1, purlinPieces);
     if (!Number.isFinite(pieceLengthM) || pieceLengthM <= 0) {
-      warnings.push('Invalid timber purlin length derived; skipping timber purlins.');
+      pushWarning('Invalid timber purlin length derived; skipping timber purlins.');
     } else {
       addCuts(
         TIMBER_PURLIN_PROFILE,
         Array.from({ length: purlinPieces }).map(() => pieceLengthM),
         'Timber purlins',
         'joinable',
-        { colour: 'Mill', finish: 'raw_mill', origin_prefix: 'timber_purlin' },
+        {
+          colour: 'Mill',
+          finish: 'raw_mill',
+          origin_prefix: 'timber_purlin',
+          explain: {
+            formula: 'purlinPieces = timberPurlinLinesPerPlane * timberPlaneCount; pieceLengthM = timberPurlinTotalM / purlinPieces; cuts = repeat(purlinPieces, pieceLengthM)',
+            deps: { timberPurlinLinesPerPlane, timberPlaneCount, timberPurlinTotalM, purlinPieces, pieceLengthM },
+          },
+        },
       );
     }
   }
@@ -574,7 +893,13 @@ export function buildMaterialsV1(
     Array.from({ length: inputs.post_count }).map(() => inputs.post_cut_height_m),
     'Posts',
     'single',
-    { origin_prefix: 'post' },
+    {
+      origin_prefix: 'post',
+      explain: {
+        formula: 'cuts = repeat(inputs.post_count, inputs.post_cut_height_m)',
+        deps: { 'inputs.post_count': inputs.post_count, 'inputs.post_cut_height_m': inputs.post_cut_height_m },
+      },
+    },
   );
 
   if (inputs.structure_type === 'pitched') {
@@ -597,7 +922,7 @@ export function buildMaterialsV1(
           'joinable',
           { origin_prefix: 'separate_gutter_run' },
         );
-        warnings.push('Separate gutter uses 100x100 cut‑down stock; length doubled to allow for waste.');
+        pushWarning('Separate gutter uses 100x100 cut‑down stock; length doubled to allow for waste.');
       }
     } else if (inputs.gutter_type === 'sp_gutter') {
       if (isHipCorner) {
@@ -757,7 +1082,7 @@ export function buildMaterialsV1(
     const selectedLen = pickStripStockLen(requiredLen);
     const stripItem = findCrystalite620Item(config, { length_m: selectedLen, colour: 'Clear' });
     if (!stripItem) {
-      warnings.push(`Crystalite 620mm (Clear) ${selectedLen}m not found in materials pricebook.`);
+      pushWarning(`Crystalite 620mm (Clear) ${selectedLen}m not found in materials pricebook.`);
       return;
     }
 
@@ -766,7 +1091,7 @@ export function buildMaterialsV1(
     recordCrystalite(selectedLen, qty, totalWaste);
 
     const id = opts.idSuffix ? `${stripItem.id}.${opts.idSuffix}` : stripItem.id;
-    lines.push({
+    const line: MaterialsLineV1 = {
       id,
       label: stripItem.name,
       profile: 'Crystalite 620mm',
@@ -775,6 +1100,18 @@ export function buildMaterialsV1(
       unit_cost_ex_gst: roundMoney(unitCost),
       line_cost_ex_gst: roundMoney(qty * unitCost),
       notes: opts.note,
+    };
+    lines.push(line);
+    annotateLine(line, {
+      kind: 'acrylic_sheet_or_strip',
+      formula: 'selectedLen = next available strip >= requiredLen; cutsPerBar = floor(selectedLen/requiredLen); barsNeeded = ceil(totalBays/cutsPerBar)',
+      deps: {
+        requiredLen: roundMoney(requiredLen),
+        selectedLen: roundMoney(selectedLen),
+        qty,
+        cutCount,
+        totalWaste: roundMoney(totalWaste),
+      },
     });
   };
 
@@ -804,7 +1141,7 @@ export function buildMaterialsV1(
       const debug = `computed=${roundMoney(requiredLen)}m, pitch=${roundMoney(pitchDeg)}°, span=${roundMoney(spanM)}m, setbacks=${roundMoney(
         setbacksM,
       )}m`;
-      warnings.push(
+      pushWarning(
         `Acrylic slope exceeds ${roundMoney(acrylicMaxSlopeM)}m. Max supported acrylic slope is ${roundMoney(
           acrylicMaxSlopeM,
         )}m (use design change or timber). (${debug})`,
@@ -812,9 +1149,16 @@ export function buildMaterialsV1(
     }
 
     const sheetMode = requiredLen <= sheetLengthM + 1e-6;
+    trace?.decision({
+      label: 'Acrylic sheet mode gate',
+      condition: 'requiredLen <= sheetLengthM',
+      deps: { requiredLen, sheetLengthM, totalBays },
+      result: sheetMode,
+      branch_taken: sheetMode ? 'sheet' : 'strip',
+    });
     if (sheetMode) {
       if (!plexiSheetClear) {
-        warnings.push('Plexi sheet 3050mm x2030mm (Clear) not found in materials pricebook; falling back to 620mm strips.');
+        pushWarning('Plexi sheet 3050mm x2030mm (Clear) not found in materials pricebook; falling back to 620mm strips.');
       } else {
         const sheetQtyMode: 'plan' | 'bays' = opts.sheetQtyMode === 'plan' ? 'plan' : 'bays';
 
@@ -822,12 +1166,19 @@ export function buildMaterialsV1(
         let sheetNote = '';
 
         const forceStripYield = requiredLen > sheetWidthM + 1e-6;
+        trace?.decision({
+          label: 'Acrylic forced strip-yield',
+          condition: 'requiredLen > sheetWidthM',
+          deps: { requiredLen, sheetWidthM, totalBays },
+          result: forceStripYield,
+          branch_taken: forceStripYield ? 'forced-strip-yield' : sheetQtyMode,
+        });
 
         if (forceStripYield) {
           const STRIP_WIDTH_M = 0.62;
           const stripsPerSheet = Math.floor(sheetWidthM / STRIP_WIDTH_M);
           if (stripsPerSheet < 1) {
-            warnings.push('INVALID: Acrylic sheet strip yield invalid (sheet width too small for 620mm strips).');
+            pushWarning('INVALID: Acrylic sheet strip yield invalid (sheet width too small for 620mm strips).');
             return;
           }
           sheetsNeeded = Math.max(0, Math.ceil(totalBays / stripsPerSheet));
@@ -860,7 +1211,7 @@ export function buildMaterialsV1(
           const unitCost = (plexiSheetClear as any).cost_ex_gst as number;
           const id = opts.idSuffix ? `${plexiSheetClear.id}.${opts.idSuffix}` : plexiSheetClear.id;
           const sheetQtyModeLabel = forceStripYield ? 'forced strip-yield' : sheetQtyMode;
-          lines.push({
+          const line: MaterialsLineV1 = {
             id,
             label: plexiSheetClear.name,
             profile: 'Plexi sheet 3050×2030',
@@ -871,6 +1222,24 @@ export function buildMaterialsV1(
             notes: `${opts.note} Using sheet mode (${sheetQtyModeLabel}): plane_downslope ${roundMoney(
               requiredLen,
             )}m ≤ ${roundMoney(sheetLengthM)}m; ${sheetNote}.`,
+          };
+          lines.push(line);
+          annotateLine(line, {
+            kind: 'acrylic_sheet_or_strip',
+            formula: forceStripYield
+              ? 'sheetsNeeded = ceil(totalBays / stripsPerSheet)'
+              : sheetQtyMode === 'plan'
+                ? 'sheetsNeeded = ceil(totalAreaM2 / (sheetLengthM * sheetWidthM))'
+                : 'sheetsNeeded = ceil(totalBays / stripsPerSheet)',
+            deps: {
+              requiredLen: roundMoney(requiredLen),
+              totalBays,
+              sheetLengthM,
+              sheetWidthM,
+              sheetQtyMode,
+              forceStripYield,
+              sheetsNeeded,
+            },
           });
           return;
         }
@@ -880,6 +1249,13 @@ export function buildMaterialsV1(
     const selectedLen = pickStripStockLen(requiredLen);
     const cutsPerBar = Math.max(1, Math.floor(selectedLen / Math.max(0.01, requiredLen)));
     const barsNeeded = Math.max(0, Math.ceil(totalBays / cutsPerBar));
+    trace?.value(`acrylic.strip.${opts.idSuffix ?? 'default'}`, {
+      label: 'Acrylic strip mode',
+      formula: 'cutsPerBar = floor(selectedLen/requiredLen); barsNeeded = ceil(totalBays/cutsPerBar)',
+      deps: { selectedLen, requiredLen, totalBays, cutsPerBar },
+      result: barsNeeded,
+      units: 'bars',
+    });
 
     addCrystaliteLine({
       requiredLen,
@@ -916,7 +1292,7 @@ export function buildMaterialsV1(
       const topRubber = findRubberItem(config, 'Top V Rubber');
       const bottomRubber = findRubberItem(config, 'Bottom Flat Rubbers');
 
-      if (!topRubber) warnings.push('Top V Rubber item not found in materials pricebook.');
+      if (!topRubber) pushWarning('Top V Rubber item not found in materials pricebook.');
       else {
         lines.push({
           id: topRubber.id,
@@ -929,7 +1305,7 @@ export function buildMaterialsV1(
         });
       }
 
-      if (!bottomRubber) warnings.push('Bottom Flat Rubbers item not found in materials pricebook.');
+      if (!bottomRubber) pushWarning('Bottom Flat Rubbers item not found in materials pricebook.');
       else {
         lines.push({
           id: bottomRubber.id,
@@ -946,7 +1322,7 @@ export function buildMaterialsV1(
     const foamMetres = Math.max(0, inputs.foam_length_m);
     if (foamMetres > 0) {
       const foam = findFoamItem(config, inputs.extrusion_colour);
-      if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
+      if (!foam) pushWarning(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
       else {
         const unitCost = (foam as any).cost_ex_gst as number;
         lines.push({
@@ -963,7 +1339,7 @@ export function buildMaterialsV1(
 
     const flashingMetres = Math.max(0, inputs.flashing_length_m);
     if (flashingMetres > 0) {
-      warnings.push('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
+      pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
       lines.push({
         id: 'placeholder.flashing_material_m',
         label: 'Flashing (material placeholder)',
@@ -1015,7 +1391,7 @@ export function buildMaterialsV1(
     }
   } else if (inputs.roof_material === 'mixed') {
     if (!inputs.mixed_roof) {
-      warnings.push('Mixed roof selected but no mixed_roof details provided; skipping acrylic materials.');
+      pushWarning('Mixed roof selected but no mixed_roof details provided; skipping acrylic materials.');
     } else if (inputs.mixed_roof.mode === 'acrylic_bays') {
       const roofPlanes = Array.isArray((derived as any).roof_planes) ? ((derived as any).roof_planes as any[]) : [];
       const acrylicBaysByPlane =
@@ -1024,9 +1400,9 @@ export function buildMaterialsV1(
           : null;
 
       if (!roofPlanes.length) {
-        warnings.push('Mixed roof acrylic bays mode requires roof plane geometry; skipping acrylic materials.');
+        pushWarning('Mixed roof acrylic bays mode requires roof plane geometry; skipping acrylic materials.');
       } else if (!acrylicBaysByPlane) {
-        warnings.push('Mixed roof acrylic bays mode selected but no acrylic_bays_by_plane provided; skipping acrylic materials.');
+        pushWarning('Mixed roof acrylic bays mode selected but no acrylic_bays_by_plane provided; skipping acrylic materials.');
       } else {
         let totalJoinerM = 0;
 
@@ -1074,7 +1450,7 @@ export function buildMaterialsV1(
           const topRubber = findRubberItem(config, 'Top V Rubber');
           const bottomRubber = findRubberItem(config, 'Bottom Flat Rubbers');
 
-          if (!topRubber) warnings.push('Top V Rubber item not found in materials pricebook.');
+          if (!topRubber) pushWarning('Top V Rubber item not found in materials pricebook.');
           else {
             lines.push({
               id: topRubber.id,
@@ -1087,7 +1463,7 @@ export function buildMaterialsV1(
             });
           }
 
-          if (!bottomRubber) warnings.push('Bottom Flat Rubbers item not found in materials pricebook.');
+          if (!bottomRubber) pushWarning('Bottom Flat Rubbers item not found in materials pricebook.');
           else {
             lines.push({
               id: bottomRubber.id,
@@ -1104,7 +1480,7 @@ export function buildMaterialsV1(
         const foamMetres = Math.max(0, inputs.foam_length_m);
         if (foamMetres > 0) {
           const foam = findFoamItem(config, inputs.extrusion_colour);
-          if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
+          if (!foam) pushWarning(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
           else {
             const unitCost = (foam as any).cost_ex_gst as number;
             lines.push({
@@ -1121,7 +1497,7 @@ export function buildMaterialsV1(
 
         const flashingMetres = Math.max(0, inputs.flashing_length_m);
         if (flashingMetres > 0) {
-          warnings.push('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
+          pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
           lines.push({
             id: 'placeholder.flashing_material_m',
             label: 'Flashing (material placeholder)',
@@ -1136,7 +1512,7 @@ export function buildMaterialsV1(
       }
     } else if (inputs.mixed_roof.mode === 'area_override') {
       if (isHipCorner) {
-        warnings.push('Mixed roof area override is not costed for hip corner yet; skipping acrylic materials.');
+        pushWarning('Mixed roof area override is not costed for hip corner yet; skipping acrylic materials.');
       } else {
         const totalRoofAreaM2 = Math.max(0, Number((derived as any).roof_surface_area_m2 ?? derived.roof_surface_area_m2));
         const acrylicAreaM2 = Math.max(0, Number((derived as any).acrylic_area_m2 ?? 0));
@@ -1165,7 +1541,7 @@ export function buildMaterialsV1(
             const topRubber = findRubberItem(config, 'Top V Rubber');
             const bottomRubber = findRubberItem(config, 'Bottom Flat Rubbers');
 
-            if (!topRubber) warnings.push('Top V Rubber item not found in materials pricebook.');
+            if (!topRubber) pushWarning('Top V Rubber item not found in materials pricebook.');
             else {
               lines.push({
                 id: topRubber.id,
@@ -1178,7 +1554,7 @@ export function buildMaterialsV1(
               });
             }
 
-            if (!bottomRubber) warnings.push('Bottom Flat Rubbers item not found in materials pricebook.');
+            if (!bottomRubber) pushWarning('Bottom Flat Rubbers item not found in materials pricebook.');
             else {
               lines.push({
                 id: bottomRubber.id,
@@ -1195,7 +1571,7 @@ export function buildMaterialsV1(
           const foamMetres = Math.max(0, inputs.foam_length_m);
           if (foamMetres > 0) {
             const foam = findFoamItem(config, inputs.extrusion_colour);
-            if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
+            if (!foam) pushWarning(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
             else {
               const unitCost = (foam as any).cost_ex_gst as number;
               lines.push({
@@ -1212,7 +1588,7 @@ export function buildMaterialsV1(
 
           const flashingMetres = Math.max(0, inputs.flashing_length_m);
           if (flashingMetres > 0) {
-            warnings.push('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
+            pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
             lines.push({
               id: 'placeholder.flashing_material_m',
               label: 'Flashing (material placeholder)',
@@ -1236,7 +1612,7 @@ export function buildMaterialsV1(
         }
       }
     } else if (inputs.mixed_roof.mode !== 'ridge_skylight' || !inputs.mixed_roof.ridge_skylight) {
-      warnings.push('Mixed roof mode not supported for acrylic materials yet; skipping acrylic materials.');
+      pushWarning('Mixed roof mode not supported for acrylic materials yet; skipping acrylic materials.');
     } else {
       const stripCount = Math.max(0, Math.round(inputs.mixed_roof.ridge_skylight.strip_count));
       const ridgeLen = isHipCorner ? inputs.length_m + Math.max(0, hipCornerLengthB) : inputs.length_m;
@@ -1248,7 +1624,7 @@ export function buildMaterialsV1(
 
       const stripItem = findCrystalite620Item(config, { length_m: selectedLen, colour: 'Clear' });
       if (!stripItem) {
-        warnings.push(`Crystalite 620mm (Clear) ${selectedLen}m not found in materials pricebook.`);
+        pushWarning(`Crystalite 620mm (Clear) ${selectedLen}m not found in materials pricebook.`);
       } else if (stripCount > 0) {
         const unitCost = (stripItem as any).cost_ex_gst as number;
         const totalRequired = stripCount * requiredLen;
@@ -1282,7 +1658,7 @@ export function buildMaterialsV1(
           const topRubber = findRubberItem(config, 'Top V Rubber');
           const bottomRubber = findRubberItem(config, 'Bottom Flat Rubbers');
 
-          if (!topRubber) warnings.push('Top V Rubber item not found in materials pricebook.');
+          if (!topRubber) pushWarning('Top V Rubber item not found in materials pricebook.');
           else {
             lines.push({
               id: topRubber.id,
@@ -1295,7 +1671,7 @@ export function buildMaterialsV1(
             });
           }
 
-          if (!bottomRubber) warnings.push('Bottom Flat Rubbers item not found in materials pricebook.');
+          if (!bottomRubber) pushWarning('Bottom Flat Rubbers item not found in materials pricebook.');
           else {
             lines.push({
               id: bottomRubber.id,
@@ -1312,7 +1688,7 @@ export function buildMaterialsV1(
         const foamMetres = Math.max(0, inputs.foam_length_m);
         if (foamMetres > 0) {
           const foam = findFoamItem(config, inputs.extrusion_colour);
-          if (!foam) warnings.push(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
+          if (!foam) pushWarning(`Foam item not found in materials pricebook for colour ${inputs.extrusion_colour}.`);
           else {
             const unitCost = (foam as any).cost_ex_gst as number;
             lines.push({
@@ -1329,7 +1705,7 @@ export function buildMaterialsV1(
 
         const flashingMetres = Math.max(0, inputs.flashing_length_m);
         if (flashingMetres > 0) {
-          warnings.push('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
+          pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
           lines.push({
             id: 'placeholder.flashing_material_m',
             label: 'Flashing (material placeholder)',
@@ -1362,12 +1738,12 @@ export function buildMaterialsV1(
 
     if (timberAreaM2 > 0) {
       if (!Number.isFinite(coverM) || coverM <= 0) {
-        warnings.push('Invalid cedar sarking cover_m in rules; skipping timber roofing takeoff.');
+        pushWarning('Invalid cedar sarking cover_m in rules; skipping timber roofing takeoff.');
       } else {
         const cedarLm = (timberAreaM2 / coverM) * (1 + (Number.isFinite(wasteFactor) ? wasteFactor : 0));
         const cedarItem = findPricebookItemById(config, cedarItemId);
         if (!cedarItem) {
-          warnings.push(`Cedar sarking item '${cedarItemId}' not found in materials pricebook.`);
+          pushWarning(`Cedar sarking item '${cedarItemId}' not found in materials pricebook.`);
         } else {
           const unitCost = (cedarItem as any).cost_ex_gst as number;
           lines.push({
@@ -1398,7 +1774,7 @@ export function buildMaterialsV1(
     if (roofAboveArea > 0) {
       if (roofAboveType === 'insulated_panels') {
         const panelItem = findPricebookItemById(config, 'roof.insulated_panel_50mm_m2');
-        if (!panelItem) warnings.push("Roof above item 'roof.insulated_panel_50mm_m2' not found in materials pricebook.");
+        if (!panelItem) pushWarning("Roof above item 'roof.insulated_panel_50mm_m2' not found in materials pricebook.");
         else {
           const unitCost = Number((panelItem as any).cost_ex_gst ?? 0);
           lines.push({
@@ -1413,7 +1789,7 @@ export function buildMaterialsV1(
         }
       } else if (roofAboveType === 'steel_corrugated') {
         const steelItem = findPricebookItemById(config, 'roof.steel_corrugated_m2');
-        if (!steelItem) warnings.push("Roof above item 'roof.steel_corrugated_m2' not found in materials pricebook.");
+        if (!steelItem) pushWarning("Roof above item 'roof.steel_corrugated_m2' not found in materials pricebook.");
         else {
           const unitCost = Number((steelItem as any).cost_ex_gst ?? 0);
           lines.push({
@@ -1428,7 +1804,7 @@ export function buildMaterialsV1(
         }
       } else if (roofAboveType === 'steel_tray') {
         const steelItem = findPricebookItemById(config, 'roof.steel_tray_m2');
-        if (!steelItem) warnings.push("Roof above item 'roof.steel_tray_m2' not found in materials pricebook.");
+        if (!steelItem) pushWarning("Roof above item 'roof.steel_tray_m2' not found in materials pricebook.");
         else {
           const unitCost = Number((steelItem as any).cost_ex_gst ?? 0);
           lines.push({
@@ -1447,7 +1823,7 @@ export function buildMaterialsV1(
     if (roofAboveType === 'steel_corrugated' || roofAboveType === 'steel_tray') {
       const covertekArea = Math.max(0, Number((derived as any).covertek_area_m2 ?? 0));
       const covertekItem = findPricebookItemById(config, 'underlay.covertek_407_m2');
-      if (!covertekItem) warnings.push("Underlay item 'underlay.covertek_407_m2' not found in materials pricebook.");
+      if (!covertekItem) pushWarning("Underlay item 'underlay.covertek_407_m2' not found in materials pricebook.");
       else if (covertekArea > 0) {
         const unitCost = Number((covertekItem as any).cost_ex_gst ?? 0);
         lines.push({
@@ -1463,7 +1839,7 @@ export function buildMaterialsV1(
 
       const polyArea = Math.max(0, Number((derived as any).polystyrene_area_m2 ?? 0));
       const polyItem = findPricebookItemById(config, 'insulation.polystyrene_m2');
-      if (!polyItem) warnings.push("Insulation item 'insulation.polystyrene_m2' not found in materials pricebook.");
+      if (!polyItem) pushWarning("Insulation item 'insulation.polystyrene_m2' not found in materials pricebook.");
       else if (polyArea > 0) {
         const unitCost = Number((polyItem as any).cost_ex_gst ?? 0);
         lines.push({
@@ -1481,7 +1857,12 @@ export function buildMaterialsV1(
 
   let spliceJoinCount = 0;
 
-  for (const group of cutGroups.values()) {
+  for (const [groupKey, group] of cutGroups.entries()) {
+    trace?.cutGroupMeta(groupKey, {
+      profile: group.profile,
+      colour: group.colour,
+      finish: group.finish,
+    });
     const rawBars = pickBarsForProfile(config, group.profile, group.colour);
     const applyPowdercoatOverlay =
       group.finish !== 'raw_mill' && inputs.extrusion_colour === 'Mill' && group.colour === 'Mill' && !!powdercoatColourUsed;
@@ -1490,7 +1871,7 @@ export function buildMaterialsV1(
           const baseCost = Number((bar as any).cost_ex_gst ?? 0);
           const powderItem = findPowdercoatBar(config, group.profile, bar.stock_length_m);
           if (!powderItem) {
-            warnings.push(
+            pushWarning(
               `INVALID: Powdercoat pricebook item not found for profile '${group.profile}' (${bar.stock_length_m}m).`,
             );
           }
@@ -1506,6 +1887,33 @@ export function buildMaterialsV1(
           };
         })
       : rawBars;
+    trace?.stockCandidates(
+      groupKey,
+      bars.map((bar) => {
+        const powderBase = Number((bar as any).__powdercoat_base_cost_ex_gst ?? Number((bar as any).cost_ex_gst ?? 0));
+        const powderCost = Number((bar as any).__powdercoat_cost_ex_gst ?? 0);
+        const powderMult = Number((bar as any).__powdercoat_multiplier ?? 1);
+        const powderColour = String((bar as any).__powdercoat_colour_used ?? '');
+        const effectiveCost = Number((bar as any).cost_ex_gst ?? 0);
+        return {
+          item_id: String(bar.id),
+          name: String(bar.name),
+          stock_length_m: Number(bar.stock_length_m),
+          unit_cost_ex_gst: roundMoney(effectiveCost),
+          powdercoat: applyPowdercoatOverlay
+            ? {
+                applied: true,
+                base_cost_ex_gst: roundMoney(powderBase),
+                powdercoat_cost_ex_gst: roundMoney(powderCost),
+                multiplier: roundMoney(powderMult),
+                colour_used: powderColour,
+                effective_cost_ex_gst: roundMoney(effectiveCost),
+                formula: 'base + powder * multiplier',
+              }
+            : undefined,
+        };
+      }),
+    );
     if (!bars.length) {
       const candidates = config.materials.items
         .filter((it) => it.category === 'aluminium_extrusion' && it.unit === 'bar')
@@ -1522,7 +1930,7 @@ export function buildMaterialsV1(
           return `${p}${typeof l === 'number' ? ` (${l}m)` : ''}`;
         });
       const unique = Array.from(new Set(candidates)).slice(0, 12);
-      warnings.push(
+      pushWarning(
         `No pricebook bars found for requested profile '${group.profile}' (colour '${group.colour}').` +
           (unique.length ? ` Available for colour: ${unique.join(', ')}.` : ''),
       );
@@ -1536,16 +1944,25 @@ export function buildMaterialsV1(
     );
     const maxStock = Math.max(0, ...bars.map((b) => b.stock_length_m).filter((n) => Number.isFinite(n) && n > 0));
     if (singleCuts.length && maxSingleCut > maxStock + 1e-6) {
-      warnings.push(
+      pushWarning(
         `Required cut length ${roundMoney(maxSingleCut)}m exceeds max stock length ${roundMoney(maxStock)}m for profile '${group.profile}' (colour '${group.colour}').`,
       );
     }
 
-    const selection = selectBestStock(bars, group.cuts, preferredStockLengths);
+    const selection = selectBestStock(bars, group.cuts, preferredStockLengths, { trace, groupKey });
     if (!selection.bar || selection.barsUsed <= 0) {
+      if (trace) {
+        trace.joinableOriginals(
+          groupKey,
+          Array.from(group.originals_joinable.entries()).map(([originId, originLen]) => ({
+            origin_id: originId,
+            origin_len_m: originLen,
+          })),
+        );
+      }
       if (singleCuts.length) {
         const lengths = Array.from(new Set(bars.map((b) => b.stock_length_m))).sort((a, b) => b - a);
-        warnings.push(
+        pushWarning(
           `Could not allocate bars for requested profile '${group.profile}' (colour '${group.colour}'). Available stock lengths: ${lengths.join(
             ', ',
           )}.`,
@@ -1562,10 +1979,18 @@ export function buildMaterialsV1(
     const powderColour = (selection.bar as any).__powdercoat_colour_used as string | undefined;
 
     let joinCountForGroup = 0;
-    for (const originLen of group.originals_joinable.values()) {
-      if (!Number.isFinite(originLen) || originLen <= selection.bar.stock_length_m + 1e-6) continue;
-      joinCountForGroup += Math.max(0, Math.ceil(originLen / selection.bar.stock_length_m) - 1);
+    const joinableExplainRows: Array<{ origin_id: string; origin_len_m: number; joins_needed: number }> = [];
+    for (const [originId, originLen] of group.originals_joinable.entries()) {
+      if (!Number.isFinite(originLen)) continue;
+      const joinsNeeded = originLen > selection.bar.stock_length_m + 1e-6 ? Math.max(0, Math.ceil(originLen / selection.bar.stock_length_m) - 1) : 0;
+      joinableExplainRows.push({
+        origin_id: originId,
+        origin_len_m: originLen,
+        joins_needed: joinsNeeded,
+      });
+      joinCountForGroup += joinsNeeded;
     }
+    trace?.joinableOriginals(groupKey, joinableExplainRows);
     spliceJoinCount += joinCountForGroup;
 
     waste_m_by_profile[group.profile] = roundMoney(selection.wasteM);
@@ -1595,7 +2020,7 @@ export function buildMaterialsV1(
       notes = `${notes} | ${powderNote}`;
     }
 
-    lines.push({
+    const extrusionLine: MaterialsLineV1 = {
       id: selection.bar.id,
       label,
       profile: group.profile,
@@ -1604,13 +2029,36 @@ export function buildMaterialsV1(
       unit_cost_ex_gst: roundMoney(unitCost),
       line_cost_ex_gst: roundMoney(lineCost),
       notes,
+    };
+    lines.push(extrusionLine);
+    annotateLine(extrusionLine, {
+      kind: 'extrusion_bar',
+      cut_group_key: groupKey,
+      notes_formula: notes,
+    });
+
+    const expandedForChosen = expandCutsForStock(group.cuts, selection.bar.stock_length_m) ?? [];
+    selectedExpandedCutsByGroup?.set(groupKey, {
+      expandedCuts: expandedForChosen,
+      stockLengthM: selection.bar.stock_length_m,
+    });
+    if (trace?.shouldCollectFullGroup(groupKey) && expandedForChosen.length > 0) {
+      trace.binPackPlan(groupKey, greedyBinPackPlan(expandedForChosen, selection.bar.stock_length_m));
+    }
+    trace?.cutGroupTotals(groupKey, {
+      bars_used: selection.barsUsed,
+      stock_length_m: selection.bar.stock_length_m,
+      waste_m: roundMoney(selection.wasteM),
+      unit_cost_ex_gst: roundMoney(unitCost),
+      line_cost_ex_gst: roundMoney(lineCost),
+      splice_joins_in_group: joinCountForGroup,
     });
   }
 
   if (spliceJoinCount > 0) {
     const joinQty = Math.max(0, Math.round(spliceJoinCount));
     const bracketItem = findPricebookItemById(config, 'hardware.splice_join_bracket');
-    if (!bracketItem) warnings.push("Splice join bracket item 'hardware.splice_join_bracket' not found in materials pricebook.");
+    if (!bracketItem) pushWarning("Splice join bracket item 'hardware.splice_join_bracket' not found in materials pricebook.");
     else {
       const unitCost = Number((bracketItem as any).cost_ex_gst ?? 0);
       lines.push({
@@ -1626,7 +2074,7 @@ export function buildMaterialsV1(
 
     const screwQty = joinQty * 6;
     const screwItem = findPricebookItemById(config, 'fixing.splice_join_screw_each');
-    if (!screwItem) warnings.push("Splice join screw item 'fixing.splice_join_screw_each' not found in materials pricebook.");
+    if (!screwItem) pushWarning("Splice join screw item 'fixing.splice_join_screw_each' not found in materials pricebook.");
     else {
       const unitCost = Number((screwItem as any).cost_ex_gst ?? 0);
       lines.push({
@@ -1646,7 +2094,7 @@ export function buildMaterialsV1(
     const soffitBracketQty = Math.max(0, derived.bracket_count);
 
     const bracketItem = findPricebookItemById(config, 'bracket_3f6d3c53fa');
-    if (!bracketItem) warnings.push("Soffit bracket pricebook item 'bracket_3f6d3c53fa' not found.");
+    if (!bracketItem) pushWarning("Soffit bracket pricebook item 'bracket_3f6d3c53fa' not found.");
     else {
       const unitCost = Number((bracketItem as any).cost_ex_gst ?? 0);
       lines.push({
@@ -1661,7 +2109,7 @@ export function buildMaterialsV1(
     }
 
     const powderItem = findPricebookItemById(config, 'powdercoating_199231d91b');
-    if (!powderItem) warnings.push("Powdercoating pricebook item 'powdercoating_199231d91b' not found.");
+    if (!powderItem) pushWarning("Powdercoating pricebook item 'powdercoating_199231d91b' not found.");
     else {
       const unitCost = Number((powderItem as any).cost_ex_gst ?? 0);
       lines.push({
@@ -1706,27 +2154,41 @@ export function buildMaterialsV1(
 
   for (const rule of config.hardware.rules) {
     const applies = Object.entries(rule.applies_when).every(([k, v]) => (inputs as any)[k] === v);
+    trace?.decision({
+      label: `Hardware rule ${rule.id}`,
+      condition: 'all applies_when entries match normalized inputs',
+      deps: { ...rule.applies_when },
+      result: applies,
+      branch_taken: applies ? 'applied' : 'skipped',
+    });
     if (!applies) continue;
 
     for (const line of rule.lines) {
       const item = materialItems.get(line.item_id);
       if (!item) {
-        warnings.push(`Hardware rule item '${line.item_id}' not found in materials pricebook (rule ${rule.id}).`);
+        pushWarning(`Hardware rule item '${line.item_id}' not found in materials pricebook (rule ${rule.id}).`);
         continue;
       }
 
       let qty = 0;
+      let varsUsed: Record<string, number> = {};
       try {
-        qty = evalQtyExpression(String(line.qty), qtyVars);
+        if (trace) {
+          const evaluated = evalQtyExpressionExplain(String(line.qty), qtyVars);
+          qty = evaluated.result;
+          varsUsed = evaluated.accessed;
+        } else {
+          qty = evalQtyExpression(String(line.qty), qtyVars);
+        }
       } catch (err) {
-        warnings.push(`Failed to evaluate qty '${line.qty}' for '${line.item_id}' (rule ${rule.id}).`);
+        pushWarning(`Failed to evaluate qty '${line.qty}' for '${line.item_id}' (rule ${rule.id}).`);
         continue;
       }
 
       qty = Math.max(0, qty);
 
       const unitCost = Number((item as any).cost_ex_gst ?? 0);
-      lines.push({
+      const hardwareLine: MaterialsLineV1 = {
         id: item.id,
         label: item.name,
         unit: item.unit,
@@ -1734,12 +2196,94 @@ export function buildMaterialsV1(
         unit_cost_ex_gst: roundMoney(unitCost),
         line_cost_ex_gst: roundMoney(qty * unitCost),
         notes: rule.notes || undefined,
+      };
+      lines.push(hardwareLine);
+      annotateLine(hardwareLine, {
+        kind: 'rule_hardware',
+        rule_id: String(rule.id),
+        applies_when: { ...rule.applies_when },
+        applied: true,
+        expr: String(line.qty),
+        vars_used: varsUsed,
+        result_qty: qty,
       });
     }
   }
 
   // Stable ordering for UI + snapshots.
   lines.sort((a, b) => a.id.localeCompare(b.id));
+
+  if (trace) {
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      const explainMeta = lineExplainByRef?.get(line);
+      const base = {
+        line_index: i,
+        line_id: line.id,
+        label: line.label,
+        unit: line.unit,
+        qty: line.qty,
+        unit_cost_ex_gst: line.unit_cost_ex_gst,
+        line_cost_ex_gst: line.line_cost_ex_gst,
+      };
+
+      if (explainMeta?.kind === 'extrusion_bar') {
+        const key = explainMeta.cut_group_key;
+        const shouldIncludePlan = trace.shouldCollectFullGroup(key);
+        const selected = selectedExpandedCutsByGroup?.get(key);
+        if (shouldIncludePlan && selected && selected.expandedCuts.length > 0) {
+          trace.binPackPlan(key, greedyBinPackPlan(selected.expandedCuts, selected.stockLengthM));
+        }
+        trace.linkLine(i, {
+          ...base,
+          kind: 'extrusion_bar',
+          cut_group_key: key,
+          notes_formula: explainMeta.notes_formula,
+        });
+        continue;
+      }
+
+      if (explainMeta?.kind === 'acrylic_sheet_or_strip') {
+        trace.linkLine(i, {
+          ...base,
+          kind: 'acrylic_sheet_or_strip',
+          formula: explainMeta.formula,
+          deps: explainMeta.deps,
+        });
+        continue;
+      }
+
+      if (explainMeta?.kind === 'rule_hardware') {
+        trace.linkLine(i, {
+          ...base,
+          kind: 'rule_hardware',
+          rule_id: explainMeta.rule_id,
+          applies_when: explainMeta.applies_when,
+          applied: explainMeta.applied,
+          expr: explainMeta.expr,
+          vars_used: explainMeta.vars_used,
+          result_qty: explainMeta.result_qty,
+        });
+        continue;
+      }
+
+      trace.linkLine(i, {
+        ...base,
+        kind: 'simple',
+        formula: line.notes ? String(line.notes) : 'qty from fixed BOM line',
+        deps: {
+          qty: line.qty,
+          unit: line.unit,
+        },
+      });
+    }
+
+    trace.finalize({
+      total_cut_groups: cutGroups.size,
+      total_lines: lines.length,
+      focus_cut_group_key: explainOpts?.focus_cut_group_key,
+    });
+  }
 
   const materialsExGst = roundMoney(lines.reduce((acc, l) => acc + l.line_cost_ex_gst, 0));
 
@@ -1757,6 +2301,45 @@ export function buildMaterialsV1(
       splice_join_count: spliceJoinCount,
     },
   };
+}
+
+export function buildMaterialsV1(
+  inputs: InputsNormalizedV1,
+  derived: DerivedV1,
+  config: CostingConfigV1,
+): BuildMaterialsResultV1 {
+  return buildMaterialsV1Internal(inputs, derived, config);
+}
+
+export function buildMaterialsV1Explain(
+  inputs: InputsNormalizedV1,
+  derived: DerivedV1,
+  config: CostingConfigV1,
+  opts?: MaterialsExplainOptions,
+): { result: BuildMaterialsResultV1; explain: MaterialsExplainV1 } {
+  const run = (runOpts?: MaterialsExplainOptions): { result: BuildMaterialsResultV1; explain: MaterialsExplainV1 } => {
+    const { collector, output } = createMaterialsExplainCollector(runOpts);
+    output.inputs_normalized_snapshot = snapshotInputs(inputs);
+    output.derived_snapshot = snapshotDerived(derived);
+    const result = buildMaterialsV1Internal(inputs, derived, config, collector, runOpts);
+    return { result, explain: output };
+  };
+
+  const first = run(opts);
+  const focusLineIndex = typeof opts?.focus_line_index === 'number' ? Math.max(0, Math.round(opts.focus_line_index)) : null;
+  if (focusLineIndex === null || opts?.focus_cut_group_key) return first;
+
+  const focusedLine = first.explain.lines[String(focusLineIndex)];
+  if (!focusedLine || focusedLine.kind !== 'extrusion_bar') return first;
+
+  const focusGroupKey = focusedLine.cut_group_key;
+  if (!focusGroupKey) return first;
+
+  const nextOpts: MaterialsExplainOptions = {
+    ...opts,
+    focus_cut_group_key: focusGroupKey,
+  };
+  return run(nextOpts);
 }
 
 export const __test__ = { selectBestStock };

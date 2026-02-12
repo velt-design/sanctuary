@@ -1,9 +1,10 @@
 import { loadCostingConfigV1, type CostingConfigV1 } from './config';
 import { applyGst, normalizeAndDeriveV1 } from './derive';
-import { buildMaterialsV1 } from './bom';
+import { buildMaterialsV1, buildMaterialsV1Explain } from './bom';
 import { buildDayCycleActions, buildInstallV1, computeSiteDays, DAY_CYCLE_ACTION_IDS } from './install';
 import { buildOverheadV1 } from './overheads';
 import type { CostInputsV1, CostOutputV1, JobInputsV1, JobOutputV1, InstallActionV1, MaterialsLineV1, WarningLevelV1, WarningV1 } from './types';
+import type { MaterialsExplainOptions, MaterialsExplainV1 } from './materials_explain';
 
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
@@ -142,6 +143,74 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
       warnings,
       notes_and_warnings,
     },
+  };
+}
+
+export function calculateCostV1WithMaterialsExplain(
+  inputs: CostInputsV1,
+  opts?: MaterialsExplainOptions,
+  config?: CostingConfigV1,
+): { output: CostOutputV1; materials_explain: MaterialsExplainV1 } {
+  const cfg = config ?? loadCostingConfigV1();
+
+  const derivedResult = normalizeAndDeriveV1(inputs, cfg);
+
+  const materialsResult = buildMaterialsV1Explain(derivedResult.inputs_normalized, derivedResult.derived, cfg, opts);
+  const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.result.derived_patch ?? {}) };
+
+  const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
+    excludeActionIds: DAY_CYCLE_ACTION_IDS,
+  });
+  const { siteDays, dayCycle } = computeDayCycle(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, baseInstall.install.totals.crew_hours);
+  const installResult = mergeInstallResults(baseInstall, dayCycle);
+
+  derivedWithPatch.site_days = siteDays;
+
+  const overheadResult = buildOverheadV1(cfg, { module_count: 1, total_crew_hours: installResult.install.totals.crew_hours });
+
+  const notes_and_warnings = [
+    ...derivedResult.notes_and_warnings,
+    ...materialsResult.result.notes_and_warnings,
+    ...installResult.notes_and_warnings,
+    ...overheadResult.notes_and_warnings,
+  ];
+  const warnings = toWarnings(notes_and_warnings);
+
+  const addOnsBase: CostOutputV1['add_ons'] = {
+    travel_ex_gst: roundMoney(derivedResult.inputs_normalized.travel_ex_gst),
+    extras_allowance_ex_gst: roundMoney(derivedResult.inputs_normalized.extras_allowance_ex_gst),
+  };
+
+  const overheadExGst = cfg.overheads.include_in_total_cost ? overheadResult.overhead.total_ex_gst : 0;
+
+  const costExGst = roundMoney(
+    materialsResult.result.materials.totals.materials_ex_gst +
+      installResult.install.totals.install_ex_gst +
+      overheadExGst +
+      addOnsBase.travel_ex_gst +
+      addOnsBase.extras_allowance_ex_gst,
+  );
+
+  const costIncGst = roundMoney(applyGst(costExGst));
+
+  const output: CostOutputV1 = {
+    inputs_normalized: derivedResult.inputs_normalized,
+    derived: derivedWithPatch,
+    materials: materialsResult.result.materials,
+    install: installResult.install,
+    overhead: overheadResult.overhead,
+    add_ons: addOnsBase,
+    totals: {
+      cost_ex_gst: costExGst,
+      cost_inc_gst: costIncGst,
+      warnings,
+      notes_and_warnings,
+    },
+  };
+
+  return {
+    output,
+    materials_explain: materialsResult.explain,
   };
 }
 

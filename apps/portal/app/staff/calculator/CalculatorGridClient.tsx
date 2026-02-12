@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostInputsV1, JobInputsV1, JobOutputV1, RoofType } from '@sp/costing';
+import type { CostInputsV1, JobInputsV1, JobOutputV1, MaterialsExplainV1, RoofType } from '@sp/costing';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
@@ -45,6 +45,22 @@ type FieldSchemaItem = {
   actionLabel?: string;
 };
 
+type MaterialsExplainApiResponse = {
+  output: {
+    materials: {
+      lines: Array<{
+        id: string;
+        label: string;
+        unit: string;
+        qty: number;
+        unit_cost_ex_gst: number;
+        line_cost_ex_gst: number;
+      }>;
+    };
+  };
+  materials_explain: MaterialsExplainV1;
+};
+
 function toNumber(value: string): number {
   const n = Number.parseFloat(value);
   return Number.isFinite(n) ? n : NaN;
@@ -68,6 +84,10 @@ function formatMaybeMoney(n: number | undefined): string {
 function formatMaybeNumber(n: number | undefined, digits = 2): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   return n.toFixed(digits);
+}
+
+function toPrettyJson(value: unknown): string {
+  return JSON.stringify(value, null, 2);
 }
 
 function inferStockLengthFromLabel(label: string): number | null {
@@ -991,10 +1011,21 @@ export default function CalculatorGridClient({
   }, [values]);
 
   const requestPayloadJson = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
+  const activeModulePayload = useMemo<CostInputsV1 | null>(
+    () => requestPayload.modules[activeModuleIndex] ?? null,
+    [requestPayload.modules, activeModuleIndex],
+  );
+  const materialsDebugAvailable = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_COSTING_DEBUG_ENABLED === '1';
 
   const [result, setResult] = useState<JobOutputV1 | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [materialsDebugEnabled, setMaterialsDebugEnabled] = useState(false);
+  const [materialsDebugDetail, setMaterialsDebugDetail] = useState<'summary' | 'full'>('summary');
+  const [materialsDebugFocusLineIndex, setMaterialsDebugFocusLineIndex] = useState<number | null>(null);
+  const [materialsDebugData, setMaterialsDebugData] = useState<MaterialsExplainApiResponse | null>(null);
+  const [materialsDebugLoading, setMaterialsDebugLoading] = useState(false);
+  const [materialsDebugError, setMaterialsDebugError] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
@@ -1070,6 +1101,71 @@ export default function CalculatorGridClient({
     };
   }, [readyToCalculate, requestPayloadJson]);
 
+  useEffect(() => {
+    setMaterialsDebugFocusLineIndex(null);
+  }, [activeModuleIndex]);
+
+  useEffect(() => {
+    if (!materialsDebugAvailable) {
+      setMaterialsDebugEnabled(false);
+      setMaterialsDebugData(null);
+      setMaterialsDebugError(null);
+    }
+  }, [materialsDebugAvailable]);
+
+  useEffect(() => {
+    if (!materialsDebugEnabled || !materialsDebugAvailable || !readyToCalculate || !activeModulePayload) {
+      setMaterialsDebugLoading(false);
+      if (!materialsDebugEnabled) {
+        setMaterialsDebugData(null);
+        setMaterialsDebugError(null);
+      }
+      return;
+    }
+
+    const controller = new AbortController();
+    const t = window.setTimeout(async () => {
+      setMaterialsDebugLoading(true);
+      setMaterialsDebugError(null);
+
+      try {
+        const params = new URLSearchParams();
+        params.set('detail', materialsDebugDetail);
+        if (materialsDebugFocusLineIndex !== null) {
+          params.set('focus_line_index', String(materialsDebugFocusLineIndex));
+        }
+
+        const res = await fetch(`/api/staff/costing/v1/materials-explain?${params.toString()}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(activeModulePayload),
+          signal: controller.signal,
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(String(json?.error ?? 'Materials explain failed'));
+        setMaterialsDebugData(json as MaterialsExplainApiResponse);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : 'Materials explain failed';
+        setMaterialsDebugError(msg);
+      } finally {
+        if (!controller.signal.aborted) setMaterialsDebugLoading(false);
+      }
+    }, 220);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(t);
+    };
+  }, [
+    materialsDebugEnabled,
+    materialsDebugAvailable,
+    readyToCalculate,
+    activeModulePayload,
+    materialsDebugDetail,
+    materialsDebugFocusLineIndex,
+  ]);
+
   const moduleResult = result?.modules[activeModuleIndex] ?? result?.modules[0] ?? null;
 
   const derivedArea = moduleResult?.derived.area_m2;
@@ -1098,6 +1194,24 @@ export default function CalculatorGridClient({
   const overheadEx = result?.overhead.total_ex_gst;
   const totalEx = result?.totals.cost_ex_gst;
   const totalInc = result?.totals.cost_inc_gst;
+  const materialsExplain = materialsDebugData?.materials_explain ?? null;
+  const materialsExplainLines = materialsDebugData?.output.materials.lines ?? [];
+  const selectedExplainLine =
+    materialsDebugFocusLineIndex !== null && materialsDebugFocusLineIndex >= 0
+      ? (materialsExplain?.lines[String(materialsDebugFocusLineIndex)] ?? null)
+      : null;
+  const selectedMaterialLine =
+    materialsDebugFocusLineIndex !== null && materialsDebugFocusLineIndex >= 0
+      ? (materialsExplainLines[materialsDebugFocusLineIndex] ?? null)
+      : null;
+  const materialsExplainJson = useMemo(
+    () => (materialsExplain ? toPrettyJson(materialsExplain) : ''),
+    [materialsExplain],
+  );
+  const selectedExplainJson = useMemo(
+    () => (selectedExplainLine ? toPrettyJson(selectedExplainLine) : ''),
+    [selectedExplainLine],
+  );
 
   const blindInputs = useMemo<BlindLineItemInput[]>(
     () =>
@@ -2354,6 +2468,33 @@ export default function CalculatorGridClient({
 
   const allowanceFields = pickFields(['travelExGst', 'extrasAllowanceExGst', 'quoteDiscountPct']);
 
+  const copyMaterialsExplainJson = async () => {
+    if (!materialsExplainJson) return;
+    try {
+      await navigator.clipboard.writeText(materialsExplainJson);
+      toast.success('Materials trace JSON copied.');
+    } catch {
+      toast.error('Failed to copy materials trace JSON.');
+    }
+  };
+
+  const downloadMaterialsExplainJson = () => {
+    if (!materialsExplainJson) return;
+    try {
+      const blob = new Blob([materialsExplainJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `materials-explain-${Date.now()}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Failed to download materials trace JSON.');
+    }
+  };
+
   const bomPreview = useMemo(() => {
     const lines = result?.materials?.lines ?? [];
     if (!Array.isArray(lines) || lines.length === 0) return [];
@@ -2476,6 +2617,105 @@ export default function CalculatorGridClient({
                 </div>
               ) : (
                 <p className={styles.previewMuted}>No BOM yet.</p>
+              )}
+            </section>
+
+            <section className={styles.previewCard} aria-label="Materials debug">
+              <div className={styles.materialsDebugHeader}>
+                <h2 className={styles.previewCardTitle} style={{ margin: 0 }}>
+                  Materials debug
+                </h2>
+                {!materialsDebugAvailable ? <span className={styles.previewMuted}>Disabled</span> : null}
+              </div>
+              {materialsDebugAvailable ? (
+                <>
+                  <div className={styles.materialsDebugControls}>
+                    <label className={styles.toggleRow}>
+                      <input
+                        type="checkbox"
+                        className={styles.toggleBox}
+                        checked={materialsDebugEnabled}
+                        onChange={(e) => setMaterialsDebugEnabled(e.target.checked)}
+                      />
+                      <span className={styles.toggleText}>Materials Debug</span>
+                    </label>
+                    <label className={styles.materialsDebugDetail}>
+                      <span>Detail</span>
+                      <select
+                        className={styles.control}
+                        value={materialsDebugDetail}
+                        onChange={(e) => setMaterialsDebugDetail(e.target.value === 'full' ? 'full' : 'summary')}
+                        disabled={!materialsDebugEnabled}
+                      >
+                        <option value="summary">summary</option>
+                        <option value="full">full</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {materialsDebugEnabled ? (
+                    <>
+                      {materialsDebugLoading ? <p className={styles.previewMuted}>Loading materials trace…</p> : null}
+                      {materialsDebugError ? <p className={styles.previewError}>{materialsDebugError}</p> : null}
+
+                      {materialsExplainLines.length ? (
+                        <div className={styles.materialsDebugList}>
+                          {materialsExplainLines.map((line, idx) => {
+                            const isSelected = materialsDebugFocusLineIndex === idx;
+                            return (
+                              <button
+                                key={`${line.id}-${idx}`}
+                                type="button"
+                                className={isSelected ? styles.materialsDebugRowActive : styles.materialsDebugRow}
+                                onClick={() => setMaterialsDebugFocusLineIndex(idx)}
+                              >
+                                <span>{`${idx}. ${line.label}`}</span>
+                                <span>{`${formatMaybeNumber(line.qty, 2)} ${line.unit}`}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className={styles.previewMuted}>No materials trace lines yet.</p>
+                      )}
+
+                      {selectedExplainLine && selectedMaterialLine ? (
+                        <div className={styles.materialsDebugExplain}>
+                          <div className={styles.previewRow}>
+                            <span className={styles.previewRowLabel}>{`${selectedExplainLine.line_index}. ${selectedMaterialLine.label}`}</span>
+                            <span className={styles.previewRowValue}>{formatMaybeMoney(selectedMaterialLine.line_cost_ex_gst)}</span>
+                          </div>
+                          <div className={styles.previewRowMeta}>
+                            {formatMaybeNumber(selectedMaterialLine.qty, 2)} {selectedMaterialLine.unit} @{' '}
+                            {formatMaybeMoney(selectedMaterialLine.unit_cost_ex_gst)}
+                          </div>
+                          {selectedExplainLine.kind === 'extrusion_bar' ? (
+                            <div className={styles.previewRowMeta}>{`cut_group_key: ${selectedExplainLine.cut_group_key}`}</div>
+                          ) : null}
+                          {selectedExplainLine.kind === 'rule_hardware' ? (
+                            <div className={styles.previewRowMeta}>{`rule: ${selectedExplainLine.rule_id} | expr: ${selectedExplainLine.expr}`}</div>
+                          ) : null}
+                          <pre className={styles.materialsDebugJson}>{selectedExplainJson}</pre>
+                        </div>
+                      ) : null}
+
+                      {materialsExplain ? (
+                        <div className={styles.materialsDebugActions}>
+                          <button type="button" className={styles.drawerClose} onClick={copyMaterialsExplainJson}>
+                            Copy JSON
+                          </button>
+                          <button type="button" className={styles.drawerClose} onClick={downloadMaterialsExplainJson}>
+                            Download JSON
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className={styles.previewMuted}>Enable to load line-by-line materials formulas and trace output.</p>
+                  )}
+                </>
+              ) : (
+                <p className={styles.previewMuted}>Available only outside production (or with COSTING_DEBUG_ENABLED=1).</p>
               )}
             </section>
 
