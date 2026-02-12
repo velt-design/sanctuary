@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { calculateCostV1 } from './calculate';
 import { __test__ } from './bom';
+import type { StockSelectionExplain } from './materials_explain';
 
 const baseInputs = {
   length_m: 3,
@@ -59,6 +60,35 @@ describe('selectBestStock continuous runs', () => {
 
     expect(result.bar?.stock_length_m).toBe(6);
     expect(result.barsUsed).toBe(1);
+  });
+
+  it('continuous run prefers fewer splice joins even if total cost is higher', () => {
+    const bars = [makeBar(3, 100), makeBar(6, 220)];
+    const cuts = [makeCut(6.7, 'Ledger')];
+
+    const result = __test__.selectBestStock(bars, cuts, [6, 3]);
+
+    expect(result.bar?.stock_length_m).toBe(6);
+  });
+
+  it('continuous run trace emits splice joins in evaluated and chosen records', () => {
+    const bars = [makeBar(3, 100), makeBar(6, 220)];
+    const cuts = [makeCut(6.7, 'Ledger')];
+    let traceSelection: StockSelectionExplain | null = null;
+
+    __test__.selectBestStock(bars, cuts, [6, 3], {
+      groupKey: 'ledger_black_default',
+      trace: {
+        stockSelection: (_groupKey: string, payload: StockSelectionExplain) => {
+          traceSelection = payload;
+        },
+      } as any,
+    });
+
+    expect(traceSelection).toBeTruthy();
+    expect(traceSelection?.evaluated.every((candidate) => Number.isFinite(candidate.splice_joins ?? NaN))).toBe(true);
+    expect(Number.isFinite(traceSelection?.chosen.splice_joins ?? NaN)).toBe(true);
+    expect(traceSelection?.rule).toContain('prefer least splice-joins');
   });
 
   it('non-continuous group remains costPerM-first', () => {

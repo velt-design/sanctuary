@@ -78,9 +78,10 @@ export type StockSelectionExplain = {
     total_cost_ex_gst: number;
     cost_per_m: number;
     is_exact_fit: boolean;
+    splice_joins?: number;
     rejected_reason?: string;
   }>;
-  chosen: { item_id: string; stock_length_m: number; bars_used: number; waste_m: number };
+  chosen: { item_id: string; stock_length_m: number; bars_used: number; waste_m: number; splice_joins?: number };
   rule: string;
 };
 
