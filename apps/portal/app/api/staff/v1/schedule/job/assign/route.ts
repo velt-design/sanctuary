@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   if (!jobId || !crewId) return jsonError('job_id and crew_id are required', 400);
 
   let existingJob: any = null;
-  const existingRes = await supabaseServer.from('scheduled_jobs').select('id, crew_id, forecast_duration_days, planned_start, planned_duration_days').eq('job_id', jobId).maybeSingle();
+  const existingRes = await supabaseServer.from('scheduled_jobs').select('id, crew_id, forecast_duration_days').eq('job_id', jobId).maybeSingle();
   if (existingRes.error) {
     if (isMissingSchemaError(existingRes.error)) {
       return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
@@ -251,18 +251,6 @@ export async function POST(req: Request) {
       calendar: ctx.calendar,
       today: ctx.today,
     });
-  }
-
-  const scheduledJob = updatedJobs.find((job) => job.id === scheduledJobId);
-  if (scheduledJob && !scheduledJob.plannedStart) {
-    const update = finalRecompute.job_updates.find((u) => u.id === scheduledJobId);
-    if (update?.forecast_start) {
-      await supabaseServer
-        .from('scheduled_jobs')
-        .update({ planned_start: update.forecast_start, planned_duration_days: update.forecast_duration_days } as any)
-        .eq('id', scheduledJobId)
-        .is('planned_start', null);
-    }
   }
 
   const formatted = formatCrewScheduleBlocks({

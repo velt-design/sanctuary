@@ -1,6 +1,7 @@
 import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
 import { isYmd } from '@/lib/scheduling/date';
 import {
+  applyDriftStatusPatches,
   buildUnscheduledJobs,
   formatCrewScheduleBlocks,
   isMissingSchemaError,
@@ -85,7 +86,22 @@ export async function GET(req: Request) {
       today: ctx.today,
     });
 
-    const jobsById = new Map(crewJobs.map((job) => [job.id, job]));
+    let jobsWithDrift;
+    try {
+      jobsWithDrift = await applyDriftStatusPatches({
+        jobs: crewJobs,
+        recompute,
+        region: crewRow.calendar_region || 'Auckland',
+        calendar: ctx.calendar,
+      });
+    } catch (err) {
+      if (isMissingSchemaError(err)) {
+        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      }
+      return jsonError('Failed to evaluate schedule drift', 500);
+    }
+
+    const jobsById = new Map(jobsWithDrift.map((job) => [job.id, job]));
     const downtimesById = new Map(crewDowntimes.map((dt) => [dt.id, dt]));
     const formatted = formatCrewScheduleBlocks({ crewRow, recompute, jobsById, downtimesById });
     schedules.push(formatted);
