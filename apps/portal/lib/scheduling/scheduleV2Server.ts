@@ -8,6 +8,7 @@ import {
   buildWorkingDayIndex,
   nextWorkingDay,
   snapToWorkingDay,
+  workingDaysBetween,
   type CompanyClosure,
   type NzHoliday,
   type WorkingDayIndex,
@@ -79,6 +80,16 @@ export type CrewScheduleContext = {
   recompute: RecomputeResult;
 };
 
+export type PlannedCommitmentType = 'week_of' | 'fixed_date';
+export type ClientUpdateStatus = 'none' | 'needed' | 'acknowledged';
+
+export type DriftStatusPatch = {
+  jobId: string;
+  driftDays: number | null;
+  clientUpdateStatus: ClientUpdateStatus;
+  clientUpdateNeededAt: string | null;
+};
+
 function toStr(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
@@ -98,14 +109,190 @@ export function crewRowToScheduleCrew(row: CrewRow): ScheduleCrew {
   };
 }
 
+export function normalizePlannedCommitmentType(value: unknown): PlannedCommitmentType | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'week_of') return 'week_of';
+  if (normalized === 'fixed_date') return 'fixed_date';
+  return null;
+}
+
+export function normalizeClientUpdateStatus(value: unknown): ClientUpdateStatus {
+  if (typeof value !== 'string') return 'none';
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'needed') return 'needed';
+  if (normalized === 'acknowledged') return 'acknowledged';
+  return 'none';
+}
+
+export function defaultFlexDaysForCommitment(type: PlannedCommitmentType): number {
+  return type === 'week_of' ? 4 : 1;
+}
+
+export function defaultHardLockForCommitment(type: PlannedCommitmentType): boolean {
+  return type === 'fixed_date';
+}
+
+export function startOfWeekMondayYmd(ymd: string): string {
+  if (!isYmd(ymd)) return ymd;
+  const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return ymd;
+  const date = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  const day = date.getUTCDay();
+  const daysSinceMonday = (day + 6) % 7;
+  return addDaysYmd(ymd, -daysSinceMonday);
+}
+
+export function resolveJobCommitmentType(job: ScheduledJob): PlannedCommitmentType | null {
+  const explicit = normalizePlannedCommitmentType(job.plannedCommitmentType);
+  if (explicit) return explicit;
+  if (job.plannedStart && isYmd(job.plannedStart)) return 'fixed_date';
+  return null;
+}
+
+export function resolveJobPlannedAnchor(job: ScheduledJob): string | null {
+  const commitmentType = resolveJobCommitmentType(job);
+  if (!commitmentType) return null;
+  if (commitmentType === 'week_of') {
+    if (job.plannedWeekStart && isYmd(job.plannedWeekStart)) return job.plannedWeekStart;
+    if (job.plannedStart && isYmd(job.plannedStart)) return startOfWeekMondayYmd(job.plannedStart);
+    return null;
+  }
+  return job.plannedStart && isYmd(job.plannedStart) ? job.plannedStart : null;
+}
+
+export function resolveJobFlexDays(job: ScheduledJob): number | null {
+  const commitmentType = resolveJobCommitmentType(job);
+  if (!commitmentType) return null;
+  if (typeof job.plannedFlexDays === 'number' && Number.isFinite(job.plannedFlexDays)) {
+    return Math.max(0, Math.trunc(job.plannedFlexDays));
+  }
+  return defaultFlexDaysForCommitment(commitmentType);
+}
+
+export function computeWorkingDayDriftDays(anchor: string, forecastStart: string, region: string, calendar: WorkingDayIndex): number {
+  if (!isYmd(anchor) || !isYmd(forecastStart)) return 0;
+  if (anchor === forecastStart) return 0;
+  if (anchor < forecastStart) return Math.max(0, workingDaysBetween(anchor, forecastStart, region, calendar));
+  return Math.max(0, workingDaysBetween(forecastStart, anchor, region, calendar));
+}
+
+export function computeJobDriftDays(job: ScheduledJob, forecastStart: string | null, region: string, calendar: WorkingDayIndex): number | null {
+  const anchor = resolveJobPlannedAnchor(job);
+  if (!anchor || !forecastStart || !isYmd(forecastStart)) return null;
+  return computeWorkingDayDriftDays(anchor, forecastStart, region, calendar);
+}
+
+export function computeDriftStatusPatches(input: {
+  jobs: ScheduledJob[];
+  recompute: RecomputeResult;
+  region: string;
+  calendar: WorkingDayIndex;
+  nowIso?: string;
+}): DriftStatusPatch[] {
+  const nextNowIso = typeof input.nowIso === 'string' && input.nowIso ? input.nowIso : new Date().toISOString();
+  const forecastByJobId = new Map(input.recompute.job_updates.map((u) => [u.id, u.forecast_start ?? null]));
+  const patches: DriftStatusPatch[] = [];
+
+  for (const job of input.jobs) {
+    const forecastStart = forecastByJobId.get(job.id) ?? job.forecastStart ?? null;
+    const driftDays = computeJobDriftDays(job, forecastStart, input.region, input.calendar);
+    const flexDays = resolveJobFlexDays(job);
+    const commitmentType = resolveJobCommitmentType(job);
+    let clientUpdateStatus = normalizeClientUpdateStatus(job.clientUpdateStatus);
+    let clientUpdateNeededAt = typeof job.clientUpdateNeededAt === 'string' && job.clientUpdateNeededAt ? job.clientUpdateNeededAt : null;
+
+    if (!commitmentType) {
+      clientUpdateStatus = 'none';
+      clientUpdateNeededAt = null;
+    } else if (driftDays !== null && flexDays !== null) {
+      if (driftDays > flexDays) {
+        if (clientUpdateStatus === 'none') {
+          clientUpdateStatus = 'needed';
+          clientUpdateNeededAt = nextNowIso;
+        }
+      } else if (clientUpdateStatus === 'needed') {
+        clientUpdateStatus = 'none';
+        clientUpdateNeededAt = null;
+      }
+    }
+
+    patches.push({
+      jobId: job.id,
+      driftDays,
+      clientUpdateStatus,
+      clientUpdateNeededAt,
+    });
+  }
+
+  return patches;
+}
+
+export async function applyDriftStatusPatches(input: {
+  jobs: ScheduledJob[];
+  recompute: RecomputeResult;
+  region: string;
+  calendar: WorkingDayIndex;
+  nowIso?: string;
+}): Promise<ScheduledJob[]> {
+  const patches = computeDriftStatusPatches(input);
+  const patchByJobId = new Map(patches.map((patch) => [patch.jobId, patch]));
+  const previousByJobId = new Map(input.jobs.map((job) => [job.id, job]));
+
+  const nextJobs = input.jobs.map((job) => {
+    const patch = patchByJobId.get(job.id);
+    if (!patch) return job;
+    return {
+      ...job,
+      driftDays: patch.driftDays,
+      clientUpdateStatus: patch.clientUpdateStatus,
+      clientUpdateNeededAt: patch.clientUpdateNeededAt,
+    };
+  });
+
+  for (const job of nextJobs) {
+    const prev = previousByJobId.get(job.id);
+    if (!prev) continue;
+
+    const prevStatus = normalizeClientUpdateStatus(prev.clientUpdateStatus);
+    const nextStatus = normalizeClientUpdateStatus(job.clientUpdateStatus);
+    const prevNeededAt = typeof prev.clientUpdateNeededAt === 'string' && prev.clientUpdateNeededAt ? prev.clientUpdateNeededAt : null;
+    const nextNeededAt = typeof job.clientUpdateNeededAt === 'string' && job.clientUpdateNeededAt ? job.clientUpdateNeededAt : null;
+
+    if (prevStatus === nextStatus && prevNeededAt === nextNeededAt) continue;
+
+    const updateRes = await supabaseServer
+      .from('scheduled_jobs')
+      .update({
+        client_update_status: nextStatus,
+        client_update_needed_at: nextStatus === 'needed' ? nextNeededAt : null,
+      } as any)
+      .eq('id', job.id);
+    if (updateRes.error) throw updateRes.error;
+  }
+
+  return nextJobs;
+}
+
 export function mapJobRow(row: any): ScheduledJob {
+  const plannedStart = typeof row.planned_start === 'string' ? row.planned_start : null;
+  const plannedCommitmentType = normalizePlannedCommitmentType(row.planned_commitment_type) ?? (plannedStart ? 'fixed_date' : null);
+  const plannedFlexDays =
+    typeof row.planned_flex_days === 'number' && Number.isFinite(row.planned_flex_days) ? Math.max(0, Math.trunc(row.planned_flex_days)) : null;
+  const clientUpdateStatus = normalizeClientUpdateStatus(row.client_update_status);
+
   return {
     id: String(row.id),
     jobId: String(row.job_id),
     crewId: String(row.crew_id),
     mode: row.mode === 'pinned' ? 'pinned' : 'floating',
-    plannedStart: typeof row.planned_start === 'string' ? row.planned_start : null,
+    plannedCommitmentType,
+    plannedWeekStart: typeof row.planned_week_start === 'string' ? row.planned_week_start : null,
+    plannedStart,
     plannedDurationDays: typeof row.planned_duration_days === 'number' ? row.planned_duration_days : null,
+    plannedFlexDays,
+    plannedLockedAt: typeof row.planned_locked_at === 'string' ? row.planned_locked_at : null,
+    plannedLockedBy: typeof row.planned_locked_by === 'string' ? row.planned_locked_by : null,
     forecastStart: typeof row.forecast_start === 'string' ? row.forecast_start : null,
     forecastDurationDays: typeof row.forecast_duration_days === 'number' && Number.isFinite(row.forecast_duration_days) ? Math.max(1, Math.trunc(row.forecast_duration_days)) : 1,
     forecastEndExclusive: typeof row.forecast_end_exclusive === 'string' ? row.forecast_end_exclusive : null,
@@ -113,6 +300,11 @@ export function mapJobRow(row: any): ScheduledJob {
     actualFinish: typeof row.actual_finish === 'string' ? row.actual_finish : null,
     status: typeof row.status === 'string' ? (row.status as any) : null,
     daysRemaining: typeof row.days_remaining === 'number' ? row.days_remaining : null,
+    driftDays: typeof row.drift_days === 'number' && Number.isFinite(row.drift_days) ? Math.max(0, Math.trunc(row.drift_days)) : null,
+    clientUpdateStatus,
+    clientUpdateNeededAt: typeof row.client_update_needed_at === 'string' ? row.client_update_needed_at : null,
+    clientUpdateAckAt: typeof row.client_update_ack_at === 'string' ? row.client_update_ack_at : null,
+    clientUpdateAckBy: typeof row.client_update_ack_by === 'string' ? row.client_update_ack_by : null,
   };
 }
 
@@ -135,6 +327,41 @@ export function mapScheduleItemRow(row: any): CrewScheduleItem {
     downtimeId: typeof row.downtime_id === 'string' ? row.downtime_id : null,
     position: typeof row.position === 'number' ? row.position : 0,
   };
+}
+
+export async function loadScheduledJobRow(jobIdOrScheduledJobId: string): Promise<any | null> {
+  const byProjectRes = await supabaseServer.from('scheduled_jobs').select('*').eq('job_id', jobIdOrScheduledJobId).maybeSingle();
+  if (byProjectRes.error) throw byProjectRes.error;
+  if (byProjectRes.data) return byProjectRes.data;
+
+  const byIdRes = await supabaseServer.from('scheduled_jobs').select('*').eq('id', jobIdOrScheduledJobId).maybeSingle();
+  if (byIdRes.error) throw byIdRes.error;
+  return byIdRes.data ?? null;
+}
+
+export async function appendPlannedCommitmentHistory(input: {
+  scheduledJobId: string;
+  eventType: 'lock' | 'reschedule';
+  commitmentType: PlannedCommitmentType;
+  plannedWeekStart: string | null;
+  plannedStart: string | null;
+  plannedDurationDays: number | null;
+  plannedFlexDays: number;
+  hardLock: boolean;
+  changedBy: string | null;
+}) {
+  const res = await supabaseServer.from('planned_commitment_history').insert({
+    scheduled_job_id: input.scheduledJobId,
+    event_type: input.eventType,
+    commitment_type: input.commitmentType,
+    planned_week_start: input.plannedWeekStart,
+    planned_start: input.plannedStart,
+    planned_duration_days: input.plannedDurationDays,
+    planned_flex_days: input.plannedFlexDays,
+    hard_lock: input.hardLock,
+    changed_by: input.changedBy,
+  } as any);
+  if (res.error) throw res.error;
 }
 
 export async function loadCalendar(): Promise<{ holidays: NzHoliday[]; closures: CompanyClosure[]; calendar: WorkingDayIndex }> {
@@ -178,8 +405,13 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
         'job_id',
         'crew_id',
         'mode',
+        'planned_commitment_type',
+        'planned_week_start',
         'planned_start',
         'planned_duration_days',
+        'planned_flex_days',
+        'planned_locked_at',
+        'planned_locked_by',
         'forecast_start',
         'forecast_duration_days',
         'forecast_end_exclusive',
@@ -187,6 +419,10 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
         'actual_finish',
         'status',
         'days_remaining',
+        'client_update_status',
+        'client_update_needed_at',
+        'client_update_ack_at',
+        'client_update_ack_by',
       ].join(','),
     ),
     supabaseServer.from('crew_downtimes').select('id, crew_id, duration_days, reason, note'),
@@ -442,8 +678,18 @@ export function formatCrewScheduleBlocks(input: {
             job_id: job.jobId,
             crew_id: job.crewId,
             mode: job.mode,
+            planned_commitment_type: job.plannedCommitmentType ?? null,
+            planned_week_start: job.plannedWeekStart ?? null,
             planned_start: job.plannedStart,
             planned_duration_days: job.plannedDurationDays,
+            planned_flex_days: resolveJobFlexDays(job),
+            planned_locked_at: job.plannedLockedAt ?? null,
+            planned_locked_by: job.plannedLockedBy ?? null,
+            drift_days: typeof job.driftDays === 'number' && Number.isFinite(job.driftDays) ? Math.max(0, Math.trunc(job.driftDays)) : null,
+            client_update_status: normalizeClientUpdateStatus(job.clientUpdateStatus),
+            client_update_needed_at: job.clientUpdateNeededAt ?? null,
+            client_update_ack_at: job.clientUpdateAckAt ?? null,
+            client_update_ack_by: job.clientUpdateAckBy ?? null,
             forecast_start: block.start,
             forecast_end_exclusive: block.end_exclusive,
             forecast_duration_days: block.duration_days,

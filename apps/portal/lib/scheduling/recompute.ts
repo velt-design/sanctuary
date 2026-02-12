@@ -3,6 +3,8 @@ import { addWorkingDays, nextWorkingDay, snapToWorkingDay, workingDaysBetween, t
 
 export type JobMode = 'floating' | 'pinned';
 export type JobStatus = 'not_started' | 'in_progress' | 'paused' | 'done';
+export type PlannedCommitmentType = 'week_of' | 'fixed_date';
+export type ClientUpdateStatus = 'none' | 'needed' | 'acknowledged';
 
 export type ScheduleCrew = {
   id: string;
@@ -15,8 +17,13 @@ export type ScheduledJob = {
   jobId: string;
   crewId: string;
   mode: JobMode;
+  plannedCommitmentType?: PlannedCommitmentType | null;
+  plannedWeekStart?: string | null;
   plannedStart?: string | null;
   plannedDurationDays?: number | null;
+  plannedFlexDays?: number | null;
+  plannedLockedAt?: string | null;
+  plannedLockedBy?: string | null;
   forecastStart?: string | null;
   forecastDurationDays: number;
   forecastEndExclusive?: string | null;
@@ -24,6 +31,11 @@ export type ScheduledJob = {
   actualFinish?: string | null;
   status?: JobStatus | null;
   daysRemaining?: number | null;
+  driftDays?: number | null;
+  clientUpdateStatus?: ClientUpdateStatus | null;
+  clientUpdateNeededAt?: string | null;
+  clientUpdateAckAt?: string | null;
+  clientUpdateAckBy?: string | null;
 };
 
 export type CrewDowntime = {

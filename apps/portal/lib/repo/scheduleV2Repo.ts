@@ -16,8 +16,18 @@ export type ScheduleBoardJob = {
   job_id: string;
   crew_id: string;
   mode: 'floating' | 'pinned';
+  planned_commitment_type: 'week_of' | 'fixed_date' | null;
+  planned_week_start: string | null;
   planned_start: string | null;
   planned_duration_days: number | null;
+  planned_flex_days: number | null;
+  planned_locked_at?: string | null;
+  planned_locked_by?: string | null;
+  drift_days?: number | null;
+  client_update_status?: 'none' | 'needed' | 'acknowledged' | null;
+  client_update_needed_at?: string | null;
+  client_update_ack_at?: string | null;
+  client_update_ack_by?: string | null;
   forecast_start: string | null;
   forecast_end_exclusive: string | null;
   forecast_duration_days: number;
@@ -167,6 +177,47 @@ export async function setDaysRemaining(input: { job_id: string; days_remaining: 
 
 export async function markJobDone(input: { job_id: string; force?: boolean; today?: string; finish_early_action?: 'pull_forward' | 'keep_schedule' }) {
   return apiJson<MutationResult | RequiresConfirmation | FinishEarlyPrompt>('/api/staff/v1/schedule/job/mark-done', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function lockJobSchedule(input: {
+  job_id: string;
+  commitment_type: 'week_of' | 'fixed_date';
+  week_of_date?: string;
+  start_date?: string;
+  duration_days: number;
+  flex_days?: number;
+  hard_lock?: boolean;
+  force?: boolean;
+  today?: string;
+}) {
+  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/lock', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function rescheduleJob(input: {
+  job_id: string;
+  commitment_type: 'week_of' | 'fixed_date';
+  week_of_date?: string;
+  start_date?: string;
+  duration_days: number;
+  flex_days?: number;
+  hard_lock?: boolean;
+  force?: boolean;
+  today?: string;
+}) {
+  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/reschedule', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function ackClientUpdate(input: { job_id: string }) {
+  return apiJson<MutationResult>('/api/staff/v1/schedule/job/client-update/ack', {
     method: 'POST',
     body: JSON.stringify(input),
   });

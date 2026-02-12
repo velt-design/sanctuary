@@ -8,14 +8,17 @@ import { getProject, listProjects } from '@/lib/repo/projectsRepo';
 import { listAllEstimates } from '@/lib/repo/estimatesRepo';
 import { confirmScheduleItem, deleteScheduleItem, listScheduleItems, normalizeScheduleItemsStarted, replaceScheduleItems, unlockScheduleItem } from '@/lib/repo/scheduleRepo';
 import {
+  ackClientUpdate,
   assignJob,
   createDowntime,
   deleteDowntime,
   fetchScheduleGantt,
+  lockJobSchedule,
   markJobDone,
   markJobInProgress,
   pinJob,
   reorderItems as reorderScheduleItemsV2,
+  rescheduleJob,
   setDaysRemaining,
   setJobDuration,
   unassignJob,
@@ -157,6 +160,11 @@ type GanttRow =
       plannedWidthPx?: number;
       plannedStart?: string;
       plannedEnd?: string;
+      plannedCommitmentLabel?: string | null;
+      plannedFlexDays?: number | null;
+      plannedDurationDays?: number | null;
+      driftDays?: number | null;
+      clientUpdateStatus?: 'none' | 'needed' | 'acknowledged' | null;
     }
   | {
       kind: 'empty';
@@ -337,6 +345,45 @@ function formatShortDate(ymd: string): string {
 
 function formatDateRange(startYmd: string, endYmd: string): string {
   return `${formatShortDate(startYmd)} → ${formatShortDate(endYmd)}`;
+}
+
+function hasPlannedCommitment(item: ScheduleItem): boolean {
+  return Boolean(item.plannedCommitmentType || item.plannedStart || item.plannedWeekStart);
+}
+
+function resolveCommitmentType(item: ScheduleItem): 'week_of' | 'fixed_date' | null {
+  if (item.plannedCommitmentType === 'week_of' || item.plannedCommitmentType === 'fixed_date') return item.plannedCommitmentType;
+  if (item.plannedStart) return 'fixed_date';
+  return null;
+}
+
+function resolvePlannedFlexDays(item: ScheduleItem): number | null {
+  if (typeof item.plannedFlexDays === 'number' && Number.isFinite(item.plannedFlexDays)) {
+    return Math.max(0, Math.trunc(item.plannedFlexDays));
+  }
+  const commitmentType = resolveCommitmentType(item);
+  if (!commitmentType) return null;
+  return commitmentType === 'week_of' ? 4 : 1;
+}
+
+function formatCommitmentLabel(item: ScheduleItem): string | null {
+  const commitmentType = resolveCommitmentType(item);
+  if (!commitmentType) return null;
+  if (commitmentType === 'week_of') {
+    const weekStart = item.plannedWeekStart ?? (item.plannedStart ? startOfWeekMonday(item.plannedStart) : null);
+    if (!weekStart) return 'Week of —';
+    return `Week of ${formatShortDate(weekStart)}`;
+  }
+  if (!item.plannedStart) return 'Starts —';
+  return `Starts ${formatShortDate(item.plannedStart)}`;
+}
+
+function parsePositiveInt(value: string): number | null {
+  const n = Number(value.trim());
+  if (!Number.isFinite(n)) return null;
+  const v = Math.trunc(n);
+  if (v <= 0) return null;
+  return v;
 }
 
 function makeJobId(projectId: string, estimateId: string): string {
@@ -638,6 +685,52 @@ type MenuAction = {
   tone?: 'danger';
 };
 
+type GanttPopoverAnchor = {
+  top: number;
+  left: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+};
+
+type GanttPopoverAction = {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  tone?: 'danger';
+  shortcut?: string;
+};
+
+function isElementOrParentNoDnd(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return Boolean(target.closest('[data-no-dnd="true"]'));
+}
+
+function isTextInputLikeTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+}
+
+function computeGanttPopoverPosition(anchor: GanttPopoverAnchor): { top: number; left: number } {
+  const width = 300;
+  const margin = 12;
+  const gap = 10;
+  if (typeof window === 'undefined') {
+    return { top: anchor.bottom + gap, left: anchor.left };
+  }
+
+  const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+  const left = Math.min(Math.max(anchor.left, margin), maxLeft);
+  const preferredTop = anchor.bottom + gap;
+  const estimatedHeight = 340;
+  const canOpenBelow = preferredTop + estimatedHeight <= window.innerHeight - margin;
+  const top = canOpenBelow ? preferredTop : Math.max(margin, anchor.top - estimatedHeight - gap);
+  return { top, left };
+}
+
 function JobActionsMenu({
   actions,
   ariaLabel,
@@ -676,15 +769,19 @@ function JobActionsMenu({
     <div
       ref={ref}
       className={styles.menuWrap}
+      data-no-dnd="true"
+      onPointerDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
       <button
         type="button"
         className={styles.kebab}
+        data-no-dnd="true"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={ariaLabel ?? 'Job actions'}
+        onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((v) => !v);
@@ -697,6 +794,8 @@ function JobActionsMenu({
         <div
           role="menu"
           className={styles.menu}
+          data-no-dnd="true"
+          onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >
@@ -705,8 +804,12 @@ function JobActionsMenu({
               key={`${action.label}-${idx}`}
               type="button"
               role="menuitem"
+              data-no-dnd="true"
               className={cx(styles.menuItem, action.tone === 'danger' && styles.menuItemDanger)}
               disabled={Boolean(action.disabled)}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+              }}
               onMouseDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -730,6 +833,56 @@ function JobActionsMenu({
   );
 }
 
+function GanttBarPopover({
+  anchor,
+  actions,
+  details,
+  onClose,
+  onKeyDown,
+  focusRef,
+}: {
+  anchor: GanttPopoverAnchor;
+  actions: GanttPopoverAction[];
+  details?: React.ReactNode;
+  onClose: () => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  focusRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const pos = computeGanttPopoverPosition(anchor);
+  return (
+    <>
+      <div className={styles.ganttPopoverBackdrop} onPointerDown={onClose} onMouseDown={onClose} />
+      <div
+        ref={focusRef}
+        tabIndex={-1}
+        className={styles.ganttPopover}
+        style={{ top: pos.top, left: pos.left }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+        aria-label="Gantt quick actions"
+      >
+        {details ? <div className={styles.ganttPopoverDetails}>{details}</div> : null}
+        <div className={styles.ganttPopoverActionList}>
+          {actions.map((action, actionIndex) => (
+            <button
+              key={`${action.label}-${actionIndex}`}
+              type="button"
+              className={cx(styles.ganttPopoverAction, action.tone === 'danger' && styles.ganttPopoverActionDanger)}
+              disabled={Boolean(action.disabled)}
+              onClick={() => action.onClick()}
+            >
+              <span>{action.label}</span>
+              {action.shortcut ? <span className={styles.ganttPopoverShortcut}>{action.shortcut}</span> : null}
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function JobCardShell({
   title,
   descriptor,
@@ -740,12 +893,12 @@ function JobCardShell({
   pinned,
   onOpen,
   dateLine,
+  extraBadges,
   warning,
   issueLevel,
-  dragHandleRef,
-  dragHandleProps,
-  dragDisabled,
-  dragDisabledTitle,
+  dragProps,
+  draggable,
+  dragging,
   menu,
   cardRef,
   style,
@@ -760,12 +913,12 @@ function JobCardShell({
   pinned?: boolean;
   onOpen?: () => void;
   dateLine?: string;
+  extraBadges?: React.ReactNode;
   warning?: boolean;
   issueLevel?: 'warning' | 'error';
-  dragHandleRef: (node: HTMLElement | null) => void;
-  dragHandleProps: Record<string, unknown>;
-  dragDisabled?: boolean;
-  dragDisabledTitle?: string;
+  dragProps?: Record<string, unknown>;
+  draggable?: boolean;
+  dragging?: boolean;
   menu?: React.ReactNode;
   cardRef: (node: HTMLElement | null) => void;
   style?: React.CSSProperties;
@@ -777,11 +930,18 @@ function JobCardShell({
       className={styles.jobCard}
       style={style}
       data-drop-target={dropTarget ? 'true' : 'false'}
-      data-clickable={onOpen ? 'true' : 'false'}
+      data-draggable={draggable ? 'true' : undefined}
+      data-dragging={dragging ? 'true' : undefined}
       data-issue-level={issueLevel ?? (warning ? 'warning' : undefined)}
-      role={onOpen ? 'link' : undefined}
+      role={onOpen ? 'button' : undefined}
       tabIndex={onOpen ? 0 : undefined}
-      onClick={onOpen}
+      {...(dragProps as any)}
+      onDoubleClick={(e) => {
+        if (!onOpen) return;
+        if (dragging) return;
+        if (isElementOrParentNoDnd(e.target)) return;
+        onOpen();
+      }}
       onKeyDown={(e) => {
         if (!onOpen) return;
         if (e.key === 'Enter' || e.key === ' ') {
@@ -791,19 +951,6 @@ function JobCardShell({
       }}
     >
       <div className={styles.jobTopRow}>
-        <button
-          type="button"
-          className={styles.dragHandle}
-          ref={dragHandleRef as any}
-          aria-label="Drag job"
-          disabled={Boolean(dragDisabled)}
-          title={dragDisabledTitle}
-          onClick={(e) => e.stopPropagation()}
-          {...(dragHandleProps as any)}
-        >
-          ⋮⋮
-        </button>
-
         <div className={styles.jobMain}>
           <div className={styles.jobTitle} title={title}>
             {title}
@@ -828,6 +975,7 @@ function JobCardShell({
           </span>
         ) : null}
         {scheduleStatus ? <span className={styles.schedulePill}>{scheduleStatusLabel(scheduleStatus)}</span> : null}
+        {extraBadges}
         {issueLevel === 'error' ? <span className={styles.warnBadge}>Conflict</span> : warning || issueLevel === 'warning' ? <span className={styles.warnBadge}>Warning</span> : null}
       </div>
 
@@ -838,7 +986,7 @@ function JobCardShell({
 
 function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
   const router = useRouter();
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: job.id,
     data: { kind: 'job' },
   });
@@ -856,8 +1004,9 @@ function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
       durationTitle={job.durationTitle}
       onOpen={() => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`)}
       warning={job.warnings.length > 0}
-      dragHandleRef={(node) => setActivatorNodeRef(node as any)}
-      dragHandleProps={{ ...attributes, ...listeners }}
+      dragProps={{ ...attributes, ...listeners }}
+      draggable
+      dragging={isDragging}
       cardRef={(node) => setNodeRef(node as any)}
       style={style}
     />
@@ -872,6 +1021,7 @@ function ScheduledJobCard({
   dropTarget,
   menuActions,
   pinned,
+  extraBadges,
   issueLevel,
 }: {
   id: string;
@@ -881,11 +1031,12 @@ function ScheduledJobCard({
   dropTarget?: boolean;
   menuActions: MenuAction[];
   pinned?: boolean;
+  extraBadges?: React.ReactNode;
   issueLevel?: 'warning' | 'error';
 }) {
   const router = useRouter();
   const locked = isLockedScheduleStatus(scheduleStatus);
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: locked });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: locked });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -901,6 +1052,7 @@ function ScheduledJobCard({
       durationTitle={job?.durationTitle ?? '—'}
       scheduleStatus={scheduleStatus}
       pinned={pinned}
+      extraBadges={extraBadges}
       onOpen={
         job
           ? () => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`)
@@ -909,10 +1061,9 @@ function ScheduledJobCard({
       dateLine={dateLine}
       warning={Boolean(job?.warnings?.length)}
       issueLevel={issueLevel}
-      dragHandleRef={(node) => setActivatorNodeRef(node as any)}
-      dragHandleProps={locked ? {} : { ...attributes, ...listeners }}
-      dragDisabled={locked}
-      dragDisabledTitle={locked ? `${scheduleStatusLabel(scheduleStatus)} jobs are locked. Unlock to reschedule.` : undefined}
+      dragProps={locked ? {} : { ...attributes, ...listeners }}
+      draggable={!locked}
+      dragging={isDragging}
       menu={<JobActionsMenu actions={menuActions} />}
       cardRef={(node) => setNodeRef(node as any)}
       style={style}
@@ -936,7 +1087,7 @@ function DowntimeCard({
   menuActions: MenuAction[];
   issueLevel?: 'warning' | 'error';
 }) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -961,8 +1112,9 @@ function DowntimeCard({
       durationTitle={formatHours(durationHours)}
       dateLine={dateLine}
       issueLevel={issueLevel}
-      dragHandleRef={(node) => setActivatorNodeRef(node as any)}
-      dragHandleProps={{ ...attributes, ...listeners }}
+      dragProps={{ ...attributes, ...listeners }}
+      draggable
+      dragging={isDragging}
       menu={<JobActionsMenu actions={menuActions} ariaLabel="Downtime actions" />}
       cardRef={(node) => setNodeRef(node as any)}
       style={style}
@@ -1008,8 +1160,19 @@ export default function ScheduleClient() {
     () => new Map(Object.entries(initialV2Snapshot?.nextAvailableByInstallerId ?? {})),
   );
   const [ganttHolidays, setGanttHolidays] = useState<Array<{ date: string; name?: string; kind: 'holiday' | 'closure' }>>([]);
+  const [ganttPopover, setGanttPopover] = useState<{ scheduleItemId: string; anchor: GanttPopoverAnchor } | null>(null);
   const [quickEdit, setQuickEdit] = useState<{ id: string; startDateOverride: string; durationDays: string } | null>(null);
   const [durationEdit, setDurationEdit] = useState<{ id: string; durationDays: string } | null>(null);
+  const [commitmentEdit, setCommitmentEdit] = useState<{
+    id: string;
+    mode: 'lock' | 'reschedule';
+    commitmentType: 'week_of' | 'fixed_date';
+    weekOfDate: string;
+    startDate: string;
+    durationDays: string;
+    flexDays: string;
+    hardLock: boolean;
+  } | null>(null);
   const [pinEdit, setPinEdit] = useState<{ id: string; requestedStart: string } | null>(null);
   const [daysRemainingEdit, setDaysRemainingEdit] = useState<{ id: string; daysRemaining: string } | null>(null);
   const [finishEarlyPrompt, setFinishEarlyPrompt] = useState<{
@@ -1071,6 +1234,7 @@ export default function ScheduleClient() {
   const ganttDragDeltaRef = useRef(0);
   const ganttDragMovedRef = useRef(false);
   const ganttClickBlockUntilRef = useRef(0);
+  const ganttPopoverRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     scheduleItemsRef.current = scheduleItems;
@@ -2006,6 +2170,17 @@ export default function ScheduleClient() {
         const scheduleItem = scheduleItemById.get(item.id) ?? null;
         const isDowntime = scheduleItem?.itemType === 'downtime';
         const isPinned = scheduleItem?.mode === 'pinned';
+        const plannedCommitmentLabel = scheduleItem ? formatCommitmentLabel(scheduleItem) : null;
+        const plannedFlexDays = scheduleItem ? resolvePlannedFlexDays(scheduleItem) : null;
+        const plannedDurationDays =
+          scheduleItem && typeof scheduleItem.plannedDurationDays === 'number' && Number.isFinite(scheduleItem.plannedDurationDays)
+            ? Math.max(1, Math.trunc(scheduleItem.plannedDurationDays))
+            : null;
+        const driftDays =
+          scheduleItem && typeof scheduleItem.driftDays === 'number' && Number.isFinite(scheduleItem.driftDays)
+            ? Math.max(0, Math.trunc(scheduleItem.driftDays))
+            : null;
+        const clientUpdateStatus = scheduleItem?.clientUpdateStatus ?? null;
         const issueLevel = issueLevelByScheduleId.get(item.id);
         const planned = plannedBarsById.get(item.id);
 
@@ -2057,6 +2232,11 @@ export default function ScheduleClient() {
           plannedWidthPx: planned?.widthPx,
           plannedStart: planned?.startDate,
           plannedEnd: planned?.endDate,
+          plannedCommitmentLabel,
+          plannedFlexDays,
+          plannedDurationDays,
+          driftDays,
+          clientUpdateStatus,
         });
       }
     }
@@ -2088,6 +2268,186 @@ export default function ScheduleClient() {
     ganttDragDelta,
     today,
   ]);
+
+  const activeGanttPopoverRow = useMemo(() => {
+    if (!ganttPopover) return null;
+    for (const row of gantt.rows) {
+      if (row.kind !== 'item') continue;
+      if (row.scheduleItemId === ganttPopover.scheduleItemId) return row;
+    }
+    return null;
+  }, [gantt.rows, ganttPopover]);
+
+  const ganttPopoverDetails = useMemo(() => {
+    if (!ganttPopover || !activeGanttPopoverRow) return null;
+
+    const row = activeGanttPopoverRow;
+    if (row.isDowntime) return null;
+    const scheduleItem = scheduleItemById.get(row.scheduleItemId) ?? null;
+    if (!scheduleItem || scheduleItem.itemType === 'downtime') return null;
+    const isPinned = scheduleItem.mode === 'pinned';
+    const hasCommitment = hasPlannedCommitment(scheduleItem);
+    const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
+
+    const openProjectAction = () =>
+      runGanttPopoverAction(() => {
+        router.push(`/staff/projects/${encodeURIComponent(row.projectId)}`);
+      });
+    const openProjectPackAction = () =>
+      runGanttPopoverAction(() => {
+        router.push(`/staff/projects/${encodeURIComponent(row.projectId)}/estimate/${encodeURIComponent(row.estimateId)}`);
+      });
+    const pinAction = () =>
+      runGanttPopoverAction(() => {
+        if (isPinned) {
+          let jobUuid: string;
+          try {
+            jobUuid = uuidFromAppId(scheduleItem.projectId, 'proj');
+          } catch {
+            toast.error('Invalid project ID for schedule action.');
+            return;
+          }
+          void runWithCommitConfirmation((force) => unpinJob({ job_id: jobUuid, force, today }), {
+            successToast: 'Job unpinned.',
+            errorToast: 'Failed to unpin job.',
+          });
+          return;
+        }
+
+        const startCandidate = scheduleItem.forecastStart ?? scheduleItem.startDateOverride ?? today;
+        setPinEdit({ id: row.scheduleItemId, requestedStart: isYmd(startCandidate) ? startCandidate : '' });
+      });
+
+    const commitmentAction = () =>
+      runGanttPopoverAction(() => {
+        openCommitmentEdit(row.scheduleItemId, hasCommitment ? 'reschedule' : 'lock');
+      });
+
+    const ackClientUpdateAction =
+      clientUpdateStatus === 'needed'
+        ? () =>
+            runGanttPopoverAction(() => {
+              const jobUuid = resolveProjectUuid(scheduleItem);
+              if (!jobUuid) return;
+              void ackClientUpdate({ job_id: jobUuid })
+                .then(() => {
+                  toast.success('Client update marked as contacted.');
+                  refreshSchedule();
+                })
+                .catch((err) => {
+                  const msg = err instanceof Error ? err.message : 'Failed to mark client as contacted.';
+                  toast.error(msg);
+                });
+            })
+        : null;
+
+    const details = (
+      <>
+        <div className={styles.ganttPopoverTitle}>{row.projectName}</div>
+        <div className={styles.ganttPopoverMeta}>
+          Planned: {hasCommitment ? row.plannedCommitmentLabel ?? 'Committed' : 'Draft'}
+          {hasCommitment && row.plannedDurationDays ? ` · ~${row.plannedDurationDays}d` : ''}
+          {hasCommitment && typeof row.plannedFlexDays === 'number' ? ` · flex ${row.plannedFlexDays}wd` : ''}
+        </div>
+        <div className={styles.ganttPopoverMeta}>
+          Forecast: {formatShortDate(row.startDate)} → {formatShortDate(row.endDate)} · {row.durationLabel}
+        </div>
+        {hasCommitment && typeof row.driftDays === 'number' ? (
+          <div className={styles.ganttPopoverMeta}>Drift: +{row.driftDays} working day{row.driftDays === 1 ? '' : 's'}</div>
+        ) : null}
+        {clientUpdateStatus === 'needed' ? <div className={styles.clientUpdatePill}>Client update needed</div> : null}
+        {clientUpdateStatus === 'acknowledged' ? <div className={styles.clientAckPill}>Client contacted</div> : null}
+      </>
+    );
+
+    return {
+      details,
+      actions: [
+        {
+          label: 'Open project',
+          shortcut: '⏎',
+          onClick: openProjectAction,
+        },
+        {
+          label: 'Open project pack',
+          onClick: openProjectPackAction,
+        },
+        {
+          label: hasCommitment ? 'Reschedule…' : 'Lock schedule…',
+          onClick: commitmentAction,
+        },
+        ...(ackClientUpdateAction
+          ? [
+              {
+                label: 'Mark client contacted',
+                onClick: ackClientUpdateAction,
+              },
+            ]
+          : clientUpdateStatus === 'acknowledged'
+            ? [
+                {
+                  label: 'Client contacted',
+                  onClick: () => {},
+                  disabled: true,
+                },
+              ]
+            : []),
+        {
+          label: isPinned ? 'Unpin' : 'Pin…',
+          shortcut: 'P',
+          onClick: pinAction,
+        },
+      ],
+      openProjectAction,
+      pinAction,
+    };
+  }, [
+    activeGanttPopoverRow,
+    ganttPopover,
+    router,
+    runGanttPopoverAction,
+    scheduleItemById,
+    setPinEdit,
+    today,
+    toast,
+  ]);
+
+  const handleGanttPopoverKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isTextInputLikeTarget(event.target)) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setGanttPopover(null);
+      return;
+    }
+    if (!ganttPopoverDetails) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      ganttPopoverDetails.openProjectAction?.();
+      return;
+    }
+    const key = event.key.toLowerCase();
+    if (key === 'p') {
+      event.preventDefault();
+      ganttPopoverDetails.pinAction?.();
+    }
+  };
+
+  useEffect(() => {
+    if (!ganttPopover) return;
+    if (!activeGanttPopoverRow) {
+      setGanttPopover(null);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      ganttPopoverRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [activeGanttPopoverRow, ganttPopover]);
+
+  useEffect(() => {
+    if (view === 'gantt') return;
+    setGanttPopover(null);
+  }, [view]);
 
   function formatCommitImpactList(impacts: any[]): string {
     return impacts
@@ -2198,8 +2558,8 @@ export default function ScheduleClient() {
       setGanttDrag(null);
       setGanttDragDelta(0);
 
+      if (moved) ganttClickBlockUntilRef.current = Date.now() + 250;
       if (!moved || deltaDays === 0) return;
-      ganttClickBlockUntilRef.current = Date.now() + 250;
 
       const item = scheduleItemByIdRef.current.get(ganttDrag.id) ?? null;
       if (!item || item.itemType === 'downtime') return;
@@ -2298,6 +2658,25 @@ export default function ScheduleClient() {
     return Date.now() < ganttClickBlockUntilRef.current;
   };
 
+  const openGanttPopover = (row: Extract<GanttRow, { kind: 'item' }>, target: HTMLElement) => {
+    if (row.isDowntime) {
+      setGanttPopover(null);
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    setGanttPopover({
+      scheduleItemId: row.scheduleItemId,
+      anchor: {
+        top: rect.top,
+        left: rect.left,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      },
+    });
+  };
+
   const beginGanttDrag = (
     row: {
       scheduleItemId: string;
@@ -2315,6 +2694,7 @@ export default function ScheduleClient() {
     if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
+    setGanttPopover(null);
     const durationDays = Math.max(1, diffDaysYmd(row.startDate, row.endDate) + 1);
     ganttDragDeltaRef.current = 0;
     ganttDragMovedRef.current = false;
@@ -2580,6 +2960,50 @@ export default function ScheduleClient() {
     setQuickEdit({ id, startDateOverride: isYmd(startCandidate) ? startCandidate : '', durationDays });
   };
 
+  const openCommitmentEdit = (id: string, mode: 'lock' | 'reschedule') => {
+    const item = scheduleItemById.get(id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Schedule commitment is only available for scheduled jobs.');
+      return;
+    }
+
+    const existingCommitmentType = resolveCommitmentType(item);
+    const hasCommitment = hasPlannedCommitment(item);
+    const commitmentType: 'week_of' | 'fixed_date' = existingCommitmentType ?? 'week_of';
+
+    const baseStart = item.forecastStart ?? item.startDateOverride ?? today;
+    const safeBaseStart = isYmd(baseStart) ? baseStart : today;
+    const weekOfDate = item.plannedWeekStart ?? (item.plannedStart ? startOfWeekMonday(item.plannedStart) : startOfWeekMonday(safeBaseStart));
+    const startDate = item.plannedStart ?? safeBaseStart;
+
+    const fallbackDurationDays =
+      typeof item.forecastDurationDays === 'number' && Number.isFinite(item.forecastDurationDays) && item.forecastDurationDays > 0
+        ? Math.max(1, Math.trunc(item.forecastDurationDays))
+        : typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
+          ? Math.max(1, Math.ceil(item.durationHoursOverride / WORK_HOURS_PER_DAY))
+          : 1;
+
+    const durationDays =
+      typeof item.plannedDurationDays === 'number' && Number.isFinite(item.plannedDurationDays) && item.plannedDurationDays > 0
+        ? Math.max(1, Math.trunc(item.plannedDurationDays))
+        : fallbackDurationDays;
+    const flexDays = resolvePlannedFlexDays(item) ?? (commitmentType === 'week_of' ? 4 : 1);
+
+    const defaultHardLock = commitmentType === 'fixed_date';
+    const hardLock = hasCommitment ? item.mode === 'pinned' : defaultHardLock;
+
+    setCommitmentEdit({
+      id,
+      mode,
+      commitmentType,
+      weekOfDate,
+      startDate,
+      durationDays: String(durationDays),
+      flexDays: String(flexDays),
+      hardLock,
+    });
+  };
+
   const openDurationEdit = (id: string) => {
     const item = scheduleItemById.get(id) ?? null;
     if (!item || item.itemType === 'downtime') {
@@ -2690,6 +3114,236 @@ export default function ScheduleClient() {
       toast.error(msg);
     }
   };
+
+  function runGanttPopoverAction(action: (() => void) | null | undefined) {
+    if (!action) return;
+    setGanttPopover(null);
+    window.setTimeout(() => action(), 0);
+  }
+
+  function buildDowntimeMenuActions(id: string, scheduleItem: ScheduleItem): MenuAction[] {
+    if (scheduleMode === 'v2') {
+      return [
+        {
+          label: 'Edit downtime…',
+          onClick: () => openEditDowntime(scheduleItem),
+        },
+        {
+          label: 'Delete downtime',
+          tone: 'danger',
+          onClick: () => {
+            if (!scheduleItem.downtimeId) {
+              toast.error('Downtime record not found.');
+              return;
+            }
+            if (typeof window !== 'undefined') {
+              const ok = window.confirm('Delete this downtime block? This cannot be undone.');
+              if (!ok) return;
+            }
+            void runWithCommitConfirmation(
+              (force) => deleteDowntime({ downtime_id: scheduleItem.downtimeId as string, force, today }),
+              { successToast: 'Downtime deleted.', errorToast: 'Failed to delete downtime.' },
+            );
+          },
+        },
+      ];
+    }
+
+    return [
+      {
+        label: 'Remove downtime',
+        tone: 'danger',
+        onClick: () => void handleUnschedule(id),
+      },
+    ];
+  }
+
+  function buildJobMenuActions({
+    id,
+    scheduleItem,
+    job,
+    scheduleStatus,
+  }: {
+    id: string;
+    scheduleItem: ScheduleItem;
+    job: SchedulableJob | null;
+    scheduleStatus: ScheduleItemStatus;
+  }): MenuAction[] {
+    if (scheduleItem.itemType === 'downtime') return [];
+
+    const jobStatus = scheduleItem.jobStatus ?? null;
+    const isInProgress = jobStatus === 'in_progress' || jobStatus === 'paused';
+    const isDone = jobStatus === 'done';
+    const isPinned = scheduleItem.mode === 'pinned';
+    const hasCommitment = hasPlannedCommitment(scheduleItem);
+    const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
+    const baseDurationDays =
+      typeof scheduleItem.forecastDurationDays === 'number' && Number.isFinite(scheduleItem.forecastDurationDays) && scheduleItem.forecastDurationDays > 0
+        ? scheduleItem.forecastDurationDays
+        : typeof scheduleItem.durationHoursOverride === 'number' && Number.isFinite(scheduleItem.durationHoursOverride) && scheduleItem.durationHoursOverride > 0
+          ? Math.ceil(scheduleItem.durationHoursOverride / WORK_HOURS_PER_DAY)
+          : job && Number.isFinite(job.durationHours) && job.durationHours > 0
+            ? Math.ceil(job.durationHours / WORK_HOURS_PER_DAY)
+            : 1;
+
+    if (scheduleMode === 'v2') {
+      const v2Actions: MenuAction[] = [];
+      if (!isDone) {
+        v2Actions.push({
+          label: hasCommitment ? 'Reschedule…' : 'Lock schedule…',
+          onClick: () => openCommitmentEdit(id, hasCommitment ? 'reschedule' : 'lock'),
+        });
+      }
+
+      if (clientUpdateStatus === 'needed') {
+        v2Actions.push({
+          label: 'Mark client contacted',
+          onClick: () => {
+            const jobUuid = resolveProjectUuid(scheduleItem);
+            if (!jobUuid) return;
+            void ackClientUpdate({ job_id: jobUuid })
+              .then(() => {
+                toast.success('Client update marked as contacted.');
+                refreshSchedule();
+              })
+              .catch((err) => {
+                const msg = err instanceof Error ? err.message : 'Failed to mark client as contacted.';
+                toast.error(msg);
+              });
+          },
+        });
+      } else if (clientUpdateStatus === 'acknowledged') {
+        v2Actions.push({
+          label: 'Client contacted',
+          disabled: true,
+          onClick: () => {},
+        });
+      }
+
+      if (!isInProgress && !isDone) {
+        v2Actions.push({
+          label: isPinned ? 'Unpin' : 'Pin…',
+          onClick: () => {
+            if (isPinned) {
+              const jobUuid = resolveProjectUuid(scheduleItem);
+              if (!jobUuid) return;
+              void runWithCommitConfirmation((force) => unpinJob({ job_id: jobUuid, force, today }), {
+                successToast: 'Job unpinned.',
+                errorToast: 'Failed to unpin job.',
+              });
+              return;
+            }
+            openPinEdit(id);
+          },
+        });
+        v2Actions.push({
+          label: 'Set duration…',
+          onClick: () => openDurationEdit(id),
+        });
+        v2Actions.push({
+          label: 'Extend +1 day',
+          onClick: () => {
+            const jobUuid = resolveProjectUuid(scheduleItem);
+            if (!jobUuid) return;
+            const nextDays = Math.max(1, Math.round(baseDurationDays + 1));
+            void runWithCommitConfirmation(
+              (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDays, force, today }),
+              { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
+            );
+          },
+        });
+        v2Actions.push({
+          label: 'Extend +2 days',
+          onClick: () => {
+            const jobUuid = resolveProjectUuid(scheduleItem);
+            if (!jobUuid) return;
+            const nextDays = Math.max(1, Math.round(baseDurationDays + 2));
+            void runWithCommitConfirmation(
+              (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDays, force, today }),
+              { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
+            );
+          },
+        });
+      }
+
+      v2Actions.push({
+        label: 'Add delay…',
+        onClick: () => openCreateDowntimeAfter(scheduleItem),
+      });
+
+      if (!isInProgress && !isDone) {
+        v2Actions.push({
+          label: 'Mark in progress',
+          onClick: () => {
+            const jobUuid = resolveProjectUuid(scheduleItem);
+            if (!jobUuid) return;
+            void runWithCommitConfirmation((force) => markJobInProgress({ job_id: jobUuid, force, today }), {
+              successToast: 'Job marked in progress.',
+              errorToast: 'Failed to mark job in progress.',
+            });
+          },
+        });
+      }
+
+      if (isInProgress) {
+        v2Actions.push({
+          label: 'Set days remaining…',
+          onClick: () => openDaysRemainingEdit(id),
+        });
+      }
+
+      if (!isDone) {
+        v2Actions.push({
+          label: 'Mark done',
+          onClick: () => {
+            void handleMarkDoneV2(scheduleItem);
+          },
+        });
+      }
+
+      v2Actions.push({
+        label: 'Unschedule',
+        tone: 'danger',
+        onClick: () => void handleUnschedule(id),
+      });
+
+      return v2Actions;
+    }
+
+    const locked = isLockedScheduleStatus(scheduleStatus);
+    const legacyActions: MenuAction[] = [
+      ...(scheduleStatus === 'TENTATIVE'
+        ? [
+            {
+              label: 'Confirm dates',
+              onClick: () => void handleConfirmSchedule(id),
+            },
+          ]
+        : []),
+      ...(locked
+        ? [
+            {
+              label: 'Unlock',
+              onClick: () => void handleUnlockSchedule(id),
+            },
+          ]
+        : []),
+      ...(!locked
+        ? [
+            {
+              label: 'Quick edit…',
+              onClick: () => openQuickEdit(id),
+            },
+          ]
+        : []),
+      {
+        label: 'Unschedule',
+        tone: 'danger',
+        onClick: () => void handleUnschedule(id),
+      },
+    ];
+    return legacyActions;
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -3473,25 +4127,7 @@ export default function ScheduleClient() {
                               ) : row.isDowntime ? (
                                 <span className={styles.ganttProjectText}>{row.projectName}</span>
                               ) : (
-                                <span
-                                  className={cx(styles.ganttProjectText, styles.ganttProjectTextItem)}
-                                  title={row.projectName}
-                                  role="link"
-                                  tabIndex={0}
-                                  onClick={() =>
-                                    router.push(
-                                      `/staff/projects/${encodeURIComponent(row.projectId)}/estimate/${encodeURIComponent(row.estimateId)}`,
-                                    )
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                      e.preventDefault();
-                                      router.push(
-                                        `/staff/projects/${encodeURIComponent(row.projectId)}/estimate/${encodeURIComponent(row.estimateId)}`,
-                                      );
-                                    }
-                                  }}
-                                >
+                                <span className={styles.ganttProjectText} title={row.projectName}>
                                   {row.projectName}
                                 </span>
                               )}
@@ -3502,30 +4138,6 @@ export default function ScheduleClient() {
                         <div
                           className={cx(styles.ganttTimelineRow, row.kind === 'group' && styles.ganttTimelineRowGroup)}
                           style={{ width: gantt.totalWidth }}
-                          role={row.kind === 'item' && !row.isDowntime ? 'link' : undefined}
-                          tabIndex={row.kind === 'item' && !row.isDowntime ? 0 : undefined}
-                          onClick={
-                            row.kind === 'item' && !row.isDowntime
-                              ? () => {
-                                  if (shouldBlockGanttClick()) return;
-                                  router.push(
-                                    `/staff/projects/${encodeURIComponent(row.projectId)}/estimate/${encodeURIComponent(row.estimateId)}`,
-                                  );
-                                }
-                              : undefined
-                          }
-                          onKeyDown={
-                            row.kind === 'item' && !row.isDowntime
-                              ? (e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    router.push(
-                                      `/staff/projects/${encodeURIComponent(row.projectId)}/estimate/${encodeURIComponent(row.estimateId)}`,
-                                    );
-                                  }
-                                }
-                              : undefined
-                          }
                         >
                       {row.kind === 'item' && row.plannedWidthPx && row.plannedWidthPx > 0 ? (
                         <div
@@ -3561,6 +4173,13 @@ export default function ScheduleClient() {
                               row.projectName,
                               crewName ? `Crew: ${crewName}` : null,
                               row.isPinned ? 'Pinned' : null,
+                              row.plannedCommitmentLabel ? `Planned: ${row.plannedCommitmentLabel}` : 'Planned: Draft',
+                              typeof row.driftDays === 'number' ? `Drift: +${row.driftDays} working day${row.driftDays === 1 ? '' : 's'}` : null,
+                              row.clientUpdateStatus === 'needed'
+                                ? 'Client update needed'
+                                : row.clientUpdateStatus === 'acknowledged'
+                                  ? 'Client contacted'
+                                  : null,
                               conflict ? `Conflict: ${conflict}` : null,
                               `Status: ${formatStatusLabel(row.status)}`,
                               `Duration: ${row.durationLabel}`,
@@ -3571,10 +4190,9 @@ export default function ScheduleClient() {
                           })()}
                           onPointerDown={(e) => beginGanttDrag(row, 'move', e)}
                           onClick={(e) => {
-                            if (row.isDowntime) return;
                             if (shouldBlockGanttClick()) return;
                             e.stopPropagation();
-                            router.push(`/staff/projects/${encodeURIComponent(row.projectId)}/estimate/${encodeURIComponent(row.estimateId)}`);
+                            openGanttPopover(row, e.currentTarget);
                           }}
                         >
                           {row.isPinned ? <span className={styles.ganttPin} aria-hidden="true" /> : null}
@@ -3586,6 +4204,7 @@ export default function ScheduleClient() {
                               className={styles.ganttResizeHandle}
                               role="presentation"
                               onPointerDown={(e) => beginGanttDrag(row, 'resize', e)}
+                              onClick={(e) => e.stopPropagation()}
                             />
                           ) : null}
                         </div>
@@ -3641,43 +4260,10 @@ export default function ScheduleClient() {
                     const dateLine = dates ? formatDateRange(dates.startDate, dates.endDate) : undefined;
                     const scheduleItem = scheduleItemById.get(id) ?? null;
                     const scheduleStatus = scheduleItem ? deriveScheduleStatus(scheduleItem, today) : 'TENTATIVE';
-                    const locked = isLockedScheduleStatus(scheduleStatus);
                     const issueLevel = issueLevelByScheduleId.get(id);
 
                     if (scheduleItem?.itemType === 'downtime') {
-                      const downtimeActions: MenuAction[] =
-                        scheduleMode === 'v2'
-                          ? [
-                              {
-                                label: 'Edit downtime…',
-                                onClick: () => openEditDowntime(scheduleItem),
-                              },
-                              {
-                                label: 'Delete downtime',
-                                tone: 'danger',
-                                onClick: () => {
-                                  if (!scheduleItem.downtimeId) {
-                                    toast.error('Downtime record not found.');
-                                    return;
-                                  }
-                                  if (typeof window !== 'undefined') {
-                                    const ok = window.confirm('Delete this downtime block? This cannot be undone.');
-                                    if (!ok) return;
-                                  }
-                                  void runWithCommitConfirmation(
-                                    (force) => deleteDowntime({ downtime_id: scheduleItem.downtimeId as string, force, today }),
-                                    { successToast: 'Downtime deleted.', errorToast: 'Failed to delete downtime.' },
-                                  );
-                                },
-                              },
-                            ]
-                          : [
-                              {
-                                label: 'Remove downtime',
-                                tone: 'danger',
-                                onClick: () => void handleUnschedule(id),
-                              },
-                            ];
+                      const downtimeActions = buildDowntimeMenuActions(id, scheduleItem);
 
                       cards.push(
                         <DowntimeCard
@@ -3693,142 +4279,28 @@ export default function ScheduleClient() {
                       continue;
                     }
 
-                    const v2Actions: MenuAction[] = [];
-                    const jobStatus = scheduleItem?.jobStatus ?? null;
-                    const isInProgress = jobStatus === 'in_progress' || jobStatus === 'paused';
-                    const isDone = jobStatus === 'done';
-                    const isPinned = scheduleItem?.mode === 'pinned';
-                    const baseDurationDays =
-                      typeof scheduleItem?.forecastDurationDays === 'number' && Number.isFinite(scheduleItem.forecastDurationDays) && scheduleItem.forecastDurationDays > 0
-                        ? scheduleItem.forecastDurationDays
-                        : typeof scheduleItem?.durationHoursOverride === 'number' && Number.isFinite(scheduleItem.durationHoursOverride) && scheduleItem.durationHoursOverride > 0
-                          ? Math.ceil(scheduleItem.durationHoursOverride / WORK_HOURS_PER_DAY)
-                          : job && Number.isFinite(job.durationHours) && job.durationHours > 0
-                            ? Math.ceil(job.durationHours / WORK_HOURS_PER_DAY)
-                            : 1;
-
-                    if (scheduleMode === 'v2' && scheduleItem) {
-                      if (!isInProgress && !isDone) {
-                        v2Actions.push({
-                          label: isPinned ? 'Unpin' : 'Pin…',
-                          onClick: () => {
-                            if (isPinned) {
-                              const jobUuid = resolveProjectUuid(scheduleItem);
-                              if (!jobUuid) return;
-                              void runWithCommitConfirmation((force) => unpinJob({ job_id: jobUuid, force, today }), {
-                                successToast: 'Job unpinned.',
-                                errorToast: 'Failed to unpin job.',
-                              });
-                              return;
-                            }
-                            openPinEdit(id);
-                          },
-                        });
-                        v2Actions.push({
-                          label: 'Set duration…',
-                          onClick: () => openDurationEdit(id),
-                        });
-                        v2Actions.push({
-                          label: 'Extend +1 day',
-                          onClick: () => {
-                            const jobUuid = resolveProjectUuid(scheduleItem);
-                            if (!jobUuid) return;
-                            const nextDays = Math.max(1, Math.round(baseDurationDays + 1));
-                            void runWithCommitConfirmation(
-                              (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDays, force, today }),
-                              { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
-                            );
-                          },
-                        });
-                        v2Actions.push({
-                          label: 'Extend +2 days',
-                          onClick: () => {
-                            const jobUuid = resolveProjectUuid(scheduleItem);
-                            if (!jobUuid) return;
-                            const nextDays = Math.max(1, Math.round(baseDurationDays + 2));
-                            void runWithCommitConfirmation(
-                              (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDays, force, today }),
-                              { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
-                            );
-                          },
-                        });
-                      }
-
-                      v2Actions.push({
-                        label: 'Add delay…',
-                        onClick: () => openCreateDowntimeAfter(scheduleItem),
-                      });
-
-                      if (!isInProgress && !isDone) {
-                        v2Actions.push({
-                          label: 'Mark in progress',
-                          onClick: () => {
-                            const jobUuid = resolveProjectUuid(scheduleItem);
-                            if (!jobUuid) return;
-                            void runWithCommitConfirmation((force) => markJobInProgress({ job_id: jobUuid, force, today }), {
-                              successToast: 'Job marked in progress.',
-                              errorToast: 'Failed to mark job in progress.',
-                            });
-                          },
-                        });
-                      }
-
-                      if (isInProgress) {
-                        v2Actions.push({
-                          label: 'Set days remaining…',
-                          onClick: () => openDaysRemainingEdit(id),
-                        });
-                      }
-
-                      if (!isDone) {
-                        v2Actions.push({
-                          label: 'Mark done',
-                          onClick: () => {
-                            void handleMarkDoneV2(scheduleItem);
-                          },
-                        });
-                      }
-
-                      v2Actions.push({
-                        label: 'Unschedule',
-                        tone: 'danger',
-                        onClick: () => void handleUnschedule(id),
-                      });
-                    }
-
-                    const legacyActions: MenuAction[] = [
-                      ...(scheduleStatus === 'TENTATIVE'
-                        ? [
-                            {
-                              label: 'Confirm dates',
-                              onClick: () => void handleConfirmSchedule(id),
-                            },
-                          ]
-                        : []),
-                      ...(locked
-                        ? [
-                            {
-                              label: 'Unlock',
-                              onClick: () => void handleUnlockSchedule(id),
-                            },
-                          ]
-                        : []),
-                      ...(!locked
-                        ? [
-                            {
-                              label: 'Quick edit…',
-                              onClick: () => openQuickEdit(id),
-                            },
-                          ]
-                        : []),
-                      {
-                        label: 'Unschedule',
-                        tone: 'danger',
-                        onClick: () => void handleUnschedule(id),
-                      },
-                    ];
-
-                    const menuActions = scheduleMode === 'v2' ? v2Actions : legacyActions;
+                    if (!scheduleItem) continue;
+                    const menuActions = buildJobMenuActions({ id, scheduleItem, job, scheduleStatus });
+                    const commitmentLabel = formatCommitmentLabel(scheduleItem);
+                    const commitmentType = resolveCommitmentType(scheduleItem);
+                    const flexDays = resolvePlannedFlexDays(scheduleItem);
+                    const driftDays =
+                      typeof scheduleItem.driftDays === 'number' && Number.isFinite(scheduleItem.driftDays)
+                        ? Math.max(0, Math.trunc(scheduleItem.driftDays))
+                        : null;
+                    const driftExceeded = driftDays !== null && flexDays !== null ? driftDays > flexDays : false;
+                    const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
+                    const extraBadges = (
+                      <>
+                        {!hasPlannedCommitment(scheduleItem) ? <span className={styles.draftPill}>Draft</span> : null}
+                        {hasPlannedCommitment(scheduleItem) && commitmentLabel ? <span className={styles.commitmentPill}>{commitmentLabel}</span> : null}
+                        {commitmentType && driftDays !== null && driftDays > 0 && !driftExceeded ? (
+                          <span className={styles.driftPill}>Drift +{driftDays}d</span>
+                        ) : null}
+                        {clientUpdateStatus === 'needed' ? <span className={styles.clientUpdatePill}>Client update needed</span> : null}
+                        {clientUpdateStatus === 'acknowledged' ? <span className={styles.clientAckPill}>Client contacted</span> : null}
+                      </>
+                    );
 
                     cards.push(
                       <ScheduledJobCard
@@ -3840,7 +4312,8 @@ export default function ScheduleClient() {
                         dropTarget={overId === id && activeDragId !== id}
                         menuActions={menuActions}
                         issueLevel={issueLevel}
-                        pinned={scheduleMode === 'v2' && scheduleItem?.mode === 'pinned'}
+                        pinned={scheduleMode === 'v2' && scheduleItem.mode === 'pinned'}
+                        extraBadges={extraBadges}
                       />,
                     );
                   }
@@ -3905,6 +4378,17 @@ export default function ScheduleClient() {
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {ganttPopover && ganttPopoverDetails ? (
+        <GanttBarPopover
+          anchor={ganttPopover.anchor}
+          actions={ganttPopoverDetails.actions}
+          details={ganttPopoverDetails.details}
+          onClose={() => setGanttPopover(null)}
+          onKeyDown={handleGanttPopoverKeyDown}
+          focusRef={ganttPopoverRef}
+        />
+      ) : null}
 
       {quickEdit ? (
         <Modal
@@ -4037,6 +4521,258 @@ export default function ScheduleClient() {
                 }}
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
+      {commitmentEdit ? (
+        <Modal
+          open
+          ariaLabel={commitmentEdit.mode === 'lock' ? 'Confirm schedule' : 'Reschedule'}
+          onClose={() => setCommitmentEdit(null)}
+          maxWidthPx={560}
+        >
+          <div style={{ padding: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+                {commitmentEdit.mode === 'lock' ? 'Confirm schedule' : 'Reschedule'}
+              </h2>
+              <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+              <div>
+                <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Commitment type</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className={styles.buttonSecondary}
+                    aria-pressed={commitmentEdit.commitmentType === 'week_of'}
+                    onClick={() =>
+                      setCommitmentEdit((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              commitmentType: 'week_of',
+                              flexDays: '4',
+                              hardLock: false,
+                            }
+                          : prev,
+                      )
+                    }
+                  >
+                    Week-of
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.buttonSecondary}
+                    aria-pressed={commitmentEdit.commitmentType === 'fixed_date'}
+                    onClick={() =>
+                      setCommitmentEdit((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              commitmentType: 'fixed_date',
+                              flexDays: '1',
+                              hardLock: true,
+                            }
+                          : prev,
+                      )
+                    }
+                  >
+                    Fixed date
+                  </button>
+                </div>
+              </div>
+
+              {commitmentEdit.commitmentType === 'week_of' ? (
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Week-of date
+                  </label>
+                  <input
+                    type="date"
+                    className={styles.input}
+                    value={commitmentEdit.weekOfDate}
+                    onChange={(e) =>
+                      setCommitmentEdit((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              weekOfDate: startOfWeekMonday(e.target.value),
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                  <p className={styles.hint} style={{ marginTop: 6 }}>
+                    Date is snapped to Monday of the selected week.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Start date
+                  </label>
+                  <input
+                    type="date"
+                    className={styles.input}
+                    value={commitmentEdit.startDate}
+                    onChange={(e) =>
+                      setCommitmentEdit((prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              startDate: snapToWeekdayYmd(e.target.value),
+                            }
+                          : prev,
+                      )
+                    }
+                  />
+                  <p className={styles.hint} style={{ marginTop: 6 }}>
+                    Date snaps forward to a weekday; holiday handling is enforced server-side.
+                  </p>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Approx duration (days)
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    step={1}
+                    min={1}
+                    className={styles.input}
+                    value={commitmentEdit.durationDays}
+                    onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    Flex days
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    step={1}
+                    min={0}
+                    className={styles.input}
+                    value={commitmentEdit.flexDays}
+                    onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, flexDays: e.target.value } : prev))}
+                  />
+                </div>
+              </div>
+
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={commitmentEdit.hardLock}
+                  onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, hardLock: e.target.checked } : prev))}
+                />
+                Hard lock date (prevents auto movement)
+              </label>
+
+              {(() => {
+                const datePart =
+                  commitmentEdit.commitmentType === 'week_of'
+                    ? isYmd(commitmentEdit.weekOfDate)
+                      ? `Week of ${formatShortDate(startOfWeekMonday(commitmentEdit.weekOfDate))}`
+                      : 'Week of —'
+                    : isYmd(commitmentEdit.startDate)
+                      ? `Starts ${formatShortDate(commitmentEdit.startDate)}`
+                      : 'Starts —';
+                const duration = parsePositiveInt(commitmentEdit.durationDays);
+                const flexRaw = Number(commitmentEdit.flexDays.trim());
+                const flex = Number.isFinite(flexRaw) ? Math.max(0, Math.trunc(flexRaw)) : null;
+                return (
+                  <p className={styles.hint}>
+                    Planned: {datePart} · ~{duration ?? '—'} days · flex {flex ?? '—'} working days
+                  </p>
+                );
+              })()}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className={styles.buttonSecondary}
+                style={{ background: '#813f39', borderColor: 'rgba(129, 63, 57, 0.6)', color: '#fff' }}
+                disabled={(() => {
+                  const validDuration = parsePositiveInt(commitmentEdit.durationDays) !== null;
+                  const flexRaw = Number(commitmentEdit.flexDays.trim());
+                  const validFlex = Number.isFinite(flexRaw) && Math.trunc(flexRaw) >= 0;
+                  const validDate = commitmentEdit.commitmentType === 'week_of' ? isYmd(commitmentEdit.weekOfDate) : isYmd(commitmentEdit.startDate);
+                  return !(validDuration && validFlex && validDate);
+                })()}
+                onClick={() => {
+                  const item = scheduleItemById.get(commitmentEdit.id) ?? null;
+                  if (!item || item.itemType === 'downtime') {
+                    toast.error('Scheduled job not found.');
+                    return;
+                  }
+
+                  const durationDays = parsePositiveInt(commitmentEdit.durationDays);
+                  if (durationDays === null) {
+                    toast.error('Enter a valid duration in whole days.');
+                    return;
+                  }
+
+                  const flexRaw = Number(commitmentEdit.flexDays.trim());
+                  if (!Number.isFinite(flexRaw)) {
+                    toast.error('Enter a valid flex value.');
+                    return;
+                  }
+                  const flexDays = Math.max(0, Math.trunc(flexRaw));
+
+                  const jobUuid = resolveProjectUuid(item);
+                  if (!jobUuid) return;
+
+                  const payload =
+                    commitmentEdit.commitmentType === 'week_of'
+                      ? {
+                          job_id: jobUuid,
+                          commitment_type: 'week_of' as const,
+                          week_of_date: startOfWeekMonday(commitmentEdit.weekOfDate),
+                          duration_days: durationDays,
+                          flex_days: flexDays,
+                          hard_lock: commitmentEdit.hardLock,
+                          today,
+                        }
+                      : {
+                          job_id: jobUuid,
+                          commitment_type: 'fixed_date' as const,
+                          start_date: snapToWeekdayYmd(commitmentEdit.startDate),
+                          duration_days: durationDays,
+                          flex_days: flexDays,
+                          hard_lock: commitmentEdit.hardLock,
+                          today,
+                        };
+
+                  const runMutation =
+                    commitmentEdit.mode === 'lock'
+                      ? (force: boolean) => lockJobSchedule({ ...payload, force })
+                      : (force: boolean) => rescheduleJob({ ...payload, force });
+
+                  const successToast = commitmentEdit.mode === 'lock' ? 'Schedule locked.' : 'Schedule updated.';
+                  void runWithCommitConfirmation(runMutation, {
+                    successToast,
+                    errorToast: 'Failed to save schedule commitment.',
+                  }).then((ok) => {
+                    if (ok) setCommitmentEdit(null);
+                  });
+                }}
+              >
+                Confirm
               </button>
             </div>
           </div>

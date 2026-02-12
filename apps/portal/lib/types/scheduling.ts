@@ -35,8 +35,18 @@ export type ScheduleItem = {
   forecastStart?: string | null;
   forecastEndExclusive?: string | null;
   forecastDurationDays?: number | null;
+  plannedCommitmentType?: 'week_of' | 'fixed_date' | null;
+  plannedWeekStart?: string | null;
   plannedStart?: string | null;
   plannedDurationDays?: number | null;
+  plannedFlexDays?: number | null;
+  plannedLockedAt?: string | null;
+  plannedLockedBy?: string | null;
+  driftDays?: number | null;
+  clientUpdateStatus?: 'none' | 'needed' | 'acknowledged' | null;
+  clientUpdateNeededAt?: string | null;
+  clientUpdateAckAt?: string | null;
+  clientUpdateAckBy?: string | null;
   mode?: 'floating' | 'pinned';
   jobStatus?: 'not_started' | 'in_progress' | 'paused' | 'done' | null;
   daysRemaining?: number | null;
