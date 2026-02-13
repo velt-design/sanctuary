@@ -60,14 +60,6 @@ function renderValue(value: string | null | undefined): ReactNode {
 
 function formatStatusLabel(status: EstimateStatus): string {
   switch (status) {
-    case 'in_review':
-      return 'In review';
-    case 'approved':
-      return 'Approved';
-    case 'rejected':
-      return 'Rejected';
-    case 'superseded':
-      return 'Superseded';
     case 'archived':
       return 'Archived';
     default:
@@ -77,13 +69,6 @@ function formatStatusLabel(status: EstimateStatus): string {
 
 function statusClass(status: EstimateStatus): string {
   switch (status) {
-    case 'approved':
-      return styles.statusApproved;
-    case 'rejected':
-      return styles.statusRejected;
-    case 'in_review':
-      return styles.statusReview;
-    case 'superseded':
     case 'archived':
       return styles.statusMuted;
     default:

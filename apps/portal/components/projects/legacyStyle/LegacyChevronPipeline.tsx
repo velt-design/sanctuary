@@ -30,7 +30,15 @@ function classForState(state: StepState): string {
   }
 }
 
-export default function LegacyChevronPipeline({ stage }: { stage: PipelineStageKey }) {
+export default function LegacyChevronPipeline({
+  stage,
+  onRequestChange,
+  disabled,
+}: {
+  stage: PipelineStageKey;
+  onRequestChange?: (next: PipelineStageKey, label: string, trigger: HTMLButtonElement) => void;
+  disabled?: boolean;
+}) {
   const stripRef = useRef<HTMLDivElement | null>(null);
   const [fade, setFade] = useState({ left: false, right: false });
 
@@ -89,6 +97,8 @@ export default function LegacyChevronPipeline({ stage }: { stage: PipelineStageK
             .filter(Boolean)
             .join(' ');
 
+          const isInteractive = typeof onRequestChange === 'function';
+
           return (
             <li
               key={stageDef.key}
@@ -97,9 +107,22 @@ export default function LegacyChevronPipeline({ stage }: { stage: PipelineStageK
                 zIndex: state === 'current' ? 4 : state === 'done' ? 3 : state === 'todo' ? 2 : 1,
               }}
             >
-              <span className={classes} aria-current={state === 'current' ? 'step' : undefined}>
-                {label}
-              </span>
+              {isInteractive ? (
+                <button
+                  type="button"
+                  className={classes}
+                  aria-current={state === 'current' ? 'step' : undefined}
+                  aria-label={`Set pipeline status: ${label}`}
+                  onClick={(e) => onRequestChange?.(stageDef.key, label, e.currentTarget)}
+                  disabled={Boolean(disabled) || state === 'current'}
+                >
+                  {label}
+                </button>
+              ) : (
+                <span className={classes} aria-current={state === 'current' ? 'step' : undefined}>
+                  {label}
+                </span>
+              )}
             </li>
           );
         })}

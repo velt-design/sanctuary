@@ -1,4 +1,4 @@
-export type EstimateStatus = 'draft' | 'in_review' | 'approved' | 'rejected' | 'superseded' | 'archived';
+export type EstimateStatus = 'draft' | 'archived';
 
 export type EstimateSummary = {
   total?: number | null;
@@ -23,11 +23,4 @@ export type EstimateMeta = {
 export type EstimateDetail = EstimateMeta & {
   calculatorSnapshot: Record<string, unknown> | null;
   internalNotes?: string | null;
-  approvalRequestedAt?: string | null;
-  approvalRequestedBy?: string | null;
-  approvedAt?: string | null;
-  approvedBy?: string | null;
-  rejectedAt?: string | null;
-  rejectedBy?: string | null;
-  approvalComment?: string | null;
 };

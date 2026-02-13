@@ -182,3 +182,114 @@ describe('buildMaterialsV1 splice joins', () => {
     expect(result.derived.splice_join_count).toBe(expectedJoins);
   });
 });
+
+describe('infill BOM takeoff', () => {
+  const baseInfill = {
+    id: 'inf-1',
+    qty: 1,
+    location: 'side' as const,
+    acrylic_source: 'sheet_panels' as const,
+    width_mode: 'target_width' as const,
+    target_panel_width_m: 1,
+    max_panel_width_m: 1.2,
+    support: {
+      has_top: true,
+      has_bottom: true,
+      has_left: true,
+      has_right: true,
+      internal_support_mode: 'none' as const,
+    },
+    shape: {
+      type: 'rect' as const,
+      width_m: 2.4,
+      height_m: 2.0,
+    },
+  };
+
+  it('sheet mode adds pooled infill acrylic sheet line and joiner bars', () => {
+    const result = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'timber',
+      infills: [baseInfill],
+    });
+
+    expect(result.materials.lines.some((line) => line.id === 'infill.acrylic_sheet_clear' && line.qty >= 1)).toBe(true);
+    expect(result.materials.lines.some((line) => line.profile === 'Joiners')).toBe(true);
+  });
+
+  it('strip mode adds Crystalite 620 infill line', () => {
+    const result = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'timber',
+      infills: [
+        {
+          ...baseInfill,
+          acrylic_source: 'strip_620',
+          width_mode: 'target_width',
+        },
+      ],
+    });
+
+    expect(result.materials.lines.some((line) => /^infill\.crystalite_620_\d+m$/.test(line.id))).toBe(true);
+  });
+
+  it('adds 50x50 when internal joiner lines are unsupported', () => {
+    const result = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'acrylic',
+      infills: [
+        {
+          ...baseInfill,
+          shape: { type: 'rect', width_m: 3, height_m: 2 },
+          width_mode: 'target_width',
+          target_panel_width_m: 1,
+          support: {
+            ...baseInfill.support,
+            internal_support_mode: 'none',
+          },
+        },
+      ],
+    });
+
+    expect(result.materials.lines.some((line) => line.profile === '50x50')).toBe(true);
+  });
+
+  it('front match_roof_rafters infill does not add internal 50x50', () => {
+    const unsupported = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'acrylic',
+      infills: [
+        {
+          ...baseInfill,
+          location: 'front',
+          shape: { type: 'rect', width_m: 3, height_m: 2 },
+          width_mode: 'target_width',
+          target_panel_width_m: 1,
+          support: {
+            ...baseInfill.support,
+            internal_support_mode: 'none',
+          },
+        },
+      ],
+    });
+    const matched = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'acrylic',
+      infills: [
+        {
+          ...baseInfill,
+          location: 'front',
+          shape: { type: 'rect', width_m: 3, height_m: 2 },
+          width_mode: 'match_roof_rafters',
+          support: {
+            ...baseInfill.support,
+            internal_support_mode: 'none',
+          },
+        },
+      ],
+    });
+
+    expect(unsupported.materials.lines.some((line) => line.profile === '50x50')).toBe(true);
+    expect(matched.materials.lines.some((line) => line.profile === '50x50')).toBe(false);
+  });
+});

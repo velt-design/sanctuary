@@ -489,6 +489,164 @@
       },
       "cost_ex_gst": 142.2783,
       "cost_inc_gst": 163.62
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 313.0435,
+      "cost_inc_gst": 360.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 313.0435,
+      "cost_inc_gst": 360.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 313.0435,
+      "cost_inc_gst": 360.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_8m_black",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 8m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0,
+        "colour": "Black"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 417.3913,
+      "cost_inc_gst": 480.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_8m_white",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 8m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0,
+        "colour": "White"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 417.3913,
+      "cost_inc_gst": 480.0
+    },
+    {
+      "id": "aluminium-extrusion_steel_rhs_150x50x3_8m_mill",
+      "category": "aluminium_extrusion",
+      "name": "Steel RHS 150x50x3 8m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0,
+        "colour": "Mill"
+      },
+      "notes": "User-specified steel RHS rate: $60/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 417.3913,
+      "cost_inc_gst": 480.0
+    },
+    {
+      "id": "powdercoating_steel_rhs_150x50x3_6m",
+      "category": "powdercoating",
+      "name": "Powdercoating for steel RHS 150x50x3 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 6.0
+      },
+      "notes": "User-specified powdercoating rate: $150/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 782.6087,
+      "cost_inc_gst": 900.0
+    },
+    {
+      "id": "powdercoating_steel_rhs_150x50x3_8m",
+      "category": "powdercoating",
+      "name": "Powdercoating for steel RHS 150x50x3 8m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "RHS 150x50x3",
+        "length_m": 8.0
+      },
+      "notes": "User-specified powdercoating rate: $150/m inc GST converted to ex GST.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 1043.4783,
+      "cost_inc_gst": 1200.0
+    },
+    {
+      "id": "hire.hiab_day",
+      "category": "hire",
+      "name": "Hiab hire - 1 day",
+      "unit": "day",
+      "attributes": {
+        "type": "hiab_hire"
+      },
+      "notes": "Applied once per module when steel beam profiles are used.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true
+      },
+      "cost_ex_gst": 695.6522,
+      "cost_inc_gst": 800.0
     }
   ]
 }

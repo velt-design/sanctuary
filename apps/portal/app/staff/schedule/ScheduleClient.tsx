@@ -424,15 +424,15 @@ function normaliseEnumValue(value: unknown): string {
   return value.trim().toLowerCase().replace(/\s+/g, '_');
 }
 
-function isApprovedEstimate(estimate: Estimate): boolean {
-  return normaliseEnumValue((estimate as any).status) === 'approved';
+function isSchedulableEstimate(estimate: Estimate): boolean {
+  return normaliseEnumValue((estimate as any).status) !== 'archived';
 }
 
-function getLatestApprovedEstimate(estimates: Estimate[]): Estimate | null {
-  const approved = estimates.filter((e) => isApprovedEstimate(e));
-  if (!approved.length) return null;
-  approved.sort((a, b) => ((b as any).version ?? 0) - ((a as any).version ?? 0) || b.createdAt.localeCompare(a.createdAt));
-  return approved[0] ?? null;
+function getLatestSchedulableEstimate(estimates: Estimate[]): Estimate | null {
+  const schedulable = estimates.filter((e) => isSchedulableEstimate(e));
+  if (!schedulable.length) return null;
+  schedulable.sort((a, b) => ((b as any).version ?? 0) - ((a as any).version ?? 0) || b.createdAt.localeCompare(a.createdAt));
+  return schedulable[0] ?? null;
 }
 
 function getJobDescriptorFromEstimate(estimate: Estimate): string {
@@ -1775,7 +1775,7 @@ export default function ScheduleClient() {
         unscheduledJobs: unscheduledJobs.length,
         excluded: {
           noEstimates: 0,
-          noApprovedEstimate: 0,
+          noSchedulableEstimate: 0,
           alreadyScheduled: 0,
         },
         scheduleItems: {
@@ -1783,7 +1783,7 @@ export default function ScheduleClient() {
           blocking: scheduleItemsRenderable.filter((i) => i.itemType !== 'downtime').length,
           missingProject: orphanedScheduleItems.length,
           missingEstimate: 0,
-          estimateNotApproved: 0,
+          estimateNotSchedulable: 0,
         },
       };
 
@@ -1799,7 +1799,7 @@ export default function ScheduleClient() {
       unscheduledJobs: 0,
       excluded: {
         noEstimates: 0,
-        noApprovedEstimate: 0,
+        noSchedulableEstimate: 0,
         alreadyScheduled: 0,
       },
       scheduleItems: {
@@ -1807,7 +1807,7 @@ export default function ScheduleClient() {
         blocking: 0,
         missingProject: 0,
         missingEstimate: 0,
-        estimateNotApproved: 0,
+        estimateNotSchedulable: 0,
       },
     };
 
@@ -1832,8 +1832,8 @@ export default function ScheduleClient() {
         continue;
       }
 
-      if (!isApprovedEstimate(estimate)) {
-        debug.scheduleItems.estimateNotApproved += 1;
+      if (!isSchedulableEstimate(estimate)) {
+        debug.scheduleItems.estimateNotSchedulable += 1;
         continue;
       }
 
@@ -1855,9 +1855,9 @@ export default function ScheduleClient() {
         continue;
       }
 
-      const latestApproved = getLatestApprovedEstimate(estimates);
-      if (!latestApproved) {
-        debug.excluded.noApprovedEstimate += 1;
+      const latestEstimate = getLatestSchedulableEstimate(estimates);
+      if (!latestEstimate) {
+        debug.excluded.noSchedulableEstimate += 1;
         continue;
       }
 
@@ -1868,7 +1868,7 @@ export default function ScheduleClient() {
         continue;
       }
 
-      const derived = deriveDurationHoursFromEstimate(latestApproved);
+      const derived = deriveDurationHoursFromEstimate(latestEstimate);
       const durationHours = derived.durationHours;
       const warnings = derived.issues.map((i) => i.message);
 
@@ -1881,13 +1881,13 @@ export default function ScheduleClient() {
           ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
           : '';
 
-      const id = makeJobId(p.id, latestApproved.id);
+      const id = makeJobId(p.id, latestEstimate.id);
       const job: SchedulableJob = {
         id,
         projectId: p.id,
-        estimateId: latestApproved.id,
+        estimateId: latestEstimate.id,
         projectName,
-        descriptor: `${getJobDescriptorFromEstimate(latestApproved)}${nextActionSuffix}`,
+        descriptor: `${getJobDescriptorFromEstimate(latestEstimate)}${nextActionSuffix}`,
         status,
         durationHours,
         durationLabel: formatDuration(durationHours),
@@ -3904,7 +3904,7 @@ export default function ScheduleClient() {
                     </option>
                   ))}
                 </select>
-                <p className={styles.hint}>Only projects with an approved estimate appear here.</p>
+                <p className={styles.hint}>Only projects with at least one active estimate appear here.</p>
               </div>
 
               <UnscheduledDropZone onMount={(node) => (unscheduledBodyRef.current = node)}>
@@ -3918,8 +3918,8 @@ export default function ScheduleClient() {
                   <div>
                     {unscheduledJobsAll.length === 0 ? (
                       <>
-                        <p className={styles.note}>No unscheduled approved projects.</p>
-                        <p className={styles.hint}>Approve an estimate to make it schedulable.</p>
+                        <p className={styles.note}>No unscheduled projects with active estimates.</p>
+                        <p className={styles.hint}>Create an estimate to make a project schedulable.</p>
                       </>
                     ) : (
                       <p className={styles.note}>No projects match this filter.</p>
@@ -3937,7 +3937,7 @@ export default function ScheduleClient() {
                     <span>{schedulable.debug.totalProjects}</span>
                   </div>
                   <div className={styles.debugRow}>
-                    <span className={styles.muted}>Schedulable (has approved estimate)</span>
+                    <span className={styles.muted}>Schedulable (has active estimate)</span>
                     <span>{schedulable.debug.schedulableProjects}</span>
                   </div>
                   <div className={styles.debugRow}>
@@ -3951,8 +3951,8 @@ export default function ScheduleClient() {
                     <span>{schedulable.debug.excluded.noEstimates}</span>
                   </div>
                   <div className={styles.debugRow}>
-                    <span className={styles.muted}>No approved estimate</span>
-                    <span>{schedulable.debug.excluded.noApprovedEstimate}</span>
+                    <span className={styles.muted}>No active estimate</span>
+                    <span>{schedulable.debug.excluded.noSchedulableEstimate}</span>
                   </div>
                   <div className={styles.debugRow}>
                     <span className={styles.muted}>Already scheduled</span>
@@ -3965,7 +3965,7 @@ export default function ScheduleClient() {
                     <span>{schedulable.debug.scheduleItems.total}</span>
                   </div>
                   <div className={styles.debugRow}>
-                    <span className={styles.muted}>Blocking (valid + approved)</span>
+                    <span className={styles.muted}>Blocking (valid + active estimate)</span>
                     <span>{schedulable.debug.scheduleItems.blocking}</span>
                   </div>
                   <div className={styles.debugRow}>
@@ -3977,8 +3977,8 @@ export default function ScheduleClient() {
                     <span>{schedulable.debug.scheduleItems.missingEstimate}</span>
                   </div>
                   <div className={styles.debugRow}>
-                    <span className={styles.muted}>Estimate not approved</span>
-                    <span>{schedulable.debug.scheduleItems.estimateNotApproved}</span>
+                    <span className={styles.muted}>Estimate archived</span>
+                    <span>{schedulable.debug.scheduleItems.estimateNotSchedulable}</span>
                   </div>
                 </div>
               </details>

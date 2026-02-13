@@ -418,15 +418,61 @@ export async function setProjectStatus(
   return refreshed;
 }
 
+export async function correctProjectStage(
+  projectId: string,
+  status: ProjectStatus,
+  opts?: { reason?: string | null; siteVisitPriorityTier?: 1 | 2 | null },
+): Promise<{ project: Project; rollback: boolean; resetManualTaskCount: number }> {
+  const payload: Record<string, unknown> = {
+    toStage: status,
+    reason: typeof opts?.reason === 'string' ? opts.reason : null,
+  };
+  if (status === 'SITE_VISIT' && opts?.siteVisitPriorityTier) {
+    payload.site_visit_priority_tier = opts.siteVisitPriorityTier;
+  }
+
+  const res = await apiJson<{ project?: any; rollback?: boolean; resetManualTaskCount?: number }>(
+    `/api/staff/v1/projects/${encodeURIComponent(projectId)}/stage/correct`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const project = res?.project ? projectFromRow(res.project) : await getProject(projectId);
+  if (!project) throw new Error('Project not found');
+
+  return {
+    project,
+    rollback: Boolean(res?.rollback),
+    resetManualTaskCount: Number(res?.resetManualTaskCount ?? 0),
+  };
+}
+
 export async function setProjectFollowUpDate(projectId: string, followUpDate: string | null, opts?: { force?: boolean }): Promise<Project> {
   const prev = await getProject(projectId);
   if (!prev) throw new Error('Project not found');
   return updateProject(projectId, { nextActionDate: followUpDate, followUpDate } as any, opts as any);
 }
 
-export async function deleteProject(id: string): Promise<void> {
-  const supabase = getSupabaseBrowser();
-  const uuid = uuidFromAppId(id, 'proj');
-  const { error } = await supabase.from('projects').delete().eq('id', uuid);
-  if (error) throw wrapError('projects', error);
+export async function deleteProject(
+  id: string,
+  opts?: { confirmText?: string; reason?: string | null },
+): Promise<{ stage?: string; requiredConfirmation?: string; auditLogged?: boolean }> {
+  const payload = {
+    confirmText: typeof opts?.confirmText === 'string' ? opts.confirmText : 'DELETE',
+    reason: typeof opts?.reason === 'string' ? opts.reason : null,
+  };
+  const res = await apiJson<{ stage?: string; requiredConfirmation?: string; auditLogged?: boolean }>(
+    `/api/staff/v1/projects/${encodeURIComponent(id)}/delete`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+  return {
+    stage: typeof res?.stage === 'string' ? res.stage : undefined,
+    requiredConfirmation: typeof res?.requiredConfirmation === 'string' ? res.requiredConfirmation : undefined,
+    auditLogged: typeof res?.auditLogged === 'boolean' ? res.auditLogged : undefined,
+  };
 }

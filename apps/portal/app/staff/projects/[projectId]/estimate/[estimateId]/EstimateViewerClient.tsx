@@ -634,8 +634,8 @@ export default function EstimateViewerClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {estimate.outputs.materials.lines.map((l) => (
-                    <tr key={l.id}>
+                  {estimate.outputs.materials.lines.map((l, idx) => (
+                    <tr key={`${l.id}-${idx}`}>
                       <td>{l.label}</td>
                       <td className={styles.muted}>{l.profile ?? ''}</td>
                       <td className={styles.muted}>{l.unit}</td>

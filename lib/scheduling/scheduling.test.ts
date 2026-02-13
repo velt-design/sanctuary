@@ -6,12 +6,12 @@ import type { Estimate } from '@/lib/types/estimate';
 import type { Project } from '@/lib/types/project';
 import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
 
-function makeEstimate(partial?: Partial<Estimate>): Estimate {
+function makeEstimate(partial?: Omit<Partial<Estimate>, 'outputs'> & { outputs?: Partial<Estimate['outputs']> }): Estimate {
   const base: Estimate = {
     id: 'est_1',
     projectId: 'proj_1',
     createdAt: '2026-01-01T00:00:00.000Z',
-    status: 'approved',
+    status: 'draft',
     inputs: {} as any,
     derived: {} as any,
     outputs: {

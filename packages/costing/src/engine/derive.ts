@@ -106,6 +106,19 @@ function normalizeOverrideProfile(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
+function normalizeProfileLabel(value: string | null | undefined): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/×/g, 'x');
+}
+
+function isSteelBeamProfile(value: string | null | undefined): boolean {
+  const normalized = normalizeProfileLabel(value);
+  return normalized === 'rhs150x50x3' || normalized === 'rhs150x50x3mm';
+}
+
 function isGutterBeamProfile(profile: string | null | undefined): boolean {
   if (!profile) return false;
   const normalized = profile.toLowerCase().replace(/\s+/g, '');
@@ -435,9 +448,14 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     );
   }
 
+  const overhangSupportBeamProfileRaw = normalizeOverrideProfile(inputs.overhang_support_beam_profile);
   const overhangSupportBeamProfile: OverhangSupportBeamProfile | string | null = overhangEnabled
     ? overrideOverhangSupportBeamProfile ??
-      (inputs.overhang_support_beam_profile === '200x50' ? '200x50' : inputs.overhang_support_beam_profile === '150x50' ? '150x50' : '150x50')
+      (overhangSupportBeamProfileRaw === '200x50' ||
+      overhangSupportBeamProfileRaw === '150x50' ||
+      isSteelBeamProfile(overhangSupportBeamProfileRaw)
+        ? overhangSupportBeamProfileRaw
+        : '150x50')
     : null;
 
   const lengthMmA = Math.round(lengthM * 1000);
@@ -811,6 +829,12 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const frontBeamProfileUsed = structureType === 'pitched' ? overrideFrontBeamProfile ?? defaultFrontBeamProfile : null;
   const integratedGutterBeam = structureType === 'pitched' && isGutterBeamProfile(frontBeamProfileUsed);
+  const frontBeamLengthM =
+    structureType === 'pitched' && frontBeamProfileUsed && !integratedGutterBeam
+      ? roofType === 'hip_corner'
+        ? Math.max(0, lengthM) + Math.max(0, hipCornerLengthBM)
+        : Math.max(0, lengthM)
+      : 0;
   const separateGutterEnabledRaw = inputs.separate_gutter_enabled === true;
 
   const invertedHouseGutter = invertedEnabled ? inputs.inverted_house_gutter !== false : false;
@@ -989,6 +1013,109 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const timberEdgeRafterProfileUsed = TIMBER_EDGE_RAFTER_PROFILE;
   const timberEdgeRafterFinishUsed = visibleFinishUsed;
 
+  // === Rafter pre-cut takeoff (v2): edge allowances + LengthA ===
+  // Notes:
+  // - We ONLY change rafter takeoff outputs used by BOM (derived.rafter_cut_length_m + gable side fields).
+  // - We do NOT change post-height / fall geometry in this sprint.
+  // - LengthA uses existing angleCutAllowanceM (= rafter depth x tan(pitch)).
+  const RAFTER_BEAM_ONLY_M = 0.05; // 50mm
+  const RAFTER_SP_GUTTER_M = 0.1; // 100mm (beam + gutter combined)
+  const RAFTER_BEAM_PLUS_GUTTER_M = 0.15; // 150mm
+
+  const isGableLike = roofType === 'gable' || roofType === 'low_gable';
+
+  const ourGutterAllowanceM =
+    integratedGutterBeam ? RAFTER_SP_GUTTER_M : RAFTER_BEAM_PLUS_GUTTER_M;
+
+  const ridgeProfileForTakeoff =
+    isGableLike ? (ridgeBeamProfileUsed ?? '100x50') : (ridgeBeamProfileUsed ?? '100x50');
+  const ridgeHalfM = isGableLike ? profileWidthM(ridgeProfileForTakeoff) / 2 : 0;
+
+  type RafterTakeoff = {
+    run_m_takeoff: number;
+    cut_length_m: number;
+    // gable
+    run_house_side_m?: number;
+    run_outer_side_m?: number;
+    cut_house_side_m?: number;
+    cut_outer_side_m?: number;
+    ridge_half_m?: number;
+    // pitched debug
+    house_allowance_m?: number;
+    far_allowance_m?: number;
+  };
+
+  const rafterTakeoff: RafterTakeoff = (() => {
+    // Default fallback keeps existing behavior but adds LengthA.
+    const fallbackRun = Number.isFinite(effectiveRunM) ? effectiveRunM : 0;
+    const fallbackCut = (Number.isFinite(cutRafterLengthM) ? cutRafterLengthM : 0) + angleCutAllowanceM;
+
+    // --- Pitched (single plane) ---
+    if (roofType === 'pitched') {
+      const beamWidthM = profileWidthM(frontBeamProfileUsed ?? '100x50'); // defaults to 50mm if unknown
+      const ledgerWidthM = hasLedger ? profileWidthM(ledgerProfileUsed) : beamWidthM;
+
+      let houseAllowanceM = 0;
+      let farAllowanceM = 0;
+
+      if (slopeDirection === 'away_from_house') {
+        // House side is ledger; far side is gutter edge.
+        houseAllowanceM = ledgerWidthM;
+
+        if (integratedGutterBeam) farAllowanceM = RAFTER_SP_GUTTER_M;
+        else if (separateGutterEnabled) farAllowanceM = RAFTER_BEAM_PLUS_GUTTER_M;
+        else farAllowanceM = beamWidthM; // beam only
+      } else {
+        // Inverted: gutter edge is house side.
+        // House gutter exists ONLY when inverted + inverted_house_gutter => beam only.
+        houseAllowanceM = invertedHouseGutter ? beamWidthM : RAFTER_SP_GUTTER_M;
+        farAllowanceM = beamWidthM; // high edge is beam only
+      }
+
+      const runTakeoff = Math.max(0, projectionM - houseAllowanceM - farAllowanceM);
+      const cutLen = runTakeoff / effectiveCos + angleCutAllowanceM;
+
+      return {
+        run_m_takeoff: runTakeoff,
+        cut_length_m: cutLen,
+        house_allowance_m: houseAllowanceM,
+        far_allowance_m: farAllowanceM,
+      };
+    }
+
+    // --- Gable / Low-gable (two planes; split by side) ---
+    if (isGableLike) {
+      const halfSpan = projectionM / 2;
+
+      // Per-edge eave allowance:
+      // - 'house' => beam only (50mm)
+      // - 'our'   => SP (100mm) if integrated gutter beam, else beam+gutter (150mm)
+      const houseEaveAllowance =
+        gableHouseEdgeGutterUsed === 'house' ? RAFTER_BEAM_ONLY_M : ourGutterAllowanceM;
+      const outerEaveAllowance =
+        gableOuterEdgeGutterUsed === 'house' ? RAFTER_BEAM_ONLY_M : ourGutterAllowanceM;
+
+      const runHouse = Math.max(0, halfSpan - ridgeHalfM - houseEaveAllowance);
+      const runOuter = Math.max(0, halfSpan - ridgeHalfM - outerEaveAllowance);
+
+      const cutHouse = runHouse / effectiveCos + angleCutAllowanceM;
+      const cutOuter = runOuter / effectiveCos + angleCutAllowanceM;
+
+      return {
+        run_m_takeoff: Math.max(runHouse, runOuter), // backwards-safe representative
+        cut_length_m: Math.max(cutHouse, cutOuter), // backwards-safe representative
+        run_house_side_m: runHouse,
+        run_outer_side_m: runOuter,
+        cut_house_side_m: cutHouse,
+        cut_outer_side_m: cutOuter,
+        ridge_half_m: ridgeHalfM,
+      };
+    }
+
+    // Other roof types: keep existing run/cut behavior but add LengthA.
+    return { run_m_takeoff: fallbackRun, cut_length_m: fallbackCut };
+  })();
+
   const inputsNormalized: InputsNormalizedV1 = {
     length_m: lengthM,
     projection_m: projectionM,
@@ -1097,6 +1224,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     has_ledger: hasLedger,
     ledger_length_m: ledgerLengthM,
     front_beam_profile_used: frontBeamProfileUsed,
+    front_beam_length_m: frontBeamLengthM,
     tie_beam_profile_used: tieBeamProfileUsed,
     strut_profile_used: strutProfileUsed,
     ridge_beam_profile_used: ridgeBeamProfileUsed,
@@ -1141,12 +1269,29 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roof_pitch_deg_used: roofPitchDegUsed,
     rafter_run_m: rafterRunM,
     rafter_length_m: rafterLengthM,
-    rafter_run_m_takeoff: effectiveRunM,
-    rafter_cut_length_m: cutRafterLengthM,
+    rafter_run_m_takeoff: rafterTakeoff.run_m_takeoff,
+    rafter_cut_length_m: rafterTakeoff.cut_length_m,
+    // gable/low_gable per-side rafters
+    ...(isGableLike
+      ? {
+          rafter_run_house_side_m: rafterTakeoff.run_house_side_m,
+          rafter_run_outer_side_m: rafterTakeoff.run_outer_side_m,
+          rafter_cut_length_house_side_m: rafterTakeoff.cut_house_side_m,
+          rafter_cut_length_outer_side_m: rafterTakeoff.cut_outer_side_m,
+          rafter_ridge_half_m: rafterTakeoff.ridge_half_m,
+        }
+      : null),
+    // pitched debug allowances
+    ...(roofType === 'pitched'
+      ? {
+          rafter_house_allowance_m: rafterTakeoff.house_allowance_m,
+          rafter_far_allowance_m: rafterTakeoff.far_allowance_m,
+        }
+      : null),
     joiner_piece_length_m: joinerPieceLengthM,
     effective_run_m: effectiveRunM,
     required_downslope_m: requiredDownslopeM,
-    cut_rafter_length_m: cutRafterLengthM,
+    cut_rafter_length_m: rafterTakeoff.cut_length_m,
     angle_cut_allowance_m: angleCutAllowanceM,
     acrylic_required_downslope_m: acrylicRequiredDownslopeM,
     total_roof_area_m2: roofSurfaceAreaM2,

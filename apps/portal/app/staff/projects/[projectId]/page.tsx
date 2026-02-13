@@ -58,7 +58,7 @@ export default async function ProjectDetailPage({
   return (
     <main className={styles.page}>
       <ProjectHeader project={snapshot.project} />
-      <ProjectPipelineBar stage={snapshot.pipeline.stage} />
+      <ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} />
       <ProjectPageShell snapshot={snapshot} tab={tab} mode={mode} />
     </main>
   );

@@ -142,13 +142,6 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
     costing_manifest: typeof (snapshot as any).costing_manifest === 'string' ? (snapshot as any).costing_manifest : null,
     costing_rules: typeof (snapshot as any).costing_rules === 'string' ? (snapshot as any).costing_rules : null,
     internal_notes: null,
-    approval_requested_at: null,
-    approval_requested_by: null,
-    approved_at: null,
-    approved_by: null,
-    rejected_at: null,
-    rejected_by: null,
-    approval_comment: null,
     ...legacySummary,
   };
 

@@ -375,6 +375,7 @@ describe('calculateCostV1', () => {
     expect(result.derived.gutter_assembly_mode).toBe('none');
     expect(result.materials.totals.bars_by_profile['SP Gutter']).toBeUndefined();
     expect(result.materials.totals.bars_by_profile['150x50']).toBeTruthy();
+    expect(result.install.actions.find((a) => a.id === 'frame.install_front_beam_m')?.qty).toBeCloseTo(6, 6);
   });
 
   it('separate gutter adds 100x100 cut stock when front beam is not a gutter', () => {
@@ -430,6 +431,104 @@ describe('calculateCostV1', () => {
 
     expect(result.inputs_normalized.rafter_profile).toBe('100x50');
     expect(result.derived.ledger_profile_used).toBe('150x50');
+  });
+
+  it('steel beam overrides add hiab and apply 2.5x install minutes per steel beam action', () => {
+    const baseInput = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      overhang_enabled: true,
+      overhang_amount_m: 0.2,
+      gable_end_frames_mode: 'both_ends' as const,
+
+      pergola_style: 'gable' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const alloy = calculateCostV1({
+      ...baseInput,
+      overrides: {
+        front_beam_profile: '150x50',
+        tie_beam_profile: '150x50',
+        ridge_beam_profile: '150x50',
+        overhang_support_beam_profile: '150x50',
+      },
+    });
+
+    const steel = calculateCostV1({
+      ...baseInput,
+      overrides: {
+        front_beam_profile: 'RHS 150x50x3',
+        tie_beam_profile: 'RHS 150x50x3',
+        ridge_beam_profile: 'RHS 150x50x3',
+        overhang_support_beam_profile: 'RHS 150x50x3',
+      },
+    });
+
+    expect(alloy.materials.lines.some((l) => l.id === 'hire.hiab_day')).toBe(false);
+    const hiab = steel.materials.lines.find((l) => l.id === 'hire.hiab_day');
+    expect(hiab?.qty).toBe(1);
+    expect(hiab?.line_cost_ex_gst ?? 0).toBeCloseTo(695.65, 2);
+    expect(alloy.install.actions.some((a) => a.id === 'frame.steel_beam_labour_m')).toBe(false);
+
+    const actionIds = [
+      'frame.install_front_beam_m',
+      'frame.install_tie_beam_m',
+      'roof.install_ridge_beam_m',
+      'frame.overhang_support_beam_m',
+    ] as const;
+    for (const actionId of actionIds) {
+      const alloyAction = alloy.install.actions.find((a) => a.id === actionId);
+      const steelAction = steel.install.actions.find((a) => a.id === actionId);
+      expect(alloyAction?.minutes).toBeGreaterThan(0);
+      expect(steelAction?.minutes).toBeGreaterThan(0);
+      expect((steelAction?.minutes ?? 0) / Math.max(alloyAction?.minutes ?? 0, 1e-6)).toBeCloseTo(2.5, 2);
+    }
+
+    const expectedSteelInstalledLength = actionIds.reduce((sum, actionId) => {
+      const action = steel.install.actions.find((candidate) => candidate.id === actionId);
+      return sum + (action?.qty ?? 0);
+    }, 0);
+    const steelBeamLabour = steel.install.actions.find((a) => a.id === 'frame.steel_beam_labour_m');
+    expect(steelBeamLabour?.qty ?? 0).toBeCloseTo(expectedSteelInstalledLength, 6);
+    expect(steelBeamLabour?.minutes ?? 0).toBeCloseTo(expectedSteelInstalledLength * 30, 6);
+  });
+
+  it('steel RHS front beam can select 8m stock', () => {
+    const result = calculateCostV1({
+      length_m: 7.2,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      overrides: { front_beam_profile: 'RHS 150x50x3' },
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.materials.totals.bars_by_profile['RHS 150x50x3']).toEqual({
+      stock_length_m: 8,
+      bars_used: 1,
+    });
+    const steelBeamLabour = result.install.actions.find((a) => a.id === 'frame.steel_beam_labour_m');
+    expect(steelBeamLabour?.qty ?? 0).toBeCloseTo(result.derived.front_beam_length_m ?? 0, 6);
+    expect(steelBeamLabour?.minutes ?? 0).toBeCloseTo((result.derived.front_beam_length_m ?? 0) * 30, 6);
   });
 
   it('inverted + house gutter ignores separate gutter selection', () => {
@@ -1009,7 +1108,7 @@ describe('calculateCostV1', () => {
 
     expect(result.derived.acrylic_required_downslope_m).toBeCloseTo(5.89235, 4);
     expect(result.derived.joiner_piece_length_m).toBeCloseTo(result.derived.acrylic_required_downslope_m, 6);
-    expect(result.derived.cut_rafter_length_m).toBeCloseTo(5.87235, 4);
+    expect(result.derived.cut_rafter_length_m).toBeCloseTo(5.88547, 4);
 
     const warnings = result.totals.notes_and_warnings.filter((w) => w.toLowerCase().includes('acrylic slope exceeds'));
     expect(warnings.length).toBe(0);

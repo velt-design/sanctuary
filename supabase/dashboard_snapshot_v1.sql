@@ -139,12 +139,12 @@ begin
     'overdue_actions', overdue_count,
     'due_today', due_today_count,
     'oldest_overdue_days', oldest_overdue_days,
-    'unscheduled_approved', (
+    'unscheduled_estimates', (
       select count(*)
       from (
         select distinct e.project_id
         from estimates e
-        where e.status = 'approved'
+        where coalesce(e.status, 'draft') <> 'archived'
           and not exists (
             select 1
             from schedule_items si

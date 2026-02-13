@@ -3,7 +3,7 @@ import type { DerivedV1, InstallV1, MaterialsV1, OverheadV1, TotalsV1, WarningV1
 import type { Contact } from './contact';
 import type { Project } from './project';
 
-export type EstimateStatus = 'draft' | 'approved' | 'archived';
+export type EstimateStatus = 'draft' | 'archived';
 
 export type ProjectSnapshot = Pick<
   Project,

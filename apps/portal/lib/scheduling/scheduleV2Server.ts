@@ -455,16 +455,19 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
   };
 }
 
-function isApprovedEstimate(estimate: EstimateRowLite): boolean {
-  const status = typeof estimate.status === 'string' ? estimate.status.trim().toLowerCase() : '';
-  return status === 'approved';
+function normaliseEstimateStatus(value: unknown): string {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
 
-export function getLatestApprovedEstimate(estimates: EstimateRowLite[]): EstimateRowLite | null {
-  const approved = estimates.filter((e) => isApprovedEstimate(e));
-  if (!approved.length) return null;
-  approved.sort((a, b) => (b.version ?? 0) - (a.version ?? 0) || String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
-  return approved[0] ?? null;
+function isSchedulableEstimate(estimate: EstimateRowLite): boolean {
+  return normaliseEstimateStatus(estimate.status) !== 'archived';
+}
+
+export function getLatestSchedulableEstimate(estimates: EstimateRowLite[]): EstimateRowLite | null {
+  const schedulable = estimates.filter((e) => isSchedulableEstimate(e));
+  if (!schedulable.length) return null;
+  schedulable.sort((a, b) => (b.version ?? 0) - (a.version ?? 0) || String(b.created_at ?? '').localeCompare(String(a.created_at ?? '')));
+  return schedulable[0] ?? null;
 }
 
 export function durationDaysFromEstimate(estimate: EstimateRowLite | null): number {
@@ -759,15 +762,15 @@ export function buildUnscheduledJobs(input: {
     if (input.scheduledProjectIds.has(project.id)) continue;
     const list = estimatesByProject.get(project.id) ?? [];
     if (!list.length) continue;
-    const approved = getLatestApprovedEstimate(list);
-    if (!approved) continue;
+    const latest = getLatestSchedulableEstimate(list);
+    if (!latest) continue;
 
-    const durationDays = durationDaysFromEstimate(approved);
+    const durationDays = durationDaysFromEstimate(latest);
     const projectName = project.name || 'Untitled project';
 
     unscheduled.push({
       job_id: project.id,
-      estimate_id: approved.id,
+      estimate_id: latest.id,
       project_name: projectName,
       status: project.pipeline_stage ?? 'NEW',
       duration_days: durationDays,

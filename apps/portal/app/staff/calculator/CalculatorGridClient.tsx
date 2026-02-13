@@ -10,8 +10,10 @@ import type {
   BlindLineItem,
   BlindSystemType as BlindSystemInput,
   CalculatorBlindsState,
+  CalculatorInfillsState,
   CalculatorInputs,
   CalculatorModuleInputs,
+  InfillLineItem,
 } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, normalizeBlindsState } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
@@ -242,12 +244,14 @@ const FRONT_BEAM_PROFILE_OPTIONS: FieldOption[] = [
   { label: '150x50', value: '150x50' },
   { label: '200x50', value: '200x50' },
   { label: '300x50', value: '300x50' },
+  { label: 'Steel RHS 150x50x3', value: 'RHS 150x50x3' },
 ];
 const RIDGE_BEAM_PROFILE_OPTIONS: FieldOption[] = [
   DEFAULT_OVERRIDE_OPTION,
   { label: '100x50', value: '100x50' },
   { label: '150x50', value: '150x50' },
   { label: '200x50', value: '200x50' },
+  { label: 'Steel RHS 150x50x3', value: 'RHS 150x50x3' },
 ];
 const BOX_BEAM_PROFILE_OPTIONS: FieldOption[] = [
   DEFAULT_OVERRIDE_OPTION,
@@ -312,6 +316,64 @@ function computeBayCountsForModule(
   return { roofType, bayCountMain: 0, bayCountA, bayCountB: bayCountA };
 }
 
+function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['infills'] | undefined {
+  const infills = normalizeInfillsStateForUi((module as any).infills);
+  if (!Array.isArray(infills.items) || infills.items.length === 0) return undefined;
+
+  const out: NonNullable<CostInputsV1['infills']> = [];
+  for (const raw of infills.items) {
+    const maxPanelWidth = toNumber(raw.maxPanelWidthM);
+    const targetPanelWidth = toNumber(raw.targetPanelWidthM);
+    const qty = toNumber(raw.qty);
+
+    const internalPositions = Array.isArray(raw.support.internalSupportPositionsM)
+      ? raw.support.internalSupportPositionsM
+          .map(toNumber)
+          .filter((n) => Number.isFinite(n) && n >= 0)
+      : undefined;
+
+    let shapeOut: NonNullable<CostInputsV1['infills']>[number]['shape'];
+    if (raw.shape.type === 'rect') {
+      shapeOut = {
+        type: 'rect',
+        width_m: Number.isFinite(toNumber(raw.shape.widthM)) ? toNumber(raw.shape.widthM) : 0,
+        height_m: Number.isFinite(toNumber(raw.shape.heightM)) ? toNumber(raw.shape.heightM) : 0,
+        bottom_offset_m: Number.isFinite(toNumber(raw.shape.bottomOffsetM ?? '')) ? toNumber(raw.shape.bottomOffsetM ?? '') : undefined,
+      };
+    } else {
+      shapeOut = {
+        type: 'mono_slope',
+        width_m: Number.isFinite(toNumber(raw.shape.widthM)) ? toNumber(raw.shape.widthM) : 0,
+        height_low_m: Number.isFinite(toNumber(raw.shape.heightLowM)) ? toNumber(raw.shape.heightLowM) : 0,
+        height_high_m: Number.isFinite(toNumber(raw.shape.heightHighM)) ? toNumber(raw.shape.heightHighM) : 0,
+        bottom_offset_m: Number.isFinite(toNumber(raw.shape.bottomOffsetM ?? '')) ? toNumber(raw.shape.bottomOffsetM ?? '') : undefined,
+      };
+    }
+
+    out.push({
+      id: raw.id,
+      label: raw.label?.trim() ? raw.label.trim() : undefined,
+      qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
+      location: raw.location,
+      acrylic_source: raw.acrylicSource,
+      width_mode: raw.widthMode === 'match_roof_rafters' ? 'match_roof_rafters' : 'target_width',
+      target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
+      max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,
+      support: {
+        has_top: raw.support.hasTop !== false,
+        has_bottom: raw.support.hasBottom !== false,
+        has_left: raw.support.hasLeft !== false,
+        has_right: raw.support.hasRight !== false,
+        internal_support_mode: raw.support.internalSupportMode,
+        internal_support_positions_m: internalPositions,
+      },
+      shape: shapeOut,
+    });
+  }
+
+  return out.length ? out : undefined;
+}
+
 function makeDefaultModule(): CalculatorModuleInputs {
   return {
     pergolaStyle: 'pitched',
@@ -361,6 +423,7 @@ function makeDefaultModule(): CalculatorModuleInputs {
     timberRoofAllowanceExGst: '0',
 
     overrides: {},
+    infills: makeDefaultInfills(),
   };
 }
 
@@ -385,6 +448,212 @@ function makeDefaultBlinds(): CalculatorBlindsState {
   return { items: [] };
 }
 
+function makeInfillId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `infill-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function formatInputNumber(n: number, digits = 3): string {
+  if (!Number.isFinite(n)) return '';
+  const rounded = Math.round(n * 10 ** digits) / 10 ** digits;
+  return rounded.toFixed(digits).replace(/\.?0+$/, '');
+}
+
+function getDefaultPitchForModule(module: CalculatorModuleInputs): number {
+  const roofType = getRoofTypeForModule(module);
+  if (roofType === 'low_gable') return 10;
+  if (roofType === 'gable' || roofType === 'hip' || roofType === 'hip_corner') return 25;
+  return 5;
+}
+
+function getPitchForModule(module: CalculatorModuleInputs): number {
+  const parsed = toNumber(module.roofPitchDeg);
+  if (Number.isFinite(parsed)) return Math.max(0, Math.min(85, parsed));
+  return getDefaultPitchForModule(module);
+}
+
+function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): InfillLineItem {
+  const base: InfillLineItem = {
+    id: makeInfillId(),
+    qty: '1',
+    location: 'custom',
+    acrylicSource: 'sheet_panels',
+    widthMode: 'target_width',
+    targetPanelWidthM: '1',
+    maxPanelWidthM: '1.2',
+    support: {
+      hasTop: true,
+      hasBottom: true,
+      hasLeft: true,
+      hasRight: true,
+      internalSupportMode: 'none',
+      internalSupportPositionsM: [],
+    },
+    shape: {
+      type: 'rect',
+      widthM: '1',
+      heightM: '1',
+      bottomOffsetM: '0',
+    },
+  };
+  if (!overrides) return base;
+  return {
+    ...base,
+    ...overrides,
+    support: { ...base.support, ...(overrides.support ?? {}) },
+    shape:
+      overrides.shape?.type === 'mono_slope'
+        ? {
+            type: 'mono_slope',
+            widthM: overrides.shape.widthM ?? '1',
+            heightLowM: overrides.shape.heightLowM ?? '0',
+            heightHighM: overrides.shape.heightHighM ?? '1',
+            bottomOffsetM: overrides.shape.bottomOffsetM ?? '0',
+          }
+        : {
+            type: 'rect',
+            widthM: (overrides.shape as any)?.widthM ?? '1',
+            heightM: (overrides.shape as any)?.heightM ?? '1',
+            bottomOffsetM: (overrides.shape as any)?.bottomOffsetM ?? '0',
+          },
+  };
+}
+
+function makeDefaultInfills(): CalculatorInfillsState {
+  return { items: [] };
+}
+
+function normalizeInfillsStateForUi(value: unknown): CalculatorInfillsState {
+  if (!value || typeof value !== 'object' || !Array.isArray((value as any).items)) return makeDefaultInfills();
+  const items = (value as any).items
+    .filter((item: unknown) => item && typeof item === 'object')
+    .map((item: unknown) => makeDefaultInfillItem(item as Partial<InfillLineItem>));
+  return { items };
+}
+
+function buildInfillPreset(module: CalculatorModuleInputs, location: InfillLineItem['location']): Partial<InfillLineItem> {
+  const lengthM = Number.isFinite(toNumber(module.lengthM)) && toNumber(module.lengthM) > 0 ? toNumber(module.lengthM) : 1;
+  const projectionM = Number.isFinite(toNumber(module.projectionM)) && toNumber(module.projectionM) > 0 ? toNumber(module.projectionM) : 1;
+  const postCutHeightM =
+    Number.isFinite(toNumber(module.postCutHeightM)) && toNumber(module.postCutHeightM) > 0 ? toNumber(module.postCutHeightM) : 2.4;
+  const pitchDeg = getPitchForModule(module);
+  const pitchRad = (pitchDeg * Math.PI) / 180;
+
+  if (location === 'front' || location === 'house') {
+    return {
+      location,
+      widthMode: 'match_roof_rafters',
+      shape: {
+        type: 'rect',
+        widthM: formatInputNumber(lengthM),
+        heightM: formatInputNumber(postCutHeightM),
+        bottomOffsetM: '0',
+      },
+      support: {
+        hasTop: true,
+        hasBottom: true,
+        hasLeft: true,
+        hasRight: true,
+        internalSupportMode: 'match_roof_rafters',
+        internalSupportPositionsM: [],
+      },
+    };
+  }
+
+  if (location === 'side') {
+    const farHeight = Math.max(0, postCutHeightM - Math.tan(pitchRad) * projectionM);
+    return {
+      location,
+      widthMode: 'target_width',
+      shape: {
+        type: 'mono_slope',
+        widthM: formatInputNumber(projectionM),
+        heightLowM: formatInputNumber(postCutHeightM),
+        heightHighM: formatInputNumber(farHeight),
+        bottomOffsetM: '0',
+      },
+      support: {
+        hasTop: true,
+        hasBottom: true,
+        hasLeft: true,
+        hasRight: true,
+        internalSupportMode: 'none',
+        internalSupportPositionsM: [],
+      },
+    };
+  }
+
+  return {
+    location,
+    widthMode: 'target_width',
+    support: {
+      hasTop: true,
+      hasBottom: true,
+      hasLeft: true,
+      hasRight: true,
+      internalSupportMode: 'none',
+      internalSupportPositionsM: [],
+    },
+  };
+}
+
+function buildGableEndInfillPair(module: CalculatorModuleInputs): [InfillLineItem, InfillLineItem] {
+  const projectionM = Number.isFinite(toNumber(module.projectionM)) && toNumber(module.projectionM) > 0 ? toNumber(module.projectionM) : 1;
+  const baseWidth = Math.max(0.1, projectionM / 2);
+  const pitchDeg = getPitchForModule(module);
+  const peakHeight = Math.max(0, Math.tan((pitchDeg * Math.PI) / 180) * baseWidth);
+
+  const left = makeDefaultInfillItem({
+    label: 'Gable left',
+    location: 'gable_end',
+    acrylicSource: 'sheet_panels',
+    widthMode: 'target_width',
+    targetPanelWidthM: '1',
+    maxPanelWidthM: '1.2',
+    support: {
+      hasTop: true,
+      hasBottom: true,
+      hasLeft: true,
+      hasRight: true,
+      internalSupportMode: 'none',
+      internalSupportPositionsM: [],
+    },
+    shape: {
+      type: 'mono_slope',
+      widthM: formatInputNumber(baseWidth),
+      heightLowM: '0',
+      heightHighM: formatInputNumber(peakHeight),
+      bottomOffsetM: '0',
+    },
+  });
+
+  const right = makeDefaultInfillItem({
+    label: 'Gable right',
+    location: 'gable_end',
+    acrylicSource: 'sheet_panels',
+    widthMode: 'target_width',
+    targetPanelWidthM: '1',
+    maxPanelWidthM: '1.2',
+    support: {
+      hasTop: true,
+      hasBottom: true,
+      hasLeft: true,
+      hasRight: true,
+      internalSupportMode: 'none',
+      internalSupportPositionsM: [],
+    },
+    shape: {
+      type: 'mono_slope',
+      widthM: formatInputNumber(baseWidth),
+      heightLowM: formatInputNumber(peakHeight),
+      heightHighM: '0',
+      bottomOffsetM: '0',
+    },
+  });
+
+  return [left, right];
+}
+
 function normalizeBlindsStateForUi(value: unknown): CalculatorBlindsState {
   const normalized = normalizeBlindsState(value);
   if (normalized && Array.isArray(normalized.items)) return normalized;
@@ -406,6 +675,7 @@ function calculatorDraftSessionKey(projectId: string, fromEstimateId: string): s
 function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   const source = value && typeof value === 'object' ? (value as Partial<CalculatorModuleInputs>) : {};
   const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...source };
+  merged.infills = normalizeInfillsStateForUi((source as any).infills);
 
   if (merged.pergolaStyle === 'gable' && merged.houseConnectionType === 'none') {
     merged.gableHouseEdgeGutter = 'our';
@@ -893,6 +1163,68 @@ export default function CalculatorGridClient({
     });
   };
 
+  const infillsState = normalizeInfillsStateForUi(activeModule.infills);
+
+  const setInfillItems = (updater: (items: InfillLineItem[]) => InfillLineItem[]) => {
+    setValues((prev) => {
+      const modules = prev.modules.slice();
+      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule();
+      const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
+      const nextItems = updater(currentInfills.items).map((item) => makeDefaultInfillItem(item));
+      modules[activeModuleIndex] = { ...currentModule, infills: { items: nextItems } };
+      return { ...prev, modules };
+    });
+  };
+
+  const setInfillItem = (id: string, patch: Partial<InfillLineItem>) => {
+    setInfillItems((items) => items.map((item) => (item.id === id ? makeDefaultInfillItem({ ...item, ...patch, id }) : item)));
+  };
+
+  const setInfillLocation = (id: string, location: InfillLineItem['location']) => {
+    setValues((prev) => {
+      const modules = prev.modules.slice();
+      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule();
+      const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
+      const idx = currentInfills.items.findIndex((item) => item.id === id);
+      if (idx < 0) return prev;
+
+      const items = currentInfills.items.slice();
+      const existing = items[idx];
+      if (location === 'gable_end') {
+        const [left, right] = buildGableEndInfillPair(currentModule);
+        left.id = existing.id;
+        left.label = existing.label || left.label;
+        items.splice(idx, 1, left, right);
+      } else {
+        const preset = buildInfillPreset(currentModule, location);
+        items[idx] = makeDefaultInfillItem({
+          ...existing,
+          ...preset,
+          id: existing.id,
+          support: { ...existing.support, ...(preset.support ?? {}) },
+          shape: (preset.shape as any) ?? existing.shape,
+        });
+      }
+
+      modules[activeModuleIndex] = { ...currentModule, infills: { items } };
+      return { ...prev, modules };
+    });
+  };
+
+  const addInfill = (seed?: Partial<InfillLineItem>) => {
+    setInfillItems((items) => [...items, makeDefaultInfillItem(seed)]);
+  };
+
+  const duplicateInfill = (id: string) => {
+    const current = infillsState.items.find((item) => item.id === id);
+    if (!current) return;
+    addInfill({ ...current, id: makeInfillId(), label: current.label ? `${current.label} (copy)` : undefined });
+  };
+
+  const removeInfill = (id: string) => {
+    setInfillItems((items) => items.filter((item) => item.id !== id));
+  };
+
   const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
 
   const requestPayload = useMemo<JobInputsV1>(() => {
@@ -998,6 +1330,7 @@ export default function CalculatorGridClient({
         access: values.access,
         height: values.height,
         ground: isPile ? module.ground : undefined,
+        infills: parseInfillsForPayload(module),
 
         travel_ex_gst: 0,
         extras_allowance_ex_gst: 0,
@@ -1029,12 +1362,14 @@ export default function CalculatorGridClient({
   const [materialsDebugData, setMaterialsDebugData] = useState<MaterialsExplainApiResponse | null>(null);
   const [materialsDebugLoading, setMaterialsDebugLoading] = useState(false);
   const [materialsDebugError, setMaterialsDebugError] = useState<string | null>(null);
+  const [infillsOpen, setInfillsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
   const blindFieldPrefix = useId();
+  const infillFieldPrefix = useId();
 
   const issues = useMemo(() => {
     const out: Array<{ moduleIndex: number; fieldId: string; label: string; message: string }> = [];
@@ -1479,6 +1814,314 @@ export default function CalculatorGridClient({
         </div>
         <div className={styles.helper}>Totals round to cents; pricing uses banded size lookup.</div>
       </div>
+    </div>
+  );
+
+  const infillTotalWidthM = useMemo(
+    () =>
+      infillsState.items.reduce((acc, item) => {
+        const width = item.shape.type === 'rect' ? toNumber(item.shape.widthM) : toNumber(item.shape.widthM);
+        const qty = toNumber(item.qty);
+        const safeWidth = Number.isFinite(width) && width > 0 ? width : 0;
+        const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+        return acc + safeWidth * safeQty;
+      }, 0),
+    [infillsState.items],
+  );
+  const infillsSummaryText = infillsState.items.length
+    ? `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} · ~${formatMaybeNumber(infillTotalWidthM, 2)}m total width`
+    : 'Not configured';
+
+  const infillsListContent = (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {infillsState.items.map((item, idx) => {
+        const domIdBase = `${infillFieldPrefix}-infill-${idx + 1}`;
+        const isFrontOrHouse = item.location === 'front' || item.location === 'house';
+        const internalPositions = item.support.internalSupportPositionsM ?? [];
+        const shapeWidth = item.shape.widthM;
+        const shapeBottom = item.shape.bottomOffsetM ?? '0';
+        const rectShape = item.shape.type === 'rect' ? item.shape : null;
+        const monoShape = item.shape.type === 'mono_slope' ? item.shape : null;
+        return (
+          <div key={item.id} className={styles.previewCard} style={{ padding: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <strong>Infill {idx + 1}</strong>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  className={styles.drawerClose}
+                  style={{ padding: '6px 10px', fontSize: 11 }}
+                  onClick={() => duplicateInfill(item.id)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  className={styles.drawerClose}
+                  style={{ padding: '6px 10px', fontSize: 11 }}
+                  onClick={() => removeInfill(item.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: 8, marginTop: 10 }}>
+              <FieldTile
+                id={`${domIdBase}-label`}
+                label="Label"
+                type="text"
+                value={item.label ?? ''}
+                onChange={(v) => setInfillItem(item.id, { label: String(v) })}
+              />
+              <FieldTile
+                id={`${domIdBase}-qty`}
+                label="Qty"
+                type="number"
+                value={item.qty}
+                onChange={(v) => setInfillItem(item.id, { qty: String(v) })}
+              />
+              <FieldTile
+                id={`${domIdBase}-location`}
+                label="Location"
+                type="select"
+                value={item.location}
+                onChange={(v) => setInfillLocation(item.id, v as InfillLineItem['location'])}
+                options={[
+                  { label: 'Front', value: 'front' },
+                  { label: 'House', value: 'house' },
+                  { label: 'Side', value: 'side' },
+                  { label: 'Gable end', value: 'gable_end' },
+                  { label: 'Wall', value: 'wall' },
+                  { label: 'Custom', value: 'custom' },
+                ]}
+              />
+              <FieldTile
+                id={`${domIdBase}-acrylic`}
+                label="Acrylic source"
+                type="select"
+                value={item.acrylicSource}
+                onChange={(v) => setInfillItem(item.id, { acrylicSource: v as InfillLineItem['acrylicSource'] })}
+                options={[
+                  { label: '620 strips', value: 'strip_620' },
+                  { label: 'Sheet panels', value: 'sheet_panels' },
+                ]}
+              />
+              <FieldTile
+                id={`${domIdBase}-width-mode`}
+                label="Width mode"
+                type="select"
+                value={item.widthMode}
+                onChange={(v) => setInfillItem(item.id, { widthMode: v as InfillLineItem['widthMode'] })}
+                options={
+                  isFrontOrHouse
+                    ? [
+                        { label: 'Match roof rafters', value: 'match_roof_rafters' },
+                        { label: 'Target width', value: 'target_width' },
+                      ]
+                    : [{ label: 'Target width', value: 'target_width' }]
+                }
+              />
+              <FieldTile
+                id={`${domIdBase}-target-width`}
+                label="Target panel width (m)"
+                type="number"
+                value={item.targetPanelWidthM}
+                onChange={(v) => setInfillItem(item.id, { targetPanelWidthM: String(v) })}
+              />
+              <FieldTile
+                id={`${domIdBase}-max-width`}
+                label="Max panel width (m)"
+                type="number"
+                value={item.maxPanelWidthM}
+                onChange={(v) => setInfillItem(item.id, { maxPanelWidthM: String(v) })}
+              />
+              <FieldTile
+                id={`${domIdBase}-shape-type`}
+                label="Shape"
+                type="select"
+                value={item.shape.type}
+                onChange={(v) => {
+                  const nextType = v as InfillLineItem['shape']['type'];
+                  if (nextType === item.shape.type) return;
+                  if (nextType === 'rect') {
+                    const rectHeight = item.shape.type === 'rect' ? item.shape.heightM : item.shape.heightHighM;
+                    setInfillItem(item.id, {
+                      shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
+                    });
+                    return;
+                  }
+                  const low = item.shape.type === 'rect' ? item.shape.heightM : item.shape.heightLowM;
+                  const high = item.shape.type === 'rect' ? item.shape.heightM : item.shape.heightHighM;
+                  setInfillItem(item.id, {
+                    shape: { type: 'mono_slope', widthM: shapeWidth, heightLowM: low, heightHighM: high, bottomOffsetM: shapeBottom },
+                  });
+                }}
+                options={[
+                  { label: 'Rect', value: 'rect' },
+                  { label: 'Mono slope', value: 'mono_slope' },
+                ]}
+              />
+              {rectShape ? (
+                <>
+                  <FieldTile
+                    id={`${domIdBase}-shape-width`}
+                    label="Width (m)"
+                    type="number"
+                    value={rectShape.widthM}
+                    onChange={(v) =>
+                      setInfillItem(item.id, {
+                        shape: {
+                          type: 'rect',
+                          widthM: String(v),
+                          heightM: rectShape.heightM,
+                          bottomOffsetM: rectShape.bottomOffsetM,
+                        },
+                      })
+                    }
+                  />
+                  <FieldTile
+                    id={`${domIdBase}-shape-height`}
+                    label="Height (m)"
+                    type="number"
+                    value={rectShape.heightM}
+                    onChange={(v) =>
+                      setInfillItem(item.id, {
+                        shape: {
+                          type: 'rect',
+                          widthM: rectShape.widthM,
+                          heightM: String(v),
+                          bottomOffsetM: rectShape.bottomOffsetM,
+                        },
+                      })
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <FieldTile
+                    id={`${domIdBase}-shape-width`}
+                    label="Width (m)"
+                    type="number"
+                    value={monoShape?.widthM ?? ''}
+                    onChange={(v) =>
+                      setInfillItem(item.id, {
+                        shape: {
+                          type: 'mono_slope',
+                          widthM: String(v),
+                          heightLowM: monoShape?.heightLowM ?? '0',
+                          heightHighM: monoShape?.heightHighM ?? '0',
+                          bottomOffsetM: monoShape?.bottomOffsetM,
+                        },
+                      })
+                    }
+                  />
+                  <FieldTile
+                    id={`${domIdBase}-shape-low`}
+                    label="Height low (m)"
+                    type="number"
+                    value={monoShape?.heightLowM ?? ''}
+                    onChange={(v) =>
+                      setInfillItem(item.id, {
+                        shape: {
+                          type: 'mono_slope',
+                          widthM: monoShape?.widthM ?? '0',
+                          heightLowM: String(v),
+                          heightHighM: monoShape?.heightHighM ?? '0',
+                          bottomOffsetM: monoShape?.bottomOffsetM,
+                        },
+                      })
+                    }
+                  />
+                  <FieldTile
+                    id={`${domIdBase}-shape-high`}
+                    label="Height high (m)"
+                    type="number"
+                    value={monoShape?.heightHighM ?? ''}
+                    onChange={(v) =>
+                      setInfillItem(item.id, {
+                        shape: {
+                          type: 'mono_slope',
+                          widthM: monoShape?.widthM ?? '0',
+                          heightLowM: monoShape?.heightLowM ?? '0',
+                          heightHighM: String(v),
+                          bottomOffsetM: monoShape?.bottomOffsetM,
+                        },
+                      })
+                    }
+                  />
+                </>
+              )}
+              <FieldTile
+                id={`${domIdBase}-shape-bottom`}
+                label="Bottom offset (m)"
+                type="number"
+                value={shapeBottom}
+                onChange={(v) =>
+                  setInfillItem(item.id, {
+                    shape: item.shape.type === 'rect' ? { ...item.shape, bottomOffsetM: String(v) } : { ...item.shape, bottomOffsetM: String(v) },
+                  })
+                }
+              />
+              <FieldTile
+                id={`${domIdBase}-support-top`}
+                label="Top support"
+                type="toggle"
+                value={item.support.hasTop}
+                onChange={(v) => setInfillItem(item.id, { support: { ...item.support, hasTop: Boolean(v) } })}
+              />
+              <FieldTile
+                id={`${domIdBase}-support-bottom`}
+                label="Bottom support"
+                type="toggle"
+                value={item.support.hasBottom}
+                onChange={(v) => setInfillItem(item.id, { support: { ...item.support, hasBottom: Boolean(v) } })}
+              />
+              <FieldTile
+                id={`${domIdBase}-support-left`}
+                label="Left support"
+                type="toggle"
+                value={item.support.hasLeft}
+                onChange={(v) => setInfillItem(item.id, { support: { ...item.support, hasLeft: Boolean(v) } })}
+              />
+              <FieldTile
+                id={`${domIdBase}-support-right`}
+                label="Right support"
+                type="toggle"
+                value={item.support.hasRight}
+                onChange={(v) => setInfillItem(item.id, { support: { ...item.support, hasRight: Boolean(v) } })}
+              />
+              <FieldTile
+                id={`${domIdBase}-support-internal-mode`}
+                label="Internal support mode"
+                type="select"
+                value={item.support.internalSupportMode ?? 'none'}
+                onChange={(v) => setInfillItem(item.id, { support: { ...item.support, internalSupportMode: String(v) as any } })}
+                options={[
+                  { label: 'None', value: 'none' },
+                  { label: 'Match roof rafters', value: 'match_roof_rafters' },
+                  { label: 'Center', value: 'center' },
+                  { label: 'Custom', value: 'custom' },
+                ]}
+              />
+              <FieldTile
+                id={`${domIdBase}-support-internal-pos`}
+                label="Custom internal positions (m)"
+                type="text"
+                value={internalPositions.join(', ')}
+                onChange={(v) => {
+                  const nextValues = String(v)
+                    .split(',')
+                    .map((p) => p.trim())
+                    .filter(Boolean);
+                  setInfillItem(item.id, { support: { ...item.support, internalSupportPositionsM: nextValues } });
+                }}
+                helperText="Comma-separated offsets from left edge."
+              />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 
@@ -2090,6 +2733,7 @@ export default function CalculatorGridClient({
             options: [
               { label: '150x50', value: '150x50' },
               { label: '200x50', value: '200x50' },
+              { label: 'Steel RHS 150x50x3', value: 'RHS 150x50x3' },
             ],
           } satisfies FieldSchemaItem,
         ]
@@ -2271,7 +2915,14 @@ export default function CalculatorGridClient({
       content: blindsListContent,
       helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} · totals update live`,
     },
-
+    {
+      id: 'infillsEditor',
+      label: 'Infills',
+      type: 'action',
+      actionLabel: 'Edit infills',
+      onAction: () => setInfillsOpen(true),
+      helperText: infillsSummaryText,
+    },
     {
       id: 'travelExGst',
       label: 'Travel (ex‑GST)',
@@ -2465,7 +3116,7 @@ export default function CalculatorGridClient({
     'separateGutterEnabled',
   ]);
 
-  const blindFields = pickFields(['blindsList']);
+  const addonFields = pickFields(['blindsList', 'infillsEditor']);
 
   const connectionFields = pickFields(['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height']);
 
@@ -2523,7 +3174,7 @@ export default function CalculatorGridClient({
             <FieldGroup title="Context" fields={contextFields} />
             <FieldGroup title="Structure" fields={structureFields} />
             <FieldGroup title="Overrides" fields={overrideFields} />
-            <FieldGroup title="Blinds" fields={blindFields} />
+            <FieldGroup title="Add-ons" fields={addonFields} />
             <FieldGroup title="Connections & Site" fields={connectionFields} />
             <FieldGroup title="Allowances" fields={allowanceFields} />
           </div>
@@ -2602,8 +3253,8 @@ export default function CalculatorGridClient({
               <h2 className={styles.previewCardTitle}>BOM preview</h2>
               {bomPreview.length ? (
                 <div className={styles.previewTable}>
-                  {bomPreview.map((line) => (
-                    <div key={`${line.id}-${line.label}`} className={styles.previewRow}>
+                  {bomPreview.map((line, idx) => (
+                    <div key={`${line.id}-${line.label}-${idx}`} className={styles.previewRow}>
                       <div className={styles.previewRowMain}>
                         <div className={styles.previewRowLabel}>{line.label}</div>
                         <div className={styles.previewRowMeta}>
@@ -2759,6 +3410,50 @@ export default function CalculatorGridClient({
           </aside>
         </div>
       </div>
+
+      {infillsOpen ? (
+        <Modal
+          open
+          ariaLabel="Edit infills"
+          onClose={() => setInfillsOpen(false)}
+          overlayClassName={styles.modalOverlay}
+          panelClassName={styles.modal}
+          maxWidthPx={980}
+        >
+          <div className={styles.modalHeader}>
+            <div>
+              <h2 className={styles.modalTitle}>Infills</h2>
+              <p className={styles.modalSubtitle}>Vertical acrylic + joiners add-on modules for this active pergola module.</p>
+            </div>
+            <button type="button" className={styles.modalClose} onClick={() => setInfillsOpen(false)}>
+              Close
+            </button>
+          </div>
+
+          <div className={styles.modalBody}>
+            <section className={styles.modalSection} aria-label="Infill items">
+              <h3 className={styles.modalSectionTitle}>Items</h3>
+              {infillsState.items.length ? infillsListContent : <p className={styles.modalNote}>No infills configured yet.</p>}
+              <div className={styles.previewCard} style={{ padding: 12, marginTop: 12 }}>
+                <button
+                  type="button"
+                  className={styles.drawerClose}
+                  style={{ width: '100%', fontWeight: 600, letterSpacing: '0.02em', textTransform: 'uppercase' }}
+                  onClick={() => addInfill(buildInfillPreset(activeModule, 'custom'))}
+                >
+                  Add infill
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div className={styles.modalFooter}>
+            <button type="button" className={styles.modalButtonPrimary} onClick={() => setInfillsOpen(false)}>
+              Done
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
 	      {issuesOpen ? (
 	        <Modal

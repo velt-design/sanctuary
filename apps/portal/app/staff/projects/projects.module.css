@@ -426,9 +426,25 @@
   font-weight: 600;
 }
 
+.linkDanger {
+  color: rgb(185, 28, 28);
+  text-decoration: underline;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
 .link:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  border-radius: 6px;
+}
+
+.linkDanger:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.18);
   border-radius: 6px;
 }
 

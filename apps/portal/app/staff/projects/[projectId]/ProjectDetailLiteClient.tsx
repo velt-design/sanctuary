@@ -11,7 +11,7 @@ import type { Project } from '@/lib/types/project';
 import { nextActionTypeLabel, projectStatusLabel, type NextActionType, type ProjectStatus } from '@/lib/types/project';
 import { addProjectActivity, deleteProject, getProject, setProjectFollowUpDate, setProjectStatus, updateProjectFields } from '@/lib/repo/projectsRepo';
 import { getContact } from '@/lib/repo/contactsRepo';
-import { listEstimates, updateEstimateStatus } from '@/lib/repo/estimatesRepo';
+import { listEstimates } from '@/lib/repo/estimatesRepo';
 import type { Estimate } from '@/lib/types/estimate';
 import styles from '../projects.module.css';
 import PipelineStepper from './PipelineStepper';
@@ -1079,34 +1079,6 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                         <Link className={styles.buttonSecondary} href={`/staff/projects/${encodeURIComponent(project.id)}/estimate/${encodeURIComponent(e.id)}`}>
                           Open
                         </Link>
-                        {isAdmin && e.status !== 'approved' ? (
-                          <button
-                            type="button"
-                            className={styles.button}
-                            disabled={Boolean(busy)}
-                            onClick={() => {
-                              void run(`approve-${e.id}`, async () => {
-                                setError(null);
-                                try {
-                                  await updateEstimateStatus(e.id, 'approved', {
-                                    projectSnapshot: { ...project, updatedAt: project.updatedAt ?? project.createdAt } as any,
-                                  });
-                                  setEstimates(await listEstimates(project.id));
-                                  await addProjectActivity(project.id, { type: 'estimate_approved', message: 'Estimate approved.' } as any).catch(
-                                    () => null,
-                                  );
-                                  toast.success('Estimate approved.');
-                                } catch (err) {
-                                  const msg = err instanceof Error ? err.message : 'Failed to approve estimate';
-                                  setError(msg);
-                                  toast.error(msg);
-                                }
-                              });
-                            }}
-                          >
-                            Approve
-                          </button>
-                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -1267,3 +1239,4 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
     </main>
   );
 }
+

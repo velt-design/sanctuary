@@ -28,6 +28,40 @@ export type CalculatorBlindsState = {
   items: BlindLineItem[];
 };
 
+export type InfillAcrylicSourceInput = 'strip_620' | 'sheet_panels';
+export type InfillWidthModeInput = 'match_roof_rafters' | 'target_width';
+export type InfillLocationInput = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
+
+export type InfillSupportInput = {
+  hasTop: boolean;
+  hasBottom: boolean;
+  hasLeft: boolean;
+  hasRight: boolean;
+  internalSupportMode?: 'none' | 'match_roof_rafters' | 'center' | 'custom';
+  internalSupportPositionsM?: string[];
+};
+
+export type InfillShapeInput =
+  | { type: 'rect'; widthM: string; heightM: string; bottomOffsetM?: string }
+  | { type: 'mono_slope'; widthM: string; heightLowM: string; heightHighM: string; bottomOffsetM?: string };
+
+export type InfillLineItem = {
+  id: string;
+  label?: string;
+  qty: string;
+  location: InfillLocationInput;
+  acrylicSource: InfillAcrylicSourceInput;
+  widthMode: InfillWidthModeInput;
+  targetPanelWidthM: string;
+  maxPanelWidthM: string;
+  support: InfillSupportInput;
+  shape: InfillShapeInput;
+};
+
+export type CalculatorInfillsState = {
+  items: InfillLineItem[];
+};
+
 export type LegacyBlindInputsV1 = {
   systemType: BlindSystemType;
   totalWidthMm: string;
@@ -68,7 +102,7 @@ export type CalculatorModuleInputs = {
   separateGutterEnabled: boolean;
   overhangEnabled: boolean;
   overhangAmountM: string;
-  overhangSupportBeamProfile: '150x50' | '200x50';
+  overhangSupportBeamProfile: '150x50' | '200x50' | 'RHS 150x50x3';
   invertedEnabled: boolean;
   invertedHouseGutter: boolean;
   mixedSkylightStripCount: string;
@@ -94,6 +128,7 @@ export type CalculatorModuleInputs = {
   timberRoofAllowanceExGst: string;
 
   overrides?: CalculatorModuleOverrides;
+  infills?: CalculatorInfillsState;
 };
 
 export type CalculatorInputs = {
@@ -131,7 +166,7 @@ export type LegacyCalculatorInputsV1 = {
   separateGutterEnabled?: boolean;
   overhangEnabled?: boolean;
   overhangAmountM?: string;
-  overhangSupportBeamProfile?: '150x50' | '200x50';
+  overhangSupportBeamProfile?: '150x50' | '200x50' | 'RHS 150x50x3';
   invertedEnabled?: boolean;
   invertedHouseGutter?: boolean;
   mixedSkylightStripCount: string;
@@ -256,6 +291,7 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         postCutHeightM: legacy.postCutHeightM,
         timberRoofAllowanceExGst: legacy.timberRoofAllowanceExGst,
         overrides: legacy.overrides ?? {},
+        infills: { items: [] },
       },
     ],
     blinds: normalizeBlindsState(legacy.blinds),

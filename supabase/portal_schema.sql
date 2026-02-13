@@ -70,20 +70,12 @@ create table if not exists public.estimates (
 
   -- statuses used by UI
   status text not null default 'draft'
-    check (status in ('draft','in_review','approved','rejected','superseded','archived')),
+    check (status in ('draft','archived')),
   version int not null default 1,
 
   created_by text,
   summary_json jsonb,
   internal_notes text,
-
-  approval_requested_at timestamptz,
-  approval_requested_by text,
-  approved_at timestamptz,
-  approved_by text,
-  rejected_at timestamptz,
-  rejected_by text,
-  approval_comment text,
 
   -- summary fields for lists + schedule
   summary text,
@@ -114,18 +106,19 @@ alter table public.estimates
   add column if not exists created_by text,
   add column if not exists version int not null default 1,
   add column if not exists summary_json jsonb,
-  add column if not exists internal_notes text,
-  add column if not exists approval_requested_at timestamptz,
-  add column if not exists approval_requested_by text,
-  add column if not exists approved_at timestamptz,
-  add column if not exists approved_by text,
-  add column if not exists rejected_at timestamptz,
-  add column if not exists rejected_by text,
-  add column if not exists approval_comment text;
+  add column if not exists internal_notes text;
+alter table public.estimates
+  drop column if exists approval_requested_at,
+  drop column if exists approval_requested_by,
+  drop column if exists approved_at,
+  drop column if exists approved_by,
+  drop column if exists rejected_at,
+  drop column if exists rejected_by,
+  drop column if exists approval_comment;
 alter table public.estimates
   drop constraint if exists estimates_status_check;
 alter table public.estimates
-  add constraint estimates_status_check check (status in ('draft','in_review','approved','rejected','superseded','archived'));
+  add constraint estimates_status_check check (status in ('draft','archived'));
 drop trigger if exists estimates_set_updated_at on public.estimates;
 create trigger estimates_set_updated_at before update on public.estimates
 for each row execute function public.set_updated_at();

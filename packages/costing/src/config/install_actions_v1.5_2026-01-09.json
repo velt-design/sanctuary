@@ -502,6 +502,28 @@
       "scope": "module"
     },
     {
+      "id": "frame.install_front_beam_m",
+      "category": "Frame",
+      "label": "Install front beam (non-gutter) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.front_beam_length_m"
+      },
+      "base_minutes": 8,
+      "applies_to": {
+        "structure_types": [
+          "pitched"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Used when front beam is not an SP gutter (SP gutter case stays on frame.front_beam_sp_gutter_install_m).",
+      "scope": "module"
+    },
+    {
       "id": "frame.overhang_support_beam_m",
       "category": "Frame",
       "label": "Install overhang support beam - per metre",
