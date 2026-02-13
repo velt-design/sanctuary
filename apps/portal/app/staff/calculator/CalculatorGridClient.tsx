@@ -3764,9 +3764,7 @@ export default function CalculatorGridClient({
                 ) : (
                   <div className={styles.infillListEmpty}>
                     <p>No infills configured.</p>
-                    <button type="button" className={styles.infillPrimaryButton} onClick={() => addInfillPreset('custom')}>
-                      Add infill
-                    </button>
+                    <p>Use “Add infill” above to create your first item.</p>
                   </div>
                 )}
 
@@ -4182,9 +4180,7 @@ export default function CalculatorGridClient({
                 ) : (
                   <div className={styles.infillEditorEmpty}>
                     <p>No infill selected.</p>
-                    <button type="button" className={styles.infillPrimaryButton} onClick={() => addInfillPreset('custom')}>
-                      Add infill
-                    </button>
+                    <p>Select one from the list on the left.</p>
                   </div>
                 )}
               </section>
