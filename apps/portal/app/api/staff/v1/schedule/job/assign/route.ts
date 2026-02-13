@@ -163,6 +163,9 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts });
   }
 
+  let sourceCrewId: string | null = null;
+  let sourceFormatted: ReturnType<typeof formatCrewScheduleBlocks> | null = null;
+
   let scheduledJobId = existingJob?.id ?? null;
   if (!existingJob) {
     const insertRes = await supabaseServer
@@ -224,6 +227,7 @@ export async function POST(req: Request) {
 
   if (isMove && existingJob?.crew_id) {
     const oldCrewId = String(existingJob.crew_id);
+    sourceCrewId = oldCrewId;
     await supabaseServer.from('scheduled_jobs').update({ crew_id: crewId } as any).eq('id', scheduledJobId);
     await supabaseServer.from('crew_schedule_items').delete().eq('job_id', scheduledJobId).eq('crew_id', oldCrewId);
 
@@ -242,6 +246,12 @@ export async function POST(req: Request) {
         today: ctx.today,
       });
       await applyJobForecastUpdates(oldAfter.job_updates);
+      sourceFormatted = formatCrewScheduleBlocks({
+        crewRow: oldCrewCtx.crewRow,
+        recompute: oldAfter,
+        jobsById: new Map(oldCrewCtx.jobs.filter((job) => job.id !== scheduledJobId).map((job) => [job.id, job])),
+        downtimesById: oldCrewCtx.downtimesById,
+      });
     }
     finalRecompute = recomputeForCrew({
       crewRow: crewCtx.crewRow,
@@ -266,5 +276,11 @@ export async function POST(req: Request) {
     schedule: formatted,
     conflicts: formatted.conflicts,
     next_available_date: formatted.next_available_date,
+    ...(sourceCrewId && sourceFormatted
+      ? {
+          source_crew_id: sourceCrewId,
+          source_schedule: sourceFormatted,
+        }
+      : null),
   });
 }

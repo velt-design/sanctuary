@@ -155,5 +155,7 @@ export async function GET(req: Request) {
     unscheduled_jobs: unscheduledJobs,
     conflicts,
     scheduled_estimate_ids: scheduledEstimateIds,
+    holidays: ctx.holidays,
+    closures: ctx.closures,
   });
 }

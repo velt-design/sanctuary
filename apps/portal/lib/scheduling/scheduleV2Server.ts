@@ -38,7 +38,7 @@ type EstimateRowLite = {
   status: string | null;
   created_at: string | null;
   version: number | null;
-  inputs: unknown;
+  inputs?: unknown;
   outputs: unknown;
 };
 
@@ -388,60 +388,59 @@ export async function loadCalendar(): Promise<{ holidays: NzHoliday[]; closures:
 
 export async function loadScheduleContext(options?: { crewId?: string; today?: string }): Promise<ScheduleContext> {
   const today = typeof options?.today === 'string' && isYmd(options.today) ? options.today : todayYmd();
-  const crewsQuery = supabaseServer
+  const crewId = typeof options?.crewId === 'string' && options.crewId.trim() ? options.crewId.trim() : null;
+
+  let crewsQuery = supabaseServer
     .from('schedule_crews')
     .select('id, name, color, sort_order, is_active, calendar_region, base_available_date')
     .order('sort_order', { ascending: true });
+  let itemsQuery = supabaseServer.from('crew_schedule_items').select('id, crew_id, item_type, job_id, downtime_id, position').order('position', { ascending: true });
+  let jobsQuery = supabaseServer.from('scheduled_jobs').select(
+    [
+      'id',
+      'job_id',
+      'crew_id',
+      'mode',
+      'planned_commitment_type',
+      'planned_week_start',
+      'planned_start',
+      'planned_duration_days',
+      'planned_flex_days',
+      'planned_locked_at',
+      'planned_locked_by',
+      'forecast_start',
+      'forecast_duration_days',
+      'forecast_end_exclusive',
+      'actual_start',
+      'actual_finish',
+      'status',
+      'days_remaining',
+      'client_update_status',
+      'client_update_needed_at',
+      'client_update_ack_at',
+      'client_update_ack_by',
+    ].join(','),
+  );
+  let downtimesQuery = supabaseServer.from('crew_downtimes').select('id, crew_id, duration_days, reason, note');
 
-  const [crewsRes, itemsRes, jobsRes, downtimesRes, calendarRes] = await Promise.all([
-    crewsQuery,
-    supabaseServer
-      .from('crew_schedule_items')
-      .select('id, crew_id, item_type, job_id, downtime_id, position')
-      .order('position', { ascending: true }),
-    supabaseServer.from('scheduled_jobs').select(
-      [
-        'id',
-        'job_id',
-        'crew_id',
-        'mode',
-        'planned_commitment_type',
-        'planned_week_start',
-        'planned_start',
-        'planned_duration_days',
-        'planned_flex_days',
-        'planned_locked_at',
-        'planned_locked_by',
-        'forecast_start',
-        'forecast_duration_days',
-        'forecast_end_exclusive',
-        'actual_start',
-        'actual_finish',
-        'status',
-        'days_remaining',
-        'client_update_status',
-        'client_update_needed_at',
-        'client_update_ack_at',
-        'client_update_ack_by',
-      ].join(','),
-    ),
-    supabaseServer.from('crew_downtimes').select('id, crew_id, duration_days, reason, note'),
-    loadCalendar(),
-  ]);
+  if (crewId) {
+    crewsQuery = crewsQuery.eq('id', crewId);
+    itemsQuery = itemsQuery.eq('crew_id', crewId);
+    jobsQuery = jobsQuery.eq('crew_id', crewId);
+    downtimesQuery = downtimesQuery.eq('crew_id', crewId);
+  }
+
+  const [crewsRes, itemsRes, jobsRes, downtimesRes, calendarRes] = await Promise.all([crewsQuery, itemsQuery, jobsQuery, downtimesQuery, loadCalendar()]);
 
   if (crewsRes.error) throw crewsRes.error;
   if (itemsRes.error) throw itemsRes.error;
   if (jobsRes.error) throw jobsRes.error;
   if (downtimesRes.error) throw downtimesRes.error;
 
-  let crews = Array.isArray(crewsRes.data) ? crewsRes.data : [];
-  if (options?.crewId) {
-    crews = crews.filter((row: any) => row.id === options.crewId);
-  }
-
-  const items = (Array.isArray(itemsRes.data) ? itemsRes.data : []).map(mapScheduleItemRow).filter((row) => (options?.crewId ? row.crewId === options.crewId : true));
-  const jobs = (Array.isArray(jobsRes.data) ? jobsRes.data : []).map(mapJobRow).filter((row) => (options?.crewId ? row.crewId === options.crewId : true));
-  const downtimes = (Array.isArray(downtimesRes.data) ? downtimesRes.data : []).map(mapDowntimeRow).filter((row) => (options?.crewId ? row.crewId === options.crewId : true));
+  const crews = Array.isArray(crewsRes.data) ? crewsRes.data : [];
+  const items = (Array.isArray(itemsRes.data) ? itemsRes.data : []).map(mapScheduleItemRow);
+  const jobs = (Array.isArray(jobsRes.data) ? jobsRes.data : []).map(mapJobRow);
+  const downtimes = (Array.isArray(downtimesRes.data) ? downtimesRes.data : []).map(mapDowntimeRow);
 
   return {
     crews,
@@ -567,15 +566,24 @@ export function computeCommitImpacts(input: {
 }
 
 export async function applyJobForecastUpdates(updates: { id: string; forecast_start: string | null; forecast_end_exclusive: string | null; forecast_duration_days: number }[]) {
-  for (const update of updates) {
-    await supabaseServer
-      .from('scheduled_jobs')
-      .update({
-        forecast_start: update.forecast_start,
-        forecast_end_exclusive: update.forecast_end_exclusive,
-        forecast_duration_days: update.forecast_duration_days,
-      } as any)
-      .eq('id', update.id);
+  if (!Array.isArray(updates) || !updates.length) return;
+
+  const chunkSize = 20;
+  for (let index = 0; index < updates.length; index += chunkSize) {
+    const chunk = updates.slice(index, index + chunkSize);
+    await Promise.all(
+      chunk.map(async (update) => {
+        const res = await supabaseServer
+          .from('scheduled_jobs')
+          .update({
+            forecast_start: update.forecast_start,
+            forecast_end_exclusive: update.forecast_end_exclusive,
+            forecast_duration_days: update.forecast_duration_days,
+          } as any)
+          .eq('id', update.id);
+        if (res.error) throw res.error;
+      }),
+    );
   }
 }
 
@@ -716,7 +724,7 @@ export function formatCrewScheduleBlocks(input: {
 export async function listProjectsAndEstimates(): Promise<{ projects: ProjectRowLite[]; estimates: EstimateRowLite[] }> {
   const [projectsRes, estimatesRes] = await Promise.all([
     supabaseServer.from('projects').select('id, name, pipeline_stage, follow_up_date'),
-    supabaseServer.from('estimates').select('id, project_id, status, created_at, version, inputs, outputs'),
+    supabaseServer.from('estimates').select('id, project_id, status, created_at, version, outputs'),
   ]);
   if (projectsRes.error) throw projectsRes.error;
   if (estimatesRes.error) throw estimatesRes.error;
@@ -734,7 +742,6 @@ export async function listProjectsAndEstimates(): Promise<{ projects: ProjectRow
     status: typeof row?.status === 'string' ? row.status : null,
     created_at: typeof row?.created_at === 'string' ? row.created_at : null,
     version: typeof row?.version === 'number' && Number.isFinite(row.version) ? row.version : null,
-    inputs: row?.inputs ?? null,
     outputs: row?.outputs ?? null,
   }));
 
