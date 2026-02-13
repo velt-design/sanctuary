@@ -65,11 +65,25 @@ function estimateFromRow(row: any): Estimate {
   const warnings = Array.isArray(row?.warnings) ? (row.warnings as any[]) : Array.isArray(outputsRaw?.warnings) ? outputsRaw.warnings : [];
 
   const outputs = {
+    cost_snapshot_version: outputsRaw?.cost_snapshot_version === 'v2' ? 'v2' : 'v1',
     materials: outputsRaw?.materials ?? {},
     install: outputsRaw?.install ?? {},
     overhead: outputsRaw?.overhead ?? {},
     totals: outputsRaw?.totals ?? {},
     warnings,
+    pergolas: Array.isArray(outputsRaw?.pergolas) ? outputsRaw.pergolas : undefined,
+    siteShared:
+      outputsRaw?.siteShared && typeof outputsRaw.siteShared === 'object'
+        ? outputsRaw.siteShared
+        : outputsRaw?.shared && typeof outputsRaw.shared === 'object'
+          ? outputsRaw.shared
+          : undefined,
+    shared:
+      outputsRaw?.shared && typeof outputsRaw.shared === 'object'
+        ? outputsRaw.shared
+        : outputsRaw?.siteShared && typeof outputsRaw.siteShared === 'object'
+          ? outputsRaw.siteShared
+          : undefined,
   };
 
   const configVersions = isRecord(outputsRaw?.configVersions)

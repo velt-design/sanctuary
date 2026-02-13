@@ -203,6 +203,20 @@ async function loadEstimate(estimateUuid: string): Promise<Estimate | null> {
       overhead: (row.outputs as any)?.overhead ?? { total_ex_gst: 0 },
       totals: (row.outputs as any)?.totals ?? { cost_ex_gst: 0, cost_inc_gst: 0, warnings: [], notes_and_warnings: [] },
       warnings: Array.isArray(row.warnings) ? row.warnings : [],
+      cost_snapshot_version: (row.outputs as any)?.cost_snapshot_version === 'v2' ? 'v2' : 'v1',
+      pergolas: Array.isArray((row.outputs as any)?.pergolas) ? (row.outputs as any).pergolas : undefined,
+      siteShared:
+        (row.outputs as any)?.siteShared && typeof (row.outputs as any).siteShared === 'object'
+          ? (row.outputs as any).siteShared
+          : (row.outputs as any)?.shared && typeof (row.outputs as any).shared === 'object'
+            ? (row.outputs as any).shared
+            : undefined,
+      shared:
+        (row.outputs as any)?.shared && typeof (row.outputs as any).shared === 'object'
+          ? (row.outputs as any).shared
+          : (row.outputs as any)?.siteShared && typeof (row.outputs as any).siteShared === 'object'
+            ? (row.outputs as any).siteShared
+            : undefined,
     },
     configVersions: (row.outputs as any)?.configVersions ?? {
       pricebook: '',

@@ -1,5 +1,14 @@
 import type { CalculatorInputs } from './calculator';
-import type { DerivedV1, InstallV1, MaterialsV1, OverheadV1, TotalsV1, WarningV1 } from '@sp/costing';
+import type {
+  DerivedV1,
+  InstallV1,
+  MaterialsV1,
+  OverheadV1,
+  PergolaOutputV1,
+  SiteSharedOutputV1,
+  TotalsV1,
+  WarningV1,
+} from '@sp/costing';
 import type { Contact } from './contact';
 import type { Project } from './project';
 
@@ -33,11 +42,15 @@ export type Estimate = {
   projectSnapshot?: ProjectSnapshot;
   snapshot?: EstimateSnapshot;
   outputs: {
+    cost_snapshot_version?: 'v1' | 'v2';
     materials: MaterialsV1;
     install: InstallV1;
     overhead: OverheadV1;
     totals: TotalsV1;
     warnings: WarningV1[];
+    pergolas?: PergolaOutputV1[];
+    siteShared?: SiteSharedOutputV1;
+    shared?: SiteSharedOutputV1;
   };
 
   configVersions: {
