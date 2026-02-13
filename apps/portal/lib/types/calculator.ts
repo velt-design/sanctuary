@@ -85,6 +85,7 @@ export type CalculatorModuleOverrides = {
 };
 
 export type CalculatorModuleInputs = {
+  pergolaId?: string;
   pergolaStyle: PergolaStyleUi;
   roofMaterial: RoofMaterial;
   extrusionColour: ExtrusionColour;
@@ -135,6 +136,11 @@ export type CalculatorModuleInputs = {
   infills?: CalculatorInfillsState;
 };
 
+export type CalculatorPergola = {
+  id: string;
+  label: string;
+};
+
 export type CalculatorInputs = {
   schemaVersion: 'v2';
   projectName: string;
@@ -146,6 +152,7 @@ export type CalculatorInputs = {
   extrasAllowanceExGst: string;
   quoteDiscountPct: string;
 
+  pergolas?: CalculatorPergola[];
   modules: CalculatorModuleInputs[];
   blinds?: CalculatorBlindsState;
 };
@@ -256,8 +263,10 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
     travelExGst: legacy.travelExGst,
     extrasAllowanceExGst: legacy.extrasAllowanceExGst,
     quoteDiscountPct: legacy.quoteDiscountPct,
+    pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
     modules: [
       {
+        pergolaId: 'pergola-1',
         pergolaStyle: legacy.pergolaStyle,
         roofMaterial: legacy.roofMaterial,
         extrusionColour: legacy.extrusionColour,

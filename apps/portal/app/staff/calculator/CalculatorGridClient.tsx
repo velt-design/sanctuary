@@ -1504,7 +1504,7 @@ export default function CalculatorGridClient({
     materialsDebugFocusLineIndex,
   ]);
 
-  const moduleResult = result?.modules[activeModuleIndex] ?? result?.modules[0] ?? null;
+  const moduleResult = result?.modules?.[activeModuleIndex] ?? result?.modules?.[0] ?? null;
 
   const derivedArea = moduleResult?.derived.area_m2;
   const derivedRoofArea = moduleResult?.derived.roof_surface_area_m2;
@@ -3704,7 +3704,7 @@ export default function CalculatorGridClient({
                       return;
                     }
 
-                    const derivedSnapshot = moduleResult?.derived ?? result.modules[0]?.derived;
+                    const derivedSnapshot = moduleResult?.derived ?? result?.modules?.[0]?.derived;
                     if (!derivedSnapshot) {
                       fail('No derived result available for the active module.');
                       return;

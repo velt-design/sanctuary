@@ -1,7 +1,7 @@
 import { getPortalSession } from '@/lib/auth';
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
-import { calculateJobCostV1 } from '@sp/costing';
-import type { CostInputsV1, ExtrusionColour, JobInputsV1 } from '@sp/costing';
+import { calculateSiteCostV1 } from '@sp/costing';
+import type { CostInputsV1, ExtrusionColour, PergolaInputsV1, SiteInputsV1 } from '@sp/costing';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -485,26 +485,63 @@ export async function POST(req: Request) {
     return badRequest('Invalid JSON body');
   }
 
-  if (!Array.isArray(body?.modules) || body.modules.length === 0) return badRequest('modules must be a non-empty array');
+  const hasPergolas = Array.isArray(body?.pergolas) && body.pergolas.length > 0;
+  const hasModules = Array.isArray(body?.modules) && body.modules.length > 0;
+  if (!hasPergolas && !hasModules) return badRequest('pergolas or modules must be a non-empty array');
+  if (hasPergolas && hasModules) return badRequest('Provide either pergolas or modules (not both).');
 
-  const modules: CostInputsV1[] = [];
-  for (const raw of body.modules) {
-    if (!raw || typeof raw !== 'object') return badRequest('Each module must be an object');
-    const parsed = parseModule(raw);
-    if ('error' in parsed) return badRequest(parsed.error);
-    modules.push(parsed);
-  }
+  const travel_ex_gst = body.travel_ex_gst !== undefined ? toNumber(body.travel_ex_gst) : undefined;
+  const extras_allowance_ex_gst = body.extras_allowance_ex_gst !== undefined ? toNumber(body.extras_allowance_ex_gst) : undefined;
+  const quote_discount_pct = body.quote_discount_pct !== undefined ? toNumber(body.quote_discount_pct) : undefined;
 
-  const job: JobInputsV1 = {
-    modules,
-    travel_ex_gst: body.travel_ex_gst !== undefined ? toNumber(body.travel_ex_gst) : undefined,
-    extras_allowance_ex_gst: body.extras_allowance_ex_gst !== undefined ? toNumber(body.extras_allowance_ex_gst) : undefined,
-    quote_discount_pct: body.quote_discount_pct !== undefined ? toNumber(body.quote_discount_pct) : undefined,
+  const site: SiteInputsV1 = {
+    pergolas: [],
+    travel_ex_gst,
+    extras_allowance_ex_gst,
+    quote_discount_pct,
   };
+
+  if (hasPergolas) {
+    const pergolas: PergolaInputsV1[] = [];
+    for (let pIdx = 0; pIdx < body.pergolas.length; pIdx += 1) {
+      const rawPergola = body.pergolas[pIdx];
+      if (!rawPergola || typeof rawPergola !== 'object') return badRequest(`pergolas[${pIdx}] must be an object`);
+
+      const rawModules = (rawPergola as any).modules;
+      if (!Array.isArray(rawModules) || rawModules.length === 0) return badRequest(`pergolas[${pIdx}].modules must be a non-empty array`);
+
+      const modules: CostInputsV1[] = [];
+      for (let mIdx = 0; mIdx < rawModules.length; mIdx += 1) {
+        const raw = rawModules[mIdx];
+        if (!raw || typeof raw !== 'object') return badRequest(`pergolas[${pIdx}].modules[${mIdx}] must be an object`);
+        const parsed = parseModule(raw);
+        if ('error' in parsed) return badRequest(`pergolas[${pIdx}].modules[${mIdx}]: ${parsed.error}`);
+        modules.push(parsed);
+      }
+
+      pergolas.push({
+        id: typeof (rawPergola as any).id === 'string' ? (rawPergola as any).id : undefined,
+        label: typeof (rawPergola as any).label === 'string' ? (rawPergola as any).label : undefined,
+        modules,
+      });
+    }
+    site.pergolas = pergolas;
+  } else {
+    const modules: CostInputsV1[] = [];
+    for (let mIdx = 0; mIdx < body.modules.length; mIdx += 1) {
+      const raw = body.modules[mIdx];
+      if (!raw || typeof raw !== 'object') return badRequest(`modules[${mIdx}] must be an object`);
+      const parsed = parseModule(raw);
+      if ('error' in parsed) return badRequest(parsed.error);
+      modules.push(parsed);
+    }
+
+    site.pergolas = [{ id: 'pergola-1', label: 'Pergola 1', modules }];
+  }
 
   try {
     const { config } = await getCostingConfigWithOverrides();
-    const result = calculateJobCostV1(job, config);
+    const result = calculateSiteCostV1(site, config);
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Costing failed';
