@@ -4,6 +4,8 @@ import { listProjects } from '@/lib/repo/projectsRepo';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { nowIso } from '@/lib/utils/time';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import { isYmd } from '@/lib/scheduling/date';
+import type { CompanyClosure, NzHoliday } from '@/lib/scheduling/workingDays';
 import type { Project } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
 import { qk } from './keys';
@@ -24,6 +26,8 @@ export type ScheduleV2Snapshot = {
   conflicts: any[];
   nextAvailableByInstallerId: Record<string, string>;
   unscheduledJobs: ScheduleV2UnscheduledJob[];
+  holidays: NzHoliday[];
+  closures: CompanyClosure[];
 };
 
 function scheduleStatusFromJobStatus(value: unknown): ScheduleItemStatus {
@@ -50,6 +54,8 @@ async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapsho
       color: crew.color ?? '#7A3B3B',
       active: typeof crew.is_active === 'boolean' ? crew.is_active : true,
       sortOrder: Number.isFinite(crew.sort_order) ? crew.sort_order : 0,
+      calendarRegion: typeof crew.calendar_region === 'string' ? crew.calendar_region : null,
+      baseAvailableDate: typeof crew.base_available_date === 'string' ? crew.base_available_date : null,
     };
   });
 
@@ -145,6 +151,31 @@ async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapsho
     })
     .filter(Boolean) as ScheduleV2UnscheduledJob[];
 
+  const holidays: NzHoliday[] = (Array.isArray(board.holidays) ? board.holidays : [])
+    .map((holiday: any): NzHoliday | null => {
+      const date = typeof holiday?.date === 'string' ? holiday.date : '';
+      if (!isYmd(date)) return null;
+      return {
+        date,
+        name: typeof holiday?.name === 'string' ? holiday.name : undefined,
+        scope: holiday?.scope === 'regional' ? 'regional' : 'national',
+        region: typeof holiday?.region === 'string' ? holiday.region : null,
+      };
+    })
+    .filter(Boolean) as NzHoliday[];
+
+  const closures: CompanyClosure[] = (Array.isArray(board.closures) ? board.closures : [])
+    .map((closure: any): CompanyClosure | null => {
+      const date = typeof closure?.date === 'string' ? closure.date : '';
+      if (!isYmd(date)) return null;
+      return {
+        date,
+        name: typeof closure?.name === 'string' ? closure.name : undefined,
+        region: typeof closure?.region === 'string' ? closure.region : null,
+      };
+    })
+    .filter(Boolean) as CompanyClosure[];
+
   return {
     generatedAt,
     installers,
@@ -153,6 +184,8 @@ async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapsho
     conflicts: board.conflicts ?? [],
     nextAvailableByInstallerId,
     unscheduledJobs,
+    holidays,
+    closures,
   };
 }
 

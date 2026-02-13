@@ -4,6 +4,8 @@ export type Installer = {
   color: string; // hex
   active: boolean;
   availableFrom?: string; // YYYY-MM-DD
+  calendarRegion?: string | null;
+  baseAvailableDate?: string | null;
   sortOrder: number;
 };
 

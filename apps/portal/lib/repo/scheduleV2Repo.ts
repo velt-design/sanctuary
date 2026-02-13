@@ -61,6 +61,8 @@ export type ScheduleBoardResponse = {
   unscheduled_jobs: Array<{ job_id: string; estimate_id: string; project_name: string; status: string; duration_days: number }>;
   conflicts: any[];
   scheduled_estimate_ids?: Record<string, string>;
+  holidays?: Array<{ date: string; name?: string; scope: string; region?: string | null }>;
+  closures?: Array<{ date: string; name?: string; region?: string | null }>;
 };
 
 export type ScheduleGanttResponse = {
@@ -83,6 +85,17 @@ export type FinishEarlyPrompt<T = Record<string, unknown>> = {
   impacts: any[];
 } & Partial<T>;
 export type MutationResult<T = Record<string, unknown>> = { ok: true } & Partial<T>;
+export type ScheduleCrewSchedule = { crew_id: string; items: ScheduleBoardItem[]; conflicts: any[]; next_available_date: string };
+export type ScheduleMutationResult<T = Record<string, unknown>> = MutationResult<
+  T & {
+    crew_id?: string;
+    schedule?: ScheduleCrewSchedule;
+    conflicts?: any[];
+    next_available_date?: string;
+    source_crew_id?: string;
+    source_schedule?: ScheduleCrewSchedule;
+  }
+>;
 
 export async function fetchScheduleBoard(params?: { today?: string }): Promise<ScheduleBoardResponse> {
   const query = params?.today ? `?today=${encodeURIComponent(params.today)}` : '';
@@ -99,84 +112,84 @@ export async function fetchScheduleGantt(params: { rangeStart: string; rangeEnd:
 }
 
 export async function assignJob(input: { job_id: string; crew_id: string; position: number; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/assign', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/assign', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function unassignJob(input: { job_id: string; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/unassign', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/unassign', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function reorderItems(input: { crew_id: string; ordered_item_ids?: string[]; item_id?: string; new_position?: number; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/items/reorder', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/items/reorder', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function setJobDuration(input: { job_id: string; forecast_duration_days: number; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/set-duration', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/set-duration', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function pinJob(input: { job_id: string; requested_start_date: string; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/pin', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/pin', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function unpinJob(input: { job_id: string; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/unpin', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/unpin', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function createDowntime(input: { crew_id: string; position: number; duration_days: number; reason?: string; note?: string | null; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/downtime/create', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/downtime/create', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function updateDowntime(input: { downtime_id: string; duration_days?: number; reason?: string; note?: string | null; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/downtime/update', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/downtime/update', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function deleteDowntime(input: { downtime_id: string; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/downtime/delete', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/downtime/delete', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function markJobInProgress(input: { job_id: string; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/mark-in-progress', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/mark-in-progress', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function setDaysRemaining(input: { job_id: string; days_remaining: number; force?: boolean; today?: string }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/set-days-remaining', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/set-days-remaining', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
 export async function markJobDone(input: { job_id: string; force?: boolean; today?: string; finish_early_action?: 'pull_forward' | 'keep_schedule' }) {
-  return apiJson<MutationResult | RequiresConfirmation | FinishEarlyPrompt>('/api/staff/v1/schedule/job/mark-done', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation | FinishEarlyPrompt>('/api/staff/v1/schedule/job/mark-done', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -193,7 +206,7 @@ export async function lockJobSchedule(input: {
   force?: boolean;
   today?: string;
 }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/lock', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/lock', {
     method: 'POST',
     body: JSON.stringify(input),
   });
@@ -210,7 +223,7 @@ export async function rescheduleJob(input: {
   force?: boolean;
   today?: string;
 }) {
-  return apiJson<MutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/reschedule', {
+  return apiJson<ScheduleMutationResult | RequiresConfirmation>('/api/staff/v1/schedule/job/reschedule', {
     method: 'POST',
     body: JSON.stringify(input),
   });

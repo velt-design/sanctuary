@@ -48,6 +48,8 @@ function installerFromRow(row: any): Installer {
     name: typeof row?.name === 'string' ? row.name : 'Crew',
     color: typeof row?.color === 'string' && row.color.trim() ? row.color : '#7A3B3B',
     active: typeof row?.is_active === 'boolean' ? row.is_active : true,
+    calendarRegion: typeof row?.calendar_region === 'string' ? row.calendar_region : null,
+    baseAvailableDate: typeof row?.base_available_date === 'string' ? row.base_available_date : null,
     sortOrder: typeof row?.sort_order === 'number' && Number.isFinite(row.sort_order) ? row.sort_order : 0,
   };
 }
