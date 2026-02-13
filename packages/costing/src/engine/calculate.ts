@@ -48,6 +48,15 @@ function toWarnings(messages: string[]): WarningV1[] {
   return warnings;
 }
 
+function withModuleInfills(
+  normalized: CostOutputV1['inputs_normalized'],
+  moduleInput: Pick<CostInputsV1, 'infills'>,
+): CostOutputV1['inputs_normalized'] {
+  const infills = Array.isArray(moduleInput.infills) && moduleInput.infills.length > 0 ? moduleInput.infills : undefined;
+  if (!infills) return normalized;
+  return { ...normalized, infills };
+}
+
 type InstallResult = ReturnType<typeof buildInstallV1>;
 
 function mergeInstallResults(base: InstallResult, extra: InstallResult): InstallResult {
@@ -91,8 +100,9 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
   const cfg = config ?? loadCostingConfigV1();
 
   const derivedResult = normalizeAndDeriveV1(inputs, cfg);
+  const inputsForMaterials = withModuleInfills(derivedResult.inputs_normalized, inputs);
 
-  const materialsResult = buildMaterialsV1(derivedResult.inputs_normalized, derivedResult.derived, cfg);
+  const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg);
   const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
 
   const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
@@ -154,8 +164,9 @@ export function calculateCostV1WithMaterialsExplain(
   const cfg = config ?? loadCostingConfigV1();
 
   const derivedResult = normalizeAndDeriveV1(inputs, cfg);
+  const inputsForMaterials = withModuleInfills(derivedResult.inputs_normalized, inputs);
 
-  const materialsResult = buildMaterialsV1Explain(derivedResult.inputs_normalized, derivedResult.derived, cfg, opts);
+  const materialsResult = buildMaterialsV1Explain(inputsForMaterials, derivedResult.derived, cfg, opts);
   const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.result.derived_patch ?? {}) };
 
   const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
@@ -275,8 +286,9 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
       },
       cfg,
     );
+    const inputsForMaterials = withModuleInfills(derivedResult.inputs_normalized, moduleInput);
 
-    const materialsResult = buildMaterialsV1(derivedResult.inputs_normalized, derivedResult.derived, cfg);
+    const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg);
     const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
     const installResult = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
       scope: 'module',
@@ -337,6 +349,33 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
 
     if (moduleWarnings.length) {
       warnings.push(...moduleWarnings.map((w) => `[Module ${idx + 1}] ${w}`));
+    }
+  }
+
+  const infillSheetLinePattern = /^m\d+\.infill\.acrylic_sheet_clear$/;
+  const infillSheetLines = jobMaterialsLines.filter((line) => infillSheetLinePattern.test(String(line.id ?? '')));
+  if (infillSheetLines.length > 0) {
+    const unitCost = Number(infillSheetLines[0]?.unit_cost_ex_gst ?? NaN);
+    const costsConsistent =
+      Number.isFinite(unitCost) &&
+      infillSheetLines.every((line) => Math.abs(Number(line.unit_cost_ex_gst ?? NaN) - unitCost) <= 0.01);
+
+    if (costsConsistent) {
+      const pooledQty = roundMoney(infillSheetLines.reduce((acc, line) => acc + Number(line.qty ?? 0), 0));
+      if (pooledQty > 0) {
+        const filtered = jobMaterialsLines.filter((line) => !infillSheetLinePattern.test(String(line.id ?? '')));
+        jobMaterialsLines.length = 0;
+        jobMaterialsLines.push(...filtered);
+        jobMaterialsLines.push({
+          id: 'job.infill.acrylic_sheet_clear',
+          label: '[Job] Acrylic sheets (infills pooled)',
+          profile: 'Plexi sheet 3050x2030',
+          unit: 'sheet',
+          qty: pooledQty,
+          unit_cost_ex_gst: roundMoney(unitCost),
+          line_cost_ex_gst: roundMoney(pooledQty * unitCost),
+        });
+      }
     }
   }
 

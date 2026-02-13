@@ -8,7 +8,7 @@ import {
   durationDaysFromEstimate,
   ensureForecastDurationDays,
   formatCrewScheduleBlocks,
-  getLatestApprovedEstimate,
+  getLatestSchedulableEstimate,
   insertItemAtPosition,
   isMissingSchemaError,
   loadScheduleContext,
@@ -63,8 +63,8 @@ export async function POST(req: Request) {
       return jsonError('Failed to load estimates', 500);
     }
     const estimates = Array.isArray(estimatesRes.data) ? estimatesRes.data : [];
-    const latestApproved = getLatestApprovedEstimate(estimates as any);
-    durationDays = durationDaysFromEstimate(latestApproved as any);
+    const latest = getLatestSchedulableEstimate(estimates as any);
+    durationDays = durationDaysFromEstimate(latest as any);
   }
 
   let ctx;

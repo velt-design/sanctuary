@@ -26,7 +26,7 @@ export default function AttentionCard({ items }: { items: AttentionItem[] }) {
   const ORDER: AttentionItem['key'][] = [
     'overdue',
     'due_today',
-    'unscheduled_approved',
+    'unscheduled_estimates',
     'site_visits_to_book',
     'quotes_to_send',
     'email_failures',

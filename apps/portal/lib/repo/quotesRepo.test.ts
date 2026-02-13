@@ -6,7 +6,7 @@ import { createEstimate } from '@/lib/repo/estimatesRepo';
 import { createProject } from '@/lib/repo/projectsRepo';
 import { createQuoteFromEstimate, duplicateQuoteAsRevision, markQuoteSent, suggestNextQuoteNumber, updateQuote } from '@/lib/repo/quotesRepo';
 
-async function seedProjectWithEstimate(opts?: { totalEx?: number; totalInc?: number; status?: 'draft' | 'approved' }) {
+async function seedProjectWithEstimate(opts?: { totalEx?: number; totalInc?: number; status?: 'draft' | 'archived' }) {
   const contact = await createContact({ displayName: 'Test Contact', email: 'test@example.com', phone: '021' });
   const project = await createProject({ contactId: contact.id, projectName: 'Test Project' });
   const totalEx = opts?.totalEx ?? 100;

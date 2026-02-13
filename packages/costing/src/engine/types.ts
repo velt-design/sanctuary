@@ -68,6 +68,47 @@ export type MixedRoofNormalizedV1 = {
   acrylic_bays_by_plane: Record<string, number> | null;
 };
 
+export type InfillLocationV1 = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
+export type InfillAcrylicSourceV1 = 'strip_620' | 'sheet_panels';
+export type InfillWidthModeV1 = 'match_roof_rafters' | 'target_width';
+
+export type InfillSupportV1 = {
+  has_top: boolean;
+  has_bottom: boolean;
+  has_left: boolean;
+  has_right: boolean;
+  internal_support_mode?: 'none' | 'match_roof_rafters' | 'center' | 'custom';
+  internal_support_positions_m?: number[];
+};
+
+export type InfillShapeV1 =
+  | {
+      type: 'rect';
+      width_m: number;
+      height_m: number;
+      bottom_offset_m?: number;
+    }
+  | {
+      type: 'mono_slope';
+      width_m: number;
+      height_low_m: number;
+      height_high_m: number;
+      bottom_offset_m?: number;
+    };
+
+export type InfillInputV1 = {
+  id: string;
+  label?: string;
+  qty?: number;
+  location: InfillLocationV1;
+  acrylic_source: InfillAcrylicSourceV1;
+  width_mode: InfillWidthModeV1;
+  target_panel_width_m?: number;
+  max_panel_width_m?: number;
+  support: InfillSupportV1;
+  shape: InfillShapeV1;
+};
+
 export type CostInputsV1 = {
   length_m: number;
   roof_span_m?: number;
@@ -127,6 +168,7 @@ export type CostInputsV1 = {
   timber_roof_above_type?: TimberRoofAboveType;
   timber_insulated_panel_thickness_mm?: number;
   timber_tray_width_mm?: number;
+  infills?: InfillInputV1[];
 
   quote_discount_pct?: number;
 };
@@ -186,6 +228,7 @@ export type InputsNormalizedV1 = {
   timber_roof_above_type: TimberRoofAboveType;
   timber_insulated_panel_thickness_mm: number;
   timber_tray_width_mm: number;
+  infills?: InfillInputV1[];
 
   quote_discount_pct: number;
 };
@@ -235,6 +278,7 @@ export type DerivedV1 = {
   ledger_profile_used?: string;
   has_ledger?: boolean;
   ledger_length_m?: number;
+  front_beam_length_m?: number;
   ledger_underside_height_m?: number;
   post_cut_height_house_side_m?: number;
   post_cut_height_outer_side_m?: number;
@@ -257,6 +301,15 @@ export type DerivedV1 = {
   rafter_length_m: number;
   rafter_run_m_takeoff: number;
   rafter_cut_length_m: number;
+  // Gable/low_gable: per-side rafter cut lengths (slope lengths)
+  rafter_cut_length_house_side_m?: number;
+  rafter_cut_length_outer_side_m?: number;
+  // Optional debug helpers (safe to expose)
+  rafter_run_house_side_m?: number;
+  rafter_run_outer_side_m?: number;
+  rafter_ridge_half_m?: number;
+  rafter_house_allowance_m?: number;
+  rafter_far_allowance_m?: number;
   joiner_piece_length_m: number;
   cut_rafter_length_m: number;
   angle_cut_allowance_m: number;

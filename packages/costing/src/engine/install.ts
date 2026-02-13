@@ -1,6 +1,7 @@
 import type { CostingConfigV1 } from './config';
 import type { InstallActionV1, InstallV1, InputsNormalizedV1 } from './types';
 import { evalArithmeticExpr } from './expr';
+import { normaliseProfile } from './normalise';
 
 type ActionConfig = CostingConfigV1['installActions']['actions'][number];
 
@@ -25,6 +26,69 @@ function roundMoney(n: number): number {
 function roundMinutes(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100) / 100;
+}
+
+const STEEL_BEAM_INSTALL_FACTOR = 2.5;
+const STEEL_BEAM_INSTALL_ACTIONS = {
+  front: 'frame.install_front_beam_m',
+  tie: 'frame.install_tie_beam_m',
+  ridge: 'roof.install_ridge_beam_m',
+  overhang: 'frame.overhang_support_beam_m',
+} as const;
+const STEEL_BEAM_EXTRA_LABOUR_ACTION_ID = 'frame.steel_beam_labour_m';
+const STEEL_BEAM_EXTRA_LABOUR_MINUTES_PER_M = 30;
+const STEEL_BEAM_EXTRA_LABOUR_LABEL = 'Steel beam labour allowance - per metre';
+const STEEL_BEAM_EXTRA_LABOUR_CATEGORY = 'Frame';
+
+function isSteelBeamProfile(profile: unknown): boolean {
+  const normalized = normaliseProfile(String(profile ?? ''));
+  return normalized === 'rhs150x50x3' || normalized === 'rhs150x50x3mm';
+}
+
+function resolveSteelBeamInstallFactor(actionId: string, derived: Record<string, unknown>): number {
+  if (actionId === STEEL_BEAM_INSTALL_ACTIONS.front) {
+    const profile = (derived as any).front_beam_profile_used;
+    const beamLength = Number((derived as any).front_beam_length_m ?? 0);
+    return isSteelBeamProfile(profile) && beamLength > 0 ? STEEL_BEAM_INSTALL_FACTOR : 1;
+  }
+
+  if (actionId === STEEL_BEAM_INSTALL_ACTIONS.tie) {
+    const profile = (derived as any).tie_beam_profile_used;
+    const beamLength = Number((derived as any).tie_beam_length_m ?? 0);
+    const frameCount = Number((derived as any).gable_end_frame_count ?? 0);
+    return isSteelBeamProfile(profile) && beamLength > 0 && frameCount > 0 ? STEEL_BEAM_INSTALL_FACTOR : 1;
+  }
+
+  if (actionId === STEEL_BEAM_INSTALL_ACTIONS.ridge) {
+    const profile = (derived as any).ridge_beam_profile_used;
+    const ridgeLength = Number((derived as any).ridge_length_m ?? 0);
+    return isSteelBeamProfile(profile) && ridgeLength > 0 ? STEEL_BEAM_INSTALL_FACTOR : 1;
+  }
+
+  if (actionId === STEEL_BEAM_INSTALL_ACTIONS.overhang) {
+    const profile = (derived as any).overhang_support_beam_profile_used;
+    const beamLength = Number((derived as any).overhang_support_beam_length_m ?? 0);
+    return isSteelBeamProfile(profile) && beamLength > 0 ? STEEL_BEAM_INSTALL_FACTOR : 1;
+  }
+
+  return 1;
+}
+
+function asPositiveNumber(value: unknown): number {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+}
+
+function resolveSteelBeamInstalledLengthM(
+  derived: Record<string, unknown>,
+  actions: readonly Pick<InstallActionV1, 'id' | 'qty'>[],
+): number {
+  let totalLengthM = 0;
+  for (const action of actions) {
+    if (resolveSteelBeamInstallFactor(action.id, derived) <= 1) continue;
+    totalLengthM += asPositiveNumber(action.qty);
+  }
+  return totalLengthM;
 }
 
 function getDriverValue(
@@ -238,7 +302,9 @@ export function buildInstallV1(
     }
 
     const { factor, applied } = resolveMultipliers(action, inputs, derived, config);
-    const minutes = roundMinutes(qty * baseMinutes * factor);
+    const steelBeamFactor = resolveSteelBeamInstallFactor(action.id, derived);
+    if (steelBeamFactor > 1) applied.steel_beam = roundMoney(steelBeamFactor);
+    const minutes = roundMinutes(qty * baseMinutes * factor * steelBeamFactor);
     const cost = roundMoney((minutes / 60) * crewRateExGst);
 
     actionsOut.push({
@@ -252,6 +318,25 @@ export function buildInstallV1(
       applied_multipliers: applied,
       cost_ex_gst: cost,
     });
+  }
+
+  if (scope !== 'job') {
+    const steelBeamInstalledLengthM = resolveSteelBeamInstalledLengthM(derived, actionsOut);
+    if (steelBeamInstalledLengthM > 0) {
+      const minutes = roundMinutes(steelBeamInstalledLengthM * STEEL_BEAM_EXTRA_LABOUR_MINUTES_PER_M);
+      const cost = roundMoney((minutes / 60) * crewRateExGst);
+      actionsOut.push({
+        id: STEEL_BEAM_EXTRA_LABOUR_ACTION_ID,
+        category: STEEL_BEAM_EXTRA_LABOUR_CATEGORY,
+        label: STEEL_BEAM_EXTRA_LABOUR_LABEL,
+        scope: 'module',
+        unit: 'metre',
+        qty: steelBeamInstalledLengthM,
+        minutes,
+        applied_multipliers: {},
+        cost_ex_gst: cost,
+      });
+    }
   }
 
   actionsOut.sort((a, b) => a.id.localeCompare(b.id));

@@ -21,7 +21,12 @@ const GROUND_CONDITIONS = ['easy', 'hard'] as const;
 const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
 const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
 const GABLE_GUTTER_EDGES = ['house', 'our'] as const;
-const OVERHANG_SUPPORT_BEAM_PROFILES = ['150x50', '200x50'] as const;
+const OVERHANG_SUPPORT_BEAM_PROFILES = ['150x50', '200x50', 'RHS 150x50x3'] as const;
+const INFILL_LOCATIONS = ['front', 'house', 'side', 'gable_end', 'wall', 'custom'] as const;
+const INFILL_ACRYLIC_SOURCES = ['strip_620', 'sheet_panels'] as const;
+const INFILL_WIDTH_MODES = ['match_roof_rafters', 'target_width'] as const;
+const INFILL_INTERNAL_SUPPORT_MODES = ['none', 'match_roof_rafters', 'center', 'custom'] as const;
+const INFILL_SHAPE_TYPES = ['rect', 'mono_slope'] as const;
 const POWDERCOAT_STANDARD_COLOURS = [
   'Ironsands',
   'Charcoal',
@@ -44,6 +49,129 @@ function toNumber(value: unknown): number {
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
+}
+
+function parseInfills(raw: unknown): CostInputsV1['infills'] | { error: string } | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return { error: 'infills must be an array' };
+
+  const out: NonNullable<CostInputsV1['infills']> = [];
+  for (let i = 0; i < raw.length; i += 1) {
+    const item = raw[i];
+    if (!item || typeof item !== 'object') return { error: `infills[${i}] must be an object` };
+    const infill = item as any;
+
+    if (typeof infill.id !== 'string' || !infill.id.trim()) return { error: `infills[${i}].id must be a non-empty string` };
+
+    const qty = infill.qty === undefined ? 1 : toNumber(infill.qty);
+    if (!Number.isFinite(qty) || qty < 1) return { error: `infills[${i}].qty must be a number >= 1` };
+
+    if (!isOneOf(INFILL_LOCATIONS, infill.location)) return { error: `Invalid infills[${i}].location` };
+    if (!isOneOf(INFILL_ACRYLIC_SOURCES, infill.acrylic_source)) return { error: `Invalid infills[${i}].acrylic_source` };
+    if (!isOneOf(INFILL_WIDTH_MODES, infill.width_mode)) return { error: `Invalid infills[${i}].width_mode` };
+
+    const maxPanelWidth = infill.max_panel_width_m === undefined ? 1.2 : toNumber(infill.max_panel_width_m);
+    if (!Number.isFinite(maxPanelWidth) || maxPanelWidth <= 0 || maxPanelWidth > 1.2) {
+      return { error: `infills[${i}].max_panel_width_m must be a number > 0 and <= 1.2` };
+    }
+
+    const targetPanelWidth = infill.target_panel_width_m === undefined ? undefined : toNumber(infill.target_panel_width_m);
+    if (targetPanelWidth !== undefined && (!Number.isFinite(targetPanelWidth) || targetPanelWidth <= 0)) {
+      return { error: `infills[${i}].target_panel_width_m must be a number > 0` };
+    }
+
+    if (!infill.support || typeof infill.support !== 'object') return { error: `infills[${i}].support must be an object` };
+    const support = infill.support as any;
+
+    const boolFields = ['has_top', 'has_bottom', 'has_left', 'has_right'] as const;
+    for (const key of boolFields) {
+      if (support[key] !== undefined && typeof support[key] !== 'boolean') {
+        return { error: `infills[${i}].support.${key} must be a boolean` };
+      }
+    }
+
+    if (support.internal_support_mode !== undefined && !isOneOf(INFILL_INTERNAL_SUPPORT_MODES, support.internal_support_mode)) {
+      return { error: `Invalid infills[${i}].support.internal_support_mode` };
+    }
+
+    let internalPositions: number[] | undefined;
+    if (support.internal_support_positions_m !== undefined) {
+      if (!Array.isArray(support.internal_support_positions_m)) {
+        return { error: `infills[${i}].support.internal_support_positions_m must be an array` };
+      }
+      internalPositions = [];
+      for (const [idx, value] of support.internal_support_positions_m.entries()) {
+        const n = toNumber(value);
+        if (!Number.isFinite(n) || n < 0) return { error: `infills[${i}].support.internal_support_positions_m[${idx}] must be >= 0` };
+        internalPositions.push(n);
+      }
+    }
+
+    if (!infill.shape || typeof infill.shape !== 'object') return { error: `infills[${i}].shape must be an object` };
+    const shape = infill.shape as any;
+    if (!isOneOf(INFILL_SHAPE_TYPES, shape.type)) return { error: `Invalid infills[${i}].shape.type` };
+
+    const parseDim = (name: string): number | { error: string } => {
+      const value = toNumber(shape[name]);
+      if (!Number.isFinite(value) || value < 0) return { error: `infills[${i}].shape.${name} must be a number >= 0` };
+      return value;
+    };
+
+    const bottomOffsetRaw = shape.bottom_offset_m !== undefined ? toNumber(shape.bottom_offset_m) : undefined;
+    if (bottomOffsetRaw !== undefined && (!Number.isFinite(bottomOffsetRaw) || bottomOffsetRaw < 0)) {
+      return { error: `infills[${i}].shape.bottom_offset_m must be a number >= 0` };
+    }
+
+    let parsedShape: NonNullable<CostInputsV1['infills']>[number]['shape'];
+    if (shape.type === 'rect') {
+      const width = parseDim('width_m');
+      const height = parseDim('height_m');
+      if (typeof width === 'object') return width;
+      if (typeof height === 'object') return height;
+      parsedShape = {
+        type: 'rect',
+        width_m: width,
+        height_m: height,
+        bottom_offset_m: bottomOffsetRaw,
+      };
+    } else {
+      const width = parseDim('width_m');
+      const low = parseDim('height_low_m');
+      const high = parseDim('height_high_m');
+      if (typeof width === 'object') return width;
+      if (typeof low === 'object') return low;
+      if (typeof high === 'object') return high;
+      parsedShape = {
+        type: 'mono_slope',
+        width_m: width,
+        height_low_m: low,
+        height_high_m: high,
+        bottom_offset_m: bottomOffsetRaw,
+      };
+    }
+
+    out.push({
+      id: infill.id,
+      label: typeof infill.label === 'string' ? infill.label : undefined,
+      qty: Math.max(1, Math.round(qty)),
+      location: infill.location,
+      acrylic_source: infill.acrylic_source,
+      width_mode: infill.width_mode,
+      target_panel_width_m: targetPanelWidth,
+      max_panel_width_m: maxPanelWidth,
+      support: {
+        has_top: support.has_top !== false,
+        has_bottom: support.has_bottom !== false,
+        has_left: support.has_left !== false,
+        has_right: support.has_right !== false,
+        internal_support_mode: support.internal_support_mode,
+        internal_support_positions_m: internalPositions,
+      },
+      shape: parsedShape,
+    });
+  }
+
+  return out;
 }
 
 export async function POST(req: Request) {
@@ -294,6 +422,9 @@ export async function POST(req: Request) {
     hip_corner = { length_b_m, projection_b_m };
   }
 
+  const parsedInfills = parseInfills(body.infills);
+  if (parsedInfills && 'error' in parsedInfills) return badRequest(parsedInfills.error);
+
   const resolvedRoofSpanM = roof_span_m_raw !== undefined ? roof_span_m : projection_m;
 
   const inputs: CostInputsV1 = {
@@ -333,6 +464,7 @@ export async function POST(req: Request) {
     powdercoat_custom_colour: body.powdercoat_custom_colour,
     mixed_roof,
     hip_corner,
+    infills: parsedInfills,
     overrides,
 
     house_connection_type: body.house_connection_type,

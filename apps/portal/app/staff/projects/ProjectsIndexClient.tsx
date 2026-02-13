@@ -14,6 +14,9 @@ import { useQuery } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { projectsListQueryOptions } from '@/lib/queries/projects';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import Modal from '@/components/ui/modal/Modal';
+import { usePortalSession } from '@/components/auth/PortalAuthProvider';
+import { deleteProject } from '@/lib/repo/projectsRepo';
 
 function toYmd(value: string | null | undefined): string | null {
   const raw = (value ?? '').trim();
@@ -22,19 +25,32 @@ function toYmd(value: string | null | undefined): string | null {
   return match ? match[1] : null;
 }
 
+const EXTRA_DELETE_CONFIRM_STAGES = new Set<Project['status']>(['DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
+
+function requiredDeleteConfirmation(projectId: string, status: Project['status'] | null | undefined): string {
+  const normalized = (status ?? 'NEW') as Project['status'];
+  return EXTRA_DELETE_CONFIRM_STAGES.has(normalized) ? `DELETE ${projectId}` : 'DELETE';
+}
+
 export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { role } = usePortalSession();
+  const isAdmin = role === 'admin';
   const [hydrated, setHydrated] = useState(false);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all');
   const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>('all');
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteReason, setDeleteReason] = useState('');
+  const [isDeleteBusy, setIsDeleteBusy] = useState(false);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const isLoadingMode = mode === 'loading';
-  const { data: projectsData, error: projectsError } = useQuery({
+  const { data: projectsData, error: projectsError, refetch: refetchProjects } = useQuery({
     ...projectsListQueryOptions(host),
     enabled: !isLoadingMode,
     refetchOnMount: !isLoadingMode,
@@ -156,6 +172,15 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
       return text.includes(needle);
     });
   }, [contactsById, dueFilter, projects, query, statusFilter, todayYmd]);
+
+  const closeDeleteModal = () => {
+    if (isDeleteBusy) return;
+    setDeleteTarget(null);
+    setDeleteConfirmText('');
+    setDeleteReason('');
+  };
+
+  const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
 
   return (
     <main className={styles.page}>
@@ -294,13 +319,30 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
                           </td>
                           <td className={styles.muted}>{new Date(lastActivity).toLocaleString()}</td>
                           <td>
-                            <Link
-                              className={styles.link}
-                              href={`/staff/projects/${encodeURIComponent(p.id)}`}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              Open
-                            </Link>
+                            <div className={styles.rowActions}>
+                              <Link
+                                className={styles.link}
+                                href={`/staff/projects/${encodeURIComponent(p.id)}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Open
+                              </Link>
+                              {isAdmin ? (
+                                <button
+                                  type="button"
+                                  className={styles.linkDanger}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteTarget(p);
+                                    setDeleteConfirmText('');
+                                    setDeleteReason('');
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
+                            </div>
                           </td>
                         </tr>
                       );
@@ -316,6 +358,90 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
           </div>
         </section>
       </div>
+
+      {deleteTarget ? (
+        <Modal
+          open
+          ariaLabel="Delete project confirmation"
+          onClose={closeDeleteModal}
+          overlayClassName={styles.modalOverlay}
+          panelClassName={styles.modal}
+          maxWidthPx={560}
+        >
+          <div className={styles.modalHeader}>
+            <h2 className={styles.modalTitle}>Delete project?</h2>
+            <button type="button" className={styles.modalClose} onClick={closeDeleteModal}>
+              Close
+            </button>
+          </div>
+
+          <p className={styles.note}>
+            This is a hard delete. Project data and linked records are permanently removed.
+          </p>
+          <p className={styles.note} style={{ marginTop: 8 }}>
+            Stage: <strong>{projectStatusLabel(deleteTarget.status ?? 'NEW')}</strong>
+          </p>
+          <p className={styles.note} style={{ marginTop: 8 }}>
+            Type <strong>{requiredDeleteText}</strong> to confirm.
+          </p>
+
+          <div className={styles.field} style={{ marginTop: 12 }}>
+            <label htmlFor="delete-project-confirm-text">Confirmation</label>
+            <input
+              id="delete-project-confirm-text"
+              className={styles.inlineInput}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className={styles.field} style={{ marginTop: 10 }}>
+            <label htmlFor="delete-project-reason">Reason (optional)</label>
+            <input
+              id="delete-project-reason"
+              className={styles.inlineInput}
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+            />
+          </div>
+
+          <div className={styles.modalFooter}>
+            <button type="button" className={styles.buttonSecondary} onClick={closeDeleteModal} disabled={isDeleteBusy}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.buttonDanger}
+              disabled={isDeleteBusy || deleteConfirmText.trim().toUpperCase() !== requiredDeleteText.toUpperCase()}
+              onClick={() => {
+                if (!deleteTarget || isDeleteBusy) return;
+                setIsDeleteBusy(true);
+                void (async () => {
+                  try {
+                    await deleteProject(deleteTarget.id, {
+                      confirmText: deleteConfirmText.trim(),
+                      reason: deleteReason.trim() || null,
+                    });
+                    toast.success('Project deleted.');
+                    setDeleteTarget(null);
+                    setDeleteConfirmText('');
+                    setDeleteReason('');
+                    await refetchProjects();
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : 'Failed to delete project';
+                    toast.error(msg);
+                  } finally {
+                    setIsDeleteBusy(false);
+                  }
+                })();
+              }}
+            >
+              {isDeleteBusy ? 'Deleting...' : 'Delete project'}
+            </button>
+          </div>
+        </Modal>
+      ) : null}
     </main>
   );
 }

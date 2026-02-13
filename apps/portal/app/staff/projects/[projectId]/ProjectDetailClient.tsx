@@ -13,7 +13,7 @@ import {
   updateProject,
   updateProjectFields,
 } from '@/lib/repo/projectsRepo';
-import { deleteEstimate, deleteEstimatesForProject, listEstimates, updateEstimateStatus } from '@/lib/repo/estimatesRepo';
+import { deleteEstimate, deleteEstimatesForProject, listEstimates } from '@/lib/repo/estimatesRepo';
 import { listScheduleItems } from '@/lib/repo/scheduleRepo';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
@@ -161,8 +161,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
   }, [notesDraft, project]);
 
   const defaultQuoteEstimate = useMemo(() => {
-    const approved = estimates.find((e) => e.status === 'approved');
-    return approved?.id ?? estimates[0]?.id ?? '';
+    return estimates[0]?.id ?? '';
   }, [estimates]);
 
   const selectedQuoteEstimate = useMemo(
@@ -899,75 +898,6 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                             >
                               Duplicate
                             </Link>
-                            {isAdmin && e.status !== 'approved' ? (
-                              <button
-                                type="button"
-                                className={styles.buttonSecondary}
-                                onClick={() => {
-                    run('approveEstimate', async () => {
-                      try {
-                        const c = contact ?? (project.contactId ? await getContact(project.contactId) : null);
-                        if (!c) throw new Error('Project is missing a contact.');
-
-                                      const projectNameSnapshot = project.projectName ?? project.name ?? 'Project';
-                                      await updateEstimateStatus(e.id, 'approved', {
-                                        projectSnapshot: {
-                                          ...project,
-                                          updatedAt: project.updatedAt ?? project.createdAt,
-                                        },
-                                        snapshot: {
-                                          contact: {
-                                            displayName: c.displayName,
-                                            email: c.email,
-                                            phone: c.phone,
-                                          },
-                                          project: {
-                                            projectName: projectNameSnapshot,
-                                            region: project.region,
-                                            siteAddress: project.siteAddress ?? project.address,
-                                            quoteRef: project.quoteRef,
-                                          },
-                                        },
-                                      });
-                                      setEstimates(await listEstimates(projectId));
-                                      setProject(
-                                        await addProjectActivity(projectId, {
-                                          type: 'estimate_approved',
-                                          message: `Estimate v${(e as any).version ?? '—'} approved`,
-                                          meta: { estimateId: e.id },
-                                        }),
-                                      );
-                                      toast.success('Estimate marked approved.');
-                                    } catch (err) {
-                                      if (err instanceof ProjectConflictError) {
-                                        setConflict({
-                                          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
-                                          retry: async () => {
-                                            await addProjectActivity(
-                                              projectId,
-                                              {
-                                                type: 'estimate_approved',
-                                                message: `Estimate v${(e as any).version ?? '—'} approved`,
-                                                meta: { estimateId: e.id },
-                                              },
-                                              { force: true },
-                                            );
-                                            await refreshProject();
-                                          },
-                                        });
-                                        toast.error('This project was updated elsewhere.');
-                                        return;
-                                      }
-                                      const msg = err instanceof Error ? err.message : 'Failed to update status';
-                                      setError(msg);
-                                      toast.error(msg);
-                                    }
-                                  });
-                                }}
-                              >
-                                Mark Approved
-                              </button>
-                            ) : null}
                             {isAdmin ? (
                               <button
                                 type="button"
@@ -1706,3 +1636,4 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
     </main>
   );
 }
+

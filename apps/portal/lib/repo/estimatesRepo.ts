@@ -40,10 +40,6 @@ function wrapError(table: string, error: unknown): SupabaseRepoError {
 
 function normaliseStatus(value: unknown): EstimateStatus {
   const raw = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (raw === 'approved') return 'approved';
-  if (raw === 'in_review') return 'in_review';
-  if (raw === 'rejected') return 'rejected';
-  if (raw === 'superseded') return 'superseded';
   if (raw === 'archived') return 'archived';
   return 'draft';
 }
@@ -323,25 +319,6 @@ export async function updateEstimate(id: string, patch: Partial<Omit<Estimate, '
   const { data, error } = await supabase.from('estimates').update(payload).eq('id', uuid).select('*').single();
   if (error || !data) throw wrapError('estimates', error);
   return estimateFromRow(data);
-}
-
-export async function approveEstimate(id: string): Promise<Estimate> {
-  return updateEstimateStatus(id, 'approved');
-}
-
-export async function updateEstimateStatus(
-  estimateId: string,
-  status: EstimateStatus,
-  opts?: { projectSnapshot?: Estimate['projectSnapshot']; snapshot?: Estimate['snapshot'] },
-): Promise<Estimate> {
-  const prev = await getEstimate(estimateId);
-  if (!prev) throw new Error('Estimate not found');
-  const updated = await updateEstimate(estimateId, {
-    status,
-    ...(opts?.projectSnapshot && !prev.projectSnapshot ? { projectSnapshot: opts.projectSnapshot } : null),
-    ...(opts?.snapshot && !prev.snapshot ? { snapshot: opts.snapshot } : null),
-  } as any);
-  return updated;
 }
 
 export async function deleteEstimate(estimateId: string): Promise<void> {

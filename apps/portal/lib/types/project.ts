@@ -68,7 +68,6 @@ export type ActivityEventType =
   | 'note'
   | 'status_change'
   | 'estimate_generated'
-  | 'estimate_approved'
   | 'quote_created'
   | 'quote_duplicated'
   | 'quote_sent'

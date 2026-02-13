@@ -7,7 +7,7 @@ export type ProjectStatus = CoreProjectStatus;
 export type AttentionKey =
   | 'overdue'
   | 'due_today'
-  | 'unscheduled_approved'
+  | 'unscheduled_estimates'
   | 'site_visits_to_book'
   | 'quotes_to_send'
   | 'email_failures';

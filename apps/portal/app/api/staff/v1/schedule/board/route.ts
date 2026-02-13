@@ -12,9 +12,9 @@ import {
 
 export const runtime = 'nodejs';
 
-function isApprovedEstimateStatus(status: unknown): boolean {
+function isArchivedEstimateStatus(status: unknown): boolean {
   const s = typeof status === 'string' ? status.trim().toLowerCase() : '';
-  return s === 'approved';
+  return s === 'archived';
 }
 
 function estimateVersion(row: any): number {
@@ -37,10 +37,24 @@ function computeScheduledEstimateIds(estimates: any[], scheduledProjectIds: Set<
   for (const row of Array.isArray(estimates) ? estimates : []) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
     if (!projectId || !scheduledProjectIds.has(projectId)) continue;
-    if (!isApprovedEstimateStatus(row?.status)) continue;
 
     const prev = bestByProjectId.get(projectId);
-    if (!prev || isNewerEstimateRow(row, prev)) bestByProjectId.set(projectId, row);
+    if (!prev) {
+      bestByProjectId.set(projectId, row);
+      continue;
+    }
+
+    const prevArchived = isArchivedEstimateStatus(prev?.status);
+    const nextArchived = isArchivedEstimateStatus(row?.status);
+
+    // Prefer non-archived estimates; otherwise pick the newest row.
+    if (prevArchived && !nextArchived) {
+      bestByProjectId.set(projectId, row);
+      continue;
+    }
+    if (prevArchived === nextArchived && isNewerEstimateRow(row, prev)) {
+      bestByProjectId.set(projectId, row);
+    }
   }
 
   const out: Record<string, string> = {};

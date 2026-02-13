@@ -13,6 +13,7 @@ type SnapshotKpis = {
 type SnapshotAttention = {
   overdue_actions?: number;
   due_today?: number;
+  unscheduled_estimates?: number;
   unscheduled_approved?: number;
   site_visits_to_book?: number;
   quotes_to_send?: number;
@@ -117,9 +118,9 @@ export async function getDashboardData(opts: { queueMode: QueueMode }): Promise<
       href: projectsHref({ nextActionDue: true, due: 'today' }),
     },
     {
-      key: 'unscheduled_approved',
-      label: 'Unscheduled approved jobs',
-      count: asNumber(attentionCounts.unscheduled_approved),
+      key: 'unscheduled_estimates',
+      label: 'Unscheduled jobs with estimates',
+      count: asNumber(attentionCounts.unscheduled_estimates ?? attentionCounts.unscheduled_approved),
       severity: 'medium',
       href: scheduleHref('board'),
     },

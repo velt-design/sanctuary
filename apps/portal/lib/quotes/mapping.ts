@@ -76,6 +76,98 @@ function normaliseCalculatorInputs(inputs: unknown): CalculatorInputs | null {
   return null;
 }
 
+function parseInfills(module: CalculatorModuleInputs): CostInputsV1['infills'] | undefined {
+  const items = (module as any).infills?.items;
+  if (!Array.isArray(items) || items.length === 0) return undefined;
+
+  const out: NonNullable<CostInputsV1['infills']> = [];
+  for (const raw of items as any[]) {
+    if (!raw || typeof raw !== 'object') continue;
+
+    const widthMode = raw.widthMode === 'match_roof_rafters' ? 'match_roof_rafters' : 'target_width';
+    const acrylic_source = raw.acrylicSource === 'strip_620' ? 'strip_620' : 'sheet_panels';
+    const locationRaw = String(raw.location ?? 'custom');
+    const location =
+      locationRaw === 'front' ||
+      locationRaw === 'house' ||
+      locationRaw === 'side' ||
+      locationRaw === 'gable_end' ||
+      locationRaw === 'wall' ||
+      locationRaw === 'custom'
+        ? locationRaw
+        : 'custom';
+
+    const qty = toNumber(raw.qty);
+    const targetPanelWidth = toNumber(raw.targetPanelWidthM);
+    const maxPanelWidth = toNumber(raw.maxPanelWidthM);
+
+    const support = raw.support ?? ({} as any);
+    const internalModeRaw = String(support.internalSupportMode ?? 'none');
+    const internal_support_mode =
+      internalModeRaw === 'none' ||
+      internalModeRaw === 'match_roof_rafters' ||
+      internalModeRaw === 'center' ||
+      internalModeRaw === 'custom'
+        ? internalModeRaw
+        : 'none';
+    const internal_support_positions_m = Array.isArray(support.internalSupportPositionsM)
+      ? support.internalSupportPositionsM
+          .map(toNumber)
+          .filter((n: number) => Number.isFinite(n) && n >= 0)
+      : undefined;
+
+    const shape = raw.shape as any;
+    let shapeOut: any = null;
+    if (shape?.type === 'rect') {
+      const width = toNumber(shape.widthM);
+      const height = toNumber(shape.heightM);
+      const bottom = toNumber(shape.bottomOffsetM);
+      shapeOut = {
+        type: 'rect',
+        width_m: Number.isFinite(width) ? width : 0,
+        height_m: Number.isFinite(height) ? height : 0,
+        bottom_offset_m: Number.isFinite(bottom) ? bottom : undefined,
+      };
+    } else if (shape?.type === 'mono_slope') {
+      const width = toNumber(shape.widthM);
+      const heightLow = toNumber(shape.heightLowM);
+      const heightHigh = toNumber(shape.heightHighM);
+      const bottom = toNumber(shape.bottomOffsetM);
+      shapeOut = {
+        type: 'mono_slope',
+        width_m: Number.isFinite(width) ? width : 0,
+        height_low_m: Number.isFinite(heightLow) ? heightLow : 0,
+        height_high_m: Number.isFinite(heightHigh) ? heightHigh : 0,
+        bottom_offset_m: Number.isFinite(bottom) ? bottom : undefined,
+      };
+    } else {
+      continue;
+    }
+
+    out.push({
+      id: typeof raw.id === 'string' && raw.id.trim() ? raw.id : `infill-${out.length + 1}`,
+      label: typeof raw.label === 'string' ? raw.label : undefined,
+      qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
+      location: location as any,
+      acrylic_source,
+      width_mode: widthMode,
+      target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
+      max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,
+      support: {
+        has_top: support.hasTop !== false,
+        has_bottom: support.hasBottom !== false,
+        has_left: support.hasLeft !== false,
+        has_right: support.hasRight !== false,
+        internal_support_mode,
+        internal_support_positions_m,
+      },
+      shape: shapeOut,
+    });
+  }
+
+  return out.length ? out : undefined;
+}
+
 function buildJobInputs(inputs: CalculatorInputs): JobInputsV1 {
   const travel_ex_gst = toNumber(inputs.travelExGst);
   const extras_allowance_ex_gst = toNumber(inputs.extrasAllowanceExGst);
@@ -173,14 +265,15 @@ function buildJobInputs(inputs: CalculatorInputs): JobInputsV1 {
             }
           : undefined,
 
-      house_connection_type: module.houseConnectionType,
-      post_connection_type: module.postConnectionType,
-      access: inputs.access,
-      height: inputs.height,
-      ground: isPile ? module.ground : undefined,
+        house_connection_type: module.houseConnectionType,
+        post_connection_type: module.postConnectionType,
+        access: inputs.access,
+        height: inputs.height,
+        ground: isPile ? module.ground : undefined,
+        infills: parseInfills(module),
 
-      travel_ex_gst: 0,
-      extras_allowance_ex_gst: 0,
+        travel_ex_gst: 0,
+        extras_allowance_ex_gst: 0,
       quote_discount_pct: 0,
     };
   });

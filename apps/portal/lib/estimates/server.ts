@@ -14,10 +14,6 @@ function asString(value: unknown): string | null {
 
 export function normaliseEstimateStatus(value: unknown): EstimateStatus {
   const raw = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (raw === 'approved') return 'approved';
-  if (raw === 'in_review') return 'in_review';
-  if (raw === 'rejected') return 'rejected';
-  if (raw === 'superseded') return 'superseded';
   if (raw === 'archived') return 'archived';
   return 'draft';
 }
@@ -101,12 +97,5 @@ export function mapEstimateDetail(row: any, versionLabel: string): EstimateDetai
     ...meta,
     calculatorSnapshot: calculatorSnapshotFromRow(row),
     internalNotes: asString(row?.internal_notes),
-    approvalRequestedAt: asString(row?.approval_requested_at),
-    approvalRequestedBy: asString(row?.approval_requested_by),
-    approvedAt: asString(row?.approved_at),
-    approvedBy: asString(row?.approved_by),
-    rejectedAt: asString(row?.rejected_at),
-    rejectedBy: asString(row?.rejected_by),
-    approvalComment: asString(row?.approval_comment),
   };
 }
