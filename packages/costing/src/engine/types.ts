@@ -468,3 +468,44 @@ export type JobOutputV1 = {
   add_ons: AddOnsV1;
   totals: TotalsV1;
 };
+
+export type PergolaInputsV1 = {
+  id?: string;
+  label?: string;
+  modules: CostInputsV1[];
+};
+
+export type SiteInputsV1 = {
+  pergolas: PergolaInputsV1[];
+  travel_ex_gst?: number;
+  extras_allowance_ex_gst?: number;
+  quote_discount_pct?: number;
+};
+
+export type PergolaOutputV1 = {
+  id: string;
+  label?: string;
+  module_count: number;
+  modules: CostOutputV1[];
+  materials: MaterialsV1;
+  install: InstallV1;
+  overhead: OverheadV1;
+  totals: TotalsV1;
+};
+
+export type SiteSharedOutputV1 = {
+  install: InstallV1;
+  add_ons: AddOnsV1;
+  totals: TotalsV1;
+};
+
+export type SiteOutputV1 = {
+  pergola_count: number;
+  pergolas: PergolaOutputV1[];
+  shared: SiteSharedOutputV1;
+  materials: MaterialsV1;
+  install: InstallV1;
+  overhead: OverheadV1;
+  add_ons: AddOnsV1;
+  totals: TotalsV1;
+};
