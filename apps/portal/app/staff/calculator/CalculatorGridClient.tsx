@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostInputsV1, JobInputsV1, JobOutputV1, MaterialsExplainV1, RoofType } from '@sp/costing';
+import type { CostInputsV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
@@ -13,6 +13,7 @@ import type {
   CalculatorInfillsState,
   CalculatorInputs,
   CalculatorModuleInputs,
+  CalculatorPergola,
   InfillLineItem,
 } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, normalizeBlindsState } from '@/lib/types/calculator';
@@ -715,8 +716,9 @@ function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['i
   return out.length ? out : undefined;
 }
 
-function makeDefaultModule(): CalculatorModuleInputs {
+function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInputs {
   return {
+    pergolaId,
     pergolaStyle: 'pitched',
     roofMaterial: 'acrylic',
     extrusionColour: 'Black',
@@ -1108,18 +1110,97 @@ function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   return merged;
 }
 
-function normalizeModulesForUi(value: unknown): CalculatorModuleInputs[] {
-  if (!Array.isArray(value) || value.length === 0) return [makeDefaultModule()];
-  return value.map((item) => normalizeModuleForUi(item));
+function normalizePergolaIdForUi(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
+function normalizePergolasForUi(value: unknown): CalculatorPergola[] {
+  const rawPergolas = Array.isArray(value) ? value : [];
+  const out: CalculatorPergola[] = [];
+  const seen = new Set<string>();
+
+  for (let idx = 0; idx < rawPergolas.length; idx += 1) {
+    const raw = rawPergolas[idx] as any;
+    if (!raw || typeof raw !== 'object') continue;
+
+    const baseId = normalizePergolaIdForUi(raw.id, `pergola-${idx + 1}`);
+    let id = baseId;
+    if (seen.has(id)) {
+      let n = 2;
+      while (seen.has(`${baseId}-${n}`)) n += 1;
+      id = `${baseId}-${n}`;
+    }
+    seen.add(id);
+
+    const label = typeof raw.label === 'string' && raw.label.trim() ? raw.label.trim() : `Pergola ${out.length + 1}`;
+    out.push({ id, label });
+  }
+
+  if (!out.length) out.push({ id: 'pergola-1', label: 'Pergola 1' });
+  return out;
+}
+
+function normalizeModulesForUi(value: unknown, pergolas: CalculatorPergola[]): CalculatorModuleInputs[] {
+  const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
+  const knownPergolaIds = new Set(pergolas.map((p) => p.id));
+
+  if (!Array.isArray(value) || value.length === 0) return [makeDefaultModule(fallbackPergolaId)];
+
+  return value.map((item) => {
+    const merged = normalizeModuleForUi(item);
+    const modulePergolaId = typeof merged.pergolaId === 'string' && knownPergolaIds.has(merged.pergolaId) ? merged.pergolaId : fallbackPergolaId;
+    return { ...merged, pergolaId: modulePergolaId };
+  });
 }
 
 function normalizeCalculatorInputsForUi(value: CalculatorInputs): CalculatorInputs {
+  const pergolas = normalizePergolasForUi((value as any).pergolas);
+  const normalizedModules = normalizeModulesForUi(value.modules, pergolas);
+  const usedPergolaIds = new Set(normalizedModules.map((module) => module.pergolaId ?? pergolas[0]?.id ?? 'pergola-1'));
+  const filteredPergolas = pergolas.filter((pergola) => usedPergolaIds.has(pergola.id));
+  const finalPergolas = filteredPergolas.length ? filteredPergolas : [{ id: 'pergola-1', label: 'Pergola 1' }];
+  const finalPergolaIds = new Set(finalPergolas.map((pergola) => pergola.id));
+  const fallbackPergolaId = finalPergolas[0]?.id ?? 'pergola-1';
+  const modules =
+    normalizedModules.length > 0
+      ? normalizedModules.map((module) => ({
+          ...module,
+          pergolaId: finalPergolaIds.has(String(module.pergolaId ?? '')) ? module.pergolaId : fallbackPergolaId,
+        }))
+      : [makeDefaultModule(fallbackPergolaId)];
+
   return {
     ...value,
     schemaVersion: 'v2',
-    modules: normalizeModulesForUi(value.modules),
+    pergolas: finalPergolas,
+    modules,
     blinds: normalizeBlindsStateForUi((value as any).blinds),
   };
+}
+
+function nextPergola(values: CalculatorInputs): CalculatorPergola {
+  const existing = Array.isArray(values.pergolas) ? values.pergolas : [];
+  const ids = new Set(existing.map((pergola) => pergola.id));
+  let ordinal = 1;
+  while (ids.has(`pergola-${ordinal}`)) ordinal += 1;
+  return { id: `pergola-${ordinal}`, label: `Pergola ${ordinal}` };
+}
+
+function prunePergolasForModules(pergolas: CalculatorPergola[] | undefined, modules: CalculatorModuleInputs[]): CalculatorPergola[] {
+  const normalizedPergolas = normalizePergolasForUi(pergolas);
+  const usedPergolaIds = new Set(modules.map((module) => module.pergolaId).filter((id): id is string => typeof id === 'string' && id.length > 0));
+  const filtered = normalizedPergolas.filter((pergola) => usedPergolaIds.has(pergola.id));
+  if (filtered.length > 0) return filtered;
+  return normalizedPergolas.length > 0 ? [normalizedPergolas[0]] : [{ id: 'pergola-1', label: 'Pergola 1' }];
+}
+
+function getPergolaLabel(pergolas: CalculatorPergola[] | undefined, pergolaId: string | undefined, fallbackIndex: number): string {
+  const list = Array.isArray(pergolas) ? pergolas : [];
+  const found = list.find((pergola) => pergola.id === pergolaId);
+  if (found?.label) return found.label;
+  return `Pergola ${fallbackIndex + 1}`;
 }
 
 export default function CalculatorGridClient({
@@ -1150,7 +1231,8 @@ export default function CalculatorGridClient({
     travelExGst: '0',
     extrasAllowanceExGst: '0',
     quoteDiscountPct: '0',
-    modules: [makeDefaultModule()],
+    pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+    modules: [makeDefaultModule('pergola-1')],
     blinds: makeDefaultBlinds(),
   }));
   const [activeModuleIndex, setActiveModuleIndex] = useState(0);
@@ -1279,7 +1361,30 @@ export default function CalculatorGridClient({
     });
   }, [values.modules.length]);
 
-  const activeModule = values.modules[activeModuleIndex] ?? values.modules[0] ?? makeDefaultModule();
+  const pergolas = useMemo(() => normalizePergolasForUi(values.pergolas), [values.pergolas]);
+  const fallbackPergolaId = pergolas[0]?.id ?? 'pergola-1';
+  const knownPergolaIds = useMemo(() => new Set(pergolas.map((pergola) => pergola.id)), [pergolas]);
+  const modulesWithPergola = useMemo(
+    () =>
+      values.modules.map((module) => {
+        const pergolaId =
+          typeof module.pergolaId === 'string' && knownPergolaIds.has(module.pergolaId) ? module.pergolaId : fallbackPergolaId;
+        return { ...module, pergolaId };
+      }),
+    [values.modules, knownPergolaIds, fallbackPergolaId],
+  );
+  const moduleRoutes = useMemo(() => {
+    const seenPerPergola = new Map<string, number>();
+    return modulesWithPergola.map((module) => {
+      const pergolaId = typeof module.pergolaId === 'string' ? module.pergolaId : fallbackPergolaId;
+      const localModuleIndex = seenPerPergola.get(pergolaId) ?? 0;
+      seenPerPergola.set(pergolaId, localModuleIndex + 1);
+      return { pergolaId, localModuleIndex };
+    });
+  }, [modulesWithPergola, fallbackPergolaId]);
+  const activeModule = modulesWithPergola[activeModuleIndex] ?? modulesWithPergola[0] ?? makeDefaultModule(fallbackPergolaId);
+  const activePergolaId =
+    typeof activeModule.pergolaId === 'string' && knownPergolaIds.has(activeModule.pergolaId) ? activeModule.pergolaId : fallbackPergolaId;
 
   const errorsByModule = useMemo(() => {
     return values.modules.map((module) => {
@@ -1422,7 +1527,7 @@ export default function CalculatorGridClient({
   const setModuleField = <K extends keyof CalculatorModuleInputs>(key: K, next: CalculatorModuleInputs[K]) => {
     setValues((prev) => {
       const modules = prev.modules.slice();
-      const current = modules[activeModuleIndex] ?? makeDefaultModule();
+      const current = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
       const updated: CalculatorModuleInputs = { ...current, [key]: next };
       const nextHouseConnection =
         key === 'houseConnectionType' ? (next as CalculatorModuleInputs['houseConnectionType']) : updated.houseConnectionType;
@@ -1516,7 +1621,7 @@ export default function CalculatorGridClient({
   const setModuleOverride = (key: keyof NonNullable<CalculatorModuleInputs['overrides']>, value: string) => {
     setValues((prev) => {
       const modules = prev.modules.slice();
-      const current = modules[activeModuleIndex] ?? makeDefaultModule();
+      const current = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
       const overrides = { ...(current.overrides ?? {}) };
       if (value) overrides[key] = value;
       else delete overrides[key];
@@ -1577,7 +1682,7 @@ export default function CalculatorGridClient({
   const setInfillItems = (updater: (items: InfillLineItem[]) => InfillLineItem[]) => {
     setValues((prev) => {
       const modules = prev.modules.slice();
-      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule();
+      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
       const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
       const nextItems = updater(currentInfills.items).map((item) => makeDefaultInfillItem(item));
       modules[activeModuleIndex] = { ...currentModule, infills: { items: nextItems } };
@@ -1592,7 +1697,7 @@ export default function CalculatorGridClient({
   const setInfillLocation = (id: string, location: InfillLineItem['location']) => {
     setValues((prev) => {
       const modules = prev.modules.slice();
-      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule();
+      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
       const currentInfills = normalizeInfillsStateForUi(currentModule.infills);
       const idx = currentInfills.items.findIndex((item) => item.id === id);
       if (idx < 0) return prev;
@@ -1653,12 +1758,12 @@ export default function CalculatorGridClient({
 
   const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
 
-  const requestPayload = useMemo<JobInputsV1>(() => {
+  const requestPayload = useMemo<SiteInputsV1>(() => {
     const travel_ex_gst = toNumber(values.travelExGst);
     const extras_allowance_ex_gst = toNumber(values.extrasAllowanceExGst);
     const quote_discount_pct = toNumber(values.quoteDiscountPct);
 
-    const modules: CostInputsV1[] = values.modules.map((module) => {
+    const moduleInputs: CostInputsV1[] = modulesWithPergola.map((module) => {
       const length_m = toNumber(module.lengthM);
       const roof_span_m = toNumber(module.projectionM);
       const post_cut_height_m = toNumber(module.postCutHeightM);
@@ -1764,22 +1869,44 @@ export default function CalculatorGridClient({
       };
     });
 
+    const groupedPergolas = pergolas.map((pergola) => ({
+      id: pergola.id,
+      label: pergola.label,
+      modules: [] as CostInputsV1[],
+    }));
+    const groupedById = new Map(groupedPergolas.map((pergola) => [pergola.id, pergola]));
+
+    moduleInputs.forEach((moduleInput, idx) => {
+      const sourceModule = modulesWithPergola[idx];
+      const pergolaId =
+        typeof sourceModule?.pergolaId === 'string' && groupedById.has(sourceModule.pergolaId)
+          ? sourceModule.pergolaId
+          : fallbackPergolaId;
+      const bucket = groupedById.get(pergolaId);
+      if (bucket) bucket.modules.push(moduleInput);
+    });
+
+    const payloadPergolas = groupedPergolas.filter((pergola) => pergola.modules.length > 0);
+
     return {
-      modules,
+      pergolas: payloadPergolas,
       travel_ex_gst: Number.isFinite(travel_ex_gst) ? travel_ex_gst : 0,
       extras_allowance_ex_gst: Number.isFinite(extras_allowance_ex_gst) ? extras_allowance_ex_gst : 0,
       quote_discount_pct: Number.isFinite(quote_discount_pct) ? quote_discount_pct : 0,
     };
-  }, [values]);
+  }, [values, modulesWithPergola, pergolas, fallbackPergolaId]);
 
   const requestPayloadJson = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
-  const activeModulePayload = useMemo<CostInputsV1 | null>(
-    () => requestPayload.modules[activeModuleIndex] ?? null,
-    [requestPayload.modules, activeModuleIndex],
-  );
+  const activeModulePayload = useMemo<CostInputsV1 | null>(() => {
+    const route = moduleRoutes[activeModuleIndex] ?? moduleRoutes[0];
+    const fallbackPergola = requestPayload.pergolas?.[0];
+    if (!route) return fallbackPergola?.modules?.[0] ?? null;
+    const pergola = requestPayload.pergolas.find((entry) => entry.id === route.pergolaId) ?? fallbackPergola;
+    return pergola?.modules?.[route.localModuleIndex] ?? pergola?.modules?.[0] ?? null;
+  }, [requestPayload, activeModuleIndex, moduleRoutes]);
   const materialsDebugAvailable = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_COSTING_DEBUG_ENABLED === '1';
 
-  const [result, setResult] = useState<JobOutputV1 | null>(null);
+  const [result, setResult] = useState<SiteOutputV1 | null>(null);
   const [engineError, setEngineError] = useState<string | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [materialsDebugEnabled, setMaterialsDebugEnabled] = useState(false);
@@ -1861,7 +1988,7 @@ export default function CalculatorGridClient({
         });
         const json = await res.json();
         if (!res.ok) throw new Error(String(json?.error ?? 'Costing failed'));
-        setResult(json as JobOutputV1);
+        setResult(json as SiteOutputV1);
       } catch (err) {
         if (controller.signal.aborted) return;
         const msg = err instanceof Error ? err.message : 'Costing failed';
@@ -1942,7 +2069,14 @@ export default function CalculatorGridClient({
     materialsDebugFocusLineIndex,
   ]);
 
-  const moduleResult = result?.modules?.[activeModuleIndex] ?? result?.modules?.[0] ?? null;
+  const resultModules = useMemo(() => (result?.pergolas ?? []).flatMap((pergola) => pergola.modules ?? []), [result]);
+  const moduleResult = useMemo(() => {
+    const route = moduleRoutes[activeModuleIndex] ?? moduleRoutes[0];
+    if (!route) return resultModules[0] ?? null;
+    const fallbackPergola = result?.pergolas?.[0];
+    const pergola = result?.pergolas?.find((entry) => entry.id === route.pergolaId) ?? fallbackPergola;
+    return pergola?.modules?.[route.localModuleIndex] ?? resultModules[activeModuleIndex] ?? resultModules[0] ?? null;
+  }, [result, resultModules, activeModuleIndex, moduleRoutes]);
 
   const derivedArea = moduleResult?.derived.area_m2;
   const derivedRoofArea = moduleResult?.derived.roof_surface_area_m2;
@@ -1961,7 +2095,7 @@ export default function CalculatorGridClient({
   const bracketCount = moduleResult?.derived.bracket_count;
   const rafterProfile = moduleResult?.inputs_normalized.rafter_profile;
   const crewHours = result?.install.totals.crew_hours;
-  const siteDays = moduleResult?.derived?.site_days ?? result?.modules?.[0]?.derived?.site_days;
+  const siteDays = moduleResult?.derived?.site_days ?? resultModules?.[0]?.derived?.site_days;
   const hasOurGutterUi = typeof derivedHasOurGutter === 'boolean' ? derivedHasOurGutter : computeHasOurGutter(activeModule);
   const crewDays = typeof siteDays === 'number' ? siteDays : undefined;
 
@@ -2514,22 +2648,66 @@ export default function CalculatorGridClient({
         if (!Number.isFinite(idx)) return;
         setActiveModuleIndex(Math.max(0, Math.min(values.modules.length - 1, idx)));
       },
-      options: values.modules.map((_, idx) => ({ label: `Module ${idx + 1}`, value: String(idx) })),
-      helperText: values.modules.length > 1 ? `${values.modules.length} modules in this job` : 'Single module job',
+      options: modulesWithPergola.map((module, idx) => ({
+        label: `${getPergolaLabel(pergolas, module.pergolaId, idx)} · Module ${idx + 1}`,
+        value: String(idx),
+      })),
+      helperText:
+        values.modules.length > 1
+          ? `${values.modules.length} modules across ${pergolas.length} pergola${pergolas.length === 1 ? '' : 's'}`
+          : 'Single module job',
+    },
+    {
+      id: 'modulePergolaId',
+      label: 'Pergola',
+      type: 'select',
+      value: activePergolaId,
+      onChange: (v) => {
+        const targetPergolaId = String(v);
+        setValues((prev) => {
+          const nextPergolas = normalizePergolasForUi(prev.pergolas);
+          if (!nextPergolas.some((pergola) => pergola.id === targetPergolaId)) return prev;
+          const modules = prev.modules.slice();
+          const current = modules[activeModuleIndex] ?? makeDefaultModule(targetPergolaId);
+          modules[activeModuleIndex] = { ...current, pergolaId: targetPergolaId };
+          return { ...prev, modules };
+        });
+      },
+      options: pergolas.map((pergola) => ({ label: pergola.label, value: pergola.id })),
+      helperText: 'Move this module to another pergola',
     },
     {
       id: 'addModule',
-      label: 'Add module',
+      label: 'Add module to pergola',
       type: 'action',
       actionLabel: 'Add',
       onAction: () => {
         setValues((prev) => {
-          const base = prev.modules[activeModuleIndex] ?? prev.modules[0] ?? makeDefaultModule();
-          return { ...prev, modules: [...prev.modules, { ...base }] };
+          const base = prev.modules[activeModuleIndex] ?? prev.modules[0] ?? makeDefaultModule(activePergolaId);
+          return { ...prev, modules: [...prev.modules, { ...base, pergolaId: activePergolaId }] };
         });
         setActiveModuleIndex(values.modules.length);
       },
-      helperText: 'Duplicates the current module',
+      helperText: 'Duplicates the current module inside this pergola',
+    },
+    {
+      id: 'addPergola',
+      label: 'Add pergola',
+      type: 'action',
+      actionLabel: 'Add',
+      onAction: () => {
+        setValues((prev) => {
+          const createdPergola = nextPergola(prev);
+          const base = prev.modules[activeModuleIndex] ?? prev.modules[0] ?? makeDefaultModule(createdPergola.id);
+          return {
+            ...prev,
+            pergolas: [...normalizePergolasForUi(prev.pergolas), createdPergola],
+            modules: [...prev.modules, { ...base, pergolaId: createdPergola.id }],
+          };
+        });
+        setActiveModuleIndex(values.modules.length);
+      },
+      helperText: 'Creates a separate pergola with a starter module',
     },
     ...(values.modules.length > 1
       ? [
@@ -2544,7 +2722,13 @@ export default function CalculatorGridClient({
                 if (prev.modules.length <= 1) return prev;
                 const nextModules = prev.modules.slice();
                 nextModules.splice(activeModuleIndex, 1);
-                return { ...prev, modules: nextModules };
+                const normalizedPergolas = prunePergolasForModules(prev.pergolas, nextModules);
+                const fallbackId = normalizedPergolas[0]?.id ?? 'pergola-1';
+                const nextModulesWithPergola = nextModules.map((module) => {
+                  const validPergola = typeof module.pergolaId === 'string' && normalizedPergolas.some((pergola) => pergola.id === module.pergolaId);
+                  return validPergola ? module : { ...module, pergolaId: fallbackId };
+                });
+                return { ...prev, pergolas: normalizedPergolas, modules: nextModulesWithPergola };
               });
               setActiveModuleIndex(Math.min(activeModuleIndex, Math.max(0, values.modules.length - 2)));
             },
@@ -2562,7 +2746,7 @@ export default function CalculatorGridClient({
         const nextStyle = v as CalculatorModuleInputs['pergolaStyle'];
         setValues((prev) => {
           const modules = prev.modules.slice();
-          const current = modules[activeModuleIndex] ?? makeDefaultModule();
+          const current = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
           modules[activeModuleIndex] = {
             ...current,
             pergolaStyle: nextStyle,
@@ -2605,7 +2789,7 @@ export default function CalculatorGridClient({
         const next = v as CalculatorModuleInputs['roofMaterial'];
         setValues((prev) => {
           const modules = prev.modules.slice();
-          const current = modules[activeModuleIndex] ?? makeDefaultModule();
+          const current = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
           const updated: CalculatorModuleInputs =
             next === 'mixed'
               ? (() => {
@@ -3375,7 +3559,9 @@ export default function CalculatorGridClient({
     'projectName',
     'quoteRef',
     'moduleIndex',
+    'modulePergolaId',
     'addModule',
+    'addPergola',
     'removeModule',
   ]);
 
@@ -4445,7 +4631,7 @@ export default function CalculatorGridClient({
                       return;
                     }
 
-                    const derivedSnapshot = moduleResult?.derived ?? result?.modules?.[0]?.derived;
+                    const derivedSnapshot = moduleResult?.derived ?? resultModules[0]?.derived;
                     if (!derivedSnapshot) {
                       fail('No derived result available for the active module.');
                       return;
@@ -4486,11 +4672,15 @@ export default function CalculatorGridClient({
                         },
                       },
                       outputs: {
+                        cost_snapshot_version: 'v2',
                         materials: result.materials,
                         install: result.install,
                         overhead: result.overhead,
                         totals: result.totals,
                         warnings: warningsTyped,
+                        pergolas: result.pergolas,
+                        siteShared: result.shared,
+                        shared: result.shared,
                       },
                       configVersions: meta.configVersions,
                     });

@@ -523,34 +523,6 @@ function normalizePergolaLabel(value: unknown): string | undefined {
   return trimmed ? trimmed : undefined;
 }
 
-function allocateSharedCrewHours(pergolaBaseHours: number[], sharedHoursTotal: number): number[] {
-  if (!pergolaBaseHours.length) return [];
-  const total = Number.isFinite(sharedHoursTotal) && sharedHoursTotal > 0 ? sharedHoursTotal : 0;
-  if (total === 0) return pergolaBaseHours.map(() => 0);
-
-  const base = pergolaBaseHours.map((n) => (Number.isFinite(n) && n > 0 ? n : 0));
-  const sum = base.reduce((acc, n) => acc + n, 0);
-  if (sum <= 0) {
-    const even = total / base.length;
-    const out = base.map(() => even);
-    out[out.length - 1] = total - even * (out.length - 1);
-    return out;
-  }
-
-  const out: number[] = [];
-  let remaining = total;
-  for (let i = 0; i < base.length; i += 1) {
-    if (i === base.length - 1) {
-      out.push(remaining);
-      break;
-    }
-    const share = (base[i] / sum) * total;
-    out.push(share);
-    remaining -= share;
-  }
-  return out;
-}
-
 export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfigV1): SiteOutputV1 {
   const cfg = config ?? loadCostingConfigV1();
   if (!Array.isArray(inputs.pergolas) || inputs.pergolas.length === 0) {
@@ -849,20 +821,15 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
   const sharedCrewMinutes = roundMoney(jobActions.reduce((acc, a) => acc + a.minutes, 0) + dayCycle.crewMinutes);
   const sharedCrewHours = roundMoney(sharedCrewMinutes / 60);
 
-  // Allocate overhead per pergola (not shared across pergolas).
-  const pergolaBaseCrewHours = pergolaOutputs.map((p) => Number(p.install.totals.crew_hours ?? 0));
-  const sharedAllocations = allocateSharedCrewHours(pergolaBaseCrewHours, sharedCrewHours);
-
   let overheadOpsSum = 0;
   let overheadSalesSum = 0;
   let overheadTotalSum = 0;
 
   for (let idx = 0; idx < pergolaOutputs.length; idx += 1) {
     const pergola = pergolaOutputs[idx];
-    const extraCrewHours = sharedAllocations[idx] ?? 0;
     const overheadResult = buildOverheadV1(cfg, {
       module_count: pergola.module_count,
-      total_crew_hours: Number(pergola.install.totals.crew_hours ?? 0) + (Number.isFinite(extraCrewHours) ? extraCrewHours : 0),
+      total_crew_hours: Number(pergola.install.totals.crew_hours ?? 0),
     });
 
     if (overheadResult.notes_and_warnings.length) {

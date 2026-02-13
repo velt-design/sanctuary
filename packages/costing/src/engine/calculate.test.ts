@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateCostV1, calculateJobCostV1 } from './calculate';
+import { calculateCostV1, calculateJobCostV1, calculateSiteCostV1 } from './calculate';
 import { loadCostingConfigV1 } from './config';
 import { DAY_CYCLE_ACTION_IDS } from './install';
 
@@ -1650,6 +1650,88 @@ describe('calculateCostV1', () => {
 
     expect(toolSetup?.qty).toBe(1);
     expect(survey?.qty).toBe(2);
+  });
+
+  it('site rollup: separate pergolas do not share overhead', () => {
+    const moduleInputs = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    };
+
+    const onePergola = calculateSiteCostV1({
+      pergolas: [{ id: 'pergola-1', modules: [moduleInputs, moduleInputs] }],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+    const twoPergolas = calculateSiteCostV1({
+      pergolas: [
+        { id: 'pergola-1', modules: [moduleInputs] },
+        { id: 'pergola-2', modules: [moduleInputs] },
+      ],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    expect(onePergola.pergola_count).toBe(1);
+    expect(twoPergolas.pergola_count).toBe(2);
+    expect(twoPergolas.overhead.total_ex_gst).toBeGreaterThan(onePergola.overhead.total_ex_gst);
+    expect(twoPergolas.shared.install.totals.install_ex_gst).toBeGreaterThan(0);
+    expect(roundMoney(twoPergolas.shared.install.totals.install_ex_gst)).toBe(roundMoney(onePergola.shared.install.totals.install_ex_gst));
+  });
+
+  it('site rollup: shared install and add-ons are site-level', () => {
+    const moduleInputs = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const site = calculateSiteCostV1({
+      pergolas: [
+        { id: 'pergola-1', modules: [moduleInputs] },
+        { id: 'pergola-2', modules: [moduleInputs] },
+      ],
+      travel_ex_gst: 120,
+      extras_allowance_ex_gst: 80,
+    });
+
+    expect(site.add_ons.travel_ex_gst).toBe(120);
+    expect(site.add_ons.extras_allowance_ex_gst).toBe(80);
+    expect(site.shared.add_ons.travel_ex_gst).toBe(120);
+    expect(site.shared.add_ons.extras_allowance_ex_gst).toBe(80);
+
+    const sumPergolas = site.pergolas.reduce((acc, pergola) => acc + pergola.totals.cost_ex_gst, 0);
+    expect(roundMoney(sumPergolas + site.shared.totals.cost_ex_gst)).toBe(roundMoney(site.totals.cost_ex_gst));
+
+    expect(site.shared.install.actions.some((action) => action.id.startsWith('job.day_cycle.'))).toBe(true);
+    expect(site.pergolas.some((pergola) => pergola.install.actions.some((action) => action.id.includes('day_cycle')))).toBe(false);
   });
 });
 
