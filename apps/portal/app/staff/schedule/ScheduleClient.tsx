@@ -95,6 +95,7 @@ const GANTT_LABEL_PX = 420;
 const GANTT_BAR_LABEL_MIN_PX = 120;
 const GANTT_TZ = 'Pacific/Auckland';
 const USE_SCHEDULE_V2 = true;
+const V2_MUTATION_DEBOUNCE_MS = 180;
 
 function parseHexColour(value: string): { r: number; g: number; b: number } | null {
   const raw = value.trim().replace(/^#/, '');
@@ -1263,7 +1264,9 @@ export default function ScheduleClient() {
   const initialV2Snapshot = USE_SCHEDULE_V2 ? (queryClient.getQueryData<ScheduleV2Snapshot>(v2SnapshotKey) ?? null) : null;
   if (initialV2Snapshot) hydratedFromCacheRef.current = true;
   const v2GeneratedAtRef = useRef<string>(initialV2Snapshot?.generatedAt ?? '');
-  const v2MutationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const v2MutationBufferRef = useRef<Array<{ run: () => Promise<any>; resolve: (result: any) => void; reject: (error: unknown) => void }>>([]);
+  const v2MutationFlushRef = useRef<Promise<void> | null>(null);
+  const v2MutationFlushTimerRef = useRef<number | null>(null);
   const v2PendingMutationsRef = useRef(0);
   const v2HolidaysRef = useRef<NzHoliday[]>(initialV2Snapshot?.holidays ?? []);
   const v2ClosuresRef = useRef<CompanyClosure[]>(initialV2Snapshot?.closures ?? []);
@@ -1380,6 +1383,15 @@ export default function ScheduleClient() {
   useEffect(() => {
     nextAvailRef.current = nextAvailableByInstallerId;
   }, [nextAvailableByInstallerId]);
+
+  useEffect(() => {
+    return () => {
+      if (v2MutationFlushTimerRef.current != null) {
+        window.clearTimeout(v2MutationFlushTimerRef.current);
+        v2MutationFlushTimerRef.current = null;
+      }
+    };
+  }, []);
 
   type V2LocalState = {
     scheduleItems: ScheduleItem[];
@@ -1716,13 +1728,45 @@ export default function ScheduleClient() {
     return true;
   }
 
+  function flushQueuedV2Mutations(): Promise<void> {
+    const active = v2MutationFlushRef.current;
+    if (active) return active;
+
+    const runner = (async () => {
+      while (v2MutationBufferRef.current.length > 0) {
+        const next = v2MutationBufferRef.current.shift();
+        if (!next) continue;
+        try {
+          const result = await next.run();
+          next.resolve(result);
+        } catch (err) {
+          next.reject(err);
+        }
+      }
+    })().finally(() => {
+      v2MutationFlushRef.current = null;
+      if (v2MutationBufferRef.current.length > 0) {
+        void flushQueuedV2Mutations();
+      }
+    });
+
+    v2MutationFlushRef.current = runner;
+    return runner;
+  }
+
+  function scheduleV2MutationFlush(): void {
+    if (v2MutationFlushTimerRef.current != null) return;
+    v2MutationFlushTimerRef.current = window.setTimeout(() => {
+      v2MutationFlushTimerRef.current = null;
+      void flushQueuedV2Mutations();
+    }, V2_MUTATION_DEBOUNCE_MS);
+  }
+
   function enqueueV2Mutation<T>(run: () => Promise<T>): Promise<T> {
-    const queued = v2MutationQueueRef.current.then(run, run);
-    v2MutationQueueRef.current = queued.then(
-      () => undefined,
-      () => undefined,
-    );
-    return queued;
+    return new Promise<T>((resolve, reject) => {
+      v2MutationBufferRef.current.push({ run, resolve, reject });
+      scheduleV2MutationFlush();
+    });
   }
 
   const setScheduleView = (next: 'board' | 'gantt' | 'site_visits') => {
@@ -2834,7 +2878,7 @@ export default function ScheduleClient() {
             toast.error('Invalid project ID for schedule action.');
             return;
           }
-          void runWithCommitConfirmation((force) => unpinJob({ job_id: jobUuid, force, today }), {
+          void queueUnpinJob(jobUuid, {
             successToast: 'Job unpinned.',
             errorToast: 'Failed to unpin job.',
           });
@@ -3025,7 +3069,7 @@ export default function ScheduleClient() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
         toast.error(opts?.errorToast ?? msg);
-        refreshSchedule();
+        if (v2PendingMutationsRef.current <= 1) refreshSchedule();
         return false;
       } finally {
         v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
@@ -3097,6 +3141,118 @@ export default function ScheduleClient() {
       },
       nextV2GeneratedAt(),
     );
+  };
+
+  const applyOptimisticJobPatchByProject = (
+    projectId: string,
+    patch: (item: ScheduleItem) => ScheduleItem,
+  ): boolean => {
+    if (scheduleMode !== 'v2') return false;
+    const current = scheduleItemsRef.current;
+    let changed = false;
+    const nextItems = current.map((item) => {
+      if (item.itemType === 'downtime') return item;
+      if (item.projectId !== projectId) return item;
+      const next = patch(item);
+      if (next !== item) changed = true;
+      return next;
+    });
+    if (!changed) return false;
+    applyV2OptimisticState(nextItems, unscheduledJobsSeedRef.current);
+    return true;
+  };
+
+  const runOptimisticUnpin = (jobUuid: string): void => {
+    const projectId = safeAppIdFromUuid('proj', jobUuid);
+    const updatedAt = nowIso();
+    applyOptimisticJobPatchByProject(projectId, (item) => ({
+      ...item,
+      mode: 'floating',
+      updatedAt,
+    }));
+  };
+
+  const runOptimisticPin = (jobUuid: string, requestedStart: string): void => {
+    const projectId = safeAppIdFromUuid('proj', jobUuid);
+    const snappedStart = snapToWeekdayYmd(requestedStart);
+    const updatedAt = nowIso();
+    applyOptimisticJobPatchByProject(projectId, (item) => {
+      const durationDays = durationDaysFromScheduleItem(item);
+      const endInclusive = addWorkingDaysInclusive(snappedStart, durationDays);
+      return {
+        ...item,
+        mode: 'pinned',
+        forecastStart: snappedStart,
+        forecastEndExclusive: addDaysYmd(endInclusive, 1),
+        forecastDurationDays: durationDays,
+        startDateOverride: snappedStart,
+        durationHoursOverride: durationDays * WORK_HOURS_PER_DAY,
+        updatedAt,
+      };
+    });
+  };
+
+  const runOptimisticDurationUpdate = (jobUuid: string, durationDays: number): void => {
+    const projectId = safeAppIdFromUuid('proj', jobUuid);
+    const nextDuration = Math.max(1, Math.round(durationDays));
+    const updatedAt = nowIso();
+    applyOptimisticJobPatchByProject(projectId, (item) => ({
+      ...item,
+      forecastDurationDays: nextDuration,
+      durationHoursOverride: nextDuration * WORK_HOURS_PER_DAY,
+      updatedAt,
+    }));
+  };
+
+  const runOptimisticMarkInProgress = (jobUuid: string): void => {
+    const projectId = safeAppIdFromUuid('proj', jobUuid);
+    const updatedAt = nowIso();
+    applyOptimisticJobPatchByProject(projectId, (item) => ({
+      ...item,
+      jobStatus: 'in_progress',
+      scheduleStatus: 'IN_PROGRESS',
+      actualStartDate: item.actualStartDate ?? item.forecastStart ?? today,
+      updatedAt,
+    }));
+  };
+
+  const runOptimisticDaysRemaining = (jobUuid: string, daysRemaining: number): void => {
+    const projectId = safeAppIdFromUuid('proj', jobUuid);
+    const nextDays = Math.max(1, Math.round(daysRemaining));
+    const updatedAt = nowIso();
+    applyOptimisticJobPatchByProject(projectId, (item) => ({
+      ...item,
+      jobStatus: item.jobStatus === 'done' ? 'done' : 'in_progress',
+      scheduleStatus: item.scheduleStatus === 'COMPLETED' ? 'COMPLETED' : 'IN_PROGRESS',
+      daysRemaining: nextDays,
+      actualStartDate: item.actualStartDate ?? item.forecastStart ?? today,
+      updatedAt,
+    }));
+  };
+
+  const queueUnpinJob = (jobUuid: string, opts?: { successToast?: string; errorToast?: string }) => {
+    runOptimisticUnpin(jobUuid);
+    return runWithCommitConfirmation((force) => unpinJob({ job_id: jobUuid, force, today }), opts);
+  };
+
+  const queuePinJob = (jobUuid: string, requestedStart: string, opts?: { successToast?: string; errorToast?: string }) => {
+    runOptimisticPin(jobUuid, requestedStart);
+    return runWithCommitConfirmation((force) => pinJob({ job_id: jobUuid, requested_start_date: requestedStart, force, today }), opts);
+  };
+
+  const queueSetDurationJob = (jobUuid: string, durationDays: number, opts?: { successToast?: string; errorToast?: string }) => {
+    runOptimisticDurationUpdate(jobUuid, durationDays);
+    return runWithCommitConfirmation((force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: durationDays, force, today }), opts);
+  };
+
+  const queueMarkInProgressJob = (jobUuid: string, opts?: { successToast?: string; errorToast?: string }) => {
+    runOptimisticMarkInProgress(jobUuid);
+    return runWithCommitConfirmation((force) => markJobInProgress({ job_id: jobUuid, force, today }), opts);
+  };
+
+  const queueSetDaysRemainingJob = (jobUuid: string, daysRemaining: number, opts?: { successToast?: string; errorToast?: string }) => {
+    runOptimisticDaysRemaining(jobUuid, daysRemaining);
+    return runWithCommitConfirmation((force) => setDaysRemaining({ job_id: jobUuid, days_remaining: daysRemaining, force, today }), opts);
   };
 
   const scheduleItemByIdRef = useRef(scheduleItemById);
@@ -3724,7 +3880,7 @@ export default function ScheduleClient() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to mark job done.';
       toast.error(msg);
-      refreshSchedule();
+      if (v2PendingMutationsRef.current <= 1) refreshSchedule();
     } finally {
       v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
       if (v2PendingMutationsRef.current === 0 && !v2SnapshotQuery.isFetching) {
@@ -3845,7 +4001,7 @@ export default function ScheduleClient() {
             if (isPinned) {
               const jobUuid = resolveProjectUuid(scheduleItem);
               if (!jobUuid) return;
-              void runWithCommitConfirmation((force) => unpinJob({ job_id: jobUuid, force, today }), {
+              void queueUnpinJob(jobUuid, {
                 successToast: 'Job unpinned.',
                 errorToast: 'Failed to unpin job.',
               });
@@ -3864,8 +4020,9 @@ export default function ScheduleClient() {
             const jobUuid = resolveProjectUuid(scheduleItem);
             if (!jobUuid) return;
             const nextDays = Math.max(1, Math.round(baseDurationDays + 1));
-            void runWithCommitConfirmation(
-              (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDays, force, today }),
+            void queueSetDurationJob(
+              jobUuid,
+              nextDays,
               { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
             );
           },
@@ -3876,8 +4033,9 @@ export default function ScheduleClient() {
             const jobUuid = resolveProjectUuid(scheduleItem);
             if (!jobUuid) return;
             const nextDays = Math.max(1, Math.round(baseDurationDays + 2));
-            void runWithCommitConfirmation(
-              (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDays, force, today }),
+            void queueSetDurationJob(
+              jobUuid,
+              nextDays,
               { successToast: 'Duration extended.', errorToast: 'Failed to update duration.' },
             );
           },
@@ -3895,7 +4053,7 @@ export default function ScheduleClient() {
           onClick: () => {
             const jobUuid = resolveProjectUuid(scheduleItem);
             if (!jobUuid) return;
-            void runWithCommitConfirmation((force) => markJobInProgress({ job_id: jobUuid, force, today }), {
+            void queueMarkInProgressJob(jobUuid, {
               successToast: 'Job marked in progress.',
               errorToast: 'Failed to mark job in progress.',
             });
@@ -5147,21 +5305,23 @@ export default function ScheduleClient() {
                     void (async () => {
                       let ok = true;
                       if (durationDays != null) {
-                        ok = await runWithCommitConfirmation(
-                          (force) => setJobDuration({ job_id: projectUuid, forecast_duration_days: durationDays, force, today }),
+                        ok = await queueSetDurationJob(
+                          projectUuid,
+                          durationDays,
                           { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
                         );
                         if (!ok) return;
                       }
                       if (start) {
-                        ok = await runWithCommitConfirmation(
-                          (force) => pinJob({ job_id: projectUuid, requested_start_date: start, force, today }),
+                        ok = await queuePinJob(
+                          projectUuid,
+                          start,
                           { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
                         );
                         if (!ok) return;
                       } else if (item.mode === 'pinned') {
-                        ok = await runWithCommitConfirmation(
-                          (force) => unpinJob({ job_id: projectUuid, force, today }),
+                        ok = await queueUnpinJob(
+                          projectUuid,
                           { successToast: 'Job unpinned.', errorToast: 'Failed to unpin job.' },
                         );
                         if (!ok) return;
@@ -5501,8 +5661,9 @@ export default function ScheduleClient() {
                   const jobUuid = resolveProjectUuid(item);
                   if (!jobUuid) return;
                   const durationDays = Math.max(1, Math.round(days));
-                  void runWithCommitConfirmation(
-                    (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: durationDays, force, today }),
+                  void queueSetDurationJob(
+                    jobUuid,
+                    durationDays,
                     { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
                   ).then((ok) => {
                     if (ok) setDurationEdit(null);
@@ -5565,8 +5726,9 @@ export default function ScheduleClient() {
                   }
                   const jobUuid = resolveProjectUuid(item);
                   if (!jobUuid) return;
-                  void runWithCommitConfirmation(
-                    (force) => pinJob({ job_id: jobUuid, requested_start_date: start, force, today }),
+                  void queuePinJob(
+                    jobUuid,
+                    start,
                     { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
                   ).then((ok) => {
                     if (ok) setPinEdit(null);
@@ -5634,8 +5796,9 @@ export default function ScheduleClient() {
                   const jobUuid = resolveProjectUuid(item);
                   if (!jobUuid) return;
                   const daysRemaining = Math.max(1, Math.round(days));
-                  void runWithCommitConfirmation(
-                    (force) => setDaysRemaining({ job_id: jobUuid, days_remaining: daysRemaining, force, today }),
+                  void queueSetDaysRemainingJob(
+                    jobUuid,
+                    daysRemaining,
                     { successToast: 'Days remaining updated.', errorToast: 'Failed to update days remaining.' },
                   ).then((ok) => {
                     if (ok) setDaysRemainingEdit(null);
