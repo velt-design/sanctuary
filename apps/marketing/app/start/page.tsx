@@ -21,7 +21,14 @@ import {
   type TimberFinish,
 } from './startFlowContent';
 import { evaluateConsentQuickCheck } from './consentChecker';
-import { clearStartFlowDraft, readStartFlowDraft, writeStartFlowDraft } from './startFlowStorage';
+import {
+  DEFAULT_CONFIRMED_STEP_STATE,
+  clearStartFlowDraft,
+  readStartFlowState,
+  writeStartFlowState,
+  type ConfirmedStepState,
+  type StartFlowPersistedState,
+} from './startFlowStorage';
 import {
   ACRYLIC_TINT_MEDIA,
   BRANCH_MEDIA,
@@ -34,9 +41,18 @@ import {
   SITE_LEVEL_MEDIA,
   TIMEFRAME_MEDIA,
   TIMBER_FINISH_MEDIA,
-  type MediaEntry,
 } from './startFlowMedia';
-import { ConsentResultCard, SelectCardGroup, StepSection, type SelectCardOption } from './startFlowComponents';
+import {
+  ConsentResultCard,
+  ExtrasExplorerModal,
+  ModalSurface,
+  OptionCardGroup,
+  StepSection,
+  TabbedOptionModal,
+  type ExtrasExplorerOption,
+  type OptionCardOption,
+  type TabbedModalOption,
+} from './startFlowComponents';
 
 type SectionId =
   | 'hero'
@@ -50,6 +66,8 @@ type SectionId =
   | 'submit';
 
 type StepId = Exclude<SectionId, 'hero'>;
+type ConfirmableStepId = Exclude<StepId, 'submit'>;
+type ModalId = 'branch' | 'roofStyle' | 'roofMaterial' | 'extras' | 'process' | null;
 
 type SubmitState = 'idle' | 'sending' | 'success' | 'error';
 type SubmitMeta = {
@@ -58,15 +76,16 @@ type SubmitMeta = {
   enquiryRequestId?: string;
 };
 
-type SummaryRow = {
+type FlowState = StartFlowPersistedState;
+
+type BriefRow = {
   label: string;
   value: string;
-  step: StepId;
-  thumbnail?: MediaEntry;
+  step: ConfirmableStepId;
 };
 
 const STEP_ORDER: StepId[] = ['branch', 'roofStyle', 'roofMaterial', 'site', 'consent', 'extras', 'process', 'submit'];
-const NEXT_SECTION: Record<StepId, StepId | null> = {
+const NEXT_SECTION: Record<ConfirmableStepId, StepId | null> = {
   branch: 'roofStyle',
   roofStyle: 'roofMaterial',
   roofMaterial: 'site',
@@ -74,11 +93,159 @@ const NEXT_SECTION: Record<StepId, StepId | null> = {
   consent: 'extras',
   extras: 'process',
   process: 'submit',
-  submit: null,
 };
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_PHOTO_COUNT = 8;
+
+const BRANCH_GUIDE: Record<
+  EnquiryType,
+  {
+    bestFor: string[];
+    consider: string[];
+    worksWellWith: string[];
+    microEducation: string;
+  }
+> = {
+  residential: {
+    bestFor: ['Outdoor family dining', 'Weather cover with light', 'Projects under active renovation'],
+    consider: ['Confirm sun direction early', 'Decide if privacy control is needed'],
+    worksWellWith: ['Acrylic roof', 'Drop-down blinds', 'Warm lighting'],
+    microEducation: 'Clients like you usually start here when the goal is a true outdoor room, not just shade.',
+  },
+  commercial: {
+    bestFor: ['Customer seating zones', 'Staff shelter areas', 'Public-facing hospitality'],
+    consider: ['Durability and cleaning cycles', 'Public circulation around the structure'],
+    worksWellWith: ['Timber + acrylic mix', 'Heaters', 'Lighting'],
+    microEducation: 'Commercial briefs tend to benefit from early compliance and circulation checks.',
+  },
+  professional: {
+    bestFor: ['Architect-led projects', 'Developer coordination', 'Documentation-first workflows'],
+    consider: ['Lead time for engineering', 'Detail sign-off sequence'],
+    worksWellWith: ['Material pairing studies', 'Consent pathway review', 'Program staging'],
+    microEducation: 'Design teams usually choose this path when they want detail-first collaboration.',
+  },
+};
+
+const ROOF_STYLE_PAIRINGS: Record<RoofStyle, string[]> = {
+  pitched: ['Acrylic clear', 'Downlights'],
+  gable: ['Acrylic opal', 'Drop-down blinds'],
+  hip: ['Timber lining', 'Slat screens'],
+  perimeter: ['Combination roof', 'LED strip lighting'],
+  unsure: ['Design Consultation', 'Photo-led recommendation'],
+};
+
+const ROOF_MATERIAL_GUIDE: Record<
+  RoofMaterialChoice,
+  {
+    bestFor: string[];
+    consider: string[];
+    worksWellWith: string[];
+    microEducation: string;
+  }
+> = {
+  acrylic: {
+    bestFor: ['Keeping the area bright', 'Weather protection without closing in'],
+    consider: ['Summer glare control', 'Tint choice for comfort'],
+    worksWellWith: ['Drop-down blinds', 'Downlights'],
+    microEducation: 'Acrylic is often selected where natural light is the highest priority.',
+  },
+  timber: {
+    bestFor: ['Warm ceiling finish', 'Architectural integration with interiors'],
+    consider: ['Finish maintenance over time', 'Lighting integration detail'],
+    worksWellWith: ['LED strips', 'Heaters'],
+    microEducation: 'Timber is common when the pergola is treated as an extension of the home.',
+  },
+  combination: {
+    bestFor: ['Targeted daylight zones', 'Balanced shade and brightness'],
+    consider: ['Panel layout planning', 'Transition detailing between materials'],
+    worksWellWith: ['Skylight strips', 'Slat screens'],
+    microEducation: 'Combination layouts are frequently chosen to tune comfort by zone.',
+  },
+  unsure: {
+    bestFor: ['Early-stage planning', 'Projects awaiting photos or orientation review'],
+    consider: ['Comfort priorities first', 'How you use the area day to day'],
+    worksWellWith: ['Roof style guidance', 'Design Consultation'],
+    microEducation: 'Not sure is a valid choice while you compare light, warmth, and maintenance tradeoffs.',
+  },
+};
+
+const TIMEFRAME_GUIDE: Record<
+  Timeframe,
+  {
+    summary: string;
+    bestFor: string[];
+    consider: string[];
+    worksWellWith: string[];
+  }
+> = {
+  asap: {
+    summary: 'Prioritise earliest possible consultation and scheduling windows.',
+    bestFor: ['Time-sensitive property updates', 'Upcoming events'],
+    consider: ['Approvals may still affect dates'],
+    worksWellWith: ['Fast photo sharing', 'Early design lock'],
+  },
+  one_to_three_months: {
+    summary: 'Ideal for projects moving this season with a short planning runway.',
+    bestFor: ['Active renovation stages', 'Committed projects'],
+    consider: ['Finalize material choices early'],
+    worksWellWith: ['Design Consultation', 'Site information readiness'],
+  },
+  three_to_six_months: {
+    summary: 'Balanced planning window for design detail and installation preparation.',
+    bestFor: ['Staged home upgrades', 'Commercial program alignment'],
+    consider: ['Coordinate with other trades'],
+    worksWellWith: ['Detailed specifications', 'Engineering coordination'],
+  },
+  researching: {
+    summary: 'Best when you are gathering options before choosing a direction.',
+    bestFor: ['Early exploration', 'Budget and layout discovery'],
+    consider: ['Save references you like'],
+    worksWellWith: ['Style browsing', 'Material education'],
+  },
+};
+
+const INSTALL_SURFACE_SUMMARY: Record<InstallSurface, string> = {
+  deck: 'Mounted to or through existing deck framing.',
+  concrete_pad: 'Anchored directly into concrete slab or pad.',
+  pavers: 'Requires checking paver base and local footing needs.',
+  ground_garden: 'May need new foundation points before install.',
+  not_sure: 'We can identify this during Design Consultation.',
+};
+
+const LEVEL_SUMMARY: Record<SiteLevel, string> = {
+  ground: 'Most common installation access and setup.',
+  first: 'Raised installation with additional access planning.',
+  second_plus: 'Higher-level install with stricter access requirements.',
+  not_sure: 'We can help confirm from photos and measurements.',
+};
+
+const ATTACHMENT_SUMMARY: Record<SiteAttachment, string> = {
+  attached: 'Connected to an existing structure.',
+  freestanding: 'Independent posts and supports.',
+  not_sure: 'We can assess attachment options in consultation.',
+};
+
+const ACCESS_SUMMARY: Record<PublicAccess, string> = {
+  yes: 'Area is used by public visitors or customers.',
+  no: 'Primarily private use.',
+  not_sure: 'We can clarify public access implications together.',
+};
+
+const ACRYLIC_TINT_SUMMARY: Record<AcrylicTint, string> = {
+  clear: 'Maximum daylight and views through the roof.',
+  light_grey: 'Balanced daylight with softer summer glare.',
+  dark_grey: 'Higher shading effect for bright exposures.',
+  opal: 'Diffuse light with softer contrast.',
+  not_sure: 'Choose this to decide tint in consultation.',
+};
+
+const TIMBER_FINISH_SUMMARY: Record<TimberFinish, string> = {
+  natural: 'Highlight timber grain and warm tone.',
+  stained: 'Tone-match to existing joinery or deck finishes.',
+  painted: 'Crisp finish to align with surrounding architecture.',
+  not_sure: 'Choose this to confirm finish later.',
+};
 
 function defaultSiteForEnquiryType(enquiryType: EnquiryType): StartFlowDraft['site'] {
   return {
@@ -87,18 +254,58 @@ function defaultSiteForEnquiryType(enquiryType: EnquiryType): StartFlowDraft['si
   };
 }
 
+function emptyExtras(): StartFlowDraft['extras'] {
+  return { ...defaultStartFlowDraft.extras };
+}
+
 function createDefaultDraft(): StartFlowDraft {
-  const defaultEnquiryType = defaultStartFlowDraft.enquiryType;
+  const enquiryType = defaultStartFlowDraft.enquiryType;
   return {
     ...defaultStartFlowDraft,
-    site: defaultSiteForEnquiryType(defaultEnquiryType),
+    site: defaultSiteForEnquiryType(enquiryType),
     dimensions: { ...defaultStartFlowDraft.dimensions },
     extras: { ...defaultStartFlowDraft.extras },
+    roofMaterials: [...defaultStartFlowDraft.roofMaterials],
   };
 }
 
-function emptyExtras(): StartFlowDraft['extras'] {
-  return { ...defaultStartFlowDraft.extras };
+function cloneDraft(draft: StartFlowDraft): StartFlowDraft {
+  return {
+    ...draft,
+    roofMaterials: [...draft.roofMaterials],
+    site: { ...draft.site },
+    dimensions: { ...draft.dimensions },
+    extras: { ...draft.extras },
+  };
+}
+
+function createInitialFlowState(): FlowState {
+  const baseDraft = createDefaultDraft();
+  return {
+    draft: cloneDraft(baseDraft),
+    confirmedDraft: cloneDraft(baseDraft),
+    confirmedSteps: { ...DEFAULT_CONFIRMED_STEP_STATE },
+  };
+}
+
+function normalizeLoadedState(input: StartFlowPersistedState): FlowState {
+  const normalizeDraft = (draft: StartFlowDraft): StartFlowDraft => {
+    const next = cloneDraft(draft);
+    next.roofMaterials = next.roofMaterialChoice ? [...roofMaterialsByChoice[next.roofMaterialChoice]] : [];
+    if (next.site.publicAccess == null) {
+      next.site.publicAccess = defaultSiteForEnquiryType(next.enquiryType).publicAccess;
+    }
+    return next;
+  };
+
+  return {
+    draft: normalizeDraft(input.draft),
+    confirmedDraft: normalizeDraft(input.confirmedDraft),
+    confirmedSteps: {
+      ...DEFAULT_CONFIRMED_STEP_STATE,
+      ...input.confirmedSteps,
+    },
+  };
 }
 
 function toPositiveNumber(value: string): number | null {
@@ -165,7 +372,7 @@ function buildSummaryBlock(params: {
 
   return [
     '---',
-    'Start-page brief',
+    'Start-page design brief',
     `Type: ${typeLabel}`,
     `Roof style: ${roofStyleLabel}`,
     `Roof material: ${roofMaterialLabel}`,
@@ -195,7 +402,17 @@ function buildMessageWithSummary(message: string, summaryBlock: string): string 
   return `${truncatedBase}${joiner}${summaryBlock}`;
 }
 
-function resetAfterBranchChange(previous: StartFlowDraft, enquiryType: EnquiryType): StartFlowDraft {
+function applyRoofMaterialChoice(previous: StartFlowDraft, choice: RoofMaterialChoice): StartFlowDraft {
+  return {
+    ...previous,
+    roofMaterialChoice: choice,
+    roofMaterials: [...roofMaterialsByChoice[choice]],
+    acrylicTint: choice === 'acrylic' || choice === 'combination' ? previous.acrylicTint : null,
+    timberFinish: choice === 'timber' || choice === 'combination' ? previous.timberFinish : null,
+  };
+}
+
+function resetAfterPathChange(previous: StartFlowDraft, enquiryType: EnquiryType): StartFlowDraft {
   return {
     ...previous,
     enquiryType,
@@ -213,61 +430,59 @@ function resetAfterBranchChange(previous: StartFlowDraft, enquiryType: EnquiryTy
   };
 }
 
-function resetAfterStyleChange(previous: StartFlowDraft, style: RoofStyle): StartFlowDraft {
-  return {
-    ...previous,
-    style,
-    roofMaterialChoice: null,
-    roofMaterials: [],
-    acrylicTint: null,
-    timberFinish: null,
-    suburb: '',
-    site: defaultSiteForEnquiryType(previous.enquiryType),
-    dimensions: { ...defaultStartFlowDraft.dimensions },
-    extras: emptyExtras(),
-    extrasAcknowledged: false,
-    timeframe: null,
-  };
+function isRoofMaterialDraftValid(draft: StartFlowDraft): boolean {
+  if (!draft.roofMaterialChoice) return false;
+
+  const needsAcrylicTint = draft.roofMaterialChoice === 'acrylic' || draft.roofMaterialChoice === 'combination';
+  const needsTimberFinish = draft.roofMaterialChoice === 'timber' || draft.roofMaterialChoice === 'combination';
+
+  if (needsAcrylicTint && !draft.acrylicTint) return false;
+  if (needsTimberFinish && !draft.timberFinish) return false;
+  return true;
 }
 
-function resetAfterMaterialChange(previous: StartFlowDraft, roofMaterialChoice: RoofMaterialChoice): StartFlowDraft {
-  return {
-    ...previous,
-    roofMaterialChoice,
-    roofMaterials: [...roofMaterialsByChoice[roofMaterialChoice]],
-    acrylicTint:
-      roofMaterialChoice === 'acrylic' || roofMaterialChoice === 'combination' ? previous.acrylicTint : null,
-    timberFinish:
-      roofMaterialChoice === 'timber' || roofMaterialChoice === 'combination' ? previous.timberFinish : null,
-    suburb: '',
-    site: defaultSiteForEnquiryType(previous.enquiryType),
-    dimensions: { ...defaultStartFlowDraft.dimensions },
-    extras: emptyExtras(),
-    extrasAcknowledged: false,
-    timeframe: null,
-  };
+function isSiteDraftValid(draft: StartFlowDraft): boolean {
+  const hasSiteBasics = Boolean(
+    draft.site.installSurface && draft.site.level && draft.site.attachment && draft.site.publicAccess
+  );
+
+  if (!hasSiteBasics) return false;
+  if (draft.enquiryType === 'professional') return true;
+
+  return Boolean(toPositiveNumber(draft.dimensions.widthM) && toPositiveNumber(draft.dimensions.depthM));
 }
 
-function resetAfterSiteChange(previous: StartFlowDraft): StartFlowDraft {
-  return {
-    ...previous,
-    extras: emptyExtras(),
-    extrasAcknowledged: false,
-    timeframe: null,
-  };
-}
-
-function resetAfterExtrasChange(previous: StartFlowDraft): StartFlowDraft {
-  return {
-    ...previous,
-    timeframe: null,
-  };
+function hasExtrasChoice(draft: StartFlowDraft): boolean {
+  if (draft.extrasAcknowledged) return true;
+  return Object.values(draft.extras).some(Boolean);
 }
 
 export default function StartPage() {
   const content = startFlowContent;
-  const [draft, setDraft] = useState<StartFlowDraft>(() => createDefaultDraft());
+
+  const [flow, setFlow] = useState<FlowState>(() => createInitialFlowState());
+  const draft = flow.draft;
+  const confirmedDraft = flow.confirmedDraft;
+  const confirmedSteps = flow.confirmedSteps;
+
   const [storageReady, setStorageReady] = useState(false);
+  const [resumePromptOpen, setResumePromptOpen] = useState(false);
+  const [resumeCandidate, setResumeCandidate] = useState<StartFlowPersistedState | null>(null);
+
+  const [activeModal, setActiveModal] = useState<ModalId>(null);
+  const [quickInfoModal, setQuickInfoModal] = useState<{
+    title: string;
+    summary?: string;
+    image: { src: string; alt: string };
+  } | null>(null);
+  const [briefSheetOpen, setBriefSheetOpen] = useState(false);
+
+  const [branchTab, setBranchTab] = useState<EnquiryType>('residential');
+  const [roofStyleTab, setRoofStyleTab] = useState<RoofStyle>('pitched');
+  const [roofMaterialTab, setRoofMaterialTab] = useState<RoofMaterialChoice>('acrylic');
+  const [extrasTab, setExtrasTab] = useState<ExtraId>('blinds');
+  const [timeframeTab, setTimeframeTab] = useState<Timeframe>('asap');
+
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitMeta, setSubmitMeta] = useState<SubmitMeta | null>(null);
@@ -287,7 +502,6 @@ export default function StartPage() {
     submit: null,
   });
   const pendingJumpRef = useRef<SectionId | null>(null);
-  const previousCompletionRef = useRef<Record<StepId, boolean> | null>(null);
 
   const setSectionRef = useCallback(
     (id: SectionId) => (node: HTMLElement | null) => {
@@ -314,35 +528,35 @@ export default function StartPage() {
   }, []);
 
   useEffect(() => {
-    const restored = readStartFlowDraft(START_FLOW_SCHEMA_VERSION);
+    const restored = readStartFlowState(START_FLOW_SCHEMA_VERSION);
     if (restored) {
-      const adjustedPublicAccess =
-        restored.enquiryType !== 'commercial' && restored.site.publicAccess == null
-          ? 'not_sure'
-          : restored.site.publicAccess;
-
-      setDraft({
-        ...restored,
-        site: {
-          ...restored.site,
-          publicAccess: adjustedPublicAccess,
-        },
-      });
+      setResumeCandidate(restored);
+      setResumePromptOpen(true);
     }
     setStorageReady(true);
   }, []);
 
   useEffect(() => {
-    if (!storageReady || submitState === 'success') return;
-    writeStartFlowDraft(START_FLOW_SCHEMA_VERSION, draft);
-  }, [draft, storageReady, submitState]);
+    if (!storageReady || resumePromptOpen || submitState === 'success') return;
+    writeStartFlowState(START_FLOW_SCHEMA_VERSION, {
+      draft: flow.draft,
+      confirmedDraft: flow.confirmedDraft,
+      confirmedSteps: flow.confirmedSteps,
+    });
+  }, [flow, resumePromptOpen, storageReady, submitState]);
 
   const dimensionsRequired = draft.enquiryType !== 'professional';
   const widthM = toPositiveNumber(draft.dimensions.widthM);
   const depthM = toPositiveNumber(draft.dimensions.depthM);
   const heightM = toPositiveNumber(draft.dimensions.heightM);
-  const areaM2 = widthM && depthM ? widthM * depthM : null;
+  const areaM2 = widthM != null && depthM != null ? widthM * depthM : null;
   const roofed = draft.roofMaterials.length > 0;
+
+  const confirmedWidthM = toPositiveNumber(confirmedDraft.dimensions.widthM);
+  const confirmedDepthM = toPositiveNumber(confirmedDraft.dimensions.depthM);
+  const confirmedAreaM2 =
+    confirmedWidthM != null && confirmedDepthM != null ? confirmedWidthM * confirmedDepthM : null;
+  const confirmedRoofed = confirmedDraft.roofMaterials.length > 0;
 
   const selectedExtraIds = useMemo(
     () => content.extras.options.filter((option) => draft.extras[option.value]).map((option) => option.value),
@@ -354,6 +568,16 @@ export default function StartPage() {
     [content.extras.options, draft.extras]
   );
 
+  const selectedConfirmedExtraIds = useMemo(
+    () => content.extras.options.filter((option) => confirmedDraft.extras[option.value]).map((option) => option.value),
+    [content.extras.options, confirmedDraft.extras]
+  );
+
+  const selectedConfirmedExtras = useMemo(
+    () => content.extras.options.filter((option) => confirmedDraft.extras[option.value]).map((option) => option.label),
+    [content.extras.options, confirmedDraft.extras]
+  );
+
   const consentResult = useMemo(
     () =>
       evaluateConsentQuickCheck({
@@ -363,71 +587,49 @@ export default function StartPage() {
         publicAccess: draft.site.publicAccess,
         areaM2,
       }),
-    [roofed, draft.site.attachment, draft.site.level, draft.site.publicAccess, areaM2]
+    [areaM2, draft.site.attachment, draft.site.level, draft.site.publicAccess, roofed]
   );
 
-  const completion = useMemo<Record<StepId, boolean>>(() => {
-    const branchComplete = Boolean(draft.enquiryType);
-    const roofStyleComplete = Boolean(draft.style);
-    const roofMaterialComplete = Boolean(draft.roofMaterialChoice);
+  const confirmedConsentResult = useMemo(
+    () =>
+      evaluateConsentQuickCheck({
+        roofed: confirmedRoofed,
+        attached: confirmedDraft.site.attachment,
+        level: confirmedDraft.site.level,
+        publicAccess: confirmedDraft.site.publicAccess,
+        areaM2: confirmedAreaM2,
+      }),
+    [confirmedAreaM2, confirmedDraft.site.attachment, confirmedDraft.site.level, confirmedDraft.site.publicAccess, confirmedRoofed]
+  );
 
-    const siteFieldsComplete = Boolean(
-      draft.site.installSurface && draft.site.level && draft.site.attachment && draft.site.publicAccess
-    );
-    const dimensionsComplete = dimensionsRequired ? Boolean(widthM && depthM) : true;
-    const siteComplete = siteFieldsComplete && dimensionsComplete;
+  const consentPrerequisitesReady = Boolean(
+    draft.roofMaterialChoice &&
+      draft.site.attachment &&
+      draft.site.level &&
+      draft.site.publicAccess &&
+      widthM != null &&
+      depthM != null
+  );
 
-    return {
-      branch: branchComplete,
-      roofStyle: roofStyleComplete,
-      roofMaterial: roofMaterialComplete,
-      site: siteComplete,
-      consent: siteComplete,
-      extras: draft.extrasAcknowledged || selectedExtras.length > 0,
-      process: Boolean(draft.timeframe),
+  const completion = useMemo<Record<StepId, boolean>>(
+    () => ({
+      branch: confirmedSteps.branch,
+      roofStyle: confirmedSteps.roofStyle,
+      roofMaterial: confirmedSteps.roofMaterial,
+      site: confirmedSteps.site,
+      consent: confirmedSteps.site && confirmedSteps.consent,
+      extras: confirmedSteps.extras,
+      process: confirmedSteps.process,
       submit: submitState === 'success',
-    };
-  }, [
-    dimensionsRequired,
-    draft.enquiryType,
-    draft.extrasAcknowledged,
-    draft.roofMaterialChoice,
-    draft.site.attachment,
-    draft.site.installSurface,
-    draft.site.level,
-    draft.site.publicAccess,
-    draft.style,
-    draft.timeframe,
-    selectedExtras.length,
-    submitState,
-    widthM,
-    depthM,
-  ]);
+    }),
+    [confirmedSteps, submitState]
+  );
 
   const firstIncompleteStep = useMemo<StepId>(() => STEP_ORDER.find((step) => !completion[step]) ?? 'submit', [completion]);
   const firstIncompleteIndex = STEP_ORDER.indexOf(firstIncompleteStep);
   const visibleSteps = useMemo(() => STEP_ORDER.slice(0, firstIncompleteIndex + 1), [firstIncompleteIndex]);
   const visibleStepSet = useMemo(() => new Set<StepId>(visibleSteps), [visibleSteps]);
   const visibleKey = visibleSteps.join('|');
-
-  useEffect(() => {
-    if (!storageReady) return;
-
-    const previousCompletion = previousCompletionRef.current;
-    previousCompletionRef.current = completion;
-
-    if (!previousCompletion) return;
-
-    for (const step of STEP_ORDER) {
-      if (!previousCompletion[step] && completion[step]) {
-        const next = NEXT_SECTION[step];
-        if (next) {
-          queueJumpTo(next);
-        }
-        break;
-      }
-    }
-  }, [completion, queueJumpTo, storageReady]);
 
   useEffect(() => {
     const pendingJump = pendingJumpRef.current;
@@ -451,152 +653,160 @@ export default function StartPage() {
     });
   };
 
-  const handleBranchSelect = (value: EnquiryType) => {
+  const applyDraftUpdate = (updater: (previous: StartFlowDraft) => StartFlowDraft) => {
     clearFeedback();
+    setFlow((previous) => ({
+      ...previous,
+      draft: updater(previous.draft),
+    }));
+  };
 
-    const changed = draft.enquiryType !== value;
-    setDraft((previous) => {
+  const openQuickInfo = (params: { title: string; summary?: string; image: { src: string; alt: string } }) => {
+    setQuickInfoModal(params);
+  };
+
+  const handleResumeDesign = () => {
+    if (!resumeCandidate) {
+      setResumePromptOpen(false);
+      return;
+    }
+
+    setFlow(normalizeLoadedState(resumeCandidate));
+    setResumePromptOpen(false);
+    setResumeCandidate(null);
+  };
+
+  const handleStartOverFromPrompt = () => {
+    setFlow(createInitialFlowState());
+    setResumePromptOpen(false);
+    setResumeCandidate(null);
+    clearStartFlowDraft();
+  };
+
+  const handleBranchSelection = (value: EnquiryType) => {
+    applyDraftUpdate((previous) => {
       if (previous.enquiryType === value) return previous;
-      return resetAfterBranchChange(previous, value);
+      return {
+        ...previous,
+        enquiryType: value,
+      };
     });
-
-    if (changed) {
-      queueJumpTo('roofStyle');
-    }
   };
 
-  const handleStyleSelect = (value: RoofStyle) => {
-    clearFeedback();
+  const handleBranchCardOpen = (value: EnquiryType) => {
+    handleBranchSelection(value);
+    setBranchTab(value);
+    setActiveModal('branch');
+  };
 
-    const changed = draft.style !== value;
-    setDraft((previous) => {
+  const handleRoofStyleSelection = (value: RoofStyle) => {
+    applyDraftUpdate((previous) => {
       if (previous.style === value) return previous;
-      return resetAfterStyleChange(previous, value);
+      return {
+        ...previous,
+        style: value,
+      };
     });
-
-    if (changed) {
-      queueJumpTo('roofMaterial');
-    }
   };
 
-  const handleMaterialSelect = (value: RoofMaterialChoice) => {
-    clearFeedback();
+  const handleRoofStyleCardOpen = (value: RoofStyle) => {
+    handleRoofStyleSelection(value);
+    setRoofStyleTab(value);
+    setActiveModal('roofStyle');
+  };
 
-    const changed = draft.roofMaterialChoice !== value;
-    setDraft((previous) => {
+  const handleRoofMaterialSelection = (value: RoofMaterialChoice) => {
+    applyDraftUpdate((previous) => {
       if (previous.roofMaterialChoice === value) return previous;
-      return resetAfterMaterialChange(previous, value);
+      return applyRoofMaterialChoice(previous, value);
     });
+  };
 
-    if (changed) {
-      queueJumpTo('site');
-    }
+  const handleRoofMaterialCardOpen = (value: RoofMaterialChoice) => {
+    handleRoofMaterialSelection(value);
+    setRoofMaterialTab(value);
+    setActiveModal('roofMaterial');
   };
 
   const updateSite = <K extends keyof StartFlowDraft['site']>(key: K, value: StartFlowDraft['site'][K]) => {
-    clearFeedback();
-
-    setDraft((previous) => {
-      if (previous.site[key] === value) return previous;
-      const nextDraft = {
-        ...previous,
-        site: {
-          ...previous.site,
-          [key]: value,
-        },
-      };
-      return resetAfterSiteChange(nextDraft);
-    });
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      site: {
+        ...previous.site,
+        [key]: value,
+      },
+    }));
   };
 
   const updateSuburb = (value: string) => {
-    clearFeedback();
-
-    setDraft((previous) => {
-      if (previous.suburb === value) return previous;
-      return resetAfterSiteChange({
-        ...previous,
-        suburb: value,
-      });
-    });
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      suburb: value,
+    }));
   };
 
   const updateDimension = <K extends keyof StartFlowDraft['dimensions']>(
     key: K,
     value: StartFlowDraft['dimensions'][K]
   ) => {
-    clearFeedback();
-
-    setDraft((previous) => {
-      if (previous.dimensions[key] === value) return previous;
-      const nextDraft = {
-        ...previous,
-        dimensions: {
-          ...previous.dimensions,
-          [key]: value,
-        },
-      };
-      return resetAfterSiteChange(nextDraft);
-    });
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      dimensions: {
+        ...previous.dimensions,
+        [key]: value,
+      },
+    }));
   };
 
-  const handleExtraToggle = (extraId: ExtraId) => {
-    clearFeedback();
-
-    setDraft((previous) => {
-      const nextChecked = !previous.extras[extraId];
-      const changed = previous.extras[extraId] !== nextChecked || previous.extrasAcknowledged;
-      if (!changed) return previous;
-
-      const nextDraft = {
-        ...previous,
-        extras: {
-          ...previous.extras,
-          [extraId]: nextChecked,
-        },
-        extrasAcknowledged: false,
-      };
-
-      return resetAfterExtrasChange(nextDraft);
-    });
-
-    queueJumpTo('process');
+  const updateAcrylicTint = (value: AcrylicTint) => {
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      acrylicTint: value,
+    }));
   };
 
-  const handleNoExtras = () => {
-    clearFeedback();
-
-    setDraft((previous) => {
-      const hadAnyExtras = Object.values(previous.extras).some(Boolean);
-      if (!hadAnyExtras && previous.extrasAcknowledged) return previous;
-
-      const nextDraft = {
-        ...previous,
-        extras: emptyExtras(),
-        extrasAcknowledged: true,
-      };
-
-      return resetAfterExtrasChange(nextDraft);
-    });
-
-    queueJumpTo('process');
+  const updateTimberFinish = (value: TimberFinish) => {
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      timberFinish: value,
+    }));
   };
 
-  const handleTimeframeSelect = (value: Timeframe) => {
-    clearFeedback();
+  const handleExtraSelectionChange = (extraId: ExtraId, checked: boolean) => {
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      extras: {
+        ...previous.extras,
+        [extraId]: checked,
+      },
+      extrasAcknowledged: false,
+    }));
+  };
 
-    const changed = draft.timeframe !== value;
-    setDraft((previous) => {
-      if (previous.timeframe === value) return previous;
-      return {
-        ...previous,
-        timeframe: value,
-      };
-    });
+  const handleExtraCardOpen = (extraId: ExtraId) => {
+    setExtrasTab(extraId);
+    setActiveModal('extras');
+  };
 
-    if (changed) {
-      queueJumpTo('submit');
-    }
+  const setNoExtras = (value: boolean) => {
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      extras: value ? emptyExtras() : previous.extras,
+      extrasAcknowledged: value,
+    }));
+  };
+
+  const handleTimeframeSelection = (value: Timeframe) => {
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      timeframe: value,
+    }));
+  };
+
+  const handleTimeframeCardOpen = (value: Timeframe) => {
+    handleTimeframeSelection(value);
+    setTimeframeTab(value);
+    setActiveModal('process');
   };
 
   const handlePhotosSelected = (incoming: FileList | null) => {
@@ -615,17 +825,246 @@ export default function StartPage() {
   };
 
   const handleReset = () => {
-    setDraft(createDefaultDraft());
+    setFlow(createInitialFlowState());
     setPhotoFiles([]);
     setSendPhotosLater(false);
     setValidationErrors([]);
     setSubmitError(null);
     setSubmitMeta(null);
     setSubmitState('idle');
+    setActiveModal(null);
+    setQuickInfoModal(null);
+    setBriefSheetOpen(false);
     clearStartFlowDraft();
     pendingJumpRef.current = null;
-    previousCompletionRef.current = null;
     jumpToSection('hero');
+  };
+
+  const confirmBranch = () => {
+    clearFeedback();
+
+    setFlow((previous) => {
+      const selectedPath = previous.draft.enquiryType;
+      const pathChanged = previous.confirmedSteps.branch && previous.confirmedDraft.enquiryType !== selectedPath;
+
+      if (pathChanged) {
+        const nextDraft = resetAfterPathChange(previous.draft, selectedPath);
+        const nextConfirmedDraft = cloneDraft({
+          ...createDefaultDraft(),
+          enquiryType: selectedPath,
+          site: defaultSiteForEnquiryType(selectedPath),
+        });
+
+        return {
+          draft: nextDraft,
+          confirmedDraft: nextConfirmedDraft,
+          confirmedSteps: {
+            ...DEFAULT_CONFIRMED_STEP_STATE,
+            branch: true,
+          },
+        };
+      }
+
+      return {
+        ...previous,
+        confirmedDraft: {
+          ...previous.confirmedDraft,
+          enquiryType: selectedPath,
+        },
+        confirmedSteps: {
+          ...previous.confirmedSteps,
+          branch: true,
+        },
+      };
+    });
+
+    setActiveModal(null);
+    queueJumpTo('roofStyle');
+  };
+
+  const confirmRoofStyle = () => {
+    if (!draft.style) return;
+    clearFeedback();
+
+    setFlow((previous) => {
+      if (!previous.draft.style) return previous;
+      return {
+        ...previous,
+        confirmedDraft: {
+          ...previous.confirmedDraft,
+          style: previous.draft.style,
+        },
+        confirmedSteps: {
+          ...previous.confirmedSteps,
+          roofStyle: true,
+        },
+      };
+    });
+
+    setActiveModal(null);
+    queueJumpTo('roofMaterial');
+  };
+
+  const confirmRoofMaterial = () => {
+    if (!isRoofMaterialDraftValid(draft)) return;
+    clearFeedback();
+
+    setFlow((previous) => {
+      if (!isRoofMaterialDraftValid(previous.draft) || !previous.draft.roofMaterialChoice) return previous;
+      const choice = previous.draft.roofMaterialChoice;
+
+      return {
+        ...previous,
+        confirmedDraft: {
+          ...previous.confirmedDraft,
+          roofMaterialChoice: choice,
+          roofMaterials: [...roofMaterialsByChoice[choice]],
+          acrylicTint: previous.draft.acrylicTint,
+          timberFinish: previous.draft.timberFinish,
+        },
+        confirmedSteps: {
+          ...previous.confirmedSteps,
+          roofMaterial: true,
+          consent: false,
+        },
+      };
+    });
+
+    setActiveModal(null);
+    queueJumpTo('site');
+  };
+
+  const confirmSite = () => {
+    if (!isSiteDraftValid(draft)) return;
+    clearFeedback();
+
+    setFlow((previous) => ({
+      ...previous,
+      confirmedDraft: {
+        ...previous.confirmedDraft,
+        suburb: previous.draft.suburb,
+        site: { ...previous.draft.site },
+        dimensions: { ...previous.draft.dimensions },
+      },
+      confirmedSteps: {
+        ...previous.confirmedSteps,
+        site: true,
+        consent: false,
+      },
+    }));
+
+    queueJumpTo('consent');
+  };
+
+  const confirmConsent = () => {
+    if (!consentPrerequisitesReady) return;
+    clearFeedback();
+
+    setFlow((previous) => ({
+      ...previous,
+      confirmedSteps: {
+        ...previous.confirmedSteps,
+        consent: true,
+      },
+    }));
+
+    queueJumpTo('extras');
+  };
+
+  const confirmExtras = () => {
+    if (!hasExtrasChoice(draft)) return;
+    clearFeedback();
+
+    setFlow((previous) => ({
+      ...previous,
+      confirmedDraft: {
+        ...previous.confirmedDraft,
+        extras: { ...previous.draft.extras },
+        extrasAcknowledged: previous.draft.extrasAcknowledged,
+      },
+      confirmedSteps: {
+        ...previous.confirmedSteps,
+        extras: true,
+      },
+    }));
+
+    setActiveModal(null);
+    queueJumpTo('process');
+  };
+
+  const confirmProcess = () => {
+    if (!draft.timeframe) return;
+    clearFeedback();
+
+    setFlow((previous) => ({
+      ...previous,
+      confirmedDraft: {
+        ...previous.confirmedDraft,
+        timeframe: previous.draft.timeframe,
+      },
+      confirmedSteps: {
+        ...previous.confirmedSteps,
+        process: true,
+      },
+    }));
+
+    setActiveModal(null);
+    queueJumpTo('submit');
+  };
+
+  const openModalForStep = (step: ConfirmableStepId) => {
+    if (step === 'branch') {
+      setBranchTab(draft.enquiryType);
+      setActiveModal('branch');
+      return;
+    }
+
+    if (step === 'roofStyle') {
+      setRoofStyleTab(draft.style ?? content.roofStyle.options[0].value);
+      setActiveModal('roofStyle');
+      return;
+    }
+
+    if (step === 'roofMaterial') {
+      setRoofMaterialTab(draft.roofMaterialChoice ?? content.roofMaterial.options[0].value);
+      setActiveModal('roofMaterial');
+      return;
+    }
+
+    if (step === 'extras') {
+      const preferredExtra = selectedExtraIds[0] ?? content.extras.options[0].value;
+      setExtrasTab(preferredExtra);
+      setActiveModal('extras');
+      return;
+    }
+
+    if (step === 'process') {
+      setTimeframeTab(draft.timeframe ?? content.process.timeframeOptions[0].value);
+      setActiveModal('process');
+    }
+  };
+
+  const handleStepChange = (step: ConfirmableStepId) => {
+    clearFeedback();
+    setBriefSheetOpen(false);
+
+    setFlow((previous) => {
+      const nextConfirmedSteps: ConfirmedStepState = {
+        ...previous.confirmedSteps,
+        [step]: false,
+      };
+      if (step === 'roofMaterial' || step === 'site') {
+        nextConfirmedSteps.consent = false;
+      }
+
+      return {
+        ...previous,
+        confirmedSteps: nextConfirmedSteps,
+      };
+    });
+
+    queueJumpTo(step);
+    openModalForStep(step);
   };
 
   const validateBeforeSubmit = (): string[] => {
@@ -666,7 +1105,7 @@ export default function StartPage() {
     if (errors.length) {
       setValidationErrors(errors);
       setSubmitState('error');
-      setSubmitError('Please fix the form issues and submit again.');
+      setSubmitError('Please fix the form issues and try again.');
       jumpToSection('submit');
       return;
     }
@@ -744,7 +1183,7 @@ export default function StartPage() {
       const json = await response.json().catch(() => ({ ok: response.ok }));
 
       if (!response.ok || !json?.ok) {
-        const errorMessage = typeof json?.error === 'string' ? json.error : 'Unable to submit your brief.';
+        const errorMessage = typeof json?.error === 'string' ? json.error : 'Unable to submit your design brief.';
         setSubmitState('error');
         setSubmitError(errorMessage);
         return;
@@ -764,231 +1203,339 @@ export default function StartPage() {
     }
   };
 
-  const branchCards = useMemo<SelectCardOption<EnquiryType>[]>(
+  const branchCards = useMemo<OptionCardOption<EnquiryType>[]>(
     () =>
       content.branch.options.map((option) => ({
         value: option.value,
         title: option.label,
-        description: option.description,
+        summary: option.description,
+        tags: BRANCH_GUIDE[option.value].bestFor.slice(0, 2),
         image: BRANCH_MEDIA[option.value],
-        tag: option.value === 'residential' ? 'Default' : undefined,
       })),
     [content.branch.options]
   );
 
-  const roofStyleCards = useMemo<SelectCardOption<RoofStyle>[]>(
+  const roofStyleCards = useMemo<OptionCardOption<RoofStyle>[]>(
     () =>
       content.roofStyle.options.map((option) => ({
         value: option.value,
         title: option.label,
-        description: option.what,
-        bullets: option.bestWhen.map((item) => `Best for ${item.toLowerCase()}`),
-        hint: `Consider: ${option.watchOut}`,
+        summary: option.what,
+        tags: option.bestWhen.slice(0, 2),
         image: ROOF_STYLE_MEDIA[option.value],
       })),
     [content.roofStyle.options]
   );
 
-  const roofMaterialCards = useMemo<SelectCardOption<RoofMaterialChoice>[]>(
+  const roofMaterialCards = useMemo<OptionCardOption<RoofMaterialChoice>[]>(
     () =>
       content.roofMaterial.options.map((option) => ({
         value: option.value,
         title: option.label,
-        description: option.description,
+        summary: option.description,
+        tags: ROOF_MATERIAL_GUIDE[option.value].bestFor.slice(0, 2),
         image: ROOF_MATERIAL_MEDIA[option.value],
       })),
     [content.roofMaterial.options]
   );
 
-  const acrylicTintCards = useMemo<SelectCardOption<AcrylicTint>[]>(
+  const acrylicTintCards = useMemo<OptionCardOption<AcrylicTint>[]>(
     () =>
       content.roofMaterial.acrylicTintOptions.map((option) => ({
         value: option.value,
         title: option.label,
+        summary: ACRYLIC_TINT_SUMMARY[option.value],
         image: ACRYLIC_TINT_MEDIA[option.value],
       })),
     [content.roofMaterial.acrylicTintOptions]
   );
 
-  const timberFinishCards = useMemo<SelectCardOption<TimberFinish>[]>(
+  const timberFinishCards = useMemo<OptionCardOption<TimberFinish>[]>(
     () =>
       content.roofMaterial.timberFinishOptions.map((option) => ({
         value: option.value,
         title: option.label,
+        summary: TIMBER_FINISH_SUMMARY[option.value],
         image: TIMBER_FINISH_MEDIA[option.value],
       })),
     [content.roofMaterial.timberFinishOptions]
   );
 
-  const installSurfaceCards = useMemo<SelectCardOption<InstallSurface>[]>(
+  const installSurfaceCards = useMemo<OptionCardOption<InstallSurface>[]>(
     () =>
       content.site.installSurfaceOptions.map((option) => ({
         value: option.value,
         title: option.label,
+        summary: INSTALL_SURFACE_SUMMARY[option.value],
         image: INSTALL_SURFACE_MEDIA[option.value],
       })),
     [content.site.installSurfaceOptions]
   );
 
-  const levelCards = useMemo<SelectCardOption<SiteLevel>[]>(
+  const levelCards = useMemo<OptionCardOption<SiteLevel>[]>(
     () =>
       content.site.levelOptions.map((option) => ({
         value: option.value,
         title: option.label,
+        summary: LEVEL_SUMMARY[option.value],
         image: SITE_LEVEL_MEDIA[option.value],
       })),
     [content.site.levelOptions]
   );
 
-  const attachmentCards = useMemo<SelectCardOption<SiteAttachment>[]>(
+  const attachmentCards = useMemo<OptionCardOption<SiteAttachment>[]>(
     () =>
       content.site.attachmentOptions.map((option) => ({
         value: option.value,
         title: option.label,
+        summary: ATTACHMENT_SUMMARY[option.value],
         image: SITE_ATTACHMENT_MEDIA[option.value],
       })),
     [content.site.attachmentOptions]
   );
 
-  const publicAccessCards = useMemo<SelectCardOption<PublicAccess>[]>(
+  const publicAccessCards = useMemo<OptionCardOption<PublicAccess>[]>(
     () =>
       content.site.publicAccessOptions.map((option) => ({
         value: option.value,
         title: option.label,
+        summary: ACCESS_SUMMARY[option.value],
         image: PUBLIC_ACCESS_MEDIA[option.value],
       })),
     [content.site.publicAccessOptions]
   );
 
-  const extrasCards = useMemo<SelectCardOption<ExtraId>[]>(
+  const extrasCards = useMemo<OptionCardOption<ExtraId>[]>(
     () =>
       content.extras.options.map((option) => ({
         value: option.value,
         title: option.label,
-        description: option.description,
+        summary: option.description,
         image: EXTRA_MEDIA[option.value],
       })),
     [content.extras.options]
   );
 
-  const timeframeCards = useMemo<SelectCardOption<Timeframe>[]>(
+  const timeframeCards = useMemo<OptionCardOption<Timeframe>[]>(
     () =>
       content.process.timeframeOptions.map((option) => ({
         value: option.value,
         title: option.label,
+        summary: TIMEFRAME_GUIDE[option.value].summary,
         image: TIMEFRAME_MEDIA[option.value],
       })),
     [content.process.timeframeOptions]
   );
 
-  const summaryRows = useMemo<SummaryRow[]>(
-    () => [
-      {
-        label: 'Path',
-        value: labelFor(content.branch.options, draft.enquiryType),
-        step: 'branch',
-        thumbnail: BRANCH_MEDIA[draft.enquiryType],
-      },
-      {
-        label: 'Roof style',
-        value: labelFor(content.roofStyle.options, draft.style),
-        step: 'roofStyle',
-        thumbnail: draft.style ? ROOF_STYLE_MEDIA[draft.style] : undefined,
-      },
-      {
-        label: 'Roof material',
-        value: draft.roofMaterialChoice ? labelFor(content.roofMaterial.options, draft.roofMaterialChoice) : 'Not set',
-        step: 'roofMaterial',
-        thumbnail: draft.roofMaterialChoice ? ROOF_MATERIAL_MEDIA[draft.roofMaterialChoice] : undefined,
-      },
-      {
-        label: 'Site',
-        value:
-          draft.site.installSurface && draft.site.level
-            ? `${labelFor(content.site.installSurfaceOptions, draft.site.installSurface)} - ${labelFor(content.site.levelOptions, draft.site.level)}`
-            : 'Not set',
-        step: 'site',
-        thumbnail: draft.site.installSurface ? INSTALL_SURFACE_MEDIA[draft.site.installSurface] : undefined,
-      },
-      {
-        label: 'Dimensions',
-        value:
-          draft.dimensions.widthM || draft.dimensions.depthM || draft.dimensions.heightM
-            ? `${draft.dimensions.widthM || '-'}m x ${draft.dimensions.depthM || '-'}m x ${draft.dimensions.heightM || '-'}m`
-            : 'Not set',
-        step: 'site',
-      },
-      {
-        label: 'Consent',
-        value: consentResult.title,
-        step: 'consent',
-      },
-      {
-        label: 'Extras',
-        value:
-          selectedExtras.length > 0
-            ? selectedExtras.join(', ')
-            : draft.extrasAcknowledged
-              ? 'No extras right now'
-              : 'Not set',
-        step: 'extras',
-        thumbnail: selectedExtraIds[0] ? EXTRA_MEDIA[selectedExtraIds[0]] : undefined,
-      },
-      {
-        label: 'Timeframe',
-        value: labelFor(content.process.timeframeOptions, draft.timeframe),
-        step: 'process',
-        thumbnail: draft.timeframe ? TIMEFRAME_MEDIA[draft.timeframe] : undefined,
-      },
-    ],
-    [
-      content.branch.options,
-      content.process.timeframeOptions,
-      content.roofMaterial.options,
-      content.roofStyle.options,
-      content.site.installSurfaceOptions,
-      content.site.levelOptions,
-      consentResult.title,
-      draft.dimensions.depthM,
-      draft.dimensions.heightM,
-      draft.dimensions.widthM,
-      draft.enquiryType,
-      draft.extrasAcknowledged,
-      draft.roofMaterialChoice,
-      draft.site.installSurface,
-      draft.site.level,
-      draft.style,
-      draft.timeframe,
-      selectedExtraIds,
-      selectedExtras,
-    ]
+  const branchModalOptions = useMemo<TabbedModalOption<EnquiryType>[]>(
+    () =>
+      content.branch.options.map((option) => ({
+        id: option.value,
+        label: option.label,
+        summary: option.description,
+        image: BRANCH_MEDIA[option.value],
+        bestFor: BRANCH_GUIDE[option.value].bestFor,
+        consider: BRANCH_GUIDE[option.value].consider,
+        worksWellWith: BRANCH_GUIDE[option.value].worksWellWith,
+        microEducation: BRANCH_GUIDE[option.value].microEducation,
+      })),
+    [content.branch.options]
   );
 
+  const roofStyleModalOptions = useMemo<TabbedModalOption<RoofStyle>[]>(
+    () =>
+      content.roofStyle.options.map((option) => ({
+        id: option.value,
+        label: option.label,
+        summary: option.what,
+        image: ROOF_STYLE_MEDIA[option.value],
+        bestFor: option.bestWhen,
+        consider: [option.watchOut],
+        worksWellWith: ROOF_STYLE_PAIRINGS[option.value],
+        microEducation: 'Clients with similar layouts often decide after comparing daylight and drainage behavior.',
+      })),
+    [content.roofStyle.options]
+  );
+
+  const roofMaterialModalOptions = useMemo<TabbedModalOption<RoofMaterialChoice>[]>(
+    () =>
+      content.roofMaterial.options.map((option) => ({
+        id: option.value,
+        label: option.label,
+        summary: option.description,
+        image: ROOF_MATERIAL_MEDIA[option.value],
+        bestFor: ROOF_MATERIAL_GUIDE[option.value].bestFor,
+        consider: ROOF_MATERIAL_GUIDE[option.value].consider,
+        worksWellWith: ROOF_MATERIAL_GUIDE[option.value].worksWellWith,
+        microEducation: ROOF_MATERIAL_GUIDE[option.value].microEducation,
+      })),
+    [content.roofMaterial.options]
+  );
+
+  const timeframeModalOptions = useMemo<TabbedModalOption<Timeframe>[]>(
+    () =>
+      content.process.timeframeOptions.map((option) => ({
+        id: option.value,
+        label: option.label,
+        summary: TIMEFRAME_GUIDE[option.value].summary,
+        image: TIMEFRAME_MEDIA[option.value],
+        bestFor: TIMEFRAME_GUIDE[option.value].bestFor,
+        consider: TIMEFRAME_GUIDE[option.value].consider,
+        worksWellWith: TIMEFRAME_GUIDE[option.value].worksWellWith,
+      })),
+    [content.process.timeframeOptions]
+  );
+
+  const extrasModalOptions = useMemo<ExtrasExplorerOption<ExtraId>[]>(
+    () =>
+      content.extras.options.map((option) => ({
+        id: option.value,
+        label: option.label,
+        summary: option.description,
+        image: EXTRA_MEDIA[option.value],
+        bestFor: ['Comfort control', 'Longer seasonal use'],
+        consider: ['Power and control planning'],
+        microEducation: 'Most projects choose extras in bundles after deciding roof style and material.',
+      })),
+    [content.extras.options]
+  );
+
+  const branchSummary = labelFor(content.branch.options, confirmedDraft.enquiryType);
+  const roofStyleSummary = labelFor(content.roofStyle.options, confirmedDraft.style);
+
+  const roofMaterialSummary = useMemo(() => {
+    if (!confirmedDraft.roofMaterialChoice) return 'Not set';
+    const parts = [labelFor(content.roofMaterial.options, confirmedDraft.roofMaterialChoice)];
+    if (
+      (confirmedDraft.roofMaterialChoice === 'acrylic' || confirmedDraft.roofMaterialChoice === 'combination') &&
+      confirmedDraft.acrylicTint
+    ) {
+      parts.push(`Tint: ${labelFor(content.roofMaterial.acrylicTintOptions, confirmedDraft.acrylicTint)}`);
+    }
+    if (
+      (confirmedDraft.roofMaterialChoice === 'timber' || confirmedDraft.roofMaterialChoice === 'combination') &&
+      confirmedDraft.timberFinish
+    ) {
+      parts.push(`Finish: ${labelFor(content.roofMaterial.timberFinishOptions, confirmedDraft.timberFinish)}`);
+    }
+    return parts.join(' - ');
+  }, [
+    confirmedDraft.acrylicTint,
+    confirmedDraft.roofMaterialChoice,
+    confirmedDraft.timberFinish,
+    content.roofMaterial.acrylicTintOptions,
+    content.roofMaterial.options,
+    content.roofMaterial.timberFinishOptions,
+  ]);
+
+  const siteSummary = useMemo(() => {
+    const surface = labelFor(content.site.installSurfaceOptions, confirmedDraft.site.installSurface);
+    const level = labelFor(content.site.levelOptions, confirmedDraft.site.level);
+    const attachment = labelFor(content.site.attachmentOptions, confirmedDraft.site.attachment);
+    const access = labelFor(content.site.publicAccessOptions, confirmedDraft.site.publicAccess);
+    const dims = `${confirmedDraft.dimensions.widthM || '-'}m x ${confirmedDraft.dimensions.depthM || '-'}m`;
+    return `${surface}, ${level}, ${attachment}, ${access}, ${dims}`;
+  }, [
+    confirmedDraft.dimensions.depthM,
+    confirmedDraft.dimensions.widthM,
+    confirmedDraft.site.attachment,
+    confirmedDraft.site.installSurface,
+    confirmedDraft.site.level,
+    confirmedDraft.site.publicAccess,
+    content.site.attachmentOptions,
+    content.site.installSurfaceOptions,
+    content.site.levelOptions,
+    content.site.publicAccessOptions,
+  ]);
+
+  const extrasSummary =
+    selectedConfirmedExtras.length > 0
+      ? selectedConfirmedExtras.join(', ')
+      : confirmedDraft.extrasAcknowledged
+        ? 'No extras right now'
+        : 'Not set';
+
+  const timeframeSummary = labelFor(content.process.timeframeOptions, confirmedDraft.timeframe);
+
+  const completedBriefRows = useMemo<BriefRow[]>(() => {
+    const rows: BriefRow[] = [];
+    if (completion.branch) {
+      rows.push({ label: 'Path', value: branchSummary, step: 'branch' });
+    }
+    if (completion.roofStyle) {
+      rows.push({ label: 'Roof style', value: roofStyleSummary, step: 'roofStyle' });
+    }
+    if (completion.roofMaterial) {
+      rows.push({ label: 'Roof material', value: roofMaterialSummary, step: 'roofMaterial' });
+    }
+    if (completion.site) {
+      rows.push({ label: 'Site + dimensions', value: siteSummary, step: 'site' });
+    }
+    if (completion.consent) {
+      rows.push({ label: 'Consent check', value: confirmedConsentResult.title, step: 'consent' });
+    }
+    if (completion.extras) {
+      rows.push({ label: 'Extras', value: extrasSummary, step: 'extras' });
+    }
+    if (completion.process) {
+      rows.push({ label: 'Timeframe', value: timeframeSummary, step: 'process' });
+    }
+    return rows;
+  }, [
+    branchSummary,
+    completion.branch,
+    completion.consent,
+    completion.extras,
+    completion.process,
+    completion.roofMaterial,
+    completion.roofStyle,
+    completion.site,
+    confirmedConsentResult.title,
+    extrasSummary,
+    roofMaterialSummary,
+    roofStyleSummary,
+    siteSummary,
+    timeframeSummary,
+  ]);
+
+  const consentCtaLabel =
+    consentResult.code === 'building_consent_likely_required' ||
+    consentResult.code === 'possibly_exempt_with_professional_signoff_20_to_30'
+      ? 'Book a Design Consultation to review consent pathway'
+      : 'Book a Design Consultation';
+
   const submitButtonLabel =
-    submitState === 'sending' ? 'Submitting...' : submitState === 'success' ? 'Submitted' : 'Submit brief';
+    submitState === 'sending'
+      ? 'Booking...'
+      : submitState === 'success'
+        ? 'Booked'
+        : 'Book Design Consultation';
 
   const publicAccessLabel =
     draft.enquiryType === 'commercial'
-      ? 'Public access under/around the pergola?'
-      : 'Do people other than your household use this area?';
+      ? 'Public access under or around the pergola?'
+      : 'Do people outside your household use this area?';
 
-  const handleSummaryEdit = (step: StepId) => {
-    if (visibleStepSet.has(step)) {
-      jumpToSection(step);
-      return;
-    }
+  const progressLabel =
+    submitState === 'success'
+      ? `Complete: ${STEP_ORDER.length} of ${STEP_ORDER.length}`
+      : `Step ${Math.min(firstIncompleteIndex + 1, STEP_ORDER.length)} of ${STEP_ORDER.length}`;
 
-    jumpToSection(firstIncompleteStep);
-  };
+  const branchCanContinue = Boolean(draft.enquiryType);
+  const roofStyleCanContinue = Boolean(draft.style);
+  const roofMaterialCanContinue = isRoofMaterialDraftValid(draft);
+  const siteCanContinue = isSiteDraftValid(draft);
+  const extrasCanContinue = hasExtrasChoice(draft);
+  const processCanContinue = Boolean(draft.timeframe);
 
-  const inFlowReviewRows = summaryRows.filter((row) => row.step !== 'process');
+  const reviewRows = completedBriefRows.filter((row) => row.step !== 'consent');
 
   return (
     <>
-      <main className="container mx-auto px-4 py-8 md:px-6 md:py-10">
+      <main className="container mx-auto px-4 py-8 pb-28 md:px-6 md:py-10 md:pb-28 lg:pb-10">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
           <div className="space-y-6">
-            <section id="start-hero" ref={setSectionRef('hero')} className="scroll-mt-24 rounded-xl border border-border bg-panel">
+            <section id="start-hero" ref={setSectionRef('hero')} className="scroll-mt-24 rounded-2xl border border-border bg-panel">
               <div className="space-y-4 p-5 md:p-6">
                 <p className="text-xs uppercase tracking-[0.14em] text-neutral-500">Start</p>
                 <h1
@@ -1021,30 +1568,56 @@ export default function StartPage() {
                     {content.hero.skipCta}
                   </button>
                 </div>
-                <p className="text-xs uppercase tracking-[0.12em] text-neutral-500">
-                  Schema version: {START_FLOW_SCHEMA_VERSION}
-                </p>
+
+                {resumePromptOpen ? (
+                  <div className="rounded-xl border border-border bg-white p-3">
+                    <p className="text-sm font-medium text-neutral-900">Resume your design?</p>
+                    <p className="mt-1 text-sm text-neutral-700">We found a saved draft on this device.</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleResumeDesign}
+                        className="rounded border border-black bg-black px-3 py-1.5 text-sm font-medium text-white"
+                      >
+                        Resume
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStartOverFromPrompt}
+                        className="rounded border border-border bg-white px-3 py-1.5 text-sm font-medium text-neutral-800"
+                      >
+                        Start over
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </section>
 
             {visibleStepSet.has('branch') ? (
               <StepSection
                 id="branch"
-                eyebrow="Step 1"
+                stepLabel="Step 1"
                 title={content.branch.heading}
-                intro="Choose the closest path. You can switch it later if your brief changes."
-                helper="If you're unsure, choose the closest fit and continue."
-                complete={completion.branch}
+                intro="Choose the path that best fits your project type."
+                helper="Card clicks set a draft choice and open details. Continue confirms the step."
+                isExpanded={firstIncompleteStep === 'branch'}
+                isComplete={completion.branch}
                 sectionRef={setSectionRef('branch')}
-                nextTeaser={completion.branch ? 'Next: roof style visual guide.' : undefined}
+                collapsedSummary={branchSummary}
+                onChange={() => handleStepChange('branch')}
+                canContinue={branchCanContinue}
+                onContinue={confirmBranch}
+                continueLabel="Continue to Roof Style"
               >
-                <SelectCardGroup
+                <OptionCardGroup
                   mode="single"
                   name="start-branch"
                   ariaLabel="Choose your path"
                   options={branchCards}
                   selectedValues={[draft.enquiryType]}
-                  onChange={(value) => handleBranchSelect(value)}
+                  onSelectionChange={(value) => handleBranchSelection(value)}
+                  onOptionOpen={(value) => handleBranchCardOpen(value)}
                   columnsClassName="grid gap-3 md:grid-cols-3"
                 />
               </StepSection>
@@ -1053,21 +1626,27 @@ export default function StartPage() {
             {visibleStepSet.has('roofStyle') ? (
               <StepSection
                 id="roofStyle"
-                eyebrow="Step 2"
+                stepLabel="Step 2"
                 title={content.roofStyle.heading}
-                intro="Choose the roof shape. This sets the design direction before material options."
-                helper="Not sure is always valid. We can recommend a style from your photos."
-                complete={completion.roofStyle}
+                intro="Browse forms and pick the roof character that matches your space."
+                helper="Switching tabs in the modal will not change your selection until you explicitly select."
+                isExpanded={firstIncompleteStep === 'roofStyle'}
+                isComplete={completion.roofStyle}
                 sectionRef={setSectionRef('roofStyle')}
-                nextTeaser={completion.roofStyle ? 'Next: roofing material.' : undefined}
+                collapsedSummary={roofStyleSummary}
+                onChange={() => handleStepChange('roofStyle')}
+                canContinue={roofStyleCanContinue}
+                onContinue={confirmRoofStyle}
+                continueLabel="Continue to Roof Material"
               >
-                <SelectCardGroup
+                <OptionCardGroup
                   mode="single"
                   name="start-style"
                   ariaLabel="Choose roof style"
                   options={roofStyleCards}
                   selectedValues={draft.style ? [draft.style] : []}
-                  onChange={(value) => handleStyleSelect(value)}
+                  onSelectionChange={(value) => handleRoofStyleSelection(value)}
+                  onOptionOpen={(value) => handleRoofStyleCardOpen(value)}
                 />
               </StepSection>
             ) : null}
@@ -1075,35 +1654,47 @@ export default function StartPage() {
             {visibleStepSet.has('roofMaterial') ? (
               <StepSection
                 id="roofMaterial"
-                eyebrow="Step 3"
+                stepLabel="Step 3"
                 title={content.roofMaterial.heading}
-                intro="Choose how the roof feels and performs."
-                helper="We'll use this to shape daylight, shade, and comfort recommendations."
-                complete={completion.roofMaterial}
+                intro="Set your roof material direction and any required sub-choices."
+                helper="Material cards open a tabbed guide. Selection changes only when you choose Select this option."
+                isExpanded={firstIncompleteStep === 'roofMaterial'}
+                isComplete={completion.roofMaterial}
                 sectionRef={setSectionRef('roofMaterial')}
-                nextTeaser={completion.roofMaterial ? 'Next: site details and measurements.' : undefined}
+                collapsedSummary={roofMaterialSummary}
+                onChange={() => handleStepChange('roofMaterial')}
+                canContinue={roofMaterialCanContinue}
+                onContinue={confirmRoofMaterial}
+                continueLabel="Continue to Site Basics"
               >
-                <SelectCardGroup
+                <OptionCardGroup
                   mode="single"
                   name="start-material"
                   ariaLabel="Choose roof material"
                   options={roofMaterialCards}
                   selectedValues={draft.roofMaterialChoice ? [draft.roofMaterialChoice] : []}
-                  onChange={(value) => handleMaterialSelect(value)}
+                  onSelectionChange={(value) => handleRoofMaterialSelection(value)}
+                  onOptionOpen={(value) => handleRoofMaterialCardOpen(value)}
                 />
 
                 {draft.roofMaterialChoice === 'acrylic' || draft.roofMaterialChoice === 'combination' ? (
                   <div className="space-y-3 rounded-xl border border-border p-4">
-                    <p className="text-sm font-medium text-neutral-900">Light feel (acrylic tint)</p>
-                    <SelectCardGroup
+                    <p className="text-sm font-medium text-neutral-900">Acrylic tint</p>
+                    <OptionCardGroup
                       mode="single"
                       name="start-acrylic-tint"
                       ariaLabel="Choose acrylic tint"
                       options={acrylicTintCards}
                       selectedValues={draft.acrylicTint ? [draft.acrylicTint] : []}
-                      onChange={(value) => {
-                        clearFeedback();
-                        setDraft((previous) => ({ ...previous, acrylicTint: value }));
+                      onSelectionChange={(value) => updateAcrylicTint(value)}
+                      onOptionOpen={(value) => {
+                        const option = acrylicTintCards.find((card) => card.value === value);
+                        if (!option) return;
+                        openQuickInfo({
+                          title: option.title,
+                          summary: option.summary,
+                          image: option.image,
+                        });
                       }}
                       columnsClassName="grid gap-3 grid-cols-2 md:grid-cols-3"
                     />
@@ -1113,15 +1704,21 @@ export default function StartPage() {
                 {draft.roofMaterialChoice === 'timber' || draft.roofMaterialChoice === 'combination' ? (
                   <div className="space-y-3 rounded-xl border border-border p-4">
                     <p className="text-sm font-medium text-neutral-900">Timber finish</p>
-                    <SelectCardGroup
+                    <OptionCardGroup
                       mode="single"
                       name="start-timber-finish"
                       ariaLabel="Choose timber finish"
                       options={timberFinishCards}
                       selectedValues={draft.timberFinish ? [draft.timberFinish] : []}
-                      onChange={(value) => {
-                        clearFeedback();
-                        setDraft((previous) => ({ ...previous, timberFinish: value }));
+                      onSelectionChange={(value) => updateTimberFinish(value)}
+                      onOptionOpen={(value) => {
+                        const option = timberFinishCards.find((card) => card.value === value);
+                        if (!option) return;
+                        openQuickInfo({
+                          title: option.title,
+                          summary: option.summary,
+                          image: option.image,
+                        });
                       }}
                       columnsClassName="grid gap-3 grid-cols-2 md:grid-cols-4"
                     />
@@ -1133,16 +1730,21 @@ export default function StartPage() {
             {visibleStepSet.has('site') ? (
               <StepSection
                 id="site"
-                eyebrow="Step 4"
+                stepLabel="Step 4"
                 title={content.site.heading}
-                intro="A quick site snapshot helps us guide consent and estimate paths."
-                helper={content.site.measureHelp}
-                complete={completion.site}
+                intro="Capture site basics and quick measurements."
+                helper="This step stays draft-only until you press Continue."
+                isExpanded={firstIncompleteStep === 'site'}
+                isComplete={completion.site}
                 sectionRef={setSectionRef('site')}
-                nextTeaser={completion.site ? 'Next: consent quick-check result.' : undefined}
+                collapsedSummary={siteSummary}
+                onChange={() => handleStepChange('site')}
+                canContinue={siteCanContinue}
+                onContinue={confirmSite}
+                continueLabel="Continue to Consent Quick-check"
               >
                 <div className="space-y-4 rounded-xl border border-border p-4">
-                  <h3 className="text-base font-semibold text-neutral-900">4A. Where is it going?</h3>
+                  <h3 className="text-base font-semibold text-neutral-900">4A. Site basics</h3>
 
                   <label className="block space-y-1">
                     <span className="text-sm font-medium text-neutral-900">Suburb / city</span>
@@ -1156,52 +1758,88 @@ export default function StartPage() {
 
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-neutral-900">Install surface</p>
-                    <SelectCardGroup
+                    <OptionCardGroup
                       mode="single"
                       name="start-install-surface"
                       ariaLabel="Install surface"
                       options={installSurfaceCards}
                       selectedValues={draft.site.installSurface ? [draft.site.installSurface] : []}
-                      onChange={(value) => updateSite('installSurface', value as InstallSurface)}
+                      onSelectionChange={(value) => updateSite('installSurface', value as InstallSurface)}
+                      onOptionOpen={(value) => {
+                        const option = installSurfaceCards.find((card) => card.value === value);
+                        if (!option) return;
+                        openQuickInfo({
+                          title: option.title,
+                          summary: option.summary,
+                          image: option.image,
+                        });
+                      }}
                       columnsClassName="grid gap-3 md:grid-cols-3"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-neutral-900">Level / storey</p>
-                    <SelectCardGroup
+                    <OptionCardGroup
                       mode="single"
                       name="start-level"
                       ariaLabel="Level or storey"
                       options={levelCards}
                       selectedValues={draft.site.level ? [draft.site.level] : []}
-                      onChange={(value) => updateSite('level', value as SiteLevel)}
+                      onSelectionChange={(value) => updateSite('level', value as SiteLevel)}
+                      onOptionOpen={(value) => {
+                        const option = levelCards.find((card) => card.value === value);
+                        if (!option) return;
+                        openQuickInfo({
+                          title: option.title,
+                          summary: option.summary,
+                          image: option.image,
+                        });
+                      }}
                       columnsClassName="grid gap-3 md:grid-cols-2"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-neutral-900">Attached to existing building?</p>
-                    <SelectCardGroup
+                    <OptionCardGroup
                       mode="single"
                       name="start-attachment"
                       ariaLabel="Attachment to existing building"
                       options={attachmentCards}
                       selectedValues={draft.site.attachment ? [draft.site.attachment] : []}
-                      onChange={(value) => updateSite('attachment', value as SiteAttachment)}
+                      onSelectionChange={(value) => updateSite('attachment', value as SiteAttachment)}
+                      onOptionOpen={(value) => {
+                        const option = attachmentCards.find((card) => card.value === value);
+                        if (!option) return;
+                        openQuickInfo({
+                          title: option.title,
+                          summary: option.summary,
+                          image: option.image,
+                        });
+                      }}
                       columnsClassName="grid gap-3 md:grid-cols-3"
                     />
                   </div>
 
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-neutral-900">{publicAccessLabel}</p>
-                    <SelectCardGroup
+                    <OptionCardGroup
                       mode="single"
                       name="start-public-access"
                       ariaLabel="Public access"
                       options={publicAccessCards}
                       selectedValues={draft.site.publicAccess ? [draft.site.publicAccess] : []}
-                      onChange={(value) => updateSite('publicAccess', value as PublicAccess)}
+                      onSelectionChange={(value) => updateSite('publicAccess', value as PublicAccess)}
+                      onOptionOpen={(value) => {
+                        const option = publicAccessCards.find((card) => card.value === value);
+                        if (!option) return;
+                        openQuickInfo({
+                          title: option.title,
+                          summary: option.summary,
+                          image: option.image,
+                        });
+                      }}
                       columnsClassName="grid gap-3 md:grid-cols-3"
                     />
                   </div>
@@ -1275,18 +1913,25 @@ export default function StartPage() {
             {visibleStepSet.has('consent') ? (
               <StepSection
                 id="consent"
-                eyebrow="Step 5"
+                stepLabel="Step 5"
                 title={content.consent.heading}
-                intro="A fast guidance check using your current answers."
-                helper="This is a quick indication, not a formal consent decision."
-                complete={completion.consent}
+                intro="This quick-check updates live as your dimensions and site inputs change."
+                helper="Guidance only. Final consent pathway is confirmed during Design Consultation."
+                isExpanded={firstIncompleteStep === 'consent'}
+                isComplete={completion.consent}
                 sectionRef={setSectionRef('consent')}
-                nextTeaser={completion.consent ? 'Next: comfort and add-ons.' : undefined}
+                collapsedSummary={confirmedConsentResult.title}
+                onChange={() => handleStepChange('consent')}
+                canContinue={consentPrerequisitesReady}
+                onContinue={confirmConsent}
+                continueLabel="Continue to Extras"
               >
                 <ConsentResultCard
+                  ready={consentPrerequisitesReady}
                   result={consentResult}
                   disclaimer={content.consent.disclaimer}
                   links={content.consent.links}
+                  ctaLabel={consentCtaLabel}
                 />
               </StepSection>
             ) : null}
@@ -1294,28 +1939,38 @@ export default function StartPage() {
             {visibleStepSet.has('extras') ? (
               <StepSection
                 id="extras"
-                eyebrow="Step 6"
+                stepLabel="Step 6"
                 title={content.extras.heading}
-                intro="Pick optional features to shape comfort, lighting, and scope."
-                helper="Select any that matter now, or skip and keep moving."
-                complete={completion.extras}
+                intro="Select one or more extras, or explicitly choose no extras for now."
+                helper="Extras are draft selections until you press Continue."
+                isExpanded={firstIncompleteStep === 'extras'}
+                isComplete={completion.extras}
                 sectionRef={setSectionRef('extras')}
-                nextTeaser={completion.extras ? 'Next: process and timing.' : undefined}
+                collapsedSummary={extrasSummary}
+                onChange={() => handleStepChange('extras')}
+                canContinue={extrasCanContinue}
+                onContinue={confirmExtras}
+                continueLabel="Continue to Timeframe"
               >
-                <SelectCardGroup
+                <OptionCardGroup
                   mode="multi"
                   name="start-extras"
                   ariaLabel="Choose extras"
                   options={extrasCards}
                   selectedValues={selectedExtraIds}
-                  onChange={(value) => handleExtraToggle(value)}
+                  onSelectionChange={(value, checked) => handleExtraSelectionChange(value, checked)}
+                  onOptionOpen={(value) => handleExtraCardOpen(value)}
                   columnsClassName="grid gap-3 md:grid-cols-3"
                 />
 
                 <button
                   type="button"
-                  onClick={handleNoExtras}
-                  className="rounded border border-border bg-white px-4 py-2 text-sm font-medium text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+                  onClick={() => setNoExtras(!draft.extrasAcknowledged)}
+                  className={`rounded border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
+                    draft.extrasAcknowledged
+                      ? 'border-black bg-black text-white'
+                      : 'border-border bg-white text-neutral-800 hover:border-neutral-500'
+                  }`}
                 >
                   {content.extras.noneLabel}
                 </button>
@@ -1325,13 +1980,18 @@ export default function StartPage() {
             {visibleStepSet.has('process') ? (
               <StepSection
                 id="process"
-                eyebrow="Step 7"
+                stepLabel="Step 7"
                 title={content.process.heading}
-                intro="This is the typical journey from first brief to on-site completion."
-                helper="Tell us your timeframe so we can prioritise follow-up."
-                complete={completion.process}
+                intro="Choose your intended timeframe for design and scheduling."
+                helper="Timeframe is confirmed only when you press Continue."
+                isExpanded={firstIncompleteStep === 'process'}
+                isComplete={completion.process}
                 sectionRef={setSectionRef('process')}
-                nextTeaser={completion.process ? 'Next: send your brief.' : undefined}
+                collapsedSummary={timeframeSummary}
+                onChange={() => handleStepChange('process')}
+                canContinue={processCanContinue}
+                onContinue={confirmProcess}
+                continueLabel="Continue to Consultation Booking"
               >
                 <ol className="grid gap-2 text-sm text-neutral-700 md:grid-cols-2">
                   {content.process.timeline.map((item, index) => (
@@ -1343,13 +2003,14 @@ export default function StartPage() {
 
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-neutral-900">Desired timeframe</p>
-                  <SelectCardGroup
+                  <OptionCardGroup
                     mode="single"
                     name="start-timeframe"
                     ariaLabel="Desired timeframe"
                     options={timeframeCards}
                     selectedValues={draft.timeframe ? [draft.timeframe] : []}
-                    onChange={(value) => handleTimeframeSelect(value)}
+                    onSelectionChange={(value) => handleTimeframeSelection(value)}
+                    onOptionOpen={(value) => handleTimeframeCardOpen(value)}
                     columnsClassName="grid gap-3 sm:grid-cols-2"
                   />
                 </div>
@@ -1359,25 +2020,27 @@ export default function StartPage() {
             {visibleStepSet.has('submit') ? (
               <StepSection
                 id="submit"
-                eyebrow="Step 8"
-                title="Send your brief"
-                intro="Submit directly to Sanctuary via /api/enquiry. Name and phone are required."
-                helper="Your summary updates live as you edit above."
-                complete={completion.submit}
+                stepLabel="Step 8"
+                title="Book your Design Consultation"
+                intro="Submit your details so Sanctuary can schedule your Design Consultation."
+                helper="Your completed brief is attached automatically."
+                isExpanded={firstIncompleteStep === 'submit' || submitState === 'success'}
+                isComplete={completion.submit}
                 sectionRef={setSectionRef('submit')}
+                collapsedSummary={submitMeta?.enquiryRequestId ? `Reference ${submitMeta.enquiryRequestId}` : 'Sent'}
               >
                 {submitState === 'success' ? (
                   <div className="rounded border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-900" role="status">
-                    <p className="font-semibold">Thanks. Your brief has been submitted.</p>
-                    <p className="mt-1">We will review your details and follow up shortly.</p>
+                    <p className="font-semibold">Thanks. Your Design Consultation request has been sent.</p>
+                    <p className="mt-1">Our team will review your brief and follow up shortly.</p>
                     {submitMeta?.enquiryRequestId ? <p className="mt-2">Reference: {submitMeta.enquiryRequestId}</p> : null}
                   </div>
                 ) : (
                   <form className="space-y-4" onSubmit={handleSubmit}>
                     <div className="space-y-2 rounded-lg border border-border bg-neutral-50 p-3">
-                      <p className="text-sm font-semibold text-neutral-900">Review your brief</p>
+                      <p className="text-sm font-semibold text-neutral-900">Review your confirmed brief</p>
                       <div className="grid gap-2 sm:grid-cols-2">
-                        {inFlowReviewRows.map((row) => (
+                        {reviewRows.map((row) => (
                           <div key={`submit-${row.label}`} className="rounded border border-border bg-white px-2 py-1.5 text-xs">
                             <p className="uppercase tracking-[0.08em] text-neutral-500">{row.label}</p>
                             <p className="mt-1 text-sm text-neutral-800">{row.value}</p>
@@ -1395,7 +2058,13 @@ export default function StartPage() {
                           value={draft.name}
                           onChange={(event) => {
                             clearFeedback();
-                            setDraft((previous) => ({ ...previous, name: event.target.value }));
+                            setFlow((previous) => ({
+                              ...previous,
+                              draft: {
+                                ...previous.draft,
+                                name: event.target.value,
+                              },
+                            }));
                           }}
                           className="w-full rounded border border-border px-3 py-2 text-sm"
                         />
@@ -1409,7 +2078,13 @@ export default function StartPage() {
                           value={draft.phone}
                           onChange={(event) => {
                             clearFeedback();
-                            setDraft((previous) => ({ ...previous, phone: event.target.value }));
+                            setFlow((previous) => ({
+                              ...previous,
+                              draft: {
+                                ...previous.draft,
+                                phone: event.target.value,
+                              },
+                            }));
                           }}
                           className="w-full rounded border border-border px-3 py-2 text-sm"
                         />
@@ -1423,7 +2098,13 @@ export default function StartPage() {
                         value={draft.email}
                         onChange={(event) => {
                           clearFeedback();
-                          setDraft((previous) => ({ ...previous, email: event.target.value }));
+                          setFlow((previous) => ({
+                            ...previous,
+                            draft: {
+                              ...previous.draft,
+                              email: event.target.value,
+                            },
+                          }));
                         }}
                         className="w-full rounded border border-border px-3 py-2 text-sm"
                       />
@@ -1475,7 +2156,13 @@ export default function StartPage() {
                         value={draft.message}
                         onChange={(event) => {
                           clearFeedback();
-                          setDraft((previous) => ({ ...previous, message: event.target.value }));
+                          setFlow((previous) => ({
+                            ...previous,
+                            draft: {
+                              ...previous.draft,
+                              message: event.target.value,
+                            },
+                          }));
                         }}
                         className="w-full rounded border border-border px-3 py-2 text-sm"
                       />
@@ -1510,7 +2197,8 @@ export default function StartPage() {
               </StepSection>
             ) : null}
           </div>
-          <aside className="rounded-xl border border-border bg-white p-4 lg:sticky lg:top-24">
+
+          <aside className="hidden rounded-2xl border border-border bg-white p-4 lg:sticky lg:top-24 lg:block">
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-neutral-700">Design brief</h2>
@@ -1522,60 +2210,200 @@ export default function StartPage() {
                   Reset
                 </button>
               </div>
+              <p className="text-sm text-neutral-700">{progressLabel}</p>
 
-              <div className="space-y-2">
-                {summaryRows.map((row) => (
-                  <div key={row.label} className="rounded border border-border bg-neutral-50 p-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-[11px] uppercase tracking-[0.11em] text-neutral-500">{row.label}</p>
-                      <button
-                        type="button"
-                        onClick={() => handleSummaryEdit(row.step)}
-                        className="text-[11px] font-medium uppercase tracking-[0.11em] text-neutral-700 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
-                      >
-                        Edit
-                      </button>
+              {completedBriefRows.length > 0 ? (
+                <div className="space-y-2">
+                  {completedBriefRows.map((row) => (
+                    <div key={`brief-${row.label}`} className="rounded border border-border bg-neutral-50 p-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[11px] uppercase tracking-[0.11em] text-neutral-500">{row.label}</p>
+                        <button
+                          type="button"
+                          onClick={() => handleStepChange(row.step)}
+                          className="text-[11px] font-medium uppercase tracking-[0.11em] text-neutral-700 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                      <p className="mt-1 text-sm text-neutral-800">{row.value}</p>
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      {row.thumbnail ? (
-                        <Image
-                          src={row.thumbnail.src}
-                          alt={row.thumbnail.alt}
-                          width={44}
-                          height={32}
-                          className="h-8 w-11 rounded object-cover"
-                        />
-                      ) : null}
-                      <p className="text-sm text-neutral-800">{row.value}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {selectedExtras.length > 0 ? (
-                <div className="flex flex-wrap gap-1 pt-1">
-                  {selectedExtras.map((extra) => (
-                    <span
-                      key={extra}
-                      className="rounded-full border border-border bg-neutral-100 px-2 py-1 text-[11px] uppercase tracking-[0.08em] text-neutral-700"
-                    >
-                      {extra}
-                    </span>
                   ))}
                 </div>
-              ) : null}
-
-              <p className="text-xs text-neutral-500">Current route: /start</p>
+              ) : (
+                <p className="text-sm text-neutral-600">Completed items will appear here as you confirm each step.</p>
+              )}
             </div>
           </aside>
         </div>
       </main>
 
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white/96 backdrop-blur lg:hidden">
+        <button
+          type="button"
+          onClick={() => setBriefSheetOpen(true)}
+          className="mx-auto flex w-full max-w-[980px] items-center justify-between gap-3 px-4 py-3 text-left"
+        >
+          <span className="text-sm text-neutral-800">{progressLabel}</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-700">View brief</span>
+        </button>
+      </div>
+
+      <ModalSurface
+        open={Boolean(quickInfoModal)}
+        title={quickInfoModal?.title ?? 'Option details'}
+        description={quickInfoModal?.summary}
+        onClose={() => setQuickInfoModal(null)}
+      >
+        {quickInfoModal ? (
+          <div className="grid gap-4 sm:grid-cols-[220px_1fr]">
+            <div className="relative overflow-hidden rounded-xl border border-border bg-neutral-100">
+              <div className="relative aspect-[4/3]">
+                <Image
+                  src={quickInfoModal.image.src}
+                  alt={quickInfoModal.image.alt}
+                  fill
+                  sizes="220px"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm text-neutral-800">{quickInfoModal.summary ?? 'Review this option, then continue when ready.'}</p>
+              <p className="text-xs text-neutral-600">Close this panel to keep browsing. Continue is confirmed on-page.</p>
+            </div>
+          </div>
+        ) : null}
+      </ModalSurface>
+
+      <ModalSurface
+        open={briefSheetOpen}
+        title="Design Brief"
+        description={progressLabel}
+        onClose={() => setBriefSheetOpen(false)}
+        mobileFullScreen
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setBriefSheetOpen(false);
+                handleReset();
+              }}
+              className="text-xs font-medium uppercase tracking-[0.12em] text-neutral-700 underline underline-offset-4"
+            >
+              Reset
+            </button>
+          </div>
+          {completedBriefRows.length > 0 ? (
+            <div className="space-y-2">
+              {completedBriefRows.map((row) => (
+                <div key={`sheet-${row.label}`} className="rounded border border-border bg-neutral-50 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[11px] uppercase tracking-[0.11em] text-neutral-500">{row.label}</p>
+                    <button
+                      type="button"
+                      onClick={() => handleStepChange(row.step)}
+                      className="text-[11px] font-medium uppercase tracking-[0.11em] text-neutral-700 underline underline-offset-4"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <p className="mt-1 text-sm text-neutral-800">{row.value}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-600">Complete and confirm a step to add it to your brief.</p>
+          )}
+        </div>
+      </ModalSurface>
+
+      <TabbedOptionModal
+        open={activeModal === 'branch'}
+        title="Choose your project path"
+        description="Browse each path before confirming your direction."
+        options={branchModalOptions}
+        activeTabId={branchTab}
+        selectedDraftId={draft.enquiryType}
+        onTabChange={setBranchTab}
+        onSelect={(value) => handleBranchSelection(value)}
+        onClose={() => setActiveModal(null)}
+        onContinue={confirmBranch}
+        continueLabel="Continue to Roof Style"
+        canContinue={branchCanContinue}
+      />
+
+      <TabbedOptionModal
+        open={activeModal === 'roofStyle'}
+        title="Roof style guide"
+        description="Use tabs to learn without changing your selection by accident."
+        options={roofStyleModalOptions}
+        activeTabId={roofStyleTab}
+        selectedDraftId={draft.style}
+        onTabChange={setRoofStyleTab}
+        onSelect={(value) => handleRoofStyleSelection(value)}
+        onClose={() => setActiveModal(null)}
+        onContinue={confirmRoofStyle}
+        continueLabel="Continue to Roof Material"
+        canContinue={roofStyleCanContinue}
+      />
+
+      <TabbedOptionModal
+        open={activeModal === 'roofMaterial'}
+        title="Roof material guide"
+        description="Use tabs to compare material behavior without auto-selecting."
+        options={roofMaterialModalOptions}
+        activeTabId={roofMaterialTab}
+        selectedDraftId={draft.roofMaterialChoice}
+        onTabChange={setRoofMaterialTab}
+        onSelect={(value) => handleRoofMaterialSelection(value)}
+        onClose={() => setActiveModal(null)}
+        onContinue={confirmRoofMaterial}
+        continueLabel="Continue to Site Basics"
+        canContinue={roofMaterialCanContinue}
+      />
+
+      <ExtrasExplorerModal
+        open={activeModal === 'extras'}
+        title="Extras Explorer"
+        options={extrasModalOptions}
+        activeExtraId={extrasTab}
+        selectedExtraIds={selectedExtraIds}
+        noExtras={draft.extrasAcknowledged}
+        onActiveExtraChange={setExtrasTab}
+        onToggleExtra={(extraId) =>
+          handleExtraSelectionChange(extraId, !draft.extras[extraId])
+        }
+        onSetNoExtras={setNoExtras}
+        onClose={() => setActiveModal(null)}
+        onDone={() => setActiveModal(null)}
+        onContinue={confirmExtras}
+        canContinue={extrasCanContinue}
+        continueLabel="Continue to Timeframe"
+      />
+
+      <TabbedOptionModal
+        open={activeModal === 'process'}
+        title="Timeframe guide"
+        description="Pick your preferred timeline, then continue to consultation booking."
+        options={timeframeModalOptions}
+        activeTabId={timeframeTab}
+        selectedDraftId={draft.timeframe}
+        onTabChange={setTimeframeTab}
+        onSelect={(value) => handleTimeframeSelection(value)}
+        onClose={() => setActiveModal(null)}
+        onContinue={confirmProcess}
+        continueLabel="Continue to Consultation Booking"
+        canContinue={processCanContinue}
+      />
+
       <style jsx global>{`
-        @keyframes start-step-reveal {
+        @keyframes start-step-in {
           from {
             opacity: 0;
-            transform: translateY(8px);
+            transform: translateY(10px);
           }
           to {
             opacity: 1;
@@ -1583,8 +2411,53 @@ export default function StartPage() {
           }
         }
 
-        .start-step-reveal {
-          animation: start-step-reveal 220ms ease-out;
+        @keyframes start-modal-in {
+          from {
+            opacity: 0;
+            transform: translateY(16px) scale(0.985);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes start-overlay-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .start-step-shell,
+        .start-step-expanded,
+        .start-step-collapsed {
+          animation: start-step-in 220ms ease-out;
+        }
+
+        .start-modal-panel {
+          animation: start-modal-in 220ms ease-out;
+        }
+
+        .modal-overlay-fade {
+          animation: start-overlay-in 180ms ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .start-step-shell,
+          .start-step-expanded,
+          .start-step-collapsed,
+          .start-modal-panel,
+          .modal-overlay-fade {
+            animation: none !important;
+            transition: none !important;
+          }
+
+          html:focus-within {
+            scroll-behavior: auto;
+          }
         }
       `}</style>
     </>

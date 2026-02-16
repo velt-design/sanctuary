@@ -1,4 +1,4 @@
-export const START_FLOW_SCHEMA_VERSION = 'start-flow-v1';
+export const START_FLOW_SCHEMA_VERSION = 'start-flow-v2';
 
 export type EnquiryType = 'residential' | 'commercial' | 'professional';
 export type RoofStyle = 'pitched' | 'gable' | 'hip' | 'perimeter' | 'unsure';
@@ -84,11 +84,11 @@ export const defaultStartFlowDraft: StartFlowDraft = {
 
 export const startFlowContent = {
   hero: {
-    heading: 'Design your pergola in 3 minutes.',
+    heading: 'Design your pergola consultation in 3 minutes.',
     subheading:
-      'Choose a roof style, compare materials, check consent basics, then send your brief.',
+      'Choose style and materials, check consent basics, then book a Design Consultation.',
     startCta: 'Start the guide',
-    skipCta: 'Skip to submit',
+    skipCta: 'Jump to consultation booking',
   },
   branch: {
     heading: 'Choose your path',
@@ -149,7 +149,7 @@ export const startFlowContent = {
         label: 'Not sure',
         what: "We'll recommend a style after a quick look at your photos and roofline.",
         bestWhen: ['You want guidance', 'Your roofline is complex'],
-        watchOut: 'A site visit is often needed to confirm details.',
+        watchOut: 'A Design Consultation is often needed to confirm details.',
       },
     ],
   },
@@ -277,8 +277,8 @@ export const startFlowContent = {
     heading: 'From design to build',
     timeline: [
       'Enquiry',
-      'Quick estimate',
-      'Site visit and design advice',
+      'Design Consultation',
+      'On-site design review',
       'Design sign-off',
       'Deposit and scheduling',
       'On-site build',
