@@ -17,8 +17,8 @@ export default function HomeProductsSection({
 
   return (
     <>
-      <section className="container products-head" aria-label="Products heading">
-        <div className="process-head__inner">
+      <section className="products-head" aria-label="Products heading">
+        <div className="container process-head__inner">
           <h2 className="process-head__title">Products</h2>
         </div>
       </section>

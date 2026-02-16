@@ -156,8 +156,8 @@ export default function HomeProcessSection({
 
   return (
     <>
-      <section className="container process-head" aria-label="Process heading">
-        <div className="process-head__inner">
+      <section className="process-head" aria-label="Process heading">
+        <div className="container process-head__inner">
           <h2 className="process-head__title">The Sanctuary Process</h2>
         </div>
       </section>

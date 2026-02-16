@@ -253,8 +253,8 @@ export default function HomePageClient({
           }
         />
 
-        <section className="container materials-head" aria-label="Materials heading">
-          <div className="process-head__inner">
+        <section className="materials-head" aria-label="Materials heading">
+          <div className="container process-head__inner">
             <h2 className="process-head__title">Materials</h2>
           </div>
         </section>
@@ -264,8 +264,8 @@ export default function HomePageClient({
 
         <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
 
-        <section className="container projects-head" aria-label="Projects heading">
-          <div className="process-head__inner">
+        <section className="projects-head" aria-label="Projects heading">
+          <div className="container process-head__inner">
             <h2 className="process-head__title">Projects</h2>
           </div>
         </section>
