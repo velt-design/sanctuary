@@ -228,6 +228,10 @@ export const startFlowContent = {
         href: 'https://www.building.govt.nz/',
       },
       {
+        label: 'Auckland Council consent guidance',
+        href: 'https://www.aucklandcouncil.govt.nz/building-and-consents/building-consents/Pages/check-if-you-need-consent.aspx',
+      },
+      {
         label: 'NZ legislation',
         href: 'https://www.legislation.govt.nz/',
       },
