@@ -14,12 +14,38 @@ import {
   type TimberFinish,
 } from './startFlowContent';
 
-export const START_FLOW_STORAGE_KEY = 'sp_start_flow_draft';
+export const START_FLOW_STORAGE_KEY = 'sanctuary:start_guide:v2';
 
-type StoredStartFlowDraft = {
+export type ConfirmedStepState = {
+  branch: boolean;
+  roofStyle: boolean;
+  roofMaterial: boolean;
+  site: boolean;
+  consent: boolean;
+  extras: boolean;
+  process: boolean;
+};
+
+export const DEFAULT_CONFIRMED_STEP_STATE: ConfirmedStepState = {
+  branch: false,
+  roofStyle: false,
+  roofMaterial: false,
+  site: false,
+  consent: false,
+  extras: false,
+  process: false,
+};
+
+export type StartFlowPersistedState = {
+  draft: StartFlowDraft;
+  confirmedDraft: StartFlowDraft;
+  confirmedSteps: ConfirmedStepState;
+};
+
+type StoredStartFlowState = {
   schemaVersion: string;
   updatedAt: string;
-  draft: StartFlowDraft;
+  state: StartFlowPersistedState;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -39,15 +65,19 @@ function asBoolean(value: unknown): boolean {
   return value === true;
 }
 
-function hydrateDraft(rawDraft: unknown): StartFlowDraft | null {
-  if (!isRecord(rawDraft)) return null;
-
-  const next: StartFlowDraft = {
+function cloneDefaultDraft(): StartFlowDraft {
+  return {
     ...defaultStartFlowDraft,
     site: { ...defaultStartFlowDraft.site },
     dimensions: { ...defaultStartFlowDraft.dimensions },
     extras: { ...defaultStartFlowDraft.extras },
   };
+}
+
+function hydrateDraft(rawDraft: unknown): StartFlowDraft | null {
+  if (!isRecord(rawDraft)) return null;
+
+  const next = cloneDefaultDraft();
 
   const enquiryType =
     asEnumValue(rawDraft.enquiryType, ['residential', 'commercial', 'professional']) ?? next.enquiryType;
@@ -114,7 +144,47 @@ function hydrateDraft(rawDraft: unknown): StartFlowDraft | null {
   return next;
 }
 
-export function readStartFlowDraft(schemaVersion: string): StartFlowDraft | null {
+function hydrateConfirmedSteps(rawSteps: unknown): ConfirmedStepState | null {
+  if (!isRecord(rawSteps)) return null;
+  return {
+    branch: asBoolean(rawSteps.branch),
+    roofStyle: asBoolean(rawSteps.roofStyle),
+    roofMaterial: asBoolean(rawSteps.roofMaterial),
+    site: asBoolean(rawSteps.site),
+    consent: asBoolean(rawSteps.consent),
+    extras: asBoolean(rawSteps.extras),
+    process: asBoolean(rawSteps.process),
+  };
+}
+
+function hydratePersistedState(rawState: unknown): StartFlowPersistedState | null {
+  if (!isRecord(rawState)) return null;
+
+  const draft = hydrateDraft(rawState.draft);
+  if (!draft) return null;
+
+  const confirmedDraft = hydrateDraft(rawState.confirmedDraft ?? rawState.draft);
+  if (!confirmedDraft) return null;
+
+  const confirmedSteps = hydrateConfirmedSteps(rawState.confirmedSteps);
+  if (!confirmedSteps) return null;
+
+  return {
+    draft,
+    confirmedDraft,
+    confirmedSteps,
+  };
+}
+
+export function createEmptyPersistedState(): StartFlowPersistedState {
+  return {
+    draft: cloneDefaultDraft(),
+    confirmedDraft: cloneDefaultDraft(),
+    confirmedSteps: { ...DEFAULT_CONFIRMED_STEP_STATE },
+  };
+}
+
+export function readStartFlowState(schemaVersion: string): StartFlowPersistedState | null {
   if (typeof window === 'undefined') return null;
 
   const raw = window.localStorage.getItem(START_FLOW_STORAGE_KEY);
@@ -133,7 +203,7 @@ export function readStartFlowDraft(schemaVersion: string): StartFlowDraft | null
       return null;
     }
 
-    const hydrated = hydrateDraft(parsed.draft);
+    const hydrated = hydratePersistedState(parsed.state);
     if (!hydrated) {
       window.localStorage.removeItem(START_FLOW_STORAGE_KEY);
       return null;
@@ -146,13 +216,13 @@ export function readStartFlowDraft(schemaVersion: string): StartFlowDraft | null
   }
 }
 
-export function writeStartFlowDraft(schemaVersion: string, draft: StartFlowDraft): void {
+export function writeStartFlowState(schemaVersion: string, state: StartFlowPersistedState): void {
   if (typeof window === 'undefined') return;
 
-  const payload: StoredStartFlowDraft = {
+  const payload: StoredStartFlowState = {
     schemaVersion,
     updatedAt: new Date().toISOString(),
-    draft,
+    state,
   };
 
   window.localStorage.setItem(START_FLOW_STORAGE_KEY, JSON.stringify(payload));
