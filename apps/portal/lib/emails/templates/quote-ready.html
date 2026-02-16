@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanctuary Pergolas</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f6f6f6;">
+  <!-- Preheader (hidden) -->
+  <div style="display:none; font-size:1px; color:#f6f6f6; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+    Quote {{quote_number}} ready — view and accept online.
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f6f6f6;">
+    <tr>
+      <td align="center" style="padding:28px 16px;">
+
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px; max-width:600px; background:#ffffff;">
+          <tr>
+            <td style="padding:22px 24px 12px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              <div style="font-size:14px; letter-spacing:0.08em; text-transform:uppercase; color:#111111;">
+                Sanctuary Pergolas
+              </div>
+              <div style="height:1px; background-color:#e6e6e6; margin-top:14px;"></div>
+            </td>
+          </tr>
+
+          
+<tr>
+  <td style="padding:14px 24px 8px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+    <div style="font-size:22px; line-height:1.35; margin:0;">
+      Your quote is ready
+    </div>
+  </td>
+</tr>
+
+<tr>
+  <td style="padding:8px 24px 16px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+    <div style="font-size:15px; line-height:1.6; margin:0;">
+      Hi {{name}},<br><br>
+      Your quote is ready{{#if project_address}} for <strong>{{project_address}}</strong>{{/if}}.
+    </div>
+  </td>
+</tr>
+
+{{#if personal_note_html}}
+<tr>
+  <td style="padding:0 24px 16px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+    <div style="font-size:15px; line-height:1.6; margin:0;">
+      <strong>Message from your Sanctuary consultant:</strong><br>
+      {{{personal_note_html}}}
+    </div>
+  </td>
+</tr>
+{{/if}}
+
+<tr>
+  <td style="padding:0 24px 18px 24px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e6e6e6; border-collapse:separate;">
+  <tr>
+    <td width="4" style="background-color:#7F342D; font-size:0; line-height:0;">&nbsp;</td>
+    <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
+      
+<div style="font-size:13px; letter-spacing:0.08em; text-transform:uppercase; color:#444444; margin-bottom:10px;">
+  Quote summary
+</div>
+
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-family:Arial, Helvetica, sans-serif;">
+  <tr>
+    <td style="padding:8px 0; font-size:15px; color:#111111;">Quote number</td>
+    <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+      {{quote_number}}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:8px 0; font-size:15px; color:#111111;">Total investment (incl. GST)</td>
+    <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+      {{quote_total_inc_gst}}
+    </td>
+  </tr>
+  {{#if deposit_amount}}
+  <tr>
+    <td style="padding:8px 0; font-size:15px; color:#111111;">Deposit to confirm booking</td>
+    <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+      {{deposit_amount}}
+    </td>
+  </tr>
+  {{/if}}
+  {{#if quote_valid_until}}
+  <tr>
+    <td style="padding:8px 0; font-size:15px; color:#111111;">Valid until</td>
+    <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+      {{quote_valid_until}}
+    </td>
+  </tr>
+  {{/if}}
+</table>
+
+<div style="margin-top:14px;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0;">
+  <tr>
+    <td bgcolor="#7F342D" style="border:1px solid #7F342D; border-radius:4px; text-align:center;">
+      <a href="{{quote_accept_link}}"
+         style="display:inline-block; padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#ffffff; text-decoration:none; border-radius:4px; font-weight:600;">
+        View & accept quote
+      </a>
+    </td>
+  </tr>
+</table>
+</div>
+
+{{#if quote_pdf_link}}
+<div style="margin-top:10px;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0;">
+  <tr>
+    <td bgcolor="#ffffff" style="border:1px solid #7F342D; border-radius:4px; text-align:center;">
+      <a href="{{quote_pdf_link}}"
+         style="display:inline-block; padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#7F342D; text-decoration:none; border-radius:4px; font-weight:600;">
+        Download PDF (optional)
+      </a>
+    </td>
+  </tr>
+</table>
+</div>
+{{/if}}
+
+<div style="font-size:13px; line-height:1.55; color:#555555; margin-top:12px;">
+  Questions? Reply to this email — we’ll keep everything in one thread.
+</div>
+
+    </td>
+  </tr>
+</table>
+  </td>
+</tr>
+
+<tr>
+  <td style="padding:0 24px 12px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+    <div style="font-size:15px; line-height:1.6;">
+      Once you accept, we’ll confirm your install window and next steps.
+    </div>
+  </td>
+</tr>
+
+{{#if included_item_1}}
+<tr>
+  <td style="padding:0 24px 10px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+    <div style="font-size:15px; line-height:1.6;">
+      <strong>Included:</strong>
+      <ul style="margin:10px 0 0 18px; padding:0; color:#111111;">
+        {{#if included_item_1}}<li style="margin:0 0 8px 0;">{{included_item_1}}</li>{{/if}}
+        {{#if included_item_2}}<li style="margin:0 0 8px 0;">{{included_item_2}}</li>{{/if}}
+        {{#if included_item_3}}<li style="margin:0 0 0 0;">{{included_item_3}}</li>{{/if}}
+      </ul>
+    </div>
+  </td>
+</tr>
+{{/if}}
+
+{{#if excluded_item_1}}
+<tr>
+  <td style="padding:0 24px 18px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+    <div style="font-size:15px; line-height:1.6;">
+      <strong>Notes / exclusions:</strong>
+      <ul style="margin:10px 0 0 18px; padding:0; color:#111111;">
+        {{#if excluded_item_1}}<li style="margin:0 0 8px 0;">{{excluded_item_1}}</li>{{/if}}
+        {{#if excluded_item_2}}<li style="margin:0 0 0 0;">{{excluded_item_2}}</li>{{/if}}
+      </ul>
+    </div>
+  </td>
+</tr>
+{{/if}}
+
+<tr>
+  <td style="padding:0 24px 24px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+    {{#if next_step_text}}
+    <div style="font-size:15px; line-height:1.6;">
+      <strong>Next step:</strong> {{next_step_text}}
+    </div>
+    {{/if}}
+    <div style="font-size:14px; line-height:1.6; color:#555555; margin-top:14px;">
+      Sanctuary Pergolas{{#if reference_id}} · Ref {{reference_id}}{{/if}}
+    </div>
+  </td>
+</tr>
+
+
+        </table>
+
+        <div style="font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#777777; padding:14px 0 0 0; max-width:600px;">
+          If you didn’t request this email, you can ignore it.
+        </div>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
