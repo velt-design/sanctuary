@@ -31,7 +31,7 @@ export default function MaterialSection({
     <section
       aria-labelledby={headingId}
       className={cn(
-        'relative bg-page py-0 border-border',
+        'relative bg-page py-0 border-page',
         showTopBorder && 'border-t [border-top-width:var(--bw)]',
         showBottomBorder && 'border-b [border-bottom-width:var(--bw)]',
         className
@@ -39,13 +39,13 @@ export default function MaterialSection({
     >
       <div
         aria-hidden
-        className="absolute left-1/2 top-0 hidden h-full w-[var(--bw)] -translate-x-1/2 bg-border md:block"
+        className="absolute left-1/2 top-0 hidden h-full w-[var(--bw)] -translate-x-1/2 bg-page md:block"
       />
 
       <Container>
-        <div className="grid items-start gap-gutter py-[var(--g)] md:[--material-seam-gap:calc(var(--g)*1.6)] md:grid-cols-2 md:gap-0">
-          <div className="md:pr-[var(--material-seam-gap)]">
-            <div className="relative aspect-square w-full overflow-hidden border border-border [border-width:var(--bw)] bg-panel">
+        <div className="grid items-start gap-gutter py-[var(--g)] [--material-buffer:var(--g)] md:grid-cols-2 md:gap-[calc(var(--material-buffer)*2)]">
+          <div>
+            <div className="relative aspect-square w-full overflow-hidden border border-page [border-width:var(--bw)] bg-panel">
               <Image
                 src={image.src}
                 alt={image.alt}
@@ -56,7 +56,7 @@ export default function MaterialSection({
             </div>
           </div>
 
-          <div className="md:max-w-[62ch] md:pl-[var(--material-seam-gap)]">
+          <div className="md:max-w-[62ch]">
             <p className="text-[12px] text-[#7A7A7A]">{eyebrow}</p>
             <h2
               id={headingId}
