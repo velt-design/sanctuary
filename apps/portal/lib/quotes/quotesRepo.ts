@@ -47,7 +47,15 @@ export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<v
 
 export async function sendQuote(
   quoteVersionId: string,
-  payload: { to: string[]; cc?: string[]; bcc?: string[]; subject: string; bodyText: string; bodyHtml?: string | null },
+  payload: {
+    to: string[];
+    cc?: string[];
+    bcc?: string[];
+    subject: string;
+    personalNote?: string | null;
+    bodyText?: string;
+    bodyHtml?: string | null;
+  },
 ): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/send`, {
     method: 'POST',
@@ -59,7 +67,15 @@ export async function sendQuote(
 
 export async function resendQuote(
   quoteVersionId: string,
-  payload: { to: string[]; cc?: string[]; bcc?: string[]; subject: string; bodyText: string; bodyHtml?: string | null },
+  payload: {
+    to: string[];
+    cc?: string[];
+    bcc?: string[];
+    subject: string;
+    personalNote?: string | null;
+    bodyText?: string;
+    bodyHtml?: string | null;
+  },
 ): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/resend`, {
     method: 'POST',

@@ -1,4 +1,6 @@
 import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
+import { renderTemplate } from '@/lib/emails/renderTemplate';
+import { isPortalTransactionalTemplateId, portalTransactionalTemplateBaseName } from '@/lib/emails/transactionalTemplates';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { renderWebsiteAutoresponder, isWebsiteAutoresponderTemplateId } from '@/lib/sharedEmails';
@@ -58,6 +60,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
   if (isWebsiteAutoresponderTemplateId(templateId)) {
     try {
       const rendered = await renderWebsiteAutoresponder(templateId, vars);
+      return jsonOk({ html: rendered.html });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to render preview';
+      return jsonOk({ html: `<p>${escapeHtml(msg)}</p>` });
+    }
+  }
+
+  if (isPortalTransactionalTemplateId(templateId)) {
+    try {
+      const templateBaseName = portalTransactionalTemplateBaseName(templateId);
+      const rendered = await renderTemplate(templateBaseName, vars);
       return jsonOk({ html: rendered.html });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to render preview';
