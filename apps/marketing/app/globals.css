@@ -1,7 +1,26 @@
 /* app/globals.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Map existing CSS variables -> Tailwind theme utilities */
+@theme inline {
+  /* Colors */
+  --color-page: var(--bg);
+  --color-panel: var(--panel);
+  --color-card: var(--pageWhite);
+  --color-ink: var(--fg);
+  --color-muted: var(--muted, #666);
+  --color-border: var(--border);
+  --color-brand: var(--accentRed, #813F39);
+
+  /* Spacing */
+  --spacing-gutter: var(--g);
+  --spacing-section: clamp(40px, 6vw, 96px);
+  --spacing-stack: clamp(12px, 1.5vw, 20px);
+
+  /* Optional polish tokens */
+  --shadow-float: 0 16px 40px rgba(15, 15, 16, 0.14);
+  --radius-card: 16px;
+}
 
 /* === Sanctuary Viewer CSS (from your prototype) === */
 :root { --bar-h:6px; --thumb:14px; --ease: cubic-bezier(.22,.61,.36,1); --ease-slow: cubic-bezier(.2,.8,.2,1); --ease-zoom: cubic-bezier(.08,0,.17,1); --gap-ratio: 0.06; --bar-mult: 2.2; --g: clamp(12px, 2.2vw, 28px); --sp-box-gap: 14px; }
