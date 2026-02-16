@@ -108,6 +108,43 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.coreTotalIncCents).toBe(48875);
   });
 
+  it('folds shared site costs into pergola when only one pergola exists', () => {
+    const estimate = makeEstimate({
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Single pergola',
+        quoteRef: '',
+        access: 'normal',
+        height: 'single_storey',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [makeModule({ pergolaId: 'pergola-1' })],
+        blinds: { items: [] },
+      },
+      outputs: {
+        materials: { lines: [], totals: { materials_ex_gst: 0 } },
+        install: { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
+        overhead: { method: 'site_rollup', ops_ex_gst: 0, sales_ex_gst: 0, total_ex_gst: 0 },
+        totals: { cost_ex_gst: 140, cost_inc_gst: 161, warnings: [], notes_and_warnings: [] },
+        warnings: [],
+        cost_snapshot_version: 'v2',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1', totals: { cost_ex_gst: 100 } }],
+        siteShared: {
+          totals: { cost_ex_gst: 40 },
+        },
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate as any);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.description).toContain('Pergola 1');
+    expect(result.items[0]?.description).not.toContain('Site costs');
+    expect(result.items[0]?.unitPriceIncGstCents).toBe(20125);
+    expect(result.coreTotalIncCents).toBe(20125);
+  });
+
   it('falls back to one legacy line item and includes a warning note', () => {
     const estimate = makeEstimate({
       inputs: {

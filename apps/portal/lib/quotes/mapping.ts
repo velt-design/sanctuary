@@ -232,10 +232,26 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
   let coreTotalIncCents = 0;
 
   if (snapshotPergolas.length > 0) {
-    snapshotPergolas.forEach((snapshotPergola: any, idx: number) => {
-      const pergolaCostEx = toNumber(snapshotPergola?.totals?.cost_ex_gst);
-      if (!Number.isFinite(pergolaCostEx) || pergolaCostEx < 0) return;
+    const pricedPergolas = snapshotPergolas
+      .map((snapshotPergola: any, idx: number) => {
+        const pergolaCostEx = toNumber(snapshotPergola?.totals?.cost_ex_gst);
+        if (!Number.isFinite(pergolaCostEx) || pergolaCostEx < 0) return null;
+        return {
+          snapshotPergola,
+          idx,
+          pergolaCostEx,
+        };
+      })
+      .filter(
+        (entry): entry is { snapshotPergola: any; idx: number; pergolaCostEx: number } =>
+          entry !== null,
+      );
 
+    const sharedCostEx = toNumber(snapshotShared?.totals?.cost_ex_gst);
+    const hasSharedCost = Boolean(snapshotShared) && Number.isFinite(sharedCostEx) && sharedCostEx >= 0;
+    const showSharedLine = hasSharedCost && snapshotPergolas.length > 1 && pricedPergolas.length > 0;
+
+    pricedPergolas.forEach(({ snapshotPergola, idx, pergolaCostEx }, pergolaIndex: number) => {
       const snapshotId = normalizePergolaId(snapshotPergola?.id, `pergola-${idx + 1}`);
       const matchingInputPergola = inputPergolas.find((p) => p.id === snapshotId) ?? inputPergolas[idx] ?? null;
       const description = buildPergolaDescription({
@@ -244,7 +260,11 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
         modules: matchingInputPergola?.modules ?? [],
       });
 
-      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(pergolaCostEx);
+      const lineCostEx = !showSharedLine && hasSharedCost && pergolaIndex === 0
+        ? roundMoney(pergolaCostEx + sharedCostEx)
+        : pergolaCostEx;
+
+      const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(lineCostEx);
       const qty = 1;
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
       lineItems.push({
@@ -257,8 +277,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
       coreTotalIncCents += lineTotalIncGstCents;
     });
 
-    const sharedCostEx = toNumber(snapshotShared?.totals?.cost_ex_gst);
-    if (snapshotShared && Number.isFinite(sharedCostEx) && sharedCostEx >= 0) {
+    if (showSharedLine) {
       const qty = 1;
       const unitPriceIncGstCents = lineUnitPriceIncFromCostEx(sharedCostEx);
       const lineTotalIncGstCents = lineTotalCents(qty, unitPriceIncGstCents);
