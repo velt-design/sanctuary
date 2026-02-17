@@ -1,26 +1,11 @@
 'use client';
 
+import * as Dialog from '@radix-ui/react-dialog';
 import Image from 'next/image';
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import type { ConsentCheckResult } from './consentChecker';
 
 type SelectMode = 'single' | 'multi';
-
-function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
-  if (!container) return [];
-  const selector = [
-    'a[href]',
-    'button:not([disabled])',
-    'input:not([disabled])',
-    'select:not([disabled])',
-    'textarea:not([disabled])',
-    '[tabindex]:not([tabindex="-1"])',
-  ].join(',');
-
-  return Array.from(container.querySelectorAll<HTMLElement>(selector)).filter(
-    (element) => !element.hasAttribute('hidden') && element.tabIndex !== -1 && element.offsetParent !== null
-  );
-}
 
 export type OptionCardOption<T extends string> = {
   value: T;
@@ -286,7 +271,6 @@ type ModalSurfaceProps = {
   children: ReactNode;
   footer?: ReactNode;
   className?: string;
-  mobileFullScreen?: boolean;
 };
 
 export function ModalSurface({
@@ -297,120 +281,122 @@ export function ModalSurface({
   children,
   footer,
   className,
-  mobileFullScreen = false,
 }: ModalSurfaceProps) {
-  const panelRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
-
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const focusFirstElement = () => {
-      const focusables = getFocusableElements(panelRef.current);
-      if (focusables.length) {
-        focusables[0]?.focus({ preventScroll: true });
-        return;
-      }
-      panelRef.current?.focus({ preventScroll: true });
-    };
-
-    const frame = window.requestAnimationFrame(focusFirstElement);
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!open) return;
-
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (event.key !== 'Tab') return;
-
-      const focusables = getFocusableElements(panelRef.current);
-      if (!focusables.length) {
-        event.preventDefault();
-        panelRef.current?.focus();
-        return;
-      }
-
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const current = document.activeElement as HTMLElement | null;
-
-      if (event.shiftKey) {
-        if (!current || current === first || !panelRef.current?.contains(current)) {
-          event.preventDefault();
-          last.focus();
-        }
-      } else if (!current || current === last || !panelRef.current?.contains(current)) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.body.style.overflow = originalOverflow;
-      document.removeEventListener('keydown', handleKeyDown);
-
-      const previous = previousFocusRef.current;
-      if (previous && typeof previous.focus === 'function') {
-        try {
-          previous.focus({ preventScroll: true });
-        } catch {
-          // no-op if the element no longer exists in DOM
-        }
-      }
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [open]);
 
   return (
-    <div className="fixed inset-0 z-50">
-      <button
-        type="button"
-        aria-label="Close modal"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/55 backdrop-blur-[1px] modal-overlay-fade"
-      />
-      <div className="absolute inset-0 flex items-end justify-center p-0 md:items-center md:p-5">
-        <div
-          ref={panelRef}
-          role="dialog"
-          aria-modal="true"
-          aria-label={title}
-          tabIndex={-1}
-          className={`relative flex w-full flex-col bg-white shadow-2xl outline-none ${
-            mobileFullScreen
-              ? 'h-[100dvh] rounded-none md:h-auto md:max-h-[88vh] md:max-w-[980px] md:rounded-2xl'
-              : 'max-h-[90dvh] rounded-t-3xl md:max-h-[88vh] md:max-w-[980px] md:rounded-2xl'
-          } ${className ?? ''} start-modal-panel`}
-        >
-          <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
-            <div className="space-y-1">
-              <p className="text-base font-semibold text-neutral-900">{title}</p>
-              {description ? <p className="text-sm text-neutral-700">{description}</p> : null}
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Overlay className="start-modal-overlay fixed inset-0 z-[80] bg-black/45 backdrop-blur-[2px]" />
+        <div className="fixed inset-0 z-[90] flex items-end justify-center p-4 md:items-center">
+          <Dialog.Content
+            onCloseAutoFocus={(event) => {
+              const previous = previousFocusRef.current;
+              if (previous && typeof previous.focus === 'function') {
+                event.preventDefault();
+                previous.focus({ preventScroll: true });
+              }
+            }}
+            className={`start-modal-content relative flex h-[90vh] w-[min(1120px,calc(100vw-32px))] max-h-[90vh] flex-col overflow-hidden rounded-t-3xl border border-neutral-200 bg-white shadow-2xl outline-none md:h-auto md:max-h-[min(88vh,calc(100vh-32px))] md:rounded-2xl ${
+              className ?? ''
+            }`}
+          >
+            <div className="relative border-b border-border px-8 py-6">
+              <div className="space-y-2 pr-16">
+                <Dialog.Title className="text-[24px] font-semibold leading-[1.25] text-neutral-900">
+                  {title}
+                </Dialog.Title>
+                {description ? (
+                  <Dialog.Description className="text-base leading-7 text-neutral-700">
+                    {description}
+                  </Dialog.Description>
+                ) : null}
+              </div>
+              <Dialog.Close asChild>
+                <button
+                  type="button"
+                  aria-label="Close"
+                  className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-neutral-700 transition hover:border-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+                    <path
+                      d="M6 6l12 12M18 6L6 18"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              </Dialog.Close>
             </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-8 py-8 text-base leading-7 text-neutral-800">{children}</div>
+
+            {footer ? <div className="start-modal-footer shrink-0">{footer}</div> : null}
+          </Dialog.Content>
+        </div>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+type ModalActionBarProps = {
+  selectionLabel: string;
+  primaryLabel: string;
+  primaryDisabled: boolean;
+  onPrimary: () => void;
+  secondaryLabel?: string;
+  secondaryDisabled?: boolean;
+  onSecondary?: () => void;
+  extraActions?: ReactNode;
+};
+
+export function ModalActionBar({
+  selectionLabel,
+  primaryLabel,
+  primaryDisabled,
+  onPrimary,
+  secondaryLabel,
+  secondaryDisabled = false,
+  onSecondary,
+  extraActions,
+}: ModalActionBarProps) {
+  return (
+    <div className="start-modal-action-bar sticky bottom-0 relative border-t border-neutral-200 bg-white/85 px-5 py-4 shadow-[0_-16px_34px_-28px_rgba(15,23,42,0.7)] backdrop-blur md:px-8 md:py-5">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-4 h-4 bg-gradient-to-t from-white/75 to-transparent" />
+      <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
+        <p className="text-sm font-medium text-neutral-700">{selectionLabel}</p>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {extraActions}
+          {secondaryLabel && onSecondary ? (
             <button
               type="button"
-              onClick={onClose}
-              className="rounded border border-border bg-white px-2.5 py-1 text-xs font-medium uppercase tracking-[0.12em] text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+              onClick={onSecondary}
+              disabled={secondaryDisabled}
+              className="rounded border border-border bg-white px-4 py-2 text-sm font-medium text-neutral-800 transition hover:border-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Close
+              {secondaryLabel}
             </button>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
-
-          {footer ? <div className="sticky bottom-0 border-t border-border bg-white px-5 py-3">{footer}</div> : null}
+          ) : null}
+          <button
+            type="button"
+            onClick={onPrimary}
+            disabled={primaryDisabled}
+            className="rounded border border-black bg-black px-5 py-2.5 text-sm font-medium text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {primaryLabel}
+          </button>
         </div>
       </div>
     </div>
@@ -471,7 +457,7 @@ export function Tabs<T extends string>({ ariaLabel, tabs, activeId, onChange }: 
             aria-controls={`tabpanel-${tab.id}`}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.id)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-medium uppercase tracking-[0.1em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
+            className={`rounded-full border px-3 py-1.5 text-[13px] font-medium uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
               selected ? 'border-black bg-black text-white' : 'border-border bg-white text-neutral-700 hover:border-neutral-500'
             }`}
           >
@@ -495,6 +481,7 @@ export type TabbedModalOption<T extends string> = {
   consider?: ReadonlyArray<string>;
   worksWellWith?: ReadonlyArray<string>;
   microEducation?: string;
+  exampleUseCase: string;
 };
 
 type TabbedOptionModalProps<T extends string> = {
@@ -508,7 +495,7 @@ type TabbedOptionModalProps<T extends string> = {
   onSelect: (id: T) => void;
   onClose: () => void;
   onContinue: () => void;
-  continueLabel?: string;
+  primaryCtaLabel?: string;
   canContinue?: boolean;
 };
 
@@ -523,14 +510,21 @@ export function TabbedOptionModal<T extends string>({
   onSelect,
   onClose,
   onContinue,
-  continueLabel = 'Continue',
+  primaryCtaLabel = 'Confirm & continue',
   canContinue = true,
 }: TabbedOptionModalProps<T>) {
   const activeOption =
     options.find((option) => option.id === activeTabId) ??
     options[0];
+  const selectedOption =
+    selectedDraftId == null
+      ? null
+      : options.find((option) => option.id === selectedDraftId) ?? null;
 
   if (!activeOption) return null;
+
+  const activeSelected = selectedDraftId === activeOption.id;
+  const selectionLabel = selectedOption ? `Selected: ${selectedOption.label}` : 'Choose an option to continue';
 
   return (
     <ModalSurface
@@ -539,26 +533,17 @@ export function TabbedOptionModal<T extends string>({
       description={description}
       onClose={onClose}
       footer={
-        <div className="flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded border border-border bg-white px-4 py-2 text-sm font-medium text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
-          >
-            Close
-          </button>
-          <button
-            type="button"
-            onClick={onContinue}
-            disabled={!canContinue}
-            className="rounded border border-black bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {continueLabel}
-          </button>
-        </div>
+        <ModalActionBar
+          selectionLabel={selectionLabel}
+          primaryLabel={primaryCtaLabel}
+          primaryDisabled={!canContinue}
+          onPrimary={onContinue}
+          secondaryLabel={activeSelected ? undefined : 'Select this option'}
+          onSecondary={activeSelected ? undefined : () => onSelect(activeOption.id)}
+        />
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-6">
         <Tabs
           ariaLabel={`${title} options`}
           tabs={options.map((option) => ({ id: option.id, label: option.label }))}
@@ -566,43 +551,58 @@ export function TabbedOptionModal<T extends string>({
           onChange={onTabChange}
         />
 
-        <section id={`tabpanel-${activeOption.id}`} role="tabpanel" aria-labelledby={`tab-${activeOption.id}`} className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+        <section id={`tabpanel-${activeOption.id}`} role="tabpanel" aria-labelledby={`tab-${activeOption.id}`} className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)] lg:items-start">
             <div className="overflow-hidden rounded-xl border border-border bg-neutral-100">
-              <div className="relative aspect-[4/3]">
-                <Image src={activeOption.image.src} alt={activeOption.image.alt} fill sizes="260px" className="object-cover" />
+              <div className="relative aspect-[3/2]">
+                <Image
+                  src={activeOption.image.src}
+                  alt={activeOption.image.alt}
+                  fill
+                  sizes="(max-width: 1023px) 100vw, 44vw"
+                  className="object-cover"
+                />
               </div>
             </div>
-            <div className="space-y-3">
-              <p className="text-sm text-neutral-800">{activeOption.summary}</p>
+            <div className="space-y-4">
+              <p className="text-base leading-7 text-neutral-800">{activeOption.summary}</p>
               {activeOption.bestFor?.length ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-500">Best for</p>
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700">
-                    {activeOption.bestFor.map((item) => (
+                <div className="space-y-2">
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Best for</p>
+                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
+                    {activeOption.bestFor.slice(0, 3).map((item) => (
                       <li key={`${activeOption.id}-best-${item}`}>{item}</li>
                     ))}
                   </ul>
                 </div>
               ) : null}
               {activeOption.consider?.length ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-500">Consider</p>
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700">
-                    {activeOption.consider.map((item) => (
+                <div className="space-y-2">
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Consider</p>
+                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
+                    {activeOption.consider.slice(0, 2).map((item) => (
                       <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
                     ))}
                   </ul>
                 </div>
               ) : null}
+              {activeOption.microEducation ? (
+                <p className="rounded-lg border border-border bg-neutral-50 px-4 py-3 text-base leading-7 text-neutral-700">
+                  {activeOption.microEducation}
+                </p>
+              ) : null}
+              <div className="space-y-2">
+                <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Example use case</p>
+                <p className="text-base leading-7 text-neutral-700">{activeOption.exampleUseCase}</p>
+              </div>
               {activeOption.worksWellWith?.length ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-500">Works well with</p>
-                  <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-2">
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Works well with</p>
+                  <div className="flex flex-wrap gap-2">
                     {activeOption.worksWellWith.map((item) => (
                       <span
                         key={`${activeOption.id}-works-${item}`}
-                        className="rounded-full border border-border bg-neutral-50 px-2 py-1 text-[10px] uppercase tracking-[0.1em] text-neutral-700"
+                        className="rounded-full border border-border bg-neutral-50 px-2.5 py-1 text-[13px] leading-5 text-neutral-700"
                       >
                         {item}
                       </span>
@@ -610,23 +610,8 @@ export function TabbedOptionModal<T extends string>({
                   </div>
                 </div>
               ) : null}
-              {activeOption.microEducation ? (
-                <p className="rounded-lg border border-border bg-neutral-50 px-3 py-2 text-sm text-neutral-700">{activeOption.microEducation}</p>
-              ) : null}
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => onSelect(activeOption.id)}
-            className={`rounded border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
-              selectedDraftId === activeOption.id
-                ? 'border-black bg-black text-white'
-                : 'border-border bg-white text-neutral-800 hover:border-neutral-500'
-            }`}
-          >
-            {selectedDraftId === activeOption.id ? 'Selected' : 'Select this option'}
-          </button>
         </section>
       </div>
     </ModalSurface>
@@ -643,7 +628,9 @@ export type ExtrasExplorerOption<T extends string> = {
   };
   bestFor?: ReadonlyArray<string>;
   consider?: ReadonlyArray<string>;
+  worksWellWith?: ReadonlyArray<string>;
   microEducation?: string;
+  exampleUseCase: string;
 };
 
 type ExtrasExplorerModalProps<T extends string> = {
@@ -657,10 +644,9 @@ type ExtrasExplorerModalProps<T extends string> = {
   onToggleExtra: (id: T) => void;
   onSetNoExtras: (value: boolean) => void;
   onClose: () => void;
-  onDone: () => void;
-  onContinue: () => void;
-  canContinue: boolean;
-  continueLabel?: string;
+  onPrimary: () => void;
+  primaryLabel?: string;
+  primaryDisabled?: boolean;
 };
 
 export function ExtrasExplorerModal<T extends string>({
@@ -674,10 +660,9 @@ export function ExtrasExplorerModal<T extends string>({
   onToggleExtra,
   onSetNoExtras,
   onClose,
-  onDone,
-  onContinue,
-  canContinue,
-  continueLabel = 'Continue',
+  onPrimary,
+  primaryLabel = 'Continue to Timeframe',
+  primaryDisabled,
 }: ExtrasExplorerModalProps<T>) {
   const activeOption =
     options.find((option) => option.id === activeExtraId) ??
@@ -685,89 +670,50 @@ export function ExtrasExplorerModal<T extends string>({
 
   if (!activeOption) return null;
 
+  const selectedOptionLabels = options
+    .filter((option) => selectedExtraIds.includes(option.id))
+    .map((option) => option.label);
+
   const activeSelected = selectedExtraIds.includes(activeOption.id);
+  const hasSelection = noExtras || selectedExtraIds.length > 0;
+  const resolvedPrimaryDisabled = primaryDisabled ?? !hasSelection;
+  const selectedSummary =
+    selectedOptionLabels.length <= 1
+      ? selectedOptionLabels[0]
+      : `${selectedOptionLabels[0]} +${selectedOptionLabels.length - 1} more`;
+  const selectionLabel = noExtras
+    ? 'Selected: No extras right now'
+    : selectedOptionLabels.length
+      ? `Selected: ${selectedSummary}`
+      : 'Choose an option to continue';
+  const secondaryLabel = noExtras
+    ? 'Add this extra'
+    : activeSelected
+      ? 'Remove extra'
+      : 'Add this extra';
 
   return (
     <ModalSurface
       open={open}
       title={title}
-      description="Browse all extras here, then continue when your bundle is right."
+      description="Add or remove extras in one session, then continue when your selection is ready."
       onClose={onClose}
       footer={
-        <div className="flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            onClick={onDone}
-            className="rounded border border-border bg-white px-4 py-2 text-sm font-medium text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
-          >
-            Done
-          </button>
-          <button
-            type="button"
-            onClick={onContinue}
-            disabled={!canContinue}
-            className="rounded border border-black bg-black px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-45"
-          >
-            {continueLabel}
-          </button>
-        </div>
-      }
-    >
-      <div className="space-y-4">
-        <Tabs
-          ariaLabel="Extras"
-          tabs={options.map((option) => ({ id: option.id, label: option.label }))}
-          activeId={activeOption.id}
-          onChange={onActiveExtraChange}
-        />
-
-        <section id={`tabpanel-${activeOption.id}`} role="tabpanel" aria-labelledby={`tab-${activeOption.id}`} className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-            <div className="overflow-hidden rounded-xl border border-border bg-neutral-100">
-              <div className="relative aspect-[4/3]">
-                <Image src={activeOption.image.src} alt={activeOption.image.alt} fill sizes="260px" className="object-cover" />
-              </div>
-            </div>
-            <div className="space-y-3">
-              <p className="text-sm text-neutral-800">{activeOption.summary}</p>
-              {activeOption.bestFor?.length ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-500">Best for</p>
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700">
-                    {activeOption.bestFor.map((item) => (
-                      <li key={`${activeOption.id}-best-${item}`}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {activeOption.consider?.length ? (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-500">Consider</p>
-                  <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-700">
-                    {activeOption.consider.map((item) => (
-                      <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {activeOption.microEducation ? (
-                <p className="rounded-lg border border-border bg-neutral-50 px-3 py-2 text-sm text-neutral-700">{activeOption.microEducation}</p>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onToggleExtra(activeOption.id)}
-              className={`rounded border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
-                activeSelected
-                  ? 'border-black bg-black text-white'
-                  : 'border-border bg-white text-neutral-800 hover:border-neutral-500'
-              }`}
-            >
-              {activeSelected ? 'Remove extra' : 'Add extra'}
-            </button>
+        <ModalActionBar
+          selectionLabel={selectionLabel}
+          primaryLabel={primaryLabel}
+          primaryDisabled={resolvedPrimaryDisabled}
+          onPrimary={onPrimary}
+          secondaryLabel={secondaryLabel}
+          onSecondary={() => {
+            if (noExtras) {
+              onSetNoExtras(false);
+              onToggleExtra(activeOption.id);
+              return;
+            }
+            onToggleExtra(activeOption.id);
+          }}
+          extraActions={
             <button
               type="button"
               onClick={() => onSetNoExtras(!noExtras)}
@@ -779,6 +725,78 @@ export function ExtrasExplorerModal<T extends string>({
             >
               No extras right now
             </button>
+          }
+        />
+      }
+    >
+      <div className="space-y-6">
+        <Tabs
+          ariaLabel="Extras"
+          tabs={options.map((option) => ({ id: option.id, label: option.label }))}
+          activeId={activeOption.id}
+          onChange={onActiveExtraChange}
+        />
+
+        <section id={`tabpanel-${activeOption.id}`} role="tabpanel" aria-labelledby={`tab-${activeOption.id}`} className="space-y-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)] lg:items-start">
+            <div className="overflow-hidden rounded-xl border border-border bg-neutral-100">
+              <div className="relative aspect-[3/2]">
+                <Image
+                  src={activeOption.image.src}
+                  alt={activeOption.image.alt}
+                  fill
+                  sizes="(max-width: 1023px) 100vw, 44vw"
+                  className="object-cover"
+                />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <p className="text-base leading-7 text-neutral-800">{activeOption.summary}</p>
+              {activeOption.bestFor?.length ? (
+                <div className="space-y-2">
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Best for</p>
+                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
+                    {activeOption.bestFor.slice(0, 3).map((item) => (
+                      <li key={`${activeOption.id}-best-${item}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {activeOption.consider?.length ? (
+                <div className="space-y-2">
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Consider</p>
+                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
+                    {activeOption.consider.slice(0, 2).map((item) => (
+                      <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {activeOption.microEducation ? (
+                <p className="rounded-lg border border-border bg-neutral-50 px-4 py-3 text-base leading-7 text-neutral-700">
+                  {activeOption.microEducation}
+                </p>
+              ) : null}
+              <div className="space-y-2">
+                <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Example use case</p>
+                <p className="text-base leading-7 text-neutral-700">{activeOption.exampleUseCase}</p>
+              </div>
+              {activeOption.worksWellWith?.length ? (
+                <div className="space-y-2">
+                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Works well with</p>
+                  <div className="flex flex-wrap gap-2">
+                    {activeOption.worksWellWith.map((item) => (
+                      <span
+                        key={`${activeOption.id}-works-${item}`}
+                        className="rounded-full border border-border bg-neutral-50 px-2.5 py-1 text-[13px] leading-5 text-neutral-700"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </section>
       </div>
