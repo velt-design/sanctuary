@@ -403,6 +403,57 @@ export function ModalActionBar({
   );
 }
 
+type ConditionalSubPanelOption<OptionId extends string> = {
+  id: OptionId;
+  label: string;
+  description?: string;
+};
+
+type ConditionalSubPanelProps<OptionId extends string> = {
+  title?: string;
+  helperText?: string;
+  options: ReadonlyArray<ConditionalSubPanelOption<OptionId>>;
+  value: OptionId | null;
+  onChange: (id: OptionId) => void;
+};
+
+export function ConditionalSubPanel<OptionId extends string>({
+  title = 'Refine this choice (optional)',
+  helperText = "You can skip this; we'll confirm in consultation.",
+  options,
+  value,
+  onChange,
+}: ConditionalSubPanelProps<OptionId>) {
+  return (
+    <div className="space-y-3 rounded-xl border border-border bg-neutral-50 px-4 py-4">
+      <div className="space-y-1">
+        <p className="text-sm font-semibold text-neutral-900">{title}</p>
+        <p className="text-sm text-neutral-600">{helperText}</p>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {options.map((option) => {
+          const selected = option.id === value;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onChange(option.id)}
+              className={`rounded-lg border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
+                selected ? 'border-black bg-black text-white' : 'border-border bg-white text-neutral-800 hover:border-neutral-500'
+              }`}
+            >
+              <p className="text-sm font-medium">{option.label}</p>
+              {option.description ? (
+                <p className={`mt-1 text-xs ${selected ? 'text-white/85' : 'text-neutral-600'}`}>{option.description}</p>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export type TabOption<T extends string> = {
   id: T;
   label: string;
@@ -495,6 +546,7 @@ type TabbedOptionModalProps<T extends string> = {
   onSelect: (id: T) => void;
   onClose: () => void;
   onContinue: () => void;
+  renderSubPanel?: (tabId: T) => ReactNode;
   primaryCtaLabel?: string;
   canContinue?: boolean;
 };
@@ -510,6 +562,7 @@ export function TabbedOptionModal<T extends string>({
   onSelect,
   onClose,
   onContinue,
+  renderSubPanel,
   primaryCtaLabel = 'Confirm & continue',
   canContinue = true,
 }: TabbedOptionModalProps<T>) {
@@ -612,6 +665,7 @@ export function TabbedOptionModal<T extends string>({
               ) : null}
             </div>
           </div>
+          {renderSubPanel ? renderSubPanel(activeOption.id) : null}
         </section>
       </div>
     </ModalSurface>
