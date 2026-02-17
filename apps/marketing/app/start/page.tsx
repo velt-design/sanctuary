@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { dispatchStartModalVisibility, setStartModalOpenClass } from '@/lib/startModalBridge';
 import {
   START_FLOW_SCHEMA_VERSION,
   defaultStartFlowDraft,
@@ -105,6 +106,7 @@ const BRANCH_GUIDE: Record<
     consider: string[];
     worksWellWith: string[];
     microEducation: string;
+    exampleUseCase: string;
   }
 > = {
   residential: {
@@ -112,18 +114,24 @@ const BRANCH_GUIDE: Record<
     consider: ['Confirm sun direction early', 'Decide if privacy control is needed'],
     worksWellWith: ['Acrylic roof', 'Drop-down blinds', 'Warm lighting'],
     microEducation: 'Clients like you usually start here when the goal is a true outdoor room, not just shade.',
+    exampleUseCase:
+      'A family renovating their rear deck chooses this path to compare roof style, glazing, and privacy extras before locking a consultation brief.',
   },
   commercial: {
     bestFor: ['Customer seating zones', 'Staff shelter areas', 'Public-facing hospitality'],
     consider: ['Durability and cleaning cycles', 'Public circulation around the structure'],
     worksWellWith: ['Timber + acrylic mix', 'Heaters', 'Lighting'],
     microEducation: 'Commercial briefs tend to benefit from early compliance and circulation checks.',
+    exampleUseCase:
+      'A cafe owner planning year-round seating uses this path to align durability, lighting, and consent considerations in one guided shortlist.',
   },
   professional: {
     bestFor: ['Architect-led projects', 'Developer coordination', 'Documentation-first workflows'],
     consider: ['Lead time for engineering', 'Detail sign-off sequence'],
     worksWellWith: ['Material pairing studies', 'Consent pathway review', 'Program staging'],
     microEducation: 'Design teams usually choose this path when they want detail-first collaboration.',
+    exampleUseCase:
+      'An architect preparing early concept options uses this path to set style and material intent before a coordinated Design Consultation.',
   },
 };
 
@@ -135,6 +143,14 @@ const ROOF_STYLE_PAIRINGS: Record<RoofStyle, string[]> = {
   unsure: ['Design Consultation', 'Photo-led recommendation'],
 };
 
+const ROOF_STYLE_EXAMPLE_USE_CASE: Record<RoofStyle, string> = {
+  pitched: 'A compact courtyard project selects pitched to keep drainage simple while preserving head height along the house edge.',
+  gable: 'A wide entertainment deck selects gable to create a brighter, taller centre line with balanced airflow.',
+  hip: 'An exposed corner site selects hip to soften wind behavior and keep the roof expression tidy from all sides.',
+  perimeter: 'A modern extension selects box-perimeter for a clean architectural edge while coordinating drainage in detailed design.',
+  unsure: 'A homeowner uploads reference photos and keeps this tab active while Sanctuary recommends a style in consultation.',
+};
+
 const ROOF_MATERIAL_GUIDE: Record<
   RoofMaterialChoice,
   {
@@ -142,6 +158,7 @@ const ROOF_MATERIAL_GUIDE: Record<
     consider: string[];
     worksWellWith: string[];
     microEducation: string;
+    exampleUseCase: string;
   }
 > = {
   acrylic: {
@@ -149,24 +166,32 @@ const ROOF_MATERIAL_GUIDE: Record<
     consider: ['Summer glare control', 'Tint choice for comfort'],
     worksWellWith: ['Drop-down blinds', 'Downlights'],
     microEducation: 'Acrylic is often selected where natural light is the highest priority.',
+    exampleUseCase:
+      'A north-facing dining zone uses acrylic with tint review to keep daylight while controlling glare in summer afternoons.',
   },
   timber: {
     bestFor: ['Warm ceiling finish', 'Architectural integration with interiors'],
     consider: ['Finish maintenance over time', 'Lighting integration detail'],
     worksWellWith: ['LED strips', 'Heaters'],
     microEducation: 'Timber is common when the pergola is treated as an extension of the home.',
+    exampleUseCase:
+      'A renovation project extends interior materials outdoors, using timber lining and integrated lighting for an all-season room feel.',
   },
   combination: {
     bestFor: ['Targeted daylight zones', 'Balanced shade and brightness'],
     consider: ['Panel layout planning', 'Transition detailing between materials'],
     worksWellWith: ['Skylight strips', 'Slat screens'],
     microEducation: 'Combination layouts are frequently chosen to tune comfort by zone.',
+    exampleUseCase:
+      'A long outdoor room uses combination roofing with daylight strips over circulation and denser shade above seating.',
   },
   unsure: {
     bestFor: ['Early-stage planning', 'Projects awaiting photos or orientation review'],
     consider: ['Comfort priorities first', 'How you use the area day to day'],
     worksWellWith: ['Roof style guidance', 'Design Consultation'],
     microEducation: 'Not sure is a valid choice while you compare light, warmth, and maintenance tradeoffs.',
+    exampleUseCase:
+      'A homeowner still comparing comfort priorities keeps this as draft while reviewing examples and confirming direction later.',
   },
 };
 
@@ -177,6 +202,8 @@ const TIMEFRAME_GUIDE: Record<
     bestFor: string[];
     consider: string[];
     worksWellWith: string[];
+    microEducation: string;
+    exampleUseCase: string;
   }
 > = {
   asap: {
@@ -184,24 +211,96 @@ const TIMEFRAME_GUIDE: Record<
     bestFor: ['Time-sensitive property updates', 'Upcoming events'],
     consider: ['Approvals may still affect dates'],
     worksWellWith: ['Fast photo sharing', 'Early design lock'],
+    microEducation: 'ASAP briefs move fastest when site photos and measurements are ready before consultation.',
+    exampleUseCase:
+      'A family planning a near-term event selects ASAP and confirms dimensions early so design and scheduling can be prioritized.',
   },
   one_to_three_months: {
     summary: 'Ideal for projects moving this season with a short planning runway.',
     bestFor: ['Active renovation stages', 'Committed projects'],
     consider: ['Finalize material choices early'],
     worksWellWith: ['Design Consultation', 'Site information readiness'],
+    microEducation: 'This window usually benefits from locking roof direction and extras in the first consultation.',
+    exampleUseCase:
+      'A renovation already underway selects this timeframe to align pergola detailing with other contractors on site.',
   },
   three_to_six_months: {
     summary: 'Balanced planning window for design detail and installation preparation.',
     bestFor: ['Staged home upgrades', 'Commercial program alignment'],
     consider: ['Coordinate with other trades'],
     worksWellWith: ['Detailed specifications', 'Engineering coordination'],
+    microEducation: 'Three-to-six month plans typically allow the cleanest sequencing for design, approvals, and build booking.',
+    exampleUseCase:
+      'A staged property upgrade chooses this window to coordinate consent, structural checks, and installation sequencing.',
   },
   researching: {
     summary: 'Best when you are gathering options before choosing a direction.',
     bestFor: ['Early exploration', 'Budget and layout discovery'],
     consider: ['Save references you like'],
     worksWellWith: ['Style browsing', 'Material education'],
+    microEducation: 'Researching is useful when you want guidance without locking scope too early.',
+    exampleUseCase:
+      'An early-stage brief uses this option while comparing style and material combinations before committing to dates.',
+  },
+};
+
+const EXTRAS_GUIDE: Record<
+  ExtraId,
+  {
+    bestFor: string[];
+    consider: string[];
+    worksWellWith: string[];
+    microEducation: string;
+    exampleUseCase: string;
+  }
+> = {
+  blinds: {
+    bestFor: ['Weather control', 'Low-angle sun protection', 'Flexible privacy'],
+    consider: ['Wind exposure', 'Control location'],
+    worksWellWith: ['Downlights', 'Acrylic roofs'],
+    microEducation: 'Blinds are often the first add-on for projects focused on all-season comfort.',
+    exampleUseCase:
+      'An evening dining deck adds drop-down blinds on one exposed edge to improve comfort without closing the pergola permanently.',
+  },
+  slats: {
+    bestFor: ['Filtered privacy', 'Architectural screening', 'Wind softening'],
+    consider: ['Sightline planning', 'Screen orientation'],
+    worksWellWith: ['Combination roofs', 'LED strips'],
+    microEducation: 'Slat screens are usually chosen where privacy and airflow need balance.',
+    exampleUseCase:
+      'A boundary-facing patio adds slat screens to control overlooking while keeping a light, open feel.',
+  },
+  acrylic_infills: {
+    bestFor: ['Rain blocking', 'Wind shielding', 'Clear enclosure zones'],
+    consider: ['Ventilation strategy', 'Panel cleaning access'],
+    worksWellWith: ['Heaters', 'Downlights'],
+    microEducation: 'Infill panels are commonly used to protect seating zones from prevailing weather.',
+    exampleUseCase:
+      'A windswept corner lounge adds acrylic infills on two sides to improve rain protection and extend seasonal use.',
+  },
+  downlights: {
+    bestFor: ['Task lighting', 'Even night-time coverage', 'Dining visibility'],
+    consider: ['Circuit planning', 'Switching zones'],
+    worksWellWith: ['Blinds', 'Timber finishes'],
+    microEducation: 'Downlights are typically selected first when clients want practical night-time usability.',
+    exampleUseCase:
+      'A family entertaining area adds downlights over the table zone for practical lighting through evening use.',
+  },
+  led_strips: {
+    bestFor: ['Ambient glow', 'Edge definition', 'Night-time atmosphere'],
+    consider: ['Dimming control', 'Driver placement'],
+    worksWellWith: ['Slat screens', 'Combination roofs'],
+    microEducation: 'LED strips are often paired with downlights to separate ambience from task lighting.',
+    exampleUseCase:
+      'A modern outdoor room adds LED strips to perimeter beams for soft evening light and stronger architectural lines.',
+  },
+  heaters: {
+    bestFor: ['Cool-season comfort', 'Evening use', 'Targeted warmth'],
+    consider: ['Power load', 'Mounting clearance'],
+    worksWellWith: ['Blinds', 'Acrylic infills'],
+    microEducation: 'Heaters are usually most effective when paired with weather-control extras.',
+    exampleUseCase:
+      'A shoulder-season entertaining space adds patio heaters plus blinds to keep the area usable through cooler months.',
   },
 };
 
@@ -476,6 +575,7 @@ export default function StartPage() {
     image: { src: string; alt: string };
   } | null>(null);
   const [briefSheetOpen, setBriefSheetOpen] = useState(false);
+  const anyModalOpen = activeModal !== null || quickInfoModal !== null || briefSheetOpen;
 
   const [branchTab, setBranchTab] = useState<EnquiryType>('residential');
   const [roofStyleTab, setRoofStyleTab] = useState<RoofStyle>('pitched');
@@ -544,6 +644,18 @@ export default function StartPage() {
       confirmedSteps: flow.confirmedSteps,
     });
   }, [flow, resumePromptOpen, storageReady, submitState]);
+
+  useEffect(() => {
+    setStartModalOpenClass(anyModalOpen);
+    dispatchStartModalVisibility(anyModalOpen);
+  }, [anyModalOpen]);
+
+  useEffect(() => {
+    return () => {
+      setStartModalOpenClass(false);
+      dispatchStartModalVisibility(false);
+    };
+  }, []);
 
   const dimensionsRequired = draft.enquiryType !== 'professional';
   const widthM = toPositiveNumber(draft.dimensions.widthM);
@@ -1338,6 +1450,7 @@ export default function StartPage() {
         consider: BRANCH_GUIDE[option.value].consider,
         worksWellWith: BRANCH_GUIDE[option.value].worksWellWith,
         microEducation: BRANCH_GUIDE[option.value].microEducation,
+        exampleUseCase: BRANCH_GUIDE[option.value].exampleUseCase,
       })),
     [content.branch.options]
   );
@@ -1353,6 +1466,7 @@ export default function StartPage() {
         consider: [option.watchOut],
         worksWellWith: ROOF_STYLE_PAIRINGS[option.value],
         microEducation: 'Clients with similar layouts often decide after comparing daylight and drainage behavior.',
+        exampleUseCase: ROOF_STYLE_EXAMPLE_USE_CASE[option.value],
       })),
     [content.roofStyle.options]
   );
@@ -1368,6 +1482,7 @@ export default function StartPage() {
         consider: ROOF_MATERIAL_GUIDE[option.value].consider,
         worksWellWith: ROOF_MATERIAL_GUIDE[option.value].worksWellWith,
         microEducation: ROOF_MATERIAL_GUIDE[option.value].microEducation,
+        exampleUseCase: ROOF_MATERIAL_GUIDE[option.value].exampleUseCase,
       })),
     [content.roofMaterial.options]
   );
@@ -1382,6 +1497,8 @@ export default function StartPage() {
         bestFor: TIMEFRAME_GUIDE[option.value].bestFor,
         consider: TIMEFRAME_GUIDE[option.value].consider,
         worksWellWith: TIMEFRAME_GUIDE[option.value].worksWellWith,
+        microEducation: TIMEFRAME_GUIDE[option.value].microEducation,
+        exampleUseCase: TIMEFRAME_GUIDE[option.value].exampleUseCase,
       })),
     [content.process.timeframeOptions]
   );
@@ -1393,9 +1510,11 @@ export default function StartPage() {
         label: option.label,
         summary: option.description,
         image: EXTRA_MEDIA[option.value],
-        bestFor: ['Comfort control', 'Longer seasonal use'],
-        consider: ['Power and control planning'],
-        microEducation: 'Most projects choose extras in bundles after deciding roof style and material.',
+        bestFor: EXTRAS_GUIDE[option.value].bestFor,
+        consider: EXTRAS_GUIDE[option.value].consider,
+        worksWellWith: EXTRAS_GUIDE[option.value].worksWellWith,
+        microEducation: EXTRAS_GUIDE[option.value].microEducation,
+        exampleUseCase: EXTRAS_GUIDE[option.value].exampleUseCase,
       })),
     [content.extras.options]
   );
@@ -2281,7 +2400,6 @@ export default function StartPage() {
         title="Design Brief"
         description={progressLabel}
         onClose={() => setBriefSheetOpen(false)}
-        mobileFullScreen
       >
         <div className="space-y-3">
           <div className="flex items-center justify-end">
@@ -2331,7 +2449,7 @@ export default function StartPage() {
         onSelect={(value) => handleBranchSelection(value)}
         onClose={() => setActiveModal(null)}
         onContinue={confirmBranch}
-        continueLabel="Continue to Roof Style"
+        primaryCtaLabel="Confirm & continue"
         canContinue={branchCanContinue}
       />
 
@@ -2346,7 +2464,7 @@ export default function StartPage() {
         onSelect={(value) => handleRoofStyleSelection(value)}
         onClose={() => setActiveModal(null)}
         onContinue={confirmRoofStyle}
-        continueLabel="Continue to Roof Material"
+        primaryCtaLabel="Confirm & continue"
         canContinue={roofStyleCanContinue}
       />
 
@@ -2361,7 +2479,7 @@ export default function StartPage() {
         onSelect={(value) => handleRoofMaterialSelection(value)}
         onClose={() => setActiveModal(null)}
         onContinue={confirmRoofMaterial}
-        continueLabel="Continue to Site Basics"
+        primaryCtaLabel="Confirm & continue"
         canContinue={roofMaterialCanContinue}
       />
 
@@ -2378,10 +2496,9 @@ export default function StartPage() {
         }
         onSetNoExtras={setNoExtras}
         onClose={() => setActiveModal(null)}
-        onDone={() => setActiveModal(null)}
-        onContinue={confirmExtras}
-        canContinue={extrasCanContinue}
-        continueLabel="Continue to Timeframe"
+        onPrimary={confirmExtras}
+        primaryLabel="Continue to Timeframe"
+        primaryDisabled={!extrasCanContinue}
       />
 
       <TabbedOptionModal
@@ -2395,7 +2512,7 @@ export default function StartPage() {
         onSelect={(value) => handleTimeframeSelection(value)}
         onClose={() => setActiveModal(null)}
         onContinue={confirmProcess}
-        continueLabel="Continue to Consultation Booking"
+        primaryCtaLabel="Confirm & continue"
         canContinue={processCanContinue}
       />
 
@@ -2414,11 +2531,22 @@ export default function StartPage() {
         @keyframes start-modal-in {
           from {
             opacity: 0;
-            transform: translateY(16px) scale(0.985);
+            transform: translateY(10px) scale(0.98);
           }
           to {
             opacity: 1;
             transform: translateY(0) scale(1);
+          }
+        }
+
+        @keyframes start-modal-out {
+          from {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: translateY(10px) scale(0.98);
           }
         }
 
@@ -2431,28 +2559,46 @@ export default function StartPage() {
           }
         }
 
+        @keyframes start-overlay-out {
+          from {
+            opacity: 1;
+          }
+          to {
+            opacity: 0;
+          }
+        }
+
         .start-step-shell,
         .start-step-expanded,
         .start-step-collapsed {
           animation: start-step-in 220ms ease-out;
         }
 
-        .start-modal-panel {
-          animation: start-modal-in 220ms ease-out;
+        .start-modal-content[data-state='open'] {
+          animation: start-modal-in 250ms cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        .modal-overlay-fade {
-          animation: start-overlay-in 180ms ease-out;
+        .start-modal-content[data-state='closed'] {
+          animation: start-modal-out 250ms ease-in;
+        }
+
+        .start-modal-overlay[data-state='open'] {
+          animation: start-overlay-in 250ms ease-out;
+        }
+
+        .start-modal-overlay[data-state='closed'] {
+          animation: start-overlay-out 250ms ease-in;
         }
 
         @media (prefers-reduced-motion: reduce) {
           .start-step-shell,
           .start-step-expanded,
           .start-step-collapsed,
-          .start-modal-panel,
-          .modal-overlay-fade {
+          .start-modal-content,
+          .start-modal-overlay {
             animation: none !important;
             transition: none !important;
+            transform: none !important;
           }
 
           html:focus-within {
