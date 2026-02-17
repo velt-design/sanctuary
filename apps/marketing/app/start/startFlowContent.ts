@@ -4,6 +4,9 @@ export type EnquiryType = 'residential' | 'commercial' | 'professional';
 export type RoofStyle = 'pitched' | 'gable' | 'hip' | 'perimeter' | 'unsure';
 export type RoofMaterialChoice = 'acrylic' | 'timber' | 'combination' | 'unsure';
 export type AcrylicTint = 'clear' | 'light_grey' | 'dark_grey' | 'opal' | 'not_sure';
+export type AcrylicLightFeel = 'clear' | 'opal' | 'tinted' | 'not_sure';
+export type DaylightPlacement = 'circulation' | 'seating' | 'balanced' | 'not_sure';
+export type WaterDirectionPreference = 'away_from_house' | 'toward_house' | 'not_sure';
 export type TimberFinish = 'natural' | 'stained' | 'painted' | 'not_sure';
 export type InstallSurface = 'deck' | 'concrete_pad' | 'pavers' | 'ground_garden' | 'not_sure';
 export type SiteLevel = 'ground' | 'first' | 'second_plus' | 'not_sure';
@@ -25,7 +28,10 @@ export type StartFlowDraft = {
   roofMaterialChoice: RoofMaterialChoice | null;
   roofMaterials: string[];
   acrylicTint: AcrylicTint | null;
+  acrylicLightFeel: AcrylicLightFeel | null;
   timberFinish: TimberFinish | null;
+  daylightPlacement: DaylightPlacement | null;
+  waterDirectionPreference: WaterDirectionPreference | null;
   suburb: string;
   site: {
     installSurface: InstallSurface | null;
@@ -53,7 +59,10 @@ export const defaultStartFlowDraft: StartFlowDraft = {
   roofMaterialChoice: null,
   roofMaterials: [],
   acrylicTint: null,
+  acrylicLightFeel: null,
   timberFinish: null,
+  daylightPlacement: null,
+  waterDirectionPreference: null,
   suburb: '',
   site: {
     installSurface: null,
@@ -152,6 +161,11 @@ export const startFlowContent = {
         watchOut: 'A Design Consultation is often needed to confirm details.',
       },
     ],
+    waterDirectionOptions: [
+      { value: 'away_from_house' as const, label: 'Away from house' },
+      { value: 'toward_house' as const, label: 'Toward house (into gutter)' },
+      { value: 'not_sure' as const, label: 'Not sure' },
+    ],
   },
   roofMaterial: {
     heading: 'Roofing material',
@@ -184,10 +198,22 @@ export const startFlowContent = {
       { value: 'opal' as const, label: 'Opal' },
       { value: 'not_sure' as const, label: 'Not sure' },
     ],
+    acrylicLightFeelOptions: [
+      { value: 'clear' as const, label: 'Clear' },
+      { value: 'opal' as const, label: 'Opal' },
+      { value: 'tinted' as const, label: 'Tinted' },
+      { value: 'not_sure' as const, label: 'Not sure' },
+    ],
     timberFinishOptions: [
       { value: 'natural' as const, label: 'Natural' },
       { value: 'stained' as const, label: 'Stained' },
       { value: 'painted' as const, label: 'Painted' },
+      { value: 'not_sure' as const, label: 'Not sure' },
+    ],
+    daylightPlacementOptions: [
+      { value: 'circulation' as const, label: 'Skylight strip(s) over circulation' },
+      { value: 'seating' as const, label: 'Skylight strip(s) over seating' },
+      { value: 'balanced' as const, label: 'Balanced / not sure' },
       { value: 'not_sure' as const, label: 'Not sure' },
     ],
   },

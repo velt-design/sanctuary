@@ -1,5 +1,7 @@
 import {
+  type AcrylicLightFeel,
   defaultStartFlowDraft,
+  type DaylightPlacement,
   roofMaterialsByChoice,
   type AcrylicTint,
   type EnquiryType,
@@ -12,6 +14,7 @@ import {
   type StartFlowDraft,
   type Timeframe,
   type TimberFinish,
+  type WaterDirectionPreference,
 } from './startFlowContent';
 
 export const START_FLOW_STORAGE_KEY = 'sanctuary:start_guide:v2';
@@ -96,8 +99,31 @@ function hydrateDraft(rawDraft: unknown): StartFlowDraft | null {
     'opal',
     'not_sure',
   ]) as AcrylicTint | null;
+
+  const acrylicLightFeel = asEnumValue(rawDraft.acrylicLightFeel, ['clear', 'opal', 'tinted', 'not_sure']) as
+    | AcrylicLightFeel
+    | null;
+  const legacyAcrylicTint = next.acrylicTint;
+  next.acrylicLightFeel =
+    acrylicLightFeel ??
+    (legacyAcrylicTint === 'clear'
+      ? 'clear'
+      : legacyAcrylicTint === 'opal'
+        ? 'opal'
+        : legacyAcrylicTint === 'light_grey' || legacyAcrylicTint === 'dark_grey'
+          ? 'tinted'
+          : legacyAcrylicTint === 'not_sure'
+            ? 'not_sure'
+            : null);
+
   next.timberFinish = asEnumValue(rawDraft.timberFinish, ['natural', 'stained', 'painted', 'not_sure']) as
     | TimberFinish
+    | null;
+  next.daylightPlacement = asEnumValue(rawDraft.daylightPlacement, ['circulation', 'seating', 'balanced', 'not_sure']) as
+    | DaylightPlacement
+    | null;
+  next.waterDirectionPreference = asEnumValue(rawDraft.waterDirectionPreference, ['away_from_house', 'toward_house', 'not_sure']) as
+    | WaterDirectionPreference
     | null;
 
   const site = isRecord(rawDraft.site) ? rawDraft.site : {};

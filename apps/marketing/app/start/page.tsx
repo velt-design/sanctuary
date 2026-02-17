@@ -8,7 +8,8 @@ import {
   defaultStartFlowDraft,
   roofMaterialsByChoice,
   startFlowContent,
-  type AcrylicTint,
+  type AcrylicLightFeel,
+  type DaylightPlacement,
   type EnquiryType,
   type ExtraId,
   type InstallSurface,
@@ -20,6 +21,7 @@ import {
   type StartFlowDraft,
   type Timeframe,
   type TimberFinish,
+  type WaterDirectionPreference,
 } from './startFlowContent';
 import { evaluateConsentQuickCheck } from './consentChecker';
 import {
@@ -31,7 +33,6 @@ import {
   type StartFlowPersistedState,
 } from './startFlowStorage';
 import {
-  ACRYLIC_TINT_MEDIA,
   BRANCH_MEDIA,
   EXTRA_MEDIA,
   INSTALL_SURFACE_MEDIA,
@@ -41,9 +42,9 @@ import {
   SITE_ATTACHMENT_MEDIA,
   SITE_LEVEL_MEDIA,
   TIMEFRAME_MEDIA,
-  TIMBER_FINISH_MEDIA,
 } from './startFlowMedia';
 import {
+  ConditionalSubPanel,
   ConsentResultCard,
   ExtrasExplorerModal,
   ModalSurface,
@@ -331,12 +332,11 @@ const ACCESS_SUMMARY: Record<PublicAccess, string> = {
   not_sure: 'We can clarify public access implications together.',
 };
 
-const ACRYLIC_TINT_SUMMARY: Record<AcrylicTint, string> = {
-  clear: 'Maximum daylight and views through the roof.',
-  light_grey: 'Balanced daylight with softer summer glare.',
-  dark_grey: 'Higher shading effect for bright exposures.',
-  opal: 'Diffuse light with softer contrast.',
-  not_sure: 'Choose this to decide tint in consultation.',
+const ACRYLIC_LIGHT_FEEL_SUMMARY: Record<AcrylicLightFeel, string> = {
+  clear: 'Maximum daylight and a crisp open-sky feel.',
+  opal: 'Softer, diffused light with reduced contrast.',
+  tinted: 'Lower glare in bright conditions while retaining daylight.',
+  not_sure: 'Choose this to confirm in consultation.',
 };
 
 const TIMBER_FINISH_SUMMARY: Record<TimberFinish, string> = {
@@ -344,6 +344,19 @@ const TIMBER_FINISH_SUMMARY: Record<TimberFinish, string> = {
   stained: 'Tone-match to existing joinery or deck finishes.',
   painted: 'Crisp finish to align with surrounding architecture.',
   not_sure: 'Choose this to confirm finish later.',
+};
+
+const DAYLIGHT_PLACEMENT_SUMMARY: Record<DaylightPlacement, string> = {
+  circulation: 'Prioritize daylight over movement paths and walkways.',
+  seating: 'Prioritize daylight where people sit and gather.',
+  balanced: 'Balance daylight and shade across use zones.',
+  not_sure: 'Choose this to review placement in consultation.',
+};
+
+const WATER_DIRECTION_SUMMARY: Record<WaterDirectionPreference, string> = {
+  away_from_house: 'Fall directs water away from the house edge.',
+  toward_house: 'Fall directs water toward the house gutter line.',
+  not_sure: 'Choose this to confirm drainage strategy in consultation.',
 };
 
 function defaultSiteForEnquiryType(enquiryType: EnquiryType): StartFlowDraft['site'] {
@@ -391,6 +404,10 @@ function normalizeLoadedState(input: StartFlowPersistedState): FlowState {
   const normalizeDraft = (draft: StartFlowDraft): StartFlowDraft => {
     const next = cloneDraft(draft);
     next.roofMaterials = next.roofMaterialChoice ? [...roofMaterialsByChoice[next.roofMaterialChoice]] : [];
+    if (next.roofMaterialChoice !== 'timber') next.timberFinish = null;
+    if (next.roofMaterialChoice !== 'acrylic') next.acrylicLightFeel = null;
+    if (next.roofMaterialChoice !== 'combination') next.daylightPlacement = null;
+    if (next.style !== 'pitched') next.waterDirectionPreference = null;
     if (next.site.publicAccess == null) {
       next.site.publicAccess = defaultSiteForEnquiryType(next.enquiryType).publicAccess;
     }
@@ -442,6 +459,40 @@ function formatHeightLabel(heightM: number | null): string {
   return heightM.toFixed(1);
 }
 
+function roofStyleWithSecondaryLabel(params: {
+  style: StartFlowDraft['style'];
+  waterDirectionPreference: StartFlowDraft['waterDirectionPreference'];
+}): string {
+  const styleLabel = labelFor(startFlowContent.roofStyle.options, params.style);
+  if (params.style !== 'pitched' || !params.waterDirectionPreference) {
+    return styleLabel;
+  }
+
+  const waterDirectionLabel = labelFor(startFlowContent.roofStyle.waterDirectionOptions, params.waterDirectionPreference);
+  return `${styleLabel} (${waterDirectionLabel})`;
+}
+
+function roofMaterialWithSecondaryLabel(params: {
+  roofMaterialChoice: StartFlowDraft['roofMaterialChoice'];
+  timberFinish: StartFlowDraft['timberFinish'];
+  acrylicLightFeel: StartFlowDraft['acrylicLightFeel'];
+  daylightPlacement: StartFlowDraft['daylightPlacement'];
+}): string {
+  if (!params.roofMaterialChoice) return 'Not set';
+
+  const primaryLabel = labelFor(startFlowContent.roofMaterial.options, params.roofMaterialChoice);
+  if (params.roofMaterialChoice === 'timber' && params.timberFinish) {
+    return `${primaryLabel} (${labelFor(startFlowContent.roofMaterial.timberFinishOptions, params.timberFinish)})`;
+  }
+  if (params.roofMaterialChoice === 'acrylic' && params.acrylicLightFeel) {
+    return `${primaryLabel} (${labelFor(startFlowContent.roofMaterial.acrylicLightFeelOptions, params.acrylicLightFeel)})`;
+  }
+  if (params.roofMaterialChoice === 'combination' && params.daylightPlacement) {
+    return `${primaryLabel} (${labelFor(startFlowContent.roofMaterial.daylightPlacementOptions, params.daylightPlacement)})`;
+  }
+  return primaryLabel;
+}
+
 function buildSummaryBlock(params: {
   draft: StartFlowDraft;
   areaM2: number | null;
@@ -450,13 +501,16 @@ function buildSummaryBlock(params: {
 }): string {
   const { draft, areaM2, consentTitle, selectedExtras } = params;
   const typeLabel = labelFor(startFlowContent.branch.options, draft.enquiryType);
-  const roofStyleLabel = labelFor(startFlowContent.roofStyle.options, draft.style);
-  const roofMaterialLabel =
-    draft.roofMaterialChoice == null
-      ? 'Not set'
-      : draft.roofMaterialChoice === 'unsure'
-        ? 'Unsure'
-        : labelFor(startFlowContent.roofMaterial.options, draft.roofMaterialChoice);
+  const roofStyleLabel = roofStyleWithSecondaryLabel({
+    style: draft.style,
+    waterDirectionPreference: draft.waterDirectionPreference,
+  });
+  const roofMaterialLabel = roofMaterialWithSecondaryLabel({
+    roofMaterialChoice: draft.roofMaterialChoice,
+    timberFinish: draft.timberFinish,
+    acrylicLightFeel: draft.acrylicLightFeel,
+    daylightPlacement: draft.daylightPlacement,
+  });
   const widthM = toPositiveNumber(draft.dimensions.widthM);
   const depthM = toPositiveNumber(draft.dimensions.depthM);
   const heightM = toPositiveNumber(draft.dimensions.heightM);
@@ -506,8 +560,18 @@ function applyRoofMaterialChoice(previous: StartFlowDraft, choice: RoofMaterialC
     ...previous,
     roofMaterialChoice: choice,
     roofMaterials: [...roofMaterialsByChoice[choice]],
-    acrylicTint: choice === 'acrylic' || choice === 'combination' ? previous.acrylicTint : null,
-    timberFinish: choice === 'timber' || choice === 'combination' ? previous.timberFinish : null,
+    acrylicTint: null,
+    acrylicLightFeel: null,
+    timberFinish: null,
+    daylightPlacement: null,
+  };
+}
+
+function applyRoofStyle(previous: StartFlowDraft, style: RoofStyle): StartFlowDraft {
+  return {
+    ...previous,
+    style,
+    waterDirectionPreference: style === 'pitched' ? previous.waterDirectionPreference : null,
   };
 }
 
@@ -516,10 +580,13 @@ function resetAfterPathChange(previous: StartFlowDraft, enquiryType: EnquiryType
     ...previous,
     enquiryType,
     style: null,
+    waterDirectionPreference: null,
     roofMaterialChoice: null,
     roofMaterials: [],
     acrylicTint: null,
+    acrylicLightFeel: null,
     timberFinish: null,
+    daylightPlacement: null,
     suburb: '',
     site: defaultSiteForEnquiryType(enquiryType),
     dimensions: { ...defaultStartFlowDraft.dimensions },
@@ -530,14 +597,7 @@ function resetAfterPathChange(previous: StartFlowDraft, enquiryType: EnquiryType
 }
 
 function isRoofMaterialDraftValid(draft: StartFlowDraft): boolean {
-  if (!draft.roofMaterialChoice) return false;
-
-  const needsAcrylicTint = draft.roofMaterialChoice === 'acrylic' || draft.roofMaterialChoice === 'combination';
-  const needsTimberFinish = draft.roofMaterialChoice === 'timber' || draft.roofMaterialChoice === 'combination';
-
-  if (needsAcrylicTint && !draft.acrylicTint) return false;
-  if (needsTimberFinish && !draft.timberFinish) return false;
-  return true;
+  return Boolean(draft.roofMaterialChoice);
 }
 
 function isSiteDraftValid(draft: StartFlowDraft): boolean {
@@ -814,10 +874,7 @@ export default function StartPage() {
   const handleRoofStyleSelection = (value: RoofStyle) => {
     applyDraftUpdate((previous) => {
       if (previous.style === value) return previous;
-      return {
-        ...previous,
-        style: value,
-      };
+      return applyRoofStyle(previous, value);
     });
   };
 
@@ -870,10 +927,10 @@ export default function StartPage() {
     }));
   };
 
-  const updateAcrylicTint = (value: AcrylicTint) => {
+  const updateAcrylicLightFeel = (value: AcrylicLightFeel) => {
     applyDraftUpdate((previous) => ({
       ...previous,
-      acrylicTint: value,
+      acrylicLightFeel: value,
     }));
   };
 
@@ -881,6 +938,20 @@ export default function StartPage() {
     applyDraftUpdate((previous) => ({
       ...previous,
       timberFinish: value,
+    }));
+  };
+
+  const updateDaylightPlacement = (value: DaylightPlacement) => {
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      daylightPlacement: value,
+    }));
+  };
+
+  const updateWaterDirectionPreference = (value: WaterDirectionPreference) => {
+    applyDraftUpdate((previous) => ({
+      ...previous,
+      waterDirectionPreference: value,
     }));
   };
 
@@ -1000,11 +1071,13 @@ export default function StartPage() {
 
     setFlow((previous) => {
       if (!previous.draft.style) return previous;
+      const style = previous.draft.style;
       return {
         ...previous,
         confirmedDraft: {
           ...previous.confirmedDraft,
-          style: previous.draft.style,
+          style,
+          waterDirectionPreference: style === 'pitched' ? previous.draft.waterDirectionPreference : null,
         },
         confirmedSteps: {
           ...previous.confirmedSteps,
@@ -1031,8 +1104,10 @@ export default function StartPage() {
           ...previous.confirmedDraft,
           roofMaterialChoice: choice,
           roofMaterials: [...roofMaterialsByChoice[choice]],
-          acrylicTint: previous.draft.acrylicTint,
-          timberFinish: previous.draft.timberFinish,
+          acrylicTint: null,
+          acrylicLightFeel: choice === 'acrylic' ? previous.draft.acrylicLightFeel : null,
+          timberFinish: choice === 'timber' ? previous.draft.timberFinish : null,
+          daylightPlacement: choice === 'combination' ? previous.draft.daylightPlacement : null,
         },
         confirmedSteps: {
           ...previous.confirmedSteps,
@@ -1274,8 +1349,11 @@ export default function StartPage() {
         },
         timeframe: draft.timeframe,
         roofMaterialChoice: draft.roofMaterialChoice,
+        waterDirectionPreference: draft.waterDirectionPreference,
         acrylicTint: draft.acrylicTint,
+        acrylicLightFeel: draft.acrylicLightFeel,
         timberFinish: draft.timberFinish,
+        daylightPlacement: draft.daylightPlacement,
         extrasDetailed: {
           acrylicInfills: draft.extras.acrylic_infills,
           downlights: draft.extras.downlights,
@@ -1351,26 +1429,44 @@ export default function StartPage() {
     [content.roofMaterial.options]
   );
 
-  const acrylicTintCards = useMemo<OptionCardOption<AcrylicTint>[]>(
-    () =>
-      content.roofMaterial.acrylicTintOptions.map((option) => ({
-        value: option.value,
-        title: option.label,
-        summary: ACRYLIC_TINT_SUMMARY[option.value],
-        image: ACRYLIC_TINT_MEDIA[option.value],
-      })),
-    [content.roofMaterial.acrylicTintOptions]
-  );
-
-  const timberFinishCards = useMemo<OptionCardOption<TimberFinish>[]>(
+  const timberFinishSubpanelOptions = useMemo(
     () =>
       content.roofMaterial.timberFinishOptions.map((option) => ({
-        value: option.value,
-        title: option.label,
-        summary: TIMBER_FINISH_SUMMARY[option.value],
-        image: TIMBER_FINISH_MEDIA[option.value],
+        id: option.value,
+        label: option.label,
+        description: TIMBER_FINISH_SUMMARY[option.value],
       })),
     [content.roofMaterial.timberFinishOptions]
+  );
+
+  const acrylicLightFeelSubpanelOptions = useMemo(
+    () =>
+      content.roofMaterial.acrylicLightFeelOptions.map((option) => ({
+        id: option.value,
+        label: option.label,
+        description: ACRYLIC_LIGHT_FEEL_SUMMARY[option.value],
+      })),
+    [content.roofMaterial.acrylicLightFeelOptions]
+  );
+
+  const daylightPlacementSubpanelOptions = useMemo(
+    () =>
+      content.roofMaterial.daylightPlacementOptions.map((option) => ({
+        id: option.value,
+        label: option.label,
+        description: DAYLIGHT_PLACEMENT_SUMMARY[option.value],
+      })),
+    [content.roofMaterial.daylightPlacementOptions]
+  );
+
+  const waterDirectionSubpanelOptions = useMemo(
+    () =>
+      content.roofStyle.waterDirectionOptions.map((option) => ({
+        id: option.value,
+        label: option.label,
+        description: WATER_DIRECTION_SUMMARY[option.value],
+      })),
+    [content.roofStyle.waterDirectionOptions]
   );
 
   const installSurfaceCards = useMemo<OptionCardOption<InstallSurface>[]>(
@@ -1520,31 +1616,27 @@ export default function StartPage() {
   );
 
   const branchSummary = labelFor(content.branch.options, confirmedDraft.enquiryType);
-  const roofStyleSummary = labelFor(content.roofStyle.options, confirmedDraft.style);
+  const roofStyleSummary = useMemo(
+    () =>
+      roofStyleWithSecondaryLabel({
+        style: confirmedDraft.style,
+        waterDirectionPreference: confirmedDraft.waterDirectionPreference,
+      }),
+    [confirmedDraft.style, confirmedDraft.waterDirectionPreference]
+  );
 
   const roofMaterialSummary = useMemo(() => {
-    if (!confirmedDraft.roofMaterialChoice) return 'Not set';
-    const parts = [labelFor(content.roofMaterial.options, confirmedDraft.roofMaterialChoice)];
-    if (
-      (confirmedDraft.roofMaterialChoice === 'acrylic' || confirmedDraft.roofMaterialChoice === 'combination') &&
-      confirmedDraft.acrylicTint
-    ) {
-      parts.push(`Tint: ${labelFor(content.roofMaterial.acrylicTintOptions, confirmedDraft.acrylicTint)}`);
-    }
-    if (
-      (confirmedDraft.roofMaterialChoice === 'timber' || confirmedDraft.roofMaterialChoice === 'combination') &&
-      confirmedDraft.timberFinish
-    ) {
-      parts.push(`Finish: ${labelFor(content.roofMaterial.timberFinishOptions, confirmedDraft.timberFinish)}`);
-    }
-    return parts.join(' - ');
+    return roofMaterialWithSecondaryLabel({
+      roofMaterialChoice: confirmedDraft.roofMaterialChoice,
+      timberFinish: confirmedDraft.timberFinish,
+      acrylicLightFeel: confirmedDraft.acrylicLightFeel,
+      daylightPlacement: confirmedDraft.daylightPlacement,
+    });
   }, [
-    confirmedDraft.acrylicTint,
+    confirmedDraft.acrylicLightFeel,
+    confirmedDraft.daylightPlacement,
     confirmedDraft.roofMaterialChoice,
     confirmedDraft.timberFinish,
-    content.roofMaterial.acrylicTintOptions,
-    content.roofMaterial.options,
-    content.roofMaterial.timberFinishOptions,
   ]);
 
   const siteSummary = useMemo(() => {
@@ -1775,8 +1867,8 @@ export default function StartPage() {
                 id="roofMaterial"
                 stepLabel="Step 3"
                 title={content.roofMaterial.heading}
-                intro="Set your roof material direction and any required sub-choices."
-                helper="Material cards open a tabbed guide. Selection changes only when you choose Select this option."
+                intro="Set your roof material direction."
+                helper="Material cards open a tabbed guide. Use the modal's refine panel for optional secondary preferences."
                 isExpanded={firstIncompleteStep === 'roofMaterial'}
                 isComplete={completion.roofMaterial}
                 sectionRef={setSectionRef('roofMaterial')}
@@ -1795,54 +1887,6 @@ export default function StartPage() {
                   onSelectionChange={(value) => handleRoofMaterialSelection(value)}
                   onOptionOpen={(value) => handleRoofMaterialCardOpen(value)}
                 />
-
-                {draft.roofMaterialChoice === 'acrylic' || draft.roofMaterialChoice === 'combination' ? (
-                  <div className="space-y-3 rounded-xl border border-border p-4">
-                    <p className="text-sm font-medium text-neutral-900">Acrylic tint</p>
-                    <OptionCardGroup
-                      mode="single"
-                      name="start-acrylic-tint"
-                      ariaLabel="Choose acrylic tint"
-                      options={acrylicTintCards}
-                      selectedValues={draft.acrylicTint ? [draft.acrylicTint] : []}
-                      onSelectionChange={(value) => updateAcrylicTint(value)}
-                      onOptionOpen={(value) => {
-                        const option = acrylicTintCards.find((card) => card.value === value);
-                        if (!option) return;
-                        openQuickInfo({
-                          title: option.title,
-                          summary: option.summary,
-                          image: option.image,
-                        });
-                      }}
-                      columnsClassName="grid gap-3 grid-cols-2 md:grid-cols-3"
-                    />
-                  </div>
-                ) : null}
-
-                {draft.roofMaterialChoice === 'timber' || draft.roofMaterialChoice === 'combination' ? (
-                  <div className="space-y-3 rounded-xl border border-border p-4">
-                    <p className="text-sm font-medium text-neutral-900">Timber finish</p>
-                    <OptionCardGroup
-                      mode="single"
-                      name="start-timber-finish"
-                      ariaLabel="Choose timber finish"
-                      options={timberFinishCards}
-                      selectedValues={draft.timberFinish ? [draft.timberFinish] : []}
-                      onSelectionChange={(value) => updateTimberFinish(value)}
-                      onOptionOpen={(value) => {
-                        const option = timberFinishCards.find((card) => card.value === value);
-                        if (!option) return;
-                        openQuickInfo({
-                          title: option.title,
-                          summary: option.summary,
-                          image: option.image,
-                        });
-                      }}
-                      columnsClassName="grid gap-3 grid-cols-2 md:grid-cols-4"
-                    />
-                  </div>
-                ) : null}
               </StepSection>
             ) : null}
 
@@ -2464,6 +2508,16 @@ export default function StartPage() {
         onSelect={(value) => handleRoofStyleSelection(value)}
         onClose={() => setActiveModal(null)}
         onContinue={confirmRoofStyle}
+        renderSubPanel={(tabId) => {
+          if (tabId !== 'pitched' || draft.style !== 'pitched') return null;
+          return (
+            <ConditionalSubPanel
+              options={waterDirectionSubpanelOptions}
+              value={draft.waterDirectionPreference}
+              onChange={(value) => updateWaterDirectionPreference(value)}
+            />
+          );
+        }}
         primaryCtaLabel="Confirm & continue"
         canContinue={roofStyleCanContinue}
       />
@@ -2479,6 +2533,37 @@ export default function StartPage() {
         onSelect={(value) => handleRoofMaterialSelection(value)}
         onClose={() => setActiveModal(null)}
         onContinue={confirmRoofMaterial}
+        renderSubPanel={(tabId) => {
+          if (draft.roofMaterialChoice !== tabId) return null;
+          if (tabId === 'timber') {
+            return (
+              <ConditionalSubPanel
+                options={timberFinishSubpanelOptions}
+                value={draft.timberFinish}
+                onChange={(value) => updateTimberFinish(value)}
+              />
+            );
+          }
+          if (tabId === 'acrylic') {
+            return (
+              <ConditionalSubPanel
+                options={acrylicLightFeelSubpanelOptions}
+                value={draft.acrylicLightFeel}
+                onChange={(value) => updateAcrylicLightFeel(value)}
+              />
+            );
+          }
+          if (tabId === 'combination') {
+            return (
+              <ConditionalSubPanel
+                options={daylightPlacementSubpanelOptions}
+                value={draft.daylightPlacement}
+                onChange={(value) => updateDaylightPlacement(value)}
+              />
+            );
+          }
+          return null;
+        }}
         primaryCtaLabel="Confirm & continue"
         canContinue={roofMaterialCanContinue}
       />
