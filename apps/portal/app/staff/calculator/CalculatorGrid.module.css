@@ -923,6 +923,188 @@
   color: rgba(15, 15, 16, 0.68);
 }
 
+/* === Flashings table === */
+.flashingsTileContent {
+  width: 100%;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.flashingsHeader {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.flashingsTable {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.flashingsGridHeader,
+.flashingsRow,
+.flashingsRowPrimary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, 170px) minmax(140px, 170px) minmax(120px, 160px) 44px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.flashingsGridHeader {
+  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+  background: rgba(15, 15, 16, 0.04);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.72);
+}
+
+.flashingsRow,
+.flashingsRowPrimary {
+  border-top: 1px solid rgba(15, 15, 16, 0.08);
+}
+
+.flashingsRow:first-of-type,
+.flashingsRowPrimary:first-of-type {
+  border-top: none;
+}
+
+.flashingsRowPrimary {
+  background: rgba(129, 63, 57, 0.06);
+}
+
+.flashingsCellItem {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.flashingsItemBadge {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.flashingsItemMeta {
+  font-size: 11px;
+  color: rgba(15, 15, 16, 0.66);
+}
+
+.flashingsWarning {
+  font-size: 11px;
+  color: rgba(15, 15, 16, 0.72);
+}
+
+.flashingsLengthCell {
+  position: relative;
+}
+
+.flashingsLengthCell .control {
+  padding-right: 26px;
+}
+
+.flashingsLengthSuffix {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(15, 15, 16, 0.55);
+  pointer-events: none;
+}
+
+.flashingsRemoveButton {
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  background: rgba(15, 15, 16, 0.03);
+  color: rgba(15, 15, 16, 0.75);
+  border-radius: 999px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  justify-self: center;
+}
+
+.flashingsRemoveButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.flashingsRemovePlaceholder {
+  width: 30px;
+  height: 30px;
+  justify-self: center;
+}
+
+.flashingsAddButton {
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  background: rgba(15, 15, 16, 0.03);
+  color: inherit;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  justify-self: start;
+}
+
+.flashingsAddButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.flashingsTotalsCard {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(15, 15, 16, 0.02);
+  display: grid;
+  gap: 6px;
+}
+
+.flashingsTotalsTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.72);
+}
+
+.flashingsTotalsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.flashingsTotalsToggle {
+  margin-top: 2px;
+  border: none;
+  background: transparent;
+  color: rgba(15, 15, 16, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+
+.flashingsTotalsToggle:focus {
+  outline: none;
+  text-decoration: underline;
+}
+
 /* === Preview layout === */
 .split {
   display: grid;
@@ -943,6 +1125,18 @@
     border-right: none;
     border-bottom: 1px solid rgba(15, 15, 16, 0.12);
     max-height: 42vh;
+  }
+
+  .flashingsGridHeader,
+  .flashingsRow,
+  .flashingsRowPrimary {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .flashingsRemoveButton,
+  .flashingsRemovePlaceholder {
+    justify-self: start;
   }
 }
 

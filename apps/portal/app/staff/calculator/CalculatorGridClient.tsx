@@ -11,7 +11,7 @@ import type {
   BlindSystemType as BlindSystemInput,
   CalculatorBlindsState,
   CalculatorFlashingBand,
-  CalculatorFlashingBandOrNone,
+  CalculatorFlashingPurpose,
   CalculatorFlashingsState,
   CalculatorInfillsState,
   CalculatorInputs,
@@ -110,14 +110,18 @@ const INFILL_MAX_PANEL_WIDTH_DEFAULT_M = 1.2;
 const INFILL_STRIP_WIDTH_M = 0.62;
 const INFILL_JOINER_TOLERANCE_M = 0.02;
 const FLASHING_EDGE_ALLOWANCE_M = 0.1;
+const FLASHING_DUPLICATE_TOLERANCE_M = 0.01;
+const FLASHING_BANDS: CalculatorFlashingBand[] = ['0-200', '201-300', '301-400'];
 const FLASHING_BAND_OPTIONS: FieldOption[] = [
   { label: '0-200mm', value: '0-200' },
   { label: '201-300mm', value: '201-300' },
   { label: '301-400mm', value: '301-400' },
 ];
-const FLASHING_BAND_OR_NONE_OPTIONS: FieldOption[] = [
-  { label: 'No flashing', value: 'none' },
-  ...FLASHING_BAND_OPTIONS,
+const FLASHING_PURPOSE_OPTIONS: FieldOption[] = [
+  { label: 'Head', value: 'HEAD' },
+  { label: 'Side', value: 'SIDE' },
+  { label: 'Apron', value: 'APRON' },
+  { label: 'Custom', value: 'CUSTOM' },
 ];
 
 type InfillPresetKey = 'front' | 'house' | 'side' | 'gable_triangles' | 'wall_panel' | 'custom';
@@ -480,48 +484,125 @@ function normalizeFlashingBand(value: unknown): CalculatorFlashingBand {
   return '0-200';
 }
 
-function normalizeFlashingBandOrNone(value: unknown): CalculatorFlashingBandOrNone {
-  if (value === 'none') return 'none';
-  return normalizeFlashingBand(value);
+function normalizeFlashingPurpose(value: unknown): CalculatorFlashingPurpose {
+  if (value === 'HEAD' || value === 'SIDE' || value === 'APRON') return value;
+  return 'CUSTOM';
 }
 
-function makeFlashingExtraId(): string {
+function makeFlashingId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
-  return `flashing-extra-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `flashing-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function makeDefaultFlashings(): CalculatorFlashingsState {
-  return { defaultBands: {}, extras: [] };
+function roofLengthForPrimaryFlashing(module: CalculatorModuleInputs): number {
+  const lengthM = Number.isFinite(toNumber(module.lengthM)) ? Math.max(0, toNumber(module.lengthM)) : 0;
+  if (module.pergolaStyle !== 'hip_corner') return lengthM;
+  const lengthBM = Number.isFinite(toNumber(module.hipCornerLengthBM)) ? Math.max(0, toNumber(module.hipCornerLengthBM)) : 0;
+  return lengthM + lengthBM;
 }
 
-function normalizeFlashingsStateForUi(value: unknown): CalculatorFlashingsState {
-  if (!value || typeof value !== 'object') return makeDefaultFlashings();
-  const source = value as any;
+function defaultPrimaryFlashingBandForModule(module: CalculatorModuleInputs): CalculatorFlashingBand {
+  const roofType = getRoofTypeForModule(module);
+  if (roofType === 'gable' || roofType === 'low_gable') return '301-400';
+  return '201-300';
+}
 
-  const defaultBandsRaw = source.defaultBands;
-  const defaultBands: Record<string, CalculatorFlashingBandOrNone> = {};
-  if (defaultBandsRaw && typeof defaultBandsRaw === 'object') {
-    for (const [key, bandRaw] of Object.entries(defaultBandsRaw as Record<string, unknown>)) {
-      const normalizedKey = String(key ?? '').trim();
-      if (!normalizedKey) continue;
-      defaultBands[normalizedKey] = normalizeFlashingBandOrNone(bandRaw);
-    }
+function primaryFlashingDefaultKeyForModule(module: CalculatorModuleInputs): string {
+  const roofType = getRoofTypeForModule(module);
+  if (roofType === 'pitched') return 'pitched_primary';
+  if (roofType === 'gable' || roofType === 'low_gable') return 'gable_ridge';
+  if (roofType === 'hip') return 'hip_ledger';
+  return 'roof_primary';
+}
+
+function formatFlashingLengthInput(lengthM: number): string {
+  if (!Number.isFinite(lengthM) || lengthM <= 0) return '1.0';
+  const rounded = Math.round(lengthM * 100) / 100;
+  return rounded.toFixed(2).replace(/\.?0+$/, '') || '1.0';
+}
+
+function makeDefaultPrimaryFlashingRow(module: CalculatorModuleInputs): CalculatorFlashingsState['rows'][number] {
+  return {
+    id: makeFlashingId(),
+    kind: 'primary',
+    band: defaultPrimaryFlashingBandForModule(module),
+    lengthM: formatFlashingLengthInput(roofLengthForPrimaryFlashing(module)),
+    purpose: 'CUSTOM',
+  };
+}
+
+function makeDefaultFlashings(module: CalculatorModuleInputs): CalculatorFlashingsState {
+  return { rows: [makeDefaultPrimaryFlashingRow(module)] };
+}
+
+function normalizeFlashingsStateForUi(value: unknown, module: CalculatorModuleInputs): CalculatorFlashingsState {
+  const defaultPrimary = makeDefaultPrimaryFlashingRow(module);
+  if (!value || typeof value !== 'object') return { rows: [defaultPrimary] };
+  const source = value as Record<string, unknown>;
+
+  const rowsRaw = Array.isArray(source.rows) ? source.rows : null;
+  if (rowsRaw) {
+    const normalizedRows = rowsRaw
+      .filter((item: unknown) => item && typeof item === 'object')
+      .map((item: unknown) => {
+        const record = item as Record<string, unknown>;
+        const idRaw = typeof record.id === 'string' ? record.id.trim() : '';
+        const kind = record.kind === 'primary' ? 'primary' : 'extra';
+        return {
+          id: idRaw || makeFlashingId(),
+          kind,
+          band: normalizeFlashingBand(record.band),
+          lengthM: String(record.lengthM ?? ''),
+          purpose: normalizeFlashingPurpose(record.purpose),
+        };
+      });
+
+    const primary =
+      normalizedRows.find((row) => row.kind === 'primary') ??
+      ({
+        ...defaultPrimary,
+      } as CalculatorFlashingsState['rows'][number]);
+    const extras = normalizedRows.filter((row) => row.kind !== 'primary').map((row) => ({ ...row, kind: 'extra' as const }));
+
+    return {
+      rows: [
+        {
+          ...primary,
+          kind: 'primary',
+          lengthM: String(primary.lengthM ?? '').trim() ? String(primary.lengthM) : defaultPrimary.lengthM,
+          purpose: normalizeFlashingPurpose(primary.purpose),
+        },
+        ...extras,
+      ],
+    };
   }
 
-  const extrasRaw = Array.isArray(source.extras) ? source.extras : [];
-  const extras = extrasRaw
+  const defaultBandsRaw = source.defaultBands;
+  const primaryLegacyBandRaw =
+    defaultBandsRaw && typeof defaultBandsRaw === 'object'
+      ? (defaultBandsRaw as Record<string, unknown>)[primaryFlashingDefaultKeyForModule(module)]
+      : undefined;
+  const primaryBand = primaryLegacyBandRaw === 'none' ? defaultPrimary.band : normalizeFlashingBand(primaryLegacyBandRaw ?? defaultPrimary.band);
+  const primaryLengthM = primaryLegacyBandRaw === 'none' ? '0' : defaultPrimary.lengthM;
+
+  const legacyExtrasRaw = Array.isArray(source.extras) ? source.extras : [];
+  const extras = legacyExtrasRaw
     .filter((item: unknown) => item && typeof item === 'object')
     .map((item: unknown) => {
       const record = item as Record<string, unknown>;
       const idRaw = typeof record.id === 'string' ? record.id.trim() : '';
       return {
-        id: idRaw || makeFlashingExtraId(),
+        id: idRaw || makeFlashingId(),
+        kind: 'extra' as const,
         band: normalizeFlashingBand(record.band),
         lengthM: String(record.lengthM ?? ''),
+        purpose: normalizeFlashingPurpose(record.purpose),
       };
     });
 
-  return { defaultBands, extras };
+  return {
+    rows: [{ ...defaultPrimary, band: primaryBand, lengthM: primaryLengthM }, ...extras],
+  };
 }
 
 function hasNonEmptyValue(value: string | undefined): value is string {
@@ -734,9 +815,8 @@ function buildFlashingDefaultsForModule(
   }>,
 ): FlashingDefaultUi[] {
   const roofType = getRoofTypeForModule(module);
-  const lengthM = Number.isFinite(toNumber(module.lengthM)) ? Math.max(0, toNumber(module.lengthM)) : 0;
   const projectionM = Number.isFinite(toNumber(module.projectionM)) ? Math.max(0, toNumber(module.projectionM)) : 0;
-  const roofLengthM = roofType === 'hip_corner' ? lengthM + (Number.isFinite(toNumber(module.hipCornerLengthBM)) ? Math.max(0, toNumber(module.hipCornerLengthBM)) : 0) : lengthM;
+  const roofLengthM = roofLengthForPrimaryFlashing(module);
 
   const out: FlashingDefaultUi[] = [];
   const addDefault = (key: string, label: string, defaultBand: CalculatorFlashingBand, lengthRaw: number) => {
@@ -854,7 +934,7 @@ function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['i
 }
 
 function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInputs {
-  return {
+  const module: CalculatorModuleInputs = {
     pergolaId,
     pergolaStyle: 'pitched',
     roofMaterial: 'acrylic',
@@ -902,10 +982,12 @@ function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInputs {
 
     timberRoofAllowanceExGst: '0',
 
-    flashings: makeDefaultFlashings(),
+    flashings: { rows: [] },
     overrides: {},
     infills: makeDefaultInfills(),
   };
+  module.flashings = makeDefaultFlashings(module);
+  return module;
 }
 
 function makeBlindId(): string {
@@ -1224,7 +1306,7 @@ function calculatorDraftSessionKey(projectId: string, fromEstimateId: string): s
 function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   const source = value && typeof value === 'object' ? (value as Partial<CalculatorModuleInputs>) : {};
   const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...source };
-  merged.flashings = normalizeFlashingsStateForUi((source as any).flashings);
+  merged.flashings = normalizeFlashingsStateForUi((source as any).flashings, merged);
   merged.infills = normalizeInfillsStateForUi((source as any).infills);
 
   if (merged.pergolaStyle === 'gable' && merged.houseConnectionType === 'none') {
@@ -1381,6 +1463,9 @@ export default function CalculatorGridClient({
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
+  const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
+  const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
+  const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     restoredDraftForKeyRef.current = false;
@@ -1640,13 +1725,13 @@ export default function CalculatorGridClient({
         }
       }
 
-      const flashings = normalizeFlashingsStateForUi(module.flashings);
-      const hasInvalidExtra = flashings.extras.some((extra) => {
-        const length = toNumber(extra.lengthM);
-        return !Number.isFinite(length) || length <= 0;
+      const flashings = normalizeFlashingsStateForUi(module.flashings, module);
+      const hasInvalidLength = flashings.rows.some((row) => {
+        const length = toNumber(row.lengthM);
+        return !Number.isFinite(length) || length < 0;
       });
-      if (hasInvalidExtra) {
-        next.flashings = 'Each extra flashing must have a length greater than 0.';
+      if (hasInvalidLength) {
+        next.flashings = 'Enter a flashing length of 0 or more.';
       }
 
       return next;
@@ -1787,71 +1872,79 @@ export default function CalculatorGridClient({
     });
   };
 
-  const flashingsState = normalizeFlashingsStateForUi(activeModule.flashings);
+  const flashingsState = normalizeFlashingsStateForUi(activeModule.flashings, activeModule);
+  const primaryFlashingRow =
+    flashingsState.rows.find((row) => row.kind === 'primary') ??
+    flashingsState.rows[0] ??
+    makeDefaultPrimaryFlashingRow(activeModule);
 
   const setFlashingsState = (updater: (state: CalculatorFlashingsState) => CalculatorFlashingsState) => {
     setValues((prev) => {
       const modules = prev.modules.slice();
       const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
-      const currentFlashings = normalizeFlashingsStateForUi(currentModule.flashings);
-      const nextFlashings = normalizeFlashingsStateForUi(updater(currentFlashings));
+      const currentFlashings = normalizeFlashingsStateForUi(currentModule.flashings, currentModule);
+      const nextFlashings = normalizeFlashingsStateForUi(updater(currentFlashings), currentModule);
       modules[activeModuleIndex] = { ...currentModule, flashings: nextFlashings };
       return { ...prev, modules };
     });
   };
 
-  const setFlashingDefaultBand = (key: string, band: CalculatorFlashingBandOrNone) => {
-    const normalizedKey = String(key ?? '').trim();
-    if (!normalizedKey) return;
+  const addExtraFlashingRow = () => {
+    const id = makeFlashingId();
+    const defaultLength = formatFlashingLengthInput(roofLengthForPrimaryFlashing(activeModule));
     setFlashingsState((state) => ({
       ...state,
-      defaultBands: {
-        ...state.defaultBands,
-        [normalizedKey]: normalizeFlashingBandOrNone(band),
-      },
-    }));
-  };
-
-  const addFlashingExtra = () => {
-    setFlashingsState((state) => ({
-      ...state,
-      extras: [
-        ...state.extras,
+      rows: [
+        ...state.rows,
         {
-          id: makeFlashingExtraId(),
-          band: '0-200',
-          lengthM: '',
+          id,
+          kind: 'extra',
+          band: normalizeFlashingBand(primaryFlashingRow.band),
+          lengthM: defaultLength || '1.0',
+          purpose: 'CUSTOM',
         },
       ],
     }));
+    setPendingFlashingLengthFocusId(id);
   };
 
-  const setFlashingExtra = (
+  const updateFlashingRow = (
     id: string,
     patch: Partial<{
       band: CalculatorFlashingBand;
       lengthM: string;
+      purpose: CalculatorFlashingPurpose;
     }>,
   ) => {
     setFlashingsState((state) => ({
       ...state,
-      extras: state.extras.map((extra) => {
-        if (extra.id !== id) return extra;
+      rows: state.rows.map((row) => {
+        if (row.id !== id) return row;
         return {
-          ...extra,
+          ...row,
           ...(patch.band !== undefined ? { band: normalizeFlashingBand(patch.band) } : null),
           ...(patch.lengthM !== undefined ? { lengthM: String(patch.lengthM) } : null),
+          ...(patch.purpose !== undefined ? { purpose: normalizeFlashingPurpose(patch.purpose) } : null),
         };
       }),
     }));
   };
 
-  const removeFlashingExtra = (id: string) => {
+  const removeFlashingRow = (id: string) => {
     setFlashingsState((state) => ({
       ...state,
-      extras: state.extras.filter((extra) => extra.id !== id),
+      rows: state.rows.filter((row) => row.id !== id || row.kind === 'primary'),
     }));
   };
+
+  useEffect(() => {
+    if (!pendingFlashingLengthFocusId) return;
+    const target = flashingLengthInputRefs.current[pendingFlashingLengthFocusId];
+    if (!target) return;
+    target.focus();
+    target.select();
+    setPendingFlashingLengthFocusId(null);
+  }, [flashingsState.rows, pendingFlashingLengthFocusId]);
 
   const blindsState = normalizeBlindsStateForUi(values.blinds);
 
@@ -1994,12 +2087,13 @@ export default function CalculatorGridClient({
       const isPile = module.postConnectionType === 'pile_1m' || module.postConnectionType === 'pile_1_5m';
       const bayCounts = computeBayCountsForModule(module);
       const overrides = module.overrides ?? {};
-      const flashingsState = normalizeFlashingsStateForUi(module.flashings);
-      const flashingDefaultOverrides = Object.entries(flashingsState.defaultBands).map(([key, band]) => ({
-        key: String(key),
-        band: normalizeFlashingBandOrNone(band),
+      const flashingsState = normalizeFlashingsStateForUi(module.flashings, module);
+      const flashingDefaults = buildFlashingDefaultsForModule(module);
+      const flashingDefaultOverrides = flashingDefaults.map((item) => ({
+        key: String(item.key),
+        band: 'none' as const,
       }));
-      const flashingExtras = flashingsState.extras
+      const flashingExtras = flashingsState.rows
         .map((extra) => ({
           band: normalizeFlashingBand(extra.band),
           length_m: toNumber(extra.lengthM),
@@ -2814,132 +2908,154 @@ export default function CalculatorGridClient({
     </div>
   );
 
-  const flashingDefaults = useMemo(
-    () =>
-      buildFlashingDefaultsForModule(activeModule, {
-        rafter_length_m: typeof moduleResult?.derived?.rafter_length_m === 'number' ? moduleResult.derived.rafter_length_m : undefined,
-        timber_area_m2: typeof (moduleResult?.derived as any)?.timber_area_m2 === 'number' ? (moduleResult?.derived as any).timber_area_m2 : undefined,
-        ledger_length_m: typeof moduleResult?.derived?.ledger_length_m === 'number' ? moduleResult.derived.ledger_length_m : undefined,
-      }),
-    [activeModule, moduleResult?.derived],
-  );
-
-  const flashingDefaultsWithSelection = useMemo(
-    () =>
-      flashingDefaults.map((item) => ({
-        ...item,
-        selectedBand: normalizeFlashingBandOrNone(flashingsState.defaultBands[item.key] ?? item.defaultBand),
-      })),
-    [flashingDefaults, flashingsState.defaultBands],
+  const flashingExtraRows = useMemo(
+    () => flashingsState.rows.filter((row) => row.kind === 'extra'),
+    [flashingsState.rows],
   );
 
   const flashingTotalsPreview = useMemo(() => {
     const totals: Record<CalculatorFlashingBand, number> = { '0-200': 0, '201-300': 0, '301-400': 0 };
-    for (const item of flashingDefaultsWithSelection) {
-      if (item.selectedBand === 'none') continue;
-      totals[item.selectedBand] += item.lengthM;
-    }
-    for (const extra of flashingsState.extras) {
-      const length = toNumber(extra.lengthM);
+    for (const row of flashingsState.rows) {
+      const length = toNumber(row.lengthM);
       if (!Number.isFinite(length) || length <= 0) continue;
-      totals[normalizeFlashingBand(extra.band)] += length;
+      totals[normalizeFlashingBand(row.band)] += length;
     }
     return totals;
-  }, [flashingDefaultsWithSelection, flashingsState.extras]);
+  }, [flashingsState.rows]);
 
   const flashingTotalLengthPreview = useMemo(
-    () => flashingTotalsPreview['0-200'] + flashingTotalsPreview['201-300'] + flashingTotalsPreview['301-400'],
+    () => FLASHING_BANDS.reduce((sum, band) => sum + flashingTotalsPreview[band], 0),
     [flashingTotalsPreview],
   );
 
-  const flashingSummaryText =
-    flashingTotalLengthPreview > 0
-      ? `${formatMaybeNumber(flashingTotalLengthPreview, 2)}m total - 0-200: ${formatMaybeNumber(
-          flashingTotalsPreview['0-200'],
-          2,
-        )}m - 201-300: ${formatMaybeNumber(flashingTotalsPreview['201-300'], 2)}m - 301-400: ${formatMaybeNumber(
-          flashingTotalsPreview['301-400'],
-          2,
-        )}m`
-      : 'No flashing selected';
+  const flashingVisibleBands = useMemo(
+    () => FLASHING_BANDS.filter((band) => showAllFlashingBands || flashingTotalsPreview[band] > 0),
+    [showAllFlashingBands, flashingTotalsPreview],
+  );
 
   const flashingTileContent = (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {flashingDefaultsWithSelection.map((item) => (
-        <div
-          key={item.key}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) minmax(160px, 220px)',
-            gap: 8,
-            alignItems: 'center',
-          }}
-        >
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</div>
-            <div className={styles.helper}>
-              {`${formatMaybeNumber(item.lengthM, 2)}m - default ${item.defaultBand}mm`}
+    <div className={styles.flashingsTileContent}>
+      <div className={styles.flashingsHeader}>
+        <strong>Flashings</strong>
+        <span className={styles.helper}>Defaults auto-apply by roof type; override each row or add extras.</span>
+      </div>
+
+      <div className={styles.flashingsTable}>
+        <div className={styles.flashingsGridHeader}>
+          <div>Item</div>
+          <div title="This sets the flashing girth band.">Girth (mm)</div>
+          <div>Length (m)</div>
+          <div>Purpose</div>
+          <div>Remove</div>
+        </div>
+
+        {flashingsState.rows.map((row) => {
+          const isPrimary = row.kind === 'primary';
+          const extraIndex = isPrimary ? -1 : flashingExtraRows.findIndex((extra) => extra.id === row.id) + 1;
+          const parsedLength = toNumber(row.lengthM);
+          const invalidLength = !Number.isFinite(parsedLength) || parsedLength < 0;
+          const zeroLength = Number.isFinite(parsedLength) && parsedLength === 0;
+          const primaryLength = toNumber(primaryFlashingRow.lengthM);
+          const duplicatePrimary =
+            !isPrimary &&
+            Number.isFinite(parsedLength) &&
+            parsedLength > 0 &&
+            Number.isFinite(primaryLength) &&
+            primaryLength > 0 &&
+            normalizeFlashingBand(row.band) === normalizeFlashingBand(primaryFlashingRow.band) &&
+            Math.abs(parsedLength - primaryLength) <= FLASHING_DUPLICATE_TOLERANCE_M;
+
+          return (
+            <div key={row.id} className={isPrimary ? styles.flashingsRowPrimary : styles.flashingsRow}>
+              <div className={styles.flashingsCellItem}>
+                <div className={styles.flashingsItemBadge}>{isPrimary ? 'Primary' : `Extra ${extraIndex}`}</div>
+                {isPrimary ? <div className={styles.flashingsItemMeta}>Default from roof type; editable.</div> : null}
+                {invalidLength ? <div className={styles.flashingsWarning}>Enter a length &gt; 0.</div> : null}
+                {!invalidLength && zeroLength ? <div className={styles.flashingsWarning}>0 length will be ignored.</div> : null}
+                {duplicatePrimary ? <div className={styles.flashingsWarning}>May double-count primary flashing.</div> : null}
+              </div>
+
+              <select
+                id={`flashing-row-band-${row.id}`}
+                className={styles.control}
+                value={row.band}
+                onChange={(event) => updateFlashingRow(row.id, { band: event.target.value as CalculatorFlashingBand })}
+              >
+                {FLASHING_BAND_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <div className={styles.flashingsLengthCell}>
+                <input
+                  id={`flashing-row-length-${row.id}`}
+                  className={styles.control}
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={row.lengthM}
+                  ref={(node) => {
+                    if (node) flashingLengthInputRefs.current[row.id] = node;
+                    else delete flashingLengthInputRefs.current[row.id];
+                  }}
+                  onChange={(event) => updateFlashingRow(row.id, { lengthM: event.target.value })}
+                />
+                <span className={styles.flashingsLengthSuffix}>m</span>
+              </div>
+
+              <select
+                id={`flashing-row-purpose-${row.id}`}
+                className={styles.control}
+                value={normalizeFlashingPurpose(row.purpose)}
+                onChange={(event) => updateFlashingRow(row.id, { purpose: event.target.value as CalculatorFlashingPurpose })}
+              >
+                {FLASHING_PURPOSE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              {isPrimary ? (
+                <div className={styles.flashingsRemovePlaceholder} />
+              ) : (
+                <button
+                  type="button"
+                  className={styles.flashingsRemoveButton}
+                  title="Remove row"
+                  aria-label="Remove row"
+                  onClick={() => removeFlashingRow(row.id)}
+                >
+                  x
+                </button>
+              )}
             </div>
-          </div>
-          <select
-            id={`flashing-default-${item.key}`}
-            className={styles.control}
-            value={item.selectedBand}
-            onChange={(event) => setFlashingDefaultBand(item.key, event.target.value as CalculatorFlashingBandOrNone)}
-          >
-            {FLASHING_BAND_OR_NONE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      ))}
+          );
+        })}
+      </div>
 
-      {flashingsState.extras.map((extra, index) => (
-        <div
-          key={extra.id}
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) 140px 120px auto',
-            gap: 8,
-            alignItems: 'center',
-          }}
-        >
-          <div style={{ fontSize: 13, fontWeight: 600 }}>{`Extra flashing ${index + 1}`}</div>
-          <select
-            id={`flashing-extra-band-${extra.id}`}
-            className={styles.control}
-            value={extra.band}
-            onChange={(event) => setFlashingExtra(extra.id, { band: event.target.value as CalculatorFlashingBand })}
-          >
-            {FLASHING_BAND_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <input
-            id={`flashing-extra-length-${extra.id}`}
-            className={styles.control}
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="Length (m)"
-            value={extra.lengthM}
-            onChange={(event) => setFlashingExtra(extra.id, { lengthM: event.target.value })}
-          />
-          <button type="button" className={styles.drawerClose} onClick={() => removeFlashingExtra(extra.id)}>
-            Delete
-          </button>
-        </div>
-      ))}
-
-      <button type="button" className={styles.drawerClose} onClick={addFlashingExtra}>
-        Add extra flashing
+      <button type="button" className={styles.flashingsAddButton} onClick={addExtraFlashingRow}>
+        + Add flashing row
       </button>
 
-      <div className={styles.helper}>{flashingSummaryText}</div>
+      <div className={styles.flashingsTotalsCard}>
+        <div className={styles.flashingsTotalsTitle}>Totals</div>
+        <div className={styles.flashingsTotalsRow}>
+          <span>Total</span>
+          <span>{`${formatMaybeNumber(flashingTotalLengthPreview, 1)} m`}</span>
+        </div>
+        {flashingVisibleBands.map((band) => (
+          <div key={band} className={styles.flashingsTotalsRow}>
+            <span>{band}</span>
+            <span>{`${formatMaybeNumber(flashingTotalsPreview[band], 1)} m`}</span>
+          </div>
+        ))}
+        <button type="button" className={styles.flashingsTotalsToggle} onClick={() => setShowAllFlashingBands((prev) => !prev)}>
+          {showAllFlashingBands ? 'Show non-zero bands only' : 'Show all bands'}
+        </button>
+      </div>
     </div>
   );
 
@@ -3421,7 +3537,6 @@ export default function CalculatorGridClient({
       type: 'custom',
       content: flashingTileContent,
       error: errors.flashings,
-      helperText: 'Defaults auto-apply by roof type; override each row or add extras.',
     },
     ...(activeModule.pergolaStyle === 'gable'
       ? [
