@@ -2856,16 +2856,14 @@ export default function CalculatorGridClient({
     return 'Not configured';
   }, [infillsState.items]);
 
-  const infillsSummaryLine1 = infillsState.items.length
-    ? `${infillsState.items.length} infills - front x${infillLocationCounts.front} - side x${infillLocationCounts.side} - gable x${infillLocationCounts.gable_end}`
-    : 'No infills configured.';
-  const infillsSummaryLine2 = `System: ${infillSystemSummary} - Max short side: sheets ${formatMaybeNumber(
-    INFILL_SHEET_MAX_SHORT_SIDE_M,
-    2,
-  )}m, strips ${formatMaybeNumber(INFILL_STRIP_MAX_SHORT_SIDE_M, 2)}m`;
-  const infillsSummaryLine3 = `Estimated: Panels ~${infillTotals.panels} - 50x50 mullions ~${infillTotals.mullions}`;
+  const infillsSummaryLine1 = `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} | front x${
+    infillLocationCounts.front
+  } | side x${infillLocationCounts.side} | gable x${infillLocationCounts.gable_end}`;
+  const infillsSummaryLine2 = `${infillSystemSummary} | max width ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m | panels ~${
+    infillTotals.panels
+  } | 50x50 ~${infillTotals.mullions}`;
   const infillsSummaryText = infillsState.items.length
-    ? `${infillsState.items.length} infills - Panels ~${infillTotals.panels} - 50x50 ~${infillTotals.mullions}`
+    ? `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} configured`
     : 'Not configured';
 
   const selectedInfillDomIdBase = `${infillFieldPrefix}-selected`;
@@ -2912,9 +2910,8 @@ export default function CalculatorGridClient({
         {renderInfillPresetMenu('Add infill')}
       </div>
       <div className={styles.infillTileSummary}>
-        <div>{infillsSummaryLine1}</div>
-        <div>{infillsSummaryLine2}</div>
-        <div>{infillsSummaryLine3}</div>
+        <div className={styles.infillTileSummaryLine}>{infillsSummaryLine1}</div>
+        <div className={styles.infillTileSummaryLine}>{infillsSummaryLine2}</div>
       </div>
     </div>
   );
@@ -2925,25 +2922,28 @@ export default function CalculatorGridClient({
         const estimate = infillEstimateById.get(item.id) ?? estimateInfillUi(item, roofRafterSpacingEstimate.spacingM);
         const title = item.label?.trim() ? item.label.trim() : `Infill ${idx + 1}`;
         const isSelected = selectedInfill?.id === item.id;
+        const panelsAndMullionsMeta =
+          estimate.estimatedMullionsTotal > 0
+            ? `Panels ${estimate.panelCountTotal} | 50x50 ${estimate.estimatedMullionsTotal}`
+            : `Panels ${estimate.panelCountTotal}`;
         return (
-          <div key={item.id} className={isSelected ? styles.infillListRowActive : styles.infillListRow}>
-            <button type="button" className={styles.infillListRowMain} onClick={() => setSelectedInfillId(item.id)}>
-              <div className={styles.infillListRowTitle}>{title}</div>
-              <div className={styles.infillListRowMeta}>{`${locationLabel(item.location)} - ${acrylicSourceLabel(item.acrylicSource)}`}</div>
-              <div className={styles.infillListRowMeta}>{`${formatInfillShapeSummary(item.shape)} - Qty ${estimate.qty}`}</div>
-              <div className={styles.infillListRowMeta}>
-                {`Panels: ${estimate.panelCountEach} each - ${estimate.panelCountTotal} total - 50x50: ${estimate.estimatedMullionsEach} each - ${estimate.estimatedMullionsTotal} total`}
+          <button
+            key={item.id}
+            type="button"
+            className={`${styles.infillRow} ${isSelected ? styles.infillRowActive : ''}`.trim()}
+            onClick={() => setSelectedInfillId(item.id)}
+            aria-pressed={isSelected}
+          >
+            <div className={styles.infillRowTitle}>
+              <span>{title}</span>
+              <div className={styles.infillChipRow}>
+                <span className={styles.infillChip}>{locationLabel(item.location)}</span>
+                <span className={styles.infillChip}>{acrylicSourceLabel(item.acrylicSource)}</span>
               </div>
-            </button>
-            <div className={styles.infillListRowActions}>
-              <button type="button" className={styles.infillIconButton} onClick={() => duplicateInfill(item.id)}>
-                Duplicate
-              </button>
-              <button type="button" className={styles.infillIconButton} onClick={() => removeInfill(item.id, true)}>
-                Delete
-              </button>
             </div>
-          </div>
+            <div className={styles.infillRowMeta}>{`${formatInfillShapeSummary(item.shape)} | Qty ${estimate.qty}`}</div>
+            <div className={styles.infillRowMeta}>{panelsAndMullionsMeta}</div>
+          </button>
         );
       })}
     </div>
@@ -4472,26 +4472,28 @@ export default function CalculatorGridClient({
             </div>
 
             <div className={styles.infillDrawerBody}>
-              <aside className={styles.infillDrawerListPane} aria-label="Infill list">
-                <div className={styles.infillListTopActions}>{renderInfillPresetMenu('Add infill', true)}</div>
+              <aside className={styles.infillRail} aria-label="Infill list">
+                <div className={styles.infillRailHeader}>{renderInfillPresetMenu('Add infill', true)}</div>
 
-                {infillsState.items.length ? (
-                  infillListRows
-                ) : (
-                  <div className={styles.infillListEmpty}>
-                    <p>No infills configured.</p>
-                    <p>Use “Add infill” above to create your first item.</p>
-                  </div>
-                )}
+                <div className={styles.infillRailList}>
+                  {infillsState.items.length ? (
+                    infillListRows
+                  ) : (
+                    <div className={styles.infillListEmpty}>
+                      <p>No infills configured.</p>
+                      <p>Use "Add infill" above to create your first item.</p>
+                    </div>
+                  )}
+                </div>
 
-                <div className={styles.infillListTotals}>
-                  <h3>Totals in this module</h3>
+                <div className={styles.infillRailFooter}>
+                  <strong>Totals in this module</strong>
                   <p>{infillsSummaryLine1}</p>
-                  <p>{infillsSummaryLine3}</p>
+                  <p>{infillsSummaryLine2}</p>
                 </div>
               </aside>
 
-              <section className={styles.infillDrawerEditorPane} aria-label="Selected infill editor">
+              <section className={styles.infillEditor} aria-label="Selected infill editor">
                 {selectedInfill && selectedInfillEstimate && selectedInfillValidation ? (
                   <>
                     <div className={styles.infillEditorHeader}>
@@ -4506,228 +4508,258 @@ export default function CalculatorGridClient({
                       </div>
                     </div>
 
+                    <div className={styles.infillEditorGrid}>
+                      <div className={styles.infillEditorForm}>
                     <details className={styles.infillSection} open>
                       <summary className={styles.infillSectionSummary}>Basic</summary>
-                      <div className={styles.infillFieldGrid}>
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-label`}
-                          label="Label"
-                          type="text"
-                          value={selectedInfill.label ?? ''}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { label: String(v) })}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-qty`}
-                          label="Qty"
-                          type="number"
-                          value={selectedInfill.qty}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { qty: String(v) })}
-                          error={selectedInfillValidation.errors.qty}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-location`}
-                          label="Location"
-                          type="select"
-                          value={selectedInfill.location}
-                          onChange={(v) => setInfillLocation(selectedInfill.id, v as InfillLineItem['location'])}
-                          options={[
-                            { label: 'Front', value: 'front' },
-                            { label: 'House', value: 'house' },
-                            { label: 'Side', value: 'side' },
-                            { label: 'Gable end', value: 'gable_end' },
-                            { label: 'Wall', value: 'wall' },
-                            { label: 'Custom', value: 'custom' },
-                          ]}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-acrylic`}
-                          label="Acrylic source"
-                          type="select"
-                          value={selectedInfill.acrylicSource}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { acrylicSource: v as InfillLineItem['acrylicSource'] })}
-                          options={[
-                            { label: 'Sheet panels', value: 'sheet_panels' },
-                            { label: '620 strips', value: 'strip_620' },
-                          ]}
-                          helperText={`Max run: sheets ${formatMaybeNumber(INFILL_SHEET_MAX_RUN_M, 2)}m, strips ${formatMaybeNumber(
-                            INFILL_STRIP_MAX_RUN_M,
-                            2,
-                          )}m. Auto-switch applies when needed.`}
-                          error={selectedInfillValidation.errors.acrylicSource}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-orientation`}
-                          label="Panel orientation"
-                          type="select"
-                          value={selectedInfill.panelOrientation}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { panelOrientation: normalizePanelOrientation(v) })}
-                          options={[
-                            { label: 'Vertical', value: 'vertical' },
-                            { label: 'Horizontal', value: 'horizontal' },
-                          ]}
-                          helperText="Vertical is default when you add a new infill."
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-run-across`}
-                          label="Run / across (m)"
-                          type="readOnly"
-                          value={`${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)} / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}`}
-                          helperText="Computed from shape and orientation."
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-centre-limit`}
-                          label="Centre limit (m)"
-                          type="readOnly"
-                          value={formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2)}
-                          helperText={`Sheets use ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m max short side; 620 strips use ${formatMaybeNumber(
-                            INFILL_STRIP_MAX_SHORT_SIDE_M,
-                            2,
-                          )}m.`}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-shape-type`}
-                          label="Shape"
-                          type="select"
-                          value={selectedInfill.shape.type}
-                          onChange={(v) => {
-                            const nextType = v as InfillLineItem['shape']['type'];
-                            if (nextType === selectedInfill.shape.type) return;
-                            const shapeWidth = selectedInfill.shape.widthM;
-                            const shapeBottom = selectedInfill.shape.bottomOffsetM ?? '0';
-                            if (nextType === 'rect') {
-                              const rectHeight = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
+                      <div className={styles.infillBasicGrid}>
+                        <div className={styles.span6}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-label`}
+                            label="Label"
+                            type="text"
+                            value={selectedInfill.label ?? ''}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { label: String(v) })}
+                          />
+                        </div>
+                        <div className={styles.span2}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-qty`}
+                            label="Qty"
+                            type="number"
+                            value={selectedInfill.qty}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { qty: String(v) })}
+                            error={selectedInfillValidation.errors.qty}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-location`}
+                            label="Location"
+                            type="select"
+                            value={selectedInfill.location}
+                            onChange={(v) => setInfillLocation(selectedInfill.id, v as InfillLineItem['location'])}
+                            options={[
+                              { label: 'Front', value: 'front' },
+                              { label: 'House', value: 'house' },
+                              { label: 'Side', value: 'side' },
+                              { label: 'Gable end', value: 'gable_end' },
+                              { label: 'Wall', value: 'wall' },
+                              { label: 'Custom', value: 'custom' },
+                            ]}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-acrylic`}
+                            label="Acrylic source"
+                            type="select"
+                            value={selectedInfill.acrylicSource}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { acrylicSource: v as InfillLineItem['acrylicSource'] })}
+                            options={[
+                              { label: 'Sheet panels', value: 'sheet_panels' },
+                              { label: '620 strips', value: 'strip_620' },
+                            ]}
+                            helperText={`Max run: sheets ${formatMaybeNumber(INFILL_SHEET_MAX_RUN_M, 2)}m, strips ${formatMaybeNumber(
+                              INFILL_STRIP_MAX_RUN_M,
+                              2,
+                            )}m. Auto-switch applies when needed.`}
+                            error={selectedInfillValidation.errors.acrylicSource}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-orientation`}
+                            label="Panel orientation"
+                            type="select"
+                            value={selectedInfill.panelOrientation}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { panelOrientation: normalizePanelOrientation(v) })}
+                            options={[
+                              { label: 'Vertical', value: 'vertical' },
+                              { label: 'Horizontal', value: 'horizontal' },
+                            ]}
+                            helperText="Vertical is default when you add a new infill."
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-run-across`}
+                            label="Run / across (m)"
+                            type="readOnly"
+                            value={`${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)} / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}`}
+                            helperText="Computed from shape and orientation."
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-centre-limit`}
+                            label="Centre limit (m)"
+                            type="readOnly"
+                            value={formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2)}
+                            helperText={`Sheets use ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m max short side; 620 strips use ${formatMaybeNumber(
+                              INFILL_STRIP_MAX_SHORT_SIDE_M,
+                              2,
+                            )}m.`}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-shape-type`}
+                            label="Shape"
+                            type="select"
+                            value={selectedInfill.shape.type}
+                            onChange={(v) => {
+                              const nextType = v as InfillLineItem['shape']['type'];
+                              if (nextType === selectedInfill.shape.type) return;
+                              const shapeWidth = selectedInfill.shape.widthM;
+                              const shapeBottom = selectedInfill.shape.bottomOffsetM ?? '0';
+                              if (nextType === 'rect') {
+                                const rectHeight = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
+                                setInfillItem(selectedInfill.id, {
+                                  shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
+                                });
+                                return;
+                              }
+                              const low = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightLowM;
+                              const high = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
                               setInfillItem(selectedInfill.id, {
-                                shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
+                                shape: { type: 'mono_slope', widthM: shapeWidth, heightLowM: low, heightHighM: high, bottomOffsetM: shapeBottom },
                               });
-                              return;
-                            }
-                            const low = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightLowM;
-                            const high = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
-                            setInfillItem(selectedInfill.id, {
-                              shape: { type: 'mono_slope', widthM: shapeWidth, heightLowM: low, heightHighM: high, bottomOffsetM: shapeBottom },
-                            });
-                          }}
-                          options={[
-                            { label: 'Rect', value: 'rect' },
-                            { label: 'Mono-slope', value: 'mono_slope' },
-                          ]}
-                        />
+                            }}
+                            options={[
+                              { label: 'Rect', value: 'rect' },
+                              { label: 'Mono-slope', value: 'mono_slope' },
+                            ]}
+                          />
+                        </div>
 
                         {selectedRectShape ? (
                           <>
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-width`}
-                              label="Width (m)"
-                              type="number"
-                              value={selectedRectShape.widthM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'rect',
-                                    widthM: String(v),
-                                    heightM: selectedRectShape.heightM,
-                                    bottomOffsetM: selectedRectShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.widthM}
-                            />
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-height`}
-                              label="Height (m)"
-                              type="number"
-                              value={selectedRectShape.heightM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'rect',
-                                    widthM: selectedRectShape.widthM,
-                                    heightM: String(v),
-                                    bottomOffsetM: selectedRectShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.heightM}
-                            />
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-width`}
+                                label="Width (m)"
+                                type="number"
+                                value={selectedRectShape.widthM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'rect',
+                                      widthM: String(v),
+                                      heightM: selectedRectShape.heightM,
+                                      bottomOffsetM: selectedRectShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.widthM}
+                              />
+                            </div>
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-height`}
+                                label="Height (m)"
+                                type="number"
+                                value={selectedRectShape.heightM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'rect',
+                                      widthM: selectedRectShape.widthM,
+                                      heightM: String(v),
+                                      bottomOffsetM: selectedRectShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.heightM}
+                              />
+                            </div>
                           </>
                         ) : selectedMonoShape ? (
                           <>
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-width`}
-                              label="Width (m)"
-                              type="number"
-                              value={selectedMonoShape.widthM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'mono_slope',
-                                    widthM: String(v),
-                                    heightLowM: selectedMonoShape.heightLowM,
-                                    heightHighM: selectedMonoShape.heightHighM,
-                                    bottomOffsetM: selectedMonoShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.widthM}
-                            />
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-low`}
-                              label="Height low (m)"
-                              type="number"
-                              value={selectedMonoShape.heightLowM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'mono_slope',
-                                    widthM: selectedMonoShape.widthM,
-                                    heightLowM: String(v),
-                                    heightHighM: selectedMonoShape.heightHighM,
-                                    bottomOffsetM: selectedMonoShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.heightLowM}
-                            />
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-high`}
-                              label="Height high (m)"
-                              type="number"
-                              value={selectedMonoShape.heightHighM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'mono_slope',
-                                    widthM: selectedMonoShape.widthM,
-                                    heightLowM: selectedMonoShape.heightLowM,
-                                    heightHighM: String(v),
-                                    bottomOffsetM: selectedMonoShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.heightHighM}
-                            />
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-width`}
+                                label="Width (m)"
+                                type="number"
+                                value={selectedMonoShape.widthM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'mono_slope',
+                                      widthM: String(v),
+                                      heightLowM: selectedMonoShape.heightLowM,
+                                      heightHighM: selectedMonoShape.heightHighM,
+                                      bottomOffsetM: selectedMonoShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.widthM}
+                              />
+                            </div>
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-low`}
+                                label="Height low (m)"
+                                type="number"
+                                value={selectedMonoShape.heightLowM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'mono_slope',
+                                      widthM: selectedMonoShape.widthM,
+                                      heightLowM: String(v),
+                                      heightHighM: selectedMonoShape.heightHighM,
+                                      bottomOffsetM: selectedMonoShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.heightLowM}
+                              />
+                            </div>
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-high`}
+                                label="Height high (m)"
+                                type="number"
+                                value={selectedMonoShape.heightHighM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'mono_slope',
+                                      widthM: selectedMonoShape.widthM,
+                                      heightLowM: selectedMonoShape.heightLowM,
+                                      heightHighM: String(v),
+                                      bottomOffsetM: selectedMonoShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.heightHighM}
+                              />
+                            </div>
                           </>
                         ) : null}
 
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-shape-bottom`}
-                          label="Bottom offset (m)"
-                          type="number"
-                          value={selectedInfill.shape.bottomOffsetM ?? '0'}
-                          onChange={(v) =>
-                            setInfillItem(selectedInfill.id, {
-                              shape:
-                                selectedInfill.shape.type === 'rect'
-                                  ? { ...selectedInfill.shape, bottomOffsetM: String(v) }
-                                  : { ...selectedInfill.shape, bottomOffsetM: String(v) },
-                            })
-                          }
-                          error={selectedInfillValidation.errors.bottomOffsetM}
-                        />
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-shape-bottom`}
+                            label="Bottom offset (m)"
+                            type="number"
+                            value={selectedInfill.shape.bottomOffsetM ?? '0'}
+                            onChange={(v) =>
+                              setInfillItem(selectedInfill.id, {
+                                shape:
+                                  selectedInfill.shape.type === 'rect'
+                                    ? { ...selectedInfill.shape, bottomOffsetM: String(v) }
+                                    : { ...selectedInfill.shape, bottomOffsetM: String(v) },
+                              })
+                            }
+                            error={selectedInfillValidation.errors.bottomOffsetM}
+                          />
+                        </div>
                       </div>
                     </details>
 
-                    <details className={styles.infillSection}>
+                    <details className={`${styles.infillSection} ${styles.infillSectionSecondary}`}>
                       <summary className={styles.infillSectionSummary}>Supports (existing fixing members)</summary>
                       <div className={styles.infillFieldGrid}>
                         <FieldTile
@@ -4800,11 +4832,14 @@ export default function CalculatorGridClient({
                       </div>
                     </details>
 
-                    <details className={styles.infillSection}>
+                    <details className={`${styles.infillSection} ${styles.infillSectionSecondary}`}>
                       <summary className={styles.infillSectionSummary}>Advanced</summary>
                       <p className={styles.modalNote}>No advanced infill options configured yet.</p>
                     </details>
 
+                      </div>
+
+                      <aside className={styles.infillEditorSummary}>
                     <section className={styles.infillComputedPanel} aria-label="Computed infill summary">
                       <h3 className={styles.infillComputedTitle}>Computed summary</h3>
 
@@ -4895,6 +4930,8 @@ export default function CalculatorGridClient({
                         </div>
                       ) : null}
                     </section>
+                      </aside>
+                    </div>
                   </>
                 ) : (
                   <div className={styles.infillEditorEmpty}>
@@ -5294,7 +5331,4 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
-
-
 
