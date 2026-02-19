@@ -85,17 +85,18 @@ export type CalculatorModuleOverrides = {
 };
 
 export type CalculatorFlashingBand = '0-200' | '201-300' | '301-400';
-export type CalculatorFlashingBandOrNone = CalculatorFlashingBand | 'none';
+export type CalculatorFlashingPurpose = 'HEAD' | 'SIDE' | 'APRON' | 'CUSTOM';
 
-export type CalculatorFlashingExtraInput = {
+export type CalculatorFlashingRowInput = {
   id: string;
+  kind: 'primary' | 'extra';
   band: CalculatorFlashingBand;
   lengthM: string;
+  purpose?: CalculatorFlashingPurpose;
 };
 
 export type CalculatorFlashingsState = {
-  defaultBands: Record<string, CalculatorFlashingBandOrNone>;
-  extras: CalculatorFlashingExtraInput[];
+  rows: CalculatorFlashingRowInput[];
 };
 
 export type CalculatorModuleInputs = {
@@ -325,7 +326,7 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         hipCornerProjectionBM: '0',
         postCutHeightM: legacy.postCutHeightM,
         timberRoofAllowanceExGst: legacy.timberRoofAllowanceExGst,
-        flashings: { defaultBands: {}, extras: [] },
+        flashings: { rows: [] },
         overrides: legacy.overrides ?? {},
         infills: { items: [] },
       },
