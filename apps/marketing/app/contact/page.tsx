@@ -343,7 +343,7 @@ export default function ContactPage() {
   return (
     <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''} ${isSubmitted ? 'contact-submitted' : ''}`}>
       <form ref={formRef} id="contact-form" method="post" action="/api/enquiry" onSubmit={handleSubmit}>
-        <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 grid grid-cols-1 lg:grid-cols-[1fr_1px_1fr_1px_1fr] items-stretch gap-y-[var(--vgap)] lg:gap-y-[var(--vgap)] gap-x-[var(--gap)]">
+        <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 items-stretch">
         {/* Left column (keeps its space; content hides on submit) */}
         <div className="col-span-1 relative h-full">
           <div className="hw-tile contact-media" style={{height:'100%'}}>
@@ -359,9 +359,6 @@ export default function ContactPage() {
             )}
           </div>
         </div>
-
-        {/* Rule 1 */}
-        <div aria-hidden className="hidden lg:block bg-neutral-600/80 w-px h-full self-stretch" />
 
         {/* Middle column */}
         <div className="contact-mid grid gap-y-[var(--vgap)]">
@@ -801,9 +798,6 @@ export default function ContactPage() {
                 ) : null}
           </div>
         </div>
-
-        {/* Rule 2 */}
-        <div aria-hidden className="hidden lg:block bg-neutral-600/80 w-px h-full self-stretch" />
 
         {/* Right column (keeps its space; content hides on submit) */}
         <section className="contact-right space-y-4 sm:space-y-6">
