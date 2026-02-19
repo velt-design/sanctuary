@@ -69,7 +69,7 @@
   "allocation_method_v1_1": {
     "type": "fixed_plus_variable",
     "description": "Allocate overhead once per job/pergola with fixed + variable ops and sub-linear sales scaling by module count.",
-    "crew_day_hours": 9,
+    "crew_day_hours": 8,
     "ops_delivery": {
       "fixed_per_job_ex_gst": 500.0,
       "variable_per_crew_day_ex_gst": 1000.0,

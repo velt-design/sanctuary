@@ -541,15 +541,23 @@
 /* === Infill drawer === */
 .infillTileContent {
   width: 100%;
-  display: grid;
-  gap: 10px;
-  align-content: start;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .infillTileActions {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.infillTileActions > * {
+  flex: 0 0 auto;
 }
 
 .infillPrimaryButton,
@@ -557,12 +565,17 @@
 .infillSecondaryButtonCompact {
   border: 1px solid rgba(15, 15, 16, 0.16);
   border-radius: 999px;
+  min-height: 36px;
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .infillPrimaryButton {
@@ -589,10 +602,16 @@
 
 .infillTileSummary {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   font-size: 12px;
   color: rgba(15, 15, 16, 0.72);
   line-height: 1.35;
+}
+
+.infillTileSummaryLine {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .infillPresetMenu {
@@ -605,35 +624,41 @@
   z-index: 4500;
   background: rgba(15, 15, 16, 0.42);
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
+  padding: 32px;
 }
 
 .infillDrawerPanel {
-  width: min(1120px, 100vw);
+  width: min(1200px, calc(100vw - 64px));
   max-width: none !important;
-  height: 100dvh;
+  max-height: calc(100vh - 64px) !important;
   background: #fff;
   color: var(--text);
-  border-left: 1px solid rgba(15, 15, 16, 0.12);
-  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.22);
-  border-radius: 0;
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.24);
+  border-radius: 18px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .infillDrawer {
   height: 100%;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .infillDrawerHeader {
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
 }
 
 .infillDrawerTitle {
@@ -664,77 +689,135 @@
 }
 
 .infillDrawerBody {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-}
-
-.infillDrawerListPane {
-  min-height: 0;
-  overflow: auto;
-  border-right: 1px solid rgba(15, 15, 16, 0.12);
-  padding: 12px;
-  display: grid;
-  align-content: start;
-  gap: 12px;
-}
-
-.infillListTopActions {
-  display: grid;
+  overflow: hidden;
+  display: flex;
 }
 
 .infillListRows {
-  display: grid;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.infillListRow,
-.infillListRowActive {
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 8px;
-  padding: 8px;
+.infillRail {
+  width: 320px;
+  flex: 0 0 320px;
+  min-width: 280px;
+  max-width: 360px;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid rgba(15, 15, 16, 0.08);
+  display: flex;
+  flex-direction: column;
 }
 
-.infillListRowActive {
-  border-color: rgba(129, 63, 57, 0.42);
-  box-shadow: inset 0 0 0 1px rgba(129, 63, 57, 0.24);
+.infillRailHeader {
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid rgba(15, 15, 16, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
-.infillListRowMain {
-  border: none;
-  background: transparent;
-  text-align: left;
-  padding: 2px;
-  cursor: pointer;
+.infillRailList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px;
+}
+
+.infillRailFooter {
+  border-top: 1px solid rgba(15, 15, 16, 0.06);
+  background: rgba(15, 15, 16, 0.02);
+  padding: 12px;
   display: grid;
   gap: 4px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.66);
 }
 
-.infillListRowMain:focus {
+.infillRailFooter strong {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.74);
+}
+
+.infillRailFooter p {
+  margin: 0;
+}
+
+.infillRow {
+  width: 100%;
+  position: relative;
+  text-align: left;
+  border: 1px solid rgba(15, 15, 16, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.infillRow:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
-  border-radius: 8px;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
 }
 
-.infillListRowTitle {
+.infillRowActive {
+  border-color: rgba(129, 63, 57, 0.25);
+  background: rgba(127, 29, 29, 0.06);
+}
+
+.infillRowActive::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: rgba(129, 63, 57, 0.85);
+}
+
+.infillRowTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   font-size: 13px;
   font-weight: 700;
 }
 
-.infillListRowMeta {
+.infillRowMeta {
   font-size: 12px;
   color: rgba(15, 15, 16, 0.68);
-  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.infillListRowActions {
-  display: grid;
+.infillChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
-  align-content: start;
+}
+
+.infillChip {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 15, 16, 0.06);
+  background: rgba(15, 15, 16, 0.04);
+  color: rgba(15, 15, 16, 0.74);
 }
 
 .infillIconButton {
@@ -769,43 +852,22 @@
   color: rgba(15, 15, 16, 0.72);
 }
 
-.infillListTotals {
-  margin-top: auto;
-  border-top: 1px solid rgba(15, 15, 16, 0.12);
-  padding-top: 10px;
-  display: grid;
-  gap: 4px;
-}
-
-.infillListTotals h3 {
-  margin: 0;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: rgba(15, 15, 16, 0.72);
-}
-
-.infillListTotals p {
-  margin: 0;
-  font-size: 12px;
-  color: rgba(15, 15, 16, 0.72);
-}
-
-.infillDrawerEditorPane {
+.infillEditor {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 12px 16px;
-  display: grid;
-  align-content: start;
-  gap: 12px;
+  overflow: auto;
+  padding: 16px;
 }
 
 .infillEditorHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
 }
 
 .infillEditorTitle {
@@ -818,11 +880,41 @@
   gap: 8px;
 }
 
+.infillEditorGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+  gap: 16px;
+  align-items: start;
+  min-width: 0;
+}
+
+.infillEditorForm {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.infillEditorSummary {
+  min-width: 0;
+  position: sticky;
+  top: 16px;
+}
+
 .infillSection {
   border: 1px solid rgba(15, 15, 16, 0.12);
   border-radius: 14px;
   background: rgba(15, 15, 16, 0.02);
   overflow: visible;
+}
+
+.infillSectionSecondary {
+  border-color: rgba(15, 15, 16, 0.08);
+  background: rgba(15, 15, 16, 0.015);
+}
+
+.infillSectionSecondary .infillSectionSummary {
+  padding: 8px 10px;
+  color: rgba(15, 15, 16, 0.66);
 }
 
 .infillSectionSummary {
@@ -835,29 +927,46 @@
   color: rgba(15, 15, 16, 0.75);
 }
 
+.infillBasicGrid {
+  padding: 0 10px 10px 10px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
 .infillFieldGrid {
   padding: 0 10px 10px 10px;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 8px;
+  gap: 10px;
   align-items: start;
+  min-width: 0;
 }
 
+.infillBasicGrid > div,
+.infillFieldGrid > div {
+  min-width: 0;
+}
+
+.infillBasicGrid .tile,
 .infillFieldGrid .tile {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #fff;
   height: auto;
   justify-content: flex-start;
+  min-width: 0;
 }
 
 .infillComputedPanel {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(15, 15, 16, 0.1);
   border-radius: 14px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(15, 15, 16, 0.015);
   padding: 12px;
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .infillComputedTitle {
@@ -910,6 +1019,7 @@
 }
 
 .infillDrawerFooter {
+  flex: 0 0 auto;
   border-top: 1px solid rgba(15, 15, 16, 0.12);
   padding: 12px 16px;
   display: flex;
@@ -921,6 +1031,22 @@
 .infillDrawerFooterNote {
   font-size: 12px;
   color: rgba(15, 15, 16, 0.68);
+}
+
+.span2 {
+  grid-column: span 2;
+}
+
+.span4 {
+  grid-column: span 4;
+}
+
+.span6 {
+  grid-column: span 6;
+}
+
+.span12 {
+  grid-column: span 12;
 }
 
 /* === Flashings table === */
@@ -1117,14 +1243,35 @@
 }
 
 @media (max-width: 1100px) {
+  .infillDrawerOverlay {
+    padding: 12px;
+  }
+
+  .infillDrawerPanel {
+    width: min(1200px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px) !important;
+  }
+
   .infillDrawerBody {
+    flex-direction: column;
+  }
+
+  .infillRail {
+    width: 100%;
+    flex: 0 0 auto;
+    min-width: 0;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+    max-height: 40vh;
+  }
+
+  .infillEditorGrid {
     grid-template-columns: 1fr;
   }
 
-  .infillDrawerListPane {
-    border-right: none;
-    border-bottom: 1px solid rgba(15, 15, 16, 0.12);
-    max-height: 42vh;
+  .infillEditorSummary {
+    position: static;
   }
 
   .flashingsGridHeader,
@@ -1137,6 +1284,19 @@
   .flashingsRemoveButton,
   .flashingsRemovePlaceholder {
     justify-self: start;
+  }
+}
+
+@media (max-width: 900px) {
+  .span2,
+  .span4,
+  .span6 {
+    grid-column: span 12;
+  }
+
+  .infillTileActions,
+  .infillEditorActions {
+    flex-wrap: wrap;
   }
 }
 
