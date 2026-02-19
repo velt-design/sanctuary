@@ -1538,6 +1538,36 @@ describe('calculateCostV1', () => {
     expect(job.modules[0].overhead.total_ex_gst).toBe(0);
   });
 
+  it('box perimeter: adds startup labour allowance (180 minutes) once per pergola', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: true,
+      internal_roof_type: 'pitched',
+      fall_distance_mm: 200,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    });
+
+    const startup = result.install.actions.find((a) => a.id === 'mob.box_perimeter_startup');
+    expect(startup).toBeTruthy();
+    expect(startup?.scope).toBe('job');
+    expect(startup?.minutes).toBe(180);
+    expect(startup?.qty).toBe(1);
+  });
+
   it('fixture: hip corner uses two wings + allowance', () => {
     const result = calculateCostV1({
       length_m: 6,
@@ -1820,6 +1850,50 @@ describe('calculateCostV1', () => {
     expect(twoPergolas.overhead.total_ex_gst).toBeGreaterThan(onePergola.overhead.total_ex_gst);
     expect(twoPergolas.shared.install.totals.install_ex_gst).toBeGreaterThan(0);
     expect(roundMoney(twoPergolas.shared.install.totals.install_ex_gst)).toBe(roundMoney(onePergola.shared.install.totals.install_ex_gst));
+  });
+
+  it('site rollup: box perimeter startup labour is charged once per pergola', () => {
+    const boxModule = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: true,
+      internal_roof_type: 'pitched' as const,
+      fall_distance_mm: 200,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    };
+
+    const site = calculateSiteCostV1({
+      pergolas: [
+        { id: 'pergola-1', modules: [boxModule] },
+        { id: 'pergola-2', modules: [boxModule] },
+      ],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    const perPergolaStartups = site.pergolas
+      .map((p) => p.install.actions.find((a) => a.id === 'job.mob.box_perimeter_startup'))
+      .filter(Boolean);
+    expect(perPergolaStartups.length).toBe(2);
+    expect(perPergolaStartups.every((a) => a?.minutes === 180)).toBe(true);
+
+    const siteStartups = site.install.actions.filter((a) => String(a.id).endsWith('.job.mob.box_perimeter_startup'));
+    expect(siteStartups.length).toBe(2);
+    expect(siteStartups.every((a) => a.minutes === 180)).toBe(true);
   });
 
   it('site rollup: shared install and add-ons are site-level', () => {

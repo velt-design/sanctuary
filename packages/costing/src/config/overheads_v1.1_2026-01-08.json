@@ -55,25 +55,33 @@
         "Added multi-pergola overhead logic: overhead not simply per_job * module_count.",
         "Split overhead allocation into fixed + variable components (ops_delivery scales with crew_days; sales_design scales sub-linearly with module_count)."
       ]
+    },
+    {
+      "date": "2026-02-19",
+      "changes": [
+        "Updated ops formula to 500 + 1000 * crew_days.",
+        "Added startup overhead for explicit gable and box-perimeter pergolas (mutually exclusive, one startup only).",
+        "Added timber daily overhead surcharge using rounded crew-days for timber and mixed roofs.",
+        "Removed optional overhead cap."
+      ]
     }
   ],
   "allocation_method_v1_1": {
     "type": "fixed_plus_variable",
-    "description": "Allocate overhead once per job. Add a variable component so bigger/multi-module jobs carry more overhead without doubling linearly.",
+    "description": "Allocate overhead once per job/pergola with fixed + variable ops and sub-linear sales scaling by module count.",
     "crew_day_hours": 9,
     "ops_delivery": {
-      "fixed_per_job_ex_gst": 1450.0,
-      "variable_per_crew_day_ex_gst": 650.0,
-      "driver_formula": "ops_fixed + ops_day_rate * (total_crew_hours / crew_day_hours)"
+      "fixed_per_job_ex_gst": 500.0,
+      "variable_per_crew_day_ex_gst": 1000.0,
+      "gable_startup_per_pergola_ex_gst": 500.0,
+      "box_perimeter_startup_per_pergola_ex_gst": 500.0,
+      "timber_per_rounded_crew_day_ex_gst": 500.0,
+      "driver_formula": "ops_fixed + ops_day_rate*(total_crew_hours/crew_day_hours) + max(gable_startup, box_perimeter_startup) + timber_per_rounded_crew_day*round(total_crew_hours/crew_day_hours)"
     },
     "sales_design": {
       "per_job_ex_gst": 1517.857142857143,
       "extra_module_factor": 0.3,
       "driver_formula": "sales_per_job * (1 + extra_module_factor * max(0, module_count - 1))"
-    },
-    "optional_cap": {
-      "max_multiple_of_flat_per_job_total": 1.75,
-      "note": "Optional cap to avoid runaway overhead on very large jobs until calibrated."
     }
   },
   "computed_examples": [
@@ -82,16 +90,16 @@
         "module_count": 1,
         "total_crew_hours": 22.1
       },
-      "ops_delivery_ex_gst": 3046.1111111111113,
+      "ops_delivery_ex_gst": 2955.5555555555557,
       "sales_design_ex_gst": 1517.857142857143,
-      "note": "Should be close to prior flat per-job overhead at typical job size."
+      "note": "No startup/timber surcharges in this base example."
     },
     {
       "inputs": {
         "module_count": 2,
         "total_crew_hours": 44.0
       },
-      "ops_delivery_ex_gst": 4627.777777777777,
+      "ops_delivery_ex_gst": 5388.888888888889,
       "sales_design_ex_gst": 1973.2142857142858,
       "note": "Increases overhead but does not double."
     }

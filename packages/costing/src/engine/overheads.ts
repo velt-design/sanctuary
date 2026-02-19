@@ -10,7 +10,13 @@ function roundMoney(n: number): number {
 
 export function buildOverheadV1(
   config: CostingConfigV1,
-  opts?: { module_count?: number; total_crew_hours?: number },
+  opts?: {
+    module_count?: number;
+    total_crew_hours?: number;
+    has_gable?: boolean;
+    has_box_perimeter?: boolean;
+    has_timber_or_mixed?: boolean;
+  },
 ): OverheadResultV1 {
   const warnings: string[] = [];
 
@@ -19,12 +25,12 @@ export function buildOverheadV1(
 
   const crewHoursRaw = Number(opts?.total_crew_hours ?? 0);
   const totalCrewHours = Number.isFinite(crewHoursRaw) && crewHoursRaw >= 0 ? crewHoursRaw : 0;
+  const hasGable = opts?.has_gable === true;
+  const hasBoxPerimeter = opts?.has_box_perimeter === true;
+  const hasTimberOrMixed = opts?.has_timber_or_mixed === true;
 
   const v11 = (config.overheads as any).allocation_method_v1_1 as any;
   const hasV11 = v11 && typeof v11 === 'object' && v11.type === 'fixed_plus_variable';
-
-  const computedFlat = config.overheads.computed_per_won_job as any;
-  const flatTotal = Number(computedFlat?.total ?? 0);
 
   let method = String(config.overheads.allocation_method.type ?? 'unknown');
   let ops = 0;
@@ -37,9 +43,21 @@ export function buildOverheadV1(
     const crewDayHours = Number(v11.crew_day_hours ?? 9);
     const dayHours = Number.isFinite(crewDayHours) && crewDayHours > 0 ? crewDayHours : 9;
 
-    const opsFixed = Number(v11.ops_delivery?.fixed_per_job_ex_gst ?? 0);
-    const opsPerDay = Number(v11.ops_delivery?.variable_per_crew_day_ex_gst ?? 0);
-    const opsComputed = opsFixed + opsPerDay * (totalCrewHours / dayHours);
+    const opsFixed = Number(v11.ops_delivery?.fixed_per_job_ex_gst ?? 500);
+    const opsPerDay = Number(v11.ops_delivery?.variable_per_crew_day_ex_gst ?? 1000);
+    const gableStartup = Number(v11.ops_delivery?.gable_startup_per_pergola_ex_gst ?? 500);
+    const boxPerimeterStartup = Number(v11.ops_delivery?.box_perimeter_startup_per_pergola_ex_gst ?? 500);
+    const timberPerRoundedCrewDay = Number(v11.ops_delivery?.timber_per_rounded_crew_day_ex_gst ?? 500);
+
+    let startup = 0;
+    if (hasGable) startup = Math.max(startup, Number.isFinite(gableStartup) ? gableStartup : 0);
+    if (hasBoxPerimeter) startup = Math.max(startup, Number.isFinite(boxPerimeterStartup) ? boxPerimeterStartup : 0);
+
+    const roundedCrewDaysRaw = Math.round(totalCrewHours / dayHours);
+    const roundedCrewDays = Number.isFinite(roundedCrewDaysRaw) ? Math.max(0, roundedCrewDaysRaw) : 0;
+    const timberSurcharge = hasTimberOrMixed ? (Number.isFinite(timberPerRoundedCrewDay) ? timberPerRoundedCrewDay : 0) * roundedCrewDays : 0;
+
+    const opsComputed = opsFixed + opsPerDay * (totalCrewHours / dayHours) + startup + timberSurcharge;
 
     const salesPerJob = Number(v11.sales_design?.per_job_ex_gst ?? 0);
     const extraModuleFactor = Number(v11.sales_design?.extra_module_factor ?? 0);
@@ -48,15 +66,6 @@ export function buildOverheadV1(
     ops = Number.isFinite(opsComputed) ? opsComputed : 0;
     sales = Number.isFinite(salesComputed) ? salesComputed : 0;
     total = ops + sales;
-
-    const capMultiple = Number(v11.optional_cap?.max_multiple_of_flat_per_job_total ?? NaN);
-    if (Number.isFinite(capMultiple) && capMultiple > 0 && Number.isFinite(flatTotal) && flatTotal > 0) {
-      const cap = flatTotal * capMultiple;
-      if (total > cap) {
-        warnings.push(`Overhead capped at ${capMultiple}× flat per-job total until calibrated.`);
-        total = cap;
-      }
-    }
   } else {
     const computed = config.overheads.computed_per_won_job as any;
     method = String(config.overheads.allocation_method.type ?? 'unknown');
