@@ -24,6 +24,83 @@ function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+const BOX_PERIMETER_STARTUP_ACTION_ID = 'mob.box_perimeter_startup';
+const BOX_PERIMETER_STARTUP_MINUTES = 180;
+const BOX_PERIMETER_STARTUP_ACTION_LABEL = 'Box perimeter startup labour';
+const BOX_PERIMETER_STARTUP_ACTION_CATEGORY = 'Mob';
+
+type OverheadFlags = {
+  has_gable: boolean;
+  has_box_perimeter: boolean;
+  has_timber_or_mixed: boolean;
+};
+
+function deriveOverheadFlagsForModule(module: Pick<CostOutputV1, 'inputs_normalized'>): OverheadFlags {
+  const style = String(module.inputs_normalized.pergola_style_ui ?? '');
+  const structureType = String(module.inputs_normalized.structure_type ?? '');
+  const roofMaterial = String(module.inputs_normalized.roof_material ?? '');
+  return {
+    has_gable: style === 'gable',
+    has_box_perimeter: structureType === 'box_perimeter',
+    has_timber_or_mixed: roofMaterial === 'timber' || roofMaterial === 'mixed',
+  };
+}
+
+function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs_normalized'>>): OverheadFlags {
+  return modules.reduce<OverheadFlags>(
+    (acc, module) => {
+      const next = deriveOverheadFlagsForModule(module);
+      return {
+        has_gable: acc.has_gable || next.has_gable,
+        has_box_perimeter: acc.has_box_perimeter || next.has_box_perimeter,
+        has_timber_or_mixed: acc.has_timber_or_mixed || next.has_timber_or_mixed,
+      };
+    },
+    { has_gable: false, has_box_perimeter: false, has_timber_or_mixed: false },
+  );
+}
+
+function buildBoxPerimeterStartupAction(config: CostingConfigV1): InstallActionV1 {
+  const crewRateRaw = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 100);
+  const crewRate = Number.isFinite(crewRateRaw) && crewRateRaw > 0 ? crewRateRaw : 100;
+  const minutes = BOX_PERIMETER_STARTUP_MINUTES;
+  return {
+    id: BOX_PERIMETER_STARTUP_ACTION_ID,
+    category: BOX_PERIMETER_STARTUP_ACTION_CATEGORY,
+    label: BOX_PERIMETER_STARTUP_ACTION_LABEL,
+    scope: 'job',
+    unit: 'job',
+    qty: 1,
+    minutes,
+    applied_multipliers: {},
+    cost_ex_gst: roundMoney((minutes / 60) * crewRate),
+  };
+}
+
+function addBoxPerimeterStartupToInstall(
+  install: CostOutputV1['install'],
+  config: CostingConfigV1,
+  hasBoxPerimeter: boolean,
+): CostOutputV1['install'] {
+  if (!hasBoxPerimeter) return install;
+  if (install.actions.some((a) => a.id === BOX_PERIMETER_STARTUP_ACTION_ID)) return install;
+
+  const startup = buildBoxPerimeterStartupAction(config);
+  const actions = [...install.actions, startup].sort((a, b) => a.id.localeCompare(b.id));
+  const crewMinutes = roundMoney(actions.reduce((acc, a) => acc + a.minutes, 0));
+  const crewHours = roundMoney(crewMinutes / 60);
+  const installExGst = roundMoney(actions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
+
+  return {
+    actions,
+    totals: {
+      crew_minutes: crewMinutes,
+      crew_hours: crewHours,
+      install_ex_gst: installExGst,
+    },
+  };
+}
+
 function classifyWarningLevel(message: string): WarningLevelV1 {
   const m = message.toLowerCase();
 
@@ -117,16 +194,32 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
 
   const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg);
   const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
+  const overheadFlags = deriveOverheadFlagsForModule({ inputs_normalized: derivedResult.inputs_normalized });
 
   const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
     excludeActionIds: DAY_CYCLE_ACTION_IDS,
   });
-  const { siteDays, dayCycle } = computeDayCycle(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, baseInstall.install.totals.crew_hours);
-  const installResult = mergeInstallResults(baseInstall, dayCycle);
+  const baseInstallWithStartup: InstallResult = {
+    install: addBoxPerimeterStartupToInstall(baseInstall.install, cfg, overheadFlags.has_box_perimeter),
+    notes_and_warnings: baseInstall.notes_and_warnings,
+  };
+  const { siteDays, dayCycle } = computeDayCycle(
+    derivedResult.inputs_normalized,
+    derivedWithPatch as any,
+    cfg,
+    baseInstallWithStartup.install.totals.crew_hours,
+  );
+  const installResult = mergeInstallResults(baseInstallWithStartup, dayCycle);
 
   derivedWithPatch.site_days = siteDays;
 
-  const overheadResult = buildOverheadV1(cfg, { module_count: 1, total_crew_hours: installResult.install.totals.crew_hours });
+  const overheadResult = buildOverheadV1(cfg, {
+    module_count: 1,
+    total_crew_hours: installResult.install.totals.crew_hours,
+    has_gable: overheadFlags.has_gable,
+    has_box_perimeter: overheadFlags.has_box_perimeter,
+    has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
+  });
 
   const notes_and_warnings = [
     ...derivedResult.notes_and_warnings,
@@ -181,16 +274,32 @@ export function calculateCostV1WithMaterialsExplain(
 
   const materialsResult = buildMaterialsV1Explain(inputsForMaterials, derivedResult.derived, cfg, opts);
   const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.result.derived_patch ?? {}) };
+  const overheadFlags = deriveOverheadFlagsForModule({ inputs_normalized: derivedResult.inputs_normalized });
 
   const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
     excludeActionIds: DAY_CYCLE_ACTION_IDS,
   });
-  const { siteDays, dayCycle } = computeDayCycle(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, baseInstall.install.totals.crew_hours);
-  const installResult = mergeInstallResults(baseInstall, dayCycle);
+  const baseInstallWithStartup: InstallResult = {
+    install: addBoxPerimeterStartupToInstall(baseInstall.install, cfg, overheadFlags.has_box_perimeter),
+    notes_and_warnings: baseInstall.notes_and_warnings,
+  };
+  const { siteDays, dayCycle } = computeDayCycle(
+    derivedResult.inputs_normalized,
+    derivedWithPatch as any,
+    cfg,
+    baseInstallWithStartup.install.totals.crew_hours,
+  );
+  const installResult = mergeInstallResults(baseInstallWithStartup, dayCycle);
 
   derivedWithPatch.site_days = siteDays;
 
-  const overheadResult = buildOverheadV1(cfg, { module_count: 1, total_crew_hours: installResult.install.totals.crew_hours });
+  const overheadResult = buildOverheadV1(cfg, {
+    module_count: 1,
+    total_crew_hours: installResult.install.totals.crew_hours,
+    has_gable: overheadFlags.has_gable,
+    has_box_perimeter: overheadFlags.has_box_perimeter,
+    has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
+  });
 
   const notes_and_warnings = [
     ...derivedResult.notes_and_warnings,
@@ -365,6 +474,8 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     }
   }
 
+  const overheadFlags = deriveOverheadFlagsForModules(modules);
+
   const infillSheetLinePattern = /^m\d+\.infill\.acrylic_sheet_clear$/;
   const infillSheetLines = jobMaterialsLines.filter((line) => infillSheetLinePattern.test(String(line.id ?? '')));
   if (infillSheetLines.length > 0) {
@@ -409,6 +520,10 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
   }
 
   const jobActions = Array.from(jobScopedActions.values()).sort((a, b) => a.id.localeCompare(b.id));
+  if (overheadFlags.has_box_perimeter && !jobActions.some((a) => a.id === BOX_PERIMETER_STARTUP_ACTION_ID)) {
+    jobActions.push(buildBoxPerimeterStartupAction(cfg));
+    jobActions.sort((a, b) => a.id.localeCompare(b.id));
+  }
   for (const action of jobActions) {
     jobInstallActions.push({ ...action, id: `job.${action.id}`, label: `[Job] ${action.label}` });
   }
@@ -468,7 +583,13 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
       dayCycle.installExGst,
   );
 
-  const overheadResult = buildOverheadV1(cfg, { module_count: modules.length, total_crew_hours: crewHoursTotal });
+  const overheadResult = buildOverheadV1(cfg, {
+    module_count: modules.length,
+    total_crew_hours: crewHoursTotal,
+    has_gable: overheadFlags.has_gable,
+    has_box_perimeter: overheadFlags.has_box_perimeter,
+    has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
+  });
   warnings.push(...overheadResult.notes_and_warnings.map((w) => `[Overhead] ${w}`));
 
   const overheadExGst = cfg.overheads.include_in_total_cost ? overheadResult.overhead.total_ex_gst : 0;
@@ -663,10 +784,28 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       globalModuleIdx += 1;
     }
 
-    const pergolaCrewMinutes = roundMoney(pergolaModules.reduce((acc, m) => acc + m.install.totals.crew_minutes, 0));
+    const pergolaOverheadFlags = deriveOverheadFlagsForModules(pergolaModules);
+    if (pergolaOverheadFlags.has_box_perimeter) {
+      const startupAction = buildBoxPerimeterStartupAction(cfg);
+      const scopedPergolaAction = {
+        ...startupAction,
+        id: `job.${startupAction.id}`,
+        label: `[Job] ${startupAction.label}`,
+      };
+      const sitePrefix = pergola.label ? `[${pergola.label}]` : `[P${pIdx + 1}]`;
+      const scopedSiteAction = {
+        ...startupAction,
+        id: `p${pIdx + 1}.job.${startupAction.id}`,
+        label: `${sitePrefix} [Job] ${startupAction.label}`,
+      };
+      pergolaInstallActions.push(scopedPergolaAction);
+      siteInstallActions.push(scopedSiteAction);
+    }
+
+    const pergolaCrewMinutes = roundMoney(pergolaInstallActions.reduce((acc, a) => acc + a.minutes, 0));
     const pergolaCrewHours = roundMoney(pergolaCrewMinutes / 60);
     const pergolaMaterialsTotal = roundMoney(pergolaModules.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0));
-    const pergolaInstallTotal = roundMoney(pergolaModules.reduce((acc, m) => acc + m.install.totals.install_ex_gst, 0));
+    const pergolaInstallTotal = roundMoney(pergolaInstallActions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
 
     pergolaMaterialsLines.sort((a, b) => a.id.localeCompare(b.id));
     pergolaInstallActions.sort((a, b) => a.id.localeCompare(b.id));
@@ -762,7 +901,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
   }
 
   const baseCrewMinutes = roundMoney(
-    modulesAll.reduce((acc, m) => acc + m.install.totals.crew_minutes, 0) + jobActions.reduce((acc, a) => acc + a.minutes, 0),
+    pergolaOutputs.reduce((acc, pergola) => acc + pergola.install.totals.crew_minutes, 0) + jobActions.reduce((acc, a) => acc + a.minutes, 0),
   );
   const baseCrewHours = roundMoney(baseCrewMinutes / 60);
 
@@ -813,7 +952,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
   const crewHoursTotal = roundMoney(crewMinutesTotal / 60);
 
   const materialsTotal = roundMoney(modulesAll.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0));
-  const moduleInstallTotal = roundMoney(modulesAll.reduce((acc, m) => acc + m.install.totals.install_ex_gst, 0));
+  const moduleInstallTotal = roundMoney(pergolaOutputs.reduce((acc, pergola) => acc + pergola.install.totals.install_ex_gst, 0));
   const jobActionsTotal = roundMoney(jobActions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
   const sharedInstallTotal = roundMoney(jobActionsTotal + dayCycle.installExGst);
   const installTotal = roundMoney(moduleInstallTotal + sharedInstallTotal);
@@ -827,9 +966,13 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
 
   for (let idx = 0; idx < pergolaOutputs.length; idx += 1) {
     const pergola = pergolaOutputs[idx];
+    const pergolaFlags = deriveOverheadFlagsForModules(pergola.modules);
     const overheadResult = buildOverheadV1(cfg, {
       module_count: pergola.module_count,
       total_crew_hours: Number(pergola.install.totals.crew_hours ?? 0),
+      has_gable: pergolaFlags.has_gable,
+      has_box_perimeter: pergolaFlags.has_box_perimeter,
+      has_timber_or_mixed: pergolaFlags.has_timber_or_mixed,
     });
 
     if (overheadResult.notes_and_warnings.length) {
