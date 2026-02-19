@@ -2,8 +2,8 @@
   "version": "v1.5",
   "currency": "NZD",
   "basis": {
-    "crew_hour_rate_ex_gst": 100.0,
-    "crew_hour_rate_inc_gst": 115.0,
+    "crew_hour_rate_ex_gst": 90.0,
+    "crew_hour_rate_inc_gst": 103.5,
     "notes": [
       "Crew-hour model: contractor payout cost is based on total crew time, not crew size.",
       "All minutes are starting assumptions to be tuned over time.",
@@ -1020,16 +1020,16 @@
       "scope": "module"
     },
     {
-      "id": "roof.install_flashing_m",
+      "id": "roof.install_flashing_0_200_m",
       "category": "Roof",
-      "label": "Install flashing - per metre",
+      "label": "Install flashing 0-200mm - per metre",
       "unit": "metre",
       "quantity": {
         "type": "driver",
-        "key": "inputs.flashing_length_m",
-        "fallback": "derived.length_m"
+        "key": "derived.flashing_0_200_total_m",
+        "fallback": "inputs.flashing_length_m"
       },
-      "base_minutes": 5,
+      "base_minutes": 6,
       "applies_to": {
         "structure_types": [
           "pitched",
@@ -1040,7 +1040,76 @@
         "access",
         "height"
       ],
-      "notes": "",
+      "notes": "Banded flashing labour rate for 0-200mm girth.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_flashing_201_300_m",
+      "category": "Roof",
+      "label": "Install flashing 201-300mm - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.flashing_201_300_total_m"
+      },
+      "base_minutes": 9,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Banded flashing labour rate for 201-300mm girth.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_flashing_301_400_m",
+      "category": "Roof",
+      "label": "Install flashing 301-400mm - per metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.flashing_301_400_total_m"
+      },
+      "base_minutes": 12,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "Banded flashing labour rate for 301-400mm girth.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.flashing_startup",
+      "category": "Roof",
+      "label": "Flashing setup/startup - per module",
+      "unit": "module",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.flashing_startup_count"
+      },
+      "base_minutes": 30,
+      "applies_to": {
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height"
+      ],
+      "notes": "One-off startup labour when any flashing is installed on the module.",
       "scope": "module"
     },
     {
@@ -1279,15 +1348,15 @@
       "scope": "module"
     },
     {
-      "id": "roof.install_acrylic_roof_m2",
+      "id": "roof.install_joiner_bottom_m",
       "category": "Roof",
-      "label": "Install acrylic roof system (joiners + acrylic) - per m\u00b2",
-      "unit": "m2",
+      "label": "Install bottom joiner - per metre",
+      "unit": "metre",
       "quantity": {
-        "driver": "derived.acrylic_area_m2",
+        "driver": "derived.acrylic_joiner_bottom_total_m",
         "default": 0
       },
-      "base_minutes": 12,
+      "base_minutes": 2,
       "applies_to": {
         "roof_materials": [
           "acrylic"
@@ -1298,7 +1367,76 @@
         "height",
         "roof_type"
       ],
-      "notes": "Assumed v1 value. Includes joiner install + acrylic placement (no roofing screws/washer method). Tune minutes with field data. For mixed roofs, derived.acrylic_area_m2 is the acrylic portion only.",
+      "notes": "Bottom joiner install labour, excluding fixing cycle time.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.fix_joiner_bottom_each",
+      "category": "Roof",
+      "label": "Fix bottom joiner to rafters - each fixing",
+      "unit": "each",
+      "quantity": {
+        "driver": "derived.acrylic_joiner_bottom_fixings_each",
+        "default": 0
+      },
+      "base_minutes": 0.5,
+      "applies_to": {
+        "roof_materials": [
+          "acrylic"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type"
+      ],
+      "notes": "Fixings at 300mm centres plus one extra end fixing per run.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_joiner_top_m",
+      "category": "Roof",
+      "label": "Install top joiner (no fixings) - per metre",
+      "unit": "metre",
+      "quantity": {
+        "driver": "derived.acrylic_joiner_top_total_m",
+        "default": 0
+      },
+      "base_minutes": 1.5,
+      "applies_to": {
+        "roof_materials": [
+          "acrylic"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type"
+      ],
+      "notes": "Top joiner install only; no fixing labour included.",
+      "scope": "module"
+    },
+    {
+      "id": "roof.install_acrylic_panels_m2",
+      "category": "Roof",
+      "label": "Install acrylic panels - per m\u00b2",
+      "unit": "m2",
+      "quantity": {
+        "driver": "derived.acrylic_install_area_m2",
+        "default": 0
+      },
+      "base_minutes": 5,
+      "applies_to": {
+        "roof_materials": [
+          "acrylic"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type"
+      ],
+      "notes": "Acrylic panel placement and fit-up only (joiners handled by separate actions).",
       "scope": "module"
     },
     {

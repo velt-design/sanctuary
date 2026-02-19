@@ -334,24 +334,32 @@ h2{font-size:22px}
   #process .steps-grid{ padding-bottom: calc(var(--g) * 1.2); }
 }
 
-/* Process heading band (above the process lines) */
-.process-head{ position:relative; height:clamp(96px, 24vh, 220px); display:flex; align-items:center; border-top: var(--bw) solid var(--border); border-bottom: var(--bw) solid var(--border); }
+/* Heading bands: full-bleed divider lines with centered inner content */
+.process-head,
+.products-head,
+.materials-head,
+.projects-head{
+  position:relative;
+  height:clamp(96px, 24vh, 220px);
+  display:flex;
+  align-items:center;
+  padding-block:0;
+  border-top: var(--bw) solid var(--border);
+  border-bottom: var(--bw) solid var(--border);
+}
 .process-head__inner{ width:100%; }
 .process-head__title{ font-size: clamp(20px, 2.6vw, 32px); font-weight: 500; margin: 0; color:#2B2B2B; text-transform: uppercase; letter-spacing: .08em; text-align:center; }
 .process-head::after{ display:none; }
 
 /* Products heading band (mirrors process header style) */
-.products-head{ position:relative; height:clamp(96px, 24vh, 220px); display:flex; align-items:center; border-top: var(--bw) solid var(--border); border-bottom: var(--bw) solid var(--border); }
 .products-head .process-head__inner{ width:100%; }
 .products-head .process-head__title{ font-size: clamp(20px, 2.6vw, 32px); font-weight: 500; margin: 0; color:#2B2B2B; text-transform: uppercase; letter-spacing: .08em; text-align:center; }
 
 /* Materials heading band (mirrors process header style) */
-.materials-head{ position:relative; height:clamp(96px, 24vh, 220px); display:flex; align-items:center; border-top: var(--bw) solid var(--border); border-bottom: var(--bw) solid var(--border); }
 .materials-head .process-head__inner{ width:100%; }
 .materials-head .process-head__title{ font-size: clamp(20px, 2.6vw, 32px); font-weight: 500; margin: 0; color:#2B2B2B; text-transform: uppercase; letter-spacing: .08em; text-align:center; }
 
 /* Projects heading band (mirrors process header style) */
-.projects-head{ position:relative; height:clamp(96px, 24vh, 220px); display:flex; align-items:center; border-top: var(--bw) solid var(--border); border-bottom: var(--bw) solid var(--border); }
 .projects-head .process-head__inner{ width:100%; }
 .projects-head .process-head__title{ font-size: clamp(20px, 2.6vw, 32px); font-weight: 500; margin: 0; color:#2B2B2B; text-transform: uppercase; letter-spacing: .08em; text-align:center; }
 

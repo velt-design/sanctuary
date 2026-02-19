@@ -10,6 +10,9 @@ import type {
   BlindLineItem,
   BlindSystemType as BlindSystemInput,
   CalculatorBlindsState,
+  CalculatorFlashingBand,
+  CalculatorFlashingPurpose,
+  CalculatorFlashingsState,
   CalculatorInfillsState,
   CalculatorInputs,
   CalculatorModuleInputs,
@@ -81,12 +84,12 @@ function formatCents(cents?: number): string {
 }
 
 function formatMaybeMoney(n: number | undefined): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   return formatMoney(n);
 }
 
 function formatMaybeNumber(n: number | undefined, digits = 2): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   return n.toFixed(digits);
 }
 
@@ -103,9 +106,25 @@ function inferStockLengthFromLabel(label: string): number | null {
 
 const RAFTER_SPACING_MM_MAX = 642;
 const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
-const INFILL_MAX_PANEL_WIDTH_DEFAULT_M = 1.2;
-const INFILL_STRIP_WIDTH_M = 0.62;
+const INFILL_SHEET_MAX_RUN_M = 3.05;
+const INFILL_STRIP_MAX_RUN_M = 6.0;
+const INFILL_SHEET_MAX_SHORT_SIDE_M = 1.2;
+const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
 const INFILL_JOINER_TOLERANCE_M = 0.02;
+const FLASHING_EDGE_ALLOWANCE_M = 0.1;
+const FLASHING_DUPLICATE_TOLERANCE_M = 0.01;
+const FLASHING_BANDS: CalculatorFlashingBand[] = ['0-200', '201-300', '301-400'];
+const FLASHING_BAND_OPTIONS: FieldOption[] = [
+  { label: '0-200mm', value: '0-200' },
+  { label: '201-300mm', value: '201-300' },
+  { label: '301-400mm', value: '301-400' },
+];
+const FLASHING_PURPOSE_OPTIONS: FieldOption[] = [
+  { label: 'Head', value: 'HEAD' },
+  { label: 'Side', value: 'SIDE' },
+  { label: 'Apron', value: 'APRON' },
+  { label: 'Custom', value: 'CUSTOM' },
+];
 
 type InfillPresetKey = 'front' | 'house' | 'side' | 'gable_triangles' | 'wall_panel' | 'custom';
 
@@ -120,13 +139,24 @@ const INFILL_PRESETS: Array<{ key: InfillPresetKey; label: string }> = [
 
 type InfillUiEstimate = {
   widthM: number;
+  maxHeightM: number;
   qty: number;
+  panelOrientationUsed: InfillLineItem['panelOrientation'];
+  runSideM: number;
+  acrossSideM: number;
+  materialRunLimitM: number;
+  maxCentreM: number;
+  preferredAcrylicSource: InfillLineItem['acrylicSource'];
+  acrylicSourceUsed: InfillLineItem['acrylicSource'];
+  acrylicSourceAutoSwitched: boolean;
+  acrylicSourceUnavailable: boolean;
   canMatchRafters: boolean;
   widthModeUsed: InfillLineItem['widthMode'];
   roofRafterSpacingM: number;
-  panelWidthM: number;
   panelCountEach: number;
   panelCountTotal: number;
+  internalJoinerLinesEach: number;
+  internalJoinerLinesTotal: number;
   joinerLinesEach: number;
   joinerLinesTotal: number;
   unsupportedInternalEach: number;
@@ -145,12 +175,12 @@ type InfillUiEstimate = {
   sheetAreaTotalM2: number;
   invalidHeightInput: boolean;
   widthInputInvalid: boolean;
-  maxPanelWidthWasClamped: boolean;
   invalidCustomPositions: boolean;
 };
 
 type InfillUiValidation = {
   errors: {
+    acrylicSource?: string;
     qty?: string;
     widthM?: string;
     heightM?: string;
@@ -162,6 +192,13 @@ type InfillUiValidation = {
     internalSupportPositionsM?: string;
   };
   warnings: string[];
+};
+
+type FlashingDefaultUi = {
+  key: string;
+  label: string;
+  defaultBand: CalculatorFlashingBand;
+  lengthM: number;
 };
 
 function clampNumber(n: number, min: number, max: number): number {
@@ -176,6 +213,38 @@ function isFrontOrHouseLocation(location: InfillLineItem['location']): boolean {
 function normalizeWidthModeForLocation(item: InfillLineItem): InfillLineItem['widthMode'] {
   if (!isFrontOrHouseLocation(item.location)) return 'target_width';
   return item.widthMode === 'match_roof_rafters' ? 'match_roof_rafters' : 'target_width';
+}
+
+function normalizePanelOrientation(value: unknown): InfillLineItem['panelOrientation'] {
+  return value === 'horizontal' ? 'horizontal' : 'vertical';
+}
+
+function maxRunForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
+  return source === 'strip_620' ? INFILL_STRIP_MAX_RUN_M : INFILL_SHEET_MAX_RUN_M;
+}
+
+function pickAcrylicSourceForRun(
+  preferred: InfillLineItem['acrylicSource'],
+  runSideM: number,
+): {
+  source: InfillLineItem['acrylicSource'] | null;
+  switched: boolean;
+  runLimitM: number;
+} {
+  const preferredMax = maxRunForAcrylicSource(preferred);
+  if (runSideM <= preferredMax + 1e-6) {
+    return { source: preferred, switched: false, runLimitM: preferredMax };
+  }
+  const fallback: InfillLineItem['acrylicSource'] = preferred === 'sheet_panels' ? 'strip_620' : 'sheet_panels';
+  const fallbackMax = maxRunForAcrylicSource(fallback);
+  if (runSideM <= fallbackMax + 1e-6) {
+    return { source: fallback, switched: true, runLimitM: fallbackMax };
+  }
+  return { source: null, switched: false, runLimitM: Math.max(preferredMax, fallbackMax) };
+}
+
+function maxCentreForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
+  return source === 'strip_620' ? INFILL_STRIP_MAX_SHORT_SIDE_M : INFILL_SHEET_MAX_SHORT_SIDE_M;
 }
 
 function locationLabel(value: InfillLineItem['location']): string {
@@ -207,7 +276,7 @@ function formatInfillShapeSummary(shape: InfillLineItem['shape']): string {
   }
   const low = Number.isFinite(toNumber(shape.heightLowM)) ? Math.max(0, toNumber(shape.heightLowM)) : 0;
   const high = Number.isFinite(toNumber(shape.heightHighM)) ? Math.max(0, toNumber(shape.heightHighM)) : 0;
-  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(low, 2)}mâ†’${formatMaybeNumber(high, 2)}m`;
+  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(low, 2)}m→${formatMaybeNumber(high, 2)}m`;
 }
 
 function estimateRoofRafterSpacing(lengthM: number, derivedRafterCount?: number): { spacingM: number; source: 'derived' | 'fallback' } {
@@ -255,30 +324,19 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
     maxHeightM = Math.max(low, high);
   }
 
-  const maxPanelWidthRaw = toNumber(item.maxPanelWidthM);
-  const maxPanelWidthWasClamped = Number.isFinite(maxPanelWidthRaw) && maxPanelWidthRaw > INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-  const maxPanelWidthM = Number.isFinite(maxPanelWidthRaw)
-    ? clampNumber(maxPanelWidthRaw, 0.2, INFILL_MAX_PANEL_WIDTH_DEFAULT_M)
-    : INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-  const targetPanelWidthRaw = toNumber(item.targetPanelWidthM);
-  const targetPanelWidthM = Number.isFinite(targetPanelWidthRaw)
-    ? clampNumber(targetPanelWidthRaw, 0.2, INFILL_MAX_PANEL_WIDTH_DEFAULT_M)
-    : maxPanelWidthM;
-
+  const panelOrientationUsed = normalizePanelOrientation(item.panelOrientation);
+  const runSideM = panelOrientationUsed === 'vertical' ? maxHeightM : widthM;
+  const acrossSideM = panelOrientationUsed === 'vertical' ? widthM : maxHeightM;
+  const sourceDecision = pickAcrylicSourceForRun(item.acrylicSource, runSideM);
+  const acrylicSourceUsed = sourceDecision.source ?? item.acrylicSource;
+  const acrylicSourceUnavailable = sourceDecision.source === null;
+  const maxCentreM = maxCentreForAcrylicSource(acrylicSourceUsed);
   const canMatchRafters = isFrontOrHouseLocation(item.location);
   const widthModeUsed = normalizeWidthModeForLocation(item);
-
-  let panelWidthM = 0;
-  if (item.acrylicSource === 'strip_620') {
-    panelWidthM = INFILL_STRIP_WIDTH_M;
-  } else if (widthModeUsed === 'match_roof_rafters') {
-    panelWidthM = Math.min(maxPanelWidthM, Math.max(0.05, roofRafterSpacingM));
-  } else {
-    panelWidthM = Math.min(maxPanelWidthM, targetPanelWidthM);
-  }
-
-  const panelCountEach = widthM > 0 && panelWidthM > 0 ? Math.ceil(widthM / panelWidthM) : 0;
+  const panelCountEach = !acrylicSourceUnavailable && acrossSideM > 0 ? Math.max(1, Math.ceil(acrossSideM / maxCentreM)) : 0;
   const panelCountTotal = panelCountEach * qty;
+  const internalJoinerLinesEach = panelCountEach > 0 ? Math.max(0, panelCountEach - 1) : 0;
+  const internalJoinerLinesTotal = internalJoinerLinesEach * qty;
   const joinerLinesEach = panelCountEach > 0 ? panelCountEach + 1 : 0;
   const joinerLinesTotal = joinerLinesEach * qty;
 
@@ -298,40 +356,48 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
   }
 
   let unsupportedInternalEach = 0;
-  if (panelCountEach > 1 && widthM > 0) {
+  if (panelCountEach > 1 && acrossSideM > 0) {
     for (let i = 1; i < panelCountEach; i += 1) {
-      const x = (i * widthM) / panelCountEach;
+      const x = (i * acrossSideM) / panelCountEach;
       const mode = item.support.internalSupportMode ?? 'none';
       const supportedByMode =
         mode === 'match_roof_rafters' ||
-        (mode === 'center' && Math.abs(x - widthM / 2) <= INFILL_JOINER_TOLERANCE_M) ||
+        (mode === 'center' && Math.abs(x - acrossSideM / 2) <= INFILL_JOINER_TOLERANCE_M) ||
         (mode === 'custom' && customPositionsM.some((p) => Math.abs(p - x) <= INFILL_JOINER_TOLERANCE_M));
-      const supportedByRafters = canMatchRafters && widthModeUsed === 'match_roof_rafters';
+      const supportedByRafters = panelOrientationUsed === 'vertical' && canMatchRafters && widthModeUsed === 'match_roof_rafters';
       if (!supportedByMode && !supportedByRafters) unsupportedInternalEach += 1;
     }
   }
 
   const unsupportedInternalTotal = unsupportedInternalEach * qty;
-  const missingJambsEach = (item.support.hasLeft === false ? 1 : 0) + (item.support.hasRight === false ? 1 : 0);
+  const missingJambsEach =
+    panelOrientationUsed === 'vertical'
+      ? (item.support.hasLeft === false ? 1 : 0) + (item.support.hasRight === false ? 1 : 0)
+      : (item.support.hasBottom === false ? 1 : 0) + (item.support.hasTop === false ? 1 : 0);
   const missingJambsTotal = missingJambsEach * qty;
   const estimatedMullionsEach = unsupportedInternalEach + missingJambsEach;
   const estimatedMullionsTotal = estimatedMullionsEach * qty;
 
   let stripCutMinM: number | null = null;
   let stripCutMaxM: number | null = null;
-  if (item.acrylicSource === 'strip_620' && panelCountEach > 0 && widthM > 0) {
-    const cuts: number[] = [];
-    for (let panelIndex = 0; panelIndex < panelCountEach; panelIndex += 1) {
-      const x0 = (panelIndex * widthM) / panelCountEach;
-      const x1 = ((panelIndex + 1) * widthM) / panelCountEach;
-      const t0 = widthM > 0 ? x0 / widthM : 0;
-      const t1 = widthM > 0 ? x1 / widthM : 0;
-      const cut = Math.max(0, Math.max(heightAt(t0), heightAt(t1)));
-      if (cut > 0) cuts.push(cut);
-    }
-    if (cuts.length) {
-      stripCutMinM = Math.min(...cuts);
-      stripCutMaxM = Math.max(...cuts);
+  if (acrylicSourceUsed === 'strip_620' && panelCountEach > 0) {
+    if (panelOrientationUsed === 'vertical' && widthM > 0) {
+      const cuts: number[] = [];
+      for (let panelIndex = 0; panelIndex < panelCountEach; panelIndex += 1) {
+        const x0 = (panelIndex * widthM) / panelCountEach;
+        const x1 = ((panelIndex + 1) * widthM) / panelCountEach;
+        const t0 = widthM > 0 ? x0 / widthM : 0;
+        const t1 = widthM > 0 ? x1 / widthM : 0;
+        const cut = Math.max(0, Math.max(heightAt(t0), heightAt(t1)));
+        if (cut > 0) cuts.push(cut);
+      }
+      if (cuts.length) {
+        stripCutMinM = Math.min(...cuts);
+        stripCutMaxM = Math.max(...cuts);
+      }
+    } else if (runSideM > 0) {
+      stripCutMinM = runSideM;
+      stripCutMaxM = runSideM;
     }
   }
 
@@ -340,13 +406,24 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
 
   return {
     widthM,
+    maxHeightM,
     qty,
+    panelOrientationUsed,
+    runSideM,
+    acrossSideM,
+    materialRunLimitM: sourceDecision.runLimitM,
+    maxCentreM,
+    preferredAcrylicSource: item.acrylicSource,
+    acrylicSourceUsed,
+    acrylicSourceAutoSwitched: sourceDecision.switched,
+    acrylicSourceUnavailable,
     canMatchRafters,
     widthModeUsed,
     roofRafterSpacingM,
-    panelWidthM,
     panelCountEach,
     panelCountTotal,
+    internalJoinerLinesEach,
+    internalJoinerLinesTotal,
     joinerLinesEach,
     joinerLinesTotal,
     unsupportedInternalEach,
@@ -365,7 +442,6 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
     sheetAreaTotalM2,
     invalidHeightInput,
     widthInputInvalid,
-    maxPanelWidthWasClamped,
     invalidCustomPositions,
   };
 }
@@ -407,17 +483,15 @@ function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimate): Inf
     }
   }
 
-  const maxPanelWidthRaw = toNumber(item.maxPanelWidthM);
-  if (!Number.isFinite(maxPanelWidthRaw) || maxPanelWidthRaw < 0.2 || maxPanelWidthRaw > 1.2) {
-    errors.maxPanelWidthM = 'Enter a value between 0.2 and 1.2.';
-  }
-
-  const targetDisabled = item.acrylicSource === 'strip_620' || estimate.widthModeUsed === 'match_roof_rafters';
-  if (!targetDisabled) {
-    const targetPanelWidthRaw = toNumber(item.targetPanelWidthM);
-    if (!Number.isFinite(targetPanelWidthRaw) || targetPanelWidthRaw < 0.2 || targetPanelWidthRaw > 1.2) {
-      errors.targetPanelWidthM = 'Enter a value between 0.2 and 1.2.';
-    }
+  if (estimate.acrylicSourceUnavailable) {
+    errors.acrylicSource = `Run side ${formatMaybeNumber(estimate.runSideM, 2)}m exceeds all material limits (sheet ${formatMaybeNumber(
+      INFILL_SHEET_MAX_RUN_M,
+      2,
+    )}m, strips ${formatMaybeNumber(INFILL_STRIP_MAX_RUN_M, 2)}m).`;
+  } else if (estimate.acrylicSourceAutoSwitched) {
+    warnings.push(
+      `Acrylic source auto-switched from ${acrylicSourceLabel(estimate.preferredAcrylicSource)} to ${acrylicSourceLabel(estimate.acrylicSourceUsed)} because run side ${formatMaybeNumber(estimate.runSideM, 2)}m exceeds ${formatMaybeNumber(maxRunForAcrylicSource(estimate.preferredAcrylicSource), 2)}m.`,
+    );
   }
 
   const bottomOffsetRaw = toNumber(item.shape.bottomOffsetM ?? '0');
@@ -455,6 +529,132 @@ function clampInt(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
+function normalizeFlashingBand(value: unknown): CalculatorFlashingBand {
+  if (value === '201-300' || value === '301-400') return value;
+  return '0-200';
+}
+
+function normalizeFlashingPurpose(value: unknown): CalculatorFlashingPurpose {
+  if (value === 'HEAD' || value === 'SIDE' || value === 'APRON') return value;
+  return 'CUSTOM';
+}
+
+function makeFlashingId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `flashing-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function roofLengthForPrimaryFlashing(module: CalculatorModuleInputs): number {
+  const lengthM = Number.isFinite(toNumber(module.lengthM)) ? Math.max(0, toNumber(module.lengthM)) : 0;
+  if (module.pergolaStyle !== 'hip_corner') return lengthM;
+  const lengthBM = Number.isFinite(toNumber(module.hipCornerLengthBM)) ? Math.max(0, toNumber(module.hipCornerLengthBM)) : 0;
+  return lengthM + lengthBM;
+}
+
+function defaultPrimaryFlashingBandForModule(module: CalculatorModuleInputs): CalculatorFlashingBand {
+  const roofType = getRoofTypeForModule(module);
+  if (roofType === 'gable' || roofType === 'low_gable') return '301-400';
+  return '201-300';
+}
+
+function primaryFlashingDefaultKeyForModule(module: CalculatorModuleInputs): string {
+  const roofType = getRoofTypeForModule(module);
+  if (roofType === 'pitched') return 'pitched_primary';
+  if (roofType === 'gable' || roofType === 'low_gable') return 'gable_ridge';
+  if (roofType === 'hip') return 'hip_ledger';
+  return 'roof_primary';
+}
+
+function formatFlashingLengthInput(lengthM: number): string {
+  if (!Number.isFinite(lengthM) || lengthM <= 0) return '1.0';
+  const rounded = Math.round(lengthM * 100) / 100;
+  return rounded.toFixed(2).replace(/\.?0+$/, '') || '1.0';
+}
+
+function makeDefaultPrimaryFlashingRow(module: CalculatorModuleInputs): CalculatorFlashingsState['rows'][number] {
+  return {
+    id: makeFlashingId(),
+    kind: 'primary',
+    band: defaultPrimaryFlashingBandForModule(module),
+    lengthM: formatFlashingLengthInput(roofLengthForPrimaryFlashing(module)),
+    purpose: 'CUSTOM',
+  };
+}
+
+function makeDefaultFlashings(module: CalculatorModuleInputs): CalculatorFlashingsState {
+  return { rows: [makeDefaultPrimaryFlashingRow(module)] };
+}
+
+function normalizeFlashingsStateForUi(value: unknown, module: CalculatorModuleInputs): CalculatorFlashingsState {
+  const defaultPrimary = makeDefaultPrimaryFlashingRow(module);
+  if (!value || typeof value !== 'object') return { rows: [defaultPrimary] };
+  const source = value as Record<string, unknown>;
+
+  const rowsRaw = Array.isArray(source.rows) ? source.rows : null;
+  if (rowsRaw) {
+    const normalizedRows = rowsRaw
+      .filter((item: unknown) => item && typeof item === 'object')
+      .map((item: unknown) => {
+        const record = item as Record<string, unknown>;
+        const idRaw = typeof record.id === 'string' ? record.id.trim() : '';
+        const kind = record.kind === 'primary' ? 'primary' : 'extra';
+        return {
+          id: idRaw || makeFlashingId(),
+          kind,
+          band: normalizeFlashingBand(record.band),
+          lengthM: String(record.lengthM ?? ''),
+          purpose: normalizeFlashingPurpose(record.purpose),
+        };
+      });
+
+    const primary =
+      normalizedRows.find((row) => row.kind === 'primary') ??
+      ({
+        ...defaultPrimary,
+      } as CalculatorFlashingsState['rows'][number]);
+    const extras = normalizedRows.filter((row) => row.kind !== 'primary').map((row) => ({ ...row, kind: 'extra' as const }));
+
+    return {
+      rows: [
+        {
+          ...primary,
+          kind: 'primary',
+          lengthM: String(primary.lengthM ?? '').trim() ? String(primary.lengthM) : defaultPrimary.lengthM,
+          purpose: normalizeFlashingPurpose(primary.purpose),
+        },
+        ...extras,
+      ],
+    };
+  }
+
+  const defaultBandsRaw = source.defaultBands;
+  const primaryLegacyBandRaw =
+    defaultBandsRaw && typeof defaultBandsRaw === 'object'
+      ? (defaultBandsRaw as Record<string, unknown>)[primaryFlashingDefaultKeyForModule(module)]
+      : undefined;
+  const primaryBand = primaryLegacyBandRaw === 'none' ? defaultPrimary.band : normalizeFlashingBand(primaryLegacyBandRaw ?? defaultPrimary.band);
+  const primaryLengthM = primaryLegacyBandRaw === 'none' ? '0' : defaultPrimary.lengthM;
+
+  const legacyExtrasRaw = Array.isArray(source.extras) ? source.extras : [];
+  const extras = legacyExtrasRaw
+    .filter((item: unknown) => item && typeof item === 'object')
+    .map((item: unknown) => {
+      const record = item as Record<string, unknown>;
+      const idRaw = typeof record.id === 'string' ? record.id.trim() : '';
+      return {
+        id: idRaw || makeFlashingId(),
+        kind: 'extra' as const,
+        band: normalizeFlashingBand(record.band),
+        lengthM: String(record.lengthM ?? ''),
+        purpose: normalizeFlashingPurpose(record.purpose),
+      };
+    });
+
+  return {
+    rows: [{ ...defaultPrimary, band: primaryBand, lengthM: primaryLengthM }, ...extras],
+  };
+}
+
 function hasNonEmptyValue(value: string | undefined): value is string {
   return value !== undefined && value !== null && String(value).trim() !== '';
 }
@@ -488,7 +688,7 @@ function labelForIssueField(id: string): string {
     case 'lengthM':
       return 'Roof Length (m)';
     case 'projectionM':
-      return 'Roof Span (Eaveâ€‘toâ€‘Eave) (m)';
+      return 'Roof Span (Eave‑to‑Eave) (m)';
     case 'hipCornerLengthBM':
       return 'Roof Length B (m)';
     case 'hipCornerProjectionBM':
@@ -529,6 +729,8 @@ function labelForIssueField(id: string): string {
       return 'Acrylic bays (A)';
     case 'mixedAcrylicBaysB':
       return 'Acrylic bays (B)';
+    case 'flashings':
+      return 'Flashings';
     case 'timberRoofAboveType':
       return 'Timber roof above';
     case 'timberInsulatedPanelThicknessMm':
@@ -654,6 +856,71 @@ function computeBayCountsForModule(
   return { roofType, bayCountMain: 0, bayCountA, bayCountB: bayCountA };
 }
 
+function buildFlashingDefaultsForModule(
+  module: CalculatorModuleInputs,
+  derived?: Partial<{
+    rafter_length_m: number;
+    timber_area_m2: number;
+    ledger_length_m: number;
+  }>,
+): FlashingDefaultUi[] {
+  const roofType = getRoofTypeForModule(module);
+  const projectionM = Number.isFinite(toNumber(module.projectionM)) ? Math.max(0, toNumber(module.projectionM)) : 0;
+  const roofLengthM = roofLengthForPrimaryFlashing(module);
+
+  const out: FlashingDefaultUi[] = [];
+  const addDefault = (key: string, label: string, defaultBand: CalculatorFlashingBand, lengthRaw: number) => {
+    const length = Number(lengthRaw);
+    if (!Number.isFinite(length) || length <= 0) return;
+    out.push({ key, label, defaultBand, lengthM: length });
+  };
+
+  if (roofType === 'pitched') {
+    addDefault('pitched_primary', 'Primary flashing', '201-300', roofLengthM);
+    if (module.invertedEnabled) {
+      addDefault('pitched_secondary', 'Secondary flashing', '201-300', roofLengthM);
+    }
+  } else if (roofType === 'gable' || roofType === 'low_gable') {
+    addDefault('gable_ridge', 'Ridge flashing', '301-400', roofLengthM);
+  } else if (roofType === 'hip') {
+    const ledgerLengthM =
+      typeof derived?.ledger_length_m === 'number' && Number.isFinite(derived.ledger_length_m) && derived.ledger_length_m > 0
+        ? derived.ledger_length_m
+        : roofLengthM;
+    addDefault('hip_ledger', 'Hip ledger flashing', '201-300', ledgerLengthM);
+  } else {
+    addDefault('roof_primary', 'Primary flashing', '201-300', roofLengthM);
+  }
+
+  const hasTimber =
+    module.roofMaterial === 'timber' ||
+    (module.roofMaterial === 'mixed' &&
+      (typeof derived?.timber_area_m2 === 'number' ? Number(derived.timber_area_m2) > 1e-6 : true));
+
+  if (!hasTimber) return out;
+
+  let slopeLengthM = typeof derived?.rafter_length_m === 'number' && Number.isFinite(derived.rafter_length_m) ? derived.rafter_length_m : NaN;
+  if (!Number.isFinite(slopeLengthM) || slopeLengthM <= 0) {
+    const pitchDeg = getPitchForModule(module);
+    const cos = Math.max(0.02, Math.cos((pitchDeg * Math.PI) / 180));
+    const runM = roofType === 'gable' || roofType === 'low_gable' || roofType === 'hip' ? projectionM / 2 : projectionM;
+    slopeLengthM = runM > 0 ? runM / cos : 0;
+  }
+  const edgeLengthM = Math.max(0, slopeLengthM + FLASHING_EDGE_ALLOWANCE_M);
+
+  if (roofType === 'pitched') {
+    addDefault('timber_edge_left', 'Timber edge rafter flashing (left)', '0-200', edgeLengthM);
+    addDefault('timber_edge_right', 'Timber edge rafter flashing (right)', '0-200', edgeLengthM);
+  } else if (roofType === 'gable' || roofType === 'low_gable') {
+    addDefault('timber_edge_a_left', 'Timber edge rafter flashing (A left)', '0-200', edgeLengthM);
+    addDefault('timber_edge_a_right', 'Timber edge rafter flashing (A right)', '0-200', edgeLengthM);
+    addDefault('timber_edge_b_left', 'Timber edge rafter flashing (B left)', '0-200', edgeLengthM);
+    addDefault('timber_edge_b_right', 'Timber edge rafter flashing (B right)', '0-200', edgeLengthM);
+  }
+
+  return out;
+}
+
 function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['infills'] | undefined {
   const infills = normalizeInfillsStateForUi((module as any).infills);
   if (!Array.isArray(infills.items) || infills.items.length === 0) return undefined;
@@ -698,6 +965,7 @@ function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['i
       qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
       location: raw.location,
       acrylic_source: raw.acrylicSource,
+      panel_orientation: normalizePanelOrientation(raw.panelOrientation),
       width_mode: widthMode,
       target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
       max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,
@@ -717,7 +985,7 @@ function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['i
 }
 
 function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInputs {
-  return {
+  const module: CalculatorModuleInputs = {
     pergolaId,
     pergolaStyle: 'pitched',
     roofMaterial: 'acrylic',
@@ -765,9 +1033,12 @@ function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInputs {
 
     timberRoofAllowanceExGst: '0',
 
+    flashings: { rows: [] },
     overrides: {},
     infills: makeDefaultInfills(),
   };
+  module.flashings = makeDefaultFlashings(module);
+  return module;
 }
 
 function makeBlindId(): string {
@@ -821,6 +1092,7 @@ function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): InfillLineI
     qty: '1',
     location: 'custom',
     acrylicSource: 'sheet_panels',
+    panelOrientation: 'vertical',
     widthMode: 'target_width',
     targetPanelWidthM: '1',
     maxPanelWidthM: '1.2',
@@ -843,6 +1115,7 @@ function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): InfillLineI
   return {
     ...base,
     ...overrides,
+    panelOrientation: normalizePanelOrientation(overrides.panelOrientation ?? base.panelOrientation),
     support: { ...base.support, ...(overrides.support ?? {}) },
     shape:
       overrides.shape?.type === 'mono_slope'
@@ -1086,6 +1359,7 @@ function calculatorDraftSessionKey(projectId: string, fromEstimateId: string): s
 function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   const source = value && typeof value === 'object' ? (value as Partial<CalculatorModuleInputs>) : {};
   const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...source };
+  merged.flashings = normalizeFlashingsStateForUi((source as any).flashings, merged);
   merged.infills = normalizeInfillsStateForUi((source as any).infills);
 
   if (merged.pergolaStyle === 'gable' && merged.houseConnectionType === 'none') {
@@ -1242,6 +1516,9 @@ export default function CalculatorGridClient({
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [draftHydrated, setDraftHydrated] = useState(false);
+  const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
+  const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
+  const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     restoredDraftForKeyRef.current = false;
@@ -1441,14 +1718,14 @@ export default function CalculatorGridClient({
 
       const downpipeJoinCount = toNonNegativeInt(module.downpipeJoinCount);
       if (!Number.isFinite(downpipeJoinCount) || downpipeJoinCount < 0 || downpipeJoinCount > 10) {
-        next.downpipeJoinCount = 'Choose 0â€“10';
+        next.downpipeJoinCount = 'Choose 0–10';
       }
 
       const hasOurGutter = computeHasOurGutter(module);
       if (hasOurGutter) {
         const downpipeElbowCount = toNonNegativeInt(module.downpipeElbowCount);
         if (!Number.isFinite(downpipeElbowCount) || downpipeElbowCount < 0 || downpipeElbowCount > 20) {
-          next.downpipeElbowCount = 'Choose 0â€“20';
+          next.downpipeElbowCount = 'Choose 0–20';
         }
       }
 
@@ -1499,6 +1776,15 @@ export default function CalculatorGridClient({
             next.timberTrayWidthMm = 'Choose 400, 500, or 600';
           }
         }
+      }
+
+      const flashings = normalizeFlashingsStateForUi(module.flashings, module);
+      const hasInvalidLength = flashings.rows.some((row) => {
+        const length = toNumber(row.lengthM);
+        return !Number.isFinite(length) || length < 0;
+      });
+      if (hasInvalidLength) {
+        next.flashings = 'Enter a flashing length of 0 or more.';
       }
 
       return next;
@@ -1638,6 +1924,80 @@ export default function CalculatorGridClient({
       return { ...prev, modules };
     });
   };
+
+  const flashingsState = normalizeFlashingsStateForUi(activeModule.flashings, activeModule);
+  const primaryFlashingRow =
+    flashingsState.rows.find((row) => row.kind === 'primary') ??
+    flashingsState.rows[0] ??
+    makeDefaultPrimaryFlashingRow(activeModule);
+
+  const setFlashingsState = (updater: (state: CalculatorFlashingsState) => CalculatorFlashingsState) => {
+    setValues((prev) => {
+      const modules = prev.modules.slice();
+      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
+      const currentFlashings = normalizeFlashingsStateForUi(currentModule.flashings, currentModule);
+      const nextFlashings = normalizeFlashingsStateForUi(updater(currentFlashings), currentModule);
+      modules[activeModuleIndex] = { ...currentModule, flashings: nextFlashings };
+      return { ...prev, modules };
+    });
+  };
+
+  const addExtraFlashingRow = () => {
+    const id = makeFlashingId();
+    const defaultLength = formatFlashingLengthInput(roofLengthForPrimaryFlashing(activeModule));
+    setFlashingsState((state) => ({
+      ...state,
+      rows: [
+        ...state.rows,
+        {
+          id,
+          kind: 'extra',
+          band: normalizeFlashingBand(primaryFlashingRow.band),
+          lengthM: defaultLength || '1.0',
+          purpose: 'CUSTOM',
+        },
+      ],
+    }));
+    setPendingFlashingLengthFocusId(id);
+  };
+
+  const updateFlashingRow = (
+    id: string,
+    patch: Partial<{
+      band: CalculatorFlashingBand;
+      lengthM: string;
+      purpose: CalculatorFlashingPurpose;
+    }>,
+  ) => {
+    setFlashingsState((state) => ({
+      ...state,
+      rows: state.rows.map((row) => {
+        if (row.id !== id) return row;
+        return {
+          ...row,
+          ...(patch.band !== undefined ? { band: normalizeFlashingBand(patch.band) } : null),
+          ...(patch.lengthM !== undefined ? { lengthM: String(patch.lengthM) } : null),
+          ...(patch.purpose !== undefined ? { purpose: normalizeFlashingPurpose(patch.purpose) } : null),
+        };
+      }),
+    }));
+  };
+
+  const removeFlashingRow = (id: string) => {
+    setFlashingsState((state) => ({
+      ...state,
+      rows: state.rows.filter((row) => row.id !== id || row.kind === 'primary'),
+    }));
+  };
+
+  useEffect(() => {
+    if (!pendingFlashingLengthFocusId) return;
+    const target = flashingLengthInputRefs.current[pendingFlashingLengthFocusId];
+    if (!target) return;
+    target.focus();
+    target.select();
+    setPendingFlashingLengthFocusId(null);
+  }, [flashingsState.rows, pendingFlashingLengthFocusId]);
 
   const blindsState = normalizeBlindsStateForUi(values.blinds);
 
@@ -1780,6 +2140,25 @@ export default function CalculatorGridClient({
       const isPile = module.postConnectionType === 'pile_1m' || module.postConnectionType === 'pile_1_5m';
       const bayCounts = computeBayCountsForModule(module);
       const overrides = module.overrides ?? {};
+      const flashingsState = normalizeFlashingsStateForUi(module.flashings, module);
+      const flashingDefaults = buildFlashingDefaultsForModule(module);
+      const flashingDefaultOverrides = flashingDefaults.map((item) => ({
+        key: String(item.key),
+        band: 'none' as const,
+      }));
+      const flashingExtras = flashingsState.rows
+        .map((extra) => ({
+          band: normalizeFlashingBand(extra.band),
+          length_m: toNumber(extra.lengthM),
+        }))
+        .filter((extra) => Number.isFinite(extra.length_m) && extra.length_m > 0);
+      const flashings =
+        flashingDefaultOverrides.length || flashingExtras.length
+          ? {
+              ...(flashingDefaultOverrides.length ? { default_overrides: flashingDefaultOverrides } : null),
+              ...(flashingExtras.length ? { extras: flashingExtras } : null),
+            }
+          : undefined;
 
       return {
         length_m,
@@ -1847,6 +2226,7 @@ export default function CalculatorGridClient({
                 })(),
               }
             : undefined,
+        flashings,
         hip_corner:
           module.pergolaStyle === 'hip_corner'
             ? {
@@ -2158,15 +2538,15 @@ export default function CalculatorGridClient({
 
   const roofingProcurementSummary = useMemo(() => {
     const lines = moduleResult?.materials?.lines ?? [];
-    if (!Array.isArray(lines) || !lines.length) return 'â€”';
+    if (!Array.isArray(lines) || !lines.length) return '—';
 
     const cedar = lines.find((l: any) => String(l?.id ?? '') === 'roofing-timber_cedar_sarking_wrc_110cover_12mm_lm');
     const cedarPart =
       cedar && typeof cedar.qty === 'number' && Number.isFinite(cedar.qty) ? `Timber: ${formatMaybeNumber(cedar.qty, 2)} lm cedar sarking` : null;
 
-    const sheet = lines.find((l: any) => String(l?.profile ?? '') === 'Plexi sheet 3050Ã—2030');
+    const sheet = lines.find((l: any) => String(l?.profile ?? '') === 'Plexi sheet 3050×2030');
     const sheetPart =
-      sheet && typeof sheet.qty === 'number' && Number.isFinite(sheet.qty) ? `Acrylic: ${Math.round(sheet.qty)} Ã— 3050Ã—2030 sheet(s)` : null;
+      sheet && typeof sheet.qty === 'number' && Number.isFinite(sheet.qty) ? `Acrylic: ${Math.round(sheet.qty)} × 3050×2030 sheet(s)` : null;
 
     const stripGroups = new Map<number, number>();
     for (const l of lines as any[]) {
@@ -2180,13 +2560,13 @@ export default function CalculatorGridClient({
       stripGroups.size > 0
         ? `Acrylic: ${Array.from(stripGroups.entries())
             .sort((a, b) => a[0] - b[0])
-            .map(([len, qty]) => `${Math.round(qty)} Ã— 620mm strip(s) @ ${len}m`)
+            .map(([len, qty]) => `${Math.round(qty)} × 620mm strip(s) @ ${len}m`)
             .join(', ')}`
         : null;
 
     const acrylicPart = sheetPart ?? stripPart;
     const parts = [acrylicPart, cedarPart].filter(Boolean);
-    return parts.length ? (parts as string[]).join(' Â· ') : 'â€”';
+    return parts.length ? (parts as string[]).join(' · ') : '—';
   }, [moduleResult]);
 
   const rafterCountTotal =
@@ -2203,7 +2583,7 @@ export default function CalculatorGridClient({
         ? `Per side: ${rafterCount}${typeof hipRafterCount === 'number' && hipRafterCount > 0 ? ` (+${hipRafterCount} hip)` : ''}`
         : undefined;
 
-  const generateLabel = isGenerating ? 'Generatingâ€¦' : 'Generate';
+  const generateLabel = isGenerating ? 'Generating…' : 'Generate';
 
   const roofTypeForInputs = getRoofTypeForModule(activeModule);
   const roofSpanForInputsM = toNumber(activeModule.projectionM);
@@ -2228,19 +2608,19 @@ export default function CalculatorGridClient({
       ? [
           {
             id: 'perSideSpanM',
-            label: 'Perâ€‘side span (m)',
+            label: 'Per‑side span (m)',
             type: 'readOnly',
             value: formatMaybeNumber(perSideSpanM, 2),
-            helperText: 'Gable: per-side span = roof span Ã· 2',
+            helperText: 'Gable: per-side span = roof span ÷ 2',
           },
           {
             id: 'slopedLengthPerSideM',
             label: 'Sloped length per side (m)',
             type: 'readOnly',
             value: Number.isFinite(slopedDownslopePerSideM)
-              ? `${formatMaybeNumber(slopedDownslopePerSideM, 2)} (at ${pitchForHintsDeg.toFixed(0)}Â°)`
-              : 'â€”',
-            helperText: 'Sloped length = (roof span Ã· 2) Ã· cos(pitch)',
+              ? `${formatMaybeNumber(slopedDownslopePerSideM, 2)} (at ${pitchForHintsDeg.toFixed(0)}°)`
+              : '—',
+            helperText: 'Sloped length = (roof span ÷ 2) ÷ cos(pitch)',
           },
         ]
       : [];
@@ -2277,8 +2657,8 @@ export default function CalculatorGridClient({
         const statusClassName = hasErrors && !isMissingDims ? styles.error : styles.helper;
         const showStatus = Boolean(statusMessage);
         const isPriceable = pricing ? pricing.errors.length === 0 : false;
-        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : 'â€”';
-        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : 'â€”';
+        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : '—';
+        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : '—';
         const domIdBase = `${blindFieldPrefix}-blind-${idx + 1}`;
         return (
           <div key={item.id} className={styles.previewCard} style={{ padding: 12 }}>
@@ -2356,8 +2736,8 @@ export default function CalculatorGridClient({
                 value={item.motorised === 'YES'}
                 onChange={(v) => setBlindItem(item.id, { motorised: v ? 'YES' : 'NONE' })}
               />
-              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (exâ€‘GST)" type="readOnly" value={totalExLabel} />
-              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (incâ€‘GST)" type="readOnly" value={totalIncLabel} />
+              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={totalExLabel} />
+              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={totalIncLabel} />
             </div>
             {showStatus ? <div className={statusClassName}>{statusMessage}</div> : null}
           </div>
@@ -2377,11 +2757,11 @@ export default function CalculatorGridClient({
 
       <div className={styles.previewCard} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Blinds total (exâ€‘GST)</span>
+          <span>Blinds total (ex‑GST)</span>
           <span>{formatCents(blindsTotals?.totalExCents ?? 0)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Blinds total (incâ€‘GST)</span>
+          <span>Blinds total (inc‑GST)</span>
           <span>{formatCents(blindsTotals?.totalIncCents ?? 0)}</span>
         </div>
         <div className={styles.helper}>Totals round to cents; pricing uses banded size lookup.</div>
@@ -2476,31 +2856,17 @@ export default function CalculatorGridClient({
     return 'Not configured';
   }, [infillsState.items]);
 
-  const infillMaxPanelWidthSummary = useMemo(() => {
-    if (!infillsState.items.length) return INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-    let maxSeen = INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-    for (const item of infillsState.items) {
-      const parsed = toNumber(item.maxPanelWidthM);
-      if (!Number.isFinite(parsed)) continue;
-      maxSeen = Math.max(maxSeen, clampNumber(parsed, 0.2, INFILL_MAX_PANEL_WIDTH_DEFAULT_M));
-    }
-    return maxSeen;
-  }, [infillsState.items]);
-
-  const infillsSummaryLine1 = infillsState.items.length
-    ? `${infillsState.items.length} infills - front x${infillLocationCounts.front} - side x${infillLocationCounts.side} - gable x${infillLocationCounts.gable_end}`
-    : 'No infills configured.';
-  const infillsSummaryLine2 = `System: ${infillSystemSummary} - Max width ${formatMaybeNumber(infillMaxPanelWidthSummary, 2)}m`;
-  const infillsSummaryLine3 = `Estimated: Panels ~${infillTotals.panels} - 50x50 mullions ~${infillTotals.mullions}`;
+  const infillsSummaryLine1 = `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} | front x${
+    infillLocationCounts.front
+  } | side x${infillLocationCounts.side} | gable x${infillLocationCounts.gable_end}`;
+  const infillsSummaryLine2 = `${infillSystemSummary} | max width ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m | panels ~${
+    infillTotals.panels
+  } | 50x50 ~${infillTotals.mullions}`;
   const infillsSummaryText = infillsState.items.length
-    ? `${infillsState.items.length} infills - Panels ~${infillTotals.panels} - 50x50 ~${infillTotals.mullions}`
+    ? `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} configured`
     : 'Not configured';
 
   const selectedInfillDomIdBase = `${infillFieldPrefix}-selected`;
-  const selectedInfillWidthMode = selectedInfill ? normalizeWidthModeForLocation(selectedInfill) : 'target_width';
-  const selectedInfillIsStripMode = selectedInfill?.acrylicSource === 'strip_620';
-  const selectedInfillTargetWidthDisabled =
-    selectedInfillIsStripMode || selectedInfillWidthMode === 'match_roof_rafters';
   const selectedRectShape = selectedInfill?.shape.type === 'rect' ? selectedInfill.shape : null;
   const selectedMonoShape = selectedInfill?.shape.type === 'mono_slope' ? selectedInfill.shape : null;
   const selectedComputedWarnings = useMemo(() => {
@@ -2512,8 +2878,8 @@ export default function CalculatorGridClient({
     if (selectedInfillEstimate.invalidHeightInput) {
       warnings.push('One or more height values are invalid.');
     }
-    if (selectedInfillEstimate.maxPanelWidthWasClamped) {
-      warnings.push('Max panel width is above 1.2m and is clamped for estimate display.');
+    if (selectedInfillEstimate.acrylicSourceUnavailable) {
+      warnings.push('No valid acrylic source can span the selected run side.');
     }
     return warnings;
   }, [selectedInfillEstimate, selectedInfillValidation]);
@@ -2544,9 +2910,8 @@ export default function CalculatorGridClient({
         {renderInfillPresetMenu('Add infill')}
       </div>
       <div className={styles.infillTileSummary}>
-        <div>{infillsSummaryLine1}</div>
-        <div>{infillsSummaryLine2}</div>
-        <div>{infillsSummaryLine3}</div>
+        <div className={styles.infillTileSummaryLine}>{infillsSummaryLine1}</div>
+        <div className={styles.infillTileSummaryLine}>{infillsSummaryLine2}</div>
       </div>
     </div>
   );
@@ -2557,44 +2922,199 @@ export default function CalculatorGridClient({
         const estimate = infillEstimateById.get(item.id) ?? estimateInfillUi(item, roofRafterSpacingEstimate.spacingM);
         const title = item.label?.trim() ? item.label.trim() : `Infill ${idx + 1}`;
         const isSelected = selectedInfill?.id === item.id;
+        const panelsAndMullionsMeta =
+          estimate.estimatedMullionsTotal > 0
+            ? `Panels ${estimate.panelCountTotal} | 50x50 ${estimate.estimatedMullionsTotal}`
+            : `Panels ${estimate.panelCountTotal}`;
         return (
-          <div key={item.id} className={isSelected ? styles.infillListRowActive : styles.infillListRow}>
-            <button type="button" className={styles.infillListRowMain} onClick={() => setSelectedInfillId(item.id)}>
-              <div className={styles.infillListRowTitle}>{title}</div>
-              <div className={styles.infillListRowMeta}>{`${locationLabel(item.location)} - ${acrylicSourceLabel(item.acrylicSource)}`}</div>
-              <div className={styles.infillListRowMeta}>{`${formatInfillShapeSummary(item.shape)} - Qty ${estimate.qty}`}</div>
-              <div className={styles.infillListRowMeta}>
-                {`Panels: ${estimate.panelCountEach} each - ${estimate.panelCountTotal} total - 50x50: ${estimate.estimatedMullionsEach} each - ${estimate.estimatedMullionsTotal} total`}
+          <button
+            key={item.id}
+            type="button"
+            className={`${styles.infillRow} ${isSelected ? styles.infillRowActive : ''}`.trim()}
+            onClick={() => setSelectedInfillId(item.id)}
+            aria-pressed={isSelected}
+          >
+            <div className={styles.infillRowTitle}>
+              <span>{title}</span>
+              <div className={styles.infillChipRow}>
+                <span className={styles.infillChip}>{locationLabel(item.location)}</span>
+                <span className={styles.infillChip}>{acrylicSourceLabel(item.acrylicSource)}</span>
               </div>
-            </button>
-            <div className={styles.infillListRowActions}>
-              <button type="button" className={styles.infillIconButton} onClick={() => duplicateInfill(item.id)}>
-                Duplicate
-              </button>
-              <button type="button" className={styles.infillIconButton} onClick={() => removeInfill(item.id, true)}>
-                Delete
-              </button>
             </div>
-          </div>
+            <div className={styles.infillRowMeta}>{`${formatInfillShapeSummary(item.shape)} | Qty ${estimate.qty}`}</div>
+            <div className={styles.infillRowMeta}>{panelsAndMullionsMeta}</div>
+          </button>
         );
       })}
     </div>
   );
+
+  const flashingExtraRows = useMemo(
+    () => flashingsState.rows.filter((row) => row.kind === 'extra'),
+    [flashingsState.rows],
+  );
+
+  const flashingTotalsPreview = useMemo(() => {
+    const totals: Record<CalculatorFlashingBand, number> = { '0-200': 0, '201-300': 0, '301-400': 0 };
+    for (const row of flashingsState.rows) {
+      const length = toNumber(row.lengthM);
+      if (!Number.isFinite(length) || length <= 0) continue;
+      totals[normalizeFlashingBand(row.band)] += length;
+    }
+    return totals;
+  }, [flashingsState.rows]);
+
+  const flashingTotalLengthPreview = useMemo(
+    () => FLASHING_BANDS.reduce((sum, band) => sum + flashingTotalsPreview[band], 0),
+    [flashingTotalsPreview],
+  );
+
+  const flashingVisibleBands = useMemo(
+    () => FLASHING_BANDS.filter((band) => showAllFlashingBands || flashingTotalsPreview[band] > 0),
+    [showAllFlashingBands, flashingTotalsPreview],
+  );
+
+  const flashingTileContent = (
+    <div className={styles.flashingsTileContent}>
+      <div className={styles.flashingsHeader}>
+        <strong>Flashings</strong>
+        <span className={styles.helper}>Defaults auto-apply by roof type; override each row or add extras.</span>
+      </div>
+
+      <div className={styles.flashingsTable}>
+        <div className={styles.flashingsGridHeader}>
+          <div>Item</div>
+          <div title="This sets the flashing girth band.">Girth (mm)</div>
+          <div>Length (m)</div>
+          <div>Purpose</div>
+          <div>Remove</div>
+        </div>
+
+        {flashingsState.rows.map((row) => {
+          const isPrimary = row.kind === 'primary';
+          const extraIndex = isPrimary ? -1 : flashingExtraRows.findIndex((extra) => extra.id === row.id) + 1;
+          const parsedLength = toNumber(row.lengthM);
+          const invalidLength = !Number.isFinite(parsedLength) || parsedLength < 0;
+          const zeroLength = Number.isFinite(parsedLength) && parsedLength === 0;
+          const primaryLength = toNumber(primaryFlashingRow.lengthM);
+          const duplicatePrimary =
+            !isPrimary &&
+            Number.isFinite(parsedLength) &&
+            parsedLength > 0 &&
+            Number.isFinite(primaryLength) &&
+            primaryLength > 0 &&
+            normalizeFlashingBand(row.band) === normalizeFlashingBand(primaryFlashingRow.band) &&
+            Math.abs(parsedLength - primaryLength) <= FLASHING_DUPLICATE_TOLERANCE_M;
+
+          return (
+            <div key={row.id} className={isPrimary ? styles.flashingsRowPrimary : styles.flashingsRow}>
+              <div className={styles.flashingsCellItem}>
+                <div className={styles.flashingsItemBadge}>{isPrimary ? 'Primary' : `Extra ${extraIndex}`}</div>
+                {isPrimary ? <div className={styles.flashingsItemMeta}>Default from roof type; editable.</div> : null}
+                {invalidLength ? <div className={styles.flashingsWarning}>Enter a length &gt; 0.</div> : null}
+                {!invalidLength && zeroLength ? <div className={styles.flashingsWarning}>0 length will be ignored.</div> : null}
+                {duplicatePrimary ? <div className={styles.flashingsWarning}>May double-count primary flashing.</div> : null}
+              </div>
+
+              <select
+                id={`flashing-row-band-${row.id}`}
+                className={styles.control}
+                value={row.band}
+                onChange={(event) => updateFlashingRow(row.id, { band: event.target.value as CalculatorFlashingBand })}
+              >
+                {FLASHING_BAND_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              <div className={styles.flashingsLengthCell}>
+                <input
+                  id={`flashing-row-length-${row.id}`}
+                  className={styles.control}
+                  type="number"
+                  min={0}
+                  step="0.1"
+                  value={row.lengthM}
+                  ref={(node) => {
+                    if (node) flashingLengthInputRefs.current[row.id] = node;
+                    else delete flashingLengthInputRefs.current[row.id];
+                  }}
+                  onChange={(event) => updateFlashingRow(row.id, { lengthM: event.target.value })}
+                />
+                <span className={styles.flashingsLengthSuffix}>m</span>
+              </div>
+
+              <select
+                id={`flashing-row-purpose-${row.id}`}
+                className={styles.control}
+                value={normalizeFlashingPurpose(row.purpose)}
+                onChange={(event) => updateFlashingRow(row.id, { purpose: event.target.value as CalculatorFlashingPurpose })}
+              >
+                {FLASHING_PURPOSE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+
+              {isPrimary ? (
+                <div className={styles.flashingsRemovePlaceholder} />
+              ) : (
+                <button
+                  type="button"
+                  className={styles.flashingsRemoveButton}
+                  title="Remove row"
+                  aria-label="Remove row"
+                  onClick={() => removeFlashingRow(row.id)}
+                >
+                  x
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <button type="button" className={styles.flashingsAddButton} onClick={addExtraFlashingRow}>
+        + Add flashing row
+      </button>
+
+      <div className={styles.flashingsTotalsCard}>
+        <div className={styles.flashingsTotalsTitle}>Totals</div>
+        <div className={styles.flashingsTotalsRow}>
+          <span>Total</span>
+          <span>{`${formatMaybeNumber(flashingTotalLengthPreview, 1)} m`}</span>
+        </div>
+        {flashingVisibleBands.map((band) => (
+          <div key={band} className={styles.flashingsTotalsRow}>
+            <span>{band}</span>
+            <span>{`${formatMaybeNumber(flashingTotalsPreview[band], 1)} m`}</span>
+          </div>
+        ))}
+        <button type="button" className={styles.flashingsTotalsToggle} onClick={() => setShowAllFlashingBands((prev) => !prev)}>
+          {showAllFlashingBands ? 'Show non-zero bands only' : 'Show all bands'}
+        </button>
+      </div>
+    </div>
+  );
+
   const schema: FieldSchemaItem[] = [
     {
       id: 'engine-status',
       label: 'Cost engine',
       type: 'readOnly',
-      value: isCalculating ? 'Calculatingâ€¦' : engineError ? 'Error' : result ? 'Ready' : 'â€”',
+      value: isCalculating ? 'Calculating…' : engineError ? 'Error' : result ? 'Ready' : '—',
       error: engineError ?? undefined,
-      helperText: engineError ? undefined : 'True cost (exâ€‘GST)',
+      helperText: engineError ? undefined : 'True cost (ex‑GST)',
     },
     {
       id: 'project-context',
       label: 'Project',
       type: 'readOnly',
-      value: project ? project.projectName ?? project.name ?? 'â€”' : projectId ? 'Not found' : 'None',
-      helperText: project ? `Attached: ${project.projectName ?? project.name ?? 'â€”'}` : 'Use Projects in the header to select or create one.',
+      value: project ? project.projectName ?? project.name ?? '—' : projectId ? 'Not found' : 'None',
+      helperText: project ? `Attached: ${project.projectName ?? project.name ?? '—'}` : 'Use Projects in the header to select or create one.',
       error: projectId && !project ? projectError ?? undefined : undefined,
     },
 
@@ -2616,9 +3136,9 @@ export default function CalculatorGridClient({
             id: 'projectName',
             label: 'Project name',
             type: 'readOnly',
-            value: project.projectName ?? project.name ?? 'â€”',
+            value: project.projectName ?? project.name ?? '—',
           } satisfies FieldSchemaItem,
-          { id: 'quoteRef', label: 'Quote ref', type: 'readOnly', value: project.quoteRef ?? 'â€”', helperText: 'Internal reference' } satisfies FieldSchemaItem,
+          { id: 'quoteRef', label: 'Quote ref', type: 'readOnly', value: project.quoteRef ?? '—', helperText: 'Internal reference' } satisfies FieldSchemaItem,
         ]
       : [
           {
@@ -2829,7 +3349,7 @@ export default function CalculatorGridClient({
                   value: activeModule.mixedAcrylicBaysMain,
                   onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysMain', String(v)),
                   error: errors.mixedAcrylicBaysMain,
-                  helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountMain}`,
+                  helperText: `0–${computeBayCountsForModule(activeModule).bayCountMain}`,
                 } satisfies FieldSchemaItem,
               ]
             : computeBayCountsForModule(activeModule).roofType === 'hip_corner'
@@ -2841,7 +3361,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysA,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
                     error: errors.mixedAcrylicBaysA,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountA}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
                   } satisfies FieldSchemaItem,
                   {
                     id: 'mixedAcrylicBaysB',
@@ -2850,7 +3370,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysB,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
                     error: errors.mixedAcrylicBaysB,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountB}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
                   } satisfies FieldSchemaItem,
                 ]
               : [
@@ -2861,7 +3381,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysA,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
                     error: errors.mixedAcrylicBaysA,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountA}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
                   } satisfies FieldSchemaItem,
                   {
                     id: 'mixedAcrylicBaysB',
@@ -2870,7 +3390,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysB,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
                     error: errors.mixedAcrylicBaysB,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountB}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
                   } satisfies FieldSchemaItem,
                 ]),
         ]
@@ -2881,7 +3401,7 @@ export default function CalculatorGridClient({
             id: 'timberSystemHeading',
             label: 'TIMBER SYSTEM (ceiling + roof above)',
             type: 'readOnly',
-            value: 'â€”',
+            value: '—',
           } satisfies FieldSchemaItem,
           {
             id: 'timberNoteRafters',
@@ -3004,19 +3524,19 @@ export default function CalculatorGridClient({
     },
     {
       id: 'projectionM',
-      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eaveâ€‘toâ€‘Eave) (m)',
+      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eave‑to‑Eave) (m)',
       type: 'number',
       value: activeModule.projectionM,
       onChange: (v) => setModuleField('projectionM', String(v)),
       error: errors.projectionM,
-      helperText: 'Roof Span (Eaveâ€‘toâ€‘Eave): total width across the roof (both sides for gable, single slope for pitched).',
+      helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
     },
     {
       id: 'roofOrientation',
       label: 'Orientation',
       type: 'custom',
       content: <RoofOrientationDiagram />,
-      helperText: 'Length = parallel to ridge. Span = eaveâ€‘toâ€‘eave.',
+      helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
     } satisfies FieldSchemaItem,
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
@@ -3051,6 +3571,13 @@ export default function CalculatorGridClient({
           ? 'Overrides default pitch for roof type'
           : 'Blank = default pitch',
       disabled: activeModule.boxPerimeterEnabled,
+    },
+    {
+      id: 'flashings',
+      label: 'Flashings',
+      type: 'custom',
+      content: flashingTileContent,
+      error: errors.flashings,
     },
     ...(activeModule.pergolaStyle === 'gable'
       ? [
@@ -3130,7 +3657,7 @@ export default function CalculatorGridClient({
                   value: activeModule.overhangAmountM,
                   onChange: (v: string | boolean) => setModuleField('overhangAmountM', String(v)),
                   error: errors.overhangAmountM,
-                  helperText: 'Overhang is within the roof footprint (LÃ—W unchanged). It moves the post beam inboard.',
+                  helperText: 'Overhang is within the roof footprint (L×W unchanged). It moves the post beam inboard.',
                 } satisfies FieldSchemaItem,
               ]
             : []),
@@ -3187,7 +3714,7 @@ export default function CalculatorGridClient({
             options: FRONT_BEAM_PROFILE_OPTIONS,
             helperText: integratedGutterBeamUi
               ? 'SP gutter selected = integrated gutter beam'
-              : 'Select a nonâ€‘gutter beam to allow a separate gutter',
+              : 'Select a non‑gutter beam to allow a separate gutter',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -3251,7 +3778,7 @@ export default function CalculatorGridClient({
             type: 'toggle',
             value: activeModule.separateGutterEnabled,
             onChange: (v: string | boolean) => setModuleField('separateGutterEnabled', Boolean(v)),
-            helperText: 'Adds separate 100x100 cutâ€‘down gutter (stock doubled for waste)',
+            helperText: 'Adds separate 100x100 cut‑down gutter (stock doubled for waste)',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -3339,14 +3866,14 @@ export default function CalculatorGridClient({
             id: 'boxPitchDeg',
             label: 'Box pitch (deg)',
             type: 'readOnly',
-            value: typeof derivedBoxPitch === 'number' ? derivedBoxPitch.toFixed(1) : 'â€”',
+            value: typeof derivedBoxPitch === 'number' ? derivedBoxPitch.toFixed(1) : '—',
             helperText: 'Computed from max fall envelope',
           } satisfies FieldSchemaItem,
           {
             id: 'boxRiseMm',
             label: 'Box fall (mm)',
             type: 'readOnly',
-            value: typeof derivedBoxRiseMm === 'number' ? derivedBoxRiseMm.toFixed(0) : 'â€”',
+            value: typeof derivedBoxRiseMm === 'number' ? derivedBoxRiseMm.toFixed(0) : '—',
             helperText:
               typeof derivedBoxMaxFallMm === 'number' ? `Max allowed: ${Math.round(derivedBoxMaxFallMm)}mm` : 'Max allowed: 200mm',
           } satisfies FieldSchemaItem,
@@ -3418,7 +3945,7 @@ export default function CalculatorGridClient({
       label: 'Blinds',
       type: 'custom',
       content: blindsListContent,
-      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} Â· totals update live`,
+      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} · totals update live`,
     },
     {
       id: 'infillsEditor',
@@ -3429,14 +3956,14 @@ export default function CalculatorGridClient({
     },
     {
       id: 'travelExGst',
-      label: 'Travel (exâ€‘GST)',
+      label: 'Travel (ex‑GST)',
       type: 'number',
       value: values.travelExGst,
       onChange: (v) => setJobField('travelExGst', String(v)),
     },
     {
       id: 'extrasAllowanceExGst',
-      label: 'Extras allowance (exâ€‘GST)',
+      label: 'Extras allowance (ex‑GST)',
       type: 'number',
       value: values.extrasAllowanceExGst,
       onChange: (v) => setJobField('extrasAllowanceExGst', String(v)),
@@ -3451,32 +3978,32 @@ export default function CalculatorGridClient({
     },
 
     // === Computed outputs ===
-    { id: 'areaM2', label: 'Area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedArea) },
-    { id: 'roofAreaM2', label: 'Roof area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedRoofArea) },
-    { id: 'acrylicAreaM2', label: 'Acrylic area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedAcrylicArea) },
-    { id: 'timberAreaM2', label: 'Timber area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedTimberArea) },
-    { id: 'acrylicBaysTotal', label: 'Acrylic bays total', type: 'readOnly', value: typeof derivedAcrylicBaysTotal === 'number' ? String(derivedAcrylicBaysTotal) : 'â€”' },
-    { id: 'pitchUsed', label: 'Pitch used (deg)', type: 'readOnly', value: typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : 'â€”' },
+    { id: 'areaM2', label: 'Area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedArea) },
+    { id: 'roofAreaM2', label: 'Roof area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedRoofArea) },
+    { id: 'acrylicAreaM2', label: 'Acrylic area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedAcrylicArea) },
+    { id: 'timberAreaM2', label: 'Timber area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedTimberArea) },
+    { id: 'acrylicBaysTotal', label: 'Acrylic bays total', type: 'readOnly', value: typeof derivedAcrylicBaysTotal === 'number' ? String(derivedAcrylicBaysTotal) : '—' },
+    { id: 'pitchUsed', label: 'Pitch used (deg)', type: 'readOnly', value: typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—' },
     { id: 'slopeLengthM', label: 'Slope length (m)', type: 'readOnly', value: formatMaybeNumber(derivedSlopeLength) },
-    { id: 'roofingProcurement', label: 'Roofing', type: 'readOnly', value: moduleResult ? roofingProcurementSummary : 'â€”' },
+    { id: 'roofingProcurement', label: 'Roofing', type: 'readOnly', value: moduleResult ? roofingProcurementSummary : '—' },
     {
       id: 'rafters',
       label: 'Rafters',
       type: 'readOnly',
-      value: rafterCountTotal && rafterProfile ? `${rafterCountTotal} Ã— ${rafterProfile}` : 'â€”',
+      value: rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—',
       helperText: rafterHelperText,
     },
-    { id: 'brackets', label: 'Brackets', type: 'readOnly', value: typeof bracketCount === 'number' ? String(bracketCount) : 'â€”' },
-    { id: 'crewHours', label: 'Crew hours', type: 'readOnly', value: typeof crewHours === 'number' ? String(crewHours) : 'â€”' },
-    { id: 'materialsEx', label: 'Materials (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
-    { id: 'installEx', label: 'Install payout (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
-    { id: 'overheadEx', label: 'Overhead (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
-    { id: 'totalEx', label: 'Total true cost (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
-    { id: 'totalInc', label: 'Total true cost (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
-    { id: 'blindsTotalEx', label: 'Blinds (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
-    { id: 'blindsTotalInc', label: 'Blinds (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
-    { id: 'coreTotalEx', label: 'Total (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
-    { id: 'coreTotalInc', label: 'Total (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
+    { id: 'brackets', label: 'Brackets', type: 'readOnly', value: typeof bracketCount === 'number' ? String(bracketCount) : '—' },
+    { id: 'crewHours', label: 'Crew hours', type: 'readOnly', value: typeof crewHours === 'number' ? String(crewHours) : '—' },
+    { id: 'materialsEx', label: 'Materials (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
+    { id: 'installEx', label: 'Install payout (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
+    { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
+    { id: 'totalEx', label: 'Total true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
+    { id: 'totalInc', label: 'Total true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
+    { id: 'blindsTotalEx', label: 'Blinds (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
+    { id: 'blindsTotalInc', label: 'Blinds (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
+    { id: 'coreTotalEx', label: 'Total (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
+    { id: 'coreTotalInc', label: 'Total (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
     ...(issuesCount
       ? [
           {
@@ -3493,7 +4020,7 @@ export default function CalculatorGridClient({
       id: 'warnings',
       label: 'Warnings',
       type: 'readOnly',
-      value: result ? String(warningsCount) : 'â€”',
+      value: result ? String(warningsCount) : '—',
       helperText:
         warningsCount && criticalWarnings.length
           ? `Critical: ${criticalWarnings.length} (blocks estimate)`
@@ -3609,6 +4136,8 @@ export default function CalculatorGridClient({
     'downpipeElbowCount',
   ]);
 
+  const flashingsFields = pickFields(['flashings']);
+
   const overrideFields = pickFields([
     'ledgerProfileOverride',
     'rafterProfileOverride',
@@ -3679,6 +4208,7 @@ export default function CalculatorGridClient({
           <div className={styles.leftCol}>
             <FieldGroup title="Context" fields={contextFields} />
             <FieldGroup title="Structure" fields={structureFields} />
+            <FieldGroup title="Flashings" fields={flashingsFields} />
             <FieldGroup title="Overrides" fields={overrideFields} />
             <FieldGroup title="Add-ons" fields={addonFields} />
             <FieldGroup title="Connections & Site" fields={connectionFields} />
@@ -3691,7 +4221,7 @@ export default function CalculatorGridClient({
                 <div>
                   <div className={styles.previewSummaryTitle}>Preview</div>
                   <div className={styles.previewSummarySub}>
-                    {isCalculating ? 'Calculatingâ€¦' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
+                    {isCalculating ? 'Calculating…' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
                   </div>
                 </div>
                 {issuesCount ? (
@@ -3702,8 +4232,8 @@ export default function CalculatorGridClient({
               </div>
 
               <div className={styles.previewStatGrid}>
-                <PreviewStat label="Total (exâ€‘GST)" value={formatMaybeMoney(coreTotalEx)} />
-                <PreviewStat label="Total (incâ€‘GST)" value={formatMaybeMoney(coreTotalInc)} />
+                <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
+                <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
                 <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
                 <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
                 <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
@@ -3713,14 +4243,14 @@ export default function CalculatorGridClient({
 
               <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
                 <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
-                  Addâ€‘ons (informational)
+                  Add‑ons (informational)
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (exâ€‘GST)</span>
+                  <span className={styles.previewRowLabel}>Blinds (ex‑GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (incâ€‘GST)</span>
+                  <span className={styles.previewRowLabel}>Blinds (inc‑GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
                 </div>
                 <div className={styles.previewRow}>
@@ -3775,7 +4305,7 @@ export default function CalculatorGridClient({
                     </div>
                   ))}
                   <div className={styles.previewRowTotal}>
-                    <span>Total materials (exâ€‘GST)</span>
+                    <span>Total materials (ex‑GST)</span>
                     <span>{formatMaybeMoney(materialsEx)}</span>
                   </div>
                 </div>
@@ -3819,7 +4349,7 @@ export default function CalculatorGridClient({
 
                   {materialsDebugEnabled ? (
                     <>
-                      {materialsDebugLoading ? <p className={styles.previewMuted}>Loading materials traceâ€¦</p> : null}
+                      {materialsDebugLoading ? <p className={styles.previewMuted}>Loading materials trace…</p> : null}
                       {materialsDebugError ? <p className={styles.previewError}>{materialsDebugError}</p> : null}
 
                       {materialsExplainLines.length ? (
@@ -3892,7 +4422,7 @@ export default function CalculatorGridClient({
                       <div className={styles.previewRowMain}>
                         <div className={styles.previewRowLabel}>{action.label}</div>
                         <div className={styles.previewRowMeta}>
-                          {action.category} Â· {formatMaybeNumber(action.qty, 2)} {action.unit}
+                          {action.category} · {formatMaybeNumber(action.qty, 2)} {action.unit}
                         </div>
                       </div>
                       <div className={styles.previewRowValue}>{formatMaybeNumber(action.minutes, 0)} min</div>
@@ -3907,14 +4437,14 @@ export default function CalculatorGridClient({
             <details className={styles.previewDetails}>
               <summary>Structure outputs</summary>
               <div className={styles.previewTable}>
-                <PreviewRow label="Area (mÂ²)" value={formatMaybeNumber(derivedArea)} />
-                <PreviewRow label="Roof area (mÂ²)" value={formatMaybeNumber(derivedRoofArea)} />
-                <PreviewRow label="Acrylic area (mÂ²)" value={formatMaybeNumber(derivedAcrylicArea)} />
-                <PreviewRow label="Timber area (mÂ²)" value={formatMaybeNumber(derivedTimberArea)} />
-                <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : 'â€”'} />
+                <PreviewRow label="Area (m²)" value={formatMaybeNumber(derivedArea)} />
+                <PreviewRow label="Roof area (m²)" value={formatMaybeNumber(derivedRoofArea)} />
+                <PreviewRow label="Acrylic area (m²)" value={formatMaybeNumber(derivedAcrylicArea)} />
+                <PreviewRow label="Timber area (m²)" value={formatMaybeNumber(derivedTimberArea)} />
+                <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—'} />
                 <PreviewRow label="Slope length (m)" value={formatMaybeNumber(derivedSlopeLength)} />
-                <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} Ã— ${rafterProfile}` : 'â€”'} />
-                <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : 'â€”'} />
+                <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—'} />
+                <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : '—'} />
               </div>
             </details>
           </aside>
@@ -3942,26 +4472,28 @@ export default function CalculatorGridClient({
             </div>
 
             <div className={styles.infillDrawerBody}>
-              <aside className={styles.infillDrawerListPane} aria-label="Infill list">
-                <div className={styles.infillListTopActions}>{renderInfillPresetMenu('Add infill', true)}</div>
+              <aside className={styles.infillRail} aria-label="Infill list">
+                <div className={styles.infillRailHeader}>{renderInfillPresetMenu('Add infill', true)}</div>
 
-                {infillsState.items.length ? (
-                  infillListRows
-                ) : (
-                  <div className={styles.infillListEmpty}>
-                    <p>No infills configured.</p>
-                    <p>Use “Add infill” above to create your first item.</p>
-                  </div>
-                )}
+                <div className={styles.infillRailList}>
+                  {infillsState.items.length ? (
+                    infillListRows
+                  ) : (
+                    <div className={styles.infillListEmpty}>
+                      <p>No infills configured.</p>
+                      <p>Use "Add infill" above to create your first item.</p>
+                    </div>
+                  )}
+                </div>
 
-                <div className={styles.infillListTotals}>
-                  <h3>Totals in this module</h3>
+                <div className={styles.infillRailFooter}>
+                  <strong>Totals in this module</strong>
                   <p>{infillsSummaryLine1}</p>
-                  <p>{infillsSummaryLine3}</p>
+                  <p>{infillsSummaryLine2}</p>
                 </div>
               </aside>
 
-              <section className={styles.infillDrawerEditorPane} aria-label="Selected infill editor">
+              <section className={styles.infillEditor} aria-label="Selected infill editor">
                 {selectedInfill && selectedInfillEstimate && selectedInfillValidation ? (
                   <>
                     <div className={styles.infillEditorHeader}>
@@ -3976,240 +4508,258 @@ export default function CalculatorGridClient({
                       </div>
                     </div>
 
+                    <div className={styles.infillEditorGrid}>
+                      <div className={styles.infillEditorForm}>
                     <details className={styles.infillSection} open>
                       <summary className={styles.infillSectionSummary}>Basic</summary>
-                      <div className={styles.infillFieldGrid}>
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-label`}
-                          label="Label"
-                          type="text"
-                          value={selectedInfill.label ?? ''}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { label: String(v) })}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-qty`}
-                          label="Qty"
-                          type="number"
-                          value={selectedInfill.qty}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { qty: String(v) })}
-                          error={selectedInfillValidation.errors.qty}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-location`}
-                          label="Location"
-                          type="select"
-                          value={selectedInfill.location}
-                          onChange={(v) => setInfillLocation(selectedInfill.id, v as InfillLineItem['location'])}
-                          options={[
-                            { label: 'Front', value: 'front' },
-                            { label: 'House', value: 'house' },
-                            { label: 'Side', value: 'side' },
-                            { label: 'Gable end', value: 'gable_end' },
-                            { label: 'Wall', value: 'wall' },
-                            { label: 'Custom', value: 'custom' },
-                          ]}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-acrylic`}
-                          label="Acrylic source"
-                          type="select"
-                          value={selectedInfill.acrylicSource}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { acrylicSource: v as InfillLineItem['acrylicSource'] })}
-                          options={[
-                            { label: 'Sheet panels', value: 'sheet_panels' },
-                            { label: '620 strips', value: 'strip_620' },
-                          ]}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-width-mode`}
-                          label="Width mode"
-                          type="select"
-                          value={selectedInfillWidthMode}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { widthMode: v as InfillLineItem['widthMode'] })}
-                          options={
-                            isFrontOrHouseLocation(selectedInfill.location)
-                              ? [
-                                  { label: 'Match roof rafters', value: 'match_roof_rafters' },
-                                  { label: 'Target width', value: 'target_width' },
-                                ]
-                              : [{ label: 'Target width', value: 'target_width' }]
-                          }
-                          helperText={
-                            !isFrontOrHouseLocation(selectedInfill.location)
-                              ? 'Match rafters only applies to front/house faces.'
-                              : undefined
-                          }
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-target-width`}
-                          label="Target panel width (m)"
-                          type="number"
-                          value={selectedInfill.targetPanelWidthM}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { targetPanelWidthM: String(v) })}
-                          disabled={selectedInfillTargetWidthDisabled}
-                          helperText={
-                            selectedInfillIsStripMode
-                              ? 'Strip mode uses fixed 0.62m width.'
-                              : selectedInfillWidthMode === 'match_roof_rafters'
-                                ? `Using ~${formatMaybeNumber(selectedInfillEstimate.roofRafterSpacingM, 2)}m spacing (roof rafters).`
-                                : undefined
-                          }
-                          error={selectedInfillValidation.errors.targetPanelWidthM}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-max-width`}
-                          label="Max panel width (m)"
-                          type="number"
-                          value={selectedInfill.maxPanelWidthM}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { maxPanelWidthM: String(v) })}
-                          disabled={selectedInfillIsStripMode}
-                          helperText={selectedInfillIsStripMode ? 'Strip mode uses fixed 0.62m width.' : undefined}
-                          error={selectedInfillValidation.errors.maxPanelWidthM}
-                        />
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-shape-type`}
-                          label="Shape"
-                          type="select"
-                          value={selectedInfill.shape.type}
-                          onChange={(v) => {
-                            const nextType = v as InfillLineItem['shape']['type'];
-                            if (nextType === selectedInfill.shape.type) return;
-                            const shapeWidth = selectedInfill.shape.widthM;
-                            const shapeBottom = selectedInfill.shape.bottomOffsetM ?? '0';
-                            if (nextType === 'rect') {
-                              const rectHeight = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
+                      <div className={styles.infillBasicGrid}>
+                        <div className={styles.span6}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-label`}
+                            label="Label"
+                            type="text"
+                            value={selectedInfill.label ?? ''}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { label: String(v) })}
+                          />
+                        </div>
+                        <div className={styles.span2}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-qty`}
+                            label="Qty"
+                            type="number"
+                            value={selectedInfill.qty}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { qty: String(v) })}
+                            error={selectedInfillValidation.errors.qty}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-location`}
+                            label="Location"
+                            type="select"
+                            value={selectedInfill.location}
+                            onChange={(v) => setInfillLocation(selectedInfill.id, v as InfillLineItem['location'])}
+                            options={[
+                              { label: 'Front', value: 'front' },
+                              { label: 'House', value: 'house' },
+                              { label: 'Side', value: 'side' },
+                              { label: 'Gable end', value: 'gable_end' },
+                              { label: 'Wall', value: 'wall' },
+                              { label: 'Custom', value: 'custom' },
+                            ]}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-acrylic`}
+                            label="Acrylic source"
+                            type="select"
+                            value={selectedInfill.acrylicSource}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { acrylicSource: v as InfillLineItem['acrylicSource'] })}
+                            options={[
+                              { label: 'Sheet panels', value: 'sheet_panels' },
+                              { label: '620 strips', value: 'strip_620' },
+                            ]}
+                            helperText={`Max run: sheets ${formatMaybeNumber(INFILL_SHEET_MAX_RUN_M, 2)}m, strips ${formatMaybeNumber(
+                              INFILL_STRIP_MAX_RUN_M,
+                              2,
+                            )}m. Auto-switch applies when needed.`}
+                            error={selectedInfillValidation.errors.acrylicSource}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-orientation`}
+                            label="Panel orientation"
+                            type="select"
+                            value={selectedInfill.panelOrientation}
+                            onChange={(v) => setInfillItem(selectedInfill.id, { panelOrientation: normalizePanelOrientation(v) })}
+                            options={[
+                              { label: 'Vertical', value: 'vertical' },
+                              { label: 'Horizontal', value: 'horizontal' },
+                            ]}
+                            helperText="Vertical is default when you add a new infill."
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-run-across`}
+                            label="Run / across (m)"
+                            type="readOnly"
+                            value={`${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)} / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}`}
+                            helperText="Computed from shape and orientation."
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-centre-limit`}
+                            label="Centre limit (m)"
+                            type="readOnly"
+                            value={formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2)}
+                            helperText={`Sheets use ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m max short side; 620 strips use ${formatMaybeNumber(
+                              INFILL_STRIP_MAX_SHORT_SIDE_M,
+                              2,
+                            )}m.`}
+                          />
+                        </div>
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-shape-type`}
+                            label="Shape"
+                            type="select"
+                            value={selectedInfill.shape.type}
+                            onChange={(v) => {
+                              const nextType = v as InfillLineItem['shape']['type'];
+                              if (nextType === selectedInfill.shape.type) return;
+                              const shapeWidth = selectedInfill.shape.widthM;
+                              const shapeBottom = selectedInfill.shape.bottomOffsetM ?? '0';
+                              if (nextType === 'rect') {
+                                const rectHeight = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
+                                setInfillItem(selectedInfill.id, {
+                                  shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
+                                });
+                                return;
+                              }
+                              const low = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightLowM;
+                              const high = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
                               setInfillItem(selectedInfill.id, {
-                                shape: { type: 'rect', widthM: shapeWidth, heightM: rectHeight, bottomOffsetM: shapeBottom },
+                                shape: { type: 'mono_slope', widthM: shapeWidth, heightLowM: low, heightHighM: high, bottomOffsetM: shapeBottom },
                               });
-                              return;
-                            }
-                            const low = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightLowM;
-                            const high = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
-                            setInfillItem(selectedInfill.id, {
-                              shape: { type: 'mono_slope', widthM: shapeWidth, heightLowM: low, heightHighM: high, bottomOffsetM: shapeBottom },
-                            });
-                          }}
-                          options={[
-                            { label: 'Rect', value: 'rect' },
-                            { label: 'Mono-slope', value: 'mono_slope' },
-                          ]}
-                        />
+                            }}
+                            options={[
+                              { label: 'Rect', value: 'rect' },
+                              { label: 'Mono-slope', value: 'mono_slope' },
+                            ]}
+                          />
+                        </div>
 
                         {selectedRectShape ? (
                           <>
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-width`}
-                              label="Width (m)"
-                              type="number"
-                              value={selectedRectShape.widthM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'rect',
-                                    widthM: String(v),
-                                    heightM: selectedRectShape.heightM,
-                                    bottomOffsetM: selectedRectShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.widthM}
-                            />
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-height`}
-                              label="Height (m)"
-                              type="number"
-                              value={selectedRectShape.heightM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'rect',
-                                    widthM: selectedRectShape.widthM,
-                                    heightM: String(v),
-                                    bottomOffsetM: selectedRectShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.heightM}
-                            />
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-width`}
+                                label="Width (m)"
+                                type="number"
+                                value={selectedRectShape.widthM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'rect',
+                                      widthM: String(v),
+                                      heightM: selectedRectShape.heightM,
+                                      bottomOffsetM: selectedRectShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.widthM}
+                              />
+                            </div>
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-height`}
+                                label="Height (m)"
+                                type="number"
+                                value={selectedRectShape.heightM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'rect',
+                                      widthM: selectedRectShape.widthM,
+                                      heightM: String(v),
+                                      bottomOffsetM: selectedRectShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.heightM}
+                              />
+                            </div>
                           </>
                         ) : selectedMonoShape ? (
                           <>
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-width`}
-                              label="Width (m)"
-                              type="number"
-                              value={selectedMonoShape.widthM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'mono_slope',
-                                    widthM: String(v),
-                                    heightLowM: selectedMonoShape.heightLowM,
-                                    heightHighM: selectedMonoShape.heightHighM,
-                                    bottomOffsetM: selectedMonoShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.widthM}
-                            />
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-low`}
-                              label="Height low (m)"
-                              type="number"
-                              value={selectedMonoShape.heightLowM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'mono_slope',
-                                    widthM: selectedMonoShape.widthM,
-                                    heightLowM: String(v),
-                                    heightHighM: selectedMonoShape.heightHighM,
-                                    bottomOffsetM: selectedMonoShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.heightLowM}
-                            />
-                            <FieldTile
-                              id={`${selectedInfillDomIdBase}-shape-high`}
-                              label="Height high (m)"
-                              type="number"
-                              value={selectedMonoShape.heightHighM}
-                              onChange={(v) =>
-                                setInfillItem(selectedInfill.id, {
-                                  shape: {
-                                    type: 'mono_slope',
-                                    widthM: selectedMonoShape.widthM,
-                                    heightLowM: selectedMonoShape.heightLowM,
-                                    heightHighM: String(v),
-                                    bottomOffsetM: selectedMonoShape.bottomOffsetM,
-                                  },
-                                })
-                              }
-                              error={selectedInfillValidation.errors.heightHighM}
-                            />
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-width`}
+                                label="Width (m)"
+                                type="number"
+                                value={selectedMonoShape.widthM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'mono_slope',
+                                      widthM: String(v),
+                                      heightLowM: selectedMonoShape.heightLowM,
+                                      heightHighM: selectedMonoShape.heightHighM,
+                                      bottomOffsetM: selectedMonoShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.widthM}
+                              />
+                            </div>
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-low`}
+                                label="Height low (m)"
+                                type="number"
+                                value={selectedMonoShape.heightLowM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'mono_slope',
+                                      widthM: selectedMonoShape.widthM,
+                                      heightLowM: String(v),
+                                      heightHighM: selectedMonoShape.heightHighM,
+                                      bottomOffsetM: selectedMonoShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.heightLowM}
+                              />
+                            </div>
+                            <div className={styles.span4}>
+                              <FieldTile
+                                id={`${selectedInfillDomIdBase}-shape-high`}
+                                label="Height high (m)"
+                                type="number"
+                                value={selectedMonoShape.heightHighM}
+                                onChange={(v) =>
+                                  setInfillItem(selectedInfill.id, {
+                                    shape: {
+                                      type: 'mono_slope',
+                                      widthM: selectedMonoShape.widthM,
+                                      heightLowM: selectedMonoShape.heightLowM,
+                                      heightHighM: String(v),
+                                      bottomOffsetM: selectedMonoShape.bottomOffsetM,
+                                    },
+                                  })
+                                }
+                                error={selectedInfillValidation.errors.heightHighM}
+                              />
+                            </div>
                           </>
                         ) : null}
 
-                        <FieldTile
-                          id={`${selectedInfillDomIdBase}-shape-bottom`}
-                          label="Bottom offset (m)"
-                          type="number"
-                          value={selectedInfill.shape.bottomOffsetM ?? '0'}
-                          onChange={(v) =>
-                            setInfillItem(selectedInfill.id, {
-                              shape:
-                                selectedInfill.shape.type === 'rect'
-                                  ? { ...selectedInfill.shape, bottomOffsetM: String(v) }
-                                  : { ...selectedInfill.shape, bottomOffsetM: String(v) },
-                            })
-                          }
-                          error={selectedInfillValidation.errors.bottomOffsetM}
-                        />
+                        <div className={styles.span4}>
+                          <FieldTile
+                            id={`${selectedInfillDomIdBase}-shape-bottom`}
+                            label="Bottom offset (m)"
+                            type="number"
+                            value={selectedInfill.shape.bottomOffsetM ?? '0'}
+                            onChange={(v) =>
+                              setInfillItem(selectedInfill.id, {
+                                shape:
+                                  selectedInfill.shape.type === 'rect'
+                                    ? { ...selectedInfill.shape, bottomOffsetM: String(v) }
+                                    : { ...selectedInfill.shape, bottomOffsetM: String(v) },
+                              })
+                            }
+                            error={selectedInfillValidation.errors.bottomOffsetM}
+                          />
+                        </div>
                       </div>
                     </details>
 
-                    <details className={styles.infillSection}>
+                    <details className={`${styles.infillSection} ${styles.infillSectionSecondary}`}>
                       <summary className={styles.infillSectionSummary}>Supports (existing fixing members)</summary>
                       <div className={styles.infillFieldGrid}>
                         <FieldTile
@@ -4275,30 +4825,48 @@ export default function CalculatorGridClient({
                                 },
                               })
                             }
-                            helperText="Offsets from left edge (m). Example: 0.8, 1.6"
+                            helperText="Offsets along the panelized side (m). Example: 0.8, 1.6"
                             error={selectedInfillValidation.errors.internalSupportPositionsM}
                           />
                         ) : null}
                       </div>
                     </details>
 
-                    <details className={styles.infillSection}>
+                    <details className={`${styles.infillSection} ${styles.infillSectionSecondary}`}>
                       <summary className={styles.infillSectionSummary}>Advanced</summary>
                       <p className={styles.modalNote}>No advanced infill options configured yet.</p>
                     </details>
 
+                      </div>
+
+                      <aside className={styles.infillEditorSummary}>
                     <section className={styles.infillComputedPanel} aria-label="Computed infill summary">
                       <h3 className={styles.infillComputedTitle}>Computed summary</h3>
 
                       <div className={styles.infillComputedGroup}>
                         <div className={styles.infillComputedGroupTitle}>Panelization</div>
                         <PreviewRow
-                          label="Panels across width"
+                          label="Orientation"
+                          value={selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical' : 'Horizontal'}
+                        />
+                        <PreviewRow
+                          label="Acrylic used"
+                          value={`${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}${
+                            selectedInfillEstimate.acrylicSourceAutoSwitched ? ' (auto-switched)' : ''
+                          }`}
+                        />
+                        <PreviewRow
+                          label="Run / across"
+                          value={`${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)}m / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}m`}
+                        />
+                        <PreviewRow label="Centre limit" value={`${formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2)}m`} />
+                        <PreviewRow
+                          label="Panels across"
                           value={`${selectedInfillEstimate.panelCountEach} each · ${selectedInfillEstimate.panelCountTotal} total`}
                         />
                         <PreviewRow
-                          label="Joiner lines (vertical)"
-                          value={`${selectedInfillEstimate.joinerLinesEach} each · ${selectedInfillEstimate.joinerLinesTotal} total`}
+                          label="Internal joiner lines"
+                          value={`${selectedInfillEstimate.internalJoinerLinesEach} each · ${selectedInfillEstimate.internalJoinerLinesTotal} total`}
                         />
                         <PreviewRow label="Top joiner" value={selectedInfillEstimate.topJoiner ? 'Yes' : 'No'} />
                         <PreviewRow label="Bottom joiner" value={selectedInfillEstimate.bottomJoiner ? 'Yes' : 'No'} />
@@ -4315,7 +4883,7 @@ export default function CalculatorGridClient({
                           value={`${selectedInfillEstimate.estimatedMullionsEach} each · ${selectedInfillEstimate.estimatedMullionsTotal} total`}
                         />
                         <PreviewRow
-                          label="Missing left/right jambs"
+                          label="Missing boundary supports"
                           value={`${selectedInfillEstimate.missingJambsEach} each · ${selectedInfillEstimate.missingJambsTotal} total`}
                         />
                         {selectedInfillEstimate.perimeterTopRailRequired || selectedInfillEstimate.perimeterBottomRailRequired ? (
@@ -4362,6 +4930,8 @@ export default function CalculatorGridClient({
                         </div>
                       ) : null}
                     </section>
+                      </aside>
+                    </div>
                   </>
                 ) : (
                   <div className={styles.infillEditorEmpty}>
@@ -4418,7 +4988,7 @@ export default function CalculatorGridClient({
 	                        }}
 	                      >
 	                        <div className={styles.issueMain}>
-	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} Â· ${issue.label}`}</div>
+	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} · ${issue.label}`}</div>
 	                          <div className={styles.issueMessage}>{issue.message}</div>
 	                        </div>
 	                        <span className={styles.issueJump}>Jump</span>
@@ -4482,8 +5052,8 @@ export default function CalculatorGridClient({
                     <div className={styles.modalKey}>Roof length / roof span</div>
                     <div className={styles.modalVal}>
                       {activeModule.pergolaStyle === 'hip_corner'
-                        ? `A: ${activeModule.lengthM}Ã—${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}Ã—${activeModule.hipCornerProjectionBM}m`
-                        : `${activeModule.lengthM}m Ã— ${activeModule.projectionM}m`}
+                        ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
+                        : `${activeModule.lengthM}m × ${activeModule.projectionM}m`}
                     </div>
                   </div>
                   <div>
@@ -4494,10 +5064,10 @@ export default function CalculatorGridClient({
                     <div className={styles.modalKey}>Roof pitch</div>
                     <div className={styles.modalVal}>
                       {typeof derivedPitchUsed === 'number'
-                        ? `${derivedPitchUsed.toFixed(0)}Â°`
+                        ? `${derivedPitchUsed.toFixed(0)}°`
                         : activeModule.roofPitchDeg.trim()
-                          ? `${activeModule.roofPitchDeg}Â°`
-                          : 'â€”'}
+                          ? `${activeModule.roofPitchDeg}°`
+                          : '—'}
                     </div>
                   </div>
                 </div>
@@ -4507,23 +5077,23 @@ export default function CalculatorGridClient({
                 <h3 className={styles.modalSectionTitle}>Outputs</h3>
                 <div className={styles.modalGrid}>
                   <div>
-                    <div className={styles.modalKey}>Materials (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Materials (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(materialsEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Install payout (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Install payout (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(installEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Overhead (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Overhead (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(overheadEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Total (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Total (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(coreTotalEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Blinds (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Blinds (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(addonsTotals.blinds.ex)}</div>
                   </div>
                 </div>
@@ -4687,12 +5257,12 @@ export default function CalculatorGridClient({
 
                     await addProjectActivity(projectId, {
                       type: 'estimate_generated',
-                      message: `Estimate v${estimate.version ?? 'â€”'} generated (ex-GST: ${formatMoney(result.totals.cost_ex_gst)})`,
+                      message: `Estimate v${estimate.version ?? '—'} generated (ex-GST: ${formatMoney(result.totals.cost_ex_gst)})`,
                       meta: { estimateId: estimate.id },
                     });
 
                     setConfirmOpen(false);
-                    toast.success(`Estimate created (v${estimate.version ?? 'â€”'}).`);
+                    toast.success(`Estimate created (v${estimate.version ?? '—'}).`);
                     if (projectId) {
                       router.push(
                         `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}`,
@@ -4761,5 +5331,4 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
 

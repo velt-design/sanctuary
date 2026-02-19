@@ -1,0 +1,47 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import Handlebars from 'handlebars';
+
+let cachedTemplateDir: string | null = null;
+
+function templateDirCandidates(): string[] {
+  return [
+    path.join(process.cwd(), 'lib', 'emails', 'templates'),
+    path.join(process.cwd(), 'apps', 'portal', 'lib', 'emails', 'templates'),
+  ];
+}
+
+async function resolveTemplateDir(): Promise<string> {
+  if (cachedTemplateDir) return cachedTemplateDir;
+
+  for (const candidate of templateDirCandidates()) {
+    try {
+      await fs.access(candidate);
+      cachedTemplateDir = candidate;
+      return candidate;
+    } catch {
+      // Try next candidate.
+    }
+  }
+
+  throw new Error('Email template directory not found.');
+}
+
+export async function renderTemplate(templateBaseName: string, variables: Record<string, unknown>): Promise<{ html: string; text?: string }> {
+  const templateDir = await resolveTemplateDir();
+  const htmlPath = path.join(templateDir, `${templateBaseName}.html`);
+  const htmlSource = await fs.readFile(htmlPath, 'utf8');
+
+  const textPath = path.join(templateDir, `${templateBaseName}.txt`);
+  let textSource: string | null = null;
+  try {
+    textSource = await fs.readFile(textPath, 'utf8');
+  } catch {
+    textSource = null;
+  }
+
+  const html = Handlebars.compile(htmlSource)(variables);
+  const text = textSource ? Handlebars.compile(textSource)(variables) : undefined;
+
+  return { html, text };
+}

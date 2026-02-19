@@ -1,9 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { createPortal } from 'react-dom';
+import {
+  START_MODAL_VISIBILITY_EVENT,
+  type StartModalVisibilityDetail,
+  isStartModalOpen,
+} from '@/lib/startModalBridge';
 
 const mobileNavItems = [
   { href: '/', label: 'Home' },
@@ -11,6 +16,9 @@ const mobileNavItems = [
   { href: '/projects', label: 'Projects' },
   { href: '/contact', label: 'Contact' },
 ];
+
+const HEADER_SCROLL_THRESHOLD_PX = 12;
+const HEADER_DIRECTION_SAMPLE_COUNT = 2;
 
 function DesktopQuickEstimateCta({ disableExpand }: { disableExpand?: boolean }) {
   const [expanded, setExpanded] = useState(false);
@@ -31,7 +39,35 @@ function DesktopQuickEstimateCta({ disableExpand }: { disableExpand?: boolean })
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [startHeaderVisible, setStartHeaderVisible] = useState(false);
+  const [startHeaderSuppressed, setStartHeaderSuppressed] = useState(false);
   const pathname = usePathname();
+  const isStartRoute = pathname?.startsWith('/start') ?? false;
+  const startModalSuppressedRef = useRef(false);
+  const scrollStateRef = useRef({
+    lastY: 0,
+    upDelta: 0,
+    downDelta: 0,
+    direction: 0 as -1 | 0 | 1,
+    directionSamples: 0,
+  });
+
+  const resetScrollTracking = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    scrollStateRef.current = {
+      lastY: window.scrollY,
+      upDelta: 0,
+      downDelta: 0,
+      direction: 0,
+      directionSamples: 0,
+    };
+  }, []);
+
+  const hideStartHeader = useCallback(() => {
+    setStartHeaderVisible(false);
+    resetScrollTracking();
+  }, [resetScrollTracking]);
 
   // Expose the header height as a CSS variable so pages can offset content
   useEffect(() => {
@@ -56,6 +92,113 @@ export default function Header() {
       window.removeEventListener('resize', setHeaderVar);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isStartRoute) {
+      startModalSuppressedRef.current = false;
+      setStartHeaderSuppressed(false);
+      setStartHeaderVisible(false);
+      return;
+    }
+
+    hideStartHeader();
+  }, [hideStartHeader, isStartRoute]);
+
+  useEffect(() => {
+    if (!isStartRoute) return;
+
+    const applySuppressedState = (open: boolean) => {
+      startModalSuppressedRef.current = open;
+      setStartHeaderSuppressed(open);
+      hideStartHeader();
+    };
+
+    applySuppressedState(isStartModalOpen());
+
+    const onModalVisibility = (event: Event) => {
+      const detail = (event as CustomEvent<StartModalVisibilityDetail>).detail;
+      if (typeof detail?.open === 'boolean') {
+        applySuppressedState(detail.open);
+        return;
+      }
+
+      applySuppressedState(isStartModalOpen());
+    };
+
+    window.addEventListener(START_MODAL_VISIBILITY_EVENT, onModalVisibility);
+    return () => {
+      window.removeEventListener(START_MODAL_VISIBILITY_EVENT, onModalVisibility);
+    };
+  }, [hideStartHeader, isStartRoute]);
+
+  useEffect(() => {
+    if (!isStartRoute) return;
+
+    let rafId = 0;
+    const onScrollSample = () => {
+      if (rafId) return;
+
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        if (startModalSuppressedRef.current) return;
+
+        const state = scrollStateRef.current;
+        const currentY = window.scrollY;
+        const delta = currentY - state.lastY;
+
+        if (Math.abs(delta) < 1) return;
+        state.lastY = currentY;
+
+        if (currentY <= 4) {
+          state.upDelta = 0;
+          state.downDelta = 0;
+          state.direction = 0;
+          state.directionSamples = 0;
+          setStartHeaderVisible(false);
+          return;
+        }
+
+        const direction: -1 | 1 = delta > 0 ? 1 : -1;
+        if (state.direction === direction) {
+          state.directionSamples += 1;
+        } else {
+          state.direction = direction;
+          state.directionSamples = 1;
+        }
+
+        if (direction === -1) {
+          state.upDelta += Math.abs(delta);
+          state.downDelta = 0;
+
+          if (state.directionSamples >= HEADER_DIRECTION_SAMPLE_COUNT && state.upDelta >= HEADER_SCROLL_THRESHOLD_PX) {
+            setStartHeaderVisible(true);
+            state.upDelta = 0;
+          }
+
+          return;
+        }
+
+        state.downDelta += delta;
+        state.upDelta = 0;
+        if (state.directionSamples >= HEADER_DIRECTION_SAMPLE_COUNT && state.downDelta >= HEADER_SCROLL_THRESHOLD_PX) {
+          setStartHeaderVisible(false);
+          state.downDelta = 0;
+        }
+      });
+    };
+
+    hideStartHeader();
+    window.addEventListener('scroll', onScrollSample, { passive: true });
+    window.addEventListener('resize', onScrollSample, { passive: true });
+
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      window.removeEventListener('scroll', onScrollSample);
+      window.removeEventListener('resize', onScrollSample);
+    };
+  }, [hideStartHeader, isStartRoute]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -99,9 +242,18 @@ export default function Header() {
 
   // Clicking Products navigates to /products (handled via Link below).
 
+  const headerClassName = [
+    'site',
+    isStartRoute ? 'site--start-scroll' : '',
+    isStartRoute && startHeaderVisible && !startHeaderSuppressed ? 'site--start-visible' : '',
+    isStartRoute && startHeaderSuppressed ? 'site--start-suppressed' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <>
-      <header className="site">
+      <header className={headerClassName}>
         <div className="container navbar">
           <Link href="/" className="site-brand" aria-label="Sanctuary Pergolas home">
             SANCTUARY&nbsp;PERGOLAS

@@ -2,6 +2,10 @@ import {
   type BoxGutterEdge,
   type CostInputsV1,
   type DerivedV1,
+  type FlashingBandOrNoneV1,
+  type FlashingBandV1,
+  type FlashingDefaultNormalizedV1,
+  type FlashingNormalizedV1,
   type GableEndFramesMode,
   type GutterAssemblyMode,
   type GutterMode,
@@ -42,6 +46,11 @@ const DEFAULT_ACRYLIC_SHEET_LENGTH_M = 3.05;
 const DEFAULT_ACRYLIC_SHEET_WIDTH_M = 2.03;
 const MIXED_ACRYLIC_BAY_WIDTH_M = 0.62;
 const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
+const FLASHING_EDGE_ALLOWANCE_M = 0.1;
+const FLASHING_BAND_0_200: FlashingBandV1 = '0-200';
+const FLASHING_BAND_201_300: FlashingBandV1 = '201-300';
+const FLASHING_BAND_301_400: FlashingBandV1 = '301-400';
+const FLASHING_BANDS: readonly FlashingBandV1[] = [FLASHING_BAND_0_200, FLASHING_BAND_201_300, FLASHING_BAND_301_400];
 
 export type DerivedResultV1 = {
   inputs_normalized: InputsNormalizedV1;
@@ -70,6 +79,17 @@ function toPositiveNumber(value: unknown, fallback: number): number {
 function toNonNegativeNumber(value: unknown, fallback: number): number {
   const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
   return Number.isFinite(n) && n >= 0 ? n : fallback;
+}
+
+function normalizeFlashingBand(value: unknown): FlashingBandV1 {
+  if (value === FLASHING_BAND_201_300) return FLASHING_BAND_201_300;
+  if (value === FLASHING_BAND_301_400) return FLASHING_BAND_301_400;
+  return FLASHING_BAND_0_200;
+}
+
+function normalizeFlashingBandOrNone(value: unknown): FlashingBandOrNoneV1 {
+  if (value === 'none') return 'none';
+  return normalizeFlashingBand(value);
 }
 
 function normalizePergolaStyle(style: PergolaStyleUi): { style: PergolaStyleUi; warnings: string[] } {
@@ -811,8 +831,102 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const coverageMultiplier = roofType === 'pitched' || roofType === 'hip_corner' ? 1 : roofPlaneCount;
   const baseLinearLength = roofType === 'hip_corner' ? lengthM + hipCornerLengthBM : lengthM;
-  const flashingLengthM = baseLinearLength * coverageMultiplier;
   const foamLengthM = baseLinearLength * coverageMultiplier;
+
+  const flashingDefaultCandidates: Array<Omit<FlashingDefaultNormalizedV1, 'selected_band'>> = [];
+  const pushFlashingDefault = (key: string, label: string, defaultBand: FlashingBandV1, lengthMRaw: number) => {
+    const lengthM = Math.max(0, Number(lengthMRaw));
+    if (!Number.isFinite(lengthM) || lengthM <= 0) return;
+    flashingDefaultCandidates.push({
+      key,
+      label,
+      length_m: lengthM,
+      default_band: defaultBand,
+    });
+  };
+
+  const roofLengthForFlashingM = Math.max(0, baseLinearLength);
+  if (roofType === 'pitched') {
+    pushFlashingDefault('pitched_primary', 'Primary flashing', FLASHING_BAND_201_300, roofLengthForFlashingM);
+    if (slopeDirection === 'toward_house') {
+      pushFlashingDefault('pitched_secondary', 'Secondary flashing', FLASHING_BAND_201_300, roofLengthForFlashingM);
+    }
+  } else if (roofType === 'gable' || roofType === 'low_gable') {
+    pushFlashingDefault('gable_ridge', 'Ridge flashing', FLASHING_BAND_301_400, roofLengthForFlashingM);
+  } else if (roofType === 'hip') {
+    const hipLedgerLengthM = inputs.house_connection_type !== 'none' ? Math.max(0, lengthM) : roofLengthForFlashingM;
+    pushFlashingDefault('hip_ledger', 'Hip ledger flashing', FLASHING_BAND_201_300, hipLedgerLengthM || roofLengthForFlashingM);
+  } else {
+    pushFlashingDefault('roof_primary', 'Primary flashing', FLASHING_BAND_201_300, roofLengthForFlashingM);
+  }
+
+  const includeTimberEdgeFlashings =
+    inputs.roof_material === 'timber' || (inputs.roof_material === 'mixed' && Math.max(0, timberAreaM2) > 1e-6);
+  if (includeTimberEdgeFlashings) {
+    const edgeLengthM = Math.max(0, rafterLengthM + FLASHING_EDGE_ALLOWANCE_M);
+    if (roofType === 'pitched') {
+      pushFlashingDefault('timber_edge_left', 'Timber edge rafter flashing (left)', FLASHING_BAND_0_200, edgeLengthM);
+      pushFlashingDefault('timber_edge_right', 'Timber edge rafter flashing (right)', FLASHING_BAND_0_200, edgeLengthM);
+    } else if (roofType === 'gable' || roofType === 'low_gable') {
+      pushFlashingDefault('timber_edge_a_left', 'Timber edge rafter flashing (A left)', FLASHING_BAND_0_200, edgeLengthM);
+      pushFlashingDefault('timber_edge_a_right', 'Timber edge rafter flashing (A right)', FLASHING_BAND_0_200, edgeLengthM);
+      pushFlashingDefault('timber_edge_b_left', 'Timber edge rafter flashing (B left)', FLASHING_BAND_0_200, edgeLengthM);
+      pushFlashingDefault('timber_edge_b_right', 'Timber edge rafter flashing (B right)', FLASHING_BAND_0_200, edgeLengthM);
+    } else if (roofType === 'hip') {
+      warnings.push('Timber hip edge-rafter flashings are not configured yet; skipping timber edge flashing defaults.');
+    }
+  }
+
+  const defaultOverrideMap = new Map<string, FlashingBandOrNoneV1>();
+  const rawDefaultOverrides = Array.isArray(inputs.flashings?.default_overrides) ? inputs.flashings.default_overrides : [];
+  for (const override of rawDefaultOverrides) {
+    const key = String(override?.key ?? '').trim();
+    if (!key) continue;
+    const selectedBand = normalizeFlashingBandOrNone(override?.band ?? FLASHING_BAND_0_200);
+    defaultOverrideMap.set(key, selectedBand);
+  }
+
+  const flashingDefaults: FlashingNormalizedV1['defaults'] = flashingDefaultCandidates.map((candidate) => {
+    const selectedBand = defaultOverrideMap.get(candidate.key) ?? candidate.default_band;
+    return {
+      ...candidate,
+      selected_band: selectedBand,
+    };
+  });
+
+  const flashingExtras: FlashingNormalizedV1['extras'] = [];
+  const rawFlashingExtras = Array.isArray(inputs.flashings?.extras) ? inputs.flashings.extras : [];
+  for (const extra of rawFlashingExtras) {
+    const lengthM = toNonNegativeNumber((extra as any)?.length_m, NaN);
+    if (!Number.isFinite(lengthM) || lengthM <= 0) continue;
+    flashingExtras.push({
+      band: normalizeFlashingBand((extra as any)?.band ?? FLASHING_BAND_0_200),
+      length_m: lengthM,
+    });
+  }
+
+  const flashingTotalsByBand: Record<FlashingBandV1, number> = {
+    '0-200': 0,
+    '201-300': 0,
+    '301-400': 0,
+  };
+
+  for (const item of flashingDefaults) {
+    if (item.selected_band === 'none') continue;
+    flashingTotalsByBand[item.selected_band] += item.length_m;
+  }
+  for (const item of flashingExtras) {
+    flashingTotalsByBand[item.band] += item.length_m;
+  }
+
+  const flashingLengthM = FLASHING_BANDS.reduce((sum, band) => sum + Math.max(0, flashingTotalsByBand[band]), 0);
+  const flashingStartupCount = flashingLengthM > 0 ? 1 : 0;
+  const flashingsNormalized: FlashingNormalizedV1 = {
+    defaults: flashingDefaults,
+    extras: flashingExtras,
+    totals_m_by_band: flashingTotalsByBand,
+    total_length_m: flashingLengthM,
+  };
 
   const travel = toNonNegativeNumber(inputs.travel_ex_gst, 0);
   const extras = toNonNegativeNumber(inputs.extras_allowance_ex_gst, 0);
@@ -1171,6 +1285,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     acrylic_sheet_count: acrylicSheetCount,
     flashing_length_m: flashingLengthM,
     foam_length_m: foamLengthM,
+    flashings: flashingsNormalized,
 
     travel_ex_gst: travel,
     extras_allowance_ex_gst: extras,
@@ -1325,6 +1440,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     roof_plane_count: roofPlaneCount,
     total_rafter_pieces: totalRafterPieces,
     joiner_runs_total: joinerRunsTotal,
+    flashing_0_200_total_m: flashingTotalsByBand[FLASHING_BAND_0_200],
+    flashing_201_300_total_m: flashingTotalsByBand[FLASHING_BAND_201_300],
+    flashing_301_400_total_m: flashingTotalsByBand[FLASHING_BAND_301_400],
+    flashing_total_m: flashingLengthM,
+    flashing_startup_count: flashingStartupCount,
     acrylic_plane_count_used: acrylicPlaneCountUsed,
     gable_end_frame_count: gableEndFrameCount,
     tie_beam_length_m: tieBeamLengthM,

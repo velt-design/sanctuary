@@ -31,6 +31,24 @@ header.site{
   transform:translateZ(0);
   transition:transform .6s cubic-bezier(.21,.8,.35,1), opacity .45s ease, background-color .5s ease, border-color .5s ease;
 }
+.site--start-scroll{
+  transform:translateY(-110%);
+  opacity:0;
+  pointer-events:none;
+  transition:transform .25s ease-out, opacity .25s ease-out, background-color .5s ease, border-color .5s ease, color .5s ease;
+}
+.site--start-scroll.site--start-visible{
+  transform:translateY(0);
+  opacity:1;
+  pointer-events:auto;
+  box-shadow:0 14px 32px -28px rgba(15,23,42,.85);
+}
+.site--start-scroll.site--start-suppressed,
+body.start-modal-open .site--start-scroll{
+  transform:translateY(-110%) !important;
+  opacity:0 !important;
+  pointer-events:none !important;
+}
 .site header{}
 /* Make header bar taller globally */
 header.site{ --navH: 82px; }
@@ -178,6 +196,12 @@ body.mobile-menu-open .mobile-toggle__pulse{ border-color:rgba(245,246,247,.72);
   .nav-cta{display:none}
   .mobile-toggle{display:inline-flex}
   .mobile-menu{display:block}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .site--start-scroll{
+    transition:none !important;
+  }
 }
 
 /* --- Header visibility hooks for projects sequence --- */

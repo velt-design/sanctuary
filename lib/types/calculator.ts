@@ -31,6 +31,7 @@ export type CalculatorBlindsState = {
 export type InfillAcrylicSourceInput = 'strip_620' | 'sheet_panels';
 export type InfillWidthModeInput = 'match_roof_rafters' | 'target_width';
 export type InfillLocationInput = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
+export type InfillPanelOrientationInput = 'vertical' | 'horizontal';
 
 export type InfillSupportInput = {
   hasTop: boolean;
@@ -51,6 +52,7 @@ export type InfillLineItem = {
   qty: string;
   location: InfillLocationInput;
   acrylicSource: InfillAcrylicSourceInput;
+  panelOrientation: InfillPanelOrientationInput;
   widthMode: InfillWidthModeInput;
   targetPanelWidthM: string;
   maxPanelWidthM: string;

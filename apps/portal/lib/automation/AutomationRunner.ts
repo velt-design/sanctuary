@@ -1,5 +1,15 @@
 import 'server-only';
 
+import {
+  sendDesignConsultationBookedEmail,
+  sendProjectCompletedEmail,
+  sendProjectScheduledEmail,
+} from '@/lib/emails/transactional';
+import {
+  EMAIL_DESIGN_CONSULTATION_BOOKED_V1,
+  EMAIL_PROJECT_COMPLETED_V1,
+  EMAIL_PROJECT_SCHEDULED_V1,
+} from '@/lib/emails/transactionalTemplates';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { isUuid } from '@/lib/supabase/mappers';
 import type { ProjectStatus } from '@/lib/types/project';
@@ -25,6 +35,8 @@ type ProjectRow = {
   contact_id: string | null;
   name: string;
   pipeline_stage: string;
+  site_address: string | null;
+  quote_ref: string | null;
 };
 
 type ContactRow = {
@@ -172,7 +184,7 @@ function normaliseStage(value: unknown): ProjectStatus {
 async function loadProject(projectId: string): Promise<ProjectRow | null> {
   const { data, error } = await supabaseServer
     .from('projects')
-    .select('id, contact_id, name, pipeline_stage')
+    .select('id, contact_id, name, pipeline_stage, site_address, quote_ref')
     .eq('id', projectId)
     .single();
   if (error || !data) return null;
@@ -189,6 +201,83 @@ async function loadEmailTemplate(templateId: string): Promise<EmailTemplateRow |
   const { data, error } = await supabaseServer.from('email_templates').select('id, subject').eq('id', templateId).single();
   if (error || !data) return null;
   return data as any;
+}
+
+function formatNzDate(valueIso: string): string {
+  const parsed = new Date(valueIso);
+  if (!Number.isFinite(parsed.getTime())) return valueIso;
+  return new Intl.DateTimeFormat('en-NZ', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Pacific/Auckland',
+  }).format(parsed);
+}
+
+function formatNzTime(valueIso: string): string {
+  const parsed = new Date(valueIso);
+  if (!Number.isFinite(parsed.getTime())) return valueIso;
+  return new Intl.DateTimeFormat('en-NZ', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Pacific/Auckland',
+  }).format(parsed);
+}
+
+function formatDuration(startIso: string, endIso?: string | null): string {
+  if (!endIso) return '60 minutes';
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) return '60 minutes';
+  const diffMs = Math.max(0, end.getTime() - start.getTime());
+  const totalMinutes = Math.round(diffMs / (60 * 1000));
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return '60 minutes';
+  if (totalMinutes % 60 === 0) {
+    const hours = totalMinutes / 60;
+    return `${hours} hour${hours === 1 ? '' : 's'}`;
+  }
+  return `${totalMinutes} minutes`;
+}
+
+function formatDateFromDateOnly(value: string): string {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('en-NZ', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Pacific/Auckland',
+  }).format(parsed);
+}
+
+function formatDateRange(startDate: string | null, endDate: string | null): string {
+  if (!startDate && !endDate) return 'To be confirmed';
+  if (startDate && endDate) return `${formatDateFromDateOnly(startDate)} to ${formatDateFromDateOnly(endDate)}`;
+  return formatDateFromDateOnly(startDate || endDate || 'To be confirmed');
+}
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  const msg = typeof (error as any)?.message === 'string' ? String((error as any).message) : '';
+  return msg || fallback;
+}
+
+async function ensureEmailTemplateSeed(templateId: string, subject: string): Promise<void> {
+  const res = await supabaseServer
+    .from('email_templates')
+    .upsert(
+      {
+        id: templateId,
+        subject,
+        body_html: '<p>(Rendered in app code)</p>',
+        body_text: null,
+        variables: [],
+      } as any,
+      { onConflict: 'id' } as any,
+    );
+  if (res.error) throw res.error;
 }
 
 async function upsertTask(params: {
@@ -247,6 +336,68 @@ async function insertEmailOutbox(params: {
   if (!error) return;
   if (isUniqueViolation(error)) return;
   throw error;
+}
+
+async function insertOrUpdateEmailOutbox(params: {
+  projectId: string;
+  contactId: string | null;
+  emailType: string;
+  toEmail: string;
+  templateId: string;
+  subject: string;
+  variables: Record<string, unknown>;
+  status: 'SENT' | 'FAILED';
+  error: string | null;
+  sentAt: string | null;
+  idempotencyKey: string;
+}): Promise<void> {
+  const payload = {
+    project_id: params.projectId,
+    contact_id: params.contactId,
+    email_type: params.emailType,
+    to_email: params.toEmail,
+    subject: params.subject,
+    template_id: params.templateId,
+    variables: params.variables,
+    status: params.status,
+    error: params.error,
+    sent_at: params.sentAt,
+    idempotency_key: params.idempotencyKey,
+  };
+
+  const insertRes = await supabaseServer.from('email_outbox').insert(payload as any);
+  if (!insertRes.error) return;
+  if (!isUniqueViolation(insertRes.error)) throw insertRes.error;
+
+  const updateRes = await supabaseServer
+    .from('email_outbox')
+    .update({
+      subject: params.subject,
+      template_id: params.templateId,
+      variables: params.variables,
+      status: params.status,
+      error: params.error,
+      sent_at: params.sentAt,
+    } as any)
+    .eq('idempotency_key', params.idempotencyKey);
+  if (updateRes.error) throw updateRes.error;
+}
+
+async function loadScheduleWindow(projectId: string): Promise<{ startDate: string | null; endDate: string | null }> {
+  const res = await supabaseServer
+    .from('schedule_items')
+    .select('start_date, end_date')
+    .eq('project_id', projectId)
+    .order('start_date', { ascending: true })
+    .limit(1);
+
+  if (res.error) return { startDate: null, endDate: null };
+
+  const row = Array.isArray(res.data) ? res.data[0] : null;
+  return {
+    startDate: typeof row?.start_date === 'string' ? row.start_date : null,
+    endDate: typeof row?.end_date === 'string' ? row.end_date : null,
+  };
 }
 
 async function ensureFollowupPlanActive(projectId: string, quoteUuid: string | null): Promise<{ id: string } | null> {
@@ -635,18 +786,64 @@ export class AutomationRunner {
       const contact = project.contact_id ? await loadContact(project.contact_id) : null;
       if (!contact || !contact.email?.trim()) return;
 
-      const templateId = 'EMAIL_SITE_VISIT_CONFIRMED';
-      const template = await loadEmailTemplate(templateId);
-      await insertEmailOutbox({
-        projectId,
-        contactId: contact.id,
-        emailType: templateId,
-        toEmail: contact.email.trim(),
-        templateId,
-        subject: template?.subject ?? 'Site visit confirmed',
-        variables: { contactName: contact.name ?? '', projectName: project.name ?? '', scheduledStart },
-        idempotencyKey: makeIdempotencyKey([projectId, 'email', templateId, scheduledStart]),
-      });
+      const templateId = EMAIL_DESIGN_CONSULTATION_BOOKED_V1;
+      const consultationDate = formatNzDate(scheduledStart);
+      const consultationTime = formatNzTime(scheduledStart);
+      const consultationDuration = formatDuration(scheduledStart, scheduledEnd);
+      const subject = `Design consultation booked - ${consultationDate}`;
+      const idempotencyKey = makeIdempotencyKey([projectId, 'email', templateId, scheduledStart]);
+      const variables = {
+        name: contact.name ?? '',
+        consultation_date: consultationDate,
+        consultation_time: consultationTime,
+        consultation_duration: consultationDuration,
+        consultation_timezone: 'NZ local time',
+        site_address: project.site_address ?? undefined,
+        rep_name: undefined,
+        reference_id: project.quote_ref ?? undefined,
+      } satisfies Record<string, unknown>;
+
+      try {
+        await ensureEmailTemplateSeed(templateId, subject);
+        await sendDesignConsultationBookedEmail({
+          to: contact.email.trim(),
+          name: String(variables.name ?? ''),
+          consultation_date: String(variables.consultation_date ?? ''),
+          consultation_time: String(variables.consultation_time ?? ''),
+          consultation_duration: String(variables.consultation_duration ?? ''),
+          consultation_timezone: String(variables.consultation_timezone ?? ''),
+          site_address: typeof variables.site_address === 'string' ? variables.site_address : undefined,
+          reference_id: typeof variables.reference_id === 'string' ? variables.reference_id : undefined,
+        });
+        await insertOrUpdateEmailOutbox({
+          projectId,
+          contactId: contact.id,
+          emailType: templateId,
+          toEmail: contact.email.trim(),
+          templateId,
+          subject,
+          variables,
+          status: 'SENT',
+          error: null,
+          sentAt: now().toISOString(),
+          idempotencyKey,
+        });
+      } catch (error) {
+        await insertOrUpdateEmailOutbox({
+          projectId,
+          contactId: contact.id,
+          emailType: templateId,
+          toEmail: contact.email.trim(),
+          templateId,
+          subject,
+          variables,
+          status: 'FAILED',
+          error: errorMessage(error, 'Failed to send design consultation email'),
+          sentAt: null,
+          idempotencyKey,
+        });
+      }
+
     }
   }
 
@@ -757,18 +954,64 @@ export class AutomationRunner {
     const contact = project.contact_id ? await loadContact(project.contact_id) : null;
     if (!contact?.email?.trim()) return;
 
-    const templateId = 'EMAIL_INSTALL_SCHEDULED';
-    const template = await loadEmailTemplate(templateId);
-    await insertEmailOutbox({
-      projectId,
-      contactId: contact.id,
-      emailType: templateId,
-      toEmail: contact.email.trim(),
-      templateId,
-      subject: template?.subject ?? 'Install scheduled',
-      variables: { contactName: contact.name ?? '', projectName: project.name ?? '' },
-      idempotencyKey: makeIdempotencyKey([projectId, 'email', templateId]),
-    });
+    const templateId = EMAIL_PROJECT_SCHEDULED_V1;
+    const schedule = await loadScheduleWindow(projectId);
+    const startDate = schedule.startDate ?? now().toISOString().slice(0, 10);
+    const scheduledStartDate = formatDateFromDateOnly(startDate);
+    const estimatedInstallWindow = formatDateRange(schedule.startDate, schedule.endDate);
+    const estimatedCompletionDate = schedule.endDate ? formatDateFromDateOnly(schedule.endDate) : undefined;
+    const subject = `Your project is scheduled - ${scheduledStartDate}`;
+    const idempotencyKey = makeIdempotencyKey([projectId, 'email', templateId]);
+    const variables = {
+      name: contact.name ?? '',
+      site_address: project.site_address ?? 'To be confirmed',
+      scheduled_start_date: scheduledStartDate,
+      estimated_install_window: estimatedInstallWindow,
+      estimated_completion_date: estimatedCompletionDate,
+      reference_id: project.quote_ref ?? undefined,
+    } satisfies Record<string, unknown>;
+
+    try {
+      await ensureEmailTemplateSeed(templateId, subject);
+      await sendProjectScheduledEmail({
+        to: contact.email.trim(),
+        name: String(variables.name ?? ''),
+        site_address: String(variables.site_address ?? 'To be confirmed'),
+        scheduled_start_date: String(variables.scheduled_start_date ?? ''),
+        estimated_install_window: String(variables.estimated_install_window ?? ''),
+        estimated_completion_date:
+          typeof variables.estimated_completion_date === 'string' ? variables.estimated_completion_date : undefined,
+        reference_id: typeof variables.reference_id === 'string' ? variables.reference_id : undefined,
+      });
+      await insertOrUpdateEmailOutbox({
+        projectId,
+        contactId: contact.id,
+        emailType: templateId,
+        toEmail: contact.email.trim(),
+        templateId,
+        subject,
+        variables,
+        status: 'SENT',
+        error: null,
+        sentAt: now().toISOString(),
+        idempotencyKey,
+      });
+    } catch (error) {
+      await insertOrUpdateEmailOutbox({
+        projectId,
+        contactId: contact.id,
+        emailType: templateId,
+        toEmail: contact.email.trim(),
+        templateId,
+        subject,
+        variables,
+        status: 'FAILED',
+        error: errorMessage(error, 'Failed to send project scheduled email'),
+        sentAt: null,
+        idempotencyKey,
+      });
+    }
+
   }
 
   private async onMarkCompleted(projectId: string): Promise<void> {
@@ -776,18 +1019,61 @@ export class AutomationRunner {
     if (!project) return;
     const contact = project.contact_id ? await loadContact(project.contact_id) : null;
     if (contact?.email?.trim()) {
-      const templateId = 'EMAIL_FINAL_INVOICE_SENT';
-      const template = await loadEmailTemplate(templateId);
-      await insertEmailOutbox({
-        projectId,
-        contactId: contact.id,
-        emailType: templateId,
-        toEmail: contact.email.trim(),
-        templateId,
-        subject: template?.subject ?? 'Final invoice',
-        variables: { contactName: contact.name ?? '', projectName: project.name ?? '' },
-        idempotencyKey: makeIdempotencyKey([projectId, 'email', templateId]),
-      });
+      const templateId = EMAIL_PROJECT_COMPLETED_V1;
+      const completionDate = formatNzDate(now().toISOString());
+      const subject = 'Your pergola is complete';
+      const idempotencyKey = makeIdempotencyKey([projectId, 'email', templateId]);
+      const variables = {
+        name: contact.name ?? '',
+        site_address: project.site_address ?? undefined,
+        completion_date: completionDate,
+        care_item_1: 'Rinse down the structure with fresh water every few months.',
+        care_item_2: 'Check gutters, flashings, and fixings seasonally and clear debris.',
+        care_item_3: 'Use mild soap only; avoid abrasive cleaners on coated surfaces.',
+        reference_id: project.quote_ref ?? undefined,
+      } satisfies Record<string, unknown>;
+
+      try {
+        await ensureEmailTemplateSeed(templateId, subject);
+        await sendProjectCompletedEmail({
+          to: contact.email.trim(),
+          name: String(variables.name ?? ''),
+          site_address: typeof variables.site_address === 'string' ? variables.site_address : undefined,
+          completion_date: String(variables.completion_date ?? ''),
+          care_item_1: String(variables.care_item_1 ?? ''),
+          care_item_2: String(variables.care_item_2 ?? ''),
+          care_item_3: String(variables.care_item_3 ?? ''),
+          reference_id: typeof variables.reference_id === 'string' ? variables.reference_id : undefined,
+        });
+        await insertOrUpdateEmailOutbox({
+          projectId,
+          contactId: contact.id,
+          emailType: templateId,
+          toEmail: contact.email.trim(),
+          templateId,
+          subject,
+          variables,
+          status: 'SENT',
+          error: null,
+          sentAt: now().toISOString(),
+          idempotencyKey,
+        });
+      } catch (error) {
+        await insertOrUpdateEmailOutbox({
+          projectId,
+          contactId: contact.id,
+          emailType: templateId,
+          toEmail: contact.email.trim(),
+          templateId,
+          subject,
+          variables,
+          status: 'FAILED',
+          error: errorMessage(error, 'Failed to send project completed email'),
+          sentAt: null,
+          idempotencyKey,
+        });
+      }
+
     }
 
     await upsertTask({
