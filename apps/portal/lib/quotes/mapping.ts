@@ -144,6 +144,12 @@ function normalizePergolaLabel(value: unknown, fallbackIndex: number): string {
   return `Pergola ${fallbackIndex + 1}`;
 }
 
+type PricedPergola = {
+  snapshotPergola: any;
+  idx: number;
+  pergolaCostEx: number;
+};
+
 function lineUnitPriceIncFromCostEx(costEx: number): number {
   const sellEx = roundMoney(costEx * 1.25);
   const sellInc = roundMoney(sellEx * (1 + GST_RATE));
@@ -232,8 +238,8 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
   let coreTotalIncCents = 0;
 
   if (snapshotPergolas.length > 0) {
-    const pricedPergolas = snapshotPergolas
-      .map((snapshotPergola: any, idx: number) => {
+    const pricedPergolas: PricedPergola[] = snapshotPergolas
+      .map((snapshotPergola: any, idx: number): PricedPergola | null => {
         const pergolaCostEx = toNumber(snapshotPergola?.totals?.cost_ex_gst);
         if (!Number.isFinite(pergolaCostEx) || pergolaCostEx < 0) return null;
         return {
@@ -243,7 +249,7 @@ export function buildQuoteLineItemsFromEstimate(estimate: Estimate): { items: Om
         };
       })
       .filter(
-        (entry): entry is { snapshotPergola: any; idx: number; pergolaCostEx: number } =>
+        (entry: PricedPergola | null): entry is PricedPergola =>
           entry !== null,
       );
 

@@ -31,6 +31,7 @@ export type CalculatorBlindsState = {
 export type InfillAcrylicSourceInput = 'strip_620' | 'sheet_panels';
 export type InfillWidthModeInput = 'match_roof_rafters' | 'target_width';
 export type InfillLocationInput = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
+export type InfillPanelOrientationInput = 'vertical' | 'horizontal';
 
 export type InfillSupportInput = {
   hasTop: boolean;
@@ -51,6 +52,7 @@ export type InfillLineItem = {
   qty: string;
   location: InfillLocationInput;
   acrylicSource: InfillAcrylicSourceInput;
+  panelOrientation: InfillPanelOrientationInput;
   widthMode: InfillWidthModeInput;
   targetPanelWidthM: string;
   maxPanelWidthM: string;
@@ -82,6 +84,21 @@ export type CalculatorModuleOverrides = {
   overhangSupportBeamProfile?: string;
   tieBeamProfile?: string;
   strutProfile?: string;
+};
+
+export type CalculatorFlashingBand = '0-200' | '201-300' | '301-400';
+export type CalculatorFlashingPurpose = 'HEAD' | 'SIDE' | 'APRON' | 'CUSTOM';
+
+export type CalculatorFlashingRowInput = {
+  id: string;
+  kind: 'primary' | 'extra';
+  band: CalculatorFlashingBand;
+  lengthM: string;
+  purpose?: CalculatorFlashingPurpose;
+};
+
+export type CalculatorFlashingsState = {
+  rows: CalculatorFlashingRowInput[];
 };
 
 export type CalculatorModuleInputs = {
@@ -132,6 +149,7 @@ export type CalculatorModuleInputs = {
 
   timberRoofAllowanceExGst: string;
 
+  flashings?: CalculatorFlashingsState;
   overrides?: CalculatorModuleOverrides;
   infills?: CalculatorInfillsState;
 };
@@ -207,6 +225,7 @@ export type LegacyCalculatorInputsV1 = {
   blinds?: CalculatorBlindsState | LegacyBlindInputsV1;
 
   overrides?: CalculatorModuleOverrides;
+  flashings?: CalculatorFlashingsState;
 };
 
 export function isCalculatorInputsV2(value: unknown): value is CalculatorInputs {
@@ -309,6 +328,7 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         hipCornerProjectionBM: '0',
         postCutHeightM: legacy.postCutHeightM,
         timberRoofAllowanceExGst: legacy.timberRoofAllowanceExGst,
+        flashings: { rows: [] },
         overrides: legacy.overrides ?? {},
         infills: { items: [] },
       },

@@ -26,9 +26,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ quoteVersionId
 
   const subject = typeof body.subject === 'string' ? body.subject.trim() : '';
   if (!subject) return jsonError('Subject is required', 400);
-
-  const bodyText = typeof body.bodyText === 'string' ? body.bodyText : typeof body.body === 'string' ? body.body : '';
-  if (!bodyText.trim()) return jsonError('Email body is required', 400);
+  const personalNote = (() => {
+    if (typeof body.personalNote === 'string') return body.personalNote;
+    if (typeof body.manualNote === 'string') return body.manualNote;
+    if (typeof body.bodyText === 'string') return body.bodyText;
+    if (typeof body.body === 'string') return body.body;
+    return '';
+  })();
 
   const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
 
@@ -40,7 +44,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ quoteVersionId
         cc: parseRecipients(body.cc),
         bcc: parseRecipients(body.bcc),
         subject,
-        bodyText,
+        personalNote,
+        bodyText: typeof body.bodyText === 'string' ? body.bodyText : undefined,
         bodyHtml: typeof body.bodyHtml === 'string' ? body.bodyHtml : null,
       },
       actor,

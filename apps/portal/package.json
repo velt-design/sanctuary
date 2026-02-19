@@ -22,6 +22,7 @@
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-query-persist-client": "^5.90.22",
     "framer-motion": "^12.23.12",
+    "handlebars": "^4.7.8",
     "idb-keyval": "^6.2.2",
     "lucide-react": "^0.563.0",
     "next": "^16.0.7",

@@ -827,7 +827,7 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
 
   const updateRes = await supabaseServer
     .from('quote_versions')
-    .update({ status: 'ACCEPTED' } as any)
+    .update({ status: 'ACCEPTED', accepted_at: new Date().toISOString() } as any)
     .eq('id', quoteVersionUuid);
   if (updateRes.error) {
     if (missingTableError(updateRes.error)) throw schemaMissingError();

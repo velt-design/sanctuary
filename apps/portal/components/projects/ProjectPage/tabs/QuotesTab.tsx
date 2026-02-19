@@ -108,9 +108,8 @@ function computeLineTotal(item: QuoteLineItem): number {
   return Math.round(qty * unit);
 }
 
-function defaultEmailBody(contactName: string): string {
-  const name = contactName || 'there';
-  return `Hi ${name},\n\nPlease find your quote attached. Let us know if you have any questions.\n\nKind regards,\nSanctuary Pergolas`;
+function defaultPersonalNote(): string {
+  return '';
 }
 
 function defaultSubject(quoteRef: string): string {
@@ -157,7 +156,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [sendMode, setSendMode] = useState<'send' | 'resend'>('send');
   const [sendTo, setSendTo] = useState('');
   const [sendSubject, setSendSubject] = useState('');
-  const [sendBody, setSendBody] = useState('');
+  const [sendPersonalNote, setSendPersonalNote] = useState('');
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -279,12 +278,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       toast.error('Save the draft before sending.');
       return;
     }
-    const contactName = detail.contact?.name ?? '';
     const to = detail.contact?.email ?? '';
     setSendMode(mode);
     setSendTo(to);
     setSendSubject(defaultSubject(detail.quoteRef));
-    setSendBody(defaultEmailBody(contactName));
+    setSendPersonalNote(defaultPersonalNote());
     setSendError(null);
     setSendOpen(true);
   };
@@ -304,17 +302,12 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       toast.error('Subject is required.');
       return;
     }
-    if (!sendBody.trim()) {
-      toast.error('Email body is required.');
-      return;
-    }
-
     setSendBusy(true);
     setSendError(null);
     try {
       const updated = sendMode === 'send'
-        ? await sendQuote(detail.id, { to, subject: sendSubject, bodyText: sendBody })
-        : await resendQuote(detail.id, { to, subject: sendSubject, bodyText: sendBody });
+        ? await sendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote })
+        : await resendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote });
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
       setSendOpen(false);
@@ -789,8 +782,15 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                 <input id="sendTo" className={styles.metaInput} value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
                 <label className={styles.metaLabel} htmlFor="sendSubject">Subject</label>
                 <input id="sendSubject" className={styles.metaInput} value={sendSubject} onChange={(e) => setSendSubject(e.target.value)} />
-                <label className={styles.metaLabel} htmlFor="sendBody">Message</label>
-                <textarea id="sendBody" className={styles.textarea} value={sendBody} onChange={(e) => setSendBody(e.target.value)} rows={6} />
+                <label className={styles.metaLabel} htmlFor="sendBody">Personal note (optional)</label>
+                <textarea
+                  id="sendBody"
+                  className={styles.textarea}
+                  value={sendPersonalNote}
+                  onChange={(e) => setSendPersonalNote(e.target.value)}
+                  rows={6}
+                  placeholder="Optional custom note to include in the template."
+                />
                 <div className={styles.attachmentsHint}>Attachments: Quote PDF (auto attached). Additional attachments coming soon.</div>
                 {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
               </div>
