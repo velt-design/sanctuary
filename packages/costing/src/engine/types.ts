@@ -109,6 +109,7 @@ export type MixedRoofNormalizedV1 = {
 export type InfillLocationV1 = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
 export type InfillAcrylicSourceV1 = 'strip_620' | 'sheet_panels';
 export type InfillWidthModeV1 = 'match_roof_rafters' | 'target_width';
+export type InfillPanelOrientationV1 = 'vertical' | 'horizontal';
 
 export type InfillSupportV1 = {
   has_top: boolean;
@@ -140,6 +141,7 @@ export type InfillInputV1 = {
   qty?: number;
   location: InfillLocationV1;
   acrylic_source: InfillAcrylicSourceV1;
+  panel_orientation?: InfillPanelOrientationV1;
   width_mode: InfillWidthModeV1;
   target_panel_width_m?: number;
   max_panel_width_m?: number;

@@ -604,8 +604,10 @@ function rafterDepthM(profile: string): number {
 
 const TIMBER_EDGE_RAFTER_PROFILE = '150x50';
 const TIMBER_PURLIN_PROFILE = '50x50';
-const INFILL_MAX_PANEL_WIDTH_M_DEFAULT = 1.2;
-const INFILL_STRIP_WIDTH_M = 0.62;
+const INFILL_SHEET_MAX_RUN_M = 3.05;
+const INFILL_STRIP_MAX_RUN_M = 6.0;
+const INFILL_SHEET_MAX_SHORT_SIDE_M = 1.2;
+const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
 const INFILL_SHEET_WASTE_FACTOR_DEFAULT = 0.15;
 
 function clampPos(n: number, min: number, max: number): number {
@@ -622,6 +624,30 @@ function splitWidths(totalW: number, targetW: number): number[] {
   const base = total / panelCount;
   for (let i = 0; i < panelCount; i += 1) widths.push(base);
   return widths;
+}
+
+function infillRunLimitForSource(source: 'strip_620' | 'sheet_panels'): number {
+  return source === 'strip_620' ? INFILL_STRIP_MAX_RUN_M : INFILL_SHEET_MAX_RUN_M;
+}
+
+function pickInfillSourceForRun(
+  preferred: 'strip_620' | 'sheet_panels',
+  runSideM: number,
+): { source: 'strip_620' | 'sheet_panels' | null; switched: boolean; runLimitM: number } {
+  const preferredLimit = infillRunLimitForSource(preferred);
+  if (runSideM <= preferredLimit + 1e-6) {
+    return { source: preferred, switched: false, runLimitM: preferredLimit };
+  }
+  const fallback: 'strip_620' | 'sheet_panels' = preferred === 'sheet_panels' ? 'strip_620' : 'sheet_panels';
+  const fallbackLimit = infillRunLimitForSource(fallback);
+  if (runSideM <= fallbackLimit + 1e-6) {
+    return { source: fallback, switched: true, runLimitM: fallbackLimit };
+  }
+  return { source: null, switched: false, runLimitM: Math.max(preferredLimit, fallbackLimit) };
+}
+
+function infillCentreLimitForSource(source: 'strip_620' | 'sheet_panels'): number {
+  return source === 'strip_620' ? INFILL_STRIP_MAX_SHORT_SIDE_M : INFILL_SHEET_MAX_SHORT_SIDE_M;
 }
 
 function lerp(a: number, b: number, t: number): number {
@@ -2045,28 +2071,26 @@ function buildMaterialsV1Internal(
   const flashingBandTotals = resolveFlashingBandTotals(inputs, derived);
   pushFlashingMaterialLines(lines, flashingBandTotals);
 
-  // === INFILLS (vertical acrylic + joiners) ===
+  // === INFILLS (orientation-aware acrylic + joiners) ===
   const infills = Array.isArray((inputs as any).infills) ? ((inputs as any).infills as NonNullable<InputsNormalizedV1['infills']>) : [];
   let infillSheetAreaM2 = 0;
   const infillSheetWasteFactor = INFILL_SHEET_WASTE_FACTOR_DEFAULT;
   let infillJoinerTotalM = 0;
 
-  const rafterCountAlongLength = Math.max(0, Math.round(Number(derived.rafter_count ?? 0)));
-  const roofRafterSpacingM =
-    rafterCountAlongLength > 1 ? Math.max(0.05, inputs.length_m / (rafterCountAlongLength - 1)) : INFILL_MAX_PANEL_WIDTH_M_DEFAULT;
-
-  const isSupportedInternal = (mode: string | undefined, x: number, widthM: number, positions?: number[]) => {
+  const isSupportedInternal = (mode: string | undefined, x: number, spanM: number, positions?: number[]) => {
     if (mode === 'match_roof_rafters') return true;
-    if (mode === 'center') return Math.abs(x - widthM / 2) < 0.02;
+    if (mode === 'center') return Math.abs(x - spanM / 2) < 0.02;
     if (mode === 'custom' && Array.isArray(positions)) return positions.some((p) => Math.abs(x - Number(p)) < 0.02);
     return false;
   };
 
   for (const infillRaw of infills) {
     const qty = Math.max(1, Math.round(Number((infillRaw as any).qty ?? 1)));
+    const infillLabel = String((infillRaw as any).label ?? (infillRaw as any).id ?? 'infill');
     const locationRaw = String((infillRaw as any).location ?? 'custom');
     const isFrontOrHouse = locationRaw === 'front' || locationRaw === 'house';
-    const acrylicSource = String((infillRaw as any).acrylic_source ?? 'sheet_panels') as 'strip_620' | 'sheet_panels';
+    const preferredAcrylicSource = String((infillRaw as any).acrylic_source ?? 'sheet_panels') as 'strip_620' | 'sheet_panels';
+    const panelOrientation = String((infillRaw as any).panel_orientation ?? 'vertical') === 'horizontal' ? 'horizontal' : 'vertical';
     const widthMode = String((infillRaw as any).width_mode ?? 'target_width') as 'match_roof_rafters' | 'target_width';
 
     const support = (infillRaw as any).support ?? {};
@@ -2085,101 +2109,137 @@ function buildMaterialsV1Internal(
     const shapeType = String(shape.type ?? 'rect');
 
     let widthM = 0;
+    let avgHeightM = 0;
+    let maxHeightM = 0;
     let heightAt = (_t01: number): number => 0;
     if (shapeType === 'rect') {
       widthM = Math.max(0, Number(shape.width_m ?? 0));
       const h = Math.max(0, Number(shape.height_m ?? 0));
       heightAt = () => h;
+      avgHeightM = h;
+      maxHeightM = h;
     } else if (shapeType === 'mono_slope') {
       widthM = Math.max(0, Number(shape.width_m ?? 0));
       const h0 = Math.max(0, Number(shape.height_low_m ?? 0));
       const h1 = Math.max(0, Number(shape.height_high_m ?? 0));
       heightAt = (t01: number) => lerp(h0, h1, clampPos(t01, 0, 1));
+      avgHeightM = (h0 + h1) / 2;
+      maxHeightM = Math.max(h0, h1);
     } else {
       pushWarning(`Unsupported infill shape '${shapeType}'; skipping infill.`);
       continue;
     }
 
-    if (widthM <= 0) continue;
+    if (widthM <= 0 || maxHeightM <= 0) continue;
 
-    const maxPanelW = clampPos(Number((infillRaw as any).max_panel_width_m ?? INFILL_MAX_PANEL_WIDTH_M_DEFAULT), 0.2, 1.2);
-    let targetW = maxPanelW;
-    if (acrylicSource === 'strip_620') {
-      targetW = INFILL_STRIP_WIDTH_M;
-    } else if (widthMode === 'match_roof_rafters' && isFrontOrHouse) {
-      targetW = Math.min(maxPanelW, roofRafterSpacingM);
+    const runSideM = panelOrientation === 'vertical' ? maxHeightM : widthM;
+    const acrossSideM = panelOrientation === 'vertical' ? widthM : maxHeightM;
+    if (runSideM <= 0 || acrossSideM <= 0) continue;
+
+    const sourceSelection = pickInfillSourceForRun(preferredAcrylicSource, runSideM);
+    if (!sourceSelection.source) {
+      pushWarning(
+        `Infill '${infillLabel}': run side ${roundMoney(runSideM)}m exceeds sheet (${roundMoney(
+          INFILL_SHEET_MAX_RUN_M,
+        )}m) and strip (${roundMoney(INFILL_STRIP_MAX_RUN_M)}m) limits; skipping infill.`,
+      );
+      continue;
+    }
+    const acrylicSource = sourceSelection.source;
+    if (sourceSelection.switched) {
+      pushWarning(
+        `Infill '${infillLabel}': auto-switched acrylic source from ${preferredAcrylicSource} to ${acrylicSource} because run side ${roundMoney(
+          runSideM,
+        )}m exceeds ${roundMoney(infillRunLimitForSource(preferredAcrylicSource))}m.`,
+      );
+    }
+
+    const panelWidthsAcross = splitWidths(acrossSideM, infillCentreLimitForSource(acrylicSource));
+    if (!panelWidthsAcross.length) continue;
+
+    const boundaryAcross: number[] = [0];
+    for (const span of panelWidthsAcross) boundaryAcross.push(boundaryAcross[boundaryAcross.length - 1] + span);
+
+    const boundaryJoinerLens: number[] = [];
+    if (panelOrientation === 'vertical') {
+      for (const x of boundaryAcross) {
+        const t = widthM > 0 ? x / widthM : 0;
+        boundaryJoinerLens.push(Math.max(0, heightAt(t)));
+      }
     } else {
-      const requested = Number((infillRaw as any).target_panel_width_m ?? maxPanelW);
-      targetW = Math.min(maxPanelW, Math.max(0.2, requested));
+      for (let i = 0; i < boundaryAcross.length; i += 1) boundaryJoinerLens.push(Math.max(0, widthM));
     }
 
-    const panelWidths = splitWidths(widthM, targetW);
-    if (!panelWidths.length) continue;
+    const leftEdgeLen = Math.max(0, heightAt(0));
+    const rightEdgeLen = Math.max(0, heightAt(1));
+    const bottomEdgeLen = panelOrientation === 'vertical' ? Math.max(0, widthM) : Math.max(0, boundaryJoinerLens[0] ?? widthM);
+    const topEdgeLen =
+      panelOrientation === 'vertical'
+        ? Math.max(0, shapeType === 'mono_slope' ? widthM / Math.max(0.02, effectiveCos) : widthM)
+        : Math.max(0, boundaryJoinerLens[boundaryJoinerLens.length - 1] ?? widthM);
+    const sideEdgeA = panelOrientation === 'vertical' ? Math.max(0, boundaryJoinerLens[0] ?? leftEdgeLen) : leftEdgeLen;
+    const sideEdgeB =
+      panelOrientation === 'vertical'
+        ? Math.max(0, boundaryJoinerLens[boundaryJoinerLens.length - 1] ?? rightEdgeLen)
+        : rightEdgeLen;
 
-    const boundaryXs: number[] = [0];
-    for (const panelW of panelWidths) boundaryXs.push(boundaryXs[boundaryXs.length - 1] + panelW);
-
-    const verticalJoinerLens: number[] = [];
-    for (let i = 0; i < boundaryXs.length; i += 1) {
-      const x = boundaryXs[i];
-      const t = widthM > 0 ? x / widthM : 0;
-      verticalJoinerLens.push(heightAt(t));
-    }
-
-    const topEdgeJoinerLen = shapeType === 'mono_slope' ? widthM / Math.max(0.02, effectiveCos) : widthM;
-    const bottomEdgeJoinerLen = widthM;
-
-    for (const len of verticalJoinerLens) {
+    for (const len of boundaryJoinerLens) {
       if (len <= 0) continue;
-      for (let q = 0; q < qty; q += 1) addCuts('Joiners', [len], 'Infill joiners (vertical)', 'joinable', { origin_prefix: 'infill_joiner_v' });
+      for (let q = 0; q < qty; q += 1)
+        addCuts('Joiners', [len], 'Infill joiners (panel boundaries)', 'joinable', { origin_prefix: 'infill_joiner_boundary' });
       infillJoinerTotalM += len * qty;
     }
-    if (topEdgeJoinerLen > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('Joiners', [topEdgeJoinerLen], 'Infill joiners (top edge)', 'joinable', { origin_prefix: 'infill_joiner_top' });
-      infillJoinerTotalM += topEdgeJoinerLen * qty;
+    if (topEdgeLen > 0) {
+      for (let q = 0; q < qty; q += 1) addCuts('Joiners', [topEdgeLen], 'Infill joiners (top edge)', 'joinable', { origin_prefix: 'infill_joiner_top' });
+      infillJoinerTotalM += topEdgeLen * qty;
     }
-    if (bottomEdgeJoinerLen > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('Joiners', [bottomEdgeJoinerLen], 'Infill joiners (bottom edge)', 'joinable', { origin_prefix: 'infill_joiner_bottom' });
-      infillJoinerTotalM += bottomEdgeJoinerLen * qty;
-    }
-
-    if (!hasLeft && verticalJoinerLens[0] > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [verticalJoinerLens[0]], 'Infill support 50x50 (left jamb)', 'joinable', { origin_prefix: 'infill_5050_left' });
-    }
-    if (!hasRight && verticalJoinerLens[verticalJoinerLens.length - 1] > 0) {
-      const rightLen = verticalJoinerLens[verticalJoinerLens.length - 1];
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [rightLen], 'Infill support 50x50 (right jamb)', 'joinable', { origin_prefix: 'infill_5050_right' });
-    }
-    if (!hasTop && topEdgeJoinerLen > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [topEdgeJoinerLen], 'Infill support 50x50 (top rail)', 'joinable', { origin_prefix: 'infill_5050_top' });
-    }
-    if (!hasBottom && bottomEdgeJoinerLen > 0) {
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [bottomEdgeJoinerLen], 'Infill support 50x50 (bottom rail)', 'joinable', { origin_prefix: 'infill_5050_bottom' });
+    if (bottomEdgeLen > 0) {
+      for (let q = 0; q < qty; q += 1)
+        addCuts('Joiners', [bottomEdgeLen], 'Infill joiners (bottom edge)', 'joinable', { origin_prefix: 'infill_joiner_bottom' });
+      infillJoinerTotalM += bottomEdgeLen * qty;
     }
 
-    for (let i = 1; i < boundaryXs.length - 1; i += 1) {
-      const x = boundaryXs[i];
+    if (!hasLeft && sideEdgeA > 0) {
+      for (let q = 0; q < qty; q += 1) addCuts('50x50', [sideEdgeA], 'Infill support 50x50 (left jamb)', 'joinable', { origin_prefix: 'infill_5050_left' });
+    }
+    if (!hasRight && sideEdgeB > 0) {
+      for (let q = 0; q < qty; q += 1) addCuts('50x50', [sideEdgeB], 'Infill support 50x50 (right jamb)', 'joinable', { origin_prefix: 'infill_5050_right' });
+    }
+    if (!hasTop && topEdgeLen > 0) {
+      for (let q = 0; q < qty; q += 1) addCuts('50x50', [topEdgeLen], 'Infill support 50x50 (top rail)', 'joinable', { origin_prefix: 'infill_5050_top' });
+    }
+    if (!hasBottom && bottomEdgeLen > 0) {
+      for (let q = 0; q < qty; q += 1) addCuts('50x50', [bottomEdgeLen], 'Infill support 50x50 (bottom rail)', 'joinable', { origin_prefix: 'infill_5050_bottom' });
+    }
+
+    for (let i = 1; i < boundaryAcross.length - 1; i += 1) {
+      const x = boundaryAcross[i];
       const supported =
-        isSupportedInternal(internalMode, x, widthM, internalPositions) ||
-        (widthMode === 'match_roof_rafters' && isFrontOrHouse);
+        isSupportedInternal(internalMode, x, acrossSideM, internalPositions) ||
+        (panelOrientation === 'vertical' && widthMode === 'match_roof_rafters' && isFrontOrHouse);
       if (supported) continue;
-      const len = verticalJoinerLens[i];
+      const len = boundaryJoinerLens[i];
       if (len <= 0) continue;
-      for (let q = 0; q < qty; q += 1) addCuts('50x50', [len], 'Infill support 50x50 (internal mullion)', 'joinable', { origin_prefix: 'infill_5050_internal' });
+      for (let q = 0; q < qty; q += 1)
+        addCuts('50x50', [len], 'Infill support 50x50 (internal mullion)', 'joinable', { origin_prefix: 'infill_5050_internal' });
     }
 
     if (acrylicSource === 'strip_620') {
       const cuts: number[] = [];
-      for (let p = 0; p < panelWidths.length; p += 1) {
-        const x0 = boundaryXs[p];
-        const x1 = boundaryXs[p + 1];
-        const t0 = widthM > 0 ? x0 / widthM : 0;
-        const t1 = widthM > 0 ? x1 / widthM : 0;
-        const h0 = heightAt(t0);
-        const h1 = heightAt(t1);
-        const requiredLen = Math.max(h0, h1);
-        if (requiredLen <= 0) continue;
-        for (let q = 0; q < qty; q += 1) cuts.push(requiredLen);
+      for (let p = 0; p < panelWidthsAcross.length; p += 1) {
+        if (panelOrientation === 'vertical') {
+          const x0 = boundaryAcross[p];
+          const x1 = boundaryAcross[p + 1];
+          const t0 = widthM > 0 ? x0 / widthM : 0;
+          const t1 = widthM > 0 ? x1 / widthM : 0;
+          const requiredLen = Math.max(heightAt(t0), heightAt(t1));
+          if (requiredLen <= 0) continue;
+          for (let q = 0; q < qty; q += 1) cuts.push(requiredLen);
+        } else {
+          const requiredLen = Math.max(0, widthM);
+          if (requiredLen <= 0) continue;
+          for (let q = 0; q < qty; q += 1) cuts.push(requiredLen);
+        }
       }
 
       if (cuts.length) {
@@ -2221,17 +2281,7 @@ function buildMaterialsV1Internal(
         }
       }
     } else {
-      for (let p = 0; p < panelWidths.length; p += 1) {
-        const panelW = panelWidths[p];
-        const x0 = boundaryXs[p];
-        const x1 = boundaryXs[p + 1];
-        const t0 = widthM > 0 ? x0 / widthM : 0;
-        const t1 = widthM > 0 ? x1 / widthM : 0;
-        const h0 = heightAt(t0);
-        const h1 = heightAt(t1);
-        const area = Math.max(0, (h0 + h1) / 2) * Math.max(0, panelW);
-        infillSheetAreaM2 += area * qty;
-      }
+      infillSheetAreaM2 += Math.max(0, widthM * avgHeightM) * qty;
     }
   }
 
