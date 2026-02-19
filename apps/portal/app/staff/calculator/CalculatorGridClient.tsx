@@ -10,6 +10,9 @@ import type {
   BlindLineItem,
   BlindSystemType as BlindSystemInput,
   CalculatorBlindsState,
+  CalculatorFlashingBand,
+  CalculatorFlashingBandOrNone,
+  CalculatorFlashingsState,
   CalculatorInfillsState,
   CalculatorInputs,
   CalculatorModuleInputs,
@@ -106,6 +109,16 @@ const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
 const INFILL_MAX_PANEL_WIDTH_DEFAULT_M = 1.2;
 const INFILL_STRIP_WIDTH_M = 0.62;
 const INFILL_JOINER_TOLERANCE_M = 0.02;
+const FLASHING_EDGE_ALLOWANCE_M = 0.1;
+const FLASHING_BAND_OPTIONS: FieldOption[] = [
+  { label: '0-200mm', value: '0-200' },
+  { label: '201-300mm', value: '201-300' },
+  { label: '301-400mm', value: '301-400' },
+];
+const FLASHING_BAND_OR_NONE_OPTIONS: FieldOption[] = [
+  { label: 'No flashing', value: 'none' },
+  ...FLASHING_BAND_OPTIONS,
+];
 
 type InfillPresetKey = 'front' | 'house' | 'side' | 'gable_triangles' | 'wall_panel' | 'custom';
 
@@ -162,6 +175,13 @@ type InfillUiValidation = {
     internalSupportPositionsM?: string;
   };
   warnings: string[];
+};
+
+type FlashingDefaultUi = {
+  key: string;
+  label: string;
+  defaultBand: CalculatorFlashingBand;
+  lengthM: number;
 };
 
 function clampNumber(n: number, min: number, max: number): number {
@@ -455,6 +475,55 @@ function clampInt(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(n)));
 }
 
+function normalizeFlashingBand(value: unknown): CalculatorFlashingBand {
+  if (value === '201-300' || value === '301-400') return value;
+  return '0-200';
+}
+
+function normalizeFlashingBandOrNone(value: unknown): CalculatorFlashingBandOrNone {
+  if (value === 'none') return 'none';
+  return normalizeFlashingBand(value);
+}
+
+function makeFlashingExtraId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `flashing-extra-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function makeDefaultFlashings(): CalculatorFlashingsState {
+  return { defaultBands: {}, extras: [] };
+}
+
+function normalizeFlashingsStateForUi(value: unknown): CalculatorFlashingsState {
+  if (!value || typeof value !== 'object') return makeDefaultFlashings();
+  const source = value as any;
+
+  const defaultBandsRaw = source.defaultBands;
+  const defaultBands: Record<string, CalculatorFlashingBandOrNone> = {};
+  if (defaultBandsRaw && typeof defaultBandsRaw === 'object') {
+    for (const [key, bandRaw] of Object.entries(defaultBandsRaw as Record<string, unknown>)) {
+      const normalizedKey = String(key ?? '').trim();
+      if (!normalizedKey) continue;
+      defaultBands[normalizedKey] = normalizeFlashingBandOrNone(bandRaw);
+    }
+  }
+
+  const extrasRaw = Array.isArray(source.extras) ? source.extras : [];
+  const extras = extrasRaw
+    .filter((item: unknown) => item && typeof item === 'object')
+    .map((item: unknown) => {
+      const record = item as Record<string, unknown>;
+      const idRaw = typeof record.id === 'string' ? record.id.trim() : '';
+      return {
+        id: idRaw || makeFlashingExtraId(),
+        band: normalizeFlashingBand(record.band),
+        lengthM: String(record.lengthM ?? ''),
+      };
+    });
+
+  return { defaultBands, extras };
+}
+
 function hasNonEmptyValue(value: string | undefined): value is string {
   return value !== undefined && value !== null && String(value).trim() !== '';
 }
@@ -529,6 +598,8 @@ function labelForIssueField(id: string): string {
       return 'Acrylic bays (A)';
     case 'mixedAcrylicBaysB':
       return 'Acrylic bays (B)';
+    case 'flashings':
+      return 'Flashings';
     case 'timberRoofAboveType':
       return 'Timber roof above';
     case 'timberInsulatedPanelThicknessMm':
@@ -654,6 +725,72 @@ function computeBayCountsForModule(
   return { roofType, bayCountMain: 0, bayCountA, bayCountB: bayCountA };
 }
 
+function buildFlashingDefaultsForModule(
+  module: CalculatorModuleInputs,
+  derived?: Partial<{
+    rafter_length_m: number;
+    timber_area_m2: number;
+    ledger_length_m: number;
+  }>,
+): FlashingDefaultUi[] {
+  const roofType = getRoofTypeForModule(module);
+  const lengthM = Number.isFinite(toNumber(module.lengthM)) ? Math.max(0, toNumber(module.lengthM)) : 0;
+  const projectionM = Number.isFinite(toNumber(module.projectionM)) ? Math.max(0, toNumber(module.projectionM)) : 0;
+  const roofLengthM = roofType === 'hip_corner' ? lengthM + (Number.isFinite(toNumber(module.hipCornerLengthBM)) ? Math.max(0, toNumber(module.hipCornerLengthBM)) : 0) : lengthM;
+
+  const out: FlashingDefaultUi[] = [];
+  const addDefault = (key: string, label: string, defaultBand: CalculatorFlashingBand, lengthRaw: number) => {
+    const length = Number(lengthRaw);
+    if (!Number.isFinite(length) || length <= 0) return;
+    out.push({ key, label, defaultBand, lengthM: length });
+  };
+
+  if (roofType === 'pitched') {
+    addDefault('pitched_primary', 'Primary flashing', '201-300', roofLengthM);
+    if (module.invertedEnabled) {
+      addDefault('pitched_secondary', 'Secondary flashing', '201-300', roofLengthM);
+    }
+  } else if (roofType === 'gable' || roofType === 'low_gable') {
+    addDefault('gable_ridge', 'Ridge flashing', '301-400', roofLengthM);
+  } else if (roofType === 'hip') {
+    const ledgerLengthM =
+      typeof derived?.ledger_length_m === 'number' && Number.isFinite(derived.ledger_length_m) && derived.ledger_length_m > 0
+        ? derived.ledger_length_m
+        : roofLengthM;
+    addDefault('hip_ledger', 'Hip ledger flashing', '201-300', ledgerLengthM);
+  } else {
+    addDefault('roof_primary', 'Primary flashing', '201-300', roofLengthM);
+  }
+
+  const hasTimber =
+    module.roofMaterial === 'timber' ||
+    (module.roofMaterial === 'mixed' &&
+      (typeof derived?.timber_area_m2 === 'number' ? Number(derived.timber_area_m2) > 1e-6 : true));
+
+  if (!hasTimber) return out;
+
+  let slopeLengthM = typeof derived?.rafter_length_m === 'number' && Number.isFinite(derived.rafter_length_m) ? derived.rafter_length_m : NaN;
+  if (!Number.isFinite(slopeLengthM) || slopeLengthM <= 0) {
+    const pitchDeg = getPitchForModule(module);
+    const cos = Math.max(0.02, Math.cos((pitchDeg * Math.PI) / 180));
+    const runM = roofType === 'gable' || roofType === 'low_gable' || roofType === 'hip' ? projectionM / 2 : projectionM;
+    slopeLengthM = runM > 0 ? runM / cos : 0;
+  }
+  const edgeLengthM = Math.max(0, slopeLengthM + FLASHING_EDGE_ALLOWANCE_M);
+
+  if (roofType === 'pitched') {
+    addDefault('timber_edge_left', 'Timber edge rafter flashing (left)', '0-200', edgeLengthM);
+    addDefault('timber_edge_right', 'Timber edge rafter flashing (right)', '0-200', edgeLengthM);
+  } else if (roofType === 'gable' || roofType === 'low_gable') {
+    addDefault('timber_edge_a_left', 'Timber edge rafter flashing (A left)', '0-200', edgeLengthM);
+    addDefault('timber_edge_a_right', 'Timber edge rafter flashing (A right)', '0-200', edgeLengthM);
+    addDefault('timber_edge_b_left', 'Timber edge rafter flashing (B left)', '0-200', edgeLengthM);
+    addDefault('timber_edge_b_right', 'Timber edge rafter flashing (B right)', '0-200', edgeLengthM);
+  }
+
+  return out;
+}
+
 function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['infills'] | undefined {
   const infills = normalizeInfillsStateForUi((module as any).infills);
   if (!Array.isArray(infills.items) || infills.items.length === 0) return undefined;
@@ -765,6 +902,7 @@ function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInputs {
 
     timberRoofAllowanceExGst: '0',
 
+    flashings: makeDefaultFlashings(),
     overrides: {},
     infills: makeDefaultInfills(),
   };
@@ -1086,6 +1224,7 @@ function calculatorDraftSessionKey(projectId: string, fromEstimateId: string): s
 function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
   const source = value && typeof value === 'object' ? (value as Partial<CalculatorModuleInputs>) : {};
   const merged: CalculatorModuleInputs = { ...makeDefaultModule(), ...source };
+  merged.flashings = normalizeFlashingsStateForUi((source as any).flashings);
   merged.infills = normalizeInfillsStateForUi((source as any).infills);
 
   if (merged.pergolaStyle === 'gable' && merged.houseConnectionType === 'none') {
@@ -1501,6 +1640,15 @@ export default function CalculatorGridClient({
         }
       }
 
+      const flashings = normalizeFlashingsStateForUi(module.flashings);
+      const hasInvalidExtra = flashings.extras.some((extra) => {
+        const length = toNumber(extra.lengthM);
+        return !Number.isFinite(length) || length <= 0;
+      });
+      if (hasInvalidExtra) {
+        next.flashings = 'Each extra flashing must have a length greater than 0.';
+      }
+
       return next;
     });
   }, [values.modules]);
@@ -1637,6 +1785,72 @@ export default function CalculatorGridClient({
       modules[activeModuleIndex] = updated;
       return { ...prev, modules };
     });
+  };
+
+  const flashingsState = normalizeFlashingsStateForUi(activeModule.flashings);
+
+  const setFlashingsState = (updater: (state: CalculatorFlashingsState) => CalculatorFlashingsState) => {
+    setValues((prev) => {
+      const modules = prev.modules.slice();
+      const currentModule = modules[activeModuleIndex] ?? makeDefaultModule(activePergolaId);
+      const currentFlashings = normalizeFlashingsStateForUi(currentModule.flashings);
+      const nextFlashings = normalizeFlashingsStateForUi(updater(currentFlashings));
+      modules[activeModuleIndex] = { ...currentModule, flashings: nextFlashings };
+      return { ...prev, modules };
+    });
+  };
+
+  const setFlashingDefaultBand = (key: string, band: CalculatorFlashingBandOrNone) => {
+    const normalizedKey = String(key ?? '').trim();
+    if (!normalizedKey) return;
+    setFlashingsState((state) => ({
+      ...state,
+      defaultBands: {
+        ...state.defaultBands,
+        [normalizedKey]: normalizeFlashingBandOrNone(band),
+      },
+    }));
+  };
+
+  const addFlashingExtra = () => {
+    setFlashingsState((state) => ({
+      ...state,
+      extras: [
+        ...state.extras,
+        {
+          id: makeFlashingExtraId(),
+          band: '0-200',
+          lengthM: '',
+        },
+      ],
+    }));
+  };
+
+  const setFlashingExtra = (
+    id: string,
+    patch: Partial<{
+      band: CalculatorFlashingBand;
+      lengthM: string;
+    }>,
+  ) => {
+    setFlashingsState((state) => ({
+      ...state,
+      extras: state.extras.map((extra) => {
+        if (extra.id !== id) return extra;
+        return {
+          ...extra,
+          ...(patch.band !== undefined ? { band: normalizeFlashingBand(patch.band) } : null),
+          ...(patch.lengthM !== undefined ? { lengthM: String(patch.lengthM) } : null),
+        };
+      }),
+    }));
+  };
+
+  const removeFlashingExtra = (id: string) => {
+    setFlashingsState((state) => ({
+      ...state,
+      extras: state.extras.filter((extra) => extra.id !== id),
+    }));
   };
 
   const blindsState = normalizeBlindsStateForUi(values.blinds);
@@ -1780,6 +1994,24 @@ export default function CalculatorGridClient({
       const isPile = module.postConnectionType === 'pile_1m' || module.postConnectionType === 'pile_1_5m';
       const bayCounts = computeBayCountsForModule(module);
       const overrides = module.overrides ?? {};
+      const flashingsState = normalizeFlashingsStateForUi(module.flashings);
+      const flashingDefaultOverrides = Object.entries(flashingsState.defaultBands).map(([key, band]) => ({
+        key: String(key),
+        band: normalizeFlashingBandOrNone(band),
+      }));
+      const flashingExtras = flashingsState.extras
+        .map((extra) => ({
+          band: normalizeFlashingBand(extra.band),
+          length_m: toNumber(extra.lengthM),
+        }))
+        .filter((extra) => Number.isFinite(extra.length_m) && extra.length_m > 0);
+      const flashings =
+        flashingDefaultOverrides.length || flashingExtras.length
+          ? {
+              ...(flashingDefaultOverrides.length ? { default_overrides: flashingDefaultOverrides } : null),
+              ...(flashingExtras.length ? { extras: flashingExtras } : null),
+            }
+          : undefined;
 
       return {
         length_m,
@@ -1847,6 +2079,7 @@ export default function CalculatorGridClient({
                 })(),
               }
             : undefined,
+        flashings,
         hip_corner:
           module.pergolaStyle === 'hip_corner'
             ? {
@@ -2580,6 +2813,136 @@ export default function CalculatorGridClient({
       })}
     </div>
   );
+
+  const flashingDefaults = useMemo(
+    () =>
+      buildFlashingDefaultsForModule(activeModule, {
+        rafter_length_m: typeof moduleResult?.derived?.rafter_length_m === 'number' ? moduleResult.derived.rafter_length_m : undefined,
+        timber_area_m2: typeof (moduleResult?.derived as any)?.timber_area_m2 === 'number' ? (moduleResult?.derived as any).timber_area_m2 : undefined,
+        ledger_length_m: typeof moduleResult?.derived?.ledger_length_m === 'number' ? moduleResult.derived.ledger_length_m : undefined,
+      }),
+    [activeModule, moduleResult?.derived],
+  );
+
+  const flashingDefaultsWithSelection = useMemo(
+    () =>
+      flashingDefaults.map((item) => ({
+        ...item,
+        selectedBand: normalizeFlashingBandOrNone(flashingsState.defaultBands[item.key] ?? item.defaultBand),
+      })),
+    [flashingDefaults, flashingsState.defaultBands],
+  );
+
+  const flashingTotalsPreview = useMemo(() => {
+    const totals: Record<CalculatorFlashingBand, number> = { '0-200': 0, '201-300': 0, '301-400': 0 };
+    for (const item of flashingDefaultsWithSelection) {
+      if (item.selectedBand === 'none') continue;
+      totals[item.selectedBand] += item.lengthM;
+    }
+    for (const extra of flashingsState.extras) {
+      const length = toNumber(extra.lengthM);
+      if (!Number.isFinite(length) || length <= 0) continue;
+      totals[normalizeFlashingBand(extra.band)] += length;
+    }
+    return totals;
+  }, [flashingDefaultsWithSelection, flashingsState.extras]);
+
+  const flashingTotalLengthPreview = useMemo(
+    () => flashingTotalsPreview['0-200'] + flashingTotalsPreview['201-300'] + flashingTotalsPreview['301-400'],
+    [flashingTotalsPreview],
+  );
+
+  const flashingSummaryText =
+    flashingTotalLengthPreview > 0
+      ? `${formatMaybeNumber(flashingTotalLengthPreview, 2)}m total - 0-200: ${formatMaybeNumber(
+          flashingTotalsPreview['0-200'],
+          2,
+        )}m - 201-300: ${formatMaybeNumber(flashingTotalsPreview['201-300'], 2)}m - 301-400: ${formatMaybeNumber(
+          flashingTotalsPreview['301-400'],
+          2,
+        )}m`
+      : 'No flashing selected';
+
+  const flashingTileContent = (
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {flashingDefaultsWithSelection.map((item) => (
+        <div
+          key={item.key}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(160px, 220px)',
+            gap: 8,
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{item.label}</div>
+            <div className={styles.helper}>
+              {`${formatMaybeNumber(item.lengthM, 2)}m - default ${item.defaultBand}mm`}
+            </div>
+          </div>
+          <select
+            id={`flashing-default-${item.key}`}
+            className={styles.control}
+            value={item.selectedBand}
+            onChange={(event) => setFlashingDefaultBand(item.key, event.target.value as CalculatorFlashingBandOrNone)}
+          >
+            {FLASHING_BAND_OR_NONE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+
+      {flashingsState.extras.map((extra, index) => (
+        <div
+          key={extra.id}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) 140px 120px auto',
+            gap: 8,
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ fontSize: 13, fontWeight: 600 }}>{`Extra flashing ${index + 1}`}</div>
+          <select
+            id={`flashing-extra-band-${extra.id}`}
+            className={styles.control}
+            value={extra.band}
+            onChange={(event) => setFlashingExtra(extra.id, { band: event.target.value as CalculatorFlashingBand })}
+          >
+            {FLASHING_BAND_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <input
+            id={`flashing-extra-length-${extra.id}`}
+            className={styles.control}
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="Length (m)"
+            value={extra.lengthM}
+            onChange={(event) => setFlashingExtra(extra.id, { lengthM: event.target.value })}
+          />
+          <button type="button" className={styles.drawerClose} onClick={() => removeFlashingExtra(extra.id)}>
+            Delete
+          </button>
+        </div>
+      ))}
+
+      <button type="button" className={styles.drawerClose} onClick={addFlashingExtra}>
+        Add extra flashing
+      </button>
+
+      <div className={styles.helper}>{flashingSummaryText}</div>
+    </div>
+  );
+
   const schema: FieldSchemaItem[] = [
     {
       id: 'engine-status',
@@ -3051,6 +3414,14 @@ export default function CalculatorGridClient({
           ? 'Overrides default pitch for roof type'
           : 'Blank = default pitch',
       disabled: activeModule.boxPerimeterEnabled,
+    },
+    {
+      id: 'flashings',
+      label: 'Flashings',
+      type: 'custom',
+      content: flashingTileContent,
+      error: errors.flashings,
+      helperText: 'Defaults auto-apply by roof type; override each row or add extras.',
     },
     ...(activeModule.pergolaStyle === 'gable'
       ? [
@@ -3609,6 +3980,8 @@ export default function CalculatorGridClient({
     'downpipeElbowCount',
   ]);
 
+  const flashingsFields = pickFields(['flashings']);
+
   const overrideFields = pickFields([
     'ledgerProfileOverride',
     'rafterProfileOverride',
@@ -3679,6 +4052,7 @@ export default function CalculatorGridClient({
           <div className={styles.leftCol}>
             <FieldGroup title="Context" fields={contextFields} />
             <FieldGroup title="Structure" fields={structureFields} />
+            <FieldGroup title="Flashings" fields={flashingsFields} />
             <FieldGroup title="Overrides" fields={overrideFields} />
             <FieldGroup title="Add-ons" fields={addonFields} />
             <FieldGroup title="Connections & Site" fields={connectionFields} />

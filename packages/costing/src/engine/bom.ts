@@ -1,5 +1,5 @@
 import type { CostingConfigV1 } from './config';
-import type { DerivedV1, InputsNormalizedV1, MaterialsLineV1, MaterialsV1 } from './types';
+import type { DerivedV1, FlashingBandV1, InputsNormalizedV1, MaterialsLineV1, MaterialsV1 } from './types';
 import { evalArithmeticExpr } from './expr';
 import { normaliseColour, normaliseProfile } from './normalise';
 import {
@@ -73,6 +73,34 @@ function sum(nums: number[]): number {
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100) / 100;
+}
+
+const ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M = 0.3;
+const FLASHING_BAND_0_200: FlashingBandV1 = '0-200';
+const FLASHING_BAND_201_300: FlashingBandV1 = '201-300';
+const FLASHING_BAND_301_400: FlashingBandV1 = '301-400';
+const FLASHING_BAND_ORDER: readonly FlashingBandV1[] = [FLASHING_BAND_0_200, FLASHING_BAND_201_300, FLASHING_BAND_301_400];
+const FLASHING_MATERIALS_BY_BAND: Record<FlashingBandV1, { id: string; label: string; unit_cost_ex_gst: number }> = {
+  [FLASHING_BAND_0_200]: {
+    id: 'roof.flashing_0_200_m',
+    label: 'Flashing 0-200mm',
+    unit_cost_ex_gst: 15,
+  },
+  [FLASHING_BAND_201_300]: {
+    id: 'roof.flashing_201_300_m',
+    label: 'Flashing 201-300mm',
+    unit_cost_ex_gst: 25,
+  },
+  [FLASHING_BAND_301_400]: {
+    id: 'roof.flashing_301_400_m',
+    label: 'Flashing 301-400mm',
+    unit_cost_ex_gst: 35,
+  },
+};
+
+function joinerBottomFixingsForRun(runLengthM: number): number {
+  if (!Number.isFinite(runLengthM) || runLengthM <= 0) return 0;
+  return Math.ceil(runLengthM / ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M) + 1;
 }
 
 const isContinuousRunComponent = (component?: string) => /gutter|ledger|beam|stringer/i.test(String(component ?? ''));
@@ -507,6 +535,63 @@ function findFoamItem(config: CostingConfigV1, colour: InputsNormalizedV1['extru
       (it) => it.category === 'consumable' && it.unit === 'metre' && typeof it.name === 'string' && it.name.trim() === foamName,
     ) ?? null
   );
+}
+
+function resolveFlashingBandTotals(
+  inputs: InputsNormalizedV1,
+  derived: DerivedV1,
+): Record<FlashingBandV1, number> {
+  const totals: Record<FlashingBandV1, number> = {
+    '0-200': 0,
+    '201-300': 0,
+    '301-400': 0,
+  };
+
+  const fromInputs = (inputs as any).flashings?.totals_m_by_band as Record<string, unknown> | undefined;
+  if (fromInputs && typeof fromInputs === 'object') {
+    for (const band of FLASHING_BAND_ORDER) {
+      const n = Number(fromInputs[band] ?? 0);
+      totals[band] = Number.isFinite(n) && n > 0 ? n : 0;
+    }
+  }
+
+  if (totals[FLASHING_BAND_0_200] + totals[FLASHING_BAND_201_300] + totals[FLASHING_BAND_301_400] <= 1e-9) {
+    const d0 = Number((derived as any).flashing_0_200_total_m ?? 0);
+    const d1 = Number((derived as any).flashing_201_300_total_m ?? 0);
+    const d2 = Number((derived as any).flashing_301_400_total_m ?? 0);
+    totals[FLASHING_BAND_0_200] = Number.isFinite(d0) && d0 > 0 ? d0 : 0;
+    totals[FLASHING_BAND_201_300] = Number.isFinite(d1) && d1 > 0 ? d1 : 0;
+    totals[FLASHING_BAND_301_400] = Number.isFinite(d2) && d2 > 0 ? d2 : 0;
+  }
+
+  if (totals[FLASHING_BAND_0_200] + totals[FLASHING_BAND_201_300] + totals[FLASHING_BAND_301_400] <= 1e-9) {
+    const fallbackLength = Number(inputs.flashing_length_m ?? 0);
+    if (Number.isFinite(fallbackLength) && fallbackLength > 0) {
+      // Back-compat for older saved inputs that only have total flashing length.
+      totals[FLASHING_BAND_0_200] = fallbackLength;
+    }
+  }
+
+  return totals;
+}
+
+function pushFlashingMaterialLines(lines: MaterialsLineV1[], bandTotals: Record<FlashingBandV1, number>): void {
+  for (const band of FLASHING_BAND_ORDER) {
+    const qty = Math.max(0, Number(bandTotals[band] ?? 0));
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+
+    const item = FLASHING_MATERIALS_BY_BAND[band];
+    lines.push({
+      id: item.id,
+      label: item.label,
+      profile: null,
+      unit: 'metre',
+      qty: roundMoney(qty),
+      unit_cost_ex_gst: roundMoney(item.unit_cost_ex_gst),
+      line_cost_ex_gst: roundMoney(roundMoney(qty) * item.unit_cost_ex_gst),
+      notes: `Flashing material (${band}mm band).`,
+    });
+  }
 }
 
 function rafterDepthM(profile: string): number {
@@ -1400,12 +1485,24 @@ function buildMaterialsV1Internal(
     });
   };
 
+  let acrylicJoinerBottomTotalM = 0;
+  let acrylicJoinerTopTotalM = 0;
+  let acrylicJoinerBottomFixingsEach = 0;
+  let acrylicInstallAreaM2 = 0;
+
   if (inputs.roof_material === 'acrylic') {
     const joinerRunsTotal = Math.max(0, Math.round(Number((derived as any).joiner_runs_total ?? derived.rafter_count)));
     const joinerCountA = isHipCorner ? rafterCountA : joinerRunsTotal;
     const joinerLengthA = isHipCorner ? joinerPieceLengthA : Math.max(0, Number((derived as any).joiner_piece_length_m ?? rafterLength));
     const joinerCountB = isHipCorner ? rafterCountB : 0;
     const joinerLengthB = isHipCorner ? joinerPieceLengthB : 0;
+    const totalJoinerMetres = joinerCountA * joinerLengthA + joinerCountB * joinerLengthB;
+
+    acrylicJoinerBottomTotalM += totalJoinerMetres;
+    acrylicJoinerTopTotalM += totalJoinerMetres;
+    acrylicJoinerBottomFixingsEach +=
+      joinerCountA * joinerBottomFixingsForRun(joinerLengthA) + joinerCountB * joinerBottomFixingsForRun(joinerLengthB);
+    acrylicInstallAreaM2 += Math.max(0, Number((derived as any).acrylic_area_m2 ?? 0));
 
     if (joinerCountA > 0 && joinerLengthA > 0) {
       addCuts('Joiners', Array.from({ length: joinerCountA }).map(() => joinerLengthA), 'Joiners', 'joinable', {
@@ -1471,21 +1568,6 @@ function buildMaterialsV1Internal(
       }
     }
 
-    const flashingMetres = Math.max(0, inputs.flashing_length_m);
-    if (flashingMetres > 0) {
-      pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
-      lines.push({
-        id: 'placeholder.flashing_material_m',
-        label: 'Flashing (material placeholder)',
-        profile: null,
-        unit: 'metre',
-        qty: roundMoney(flashingMetres),
-        unit_cost_ex_gst: 0,
-        line_cost_ex_gst: 0,
-        notes: 'Placeholder line only (matches flashing labour length).',
-      });
-    }
-
     if (isHipCorner) {
       addAcrylicRoofingPanels({
         requiredLen: joinerPieceLengthA,
@@ -1539,6 +1621,8 @@ function buildMaterialsV1Internal(
         pushWarning('Mixed roof acrylic bays mode selected but no acrylic_bays_by_plane provided; skipping acrylic materials.');
       } else {
         let totalJoinerM = 0;
+        let totalBottomFixingsEach = 0;
+        acrylicInstallAreaM2 += Math.max(0, Number((derived as any).acrylic_area_m2 ?? 0));
 
         for (const plane of roofPlanes) {
           const planeId = typeof plane?.id === 'string' ? plane.id : '';
@@ -1565,6 +1649,7 @@ function buildMaterialsV1Internal(
               { origin_prefix: planeOriginPrefix, group_key: 'joiners_mixed' },
             );
             totalJoinerM += joinerRuns * planeJoinerPieceLenM;
+            totalBottomFixingsEach += joinerRuns * joinerBottomFixingsForRun(planeJoinerPieceLenM);
           }
 
           addAcrylicRoofingPanels({
@@ -1580,6 +1665,9 @@ function buildMaterialsV1Internal(
 
         const rubberMultiplier = 2; // both sides
         const rubberMetres = totalJoinerM * rubberMultiplier;
+        acrylicJoinerBottomTotalM += totalJoinerM;
+        acrylicJoinerTopTotalM += totalJoinerM;
+        acrylicJoinerBottomFixingsEach += totalBottomFixingsEach;
         if (rubberMetres > 0) {
           const topRubber = findRubberItem(config, 'Top V Rubber');
           const bottomRubber = findRubberItem(config, 'Bottom Flat Rubbers');
@@ -1629,22 +1717,9 @@ function buildMaterialsV1Internal(
           }
         }
 
-        const flashingMetres = Math.max(0, inputs.flashing_length_m);
-        if (flashingMetres > 0) {
-          pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
-          lines.push({
-            id: 'placeholder.flashing_material_m',
-            label: 'Flashing (material placeholder)',
-            profile: null,
-            unit: 'metre',
-            qty: roundMoney(flashingMetres),
-            unit_cost_ex_gst: 0,
-            line_cost_ex_gst: 0,
-            notes: 'Placeholder line only (matches flashing labour length).',
-          });
-        }
       }
     } else if (inputs.mixed_roof.mode === 'area_override') {
+      pushWarning('Mixed roof area override is excluded from acrylic split labour; using 0 acrylic/joiner labour drivers.');
       if (isHipCorner) {
         pushWarning('Mixed roof area override is not costed for hip corner yet; skipping acrylic materials.');
       } else {
@@ -1720,21 +1795,6 @@ function buildMaterialsV1Internal(
             }
           }
 
-          const flashingMetres = Math.max(0, inputs.flashing_length_m);
-          if (flashingMetres > 0) {
-            pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
-            lines.push({
-              id: 'placeholder.flashing_material_m',
-              label: 'Flashing (material placeholder)',
-              profile: null,
-              unit: 'metre',
-              qty: roundMoney(flashingMetres),
-              unit_cost_ex_gst: 0,
-              line_cost_ex_gst: 0,
-              notes: 'Placeholder line only (matches flashing labour length).',
-            });
-          }
-
           addAcrylicRoofingPanels({
             requiredLen: Math.max(0, Number((derived as any).acrylic_required_downslope_m ?? (derived as any).joiner_piece_length_m ?? joinerLength)),
             bayCount: acrylicBays,
@@ -1752,6 +1812,7 @@ function buildMaterialsV1Internal(
       const ridgeLen = isHipCorner ? inputs.length_m + Math.max(0, hipCornerLengthB) : inputs.length_m;
       const requiredLen = Math.max(0, ridgeLen);
       const maxLen = 6;
+      acrylicInstallAreaM2 += Math.max(0, Number((derived as any).acrylic_area_m2 ?? 0));
 
       const selectedLen = requiredLen <= maxLen ? stripLengths.find((l) => l >= requiredLen) ?? maxLen : maxLen;
       const barsUsed = requiredLen <= maxLen ? stripCount : stripCount * Math.max(1, Math.ceil(requiredLen / maxLen));
@@ -1782,6 +1843,9 @@ function buildMaterialsV1Internal(
       if (stripCount > 0 && requiredLen > 0) {
         const joinerLines = stripCount * 2;
         const joinerCuts = Array.from({ length: joinerLines }).map(() => requiredLen);
+        acrylicJoinerBottomTotalM += joinerLines * requiredLen;
+        acrylicJoinerTopTotalM += joinerLines * requiredLen;
+        acrylicJoinerBottomFixingsEach += joinerLines * joinerBottomFixingsForRun(requiredLen);
         if (joinerCuts.length)
           addCuts('Joiners', joinerCuts, 'Joiners (skylight edges)', 'joinable', {
             origin_prefix: 'joiner_skylight_edge',
@@ -1839,20 +1903,6 @@ function buildMaterialsV1Internal(
           }
         }
 
-        const flashingMetres = Math.max(0, inputs.flashing_length_m);
-        if (flashingMetres > 0) {
-          pushWarning('Flashing material not pricebooked yet; using $0/m placeholder (add real SKU/cost).');
-          lines.push({
-            id: 'placeholder.flashing_material_m',
-            label: 'Flashing (material placeholder)',
-            profile: null,
-            unit: 'metre',
-            qty: roundMoney(flashingMetres),
-            unit_cost_ex_gst: 0,
-            line_cost_ex_gst: 0,
-            notes: 'Placeholder line only (matches flashing labour length).',
-          });
-        }
       }
     }
   }
@@ -1990,6 +2040,10 @@ function buildMaterialsV1Internal(
       }
     }
   }
+
+  // Flashings are banded and apply across roof material modes.
+  const flashingBandTotals = resolveFlashingBandTotals(inputs, derived);
+  pushFlashingMaterialLines(lines, flashingBandTotals);
 
   // === INFILLS (vertical acrylic + joiners) ===
   const infills = Array.isArray((inputs as any).infills) ? ((inputs as any).infills as NonNullable<InputsNormalizedV1['infills']>) : [];
@@ -2537,6 +2591,7 @@ function buildMaterialsV1Internal(
     polystyrene_area_m2: Number((derived as any).polystyrene_area_m2 ?? 0) || 0,
     timber_roofing_screws_steel_count: Number((derived as any).timber_roofing_screws_steel_count ?? 0) || 0,
     timber_roofing_screws_insulated_count: Number((derived as any).timber_roofing_screws_insulated_count ?? 0) || 0,
+    acrylic_joiner_bottom_fixings_each: acrylicJoinerBottomFixingsEach,
   };
 
   for (const rule of config.hardware.rules) {
@@ -2739,6 +2794,10 @@ function buildMaterialsV1Internal(
     notes_and_warnings: warnings,
     derived_patch: {
       splice_join_count: spliceJoinCount,
+      acrylic_joiner_bottom_total_m: roundMoney(acrylicJoinerBottomTotalM),
+      acrylic_joiner_top_total_m: roundMoney(acrylicJoinerTopTotalM),
+      acrylic_joiner_bottom_fixings_each: Math.max(0, Math.round(acrylicJoinerBottomFixingsEach)),
+      acrylic_install_area_m2: roundMoney(acrylicInstallAreaM2),
     },
   };
 }

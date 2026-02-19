@@ -270,6 +270,7 @@ type ModalSurfaceProps = {
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  headerActions?: ReactNode;
   className?: string;
 };
 
@@ -280,6 +281,7 @@ export function ModalSurface({
   onClose,
   children,
   footer,
+  headerActions,
   className,
 }: ModalSurfaceProps) {
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -298,7 +300,7 @@ export function ModalSurface({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="start-modal-overlay fixed inset-0 z-[80] bg-black/45 backdrop-blur-[2px]" />
-        <div className="fixed inset-0 z-[90] flex items-end justify-center p-4 md:items-center">
+        <div className="fixed inset-0 z-[90] flex items-end justify-center p-0 md:items-center md:p-4">
           <Dialog.Content
             onCloseAutoFocus={(event) => {
               const previous = previousFocusRef.current;
@@ -307,41 +309,46 @@ export function ModalSurface({
                 previous.focus({ preventScroll: true });
               }
             }}
-            className={`start-modal-content relative flex h-[90vh] w-[min(1120px,calc(100vw-32px))] max-h-[90vh] flex-col overflow-hidden rounded-t-3xl border border-neutral-200 bg-white shadow-2xl outline-none md:h-auto md:max-h-[min(88vh,calc(100vh-32px))] md:rounded-2xl ${
+            className={`start-modal-content relative grid h-[92vh] w-full max-h-[92vh] grid-rows-[auto_1fr_auto] overflow-hidden rounded-t-2xl border border-neutral-200 bg-white shadow-2xl outline-none md:h-[88vh] md:w-[min(1120px,calc(100vw-32px))] md:max-h-[88vh] md:rounded-2xl ${
               className ?? ''
             }`}
           >
-            <div className="relative border-b border-border px-8 py-6">
-              <div className="space-y-2 pr-16">
-                <Dialog.Title className="text-[24px] font-semibold leading-[1.25] text-neutral-900">
-                  {title}
-                </Dialog.Title>
-                {description ? (
-                  <Dialog.Description className="text-base leading-7 text-neutral-700">
-                    {description}
-                  </Dialog.Description>
-                ) : null}
+            <div className="border-b border-black/10 px-5 pb-4 pt-5 md:px-8 md:pb-4 md:pt-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <Dialog.Title className="text-[24px] font-semibold leading-[1.25] text-neutral-900">
+                    {title}
+                  </Dialog.Title>
+                  {description ? (
+                    <Dialog.Description className="mt-2 text-[16px] leading-relaxed text-neutral-700">
+                      {description}
+                    </Dialog.Description>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  {headerActions}
+                  <Dialog.Close asChild>
+                    <button
+                      type="button"
+                      aria-label="Close"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/15 bg-white text-neutral-700 transition hover:border-black/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
+                        <path
+                          d="M6 6l12 12M18 6L6 18"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </button>
+                  </Dialog.Close>
+                </div>
               </div>
-              <Dialog.Close asChild>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-neutral-700 transition hover:border-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30"
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">
-                    <path
-                      d="M6 6l12 12M18 6L6 18"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              </Dialog.Close>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-8 py-8 text-base leading-7 text-neutral-800">{children}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 pb-24 text-base leading-7 text-neutral-800 md:px-8 md:py-6 md:pb-24">{children}</div>
 
             {footer ? <div className="start-modal-footer shrink-0">{footer}</div> : null}
           </Dialog.Content>
@@ -372,11 +379,14 @@ export function ModalActionBar({
   onSecondary,
   extraActions,
 }: ModalActionBarProps) {
+  const hasSelection = selectionLabel.trim().toLowerCase().startsWith('selected:');
+
   return (
-    <div className="start-modal-action-bar sticky bottom-0 relative border-t border-neutral-200 bg-white/85 px-5 py-4 shadow-[0_-16px_34px_-28px_rgba(15,23,42,0.7)] backdrop-blur md:px-8 md:py-5">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 -top-4 h-4 bg-gradient-to-t from-white/75 to-transparent" />
+    <div className="start-modal-action-bar sticky bottom-0 z-10 border-t border-black/10 bg-white/80 px-5 py-4 shadow-[0_-14px_26px_-22px_rgba(15,23,42,0.6)] backdrop-blur-md md:px-8 md:py-4">
       <div className="relative flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
-        <p className="text-sm font-medium text-neutral-700">{selectionLabel}</p>
+        <p className={hasSelection ? 'text-[14px] font-semibold text-black/80' : 'text-[14px] text-black/50'}>
+          {selectionLabel}
+        </p>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {extraActions}
           {secondaryLabel && onSecondary ? (
@@ -464,9 +474,18 @@ type TabsProps<T extends string> = {
   tabs: ReadonlyArray<TabOption<T>>;
   activeId: T;
   onChange: (id: T) => void;
+  idPrefix?: string;
+  className?: string;
 };
 
-export function Tabs<T extends string>({ ariaLabel, tabs, activeId, onChange }: TabsProps<T>) {
+export function Tabs<T extends string>({
+  ariaLabel,
+  tabs,
+  activeId,
+  onChange,
+  idPrefix = 'tab',
+  className,
+}: TabsProps<T>) {
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -492,7 +511,12 @@ export function Tabs<T extends string>({ ariaLabel, tabs, activeId, onChange }: 
   };
 
   return (
-    <div role="tablist" aria-label={ariaLabel} className="flex flex-wrap gap-2" onKeyDown={onKeyDown}>
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className={className ?? 'flex flex-wrap items-center gap-2'}
+      onKeyDown={onKeyDown}
+    >
       {tabs.map((tab, index) => {
         const selected = tab.id === activeId;
         return (
@@ -503,13 +527,15 @@ export function Tabs<T extends string>({ ariaLabel, tabs, activeId, onChange }: 
             }}
             role="tab"
             type="button"
-            id={`tab-${tab.id}`}
+            id={`${idPrefix}-${tab.id}`}
             aria-selected={selected}
             aria-controls={`tabpanel-${tab.id}`}
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(tab.id)}
-            className={`rounded-full border px-3 py-1.5 text-[13px] font-medium uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
-              selected ? 'border-black bg-black text-white' : 'border-border bg-white text-neutral-700 hover:border-neutral-500'
+            className={`inline-flex h-8 shrink-0 items-center justify-center rounded-full px-3 text-[11px] font-semibold uppercase tracking-wide transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/30 ${
+              selected
+                ? 'border border-black bg-black text-white'
+                : 'border border-black/15 bg-white text-black/70 hover:border-black/25'
             }`}
           >
             {tab.label}
@@ -547,6 +573,7 @@ type TabbedOptionModalProps<T extends string> = {
   onClose: () => void;
   onContinue: () => void;
   renderSubPanel?: (tabId: T) => ReactNode;
+  optionHeading?: (option: TabbedModalOption<T>) => string | null;
   primaryCtaLabel?: string;
   canContinue?: boolean;
 };
@@ -563,6 +590,7 @@ export function TabbedOptionModal<T extends string>({
   onClose,
   onContinue,
   renderSubPanel,
+  optionHeading,
   primaryCtaLabel = 'Confirm & continue',
   canContinue = true,
 }: TabbedOptionModalProps<T>) {
@@ -578,6 +606,8 @@ export function TabbedOptionModal<T extends string>({
 
   const activeSelected = selectedDraftId === activeOption.id;
   const selectionLabel = selectedOption ? `Selected: ${selectedOption.label}` : 'Choose an option to continue';
+  const tabOptions = options.map((option) => ({ id: option.id, label: option.label }));
+  const heading = optionHeading?.(activeOption) ?? activeOption.label;
 
   return (
     <ModalSurface
@@ -585,6 +615,18 @@ export function TabbedOptionModal<T extends string>({
       title={title}
       description={description}
       onClose={onClose}
+      headerActions={
+        <div className="hidden lg:flex">
+          <Tabs
+            ariaLabel={`${title} options`}
+            tabs={tabOptions}
+            activeId={activeTabId}
+            onChange={onTabChange}
+            idPrefix="tab-header"
+            className="flex items-center gap-2"
+          />
+        </div>
+      }
       footer={
         <ModalActionBar
           selectionLabel={selectionLabel}
@@ -596,17 +638,25 @@ export function TabbedOptionModal<T extends string>({
         />
       }
     >
-      <div className="space-y-6">
-        <Tabs
-          ariaLabel={`${title} options`}
-          tabs={options.map((option) => ({ id: option.id, label: option.label }))}
-          activeId={activeTabId}
-          onChange={onTabChange}
-        />
-
-        <section id={`tabpanel-${activeOption.id}`} role="tabpanel" aria-labelledby={`tab-${activeOption.id}`} className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)] lg:items-start">
-            <div className="overflow-hidden rounded-xl border border-border bg-neutral-100">
+      <section
+        id={`tabpanel-${activeOption.id}`}
+        role="tabpanel"
+        aria-labelledby={`tab-header-${activeOption.id} tab-body-${activeOption.id}`}
+        className="space-y-6"
+      >
+        <div className="grid items-start gap-8 md:grid-cols-[1.15fr_1fr]">
+          <div>
+            <div className="lg:hidden">
+              <Tabs
+                ariaLabel={`${title} options`}
+                tabs={tabOptions}
+                activeId={activeTabId}
+                onChange={onTabChange}
+                idPrefix="tab-body"
+                className="flex items-center gap-2 overflow-x-auto pb-1"
+              />
+            </div>
+            <div className="mt-4 overflow-hidden rounded-xl border border-black/10 bg-neutral-100 lg:mt-0">
               <div className="relative aspect-[3/2]">
                 <Image
                   src={activeOption.image.src}
@@ -617,57 +667,62 @@ export function TabbedOptionModal<T extends string>({
                 />
               </div>
             </div>
-            <div className="space-y-4">
-              <p className="text-base leading-7 text-neutral-800">{activeOption.summary}</p>
-              {activeOption.bestFor?.length ? (
-                <div className="space-y-2">
-                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Best for</p>
-                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
-                    {activeOption.bestFor.slice(0, 3).map((item) => (
-                      <li key={`${activeOption.id}-best-${item}`}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {activeOption.consider?.length ? (
-                <div className="space-y-2">
-                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Consider</p>
-                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
-                    {activeOption.consider.slice(0, 2).map((item) => (
-                      <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {activeOption.microEducation ? (
-                <p className="rounded-lg border border-border bg-neutral-50 px-4 py-3 text-base leading-7 text-neutral-700">
-                  {activeOption.microEducation}
-                </p>
-              ) : null}
-              <div className="space-y-2">
-                <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Example use case</p>
-                <p className="text-base leading-7 text-neutral-700">{activeOption.exampleUseCase}</p>
-              </div>
-              {activeOption.worksWellWith?.length ? (
-                <div className="space-y-2">
-                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Works well with</p>
-                  <div className="flex flex-wrap gap-2">
-                    {activeOption.worksWellWith.map((item) => (
-                      <span
-                        key={`${activeOption.id}-works-${item}`}
-                        className="rounded-full border border-border bg-neutral-50 px-2.5 py-1 text-[13px] leading-5 text-neutral-700"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
           </div>
-          {renderSubPanel ? renderSubPanel(activeOption.id) : null}
-        </section>
-      </div>
+          <div className="min-w-0">
+            <h3 className="text-[20px] font-semibold leading-tight text-neutral-900">{heading}</h3>
+            <p className="mt-2 text-[16px] leading-relaxed text-black/70">{activeOption.summary}</p>
+            {activeOption.bestFor?.length ? (
+              <div className="mt-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Best for</p>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
+                  {activeOption.bestFor.slice(0, 3).map((item) => (
+                    <li key={`${activeOption.id}-best-${item}`}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {activeOption.consider?.length ? (
+              <div className="mt-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Consider</p>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
+                  {activeOption.consider.slice(0, 2).map((item) => (
+                    <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {activeOption.microEducation ? (
+              <div
+                className="mt-4 rounded-xl border border-black/10 border-l-2 bg-black/[0.02] p-4 pl-4"
+                style={{ borderLeftColor: 'var(--color-brand)' }}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-black/40">Insight</p>
+                <p className="mt-1 text-[15px] leading-relaxed text-black/70">{activeOption.microEducation}</p>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Example use case</p>
+              <p className="mt-4 text-[15px] leading-relaxed text-black/70">{activeOption.exampleUseCase}</p>
+            </div>
+            {activeOption.worksWellWith?.length ? (
+              <div className="mt-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Works well with</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {activeOption.worksWellWith.map((item) => (
+                    <span
+                      key={`${activeOption.id}-works-${item}`}
+                      className="inline-flex h-7 items-center rounded-full border border-black/10 px-3 text-[12px] text-black/70"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        {renderSubPanel ? renderSubPanel(activeOption.id) : null}
+      </section>
     </ModalSurface>
   );
 }
@@ -745,6 +800,8 @@ export function ExtrasExplorerModal<T extends string>({
     : activeSelected
       ? 'Remove extra'
       : 'Add this extra';
+  const tabOptions = options.map((option) => ({ id: option.id, label: option.label }));
+  const heading = activeOption.label;
 
   return (
     <ModalSurface
@@ -752,6 +809,18 @@ export function ExtrasExplorerModal<T extends string>({
       title={title}
       description="Add or remove extras in one session, then continue when your selection is ready."
       onClose={onClose}
+      headerActions={
+        <div className="hidden lg:flex">
+          <Tabs
+            ariaLabel="Extras"
+            tabs={tabOptions}
+            activeId={activeOption.id}
+            onChange={onActiveExtraChange}
+            idPrefix="tab-header"
+            className="flex items-center gap-2"
+          />
+        </div>
+      }
       footer={
         <ModalActionBar
           selectionLabel={selectionLabel}
@@ -783,17 +852,25 @@ export function ExtrasExplorerModal<T extends string>({
         />
       }
     >
-      <div className="space-y-6">
-        <Tabs
-          ariaLabel="Extras"
-          tabs={options.map((option) => ({ id: option.id, label: option.label }))}
-          activeId={activeOption.id}
-          onChange={onActiveExtraChange}
-        />
-
-        <section id={`tabpanel-${activeOption.id}`} role="tabpanel" aria-labelledby={`tab-${activeOption.id}`} className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)] lg:items-start">
-            <div className="overflow-hidden rounded-xl border border-border bg-neutral-100">
+      <section
+        id={`tabpanel-${activeOption.id}`}
+        role="tabpanel"
+        aria-labelledby={`tab-header-${activeOption.id} tab-body-${activeOption.id}`}
+        className="space-y-6"
+      >
+        <div className="grid items-start gap-8 md:grid-cols-[1.15fr_1fr]">
+          <div>
+            <div className="lg:hidden">
+              <Tabs
+                ariaLabel="Extras"
+                tabs={tabOptions}
+                activeId={activeOption.id}
+                onChange={onActiveExtraChange}
+                idPrefix="tab-body"
+                className="flex items-center gap-2 overflow-x-auto pb-1"
+              />
+            </div>
+            <div className="mt-4 overflow-hidden rounded-xl border border-black/10 bg-neutral-100 lg:mt-0">
               <div className="relative aspect-[3/2]">
                 <Image
                   src={activeOption.image.src}
@@ -804,56 +881,61 @@ export function ExtrasExplorerModal<T extends string>({
                 />
               </div>
             </div>
-            <div className="space-y-4">
-              <p className="text-base leading-7 text-neutral-800">{activeOption.summary}</p>
-              {activeOption.bestFor?.length ? (
-                <div className="space-y-2">
-                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Best for</p>
-                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
-                    {activeOption.bestFor.slice(0, 3).map((item) => (
-                      <li key={`${activeOption.id}-best-${item}`}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {activeOption.consider?.length ? (
-                <div className="space-y-2">
-                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Consider</p>
-                  <ul className="list-disc space-y-1.5 pl-5 text-base leading-7 text-neutral-700">
-                    {activeOption.consider.slice(0, 2).map((item) => (
-                      <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {activeOption.microEducation ? (
-                <p className="rounded-lg border border-border bg-neutral-50 px-4 py-3 text-base leading-7 text-neutral-700">
-                  {activeOption.microEducation}
-                </p>
-              ) : null}
-              <div className="space-y-2">
-                <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Example use case</p>
-                <p className="text-base leading-7 text-neutral-700">{activeOption.exampleUseCase}</p>
-              </div>
-              {activeOption.worksWellWith?.length ? (
-                <div className="space-y-2">
-                  <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-neutral-500">Works well with</p>
-                  <div className="flex flex-wrap gap-2">
-                    {activeOption.worksWellWith.map((item) => (
-                      <span
-                        key={`${activeOption.id}-works-${item}`}
-                        className="rounded-full border border-border bg-neutral-50 px-2.5 py-1 text-[13px] leading-5 text-neutral-700"
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
           </div>
-        </section>
-      </div>
+          <div className="min-w-0">
+            <h3 className="text-[20px] font-semibold leading-tight text-neutral-900">{heading}</h3>
+            <p className="mt-2 text-[16px] leading-relaxed text-black/70">{activeOption.summary}</p>
+            {activeOption.bestFor?.length ? (
+              <div className="mt-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Best for</p>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
+                  {activeOption.bestFor.slice(0, 3).map((item) => (
+                    <li key={`${activeOption.id}-best-${item}`}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {activeOption.consider?.length ? (
+              <div className="mt-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Consider</p>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-[15px] leading-relaxed text-black/80">
+                  {activeOption.consider.slice(0, 2).map((item) => (
+                    <li key={`${activeOption.id}-consider-${item}`}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {activeOption.microEducation ? (
+              <div
+                className="mt-4 rounded-xl border border-black/10 border-l-2 bg-black/[0.02] p-4 pl-4"
+                style={{ borderLeftColor: 'var(--color-brand)' }}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-black/40">Insight</p>
+                <p className="mt-1 text-[15px] leading-relaxed text-black/70">{activeOption.microEducation}</p>
+              </div>
+            ) : null}
+            <div className="mt-6">
+              <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Example use case</p>
+              <p className="mt-4 text-[15px] leading-relaxed text-black/70">{activeOption.exampleUseCase}</p>
+            </div>
+            {activeOption.worksWellWith?.length ? (
+              <div className="mt-6">
+                <p className="text-[12px] font-semibold uppercase tracking-wide text-black/50">Works well with</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {activeOption.worksWellWith.map((item) => (
+                    <span
+                      key={`${activeOption.id}-works-${item}`}
+                      className="inline-flex h-7 items-center rounded-full border border-black/10 px-3 text-[12px] text-black/70"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
     </ModalSurface>
   );
 }
