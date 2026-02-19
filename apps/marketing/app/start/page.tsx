@@ -2493,6 +2493,10 @@ export default function StartPage() {
         onSelect={(value) => handleBranchSelection(value)}
         onClose={() => setActiveModal(null)}
         onContinue={confirmBranch}
+        optionHeading={(option) => {
+          if (option.id === 'professional') return 'Professional enquiries';
+          return `${option.label} projects`;
+        }}
         primaryCtaLabel="Confirm & continue"
         canContinue={branchCanContinue}
       />

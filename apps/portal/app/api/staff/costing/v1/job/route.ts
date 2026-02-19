@@ -11,6 +11,8 @@ const ROOF_MATERIALS = ['acrylic', 'timber', 'mixed'] as const;
 const TIMBER_ROOF_ABOVE_TYPES = ['insulated_panels', 'steel_corrugated', 'steel_tray'] as const;
 const TIMBER_TRAY_WIDTHS = [400, 500, 600] as const;
 const MIXED_ROOF_MODES = ['ridge_skylight', 'area_override', 'acrylic_bays'] as const;
+const FLASHING_BANDS = ['0-200', '201-300', '301-400'] as const;
+const FLASHING_BANDS_OR_NONE = ['none', '0-200', '201-300', '301-400'] as const;
 const EXTRUSION_COLOURS: ExtrusionColour[] = ['Black', 'White', 'Mill'];
 const GABLE_END_FRAMES = ['none', 'outer_end_only', 'both_ends'] as const;
 const HOUSE_CONNECTIONS = ['soffit', 'fascia', 'facade', 'none'] as const;
@@ -172,6 +174,66 @@ function parseInfills(raw: unknown): CostInputsV1['infills'] | { error: string }
   }
 
   return out;
+}
+
+function parseFlashings(raw: unknown): CostInputsV1['flashings'] | { error: string } | undefined {
+  if (raw === undefined) return undefined;
+  if (!raw || typeof raw !== 'object') return { error: 'modules[].flashings must be an object' };
+
+  const source = raw as any;
+  const defaultOverridesRaw = source.default_overrides;
+  const extrasRaw = source.extras;
+
+  const default_overrides: NonNullable<CostInputsV1['flashings']>['default_overrides'] = [];
+  if (defaultOverridesRaw !== undefined) {
+    if (!Array.isArray(defaultOverridesRaw)) return { error: 'modules[].flashings.default_overrides must be an array' };
+    for (let i = 0; i < defaultOverridesRaw.length; i += 1) {
+      const item = defaultOverridesRaw[i];
+      if (!item || typeof item !== 'object') return { error: `modules[].flashings.default_overrides[${i}] must be an object` };
+      const key = typeof (item as any).key === 'string' ? (item as any).key.trim() : '';
+      if (!key) return { error: `modules[].flashings.default_overrides[${i}].key must be a non-empty string` };
+
+      const bandRaw = (item as any).band;
+      if (bandRaw !== undefined && !isOneOf(FLASHING_BANDS_OR_NONE, bandRaw)) {
+        return { error: `Invalid modules[].flashings.default_overrides[${i}].band` };
+      }
+
+      default_overrides.push({
+        key,
+        band: (bandRaw === undefined ? '0-200' : bandRaw) as any,
+      });
+    }
+  }
+
+  const extras: NonNullable<CostInputsV1['flashings']>['extras'] = [];
+  if (extrasRaw !== undefined) {
+    if (!Array.isArray(extrasRaw)) return { error: 'modules[].flashings.extras must be an array' };
+    for (let i = 0; i < extrasRaw.length; i += 1) {
+      const item = extrasRaw[i];
+      if (!item || typeof item !== 'object') return { error: `modules[].flashings.extras[${i}] must be an object` };
+
+      const bandRaw = (item as any).band;
+      if (bandRaw !== undefined && !isOneOf(FLASHING_BANDS, bandRaw)) {
+        return { error: `Invalid modules[].flashings.extras[${i}].band` };
+      }
+
+      const length_m = toNumber((item as any).length_m);
+      if (!Number.isFinite(length_m) || length_m < 0) {
+        return { error: `modules[].flashings.extras[${i}].length_m must be a number >= 0` };
+      }
+
+      extras.push({
+        band: (bandRaw === undefined ? '0-200' : bandRaw) as any,
+        length_m,
+      });
+    }
+  }
+
+  if (!default_overrides.length && !extras.length) return undefined;
+  return {
+    ...(default_overrides.length ? { default_overrides } : null),
+    ...(extras.length ? { extras } : null),
+  };
 }
 
 function parseModule(raw: any): CostInputsV1 | { error: string } {
@@ -416,6 +478,8 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
 
   const parsedInfills = parseInfills(raw.infills);
   if (parsedInfills && 'error' in parsedInfills) return parsedInfills;
+  const parsedFlashings = parseFlashings(raw.flashings);
+  if (parsedFlashings && 'error' in parsedFlashings) return parsedFlashings;
 
   const resolvedRoofSpanM = roof_span_m_raw !== undefined ? roof_span_m : projection_m;
 
@@ -456,6 +520,7 @@ function parseModule(raw: any): CostInputsV1 | { error: string } {
     powdercoat_custom_colour: raw.powdercoat_custom_colour,
     mixed_roof,
     hip_corner,
+    flashings: parsedFlashings,
     infills: parsedInfills,
     overrides,
 

@@ -58,6 +58,44 @@ export type HipCornerInputsV1 = {
   projection_b_m?: number;
 };
 
+export type FlashingBandV1 = '0-200' | '201-300' | '301-400';
+export type FlashingBandOrNoneV1 = FlashingBandV1 | 'none';
+
+export type FlashingDefaultOverrideV1 = {
+  key: string;
+  band?: FlashingBandOrNoneV1;
+};
+
+export type FlashingExtraInputV1 = {
+  band?: FlashingBandV1;
+  length_m?: number;
+};
+
+export type FlashingInputsV1 = {
+  default_overrides?: FlashingDefaultOverrideV1[];
+  extras?: FlashingExtraInputV1[];
+};
+
+export type FlashingDefaultNormalizedV1 = {
+  key: string;
+  label: string;
+  length_m: number;
+  default_band: FlashingBandV1;
+  selected_band: FlashingBandOrNoneV1;
+};
+
+export type FlashingExtraNormalizedV1 = {
+  band: FlashingBandV1;
+  length_m: number;
+};
+
+export type FlashingNormalizedV1 = {
+  defaults: FlashingDefaultNormalizedV1[];
+  extras: FlashingExtraNormalizedV1[];
+  totals_m_by_band: Record<FlashingBandV1, number>;
+  total_length_m: number;
+};
+
 export type MixedRoofNormalizedV1 = {
   mode: MixedRoofMode;
   ridge_skylight: {
@@ -125,6 +163,7 @@ export type CostInputsV1 = {
   powdercoat_custom_colour?: string;
   mixed_roof?: MixedRoofInputsV1;
   hip_corner?: HipCornerInputsV1;
+  flashings?: FlashingInputsV1;
 
   post_count?: number;
   house_connection_type: HouseConnectionType;
@@ -221,6 +260,7 @@ export type InputsNormalizedV1 = {
   acrylic_sheet_count: number;
   flashing_length_m: number;
   foam_length_m: number;
+  flashings: FlashingNormalizedV1;
 
   travel_ex_gst: number;
   extras_allowance_ex_gst: number;
@@ -347,6 +387,15 @@ export type DerivedV1 = {
   roof_plane_count: number;
   total_rafter_pieces: number;
   joiner_runs_total: number;
+  acrylic_joiner_bottom_total_m?: number;
+  acrylic_joiner_top_total_m?: number;
+  acrylic_joiner_bottom_fixings_each?: number;
+  acrylic_install_area_m2?: number;
+  flashing_0_200_total_m?: number;
+  flashing_201_300_total_m?: number;
+  flashing_301_400_total_m?: number;
+  flashing_total_m?: number;
+  flashing_startup_count?: number;
   splice_join_count?: number;
   acrylic_plane_count_used?: number;
   gable_end_frame_count?: number;

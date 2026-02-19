@@ -346,7 +346,7 @@ describe('calculateCostV1', () => {
     expect(result.materials.lines.some((l) => l.profile === 'SP Gutter')).toBe(false);
     expect(result.materials.lines.some((l) => l.profile === 'Overhang Gutter 100x100')).toBe(false);
     expect(result.materials.lines.some((l) => String(l.label ?? '').includes('Foam'))).toBe(true);
-    expect(result.materials.lines.some((l) => l.id === 'placeholder.flashing_material_m')).toBe(true);
+    expect(result.materials.lines.some((l) => String(l.id).startsWith('roof.flashing_'))).toBe(true);
   });
 
   it('front beam override disables integrated gutter unless SP gutter selected', () => {
@@ -585,7 +585,7 @@ describe('calculateCostV1', () => {
     expect(result.inputs_normalized.gutter_type).toBeNull();
     expect(result.materials.lines.some((l) => l.profile === 'SP Gutter')).toBe(false);
     expect(result.derived.post_cut_height_outer_side_m).toBeGreaterThan(result.derived.post_cut_height_house_side_m ?? 0);
-    expect(result.materials.lines.some((l) => l.id === 'placeholder.flashing_material_m')).toBe(true);
+    expect(result.materials.lines.some((l) => String(l.id).startsWith('roof.flashing_'))).toBe(true);
   });
 
   it('inverted pitched + our gutter: SP gutter at house edge', () => {
@@ -694,7 +694,9 @@ describe('calculateCostV1', () => {
     const foamQty = (r: ReturnType<typeof calculateCostV1>) =>
       r.materials.lines.find((l) => l.id === 'consumable_04259b1a85')?.qty ?? 0;
     const flashingQty = (r: ReturnType<typeof calculateCostV1>) =>
-      r.materials.lines.find((l) => l.id === 'placeholder.flashing_material_m')?.qty ?? 0;
+      r.materials.lines
+        .filter((l) => String(l.id).startsWith('roof.flashing_'))
+        .reduce((sum, l) => sum + (typeof l.qty === 'number' ? l.qty : 0), 0);
     const joinerScrewsQty = (r: ReturnType<typeof calculateCostV1>) =>
       r.materials.lines.find((l) => l.id === 'fixing.joiner_screw_each')?.qty ?? 0;
 
@@ -714,10 +716,12 @@ describe('calculateCostV1', () => {
     expect(plexiQty(gable)).toBe(expectedGableSheets);
     expect(plexiQty(pitched)).toBe(expectedPitchedSheets);
 
-    // Joiner system + edge consumables exist on both planes.
-    expect(joinerScrewsQty(gable)).toBe(joinerScrewsQty(pitched) * 2);
+    // Joiner fixings are based on 300mm spacing + end allowance per run.
+    expect(joinerScrewsQty(gable)).toBe(gable.derived.acrylic_joiner_bottom_fixings_each);
+    expect(joinerScrewsQty(pitched)).toBe(pitched.derived.acrylic_joiner_bottom_fixings_each);
+    expect(joinerScrewsQty(gable)).toBeGreaterThan(joinerScrewsQty(pitched));
     expect(foamQty(gable)).toBe(foamQty(pitched) * 2);
-    expect(flashingQty(gable)).toBe(flashingQty(pitched) * 2);
+    expect(flashingQty(gable)).toBe(flashingQty(pitched));
   });
 
   it('gable acrylic: 6×6 @ 5° uses strip-yield from total bays', () => {
@@ -919,7 +923,11 @@ describe('calculateCostV1', () => {
     const cedarLine = result.materials.lines.find((l) => l.id === 'roofing-timber_cedar_sarking_wrc_110cover_12mm_lm');
     expect(cedarLine?.qty).toBeGreaterThan(0);
 
-    expect(result.install.actions.some((a) => a.id === 'roof.install_acrylic_roof_m2')).toBe(true);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_joiner_bottom_m')).toBe(true);
+    expect(result.install.actions.some((a) => a.id === 'roof.fix_joiner_bottom_each')).toBe(true);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_joiner_top_m')).toBe(true);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_acrylic_panels_m2')).toBe(true);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_acrylic_roof_m2')).toBe(false);
     expect(result.install.actions.some((a) => a.id === 'roof.install_timber_roof_m2')).toBe(true);
     expect(result.install.actions.some((a) => a.id === 'roof.install_purlins_m')).toBe(true);
   });
@@ -1004,7 +1012,7 @@ describe('calculateCostV1', () => {
     expect(insulated.materials.lines.find((l) => l.id === 'insulation.polystyrene_m2')).toBeUndefined();
   });
 
-  it('mixed: joiner fixings include +1 run per acrylic plane', () => {
+  it('mixed: joiner fixings follow 300mm spacing rule on acrylic joiner runs', () => {
     const result = calculateCostV1({
       length_m: 6,
       projection_m: 3,
@@ -1030,7 +1038,70 @@ describe('calculateCostV1', () => {
     const joinerFixings = result.materials.lines.find((l) => l.id === 'fixing.joiner_screw_each')?.qty ?? 0;
     expect(result.derived.acrylic_bays_total).toBe(3);
     expect(result.derived.acrylic_plane_count_used).toBe(2);
-    expect(joinerFixings).toBe((3 + 2) * 6);
+    expect(joinerFixings).toBe(result.derived.acrylic_joiner_bottom_fixings_each);
+    expect(result.derived.acrylic_joiner_top_total_m).toBeCloseTo(result.derived.acrylic_joiner_bottom_total_m ?? 0, 6);
+  });
+
+  it('acrylic: joiner fixing count uses ceil(length/0.3)+1 per run', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const runs = Math.max(0, Math.round(result.derived.joiner_runs_total ?? 0));
+    const runLength = Math.max(0, Number(result.derived.joiner_piece_length_m ?? 0));
+    const expectedFixings = runs * (Math.ceil(runLength / 0.3) + 1);
+    const joinerFixings = result.materials.lines.find((l) => l.id === 'fixing.joiner_screw_each')?.qty ?? 0;
+
+    expect(result.derived.acrylic_joiner_bottom_fixings_each).toBe(expectedFixings);
+    expect(joinerFixings).toBe(expectedFixings);
+  });
+
+  it('mixed: area override skips acrylic split labour drivers with warning', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 5,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'mixed',
+      mixed_roof: {
+        mode: 'area_override',
+        acrylic_area_m2: 6,
+      },
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.totals.notes_and_warnings.some((w) => w.includes('excluded from acrylic split labour'))).toBe(true);
+    expect(result.derived.acrylic_joiner_bottom_total_m ?? 0).toBe(0);
+    expect(result.derived.acrylic_joiner_top_total_m ?? 0).toBe(0);
+    expect(result.derived.acrylic_joiner_bottom_fixings_each ?? 0).toBe(0);
+    expect(result.derived.acrylic_install_area_m2 ?? 0).toBe(0);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_joiner_bottom_m')).toBe(false);
+    expect(result.install.actions.some((a) => a.id === 'roof.fix_joiner_bottom_each')).toBe(false);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_joiner_top_m')).toBe(false);
+    expect(result.install.actions.some((a) => a.id === 'roof.install_acrylic_panels_m2')).toBe(false);
   });
 
   it('mixed: acrylic bays clamp to plane bay count and warn', () => {
@@ -1489,9 +1560,65 @@ describe('calculateCostV1', () => {
     expect(result.derived.rafter_count).toBe(19);
     expect(result.derived.bracket_count).toBe(9);
     expect(result.install.actions.some((a) => a.id === 'roof.hip_corner_allowance')).toBe(true);
-    expect(result.install.actions.find((a) => a.id === 'roof.install_flashing_m')?.qty).toBe(10);
+    expect(result.install.actions.find((a) => a.id === 'roof.install_flashing_201_300_m')?.qty).toBe(10);
     expect(result.install.actions.find((a) => a.id === 'roof.apply_foam_seal_m')?.qty).toBe(10);
     expect(result.totals.cost_ex_gst).toBeGreaterThan(0);
+  });
+
+  it('flashings: default row override can disable a flashing (no startup when total flashing is zero)', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      flashings: {
+        default_overrides: [{ key: 'pitched_primary', band: 'none' }],
+      },
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.flashing_total_m).toBe(0);
+    expect(result.materials.lines.some((line) => String(line.id).startsWith('roof.flashing_'))).toBe(false);
+    expect(result.install.actions.some((a) => a.id.startsWith('roof.install_flashing_'))).toBe(false);
+    expect(result.install.actions.some((a) => a.id === 'roof.flashing_startup')).toBe(false);
+  });
+
+  it('flashings: extras add banded material/labour and startup applies once', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      flashings: {
+        extras: [{ band: '301-400', length_m: 2 }],
+      },
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    const band201 = result.materials.lines.find((line) => line.id === 'roof.flashing_201_300_m');
+    const band301 = result.materials.lines.find((line) => line.id === 'roof.flashing_301_400_m');
+    expect(band201?.qty).toBeCloseTo(6, 6);
+    expect(band301?.qty).toBeCloseTo(2, 6);
+    expect(band201?.line_cost_ex_gst).toBeCloseTo(150, 6);
+    expect(band301?.line_cost_ex_gst).toBeCloseTo(70, 6);
+
+    expect(result.install.actions.find((a) => a.id === 'roof.install_flashing_201_300_m')?.qty).toBeCloseTo(6, 6);
+    expect(result.install.actions.find((a) => a.id === 'roof.install_flashing_301_400_m')?.qty).toBeCloseTo(2, 6);
+    expect(result.install.actions.find((a) => a.id === 'roof.flashing_startup')?.qty).toBe(1);
   });
 
   it('gable: house edge our + outer edge our removes ledger and adds two SP gutter runs', () => {

@@ -84,6 +84,20 @@ export type CalculatorModuleOverrides = {
   strutProfile?: string;
 };
 
+export type CalculatorFlashingBand = '0-200' | '201-300' | '301-400';
+export type CalculatorFlashingBandOrNone = CalculatorFlashingBand | 'none';
+
+export type CalculatorFlashingExtraInput = {
+  id: string;
+  band: CalculatorFlashingBand;
+  lengthM: string;
+};
+
+export type CalculatorFlashingsState = {
+  defaultBands: Record<string, CalculatorFlashingBandOrNone>;
+  extras: CalculatorFlashingExtraInput[];
+};
+
 export type CalculatorModuleInputs = {
   pergolaId?: string;
   pergolaStyle: PergolaStyleUi;
@@ -132,6 +146,7 @@ export type CalculatorModuleInputs = {
 
   timberRoofAllowanceExGst: string;
 
+  flashings?: CalculatorFlashingsState;
   overrides?: CalculatorModuleOverrides;
   infills?: CalculatorInfillsState;
 };
@@ -207,6 +222,7 @@ export type LegacyCalculatorInputsV1 = {
   blinds?: CalculatorBlindsState | LegacyBlindInputsV1;
 
   overrides?: CalculatorModuleOverrides;
+  flashings?: CalculatorFlashingsState;
 };
 
 export function isCalculatorInputsV2(value: unknown): value is CalculatorInputs {
@@ -309,6 +325,7 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         hipCornerProjectionBM: '0',
         postCutHeightM: legacy.postCutHeightM,
         timberRoofAllowanceExGst: legacy.timberRoofAllowanceExGst,
+        flashings: { defaultBands: {}, extras: [] },
         overrides: legacy.overrides ?? {},
         infills: { items: [] },
       },

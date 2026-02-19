@@ -175,10 +175,10 @@
       "lines": [
         {
           "item_id": "fixing.joiner_screw_each",
-          "qty": "joiner_runs_total * 6"
+          "qty": "acrylic_joiner_bottom_fixings_each"
         }
       ],
-      "notes": "Acrylic joiner system fixings placeholder: assumes 6 screws per joiner run. Re-measure and replace with exact SKU quantities later."
+      "notes": "Acrylic joiner bottom fixings: ceil(run_length_m / 0.3) + 1 per run. Top joiner has no fixings."
     },
     {
       "id": "rule.mixed_joiner_fixings",
@@ -188,10 +188,10 @@
       "lines": [
         {
           "item_id": "fixing.joiner_screw_each",
-          "qty": "(acrylic_bays_total + acrylic_plane_count_used) * 6"
+          "qty": "acrylic_joiner_bottom_fixings_each"
         }
       ],
-      "notes": "Mixed roof joiner system fixings placeholder: assumes 6 screws per joiner run. Re-measure and replace with exact SKU quantities later."
+      "notes": "Mixed acrylic joiner bottom fixings: ceil(run_length_m / 0.3) + 1 per run. Top joiner has no fixings."
     },
     {
       "id": "rule.timber_purlin_fixings",
