@@ -26,6 +26,7 @@ const GABLE_GUTTER_EDGES = ['house', 'our'] as const;
 const OVERHANG_SUPPORT_BEAM_PROFILES = ['150x50', '200x50', 'RHS 150x50x3'] as const;
 const INFILL_LOCATIONS = ['front', 'house', 'side', 'gable_end', 'wall', 'custom'] as const;
 const INFILL_ACRYLIC_SOURCES = ['strip_620', 'sheet_panels'] as const;
+const INFILL_PANEL_ORIENTATIONS = ['vertical', 'horizontal'] as const;
 const INFILL_WIDTH_MODES = ['match_roof_rafters', 'target_width'] as const;
 const INFILL_INTERNAL_SUPPORT_MODES = ['none', 'match_roof_rafters', 'center', 'custom'] as const;
 const INFILL_SHAPE_TYPES = ['rect', 'mono_slope'] as const;
@@ -70,6 +71,9 @@ function parseInfills(raw: unknown): CostInputsV1['infills'] | { error: string }
 
     if (!isOneOf(INFILL_LOCATIONS, infill.location)) return { error: `Invalid infills[${i}].location` };
     if (!isOneOf(INFILL_ACRYLIC_SOURCES, infill.acrylic_source)) return { error: `Invalid infills[${i}].acrylic_source` };
+    if (infill.panel_orientation !== undefined && !isOneOf(INFILL_PANEL_ORIENTATIONS, infill.panel_orientation)) {
+      return { error: `Invalid infills[${i}].panel_orientation` };
+    }
     if (!isOneOf(INFILL_WIDTH_MODES, infill.width_mode)) return { error: `Invalid infills[${i}].width_mode` };
 
     const maxPanelWidth = infill.max_panel_width_m === undefined ? 1.2 : toNumber(infill.max_panel_width_m);
@@ -158,6 +162,7 @@ function parseInfills(raw: unknown): CostInputsV1['infills'] | { error: string }
       qty: Math.max(1, Math.round(qty)),
       location: infill.location,
       acrylic_source: infill.acrylic_source,
+      panel_orientation: infill.panel_orientation ?? 'vertical',
       width_mode: infill.width_mode,
       target_panel_width_m: targetPanelWidth,
       max_panel_width_m: maxPanelWidth,

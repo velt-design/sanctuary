@@ -189,6 +189,7 @@ describe('infill BOM takeoff', () => {
     qty: 1,
     location: 'side' as const,
     acrylic_source: 'sheet_panels' as const,
+    panel_orientation: 'vertical' as const,
     width_mode: 'target_width' as const,
     target_panel_width_m: 1,
     max_panel_width_m: 1.2,
@@ -231,6 +232,28 @@ describe('infill BOM takeoff', () => {
     });
 
     expect(result.materials.lines.some((line) => /^infill\.crystalite_620_\d+m$/.test(line.id))).toBe(true);
+  });
+
+  it('strip mode applies 0.64m short-side limit even when run is 3.0m', () => {
+    const result = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'acrylic',
+      infills: [
+        {
+          ...baseInfill,
+          acrylic_source: 'strip_620',
+          panel_orientation: 'horizontal',
+          shape: { type: 'rect', width_m: 3, height_m: 1 },
+          support: {
+            ...baseInfill.support,
+            internal_support_mode: 'none',
+          },
+        },
+      ],
+    });
+
+    expect(result.materials.lines.some((line) => /^infill\.crystalite_620_\d+m$/.test(String(line.id)))).toBe(true);
+    expect(result.materials.lines.some((line) => line.profile === '50x50')).toBe(true);
   });
 
   it('adds 50x50 when internal joiner lines are unsupported', () => {
@@ -291,5 +314,46 @@ describe('infill BOM takeoff', () => {
 
     expect(unsupported.materials.lines.some((line) => line.profile === '50x50')).toBe(true);
     expect(matched.materials.lines.some((line) => line.profile === '50x50')).toBe(false);
+  });
+
+  it('auto-switches sheet to strips for 6m horizontal run and avoids internal 50x50 when across <= 0.64m', () => {
+    const result = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'acrylic',
+      infills: [
+        {
+          ...baseInfill,
+          acrylic_source: 'sheet_panels',
+          panel_orientation: 'horizontal',
+          shape: { type: 'rect', width_m: 6, height_m: 0.6 },
+          support: {
+            ...baseInfill.support,
+            internal_support_mode: 'none',
+          },
+        },
+      ],
+    });
+
+    expect(result.totals.notes_and_warnings.some((note) => note.includes('auto-switched acrylic source'))).toBe(true);
+    expect(result.materials.lines.some((line) => /^infill\.crystalite_620_\d+m$/.test(String(line.id)))).toBe(true);
+    expect(result.materials.lines.some((line) => line.profile === '50x50')).toBe(false);
+  });
+
+  it('skips infill when run side exceeds both sheet and strip limits', () => {
+    const result = calculateCostV1({
+      ...baseInputs,
+      roof_material: 'acrylic',
+      infills: [
+        {
+          ...baseInfill,
+          acrylic_source: 'sheet_panels',
+          panel_orientation: 'horizontal',
+          shape: { type: 'rect', width_m: 6.2, height_m: 0.7 },
+        },
+      ],
+    });
+
+    expect(result.totals.notes_and_warnings.some((note) => note.includes('exceeds sheet') && note.includes('strip'))).toBe(true);
+    expect(result.materials.lines.some((line) => /^infill\./.test(String(line.id)))).toBe(false);
   });
 });

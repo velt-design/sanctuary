@@ -106,8 +106,10 @@ function inferStockLengthFromLabel(label: string): number | null {
 
 const RAFTER_SPACING_MM_MAX = 642;
 const DEFAULT_MIXED_ACRYLIC_BAYS = 2;
-const INFILL_MAX_PANEL_WIDTH_DEFAULT_M = 1.2;
-const INFILL_STRIP_WIDTH_M = 0.62;
+const INFILL_SHEET_MAX_RUN_M = 3.05;
+const INFILL_STRIP_MAX_RUN_M = 6.0;
+const INFILL_SHEET_MAX_SHORT_SIDE_M = 1.2;
+const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
 const INFILL_JOINER_TOLERANCE_M = 0.02;
 const FLASHING_EDGE_ALLOWANCE_M = 0.1;
 const FLASHING_DUPLICATE_TOLERANCE_M = 0.01;
@@ -137,13 +139,24 @@ const INFILL_PRESETS: Array<{ key: InfillPresetKey; label: string }> = [
 
 type InfillUiEstimate = {
   widthM: number;
+  maxHeightM: number;
   qty: number;
+  panelOrientationUsed: InfillLineItem['panelOrientation'];
+  runSideM: number;
+  acrossSideM: number;
+  materialRunLimitM: number;
+  maxCentreM: number;
+  preferredAcrylicSource: InfillLineItem['acrylicSource'];
+  acrylicSourceUsed: InfillLineItem['acrylicSource'];
+  acrylicSourceAutoSwitched: boolean;
+  acrylicSourceUnavailable: boolean;
   canMatchRafters: boolean;
   widthModeUsed: InfillLineItem['widthMode'];
   roofRafterSpacingM: number;
-  panelWidthM: number;
   panelCountEach: number;
   panelCountTotal: number;
+  internalJoinerLinesEach: number;
+  internalJoinerLinesTotal: number;
   joinerLinesEach: number;
   joinerLinesTotal: number;
   unsupportedInternalEach: number;
@@ -162,12 +175,12 @@ type InfillUiEstimate = {
   sheetAreaTotalM2: number;
   invalidHeightInput: boolean;
   widthInputInvalid: boolean;
-  maxPanelWidthWasClamped: boolean;
   invalidCustomPositions: boolean;
 };
 
 type InfillUiValidation = {
   errors: {
+    acrylicSource?: string;
     qty?: string;
     widthM?: string;
     heightM?: string;
@@ -200,6 +213,38 @@ function isFrontOrHouseLocation(location: InfillLineItem['location']): boolean {
 function normalizeWidthModeForLocation(item: InfillLineItem): InfillLineItem['widthMode'] {
   if (!isFrontOrHouseLocation(item.location)) return 'target_width';
   return item.widthMode === 'match_roof_rafters' ? 'match_roof_rafters' : 'target_width';
+}
+
+function normalizePanelOrientation(value: unknown): InfillLineItem['panelOrientation'] {
+  return value === 'horizontal' ? 'horizontal' : 'vertical';
+}
+
+function maxRunForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
+  return source === 'strip_620' ? INFILL_STRIP_MAX_RUN_M : INFILL_SHEET_MAX_RUN_M;
+}
+
+function pickAcrylicSourceForRun(
+  preferred: InfillLineItem['acrylicSource'],
+  runSideM: number,
+): {
+  source: InfillLineItem['acrylicSource'] | null;
+  switched: boolean;
+  runLimitM: number;
+} {
+  const preferredMax = maxRunForAcrylicSource(preferred);
+  if (runSideM <= preferredMax + 1e-6) {
+    return { source: preferred, switched: false, runLimitM: preferredMax };
+  }
+  const fallback: InfillLineItem['acrylicSource'] = preferred === 'sheet_panels' ? 'strip_620' : 'sheet_panels';
+  const fallbackMax = maxRunForAcrylicSource(fallback);
+  if (runSideM <= fallbackMax + 1e-6) {
+    return { source: fallback, switched: true, runLimitM: fallbackMax };
+  }
+  return { source: null, switched: false, runLimitM: Math.max(preferredMax, fallbackMax) };
+}
+
+function maxCentreForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
+  return source === 'strip_620' ? INFILL_STRIP_MAX_SHORT_SIDE_M : INFILL_SHEET_MAX_SHORT_SIDE_M;
 }
 
 function locationLabel(value: InfillLineItem['location']): string {
@@ -279,30 +324,19 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
     maxHeightM = Math.max(low, high);
   }
 
-  const maxPanelWidthRaw = toNumber(item.maxPanelWidthM);
-  const maxPanelWidthWasClamped = Number.isFinite(maxPanelWidthRaw) && maxPanelWidthRaw > INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-  const maxPanelWidthM = Number.isFinite(maxPanelWidthRaw)
-    ? clampNumber(maxPanelWidthRaw, 0.2, INFILL_MAX_PANEL_WIDTH_DEFAULT_M)
-    : INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-  const targetPanelWidthRaw = toNumber(item.targetPanelWidthM);
-  const targetPanelWidthM = Number.isFinite(targetPanelWidthRaw)
-    ? clampNumber(targetPanelWidthRaw, 0.2, INFILL_MAX_PANEL_WIDTH_DEFAULT_M)
-    : maxPanelWidthM;
-
+  const panelOrientationUsed = normalizePanelOrientation(item.panelOrientation);
+  const runSideM = panelOrientationUsed === 'vertical' ? maxHeightM : widthM;
+  const acrossSideM = panelOrientationUsed === 'vertical' ? widthM : maxHeightM;
+  const sourceDecision = pickAcrylicSourceForRun(item.acrylicSource, runSideM);
+  const acrylicSourceUsed = sourceDecision.source ?? item.acrylicSource;
+  const acrylicSourceUnavailable = sourceDecision.source === null;
+  const maxCentreM = maxCentreForAcrylicSource(acrylicSourceUsed);
   const canMatchRafters = isFrontOrHouseLocation(item.location);
   const widthModeUsed = normalizeWidthModeForLocation(item);
-
-  let panelWidthM = 0;
-  if (item.acrylicSource === 'strip_620') {
-    panelWidthM = INFILL_STRIP_WIDTH_M;
-  } else if (widthModeUsed === 'match_roof_rafters') {
-    panelWidthM = Math.min(maxPanelWidthM, Math.max(0.05, roofRafterSpacingM));
-  } else {
-    panelWidthM = Math.min(maxPanelWidthM, targetPanelWidthM);
-  }
-
-  const panelCountEach = widthM > 0 && panelWidthM > 0 ? Math.ceil(widthM / panelWidthM) : 0;
+  const panelCountEach = !acrylicSourceUnavailable && acrossSideM > 0 ? Math.max(1, Math.ceil(acrossSideM / maxCentreM)) : 0;
   const panelCountTotal = panelCountEach * qty;
+  const internalJoinerLinesEach = panelCountEach > 0 ? Math.max(0, panelCountEach - 1) : 0;
+  const internalJoinerLinesTotal = internalJoinerLinesEach * qty;
   const joinerLinesEach = panelCountEach > 0 ? panelCountEach + 1 : 0;
   const joinerLinesTotal = joinerLinesEach * qty;
 
@@ -322,40 +356,48 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
   }
 
   let unsupportedInternalEach = 0;
-  if (panelCountEach > 1 && widthM > 0) {
+  if (panelCountEach > 1 && acrossSideM > 0) {
     for (let i = 1; i < panelCountEach; i += 1) {
-      const x = (i * widthM) / panelCountEach;
+      const x = (i * acrossSideM) / panelCountEach;
       const mode = item.support.internalSupportMode ?? 'none';
       const supportedByMode =
         mode === 'match_roof_rafters' ||
-        (mode === 'center' && Math.abs(x - widthM / 2) <= INFILL_JOINER_TOLERANCE_M) ||
+        (mode === 'center' && Math.abs(x - acrossSideM / 2) <= INFILL_JOINER_TOLERANCE_M) ||
         (mode === 'custom' && customPositionsM.some((p) => Math.abs(p - x) <= INFILL_JOINER_TOLERANCE_M));
-      const supportedByRafters = canMatchRafters && widthModeUsed === 'match_roof_rafters';
+      const supportedByRafters = panelOrientationUsed === 'vertical' && canMatchRafters && widthModeUsed === 'match_roof_rafters';
       if (!supportedByMode && !supportedByRafters) unsupportedInternalEach += 1;
     }
   }
 
   const unsupportedInternalTotal = unsupportedInternalEach * qty;
-  const missingJambsEach = (item.support.hasLeft === false ? 1 : 0) + (item.support.hasRight === false ? 1 : 0);
+  const missingJambsEach =
+    panelOrientationUsed === 'vertical'
+      ? (item.support.hasLeft === false ? 1 : 0) + (item.support.hasRight === false ? 1 : 0)
+      : (item.support.hasBottom === false ? 1 : 0) + (item.support.hasTop === false ? 1 : 0);
   const missingJambsTotal = missingJambsEach * qty;
   const estimatedMullionsEach = unsupportedInternalEach + missingJambsEach;
   const estimatedMullionsTotal = estimatedMullionsEach * qty;
 
   let stripCutMinM: number | null = null;
   let stripCutMaxM: number | null = null;
-  if (item.acrylicSource === 'strip_620' && panelCountEach > 0 && widthM > 0) {
-    const cuts: number[] = [];
-    for (let panelIndex = 0; panelIndex < panelCountEach; panelIndex += 1) {
-      const x0 = (panelIndex * widthM) / panelCountEach;
-      const x1 = ((panelIndex + 1) * widthM) / panelCountEach;
-      const t0 = widthM > 0 ? x0 / widthM : 0;
-      const t1 = widthM > 0 ? x1 / widthM : 0;
-      const cut = Math.max(0, Math.max(heightAt(t0), heightAt(t1)));
-      if (cut > 0) cuts.push(cut);
-    }
-    if (cuts.length) {
-      stripCutMinM = Math.min(...cuts);
-      stripCutMaxM = Math.max(...cuts);
+  if (acrylicSourceUsed === 'strip_620' && panelCountEach > 0) {
+    if (panelOrientationUsed === 'vertical' && widthM > 0) {
+      const cuts: number[] = [];
+      for (let panelIndex = 0; panelIndex < panelCountEach; panelIndex += 1) {
+        const x0 = (panelIndex * widthM) / panelCountEach;
+        const x1 = ((panelIndex + 1) * widthM) / panelCountEach;
+        const t0 = widthM > 0 ? x0 / widthM : 0;
+        const t1 = widthM > 0 ? x1 / widthM : 0;
+        const cut = Math.max(0, Math.max(heightAt(t0), heightAt(t1)));
+        if (cut > 0) cuts.push(cut);
+      }
+      if (cuts.length) {
+        stripCutMinM = Math.min(...cuts);
+        stripCutMaxM = Math.max(...cuts);
+      }
+    } else if (runSideM > 0) {
+      stripCutMinM = runSideM;
+      stripCutMaxM = runSideM;
     }
   }
 
@@ -364,13 +406,24 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
 
   return {
     widthM,
+    maxHeightM,
     qty,
+    panelOrientationUsed,
+    runSideM,
+    acrossSideM,
+    materialRunLimitM: sourceDecision.runLimitM,
+    maxCentreM,
+    preferredAcrylicSource: item.acrylicSource,
+    acrylicSourceUsed,
+    acrylicSourceAutoSwitched: sourceDecision.switched,
+    acrylicSourceUnavailable,
     canMatchRafters,
     widthModeUsed,
     roofRafterSpacingM,
-    panelWidthM,
     panelCountEach,
     panelCountTotal,
+    internalJoinerLinesEach,
+    internalJoinerLinesTotal,
     joinerLinesEach,
     joinerLinesTotal,
     unsupportedInternalEach,
@@ -389,7 +442,6 @@ function estimateInfillUi(item: InfillLineItem, roofRafterSpacingM: number): Inf
     sheetAreaTotalM2,
     invalidHeightInput,
     widthInputInvalid,
-    maxPanelWidthWasClamped,
     invalidCustomPositions,
   };
 }
@@ -431,17 +483,15 @@ function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimate): Inf
     }
   }
 
-  const maxPanelWidthRaw = toNumber(item.maxPanelWidthM);
-  if (!Number.isFinite(maxPanelWidthRaw) || maxPanelWidthRaw < 0.2 || maxPanelWidthRaw > 1.2) {
-    errors.maxPanelWidthM = 'Enter a value between 0.2 and 1.2.';
-  }
-
-  const targetDisabled = item.acrylicSource === 'strip_620' || estimate.widthModeUsed === 'match_roof_rafters';
-  if (!targetDisabled) {
-    const targetPanelWidthRaw = toNumber(item.targetPanelWidthM);
-    if (!Number.isFinite(targetPanelWidthRaw) || targetPanelWidthRaw < 0.2 || targetPanelWidthRaw > 1.2) {
-      errors.targetPanelWidthM = 'Enter a value between 0.2 and 1.2.';
-    }
+  if (estimate.acrylicSourceUnavailable) {
+    errors.acrylicSource = `Run side ${formatMaybeNumber(estimate.runSideM, 2)}m exceeds all material limits (sheet ${formatMaybeNumber(
+      INFILL_SHEET_MAX_RUN_M,
+      2,
+    )}m, strips ${formatMaybeNumber(INFILL_STRIP_MAX_RUN_M, 2)}m).`;
+  } else if (estimate.acrylicSourceAutoSwitched) {
+    warnings.push(
+      `Acrylic source auto-switched from ${acrylicSourceLabel(estimate.preferredAcrylicSource)} to ${acrylicSourceLabel(estimate.acrylicSourceUsed)} because run side ${formatMaybeNumber(estimate.runSideM, 2)}m exceeds ${formatMaybeNumber(maxRunForAcrylicSource(estimate.preferredAcrylicSource), 2)}m.`,
+    );
   }
 
   const bottomOffsetRaw = toNumber(item.shape.bottomOffsetM ?? '0');
@@ -915,6 +965,7 @@ function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['i
       qty: Number.isFinite(qty) && qty >= 1 ? Math.round(qty) : 1,
       location: raw.location,
       acrylic_source: raw.acrylicSource,
+      panel_orientation: normalizePanelOrientation(raw.panelOrientation),
       width_mode: widthMode,
       target_panel_width_m: Number.isFinite(targetPanelWidth) ? targetPanelWidth : undefined,
       max_panel_width_m: Number.isFinite(maxPanelWidth) ? Math.min(1.2, Math.max(0.2, maxPanelWidth)) : undefined,
@@ -1041,6 +1092,7 @@ function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): InfillLineI
     qty: '1',
     location: 'custom',
     acrylicSource: 'sheet_panels',
+    panelOrientation: 'vertical',
     widthMode: 'target_width',
     targetPanelWidthM: '1',
     maxPanelWidthM: '1.2',
@@ -1063,6 +1115,7 @@ function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): InfillLineI
   return {
     ...base,
     ...overrides,
+    panelOrientation: normalizePanelOrientation(overrides.panelOrientation ?? base.panelOrientation),
     support: { ...base.support, ...(overrides.support ?? {}) },
     shape:
       overrides.shape?.type === 'mono_slope'
@@ -2803,31 +2856,19 @@ export default function CalculatorGridClient({
     return 'Not configured';
   }, [infillsState.items]);
 
-  const infillMaxPanelWidthSummary = useMemo(() => {
-    if (!infillsState.items.length) return INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-    let maxSeen = INFILL_MAX_PANEL_WIDTH_DEFAULT_M;
-    for (const item of infillsState.items) {
-      const parsed = toNumber(item.maxPanelWidthM);
-      if (!Number.isFinite(parsed)) continue;
-      maxSeen = Math.max(maxSeen, clampNumber(parsed, 0.2, INFILL_MAX_PANEL_WIDTH_DEFAULT_M));
-    }
-    return maxSeen;
-  }, [infillsState.items]);
-
   const infillsSummaryLine1 = infillsState.items.length
     ? `${infillsState.items.length} infills - front x${infillLocationCounts.front} - side x${infillLocationCounts.side} - gable x${infillLocationCounts.gable_end}`
     : 'No infills configured.';
-  const infillsSummaryLine2 = `System: ${infillSystemSummary} - Max width ${formatMaybeNumber(infillMaxPanelWidthSummary, 2)}m`;
+  const infillsSummaryLine2 = `System: ${infillSystemSummary} - Max short side: sheets ${formatMaybeNumber(
+    INFILL_SHEET_MAX_SHORT_SIDE_M,
+    2,
+  )}m, strips ${formatMaybeNumber(INFILL_STRIP_MAX_SHORT_SIDE_M, 2)}m`;
   const infillsSummaryLine3 = `Estimated: Panels ~${infillTotals.panels} - 50x50 mullions ~${infillTotals.mullions}`;
   const infillsSummaryText = infillsState.items.length
     ? `${infillsState.items.length} infills - Panels ~${infillTotals.panels} - 50x50 ~${infillTotals.mullions}`
     : 'Not configured';
 
   const selectedInfillDomIdBase = `${infillFieldPrefix}-selected`;
-  const selectedInfillWidthMode = selectedInfill ? normalizeWidthModeForLocation(selectedInfill) : 'target_width';
-  const selectedInfillIsStripMode = selectedInfill?.acrylicSource === 'strip_620';
-  const selectedInfillTargetWidthDisabled =
-    selectedInfillIsStripMode || selectedInfillWidthMode === 'match_roof_rafters';
   const selectedRectShape = selectedInfill?.shape.type === 'rect' ? selectedInfill.shape : null;
   const selectedMonoShape = selectedInfill?.shape.type === 'mono_slope' ? selectedInfill.shape : null;
   const selectedComputedWarnings = useMemo(() => {
@@ -2839,8 +2880,8 @@ export default function CalculatorGridClient({
     if (selectedInfillEstimate.invalidHeightInput) {
       warnings.push('One or more height values are invalid.');
     }
-    if (selectedInfillEstimate.maxPanelWidthWasClamped) {
-      warnings.push('Max panel width is above 1.2m and is clamped for estimate display.');
+    if (selectedInfillEstimate.acrylicSourceUnavailable) {
+      warnings.push('No valid acrylic source can span the selected run side.');
     }
     return warnings;
   }, [selectedInfillEstimate, selectedInfillValidation]);
@@ -4508,52 +4549,40 @@ export default function CalculatorGridClient({
                             { label: 'Sheet panels', value: 'sheet_panels' },
                             { label: '620 strips', value: 'strip_620' },
                           ]}
+                          helperText={`Max run: sheets ${formatMaybeNumber(INFILL_SHEET_MAX_RUN_M, 2)}m, strips ${formatMaybeNumber(
+                            INFILL_STRIP_MAX_RUN_M,
+                            2,
+                          )}m. Auto-switch applies when needed.`}
+                          error={selectedInfillValidation.errors.acrylicSource}
                         />
                         <FieldTile
-                          id={`${selectedInfillDomIdBase}-width-mode`}
-                          label="Width mode"
+                          id={`${selectedInfillDomIdBase}-orientation`}
+                          label="Panel orientation"
                           type="select"
-                          value={selectedInfillWidthMode}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { widthMode: v as InfillLineItem['widthMode'] })}
-                          options={
-                            isFrontOrHouseLocation(selectedInfill.location)
-                              ? [
-                                  { label: 'Match roof rafters', value: 'match_roof_rafters' },
-                                  { label: 'Target width', value: 'target_width' },
-                                ]
-                              : [{ label: 'Target width', value: 'target_width' }]
-                          }
-                          helperText={
-                            !isFrontOrHouseLocation(selectedInfill.location)
-                              ? 'Match rafters only applies to front/house faces.'
-                              : undefined
-                          }
+                          value={selectedInfill.panelOrientation}
+                          onChange={(v) => setInfillItem(selectedInfill.id, { panelOrientation: normalizePanelOrientation(v) })}
+                          options={[
+                            { label: 'Vertical', value: 'vertical' },
+                            { label: 'Horizontal', value: 'horizontal' },
+                          ]}
+                          helperText="Vertical is default when you add a new infill."
                         />
                         <FieldTile
-                          id={`${selectedInfillDomIdBase}-target-width`}
-                          label="Target panel width (m)"
-                          type="number"
-                          value={selectedInfill.targetPanelWidthM}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { targetPanelWidthM: String(v) })}
-                          disabled={selectedInfillTargetWidthDisabled}
-                          helperText={
-                            selectedInfillIsStripMode
-                              ? 'Strip mode uses fixed 0.62m width.'
-                              : selectedInfillWidthMode === 'match_roof_rafters'
-                                ? `Using ~${formatMaybeNumber(selectedInfillEstimate.roofRafterSpacingM, 2)}m spacing (roof rafters).`
-                                : undefined
-                          }
-                          error={selectedInfillValidation.errors.targetPanelWidthM}
+                          id={`${selectedInfillDomIdBase}-run-across`}
+                          label="Run / across (m)"
+                          type="readOnly"
+                          value={`${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)} / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}`}
+                          helperText="Computed from shape and orientation."
                         />
                         <FieldTile
-                          id={`${selectedInfillDomIdBase}-max-width`}
-                          label="Max panel width (m)"
-                          type="number"
-                          value={selectedInfill.maxPanelWidthM}
-                          onChange={(v) => setInfillItem(selectedInfill.id, { maxPanelWidthM: String(v) })}
-                          disabled={selectedInfillIsStripMode}
-                          helperText={selectedInfillIsStripMode ? 'Strip mode uses fixed 0.62m width.' : undefined}
-                          error={selectedInfillValidation.errors.maxPanelWidthM}
+                          id={`${selectedInfillDomIdBase}-centre-limit`}
+                          label="Centre limit (m)"
+                          type="readOnly"
+                          value={formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2)}
+                          helperText={`Sheets use ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m max short side; 620 strips use ${formatMaybeNumber(
+                            INFILL_STRIP_MAX_SHORT_SIDE_M,
+                            2,
+                          )}m.`}
                         />
                         <FieldTile
                           id={`${selectedInfillDomIdBase}-shape-type`}
@@ -4764,7 +4793,7 @@ export default function CalculatorGridClient({
                                 },
                               })
                             }
-                            helperText="Offsets from left edge (m). Example: 0.8, 1.6"
+                            helperText="Offsets along the panelized side (m). Example: 0.8, 1.6"
                             error={selectedInfillValidation.errors.internalSupportPositionsM}
                           />
                         ) : null}
@@ -4782,12 +4811,27 @@ export default function CalculatorGridClient({
                       <div className={styles.infillComputedGroup}>
                         <div className={styles.infillComputedGroupTitle}>Panelization</div>
                         <PreviewRow
-                          label="Panels across width"
+                          label="Orientation"
+                          value={selectedInfillEstimate.panelOrientationUsed === 'vertical' ? 'Vertical' : 'Horizontal'}
+                        />
+                        <PreviewRow
+                          label="Acrylic used"
+                          value={`${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}${
+                            selectedInfillEstimate.acrylicSourceAutoSwitched ? ' (auto-switched)' : ''
+                          }`}
+                        />
+                        <PreviewRow
+                          label="Run / across"
+                          value={`${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)}m / ${formatMaybeNumber(selectedInfillEstimate.acrossSideM, 2)}m`}
+                        />
+                        <PreviewRow label="Centre limit" value={`${formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2)}m`} />
+                        <PreviewRow
+                          label="Panels across"
                           value={`${selectedInfillEstimate.panelCountEach} each · ${selectedInfillEstimate.panelCountTotal} total`}
                         />
                         <PreviewRow
-                          label="Joiner lines (vertical)"
-                          value={`${selectedInfillEstimate.joinerLinesEach} each · ${selectedInfillEstimate.joinerLinesTotal} total`}
+                          label="Internal joiner lines"
+                          value={`${selectedInfillEstimate.internalJoinerLinesEach} each · ${selectedInfillEstimate.internalJoinerLinesTotal} total`}
                         />
                         <PreviewRow label="Top joiner" value={selectedInfillEstimate.topJoiner ? 'Yes' : 'No'} />
                         <PreviewRow label="Bottom joiner" value={selectedInfillEstimate.bottomJoiner ? 'Yes' : 'No'} />
@@ -4804,7 +4848,7 @@ export default function CalculatorGridClient({
                           value={`${selectedInfillEstimate.estimatedMullionsEach} each · ${selectedInfillEstimate.estimatedMullionsTotal} total`}
                         />
                         <PreviewRow
-                          label="Missing left/right jambs"
+                          label="Missing boundary supports"
                           value={`${selectedInfillEstimate.missingJambsEach} each · ${selectedInfillEstimate.missingJambsTotal} total`}
                         />
                         {selectedInfillEstimate.perimeterTopRailRequired || selectedInfillEstimate.perimeterBottomRailRequired ? (
@@ -5250,5 +5294,7 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+
 
 
