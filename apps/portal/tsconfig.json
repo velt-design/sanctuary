@@ -27,6 +27,12 @@
       ],
       "@sp/costing/*": [
         "../../packages/costing/src/*"
+      ],
+      "@sp/quote-format": [
+        "../../packages/quote-format/src/index.ts"
+      ],
+      "@sp/quote-format/*": [
+        "../../packages/quote-format/src/*"
       ]
     },
     "plugins": [
