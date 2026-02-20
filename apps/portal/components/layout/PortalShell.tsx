@@ -7,12 +7,22 @@ import { SIDEBAR_WIDTH_PX } from '@/components/navigation/navItems';
 import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
+function cx(...classes: Array<string | false | null | undefined>): string {
+  return classes.filter(Boolean).join(' ');
+}
+
 export default function PortalShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { status, email, role } = usePortalSession();
 
   const isLogin = typeof pathname === 'string' && pathname.startsWith('/login');
+  const isSchedulePath =
+    typeof pathname === 'string' &&
+    (pathname === '/schedule' ||
+      pathname.startsWith('/schedule/') ||
+      pathname === '/staff/schedule' ||
+      pathname.startsWith('/staff/schedule/'));
   const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';
 
   useEffect(() => {
@@ -24,9 +34,9 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   if (status !== 'authenticated') return null;
 
   return (
-    <div className={styles.shell}>
+    <div className={cx(styles.shell, isSchedulePath && styles.shellViewportLocked)}>
       <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
-      <div className={styles.content} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
+      <div className={cx(styles.content, isSchedulePath && styles.contentViewportLocked)} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
         {children}
       </div>
     </div>
