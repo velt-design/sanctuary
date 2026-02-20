@@ -1,7 +1,7 @@
 import { addDaysYmd, diffDaysYmd, isYmd } from '@/lib/scheduling/date';
 
 export const GANTT_WEEKDAY_WEIGHT = 1;
-export const GANTT_WEEKEND_WEIGHT = 0.5;
+export const GANTT_WEEKEND_WEIGHT = 0;
 
 type AxisMonthKey = `${number}-${string}`;
 

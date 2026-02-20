@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanctuary Pergolas</title>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f6f6f6;">
+  <div style="display:none; font-size:1px; color:#f6f6f6; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden;">
+    Deposit invoice {{invoice_number}} ready - view online or download PDF.
+  </div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f6f6f6;">
+    <tr>
+      <td align="center" style="padding:28px 16px;">
+
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px; max-width:600px; background:#ffffff;">
+          <tr>
+            <td style="padding:22px 24px 12px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              <div style="font-size:14px; letter-spacing:0.08em; text-transform:uppercase; color:#111111;">
+                Sanctuary Pergolas
+              </div>
+              <div style="height:1px; background-color:#e6e6e6; margin-top:14px;"></div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:14px 24px 8px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              <div style="font-size:22px; line-height:1.35; margin:0;">
+                Your deposit invoice is ready
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:8px 24px 16px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              <div style="font-size:15px; line-height:1.6; margin:0;">
+                Hi {{name}},<br><br>
+                Your deposit invoice is ready for quote <strong>{{quote_number}}</strong>{{#if project_address}} at <strong>{{project_address}}</strong>{{/if}}.
+              </div>
+            </td>
+          </tr>
+
+          {{#if personal_note_html}}
+          <tr>
+            <td style="padding:0 24px 16px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              <div style="font-size:15px; line-height:1.6; margin:0;">
+                <strong>Message from your Sanctuary consultant:</strong><br>
+                {{{personal_note_html}}}
+              </div>
+            </td>
+          </tr>
+          {{/if}}
+
+          <tr>
+            <td style="padding:0 24px 18px 24px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e6e6e6; border-collapse:separate;">
+                <tr>
+                  <td width="4" style="background-color:#7F342D; font-size:0; line-height:0;">&nbsp;</td>
+                  <td style="padding:16px; font-family:Arial, Helvetica, sans-serif;">
+
+                    <div style="font-size:13px; letter-spacing:0.08em; text-transform:uppercase; color:#444444; margin-bottom:10px;">
+                      Invoice summary
+                    </div>
+
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="font-family:Arial, Helvetica, sans-serif;">
+                      <tr>
+                        <td style="padding:8px 0; font-size:15px; color:#111111;">Invoice number</td>
+                        <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+                          {{invoice_number}}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 0; font-size:15px; color:#111111;">Deposit amount (incl. GST)</td>
+                        <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+                          {{invoice_total_inc_gst}}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding:8px 0; font-size:15px; color:#111111;">Deposit percentage</td>
+                        <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+                          {{deposit_percent}}
+                        </td>
+                      </tr>
+                      {{#if due_date}}
+                      <tr>
+                        <td style="padding:8px 0; font-size:15px; color:#111111;">Due date</td>
+                        <td align="right" style="padding:8px 0; font-size:15px; color:#111111; white-space:nowrap;">
+                          {{due_date}}
+                        </td>
+                      </tr>
+                      {{/if}}
+                    </table>
+
+                    <div style="margin-top:14px;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0;">
+                        <tr>
+                          <td bgcolor="#7F342D" style="border:1px solid #7F342D; border-radius:4px; text-align:center;">
+                            <a href="{{invoice_link}}"
+                               style="display:inline-block; padding:12px 16px; font-family:Arial, Helvetica, sans-serif; font-size:14px; color:#ffffff; text-decoration:none; border-radius:4px; font-weight:600;">
+                              View invoice
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <div style="font-size:13px; line-height:1.55; color:#555555; margin-top:12px;">
+                      Please pay by bank transfer and use your invoice number as the payment reference.
+                    </div>
+
+                    {{#if bank_account_name}}
+                    <div style="font-size:14px; line-height:1.6; color:#111111; margin-top:10px;">
+                      <strong>Account name:</strong> {{bank_account_name}}<br>
+                      {{#if bank_account_number}}<strong>Account number:</strong> {{bank_account_number}}<br>{{/if}}
+                      {{#if bank_reference}}<strong>Reference:</strong> {{bank_reference}}{{/if}}
+                    </div>
+                    {{/if}}
+
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:0 24px 24px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              <div style="font-size:14px; line-height:1.6; color:#555555; margin-top:14px;">
+                Sanctuary Pergolas{{#if reference_id}} · Ref {{reference_id}}{{/if}}
+              </div>
+            </td>
+          </tr>
+
+        </table>
+
+        <div style="font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:1.5; color:#777777; padding:14px 0 0 0; max-width:600px;">
+          If you didn't request this email, you can ignore it.
+        </div>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

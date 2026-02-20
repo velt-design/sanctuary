@@ -1,0 +1,17 @@
+Deposit invoice {{invoice_number}} is ready.
+
+Hi {{name}},
+
+Your deposit invoice for quote {{quote_number}} is ready.
+Amount due (incl. GST): {{invoice_total_inc_gst}}
+Deposit percentage: {{deposit_percent}}
+{{#if due_date}}Due date: {{due_date}}
+{{/if}}
+View invoice: {{invoice_link}}
+
+Please pay by bank transfer and use your invoice number as the payment reference.
+{{#if bank_account_name}}Account name: {{bank_account_name}}
+{{/if}}{{#if bank_account_number}}Account number: {{bank_account_number}}
+{{/if}}{{#if bank_reference}}Reference: {{bank_reference}}
+{{/if}}
+Sanctuary Pergolas
