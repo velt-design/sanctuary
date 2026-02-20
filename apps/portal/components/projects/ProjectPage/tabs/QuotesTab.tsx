@@ -90,8 +90,17 @@ function statusClass(status: QuoteStatus): string {
   }
 }
 
-function parseMoneyInput(value: string): number {
+function sanitizeMoneyInput(value: string): string {
   const cleaned = value.replace(/[^0-9.]/g, '');
+  const dotIndex = cleaned.indexOf('.');
+  if (dotIndex === -1) return cleaned;
+  const whole = cleaned.slice(0, dotIndex + 1);
+  const fraction = cleaned.slice(dotIndex + 1).replace(/[.]/g, '');
+  return `${whole}${fraction}`;
+}
+
+function parseMoneyInput(value: string): number {
+  const cleaned = sanitizeMoneyInput(value);
   const n = Number.parseFloat(cleaned);
   if (!Number.isFinite(n)) return 0;
   return Math.round(n * 100);
@@ -166,6 +175,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const [draftItems, setDraftItems] = useState<QuoteLineItem[]>([]);
+  const [unitInputDrafts, setUnitInputDrafts] = useState<Record<string, string>>({});
   const [draftReference, setDraftReference] = useState('');
   const [draftIntro, setDraftIntro] = useState('');
   const [draftTerms, setDraftTerms] = useState('');
@@ -200,11 +210,49 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (!detail) return;
     setDraftItems(detail.lineItems);
+    setUnitInputDrafts({});
     setDraftReference(detail.reference ?? '');
     setDraftIntro(detail.introText ?? '');
     setDraftTerms(detail.termsText ?? '');
     setDraftExpiry(detail.expiresAt ?? '');
   }, [detail?.id]);
+
+  const getLiveUnitPriceIncGstCents = useCallback(
+    (item: QuoteLineItem): number => {
+      const raw = unitInputDrafts[item.id];
+      if (typeof raw !== 'string') return item.unitPriceIncGstCents;
+      return parseMoneyInput(raw);
+    },
+    [unitInputDrafts],
+  );
+
+  const effectiveDraftItems = useMemo(
+    () =>
+      draftItems.map((item) => {
+        const nextUnitPrice = getLiveUnitPriceIncGstCents(item);
+        if (nextUnitPrice === item.unitPriceIncGstCents) return item;
+        return { ...item, unitPriceIncGstCents: nextUnitPrice };
+      }),
+    [draftItems, getLiveUnitPriceIncGstCents],
+  );
+
+  const commitUnitPriceDraft = useCallback((itemId: string, rawValue: string) => {
+    const nextCents = parseMoneyInput(rawValue);
+    setDraftItems((prev) => {
+      const idx = prev.findIndex((entry) => entry.id === itemId);
+      if (idx === -1) return prev;
+      if (prev[idx].unitPriceIncGstCents === nextCents) return prev;
+      const next = prev.slice();
+      next[idx] = { ...next[idx], unitPriceIncGstCents: nextCents };
+      return next;
+    });
+    setUnitInputDrafts((prev) => {
+      if (!Object.prototype.hasOwnProperty.call(prev, itemId)) return prev;
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }, []);
 
   const updateParams = (next: { quoteId?: string | null }) => {
     const qs = new URLSearchParams(searchParams.toString());
@@ -221,17 +269,17 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const detailTotals = useMemo(() => {
     if (!detail) return null;
     if (detail.status !== 'DRAFT') return detail.totals;
-    const totalInc = draftItems.reduce((sum, item) => sum + computeLineTotal(item), 0);
+    const totalInc = effectiveDraftItems.reduce((sum, item) => sum + computeLineTotal(item), 0);
     const totalEx = Math.round(totalInc / 1.15);
     const gst = totalInc - totalEx;
     return { totalIncGstCents: totalInc, totalExGstCents: totalEx, gstCents: gst };
-  }, [detail, draftItems]);
+  }, [detail, effectiveDraftItems]);
 
   const draftDirty = useMemo(() => {
     if (!detail) return false;
     if (detail.status !== 'DRAFT') return false;
-    const lineMatch = detail.lineItems.length === draftItems.length && detail.lineItems.every((item, idx) => {
-      const next = draftItems[idx];
+    const lineMatch = detail.lineItems.length === effectiveDraftItems.length && detail.lineItems.every((item, idx) => {
+      const next = effectiveDraftItems[idx];
       return (
         item.description === next.description &&
         item.qty === next.qty &&
@@ -244,7 +292,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if ((detail.termsText ?? '') !== draftTerms) return true;
     if ((detail.expiresAt ?? '') !== draftExpiry) return true;
     return false;
-  }, [detail, draftItems, draftReference, draftIntro, draftTerms, draftExpiry]);
+  }, [detail, effectiveDraftItems, draftReference, draftIntro, draftTerms, draftExpiry]);
 
   const openCreateModal = () => {
     const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
@@ -310,6 +358,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         : await resendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote });
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
+      setUnitInputDrafts({});
       setSendOpen(false);
       setSendError(null);
       await refreshQuotes();
@@ -367,7 +416,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         introText: draftIntro,
         termsText: draftTerms,
         expiresAt: draftExpiry || null,
-        lineItems: draftItems.map((item) => ({
+        lineItems: effectiveDraftItems.map((item) => ({
           description: item.description,
           qty: item.qty,
           unitPriceIncGstCents: item.unitPriceIncGstCents,
@@ -375,6 +424,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       });
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
+      setUnitInputDrafts({});
       setDraftReference(updated.reference ?? '');
       setDraftIntro(updated.introText ?? '');
       setDraftTerms(updated.termsText ?? '');
@@ -446,6 +496,15 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   };
 
   const handleDeleteRow = (idx: number) => {
+    const removedId = draftItems[idx]?.id;
+    if (removedId) {
+      setUnitInputDrafts((prev) => {
+        if (!Object.prototype.hasOwnProperty.call(prev, removedId)) return prev;
+        const next = { ...prev };
+        delete next[removedId];
+        return next;
+      });
+    }
     setDraftItems((prev) => prev.filter((_, i) => i !== idx).map((item, i) => ({ ...item, sortOrder: i })));
   };
 
@@ -593,7 +652,9 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
               </thead>
               <tbody>
                 {draftItems.map((item, idx) => {
-                  const lineTotal = computeLineTotal(item);
+                  const unitInputValue = unitInputDrafts[item.id] ?? formatMoneyFromCents(item.unitPriceIncGstCents).replace('$', '');
+                  const liveUnitPriceIncGstCents = detail.status === 'DRAFT' ? getLiveUnitPriceIncGstCents(item) : item.unitPriceIncGstCents;
+                  const lineTotal = Math.round((Number.isFinite(item.qty) ? item.qty : 0) * liveUnitPriceIncGstCents);
                   return (
                     <tr key={item.id}>
                       <td>
@@ -631,14 +692,22 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                         {detail.status === 'DRAFT' ? (
                           <input
                             className={styles.numberInput}
-                            value={formatMoneyFromCents(item.unitPriceIncGstCents).replace('$', '')}
+                            value={unitInputValue}
+                            inputMode="decimal"
                             onChange={(e) =>
-                              setDraftItems((prev) =>
-                                prev.map((entry, i) =>
-                                  i === idx ? { ...entry, unitPriceIncGstCents: parseMoneyInput(e.target.value) } : entry,
-                                ),
-                              )
+                              setUnitInputDrafts((prev) => ({
+                                ...prev,
+                                [item.id]: sanitizeMoneyInput(e.target.value),
+                              }))
                             }
+                            onFocus={(e) => e.currentTarget.select()}
+                            onBlur={(e) => commitUnitPriceDraft(item.id, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key !== 'Enter') return;
+                              e.preventDefault();
+                              commitUnitPriceDraft(item.id, e.currentTarget.value);
+                              e.currentTarget.blur();
+                            }}
                           />
                         ) : (
                           <div>{formatMoneyFromCents(item.unitPriceIncGstCents)}</div>

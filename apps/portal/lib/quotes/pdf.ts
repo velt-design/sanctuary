@@ -208,7 +208,7 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
   const footer: string[] = ['sanctuarypergolas.co.nz', 'info@sanctuarypergolas.co.nz'];
 
   const client = {
-    name: formatQuoteIntroText(quote.contact.name) ?? undefined,
+    name: formatQuoteIntroText(quote.customerName ?? quote.contact.name) ?? undefined,
   };
 
   return {

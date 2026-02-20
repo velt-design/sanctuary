@@ -176,6 +176,7 @@ create table if not exists public.quote_versions (
   sent_by text,
   expires_at date,
   reference text,
+  customer_name text,
   intro_text text,
   terms_text text,
   total_inc_gst_cents int not null default 0,
@@ -197,6 +198,7 @@ begin
 end $$;
 
 alter table public.quote_versions
+  add column if not exists customer_name text,
   add column if not exists updated_at timestamptz not null default now();
 drop trigger if exists quote_versions_set_updated_at on public.quote_versions;
 create trigger quote_versions_set_updated_at before update on public.quote_versions

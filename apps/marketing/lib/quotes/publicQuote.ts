@@ -16,6 +16,7 @@ export type PublicQuote = {
   status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
   quoteRef: string;
   versionNumber: number;
+  customerName?: string | null;
   projectName: string;
   projectAddress: string | null;
   totalIncGstCents: number;
@@ -88,6 +89,7 @@ async function loadQuoteVersionByToken(params: {
   totalIncGstCents: number;
   totalExGstCents: number;
   gstCents: number;
+  customerName: string | null;
   introText: string | null;
   termsText: string | null;
 } | null> {
@@ -98,7 +100,7 @@ async function loadQuoteVersionByToken(params: {
   const versionRes = await supabase
     .from('quote_versions')
     .select(
-      'id, quote_id, status, version_number, created_at, sent_at, expires_at, accept_token_expires_at, intro_text, terms_text, total_inc_gst_cents, total_ex_gst_cents, gst_cents',
+      'id, quote_id, status, version_number, created_at, sent_at, expires_at, accept_token_expires_at, customer_name, intro_text, terms_text, total_inc_gst_cents, total_ex_gst_cents, gst_cents',
     )
     .eq('id', quoteVersionUuid)
     .eq('accept_token_hash', tokenHash)
@@ -121,6 +123,10 @@ async function loadQuoteVersionByToken(params: {
     totalIncGstCents: Number((versionRes.data as any).total_inc_gst_cents ?? 0) || 0,
     totalExGstCents: Number((versionRes.data as any).total_ex_gst_cents ?? 0) || 0,
     gstCents: Number((versionRes.data as any).gst_cents ?? 0) || 0,
+    customerName:
+      typeof (versionRes.data as any).customer_name === 'string' && (versionRes.data as any).customer_name.trim()
+        ? (versionRes.data as any).customer_name.trim()
+        : null,
     introText: typeof (versionRes.data as any).intro_text === 'string' ? (versionRes.data as any).intro_text : null,
     termsText: typeof (versionRes.data as any).terms_text === 'string' ? (versionRes.data as any).terms_text : null,
   };
@@ -137,15 +143,25 @@ async function loadQuoteProject(quoteId: string): Promise<{ quoteRef: string; pr
   };
 }
 
-async function loadProject(projectId: string | null): Promise<{ name: string; siteAddress: string | null }> {
-  if (!projectId) return { name: '', siteAddress: null };
+async function loadProject(projectId: string | null): Promise<{ name: string; siteAddress: string | null; customerName: string | null }> {
+  if (!projectId) return { name: '', siteAddress: null, customerName: null };
   const supabase = getServiceSupabase();
-  const projectRes = await supabase.from('projects').select('name, site_address').eq('id', projectId).maybeSingle();
-  if (projectRes.error || !projectRes.data) return { name: '', siteAddress: null };
+  const projectRes = await supabase
+    .from('projects')
+    .select('name, site_address, contacts ( name )')
+    .eq('id', projectId)
+    .maybeSingle();
+  if (projectRes.error || !projectRes.data) return { name: '', siteAddress: null, customerName: null };
+
+  const row = projectRes.data as any;
+  const contactRow = Array.isArray(row?.contacts) ? row.contacts[0] : row?.contacts ?? null;
+  const customerNameRaw = typeof contactRow?.name === 'string' ? contactRow.name.trim() : '';
+  const customerName = customerNameRaw || null;
 
   return {
-    name: typeof (projectRes.data as any).name === 'string' ? (projectRes.data as any).name : '',
-    siteAddress: typeof (projectRes.data as any).site_address === 'string' ? (projectRes.data as any).site_address : null,
+    name: typeof row?.name === 'string' ? row.name : '',
+    siteAddress: typeof row?.site_address === 'string' ? row.site_address : null,
+    customerName,
   };
 }
 
@@ -232,6 +248,7 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
     status: version.status,
     quoteRef: quoteProject.quoteRef,
     versionNumber: version.versionNumber,
+    customerName: version.customerName || project.customerName,
     projectName: project.name,
     projectAddress: project.siteAddress,
     totalIncGstCents: version.totalIncGstCents,

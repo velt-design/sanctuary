@@ -158,7 +158,7 @@ function QuoteDocHeader({ quoteRef, versionNumber }: { quoteRef: string; version
 
 function QuoteMetaGrid({ quote, status }: { quote: PublicQuote; status: QuoteDisplayStatus }) {
   const fields = [
-    { label: 'To', value: quote.projectName || 'Customer' },
+    { label: 'To', value: quote.customerName || 'Customer' },
     { label: 'From', value: 'Sanctuary Pergolas' },
     { label: 'Quote number', value: `${quote.quoteRef} v${quote.versionNumber}` },
     { label: 'Status', value: statusLabel(status) },

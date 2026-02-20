@@ -123,6 +123,7 @@ function mapQuoteVersionRow(row: any, estimateLabelMap: Map<string, string>, pro
     sentBy: typeof row?.sent_by === 'string' ? row.sent_by : null,
     expiresAt: typeof row?.expires_at === 'string' ? row.expires_at : null,
     reference: typeof row?.reference === 'string' ? row.reference : null,
+    customerName: typeof row?.customer_name === 'string' && row.customer_name.trim() ? row.customer_name.trim() : null,
     introText: typeof row?.intro_text === 'string' ? row.intro_text : null,
     termsText: typeof row?.terms_text === 'string' ? row.terms_text : null,
     totals: {
@@ -182,6 +183,21 @@ async function loadEstimateLabels(projectUuid: string): Promise<Map<string, stri
     return new Map();
   }
   return buildVersionLabelMap(Array.isArray(res.data) ? res.data : []);
+}
+
+async function loadProjectCustomerName(projectUuid: string): Promise<string | null> {
+  const res = await supabaseServer
+    .from('projects')
+    .select('contacts ( name )')
+    .eq('id', projectUuid)
+    .maybeSingle();
+
+  if (res.error || !res.data) return null;
+
+  const row = res.data as any;
+  const contactRow = Array.isArray(row?.contacts) ? row.contacts[0] : row?.contacts ?? null;
+  const customerName = typeof contactRow?.name === 'string' ? contactRow.name.trim() : '';
+  return customerName || null;
 }
 
 async function loadEstimate(estimateUuid: string): Promise<Estimate | null> {
@@ -405,6 +421,7 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
 
   const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
   const termsText = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+  const customerName = await loadProjectCustomerName(projectUuid);
 
   const insertRes = await supabaseServer
     .from('quote_versions')
@@ -415,6 +432,7 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
       source_estimate_version_id: estimateUuid,
       revised_from_quote_version_id: null,
       created_by: actor,
+      customer_name: customerName,
       intro_text: introText,
       terms_text: termsText,
       total_inc_gst_cents: totals.totalIncGstCents,
@@ -613,6 +631,11 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
 
   const items = (Array.isArray(lineItemsRes.data) ? lineItemsRes.data : []).map(mapLineItemRow);
   const totals = totalsFromLineItems(items);
+  const inheritedCustomerName =
+    typeof versionRes.data.customer_name === 'string' && versionRes.data.customer_name.trim()
+      ? versionRes.data.customer_name.trim()
+      : null;
+  const customerName = inheritedCustomerName || (await loadProjectCustomerName(String(projectRes.data.project_id ?? '')));
 
   const insertRes = await supabaseServer
     .from('quote_versions')
@@ -624,6 +647,7 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
       revised_from_quote_version_id: quoteVersionUuid,
       created_by: actor,
       reference: versionRes.data.reference ?? null,
+      customer_name: customerName,
       intro_text: versionRes.data.intro_text ?? null,
       terms_text: versionRes.data.terms_text ?? null,
       total_inc_gst_cents: totals.totalIncGstCents,

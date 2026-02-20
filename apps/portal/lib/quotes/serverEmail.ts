@@ -172,7 +172,7 @@ async function deliverQuoteReadyEmail(params: {
     cc: params.payload.cc,
     bcc: params.payload.bcc,
     subject,
-    name: params.detail.contact.name || 'there',
+    name: params.detail.customerName || params.detail.contact.name || 'there',
     quote_number: quoteNumber(params.detail),
     quote_total_inc_gst: formatCurrency(params.detail.totals.totalIncGstCents),
     project_address: params.detail.project.siteAddress ?? undefined,
