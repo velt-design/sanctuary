@@ -179,6 +179,23 @@
   box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
 }
 
+.fileInput {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  background: #fff;
+  color: inherit;
+}
+
+.fileInput:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+}
+
 .metaWarning {
   margin-top: 8px;
   padding: 10px 12px;

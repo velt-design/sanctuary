@@ -180,6 +180,23 @@ function defaultSubject(quoteRef: string): string {
   return `Your quote ${quoteRef}`;
 }
 
+const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
+
+function validateDesignPdf(file: File): string | null {
+  if (file.size <= 0) return 'Design PDF is empty.';
+  if (file.size > MAX_DESIGN_PDF_BYTES) return 'Design PDF must be 20MB or smaller.';
+  const mime = file.type.trim().toLowerCase();
+  if (mime === 'application/pdf') return null;
+  if (file.name.trim().toLowerCase().endsWith('.pdf')) return null;
+  return 'Design document must be a PDF.';
+}
+
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 KB';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
+}
+
 export default function QuotesTab({ projectId }: { projectId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -221,6 +238,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [sendTo, setSendTo] = useState('');
   const [sendSubject, setSendSubject] = useState('');
   const [sendPersonalNote, setSendPersonalNote] = useState('');
+  const [sendDesignPdf, setSendDesignPdf] = useState<File | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -391,6 +409,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     setSendTo(to);
     setSendSubject(defaultSubject(detail.quoteRef));
     setSendPersonalNote(defaultPersonalNote());
+    setSendDesignPdf(null);
     setSendError(null);
     setSendOpen(true);
   };
@@ -410,16 +429,25 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       toast.error('Subject is required.');
       return;
     }
+    if (sendDesignPdf) {
+      const designPdfError = validateDesignPdf(sendDesignPdf);
+      if (designPdfError) {
+        setSendError(designPdfError);
+        toast.error(designPdfError);
+        return;
+      }
+    }
     setSendBusy(true);
     setSendError(null);
     try {
       const updated = sendMode === 'send'
-        ? await sendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote })
-        : await resendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote });
+        ? await sendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote, designPdf: sendDesignPdf })
+        : await resendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote, designPdf: sendDesignPdf });
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
       setUnitInputDrafts({});
       setActiveUnitInputId(null);
+      setSendDesignPdf(null);
       setSendOpen(false);
       setSendError(null);
       await refreshQuotes();
@@ -933,7 +961,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                       <td>{log.subject || '—'}</td>
                       <td>{formatDateTime(log.sentAt ?? log.createdAt)}</td>
                       <td>{log.status}</td>
-                      <td>{log.attachments.length ? 'Quote PDF' : '—'}</td>
+                      <td>{log.attachments.length ? `${log.attachments.length} file${log.attachments.length === 1 ? '' : 's'}` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -949,7 +977,14 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
             <div className={styles.modal}>
               <div className={styles.modalHeader}>
                 <h4 className={styles.cardTitle}>{sendMode === 'send' ? 'Send quote' : 'Resend quote'}</h4>
-                <button type="button" className={styles.modalClose} onClick={() => setSendOpen(false)}>
+                <button
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={() => {
+                    setSendDesignPdf(null);
+                    setSendOpen(false);
+                  }}
+                >
                   Close
                 </button>
               </div>
@@ -967,11 +1002,48 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                   rows={6}
                   placeholder="Optional custom note to include in the template."
                 />
-                <div className={styles.attachmentsHint}>Attachments: Quote PDF (auto attached). Additional attachments coming soon.</div>
+                <label className={styles.metaLabel} htmlFor="sendDesignPdf">Design PDF (optional)</label>
+                <input
+                  id="sendDesignPdf"
+                  className={styles.fileInput}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(event) => {
+                    const nextFile = event.currentTarget.files?.[0] ?? null;
+                    if (!nextFile) {
+                      setSendDesignPdf(null);
+                      setSendError(null);
+                      return;
+                    }
+                    const validation = validateDesignPdf(nextFile);
+                    if (validation) {
+                      event.currentTarget.value = '';
+                      setSendDesignPdf(null);
+                      setSendError(validation);
+                      toast.error(validation);
+                      return;
+                    }
+                    setSendDesignPdf(nextFile);
+                    setSendError(null);
+                  }}
+                />
+                <div className={styles.attachmentsHint}>
+                  Attachments: Quote PDF (auto attached).
+                  {sendDesignPdf
+                    ? ` Design PDF selected: ${sendDesignPdf.name} (${formatFileSize(sendDesignPdf.size)}).`
+                    : ' You can add one design PDF up to 20MB.'}
+                </div>
                 {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={legacy.buttonSecondary} onClick={() => setSendOpen(false)}>
+                <button
+                  type="button"
+                  className={legacy.buttonSecondary}
+                  onClick={() => {
+                    setSendDesignPdf(null);
+                    setSendOpen(false);
+                  }}
+                >
                   Cancel
                 </button>
                 <button type="button" className={legacy.button} onClick={handleSend} disabled={sendBusy}>
