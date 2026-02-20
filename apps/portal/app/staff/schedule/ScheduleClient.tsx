@@ -90,12 +90,70 @@ type SchedulableJob = {
   warnings: string[];
 };
 
+type GanttDensity = 'compact' | 'comfortable';
+
+type GanttSummarySpan = {
+  leftPx: number;
+  widthPx: number;
+};
+
 const GANTT_DAY_PX = 18;
-const GANTT_LABEL_PX = 420;
+const GANTT_LABEL_MIN_PX = 220;
+const GANTT_LABEL_DEFAULT_PX = 260;
+const GANTT_LABEL_MAX_PX = 420;
 const GANTT_BAR_LABEL_MIN_PX = 120;
 const GANTT_TZ = 'Pacific/Auckland';
+const GANTT_DENSITY_STORAGE_KEY = 'sp.schedule.ganttDensity';
+const GANTT_LABEL_WIDTH_STORAGE_KEY = 'sp.schedule.ganttLabelWidth';
 const USE_SCHEDULE_V2 = true;
 const V2_MUTATION_DEBOUNCE_MS = 180;
+
+function clampGanttLabelWidth(value: number): number {
+  if (!Number.isFinite(value)) return GANTT_LABEL_DEFAULT_PX;
+  return Math.max(GANTT_LABEL_MIN_PX, Math.min(GANTT_LABEL_MAX_PX, Math.round(value)));
+}
+
+function readGanttDensityPreference(): GanttDensity {
+  if (typeof window === 'undefined') return 'compact';
+  try {
+    const value = window.localStorage.getItem(GANTT_DENSITY_STORAGE_KEY);
+    if (value === 'compact' || value === 'comfortable') return value;
+  } catch {
+    // ignore read errors
+  }
+  return 'compact';
+}
+
+function writeGanttDensityPreference(value: GanttDensity): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(GANTT_DENSITY_STORAGE_KEY, value);
+  } catch {
+    // ignore write errors
+  }
+}
+
+function readGanttLabelWidthPreference(): number {
+  if (typeof window === 'undefined') return GANTT_LABEL_DEFAULT_PX;
+  try {
+    const raw = window.localStorage.getItem(GANTT_LABEL_WIDTH_STORAGE_KEY);
+    if (!raw) return GANTT_LABEL_DEFAULT_PX;
+    const parsed = Number.parseFloat(raw);
+    return clampGanttLabelWidth(parsed);
+  } catch {
+    // ignore read errors
+  }
+  return GANTT_LABEL_DEFAULT_PX;
+}
+
+function writeGanttLabelWidthPreference(value: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(GANTT_LABEL_WIDTH_STORAGE_KEY, String(clampGanttLabelWidth(value)));
+  } catch {
+    // ignore write errors
+  }
+}
 
 function parseHexColour(value: string): { r: number; g: number; b: number } | null {
   const raw = value.trim().replace(/^#/, '');
@@ -142,6 +200,31 @@ function getReadableTextColor(bgHex: string): '#000000' | '#ffffff' {
   return contrastWithWhite >= contrastWithBlack ? '#ffffff' : '#000000';
 }
 
+function mergeSummarySpans(spans: GanttSummarySpan[]): GanttSummarySpan[] {
+  const sorted = spans
+    .filter((span) => Number.isFinite(span.leftPx) && Number.isFinite(span.widthPx) && span.widthPx > 0)
+    .sort((a, b) => a.leftPx - b.leftPx);
+  if (!sorted.length) return [];
+
+  const merged: GanttSummarySpan[] = [];
+  for (const span of sorted) {
+    const last = merged[merged.length - 1];
+    if (!last) {
+      merged.push({ leftPx: span.leftPx, widthPx: span.widthPx });
+      continue;
+    }
+    const lastRight = last.leftPx + last.widthPx;
+    const spanRight = span.leftPx + span.widthPx;
+    if (span.leftPx <= lastRight + 1) {
+      last.widthPx = Math.max(lastRight, spanRight) - last.leftPx;
+      continue;
+    }
+    merged.push({ leftPx: span.leftPx, widthPx: span.widthPx });
+  }
+
+  return merged;
+}
+
 type GanttRow =
   | {
       kind: 'group';
@@ -151,6 +234,7 @@ type GanttRow =
       color: string;
       jobCount: number;
       collapsed: boolean;
+      summarySpans: GanttSummarySpan[];
     }
   | {
       kind: 'item';
@@ -1328,9 +1412,12 @@ export default function ScheduleClient() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [rangeWeeks, setRangeWeeks] = useState(12);
+  const [ganttDensity, setGanttDensity] = useState<GanttDensity>(() => readGanttDensityPreference());
+  const [labelWidthPx, setLabelWidthPx] = useState<number>(() => readGanttLabelWidthPreference());
   const [showPlanned, setShowPlanned] = useState(false);
   const [hoveredGanttRowId, setHoveredGanttRowId] = useState<string | null>(null);
   const [collapsedCrews, setCollapsedCrews] = useState<Record<string, boolean>>({});
+  const [unscheduledCollapsed, setUnscheduledCollapsed] = useState<boolean>(() => !mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs).length);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
   const [diagnostics, setDiagnostics] = useState<{
@@ -1355,10 +1442,12 @@ export default function ScheduleClient() {
   } | null>(null);
   const [ganttDragDelta, setGanttDragDelta] = useState(0);
   const [ganttDragPointer, setGanttDragPointer] = useState<{ x: number; y: number } | null>(null);
+  const [ganttLabelResize, setGanttLabelResize] = useState<{ startX: number; startWidth: number } | null>(null);
   const ganttDragDeltaRef = useRef(0);
   const ganttDragMovedRef = useRef(false);
   const ganttClickBlockUntilRef = useRef(0);
   const ganttPopoverRef = useRef<HTMLDivElement | null>(null);
+  const labelWidthPxRef = useRef(labelWidthPx);
 
   useEffect(() => {
     scheduleItemsRef.current = scheduleItems;
@@ -1383,6 +1472,18 @@ export default function ScheduleClient() {
   useEffect(() => {
     nextAvailRef.current = nextAvailableByInstallerId;
   }, [nextAvailableByInstallerId]);
+
+  useEffect(() => {
+    labelWidthPxRef.current = labelWidthPx;
+  }, [labelWidthPx]);
+
+  useEffect(() => {
+    writeGanttDensityPreference(ganttDensity);
+  }, [ganttDensity]);
+
+  useEffect(() => {
+    writeGanttLabelWidthPreference(labelWidthPx);
+  }, [labelWidthPx]);
 
   useEffect(() => {
     return () => {
@@ -2490,6 +2591,12 @@ export default function ScheduleClient() {
     return schedulable.unscheduledJobs;
   }, [schedulable.unscheduledJobs]);
 
+  const unscheduledEmpty = unscheduledJobsAll.length === 0;
+
+  useEffect(() => {
+    setUnscheduledCollapsed(unscheduledEmpty);
+  }, [unscheduledEmpty]);
+
   const unscheduledJobs = useMemo(() => {
     const q = query.trim().toLowerCase();
     const status = statusFilter;
@@ -2605,7 +2712,8 @@ export default function ScheduleClient() {
     });
     const totalWidth = axis.totalWidth;
 
-    const todayIndex = diffDaysYmd(rangeStart, today);
+    const displayToday = isWeekendDate(today) ? snapToWeekdayYmd(today) : today;
+    const todayIndex = diffDaysYmd(rangeStart, displayToday);
     const todayLinePx = axisXForDayIndex(axis, todayIndex);
     const todayColumn = todayIndex >= 0 && todayIndex < axis.days.length ? axis.days[todayIndex] : null;
 
@@ -2622,6 +2730,7 @@ export default function ScheduleClient() {
     const weekendBlocks: Array<{ leftPx: number; widthPx: number; date: string }> = [];
     const holidayBlocks: Array<{ leftPx: number; widthPx: number; date: string; label: string }> = [];
     for (const day of axis.days) {
+      if (day.widthPx <= 0) continue;
       const holidayNames = holidayNamesByDate.get(day.date);
       if (holidayNames) {
         const uniqueHolidayNames = Array.from(new Set(holidayNames));
@@ -2644,13 +2753,18 @@ export default function ScheduleClient() {
       }
     }
 
-    const weekBoundaryLines = axis.weeks
-      .map((week) => week.startPx)
-      .filter((px) => px > 0 && px < totalWidth);
+    const weekBoundaryLines = Array.from(new Set(axis.weeks.map((week) => week.startPx).filter((px) => px > 0 && px < totalWidth))).sort(
+      (a, b) => a - b,
+    );
     const weekBoundarySet = new Set(weekBoundaryLines);
-    const dayBoundaryLines = axis.days
-      .map((day) => day.startPx)
-      .filter((px) => px > 0 && px < totalWidth && !weekBoundarySet.has(px));
+    const dayBoundarySet = new Set<number>();
+    for (const day of axis.days) {
+      if (day.isWeekend) continue;
+      const px = day.startPx;
+      if (px <= 0 || px >= totalWidth || weekBoundarySet.has(px)) continue;
+      dayBoundarySet.add(px);
+    }
+    const dayBoundaryLines = Array.from(dayBoundarySet).sort((a, b) => a - b);
 
     const barsById = new Map(schedule.bars.map((b) => [b.scheduleItemId, b]));
     const plannedBarsById = new Map<string, { leftPx: number; widthPx: number; startDate: string; endDate: string }>();
@@ -2681,6 +2795,19 @@ export default function ScheduleClient() {
     for (const installer of installers.filter((i) => i.active)) {
       const items = laneItems.get(installer.id) ?? [];
       const collapsed = Boolean(collapsedCrews[installer.id]);
+      const summarySpans = collapsed
+        ? mergeSummarySpans(
+            items
+              .map((item) => {
+                const bar = barsById.get(item.id);
+                if (!bar) return null;
+                const span = axisSpanPx(axis, bar.startDate, bar.endDate);
+                if (span.widthPx <= 0) return null;
+                return { leftPx: span.leftPx, widthPx: Math.max(span.widthPx, 8) };
+              })
+              .filter((span): span is GanttSummarySpan => Boolean(span)),
+          )
+        : [];
       rows.push({
         kind: 'group',
         id: `group:${installer.id}`,
@@ -2689,6 +2816,7 @@ export default function ScheduleClient() {
         color: installer.color,
         jobCount: items.length,
         collapsed,
+        summarySpans,
       });
 
       if (!items.length) {
@@ -2793,6 +2921,7 @@ export default function ScheduleClient() {
       rangeDays,
       axis,
       totalWidth,
+      displayToday,
       todayLinePx,
       todayColumnLeftPx: todayColumn?.startPx ?? null,
       todayColumnWidthPx: todayColumn?.widthPx ?? 0,
@@ -3406,21 +3535,59 @@ export default function ScheduleClient() {
     };
   }, [ganttDrag, rangeWeeks]);
 
+  useEffect(() => {
+    if (!ganttLabelResize) return;
+
+    const onMove = (event: PointerEvent) => {
+      const deltaX = event.clientX - ganttLabelResize.startX;
+      setLabelWidthPx(clampGanttLabelWidth(ganttLabelResize.startWidth + deltaX));
+    };
+
+    const onUp = () => {
+      writeGanttLabelWidthPreference(labelWidthPxRef.current);
+      setGanttLabelResize(null);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+  }, [ganttLabelResize]);
+
   const shouldBlockGanttClick = () => {
     if (typeof window === 'undefined') return false;
     return Date.now() < ganttClickBlockUntilRef.current;
   };
 
+  const toggleCrewCollapsed = (installerId: string) => {
+    setCollapsedCrews((prev) => ({ ...prev, [installerId]: !prev[installerId] }));
+  };
+
   const jumpGanttToToday = () => {
     const scroller = ganttScrollRef.current;
     if (!scroller) return;
-    const timelineViewportWidth = Math.max(0, scroller.clientWidth - GANTT_LABEL_PX);
-    const targetLeft = Math.max(0, gantt.todayLinePx - timelineViewportWidth * 0.3);
+    const timelineViewportWidth = Math.max(0, scroller.clientWidth - labelWidthPx);
+    const todayAbsolutePx = labelWidthPx + gantt.todayLinePx;
+    const targetLeft = Math.max(0, todayAbsolutePx - (labelWidthPx + timelineViewportWidth * 0.3));
     const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
     scroller.scrollTo({
       left: Math.min(maxLeft, targetLeft),
       behavior: 'smooth',
     });
+  };
+
+  const beginGanttLabelResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setGanttLabelResize({ startX: event.clientX, startWidth: labelWidthPx });
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // ignore pointer capture errors
+    }
   };
 
   const openGanttPopover = (row: Extract<GanttRow, { kind: 'item' }>, target: HTMLElement) => {
@@ -4654,10 +4821,21 @@ export default function ScheduleClient() {
           onDragEnd={handleDragEnd}
         >
           <div className={styles.panels}>
-            <aside className={styles.leftPanel} aria-label="Unscheduled jobs">
+            <aside className={cx(styles.leftPanel, unscheduledCollapsed && styles.leftPanelCollapsed)} aria-label="Unscheduled jobs">
               <div className={styles.panelHeader}>
                 <h2 className={styles.panelTitle}>Unscheduled</h2>
-                <span className={styles.muted}>{unscheduledJobs.length}</span>
+                <div className={styles.panelHeaderActions}>
+                  <span className={styles.muted}>{unscheduledJobs.length}</span>
+                  <button
+                    type="button"
+                    className={styles.panelCollapseButton}
+                    aria-label={unscheduledCollapsed ? 'Expand unscheduled panel' : 'Collapse unscheduled panel'}
+                    aria-expanded={!unscheduledCollapsed}
+                    onClick={() => setUnscheduledCollapsed((prev) => !prev)}
+                  >
+                    {unscheduledCollapsed ? '▸' : '◂'}
+                  </button>
+                </div>
               </div>
 
               <div className={styles.filters}>
@@ -4763,6 +4941,18 @@ export default function ScheduleClient() {
                   <div className={styles.ganttMeta}>
                     Range: <strong>{formatShortDate(gantt.rangeStart)}</strong> → <strong>{formatShortDate(gantt.rangeEnd)}</strong>
                   </div>
+                  <label className={styles.ganttDensityControl}>
+                    <span className={styles.ganttDensityLabel}>Density</span>
+                    <select
+                      className={styles.ganttDensitySelect}
+                      value={ganttDensity}
+                      onChange={(e) => setGanttDensity(e.target.value === 'comfortable' ? 'comfortable' : 'compact')}
+                      aria-label="Density"
+                    >
+                      <option value="compact">Compact</option>
+                      <option value="comfortable">Comfortable</option>
+                    </select>
+                  </label>
                   <select
                     className={styles.input}
                     value={rangeWeeks}
@@ -4814,10 +5004,11 @@ export default function ScheduleClient() {
                 <div className={styles.ganttScroll} aria-label="Gantt timeline" ref={ganttScrollRef}>
                   <div
                     className={styles.ganttTable}
+                    data-density={ganttDensity}
                     style={
                       {
-                        gridTemplateColumns: `${GANTT_LABEL_PX}px ${gantt.totalWidth}px`,
-                        ['--ganttLabelW' as any]: `${GANTT_LABEL_PX}px`,
+                        gridTemplateColumns: `${labelWidthPx}px ${gantt.totalWidth}px`,
+                        ['--ganttLabelW' as any]: `${labelWidthPx}px`,
                         ['--ganttDayW' as any]: `${GANTT_DAY_PX}px`,
                       } as React.CSSProperties
                     }
@@ -4825,7 +5016,7 @@ export default function ScheduleClient() {
                     {gantt.todayColumnLeftPx != null ? (
                       <div
                         className={styles.todayColumnWash}
-                        style={{ left: GANTT_LABEL_PX + gantt.todayColumnLeftPx, width: gantt.todayColumnWidthPx }}
+                        style={{ left: labelWidthPx + gantt.todayColumnLeftPx, width: gantt.todayColumnWidthPx }}
                         aria-hidden="true"
                       />
                     ) : null}
@@ -4833,7 +5024,7 @@ export default function ScheduleClient() {
                       <div
                         key={`weekend-${b.date}`}
                         className={styles.weekendShade}
-                        style={{ left: GANTT_LABEL_PX + b.leftPx, width: b.widthPx }}
+                        style={{ left: labelWidthPx + b.leftPx, width: b.widthPx }}
                         aria-hidden="true"
                       />
                     ))}
@@ -4841,18 +5032,27 @@ export default function ScheduleClient() {
                       <div
                         key={`holiday-${b.date}`}
                         className={styles.holidayShade}
-                        style={{ left: GANTT_LABEL_PX + b.leftPx, width: b.widthPx }}
+                        style={{ left: labelWidthPx + b.leftPx, width: b.widthPx }}
                         aria-hidden="true"
                       />
                     ))}
                     <div className={styles.ganttGridLines} aria-hidden="true">
                       {gantt.dayBoundaryLines.map((leftPx, idx) => (
-                        <div key={`day-line-${idx}-${leftPx}`} className={styles.ganttDayBoundary} style={{ left: GANTT_LABEL_PX + leftPx }} />
+                        <div key={`day-line-${idx}-${leftPx}`} className={styles.ganttDayBoundary} style={{ left: labelWidthPx + leftPx }} />
                       ))}
                       {gantt.weekBoundaryLines.map((leftPx, idx) => (
-                        <div key={`week-line-${idx}-${leftPx}`} className={styles.ganttWeekBoundary} style={{ left: GANTT_LABEL_PX + leftPx }} />
+                        <div key={`week-line-${idx}-${leftPx}`} className={styles.ganttWeekBoundary} style={{ left: labelWidthPx + leftPx }} />
                       ))}
                     </div>
+                    <div
+                      className={styles.ganttLabelResizer}
+                      data-active={ganttLabelResize ? 'true' : 'false'}
+                      style={{ left: labelWidthPx - 4 }}
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label="Resize crew label column"
+                      onPointerDown={beginGanttLabelResize}
+                    />
 
                     <div className={styles.ganttCorner}>
                       <div className={styles.ganttLeftHeaderGrid}>
@@ -4864,7 +5064,7 @@ export default function ScheduleClient() {
                       <div className={styles.ganttTodayPillTrack}>
                         {gantt.todayColumnLeftPx != null ? (
                           <span className={styles.ganttTodayPill} style={{ left: gantt.todayColumnLeftPx + gantt.todayColumnWidthPx / 2 }}>
-                            Today · {formatShortDate(today)}
+                            Today · {formatShortDate(gantt.displayToday)}
                           </span>
                         ) : null}
                       </div>
@@ -4897,9 +5097,9 @@ export default function ScheduleClient() {
                       ))}
                     </div>
 
-                    <div className={styles.todayLine} style={{ left: GANTT_LABEL_PX + gantt.todayLinePx }} aria-hidden="true" />
+                    <div className={styles.todayLine} style={{ left: labelWidthPx + gantt.todayLinePx }} aria-hidden="true" />
                     {ganttDragFeedback ? (
-                      <div className={styles.ganttSnapGuide} style={{ left: GANTT_LABEL_PX + ganttDragFeedback.snapLinePx }} aria-hidden="true" />
+                      <div className={styles.ganttSnapGuide} style={{ left: labelWidthPx + ganttDragFeedback.snapLinePx }} aria-hidden="true" />
                     ) : null}
 
                     {gantt.rows.map((row) => (
@@ -4923,7 +5123,7 @@ export default function ScheduleClient() {
                                     aria-expanded={!row.collapsed}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setCollapsedCrews((prev) => ({ ...prev, [row.installerId]: !prev[row.installerId] }));
+                                      toggleCrewCollapsed(row.installerId);
                                     }}
                                   >
                                     {row.collapsed ? '▸' : '▾'}
@@ -4945,7 +5145,32 @@ export default function ScheduleClient() {
                           </div>
                         </div>
 
-                        <div className={cx(styles.ganttTimelineRow, row.kind === 'group' && styles.ganttTimelineRowGroup)} style={{ width: gantt.totalWidth }}>
+                        <div
+                          className={cx(styles.ganttTimelineRow, row.kind === 'group' && styles.ganttTimelineRowGroup)}
+                          style={{ width: gantt.totalWidth, cursor: row.kind === 'group' ? 'pointer' : undefined }}
+                          role={row.kind === 'group' ? 'button' : undefined}
+                          tabIndex={row.kind === 'group' ? 0 : undefined}
+                          onClick={row.kind === 'group' ? () => toggleCrewCollapsed(row.installerId) : undefined}
+                          onKeyDown={
+                            row.kind === 'group'
+                              ? (event) => {
+                                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                                  event.preventDefault();
+                                  toggleCrewCollapsed(row.installerId);
+                                }
+                              : undefined
+                          }
+                        >
+                          {row.kind === 'group' && row.collapsed
+                            ? row.summarySpans.map((span, idx) => (
+                                <div
+                                  key={`crew-summary-${row.installerId}-${idx}`}
+                                  className={styles.ganttCrewSummaryBar}
+                                  style={{ left: span.leftPx, width: span.widthPx, backgroundColor: row.color }}
+                                  aria-hidden="true"
+                                />
+                              ))
+                            : null}
                           {row.kind === 'item' && row.plannedWidthPx && row.plannedWidthPx > 0 ? (
                             <div
                               className={styles.ganttPlannedBar}
