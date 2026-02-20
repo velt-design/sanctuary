@@ -31,6 +31,7 @@ export type QuoteVersion = {
   sentBy?: string | null;
   expiresAt?: string | null;
   reference?: string | null;
+  customerName?: string | null;
   introText?: string | null;
   termsText?: string | null;
   totals: QuoteTotals;

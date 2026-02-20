@@ -22,6 +22,7 @@ const buildQuoteDetail = (overrides: Partial<QuoteVersionDetail> = {}): QuoteVer
     sentBy: 'tester',
     expiresAt: new Date('2026-03-03T00:00:00Z').toISOString(),
     reference: null,
+    customerName: null,
     introText: 'Thanks for the opportunity to quote.',
     termsText: 'This quote is valid for 30 days from the issue date.',
     totals: {
@@ -61,5 +62,11 @@ describe('quote pdf layout', () => {
     const quote = buildQuoteDetail();
     const { layout } = await generateQuotePdfBytesWithLayout(quote);
     expect(layout.pages[0]?.headerClientName?.text).toBe('Ada Lovelace');
+  });
+
+  it('prefers customer name snapshot over contact name', async () => {
+    const quote = buildQuoteDetail({ customerName: 'Grace Hopper' });
+    const { layout } = await generateQuotePdfBytesWithLayout(quote);
+    expect(layout.pages[0]?.headerClientName?.text).toBe('Grace Hopper');
   });
 });
