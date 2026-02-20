@@ -737,6 +737,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                               }))
                             }
                             onFocus={(e) => {
+                              const inputEl = e.currentTarget;
                               setActiveUnitInputId(item.id);
                               setUnitInputDrafts((prev) => {
                                 if (typeof prev[item.id] === 'string') return prev;
@@ -745,7 +746,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                                   [item.id]: formatMoneyInputValue(item.unitPriceIncGstCents),
                                 };
                               });
-                              window.requestAnimationFrame(() => e.currentTarget.select());
+                              window.requestAnimationFrame(() => {
+                                if (!inputEl.isConnected || document.activeElement !== inputEl) return;
+                                inputEl.select();
+                              });
                             }}
                             onBlur={(e) => {
                               setActiveUnitInputId((prev) => (prev === item.id ? null : prev));
