@@ -1,5 +1,5 @@
-import { renderTemplate } from '@/lib/emails/renderTemplate';
-import { sendTransactionalEmail } from '@/lib/emails/sendTransactionalEmail';
+import { renderTemplate } from './renderTemplate';
+import { sendTransactionalEmail } from './sendTransactionalEmail';
 
 export type DepositInvoiceEmailInput = {
   to: string | string[];

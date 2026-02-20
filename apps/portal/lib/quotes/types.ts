@@ -22,6 +22,7 @@ export type QuoteVersion = {
   quoteRef: string;
   versionNumber: number;
   status: QuoteStatus;
+  depositPercent: number;
   sourceEstimateVersionId: string;
   sourceEstimateVersionLabel: string;
   revisedFromQuoteVersionId?: string | null;

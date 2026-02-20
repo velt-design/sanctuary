@@ -23,6 +23,7 @@ export type TaskKey =
   | 'generate_costing'
   | 'upload_photos_site_visit'
   | 'create_quote'
+  | 'invoice_paid'
   | 'call_again_later_sent'
   | 'schedule_install'
   | 'confirm_schedule'
@@ -52,6 +53,8 @@ export type TaskContext = {
   hasBookedSiteVisit: boolean;
   hasGeneratedCosting: boolean;
   hasScheduledInstall: boolean;
+  hasAcceptedQuote: boolean;
+  hasOpenDepositInvoice: boolean;
   nextActionDate?: string | null;
 };
 
@@ -98,7 +101,20 @@ export const STAGE_TASKS: Record<PipelineStageKey, TaskDefinition[]> = {
       when: (ctx) => Boolean(ctx.nextActionDate),
     },
   ],
-  sent: [{ key: 'call_again_later_sent', label: 'Call again later', kind: 'manual' }],
+  sent: [
+    {
+      key: 'invoice_paid',
+      label: 'Invoice paid',
+      kind: 'manual',
+      when: (ctx) => ctx.hasAcceptedQuote && ctx.hasOpenDepositInvoice,
+    },
+    {
+      key: 'call_again_later_sent',
+      label: 'Call again later',
+      kind: 'manual',
+      when: (ctx) => !(ctx.hasAcceptedQuote && ctx.hasOpenDepositInvoice),
+    },
+  ],
   deposit: [
     {
       key: 'schedule_install',

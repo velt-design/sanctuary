@@ -11,8 +11,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ quoteVersionI
   const id = typeof quoteVersionId === 'string' ? quoteVersionId.trim() : '';
   if (!id) return jsonError('Invalid quoteVersionId', 400);
 
+  const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
+
   try {
-    const quoteVersion = await markQuoteDeclined(id);
+    const quoteVersion = await markQuoteDeclined(id, actor);
     return jsonOk({ quoteVersion });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to mark declined';

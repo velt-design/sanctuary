@@ -57,6 +57,27 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const definition = getTaskDefinition(taskKey);
   if (!definition) return jsonError('Invalid taskKey', 400);
   if (definition.kind !== 'manual') return jsonError('Action tasks cannot be manually completed', 400);
+  if (definition.key === 'invoice_paid' && session.role !== 'admin') {
+    return jsonError('Only admins can complete this task', 403);
+  }
+
+  if (definition.key === 'invoice_paid' && completed) {
+    const prev = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+    if (prev.error || !prev.data) return jsonError('Project not found', 404);
+    const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
+    if (fromStage !== 'SENT') return jsonError('Invalid stage transition (expected SENT)', 409);
+
+    const openInvoiceRes = await supabaseServer
+      .from('deposit_invoices')
+      .select('id')
+      .eq('project_id', projectUuid)
+      .eq('status', 'OPEN')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (openInvoiceRes.error) return jsonError(openInvoiceRes.error.message ?? 'Failed to load deposit invoice', 500);
+    if (!openInvoiceRes.data) return jsonError('No open deposit invoice found', 409);
+  }
 
   if (completed) {
     const upsertRes = await supabaseServer.from('project_task_checks').upsert(
@@ -84,6 +105,36 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         .eq('project_id', projectUuid)
         .eq('task_key', 'job_complete');
       if (dependentRes.error) return jsonError(dependentRes.error.message ?? 'Failed to reset dependent task', 500);
+    }
+  }
+
+  if (definition.key === 'invoice_paid' && completed) {
+    const prev = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+    if (prev.error || !prev.data) return jsonError('Project not found', 404);
+    const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
+
+    if (fromStage === 'SENT') {
+      const updateRes = await supabaseServer
+        .from('projects')
+        .update({ pipeline_stage: 'DEPOSIT' } as any)
+        .eq('id', projectUuid)
+        .select('id, pipeline_stage')
+        .single();
+      if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update project stage', 500);
+
+      await automationRunner.runEvent({
+        type: 'pipeline.stage_changed',
+        projectId: projectUuid,
+        stage: 'DEPOSIT',
+        payload: { fromStage: 'SENT', toStage: 'DEPOSIT', reason: 'invoice_paid' },
+      });
+
+      await automationRunner.runEvent({
+        type: 'ui.action.mark_deposit_received',
+        projectId: projectUuid,
+        stage: 'DEPOSIT',
+        payload: { source: 'task.invoice_paid' },
+      });
     }
   }
 

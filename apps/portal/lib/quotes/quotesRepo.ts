@@ -27,6 +27,7 @@ export async function updateDraftQuoteVersion(
     reference?: string | null;
     introText?: string | null;
     termsText?: string | null;
+    depositPercent?: number;
     expiresAt?: string | null;
     lineItems?: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>;
   },

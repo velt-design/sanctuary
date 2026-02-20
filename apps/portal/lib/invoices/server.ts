@@ -1,9 +1,9 @@
 import 'server-only';
 
 import { randomUUID } from 'crypto';
-import { generateAcceptToken } from '@/lib/quotes/acceptToken';
-import { sendDepositInvoiceEmail } from '@/lib/emails/invoice';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { generateAcceptToken } from '../quotes/acceptToken';
+import { sendDepositInvoiceEmail } from '../emails/invoice';
+import { supabaseServer } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
@@ -763,8 +763,8 @@ async function deliverInvoiceEmail(invoice: DepositInvoiceRow, recipients: Recip
       sentAt: sentAtIso,
       attemptNumber: attempt.attemptNumber,
       firstAttemptAt: attempt.firstAttemptAt,
-+      nextRetryAt: null,
-+      finalFailure: false,
+      nextRetryAt: null,
+      finalFailure: false,
     });
 
     await insertAuditEvent({
