@@ -19,9 +19,14 @@ export type PublicQuote = {
   projectName: string;
   projectAddress: string | null;
   totalIncGstCents: number;
+  totalExGstCents?: number;
+  gstCents?: number;
   createdAt: string;
+  sentAt?: string | null;
   expiresAt: string | null;
   tokenExpiresAt: string | null;
+  introText?: string | null;
+  termsText?: string | null;
   lineItems: PublicQuoteLineItem[];
 };
 
@@ -77,9 +82,14 @@ async function loadQuoteVersionByToken(params: {
   status: PublicQuote['status'];
   versionNumber: number;
   createdAt: string;
+  sentAt: string | null;
   expiresAt: string | null;
   tokenExpiresAt: string | null;
   totalIncGstCents: number;
+  totalExGstCents: number;
+  gstCents: number;
+  introText: string | null;
+  termsText: string | null;
 } | null> {
   const supabase = getServiceSupabase();
   const quoteVersionUuid = quoteVersionUuidFromParam(params.quoteId);
@@ -87,7 +97,9 @@ async function loadQuoteVersionByToken(params: {
 
   const versionRes = await supabase
     .from('quote_versions')
-    .select('id, quote_id, status, version_number, created_at, expires_at, accept_token_expires_at, total_inc_gst_cents')
+    .select(
+      'id, quote_id, status, version_number, created_at, sent_at, expires_at, accept_token_expires_at, intro_text, terms_text, total_inc_gst_cents, total_ex_gst_cents, gst_cents',
+    )
     .eq('id', quoteVersionUuid)
     .eq('accept_token_hash', tokenHash)
     .maybeSingle();
@@ -100,12 +112,17 @@ async function loadQuoteVersionByToken(params: {
     status: normalizeStatus((versionRes.data as any).status),
     versionNumber: Number((versionRes.data as any).version_number ?? 0) || 0,
     createdAt: typeof (versionRes.data as any).created_at === 'string' ? (versionRes.data as any).created_at : new Date().toISOString(),
+    sentAt: typeof (versionRes.data as any).sent_at === 'string' ? (versionRes.data as any).sent_at : null,
     expiresAt: typeof (versionRes.data as any).expires_at === 'string' ? (versionRes.data as any).expires_at : null,
     tokenExpiresAt:
       typeof (versionRes.data as any).accept_token_expires_at === 'string'
         ? (versionRes.data as any).accept_token_expires_at
         : null,
     totalIncGstCents: Number((versionRes.data as any).total_inc_gst_cents ?? 0) || 0,
+    totalExGstCents: Number((versionRes.data as any).total_ex_gst_cents ?? 0) || 0,
+    gstCents: Number((versionRes.data as any).gst_cents ?? 0) || 0,
+    introText: typeof (versionRes.data as any).intro_text === 'string' ? (versionRes.data as any).intro_text : null,
+    termsText: typeof (versionRes.data as any).terms_text === 'string' ? (versionRes.data as any).terms_text : null,
   };
 }
 
@@ -218,9 +235,14 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
     projectName: project.name,
     projectAddress: project.siteAddress,
     totalIncGstCents: version.totalIncGstCents,
+    totalExGstCents: version.totalExGstCents,
+    gstCents: version.gstCents,
     createdAt: version.createdAt,
+    sentAt: version.sentAt,
     expiresAt: version.expiresAt,
     tokenExpiresAt: version.tokenExpiresAt,
+    introText: version.introText,
+    termsText: version.termsText,
     lineItems,
   };
 

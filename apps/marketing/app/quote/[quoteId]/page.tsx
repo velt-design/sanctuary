@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { loadPublicQuoteByToken, type PublicQuote } from '@/lib/quotes/publicQuote';
+import { formatQuoteIntroText, formatQuoteLineDescription, formatQuoteTermsText } from '@sp/quote-format';
 import { QuoteTopBarActions } from './QuoteTopBarActions';
 import styles from './quoteViewer.module.css';
 
@@ -201,13 +202,23 @@ function QuoteLineItemsTable({ lineItems }: { lineItems: PublicQuote['lineItems'
         </thead>
         <tbody>
           {lineItems.length ? (
-            lineItems.map((line) => {
+            lineItems.map((line, index) => {
               const unitCents = unitPriceCents(line);
+              const description = formatQuoteLineDescription(line.description, index);
               return (
                 <tr key={line.id}>
-                  <td>{line.description || 'Line item'}</td>
+                  <td>
+                    <strong className={styles.descriptionHeading}>{description.heading || 'Line item:'}</strong>
+                    {description.bullets.length ? (
+                      <ul className={styles.descriptionBullets}>
+                        {description.bullets.map((bullet, bulletIndex) => (
+                          <li key={`${line.id}:${bulletIndex}`}>{bullet}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </td>
                   <td className={styles.numericCell}>{formatQty(line.qty)}</td>
-                  <td className={styles.numericCell}>{unitCents == null ? '—' : formatMoney(unitCents)}</td>
+                  <td className={styles.numericCell}>{unitCents == null ? '\u2014' : formatMoney(unitCents)}</td>
                   <td className={styles.numericCell}>{formatMoney(line.lineTotalIncGstCents)}</td>
                 </tr>
               );
@@ -225,14 +236,64 @@ function QuoteLineItemsTable({ lineItems }: { lineItems: PublicQuote['lineItems'
   );
 }
 
-function QuoteTotals({ totalIncGstCents }: { totalIncGstCents: number }) {
+function QuoteIntro({ introText }: { introText?: string | null }) {
+  const intro = formatQuoteIntroText(introText);
+  if (!intro) return null;
+
+  return (
+    <section className={styles.introSection} aria-label="Quote introduction">
+      <p className={styles.introText}>{intro}</p>
+    </section>
+  );
+}
+
+function QuoteTotals({ quote }: { quote: PublicQuote }) {
+  const hasBreakdown = Number.isFinite(quote.totalExGstCents) && Number.isFinite(quote.gstCents);
+
+  if (hasBreakdown) {
+    return (
+      <section className={styles.totalsSection} aria-label="Quote totals">
+        <div className={styles.totalsBreakdown}>
+          <div className={styles.totalsBreakdownRow}>
+            <span className={styles.totalsBreakdownLabel}>SUBTOTAL NZD</span>
+            <span className={styles.totalsBreakdownValue}>{formatMoney(quote.totalExGstCents ?? 0)}</span>
+          </div>
+          <div className={styles.totalsBreakdownRow}>
+            <span className={styles.totalsBreakdownLabel}>INCLUDES GST 15%</span>
+            <span className={styles.totalsBreakdownValue}>{formatMoney(quote.gstCents ?? 0)}</span>
+          </div>
+          <div className={`${styles.totalsBreakdownRow} ${styles.totalsBreakdownTotalRow}`}>
+            <span className={styles.totalsBreakdownLabel}>TOTAL NZD</span>
+            <span className={styles.totalsBreakdownTotalValue}>{formatMoney(quote.totalIncGstCents)}</span>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className={styles.totalsSection} aria-label="Quote totals">
       <p className={styles.totalsHint}>Includes GST</p>
       <div className={styles.totalsRow}>
         <span className={styles.totalsLabel}>Total</span>
-        <span className={styles.totalsValue}>{formatMoney(totalIncGstCents)}</span>
+        <span className={styles.totalsValue}>{formatMoney(quote.totalIncGstCents)}</span>
       </div>
+    </section>
+  );
+}
+
+function QuoteTerms({ termsText, sentAt }: { termsText?: string | null; sentAt?: string | null }) {
+  const terms = formatQuoteTermsText(termsText, { sentAt });
+  if (!terms.length) return null;
+
+  return (
+    <section className={styles.termsSection} aria-label="Quote terms">
+      <p className={styles.termsTitle}>TERMS</p>
+      <ul className={styles.termsList}>
+        {terms.map((term, index) => (
+          <li key={`${index}:${term}`}>{term}</li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -333,8 +394,10 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
       <QuoteDocumentCard>
         <QuoteDocHeader quoteRef={quote.quoteRef} versionNumber={quote.versionNumber} />
         <QuoteMetaGrid quote={quote} status={displayStatus} />
+        <QuoteIntro introText={quote.introText} />
         <QuoteLineItemsTable lineItems={quote.lineItems} />
-        <QuoteTotals totalIncGstCents={quote.totalIncGstCents} />
+        <QuoteTotals quote={quote} />
+        <QuoteTerms termsText={quote.termsText} sentAt={quote.sentAt} />
         <QuotePrimaryAction quoteId={quoteId} token={token} action={acceptAction} />
         <QuoteAttachments attachments={attachments} />
 
@@ -351,3 +414,4 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
     </QuoteViewerShell>
   );
 }
+

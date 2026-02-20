@@ -3,10 +3,10 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: { externalDir: true },
-  transpilePackages: ['@sp/costing'],
+  transpilePackages: ['@sp/costing', '@sp/quote-format'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
-  // Allow monorepo package resolution for @sp/costing.
+  // Allow monorepo package resolution for workspace packages.
   turbopack: { root: path.resolve(__dirname, '../..') },
   async headers() {
     const securityHeaders: { key: string; value: string }[] = [
