@@ -92,11 +92,32 @@ function statusClass(status: QuoteStatus): string {
 
 function sanitizeMoneyInput(value: string): string {
   const cleaned = value.replace(/[^0-9.]/g, '');
-  const dotIndex = cleaned.indexOf('.');
-  if (dotIndex === -1) return cleaned;
-  const whole = cleaned.slice(0, dotIndex + 1);
-  const fraction = cleaned.slice(dotIndex + 1).replace(/[.]/g, '');
-  return `${whole}${fraction}`;
+  let next = '';
+  let dotSeen = false;
+  let decimalCount = 0;
+  for (const ch of cleaned) {
+    if (ch === '.') {
+      if (dotSeen) continue;
+      dotSeen = true;
+      next += '.';
+      continue;
+    }
+    if (!dotSeen) {
+      next += ch;
+      continue;
+    }
+    if (decimalCount >= 2) continue;
+    decimalCount += 1;
+    next += ch;
+  }
+  return next;
+}
+
+function formatMoneyInputValue(valueCents: number): string {
+  if (!Number.isFinite(valueCents)) return '0';
+  const value = valueCents / 100;
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(2).replace(/\.?0+$/, '');
 }
 
 function parseMoneyInput(value: string): number {
@@ -176,6 +197,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
 
   const [draftItems, setDraftItems] = useState<QuoteLineItem[]>([]);
   const [unitInputDrafts, setUnitInputDrafts] = useState<Record<string, string>>({});
+  const [activeUnitInputId, setActiveUnitInputId] = useState<string | null>(null);
   const [draftReference, setDraftReference] = useState('');
   const [draftIntro, setDraftIntro] = useState('');
   const [draftTerms, setDraftTerms] = useState('');
@@ -211,6 +233,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!detail) return;
     setDraftItems(detail.lineItems);
     setUnitInputDrafts({});
+    setActiveUnitInputId(null);
     setDraftReference(detail.reference ?? '');
     setDraftIntro(detail.introText ?? '');
     setDraftTerms(detail.termsText ?? '');
@@ -359,6 +382,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
       setUnitInputDrafts({});
+      setActiveUnitInputId(null);
       setSendOpen(false);
       setSendError(null);
       await refreshQuotes();
@@ -425,6 +449,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
       setUnitInputDrafts({});
+      setActiveUnitInputId(null);
       setDraftReference(updated.reference ?? '');
       setDraftIntro(updated.introText ?? '');
       setDraftTerms(updated.termsText ?? '');
@@ -498,6 +523,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const handleDeleteRow = (idx: number) => {
     const removedId = draftItems[idx]?.id;
     if (removedId) {
+      setActiveUnitInputId((prev) => (prev === removedId ? null : prev));
       setUnitInputDrafts((prev) => {
         if (!Object.prototype.hasOwnProperty.call(prev, removedId)) return prev;
         const next = { ...prev };
@@ -652,7 +678,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
               </thead>
               <tbody>
                 {draftItems.map((item, idx) => {
-                  const unitInputValue = unitInputDrafts[item.id] ?? formatMoneyFromCents(item.unitPriceIncGstCents).replace('$', '');
+                  const unitInputValue =
+                    unitInputDrafts[item.id] ??
+                    (activeUnitInputId === item.id
+                      ? formatMoneyInputValue(item.unitPriceIncGstCents)
+                      : formatMoneyFromCents(item.unitPriceIncGstCents).replace('$', ''));
                   const liveUnitPriceIncGstCents = detail.status === 'DRAFT' ? getLiveUnitPriceIncGstCents(item) : item.unitPriceIncGstCents;
                   const lineTotal = Math.round((Number.isFinite(item.qty) ? item.qty : 0) * liveUnitPriceIncGstCents);
                   return (
@@ -694,14 +724,33 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                             className={styles.numberInput}
                             value={unitInputValue}
                             inputMode="decimal"
+                            onPointerDown={(e) => {
+                              if (e.currentTarget === document.activeElement) return;
+                              e.preventDefault();
+                              e.currentTarget.focus();
+                              e.currentTarget.select();
+                            }}
                             onChange={(e) =>
                               setUnitInputDrafts((prev) => ({
                                 ...prev,
                                 [item.id]: sanitizeMoneyInput(e.target.value),
                               }))
                             }
-                            onFocus={(e) => e.currentTarget.select()}
-                            onBlur={(e) => commitUnitPriceDraft(item.id, e.target.value)}
+                            onFocus={(e) => {
+                              setActiveUnitInputId(item.id);
+                              setUnitInputDrafts((prev) => {
+                                if (typeof prev[item.id] === 'string') return prev;
+                                return {
+                                  ...prev,
+                                  [item.id]: formatMoneyInputValue(item.unitPriceIncGstCents),
+                                };
+                              });
+                              window.requestAnimationFrame(() => e.currentTarget.select());
+                            }}
+                            onBlur={(e) => {
+                              setActiveUnitInputId((prev) => (prev === item.id ? null : prev));
+                              commitUnitPriceDraft(item.id, e.target.value);
+                            }}
                             onKeyDown={(e) => {
                               if (e.key !== 'Enter') return;
                               e.preventDefault();
