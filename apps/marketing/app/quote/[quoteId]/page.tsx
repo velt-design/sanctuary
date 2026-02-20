@@ -408,7 +408,7 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
           </QuoteNotice>
         ) : null}
         {displayStatus === 'ACCEPTED' ? (
-          <QuoteNotice tone="info">Quote accepted. We will be in touch to confirm scheduling.</QuoteNotice>
+          <QuoteNotice tone="info">Quote accepted. Your deposit invoice has been emailed to you.</QuoteNotice>
         ) : null}
       </QuoteDocumentCard>
     </QuoteViewerShell>

@@ -32,7 +32,6 @@ export const STAGE_COMPLETE_MODAL: Record<StageKey, StageCompleteAction[]> = {
   ],
   sent: [
     { kind: 'call_later', label: 'Call later' },
-    { kind: 'advance', toStage: 'deposit', label: 'Move to Deposit' },
     { kind: 'archive', label: 'Archive lead' },
   ],
   deposit: [

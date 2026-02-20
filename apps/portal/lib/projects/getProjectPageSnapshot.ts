@@ -3,6 +3,7 @@ import 'server-only';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
+import { ensureInvoiceRetryScheduledFromLatestFailure } from '@/lib/invoices/server';
 import {
   isManualTaskKey,
   normalizePipelineStageKey,
@@ -148,6 +149,22 @@ function mapAuditToActivity(row: any): ProjectActivityItem | null {
     }
   }
 
+  if (typeRaw.startsWith('invoice.')) {
+    switch (typeRaw) {
+      case 'invoice.created':
+        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice created' };
+      case 'invoice.sent':
+        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice sent' };
+      case 'invoice.voided':
+        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice voided' };
+      case 'invoice.send_failed':
+      case 'invoice.send_failed_final':
+        return { id: String(row?.id ?? ''), at, type: 'note', title: 'Deposit invoice send failed' };
+      default:
+        break;
+    }
+  }
+
   return {
     id: String(row?.id ?? ''),
     at,
@@ -190,7 +207,7 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
     projectRow.followUpDate,
   );
 
-  const [contactRes, siteVisitRes, estimateRes, scheduleRes, manualRes, emailRes, auditRes] = await Promise.all([
+  const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes] = await Promise.all([
     contactUuid
       ? supabaseServer.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -209,6 +226,19 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
       .select('id,start_date')
       .eq('project_id', projectUuid)
       .limit(1),
+    supabaseServer
+      .from('quote_versions')
+      .select('id, quotes!inner(project_id)')
+      .eq('status', 'ACCEPTED')
+      .eq('quotes.project_id', projectUuid)
+      .limit(1),
+    supabaseServer
+      .from('deposit_invoices')
+      .select('id')
+      .eq('project_id', projectUuid)
+      .eq('status', 'OPEN')
+      .limit(1)
+      .maybeSingle(),
     supabaseServer
       .from('project_task_checks')
       .select('task_key')
@@ -241,6 +271,12 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
   if (scheduleRes?.error) {
     console.error('[project_snapshot] schedule_items query failed', scheduleRes.error);
   }
+  if (acceptedQuoteRes?.error) {
+    console.error('[project_snapshot] accepted quote query failed', acceptedQuoteRes.error);
+  }
+  if (openInvoiceRes?.error) {
+    console.error('[project_snapshot] open deposit invoice query failed', openInvoiceRes.error);
+  }
   if (manualRes?.error) {
     console.error('[project_snapshot] project_task_checks query failed', manualRes.error);
   }
@@ -267,6 +303,19 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
 
   const hasGeneratedCosting = Array.isArray(estimateRes?.data) ? estimateRes.data.length > 0 : Boolean(estimateRes?.data);
   const hasScheduledInstall = Array.isArray(scheduleRes?.data) ? scheduleRes.data.length > 0 : Boolean(scheduleRes?.data);
+  const hasAcceptedQuote = Array.isArray(acceptedQuoteRes?.data)
+    ? acceptedQuoteRes.data.length > 0
+    : Boolean(acceptedQuoteRes?.data);
+  const hasOpenDepositInvoice = Boolean(openInvoiceRes?.data);
+  const openInvoiceId = hasOpenDepositInvoice && typeof (openInvoiceRes?.data as any)?.id === 'string'
+    ? String((openInvoiceRes?.data as any).id)
+    : null;
+
+  if (openInvoiceId) {
+    void ensureInvoiceRetryScheduledFromLatestFailure(openInvoiceId, null).catch((error) => {
+      console.error('[project_snapshot] failed to schedule invoice retry', { openInvoiceId, error });
+    });
+  }
 
   const manualCompleted = new Set<TaskKey>();
   for (const row of Array.isArray(manualRes?.data) ? manualRes.data : []) {
@@ -280,6 +329,8 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
     hasBookedSiteVisit,
     hasGeneratedCosting,
     hasScheduledInstall,
+    hasAcceptedQuote,
+    hasOpenDepositInvoice,
     nextActionDate,
   };
 

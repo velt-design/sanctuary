@@ -6,10 +6,16 @@ import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { buildVersionLabelMap } from '@/lib/estimates/server';
 import type { Estimate } from '@/lib/types/estimate';
 import type { QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion, QuoteVersionDetail } from './types';
-import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS } from './defaults';
+import {
+  DEFAULT_QUOTE_INTRO,
+  DEFAULT_QUOTE_TERMS,
+  applyDepositPercentToTerms,
+  normalizeDepositPercent,
+} from './defaults';
 import { buildQuoteLineItemsFromEstimate } from './mapping';
 import { lineTotalCents, totalsFromLineItems } from './utils';
 import { generateQuotePdfBytes, quotePdfFilename } from './pdf';
+import { ensureDepositInvoiceForAcceptedQuote, voidOpenDepositInvoiceForQuote } from '../invoices/server';
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -114,6 +120,7 @@ function mapQuoteVersionRow(row: any, estimateLabelMap: Map<string, string>, pro
     quoteRef,
     versionNumber: Number(row?.version_number ?? 0) || 0,
     status: toStatus(row?.status),
+    depositPercent: normalizeDepositPercent(row?.deposit_percent, 50),
     sourceEstimateVersionId: appIdFromUuid('est', estimateId),
     sourceEstimateVersionLabel: estimateLabel,
     revisedFromQuoteVersionId: row?.revised_from_quote_version_id ? appIdFromUuid('qv', String(row.revised_from_quote_version_id)) : null,
@@ -420,7 +427,9 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
   );
 
   const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
-  const termsText = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+  const depositPercent = 50;
+  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+  const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
   const customerName = await loadProjectCustomerName(projectUuid);
 
   const insertRes = await supabaseServer
@@ -435,6 +444,7 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
       customer_name: customerName,
       intro_text: introText,
       terms_text: termsText,
+      deposit_percent: depositPercent,
       total_inc_gst_cents: totals.totalIncGstCents,
       total_ex_gst_cents: totals.totalExGstCents,
       gst_cents: totals.gstCents,
@@ -479,6 +489,7 @@ export async function updateDraftQuoteVersion(
     reference?: string | null;
     introText?: string | null;
     termsText?: string | null;
+    depositPercent?: number;
     expiresAt?: string | null;
     lineItems?: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>;
   },
@@ -487,7 +498,7 @@ export async function updateDraftQuoteVersion(
 
   const versionRes = await supabaseServer
     .from('quote_versions')
-    .select('id, status, quote_id')
+    .select('id, status, quote_id, terms_text, deposit_percent')
     .eq('id', quoteVersionUuid)
     .single();
   if (versionRes.error) {
@@ -521,10 +532,27 @@ export async function updateDraftQuoteVersion(
     })),
   );
 
+  const existingDepositPercent = normalizeDepositPercent((versionRes.data as any)?.deposit_percent, 50);
+  const nextDepositPercent = patch.depositPercent === undefined
+    ? existingDepositPercent
+    : normalizeDepositPercent(patch.depositPercent, existingDepositPercent);
+
+  const existingTermsText = typeof (versionRes.data as any)?.terms_text === 'string'
+    ? String((versionRes.data as any).terms_text)
+    : null;
+  const nextTermsText = patch.termsText === null
+    ? null
+    : typeof patch.termsText === 'string'
+      ? applyDepositPercentToTerms(patch.termsText, nextDepositPercent)
+      : patch.depositPercent !== undefined
+        ? applyDepositPercentToTerms(existingTermsText ?? DEFAULT_QUOTE_TERMS, nextDepositPercent)
+        : undefined;
+
   const updatePayload: any = {
     reference: typeof patch.reference === 'string' ? patch.reference : patch.reference === null ? null : undefined,
     intro_text: typeof patch.introText === 'string' ? patch.introText : patch.introText === null ? null : undefined,
-    terms_text: typeof patch.termsText === 'string' ? patch.termsText : patch.termsText === null ? null : undefined,
+    terms_text: nextTermsText,
+    deposit_percent: nextDepositPercent,
     expires_at: typeof patch.expiresAt === 'string' ? patch.expiresAt : patch.expiresAt === null ? null : undefined,
     total_inc_gst_cents: totals.totalIncGstCents,
     total_ex_gst_cents: totals.totalExGstCents,
@@ -635,7 +663,10 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
     typeof versionRes.data.customer_name === 'string' && versionRes.data.customer_name.trim()
       ? versionRes.data.customer_name.trim()
       : null;
+  const inheritedDepositPercent = normalizeDepositPercent(versionRes.data.deposit_percent, 50);
   const customerName = inheritedCustomerName || (await loadProjectCustomerName(String(projectRes.data.project_id ?? '')));
+  const inheritedTermsText = typeof versionRes.data.terms_text === 'string' ? versionRes.data.terms_text : null;
+  const termsText = inheritedTermsText ? applyDepositPercentToTerms(inheritedTermsText, inheritedDepositPercent) : null;
 
   const insertRes = await supabaseServer
     .from('quote_versions')
@@ -649,7 +680,8 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
       reference: versionRes.data.reference ?? null,
       customer_name: customerName,
       intro_text: versionRes.data.intro_text ?? null,
-      terms_text: versionRes.data.terms_text ?? null,
+      terms_text: termsText,
+      deposit_percent: inheritedDepositPercent,
       total_inc_gst_cents: totals.totalIncGstCents,
       total_ex_gst_cents: totals.totalExGstCents,
       gst_cents: totals.gstCents,
@@ -815,26 +847,6 @@ export async function insertSendLog(params: {
   return String(res.data?.id ?? '');
 }
 
-async function createInvoiceTask(projectUuid: string, quoteVersionUuid: string) {
-  try {
-    const idempotencyKey = `quote_invoice:${projectUuid}:${quoteVersionUuid}`;
-    await supabaseServer.from('tasks').upsert(
-      {
-        project_id: projectUuid,
-        type: 'CREATE_INVOICE_XERO',
-        status: 'OPEN',
-        title: 'Create invoice in Xero',
-        details: 'Quote accepted; create invoice and send to customer.',
-        idempotency_key: idempotencyKey,
-      } as any,
-      { onConflict: 'idempotency_key' },
-    );
-  } catch (err: any) {
-    if (missingTableError(err)) return;
-    console.error('[quote_task] failed to create invoice task', err);
-  }
-}
-
 export async function markQuoteAccepted(quoteVersionId: string, actor: string | null): Promise<QuoteVersionDetail> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
   const versionRes = await supabaseServer
@@ -865,17 +877,16 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   }
   const projectUuid = String(quoteRes.data?.project_id ?? '');
   if (projectUuid) {
-    await updateProjectStage(projectUuid, 'DEPOSIT', quoteVersionUuid);
-    await createInvoiceTask(projectUuid, quoteVersionUuid);
     await insertAuditEvent({ projectId: projectUuid, type: 'quote.accepted', payload: { quoteVersionId: quoteVersionUuid } });
   }
+  await ensureDepositInvoiceForAcceptedQuote({ quoteVersionUuid, actor });
 
   const updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');
   return updated;
 }
 
-export async function markQuoteDeclined(quoteVersionId: string): Promise<QuoteVersionDetail> {
+export async function markQuoteDeclined(quoteVersionId: string, actor: string | null): Promise<QuoteVersionDetail> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
   const versionRes = await supabaseServer
     .from('quote_versions')
@@ -887,7 +898,8 @@ export async function markQuoteDeclined(quoteVersionId: string): Promise<QuoteVe
     throw new Error(errorMessage(versionRes.error, 'Quote not found'));
   }
   if (!versionRes.data) throw new Error('Quote not found');
-  if (String(versionRes.data.status ?? '').toUpperCase() !== 'SENT') throw new Error('Only sent quotes can be declined');
+  const currentStatus = String(versionRes.data.status ?? '').toUpperCase();
+  if (currentStatus !== 'SENT' && currentStatus !== 'ACCEPTED') throw new Error('Only sent or accepted quotes can be declined');
 
   const updateRes = await supabaseServer
     .from('quote_versions')
@@ -906,6 +918,13 @@ export async function markQuoteDeclined(quoteVersionId: string): Promise<QuoteVe
   const projectUuid = String(quoteRes.data?.project_id ?? '');
   if (projectUuid) {
     await insertAuditEvent({ projectId: projectUuid, type: 'quote.declined', payload: { quoteVersionId: quoteVersionUuid } });
+  }
+  if (currentStatus === 'ACCEPTED') {
+    await voidOpenDepositInvoiceForQuote({
+      quoteUuid: String(versionRes.data.quote_id ?? ''),
+      actor,
+      reason: 'quote_declined',
+    });
   }
 
   const updated = await getQuoteVersionDetail(quoteVersionId);

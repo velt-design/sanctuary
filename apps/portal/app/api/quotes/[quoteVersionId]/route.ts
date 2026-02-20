@@ -34,6 +34,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ quoteVersionI
       reference: typeof body.reference === 'string' ? body.reference : body.reference === null ? null : undefined,
       introText: typeof body.introText === 'string' ? body.introText : body.introText === null ? null : undefined,
       termsText: typeof body.termsText === 'string' ? body.termsText : body.termsText === null ? null : undefined,
+      depositPercent: typeof body.depositPercent === 'number'
+        ? body.depositPercent
+        : typeof body.depositPercent === 'string'
+          ? Number(body.depositPercent)
+          : undefined,
       expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : body.expiresAt === null ? null : undefined,
       lineItems: Array.isArray(body.lineItems) ? body.lineItems : undefined,
     });

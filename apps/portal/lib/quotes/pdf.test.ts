@@ -13,6 +13,7 @@ const buildQuoteDetail = (overrides: Partial<QuoteVersionDetail> = {}): QuoteVer
     quoteRef: 'Q-0003',
     versionNumber: 5,
     status: 'SENT',
+    depositPercent: 50,
     sourceEstimateVersionId: 'estimate-version-1',
     sourceEstimateVersionLabel: 'v1',
     revisedFromQuoteVersionId: null,

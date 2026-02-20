@@ -132,6 +132,40 @@ function parseQtyInput(value: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function normalizePercentInput(value: string): string {
+  const cleaned = value.replace(/[^0-9.]/g, '');
+  let next = '';
+  let dotSeen = false;
+  let decimalCount = 0;
+  for (const ch of cleaned) {
+    if (ch === '.') {
+      if (dotSeen) continue;
+      dotSeen = true;
+      next += '.';
+      continue;
+    }
+    if (!dotSeen) {
+      next += ch;
+      continue;
+    }
+    if (decimalCount >= 2) continue;
+    decimalCount += 1;
+    next += ch;
+  }
+  return next;
+}
+
+function parsePercentInput(value: string): number {
+  const raw = Number.parseFloat(normalizePercentInput(value));
+  if (!Number.isFinite(raw)) return 50;
+  return Math.max(0, Math.min(100, Math.round(raw * 100) / 100));
+}
+
+function formatPercentInput(value: number): string {
+  if (!Number.isFinite(value)) return '50';
+  return Math.max(0, Math.min(100, value)).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+
 function computeLineTotal(item: QuoteLineItem): number {
   const qty = Number.isFinite(item.qty) ? item.qty : 0;
   const unit = Number.isFinite(item.unitPriceIncGstCents) ? item.unitPriceIncGstCents : 0;
@@ -201,6 +235,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [draftReference, setDraftReference] = useState('');
   const [draftIntro, setDraftIntro] = useState('');
   const [draftTerms, setDraftTerms] = useState('');
+  const [draftDepositPercent, setDraftDepositPercent] = useState('50');
   const [draftExpiry, setDraftExpiry] = useState('');
   const [savingDraft, setSavingDraft] = useState(false);
 
@@ -237,6 +272,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     setDraftReference(detail.reference ?? '');
     setDraftIntro(detail.introText ?? '');
     setDraftTerms(detail.termsText ?? '');
+    setDraftDepositPercent(formatPercentInput(detail.depositPercent));
     setDraftExpiry(detail.expiresAt ?? '');
   }, [detail?.id]);
 
@@ -313,9 +349,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if ((detail.reference ?? '') !== draftReference) return true;
     if ((detail.introText ?? '') !== draftIntro) return true;
     if ((detail.termsText ?? '') !== draftTerms) return true;
+    if (formatPercentInput(detail.depositPercent) !== formatPercentInput(parsePercentInput(draftDepositPercent))) return true;
     if ((detail.expiresAt ?? '') !== draftExpiry) return true;
     return false;
-  }, [detail, effectiveDraftItems, draftReference, draftIntro, draftTerms, draftExpiry]);
+  }, [detail, effectiveDraftItems, draftReference, draftIntro, draftTerms, draftDepositPercent, draftExpiry]);
 
   const openCreateModal = () => {
     const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
@@ -439,6 +476,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         reference: draftReference,
         introText: draftIntro,
         termsText: draftTerms,
+        depositPercent: parsePercentInput(draftDepositPercent),
         expiresAt: draftExpiry || null,
         lineItems: effectiveDraftItems.map((item) => ({
           description: item.description,
@@ -453,6 +491,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       setDraftReference(updated.reference ?? '');
       setDraftIntro(updated.introText ?? '');
       setDraftTerms(updated.termsText ?? '');
+      setDraftDepositPercent(formatPercentInput(updated.depositPercent));
       setDraftExpiry(updated.expiresAt ?? '');
       await refreshQuotes();
       toast.success('Draft saved.');
@@ -486,7 +525,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       const updated = await markQuoteAccepted(detail.id);
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       await refreshQuotes();
-      toast.success('Quote marked accepted.');
+      toast.success('Quote accepted and deposit invoice triggered.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to mark accepted';
       toast.error(msg);
@@ -638,6 +677,21 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                 />
               ) : (
                 <div className={styles.metaValue}>{detail.reference || '—'}</div>
+              )}
+            </div>
+            <div className={styles.metaBlock}>
+              <div className={styles.metaLabel}>Deposit %</div>
+              {detail.status === 'DRAFT' ? (
+                <input
+                  className={styles.metaInput}
+                  inputMode="decimal"
+                  value={draftDepositPercent}
+                  onChange={(e) => setDraftDepositPercent(normalizePercentInput(e.target.value))}
+                  onBlur={(e) => setDraftDepositPercent(formatPercentInput(parsePercentInput(e.target.value)))}
+                  placeholder="50"
+                />
+              ) : (
+                <div className={styles.metaValue}>{formatPercentInput(detail.depositPercent)}%</div>
               )}
             </div>
           </div>
@@ -852,7 +906,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                 </button>
               </div>
             </div>
-            <p className={styles.muted}>These actions lock the quote and update the pipeline stage.</p>
+            <p className={styles.muted}>These actions lock the quote and trigger the deposit invoice workflow.</p>
           </section>
         ) : null}
 

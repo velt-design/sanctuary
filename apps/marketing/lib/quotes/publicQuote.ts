@@ -3,6 +3,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { hashAcceptToken } from '@/lib/quotes/acceptToken';
 import { getServiceSupabase } from '@/lib/supabaseService';
+import { ensureDepositInvoiceForAcceptedQuote } from '../../../portal/lib/invoices/server';
 
 export type PublicQuoteLineItem = {
   id: string;
@@ -197,43 +198,6 @@ async function insertAuditEvent(projectId: string, type: string, payload: Record
   }
 }
 
-async function moveProjectToDeposit(projectId: string, quoteVersionUuid: string): Promise<void> {
-  const supabase = getServiceSupabase();
-  const prev = await supabase.from('projects').select('pipeline_stage').eq('id', projectId).maybeSingle();
-  const fromStage = typeof (prev.data as any)?.pipeline_stage === 'string' ? String((prev.data as any).pipeline_stage) : null;
-
-  const updateRes = await supabase.from('projects').update({ pipeline_stage: 'DEPOSIT' } as any).eq('id', projectId);
-  if (updateRes.error) {
-    throw new Error(updateRes.error.message ?? 'Failed to update project stage');
-  }
-
-  await insertAuditEvent(projectId, 'pipeline.stage_changed', {
-    fromStage,
-    toStage: 'DEPOSIT',
-    quoteId: quoteVersionUuid,
-  });
-}
-
-async function createInvoiceTask(projectId: string, quoteVersionUuid: string): Promise<void> {
-  const supabase = getServiceSupabase();
-  try {
-    const idempotencyKey = `quote_invoice:${projectId}:${quoteVersionUuid}`;
-    await supabase.from('tasks').upsert(
-      {
-        project_id: projectId,
-        type: 'CREATE_INVOICE_XERO',
-        status: 'OPEN',
-        title: 'Create invoice in Xero',
-        details: 'Quote accepted; create invoice and send to customer.',
-        idempotency_key: idempotencyKey,
-      } as any,
-      { onConflict: 'idempotency_key' },
-    );
-  } catch {
-    // Best effort task creation.
-  }
-}
-
 export async function loadPublicQuoteByToken(params: { quoteId: string; token: string }): Promise<PublicQuoteLookupResult> {
   const version = await loadQuoteVersionByToken(params);
   if (!version) return { quote: null, reason: 'invalid' };
@@ -309,12 +273,23 @@ export async function acceptPublicQuoteByToken(params: {
   const quoteProject = await loadQuoteProject(version.quoteId);
   const projectId = quoteProject?.projectId ?? null;
   if (projectId) {
-    try {
-      await moveProjectToDeposit(projectId, version.quoteVersionUuid);
-      await createInvoiceTask(projectId, version.quoteVersionUuid);
-      await insertAuditEvent(projectId, 'quote.accepted', { quoteVersionId: version.quoteVersionUuid });
-    } catch (error) {
-      return { ok: false, code: 'server', message: errorMessage(error, 'Failed to finalize acceptance') };
+    await insertAuditEvent(projectId, 'quote.accepted', { quoteVersionId: version.quoteVersionUuid });
+  }
+
+  try {
+    await ensureDepositInvoiceForAcceptedQuote({
+      quoteVersionUuid: version.quoteVersionUuid,
+      actor: null,
+    });
+  } catch (error) {
+    const message = errorMessage(error, 'Failed to trigger deposit invoice');
+    if (projectId) {
+      await insertAuditEvent(projectId, 'invoice.send_failed', {
+        quoteVersionId: version.quoteVersionUuid,
+        reason: message,
+      });
+    } else {
+      console.error('[public_quote_accept] invoice trigger failed', { quoteVersionId: version.quoteVersionUuid, error: message });
     }
   }
 

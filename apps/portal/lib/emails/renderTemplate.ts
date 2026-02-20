@@ -5,9 +5,12 @@ import Handlebars from 'handlebars';
 let cachedTemplateDir: string | null = null;
 
 function templateDirCandidates(): string[] {
+  const cwd = process.cwd();
   return [
-    path.join(process.cwd(), 'lib', 'emails', 'templates'),
-    path.join(process.cwd(), 'apps', 'portal', 'lib', 'emails', 'templates'),
+    path.join(cwd, 'lib', 'emails', 'templates'),
+    path.join(cwd, 'apps', 'portal', 'lib', 'emails', 'templates'),
+    path.join(cwd, '..', 'portal', 'lib', 'emails', 'templates'),
+    path.join(cwd, '..', '..', 'apps', 'portal', 'lib', 'emails', 'templates'),
   ];
 }
 
