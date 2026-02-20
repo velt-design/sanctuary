@@ -387,7 +387,13 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
   const isExpired = lookup.reason === 'expired';
   const displayStatus = resolveDisplayStatus(quote.status, isExpired);
   const acceptAction = resolveAcceptAction(displayStatus);
-  const attachments: QuoteAttachment[] = [];
+  const attachments: QuoteAttachment[] = Array.isArray(quote.attachments)
+    ? quote.attachments.map((attachment) => ({
+        id: attachment.id,
+        href: attachment.href,
+        label: attachment.label,
+      }))
+    : [];
 
   return (
     <QuoteViewerShell topBar={<QuoteTopBar status={displayStatus} totalIncGstCents={quote.totalIncGstCents} />}>

@@ -726,29 +726,15 @@ export async function generateQuotePdf(quoteVersionId: string, actor: string | n
 
   const filename = quotePdfFilename(detail.quoteRef, detail.versionNumber);
   const bytes = await generateQuotePdfBytes(detail);
-  const base64 = Buffer.from(bytes).toString('base64');
-
   const projectUuid = uuidFromAppId(detail.projectId, 'proj');
-
-  const fileRes = await supabaseServer
-    .from('file_artifacts')
-    .insert({
-      project_id: projectUuid,
-      filename,
-      content_type: 'application/pdf',
-      size_bytes: bytes.length,
-      content_base64: base64,
-      created_by: actor,
-    } as any)
-    .select('id')
-    .single();
-
-  if (fileRes.error || !fileRes.data) {
-    if (missingTableError(fileRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(fileRes.error, 'Failed to store PDF'));
-  }
-
-  const fileUuid = String(fileRes.data.id ?? '');
+  const file = await createFileArtifact({
+    projectUuid,
+    filename,
+    contentType: 'application/pdf',
+    content: Buffer.from(bytes),
+    actor,
+  });
+  const fileUuid = file.fileUuid;
 
   const updateRes = await supabaseServer
     .from('quote_versions')
@@ -760,6 +746,41 @@ export async function generateQuotePdf(quoteVersionId: string, actor: string | n
   }
 
   return { fileId: appIdFromUuid('file', fileUuid), filename, bytes };
+}
+
+export async function createFileArtifact(params: {
+  projectUuid: string;
+  filename: string;
+  contentType: string;
+  content: Buffer;
+  actor: string | null;
+}): Promise<{ fileUuid: string; filename: string }> {
+  const filename = params.filename.trim() || 'attachment.pdf';
+  const contentType = params.contentType.trim() || 'application/octet-stream';
+  const contentBase64 = params.content.toString('base64');
+
+  const fileRes = await supabaseServer
+    .from('file_artifacts')
+    .insert({
+      project_id: params.projectUuid,
+      filename,
+      content_type: contentType,
+      size_bytes: params.content.length,
+      content_base64: contentBase64,
+      created_by: params.actor,
+    } as any)
+    .select('id, filename')
+    .single();
+
+  if (fileRes.error || !fileRes.data) {
+    if (missingTableError(fileRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(fileRes.error, 'Failed to store file'));
+  }
+
+  return {
+    fileUuid: String(fileRes.data.id ?? ''),
+    filename: String(fileRes.data.filename ?? filename),
+  };
 }
 
 async function loadFileContent(fileUuid: string): Promise<{ filename: string; content: Buffer } | null> {
@@ -813,6 +834,7 @@ export async function insertSendLog(params: {
   attachmentFileIds: string[];
   provider: string | null;
   providerMessageId: string | null;
+  acceptTokenHash?: string | null;
   status: 'SENT' | 'FAILED';
   errorMessage?: string | null;
   actor: string | null;
@@ -833,6 +855,7 @@ export async function insertSendLog(params: {
     attachment_file_ids: params.attachmentFileIds,
     provider: params.provider,
     provider_message_id: params.providerMessageId,
+    accept_token_hash: params.acceptTokenHash ?? null,
     status: params.status,
     error_message: params.errorMessage ?? null,
     created_by: params.actor,

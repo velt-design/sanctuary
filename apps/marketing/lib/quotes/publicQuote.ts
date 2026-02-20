@@ -12,6 +12,12 @@ export type PublicQuoteLineItem = {
   lineTotalIncGstCents: number;
 };
 
+export type PublicQuoteAttachment = {
+  id: string;
+  label: string;
+  href: string;
+};
+
 export type PublicQuote = {
   id: string;
   status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED';
@@ -30,6 +36,7 @@ export type PublicQuote = {
   introText?: string | null;
   termsText?: string | null;
   lineItems: PublicQuoteLineItem[];
+  attachments: PublicQuoteAttachment[];
 };
 
 export type PublicQuoteLookupResult = {
@@ -40,6 +47,10 @@ export type PublicQuoteLookupResult = {
 export type AcceptPublicQuoteResult =
   | { ok: true; alreadyAccepted: boolean }
   | { ok: false; code: 'invalid' | 'expired' | 'invalid_status' | 'server'; message: string };
+
+export type PublicQuoteAttachmentDownloadResult =
+  | { ok: true; filename: string; contentType: string; bytes: Uint8Array }
+  | { ok: false; code: 'invalid' | 'not_found'; message: string };
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -54,6 +65,15 @@ function quoteVersionUuidFromParam(value: string): string {
   const maybeUuid = raw.split('_').at(-1) ?? '';
   if (isUuid(maybeUuid)) return maybeUuid;
   throw new Error('Invalid quoteId');
+}
+
+function fileArtifactUuidFromParam(value: string): string {
+  const raw = value.trim();
+  if (!raw) throw new Error('fileId is required');
+  if (isUuid(raw)) return raw;
+  const maybeUuid = raw.split('_').at(-1) ?? '';
+  if (isUuid(maybeUuid)) return maybeUuid;
+  throw new Error('Invalid fileId');
 }
 
 function normalizeStatus(value: unknown): PublicQuote['status'] {
@@ -81,12 +101,14 @@ async function loadQuoteVersionByToken(params: {
 }): Promise<{
   quoteVersionUuid: string;
   quoteId: string;
+  tokenHash: string;
   status: PublicQuote['status'];
   versionNumber: number;
   createdAt: string;
   sentAt: string | null;
   expiresAt: string | null;
   tokenExpiresAt: string | null;
+  pdfFileId: string | null;
   totalIncGstCents: number;
   totalExGstCents: number;
   gstCents: number;
@@ -101,7 +123,7 @@ async function loadQuoteVersionByToken(params: {
   const versionRes = await supabase
     .from('quote_versions')
     .select(
-      'id, quote_id, status, version_number, created_at, sent_at, expires_at, accept_token_expires_at, customer_name, intro_text, terms_text, total_inc_gst_cents, total_ex_gst_cents, gst_cents',
+      'id, quote_id, status, version_number, created_at, sent_at, expires_at, accept_token_expires_at, pdf_file_id, customer_name, intro_text, terms_text, total_inc_gst_cents, total_ex_gst_cents, gst_cents',
     )
     .eq('id', quoteVersionUuid)
     .eq('accept_token_hash', tokenHash)
@@ -112,6 +134,7 @@ async function loadQuoteVersionByToken(params: {
   return {
     quoteVersionUuid: String((versionRes.data as any).id ?? ''),
     quoteId: String((versionRes.data as any).quote_id ?? ''),
+    tokenHash,
     status: normalizeStatus((versionRes.data as any).status),
     versionNumber: Number((versionRes.data as any).version_number ?? 0) || 0,
     createdAt: typeof (versionRes.data as any).created_at === 'string' ? (versionRes.data as any).created_at : new Date().toISOString(),
@@ -121,6 +144,7 @@ async function loadQuoteVersionByToken(params: {
       typeof (versionRes.data as any).accept_token_expires_at === 'string'
         ? (versionRes.data as any).accept_token_expires_at
         : null,
+    pdfFileId: typeof (versionRes.data as any).pdf_file_id === 'string' ? (versionRes.data as any).pdf_file_id : null,
     totalIncGstCents: Number((versionRes.data as any).total_inc_gst_cents ?? 0) || 0,
     totalExGstCents: Number((versionRes.data as any).total_ex_gst_cents ?? 0) || 0,
     gstCents: Number((versionRes.data as any).gst_cents ?? 0) || 0,
@@ -184,6 +208,84 @@ async function loadLineItems(quoteVersionUuid: string): Promise<PublicQuoteLineI
   }));
 }
 
+function looksLikePdf(contentType: string | null, filename: string): boolean {
+  const mime = String(contentType ?? '').trim().toLowerCase();
+  if (mime === 'application/pdf') return true;
+  return filename.trim().toLowerCase().endsWith('.pdf');
+}
+
+async function loadTokenScopedAttachmentFileIds(params: {
+  quoteVersionUuid: string;
+  tokenHash: string;
+  quotePdfFileId: string | null;
+}): Promise<string[]> {
+  const supabase = getServiceSupabase();
+  const sendLogRes = await supabase
+    .from('quote_send_logs')
+    .select('attachment_file_ids')
+    .eq('quote_version_id', params.quoteVersionUuid)
+    .eq('status', 'SENT')
+    .eq('accept_token_hash', params.tokenHash)
+    .order('sent_at', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (sendLogRes.error || !sendLogRes.data) return [];
+  const ids = Array.isArray((sendLogRes.data as any).attachment_file_ids)
+    ? ((sendLogRes.data as any).attachment_file_ids as unknown[])
+        .map((value) => String(value ?? '').trim())
+        .filter((value) => isUuid(value))
+    : [];
+  const unique = [...new Set(ids)];
+  if (!params.quotePdfFileId) return unique;
+  return unique.filter((id) => id !== params.quotePdfFileId);
+}
+
+async function loadTokenScopedAttachments(params: {
+  quoteId: string;
+  token: string;
+  quoteVersionUuid: string;
+  tokenHash: string;
+  quotePdfFileId: string | null;
+}): Promise<PublicQuoteAttachment[]> {
+  const attachmentFileIds = await loadTokenScopedAttachmentFileIds({
+    quoteVersionUuid: params.quoteVersionUuid,
+    tokenHash: params.tokenHash,
+    quotePdfFileId: params.quotePdfFileId,
+  });
+  if (!attachmentFileIds.length) return [];
+
+  const supabase = getServiceSupabase();
+  const filesRes = await supabase
+    .from('file_artifacts')
+    .select('id, filename, content_type')
+    .in('id', attachmentFileIds);
+
+  if (filesRes.error || !Array.isArray(filesRes.data)) return [];
+  const byId = new Map<string, { filename: string; contentType: string | null }>();
+  for (const row of filesRes.data as any[]) {
+    const id = String(row?.id ?? '').trim();
+    if (!isUuid(id)) continue;
+    const filename = typeof row?.filename === 'string' && row.filename.trim() ? row.filename.trim() : `${id}.pdf`;
+    const contentType = typeof row?.content_type === 'string' ? row.content_type : null;
+    byId.set(id, { filename, contentType });
+  }
+
+  return attachmentFileIds
+    .map((id) => {
+      const file = byId.get(id);
+      if (!file) return null;
+      if (!looksLikePdf(file.contentType, file.filename)) return null;
+      return {
+        id,
+        label: file.filename,
+        href: `/api/quotes/${encodeURIComponent(params.quoteId)}/attachments/${encodeURIComponent(id)}?token=${encodeURIComponent(params.token)}`,
+      } satisfies PublicQuoteAttachment;
+    })
+    .filter((item): item is PublicQuoteAttachment => Boolean(item));
+}
+
 async function insertAuditEvent(projectId: string, type: string, payload: Record<string, unknown>): Promise<void> {
   const supabase = getServiceSupabase();
   try {
@@ -202,7 +304,17 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
   const version = await loadQuoteVersionByToken(params);
   if (!version) return { quote: null, reason: 'invalid' };
 
-  const [quoteProject, lineItems] = await Promise.all([loadQuoteProject(version.quoteId), loadLineItems(version.quoteVersionUuid)]);
+  const [quoteProject, lineItems, attachments] = await Promise.all([
+    loadQuoteProject(version.quoteId),
+    loadLineItems(version.quoteVersionUuid),
+    loadTokenScopedAttachments({
+      quoteId: params.quoteId,
+      token: params.token,
+      quoteVersionUuid: version.quoteVersionUuid,
+      tokenHash: version.tokenHash,
+      quotePdfFileId: version.pdfFileId,
+    }),
+  ]);
   if (!quoteProject) return { quote: null, reason: 'invalid' };
 
   const project = await loadProject(quoteProject.projectId);
@@ -225,10 +337,71 @@ export async function loadPublicQuoteByToken(params: { quoteId: string; token: s
     introText: version.introText,
     termsText: version.termsText,
     lineItems,
+    attachments,
   };
 
   if (tokenHasExpired(version.tokenExpiresAt)) return { quote, reason: 'expired' };
   return { quote };
+}
+
+export async function downloadPublicQuoteAttachmentByToken(params: {
+  quoteId: string;
+  token: string;
+  fileId: string;
+}): Promise<PublicQuoteAttachmentDownloadResult> {
+  let fileUuid: string;
+  try {
+    fileUuid = fileArtifactUuidFromParam(params.fileId);
+  } catch (error) {
+    return { ok: false, code: 'invalid', message: errorMessage(error, 'Invalid attachment ID') };
+  }
+
+  const version = await loadQuoteVersionByToken({ quoteId: params.quoteId, token: params.token });
+  if (!version) return { ok: false, code: 'invalid', message: 'Invalid quote link' };
+
+  const attachmentIds = await loadTokenScopedAttachmentFileIds({
+    quoteVersionUuid: version.quoteVersionUuid,
+    tokenHash: version.tokenHash,
+    quotePdfFileId: version.pdfFileId,
+  });
+  if (!attachmentIds.includes(fileUuid)) {
+    return { ok: false, code: 'not_found', message: 'Attachment not found for this quote link' };
+  }
+
+  const supabase = getServiceSupabase();
+  const fileRes = await supabase
+    .from('file_artifacts')
+    .select('id, filename, content_type, content_base64')
+    .eq('id', fileUuid)
+    .maybeSingle();
+  if (fileRes.error || !fileRes.data) {
+    return { ok: false, code: 'not_found', message: 'Attachment file not found' };
+  }
+
+  const filename =
+    typeof (fileRes.data as any).filename === 'string' && (fileRes.data as any).filename.trim()
+      ? String((fileRes.data as any).filename).trim()
+      : `${fileUuid}.pdf`;
+  const contentType =
+    typeof (fileRes.data as any).content_type === 'string' && (fileRes.data as any).content_type.trim()
+      ? String((fileRes.data as any).content_type).trim()
+      : 'application/pdf';
+  if (!looksLikePdf(contentType, filename)) {
+    return { ok: false, code: 'not_found', message: 'Attachment is unavailable' };
+  }
+
+  const contentBase64 = String((fileRes.data as any).content_base64 ?? '');
+  const bytes = Buffer.from(contentBase64, 'base64');
+  if (!bytes.length) {
+    return { ok: false, code: 'not_found', message: 'Attachment is empty' };
+  }
+
+  return {
+    ok: true,
+    filename,
+    contentType,
+    bytes,
+  };
 }
 
 export async function acceptPublicQuoteByToken(params: {

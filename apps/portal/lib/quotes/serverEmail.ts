@@ -8,6 +8,7 @@ import { supabaseServer } from '@/lib/supabaseClient';
 import type { QuoteVersionDetail } from './types';
 import {
   addDays,
+  createFileArtifact,
   ensurePdfForSend,
   getQuoteVersionDetail,
   insertAuditEvent,
@@ -17,11 +18,18 @@ import {
 } from './serverCore';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
+const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
 
 export class EmailProviderConfigError extends Error {
   status = 503;
   code = 'EMAIL_PROVIDER_NOT_CONFIGURED';
 }
+
+type QuoteEmailDesignPdf = {
+  filename: string;
+  contentType: string;
+  content: Buffer;
+};
 
 type QuoteEmailPayload = {
   to: string[];
@@ -31,6 +39,7 @@ type QuoteEmailPayload = {
   personalNote?: string | null;
   bodyText?: string;
   bodyHtml?: string | null;
+  designPdf?: QuoteEmailDesignPdf | null;
 };
 
 function messageFromError(error: unknown, fallback: string): string {
@@ -124,6 +133,18 @@ function quoteSubject(detail: QuoteVersionDetail, explicit: string | undefined):
   return `Quote ready - ${quoteNumber(detail)}`;
 }
 
+function isPdfContent(contentType: string, filename: string): boolean {
+  const mime = contentType.trim().toLowerCase();
+  if (mime === 'application/pdf') return true;
+  return filename.trim().toLowerCase().endsWith('.pdf');
+}
+
+function normalizeAttachmentFilename(filename: string): string {
+  const trimmed = filename.trim();
+  if (!trimmed) return 'design-document.pdf';
+  return trimmed.replace(/[\\/:*?"<>|]+/g, '_');
+}
+
 function parseDateOnly(dateOnly: string): Date | null {
   const parsed = new Date(`${dateOnly}T23:59:59.999Z`);
   if (!Number.isFinite(parsed.getTime())) return null;
@@ -157,11 +178,47 @@ function providerMessageId(response: unknown): string | null {
   return typeof id === 'string' && id.trim() ? id.trim() : null;
 }
 
+async function resolveDesignPdfAttachment(params: {
+  projectUuid: string;
+  payload: QuoteEmailPayload;
+  actor: string | null;
+}): Promise<{ fileUuid: string; filename: string; contentType: string; content: Buffer } | null> {
+  const designPdf = params.payload.designPdf ?? null;
+  if (!designPdf) return null;
+
+  const filename = normalizeAttachmentFilename(designPdf.filename);
+  const contentType = designPdf.contentType.trim() || 'application/pdf';
+  if (!isPdfContent(contentType, filename)) {
+    throw new Error('Design document must be a PDF');
+  }
+  if (designPdf.content.length <= 0) {
+    throw new Error('Design document is empty');
+  }
+  if (designPdf.content.length > MAX_DESIGN_PDF_BYTES) {
+    throw new Error('Design document must be 20MB or smaller');
+  }
+
+  const artifact = await createFileArtifact({
+    projectUuid: params.projectUuid,
+    filename,
+    contentType,
+    content: designPdf.content,
+    actor: params.actor,
+  });
+
+  return {
+    fileUuid: artifact.fileUuid,
+    filename: artifact.filename,
+    contentType,
+    content: designPdf.content,
+  };
+}
+
 async function deliverQuoteReadyEmail(params: {
   detail: QuoteVersionDetail;
   payload: QuoteEmailPayload;
   quoteAcceptUrl: string;
-  pdf: { filename: string; content: Buffer };
+  attachments: Array<{ filename: string; content: Buffer; contentType: string }>;
   expiresAtDate: string | null;
 }): Promise<{ subject: string; html: string; text: string | null; providerMessageId: string | null }> {
   const note = personalNoteFromPayload(params.payload);
@@ -190,13 +247,7 @@ async function deliverQuoteReadyEmail(params: {
     subject,
     html: rendered.html,
     text: rendered.text,
-    attachments: [
-      {
-        filename: params.pdf.filename,
-        content: params.pdf.content,
-        contentType: 'application/pdf',
-      },
-    ],
+    attachments: params.attachments,
   });
 
   return {
@@ -247,6 +298,23 @@ export async function sendQuote(
   const quoteVersionUuid = uuidFromAppId(detail.id, 'qv');
 
   const pdf = await ensurePdfForSend(detail, actor);
+  const designAttachment = await resolveDesignPdfAttachment({ projectUuid, payload, actor });
+  const emailAttachments: Array<{ filename: string; content: Buffer; contentType: string }> = [
+    {
+      filename: pdf.filename,
+      content: pdf.content,
+      contentType: 'application/pdf',
+    },
+  ];
+  const logAttachmentFileIds = [pdf.fileUuid];
+  if (designAttachment) {
+    emailAttachments.push({
+      filename: designAttachment.filename,
+      content: designAttachment.content,
+      contentType: designAttachment.contentType,
+    });
+    logAttachmentFileIds.push(designAttachment.fileUuid);
+  }
 
   const sentAtIso = nowIso();
   const expiresAtDate = detail.expiresAt ?? addDays(sentAtIso, 30);
@@ -263,7 +331,7 @@ export async function sendQuote(
       detail,
       payload,
       quoteAcceptUrl,
-      pdf,
+      attachments: emailAttachments,
       expiresAtDate,
     });
   } catch (error) {
@@ -296,9 +364,10 @@ export async function sendQuote(
       subject: delivered.subject,
       bodyHtml: redactToken(delivered.html),
       bodyText: redactToken(delivered.text),
-      attachmentFileIds: [pdf.fileUuid],
+      attachmentFileIds: logAttachmentFileIds,
       provider: 'resend',
       providerMessageId: delivered.providerMessageId,
+      acceptTokenHash: tokenHash,
       status: 'SENT',
       actor,
       sentAt: sentAtIso,
@@ -322,7 +391,7 @@ export async function sendQuote(
       subject: quoteSubject(detail, payload.subject),
       bodyHtml: payload.bodyHtml ?? null,
       bodyText: personalNoteFromPayload(payload),
-      attachmentFileIds: [pdf.fileUuid],
+      attachmentFileIds: logAttachmentFileIds,
       provider: 'resend',
       providerMessageId: null,
       status: 'FAILED',
@@ -354,6 +423,23 @@ export async function resendQuote(
   const quoteVersionUuid = uuidFromAppId(detail.id, 'qv');
 
   const pdf = await ensurePdfForSend(detail, actor);
+  const designAttachment = await resolveDesignPdfAttachment({ projectUuid, payload, actor });
+  const emailAttachments: Array<{ filename: string; content: Buffer; contentType: string }> = [
+    {
+      filename: pdf.filename,
+      content: pdf.content,
+      contentType: 'application/pdf',
+    },
+  ];
+  const logAttachmentFileIds = [pdf.fileUuid];
+  if (designAttachment) {
+    emailAttachments.push({
+      filename: designAttachment.filename,
+      content: designAttachment.content,
+      contentType: designAttachment.contentType,
+    });
+    logAttachmentFileIds.push(designAttachment.fileUuid);
+  }
 
   const sentAtIso = nowIso();
   const expiresAtDate = detail.expiresAt ?? addDays(sentAtIso, 30);
@@ -370,7 +456,7 @@ export async function resendQuote(
       detail,
       payload,
       quoteAcceptUrl,
-      pdf,
+      attachments: emailAttachments,
       expiresAtDate,
     });
   } catch (error) {
@@ -399,9 +485,10 @@ export async function resendQuote(
       subject: delivered.subject,
       bodyHtml: redactToken(delivered.html),
       bodyText: redactToken(delivered.text),
-      attachmentFileIds: [pdf.fileUuid],
+      attachmentFileIds: logAttachmentFileIds,
       provider: 'resend',
       providerMessageId: delivered.providerMessageId,
+      acceptTokenHash: tokenHash,
       status: 'SENT',
       actor,
       sentAt: sentAtIso,
@@ -425,7 +512,7 @@ export async function resendQuote(
       subject: quoteSubject(detail, payload.subject),
       bodyHtml: payload.bodyHtml ?? null,
       bodyText: personalNoteFromPayload(payload),
-      attachmentFileIds: [pdf.fileUuid],
+      attachmentFileIds: logAttachmentFileIds,
       provider: 'resend',
       providerMessageId: null,
       status: 'FAILED',
