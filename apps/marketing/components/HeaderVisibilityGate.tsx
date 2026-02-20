@@ -10,6 +10,8 @@ type HeaderVisibilityGateProps = {
 function shouldHideHeader(pathname: string | null): boolean {
   if (!pathname) return false;
   return (
+    pathname === '/quote' ||
+    pathname.startsWith('/quote/') ||
     pathname === '/staff' ||
     pathname.startsWith('/staff/') ||
     pathname === '/admin' ||

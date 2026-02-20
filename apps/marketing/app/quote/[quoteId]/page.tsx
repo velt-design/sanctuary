@@ -1,9 +1,36 @@
-import { loadPublicQuoteByToken } from '@/lib/quotes/publicQuote';
+import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
+import { loadPublicQuoteByToken, type PublicQuote } from '@/lib/quotes/publicQuote';
+import { QuoteTopBarActions } from './QuoteTopBarActions';
+import styles from './quoteViewer.module.css';
 
 type QuotePageProps = {
   params: Promise<{ quoteId: string }>;
   searchParams: Promise<{ token?: string | string[]; error?: string | string[] }>;
 };
+
+type QuoteDisplayStatus = 'DRAFT' | 'SENT' | 'EXPIRED' | 'ACCEPTED' | 'DECLINED';
+type QuoteAcceptAction = 'hidden' | 'enabled' | 'disabled';
+
+type QuoteAttachment = {
+  id: string;
+  href: string;
+  label: string;
+};
+
+type QuoteNoticeTone = 'error' | 'info' | 'muted';
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
+const quantityFormatter = new Intl.NumberFormat('en-NZ', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
 
 function readQueryString(value: string | string[] | undefined): string {
   if (Array.isArray(value)) return value[0]?.trim() || '';
@@ -33,12 +60,44 @@ function formatDate(value: string | null): string {
   }).format(parsed);
 }
 
-function statusLabel(status: string): string {
-  const upper = status.trim().toUpperCase();
-  if (upper === 'ACCEPTED') return 'Accepted';
-  if (upper === 'SENT') return 'Sent';
-  if (upper === 'DECLINED') return 'Declined';
+function formatQty(value: number): string {
+  if (!Number.isFinite(value)) return '0';
+  return quantityFormatter.format(value);
+}
+
+function resolveDisplayStatus(status: PublicQuote['status'], isExpired: boolean): QuoteDisplayStatus {
+  if (isExpired) return 'EXPIRED';
+  if (status === 'ACCEPTED') return 'ACCEPTED';
+  if (status === 'SENT') return 'SENT';
+  if (status === 'DECLINED') return 'DECLINED';
+  return 'DRAFT';
+}
+
+function resolveAcceptAction(status: QuoteDisplayStatus): QuoteAcceptAction {
+  if (status === 'SENT') return 'enabled';
+  if (status === 'EXPIRED') return 'disabled';
+  return 'hidden';
+}
+
+function statusLabel(status: QuoteDisplayStatus): string {
+  if (status === 'EXPIRED') return 'Quote expired';
+  if (status === 'ACCEPTED') return 'Accepted';
+  if (status === 'SENT') return 'Quote sent';
+  if (status === 'DECLINED') return 'Declined';
   return 'Draft';
+}
+
+function statusClassName(status: QuoteDisplayStatus): string {
+  if (status === 'EXPIRED') return styles.statusExpired;
+  if (status === 'ACCEPTED') return styles.statusAccepted;
+  if (status === 'SENT') return styles.statusSent;
+  if (status === 'DECLINED') return styles.statusDeclined;
+  return styles.statusDraft;
+}
+
+function unitPriceCents(line: PublicQuote['lineItems'][number]): number | null {
+  if (!Number.isFinite(line.qty) || Math.abs(line.qty) < 0.000_001) return null;
+  return Math.round(line.lineTotalIncGstCents / line.qty);
 }
 
 function errorText(code: string): string {
@@ -54,6 +113,193 @@ function errorText(code: string): string {
   }
 }
 
+function QuoteViewerShell({ topBar, children }: { topBar?: ReactNode; children: ReactNode }) {
+  return (
+    <main className={styles.shell}>
+      {topBar ? <section className={styles.topBarWrap}>{topBar}</section> : null}
+      <div className={styles.canvas}>{children}</div>
+    </main>
+  );
+}
+
+function QuoteTopBar({ status, totalIncGstCents }: { status: QuoteDisplayStatus; totalIncGstCents: number }) {
+  return (
+    <div className={styles.topBar}>
+      <div className={styles.topBarLeft}>
+        <span className={`${styles.statusPill} ${statusClassName(status)}`}>{statusLabel(status)}</span>
+        <div className={styles.topBarTotal}>
+          <div className={styles.topBarTotalLabel}>Total</div>
+          <div className={styles.topBarTotalValue}>{formatMoney(totalIncGstCents)}</div>
+        </div>
+      </div>
+      <QuoteTopBarActions />
+    </div>
+  );
+}
+
+function QuoteDocumentCard({ children }: { children: ReactNode }) {
+  return <article className={styles.documentCard}>{children}</article>;
+}
+
+function QuoteDocHeader({ quoteRef, versionNumber }: { quoteRef: string; versionNumber: number }) {
+  return (
+    <header className={styles.docHeader}>
+      <div>
+        <p className={styles.docLabel}>Quote</p>
+        <p className={styles.docQuoteRef}>
+          {quoteRef} v{versionNumber}
+        </p>
+      </div>
+      <p className={styles.docWordmark}>Sanctuary Pergolas</p>
+    </header>
+  );
+}
+
+function QuoteMetaGrid({ quote, status }: { quote: PublicQuote; status: QuoteDisplayStatus }) {
+  const fields = [
+    { label: 'To', value: quote.projectName || 'Customer' },
+    { label: 'From', value: 'Sanctuary Pergolas' },
+    { label: 'Quote number', value: `${quote.quoteRef} v${quote.versionNumber}` },
+    { label: 'Status', value: statusLabel(status) },
+    { label: 'Issued', value: formatDate(quote.createdAt) },
+    { label: 'Valid until', value: formatDate(quote.expiresAt) },
+    { label: 'Site', value: quote.projectAddress || 'Not provided' },
+    { label: 'Currency', value: 'NZD' },
+  ];
+
+  return (
+    <section className={styles.metaSection} aria-label="Quote details">
+      <dl className={styles.metaGrid}>
+        {fields.map((field) => (
+          <div key={field.label} className={styles.metaItem}>
+            <dt className={styles.metaLabel}>{field.label}</dt>
+            <dd className={styles.metaValue}>{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function QuoteLineItemsTable({ lineItems }: { lineItems: PublicQuote['lineItems'] }) {
+  return (
+    <section className={styles.tableSection} aria-label="Quote line items">
+      <table className={styles.lineItemsTable}>
+        <thead>
+          <tr>
+            <th scope="col">Description</th>
+            <th scope="col" className={styles.numericCell}>
+              Qty
+            </th>
+            <th scope="col" className={styles.numericCell}>
+              Unit price
+            </th>
+            <th scope="col" className={styles.numericCell}>
+              Amount
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {lineItems.length ? (
+            lineItems.map((line) => {
+              const unitCents = unitPriceCents(line);
+              return (
+                <tr key={line.id}>
+                  <td>{line.description || 'Line item'}</td>
+                  <td className={styles.numericCell}>{formatQty(line.qty)}</td>
+                  <td className={styles.numericCell}>{unitCents == null ? '—' : formatMoney(unitCents)}</td>
+                  <td className={styles.numericCell}>{formatMoney(line.lineTotalIncGstCents)}</td>
+                </tr>
+              );
+            })
+          ) : (
+            <tr>
+              <td className={styles.emptyCell} colSpan={4}>
+                No line items listed.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function QuoteTotals({ totalIncGstCents }: { totalIncGstCents: number }) {
+  return (
+    <section className={styles.totalsSection} aria-label="Quote totals">
+      <p className={styles.totalsHint}>Includes GST</p>
+      <div className={styles.totalsRow}>
+        <span className={styles.totalsLabel}>Total</span>
+        <span className={styles.totalsValue}>{formatMoney(totalIncGstCents)}</span>
+      </div>
+    </section>
+  );
+}
+
+function QuoteNotice({ tone, children }: { tone: QuoteNoticeTone; children: ReactNode }) {
+  const toneClass =
+    tone === 'error' ? styles.noticeError : tone === 'info' ? styles.noticeInfo : styles.noticeMuted;
+  return <div className={`${styles.notice} ${toneClass}`}>{children}</div>;
+}
+
+function QuotePrimaryAction({
+  quoteId,
+  token,
+  action,
+}: {
+  quoteId: string;
+  token: string;
+  action: QuoteAcceptAction;
+}) {
+  if (action === 'hidden') return null;
+
+  return (
+    <div className={styles.acceptSection}>
+      <form action={`/api/quotes/${encodeURIComponent(quoteId)}/accept`} method="post">
+        <input type="hidden" name="token" value={token} />
+        <button
+          type="submit"
+          disabled={action !== 'enabled'}
+          className={`${styles.acceptButton} ${action !== 'enabled' ? styles.acceptButtonDisabled : ''}`}
+        >
+          Accept quote
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function QuoteAttachments({ attachments }: { attachments: QuoteAttachment[] }) {
+  if (!attachments.length) return null;
+
+  return (
+    <section className={styles.attachmentsSection} aria-label="Quote attachments">
+      <p className={styles.metaLabel}>Attachments</p>
+      <ul className={styles.attachmentsList}>
+        {attachments.map((attachment) => (
+          <li key={attachment.id}>
+            <a className={styles.attachmentLink} href={attachment.href}>
+              {attachment.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function QuoteViewerError({ title, description }: { title: string; description: string }) {
+  return (
+    <QuoteViewerShell>
+      <QuoteDocumentCard>
+        <h1 className={styles.errorTitle}>{title}</h1>
+        <p className={styles.errorMessage}>{description}</p>
+      </QuoteDocumentCard>
+    </QuoteViewerShell>
+  );
+}
+
 export default async function QuotePage({ params, searchParams }: QuotePageProps) {
   const { quoteId } = await params;
   const qs = await searchParams;
@@ -62,7 +308,7 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
   const acceptErrorCode = readQueryString(qs.error);
 
   if (!token) {
-    return <main style={{ padding: 24, fontFamily: 'Arial, Helvetica, sans-serif' }}>Missing token.</main>;
+    return <QuoteViewerError title="Missing token" description="This quote link is missing its access token." />;
   }
 
   const lookup = await loadPublicQuoteByToken({ quoteId, token });
@@ -70,119 +316,38 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
 
   if (!quote) {
     return (
-      <main style={{ padding: 24, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-        This quote link is invalid or has expired.
-      </main>
+      <QuoteViewerError
+        title="Quote unavailable"
+        description="This quote link is invalid or has expired. Please contact Sanctuary Pergolas for a refreshed link."
+      />
     );
   }
 
-  const isAccepted = quote.status === 'ACCEPTED';
   const isExpired = lookup.reason === 'expired';
-  const canAccept = quote.status === 'SENT' && !isAccepted && !isExpired;
+  const displayStatus = resolveDisplayStatus(quote.status, isExpired);
+  const acceptAction = resolveAcceptAction(displayStatus);
+  const attachments: QuoteAttachment[] = [];
 
   return (
-    <main style={{ maxWidth: 900, margin: '40px auto', padding: 16, fontFamily: 'Arial, Helvetica, sans-serif' }}>
-      <h1 style={{ margin: '0 0 12px' }}>Quote</h1>
+    <QuoteViewerShell topBar={<QuoteTopBar status={displayStatus} totalIncGstCents={quote.totalIncGstCents} />}>
+      <QuoteDocumentCard>
+        <QuoteDocHeader quoteRef={quote.quoteRef} versionNumber={quote.versionNumber} />
+        <QuoteMetaGrid quote={quote} status={displayStatus} />
+        <QuoteLineItemsTable lineItems={quote.lineItems} />
+        <QuoteTotals totalIncGstCents={quote.totalIncGstCents} />
+        <QuotePrimaryAction quoteId={quoteId} token={token} action={acceptAction} />
+        <QuoteAttachments attachments={attachments} />
 
-      <div style={{ border: '1px solid #e6e6e6', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-        <div style={{ marginBottom: 6 }}>
-          <strong>Quote:</strong> {quote.quoteRef} v{quote.versionNumber}
-        </div>
-        {quote.projectName ? (
-          <div style={{ marginBottom: 6 }}>
-            <strong>Project:</strong> {quote.projectName}
-          </div>
+        {acceptErrorCode ? <QuoteNotice tone="error">{errorText(acceptErrorCode)}</QuoteNotice> : null}
+        {displayStatus === 'EXPIRED' ? (
+          <QuoteNotice tone="muted">
+            This quote link has expired. Please contact Sanctuary Pergolas for a refreshed quote link.
+          </QuoteNotice>
         ) : null}
-        {quote.projectAddress ? (
-          <div style={{ marginBottom: 6 }}>
-            <strong>Site:</strong> {quote.projectAddress}
-          </div>
+        {displayStatus === 'ACCEPTED' ? (
+          <QuoteNotice tone="info">Quote accepted. We will be in touch to confirm scheduling.</QuoteNotice>
         ) : null}
-        <div style={{ marginBottom: 6 }}>
-          <strong>Issued:</strong> {formatDate(quote.createdAt)}
-        </div>
-        <div style={{ marginBottom: 6 }}>
-          <strong>Valid until:</strong> {formatDate(quote.expiresAt)}
-        </div>
-        <div>
-          <strong>Status:</strong> {statusLabel(quote.status)}
-        </div>
-      </div>
-
-      <div style={{ border: '1px solid #e6e6e6', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#fafafa' }}>
-              <th style={{ textAlign: 'left', padding: 12, borderBottom: '1px solid #e6e6e6' }}>Description</th>
-              <th style={{ textAlign: 'right', padding: 12, borderBottom: '1px solid #e6e6e6', width: 100 }}>Qty</th>
-              <th style={{ textAlign: 'right', padding: 12, borderBottom: '1px solid #e6e6e6', width: 180 }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {quote.lineItems.length ? (
-              quote.lineItems.map((line) => (
-                <tr key={line.id}>
-                  <td style={{ padding: 12, borderBottom: '1px solid #f1f1f1' }}>{line.description || 'Line item'}</td>
-                  <td style={{ padding: 12, borderBottom: '1px solid #f1f1f1', textAlign: 'right' }}>{line.qty}</td>
-                  <td style={{ padding: 12, borderBottom: '1px solid #f1f1f1', textAlign: 'right' }}>
-                    {formatMoney(line.lineTotalIncGstCents)}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td style={{ padding: 12 }} colSpan={3}>
-                  No line items listed.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-        <span style={{ fontSize: 18, fontWeight: 700 }}>Total (incl. GST)</span>
-        <span style={{ fontSize: 20, fontWeight: 700 }}>{formatMoney(quote.totalIncGstCents)}</span>
-      </div>
-
-      {acceptErrorCode ? (
-        <div style={{ marginBottom: 12, padding: 12, background: '#fdecea', color: '#7a1f1f', borderRadius: 6 }}>
-          {errorText(acceptErrorCode)}
-        </div>
-      ) : null}
-
-      {isExpired ? (
-        <div style={{ marginBottom: 12, padding: 12, background: '#f6f6f6', borderRadius: 6 }}>
-          This quote link has expired. Please contact Sanctuary Pergolas for a refreshed quote link.
-        </div>
-      ) : null}
-
-      {isAccepted ? (
-        <div style={{ marginBottom: 12, padding: 12, background: '#f6f6f6', borderRadius: 6 }}>
-          Quote accepted. We will be in touch to confirm scheduling.
-        </div>
-      ) : null}
-
-      {!isAccepted ? (
-        <form action={`/api/quotes/${encodeURIComponent(quoteId)}/accept`} method="post">
-          <input type="hidden" name="token" value={token} />
-          <button
-            type="submit"
-            disabled={!canAccept}
-            style={{
-              background: canAccept ? '#7F342D' : '#9d9d9d',
-              color: 'white',
-              padding: '12px 16px',
-              borderRadius: 6,
-              border: 'none',
-              cursor: canAccept ? 'pointer' : 'not-allowed',
-              fontWeight: 600,
-            }}
-          >
-            Accept quote
-          </button>
-        </form>
-      ) : null}
-    </main>
+      </QuoteDocumentCard>
+    </QuoteViewerShell>
   );
 }

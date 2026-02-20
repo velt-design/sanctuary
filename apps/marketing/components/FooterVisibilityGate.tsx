@@ -11,6 +11,8 @@ export default function FooterVisibilityGate({ children }: FooterVisibilityGateP
   const pathname = usePathname();
 
   if (
+    pathname === '/quote' ||
+    pathname.startsWith('/quote/') ||
     pathname === '/projects' ||
     pathname === '/staff' ||
     pathname.startsWith('/staff/') ||
