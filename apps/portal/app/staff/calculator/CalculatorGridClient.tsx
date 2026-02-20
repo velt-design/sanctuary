@@ -113,6 +113,7 @@ const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
 const INFILL_JOINER_TOLERANCE_M = 0.02;
 const FLASHING_EDGE_ALLOWANCE_M = 0.1;
 const FLASHING_DUPLICATE_TOLERANCE_M = 0.01;
+const FLASHING_AUTO_SYNC_TOLERANCE_M = 0.01;
 const FLASHING_BANDS: CalculatorFlashingBand[] = ['0-200', '201-300', '301-400'];
 const FLASHING_BAND_OPTIONS: FieldOption[] = [
   { label: '0-200mm', value: '0-200' },
@@ -569,6 +570,15 @@ function formatFlashingLengthInput(lengthM: number): string {
   if (!Number.isFinite(lengthM) || lengthM <= 0) return '1.0';
   const rounded = Math.round(lengthM * 100) / 100;
   return rounded.toFixed(2).replace(/\.?0+$/, '') || '1.0';
+}
+
+function isPrimaryFlashingLengthAutoLinked(lengthInput: string, module: CalculatorModuleInputs): boolean {
+  const trimmed = String(lengthInput ?? '').trim();
+  if (!trimmed) return true;
+  const parsed = toNumber(trimmed);
+  if (!Number.isFinite(parsed)) return true;
+  const autoLength = roofLengthForPrimaryFlashing(module);
+  return Math.abs(parsed - autoLength) <= FLASHING_AUTO_SYNC_TOLERANCE_M;
 }
 
 function makeDefaultPrimaryFlashingRow(module: CalculatorModuleInputs): CalculatorFlashingsState['rows'][number] {
@@ -1897,6 +1907,22 @@ export default function CalculatorGridClient({
       const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
       if (isGutterBeamProfile(frontBeamProfileUsed)) {
         updated.separateGutterEnabled = false;
+      }
+
+      if (key === 'lengthM' || key === 'hipCornerLengthBM' || key === 'pergolaStyle') {
+        const flashings = normalizeFlashingsStateForUi(current.flashings, current);
+        const primary =
+          flashings.rows.find((row) => row.kind === 'primary') ??
+          flashings.rows[0] ??
+          makeDefaultPrimaryFlashingRow(current);
+
+        if (isPrimaryFlashingLengthAutoLinked(primary.lengthM, current)) {
+          const nextAutoLength = formatFlashingLengthInput(roofLengthForPrimaryFlashing(updated));
+          const synced: CalculatorFlashingsState = {
+            rows: flashings.rows.map((row) => (row.id === primary.id ? { ...row, lengthM: nextAutoLength } : row)),
+          };
+          updated.flashings = normalizeFlashingsStateForUi(synced, updated);
+        }
       }
 
       modules[activeModuleIndex] = updated;

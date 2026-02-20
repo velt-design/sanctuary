@@ -325,7 +325,7 @@
 
 .totalsBreakdownTotalValue {
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   color: #0d1117;
 }
@@ -352,7 +352,7 @@
 
 .totalsValue {
   font-size: 2rem;
-  font-weight: 600;
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
   color: #101217;
 }
