@@ -1529,6 +1529,7 @@ export default function CalculatorGridClient({
   const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
   const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
   const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const primaryFlashingManualOverrideRef = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     restoredDraftForKeyRef.current = false;
@@ -1915,13 +1916,15 @@ export default function CalculatorGridClient({
           flashings.rows.find((row) => row.kind === 'primary') ??
           flashings.rows[0] ??
           makeDefaultPrimaryFlashingRow(current);
+        const manualOverride = primaryFlashingManualOverrideRef.current[primary.id] === true;
 
-        if (isPrimaryFlashingLengthAutoLinked(primary.lengthM, current)) {
+        if (!manualOverride || isPrimaryFlashingLengthAutoLinked(primary.lengthM, current)) {
           const nextAutoLength = formatFlashingLengthInput(roofLengthForPrimaryFlashing(updated));
           const synced: CalculatorFlashingsState = {
             rows: flashings.rows.map((row) => (row.id === primary.id ? { ...row, lengthM: nextAutoLength } : row)),
           };
           updated.flashings = normalizeFlashingsStateForUi(synced, updated);
+          primaryFlashingManualOverrideRef.current[primary.id] = false;
         }
       }
 
@@ -1995,6 +1998,12 @@ export default function CalculatorGridClient({
       purpose: CalculatorFlashingPurpose;
     }>,
   ) => {
+    if (patch.lengthM !== undefined) {
+      const row = flashingsState.rows.find((entry) => entry.id === id);
+      if (row?.kind === 'primary') {
+        primaryFlashingManualOverrideRef.current[row.id] = !isPrimaryFlashingLengthAutoLinked(String(patch.lengthM), activeModule);
+      }
+    }
     setFlashingsState((state) => ({
       ...state,
       rows: state.rows.map((row) => {
