@@ -60,7 +60,8 @@
     "header header"
     "fields addons"
     "textarea textarea"
-    "send send";
+    "send send"
+    "error error";
   column-gap: var(--right-hgap, 16px);
   row-gap: var(--vgap);
   align-items:start;
@@ -76,6 +77,10 @@
 }
 .contact-page .right-locked__send{
   grid-area: send;
+  margin-top: 0;
+}
+.contact-page .right-locked__error{
+  grid-area: error;
   margin-top: 0;
 }
 
@@ -97,7 +102,8 @@
       "fields"
       "addons"
       "textarea"
-      "send";
+      "send"
+      "error";
   }
   /* Mobile: hide the display/summary box, keep stacked flow */
   .contact-page .right-locked__header{

@@ -263,6 +263,17 @@ export default function ContactPage() {
   const submitForm = async (form: HTMLFormElement | null) => {
     if (!form) return;
     if (submitState === 'sending') return;
+    const phoneValue = userPhone.trim();
+    if (!phoneValue) {
+      setSubmitState('error');
+      setSubmitError('Phone is required');
+      const phoneInputs = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="phone"]'));
+      const focusTarget = phoneInputs.find((input) => input.offsetParent !== null && !input.disabled) ?? phoneInputs[0];
+      try {
+        focusTarget?.focus();
+      } catch {}
+      return;
+    }
     setSubmitError(null);
     setSubmitState('sending');
     const eventId = createEventId();
@@ -283,7 +294,7 @@ export default function ContactPage() {
         enquiryType: enquiryTypeValue,
         name: userName.trim(),
         email: userEmail.trim(),
-        phone: userPhone.trim(),
+        phone: phoneValue,
         suburb: userSuburb.trim(),
         message: notes.trim(),
         dimensions: {
@@ -328,6 +339,12 @@ export default function ContactPage() {
     await submitForm(e.currentTarget);
   };
 
+  const handleFormInput: React.FormEventHandler<HTMLFormElement> = () => {
+    if (submitState !== 'error') return;
+    setSubmitError(null);
+    setSubmitState('idle');
+  };
+
   const isSending = submitState === 'sending';
   const isSubmitted = submitState === 'success';
   const sendLabel =
@@ -342,7 +359,7 @@ export default function ContactPage() {
 
   return (
     <main className={`two-col-page contact-page contact-dark ${showCustomerInfo ? 'customer-on' : 'customer-off'} ${enquiryPicked ? 'enquiry-picked' : ''} ${enquiryChoosing ? 'enquiry-choosing' : ''} ${enquiryRevealed ? 'enquiry-revealed' : ''} ${isSubmitted ? 'contact-submitted' : ''}`}>
-      <form ref={formRef} id="contact-form" method="post" action="/api/enquiry" onSubmit={handleSubmit}>
+      <form ref={formRef} id="contact-form" method="post" action="/api/enquiry" onSubmit={handleSubmit} onInput={handleFormInput}>
         <div className="product-split max-w-screen-xl mx-auto px-8 pt-10 pb-2 md:pb-3 lg:pb-4 items-stretch">
         {/* Left column (keeps its space; content hides on submit) */}
         <div className="col-span-1 relative h-full">
@@ -885,7 +902,7 @@ export default function ContactPage() {
                   </button>
                 </div>
                 {submitState==='error' && (
-                  <div className="hw-tile right-locked__send" role="alert">
+                  <div className="hw-tile right-locked__error" role="alert">
                     <p><strong>Sorry, we couldn’t send your message.</strong></p>
                     <p>{submitError}</p>
                   </div>
