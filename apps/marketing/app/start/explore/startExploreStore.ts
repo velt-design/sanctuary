@@ -33,7 +33,7 @@ const pathIds = new Set(startFlowContent.branch.options.map((option) => option.v
 const roofStyleIds = new Set(startFlowContent.roofStyle.options.map((option) => option.value));
 const roofMaterialIds = new Set(startFlowContent.roofMaterial.options.map((option) => option.value));
 const extraIds = new Set(startFlowContent.extras.options.map((option) => option.value));
-const enclosureIds = new Set(
+const enclosureIds = new Set<string>(
   startFlowContent.extras.options
     .filter((option) => ENCLOSURE_EXTRA_IDS.has(option.value))
     .map((option) => option.value)
@@ -126,7 +126,10 @@ export function normalizeStartExploreSelections(input: unknown): StartExploreSel
 
   const extras = parseOptionalStringArray(input.extras, extraIds);
   if (extras === null) return null;
-  if (extras?.length) next.extras = extras;
+  if (extras?.length) {
+    const filteredExtras = extras.filter((extraId) => !enclosureIds.has(extraId));
+    if (filteredExtras.length) next.extras = filteredExtras;
+  }
 
   const extrasNone = parseOptionalBoolean(input.extrasNone);
   if (extrasNone === null) return null;
