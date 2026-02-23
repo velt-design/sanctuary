@@ -30,6 +30,7 @@ import {
 import {
   clearStartExploreSelections,
   COMPARE_START_POINT_OPTIONS,
+  ENCLOSURE_OPTIONS,
   getRoofSecondaryOptions,
   readStartExploreSelections,
   type StartExploreSelections,
@@ -37,7 +38,7 @@ import {
 } from './startExploreStore';
 
 type SectionId = 'hero' | 'highlights' | 'design' | 'roof' | 'performance' | 'shared' | 'extras' | 'compare' | 'cta';
-type PillId = 'path' | 'roofStyle' | 'roofMaterial' | 'enclosure' | 'extras' | 'consent' | 'process';
+type PillId = 'path' | 'roofStyle' | 'roofMaterial' | 'extras' | 'consent' | 'process';
 type ReviewRowKey = 'path' | 'roofStyle' | 'roofMaterial' | 'enclosure' | 'extras' | 'compare';
 type PerformanceTabId = 'wind' | 'rain' | 'heat' | 'comfort';
 
@@ -91,7 +92,6 @@ const PILL_ORDER: ReadonlyArray<{ id: PillId; label: string }> = [
   { id: 'path', label: 'Path' },
   { id: 'roofStyle', label: 'Roof style' },
   { id: 'roofMaterial', label: 'Roof material' },
-  { id: 'enclosure', label: 'Screens/enclosure' },
   { id: 'extras', label: 'Extras' },
   { id: 'consent', label: 'Consent basics' },
   { id: 'process', label: 'What happens next' },
@@ -305,18 +305,34 @@ const HIGHLIGHT_ITEMS: ReadonlyArray<HighlightShelfItem> = [
   },
 ];
 
-const SECTION_CONTAINER_CLASS = 'mx-auto w-full max-w-[1320px] px-4 py-[clamp(48px,6vh,88px)] md:px-8';
-const TEXT_CONTAINER_CLASS = 'mx-auto w-full max-w-[920px]';
-const SURFACE_CONTAINER_CLASS = 'mx-auto w-full max-w-[1200px]';
+const SECTION_CONTAINER_CLASS = 'w-full scroll-mt-20 py-[clamp(52px,6vh,96px)]';
+const TEXT_CONTAINER_CLASS = 'mx-auto w-full max-w-[920px] px-6';
+const SURFACE_CONTAINER_CLASS = 'mx-auto w-full max-w-[1280px] px-6';
 
-const PRIMARY_CTA_CLASS =
-  'inline-flex items-center justify-center rounded-full border border-white bg-white px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white';
 const PRIMARY_CTA_LARGE_CLASS =
   'inline-flex items-center justify-center rounded-full border border-white bg-white px-6 py-3 text-sm font-semibold uppercase tracking-[0.1em] text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white';
-const SECONDARY_CTA_CLASS =
-  'inline-flex items-center justify-center rounded-full border border-white/30 px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white';
 const SECONDARY_CTA_LARGE_CLASS =
   'inline-flex items-center justify-center rounded-full border border-white/30 px-6 py-3 text-sm font-semibold uppercase tracking-[0.1em] text-white transition hover:border-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white';
+
+const QUIET_LINK_CLASS =
+  'text-sm font-medium text-white/74 underline underline-offset-4 decoration-white/35 transition hover:text-white hover:decoration-white';
+
+function SelectionCheck({ className = '' }: { className?: string }) {
+  return (
+    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full border border-white/35 bg-black/60 ${className}`}>
+      <svg viewBox="0 0 16 16" aria-hidden="true" className="h-3 w-3 text-white">
+        <path
+          d="M4 8.2l2.2 2.2L12 4.7"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    </span>
+  );
+}
 
 function labelForValue(options: ReadonlyArray<{ value: string; label: string }>, value?: string): string | null {
   if (!value) return null;
@@ -325,59 +341,100 @@ function labelForValue(options: ReadonlyArray<{ value: string; label: string }>,
 
 function LocalProductNav({
   activeSection,
-  elevated,
   onAnchorClick,
 }: {
   activeSection: SectionId;
-  elevated: boolean;
   onAnchorClick: (id: SectionId) => void;
 }) {
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const overviewRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!overviewOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) return;
+      if (!overviewRef.current?.contains(event.target)) setOverviewOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOverviewOpen(false);
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [overviewOpen]);
+
   return (
-    <header
-      className={`sticky top-0 z-50 border-b transition-colors duration-300 motion-reduce:transition-none ${
-        elevated ? 'border-white/12 bg-black/70 backdrop-blur-xl' : 'border-transparent bg-transparent'
-      }`}
-    >
-      <div className="mx-auto max-w-[1320px] px-4 md:px-8">
-        <div className="flex items-center gap-3 py-3">
-          <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-white/80">Sanctuary Pergolas</p>
-          <p className="hidden text-[13px] text-white/70 sm:block">Pergola Design</p>
-          <div className="ml-auto flex items-center gap-2">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/55 backdrop-blur-xl">
+      <div className={SURFACE_CONTAINER_CLASS}>
+        <div className="flex h-[52px] items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <p className="hidden text-[11px] font-medium uppercase tracking-[0.16em] text-white/56 sm:block">Sanctuary Pergolas</p>
+            <p className="truncate text-[13px] font-medium text-white">Pergola Design</p>
+          </div>
+
+          <div ref={overviewRef} className="relative ml-auto flex items-center gap-4">
+            <button
+              type="button"
+              aria-expanded={overviewOpen}
+              aria-haspopup="menu"
+              onClick={() => setOverviewOpen((previous) => !previous)}
+              className="inline-flex items-center gap-1 text-sm font-medium text-white/78 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              Overview
+              <span aria-hidden="true" className={`text-xs transition ${overviewOpen ? 'rotate-180' : ''}`}>
+                v
+              </span>
+            </button>
+
+            {overviewOpen ? (
+              <div
+                role="menu"
+                aria-label="Overview sections"
+                className="absolute right-0 top-[calc(100%+10px)] z-[70] w-[220px] rounded-2xl border border-white/10 bg-black/90 p-1.5 shadow-2xl"
+              >
+                {NAV_ANCHORS.map((anchor) => {
+                  const active = activeSection === anchor.id;
+                  return (
+                    <button
+                      key={anchor.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        onAnchorClick(anchor.id);
+                        setOverviewOpen(false);
+                      }}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                        active ? 'bg-white/[0.12] text-white' : 'text-white/78 hover:bg-white/[0.08] hover:text-white'
+                      }`}
+                    >
+                      <span>{anchor.label}</span>
+                      {active ? <span aria-hidden="true" className="text-[10px] text-white/72">o</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+
             <Link
               href="/start"
-              className="rounded-full border border-white/30 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-white transition hover:border-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="hidden text-sm font-medium text-white/78 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:inline-flex"
             >
               Start the guide
             </Link>
             <Link
               href="/contact"
-              className="rounded-full border border-white bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex items-center justify-center rounded-full border border-white bg-white px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               Book a Design Consultation
             </Link>
           </div>
         </div>
-        <nav aria-label="Explore page sections" className="overflow-x-auto pb-3">
-          <div className="flex min-w-max items-center gap-2 pr-4">
-            {NAV_ANCHORS.map((anchor) => {
-              const active = activeSection === anchor.id;
-              return (
-                <button
-                  key={anchor.id}
-                  type="button"
-                  onClick={() => onAnchorClick(anchor.id)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium tracking-[0.08em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                    active
-                      ? 'border-white/90 bg-white/16 text-white'
-                      : 'border-white/25 bg-white/[0.03] text-white/75 hover:border-white/45 hover:text-white'
-                  }`}
-                >
-                  {anchor.label}
-                </button>
-              );
-            })}
-          </div>
-        </nav>
       </div>
     </header>
   );
@@ -450,25 +507,21 @@ function OptionRailSelect({
               aria-checked={selected}
               tabIndex={selected || (!value && index === 0) ? 0 : -1}
               onClick={() => onChange(option.id)}
-              className={`group snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${cardWidthClassName} ${
+              className={`group relative snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${cardWidthClassName} ${
                 selected
-                  ? 'border-white bg-white/[0.14] shadow-[0_16px_48px_-28px_rgba(255,255,255,0.7)]'
-                  : 'border-white/20 bg-white/[0.04] hover:border-white/40 hover:bg-white/[0.08]'
+                  ? 'border-white/45 bg-white/[0.08]'
+                  : 'border-white/10 bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06]'
               }`}
             >
+              {selected ? <SelectionCheck className="absolute right-3 top-3 z-10" /> : null}
               {option.image ? (
                 <div className="relative aspect-[16/7] w-full overflow-hidden bg-white/5">
                   <Image src={option.image.src} alt={option.image.alt} fill sizes={imageSizes} className="object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                 </div>
               ) : null}
-              <div className="flex items-center justify-between gap-3 p-3">
+              <div className="flex items-center justify-between gap-3 p-3 pr-10">
                 <p className="text-sm font-semibold text-white">{option.title}</p>
-                {selected ? (
-                  <span className="rounded-full border border-white/40 bg-white/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white">
-                    Selected
-                  </span>
-                ) : null}
               </div>
             </button>
           );
@@ -527,7 +580,7 @@ function OptionRailMulti({
   const multiCaption = selectedOptions.length
     ? selectedOptions.length === 1
       ? selectedOptions[0].description ?? null
-      : `${selectedOptions.length} extras selected.`
+      : `Chosen extras: ${selectedOptions.length}`
     : 'Select one or more extras to save your preferences.';
 
   return (
@@ -552,31 +605,104 @@ function OptionRailMulti({
               role="checkbox"
               aria-checked={selected}
               onClick={() => onToggle(option.id)}
-              className={`group snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${cardWidthClassName} ${
+              className={`group relative snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${cardWidthClassName} ${
                 selected
-                  ? 'border-white bg-white/[0.14] shadow-[0_16px_48px_-28px_rgba(255,255,255,0.7)]'
-                  : 'border-white/20 bg-white/[0.04] hover:border-white/40 hover:bg-white/[0.08]'
+                  ? 'border-white/45 bg-white/[0.08]'
+                  : 'border-white/10 bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06]'
               }`}
             >
+              {selected ? <SelectionCheck className="absolute right-3 top-3 z-10" /> : null}
               {option.image ? (
                 <div className="relative aspect-[16/7] w-full overflow-hidden bg-white/5">
                   <Image src={option.image.src} alt={option.image.alt} fill sizes={imageSizes} className="object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
                 </div>
               ) : null}
-              <div className="flex items-center justify-between gap-3 p-3">
+              <div className="flex items-center justify-between gap-3 p-3 pr-10">
                 <p className="text-sm font-semibold text-white">{option.title}</p>
-                {selected ? (
-                  <span className="rounded-full border border-white/40 bg-white/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white">
-                    Added
-                  </span>
-                ) : null}
               </div>
             </button>
           );
         })}
       </div>
       {multiCaption ? <p className="text-sm text-white/74">{multiCaption}</p> : null}
+    </div>
+  );
+}
+
+function EnclosureChipRow({
+  groupId,
+  groupLabel,
+  value,
+  onChange,
+}: {
+  groupId: string;
+  groupLabel: string;
+  value?: string;
+  onChange: (id: string) => void;
+}) {
+  const itemRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!ENCLOSURE_OPTIONS.length) return;
+
+    const currentIndex = Math.max(0, ENCLOSURE_OPTIONS.findIndex((option) => option.id === value));
+    const maxIndex = ENCLOSURE_OPTIONS.length - 1;
+    let nextIndex: number | null = null;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = currentIndex >= maxIndex ? 0 : currentIndex + 1;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = currentIndex <= 0 ? maxIndex : currentIndex - 1;
+    if (event.key === 'Home') nextIndex = 0;
+    if (event.key === 'End') nextIndex = maxIndex;
+
+    if (nextIndex == null) return;
+
+    event.preventDefault();
+    const nextOption = ENCLOSURE_OPTIONS[nextIndex];
+    onChange(nextOption.id);
+    window.requestAnimationFrame(() => {
+      itemRefs.current[nextIndex]?.focus();
+      itemRefs.current[nextIndex]?.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+    });
+  };
+
+  return (
+    <div
+      id={groupId}
+      tabIndex={-1}
+      role="radiogroup"
+      aria-label={groupLabel}
+      onKeyDown={handleKeyDown}
+      className="flex flex-wrap gap-2"
+    >
+      {ENCLOSURE_OPTIONS.map((option, index) => {
+        const selected = option.id === value;
+        return (
+          <button
+            key={option.id}
+            ref={(node) => {
+              itemRefs.current[index] = node;
+            }}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected || (!value && index === 0) ? 0 : -1}
+            onClick={() => onChange(option.id)}
+            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+              selected
+                ? 'border-white/45 bg-white/[0.1] text-white'
+                : 'border-white/20 bg-white/[0.03] text-white/76 hover:border-white/35 hover:text-white'
+            }`}
+          >
+            {selected ? (
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-white" aria-hidden="true" />
+            ) : (
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-white/30" aria-hidden="true" />
+            )}
+            <span>{option.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -688,11 +814,17 @@ function ReviewSelectionsSheet({
             </Dialog.Close>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <Link href="/contact" className={PRIMARY_CTA_CLASS}>
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold uppercase tracking-[0.12em]">
+            <Link
+              href="/contact"
+              className="text-white/76 underline decoration-white/35 underline-offset-4 transition hover:text-white hover:decoration-white"
+            >
               Book a Design Consultation
             </Link>
-            <Link href="/start" className={SECONDARY_CTA_CLASS}>
+            <Link
+              href="/start"
+              className="text-white/62 underline decoration-white/30 underline-offset-4 transition hover:text-white hover:decoration-white"
+            >
               Start the guide
             </Link>
           </div>
@@ -706,7 +838,6 @@ export default function StartExploreClient() {
   const [selections, setSelections] = useState<StartExploreSelections>({});
   const [hasHydrated, setHasHydrated] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>('hero');
-  const [navElevated, setNavElevated] = useState(false);
   const [activeHighlightId, setActiveHighlightId] = useState(HIGHLIGHT_ITEMS[0]?.id ?? 'design');
   const [activePill, setActivePill] = useState<PillId>('path');
   const [activePerformanceTab, setActivePerformanceTab] = useState<PerformanceTabId>('wind');
@@ -753,7 +884,6 @@ export default function StartExploreClient() {
       }
 
       setActiveSection(current);
-      setNavElevated(window.scrollY > 12);
     };
 
     updateActiveSection();
@@ -808,19 +938,6 @@ export default function StartExploreClient() {
         description: option.description,
         image: ROOF_MATERIAL_MEDIA[option.value as RoofMaterialChoice],
       })),
-    []
-  );
-
-  const enclosureOptions = useMemo<CardOption[]>(
-    () =>
-      startFlowContent.extras.options
-        .filter((option) => ENCLOSURE_EXTRA_IDS.has(option.value))
-        .map((option) => ({
-          id: option.value,
-          title: option.label,
-          description: option.description,
-          image: EXTRA_MEDIA[option.value as ExtraId],
-        })),
     []
   );
 
@@ -960,9 +1077,7 @@ export default function StartExploreClient() {
 
   const enclosureLabel = useMemo(() => {
     if (!selections.enclosure) return null;
-    return (
-      startFlowContent.extras.options.find((option) => option.value === selections.enclosure)?.label ?? null
-    );
+    return ENCLOSURE_OPTIONS.find((option) => option.id === selections.enclosure)?.label ?? null;
   }, [selections.enclosure]);
 
   const extrasLabel = useMemo(() => {
@@ -1082,12 +1197,11 @@ export default function StartExploreClient() {
       path: Boolean(selections.path),
       roofStyle: Boolean(selections.roofStyle),
       roofMaterial: Boolean(selections.roofMaterial),
-      enclosure: Boolean(selections.enclosure),
       extras: Boolean(selections.extrasNone || selectedExtraIds.length),
       consent: false,
       process: false,
     }),
-    [selections.enclosure, selections.extrasNone, selections.path, selections.roofMaterial, selections.roofStyle, selectedExtraIds.length]
+    [selections.extrasNone, selections.path, selections.roofMaterial, selections.roofStyle, selectedExtraIds.length]
   );
 
   const activeDesignVisual = useMemo(() => {
@@ -1118,15 +1232,6 @@ export default function StartExploreClient() {
       };
     }
 
-    if (activePill === 'enclosure') {
-      const option = enclosureOptions.find((item) => item.id === selections.enclosure) ?? enclosureOptions[0];
-      return {
-        image: option?.image ?? EXTRA_MEDIA.blinds,
-        title: option?.title ?? 'Screens/enclosure',
-        caption: option?.description ?? 'Set how open or sheltered you want the space to feel.',
-      };
-    }
-
     if (activePill === 'extras') {
       const option = extrasOptions.find((item) => selectedExtraIds.includes(item.id)) ?? extrasOptions[0];
       return {
@@ -1151,12 +1256,10 @@ export default function StartExploreClient() {
     };
   }, [
     activePill,
-    enclosureOptions,
     extrasOptions,
     pathOptions,
     roofMaterialOptions,
     roofStyleOptions,
-    selections.enclosure,
     selections.path,
     selections.roofMaterial,
     selections.roofStyle,
@@ -1200,7 +1303,7 @@ export default function StartExploreClient() {
 
   return (
     <div className="start-explore-page min-h-screen text-white">
-      <LocalProductNav activeSection={activeSection} elevated={navElevated} onAnchorClick={scrollToSection} />
+      <LocalProductNav activeSection={activeSection} onAnchorClick={scrollToSection} />
 
       <main>
         <section id="hero" className="relative min-h-[84vh] max-h-[920px] overflow-hidden">
@@ -1215,8 +1318,8 @@ export default function StartExploreClient() {
             />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.2),transparent_42%),linear-gradient(180deg,rgba(0,0,0,0.34)_0%,rgba(0,0,0,0.78)_78%)]" />
           </div>
-          <div className="relative mx-auto flex min-h-[84vh] max-h-[920px] w-full max-w-[1320px] items-end px-4 pb-12 pt-24 md:px-8 md:pb-16">
-            <div className={`${TEXT_CONTAINER_CLASS} space-y-5`}>
+          <div className={`${TEXT_CONTAINER_CLASS} relative flex min-h-[84vh] max-h-[920px] items-end pb-12 pt-24 md:pb-16`}>
+            <div className="space-y-5">
               <p className="text-[13px] font-medium uppercase tracking-[0.17em] text-white/70">Sanctuary Pergolas</p>
               <h1 className="text-[clamp(44px,4.2vw,74px)] font-semibold leading-[1.03] tracking-tight">
                 A pergola that feels built-in.
@@ -1224,17 +1327,17 @@ export default function StartExploreClient() {
               <p className="max-w-[680px] text-[clamp(18px,2vw,22px)] leading-[1.45] text-white/82">
                 Explore options, save what you like, then book a Design Consultation.
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <Link href="/contact" className={PRIMARY_CTA_LARGE_CLASS}>
-                  Book a Design Consultation
-                </Link>
+              <div className="flex flex-wrap items-center gap-5">
                 <button
                   type="button"
                   onClick={() => scrollToSection('highlights')}
-                  className={SECONDARY_CTA_LARGE_CLASS}
+                  className={QUIET_LINK_CLASS}
                 >
                   Explore highlights
                 </button>
+                <Link href="/start" className={QUIET_LINK_CLASS}>
+                  Start the guide
+                </Link>
               </div>
             </div>
           </div>
@@ -1267,10 +1370,11 @@ export default function StartExploreClient() {
                     onClick={() => setActiveHighlightId(item.id)}
                     className={`group relative h-[250px] w-[320px] snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none md:h-[260px] md:w-[420px] ${
                       active
-                        ? 'border-white/75 shadow-[0_18px_42px_-26px_rgba(255,255,255,0.55)]'
-                        : 'border-white/18 hover:border-white/40'
+                        ? 'border-white/40 bg-white/[0.04]'
+                        : 'border-white/10 hover:border-white/32'
                     }`}
                   >
+                    {saved ? <SelectionCheck className="absolute right-3 top-3 z-10" /> : null}
                     <Image
                       src={item.image}
                       alt={`${item.title} chapter preview`}
@@ -1280,14 +1384,7 @@ export default function StartExploreClient() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/35 to-black/0" />
                     <div className="absolute inset-x-0 bottom-0 space-y-1 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xl font-semibold">{item.title}</p>
-                        {saved ? (
-                          <span className="rounded-full border border-emerald-200/45 bg-emerald-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
-                            Saved
-                          </span>
-                        ) : null}
-                      </div>
+                      <p className="text-xl font-semibold">{item.title}</p>
                       <p className="text-sm text-white/76">{item.subtitle}</p>
                     </div>
                   </button>
@@ -1295,16 +1392,12 @@ export default function StartExploreClient() {
               })}
             </div>
 
-            <div className="rounded-3xl border border-white/12 bg-white/[0.04] p-4 md:min-h-[164px] md:p-5">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 md:min-h-[164px] md:p-5">
               <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                 <div className="max-w-[760px] space-y-3">
                   <div className="flex items-center gap-3">
                     <h3 className="text-[22px] font-semibold tracking-tight">{activeHighlight.title}</h3>
-                    {activeHighlightSaved ? (
-                      <span className="rounded-full border border-emerald-200/45 bg-emerald-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
-                        Saved
-                      </span>
-                    ) : null}
+                    {activeHighlightSaved ? <SelectionCheck /> : null}
                   </div>
                   <ul className="space-y-2 text-sm leading-6 text-white/78">
                     {activeHighlight.bullets.map((bullet) => (
@@ -1321,11 +1414,11 @@ export default function StartExploreClient() {
                   <button
                     type="button"
                     onClick={() => scrollToSection(activeHighlight.chapterId)}
-                    className={PRIMARY_CTA_CLASS}
+                    className={QUIET_LINK_CLASS}
                   >
-                    Continue reading
+                    Learn more
                   </button>
-                  <Link href="/start" className={SECONDARY_CTA_CLASS}>
+                  <Link href="/start" className={QUIET_LINK_CLASS}>
                     Start the guide
                   </Link>
                 </div>
@@ -1339,11 +1432,11 @@ export default function StartExploreClient() {
             <p className="text-[13px] uppercase tracking-[0.14em] text-white/62">Design chapter</p>
             <h2 className="mt-2 text-[clamp(34px,3vw,56px)] font-semibold tracking-tight">Take a closer look.</h2>
             <p className="mt-4 text-[17px] leading-7 text-white/75">
-              Move through key choices in order. Selections save immediately and the visual panel updates as you compare options.
+              Move through key choices in order. Selections are saved on this device.
             </p>
           </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.04] p-4 md:p-6 lg:h-[min(72vh,720px)]`}>
+          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-4 md:p-6 lg:h-[min(72vh,720px)]`}>
             <div className="grid h-full gap-5 lg:grid-cols-[250px_minmax(0,1fr)]">
               <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:overflow-y-auto lg:pb-0 lg:pr-1">
                 {PILL_ORDER.map((pill) => {
@@ -1355,29 +1448,20 @@ export default function StartExploreClient() {
                       onClick={() => setActivePill(pill.id)}
                       className={`shrink-0 rounded-full border px-4 py-2.5 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:w-full ${
                         active
-                          ? 'border-white/85 bg-white/14 text-white'
-                          : 'border-white/25 bg-white/[0.03] text-white/80 hover:border-white/45 hover:text-white'
+                          ? 'border-white/45 bg-white/[0.1] text-white'
+                          : 'border-white/20 bg-white/[0.03] text-white/78 hover:border-white/35 hover:text-white'
                       }`}
                     >
                       <span className="flex items-center justify-between gap-3">
                         <span className="text-sm font-medium">{pill.label}</span>
-                        <span className="flex items-center gap-2">
-                          {pillSavedState[pill.id] ? (
-                            <span className="rounded-full border border-emerald-200/45 bg-emerald-300/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-100">
-                              Saved
-                            </span>
-                          ) : null}
-                          <span className="text-base text-white/70" aria-hidden="true">
-                            {active ? 'o' : '+'}
-                          </span>
-                        </span>
+                        {pillSavedState[pill.id] ? <SelectionCheck className="h-4 w-4 border-white/25 bg-white/10" /> : null}
                       </span>
                     </button>
                   );
                 })}
               </div>
 
-              <div className="flex h-full min-h-0 flex-col rounded-[24px] border border-white/12 bg-black/35 p-4 md:p-5">
+              <div className="flex h-full min-h-0 flex-col gap-4 lg:pl-2">
                 <div className="relative h-[clamp(200px,34vh,330px)] shrink-0 overflow-hidden rounded-[22px] border border-white/10">
                   <Image
                     src={activeDesignVisual.image.src}
@@ -1393,7 +1477,7 @@ export default function StartExploreClient() {
                   </div>
                 </div>
 
-                <div className="mt-4 min-h-0 flex-1 overflow-y-auto pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="min-h-0 flex-1 overflow-y-auto pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {activePill === 'path' ? (
                     <OptionRailSelect
                       groupId="explore-path-group"
@@ -1448,8 +1532,8 @@ export default function StartExploreClient() {
                                   onClick={() => handleRoofSecondaryChange(option.id)}
                                   className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium tracking-[0.08em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                                     selected
-                                      ? 'border-white bg-white/18 text-white'
-                                      : 'border-white/25 bg-white/[0.04] text-white/75 hover:border-white/45 hover:text-white'
+                                      ? 'border-white/45 bg-white/[0.1] text-white'
+                                      : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
                                   }`}
                                 >
                                   {option.label}
@@ -1460,18 +1544,6 @@ export default function StartExploreClient() {
                         </div>
                       ) : null}
                     </div>
-                  ) : null}
-
-                  {activePill === 'enclosure' ? (
-                    <OptionRailSelect
-                      groupId="design-enclosure-group"
-                      groupLabel="Choose screens or enclosure"
-                      options={enclosureOptions}
-                      value={selections.enclosure}
-                      onChange={handleEnclosureChange}
-                      cardWidthClassName="w-[300px]"
-                      imageSizes="(max-width: 768px) 78vw, 300px"
-                    />
                   ) : null}
 
                   {activePill === 'extras' ? (
@@ -1491,8 +1563,8 @@ export default function StartExploreClient() {
                         onClick={() => handleSetNoExtras(!selections.extrasNone)}
                         className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                           selections.extrasNone
-                            ? 'border-white bg-white/18 text-white'
-                            : 'border-white/25 bg-white/[0.04] text-white/75 hover:border-white/45 hover:text-white'
+                            ? 'border-white/45 bg-white/[0.1] text-white'
+                            : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
                         }`}
                       >
                         {startFlowContent.extras.noneLabel}
@@ -1501,7 +1573,7 @@ export default function StartExploreClient() {
                   ) : null}
 
                   {activePill === 'consent' ? (
-                    <div className="space-y-4 rounded-2xl border border-white/12 bg-white/[0.03] p-4">
+                    <div className="space-y-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <p className="text-sm leading-6 text-white/80">{startFlowContent.consent.disclaimer}</p>
                       <ul className="space-y-2">
                         {startFlowContent.consent.links.map((link) => (
@@ -1521,7 +1593,7 @@ export default function StartExploreClient() {
                   ) : null}
 
                   {activePill === 'process' ? (
-                    <div className="rounded-2xl border border-white/12 bg-white/[0.03] p-4">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                       <ol className="space-y-2.5">
                         {startFlowContent.process.timeline.map((step, index) => (
                           <li key={step} className="flex items-center gap-3 text-sm text-white/82">
@@ -1545,11 +1617,11 @@ export default function StartExploreClient() {
             <p className="text-[13px] uppercase tracking-[0.14em] text-white/62">Roof chapter</p>
             <h2 className="mt-2 text-[clamp(34px,3vw,56px)] font-semibold tracking-tight">Dial in roof and light behavior.</h2>
             <p className="mt-4 text-[17px] leading-7 text-white/75">
-              The interactive strip maps common roof material intents. Clicking a stop immediately updates your saved roof state.
+              The interactive strip maps common roof material intents. Clicking a stop updates roof material and light behavior.
             </p>
           </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.04] p-4 md:p-6 lg:h-[min(75vh,760px)]`}>
+          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-4 md:p-6 lg:h-[min(75vh,760px)]`}>
             <div className="flex h-full min-h-0 flex-col gap-4">
               <div className="overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="min-w-[680px]">
@@ -1571,8 +1643,8 @@ export default function StartExploreClient() {
                           onClick={() => handleRoofStripChange(stop)}
                           className={`shrink-0 rounded-full border px-3 py-2 text-xs font-medium tracking-[0.08em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                             selected
-                              ? 'border-white bg-white/18 text-white'
-                              : 'border-white/25 bg-white/[0.04] text-white/75 hover:border-white/45 hover:text-white'
+                              ? 'border-white/45 bg-white/[0.1] text-white'
+                              : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
                           }`}
                         >
                           {stop.label}
@@ -1583,7 +1655,7 @@ export default function StartExploreClient() {
                 </div>
               </div>
 
-              <div className="relative h-[clamp(300px,42vh,460px)] shrink-0 overflow-hidden rounded-[24px] border border-white/12">
+              <div className="relative h-[clamp(300px,42vh,460px)] shrink-0 overflow-hidden rounded-[24px] border border-white/10">
                 <Image
                   src={activeRoofStop.image.src}
                   alt={activeRoofStop.image.alt}
@@ -1641,8 +1713,8 @@ export default function StartExploreClient() {
                               onClick={() => handleRoofSecondaryChange(option.id)}
                               className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium tracking-[0.08em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                                 selected
-                                  ? 'border-white bg-white/18 text-white'
-                                  : 'border-white/25 bg-white/[0.04] text-white/75 hover:border-white/45 hover:text-white'
+                                  ? 'border-white/45 bg-white/[0.1] text-white'
+                                  : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
                               }`}
                             >
                               {option.label}
@@ -1655,14 +1727,10 @@ export default function StartExploreClient() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
-                <Link href="/contact" className={PRIMARY_CTA_CLASS}>
-                  Book a Design Consultation
-                </Link>
-                <Link href="/start" className={SECONDARY_CTA_CLASS}>
-                  Start the guide
-                </Link>
-                <p className="text-xs text-white/55">Your selections stay on this device.</p>
+              <div className="border-t border-white/10 pt-4">
+                <button type="button" onClick={() => scrollToSection('performance')} className={QUIET_LINK_CLASS}>
+                  Learn more about performance
+                </button>
               </div>
             </div>
           </div>
@@ -1677,7 +1745,7 @@ export default function StartExploreClient() {
             </p>
           </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.04] p-4 md:p-6`}>
+          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-4 md:p-6`}>
             <div role="tablist" aria-label="Performance tabs" onKeyDown={handlePerformanceTabKeyDown} className="flex flex-wrap gap-2">
               {PERFORMANCE_TABS.map((tab, index) => {
                 const selected = tab.id === activePerformanceTab;
@@ -1696,8 +1764,8 @@ export default function StartExploreClient() {
                     onClick={() => setActivePerformanceTab(tab.id)}
                     className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.1em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                       selected
-                        ? 'border-white bg-white/18 text-white'
-                        : 'border-white/25 bg-white/[0.04] text-white/75 hover:border-white/45 hover:text-white'
+                        ? 'border-white/45 bg-white/[0.1] text-white'
+                        : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
                     }`}
                   >
                     {tab.label}
@@ -1712,7 +1780,7 @@ export default function StartExploreClient() {
               aria-labelledby={`perf-tab-${activePerformance.id}`}
               className="mt-5 grid gap-5 lg:h-[460px] lg:grid-cols-[1.2fr_1fr]"
             >
-              <div className="relative h-[clamp(220px,32vh,360px)] overflow-hidden rounded-[22px] border border-white/12 lg:h-full">
+              <div className="relative h-[clamp(220px,32vh,360px)] overflow-hidden rounded-[22px] border border-white/10 lg:h-full">
                 <Image
                   src={activePerformance.image.src}
                   alt={activePerformance.image.alt}
@@ -1722,7 +1790,7 @@ export default function StartExploreClient() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-black/0" />
               </div>
-              <div className="space-y-4 rounded-[22px] border border-white/12 bg-black/35 p-4 lg:h-full">
+              <div className="space-y-4 rounded-[22px] border border-white/10 bg-black/35 p-4 lg:h-full">
                 <h3 className="text-xl font-semibold tracking-tight">{activePerformance.title}</h3>
                 <ul className="space-y-2.5 text-sm leading-6 text-white/78">
                   {activePerformance.bullets.map((bullet) => (
@@ -1750,7 +1818,7 @@ export default function StartExploreClient() {
               {SHARED_FEATURES.map((feature) => (
                 <article
                   key={feature.title}
-                  className="h-[236px] w-[320px] shrink-0 snap-start rounded-3xl border border-white/12 bg-white/[0.04] p-4"
+                  className="h-[236px] w-[320px] shrink-0 snap-start rounded-3xl border border-white/10 bg-white/[0.03] p-4"
                 >
                   <h3 className="text-lg font-semibold tracking-tight">{feature.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-white/72">{feature.body}</p>
@@ -1759,26 +1827,17 @@ export default function StartExploreClient() {
             </div>
           </div>
 
-          {enclosureOptions.length ? (
-            <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-3xl border border-white/12 bg-white/[0.04] p-4 md:p-5`}>
-              <p className="text-xs font-semibold uppercase tracking-[0.13em] text-white/65">Optional</p>
-              <h3 className="mt-2 text-2xl font-semibold tracking-tight">How enclosed do you want it to feel?</h3>
-              <p className="mt-2 text-sm text-white/72">
-                This is optional, but selecting one helps us understand your shelter and privacy preference.
-              </p>
-              <div className="mt-4">
-                <OptionRailSelect
-                  groupId="explore-enclosure-group"
-                  groupLabel="Choose enclosure preference"
-                  options={enclosureOptions}
-                  value={selections.enclosure}
-                  onChange={handleEnclosureChange}
-                  cardWidthClassName="w-[300px]"
-                  imageSizes="(max-width: 768px) 78vw, 300px"
-                />
-              </div>
+          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-3xl border border-white/10 bg-white/[0.03] p-4 md:p-5`}>
+            <p className="text-xs font-semibold uppercase tracking-[0.13em] text-white/65">How enclosed should it feel?</p>
+            <div className="mt-3">
+              <EnclosureChipRow
+                groupId="explore-enclosure-group"
+                groupLabel="Choose enclosure preference"
+                value={selections.enclosure}
+                onChange={handleEnclosureChange}
+              />
             </div>
-          ) : null}
+          </div>
         </section>
 
         <section id="extras" className={SECTION_CONTAINER_CLASS}>
@@ -1787,7 +1846,7 @@ export default function StartExploreClient() {
             <h2 className="mt-2 text-[clamp(34px,3vw,56px)] font-semibold tracking-tight">Personalize your everyday use.</h2>
           </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.04] p-4 md:p-6`}>
+          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-4 md:p-6`}>
             <OptionRailMulti
               groupId="explore-extras-group"
               groupLabel="Choose extras"
@@ -1803,20 +1862,17 @@ export default function StartExploreClient() {
               onClick={() => handleSetNoExtras(!selections.extrasNone)}
               className={`mt-4 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
                 selections.extrasNone
-                  ? 'border-white bg-white/18 text-white'
-                  : 'border-white/25 bg-white/[0.04] text-white/75 hover:border-white/45 hover:text-white'
+                  ? 'border-white/45 bg-white/[0.1] text-white'
+                  : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
               }`}
             >
               {startFlowContent.extras.noneLabel}
             </button>
 
-            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-white/10 pt-4">
-              <Link href="/contact" className={PRIMARY_CTA_CLASS}>
-                Book a Design Consultation
-              </Link>
-              <Link href="/start" className={SECONDARY_CTA_CLASS}>
-                Start the guide
-              </Link>
+            <div className="mt-5 border-t border-white/10 pt-4">
+              <button type="button" onClick={() => scrollToSection('compare')} className={QUIET_LINK_CLASS}>
+                Learn more in Compare
+              </button>
             </div>
           </div>
         </section>
@@ -1827,7 +1883,7 @@ export default function StartExploreClient() {
             <h2 className="mt-2 text-[clamp(34px,3vw,56px)] font-semibold tracking-tight">What are you starting with?</h2>
           </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.04] p-4 md:p-6 lg:h-[420px]`}>
+          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-4 md:p-6 lg:h-[420px]`}>
             <div className="grid h-full gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
               <div className="space-y-4">
                 <div
@@ -1848,8 +1904,8 @@ export default function StartExploreClient() {
                         onClick={() => handleCompareStartPointChange(option.id)}
                         className={`shrink-0 rounded-full border px-4 py-2 text-left text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:rounded-2xl lg:py-3 ${
                           selected
-                            ? 'border-white bg-white/14 text-white'
-                            : 'border-white/25 bg-white/[0.03] text-white/78 hover:border-white/45 hover:text-white'
+                            ? 'border-white/45 bg-white/[0.1] text-white'
+                            : 'border-white/20 bg-white/[0.03] text-white/78 hover:border-white/35 hover:text-white'
                         }`}
                       >
                         {option.label}
@@ -1859,13 +1915,13 @@ export default function StartExploreClient() {
                 </div>
 
                 <div className="border-t border-white/10 pt-4">
-                  <Link href="/contact" className={PRIMARY_CTA_CLASS}>
-                    Book a Design Consultation
-                  </Link>
+                  <button type="button" onClick={() => scrollToSection('cta')} className={QUIET_LINK_CLASS}>
+                    Continue to summary
+                  </button>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/12 bg-black/35 p-4">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
                 <p className="text-xs font-semibold uppercase tracking-[0.13em] text-white/65">What changes</p>
                 {activeCompareOutcomes ? (
                   <ul className="mt-2.5 space-y-2.5 text-sm text-white/78">
@@ -1886,36 +1942,38 @@ export default function StartExploreClient() {
           </div>
         </section>
 
-        <section id="cta" className="mx-auto w-full max-w-[1320px] px-4 py-[clamp(48px,6vh,88px)] md:px-8">
-          <div className={`${SURFACE_CONTAINER_CLASS} rounded-[32px] border border-white/12 bg-white/[0.05] p-6 md:p-10 lg:max-h-[420px] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
-            <div className={TEXT_CONTAINER_CLASS}>
+        <section id="cta" className={SECTION_CONTAINER_CLASS}>
+          <div className={SURFACE_CONTAINER_CLASS}>
+            <div className="rounded-[32px] border border-white/10 bg-white/[0.05] p-6 md:p-10 lg:max-h-[420px] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className={`${TEXT_CONTAINER_CLASS} px-0`}>
               <h2 className="text-[clamp(34px,3vw,56px)] font-semibold tracking-tight">Ready to talk through your space?</h2>
               <p className="mt-4 text-[17px] leading-7 text-white/75">
                 Book a Design Consultation - your saved preferences carry through.
               </p>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/contact" className={PRIMARY_CTA_LARGE_CLASS}>
-                Book a Design Consultation
-              </Link>
-              <Link href="/start" className={SECONDARY_CTA_LARGE_CLASS}>
-                Start the guide
-              </Link>
-            </div>
-
-            {reviewRows.length ? (
-              <div className="mt-6 rounded-2xl border border-white/12 bg-black/35 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.13em] text-white/65">Saved selections</p>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  {reviewRows.map((row) => (
-                    <p key={`cta-${row.key}`} className="text-sm text-white/78">
-                      <span className="text-white/62">{row.label}:</span> {row.value}
-                    </p>
-                  ))}
-                </div>
               </div>
-            ) : null}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link href="/contact" className={PRIMARY_CTA_LARGE_CLASS}>
+                  Book a Design Consultation
+                </Link>
+                <Link href="/start" className={SECONDARY_CTA_LARGE_CLASS}>
+                  Start the guide
+                </Link>
+              </div>
+
+              {reviewRows.length ? (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-black/35 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.13em] text-white/65">Saved selections</p>
+                  <div className="mt-2 grid gap-2 md:grid-cols-2">
+                    {reviewRows.map((row) => (
+                      <p key={`cta-${row.key}`} className="text-sm text-white/78">
+                        <span className="text-white/62">{row.label}:</span> {row.value}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
         </section>
       </main>

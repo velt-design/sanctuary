@@ -28,16 +28,24 @@ export type LabeledOption = {
 };
 
 const ENCLOSURE_EXTRA_IDS = new Set(['blinds', 'slats', 'acrylic_infills']);
+const LEGACY_ENCLOSURE_MIGRATION: Record<string, string> = {
+  blinds: 'lightly_screened',
+  slats: 'open',
+  acrylic_infills: 'more_enclosed',
+};
+
+export const ENCLOSURE_OPTIONS = [
+  { id: 'open', label: 'Open' },
+  { id: 'lightly_screened', label: 'Lightly screened' },
+  { id: 'more_enclosed', label: 'More enclosed' },
+  { id: 'not_sure', label: 'Not sure' },
+] as const;
 
 const pathIds = new Set(startFlowContent.branch.options.map((option) => option.value));
 const roofStyleIds = new Set(startFlowContent.roofStyle.options.map((option) => option.value));
 const roofMaterialIds = new Set(startFlowContent.roofMaterial.options.map((option) => option.value));
 const extraIds = new Set(startFlowContent.extras.options.map((option) => option.value));
-const enclosureIds = new Set<string>(
-  startFlowContent.extras.options
-    .filter((option) => ENCLOSURE_EXTRA_IDS.has(option.value))
-    .map((option) => option.value)
-);
+const enclosureIds = new Set<string>(ENCLOSURE_OPTIONS.map((option) => option.id));
 const compareStartPointIds = new Set(COMPARE_START_POINT_OPTIONS.map((option) => option.id));
 
 const roofSecondaryOptionsByMaterial: Record<string, ReadonlyArray<LabeledOption>> = {
@@ -90,9 +98,7 @@ export function getRoofSecondaryOptions(roofMaterial?: string): ReadonlyArray<La
 }
 
 export function getEnclosureOptions(): ReadonlyArray<LabeledOption> {
-  return startFlowContent.extras.options
-    .filter((option) => ENCLOSURE_EXTRA_IDS.has(option.value))
-    .map((option) => ({ id: option.value, label: option.label }));
+  return ENCLOSURE_OPTIONS.map((option) => ({ id: option.id, label: option.label }));
 }
 
 export function normalizeStartExploreSelections(input: unknown): StartExploreSelections | null {
@@ -120,14 +126,16 @@ export function normalizeStartExploreSelections(input: unknown): StartExploreSel
     next.roofSecondary = input.roofSecondary;
   }
 
-  const enclosure = parseOptionalStringId(input.enclosure, enclosureIds);
+  const normalizedEnclosureInput =
+    typeof input.enclosure === 'string' ? (LEGACY_ENCLOSURE_MIGRATION[input.enclosure] ?? input.enclosure) : input.enclosure;
+  const enclosure = parseOptionalStringId(normalizedEnclosureInput, enclosureIds);
   if (enclosure === null) return null;
   if (enclosure) next.enclosure = enclosure;
 
   const extras = parseOptionalStringArray(input.extras, extraIds);
   if (extras === null) return null;
   if (extras?.length) {
-    const filteredExtras = extras.filter((extraId) => !enclosureIds.has(extraId));
+    const filteredExtras = extras.filter((extraId) => !ENCLOSURE_EXTRA_IDS.has(extraId));
     if (filteredExtras.length) next.extras = filteredExtras;
   }
 
