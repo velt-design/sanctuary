@@ -293,22 +293,44 @@ const HIGHLIGHT_ITEMS: ReadonlyArray<HighlightShelfItem> = [
   },
 ];
 
-const SECTION_CONTAINER_CLASS = 'w-full scroll-mt-20 py-[clamp(52px,6vh,96px)]';
-const TEXT_CONTAINER_CLASS = 'mx-auto w-full max-w-[920px] px-6 xl:px-8 2xl:px-10';
-const SURFACE_CONTAINER_CLASS = 'mx-auto w-full max-w-[min(1600px,92vw)] px-6 xl:px-8 2xl:px-10';
+const SHELL = 'mx-auto w-full max-w-[1728px] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-14';
+const SECTION_Y = 'py-14 sm:py-16 lg:py-20 xl:py-24';
+const SECTION_GAP = 'mt-8 sm:mt-10 lg:mt-12';
+const COPY_RAIL = 'w-full max-w-[720px]';
+
+const GRID_2COL = 'grid grid-cols-12 gap-y-10 xl:gap-y-0 xl:gap-x-10';
+const COL_COPY = 'col-span-12 xl:col-span-5';
+const COL_MEDIA = 'col-span-12 xl:col-span-7';
+
+const KICKER = 'text-xs sm:text-sm font-medium text-white/62';
+const H1 = 'text-balance font-semibold tracking-[-0.02em] leading-[1.05] text-[clamp(32px,4.2vw,56px)]';
+const H2 = 'text-balance font-semibold tracking-[-0.015em] leading-[1.1] text-[clamp(22px,2.2vw,32px)]';
+const H3 = 'text-balance font-semibold tracking-[-0.01em] leading-[1.15] text-[clamp(18px,1.4vw,22px)]';
+const LEDE = 'mt-4 text-pretty text-base sm:text-lg leading-relaxed text-white/74 max-w-[60ch]';
+
+const MODULE_SURFACE = 'rounded-3xl border border-white/10 bg-white/[0.03]';
+const MODULE_INNER = 'overflow-hidden';
+const MODULE_DIVIDE = 'divide-y divide-white/10';
+
+const SHELF_ROW = 'flex gap-4 sm:gap-5 xl:gap-6 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+const SHELF_CARD = 'w-[280px] sm:w-[320px] xl:w-[360px] 2xl:w-[400px] flex-none';
+
+const CARD_BASE = 'rounded-2xl bg-black/35 ring-1 ring-white/10';
+const CARD_HOVER = 'hover:bg-black/45 hover:ring-white/20';
+const CARD_FOCUS = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white';
+
+const SECTION_CONTAINER_CLASS = `w-full scroll-mt-20 ${SECTION_Y}`;
+const SURFACE_CONTAINER_CLASS = SHELL;
 const RAIL_SCROLL_OUTER_CLASS = 'overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
-const RAIL_TRACK_CLASS = 'mx-auto flex w-max snap-x snap-mandatory gap-3 md:gap-4 xl:gap-5';
+const RAIL_TRACK_CLASS = 'mx-auto flex w-max snap-x snap-mandatory gap-4 sm:gap-5 xl:gap-6';
 
 const PRIMARY_CTA_LARGE_CLASS =
   'inline-flex items-center justify-center rounded-full border border-white bg-white px-5 py-2.5 text-sm font-medium tracking-normal text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
 const SECONDARY_CTA_LARGE_CLASS =
   'inline-flex items-center justify-center rounded-full border border-white/30 px-5 py-2.5 text-sm font-medium tracking-normal text-white transition hover:border-white/60 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
 
-const HERO_H1_CLASS = 'text-[clamp(44px,4.2vw,76px)] font-semibold leading-[1.05] tracking-[-0.02em]';
-const HERO_H2_CLASS = 'text-[clamp(34px,3vw,56px)] font-semibold leading-[1.08] tracking-[-0.015em]';
-const SUPPORTING_H2_CLASS = 'text-[clamp(28px,2.2vw,44px)] font-semibold leading-[1.12] tracking-[-0.01em]';
-const SUBHEAD_COPY_CLASS = 'text-[18px] xl:text-[20px] leading-[1.5] text-white/80';
-const BODY_COPY_CLASS = 'text-[16px] leading-[1.6] text-white/70';
+const SUBHEAD_COPY_CLASS = LEDE;
+const BODY_COPY_CLASS = 'text-base leading-relaxed text-white/70';
 
 const QUIET_LINK_CLASS =
   'text-sm font-medium text-white/70 underline underline-offset-4 decoration-white/35 transition hover:text-white hover:decoration-white';
@@ -482,8 +504,8 @@ function OptionRailSelect({
   options,
   value,
   onChange,
-  cardWidthClassName = 'w-[320px] md:w-[360px] xl:w-[420px]',
-  imageSizes = '(max-width: 768px) 80vw, (max-width: 1280px) 360px, 420px',
+  cardWidthClassName = SHELF_CARD,
+  imageSizes = '(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px',
 }: {
   groupId: string;
   groupLabel: string;
@@ -544,10 +566,8 @@ function OptionRailSelect({
                 aria-checked={selected}
                 tabIndex={selected || (!value && index === 0) ? 0 : -1}
                 onClick={() => onChange(option.id)}
-                className={`group relative snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${cardWidthClassName} ${
-                  selected
-                    ? 'border-white/25 bg-white/[0.08]'
-                    : 'border-white/10 bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06]'
+                className={`group relative snap-start overflow-hidden text-left transition duration-200 motion-reduce:transition-none ${cardWidthClassName} ${CARD_BASE} ${CARD_HOVER} ${CARD_FOCUS} ${
+                  selected ? 'bg-white/[0.12] ring-white/35' : ''
                 }`}
               >
                 {selected ? <SelectionCheck className="absolute right-3 top-3 z-10" /> : null}
@@ -576,8 +596,8 @@ function OptionRailMulti({
   options,
   values,
   onToggle,
-  cardWidthClassName = 'w-[320px] md:w-[360px] xl:w-[420px]',
-  imageSizes = '(max-width: 768px) 80vw, (max-width: 1280px) 360px, 420px',
+  cardWidthClassName = SHELF_CARD,
+  imageSizes = '(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px',
 }: {
   groupId: string;
   groupLabel: string;
@@ -644,10 +664,8 @@ function OptionRailMulti({
                 role="checkbox"
                 aria-checked={selected}
                 onClick={() => onToggle(option.id)}
-                className={`group relative snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${cardWidthClassName} ${
-                  selected
-                    ? 'border-white/25 bg-white/[0.08]'
-                    : 'border-white/10 bg-white/[0.03] hover:border-white/30 hover:bg-white/[0.06]'
+                className={`group relative snap-start overflow-hidden text-left transition duration-200 motion-reduce:transition-none ${cardWidthClassName} ${CARD_BASE} ${CARD_HOVER} ${CARD_FOCUS} ${
+                  selected ? 'bg-white/[0.12] ring-white/35' : ''
                 }`}
               >
                 {selected ? <SelectionCheck className="absolute right-3 top-3 z-10" /> : null}
@@ -831,7 +849,7 @@ function ReviewSelectionsSheet({
               ))
             ) : (
               <p className="rounded-2xl border border-white/15 bg-white/[0.05] p-4 text-sm text-white/70">
-                No selections yet. Choose any cards and they will appear here.
+                No selections yet.
               </p>
             )}
           </div>
@@ -1360,37 +1378,38 @@ export default function StartExploreClient() {
             />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(255,255,255,0.18),transparent_42%),linear-gradient(180deg,rgba(0,0,0,0.28)_0%,rgba(0,0,0,0.68)_78%)]" />
           </div>
-          <div className={`${TEXT_CONTAINER_CLASS} relative flex min-h-[84vh] max-h-[920px] items-end pb-12 pt-24 md:pb-16`}>
-            <div className="space-y-5">
-              <p className="text-[13px] font-medium text-white/68">Sanctuary Pergolas</p>
-              <h1 className={HERO_H1_CLASS}>
-                A pergola that feels built-in.
-              </h1>
-              <p className={`max-w-[680px] ${SUBHEAD_COPY_CLASS}`}>
-                Calm shelter, tuned light, and detailing that feels integral to your home.
-              </p>
-              <div className="flex flex-wrap items-center gap-5">
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('highlights')}
-                  className={QUIET_LINK_CLASS}
-                >
-                  Explore highlights
-                </button>
-                <Link href="/start" className={QUIET_LINK_CLASS}>
-                  Start the guide
-                </Link>
+          <div className={`${SHELL} relative flex min-h-[84vh] max-h-[920px] items-end pb-12 pt-24 md:pb-16`}>
+            <div className={`${GRID_2COL} w-full items-end`}>
+              <div className={COL_COPY}>
+                <div className={COPY_RAIL}>
+                  <p className={KICKER}>Sanctuary Pergolas</p>
+                  <h1 className={`mt-3 ${H1}`}>A pergola that feels built-in.</h1>
+                  <p className={SUBHEAD_COPY_CLASS}>Calm shelter, tuned light, and detailing that feels integral to your home.</p>
+                  <div className="mt-6 flex flex-wrap items-center gap-5">
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection('highlights')}
+                      className={QUIET_LINK_CLASS}
+                    >
+                      Explore highlights
+                    </button>
+                    <Link href="/start" className={QUIET_LINK_CLASS}>
+                      Start the guide
+                    </Link>
+                  </div>
+                </div>
               </div>
+              <div className={`${COL_MEDIA} hidden xl:block`} aria-hidden="true" />
             </div>
           </div>
         </section>
 
         <section id="highlights" className={SECTION_CONTAINER_CLASS}>
-          <div className={`${SURFACE_CONTAINER_CLASS} space-y-6`}>
+          <div className={SURFACE_CONTAINER_CLASS}>
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="text-[13px] font-medium text-white/62">Overview</p>
-                <h2 className={`mt-2 ${SUPPORTING_H2_CLASS}`}>Get the highlights.</h2>
+              <div className={COPY_RAIL}>
+                <p className={KICKER}>Overview</p>
+                <h2 className={`mt-2 ${H2}`}>Get the highlights.</h2>
               </div>
               <button
                 type="button"
@@ -1401,70 +1420,74 @@ export default function StartExploreClient() {
               </button>
             </div>
 
-            <div className={RAIL_SCROLL_OUTER_CLASS}>
-              <div className="mx-auto flex w-max snap-x snap-mandatory gap-4 xl:gap-5">
-                {HIGHLIGHT_ITEMS.map((item) => {
-                  const active = item.id === activeHighlight.id;
-                  const saved = item.savedState ? highlightSavedState[item.savedState] : false;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setActiveHighlightId(item.id)}
-                      className={`group relative aspect-[16/7] w-[320px] snap-start shrink-0 overflow-hidden rounded-3xl border text-left transition duration-200 motion-reduce:transition-none md:w-[360px] xl:w-[420px] ${
-                        active
-                          ? 'border-white/25 bg-white/[0.04]'
-                          : 'border-white/10 hover:border-white/32'
-                      }`}
-                    >
-                      {saved ? <SelectionCheck className="absolute right-3 top-3 z-10" /> : null}
-                      <Image
-                        src={item.image}
-                        alt={`${item.title} chapter preview`}
-                        fill
-                        sizes="(max-width: 768px) 78vw, (max-width: 1280px) 360px, 420px"
-                        className="object-cover transition duration-500 group-hover:scale-[1.03] motion-reduce:transition-none"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 space-y-1 p-4">
-                        <p className="text-xl font-semibold">{item.title}</p>
-                        <p className="text-sm text-white/72">{item.subtitle}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 pt-5">
-              <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                <div className="max-w-[760px] space-y-3">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-[22px] font-semibold tracking-tight">{activeHighlight.title}</h3>
-                    {activeHighlightSaved ? <SelectionCheck /> : null}
+            <div className={SECTION_GAP}>
+              <div className={MODULE_SURFACE}>
+                <div className={`${MODULE_INNER} ${MODULE_DIVIDE}`}>
+                  <div className="p-4 sm:p-6 xl:p-8">
+                    <div className={SHELF_ROW}>
+                      {HIGHLIGHT_ITEMS.map((item) => {
+                        const active = item.id === activeHighlight.id;
+                        const saved = item.savedState ? highlightSavedState[item.savedState] : false;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => setActiveHighlightId(item.id)}
+                            className={`group relative aspect-[16/7] snap-start overflow-hidden text-left transition duration-200 motion-reduce:transition-none ${SHELF_CARD} ${CARD_BASE} ${CARD_HOVER} ${CARD_FOCUS} ${
+                              active ? 'bg-white/[0.12] ring-white/35' : ''
+                            }`}
+                          >
+                            {saved ? <SelectionCheck className="absolute right-3 top-3 z-10" /> : null}
+                            <Image
+                              src={item.image}
+                              alt={`${item.title} chapter preview`}
+                              fill
+                              sizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                              className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/62 via-black/12 to-transparent" />
+                            <div className="absolute inset-x-0 bottom-0 space-y-1 p-4">
+                              <p className={H3}>{item.title}</p>
+                              <p className="text-sm text-white/72">{item.subtitle}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <ul className="space-y-2 text-sm leading-6 text-white/70">
-                    {activeHighlight.bullets.map((bullet) => (
-                      <li key={bullet} className="flex gap-2">
-                        <span className="pt-1 text-white/65" aria-hidden="true">
-                          *
-                        </span>
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => scrollToSection(activeHighlight.chapterId)}
-                    className={QUIET_LINK_CLASS}
-                  >
-                    Learn more
-                  </button>
-                  <Link href="/start" className={QUIET_LINK_CLASS}>
-                    Start the guide
-                  </Link>
+
+                  <div className="p-4 sm:p-6 xl:p-8">
+                    <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                      <div className="max-w-[760px] space-y-3">
+                        <div className="flex items-center gap-3">
+                          <h3 className={H3}>{activeHighlight.title}</h3>
+                          {activeHighlightSaved ? <SelectionCheck /> : null}
+                        </div>
+                        <ul className="space-y-2 text-sm leading-6 text-white/70">
+                          {activeHighlight.bullets.map((bullet) => (
+                            <li key={bullet} className="flex gap-2">
+                              <span className="pt-1 text-white/65" aria-hidden="true">
+                                *
+                              </span>
+                              <span>{bullet}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => scrollToSection(activeHighlight.chapterId)}
+                          className={QUIET_LINK_CLASS}
+                        >
+                          Learn more
+                        </button>
+                        <Link href="/start" className={QUIET_LINK_CLASS}>
+                          Start the guide
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1472,16 +1495,16 @@ export default function StartExploreClient() {
         </section>
 
         <section id="design" className={SECTION_CONTAINER_CLASS}>
-          <div className={TEXT_CONTAINER_CLASS}>
-            <p className="text-[13px] font-medium text-white/62">Design chapter</p>
-            <h2 className={`mt-2 ${HERO_H2_CLASS}`}>Take a closer look.</h2>
-            <p className={`mt-4 max-w-[760px] ${BODY_COPY_CLASS}`}>
-              Shape the brief and keep a clear shortlist as you compare options.
-            </p>
-          </div>
+          <div className={SURFACE_CONTAINER_CLASS}>
+            <div className={COPY_RAIL}>
+              <p className={KICKER}>Design chapter</p>
+              <h2 className={`mt-2 ${H2}`}>Take a closer look.</h2>
+              <p className={`mt-4 ${BODY_COPY_CLASS}`}>Shape the brief and keep a clear shortlist as you compare options.</p>
+            </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-4 md:p-6 lg:h-[min(72vh,720px)]`}>
-            <div className="grid h-full gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
+            <div className={SECTION_GAP}>
+              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8 lg:h-[min(72vh,720px)]`}>
+                <div className="grid h-full gap-6 xl:gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
               <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:overflow-y-auto lg:pb-0 lg:pr-1">
                 {PILL_ORDER.map((pill) => {
                   const active = pill.id === activePill;
@@ -1547,8 +1570,8 @@ export default function StartExploreClient() {
                       options={pathOptions}
                       value={selections.path}
                       onChange={handlePathChange}
-                      cardWidthClassName="w-[320px] md:w-[360px] xl:w-[420px]"
-                      imageSizes="(max-width: 768px) 78vw, (max-width: 1280px) 360px, 420px"
+                      cardWidthClassName={SHELF_CARD}
+                      imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
                     />
                   ) : null}
 
@@ -1559,8 +1582,8 @@ export default function StartExploreClient() {
                       options={roofStyleOptions}
                       value={selections.roofStyle}
                       onChange={handleRoofStyleChange}
-                      cardWidthClassName="w-[320px] md:w-[360px] xl:w-[420px]"
-                      imageSizes="(max-width: 768px) 78vw, (max-width: 1280px) 360px, 420px"
+                      cardWidthClassName={SHELF_CARD}
+                      imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
                     />
                   ) : null}
 
@@ -1572,8 +1595,8 @@ export default function StartExploreClient() {
                         options={roofMaterialOptions}
                         value={selections.roofMaterial}
                         onChange={handleRoofMaterialChange}
-                        cardWidthClassName="w-[320px] md:w-[360px] xl:w-[420px]"
-                        imageSizes="(max-width: 768px) 78vw, (max-width: 1280px) 360px, 420px"
+                        cardWidthClassName={SHELF_CARD}
+                        imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
                       />
                       {roofSecondaryOptions.length ? (
                         <div className="space-y-2">
@@ -1616,8 +1639,8 @@ export default function StartExploreClient() {
                         options={extrasOptions}
                         values={selectedExtraIds}
                         onToggle={handleToggleExtra}
-                        cardWidthClassName="w-[320px] md:w-[360px] xl:w-[420px]"
-                        imageSizes="(max-width: 768px) 78vw, (max-width: 1280px) 360px, 420px"
+                        cardWidthClassName={SHELF_CARD}
+                        imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
                       />
                       <button
                         type="button"
@@ -1670,21 +1693,23 @@ export default function StartExploreClient() {
                   ) : null}
                 </div>
               </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         <section id="roof" className={SECTION_CONTAINER_CLASS}>
-          <div className={TEXT_CONTAINER_CLASS}>
-            <p className="text-[13px] font-medium text-white/62">Roof chapter</p>
-            <h2 className={`mt-2 ${HERO_H2_CLASS}`}>Dial in roof and light behavior.</h2>
-            <p className={`mt-4 max-w-[760px] ${BODY_COPY_CLASS}`}>
-              Compare roof material intent and light behavior in one place.
-            </p>
-          </div>
+          <div className={SURFACE_CONTAINER_CLASS}>
+            <div className={COPY_RAIL}>
+              <p className={KICKER}>Roof chapter</p>
+              <h2 className={`mt-2 ${H2}`}>Dial in roof and light behavior.</h2>
+              <p className={`mt-4 ${BODY_COPY_CLASS}`}>Compare roof material intent and light behavior in one place.</p>
+            </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-4 md:p-6 lg:h-[min(75vh,760px)]`}>
-            <div className="flex h-full min-h-0 flex-col gap-4">
+            <div className={SECTION_GAP}>
+              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8 lg:h-[min(75vh,760px)]`}>
+                <div className="flex h-full min-h-0 flex-col gap-4">
               <div className={RAIL_SCROLL_OUTER_CLASS}>
                 <div className="mx-auto min-w-[680px] w-max">
                   <div className="relative h-[2px] rounded-full bg-white/20">
@@ -1745,8 +1770,8 @@ export default function StartExploreClient() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
-                  <p className="text-xl font-semibold">{activeRoofStop.label}</p>
-                  <p className="mt-1 max-w-[760px] text-sm text-white/72">{activeRoofStop.caption}</p>
+                  <p className={H3}>{activeRoofStop.label}</p>
+                  <p className="mt-1 text-sm text-white/72">{activeRoofStop.caption}</p>
                 </div>
               </div>
 
@@ -1759,8 +1784,8 @@ export default function StartExploreClient() {
                     options={roofStyleOptions}
                     value={selections.roofStyle}
                     onChange={handleRoofStyleChange}
-                    cardWidthClassName="w-[320px] md:w-[360px] xl:w-[420px]"
-                    imageSizes="(max-width: 768px) 78vw, (max-width: 1280px) 360px, 420px"
+                    cardWidthClassName={SHELF_CARD}
+                    imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
                   />
                 </div>
                 <div className="space-y-3">
@@ -1771,8 +1796,8 @@ export default function StartExploreClient() {
                     options={roofMaterialOptions}
                     value={selections.roofMaterial}
                     onChange={handleRoofMaterialChange}
-                    cardWidthClassName="w-[320px] md:w-[360px] xl:w-[420px]"
-                    imageSizes="(max-width: 768px) 78vw, (max-width: 1280px) 360px, 420px"
+                    cardWidthClassName={SHELF_CARD}
+                    imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
                   />
                   {roofSecondaryOptions.length ? (
                     <div className="space-y-2">
@@ -1813,20 +1838,22 @@ export default function StartExploreClient() {
                 </button>
               </div>
             </div>
+              </div>
+            </div>
           </div>
         </section>
 
         <section id="performance" className={SECTION_CONTAINER_CLASS}>
-          <div className={TEXT_CONTAINER_CLASS}>
-            <p className="text-[13px] font-medium text-white/62">Performance</p>
-            <h2 className={`mt-2 ${SUPPORTING_H2_CLASS}`}>Built for NZ conditions.</h2>
-            <p className={`mt-4 max-w-[760px] ${BODY_COPY_CLASS}`}>
-              Each lens shows how your choices influence daily comfort and reliability.
-            </p>
-          </div>
+          <div className={SURFACE_CONTAINER_CLASS}>
+            <div className={COPY_RAIL}>
+              <p className={KICKER}>Performance</p>
+              <h2 className={`mt-2 ${H2}`}>Built for NZ conditions.</h2>
+              <p className={`mt-4 ${BODY_COPY_CLASS}`}>Each lens shows how your choices influence daily comfort and reliability.</p>
+            </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 space-y-5`}>
-            <div role="tablist" aria-label="Performance tabs" onKeyDown={handlePerformanceTabKeyDown} className="flex flex-wrap gap-2">
+            <div className={SECTION_GAP}>
+              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8`}>
+                <div role="tablist" aria-label="Performance tabs" onKeyDown={handlePerformanceTabKeyDown} className="flex flex-wrap gap-2">
               {PERFORMANCE_TABS.map((tab, index) => {
                 const selected = tab.id === activePerformanceTab;
                 return (
@@ -1852,121 +1879,132 @@ export default function StartExploreClient() {
                   </button>
                 );
               })}
-            </div>
+                </div>
 
-            <div
-              id={`perf-panel-${activePerformance.id}`}
-              role="tabpanel"
-              aria-labelledby={`perf-tab-${activePerformance.id}`}
-              className="mt-5 grid gap-5 lg:h-[460px] lg:grid-cols-[1.2fr_1fr]"
-            >
-              <div className="relative h-[clamp(220px,32vh,360px)] overflow-hidden rounded-[22px] lg:h-full">
-                <Image
-                  src={activePerformance.image.src}
-                  alt={activePerformance.image.alt}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 60vw"
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-              </div>
-              <div className="space-y-4 rounded-[22px] bg-white/[0.02] p-4 lg:h-full">
-                <h3 className="text-xl font-semibold tracking-tight">{activePerformance.title}</h3>
-                <ul className="space-y-2.5 text-sm leading-6 text-white/70">
-                  {activePerformance.bullets.map((bullet) => (
-                    <li key={bullet} className="flex gap-2">
-                      <span className="pt-1 text-white/65" aria-hidden="true">
-                        *
-                      </span>
-                      <span>{bullet}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div
+                  id={`perf-panel-${activePerformance.id}`}
+                  role="tabpanel"
+                  aria-labelledby={`perf-tab-${activePerformance.id}`}
+                  className="mt-5 grid gap-5 lg:h-[460px] lg:grid-cols-[1.2fr_1fr]"
+                >
+                  <div className="relative h-[clamp(220px,32vh,360px)] overflow-hidden rounded-[22px] lg:h-full">
+                    <Image
+                      src={activePerformance.image.src}
+                      alt={activePerformance.image.alt}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 60vw"
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  </div>
+                  <div className="space-y-4 rounded-[22px] bg-white/[0.02] p-4 lg:h-full">
+                    <h3 className={H3}>{activePerformance.title}</h3>
+                    <ul className="space-y-2.5 text-sm leading-6 text-white/70">
+                      {activePerformance.bullets.map((bullet) => (
+                        <li key={bullet} className="flex gap-2">
+                          <span className="pt-1 text-white/65" aria-hidden="true">
+                            *
+                          </span>
+                          <span>{bullet}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
         <section id="shared" className={SECTION_CONTAINER_CLASS}>
-          <div className={TEXT_CONTAINER_CLASS}>
-            <p className="text-[13px] font-medium text-white/62">Shared baseline</p>
-            <h2 className={`mt-2 ${SUPPORTING_H2_CLASS}`}>What every project includes.</h2>
-          </div>
-
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6`}>
-            <div className={RAIL_SCROLL_OUTER_CLASS}>
-              <div className="mx-auto flex w-max snap-x snap-mandatory gap-4 xl:gap-5">
-                {SHARED_FEATURES.map((feature) => (
-                  <article
-                    key={feature.title}
-                    className="h-[220px] w-[320px] shrink-0 snap-start rounded-3xl border border-white/10 bg-white/[0.02] p-4 xl:w-[420px]"
-                  >
-                    <h3 className="text-lg font-semibold tracking-tight">{feature.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-white/70">{feature.body}</p>
-                  </article>
-                ))}
-              </div>
+          <div className={SURFACE_CONTAINER_CLASS}>
+            <div className={COPY_RAIL}>
+              <p className={KICKER}>Shared baseline</p>
+              <h2 className={`mt-2 ${H2}`}>What every project includes.</h2>
             </div>
-          </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 border-t border-white/10 pt-4`}>
-            <p className="text-xs font-medium text-white/62">How enclosed should it feel?</p>
-            <div className="mt-3">
-              <EnclosureChipRow
-                groupId="explore-enclosure-group"
-                groupLabel="Choose enclosure preference"
-                value={selections.enclosure}
-                onChange={handleEnclosureChange}
-              />
+            <div className={SECTION_GAP}>
+              <div className={MODULE_SURFACE}>
+                <div className={`${MODULE_INNER} ${MODULE_DIVIDE}`}>
+                  <div className="p-4 sm:p-6 xl:p-8">
+                    <div className={SHELF_ROW}>
+                      {SHARED_FEATURES.map((feature) => (
+                        <article key={feature.title} className={`${SHELF_CARD} snap-start ${CARD_BASE} p-4`}>
+                          <h3 className={H3}>{feature.title}</h3>
+                          <p className="mt-2 text-sm leading-6 text-white/70">{feature.body}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-6 xl:p-8">
+                    <p className="text-xs font-medium text-white/62">How enclosed should it feel?</p>
+                    <div className="mt-3">
+                      <EnclosureChipRow
+                        groupId="explore-enclosure-group"
+                        groupLabel="Choose enclosure preference"
+                        value={selections.enclosure}
+                        onChange={handleEnclosureChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         <section id="extras" className={SECTION_CONTAINER_CLASS}>
-          <div className={TEXT_CONTAINER_CLASS}>
-            <p className="text-[13px] font-medium text-white/62">Extras</p>
-            <h2 className={`mt-2 ${SUPPORTING_H2_CLASS}`}>Personalize your everyday use.</h2>
-          </div>
+          <div className={SURFACE_CONTAINER_CLASS}>
+            <div className={COPY_RAIL}>
+              <p className={KICKER}>Extras</p>
+              <h2 className={`mt-2 ${H2}`}>Personalize your everyday use.</h2>
+            </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 border-t border-white/10 pt-4`}>
-            <OptionRailMulti
-              groupId="explore-extras-group"
-              groupLabel="Choose extras"
-              options={extrasOptions}
-              values={selectedExtraIds}
-              onToggle={handleToggleExtra}
-              cardWidthClassName="w-[320px] md:w-[360px] xl:w-[420px]"
-              imageSizes="(max-width: 768px) 80vw, (max-width: 1280px) 360px, 420px"
-            />
-            <button
-              type="button"
-              aria-pressed={Boolean(selections.extrasNone)}
-              onClick={() => handleSetNoExtras(!selections.extrasNone)}
-              className={`mt-4 rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                selections.extrasNone
-                  ? 'border-white/25 bg-white/[0.1] text-white'
-                  : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
-              }`}
-            >
-              {startFlowContent.extras.noneLabel}
-            </button>
+            <div className={SECTION_GAP}>
+              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8`}>
+                <OptionRailMulti
+                  groupId="explore-extras-group"
+                  groupLabel="Choose extras"
+                  options={extrasOptions}
+                  values={selectedExtraIds}
+                  onToggle={handleToggleExtra}
+                  cardWidthClassName={SHELF_CARD}
+                  imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                />
+                <button
+                  type="button"
+                  aria-pressed={Boolean(selections.extrasNone)}
+                  onClick={() => handleSetNoExtras(!selections.extrasNone)}
+                  className={`mt-4 rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                    selections.extrasNone
+                      ? 'border-white/25 bg-white/[0.1] text-white'
+                      : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
+                  }`}
+                >
+                  {startFlowContent.extras.noneLabel}
+                </button>
 
-            <div className="mt-5 border-t border-white/10 pt-4">
-              <button type="button" onClick={() => scrollToSection('compare')} className={QUIET_LINK_CLASS}>
-                Learn more in Compare
-              </button>
+                <div className="mt-5 border-t border-white/10 pt-4">
+                  <button type="button" onClick={() => scrollToSection('compare')} className={QUIET_LINK_CLASS}>
+                    Learn more in Compare
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
         <section id="compare" className={SECTION_CONTAINER_CLASS}>
-          <div className={TEXT_CONTAINER_CLASS}>
-            <p className="text-[13px] font-medium text-white/62">Worth it?</p>
-            <h2 className={`mt-2 ${SUPPORTING_H2_CLASS}`}>What are you starting with?</h2>
-          </div>
+          <div className={SURFACE_CONTAINER_CLASS}>
+            <div className={COPY_RAIL}>
+              <p className={KICKER}>Worth it?</p>
+              <h2 className={`mt-2 ${H2}`}>What are you starting with?</h2>
+            </div>
 
-          <div className={`${SURFACE_CONTAINER_CLASS} mt-6 lg:h-[420px]`}>
-            <div className="grid h-full gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+            <div className={SECTION_GAP}>
+              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8 lg:h-[420px]`}>
+                <div className="grid h-full gap-5 xl:gap-8 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
               <div className="space-y-4">
                 <div
                   id="explore-compare-group"
@@ -2003,7 +2041,7 @@ export default function StartExploreClient() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <div className="rounded-2xl bg-black/35 ring-1 ring-white/10 p-4">
                 <p className="text-xs font-medium text-white/62">What changes</p>
                 {activeCompareOutcomes ? (
                   <ul className="mt-2.5 space-y-2.5 text-sm text-white/70">
@@ -2021,38 +2059,42 @@ export default function StartExploreClient() {
                 )}
               </div>
             </div>
+              </div>
+            </div>
           </div>
         </section>
 
         <section id="cta" className={SECTION_CONTAINER_CLASS}>
           <div className={SURFACE_CONTAINER_CLASS}>
-            <div className="rounded-[32px] border border-white/10 bg-white/[0.05] p-6 md:p-10 lg:max-h-[420px] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className={`${TEXT_CONTAINER_CLASS} px-0`}>
-                <h2 className={SUPPORTING_H2_CLASS}>Ready to talk through your space?</h2>
-                <p className={`mt-4 ${BODY_COPY_CLASS}`}>Book a Design Consultation. Your saved preferences carry through.</p>
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link href="/contact" className={PRIMARY_CTA_LARGE_CLASS}>
-                  Book a Design Consultation
-                </Link>
-                <Link href="/start" className={SECONDARY_CTA_LARGE_CLASS}>
-                  Start the guide
-                </Link>
-              </div>
-
-              {reviewRows.length ? (
-                <div className="mt-6 rounded-2xl border border-white/10 bg-black/35 p-4">
-                  <p className="text-xs font-medium text-white/62">Saved selections</p>
-                  <div className="mt-2 grid gap-2 md:grid-cols-2">
-                    {reviewRows.map((row) => (
-                      <p key={`cta-${row.key}`} className="text-sm text-white/78">
-                        <span className="text-white/62">{row.label}:</span> {row.value}
-                      </p>
-                    ))}
-                  </div>
+            <div className={SECTION_GAP}>
+              <div className={`${MODULE_SURFACE} p-6 md:p-10 lg:max-h-[420px] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+                <div className={COPY_RAIL}>
+                  <h2 className={H2}>Ready to talk through your space?</h2>
+                  <p className={`mt-4 ${BODY_COPY_CLASS}`}>Book a Design Consultation. Your saved preferences carry through.</p>
                 </div>
-              ) : null}
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link href="/contact" className={PRIMARY_CTA_LARGE_CLASS}>
+                    Book a Design Consultation
+                  </Link>
+                  <Link href="/start" className={SECONDARY_CTA_LARGE_CLASS}>
+                    Start the guide
+                  </Link>
+                </div>
+
+                {reviewRows.length ? (
+                  <div className="mt-6 rounded-2xl bg-black/35 ring-1 ring-white/10 p-4">
+                    <p className="text-xs font-medium text-white/62">Saved selections</p>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      {reviewRows.map((row) => (
+                        <p key={`cta-${row.key}`} className="text-sm text-white/78">
+                          <span className="text-white/62">{row.label}:</span> {row.value}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </section>
