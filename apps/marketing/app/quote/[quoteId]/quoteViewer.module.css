@@ -85,6 +85,12 @@
   color: #111317;
 }
 
+.topBarMetaValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2430;
+}
+
 .topBarActions {
   display: flex;
   align-items: center;

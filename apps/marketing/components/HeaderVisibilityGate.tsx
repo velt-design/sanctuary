@@ -12,6 +12,8 @@ function shouldHideHeader(pathname: string | null): boolean {
   return (
     pathname === '/quote' ||
     pathname.startsWith('/quote/') ||
+    pathname === '/invoice' ||
+    pathname.startsWith('/invoice/') ||
     pathname === '/start/explore' ||
     pathname.startsWith('/start/explore/') ||
     pathname === '/staff' ||

@@ -88,12 +88,19 @@ function InvoiceViewerShell({ topBar, children }: { topBar?: ReactNode; children
   );
 }
 
-function InvoiceTopBarActions({ pdfHref }: { pdfHref: string | null }) {
+function InvoiceTopBarActions({ pdfHref, quoteHref }: { pdfHref: string | null; quoteHref: string | null }) {
   return (
     <div className={styles.topBarActions}>
       <Link href="/contact" className={styles.topBarButton}>
         Contact Sanctuary
       </Link>
+      {quoteHref ? (
+        <a href={quoteHref} className={styles.topBarButton}>
+          View quote
+        </a>
+      ) : (
+        <span className={styles.topBarButton}>Quote unavailable</span>
+      )}
       {pdfHref ? (
         <a href={pdfHref} className={styles.topBarButton}>
           Download PDF
@@ -105,7 +112,19 @@ function InvoiceTopBarActions({ pdfHref }: { pdfHref: string | null }) {
   );
 }
 
-function InvoiceTopBar({ status, totalIncGstCents, pdfHref }: { status: InvoiceDisplayStatus; totalIncGstCents: number; pdfHref: string | null }) {
+function InvoiceTopBar({
+  status,
+  totalIncGstCents,
+  dueDate,
+  pdfHref,
+  quoteHref,
+}: {
+  status: InvoiceDisplayStatus;
+  totalIncGstCents: number;
+  dueDate: string;
+  pdfHref: string | null;
+  quoteHref: string | null;
+}) {
   return (
     <div className={styles.topBar}>
       <div className={styles.topBarLeft}>
@@ -114,8 +133,12 @@ function InvoiceTopBar({ status, totalIncGstCents, pdfHref }: { status: InvoiceD
           <div className={styles.topBarTotalLabel}>Amount due</div>
           <div className={styles.topBarTotalValue}>{formatMoney(totalIncGstCents)}</div>
         </div>
+        <div className={styles.topBarTotal}>
+          <div className={styles.topBarTotalLabel}>{status === 'EXPIRED' ? 'Past due since' : 'Due date'}</div>
+          <div className={styles.topBarMetaValue}>{formatDate(dueDate)}</div>
+        </div>
       </div>
-      <InvoiceTopBarActions pdfHref={pdfHref} />
+      <InvoiceTopBarActions pdfHref={pdfHref} quoteHref={quoteHref} />
     </div>
   );
 }
@@ -295,13 +318,16 @@ export default async function InvoicePage({ params, searchParams }: InvoicePageP
   const pdfHref = invoice.pdfFileId
     ? `/api/invoices/${encodeURIComponent(invoiceId)}/pdf?token=${encodeURIComponent(token)}`
     : null;
+  const quoteHref = invoice.quotePdfFileId
+    ? `/api/invoices/${encodeURIComponent(invoiceId)}/quote-pdf?token=${encodeURIComponent(token)}`
+    : null;
 
   const attachments: InvoiceAttachment[] = pdfHref
     ? [{ id: 'invoice-pdf', href: pdfHref, label: 'Invoice PDF' }]
     : [];
 
   return (
-    <InvoiceViewerShell topBar={<InvoiceTopBar status={displayStatus} totalIncGstCents={invoice.totalIncGstCents} pdfHref={pdfHref} />}>
+    <InvoiceViewerShell topBar={<InvoiceTopBar status={displayStatus} totalIncGstCents={invoice.totalIncGstCents} dueDate={invoice.dueDate} pdfHref={pdfHref} quoteHref={quoteHref} />}>
       <InvoiceDocumentCard>
         <InvoiceDocHeader invoiceRef={invoice.invoiceRef} />
         <InvoiceMetaGrid invoice={invoice} status={displayStatus} />

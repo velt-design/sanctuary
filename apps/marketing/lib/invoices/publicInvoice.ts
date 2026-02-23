@@ -12,6 +12,7 @@ type InvoiceRow = {
   status: InvoiceStatus;
   invoice_ref: string;
   quote_ref: string;
+  quote_version_id: string;
   quote_version_number: number;
   issue_date: string;
   due_date: string;
@@ -34,6 +35,7 @@ export type PublicDepositInvoice = {
   status: InvoiceStatus;
   invoiceRef: string;
   quoteRef: string;
+  quoteVersionId: string;
   quoteVersionNumber: number;
   issueDate: string;
   dueDate: string;
@@ -49,6 +51,7 @@ export type PublicDepositInvoice = {
   gstCents: number;
   tokenExpiresAt: string | null;
   pdfFileId: string | null;
+  quotePdfFileId: string | null;
 };
 
 export type PublicDepositInvoiceLookupResult = {
@@ -86,6 +89,7 @@ function mapInvoiceRow(row: any): InvoiceRow {
     status: toStatus(row?.status),
     invoice_ref: String(row?.invoice_ref ?? ''),
     quote_ref: String(row?.quote_ref ?? ''),
+    quote_version_id: String(row?.quote_version_id ?? ''),
     quote_version_number: Number(row?.quote_version_number ?? 0) || 0,
     issue_date: String(row?.issue_date ?? ''),
     due_date: String(row?.due_date ?? ''),
@@ -104,12 +108,13 @@ function mapInvoiceRow(row: any): InvoiceRow {
   };
 }
 
-function toPublicInvoice(row: InvoiceRow): PublicDepositInvoice {
+function toPublicInvoice(row: InvoiceRow, quotePdfFileId: string | null): PublicDepositInvoice {
   return {
     id: row.id,
     status: row.status,
     invoiceRef: row.invoice_ref,
     quoteRef: row.quote_ref,
+    quoteVersionId: row.quote_version_id,
     quoteVersionNumber: row.quote_version_number,
     issueDate: row.issue_date,
     dueDate: row.due_date,
@@ -125,7 +130,36 @@ function toPublicInvoice(row: InvoiceRow): PublicDepositInvoice {
     gstCents: row.gst_cents,
     tokenExpiresAt: row.portal_token_expires_at,
     pdfFileId: row.pdf_file_id,
+    quotePdfFileId,
   };
+}
+
+async function loadQuotePdfFileId(quoteVersionId: string): Promise<string | null> {
+  if (!quoteVersionId) return null;
+  const supabase = getServiceSupabase();
+  const quoteRes = await supabase
+    .from('quote_versions')
+    .select('pdf_file_id')
+    .eq('id', quoteVersionId)
+    .maybeSingle();
+  if (quoteRes.error || !quoteRes.data) return null;
+  return typeof (quoteRes.data as any).pdf_file_id === 'string' ? (quoteRes.data as any).pdf_file_id : null;
+}
+
+async function loadFileArtifact(fileId: string): Promise<{ filename: string; content: Buffer } | null> {
+  if (!fileId) return null;
+  const supabase = getServiceSupabase();
+  const fileRes = await supabase
+    .from('file_artifacts')
+    .select('filename, content_base64')
+    .eq('id', fileId)
+    .maybeSingle();
+
+  if (fileRes.error || !fileRes.data) return null;
+
+  const filename = String((fileRes.data as any).filename ?? 'document.pdf');
+  const base64 = String((fileRes.data as any).content_base64 ?? '');
+  return { filename, content: Buffer.from(base64, 'base64') };
 }
 
 async function loadInvoiceByToken(params: { invoiceId: string; token: string }): Promise<InvoiceRow | null> {
@@ -136,7 +170,7 @@ async function loadInvoiceByToken(params: { invoiceId: string; token: string }):
   const invoiceRes = await supabase
     .from('deposit_invoices')
     .select(
-      'id, status, invoice_ref, quote_ref, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id',
+      'id, status, invoice_ref, quote_ref, quote_version_id, quote_version_number, issue_date, due_date, reference, customer_name, project_name, project_address, payment_instructions, deposit_percent, quote_total_inc_gst_cents, total_inc_gst_cents, total_ex_gst_cents, gst_cents, portal_token_expires_at, pdf_file_id',
     )
     .eq('id', invoiceUuid)
     .eq('portal_token_hash', tokenHash)
@@ -161,7 +195,8 @@ export async function loadPublicDepositInvoiceByToken(params: {
   if (!row) return { invoice: null, reason: 'invalid' };
   if (row.status === 'VOID') return { invoice: null, reason: 'void' };
 
-  const invoice = toPublicInvoice(row);
+  const quotePdfFileId = await loadQuotePdfFileId(row.quote_version_id);
+  const invoice = toPublicInvoice(row, quotePdfFileId);
   if (tokenHasExpired(invoice.tokenExpiresAt)) {
     return { invoice, reason: 'expired' };
   }
@@ -183,16 +218,32 @@ export async function loadPublicDepositInvoicePdfByToken(params: {
 
   if (!row || row.status !== 'OPEN' || !row.pdf_file_id) return null;
 
-  const supabase = getServiceSupabase();
-  const fileRes = await supabase
-    .from('file_artifacts')
-    .select('filename, content_base64')
-    .eq('id', row.pdf_file_id)
-    .maybeSingle();
+  const file = await loadFileArtifact(row.pdf_file_id);
+  if (!file) return null;
+  return file;
+}
 
-  if (fileRes.error || !fileRes.data) return null;
+export async function loadPublicSourceQuotePdfByInvoiceToken(params: {
+  invoiceId: string;
+  token: string;
+}): Promise<{ filename: string; content: Buffer } | null> {
+  let row: InvoiceRow | null;
 
-  const filename = String((fileRes.data as any).filename ?? `${row.invoice_ref}.pdf`);
-  const base64 = String((fileRes.data as any).content_base64 ?? '');
-  return { filename, content: Buffer.from(base64, 'base64') };
+  try {
+    row = await loadInvoiceByToken(params);
+  } catch {
+    return null;
+  }
+
+  if (!row || row.status !== 'OPEN') return null;
+
+  const quotePdfFileId = await loadQuotePdfFileId(row.quote_version_id);
+  if (!quotePdfFileId) return null;
+
+  const file = await loadFileArtifact(quotePdfFileId);
+  if (!file) return null;
+
+  const fallback = `quote-${row.quote_ref}-v${row.quote_version_number}.pdf`;
+  const filename = file.filename.trim() || fallback;
+  return { filename, content: file.content };
 }
