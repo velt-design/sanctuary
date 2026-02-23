@@ -4996,68 +4996,75 @@ export default function ScheduleClient() {
             {view === 'gantt' ? (
               <div className={styles.gantt}>
                 <div className={styles.ganttControls}>
-                  <div className={styles.ganttMeta}>
-                    Range: <strong>{formatShortDate(gantt.rangeStart)}</strong> → <strong>{formatShortDate(gantt.rangeEnd)}</strong>
-                  </div>
-                  <label className={styles.ganttDensityControl}>
-                    <span className={styles.ganttDensityLabel}>Density</span>
+                  <div className={styles.ganttControlsLeft}>
+                    <div className={styles.ganttMeta}>
+                      Range: <strong>{formatShortDate(gantt.rangeStart)}</strong>{' -> '}<strong>{formatShortDate(gantt.rangeEnd)}</strong>
+                    </div>
                     <select
-                      className={styles.ganttDensitySelect}
-                      value={ganttDensity}
-                      onChange={(e) => setGanttDensity(e.target.value === 'comfortable' ? 'comfortable' : 'compact')}
-                      aria-label="Density"
+                      className={cx(styles.input, styles.ganttControlSelect)}
+                      value={zoomWeeks}
+                      onChange={(e) => handleGanttZoomWeeksChange(normalizeGanttZoomWeeks(Number(e.target.value)))}
+                      aria-label="Zoom"
                     >
-                      <option value="compact">Compact</option>
-                      <option value="comfortable">Comfortable</option>
+                      <option value={4}>4 weeks</option>
+                      <option value={8}>8 weeks</option>
+                      <option value={12}>12 weeks</option>
                     </select>
-                  </label>
-                  <select
-                    className={styles.input}
-                    value={zoomWeeks}
-                    onChange={(e) => handleGanttZoomWeeksChange(normalizeGanttZoomWeeks(Number(e.target.value)))}
-                    aria-label="Zoom"
-                  >
-                    <option value={4}>4 weeks</option>
-                    <option value={8}>8 weeks</option>
-                    <option value={12}>12 weeks</option>
-                  </select>
-                  <button type="button" className={cx(styles.buttonSecondary, styles.ganttJumpButton)} onClick={jumpGanttToToday}>
-                    Jump to today
-                  </button>
-                  {scheduleMode === 'v2' ? (
+                    <label className={styles.ganttDensityControl}>
+                      <span className={styles.ganttDensityLabel}>Density</span>
+                      <select
+                        className={styles.ganttDensitySelect}
+                        value={ganttDensity}
+                        onChange={(e) => setGanttDensity(e.target.value === 'comfortable' ? 'comfortable' : 'compact')}
+                        aria-label="Density"
+                      >
+                        <option value="compact">Compact</option>
+                        <option value="comfortable">Comfortable</option>
+                      </select>
+                    </label>
+                    {scheduleMode === 'v2' ? (
+                      <div className={styles.ganttLegendInline} aria-label="Gantt legend">
+                        <span className={styles.legendItem}>
+                          <span className={styles.legendSwatch} />
+                          Forecast
+                        </span>
+                        {showPlanned ? (
+                          <span className={styles.legendItem}>
+                            <span className={cx(styles.legendSwatch, styles.legendSwatchPlanned)} />
+                            Planned
+                          </span>
+                        ) : null}
+                        <span className={styles.legendItem}>
+                          <span className={styles.legendDot} aria-hidden="true" />
+                          Pinned
+                        </span>
+                        <span className={styles.legendItem}>
+                          <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
+                          Conflict
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className={styles.ganttControlsRight}>
                     <button
                       type="button"
-                      className={styles.buttonSecondary}
-                      aria-pressed={showPlanned}
-                      onClick={() => setShowPlanned((v) => !v)}
+                      className={cx(styles.buttonSecondary, styles.ganttControlButton, styles.ganttJumpButton)}
+                      onClick={jumpGanttToToday}
                     >
-                      {showPlanned ? 'Hide planned' : 'Show planned'}
+                      Jump to today
                     </button>
-                  ) : null}
-                </div>
-
-                {scheduleMode === 'v2' ? (
-                  <div className={styles.legendRow} aria-label="Gantt legend">
-                    <span className={styles.legendItem}>
-                      <span className={styles.legendSwatch} />
-                      Forecast
-                    </span>
-                    {showPlanned ? (
-                      <span className={styles.legendItem}>
-                        <span className={cx(styles.legendSwatch, styles.legendSwatchPlanned)} />
-                        Planned
-                      </span>
+                    {scheduleMode === 'v2' ? (
+                      <button
+                        type="button"
+                        className={cx(styles.buttonSecondary, styles.ganttControlButton)}
+                        aria-pressed={showPlanned}
+                        onClick={() => setShowPlanned((v) => !v)}
+                      >
+                        {showPlanned ? 'Hide planned' : 'Show planned'}
+                      </button>
                     ) : null}
-                    <span className={styles.legendItem}>
-                      <span className={styles.legendDot} aria-hidden="true" />
-                      Pinned
-                    </span>
-                    <span className={styles.legendItem}>
-                      <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
-                      Conflict
-                    </span>
                   </div>
-                ) : null}
+                </div>
 
                 <div className={styles.ganttScroll} aria-label="Gantt timeline" ref={ganttScrollRef}>
                   <div
