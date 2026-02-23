@@ -645,6 +645,10 @@
   min-width: 250px;
 }
 
+.infillPresetMenu.infillPresetMenu {
+  z-index: 5200;
+}
+
 .infillDrawerOverlay {
   position: fixed;
   inset: 0;
@@ -783,6 +787,12 @@
   z-index: 2;
 }
 
+.infillRailHeaderActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
 .infillRailList {
   flex: 1 1 auto;
   min-height: 0;
@@ -889,6 +899,12 @@
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
+}
+
+.infillDeleteButton {
+  border-color: rgba(180, 35, 24, 0.35);
+  background: rgba(180, 35, 24, 0.08);
+  color: rgba(120, 17, 13, 0.95);
 }
 
 .infillRowSelect {

@@ -19,6 +19,8 @@ type FieldTileProps = {
   value?: string | boolean;
   content?: ReactNode;
   onChange?: (next: string | boolean) => void;
+  onBlur?: (next: string) => void;
+  onEnter?: (next: string) => void;
   options?: FieldOption[];
   disabled?: boolean;
   helperText?: string;
@@ -34,6 +36,8 @@ export default function FieldTile({
   value,
   content,
   onChange,
+  onBlur,
+  onEnter,
   options,
   disabled,
   helperText,
@@ -112,6 +116,12 @@ export default function FieldTile({
           type={type === 'number' ? 'number' : 'text'}
           value={String(value ?? '')}
           onChange={(e) => onChange?.(e.target.value)}
+          onBlur={(e) => onBlur?.(e.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter' || !onEnter) return;
+            event.preventDefault();
+            onEnter(event.currentTarget.value);
+          }}
           onWheel={(e) => {
             if (type !== 'number') return;
             if (typeof document !== 'undefined' && document.activeElement === e.currentTarget) {
