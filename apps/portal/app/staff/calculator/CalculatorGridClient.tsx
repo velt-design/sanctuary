@@ -2189,6 +2189,10 @@ export default function CalculatorGridClient({
 
   const updateRequiredShapeField = (infill: InfillLineItem, field: InfillDraftFieldKey, raw: string) => {
     setInfillDraftValue(infill.id, field, raw);
+  };
+
+  const commitRequiredShapeField = (infill: InfillLineItem, field: InfillDraftFieldKey, rawInput?: string) => {
+    const raw = typeof rawInput === 'string' ? rawInput : getInfillDraftValue(infill, field);
     if (raw.trim() === '') return;
     const parsed = Number(raw);
     if (!Number.isFinite(parsed) || parsed < 0) return;
@@ -3237,10 +3241,21 @@ export default function CalculatorGridClient({
     return 'Not configured';
   }, [infillsState.items, infillUiById]);
 
+  const infillUsedSpacingSummary = useMemo(() => {
+    const usedSpacingValues = infillsState.items
+      .map((item) => infillUiById.get(item.id)?.estimate.maxCentreM)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
+    if (!usedSpacingValues.length) return '—';
+    const minSpacing = Math.min(...usedSpacingValues);
+    const maxSpacing = Math.max(...usedSpacingValues);
+    if (Math.abs(maxSpacing - minSpacing) <= 0.0001) return `${formatMaybeNumber(maxSpacing, 2)}m`;
+    return `${formatMaybeNumber(minSpacing, 2)}m to ${formatMaybeNumber(maxSpacing, 2)}m`;
+  }, [infillsState.items, infillUiById]);
+
   const infillsSummaryLine1 = `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} | front x${
     infillLocationCounts.front
   } | side x${infillLocationCounts.side} | gable x${infillLocationCounts.gable_end}`;
-  const infillsSummaryLine2 = `${infillSystemSummary} | max width ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m | panels ~${
+  const infillsSummaryLine2 = `${infillSystemSummary} | max bay used ${infillUsedSpacingSummary} | panels ~${
     infillTotals.panels
   } | 50x50 ~${infillTotals.mullions}`;
   const infillsSummaryText = infillsState.items.length
@@ -3272,6 +3287,9 @@ export default function CalculatorGridClient({
           2,
         )}m exceeds ${formatMaybeNumber(maxRunForAcrylicSource(selectedInfillEstimate.preferredAcrylicSource), 2)}m.`
       : null;
+  const showInfillAdvancedSection = false;
+  const getVisibleInfillSection = (section: InfillSectionId): InfillSectionId =>
+    section === 'advanced' && !showInfillAdvancedSection ? 'basic' : section;
 
   const { hasClipboard: infillHasClipboard, copyGeometry: copyInfillGeometry, pasteGeometry: pasteInfillGeometry } = useInfillClipboard();
 
@@ -3337,12 +3355,13 @@ export default function CalculatorGridClient({
 
   const jumpToInfillWarningTarget = (warning: InfillWarningItem) => {
     if (!selectedInfill) return;
-    setInfillOpenSection(warning.target.section);
+    const targetSection = getVisibleInfillSection(warning.target.section);
+    setInfillOpenSection(targetSection);
     trackInfillEvent('infill_warning_clicked', {
       infill_id: selectedInfill.id,
       warning_id: warning.id,
       severity: warning.severity,
-      section: warning.target.section,
+      section: targetSection,
     });
     window.requestAnimationFrame(() => {
       const fieldId = infillFieldId(selectedInfill.id, warning.target.fieldKey);
@@ -3384,6 +3403,12 @@ export default function CalculatorGridClient({
       module_index: activeModuleIndex + 1,
     });
   }, [activeModuleIndex, infillsOpen, infillsState.items.length]);
+
+  useEffect(() => {
+    if (showInfillAdvancedSection) return;
+    if (infillOpenSection !== 'advanced') return;
+    setInfillOpenSection('basic');
+  }, [infillOpenSection, showInfillAdvancedSection]);
 
   useEffect(() => {
     if (!infillsOpen || !selectedInfill) return;
@@ -3437,15 +3462,28 @@ export default function CalculatorGridClient({
 
   const infillPresetCards = INFILL_PRESETS.filter((preset) => preset.key !== 'custom');
 
+  const renderAddInfillButton = (label: string, compact = false, openModal = false) => (
+    <button
+      type="button"
+      className={compact ? styles.infillSecondaryButtonCompact : styles.infillSecondaryButton}
+      onClick={() => {
+        addInfillPreset('custom');
+        if (openModal) setInfillsOpen(true);
+      }}
+    >
+      {label}
+    </button>
+  );
+
   const renderInfillPresetMenu = (label: string, compact = false) => (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button type="button" className={compact ? styles.infillSecondaryButtonCompact : styles.infillSecondaryButton}>
           {label}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" sideOffset={6} className={styles.infillPresetMenu}>
-        {INFILL_PRESETS.map((preset) => (
+        {infillPresetCards.map((preset) => (
           <DropdownMenuItem key={preset.key} onSelect={() => addInfillPreset(preset.key)}>
             {preset.label}
           </DropdownMenuItem>
@@ -3460,7 +3498,8 @@ export default function CalculatorGridClient({
         <button type="button" className={styles.infillPrimaryButton} onClick={() => setInfillsOpen(true)}>
           Edit infills
         </button>
-        {renderInfillPresetMenu('Add infill')}
+        {renderAddInfillButton('Add infill', false, true)}
+        {renderInfillPresetMenu('Presets')}
       </div>
       <div className={styles.infillTileSummary}>
         <div className={styles.infillTileSummaryLine}>{infillsSummaryLine1}</div>
@@ -5088,7 +5127,12 @@ export default function CalculatorGridClient({
 
             <div className={styles.infillDrawerBody}>
               <aside className={styles.infillRail} aria-label="Infill list">
-                <div className={styles.infillRailHeader}>{renderInfillPresetMenu('Add infill', true)}</div>
+                <div className={styles.infillRailHeader}>
+                  <div className={styles.infillRailHeaderActions}>
+                    {renderAddInfillButton('Add infill', true)}
+                    {renderInfillPresetMenu('Presets', true)}
+                  </div>
+                </div>
 
                 <div className={styles.infillRailList}>
                   {infillsState.items.length ? (
@@ -5132,7 +5176,7 @@ export default function CalculatorGridClient({
                         </select>
                       </div>
                       <div className={styles.infillEditorActions}>
-                        {renderInfillPresetMenu('Add infill')}
+                        {renderAddInfillButton('Add infill')}
                         <button
                           type="button"
                           className={`${styles.infillIconButton} ${styles.infillSummaryToggleButton}`}
@@ -5154,14 +5198,24 @@ export default function CalculatorGridClient({
                           onMoveDown={() => moveInfill(selectedInfill.id, 1)}
                           onDelete={() => requestDeleteInfill(selectedInfill.id)}
                         />
+                        <button
+                          type="button"
+                          className={`${styles.infillIconButton} ${styles.infillDeleteButton}`}
+                          onClick={() => requestDeleteInfill(selectedInfill.id)}
+                          aria-label={`Delete ${selectedInfill.label?.trim() || `Infill ${selectedInfillIndex + 1}`}`}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </div>
                     <InfillSectionNav
                       value={infillOpenSection}
                       warningsCount={selectedComputedWarnings.length}
+                      showAdvanced={showInfillAdvancedSection}
                       onChange={(next) => {
-                        setInfillOpenSection(next);
-                        if (next === 'preview' || next === 'cut_list') setInfillSummaryOpen(true);
+                        const nextSection = getVisibleInfillSection(next);
+                        setInfillOpenSection(nextSection);
+                        if (nextSection === 'preview' || nextSection === 'cut_list') setInfillSummaryOpen(true);
                       }}
                     />
 
@@ -5308,6 +5362,8 @@ export default function CalculatorGridClient({
                                 type="number"
                                 value={getInfillDraftValue(selectedInfill, 'widthM')}
                                 onChange={(v) => updateRequiredShapeField(selectedInfill, 'widthM', String(v))}
+                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
+                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
                                 error={selectedInfillValidation.errors.widthM}
                               />
                             </div>
@@ -5318,6 +5374,8 @@ export default function CalculatorGridClient({
                                 type="number"
                                 value={getInfillDraftValue(selectedInfill, 'heightM')}
                                 onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightM', String(v))}
+                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightM', String(v))}
+                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightM', String(v))}
                                 error={selectedInfillValidation.errors.heightM}
                               />
                             </div>
@@ -5331,6 +5389,8 @@ export default function CalculatorGridClient({
                                 type="number"
                                 value={getInfillDraftValue(selectedInfill, 'widthM')}
                                 onChange={(v) => updateRequiredShapeField(selectedInfill, 'widthM', String(v))}
+                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
+                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'widthM', String(v))}
                                 error={selectedInfillValidation.errors.widthM}
                               />
                             </div>
@@ -5341,6 +5401,8 @@ export default function CalculatorGridClient({
                                 type="number"
                                 value={getInfillDraftValue(selectedInfill, 'heightLowM')}
                                 onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
+                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
+                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
                                 error={selectedInfillValidation.errors.heightLowM}
                               />
                             </div>
@@ -5351,6 +5413,8 @@ export default function CalculatorGridClient({
                                 type="number"
                                 value={getInfillDraftValue(selectedInfill, 'heightHighM')}
                                 onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
+                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
+                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
                                 error={selectedInfillValidation.errors.heightHighM}
                               />
                             </div>
@@ -5456,16 +5520,18 @@ export default function CalculatorGridClient({
                       </div>
                     </details>
 
-                    <details
-                      className={`${styles.infillSection} ${styles.infillSectionSecondary}`}
-                      open={infillOpenSection === 'advanced'}
-                      onToggle={(event) => {
-                        if ((event.currentTarget as HTMLDetailsElement).open) setInfillOpenSection('advanced');
-                      }}
-                    >
-                      <summary className={styles.infillSectionSummary}>Advanced</summary>
-                      <p className={styles.modalNote}>No advanced infill options configured yet.</p>
-                    </details>
+                    {showInfillAdvancedSection ? (
+                      <details
+                        className={`${styles.infillSection} ${styles.infillSectionSecondary}`}
+                        open={infillOpenSection === 'advanced'}
+                        onToggle={(event) => {
+                          if ((event.currentTarget as HTMLDetailsElement).open) setInfillOpenSection('advanced');
+                        }}
+                      >
+                        <summary className={styles.infillSectionSummary}>Advanced</summary>
+                        <p className={styles.modalNote}>No advanced infill options configured yet.</p>
+                      </details>
+                    ) : null}
 
                       </div>
 
@@ -5680,7 +5746,7 @@ export default function CalculatorGridClient({
                     <p>Select an infill.</p>
                     <p>Pick one from the list or add a new infill.</p>
                     <div className={styles.infillEditorActions}>
-                      {renderInfillPresetMenu('Add new')}
+                      {renderInfillPresetMenu('Presets')}
                       <button type="button" className={styles.infillSecondaryButton} onClick={() => addInfillPreset('custom')}>
                         Add custom infill
                       </button>
