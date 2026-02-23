@@ -1479,18 +1479,37 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 8px 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
+}
+
+.ganttControlsLeft,
+.ganttControlsRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ganttControlsLeft {
+  flex: 1 1 auto;
+}
+
+.ganttControlsRight {
+  flex: 0 0 auto;
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .ganttDensityControl {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11px;
   color: rgba(15, 15, 16, 0.7);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
@@ -1500,12 +1519,13 @@
 
 .ganttDensitySelect {
   margin: 0;
-  padding: 7px 10px;
-  border-radius: 10px;
+  padding: 5px 8px;
+  border-radius: 9px;
   border: 1px solid rgba(15, 15, 16, 0.18);
   background: #fff;
   color: inherit;
-  font-size: 12px;
+  font-size: 11px;
+  min-height: 30px;
   text-transform: none;
 }
 
@@ -1516,14 +1536,50 @@
 }
 
 .ganttMeta {
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.2;
   color: rgba(15, 15, 16, 0.8);
+}
+
+.ganttControlSelect {
+  width: auto;
+  min-width: 100px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.ganttControlButton {
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 11px;
 }
 
 .ganttJumpButton {
   min-height: 30px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: 11px;
+}
+
+.ganttLegendInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: rgba(15, 15, 16, 0.7);
+}
+
+.ganttLegendInline .legendItem {
+  font-size: 11px;
+  letter-spacing: 0.015em;
+}
+
+@media (max-width: 1180px) {
+  .ganttControlsRight {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
 }
 
 .ganttScroll {
