@@ -73,6 +73,7 @@
 
 .control {
   width: 100%;
+  min-width: 0;
   margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
@@ -80,6 +81,17 @@
   background: #fff;
   color: inherit;
   font-size: 14px;
+}
+
+.control[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.control[type='number']::-webkit-outer-spin-button,
+.control[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .control:focus {

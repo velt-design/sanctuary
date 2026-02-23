@@ -112,6 +112,12 @@ export default function FieldTile({
           type={type === 'number' ? 'number' : 'text'}
           value={String(value ?? '')}
           onChange={(e) => onChange?.(e.target.value)}
+          onWheel={(e) => {
+            if (type !== 'number') return;
+            if (typeof document !== 'undefined' && document.activeElement === e.currentTarget) {
+              e.currentTarget.blur();
+            }
+          }}
           disabled={disabled}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
