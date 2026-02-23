@@ -13,6 +13,8 @@ export default function FooterVisibilityGate({ children }: FooterVisibilityGateP
   if (
     pathname === '/quote' ||
     pathname.startsWith('/quote/') ||
+    pathname === '/invoice' ||
+    pathname.startsWith('/invoice/') ||
     pathname === '/start/explore' ||
     pathname.startsWith('/start/explore/') ||
     pathname === '/projects' ||
