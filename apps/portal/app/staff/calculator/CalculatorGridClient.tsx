@@ -2118,8 +2118,12 @@ export default function CalculatorGridClient({
 
   const addInfillItems = (itemsToAdd: InfillLineItem[]) => {
     if (!itemsToAdd.length) return;
+    const nextSelectedId = itemsToAdd[0]?.id ?? null;
     setInfillItems((items) => [...items, ...itemsToAdd]);
-    setSelectedInfillId(itemsToAdd[0]?.id ?? null);
+    if (nextSelectedId) {
+      setPendingInfillSelectionId(nextSelectedId);
+      setSelectedInfillId(nextSelectedId);
+    }
   };
 
   const addInfill = (seed?: Partial<InfillLineItem>) => {
@@ -2335,11 +2339,13 @@ export default function CalculatorGridClient({
   const [materialsDebugError, setMaterialsDebugError] = useState<string | null>(null);
   const [infillsOpen, setInfillsOpen] = useState(false);
   const [selectedInfillId, setSelectedInfillId] = useState<string | null>(null);
+  const [pendingInfillSelectionId, setPendingInfillSelectionId] = useState<string | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
+  const infillRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const blindFieldPrefix = useId();
   const infillFieldPrefix = useId();
 
@@ -2376,7 +2382,22 @@ export default function CalculatorGridClient({
   }, [activeModuleIndex, issuesOpen]);
 
   useEffect(() => {
+    if (!pendingInfillSelectionId) return;
+    if (!infillsState.items.some((item) => item.id === pendingInfillSelectionId)) return;
+    setSelectedInfillId(pendingInfillSelectionId);
+    setPendingInfillSelectionId(null);
+  }, [infillsState.items, pendingInfillSelectionId]);
+
+  useEffect(() => {
+    if (!infillsOpen || !selectedInfillId) return;
+    const selectedRow = infillRowRefs.current.get(selectedInfillId);
+    if (!selectedRow) return;
+    selectedRow.scrollIntoView({ block: 'nearest' });
+  }, [infillsOpen, infillsState.items, selectedInfillId]);
+
+  useEffect(() => {
     if (!infillsOpen) return;
+    if (pendingInfillSelectionId) return;
     if (!infillsState.items.length) {
       if (selectedInfillId !== null) setSelectedInfillId(null);
       return;
@@ -2384,7 +2405,7 @@ export default function CalculatorGridClient({
     if (!selectedInfillId || !infillsState.items.some((item) => item.id === selectedInfillId)) {
       setSelectedInfillId(infillsState.items[0].id);
     }
-  }, [infillsOpen, infillsState.items, selectedInfillId]);
+  }, [infillsOpen, infillsState.items, pendingInfillSelectionId, selectedInfillId]);
 
   useEffect(() => {
     if (!readyToCalculate) {
@@ -2886,13 +2907,13 @@ export default function CalculatorGridClient({
   }, [infillsState.items]);
 
   const infillSystemSummary = useMemo(() => {
-    const hasSheets = infillsState.items.some((item) => item.acrylicSource === 'sheet_panels');
-    const hasStrips = infillsState.items.some((item) => item.acrylicSource === 'strip_620');
+    const hasSheets = infillEstimates.some((entry) => entry.estimate.acrylicSourceUsed === 'sheet_panels');
+    const hasStrips = infillEstimates.some((entry) => entry.estimate.acrylicSourceUsed === 'strip_620');
     if (hasSheets && hasStrips) return 'Sheets/Strips mix';
     if (hasStrips) return '620 strips';
     if (hasSheets) return 'Sheet panels';
     return 'Not configured';
-  }, [infillsState.items]);
+  }, [infillEstimates]);
 
   const infillsSummaryLine1 = `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} | front x${
     infillLocationCounts.front
@@ -2960,6 +2981,7 @@ export default function CalculatorGridClient({
         const estimate = infillEstimateById.get(item.id) ?? estimateInfillUi(item, roofRafterSpacingEstimate.spacingM);
         const title = item.label?.trim() ? item.label.trim() : `Infill ${idx + 1}`;
         const isSelected = selectedInfill?.id === item.id;
+        const acrylicChipLabel = acrylicSourceLabel(estimate.acrylicSourceUsed);
         const panelsAndMullionsMeta =
           estimate.estimatedMullionsTotal > 0
             ? `Panels ${estimate.panelCountTotal} | 50x50 ${estimate.estimatedMullionsTotal}`
@@ -2967,6 +2989,10 @@ export default function CalculatorGridClient({
         return (
           <button
             key={item.id}
+            ref={(node) => {
+              if (node) infillRowRefs.current.set(item.id, node);
+              else infillRowRefs.current.delete(item.id);
+            }}
             type="button"
             className={`${styles.infillRow} ${isSelected ? styles.infillRowActive : ''}`.trim()}
             onClick={() => setSelectedInfillId(item.id)}
@@ -2976,7 +3002,10 @@ export default function CalculatorGridClient({
               <span>{title}</span>
               <div className={styles.infillChipRow}>
                 <span className={styles.infillChip}>{locationLabel(item.location)}</span>
-                <span className={styles.infillChip}>{acrylicSourceLabel(item.acrylicSource)}</span>
+                <span className={styles.infillChip}>
+                  {acrylicChipLabel}
+                  {estimate.acrylicSourceAutoSwitched ? ' (used)' : ''}
+                </span>
               </div>
             </div>
             <div className={styles.infillRowMeta}>{`${formatInfillShapeSummary(item.shape)} | Qty ${estimate.qty}`}</div>
@@ -4945,7 +4974,7 @@ export default function CalculatorGridClient({
 
                       <div className={styles.infillComputedGroup}>
                         <div className={styles.infillComputedGroupTitle}>Acrylic procurement estimate</div>
-                        {selectedInfill.acrylicSource === 'strip_620' ? (
+                        {selectedInfillEstimate.acrylicSourceUsed === 'strip_620' ? (
                           <>
                             <PreviewRow label="Strip width" value="0.62m" />
                             <PreviewRow
