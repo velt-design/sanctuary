@@ -37,6 +37,8 @@ export type HeightCategory = 'single_storey' | 'two_storey';
 
 export type GroundCondition = 'easy' | 'hard';
 
+export type JobType = 'residential' | 'commercial';
+
 export type RafterProfile = string;
 
 export type BoxBeamProfile = string;
@@ -505,6 +507,7 @@ export type CostOutputV1 = {
 
 export type JobInputsV1 = {
   modules: CostInputsV1[];
+  job_type?: JobType;
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
   quote_discount_pct?: number;
@@ -528,6 +531,7 @@ export type PergolaInputsV1 = {
 
 export type SiteInputsV1 = {
   pergolas: PergolaInputsV1[];
+  job_type?: JobType;
   travel_ex_gst?: number;
   extras_allowance_ex_gst?: number;
   quote_discount_pct?: number;

@@ -1458,6 +1458,7 @@ function normalizeCalculatorInputsForUi(value: CalculatorInputs): CalculatorInpu
   return {
     ...value,
     schemaVersion: 'v2',
+    jobType: value.jobType === 'commercial' ? 'commercial' : 'residential',
     pergolas: finalPergolas,
     modules,
     blinds: normalizeBlindsStateForUi((value as any).blinds),
@@ -1512,6 +1513,7 @@ export default function CalculatorGridClient({
     quoteRef: '',
     access: 'normal',
     height: 'single_storey',
+    jobType: 'residential',
     travelExGst: '0',
     extrasAllowanceExGst: '0',
     quoteDiscountPct: '0',
@@ -2305,6 +2307,7 @@ export default function CalculatorGridClient({
 
     return {
       pergolas: payloadPergolas,
+      job_type: values.jobType,
       travel_ex_gst: Number.isFinite(travel_ex_gst) ? travel_ex_gst : 0,
       extras_allowance_ex_gst: Number.isFinite(extras_allowance_ex_gst) ? extras_allowance_ex_gst : 0,
       quote_discount_pct: Number.isFinite(quote_discount_pct) ? quote_discount_pct : 0,
@@ -3894,6 +3897,17 @@ export default function CalculatorGridClient({
         { label: 'Two storey', value: 'two_storey' },
       ],
     },
+    {
+      id: 'jobType',
+      label: 'Job type',
+      type: 'select',
+      value: values.jobType,
+      onChange: (v) => setJobField('jobType', v as CalculatorInputs['jobType']),
+      options: [
+        { label: 'Residential', value: 'residential' },
+        { label: 'Commercial', value: 'commercial' },
+      ],
+    },
 
     ...(activeModule.boxPerimeterEnabled
       ? [
@@ -4188,7 +4202,7 @@ export default function CalculatorGridClient({
 
   const addonFields = pickFields(['blindsList', 'infillsEditor']);
 
-  const connectionFields = pickFields(['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height']);
+  const connectionFields = pickFields(['houseConnectionType', 'postConnectionType', 'ground', 'access', 'height', 'jobType']);
 
   const allowanceFields = pickFields(['travelExGst', 'extrasAllowanceExGst', 'quoteDiscountPct']);
 

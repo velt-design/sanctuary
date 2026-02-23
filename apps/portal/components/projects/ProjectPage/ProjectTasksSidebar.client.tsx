@@ -12,6 +12,8 @@ import legacy from '@/app/staff/projects/projects.module.css';
 
 type TaskItem = ProjectPageSnapshot['tasks']['items'][number];
 
+const AUTO_ADVANCE_MANUAL_TASKS = new Set(['confirm_schedule', 'invoice_paid']);
+
 function isCompleted(task: TaskItem): boolean {
   return Boolean(task.isDone);
 }
@@ -140,7 +142,9 @@ export default function ProjectTasksSidebarClient({
 
   const toggleManualTask = async (taskKey: string, completed: boolean) => {
     if (isSaving) return;
-    if (taskKey === 'confirm_schedule' && completed) {
+    const isAutoAdvanceCompletion = completed && AUTO_ADVANCE_MANUAL_TASKS.has(taskKey);
+
+    if (isAutoAdvanceCompletion) {
       suppressStageComplete.current = true;
     } else {
       setStageCompleteIntent(projectId, stageKey);
@@ -153,8 +157,8 @@ export default function ProjectTasksSidebarClient({
     );
     setItems(nextItems);
     const nextOpenCount = nextItems.filter((item) => !isCompleted(item)).length;
-    const shouldDeferRefresh = completed && nextOpenCount === 0 && taskKey !== 'confirm_schedule';
-    const shouldOpenStageModal = completed && nextOpenCount === 0 && taskKey !== 'confirm_schedule' && canShowStageModal;
+    const shouldDeferRefresh = completed && nextOpenCount === 0 && !isAutoAdvanceCompletion;
+    const shouldOpenStageModal = completed && nextOpenCount === 0 && !isAutoAdvanceCompletion && canShowStageModal;
 
     if (shouldOpenStageModal) {
       setStageModalOpen(true);

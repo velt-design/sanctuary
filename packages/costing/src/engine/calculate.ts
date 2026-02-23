@@ -8,6 +8,7 @@ import type {
   CostOutputV1,
   InstallActionV1,
   JobInputsV1,
+  JobType,
   JobOutputV1,
   MaterialsLineV1,
   PergolaInputsV1,
@@ -28,6 +29,16 @@ const BOX_PERIMETER_STARTUP_ACTION_ID = 'mob.box_perimeter_startup';
 const BOX_PERIMETER_STARTUP_MINUTES = 180;
 const BOX_PERIMETER_STARTUP_ACTION_LABEL = 'Box perimeter startup labour';
 const BOX_PERIMETER_STARTUP_ACTION_CATEGORY = 'Mob';
+const SCAFFOLD_STARTUP_ACTION_ID = 'mob.scaffolding_startup';
+const SCAFFOLD_STARTUP_MINUTES = 150;
+const SCAFFOLD_STARTUP_LABEL = 'Scaffolding setup, packdown and load labour';
+const SCAFFOLD_EXTRA_PER_PERGOLA_ACTION_ID = 'mob.scaffolding_additional_per_pergola';
+const SCAFFOLD_EXTRA_PER_PERGOLA_MINUTES = 60;
+const SCAFFOLD_EXTRA_PER_PERGOLA_LABEL = 'Scaffolding additional pergola labour allowance';
+const SCAFFOLD_ACTION_CATEGORY = 'Mob';
+const SCAFFOLD_DAY_RATE_LINE_ID = 'job.hire.scaffolding_day_rate';
+const SCAFFOLD_DAY_RATE_LABEL = '[Job] Scaffolding day hire';
+const SCAFFOLD_DAY_RATE_PROFILE = 'Scaffolding';
 
 type OverheadFlags = {
   has_gable: boolean;
@@ -98,6 +109,109 @@ function addBoxPerimeterStartupToInstall(
       crew_hours: crewHours,
       install_ex_gst: installExGst,
     },
+  };
+}
+
+function normalizeJobType(jobType: JobType | undefined): JobType {
+  return jobType === 'commercial' ? 'commercial' : 'residential';
+}
+
+function resolveModulePitchDeg(module: Pick<CostOutputV1, 'derived' | 'inputs_normalized'>): number {
+  const pitchRaw = Number((module.derived as any).roof_pitch_deg_used ?? module.inputs_normalized.roof_pitch_deg ?? 0);
+  return Number.isFinite(pitchRaw) ? pitchRaw : 0;
+}
+
+function resolveModuleAreaM2(module: Pick<CostOutputV1, 'derived' | 'inputs_normalized'>): number {
+  const areaRaw = Number((module.derived as any).area_m2);
+  if (Number.isFinite(areaRaw) && areaRaw > 0) return areaRaw;
+  const lengthM = Number(module.inputs_normalized.length_m ?? 0);
+  const projectionM = Number(module.inputs_normalized.projection_m ?? 0);
+  const areaFallback = lengthM * projectionM;
+  return Number.isFinite(areaFallback) && areaFallback > 0 ? areaFallback : 0;
+}
+
+function resolvePergolaPitchDeg(modules: Array<Pick<CostOutputV1, 'derived' | 'inputs_normalized'>>): number {
+  let maxPitch = 0;
+  for (const module of modules) {
+    maxPitch = Math.max(maxPitch, resolveModulePitchDeg(module));
+  }
+  return maxPitch;
+}
+
+function resolvePergolaAreaM2(modules: Array<Pick<CostOutputV1, 'derived' | 'inputs_normalized'>>): number {
+  return roundMoney(modules.reduce((acc, module) => acc + resolveModuleAreaM2(module), 0));
+}
+
+function requiresScaffolding(jobType: JobType, pergolaPitchDeg: number): boolean {
+  if (jobType === 'commercial') return true;
+  return pergolaPitchDeg > 30;
+}
+
+function resolveScaffoldingDayRateExGst(jobType: JobType, pergolaAreaM2: number): number {
+  if (jobType !== 'commercial') return 50;
+  return pergolaAreaM2 >= 20 ? 200 : 100;
+}
+
+function buildScaffoldingLabourActions(config: CostingConfigV1, scaffoldPergolaCount: number): InstallActionV1[] {
+  if (!Number.isFinite(scaffoldPergolaCount) || scaffoldPergolaCount <= 0) return [];
+
+  const count = Math.max(0, Math.round(scaffoldPergolaCount));
+  if (count <= 0) return [];
+
+  const crewRateRaw = Number(config.installActions.basis.crew_hour_rate_ex_gst ?? 100);
+  const crewRate = Number.isFinite(crewRateRaw) && crewRateRaw > 0 ? crewRateRaw : 100;
+
+  const actions: InstallActionV1[] = [
+    {
+      id: SCAFFOLD_STARTUP_ACTION_ID,
+      category: SCAFFOLD_ACTION_CATEGORY,
+      label: SCAFFOLD_STARTUP_LABEL,
+      scope: 'job',
+      unit: 'job',
+      qty: 1,
+      minutes: SCAFFOLD_STARTUP_MINUTES,
+      applied_multipliers: {},
+      cost_ex_gst: roundMoney((SCAFFOLD_STARTUP_MINUTES / 60) * crewRate),
+    },
+  ];
+
+  if (count > 1) {
+    const extraQty = count - 1;
+    const extraMinutes = SCAFFOLD_EXTRA_PER_PERGOLA_MINUTES * extraQty;
+    actions.push({
+      id: SCAFFOLD_EXTRA_PER_PERGOLA_ACTION_ID,
+      category: SCAFFOLD_ACTION_CATEGORY,
+      label: SCAFFOLD_EXTRA_PER_PERGOLA_LABEL,
+      scope: 'job',
+      unit: 'pergola',
+      qty: extraQty,
+      minutes: extraMinutes,
+      applied_multipliers: {},
+      cost_ex_gst: roundMoney((extraMinutes / 60) * crewRate),
+    });
+  }
+
+  return actions.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function buildScaffoldingDayRateLine(
+  id: string,
+  label: string,
+  siteDays: number,
+  dayRateExGst: number,
+): MaterialsLineV1 | null {
+  const qty = Number.isFinite(siteDays) && siteDays > 0 ? Math.round(siteDays) : 0;
+  if (qty <= 0) return null;
+  if (!Number.isFinite(dayRateExGst) || dayRateExGst <= 0) return null;
+
+  return {
+    id,
+    label,
+    profile: SCAFFOLD_DAY_RATE_PROFILE,
+    unit: 'day',
+    qty,
+    unit_cost_ex_gst: roundMoney(dayRateExGst),
+    line_cost_ex_gst: roundMoney(qty * dayRateExGst),
   };
 }
 
@@ -389,6 +503,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     throw new Error('Job inputs must include at least one module.');
   }
 
+  const jobType = normalizeJobType(inputs.job_type);
   const jobTravel = roundMoney(Number(inputs.travel_ex_gst ?? 0));
   const jobExtras = roundMoney(Number(inputs.extras_allowance_ex_gst ?? 0));
 
@@ -475,6 +590,11 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
   }
 
   const overheadFlags = deriveOverheadFlagsForModules(modules);
+  const jobPergolaPitchDeg = resolvePergolaPitchDeg(modules);
+  const jobPergolaAreaM2 = resolvePergolaAreaM2(modules);
+  const jobRequiresScaffolding = requiresScaffolding(jobType, jobPergolaPitchDeg);
+  const jobScaffoldingDayRateExGst = jobRequiresScaffolding ? resolveScaffoldingDayRateExGst(jobType, jobPergolaAreaM2) : 0;
+  const jobScaffoldingActions = buildScaffoldingLabourActions(cfg, jobRequiresScaffolding ? 1 : 0);
 
   const infillSheetLinePattern = /^m\d+\.infill\.acrylic_sheet_clear$/;
   const infillSheetLines = jobMaterialsLines.filter((line) => infillSheetLinePattern.test(String(line.id ?? '')));
@@ -520,10 +640,13 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
   }
 
   const jobActions = Array.from(jobScopedActions.values()).sort((a, b) => a.id.localeCompare(b.id));
+  for (const action of jobScaffoldingActions) {
+    if (!jobActions.some((existing) => existing.id === action.id)) jobActions.push(action);
+  }
   if (overheadFlags.has_box_perimeter && !jobActions.some((a) => a.id === BOX_PERIMETER_STARTUP_ACTION_ID)) {
     jobActions.push(buildBoxPerimeterStartupAction(cfg));
-    jobActions.sort((a, b) => a.id.localeCompare(b.id));
   }
+  jobActions.sort((a, b) => a.id.localeCompare(b.id));
   for (const action of jobActions) {
     jobInstallActions.push({ ...action, id: `job.${action.id}`, label: `[Job] ${action.label}` });
   }
@@ -573,10 +696,24 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     module.derived = { ...module.derived, site_days: siteDays };
   }
 
+  let scaffoldingDayRateTotal = 0;
+  if (jobRequiresScaffolding) {
+    const scaffoldingLine = buildScaffoldingDayRateLine(
+      SCAFFOLD_DAY_RATE_LINE_ID,
+      SCAFFOLD_DAY_RATE_LABEL,
+      siteDays,
+      jobScaffoldingDayRateExGst,
+    );
+    if (scaffoldingLine) {
+      jobMaterialsLines.push(scaffoldingLine);
+      scaffoldingDayRateTotal = Number(scaffoldingLine.line_cost_ex_gst ?? 0);
+    }
+  }
+
   const crewMinutesTotal = roundMoney(baseCrewMinutes + dayCycle.crewMinutes);
   const crewHoursTotal = roundMoney(crewMinutesTotal / 60);
 
-  const materialsTotal = roundMoney(modules.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0));
+  const materialsTotal = roundMoney(modules.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0) + scaffoldingDayRateTotal);
   const installTotal = roundMoney(
     modules.reduce((acc, m) => acc + m.install.totals.install_ex_gst, 0) +
       jobActions.reduce((acc, a) => acc + a.cost_ex_gst, 0) +
@@ -650,6 +787,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
     throw new Error('Site inputs must include at least one pergola.');
   }
 
+  const jobType = normalizeJobType(inputs.job_type);
   const jobTravel = roundMoney(Number(inputs.travel_ex_gst ?? 0));
   const jobExtras = roundMoney(Number(inputs.extras_allowance_ex_gst ?? 0));
 
@@ -846,6 +984,21 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
     throw new Error('Site inputs must include at least one module.');
   }
 
+  const scaffoldingPergolas = pergolaOutputs
+    .map((pergola, idx) => {
+      const pergolaPitchDeg = resolvePergolaPitchDeg(pergola.modules);
+      const pergolaAreaM2 = resolvePergolaAreaM2(pergola.modules);
+      const scaffoldRequired = requiresScaffolding(jobType, pergolaPitchDeg);
+      const dayRateExGst = scaffoldRequired ? resolveScaffoldingDayRateExGst(jobType, pergolaAreaM2) : 0;
+      return {
+        pergolaIdx: idx,
+        dayRateExGst,
+      };
+    })
+    .filter((target) => target.dayRateExGst > 0);
+
+  const scaffoldingLabourActions = buildScaffoldingLabourActions(cfg, scaffoldingPergolas.length);
+
   // Pool infill sheets (if consistent cost) for the site output lines.
   const infillSheetLinePattern = /^m\d+\.infill\.acrylic_sheet_clear$/;
   const infillSheetLines = siteMaterialsLines.filter((line) => infillSheetLinePattern.test(String(line.id ?? '')));
@@ -894,6 +1047,10 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
 
   const sharedInstallActions: InstallActionV1[] = [];
   const jobActions = Array.from(jobScopedActions.values()).sort((a, b) => a.id.localeCompare(b.id));
+  for (const action of scaffoldingLabourActions) {
+    if (!jobActions.some((existing) => existing.id === action.id)) jobActions.push(action);
+  }
+  jobActions.sort((a, b) => a.id.localeCompare(b.id));
   for (const action of jobActions) {
     const scoped = { ...action, id: `job.${action.id}`, label: `[Job] ${action.label}` };
     siteInstallActions.push(scoped);
@@ -948,10 +1105,38 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
     module.derived = { ...module.derived, site_days: siteDays };
   }
 
+  let scaffoldingMaterialsTotal = 0;
+  for (const target of scaffoldingPergolas) {
+    const pergola = pergolaOutputs[target.pergolaIdx];
+    if (!pergola) continue;
+    const pergolaLine = buildScaffoldingDayRateLine(
+      SCAFFOLD_DAY_RATE_LINE_ID,
+      SCAFFOLD_DAY_RATE_LABEL,
+      siteDays,
+      target.dayRateExGst,
+    );
+    if (!pergolaLine) continue;
+
+    pergola.materials.lines.push(pergolaLine);
+    pergola.materials.lines.sort((a, b) => a.id.localeCompare(b.id));
+    pergola.materials.totals.materials_ex_gst = roundMoney(
+      Number(pergola.materials.totals.materials_ex_gst ?? 0) + Number(pergolaLine.line_cost_ex_gst ?? 0),
+    );
+
+    const pergolaPrefix = pergola.label ? `[${pergola.label}]` : `[P${target.pergolaIdx + 1}]`;
+    siteMaterialsLines.push({
+      ...pergolaLine,
+      id: `p${target.pergolaIdx + 1}.${SCAFFOLD_DAY_RATE_LINE_ID}`,
+      label: `${pergolaPrefix} ${SCAFFOLD_DAY_RATE_LABEL}`,
+    });
+
+    scaffoldingMaterialsTotal = roundMoney(scaffoldingMaterialsTotal + Number(pergolaLine.line_cost_ex_gst ?? 0));
+  }
+
   const crewMinutesTotal = roundMoney(baseCrewMinutes + dayCycle.crewMinutes);
   const crewHoursTotal = roundMoney(crewMinutesTotal / 60);
 
-  const materialsTotal = roundMoney(modulesAll.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0));
+  const materialsTotal = roundMoney(modulesAll.reduce((acc, m) => acc + m.materials.totals.materials_ex_gst, 0) + scaffoldingMaterialsTotal);
   const moduleInstallTotal = roundMoney(pergolaOutputs.reduce((acc, pergola) => acc + pergola.install.totals.install_ex_gst, 0));
   const jobActionsTotal = roundMoney(jobActions.reduce((acc, a) => acc + a.cost_ex_gst, 0));
   const sharedInstallTotal = roundMoney(jobActionsTotal + dayCycle.installExGst);

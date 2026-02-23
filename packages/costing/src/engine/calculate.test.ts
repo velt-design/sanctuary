@@ -2292,11 +2292,11 @@ describe('install day cycle', () => {
     const cfg = buildTestConfig(1250);
     const result = calculateCostV1(baseInputs, cfg);
 
-    expect(result.derived.site_days).toBe(3);
+    expect(result.derived.site_days).toBe(4);
     for (const id of DAY_CYCLE_ACTION_IDS) {
-      expect(result.install.actions.find((a) => a.id === id)?.qty).toBe(3);
+      expect(result.install.actions.find((a) => a.id === id)?.qty).toBe(4);
     }
-    expect(result.install.totals.crew_minutes).toBe(1250 + dayCycleMinutesPerDay * 3);
+    expect(result.install.totals.crew_minutes).toBe(1250 + dayCycleMinutesPerDay * 4);
   });
 
   it('single-module: boundary iteration bumps site days', () => {
@@ -2328,5 +2328,122 @@ describe('install day cycle', () => {
     expect(job.install.actions.some((a) => a.id.startsWith('m1.day_cycle.'))).toBe(false);
     expect(job.install.actions.some((a) => a.id.startsWith('m2.day_cycle.'))).toBe(false);
     expect(job.modules[0].derived.site_days).toBe(2);
+  });
+});
+
+describe('steep pitch and scaffolding', () => {
+  const baseModule = {
+    length_m: 6,
+    projection_m: 3,
+    post_cut_height_m: 2.4,
+    post_count: 4,
+    pergola_style: 'pitched' as const,
+    box_perimeter_enabled: false,
+    roof_material: 'acrylic' as const,
+    extrusion_colour: 'Black' as const,
+    house_connection_type: 'soffit' as const,
+    post_connection_type: 'deck_bracket' as const,
+    access: 'normal' as const,
+    height: 'single_storey' as const,
+    travel_ex_gst: 0,
+    extras_allowance_ex_gst: 0,
+    quote_discount_pct: 0,
+  };
+
+  it('steep pitch multiplier tiers apply at >20 and >30 degrees', () => {
+    const baseCfg = buildTestConfig(60);
+    const cfg = {
+      ...baseCfg,
+      installActions: {
+        ...baseCfg.installActions,
+        actions: baseCfg.installActions.actions.map((action) =>
+          action.id === 'test.base_action' ? { ...action, apply_multipliers: ['pitch_steep_roof'] } : action,
+        ),
+      },
+    };
+
+    const at20 = calculateCostV1({ ...baseModule, roof_pitch_deg: 20 }, cfg);
+    const over20 = calculateCostV1({ ...baseModule, roof_pitch_deg: 21 }, cfg);
+    const over30 = calculateCostV1({ ...baseModule, roof_pitch_deg: 31 }, cfg);
+
+    const action20 = at20.install.actions.find((a) => a.id === 'test.base_action');
+    const actionOver20 = over20.install.actions.find((a) => a.id === 'test.base_action');
+    const actionOver30 = over30.install.actions.find((a) => a.id === 'test.base_action');
+
+    expect(action20?.applied_multipliers.pitch_steep_roof).toBe(1);
+    expect(actionOver20?.applied_multipliers.pitch_steep_roof).toBe(1.2);
+    expect(actionOver30?.applied_multipliers.pitch_steep_roof).toBe(1.3);
+    expect(actionOver20?.minutes ?? 0).toBeCloseTo((action20?.minutes ?? 0) * 1.2, 6);
+    expect(actionOver30?.minutes ?? 0).toBeCloseTo((action20?.minutes ?? 0) * 1.3, 6);
+  });
+
+  it('acrylic panel install includes steep pitch multiplier', () => {
+    const result = calculateCostV1({ ...baseModule, roof_pitch_deg: 31 });
+    const acrylicInstall = result.install.actions.find((a) => a.id === 'roof.install_acrylic_panels_m2');
+
+    expect(acrylicInstall).toBeTruthy();
+    expect(acrylicInstall?.applied_multipliers.pitch_steep_roof).toBe(1.3);
+  });
+
+  it('residential pergola above 30 degrees auto-adds scaffolding startup and day rate', () => {
+    const site = calculateSiteCostV1({
+      job_type: 'residential',
+      pergolas: [{ id: 'p1', modules: [{ ...baseModule, roof_pitch_deg: 31 }] }],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    const startupAction = site.shared.install.actions.find((a) => a.id === 'job.mob.scaffolding_startup');
+    const extraPergolaAction = site.shared.install.actions.find((a) => a.id === 'job.mob.scaffolding_additional_per_pergola');
+    const dayRateLine = site.pergolas[0].materials.lines.find((line) => line.id === 'job.hire.scaffolding_day_rate');
+
+    expect(startupAction?.minutes).toBe(150);
+    expect(extraPergolaAction).toBeUndefined();
+    expect(dayRateLine?.unit_cost_ex_gst).toBe(50);
+    expect(dayRateLine?.qty).toBe(site.pergolas[0].modules[0].derived.site_days);
+    expect(dayRateLine?.line_cost_ex_gst).toBe(roundMoney((dayRateLine?.qty ?? 0) * 50));
+  });
+
+  it('commercial site auto-adds scaffolding with area-based day rates and extra pergola labour', () => {
+    const site = calculateSiteCostV1({
+      job_type: 'commercial',
+      pergolas: [
+        { id: 'p1', modules: [{ ...baseModule, length_m: 4, projection_m: 4, roof_pitch_deg: 10 }] },
+        { id: 'p2', modules: [{ ...baseModule, length_m: 5, projection_m: 4, roof_pitch_deg: 10 }] },
+      ],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    const startupAction = site.shared.install.actions.find((a) => a.id === 'job.mob.scaffolding_startup');
+    const extraPergolaAction = site.shared.install.actions.find((a) => a.id === 'job.mob.scaffolding_additional_per_pergola');
+    const p1Line = site.pergolas[0].materials.lines.find((line) => line.id === 'job.hire.scaffolding_day_rate');
+    const p2Line = site.pergolas[1].materials.lines.find((line) => line.id === 'job.hire.scaffolding_day_rate');
+
+    expect(startupAction?.minutes).toBe(150);
+    expect(extraPergolaAction?.qty).toBe(1);
+    expect(extraPergolaAction?.minutes).toBe(60);
+    expect(p1Line?.unit_cost_ex_gst).toBe(100);
+    expect(p2Line?.unit_cost_ex_gst).toBe(200);
+    expect(p1Line?.qty).toBe(site.pergolas[0].modules[0].derived.site_days);
+    expect(p2Line?.qty).toBe(site.pergolas[1].modules[0].derived.site_days);
+  });
+
+  it('commercial job rollup applies one-per-job scaffolding startup and day rate', () => {
+    const job = calculateJobCostV1({
+      job_type: 'commercial',
+      modules: [{ ...baseModule, length_m: 4, projection_m: 4, roof_pitch_deg: 10 }],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    const startupAction = job.install.actions.find((a) => a.id === 'job.mob.scaffolding_startup');
+    const extraPergolaAction = job.install.actions.find((a) => a.id === 'job.mob.scaffolding_additional_per_pergola');
+    const dayRateLine = job.materials.lines.find((line) => line.id === 'job.hire.scaffolding_day_rate');
+
+    expect(startupAction?.minutes).toBe(150);
+    expect(extraPergolaAction).toBeUndefined();
+    expect(dayRateLine?.unit_cost_ex_gst).toBe(100);
+    expect(dayRateLine?.qty).toBe(job.modules[0].derived.site_days);
   });
 });
