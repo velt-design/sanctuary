@@ -323,6 +323,18 @@ const SECTION_CONTAINER_CLASS = `w-full scroll-mt-20 ${SECTION_Y}`;
 const SURFACE_CONTAINER_CLASS = SHELL;
 const RAIL_SCROLL_OUTER_CLASS = 'overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 const RAIL_TRACK_CLASS = 'mx-auto flex w-max snap-x snap-mandatory gap-4 sm:gap-5 xl:gap-6';
+const ROOF_STRIP_CLASS = 'sticky top-0 z-50 w-full border-b border-border/15 bg-background/80 backdrop-blur';
+const ROOF_STRIP_INNER_CLASS = 'flex h-12 items-center gap-3';
+const ROOF_STRIP_RIGHT_CLASS = 'ml-auto flex items-center gap-3';
+const ROOF_STRIP_PRIMARY_CTA_CLASS =
+  'inline-flex h-8 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-white px-4 text-sm font-medium leading-none text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
+const TAKE_LOOK_GRID_LG_CLASS = 'lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-0';
+const TAKE_LOOK_MEDIA_ASPECT_CLASS =
+  'relative w-full shrink-0 overflow-hidden aspect-[4/3] sm:aspect-[16/10] xl:aspect-[16/9]';
+const ROOF_MEDIA_ASPECT_CLASS =
+  'relative w-full shrink-0 overflow-hidden aspect-[4/3] sm:aspect-[16/10] lg:aspect-[16/9] xl:aspect-[21/9]';
+const OVERLAY_ROW_CLASS =
+  'absolute left-4 right-4 top-4 z-10 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
 const PRIMARY_CTA_LARGE_CLASS =
   'inline-flex items-center justify-center rounded-full border border-white bg-white px-5 py-2.5 text-sm font-medium tracking-normal text-black transition hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30';
@@ -416,79 +428,77 @@ function LocalProductNav({
   }, [overviewOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-black/55 backdrop-blur-xl">
+    <header className={ROOF_STRIP_CLASS}>
       <div className={SURFACE_CONTAINER_CLASS}>
-        <div className="flex h-[52px] items-center gap-3">
+        <div className={ROOF_STRIP_INNER_CLASS}>
           <div className="flex min-w-0 items-center gap-3">
             <p className="hidden text-[11px] font-medium tracking-wide text-white/56 sm:block">Sanctuary Pergolas</p>
             <p className="truncate text-[13px] font-medium text-white">Pergola Design</p>
+            <div ref={overviewRef} className="relative">
+              <button
+                type="button"
+                aria-expanded={overviewOpen}
+                aria-haspopup="menu"
+                onClick={() => setOverviewOpen((previous) => !previous)}
+                className="inline-flex items-center gap-1 text-sm font-medium text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              >
+                Overview
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 20 20"
+                  className={`h-4 w-4 transition-transform ${overviewOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                >
+                  <path
+                    d="M6 8l4 4 4-4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              {overviewOpen ? (
+                <div
+                  role="menu"
+                  aria-label="Overview sections"
+                  className="absolute left-0 top-[calc(100%+10px)] z-[70] w-[220px] rounded-2xl border border-white/10 bg-black/90 p-1.5 shadow-2xl"
+                >
+                  {NAV_ANCHORS.map((anchor) => {
+                    const active = activeSection === anchor.id;
+                    return (
+                      <button
+                        key={anchor.id}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          onAnchorClick(anchor.id);
+                          setOverviewOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                          active
+                            ? 'text-white underline decoration-white/60 underline-offset-4'
+                            : 'text-white/70 hover:text-white'
+                        }`}
+                      >
+                        <span>{anchor.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <div ref={overviewRef} className="relative ml-auto flex items-center gap-4">
-            <button
-              type="button"
-              aria-expanded={overviewOpen}
-              aria-haspopup="menu"
-              onClick={() => setOverviewOpen((previous) => !previous)}
-              className="inline-flex items-center gap-1 text-sm font-medium text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            >
-              Overview
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 20 20"
-                className={`h-4 w-4 transition-transform ${overviewOpen ? 'rotate-180' : ''}`}
-                fill="none"
-              >
-                <path
-                  d="M6 8l4 4 4-4"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-
-            {overviewOpen ? (
-              <div
-                role="menu"
-                aria-label="Overview sections"
-                className="absolute right-0 top-[calc(100%+10px)] z-[70] w-[220px] rounded-2xl border border-white/10 bg-black/90 p-1.5 shadow-2xl"
-              >
-                {NAV_ANCHORS.map((anchor) => {
-                  const active = activeSection === anchor.id;
-                  return (
-                    <button
-                      key={anchor.id}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        onAnchorClick(anchor.id);
-                        setOverviewOpen(false);
-                      }}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                        active
-                          ? 'text-white underline decoration-white/60 underline-offset-4'
-                          : 'text-white/70 hover:text-white'
-                      }`}
-                    >
-                      <span>{anchor.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-
+          <div className={ROOF_STRIP_RIGHT_CLASS}>
             <Link
               href="/start"
-              className="hidden text-sm font-medium text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:inline-flex"
+              className="hidden shrink-0 text-sm font-medium text-white/70 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:inline-flex"
             >
               Start the guide
             </Link>
-            <Link
-              href="/contact"
-              className="rounded-full bg-white px-3 py-1 text-sm font-medium text-black hover:bg-white/90 focus:outline-none focus:ring-2 focus:ring-white/30"
-            >
+            <Link href="/contact" className={ROOF_STRIP_PRIMARY_CTA_CLASS}>
               Book a Design Consultation
             </Link>
           </div>
@@ -1092,11 +1102,6 @@ export default function StartExploreClient() {
     return byMaterial ?? ROOF_STRIP_STOPS[0];
   }, [selections.roofMaterial, selections.roofSecondary]);
 
-  const activeRoofStopIndex = Math.max(
-    0,
-    ROOF_STRIP_STOPS.findIndex((stop) => stop.id === activeRoofStop.id)
-  );
-
   const handleRoofStripChange = useCallback((stop: RoofStripStop) => {
     setSelections((previous) => ({
       ...previous,
@@ -1487,7 +1492,7 @@ export default function StartExploreClient() {
                         </Link>
                       </div>
                     </div>
-                  </div>
+                </div>
                 </div>
               </div>
             </div>
@@ -1503,196 +1508,202 @@ export default function StartExploreClient() {
             </div>
 
             <div className={SECTION_GAP}>
-              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8 lg:h-[min(72vh,720px)]`}>
-                <div className="grid h-full gap-6 xl:gap-8 lg:grid-cols-[280px_minmax(0,1fr)]">
-              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:overflow-y-auto lg:pb-0 lg:pr-1">
-                {PILL_ORDER.map((pill) => {
-                  const active = pill.id === activePill;
-                  return (
-                    <button
-                      key={pill.id}
-                      type="button"
-                      onClick={() => setActivePill(pill.id)}
-                      className={`shrink-0 rounded-full border px-4 py-2.5 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:w-full ${
-                        active
-                          ? 'border-white/25 bg-white/[0.1] text-white'
-                          : 'border-white/20 bg-white/[0.03] text-white/78 hover:border-white/35 hover:text-white'
-                      }`}
-                    >
-                      <span className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium">{pill.label}</span>
-                        {pillSavedState[pill.id] ? <SelectionCheck className="h-4 w-4 border-white/25 bg-white/10" /> : null}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex h-full min-h-0 flex-col gap-4 lg:pl-2">
-                <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[22px]">
-                  {designVisualCrossfade.previous ? (
-                    <Image
-                      src={designVisualCrossfade.previous.src}
-                      alt=""
-                      aria-hidden="true"
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 70vw"
-                      className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
-                        designVisualCrossfade.entered ? 'opacity-0' : 'opacity-100'
-                      }`}
-                    />
-                  ) : null}
-                  <Image
-                    src={designVisualCrossfade.current.src}
-                    alt={designVisualCrossfade.current.alt}
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 70vw"
-                    className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
-                      designVisualCrossfade.previous
-                        ? designVisualCrossfade.entered
-                          ? 'opacity-100'
-                          : 'opacity-0'
-                        : 'opacity-100'
-                    }`}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
-                    <p className="text-xl font-semibold">{activeDesignVisual.title}</p>
-                    <p className="mt-1 max-w-[760px] text-sm text-white/72">{activeDesignVisual.caption}</p>
-                  </div>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {activePill === 'path' ? (
-                    <OptionRailSelect
-                      groupId="explore-path-group"
-                      groupLabel="Choose your path"
-                      options={pathOptions}
-                      value={selections.path}
-                      onChange={handlePathChange}
-                      cardWidthClassName={SHELF_CARD}
-                      imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
-                    />
-                  ) : null}
-
-                  {activePill === 'roofStyle' ? (
-                    <OptionRailSelect
-                      groupId="design-roof-style-group"
-                      groupLabel="Choose roof style"
-                      options={roofStyleOptions}
-                      value={selections.roofStyle}
-                      onChange={handleRoofStyleChange}
-                      cardWidthClassName={SHELF_CARD}
-                      imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
-                    />
-                  ) : null}
-
-                  {activePill === 'roofMaterial' ? (
-                    <div className="space-y-4">
-                      <OptionRailSelect
-                        groupId="design-roof-material-group"
-                        groupLabel="Choose roof material"
-                        options={roofMaterialOptions}
-                        value={selections.roofMaterial}
-                        onChange={handleRoofMaterialChange}
-                        cardWidthClassName={SHELF_CARD}
-                        imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
-                      />
-                      {roofSecondaryOptions.length ? (
-                        <div className="space-y-2">
-                          <p className="text-xs font-medium text-white/62">Material detail</p>
-                          <div
-                            role="radiogroup"
-                            aria-label="Choose roof material secondary option"
-                            className="flex flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              <div className={`${MODULE_SURFACE} overflow-hidden`}>
+                <div className={`grid min-h-0 grid-cols-1 ${TAKE_LOOK_GRID_LG_CLASS}`}>
+                  <div className="p-4 sm:p-6 lg:border-r lg:border-border/10 lg:p-8">
+                    <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:flex-col lg:overflow-y-auto lg:pb-0 lg:pr-1">
+                      {PILL_ORDER.map((pill) => {
+                        const active = pill.id === activePill;
+                        return (
+                          <button
+                            key={pill.id}
+                            type="button"
+                            onClick={() => setActivePill(pill.id)}
+                            className={`shrink-0 rounded-full border px-4 py-2.5 text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white lg:w-full ${
+                              active
+                                ? 'border-white/25 bg-white/[0.1] text-white'
+                                : 'border-white/20 bg-white/[0.03] text-white/78 hover:border-white/35 hover:text-white'
+                            }`}
                           >
-                            {roofSecondaryOptions.map((option) => {
-                              const selected = option.id === selections.roofSecondary;
-                              return (
-                                <button
-                                  key={option.id}
-                                  type="button"
-                                  role="radio"
-                                  aria-checked={selected}
-                                  onClick={() => handleRoofSecondaryChange(option.id)}
-                                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                                    selected
-                                      ? 'border-white/25 bg-white/[0.1] text-white'
-                                      : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
-                                  }`}
-                                >
-                                  {option.label}
-                                </button>
-                              );
-                            })}
+                            <span className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-medium">{pill.label}</span>
+                              {pillSavedState[pill.id] ? <SelectionCheck className="h-4 w-4 border-white/25 bg-white/10" /> : null}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 border-t border-white/10 lg:border-t-0">
+                    <div className="flex min-h-0 flex-col">
+                      <div className={TAKE_LOOK_MEDIA_ASPECT_CLASS}>
+                        {designVisualCrossfade.previous ? (
+                          <Image
+                            src={designVisualCrossfade.previous.src}
+                            alt=""
+                            aria-hidden="true"
+                            fill
+                            sizes="(max-width: 1024px) 100vw, 70vw"
+                            className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
+                              designVisualCrossfade.entered ? 'opacity-0' : 'opacity-100'
+                            }`}
+                          />
+                        ) : null}
+                        <Image
+                          src={designVisualCrossfade.current.src}
+                          alt={designVisualCrossfade.current.alt}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 70vw"
+                          className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
+                            designVisualCrossfade.previous
+                              ? designVisualCrossfade.entered
+                                ? 'opacity-100'
+                                : 'opacity-0'
+                              : 'opacity-100'
+                          }`}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                        <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
+                          <p className="text-xl font-semibold">{activeDesignVisual.title}</p>
+                          <p className="mt-1 max-w-[760px] text-sm text-white/72">{activeDesignVisual.caption}</p>
+                        </div>
+                      </div>
+
+                      <div className="min-h-0 flex-1 p-4 sm:p-6 lg:p-8">
+                        <div className="min-h-0 h-full overflow-y-auto pr-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                          {activePill === 'path' ? (
+                            <OptionRailSelect
+                              groupId="explore-path-group"
+                              groupLabel="Choose your path"
+                              options={pathOptions}
+                              value={selections.path}
+                              onChange={handlePathChange}
+                              cardWidthClassName={SHELF_CARD}
+                              imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                            />
+                          ) : null}
+
+                          {activePill === 'roofStyle' ? (
+                            <OptionRailSelect
+                              groupId="design-roof-style-group"
+                              groupLabel="Choose roof style"
+                              options={roofStyleOptions}
+                              value={selections.roofStyle}
+                              onChange={handleRoofStyleChange}
+                              cardWidthClassName={SHELF_CARD}
+                              imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                            />
+                          ) : null}
+
+                          {activePill === 'roofMaterial' ? (
+                            <div className="space-y-4">
+                              <OptionRailSelect
+                                groupId="design-roof-material-group"
+                                groupLabel="Choose roof material"
+                                options={roofMaterialOptions}
+                                value={selections.roofMaterial}
+                                onChange={handleRoofMaterialChange}
+                                cardWidthClassName={SHELF_CARD}
+                                imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                              />
+                              {roofSecondaryOptions.length ? (
+                                <div className="space-y-2">
+                                  <p className="text-xs font-medium text-white/62">Material detail</p>
+                                  <div
+                                    role="radiogroup"
+                                    aria-label="Choose roof material secondary option"
+                                    className="flex flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                                  >
+                                    {roofSecondaryOptions.map((option) => {
+                                      const selected = option.id === selections.roofSecondary;
+                                      return (
+                                        <button
+                                          key={option.id}
+                                          type="button"
+                                          role="radio"
+                                          aria-checked={selected}
+                                          onClick={() => handleRoofSecondaryChange(option.id)}
+                                          className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                                            selected
+                                              ? 'border-white/25 bg-white/[0.1] text-white'
+                                              : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
+                                          }`}
+                                        >
+                                          {option.label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+
+                          {activePill === 'extras' ? (
+                            <div className="space-y-4">
+                              <OptionRailMulti
+                                groupId="design-extras-group"
+                                groupLabel="Choose extras"
+                                options={extrasOptions}
+                                values={selectedExtraIds}
+                                onToggle={handleToggleExtra}
+                                cardWidthClassName={SHELF_CARD}
+                                imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                              />
+                              <button
+                                type="button"
+                                aria-pressed={Boolean(selections.extrasNone)}
+                                onClick={() => handleSetNoExtras(!selections.extrasNone)}
+                                className={`rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                                  selections.extrasNone
+                                    ? 'border-white/25 bg-white/[0.1] text-white'
+                                    : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
+                                }`}
+                              >
+                                {startFlowContent.extras.noneLabel}
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {activePill === 'consent' ? (
+                            <div className="space-y-4 rounded-2xl bg-white/[0.02] p-4">
+                              <p className={`text-sm ${BODY_COPY_CLASS}`}>{startFlowContent.consent.disclaimer}</p>
+                              <ul className="space-y-2">
+                                {startFlowContent.consent.links.map((link) => (
+                                  <li key={link.href}>
+                                    <a
+                                      href={link.href}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-sm text-white/80 underline underline-offset-4 decoration-white/35 transition hover:text-white hover:decoration-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                                    >
+                                      {link.label}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
+
+                          {activePill === 'process' ? (
+                            <div className="rounded-2xl bg-white/[0.02] p-4">
+                              <ol className="space-y-2.5">
+                                {startFlowContent.process.timeline.map((step, index) => (
+                                  <li key={step} className="flex items-center gap-3 text-sm text-white/78">
+                                    <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[11px] text-white/80">
+                                      {index + 1}
+                                    </span>
+                                    <span>{step}</span>
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          ) : null}
                           </div>
                         </div>
-                      ) : null}
+                      </div>
                     </div>
-                  ) : null}
-
-                  {activePill === 'extras' ? (
-                    <div className="space-y-4">
-                      <OptionRailMulti
-                        groupId="design-extras-group"
-                        groupLabel="Choose extras"
-                        options={extrasOptions}
-                        values={selectedExtraIds}
-                        onToggle={handleToggleExtra}
-                        cardWidthClassName={SHELF_CARD}
-                        imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
-                      />
-                      <button
-                        type="button"
-                        aria-pressed={Boolean(selections.extrasNone)}
-                        onClick={() => handleSetNoExtras(!selections.extrasNone)}
-                        className={`rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                          selections.extrasNone
-                            ? 'border-white/25 bg-white/[0.1] text-white'
-                            : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
-                        }`}
-                      >
-                        {startFlowContent.extras.noneLabel}
-                      </button>
-                    </div>
-                  ) : null}
-
-                  {activePill === 'consent' ? (
-                    <div className="space-y-4 rounded-2xl bg-white/[0.02] p-4">
-                      <p className={`text-sm ${BODY_COPY_CLASS}`}>{startFlowContent.consent.disclaimer}</p>
-                      <ul className="space-y-2">
-                        {startFlowContent.consent.links.map((link) => (
-                          <li key={link.href}>
-                            <a
-                              href={link.href}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-sm text-white/80 underline underline-offset-4 decoration-white/35 transition hover:text-white hover:decoration-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-                            >
-                              {link.label}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-
-                  {activePill === 'process' ? (
-                    <div className="rounded-2xl bg-white/[0.02] p-4">
-                      <ol className="space-y-2.5">
-                        {startFlowContent.process.timeline.map((step, index) => (
-                          <li key={step} className="flex items-center gap-3 text-sm text-white/78">
-                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/20 text-[11px] text-white/80">
-                              {index + 1}
-                            </span>
-                            <span>{step}</span>
-                          </li>
-                        ))}
-                      </ol>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
                 </div>
               </div>
             </div>
@@ -1708,136 +1719,125 @@ export default function StartExploreClient() {
             </div>
 
             <div className={SECTION_GAP}>
-              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8 lg:h-[min(75vh,760px)]`}>
-                <div className="flex h-full min-h-0 flex-col gap-4">
-              <div className={RAIL_SCROLL_OUTER_CLASS}>
-                <div className="mx-auto min-w-[680px] w-max">
-                  <div className="relative h-[2px] rounded-full bg-white/20">
-                    <div
-                      className="absolute top-1/2 h-[2px] -translate-y-1/2 rounded-full bg-white"
-                      style={{
-                        width: `${(activeRoofStopIndex / (ROOF_STRIP_STOPS.length - 1)) * 100}%`,
-                      }}
+              <div className={`${MODULE_SURFACE} overflow-hidden`}>
+                <div className="flex min-h-0 flex-col">
+                  <div className={ROOF_MEDIA_ASPECT_CLASS}>
+                    <div className={OVERLAY_ROW_CLASS}>
+                      {ROOF_STRIP_STOPS.map((stop) => {
+                        const selected = stop.id === activeRoofStop.id;
+                        return (
+                          <button
+                            key={stop.id}
+                            type="button"
+                            onClick={() => handleRoofStripChange(stop)}
+                            className={`shrink-0 rounded-full border px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                              selected
+                                ? 'border-white/25 bg-white/[0.12] text-white'
+                                : 'border-white/20 bg-black/45 text-white/85 hover:border-white/35 hover:text-white'
+                            }`}
+                          >
+                            {stop.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {roofVisualCrossfade.previous ? (
+                      <Image
+                        src={roofVisualCrossfade.previous.src}
+                        alt=""
+                        aria-hidden="true"
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 80vw"
+                        className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
+                          roofVisualCrossfade.entered ? 'opacity-0' : 'opacity-100'
+                        }`}
+                      />
+                    ) : null}
+                    <Image
+                      src={roofVisualCrossfade.current.src}
+                      alt={roofVisualCrossfade.current.alt}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 80vw"
+                      className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
+                        roofVisualCrossfade.previous
+                          ? roofVisualCrossfade.entered
+                            ? 'opacity-100'
+                            : 'opacity-0'
+                          : 'opacity-100'
+                      }`}
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
+                      <p className={H3}>{activeRoofStop.label}</p>
+                      <p className="mt-1 text-sm text-white/72">{activeRoofStop.caption}</p>
+                    </div>
                   </div>
-                  <div className="mt-3 flex flex-nowrap gap-2">
-                    {ROOF_STRIP_STOPS.map((stop) => {
-                      const selected = stop.id === activeRoofStop.id;
-                      return (
-                        <button
-                          key={stop.id}
-                          type="button"
-                          onClick={() => handleRoofStripChange(stop)}
-                          className={`shrink-0 rounded-full border px-3 py-2 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                            selected
-                              ? 'border-white/25 bg-white/[0.1] text-white'
-                              : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
-                          }`}
-                        >
-                          {stop.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
 
-              <div className="relative aspect-[16/9] w-full shrink-0 overflow-hidden rounded-[24px]">
-                {roofVisualCrossfade.previous ? (
-                  <Image
-                    src={roofVisualCrossfade.previous.src}
-                    alt=""
-                    aria-hidden="true"
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 80vw"
-                    className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
-                      roofVisualCrossfade.entered ? 'opacity-0' : 'opacity-100'
-                    }`}
-                  />
-                ) : null}
-                <Image
-                  src={roofVisualCrossfade.current.src}
-                  alt={roofVisualCrossfade.current.alt}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 80vw"
-                  className={`object-cover transition-opacity duration-[240ms] ease-out motion-reduce:transition-none ${
-                    roofVisualCrossfade.previous
-                      ? roofVisualCrossfade.entered
-                        ? 'opacity-100'
-                        : 'opacity-0'
-                      : 'opacity-100'
-                  }`}
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
-                  <p className={H3}>{activeRoofStop.label}</p>
-                  <p className="mt-1 text-sm text-white/72">{activeRoofStop.caption}</p>
-                </div>
-              </div>
-
-              <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid-cols-2">
-                <div className="space-y-3">
-                  <p className="text-xs font-medium text-white/62">Roof style</p>
-                  <OptionRailSelect
-                    groupId="explore-roof-style-group"
-                    groupLabel="Choose roof style"
-                    options={roofStyleOptions}
-                    value={selections.roofStyle}
-                    onChange={handleRoofStyleChange}
-                    cardWidthClassName={SHELF_CARD}
-                    imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
-                  />
-                </div>
-                <div className="space-y-3">
-                  <p className="text-xs font-medium text-white/62">Roof material</p>
-                  <OptionRailSelect
-                    groupId="explore-roof-material-group"
-                    groupLabel="Choose roof material"
-                    options={roofMaterialOptions}
-                    value={selections.roofMaterial}
-                    onChange={handleRoofMaterialChange}
-                    cardWidthClassName={SHELF_CARD}
-                    imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
-                  />
-                  {roofSecondaryOptions.length ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-white/62">Material detail</p>
-                      <div
-                        role="radiogroup"
-                        aria-label="Choose roof material secondary option"
-                        className="flex flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                      >
-                        {roofSecondaryOptions.map((option) => {
-                          const selected = option.id === selections.roofSecondary;
-                          return (
-                            <button
-                              key={option.id}
-                              type="button"
-                              role="radio"
-                              aria-checked={selected}
-                              onClick={() => handleRoofSecondaryChange(option.id)}
-                              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                                selected
-                                  ? 'border-white/25 bg-white/[0.1] text-white'
-                                  : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
-                              }`}
+                  <div className="min-h-0 flex-1 p-4 sm:p-6 lg:p-8">
+                    <div className="grid min-h-0 gap-4 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden xl:grid-cols-2">
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-white/62">Roof style</p>
+                        <OptionRailSelect
+                          groupId="explore-roof-style-group"
+                          groupLabel="Choose roof style"
+                          options={roofStyleOptions}
+                          value={selections.roofStyle}
+                          onChange={handleRoofStyleChange}
+                          cardWidthClassName={SHELF_CARD}
+                          imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-white/62">Roof material</p>
+                        <OptionRailSelect
+                          groupId="explore-roof-material-group"
+                          groupLabel="Choose roof material"
+                          options={roofMaterialOptions}
+                          value={selections.roofMaterial}
+                          onChange={handleRoofMaterialChange}
+                          cardWidthClassName={SHELF_CARD}
+                          imageSizes="(max-width: 768px) 80vw, (max-width: 1536px) 360px, 400px"
+                        />
+                        {roofSecondaryOptions.length ? (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium text-white/62">Material detail</p>
+                            <div
+                              role="radiogroup"
+                              aria-label="Choose roof material secondary option"
+                              className="flex flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                             >
-                              {option.label}
-                            </button>
-                          );
-                        })}
+                              {roofSecondaryOptions.map((option) => {
+                                const selected = option.id === selections.roofSecondary;
+                                return (
+                                  <button
+                                    key={option.id}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={selected}
+                                    onClick={() => handleRoofSecondaryChange(option.id)}
+                                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                                      selected
+                                        ? 'border-white/25 bg-white/[0.1] text-white'
+                                        : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
+                                    }`}
+                                  >
+                                    {option.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
-                  ) : null}
-                </div>
-              </div>
 
-              <div className="border-t border-white/10 pt-4">
-                <button type="button" onClick={() => scrollToSection('performance')} className={QUIET_LINK_CLASS}>
-                  Learn more about performance
-                </button>
-              </div>
-            </div>
+                    <div className="mt-4 border-t border-white/10 pt-4">
+                      <button type="button" onClick={() => scrollToSection('performance')} className={QUIET_LINK_CLASS}>
+                        Learn more about performance
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1852,63 +1852,74 @@ export default function StartExploreClient() {
             </div>
 
             <div className={SECTION_GAP}>
-              <div className={`${MODULE_SURFACE} p-4 sm:p-6 xl:p-8`}>
-                <div role="tablist" aria-label="Performance tabs" onKeyDown={handlePerformanceTabKeyDown} className="flex flex-wrap gap-2">
-              {PERFORMANCE_TABS.map((tab, index) => {
-                const selected = tab.id === activePerformanceTab;
-                return (
-                  <button
-                    key={tab.id}
-                    id={`perf-tab-${tab.id}`}
-                    ref={(node) => {
-                      performanceTabRefs.current[index] = node;
-                    }}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected}
-                    aria-controls={`perf-panel-${tab.id}`}
-                    tabIndex={selected ? 0 : -1}
-                    onClick={() => setActivePerformanceTab(tab.id)}
-                    className={`rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
-                      selected
-                        ? 'border-white/25 bg-white/[0.1] text-white'
-                        : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
-                    }`}
+              <div className={`${MODULE_SURFACE} overflow-hidden`}>
+                <div className="px-4 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+                  <div
+                    role="tablist"
+                    aria-label="Performance tabs"
+                    onKeyDown={handlePerformanceTabKeyDown}
+                    className="flex flex-wrap gap-2"
                   >
-                    {tab.label}
-                  </button>
-                );
-              })}
+                    {PERFORMANCE_TABS.map((tab, index) => {
+                      const selected = tab.id === activePerformanceTab;
+                      return (
+                        <button
+                          key={tab.id}
+                          id={`perf-tab-${tab.id}`}
+                          ref={(node) => {
+                            performanceTabRefs.current[index] = node;
+                          }}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          aria-controls={`perf-panel-${tab.id}`}
+                          tabIndex={selected ? 0 : -1}
+                          onClick={() => setActivePerformanceTab(tab.id)}
+                          className={`rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${
+                            selected
+                              ? 'border-white/25 bg-white/[0.1] text-white'
+                              : 'border-white/20 bg-white/[0.03] text-white/75 hover:border-white/35 hover:text-white'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div
                   id={`perf-panel-${activePerformance.id}`}
                   role="tabpanel"
                   aria-labelledby={`perf-tab-${activePerformance.id}`}
-                  className="mt-5 grid gap-5 lg:h-[460px] lg:grid-cols-[1.2fr_1fr]"
+                  className="grid grid-cols-12 items-stretch gap-4 px-4 pb-4 pt-5 sm:gap-5 sm:px-6 sm:pb-6 lg:gap-6 lg:px-8 lg:pb-8"
                 >
-                  <div className="relative h-[clamp(220px,32vh,360px)] overflow-hidden rounded-[22px] lg:h-full">
-                    <Image
-                      src={activePerformance.image.src}
-                      alt={activePerformance.image.alt}
-                      fill
-                      sizes="(max-width: 1024px) 100vw, 60vw"
-                      className="object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="col-span-12 lg:col-span-7">
+                    <div className="relative w-full aspect-[16/10] overflow-hidden rounded-2xl">
+                      <Image
+                        src={activePerformance.image.src}
+                        alt={activePerformance.image.alt}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 60vw"
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                    </div>
                   </div>
-                  <div className="space-y-4 rounded-[22px] bg-white/[0.02] p-4 lg:h-full">
-                    <h3 className={H3}>{activePerformance.title}</h3>
-                    <ul className="space-y-2.5 text-sm leading-6 text-white/70">
-                      {activePerformance.bullets.map((bullet) => (
-                        <li key={bullet} className="flex gap-2">
-                          <span className="pt-1 text-white/65" aria-hidden="true">
-                            *
-                          </span>
-                          <span>{bullet}</span>
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="col-span-12 flex h-full lg:col-span-5 lg:border-l lg:border-white/10 lg:pl-6">
+                    <div className="my-auto max-w-[48ch] space-y-4">
+                      <h3 className={H3}>{activePerformance.title}</h3>
+                      <ul className="space-y-2.5 text-sm leading-6 text-white/70">
+                        {activePerformance.bullets.map((bullet) => (
+                          <li key={bullet} className="flex gap-2">
+                            <span className="pt-1 text-white/65" aria-hidden="true">
+                              *
+                            </span>
+                            <span>{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -18,8 +18,17 @@ export type InfillWarningFieldKey =
   | 'shape-low'
   | 'shape-high'
   | 'shape-bottom'
+  | 'support-top'
+  | 'support-bottom'
+  | 'support-left'
+  | 'support-right'
   | 'support-internal-mode'
   | 'support-internal-pos';
+
+export type InfillWarningFix =
+  | { type: 'setPreferredAcrylic'; value: 'sheet_panels' | 'strip_620' }
+  | { type: 'setCentreLimit'; value: number }
+  | { type: 'toggleSupport'; key: 'hasTop' | 'hasBottom' | 'hasLeft' | 'hasRight'; value: boolean };
 
 export type InfillWarningItem = {
   id: string;
@@ -29,6 +38,19 @@ export type InfillWarningItem = {
     section: InfillWarningSection;
     fieldKey: InfillWarningFieldKey;
   };
+  fix?: InfillWarningFix;
+};
+
+export type InfillJoinerLine = {
+  positionM: number;
+  supported: boolean;
+};
+
+export type CutListRow = {
+  part: string;
+  qty: number;
+  lengthM?: number | { min: number; max: number };
+  notes?: string;
 };
 
 export type InfillUiEstimate = {
@@ -52,6 +74,9 @@ export type InfillUiEstimate = {
   panelCountTotal: number;
   internalJoinerLinesEach: number;
   internalJoinerLinesTotal: number;
+  bayBoundariesM: number[];
+  bayWidthsM: number[];
+  joinerLines: InfillJoinerLine[];
   joinerLinesEach: number;
   joinerLinesTotal: number;
   unsupportedInternalEach: number;
@@ -69,6 +94,7 @@ export type InfillUiEstimate = {
   stripCutMaxM: number | null;
   sheetAreaEachM2: number;
   sheetAreaTotalM2: number;
+  cutListRows: CutListRow[];
   invalidHeightInput: boolean;
   widthInputInvalid: boolean;
   invalidCustomPositions: boolean;
@@ -154,6 +180,123 @@ function pickAcrylicSourceForRun(
 
 function maxCentreForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
   return source === 'strip_620' ? INFILL_STRIP_MAX_SHORT_SIDE_M : INFILL_SHEET_MAX_SHORT_SIDE_M;
+}
+
+function roundForCutList(n: number, digits = 3): number {
+  if (!Number.isFinite(n)) return 0;
+  const factor = 10 ** digits;
+  return Math.round(n * factor) / factor;
+}
+
+function buildBayBoundaries(acrossSideM: number, panelCountEach: number): number[] {
+  if (!Number.isFinite(acrossSideM) || acrossSideM <= 0 || panelCountEach <= 0) return [0];
+  const out: number[] = [];
+  for (let i = 0; i <= panelCountEach; i += 1) {
+    out.push((i * acrossSideM) / panelCountEach);
+  }
+  return out;
+}
+
+function boundaryWarningTarget(orientation: InfillResolvedOrientation, support: InfillLineItem['support']): InfillWarningFieldKey {
+  if (orientation === 'vertical') {
+    if (!support.hasLeft) return 'support-left';
+    if (!support.hasRight) return 'support-right';
+    return 'support-left';
+  }
+  if (!support.hasBottom) return 'support-bottom';
+  if (!support.hasTop) return 'support-top';
+  return 'support-bottom';
+}
+
+function boundaryWarningFix(
+  orientation: InfillResolvedOrientation,
+  support: InfillLineItem['support'],
+): InfillWarningFix | undefined {
+  if (orientation === 'vertical') {
+    if (!support.hasLeft) return { type: 'toggleSupport', key: 'hasLeft', value: true };
+    if (!support.hasRight) return { type: 'toggleSupport', key: 'hasRight', value: true };
+    return undefined;
+  }
+  if (!support.hasBottom) return { type: 'toggleSupport', key: 'hasBottom', value: true };
+  if (!support.hasTop) return { type: 'toggleSupport', key: 'hasTop', value: true };
+  return undefined;
+}
+
+function buildCutListRows(estimate: {
+  acrylicSourceUsed: InfillLineItem['acrylicSource'];
+  panelCountEach: number;
+  panelCountTotal: number;
+  stripCutMinM: number | null;
+  stripCutMaxM: number | null;
+  sheetAreaEachM2: number;
+  sheetAreaTotalM2: number;
+  topJoiner: boolean;
+  bottomJoiner: boolean;
+  qty: number;
+  acrossSideM: number;
+  internalJoinerLinesTotal: number;
+  runSideM: number;
+  estimatedMullionsTotal: number;
+}): CutListRow[] {
+  const rows: CutListRow[] = [];
+
+  if (estimate.acrylicSourceUsed === 'sheet_panels') {
+    rows.push({
+      part: 'Acrylic sheet area (estimate)',
+      qty: Math.max(0, estimate.panelCountTotal),
+      notes: `${formatMaybeNumber(estimate.sheetAreaEachM2, 2)}m2 each, ${formatMaybeNumber(estimate.sheetAreaTotalM2, 2)}m2 total (pooled across job).`,
+    });
+  } else {
+    const stripLength =
+      estimate.stripCutMinM !== null && estimate.stripCutMaxM !== null
+        ? estimate.stripCutMinM === estimate.stripCutMaxM
+          ? roundForCutList(estimate.stripCutMinM)
+          : { min: roundForCutList(estimate.stripCutMinM), max: roundForCutList(estimate.stripCutMaxM) }
+        : undefined;
+    rows.push({
+      part: 'Acrylic strip 620',
+      qty: Math.max(0, estimate.panelCountTotal),
+      lengthM: stripLength,
+      notes: 'Cut length estimate by panel bay.',
+    });
+  }
+
+  if (estimate.topJoiner) {
+    rows.push({
+      part: 'Top joiner',
+      qty: Math.max(0, estimate.qty),
+      lengthM: roundForCutList(estimate.acrossSideM),
+      notes: 'One per infill.',
+    });
+  }
+
+  if (estimate.bottomJoiner) {
+    rows.push({
+      part: 'Bottom joiner',
+      qty: Math.max(0, estimate.qty),
+      lengthM: roundForCutList(estimate.acrossSideM),
+      notes: 'One per infill.',
+    });
+  }
+
+  if (estimate.internalJoinerLinesTotal > 0) {
+    rows.push({
+      part: 'Internal joiner',
+      qty: Math.max(0, estimate.internalJoinerLinesTotal),
+      lengthM: roundForCutList(estimate.runSideM),
+      notes: 'Per internal bay boundary.',
+    });
+  }
+
+  if (estimate.estimatedMullionsTotal > 0) {
+    rows.push({
+      part: '50x50 mullion (estimate)',
+      qty: Math.max(0, estimate.estimatedMullionsTotal),
+      notes: 'Cut to fit on site.',
+    });
+  }
+
+  return rows;
 }
 
 export function locationLabel(value: InfillLineItem['location']): string {
@@ -252,6 +395,8 @@ function makeOrientationEstimate(
   const widthModeUsed = normalizeWidthModeForLocation(item);
   const panelCountEach = !acrylicSourceUnavailable && acrossSideM > 0 ? Math.max(1, Math.ceil(acrossSideM / maxCentreM)) : 0;
   const panelCountTotal = panelCountEach * qty;
+  const bayBoundariesM = buildBayBoundaries(acrossSideM, panelCountEach);
+  const bayWidthsM = bayBoundariesM.slice(1).map((value, idx) => Math.max(0, value - bayBoundariesM[idx]));
   const internalJoinerLinesEach = panelCountEach > 0 ? Math.max(0, panelCountEach - 1) : 0;
   const internalJoinerLinesTotal = internalJoinerLinesEach * qty;
   const joinerLinesEach = panelCountEach > 0 ? panelCountEach + 1 : 0;
@@ -291,6 +436,14 @@ function makeOrientationEstimate(
   }
 
   const unsupportedInternalTotal = unsupportedInternalEach * qty;
+  const joinerLines: InfillJoinerLine[] = [];
+  for (let i = 1; i < bayBoundariesM.length - 1; i += 1) {
+    joinerLines.push({
+      positionM: bayBoundariesM[i],
+      supported: !unsupportedInternalIndicesEach.includes(i),
+    });
+  }
+
   const missingJambsEach =
     panelOrientationUsed === 'vertical'
       ? (item.support.hasLeft === false ? 1 : 0) + (item.support.hasRight === false ? 1 : 0)
@@ -324,6 +477,24 @@ function makeOrientationEstimate(
 
   const sheetAreaEachM2 = Math.max(0, widthM * Math.max(0, avgHeightM));
   const sheetAreaTotalM2 = sheetAreaEachM2 * qty;
+  const topJoiner = panelCountEach > 0;
+  const bottomJoiner = panelCountEach > 0;
+  const cutListRows = buildCutListRows({
+    acrylicSourceUsed,
+    panelCountEach,
+    panelCountTotal,
+    stripCutMinM,
+    stripCutMaxM,
+    sheetAreaEachM2,
+    sheetAreaTotalM2,
+    topJoiner,
+    bottomJoiner,
+    qty,
+    acrossSideM,
+    internalJoinerLinesTotal,
+    runSideM,
+    estimatedMullionsTotal,
+  });
 
   return {
     widthM,
@@ -346,6 +517,9 @@ function makeOrientationEstimate(
     panelCountTotal,
     internalJoinerLinesEach,
     internalJoinerLinesTotal,
+    bayBoundariesM,
+    bayWidthsM,
+    joinerLines,
     joinerLinesEach,
     joinerLinesTotal,
     unsupportedInternalEach,
@@ -355,14 +529,15 @@ function makeOrientationEstimate(
     missingJambsTotal,
     estimatedMullionsEach,
     estimatedMullionsTotal,
-    topJoiner: panelCountEach > 0,
-    bottomJoiner: panelCountEach > 0,
+    topJoiner,
+    bottomJoiner,
     perimeterTopRailRequired: item.support.hasTop === false,
     perimeterBottomRailRequired: item.support.hasBottom === false,
     stripCutMinM,
     stripCutMaxM,
     sheetAreaEachM2,
     sheetAreaTotalM2,
+    cutListRows,
     invalidHeightInput,
     widthInputInvalid,
     invalidCustomPositions,
@@ -451,6 +626,7 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
       severity: 'warning',
       message: `Acrylic type auto-switched from ${acrylicSourceLabel(estimate.preferredAcrylicSource)} to ${acrylicSourceLabel(estimate.acrylicSourceUsed)} because long side exceeds ${formatMaybeNumber(maxRunForAcrylicSource(estimate.preferredAcrylicSource), 2)}m.`,
       target: { section: 'basic', fieldKey: 'acrylic' },
+      fix: { type: 'setPreferredAcrylic', value: estimate.acrylicSourceUsed },
     });
   }
 
@@ -463,6 +639,19 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
       severity: 'warning',
       message: 'Bottom offset is greater than or equal to panel height.',
       target: { section: 'basic', fieldKey: 'shape-bottom' },
+    });
+  }
+
+  if (estimate.missingJambsEach > 0) {
+    warnings.push({
+      id: 'missing-boundary-support',
+      severity: 'warning',
+      message:
+        estimate.missingJambsEach === 1
+          ? 'One boundary support is missing and may require an added member.'
+          : `${estimate.missingJambsEach} boundary supports are missing and may require added members.`,
+      target: { section: 'supports', fieldKey: boundaryWarningTarget(estimate.panelOrientationUsed, item.support) },
+      fix: boundaryWarningFix(estimate.panelOrientationUsed, item.support),
     });
   }
 

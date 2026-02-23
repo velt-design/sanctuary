@@ -32,6 +32,14 @@ import RoofOrientationDiagram from './RoofOrientationDiagram';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
+import InfillActionsMenu from './InfillActionsMenu';
+import InfillSectionNav, { type InfillEditorSectionId } from './InfillSectionNav';
+import DuplicateDialog from './DuplicateDialog';
+import InfillCutList from './InfillCutList';
+import ResolveWarningsPanel from './ResolveWarningsPanel';
+import { useInfillClipboard } from './useInfillClipboard';
+import { useInfillHotkeys } from './useInfillHotkeys';
+import { trackInfillEvent } from './infillTelemetry';
 import {
   priceAllBlinds,
   type BlindLineItemInput,
@@ -44,6 +52,7 @@ import {
   infillFieldId,
   type InfillDraftEntry,
   type InfillDraftFieldKey,
+  type InfillWarningFix,
   type InfillUiState,
   type InfillWarningItem,
 } from './infillCompute';
@@ -221,7 +230,7 @@ type InfillDeletedState = {
   draft?: InfillDraftEntry;
 };
 
-type InfillSectionId = 'basic' | 'supports' | 'advanced';
+type InfillSectionId = InfillEditorSectionId;
 
 function clampNumber(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
@@ -2231,14 +2240,103 @@ export default function CalculatorGridClient({
   };
 
   const addInfillPreset = (preset: InfillPresetKey) => {
-    const additions = buildInfillItemsForPreset(activeModule, preset);
+    const additions = buildInfillItemsForPreset(activeModule, preset).map((item) =>
+      makeDefaultInfillItem({
+        ...item,
+        targetPanelWidthM: formatInputNumber(maxCentreForAcrylicSource(item.acrylicSource), 2),
+        maxPanelWidthM: formatInputNumber(maxCentreForAcrylicSource(item.acrylicSource), 2),
+      }),
+    );
     addInfillItems(additions);
+    trackInfillEvent('infill_add', {
+      source: preset === 'custom' ? 'custom' : 'preset',
+      preset,
+      count: additions.length,
+    });
   };
 
   const duplicateInfill = (id: string) => {
     const current = infillsState.items.find((item) => item.id === id);
     if (!current) return;
     addInfill({ ...current, id: makeInfillId(), label: current.label ? `${current.label} (copy)` : undefined });
+    trackInfillEvent('infill_duplicate', {
+      infill_id: id,
+      location: current.location,
+      shape: current.shape.type,
+    });
+  };
+
+  const duplicateInfillBulk = (id: string, count: number, labelPattern: string) => {
+    const source = infillsState.items.find((item) => item.id === id);
+    if (!source) return;
+
+    const boundedCount = Math.max(1, Math.min(20, Math.round(count)));
+    const sourceLabel = source.label?.trim() || 'Infill';
+    const existingLabels = new Set(infillsState.items.map((item) => (item.label ?? '').trim().toLowerCase()).filter(Boolean));
+    const created: InfillLineItem[] = [];
+
+    const makeUniqueLabel = (candidate: string): string => {
+      const normalized = candidate.trim();
+      if (!normalized) return '';
+      let nextLabel = normalized;
+      let suffix = 2;
+      while (existingLabels.has(nextLabel.toLowerCase())) {
+        nextLabel = `${normalized} (${suffix})`;
+        suffix += 1;
+      }
+      existingLabels.add(nextLabel.toLowerCase());
+      return nextLabel;
+    };
+
+    for (let i = 1; i <= boundedCount; i += 1) {
+      const rawLabel = (labelPattern || '{original} (copy {i})')
+        .replaceAll('{original}', sourceLabel)
+        .replaceAll('{i}', String(i));
+      const label = makeUniqueLabel(rawLabel || `${sourceLabel} (copy ${i})`);
+      created.push(
+        makeDefaultInfillItem({
+          ...source,
+          id: makeInfillId(),
+          label,
+        }),
+      );
+    }
+
+    if (!created.length) return;
+    const nextSelectedId = created[created.length - 1]?.id ?? created[0]?.id ?? null;
+    setInfillItems((items) => [...items, ...created]);
+    if (nextSelectedId) {
+      setPendingInfillSelectionId(nextSelectedId);
+      setSelectedInfillId(nextSelectedId);
+    }
+    setInfillOpenSection('basic');
+    trackInfillEvent('infill_duplicate_bulk', {
+      infill_id: id,
+      count: created.length,
+      location: source.location,
+      shape: source.shape.type,
+    });
+  };
+
+  const moveInfill = (id: string, direction: -1 | 1) => {
+    const currentIndex = infillsState.items.findIndex((item) => item.id === id);
+    if (currentIndex < 0) return;
+    const nextIndex = currentIndex + direction;
+    if (nextIndex < 0 || nextIndex >= infillsState.items.length) return;
+
+    setInfillItems((items) => {
+      const next = items.slice();
+      const [moved] = next.splice(currentIndex, 1);
+      next.splice(nextIndex, 0, moved);
+      return next;
+    });
+    setPendingInfillSelectionId(id);
+    setSelectedInfillId(id);
+    trackInfillEvent('infill_reorder', {
+      infill_id: id,
+      from: currentIndex,
+      to: nextIndex,
+    });
   };
 
   const requestDeleteInfill = (id: string) => {
@@ -2276,6 +2374,11 @@ export default function CalculatorGridClient({
       expiresAt: Date.now() + INFILL_DELETE_UNDO_MS,
       draft: deletedDraft,
     });
+    trackInfillEvent('infill_delete', {
+      infill_id: infill.id,
+      location: infill.location,
+      shape: infill.shape.type,
+    });
     setInfillDeleteTargetId(null);
   };
 
@@ -2293,6 +2396,10 @@ export default function CalculatorGridClient({
     setPendingInfillSelectionId(deletedInfill.infill.id);
     setSelectedInfillId(deletedInfill.infill.id);
     setInfillOpenSection('basic');
+    trackInfillEvent('infill_undo_delete', {
+      infill_id: deletedInfill.infill.id,
+      location: deletedInfill.infill.location,
+    });
     setDeletedInfill(null);
   };
 
@@ -2483,13 +2590,20 @@ export default function CalculatorGridClient({
   const [infillOpenSection, setInfillOpenSection] = useState<InfillSectionId>('basic');
   const [infillDeleteTargetId, setInfillDeleteTargetId] = useState<string | null>(null);
   const [deletedInfill, setDeletedInfill] = useState<InfillDeletedState | null>(null);
+  const [infillDuplicateOpen, setInfillDuplicateOpen] = useState(false);
+  const [infillResolveOpen, setInfillResolveOpen] = useState(false);
+  const [infillSummaryOpen, setInfillSummaryOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
   const infillRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const infillListContainerRef = useRef<HTMLDivElement | null>(null);
   const lastValidInfillEstimateRef = useRef<Record<string, InfillUiEstimate>>({});
+  const infillAutoSwitchByIdRef = useRef<Record<string, InfillLineItem['acrylicSource']>>({});
+  const infillLastSelectionEventRef = useRef<string | null>(null);
+  const infillModalOpenTrackedRef = useRef(false);
   const blindFieldPrefix = useId();
 
   const issues = useMemo(() => {
@@ -3045,6 +3159,25 @@ export default function CalculatorGridClient({
     if (changed) lastValidInfillEstimateRef.current = next;
   }, [infillsState.items, infillUiById]);
 
+  useEffect(() => {
+    const next: Record<string, InfillLineItem['acrylicSource']> = {};
+    for (const item of infillsState.items) {
+      const used = infillUiById.get(item.id)?.estimate.acrylicSourceUsed ?? item.acrylicSource;
+      const previous = infillAutoSwitchByIdRef.current[item.id];
+      if (previous && previous !== used) {
+        trackInfillEvent('infill_auto_switch_triggered', {
+          infill_id: item.id,
+          location: item.location,
+          shape: item.shape.type,
+          previous_used: previous,
+          current_used: used,
+        });
+      }
+      next[item.id] = used;
+    }
+    infillAutoSwitchByIdRef.current = next;
+  }, [infillUiById, infillsState.items]);
+
   const selectedInfill = useMemo(
     () => (selectedInfillId ? infillsState.items.find((item) => item.id === selectedInfillId) ?? infillsState.items[0] ?? null : infillsState.items[0] ?? null),
     [infillsState.items, selectedInfillId],
@@ -3127,6 +3260,72 @@ export default function CalculatorGridClient({
           2,
         )}m2 area each.`
       : null;
+  const infillRunConstraintLine = `Max run: ${formatMaybeNumber(INFILL_SHEET_MAX_RUN_M, 2)}m (sheet), ${formatMaybeNumber(INFILL_STRIP_MAX_RUN_M, 2)}m (strips).`;
+  const infillSpacingConstraintLine = `Max bay spacing: ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m (sheet), ${formatMaybeNumber(
+    INFILL_STRIP_MAX_SHORT_SIDE_M,
+    2,
+  )}m (strips).`;
+  const selectedAutoSwitchInlineHint =
+    selectedInfillEstimate?.acrylicSourceAutoSwitched && selectedInfillEstimate
+      ? `Will auto-switch to ${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)} because run ${formatMaybeNumber(
+          selectedInfillEstimate.runSideM,
+          2,
+        )}m exceeds ${formatMaybeNumber(maxRunForAcrylicSource(selectedInfillEstimate.preferredAcrylicSource), 2)}m.`
+      : null;
+
+  const { hasClipboard: infillHasClipboard, copyGeometry: copyInfillGeometry, pasteGeometry: pasteInfillGeometry } = useInfillClipboard();
+
+  const applyInfillWarningFix = (fix: InfillWarningFix) => {
+    if (!selectedInfill) return;
+    if (fix.type === 'setPreferredAcrylic') {
+      setInfillItem(selectedInfill.id, { acrylicSource: fix.value });
+      return;
+    }
+    if (fix.type === 'setCentreLimit') {
+      setInfillItem(selectedInfill.id, { maxPanelWidthM: String(fix.value), targetPanelWidthM: String(fix.value) });
+      return;
+    }
+    setInfillItem(selectedInfill.id, {
+      support: {
+        ...selectedInfill.support,
+        [fix.key]: fix.value,
+      },
+    });
+  };
+
+  const handleCopyInfillGeometry = async () => {
+    if (!selectedInfill) return;
+    await copyInfillGeometry(selectedInfill);
+    trackInfillEvent('infill_copy_geometry', {
+      infill_id: selectedInfill.id,
+      location: selectedInfill.location,
+      shape: selectedInfill.shape.type,
+    });
+    toast.success('Geometry copied.');
+  };
+
+  const handlePasteInfillGeometry = () => {
+    if (!selectedInfill) return;
+    const patch = pasteInfillGeometry(selectedInfill);
+    if (!patch) {
+      toast.error('No geometry copied yet.');
+      return;
+    }
+    setInfillItem(selectedInfill.id, patch);
+    setInfillOpenSection('basic');
+    trackInfillEvent('infill_paste_geometry', {
+      infill_id: selectedInfill.id,
+      location: selectedInfill.location,
+      shape: selectedInfill.shape.type,
+    });
+    toast.success('Geometry pasted.');
+  };
+
+  useEffect(() => {
+    if (selectedComputedWarnings.length > 0) return;
+    if (!infillResolveOpen) return;
+    setInfillResolveOpen(false);
+  }, [infillResolveOpen, selectedComputedWarnings.length]);
 
   const flashInfillTarget = (el: HTMLElement | null) => {
     if (!el) return;
@@ -3139,6 +3338,12 @@ export default function CalculatorGridClient({
   const jumpToInfillWarningTarget = (warning: InfillWarningItem) => {
     if (!selectedInfill) return;
     setInfillOpenSection(warning.target.section);
+    trackInfillEvent('infill_warning_clicked', {
+      infill_id: selectedInfill.id,
+      warning_id: warning.id,
+      severity: warning.severity,
+      section: warning.target.section,
+    });
     window.requestAnimationFrame(() => {
       const fieldId = infillFieldId(selectedInfill.id, warning.target.fieldKey);
       const element = document.getElementById(fieldId) as HTMLElement | null;
@@ -3152,6 +3357,83 @@ export default function CalculatorGridClient({
       flashInfillTarget(element);
     });
   };
+
+  const focusInfillPrimaryField = (infillId: string) => {
+    setInfillOpenSection('basic');
+    window.requestAnimationFrame(() => {
+      const field = document.getElementById(`infill-${infillId}-label`) as HTMLElement | null;
+      if (!field) return;
+      try {
+        field.focus({ preventScroll: true });
+      } catch {
+        field.focus();
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (!infillsOpen) {
+      infillLastSelectionEventRef.current = null;
+      infillModalOpenTrackedRef.current = false;
+      return;
+    }
+    if (infillModalOpenTrackedRef.current) return;
+    infillModalOpenTrackedRef.current = true;
+    trackInfillEvent('infill_modal_open', {
+      infill_count: infillsState.items.length,
+      module_index: activeModuleIndex + 1,
+    });
+  }, [activeModuleIndex, infillsOpen, infillsState.items.length]);
+
+  useEffect(() => {
+    if (!infillsOpen || !selectedInfill) return;
+    if (infillLastSelectionEventRef.current === selectedInfill.id) return;
+    infillLastSelectionEventRef.current = selectedInfill.id;
+    trackInfillEvent('infill_select', {
+      infill_id: selectedInfill.id,
+      location: selectedInfill.location,
+      shape: selectedInfill.shape.type,
+      panel_count: selectedInfillEstimate?.panelCountEach ?? 0,
+      joiners: selectedInfillEstimate?.internalJoinerLinesEach ?? 0,
+    });
+  }, [infillsOpen, selectedInfill, selectedInfillEstimate?.internalJoinerLinesEach, selectedInfillEstimate?.panelCountEach]);
+
+  const closeInfillModal = () => {
+    trackInfillEvent('infill_done', {
+      infill_count: infillsState.items.length,
+      warnings: selectedComputedWarnings.length,
+    });
+    setInfillsOpen(false);
+    setInfillSummaryOpen(false);
+    setInfillResolveOpen(false);
+  };
+
+  useInfillHotkeys({
+    enabled: infillsOpen && Boolean(selectedInfill),
+    disableEsc: Boolean(infillDeleteTarget || infillDuplicateOpen),
+    onDuplicate: () => {
+      if (!selectedInfill) return;
+      duplicateInfill(selectedInfill.id);
+    },
+    onDuplicateBulk: () => {
+      if (!selectedInfill) return;
+      setInfillDuplicateOpen(true);
+    },
+    onCopyGeometry: () => {
+      void handleCopyInfillGeometry();
+    },
+    onPasteGeometry: handlePasteInfillGeometry,
+    onMoveUp: () => {
+      if (!selectedInfill) return;
+      moveInfill(selectedInfill.id, -1);
+    },
+    onMoveDown: () => {
+      if (!selectedInfill) return;
+      moveInfill(selectedInfill.id, 1);
+    },
+    onClose: closeInfillModal,
+    onDone: closeInfillModal,
+  });
 
   const infillPresetCards = INFILL_PRESETS.filter((preset) => preset.key !== 'custom');
 
@@ -3188,41 +3470,82 @@ export default function CalculatorGridClient({
   );
 
   const infillListRows = (
-    <div className={styles.infillListRows}>
+    <div ref={infillListContainerRef} className={styles.infillListRows}>
       {infillsState.items.map((item, idx) => {
         const estimate = infillUiById.get(item.id)?.estimate ?? estimateInfillUi(item, roofRafterSpacingEstimate.spacingM);
         const title = item.label?.trim() ? item.label.trim() : `Infill ${idx + 1}`;
         const isSelected = selectedInfill?.id === item.id;
         const acrylicChipLabel = acrylicSourceLabel(estimate.acrylicSourceUsed);
+        const canMoveUp = idx > 0;
+        const canMoveDown = idx < infillsState.items.length - 1;
         const panelsAndMullionsMeta =
           estimate.estimatedMullionsTotal > 0
             ? `Panels ${estimate.panelCountTotal} | 50x50 ${estimate.estimatedMullionsTotal}`
             : `Panels ${estimate.panelCountTotal}`;
         return (
-          <button
-            key={item.id}
-            ref={(node) => {
-              if (node) infillRowRefs.current.set(item.id, node);
-              else infillRowRefs.current.delete(item.id);
-            }}
-            type="button"
-            className={`${styles.infillRow} ${isSelected ? styles.infillRowActive : ''}`.trim()}
-            onClick={() => setSelectedInfillId(item.id)}
-            aria-pressed={isSelected}
-          >
-            <div className={styles.infillRowTitle}>
-              <span>{title}</span>
-              <div className={styles.infillChipRow}>
-                <span className={styles.infillChip}>{locationLabel(item.location)}</span>
-                <span className={styles.infillChip}>
-                  {acrylicChipLabel}
-                  {estimate.acrylicSourceAutoSwitched ? ' (used)' : ''}
-                </span>
+          <div key={item.id} className={`${styles.infillRow} ${isSelected ? styles.infillRowActive : ''}`.trim()}>
+            <button
+              ref={(node) => {
+                if (node) infillRowRefs.current.set(item.id, node);
+                else infillRowRefs.current.delete(item.id);
+              }}
+              type="button"
+              className={styles.infillRowSelect}
+              onClick={() => setSelectedInfillId(item.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  const prevId = infillsState.items[idx - 1]?.id;
+                  if (prevId) setSelectedInfillId(prevId);
+                  return;
+                }
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  const nextId = infillsState.items[idx + 1]?.id;
+                  if (nextId) setSelectedInfillId(nextId);
+                  return;
+                }
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  focusInfillPrimaryField(item.id);
+                }
+              }}
+              aria-pressed={isSelected}
+            >
+              <div className={styles.infillRowTitle}>
+                <span>{title}</span>
+                <div className={styles.infillChipRow}>
+                  <span className={styles.infillChip}>{locationLabel(item.location)}</span>
+                  <span className={styles.infillChip}>
+                    {acrylicChipLabel}
+                    {estimate.acrylicSourceAutoSwitched ? ' (used)' : ''}
+                  </span>
+                </div>
               </div>
+              <div className={styles.infillRowMeta}>{`${formatInfillShapeSummary(item.shape)} | Qty ${estimate.qty}`}</div>
+              <div className={styles.infillRowMeta}>{panelsAndMullionsMeta}</div>
+            </button>
+            <div className={styles.infillRowControls}>
+              <button
+                type="button"
+                className={styles.infillRowMoveButton}
+                onClick={() => moveInfill(item.id, -1)}
+                disabled={!canMoveUp}
+                aria-label={`Move ${title} up`}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className={styles.infillRowMoveButton}
+                onClick={() => moveInfill(item.id, 1)}
+                disabled={!canMoveDown}
+                aria-label={`Move ${title} down`}
+              >
+                ↓
+              </button>
             </div>
-            <div className={styles.infillRowMeta}>{`${formatInfillShapeSummary(item.shape)} | Qty ${estimate.qty}`}</div>
-            <div className={styles.infillRowMeta}>{panelsAndMullionsMeta}</div>
-          </button>
+          </div>
         );
       })}
     </div>
@@ -4746,10 +5069,11 @@ export default function CalculatorGridClient({
         <Modal
           open
           ariaLabel="Infills"
-          onClose={() => setInfillsOpen(false)}
+          onClose={closeInfillModal}
+          closeOnEsc={!infillDeleteTarget && !infillDuplicateOpen}
           overlayClassName={styles.infillDrawerOverlay}
           panelClassName={styles.infillDrawerPanel}
-          maxWidthPx={1200}
+          maxWidthPx={1520}
         >
           <div className={styles.infillDrawer}>
             <div className={styles.infillDrawerHeader}>
@@ -4757,7 +5081,7 @@ export default function CalculatorGridClient({
                 <h2 className={styles.infillDrawerTitle}>Infills</h2>
                 <p className={styles.infillDrawerSubtitle}>Acrylic infill modules for this pergola module.</p>
               </div>
-              <button type="button" className={styles.infillDrawerClose} onClick={() => setInfillsOpen(false)}>
+              <button type="button" className={styles.infillDrawerClose} onClick={closeInfillModal}>
                 Close
               </button>
             </div>
@@ -4788,16 +5112,58 @@ export default function CalculatorGridClient({
                 {selectedInfill && selectedInfillEstimate && selectedInfillValidation ? (
                   <>
                     <div className={styles.infillEditorHeader}>
-                      <h3 className={styles.infillEditorTitle}>{selectedInfill.label?.trim() || `Infill ${selectedInfillIndex + 1}`}</h3>
+                      <div>
+                        <h3 className={styles.infillEditorTitle}>{selectedInfill.label?.trim() || `Infill ${selectedInfillIndex + 1}`}</h3>
+                        <p className={styles.infillEditorSubtitle}>{locationLabel(selectedInfill.location)}</p>
+                        <label className={styles.infillMobileSelectLabel} htmlFor="infill-mobile-select">
+                          Infill
+                        </label>
+                        <select
+                          id="infill-mobile-select"
+                          className={styles.infillMobileSelect}
+                          value={selectedInfill.id}
+                          onChange={(event) => setSelectedInfillId(event.target.value)}
+                        >
+                          {infillsState.items.map((item, idx) => (
+                            <option key={item.id} value={item.id}>
+                              {item.label?.trim() || `Infill ${idx + 1}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <div className={styles.infillEditorActions}>
-                        <button type="button" className={styles.infillIconButton} onClick={() => duplicateInfill(selectedInfill.id)}>
-                          Duplicate
+                        {renderInfillPresetMenu('Add infill')}
+                        <button
+                          type="button"
+                          className={`${styles.infillIconButton} ${styles.infillSummaryToggleButton}`}
+                          onClick={() => setInfillSummaryOpen((prev) => !prev)}
+                        >
+                          Summary
                         </button>
-                        <button type="button" className={styles.infillIconButton} onClick={() => requestDeleteInfill(selectedInfill.id)}>
-                          Delete
-                        </button>
+                        <InfillActionsMenu
+                          disableMoveUp={selectedInfillIndex <= 0}
+                          disableMoveDown={selectedInfillIndex >= infillsState.items.length - 1}
+                          disablePaste={!infillHasClipboard}
+                          onDuplicate={() => duplicateInfill(selectedInfill.id)}
+                          onDuplicateBulk={() => setInfillDuplicateOpen(true)}
+                          onCopyGeometry={() => {
+                            void handleCopyInfillGeometry();
+                          }}
+                          onPasteGeometry={handlePasteInfillGeometry}
+                          onMoveUp={() => moveInfill(selectedInfill.id, -1)}
+                          onMoveDown={() => moveInfill(selectedInfill.id, 1)}
+                          onDelete={() => requestDeleteInfill(selectedInfill.id)}
+                        />
                       </div>
                     </div>
+                    <InfillSectionNav
+                      value={infillOpenSection}
+                      warningsCount={selectedComputedWarnings.length}
+                      onChange={(next) => {
+                        setInfillOpenSection(next);
+                        if (next === 'preview' || next === 'cut_list') setInfillSummaryOpen(true);
+                      }}
+                    />
 
                     <div className={styles.infillEditorGrid}>
                       <div className={styles.infillEditorForm}>
@@ -4857,7 +5223,7 @@ export default function CalculatorGridClient({
                               { label: 'Sheet panels', value: 'sheet_panels' },
                               { label: '620 strips', value: 'strip_620' },
                             ]}
-                            helperText="We may auto-switch if limits are exceeded."
+                            helperText={selectedAutoSwitchInlineHint ?? infillRunConstraintLine}
                             error={selectedInfillValidation.errors.acrylicSource}
                           />
                         </div>
@@ -4893,7 +5259,7 @@ export default function CalculatorGridClient({
                             label="Max bay spacing (m)"
                             type="readOnly"
                             value={computedOrDraftDash(formatMaybeNumber(selectedInfillEstimate.maxCentreM, 2))}
-                            helperText="Bays are created so each is <= this spacing."
+                            helperText={infillSpacingConstraintLine}
                           />
                         </div>
                         <div className={styles.span4}>
@@ -5103,18 +5469,55 @@ export default function CalculatorGridClient({
 
                       </div>
 
-                      <aside className={styles.infillEditorSummary}>
+                      <aside
+                        id="infill-summary-panel"
+                        className={`${styles.infillEditorSummary} ${infillSummaryOpen ? styles.infillEditorSummaryOpen : ''}`.trim()}
+                      >
                     <section className={styles.infillComputedPanel} aria-label="Computed infill summary">
-                      <InfillPreview
-                        status={selectedInfillIsDraft ? 'draft' : 'valid'}
-                        shape={selectedInfill.shape}
-                        orientationUsed={selectedInfillEstimate.panelOrientationUsed}
-                        panelCountEach={selectedInfillEstimate.panelCountEach}
-                        unsupportedJoinerIndicesEach={selectedInfillEstimate.unsupportedInternalIndicesEach}
-                        supports={selectedInfill.support}
-                      />
-                      <h3 className={styles.infillComputedTitle}>Computed summary</h3>
-                      {selectedDraftGhostLine ? <p className={styles.infillComputedGhost}>{selectedDraftGhostLine}</p> : null}
+                      <div className={styles.infillSummaryTabs}>
+                        <button
+                          type="button"
+                          className={
+                            infillOpenSection === 'cut_list'
+                              ? styles.infillSummaryTabButton
+                              : `${styles.infillSummaryTabButton} ${styles.infillSummaryTabButtonActive}`
+                          }
+                          onClick={() => setInfillOpenSection('preview')}
+                        >
+                          Preview
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            infillOpenSection === 'cut_list'
+                              ? `${styles.infillSummaryTabButton} ${styles.infillSummaryTabButtonActive}`
+                              : styles.infillSummaryTabButton
+                          }
+                          onClick={() => setInfillOpenSection('cut_list')}
+                        >
+                          Cut list
+                        </button>
+                      </div>
+                      {infillOpenSection === 'cut_list' ? (
+                        <InfillCutList status={selectedInfillIsDraft ? 'draft' : 'valid'} rows={selectedInfillEstimate.cutListRows ?? []} />
+                      ) : (
+                        <>
+                          <InfillPreview
+                            status={selectedInfillIsDraft ? 'draft' : 'valid'}
+                            shape={selectedInfill.shape}
+                            orientationUsed={selectedInfillEstimate.panelOrientationUsed}
+                            panelCountEach={selectedInfillEstimate.panelCountEach}
+                            unsupportedJoinerIndicesEach={selectedInfillEstimate.unsupportedInternalIndicesEach}
+                            supports={selectedInfill.support}
+                            bayBoundariesM={selectedInfillEstimate.bayBoundariesM}
+                            bayWidthsM={selectedInfillEstimate.bayWidthsM}
+                            joinerLines={selectedInfillEstimate.joinerLines}
+                            runSideM={selectedInfillEstimate.runSideM}
+                            acrossSideM={selectedInfillEstimate.acrossSideM}
+                            centreLimitM={selectedInfillEstimate.maxCentreM}
+                          />
+                          <h3 className={styles.infillComputedTitle}>Computed summary</h3>
+                          {selectedDraftGhostLine ? <p className={styles.infillComputedGhost}>{selectedDraftGhostLine}</p> : null}
 
                       <div className={styles.infillComputedGroup}>
                         <div className={styles.infillComputedGroupTitle}>Layout</div>
@@ -5132,6 +5535,16 @@ export default function CalculatorGridClient({
                             }`,
                           )}
                         />
+                        {selectedInfillEstimate.acrylicSourceAutoSwitched ? (
+                          <details className={styles.infillAutoSwitchWhy}>
+                            <summary>Why?</summary>
+                            <p>
+                              {`Auto-switch triggered because run ${formatMaybeNumber(selectedInfillEstimate.runSideM, 2)}m exceeds ${acrylicSourceLabel(
+                                selectedInfillEstimate.preferredAcrylicSource,
+                              )} max ${formatMaybeNumber(maxRunForAcrylicSource(selectedInfillEstimate.preferredAcrylicSource), 2)}m.`}
+                            </p>
+                          </details>
+                        ) : null}
                         <PreviewRow
                           label="Long side / Subdivided side"
                           value={computedOrDraftDash(
@@ -5199,7 +5612,22 @@ export default function CalculatorGridClient({
 
                       {selectedComputedWarnings.length ? (
                         <div className={styles.infillComputedGroup}>
-                          <div className={styles.infillComputedGroupTitle}>Warnings</div>
+                          <div className={styles.infillComputedGroupHeader}>
+                            <div className={styles.infillComputedGroupTitle}>Warnings</div>
+                            <button
+                              type="button"
+                              className={styles.infillIconButton}
+                              onClick={() => {
+                                setInfillResolveOpen(true);
+                                trackInfillEvent('infill_resolve_mode_open', {
+                                  infill_id: selectedInfill.id,
+                                  warnings: selectedComputedWarnings.length,
+                                });
+                              }}
+                            >
+                              Resolve warnings ({selectedComputedWarnings.length})
+                            </button>
+                          </div>
                           <ul className={styles.infillWarningList}>
                             {selectedComputedWarnings.map((warning) => (
                               <li key={warning.id}>
@@ -5210,8 +5638,24 @@ export default function CalculatorGridClient({
                               </li>
                             ))}
                           </ul>
+                          <ResolveWarningsPanel
+                            open={infillResolveOpen}
+                            warnings={selectedComputedWarnings}
+                            onClose={() => setInfillResolveOpen(false)}
+                            onJumpToField={jumpToInfillWarningTarget}
+                            onApplyFix={(fix, warning) => {
+                              applyInfillWarningFix(fix);
+                              trackInfillEvent('infill_resolve_apply_fix', {
+                                infill_id: selectedInfill.id,
+                                warning_id: warning.id,
+                                fix_type: fix.type,
+                              });
+                            }}
+                          />
                         </div>
                       ) : null}
+                        </>
+                      )}
                     </section>
                       </aside>
                     </div>
@@ -5248,7 +5692,7 @@ export default function CalculatorGridClient({
 
             <div className={styles.infillDrawerFooter}>
               <span className={styles.infillDrawerFooterNote}>Changes save automatically.</span>
-              <button type="button" className={styles.modalButtonPrimary} onClick={() => setInfillsOpen(false)}>
+              <button type="button" className={styles.modalButtonPrimary} onClick={closeInfillModal}>
                 Done
               </button>
             </div>
@@ -5263,6 +5707,16 @@ export default function CalculatorGridClient({
             ) : null}
           </div>
         </Modal>
+        <DuplicateDialog
+          open={infillDuplicateOpen && Boolean(selectedInfill)}
+          sourceLabel={selectedInfill?.label?.trim() || `Infill ${Math.max(1, selectedInfillIndex + 1)}`}
+          onCancel={() => setInfillDuplicateOpen(false)}
+          onConfirm={({ count, labelPattern }) => {
+            if (!selectedInfill) return;
+            duplicateInfillBulk(selectedInfill.id, count, labelPattern);
+            setInfillDuplicateOpen(false);
+          }}
+        />
         <ConfirmDialog
           open={Boolean(infillDeleteTarget)}
           title="Delete infill?"

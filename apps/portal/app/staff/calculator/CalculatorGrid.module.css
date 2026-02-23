@@ -596,9 +596,8 @@
   min-height: 36px;
   padding: 8px 12px;
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -658,7 +657,7 @@
 }
 
 .infillDrawerPanel {
-  width: min(1200px, calc(100vw - 64px));
+  width: min(1520px, calc(100vw - 64px));
   max-width: none !important;
   max-height: calc(100vh - 64px) !important;
   background: #fff;
@@ -693,8 +692,7 @@
 .infillDrawerTitle {
   margin: 0;
   font-size: 20px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 .infillDrawerSubtitle {
@@ -722,7 +720,40 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+}
+
+.infillSectionNav {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+}
+
+.infillSectionNavButton {
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.02);
+  color: rgba(15, 15, 16, 0.78);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.infillSectionNavButtonActive {
+  border-color: rgba(129, 63, 57, 0.4);
+  background: rgba(129, 63, 57, 0.08);
+  color: rgba(15, 15, 16, 0.9);
+}
+
+.infillSectionNavButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
 }
 
 .infillListRows {
@@ -787,15 +818,14 @@
   border: 1px solid rgba(15, 15, 16, 0.08);
   border-radius: 12px;
   background: #fff;
-  padding: 10px;
+  padding: 8px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  align-items: stretch;
   min-width: 0;
-  cursor: pointer;
 }
 
-.infillRow:focus {
+.infillRow:focus-within {
   outline: none;
   box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
 }
@@ -855,11 +885,55 @@
   color: inherit;
   border-radius: 999px;
   padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
+}
+
+.infillRowSelect {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+.infillRowSelect:focus {
+  outline: none;
+}
+
+.infillRowControls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.infillRow:hover .infillRowControls,
+.infillRow:focus-within .infillRowControls {
+  opacity: 1;
+}
+
+.infillRowMoveButton {
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  min-width: 30px;
+  height: 28px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.infillRowMoveButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .infillIconButton:focus {
@@ -885,8 +959,28 @@
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.infillEditorSubtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.62);
+}
+
+.infillMobileSelectLabel {
+  display: none;
+}
+
+.infillMobileSelect {
+  display: none;
+}
+
+.infillSummaryToggleButton {
+  display: none;
 }
 
 .infillEditorHeader {
@@ -911,22 +1005,31 @@
 
 .infillEditorGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 360px);
   gap: 16px;
   align-items: start;
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .infillEditorForm {
   display: grid;
   gap: 12px;
   min-width: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  max-height: 100%;
+  scrollbar-gutter: stable;
 }
 
 .infillEditorSummary {
   min-width: 0;
   position: sticky;
-  top: 16px;
+  top: 0;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .infillSection {
@@ -998,6 +1101,37 @@
   min-width: 0;
 }
 
+.infillSummaryTabs {
+  display: inline-flex;
+  gap: 6px;
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 999px;
+  padding: 4px;
+  background: rgba(15, 15, 16, 0.02);
+}
+
+.infillSummaryTabButton {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(15, 15, 16, 0.65);
+  cursor: pointer;
+}
+
+.infillSummaryTabButtonActive {
+  background: #fff;
+  color: rgba(15, 15, 16, 0.85);
+  box-shadow: 0 2px 6px rgba(15, 15, 16, 0.08);
+}
+
+.infillSummaryTabButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
 .infillComputedTitle {
   margin: 0;
   font-size: 13px;
@@ -1017,6 +1151,13 @@
   gap: 6px;
 }
 
+.infillComputedGroupHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
 .infillComputedGroupTitle {
   font-size: 12px;
   font-weight: 700;
@@ -1029,6 +1170,21 @@
   margin: 0;
   font-size: 12px;
   color: rgba(15, 15, 16, 0.7);
+}
+
+.infillAutoSwitchWhy {
+  margin-top: -2px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.68);
+}
+
+.infillAutoSwitchWhy summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.infillAutoSwitchWhy p {
+  margin: 4px 0 0;
 }
 
 .infillWarningList {
@@ -1067,6 +1223,88 @@
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: rgba(129, 63, 57, 0.85);
+}
+
+.infillResolvePanel {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.infillResolveHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.infillResolveBody {
+  display: grid;
+  gap: 8px;
+}
+
+.infillResolveMessage {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(15, 15, 16, 0.86);
+}
+
+.infillResolveActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.infillResolveStepper {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.infillCutList {
+  display: grid;
+  gap: 10px;
+}
+
+.infillCutListHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.infillCutListTable {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  display: grid;
+}
+
+.infillCutListHead,
+.infillCutListRow {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) 60px minmax(120px, 1fr) minmax(160px, 1.2fr);
+  gap: 8px;
+  align-items: start;
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.infillCutListHead {
+  background: rgba(15, 15, 16, 0.04);
+  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+  font-weight: 700;
+}
+
+.infillCutListRow {
+  border-top: 1px solid rgba(15, 15, 16, 0.08);
+}
+
+.infillCutListRow:first-of-type {
+  border-top: none;
 }
 
 .infillPresetCardGrid {
@@ -1112,6 +1350,11 @@
   background: rgba(15, 15, 16, 0.015);
 }
 
+.infillPreviewSvgSwap {
+  opacity: 0.86;
+  transition: opacity 240ms ease;
+}
+
 .infillPreviewShape {
   stroke: rgba(15, 15, 16, 0.28);
   stroke-width: 1.1;
@@ -1128,6 +1371,11 @@
   stroke-dasharray: 2.2 2.2;
 }
 
+.infillPreviewSupportMarker {
+  stroke: rgba(21, 128, 61, 0.7);
+  stroke-width: 0.9;
+}
+
 .infillPreviewEdge {
   stroke: rgba(15, 15, 16, 0.72);
   stroke-width: 1.3;
@@ -1137,6 +1385,25 @@
   stroke: rgba(180, 35, 24, 0.7);
   stroke-width: 1.2;
   stroke-dasharray: 3 2;
+}
+
+.infillPreviewSupportDot {
+  fill: rgba(21, 128, 61, 0.8);
+}
+
+.infillPreviewSupportDotMissing {
+  fill: rgba(180, 35, 24, 0.8);
+}
+
+.infillPreviewLabel {
+  fill: rgba(15, 15, 16, 0.72);
+  font-size: 2.4px;
+  font-weight: 600;
+}
+
+.infillPreviewLabelMinor {
+  fill: rgba(15, 15, 16, 0.62);
+  font-size: 2.1px;
 }
 
 .infillPreviewLegend {
@@ -1443,36 +1710,62 @@
   min-width: 0;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .infillDrawerOverlay {
     padding: 12px;
   }
 
   .infillDrawerPanel {
-    width: min(1200px, calc(100vw - 24px));
+    width: min(1520px, calc(100vw - 24px));
     max-height: calc(100vh - 24px) !important;
   }
 
   .infillDrawerBody {
-    flex-direction: column;
+    grid-template-columns: 300px minmax(0, 1fr);
   }
 
   .infillRail {
-    width: 100%;
-    flex: 0 0 auto;
-    min-width: 0;
-    max-width: none;
-    border-right: none;
-    border-bottom: 1px solid rgba(15, 15, 16, 0.12);
-    max-height: 40vh;
+    width: 300px;
+    flex: 0 0 300px;
+    min-width: 260px;
   }
 
   .infillEditorGrid {
     grid-template-columns: 1fr;
   }
 
+  .infillSummaryToggleButton {
+    display: inline-flex;
+  }
+
   .infillEditorSummary {
-    position: static;
+    position: fixed;
+    top: 52px;
+    right: 12px;
+    width: min(420px, calc(100vw - 24px));
+    max-height: calc(100vh - 140px);
+    z-index: 6;
+    border-radius: 14px;
+    padding: 2px;
+    transform: translateX(calc(100% + 24px));
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 220ms ease, opacity 220ms ease;
+  }
+
+  .infillEditorSummaryOpen {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .infillEditorSummary .infillComputedPanel {
+    box-shadow: 0 18px 36px rgba(15, 15, 16, 0.22);
+  }
+
+  .infillCutListHead,
+  .infillCutListRow {
+    grid-template-columns: minmax(140px, 1fr) 52px minmax(100px, 0.9fr) minmax(120px, 1fr);
   }
 
   .flashingsGridHeader,
@@ -1495,9 +1788,49 @@
     grid-column: span 12;
   }
 
+  .infillDrawerBody {
+    grid-template-columns: 1fr;
+  }
+
+  .infillRail {
+    display: none;
+  }
+
+  .infillMobileSelectLabel {
+    margin-top: 8px;
+    display: inline-block;
+    font-size: 11px;
+    color: rgba(15, 15, 16, 0.6);
+  }
+
+  .infillMobileSelect {
+    display: block;
+    margin-top: 4px;
+    width: min(320px, 100%);
+    border: 1px solid rgba(15, 15, 16, 0.16);
+    border-radius: 10px;
+    padding: 7px 10px;
+    background: #fff;
+    color: inherit;
+    font-size: 13px;
+  }
+
   .infillTileActions,
   .infillEditorActions {
     flex-wrap: wrap;
+  }
+
+  .infillEditor {
+    padding: 12px;
+  }
+
+  .infillEditorHeader {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .infillEditorActions {
+    justify-content: flex-start;
   }
 }
 
