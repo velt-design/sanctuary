@@ -1625,7 +1625,7 @@
   top: 0;
   bottom: 0;
   width: 8px;
-  z-index: 8;
+  z-index: 20;
   cursor: col-resize;
   touch-action: none;
 }
@@ -1650,7 +1650,7 @@
   position: sticky;
   left: 0;
   top: 0;
-  z-index: 6;
+  z-index: 18;
   height: var(--ganttHeaderH, 74px);
   padding: 12px;
   font-size: 12px;
@@ -1678,7 +1678,7 @@
 .ganttLeftCell {
   position: sticky;
   left: 0;
-  z-index: 3;
+  z-index: 17;
   min-height: var(--ganttRowHItem);
   padding: var(--ganttLeftPadYItem) 12px;
   background: #fff;

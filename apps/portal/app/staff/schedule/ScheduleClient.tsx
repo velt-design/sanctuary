@@ -98,6 +98,11 @@ type GanttSummarySpan = {
 };
 
 const GANTT_DAY_PX = 18;
+const GANTT_TIMELINE_WEEKS = 12;
+const GANTT_TIMELINE_DAYS = GANTT_TIMELINE_WEEKS * 7;
+const GANTT_ZOOM_WEEK_OPTIONS = [4, 8, 12] as const;
+type GanttZoomWeeks = (typeof GANTT_ZOOM_WEEK_OPTIONS)[number];
+const GANTT_DEFAULT_ZOOM_WEEKS: GanttZoomWeeks = 12;
 const GANTT_LABEL_MIN_PX = 220;
 const GANTT_LABEL_DEFAULT_PX = 260;
 const GANTT_LABEL_MAX_PX = 420;
@@ -107,6 +112,15 @@ const GANTT_DENSITY_STORAGE_KEY = 'sp.schedule.ganttDensity';
 const GANTT_LABEL_WIDTH_STORAGE_KEY = 'sp.schedule.ganttLabelWidth';
 const USE_SCHEDULE_V2 = true;
 const V2_MUTATION_DEBOUNCE_MS = 180;
+
+function normalizeGanttZoomWeeks(value: number): GanttZoomWeeks {
+  if (value === 4 || value === 8 || value === 12) return value;
+  return GANTT_DEFAULT_ZOOM_WEEKS;
+}
+
+function ganttBaseDayPxForZoomWeeks(zoomWeeks: GanttZoomWeeks): number {
+  return Math.max(1, Math.round((GANTT_DAY_PX * GANTT_TIMELINE_WEEKS) / zoomWeeks));
+}
 
 function clampGanttLabelWidth(value: number): number {
   if (!Number.isFinite(value)) return GANTT_LABEL_DEFAULT_PX;
@@ -1411,7 +1425,7 @@ export default function ScheduleClient() {
   });
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [rangeWeeks, setRangeWeeks] = useState(12);
+  const [zoomWeeks, setZoomWeeks] = useState<GanttZoomWeeks>(GANTT_DEFAULT_ZOOM_WEEKS);
   const [ganttDensity, setGanttDensity] = useState<GanttDensity>(() => readGanttDensityPreference());
   const [labelWidthPx, setLabelWidthPx] = useState<number>(() => readGanttLabelWidthPreference());
   const [showPlanned, setShowPlanned] = useState(false);
@@ -1448,6 +1462,7 @@ export default function ScheduleClient() {
   const ganttClickBlockUntilRef = useRef(0);
   const ganttPopoverRef = useRef<HTMLDivElement | null>(null);
   const labelWidthPxRef = useRef(labelWidthPx);
+  const pendingZoomAnchorRef = useRef<{ date: string; viewportOffsetPx: number } | null>(null);
 
   useEffect(() => {
     scheduleItemsRef.current = scheduleItems;
@@ -2256,7 +2271,7 @@ export default function ScheduleClient() {
       if (scheduleMode !== 'v2') return;
       if (view !== 'gantt') return;
       const rangeStart = startOfWeekMonday(today);
-      const rangeDays = rangeWeeks * 7;
+      const rangeDays = GANTT_TIMELINE_DAYS;
       const rangeEnd = addDaysYmd(rangeStart, rangeDays - 1);
       try {
         const res = await fetchScheduleGantt({ rangeStart, rangeEnd, today });
@@ -2280,7 +2295,7 @@ export default function ScheduleClient() {
     return () => {
       cancelled = true;
     };
-  }, [scheduleMode, view, rangeWeeks, today]);
+  }, [scheduleMode, view, today]);
 
   const devOnly = process.env.NODE_ENV !== 'production';
 
@@ -2702,12 +2717,13 @@ export default function ScheduleClient() {
 
   const gantt = useMemo(() => {
     const rangeStart = startOfWeekMonday(today);
-    const rangeDays = rangeWeeks * 7;
+    const rangeDays = GANTT_TIMELINE_DAYS;
     const rangeEnd = addDaysYmd(rangeStart, rangeDays - 1);
+    const baseDayPx = ganttBaseDayPxForZoomWeeks(zoomWeeks);
     const axis = buildGanttAxis({
       rangeStart,
       rangeDays,
-      baseDayPx: GANTT_DAY_PX,
+      baseDayPx,
       weekendWeight: GANTT_WEEKEND_WEIGHT,
     });
     const totalWidth = axis.totalWidth;
@@ -2936,7 +2952,7 @@ export default function ScheduleClient() {
     ganttHolidays,
     installers,
     laneItems,
-    rangeWeeks,
+    zoomWeeks,
     schedulable.jobsById,
     schedule.bars,
     scheduleItemById,
@@ -2948,6 +2964,48 @@ export default function ScheduleClient() {
     ganttDragDelta,
     today,
   ]);
+
+  const handleGanttZoomWeeksChange = (next: GanttZoomWeeks) => {
+    if (next === zoomWeeks) return;
+
+    const scroller = ganttScrollRef.current;
+    if (view === 'gantt' && scroller && gantt.axis.rangeDays > 0) {
+      const timelineViewportWidth = Math.max(0, scroller.clientWidth - labelWidthPx);
+      const todayViewportOffsetPx = labelWidthPx + gantt.todayLinePx - scroller.scrollLeft;
+      const minVisiblePx = labelWidthPx + 8;
+      const maxVisiblePx = Math.max(minVisiblePx, scroller.clientWidth - 8);
+      const fallbackVisiblePx = labelWidthPx + timelineViewportWidth * 0.3;
+      const viewportOffsetPx =
+        todayViewportOffsetPx >= minVisiblePx && todayViewportOffsetPx <= maxVisiblePx ? todayViewportOffsetPx : fallbackVisiblePx;
+      pendingZoomAnchorRef.current = {
+        date: gantt.displayToday,
+        viewportOffsetPx,
+      };
+    }
+
+    setZoomWeeks(next);
+  };
+
+  useLayoutEffect(() => {
+    if (view !== 'gantt') return;
+    const anchor = pendingZoomAnchorRef.current;
+    if (!anchor) return;
+
+    const scroller = ganttScrollRef.current;
+    if (!scroller || gantt.axis.rangeDays <= 0) {
+      pendingZoomAnchorRef.current = null;
+      return;
+    }
+
+    const rawIndex = diffDaysYmd(gantt.rangeStart, anchor.date);
+    const dayIndex = Math.max(0, Math.min(gantt.axis.rangeDays - 1, rawIndex));
+    const nextTodayAbsolutePx = labelWidthPx + axisXForDayIndex(gantt.axis, dayIndex);
+    const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+    const nextScrollLeft = Math.max(0, Math.min(maxLeft, nextTodayAbsolutePx - anchor.viewportOffsetPx));
+
+    scroller.scrollLeft = nextScrollLeft;
+    pendingZoomAnchorRef.current = null;
+  }, [gantt.axis.boundaryPx, gantt.axis.rangeDays, gantt.rangeStart, gantt.totalWidth, labelWidthPx, view, zoomWeeks]);
 
   const activeGanttPopoverRow = useMemo(() => {
     if (!ganttPopover) return null;
@@ -3416,9 +3474,9 @@ export default function ScheduleClient() {
       const rawDelta = snapAxisDayDeltaForPixelDelta({
         startDate: anchorDate,
         deltaPx,
-        baseDayPx: GANTT_DAY_PX,
+        baseDayPx: gantt.axis.baseDayPx,
         weekendWeight: GANTT_WEEKEND_WEIGHT,
-        maxSteps: rangeWeeks * 7 + 21,
+        maxSteps: gantt.rangeDays + 21,
       });
       let nextDelta = rawDelta;
       if (ganttDrag.mode === 'move') {
@@ -3533,7 +3591,7 @@ export default function ScheduleClient() {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
-  }, [ganttDrag, rangeWeeks]);
+  }, [gantt.axis.baseDayPx, gantt.rangeDays, ganttDrag]);
 
   useEffect(() => {
     if (!ganttLabelResize) return;
@@ -4955,9 +5013,9 @@ export default function ScheduleClient() {
                   </label>
                   <select
                     className={styles.input}
-                    value={rangeWeeks}
-                    onChange={(e) => setRangeWeeks(Number(e.target.value) || 12)}
-                    aria-label="Range"
+                    value={zoomWeeks}
+                    onChange={(e) => handleGanttZoomWeeksChange(normalizeGanttZoomWeeks(Number(e.target.value)))}
+                    aria-label="Zoom"
                   >
                     <option value={4}>4 weeks</option>
                     <option value={8}>8 weeks</option>
@@ -5009,7 +5067,7 @@ export default function ScheduleClient() {
                       {
                         gridTemplateColumns: `${labelWidthPx}px ${gantt.totalWidth}px`,
                         ['--ganttLabelW' as any]: `${labelWidthPx}px`,
-                        ['--ganttDayW' as any]: `${GANTT_DAY_PX}px`,
+                        ['--ganttDayW' as any]: `${gantt.axis.baseDayPx}px`,
                       } as React.CSSProperties
                     }
                   >
