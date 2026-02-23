@@ -4,6 +4,7 @@ import type {
   GroundCondition,
   HeightCategory,
   HouseConnectionType,
+  JobType,
   PergolaStyleUi,
   PostConnectionType,
   RoofMaterial,
@@ -166,6 +167,7 @@ export type CalculatorInputs = {
 
   access: AccessLevel;
   height: HeightCategory;
+  jobType: JobType;
   travelExGst: string;
   extrasAllowanceExGst: string;
   quoteDiscountPct: string;
@@ -279,6 +281,7 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
     quoteRef: legacy.quoteRef,
     access: legacy.access,
     height: legacy.height,
+    jobType: 'residential',
     travelExGst: legacy.travelExGst,
     extrasAllowanceExGst: legacy.extrasAllowanceExGst,
     quoteDiscountPct: legacy.quoteDiscountPct,

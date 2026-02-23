@@ -920,6 +920,7 @@
         "height",
         "roof_type",
         "structure_type",
+        "pitch_steep_roof",
         "rafter_length_multiplier"
       ],
       "notes": "Apply gentle rafter length multiplier using derived.rafter_length_multiplier. Use rafter_length_m derived from projection (+ any overhang).",
@@ -958,6 +959,7 @@
         "height",
         "roof_type",
         "structure_type",
+        "pitch_steep_roof",
         "rafter_length_multiplier"
       ],
       "notes": "Quantity is 2\u00d7 rafters because low gable has two planes. Use a reduced rafter_length_m (approx projection/2) when computing length multiplier.",
@@ -988,7 +990,8 @@
         "access",
         "height",
         "roof_type",
-        "structure_type"
+        "structure_type",
+        "pitch_steep_roof"
       ],
       "notes": "ridge_length_m: low_gable/gable=length_m; hip=max(0,length_m-projection_m).",
       "scope": "module"
@@ -1365,7 +1368,8 @@
       "apply_multipliers": [
         "access",
         "height",
-        "roof_type"
+        "roof_type",
+        "pitch_steep_roof"
       ],
       "notes": "Bottom joiner install labour, excluding fixing cycle time.",
       "scope": "module"
@@ -1388,7 +1392,8 @@
       "apply_multipliers": [
         "access",
         "height",
-        "roof_type"
+        "roof_type",
+        "pitch_steep_roof"
       ],
       "notes": "Fixings at 300mm centres plus one extra end fixing per run.",
       "scope": "module"
@@ -1411,7 +1416,8 @@
       "apply_multipliers": [
         "access",
         "height",
-        "roof_type"
+        "roof_type",
+        "pitch_steep_roof"
       ],
       "notes": "Top joiner install only; no fixing labour included.",
       "scope": "module"
@@ -1434,7 +1440,8 @@
       "apply_multipliers": [
         "access",
         "height",
-        "roof_type"
+        "roof_type",
+        "pitch_steep_roof"
       ],
       "notes": "Acrylic panel placement and fit-up only (joiners handled by separate actions).",
       "scope": "module"
@@ -1479,7 +1486,8 @@
       },
       "apply_multipliers": [
         "access",
-        "height"
+        "height",
+        "pitch_steep_roof"
       ],
       "notes": "Edge rafters for timber roofs (150x50).",
       "scope": "module"
@@ -1666,6 +1674,7 @@
         "height",
         "roof_type",
         "structure_type",
+        "pitch_steep_roof",
         "rafter_length_multiplier"
       ],
       "notes": "Gable: rafters both sides, counted as 2x rafter_count. Effective span is projection/2.",
@@ -1704,6 +1713,7 @@
         "height",
         "roof_type",
         "structure_type",
+        "pitch_steep_roof",
         "rafter_length_multiplier"
       ],
       "notes": "Hip: common rafters approximated as 2x rafter_count; hip rafters added separately. Jack trimming handled via roof_type multiplier.",
@@ -1732,7 +1742,8 @@
         "access",
         "height",
         "roof_type",
-        "structure_type"
+        "structure_type",
+        "pitch_steep_roof"
       ],
       "notes": "v1 assumption for hip rafter labour; refine later."
     }

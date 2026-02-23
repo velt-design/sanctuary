@@ -28,6 +28,14 @@ function roundMinutes(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function resolveSteepPitchMultiplier(inputs: InputsNormalizedV1, derived: Record<string, unknown>): number {
+  const pitchRaw = Number((derived as any).roof_pitch_deg_used ?? inputs.roof_pitch_deg ?? 0);
+  if (!Number.isFinite(pitchRaw)) return 1;
+  if (pitchRaw > 30) return 1.3;
+  if (pitchRaw > 20) return 1.2;
+  return 1;
+}
+
 const STEEL_BEAM_INSTALL_FACTOR = 2.5;
 const STEEL_BEAM_INSTALL_ACTIONS = {
   front: 'frame.install_front_beam_m',
@@ -198,6 +206,7 @@ function resolveMultipliers(
     else if (key === 'ground') next = Number(mult.ground?.[inputs.ground] ?? 1);
     else if (key === 'structure_type') next = Number(mult.structure_type?.[inputs.structure_type] ?? 1);
     else if (key === 'roof_type') next = Number(mult.roof_type?.[inputs.roof_type] ?? 1);
+    else if (key === 'pitch_steep_roof') next = resolveSteepPitchMultiplier(inputs, derived);
     else if (key === 'rafter_length_multiplier') {
       const ref = Number(config.installActions.driver_rules_reference.rafter_length_multiplier.reference_length_m ?? 3);
       const exp = Number(config.installActions.driver_rules_reference.rafter_length_multiplier.exponent ?? 0.25);

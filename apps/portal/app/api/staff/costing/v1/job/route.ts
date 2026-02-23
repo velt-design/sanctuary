@@ -19,6 +19,7 @@ const HOUSE_CONNECTIONS = ['soffit', 'fascia', 'facade', 'none'] as const;
 const POST_CONNECTIONS = ['pile_1m', 'pile_1_5m', 'deck_bracket', 'slab_anchors'] as const;
 const ACCESS_LEVELS = ['easy', 'normal', 'hard'] as const;
 const HEIGHT_CATEGORIES = ['single_storey', 'two_storey'] as const;
+const JOB_TYPES = ['residential', 'commercial'] as const;
 const GROUND_CONDITIONS = ['easy', 'hard'] as const;
 const ROOF_TYPES = ['pitched', 'low_gable', 'gable'] as const;
 const BOX_GUTTER_EDGES = ['house', 'our', 'none'] as const;
@@ -559,6 +560,7 @@ export async function POST(req: Request) {
   const hasModules = Array.isArray(body?.modules) && body.modules.length > 0;
   if (!hasPergolas && !hasModules) return badRequest('pergolas or modules must be a non-empty array');
   if (hasPergolas && hasModules) return badRequest('Provide either pergolas or modules (not both).');
+  if (body.job_type !== undefined && !isOneOf(JOB_TYPES, body.job_type)) return badRequest('Invalid job_type');
 
   const travel_ex_gst = body.travel_ex_gst !== undefined ? toNumber(body.travel_ex_gst) : undefined;
   const extras_allowance_ex_gst = body.extras_allowance_ex_gst !== undefined ? toNumber(body.extras_allowance_ex_gst) : undefined;
@@ -566,6 +568,7 @@ export async function POST(req: Request) {
 
   const site: SiteInputsV1 = {
     pergolas: [],
+    job_type: body.job_type,
     travel_ex_gst,
     extras_allowance_ex_gst,
     quote_discount_pct,
