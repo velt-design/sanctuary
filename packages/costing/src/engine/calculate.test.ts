@@ -2385,10 +2385,10 @@ describe('steep pitch and scaffolding', () => {
     expect(acrylicInstall?.applied_multipliers.pitch_steep_roof).toBe(1.3);
   });
 
-  it('residential pergola above 30 degrees auto-adds scaffolding startup and day rate', () => {
+  it('residential pergola at 30 degrees auto-adds scaffolding startup and day rate', () => {
     const site = calculateSiteCostV1({
       job_type: 'residential',
-      pergolas: [{ id: 'p1', modules: [{ ...baseModule, roof_pitch_deg: 31 }] }],
+      pergolas: [{ id: 'p1', modules: [{ ...baseModule, roof_pitch_deg: 30 }] }],
       travel_ex_gst: 0,
       extras_allowance_ex_gst: 0,
     });
@@ -2402,6 +2402,20 @@ describe('steep pitch and scaffolding', () => {
     expect(dayRateLine?.unit_cost_ex_gst).toBe(50);
     expect(dayRateLine?.qty).toBe(site.pergolas[0].modules[0].derived.site_days);
     expect(dayRateLine?.line_cost_ex_gst).toBe(roundMoney((dayRateLine?.qty ?? 0) * 50));
+  });
+
+  it('residential pergola below 30 degrees does not auto-add scaffolding', () => {
+    const site = calculateSiteCostV1({
+      job_type: 'residential',
+      pergolas: [{ id: 'p1', modules: [{ ...baseModule, roof_pitch_deg: 29 }] }],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    const startupAction = site.shared.install.actions.find((a) => a.id === 'job.mob.scaffolding_startup');
+    const dayRateLine = site.pergolas[0].materials.lines.find((line) => line.id === 'job.hire.scaffolding_day_rate');
+    expect(startupAction).toBeUndefined();
+    expect(dayRateLine).toBeUndefined();
   });
 
   it('commercial site auto-adds scaffolding with area-based day rates and extra pergola labour', () => {

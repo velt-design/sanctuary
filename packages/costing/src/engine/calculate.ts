@@ -144,7 +144,7 @@ function resolvePergolaAreaM2(modules: Array<Pick<CostOutputV1, 'derived' | 'inp
 
 function requiresScaffolding(jobType: JobType, pergolaPitchDeg: number): boolean {
   if (jobType === 'commercial') return true;
-  return pergolaPitchDeg > 30;
+  return pergolaPitchDeg >= 30;
 }
 
 function resolveScaffoldingDayRateExGst(jobType: JobType, pergolaAreaM2: number): number {
