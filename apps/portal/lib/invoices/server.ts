@@ -941,7 +941,7 @@ export async function ensureInvoiceRetryScheduledFromLatestFailure(invoiceUuid: 
   if (latest.error || !latest.data) return;
   const row = latest.data as any;
   if (String(row?.status ?? '').toUpperCase() !== 'FAILED') return;
-  if (Boolean(row?.final_failure)) return;
+  if (row?.final_failure) return;
   const nextRetryAt = typeof row?.next_retry_at === 'string' ? row.next_retry_at : null;
   if (!nextRetryAt) return;
   scheduleRetryTimer(invoiceUuid, nextRetryAt, actor);
