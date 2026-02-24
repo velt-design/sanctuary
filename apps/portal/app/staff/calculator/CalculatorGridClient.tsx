@@ -5156,24 +5156,24 @@ export default function CalculatorGridClient({
       <h1 className="visually-hidden">Calculator</h1>
 
       <div className={styles.previewFrame}>
+        <div className={`${styles.modeToggleRow} ${styles.modeToggleFloating}`}>
+          <button
+            type="button"
+            className={uiMode === 'basic' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
+            onClick={() => setUiMode('basic')}
+          >
+            Basic
+          </button>
+          <button
+            type="button"
+            className={uiMode === 'advanced' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
+            onClick={() => setUiMode('advanced')}
+          >
+            Advanced
+          </button>
+        </div>
         <div className={styles.split}>
           <div className={styles.leftCol}>
-            <div className={styles.modeToggleRow}>
-              <button
-                type="button"
-                className={uiMode === 'basic' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
-                onClick={() => setUiMode('basic')}
-              >
-                Basic
-              </button>
-              <button
-                type="button"
-                className={uiMode === 'advanced' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
-                onClick={() => setUiMode('advanced')}
-              >
-                Advanced
-              </button>
-            </div>
             <FieldGroup title="Context" fields={contextFields} />
             <FieldGroup title="Connections & Site" fields={connectionFields} />
             <FieldGroup title="Structure" fields={structureFields} />

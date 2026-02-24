@@ -24,6 +24,7 @@
 }
 
 .previewFrame {
+  position: relative;
   height: 100%;
   overflow: hidden;
   min-height: 0;
@@ -1946,18 +1947,21 @@
 }
 
 .modeToggleRow {
-  position: sticky;
-  top: 0;
-  z-index: 3;
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  justify-self: start;
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 6px 16px rgba(15, 15, 16, 0.08);
+}
+
+.modeToggleFloating {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
 }
 
 .modeToggleButton {

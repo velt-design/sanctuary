@@ -775,7 +775,6 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     acrylicAreaM2 = roofSurfaceAreaM2;
     timberAreaM2 = 0;
     acrylicBaysTotal = bayCount;
-    warnings.push('Acrylic joiner system assumed (no through-fixing).');
   } else if (inputs.roof_material === 'timber') {
     acrylicAreaM2 = 0;
     timberAreaM2 = roofSurfaceAreaM2;
@@ -791,7 +790,6 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     warnings.push(...mixed.warnings);
     if (roofType === 'hip_corner' && mixed.normalized.mode === 'ridge_skylight')
       warnings.push('Hip corner mixed roof assumes ridge length = length A + length B.');
-    if (acrylicAreaM2 > 0) warnings.push('Acrylic joiner system assumed (no through-fixing).');
   }
 
   if (inputs.roof_material === 'mixed') {
