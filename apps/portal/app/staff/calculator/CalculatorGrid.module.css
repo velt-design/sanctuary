@@ -24,6 +24,7 @@
 }
 
 .previewFrame {
+  position: relative;
   height: 100%;
   overflow: hidden;
   min-height: 0;
@@ -1188,6 +1189,89 @@
   color: rgba(15, 15, 16, 0.7);
 }
 
+.infillInlineAction {
+  margin-top: 6px;
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.02);
+  color: inherit;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.infillInlineAction:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+}
+
+.infillDecisionCard {
+  border: 1px solid rgba(15, 15, 16, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.infillDecisionTitle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.66);
+}
+
+.infillDecisionRow {
+  border-top: 1px solid rgba(15, 15, 16, 0.08);
+  padding-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.infillDecisionRow:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.infillDecisionMain {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.infillDecisionLabel {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.infillDecisionMeta {
+  font-size: 11px;
+  color: rgba(15, 15, 16, 0.68);
+}
+
+.infillDecisionApply {
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.02);
+  color: inherit;
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.infillDecisionApply:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+}
+
 .infillAutoSwitchWhy {
   margin-top: -2px;
   font-size: 12px;
@@ -1862,6 +1946,48 @@
   scrollbar-gutter: stable;
 }
 
+.modeToggleRow {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 16px rgba(15, 15, 16, 0.08);
+}
+
+.modeToggleFloating {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+}
+
+.modeToggleButton {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(15, 15, 16, 0.72);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.modeToggleButtonActive {
+  border-color: rgba(129, 63, 57, 0.4);
+  background: rgba(129, 63, 57, 0.12);
+  color: rgba(15, 15, 16, 0.92);
+}
+
+.modeToggleButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
 .rightCol {
   display: grid;
   gap: 12px;
@@ -1873,6 +1999,18 @@
   min-width: 0;
   padding-bottom: 24px;
   scrollbar-gutter: stable;
+}
+
+/* Keep scroll interactions, hide visible scrollbars in calculator surfaces. */
+.previewPage :is(.grid, .drawer, .modal, .infillRailList, .infillEditorForm, .infillEditorSummary, .leftCol, .rightCol, .materialsDebugJson) {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scrollbar-gutter: auto;
+}
+
+.previewPage :is(.grid, .drawer, .modal, .infillRailList, .infillEditorForm, .infillEditorSummary, .leftCol, .rightCol, .materialsDebugJson)::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .previewCard {
@@ -1980,6 +2118,211 @@
   font-weight: 700;
 }
 
+.impactHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.impactReset {
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.02);
+  color: inherit;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.impactReset:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.impactGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.impactStat {
+  border: 1px solid rgba(15, 15, 16, 0.08);
+  border-radius: 10px;
+  background: rgba(15, 15, 16, 0.02);
+  padding: 8px 10px;
+  display: grid;
+  gap: 2px;
+}
+
+.impactStat span {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.58);
+}
+
+.impactStat strong {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.impactDrivers {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.impactDriversTitle {
+  margin-bottom: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.62);
+}
+
+.impactList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+
+.impactRow {
+  border: 1px solid rgba(15, 15, 16, 0.08);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.impactRowLabel {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.impactRowDelta {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.statusHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.statusMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusBlock,
+.statusReview,
+.statusOk {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.statusBlock {
+  color: var(--error);
+}
+
+.statusReview {
+  color: rgba(126, 71, 9, 0.95);
+}
+
+.statusOk {
+  color: rgba(21, 128, 61, 0.95);
+}
+
+.statusList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.statusRow {
+  border: 1px solid rgba(15, 15, 16, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.statusDotOk,
+.statusDotReview,
+.statusDotBlock {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.statusDotOk {
+  background: rgba(21, 128, 61, 0.95);
+}
+
+.statusDotReview {
+  background: rgba(180, 122, 17, 0.95);
+}
+
+.statusDotBlock {
+  background: var(--error);
+}
+
+.statusMain {
+  min-width: 0;
+}
+
+.statusLabel {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.statusDetail {
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(15, 15, 16, 0.62);
+}
+
+.statusAction {
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.02);
+  color: inherit;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.statusAction:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
 .previewActions {
   margin-top: 12px;
   display: grid;
@@ -2034,6 +2377,79 @@
 .previewWarnCritical {
   color: rgb(185, 28, 28);
   font-weight: 600;
+}
+
+.warningList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.warningRow {
+  border: 1px solid rgba(15, 15, 16, 0.1);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 8px;
+}
+
+.warningBadgeCritical,
+.warningBadgeReview,
+.warningBadgeInfo {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.warningBadgeCritical {
+  border: 1px solid rgba(185, 28, 28, 0.3);
+  background: rgba(185, 28, 28, 0.08);
+  color: var(--error);
+}
+
+.warningBadgeReview {
+  border: 1px solid rgba(180, 122, 17, 0.35);
+  background: rgba(180, 122, 17, 0.1);
+  color: rgba(126, 71, 9, 0.95);
+}
+
+.warningBadgeInfo {
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  background: rgba(15, 15, 16, 0.04);
+  color: rgba(15, 15, 16, 0.68);
+}
+
+.warningMessage {
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.86);
+}
+
+.warningJumpButton {
+  border: 1px solid rgba(15, 15, 16, 0.18);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.02);
+  color: inherit;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.warningJumpButton:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
 }
 
 .previewTable {

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostInputsV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
+import type { CostInputsV1, CostOutputV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
@@ -37,15 +37,27 @@ import InfillSectionNav, { type InfillEditorSectionId } from './InfillSectionNav
 import DuplicateDialog from './DuplicateDialog';
 import InfillCutList from './InfillCutList';
 import ResolveWarningsPanel from './ResolveWarningsPanel';
+import PriceImpactPanel from './PriceImpactPanel';
+import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
 import { useInfillClipboard } from './useInfillClipboard';
 import { useInfillHotkeys } from './useInfillHotkeys';
 import { trackInfillEvent } from './infillTelemetry';
+import { buildImpactDiff, type ImpactDiff } from './diff';
 import {
   priceAllBlinds,
   type BlindLineItemInput,
   type BlindPricingResult,
 } from '@/lib/costing/blinds';
 import { buildAddonsTotals, computeDisplayTotals } from './calcTotals';
+import { mapEngineLevel, mapInfillSeverity, type UiWarning } from './warnings';
+import {
+  applyAcrylicVariantToInfillPayload,
+  buildModulePayloadWithInfills,
+  diffModuleCost,
+  fetchModuleCost,
+  removeInfillFromInfills,
+  replaceInfillInPayload,
+} from './infillDecision';
 import {
   resolveInfillUiState,
   resolvePayloadPanelOrientation,
@@ -113,6 +125,13 @@ function formatMaybeNumber(n: number | undefined, digits = 2): string {
   return n.toFixed(digits);
 }
 
+function formatSignedMoney(n: number | undefined): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
+  if (Math.abs(n) < 0.005) return '$0.00';
+  const sign = n > 0 ? '+' : '-';
+  return `${sign}$${Math.abs(n).toFixed(2)}`;
+}
+
 function toPrettyJson(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
@@ -147,6 +166,8 @@ const FLASHING_PURPOSE_OPTIONS: FieldOption[] = [
   { label: 'Apron', value: 'APRON' },
   { label: 'Custom', value: 'CUSTOM' },
 ];
+type UiMode = 'basic' | 'advanced';
+const UI_MODE_STORAGE_KEY = 'sanctuary-portal:calculator:uiMode:v1';
 
 type InfillPresetKey = 'front' | 'house' | 'side' | 'gable_triangles' | 'wall_panel' | 'custom';
 
@@ -1559,9 +1580,12 @@ export default function CalculatorGridClient({
   const [draftNotice, setDraftNotice] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [uiMode, setUiMode] = useState<UiMode>('basic');
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
   const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
+  const baselineResultRef = useRef<SiteOutputV1 | null>(null);
+  const [impactDiff, setImpactDiff] = useState<ImpactDiff | null>(null);
   const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const primaryFlashingManualOverrideRef = useRef<Record<string, boolean>>({});
 
@@ -1591,6 +1615,29 @@ export default function CalculatorGridClient({
       setDraftHydrated(true);
     }
   }, [draftSessionKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(UI_MODE_STORAGE_KEY);
+      if (raw === 'advanced' || raw === 'basic') {
+        setUiMode(raw);
+      }
+    } catch {
+      void 0;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(UI_MODE_STORAGE_KEY, uiMode);
+    } catch {
+      void 0;
+    }
+  }, [uiMode]);
+
+  const isAdvancedUi = uiMode === 'advanced';
 
   useEffect(() => {
     if (!projectId) {
@@ -2587,6 +2634,14 @@ export default function CalculatorGridClient({
   const [materialsDebugData, setMaterialsDebugData] = useState<MaterialsExplainApiResponse | null>(null);
   const [materialsDebugLoading, setMaterialsDebugLoading] = useState(false);
   const [materialsDebugError, setMaterialsDebugError] = useState<string | null>(null);
+  const [moduleBaseline, setModuleBaseline] = useState<CostOutputV1 | null>(null);
+  const [moduleBaselineLoading, setModuleBaselineLoading] = useState(false);
+  const [moduleBaselineError, setModuleBaselineError] = useState<string | null>(null);
+  const [infillDecisionLoading, setInfillDecisionLoading] = useState(false);
+  const [infillDecisionError, setInfillDecisionError] = useState<string | null>(null);
+  const [infillWithoutCost, setInfillWithoutCost] = useState<CostOutputV1 | null>(null);
+  const [compareSheetCost, setCompareSheetCost] = useState<CostOutputV1 | null>(null);
+  const [compareStripCost, setCompareStripCost] = useState<CostOutputV1 | null>(null);
   const [infillsOpen, setInfillsOpen] = useState(false);
   const [selectedInfillId, setSelectedInfillId] = useState<string | null>(null);
   const [pendingInfillSelectionId, setPendingInfillSelectionId] = useState<string | null>(null);
@@ -2608,6 +2663,7 @@ export default function CalculatorGridClient({
   const infillAutoSwitchByIdRef = useRef<Record<string, InfillLineItem['acrylicSource']>>({});
   const infillLastSelectionEventRef = useRef<string | null>(null);
   const infillModalOpenTrackedRef = useRef(false);
+  const pendingInfillWarningJumpRef = useRef<{ infillId: string; warning: InfillWarningItem } | null>(null);
   const blindFieldPrefix = useId();
 
   const issues = useMemo(() => {
@@ -2757,6 +2813,12 @@ export default function CalculatorGridClient({
   }, [materialsDebugAvailable]);
 
   useEffect(() => {
+    if (uiMode !== 'advanced') {
+      setMaterialsDebugEnabled(false);
+    }
+  }, [uiMode]);
+
+  useEffect(() => {
     if (!materialsDebugEnabled || !materialsDebugAvailable || !readyToCalculate || !activeModulePayload) {
       setMaterialsDebugLoading(false);
       if (!materialsDebugEnabled) {
@@ -2809,6 +2871,42 @@ export default function CalculatorGridClient({
     materialsDebugFocusLineIndex,
   ]);
 
+  useEffect(() => {
+    if (!infillsOpen || !activeModulePayload || !readyToCalculate || isCalculating || engineError) {
+      setModuleBaseline(null);
+      setModuleBaselineError(null);
+      setModuleBaselineLoading(false);
+      setInfillWithoutCost(null);
+      setCompareSheetCost(null);
+      setCompareStripCost(null);
+      setInfillDecisionError(null);
+      setInfillDecisionLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setModuleBaselineLoading(true);
+      setModuleBaselineError(null);
+      try {
+        const out = await fetchModuleCost(activeModulePayload, controller.signal);
+        if (controller.signal.aborted) return;
+        setModuleBaseline(out);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : 'Failed to fetch module baseline';
+        setModuleBaselineError(msg);
+      } finally {
+        if (!controller.signal.aborted) setModuleBaselineLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [activeModulePayload, engineError, infillsOpen, isCalculating, readyToCalculate]);
+
   const resultModules = useMemo(() => (result?.pergolas ?? []).flatMap((pergola) => pergola.modules ?? []), [result]);
   const moduleResult = useMemo(() => {
     const route = moduleRoutes[activeModuleIndex] ?? moduleRoutes[0];
@@ -2817,6 +2915,23 @@ export default function CalculatorGridClient({
     const pergola = result?.pergolas?.find((entry) => entry.id === route.pergolaId) ?? fallbackPergola;
     return pergola?.modules?.[route.localModuleIndex] ?? resultModules[activeModuleIndex] ?? resultModules[0] ?? null;
   }, [result, resultModules, activeModuleIndex, moduleRoutes]);
+
+  useEffect(() => {
+    if (!result) return;
+    const baseline = baselineResultRef.current;
+    if (!baseline) {
+      baselineResultRef.current = result;
+      setImpactDiff(null);
+      return;
+    }
+    setImpactDiff(buildImpactDiff(baseline, result));
+  }, [result]);
+
+  const resetImpactBaseline = () => {
+    if (!result) return;
+    baselineResultRef.current = result;
+    setImpactDiff(null);
+  };
 
   const derivedArea = moduleResult?.derived.area_m2;
   const derivedRoofArea = moduleResult?.derived.roof_surface_area_m2;
@@ -2883,12 +2998,9 @@ export default function CalculatorGridClient({
   const blindsTotalInc = blindsTotals ? blindsTotals.totalIncCents / 100 : 0;
   const addonsTotals = buildAddonsTotals(blindsTotalEx, blindsTotalInc);
   const { coreEx: coreTotalEx, coreInc: coreTotalInc } = computeDisplayTotals(totalEx, totalInc, addonsTotals);
-  const warningsTyped =
+  const engineWarningsRaw =
     result?.totals.warnings ??
     (result?.totals.notes_and_warnings ?? []).map((message) => ({ level: 'info' as const, message }));
-  const criticalWarnings = warningsTyped.filter((w) => w.level === 'critical');
-  const infoWarnings = warningsTyped.filter((w) => w.level === 'info');
-  const warningsCount = warningsTyped.length;
 
   useEffect(() => {
     if (hasOurGutterUi) return;
@@ -3204,6 +3316,166 @@ export default function CalculatorGridClient({
   const selectedInfillValidation = selectedInfillUi?.validation ?? null;
   const selectedInfillIsDraft = selectedInfillUi?.status === 'draft';
 
+  useEffect(() => {
+    if (!infillsOpen || !activeModulePayload || !moduleBaseline || !selectedInfill || !readyToCalculate || isCalculating || engineError) {
+      setInfillWithoutCost(null);
+      setCompareSheetCost(null);
+      setCompareStripCost(null);
+      setInfillDecisionError(null);
+      setInfillDecisionLoading(false);
+      return;
+    }
+
+    const sourceInfills = activeModulePayload.infills;
+    if (!Array.isArray(sourceInfills) || !sourceInfills.some((entry) => String(entry.id) === selectedInfill.id)) {
+      setInfillWithoutCost(null);
+      setCompareSheetCost(null);
+      setCompareStripCost(null);
+      setInfillDecisionError(null);
+      setInfillDecisionLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setInfillDecisionLoading(true);
+      setInfillDecisionError(null);
+      try {
+        const withoutInfills = removeInfillFromInfills(sourceInfills, selectedInfill.id);
+        const withoutPayload = buildModulePayloadWithInfills(activeModulePayload, withoutInfills);
+
+        const sheetInfills = replaceInfillInPayload(sourceInfills, selectedInfill.id, (entry) =>
+          applyAcrylicVariantToInfillPayload(entry, 'sheet_panels'),
+        );
+        const stripInfills = replaceInfillInPayload(sourceInfills, selectedInfill.id, (entry) =>
+          applyAcrylicVariantToInfillPayload(entry, 'strip_620'),
+        );
+
+        const sheetPayload = buildModulePayloadWithInfills(activeModulePayload, sheetInfills);
+        const stripPayload = buildModulePayloadWithInfills(activeModulePayload, stripInfills);
+
+        const [withoutOut, sheetOut, stripOut] = await Promise.all([
+          fetchModuleCost(withoutPayload, controller.signal),
+          fetchModuleCost(sheetPayload, controller.signal),
+          fetchModuleCost(stripPayload, controller.signal),
+        ]);
+        if (controller.signal.aborted) return;
+        setInfillWithoutCost(withoutOut);
+        setCompareSheetCost(sheetOut);
+        setCompareStripCost(stripOut);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : 'Failed to compare infill options';
+        setInfillDecisionError(msg);
+      } finally {
+        if (!controller.signal.aborted) setInfillDecisionLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeoutId);
+    };
+  }, [activeModulePayload, engineError, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill]);
+
+  const engineUiWarnings: UiWarning[] = (engineWarningsRaw ?? []).map((warning, index) => ({
+    id: `engine-${index}`,
+    severity: mapEngineLevel(warning.level),
+    message: warning.message,
+    source: 'engine',
+  }));
+  const infillUiWarningsAll: UiWarning[] = infillsState.items.flatMap((item, index) => {
+    const ui = infillUiById.get(item.id);
+    const label = item.label?.trim() || `Infill ${index + 1}`;
+    const warnings = ui?.warnings ?? [];
+    return warnings.map((warning) => ({
+      id: `infill-${item.id}-${warning.id}`,
+      severity: mapInfillSeverity(warning.severity),
+      message: `${label}: ${warning.message}`,
+      source: 'infill' as const,
+      infillId: item.id,
+      warning,
+    }));
+  });
+  const uiWarnings = [...engineUiWarnings, ...infillUiWarningsAll];
+  const criticalUiWarnings = uiWarnings.filter((warning) => warning.severity === 'critical');
+  const reviewUiWarnings = uiWarnings.filter((warning) => warning.severity === 'review');
+  const infoUiWarnings = uiWarnings.filter((warning) => warning.severity === 'info');
+  const warningsCount = uiWarnings.length;
+
+  const anyInfillDraft = infillsState.items.some((item) => infillUiById.get(item.id)?.status === 'draft');
+  const projectHasContact = Boolean((project as { contactId?: string | null } | null)?.contactId);
+  const statusItems: StatusItem[] = [
+    {
+      id: 'project',
+      label: 'Project selected',
+      level: projectId && project ? 'ok' : 'block',
+      detail: projectId ? (project ? 'Attached' : 'Not found') : 'Select a project',
+      actionLabel: !projectId ? 'Select' : undefined,
+      onAction: !projectId ? () => toast.error('Use Projects in the header to select/create one.') : undefined,
+    },
+    {
+      id: 'contact',
+      label: 'Project contact',
+      level: project && projectHasContact ? 'ok' : project ? 'block' : 'review',
+      detail: project ? (projectHasContact ? 'OK' : 'Missing contact on project') : '—',
+      actionLabel: project && !projectHasContact ? 'Open project' : undefined,
+      onAction:
+        project && !projectHasContact && projectId
+          ? () => router.push(`/staff/projects/${encodeURIComponent(projectId)}`)
+          : undefined,
+    },
+    {
+      id: 'inputs',
+      label: 'Inputs valid',
+      level: hasModuleErrors ? 'block' : 'ok',
+      detail: hasModuleErrors ? 'Fix validation errors' : 'OK',
+      actionLabel: hasModuleErrors ? 'View errors' : undefined,
+      onAction: hasModuleErrors ? () => setIssuesOpen(true) : undefined,
+    },
+    {
+      id: 'engine',
+      label: 'Engine ready',
+      level: engineError || !result || isCalculating ? 'block' : 'ok',
+      detail: engineError ? engineError : isCalculating ? 'Calculating...' : result ? 'Live' : 'Waiting',
+    },
+    {
+      id: 'infills',
+      label: 'Infills complete',
+      level: anyInfillDraft ? 'block' : 'ok',
+      detail: anyInfillDraft ? 'Finish required infill shape fields' : 'OK',
+      actionLabel: anyInfillDraft ? 'Open infills' : undefined,
+      onAction: anyInfillDraft ? () => setInfillsOpen(true) : undefined,
+    },
+  ];
+  const hasStatusBlockers = statusItems.some((item) => item.level === 'block');
+
+  const marginalInfillDelta = useMemo(() => diffModuleCost(moduleBaseline, infillWithoutCost), [moduleBaseline, infillWithoutCost]);
+  const compareSheetDelta = useMemo(() => diffModuleCost(compareSheetCost, moduleBaseline), [compareSheetCost, moduleBaseline]);
+  const compareStripDelta = useMemo(() => diffModuleCost(compareStripCost, moduleBaseline), [compareStripCost, moduleBaseline]);
+  const sheetComplexityEstimate = useMemo(() => {
+    if (!selectedInfill) return null;
+    const variant = makeDefaultInfillItem({
+      ...selectedInfill,
+      id: selectedInfill.id,
+      acrylicSource: 'sheet_panels',
+      targetPanelWidthM: '1.2',
+      maxPanelWidthM: '1.2',
+    });
+    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id])?.estimate ?? null;
+  }, [infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
+  const stripComplexityEstimate = useMemo(() => {
+    if (!selectedInfill) return null;
+    const variant = makeDefaultInfillItem({
+      ...selectedInfill,
+      id: selectedInfill.id,
+      acrylicSource: 'strip_620',
+      targetPanelWidthM: '0.64',
+      maxPanelWidthM: '0.64',
+    });
+    return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id])?.estimate ?? null;
+  }, [infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
+
   const infillTotals = useMemo(
     () =>
       infillsState.items.reduce(
@@ -3293,10 +3565,19 @@ export default function CalculatorGridClient({
 
   const { hasClipboard: infillHasClipboard, copyGeometry: copyInfillGeometry, pasteGeometry: pasteInfillGeometry } = useInfillClipboard();
 
+  const setInfillAcrylicPreference = (infillId: string, source: InfillLineItem['acrylicSource']) => {
+    const targetWidth = source === 'sheet_panels' ? '1.2' : '0.64';
+    setInfillItem(infillId, {
+      acrylicSource: source,
+      targetPanelWidthM: targetWidth,
+      maxPanelWidthM: targetWidth,
+    });
+  };
+
   const applyInfillWarningFix = (fix: InfillWarningFix) => {
     if (!selectedInfill) return;
     if (fix.type === 'setPreferredAcrylic') {
-      setInfillItem(selectedInfill.id, { acrylicSource: fix.value });
+      setInfillAcrylicPreference(selectedInfill.id, fix.value);
       return;
     }
     if (fix.type === 'setCentreLimit') {
@@ -3376,6 +3657,22 @@ export default function CalculatorGridClient({
       flashInfillTarget(element);
     });
   };
+
+  const jumpToInfillWarningGlobal = (infillId: string, warning: InfillWarningItem) => {
+    setInfillsOpen(true);
+    setPendingInfillSelectionId(infillId);
+    setSelectedInfillId(infillId);
+    pendingInfillWarningJumpRef.current = { infillId, warning };
+  };
+
+  useEffect(() => {
+    const pending = pendingInfillWarningJumpRef.current;
+    if (!pending) return;
+    if (!infillsOpen) return;
+    if (selectedInfill?.id !== pending.infillId) return;
+    pendingInfillWarningJumpRef.current = null;
+    jumpToInfillWarningTarget(pending.warning);
+  }, [infillsOpen, selectedInfill?.id]);
 
   const focusInfillPrimaryField = (infillId: string) => {
     setInfillOpenSection('basic');
@@ -4674,11 +4971,13 @@ export default function CalculatorGridClient({
       type: 'readOnly',
       value: result ? String(warningsCount) : '—',
       helperText:
-        warningsCount && criticalWarnings.length
-          ? `Critical: ${criticalWarnings.length} (blocks estimate)`
-          : warningsCount
-            ? 'Review in Generate modal'
-            : undefined,
+        warningsCount && criticalUiWarnings.length
+          ? `Critical: ${criticalUiWarnings.length} (blocks estimate)`
+          : warningsCount && reviewUiWarnings.length
+            ? `Review: ${reviewUiWarnings.length} (ack required)`
+            : warningsCount
+              ? `Info: ${infoUiWarnings.length}`
+              : undefined,
     },
     {
       id: 'generate-estimate',
@@ -4700,6 +4999,10 @@ export default function CalculatorGridClient({
           setGenerateError('Fix validation errors before generating.');
           return;
         }
+        if (hasStatusBlockers) {
+          setGenerateError('Resolve blockers in Quote Status before generating.');
+          return;
+        }
         if (isCalculating) {
           setGenerateError('Please wait for calculation to finish.');
           return;
@@ -4719,7 +5022,7 @@ export default function CalculatorGridClient({
       },
       helperText: projectId ? 'Create immutable snapshot' : 'Requires project context',
       error: generateError ?? undefined,
-      disabled: isGenerating,
+      disabled: isGenerating || hasStatusBlockers,
     },
   ];
 
@@ -4732,11 +5035,8 @@ export default function CalculatorGridClient({
       .filter(Boolean) as FieldSchemaItem[];
 
   const contextFields = pickFields([
-    'engine-status',
     'project-context',
     'draft-notice',
-    'projectName',
-    'quoteRef',
     'moduleIndex',
     'modulePergolaId',
     'addModule',
@@ -4856,14 +5156,30 @@ export default function CalculatorGridClient({
       <h1 className="visually-hidden">Calculator</h1>
 
       <div className={styles.previewFrame}>
+        <div className={`${styles.modeToggleRow} ${styles.modeToggleFloating}`}>
+          <button
+            type="button"
+            className={uiMode === 'basic' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
+            onClick={() => setUiMode('basic')}
+          >
+            Basic
+          </button>
+          <button
+            type="button"
+            className={uiMode === 'advanced' ? `${styles.modeToggleButton} ${styles.modeToggleButtonActive}` : styles.modeToggleButton}
+            onClick={() => setUiMode('advanced')}
+          >
+            Advanced
+          </button>
+        </div>
         <div className={styles.split}>
           <div className={styles.leftCol}>
             <FieldGroup title="Context" fields={contextFields} />
-            <FieldGroup title="Structure" fields={structureFields} />
-            <FieldGroup title="Flashings" fields={flashingsFields} />
-            <FieldGroup title="Overrides" fields={overrideFields} />
-            <FieldGroup title="Add-ons" fields={addonFields} />
             <FieldGroup title="Connections & Site" fields={connectionFields} />
+            <FieldGroup title="Structure" fields={structureFields} />
+            {isAdvancedUi ? <FieldGroup title="Flashings" fields={flashingsFields} /> : null}
+            {isAdvancedUi ? <FieldGroup title="Overrides" fields={overrideFields} /> : null}
+            <FieldGroup title="Add-ons" fields={addonFields} />
             <FieldGroup title="Allowances" fields={allowanceFields} />
           </div>
 
@@ -4893,6 +5209,8 @@ export default function CalculatorGridClient({
                 <PreviewStat label="Install days" value={formatMaybeNumber(crewDays, 0)} />
               </div>
 
+              <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
+
               <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
                 <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
                   Add‑ons (informational)
@@ -4911,6 +5229,8 @@ export default function CalculatorGridClient({
                 </div>
               </div>
 
+              <QuoteStatusCard items={statusItems} />
+
               {generateField ? (
                 <div className={styles.previewActions}>
                   <button
@@ -4928,11 +5248,31 @@ export default function CalculatorGridClient({
 
             <section className={styles.previewCard} aria-label="Warnings">
               <h2 className={styles.previewCardTitle}>Warnings</h2>
-              {warningsTyped.length ? (
-                <ul className={styles.previewList}>
-                  {warningsTyped.map((warn, idx) => (
-                    <li key={`${warn.level}-${idx}`} className={warn.level === 'critical' ? styles.previewWarnCritical : undefined}>
-                      {warn.message}
+              {uiWarnings.length ? (
+                <ul className={styles.warningList}>
+                  {uiWarnings.map((warning) => (
+                    <li key={warning.id} className={styles.warningRow}>
+                      <span
+                        className={
+                          warning.severity === 'critical'
+                            ? styles.warningBadgeCritical
+                            : warning.severity === 'review'
+                              ? styles.warningBadgeReview
+                              : styles.warningBadgeInfo
+                        }
+                      >
+                        {warning.severity === 'critical' ? 'Critical' : warning.severity === 'review' ? 'Review' : 'Info'}
+                      </span>
+                      <span className={styles.warningMessage}>{warning.message}</span>
+                      {warning.source === 'infill' ? (
+                        <button
+                          type="button"
+                          className={styles.warningJumpButton}
+                          onClick={() => jumpToInfillWarningGlobal(warning.infillId, warning.warning)}
+                        >
+                          Jump
+                        </button>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
@@ -4966,6 +5306,8 @@ export default function CalculatorGridClient({
               )}
             </section>
 
+            {isAdvancedUi ? (
+            <>
             <section className={styles.previewCard} aria-label="Materials debug">
               <div className={styles.materialsDebugHeader}>
                 <h2 className={styles.previewCardTitle} style={{ margin: 0 }}>
@@ -5099,6 +5441,8 @@ export default function CalculatorGridClient({
                 <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : '—'} />
               </div>
             </details>
+            </>
+            ) : null}
           </aside>
         </div>
       </div>
@@ -5272,7 +5616,7 @@ export default function CalculatorGridClient({
                             label="Acrylic type (preferred)"
                             type="select"
                             value={selectedInfill.acrylicSource}
-                            onChange={(v) => setInfillItem(selectedInfill.id, { acrylicSource: v as InfillLineItem['acrylicSource'] })}
+                            onChange={(v) => setInfillAcrylicPreference(selectedInfill.id, v as InfillLineItem['acrylicSource'])}
                             options={[
                               { label: 'Sheet panels', value: 'sheet_panels' },
                               { label: '620 strips', value: 'strip_620' },
@@ -5280,6 +5624,15 @@ export default function CalculatorGridClient({
                             helperText={selectedAutoSwitchInlineHint ?? infillRunConstraintLine}
                             error={selectedInfillValidation.errors.acrylicSource}
                           />
+                          {selectedInfillEstimate?.acrylicSourceAutoSwitched ? (
+                            <button
+                              type="button"
+                              className={styles.infillInlineAction}
+                              onClick={() => setInfillAcrylicPreference(selectedInfill.id, selectedInfillEstimate.acrylicSourceUsed)}
+                            >
+                              {`Set preferred acrylic to ${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)}`}
+                            </button>
+                          ) : null}
                         </div>
                         <div className={styles.span4}>
                           <FieldTile
@@ -5582,6 +5935,60 @@ export default function CalculatorGridClient({
                             acrossSideM={selectedInfillEstimate.acrossSideM}
                             centreLimitM={selectedInfillEstimate.maxCentreM}
                           />
+                          <div className={styles.infillComputedGroup}>
+                            <div className={styles.infillComputedGroupTitle}>Decision support</div>
+                            {moduleBaselineLoading ? <p className={styles.infillComputedNote}>Loading module baseline...</p> : null}
+                            {moduleBaselineError ? <p className={styles.previewError}>{moduleBaselineError}</p> : null}
+                            {infillDecisionLoading ? <p className={styles.infillComputedNote}>Running option comparison...</p> : null}
+                            {infillDecisionError ? <p className={styles.previewError}>{infillDecisionError}</p> : null}
+                            <div className={styles.infillDecisionCard}>
+                              <div className={styles.infillDecisionTitle}>Marginal cost (this infill)</div>
+                              <PreviewRow label="Delta total (ex-GST)" value={formatSignedMoney(marginalInfillDelta?.total_ex)} />
+                              <PreviewRow label="Delta total (inc-GST)" value={formatSignedMoney(marginalInfillDelta?.total_inc)} />
+                              <PreviewRow label="Delta materials (ex-GST)" value={formatSignedMoney(marginalInfillDelta?.materials_ex)} />
+                              <PreviewRow label="Delta install (ex-GST)" value={formatSignedMoney(marginalInfillDelta?.install_ex)} />
+                              <p className={styles.infillComputedNote}>Marginal vs current module; pooling across job not represented.</p>
+                            </div>
+                            <div className={styles.infillDecisionCard}>
+                              <div className={styles.infillDecisionTitle}>Compare sheet vs 620 strips</div>
+                              <div className={styles.infillDecisionRow}>
+                                <div className={styles.infillDecisionMain}>
+                                  <div className={styles.infillDecisionLabel}>Sheet panels</div>
+                                  <div className={styles.infillDecisionMeta}>
+                                    {`Delta total ${formatSignedMoney(compareSheetDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareSheetDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareSheetDelta?.install_ex)}`}
+                                  </div>
+                                  <div className={styles.infillDecisionMeta}>
+                                    {`Complexity: panels ~${sheetComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${sheetComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={styles.infillDecisionApply}
+                                  onClick={() => setInfillAcrylicPreference(selectedInfill.id, 'sheet_panels')}
+                                >
+                                  Apply
+                                </button>
+                              </div>
+                              <div className={styles.infillDecisionRow}>
+                                <div className={styles.infillDecisionMain}>
+                                  <div className={styles.infillDecisionLabel}>620 strips</div>
+                                  <div className={styles.infillDecisionMeta}>
+                                    {`Delta total ${formatSignedMoney(compareStripDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareStripDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareStripDelta?.install_ex)}`}
+                                  </div>
+                                  <div className={styles.infillDecisionMeta}>
+                                    {`Complexity: panels ~${stripComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${stripComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={styles.infillDecisionApply}
+                                  onClick={() => setInfillAcrylicPreference(selectedInfill.id, 'strip_620')}
+                                >
+                                  Apply
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                           <h3 className={styles.infillComputedTitle}>Computed summary</h3>
                           {selectedDraftGhostLine ? <p className={styles.infillComputedGhost}>{selectedDraftGhostLine}</p> : null}
 
@@ -5948,28 +6355,40 @@ export default function CalculatorGridClient({
 
               <section className={styles.modalSection} aria-label="Warnings">
                 <h3 className={styles.modalSectionTitle}>Warnings</h3>
-                {warningsTyped.length ? (
+                {uiWarnings.length ? (
                   <>
-                    {criticalWarnings.length ? (
+                    {criticalUiWarnings.length ? (
                       <>
                         <div className={styles.modalKey} style={{ marginBottom: 6, color: 'rgb(185, 28, 28)' }}>
                           Critical (blocks generation)
                         </div>
                         <ul className={styles.modalWarnings}>
-                          {criticalWarnings.map((w, idx) => (
-                            <li key={`c-${idx}`}>{w.message}</li>
+                          {criticalUiWarnings.map((warning) => (
+                            <li key={warning.id}>{warning.message}</li>
                           ))}
                         </ul>
                       </>
                     ) : null}
-                    {infoWarnings.length ? (
+                    {reviewUiWarnings.length ? (
+                      <>
+                        <div className={styles.modalKey} style={{ marginTop: 10, marginBottom: 6 }}>
+                          Review (acknowledge to continue)
+                        </div>
+                        <ul className={styles.modalWarnings}>
+                          {reviewUiWarnings.map((warning) => (
+                            <li key={warning.id}>{warning.message}</li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
+                    {infoUiWarnings.length ? (
                       <>
                         <div className={styles.modalKey} style={{ marginTop: 10, marginBottom: 6 }}>
                           Info
                         </div>
                         <ul className={styles.modalWarnings}>
-                          {infoWarnings.map((w, idx) => (
-                            <li key={`i-${idx}`}>{w.message}</li>
+                          {infoUiWarnings.map((warning) => (
+                            <li key={warning.id}>{warning.message}</li>
                           ))}
                         </ul>
                       </>
@@ -5980,14 +6399,14 @@ export default function CalculatorGridClient({
                 )}
               </section>
 
-              {infoWarnings.length ? (
+              {reviewUiWarnings.length ? (
                 <label className={styles.modalCheckboxRow}>
                   <input
                     type="checkbox"
                     checked={confirmAcknowledgeWarnings}
                     onChange={(e) => setConfirmAcknowledgeWarnings(e.target.checked)}
                   />
-                  <span>I acknowledge the warnings</span>
+                  <span>I acknowledge the review warnings</span>
                 </label>
               ) : null}
 
@@ -6015,9 +6434,10 @@ export default function CalculatorGridClient({
                 type="button"
                 className={styles.modalButtonPrimary}
                 disabled={
-                  criticalWarnings.length > 0 ||
+                  criticalUiWarnings.length > 0 ||
+                  hasStatusBlockers ||
                   !confirmReady ||
-                  (infoWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
+                  (reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
                   isGenerating
                 }
                 onClick={async () => {
@@ -6043,7 +6463,11 @@ export default function CalculatorGridClient({
 
                   setIsGenerating(true);
                   try {
-                    if (criticalWarnings.length > 0) {
+                    if (hasStatusBlockers) {
+                      fail('Resolve blockers in Quote Status before generating.');
+                      return;
+                    }
+                    if (criticalUiWarnings.length > 0) {
                       fail('Resolve critical warnings before generating.');
                       return;
                     }
@@ -6094,7 +6518,7 @@ export default function CalculatorGridClient({
                         install: result.install,
                         overhead: result.overhead,
                         totals: result.totals,
-                        warnings: warningsTyped,
+                        warnings: engineWarningsRaw,
                         pergolas: result.pergolas,
                         siteShared: result.shared,
                         shared: result.shared,
@@ -6178,4 +6602,5 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
 
