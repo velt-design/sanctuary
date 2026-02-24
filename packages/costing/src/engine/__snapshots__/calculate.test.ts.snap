@@ -4,15 +4,8 @@ exports[`calculateCostV1 > fixture: box perimeter 300x50, internal pitched roof,
 {
   "cost_ex_gst": 13973.75,
   "cost_inc_gst": 16069.81,
-  "notes_and_warnings": [
-    "Acrylic joiner system assumed (no through-fixing).",
-  ],
-  "warnings": [
-    {
-      "level": "info",
-      "message": "Acrylic joiner system assumed (no through-fixing).",
-    },
-  ],
+  "notes_and_warnings": [],
+  "warnings": [],
 }
 `;
 
@@ -20,14 +13,7 @@ exports[`calculateCostV1 > fixture: pitched, acrylic, 6m × 3m, black, soffit + 
 {
   "cost_ex_gst": 10806.5,
   "cost_inc_gst": 12427.47,
-  "notes_and_warnings": [
-    "Acrylic joiner system assumed (no through-fixing).",
-  ],
-  "warnings": [
-    {
-      "level": "info",
-      "message": "Acrylic joiner system assumed (no through-fixing).",
-    },
-  ],
+  "notes_and_warnings": [],
+  "warnings": [],
 }
 `;
