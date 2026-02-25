@@ -52,15 +52,14 @@ const MATERIALS: MaterialConfig[] = [
     bubbleBody: 'Bright, clean light with a crisp finish. A minimal look that stays quiet in the architecture.',
     media: {
       browse: {
-        src: '/images/gable-acrylic.png',
-        alt: 'Acrylic material option',
-        fit: 'contain',
+        mediaType: 'video',
+        src: '/videos/gable-acrylic.mp4',
+        ariaLabel: 'Acrylic roof video',
       },
       focus: {
-        src: '/images/gable-acrylic.png',
-        alt: 'Acrylic material close-up',
-        fit: 'cover',
-        position: 'center',
+        mediaType: 'video',
+        src: '/videos/gable-acrylic.mp4',
+        ariaLabel: 'Acrylic roof video',
       },
     },
   },
