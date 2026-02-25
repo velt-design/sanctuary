@@ -22,6 +22,68 @@
   --radius-card: 16px;
 }
 
+/* Shared flat/line-first UI assets */
+@layer components {
+  .ui-line-surface {
+    @apply rounded-none border border-page bg-card;
+    border-width: var(--bw);
+  }
+
+  .ui-line-divider-y {
+    @apply border-y border-page;
+    border-top-width: var(--bw);
+    border-bottom-width: var(--bw);
+  }
+
+  .ui-line-divider-x {
+    @apply border-x border-page;
+    border-left-width: var(--bw);
+    border-right-width: var(--bw);
+  }
+
+  .ui-line-option {
+    @apply flex h-12 w-full items-center justify-between rounded-none bg-card px-4 text-left text-sm font-medium text-ink transition-colors;
+    border-width: 0;
+  }
+
+  .ui-line-option:hover {
+    background: #f4f5f6;
+  }
+
+  .ui-line-option-active {
+    background: #e6e8ea;
+  }
+
+  .ui-line-option-label {
+    @apply text-[15px] font-semibold uppercase tracking-[0.08em];
+  }
+
+  .ui-line-symbol {
+    @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-none border-0 bg-transparent p-0 text-ink;
+  }
+
+  .ui-line-dot {
+    @apply h-1.5 w-1.5 rounded-none bg-transparent;
+  }
+
+  .ui-line-dot-active {
+    @apply bg-brand;
+  }
+
+  .ui-line-glyph-btn {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-none border-0 bg-transparent p-0 text-ink transition-colors hover:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40;
+  }
+
+  .ui-line-swatch {
+    @apply h-8 w-8 rounded-none border border-page;
+    border-width: var(--bw);
+  }
+
+  .ui-line-swatch-selected {
+    @apply ring-2 ring-black/25 ring-offset-1 ring-offset-page;
+  }
+}
+
 /* === Sanctuary Viewer CSS (from your prototype) === */
 :root { --bar-h:6px; --thumb:14px; --ease: cubic-bezier(.22,.61,.36,1); --ease-slow: cubic-bezier(.2,.8,.2,1); --ease-zoom: cubic-bezier(.08,0,.17,1); --gap-ratio: 0.06; --bar-mult: 2.2; --g: clamp(12px, 2.2vw, 28px); --sp-box-gap: 14px; }
 *,*::before,*::after { box-sizing:border-box; }

@@ -6,17 +6,27 @@ import { T } from '../_foundation/tokens';
 import { StageSurface } from '../_foundation/StageSurface';
 import { DebugFrame } from '../_foundation/DebugFrame';
 import { CrossfadeImage } from '../_foundation/CrossfadeImage';
+import { usePrefersReducedMotion } from '../_foundation/usePrefersReducedMotion';
 
 type MaterialId = 'acrylic' | 'timber' | 'combo' | 'aluminium';
 type Mode = 'browse' | 'focus';
 type AluminiumColorId = 'silver' | 'white' | 'black' | 'bronze';
 
-type MediaSpec = {
+type ImageMediaSpec = {
+  mediaType?: 'image';
   src: string;
   alt: string;
   fit: 'contain' | 'cover';
   position?: string;
 };
+
+type VideoMediaSpec = {
+  mediaType: 'video';
+  src: string;
+  ariaLabel: string;
+};
+
+type MediaSpec = ImageMediaSpec | VideoMediaSpec;
 
 type MaterialConfig = {
   id: MaterialId;
@@ -32,6 +42,8 @@ type MaterialConfig = {
     media: { browse: MediaSpec; focus: MediaSpec };
   }>;
 };
+
+const COMBO_VIDEO_PLAYBACK_RATE = 2;
 
 const MATERIALS: MaterialConfig[] = [
   {
@@ -79,15 +91,14 @@ const MATERIALS: MaterialConfig[] = [
     bubbleBody: 'Balance warmth and precision. A composed mix that lets structure stay clean while texture does the work.',
     media: {
       browse: {
-        src: '/start-explore/materials/combination/browse.jpg',
-        alt: 'Combination material option',
-        fit: 'contain',
+        mediaType: 'video',
+        src: '/videos/combination-gable.mp4',
+        ariaLabel: 'Combination roof video',
       },
       focus: {
-        src: '/start-explore/materials/combination/focus.jpg',
-        alt: 'Combination material close-up',
-        fit: 'cover',
-        position: 'center',
+        mediaType: 'video',
+        src: '/videos/combination-gable.mp4',
+        ariaLabel: 'Combination roof video',
       },
     },
   },
@@ -232,18 +243,9 @@ export function MaterialsExplorerStage({ debug }: { debug?: boolean }) {
   const [active, setActive] = React.useState<MaterialId>('acrylic');
   const [mode, setMode] = React.useState<Mode>('browse');
   const [aluColor, setAluColor] = React.useState<AluminiumColorId>('silver');
-  const [bubbleTop, setBubbleTop] = React.useState(0);
-
-  const listRef = React.useRef<HTMLDivElement | null>(null);
-  const bubbleLaneRef = React.useRef<HTMLDivElement | null>(null);
-  const bubbleRef = React.useRef<HTMLDivElement | null>(null);
-
-  const pillRefMap = React.useRef<Record<MaterialId, HTMLButtonElement | null>>({
-    acrylic: null,
-    timber: null,
-    combo: null,
-    aluminium: null,
-  });
+  const [comboReplayNonce, setComboReplayNonce] = React.useState(0);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const prevActiveRef = React.useRef<MaterialId>('acrylic');
 
   const plusRefMap = React.useRef<Record<MaterialId, HTMLSpanElement | null>>({
     acrylic: null,
@@ -264,28 +266,40 @@ export function MaterialsExplorerStage({ debug }: { debug?: boolean }) {
     return isFocus ? activeCfg.media.focus : activeCfg.media.browse;
   })();
 
-  React.useLayoutEffect(() => {
-    if (!isFocus) return;
+  React.useEffect(() => {
+    const prev = prevActiveRef.current;
+    if (active === 'combo' && prev !== 'combo') {
+      setComboReplayNonce((current) => current + 1);
+    }
+    prevActiveRef.current = active;
+  }, [active]);
 
-    const listEl = listRef.current;
-    const pillEl = pillRefMap.current[active];
-    const laneEl = bubbleLaneRef.current;
-    const bEl = bubbleRef.current;
+  const enforceComboVideoPlaybackRate = React.useCallback((video: HTMLVideoElement) => {
+    if (video.defaultPlaybackRate !== COMBO_VIDEO_PLAYBACK_RATE) {
+      video.defaultPlaybackRate = COMBO_VIDEO_PLAYBACK_RATE;
+    }
+    if (video.playbackRate !== COMBO_VIDEO_PLAYBACK_RATE) {
+      video.playbackRate = COMBO_VIDEO_PLAYBACK_RATE;
+    }
+  }, []);
 
-    if (!listEl || !pillEl || !laneEl || !bEl) return;
+  const onComboVideoLoadedMetadata = React.useCallback(
+    (event: React.SyntheticEvent<HTMLVideoElement>) => {
+      enforceComboVideoPlaybackRate(event.currentTarget);
+    },
+    [enforceComboVideoPlaybackRate]
+  );
 
-    const listRect = listEl.getBoundingClientRect();
-    const pillRect = pillEl.getBoundingClientRect();
-    const laneRect = laneEl.getBoundingClientRect();
-    const bubbleRect = bEl.getBoundingClientRect();
+  const onComboVideoPlay = React.useCallback(
+    (event: React.SyntheticEvent<HTMLVideoElement>) => {
+      enforceComboVideoPlaybackRate(event.currentTarget);
+    },
+    [enforceComboVideoPlaybackRate]
+  );
 
-    const anchorY = pillRect.top - listRect.top + pillRect.height / 2;
-    let top = anchorY - bubbleRect.height / 2;
-    const maxTop = Math.max(0, laneRect.height - bubbleRect.height);
-    top = Math.max(0, Math.min(top, maxTop));
-
-    setBubbleTop(top);
-  }, [active, isFocus]);
+  const onComboVideoEnded = React.useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
+    event.currentTarget.pause();
+  }, []);
 
   function enterFocus(nextActive?: MaterialId) {
     if (nextActive) setActive(nextActive);
@@ -353,7 +367,7 @@ export function MaterialsExplorerStage({ debug }: { debug?: boolean }) {
 
           <div className={cn(T.ME_GRID)}>
             <DebugFrame enabled={debug} label="Lane: Pills">
-              <div ref={listRef} className={T.ME_LANE_STACK}>
+              <div className={T.ME_LANE_STACK}>
                 <div className={T.ME_PILL_LIST}>
                   {MATERIALS.map((m) => {
                     const activeRow = m.id === active;
@@ -363,9 +377,6 @@ export function MaterialsExplorerStage({ debug }: { debug?: boolean }) {
                     return (
                       <React.Fragment key={m.id}>
                         <button
-                          ref={(el) => {
-                            pillRefMap.current[m.id] = el;
-                          }}
                           type="button"
                           onClick={onPillClick(m.id)}
                           className={cn(T.ME_PILL_BTN, activeRow && T.ME_PILL_BTN_ACTIVE)}
@@ -428,40 +439,6 @@ export function MaterialsExplorerStage({ debug }: { debug?: boolean }) {
               </div>
             </DebugFrame>
 
-            <DebugFrame enabled={debug} label="Lane: Bubble">
-              <div ref={bubbleLaneRef} className={T.ME_BUBBLE_LANE}>
-                {isFocus ? (
-                  <div className={T.ME_BUBBLE_WRAP} style={{ transform: `translateY(${bubbleTop}px)` }}>
-                    <div ref={bubbleRef} className={T.ME_BUBBLE}>
-                      <div className={T.ME_BUBBLE_TITLE}>{activeCfg.bubbleTitle}</div>
-                      <div className={T.ME_BUBBLE_BODY}>{activeCfg.bubbleBody}</div>
-
-                      {showSwatches && aluminiumCfg?.aluminiumColors ? (
-                        <div className={T.ME_SWATCH_ROW} aria-label="Aluminium colours">
-                          {aluminiumCfg.aluminiumColors.map((c) => {
-                            const selected = c.id === aluColor;
-                            return (
-                              <button
-                                key={c.id}
-                                type="button"
-                                className={cn(T.ME_SWATCH_BTN, selected && T.ME_SWATCH_SELECTED)}
-                                style={{ backgroundColor: c.hex }}
-                                aria-label={c.label}
-                                aria-pressed={selected}
-                                onClick={() => setAluColor(c.id)}
-                              />
-                            );
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                ) : (
-                  <div />
-                )}
-              </div>
-            </DebugFrame>
-
             <DebugFrame enabled={debug} label="Lane: Media">
               <div className={T.ME_MEDIA_LANE}>
                 <div className={T.ME_MEDIA_FRAME}>
@@ -471,13 +448,31 @@ export function MaterialsExplorerStage({ debug }: { debug?: boolean }) {
                       transition: `transform ${T.DUR_EXPAND}ms ease`,
                     }}
                   >
-                    <CrossfadeImage
-                      src={mediaSpec.src}
-                      alt={mediaSpec.alt}
-                      fit={mediaSpec.fit}
-                      position={mediaSpec.position}
-                      priority
-                    />
+                    {mediaSpec.mediaType === 'video' ? (
+                      <video
+                        key={`${mediaSpec.src}:${comboReplayNonce}`}
+                        autoPlay={!prefersReducedMotion}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        aria-label={mediaSpec.ariaLabel}
+                        tabIndex={-1}
+                        className="h-full w-full object-cover"
+                        onLoadedMetadata={onComboVideoLoadedMetadata}
+                        onPlay={onComboVideoPlay}
+                        onEnded={onComboVideoEnded}
+                      >
+                        <source src={mediaSpec.src} type="video/mp4" />
+                      </video>
+                    ) : (
+                      <CrossfadeImage
+                        src={mediaSpec.src}
+                        alt={mediaSpec.alt}
+                        fit={mediaSpec.fit}
+                        position={mediaSpec.position}
+                        priority
+                      />
+                    )}
                   </div>
                 </div>
               </div>
