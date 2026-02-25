@@ -54,6 +54,10 @@ type HighlightCard = {
 };
 
 const DEFAULT_VIDEO_PLAYBACK_RATE = 2;
+const HIGHLIGHT_CARD_WIDTH = 'min(88vw, 1288px)';
+const MATERIALS_STAGE_WIDTH = 'min(92vw, 1610px)';
+const REEL_ALIGNED_COPY_STYLE: React.CSSProperties = { width: HIGHLIGHT_CARD_WIDTH, marginInline: 'auto' };
+const MATERIALS_STAGE_WRAP_STYLE: React.CSSProperties = { width: MATERIALS_STAGE_WIDTH, marginInline: 'auto' };
 
 const MATERIALS: MaterialConfig[] = [
   {
@@ -86,13 +90,13 @@ const MATERIALS: MaterialConfig[] = [
         mediaType: 'video',
         src: '/videos/timber-pitched.mp4',
         ariaLabel: 'Timber roof video',
-        playbackRate: 4,
+        playbackRate: 1,
       },
       focus: {
         mediaType: 'video',
         src: '/videos/timber-pitched.mp4',
         ariaLabel: 'Timber roof video',
-        playbackRate: 4,
+        playbackRate: 1,
       },
     },
   },
@@ -227,7 +231,7 @@ const HIGHLIGHT_CARDS: HighlightCard[] = [
     body: 'Engineered to handle sun, rain and wind while preserving architectural clarity.',
     media: {
       mediaType: 'video',
-      src: '/videos/gable-sanctuary.mp4',
+      src: '/videos/gable-sanctuary-loop.mp4',
       ariaLabel: 'Gable Sanctuary highlight video',
       playbackRate: 1,
     },
@@ -450,15 +454,9 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     };
   }, [recalcHighlightsSidePad]);
 
-  const scrollHighlights = React.useCallback((direction: -1 | 1) => {
-    const track = highlightsTrackRef.current;
-    if (!track) return;
-
-    const cards = Array.from(track.querySelectorAll<HTMLElement>('[data-highlight-card]'));
-    if (!cards.length) return;
-
+  const findCenteredHighlightCardIndex = React.useCallback((track: HTMLDivElement, cards: HTMLElement[]) => {
     const trackCenter = track.scrollLeft + track.clientWidth / 2;
-    let currentIndex = 0;
+    let centeredIndex = 0;
     let nearestDistance = Number.POSITIVE_INFINITY;
 
     cards.forEach((card, index) => {
@@ -466,16 +464,33 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
       const distance = Math.abs(cardCenter - trackCenter);
       if (distance < nearestDistance) {
         nearestDistance = distance;
-        currentIndex = index;
+        centeredIndex = index;
       }
     });
 
-    const targetIndex = Math.min(cards.length - 1, Math.max(0, currentIndex + direction));
-    const targetCard = cards[targetIndex];
-    const targetLeft = targetCard.offsetLeft + targetCard.clientWidth / 2 - track.clientWidth / 2;
+    return centeredIndex;
+  }, []);
 
+  const scrollHighlightCardToCenter = React.useCallback((card: HTMLElement) => {
+    const track = highlightsTrackRef.current;
+    if (!track) return;
+
+    const targetLeft = card.offsetLeft + card.clientWidth / 2 - track.clientWidth / 2;
     track.scrollTo({ left: targetLeft, behavior: 'smooth' });
   }, []);
+
+  const scrollHighlights = React.useCallback((direction: -1 | 1) => {
+    const track = highlightsTrackRef.current;
+    if (!track) return;
+
+    const cards = Array.from(track.querySelectorAll<HTMLElement>('[data-highlight-card]'));
+    if (!cards.length) return;
+
+    const currentIndex = findCenteredHighlightCardIndex(track, cards);
+    const targetIndex = Math.min(cards.length - 1, Math.max(0, currentIndex + direction));
+    const targetCard = cards[targetIndex];
+    scrollHighlightCardToCenter(targetCard);
+  }, [findCenteredHighlightCardIndex, scrollHighlightCardToCenter]);
 
   function enterFocus(nextActive?: MaterialId) {
     if (nextActive) setActive(nextActive);
@@ -572,15 +587,29 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                 key={card.id}
                 type="button"
                 data-highlight-card
-                onClick={() => {
+                onClick={(event) => {
+                  const track = highlightsTrackRef.current;
+                  if (track) {
+                    const cards = Array.from(track.querySelectorAll<HTMLElement>('[data-highlight-card]'));
+                    const clickedIndex = cards.indexOf(event.currentTarget);
+                    if (clickedIndex >= 0) {
+                      const centeredIndex = findCenteredHighlightCardIndex(track, cards);
+                      if (clickedIndex !== centeredIndex) {
+                        scrollHighlightCardToCenter(event.currentTarget);
+                        return;
+                      }
+                    }
+                  }
+
                   if (!card.materialId) return;
                   enterFocus(card.materialId);
                 }}
                 className={cn(
-                  'group relative h-[clamp(360px,58vh,620px)] w-[min(88vw,1120px)] shrink-0 snap-center overflow-hidden border border-page bg-card text-left [border-width:var(--bw)]',
+                  'group relative h-[640px] shrink-0 snap-center overflow-hidden border border-page bg-card text-left [border-width:var(--bw)]',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
                   selected && 'ring-1 ring-brand/45'
                 )}
+                style={{ width: HIGHLIGHT_CARD_WIDTH }}
                 aria-label={card.materialId ? `${card.title}. Apply this material selection.` : card.title}
                 aria-pressed={card.materialId ? selected : undefined}
               >
@@ -608,7 +637,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                     src={card.media.src}
                     alt={card.media.alt}
                     fill
-                    sizes="(max-width: 768px) 88vw, (max-width: 1280px) 82vw, 1120px"
+                    sizes="(max-width: 768px) 88vw, (max-width: 1280px) 88vw, 1288px"
                     className={card.media.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
                     style={{ objectPosition: card.media.position ?? 'center' }}
                   />
@@ -636,8 +665,22 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
         </div>
       </section>
 
+      <section className={cn('bg-page py-[clamp(36px,7vh,104px)]', debug && 'outline outline-1 outline-emerald-500/35')}>
+        <div style={REEL_ALIGNED_COPY_STYLE}>
+          <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Materials.</p>
+          <h2 className="mt-3 max-w-[24ch] text-balance text-[clamp(32px,4.4vw,62px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
+            Bright and open, or cool and shaded - dial it in with materials.
+          </h2>
+          <p className="mt-6 max-w-[76ch] text-[17px] leading-[1.66] text-muted">
+            Material choice sets the tone for the entire pergola - how light moves through it, how warm it feels, how much upkeep it asks for, and how it will age over time.{' '}
+            <span className="text-ink">Acrylic keeps spaces bright and open. Timber adds warmth and texture. Combination systems balance both.</span>{' '}
+            Aluminium stays crisp and architectural, with colour options that sit quietly alongside your exterior palette.
+          </p>
+        </div>
+      </section>
+
       <section className="bg-page py-[clamp(20px,4.5vh,56px)]">
-        <Container>
+        <div style={MATERIALS_STAGE_WRAP_STYLE}>
           <article
             className={cn(
               'ui-line-surface relative overflow-hidden',
@@ -656,120 +699,120 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
               </div>
             ) : null}
 
-            <div className="grid gap-6 p-4 md:p-6 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] lg:gap-0 lg:p-8">
-              <div className="flex min-h-0 flex-col lg:border-r lg:border-card lg:pr-8 lg:[border-right-width:var(--bw)]">
-                <div className="ui-line-surface overflow-hidden border-card bg-card">
-                  {MATERIALS.map((m, index) => {
-                    const activeRow = m.id === active;
-                    const dotColor = m.id === 'aluminium' && activeRow && activeAlu ? activeAlu.hex : undefined;
-                    const rowHasDivider = index < MATERIALS.length - 1 || (activeRow && isFocus);
-                    const bubbleHasDivider = index < MATERIALS.length - 1;
+              <div className="grid gap-6 p-4 md:p-6 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] lg:gap-0 lg:p-8">
+                <div className="flex min-h-0 flex-col lg:border-r lg:border-card lg:pr-8 lg:[border-right-width:var(--bw)]">
+                  <div className="ui-line-surface overflow-hidden border-card bg-card">
+                    {MATERIALS.map((m, index) => {
+                      const activeRow = m.id === active;
+                      const dotColor = m.id === 'aluminium' && activeRow && activeAlu ? activeAlu.hex : undefined;
+                      const rowHasDivider = index < MATERIALS.length - 1 || (activeRow && isFocus);
+                      const bubbleHasDivider = index < MATERIALS.length - 1;
 
-                    return (
-                      <React.Fragment key={m.id}>
-                        <button
-                          type="button"
-                          onClick={onPillClick(m.id)}
-                          className={cn(
-                            'ui-line-option',
-                            activeRow && 'ui-line-option-active',
-                            rowHasDivider && 'border-b border-page [border-bottom-width:var(--bw)]'
-                          )}
-                          aria-current={activeRow ? 'true' : undefined}
-                          aria-expanded={activeRow && isFocus ? true : undefined}
-                        >
-                          <span className="flex min-w-0 items-center gap-3">
-                            <span className="flex size-3 items-center justify-center" aria-hidden="true">
-                              <span
-                                className={cn('ui-line-dot', activeRow && 'ui-line-dot-active')}
-                                style={activeRow && dotColor ? { backgroundColor: dotColor } : undefined}
-                              />
-                            </span>
-                            <span className="ui-line-option-label truncate">{m.label}</span>
-                          </span>
-
-                          <span
-                            ref={(el) => {
-                              plusRefMap.current[m.id] = el;
-                            }}
-                            className="ui-line-symbol"
-                            aria-hidden="true"
-                            style={{ opacity: activeRow ? 0 : 1 }}
-                          >
-                            <IconPlus />
-                          </span>
-                        </button>
-
-                        {activeRow && isFocus ? (
-                          <div
+                      return (
+                        <React.Fragment key={m.id}>
+                          <button
+                            type="button"
+                            onClick={onPillClick(m.id)}
                             className={cn(
-                              'bg-card p-4',
-                              bubbleHasDivider && 'border-b border-page [border-bottom-width:var(--bw)]'
+                              'ui-line-option',
+                              activeRow && 'ui-line-option-active',
+                              rowHasDivider && 'border-b border-page [border-bottom-width:var(--bw)]'
                             )}
+                            aria-current={activeRow ? 'true' : undefined}
+                            aria-expanded={activeRow && isFocus ? true : undefined}
                           >
-                            <p className="text-[15px] leading-[1.55] text-muted">{activeCfg.bubbleBody}</p>
+                            <span className="flex min-w-0 items-center gap-3">
+                              <span className="flex size-3 items-center justify-center" aria-hidden="true">
+                                <span
+                                  className={cn('ui-line-dot', activeRow && 'ui-line-dot-active')}
+                                  style={activeRow && dotColor ? { backgroundColor: dotColor } : undefined}
+                                />
+                              </span>
+                              <span className="ui-line-option-label truncate">{m.label}</span>
+                            </span>
 
-                            {showSwatches && aluminiumCfg?.aluminiumColors ? (
-                              <div className="mt-5 flex items-center gap-3 overflow-x-auto pb-1" aria-label="Aluminium colours">
-                                {aluminiumCfg.aluminiumColors.map((c) => {
-                                  const selected = c.id === aluColor;
-                                  return (
-                                    <button
-                                      key={c.id}
-                                      type="button"
-                                      className={cn('ui-line-swatch', selected && 'ui-line-swatch-selected')}
-                                      style={{ backgroundColor: c.hex }}
-                                      aria-label={c.label}
-                                      aria-pressed={selected}
-                                      onClick={() => setAluColor(c.id)}
-                                    />
-                                  );
-                                })}
-                              </div>
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </React.Fragment>
-                    );
-                  })}
+                            <span
+                              ref={(el) => {
+                                plusRefMap.current[m.id] = el;
+                              }}
+                              className="ui-line-symbol"
+                              aria-hidden="true"
+                              style={{ opacity: activeRow ? 0 : 1 }}
+                            >
+                              <IconPlus />
+                            </span>
+                          </button>
+
+                          {activeRow && isFocus ? (
+                            <div
+                              className={cn(
+                                'bg-card p-4',
+                                bubbleHasDivider && 'border-b border-page [border-bottom-width:var(--bw)]'
+                              )}
+                            >
+                              <p className="text-[15px] leading-[1.55] text-muted">{activeCfg.bubbleBody}</p>
+
+                              {showSwatches && aluminiumCfg?.aluminiumColors ? (
+                                <div className="mt-5 flex items-center gap-3 overflow-x-auto pb-1" aria-label="Aluminium colours">
+                                  {aluminiumCfg.aluminiumColors.map((c) => {
+                                    const selected = c.id === aluColor;
+                                    return (
+                                      <button
+                                        key={c.id}
+                                        type="button"
+                                        className={cn('ui-line-swatch', selected && 'ui-line-swatch-selected')}
+                                        style={{ backgroundColor: c.hex }}
+                                        aria-label={c.label}
+                                        aria-pressed={selected}
+                                        onClick={() => setAluColor(c.id)}
+                                      />
+                                    );
+                                  })}
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="min-w-0 lg:pl-8">
+                  <div className="relative h-[420px] overflow-hidden border border-card bg-card md:h-[520px] lg:h-full lg:min-h-[620px]">
+                    {mediaSpec.mediaType === 'video' ? (
+                      <video
+                        key={`${mediaSpec.src}:${videoReplayNonce}`}
+                        autoPlay={!prefersReducedMotion}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        aria-label={mediaSpec.ariaLabel}
+                        tabIndex={-1}
+                        className="h-full w-full object-cover"
+                        onLoadedMetadata={onStageVideoLoadedMetadata}
+                        onPlay={onStageVideoPlay}
+                        onEnded={onStageVideoEnded}
+                      >
+                        <source src={mediaSpec.src} type="video/mp4" />
+                      </video>
+                    ) : (
+                      <Image
+                        key={mediaSpec.src}
+                        src={mediaSpec.src}
+                        alt={mediaSpec.alt}
+                        fill
+                        priority
+                        sizes="(max-width: 1024px) 100vw, 68vw"
+                        className={mediaSpec.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+                        style={{ objectPosition: mediaSpec.position ?? 'center' }}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
-
-              <div className="min-w-0 lg:pl-8">
-                <div className="relative h-[420px] overflow-hidden border border-card bg-card md:h-[520px] lg:h-full lg:min-h-[620px]">
-                  {mediaSpec.mediaType === 'video' ? (
-                    <video
-                      key={`${mediaSpec.src}:${videoReplayNonce}`}
-                      autoPlay={!prefersReducedMotion}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      aria-label={mediaSpec.ariaLabel}
-                      tabIndex={-1}
-                      className="h-full w-full object-cover"
-                      onLoadedMetadata={onStageVideoLoadedMetadata}
-                      onPlay={onStageVideoPlay}
-                      onEnded={onStageVideoEnded}
-                    >
-                      <source src={mediaSpec.src} type="video/mp4" />
-                    </video>
-                  ) : (
-                    <Image
-                      key={mediaSpec.src}
-                      src={mediaSpec.src}
-                      alt={mediaSpec.alt}
-                      fill
-                      priority
-                      sizes="(max-width: 1024px) 100vw, 68vw"
-                      className={mediaSpec.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
-                      style={{ objectPosition: mediaSpec.position ?? 'center' }}
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
           </article>
-        </Container>
+        </div>
       </section>
 
       <section className="border-y border-page bg-page [border-top-width:var(--bw)] [border-bottom-width:var(--bw)]">
