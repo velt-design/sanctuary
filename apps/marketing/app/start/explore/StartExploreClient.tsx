@@ -24,6 +24,7 @@ type VideoMediaSpec = {
   mediaType: 'video';
   src: string;
   ariaLabel: string;
+  playbackRate?: number;
 };
 
 type MediaSpec = ImageMediaSpec | VideoMediaSpec;
@@ -42,7 +43,17 @@ type MaterialConfig = {
   }>;
 };
 
-const STAGE_VIDEO_PLAYBACK_RATE = 3;
+type HighlightCard = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  media: MediaSpec;
+  materialId?: MaterialId;
+  tone?: 'light' | 'dark';
+};
+
+const DEFAULT_VIDEO_PLAYBACK_RATE = 2;
 
 const MATERIALS: MaterialConfig[] = [
   {
@@ -55,11 +66,13 @@ const MATERIALS: MaterialConfig[] = [
         mediaType: 'video',
         src: '/videos/gable-acrylic.mp4',
         ariaLabel: 'Acrylic roof video',
+        playbackRate: 2,
       },
       focus: {
         mediaType: 'video',
         src: '/videos/gable-acrylic.mp4',
         ariaLabel: 'Acrylic roof video',
+        playbackRate: 2,
       },
     },
   },
@@ -73,11 +86,13 @@ const MATERIALS: MaterialConfig[] = [
         mediaType: 'video',
         src: '/videos/timber-pitched.mp4',
         ariaLabel: 'Timber roof video',
+        playbackRate: 4,
       },
       focus: {
         mediaType: 'video',
         src: '/videos/timber-pitched.mp4',
         ariaLabel: 'Timber roof video',
+        playbackRate: 4,
       },
     },
   },
@@ -91,11 +106,13 @@ const MATERIALS: MaterialConfig[] = [
         mediaType: 'video',
         src: '/videos/combination-gable.mp4',
         ariaLabel: 'Combination roof video',
+        playbackRate: 3,
       },
       focus: {
         mediaType: 'video',
         src: '/videos/combination-gable.mp4',
         ariaLabel: 'Combination roof video',
+        playbackRate: 3,
       },
     },
   },
@@ -106,12 +123,12 @@ const MATERIALS: MaterialConfig[] = [
     bubbleBody: 'Powder-coated finish with precise lines. Choose a color that sits quietly with the exterior palette.',
     media: {
       browse: {
-        src: '/start-explore/materials/aluminium/browse-silver.jpg',
+        src: '/images/product-gable-01.jpg',
         alt: 'Aluminium material option',
         fit: 'contain',
       },
       focus: {
-        src: '/start-explore/materials/aluminium/focus-silver.jpg',
+        src: '/images/product-gable-02.jpg',
         alt: 'Aluminium material close-up',
         fit: 'cover',
         position: 'center',
@@ -124,12 +141,12 @@ const MATERIALS: MaterialConfig[] = [
         hex: '#c7c7cc',
         media: {
           browse: {
-            src: '/start-explore/materials/aluminium/browse-silver.jpg',
+            src: '/images/product-gable-01.jpg',
             alt: 'Aluminium in silver',
             fit: 'contain',
           },
           focus: {
-            src: '/start-explore/materials/aluminium/focus-silver.jpg',
+            src: '/images/product-gable-02.jpg',
             alt: 'Aluminium in silver close-up',
             fit: 'cover',
           },
@@ -141,12 +158,12 @@ const MATERIALS: MaterialConfig[] = [
         hex: '#f5f5f7',
         media: {
           browse: {
-            src: '/start-explore/materials/aluminium/browse-white.jpg',
+            src: '/images/product-pitched-01.jpg',
             alt: 'Aluminium in white',
             fit: 'contain',
           },
           focus: {
-            src: '/start-explore/materials/aluminium/focus-white.jpg',
+            src: '/images/product-pitched-02.jpg',
             alt: 'Aluminium in white close-up',
             fit: 'cover',
           },
@@ -158,12 +175,12 @@ const MATERIALS: MaterialConfig[] = [
         hex: '#1d1d1f',
         media: {
           browse: {
-            src: '/start-explore/materials/aluminium/browse-black.jpg',
+            src: '/images/product-hip-01.jpg',
             alt: 'Aluminium in black',
             fit: 'contain',
           },
           focus: {
-            src: '/start-explore/materials/aluminium/focus-black.jpg',
+            src: '/images/product-hip-02.jpg',
             alt: 'Aluminium in black close-up',
             fit: 'cover',
           },
@@ -175,18 +192,72 @@ const MATERIALS: MaterialConfig[] = [
         hex: '#7a6450',
         media: {
           browse: {
-            src: '/start-explore/materials/aluminium/browse-bronze.jpg',
+            src: '/images/product-perimeter-01.jpg',
             alt: 'Aluminium in bronze',
             fit: 'contain',
           },
           focus: {
-            src: '/start-explore/materials/aluminium/focus-bronze.jpg',
+            src: '/images/product-pitched-03.jpg',
             alt: 'Aluminium in bronze close-up',
             fit: 'cover',
           },
         },
       },
     ],
+  },
+];
+
+const HIGHLIGHT_CARDS: HighlightCard[] = [
+  {
+    id: 'project-velskov-spotlight',
+    eyebrow: 'Project Spotlight',
+    title: 'Velskov Forest Farm',
+    body: 'Commercial-scale pergola performance shaped for a high-use hospitality setting.',
+    media: {
+      src: '/images/project-velskov-01.jpg',
+      alt: 'Velskov Forest Farm project spotlight',
+      fit: 'cover',
+    },
+    tone: 'light',
+  },
+  {
+    id: 'gable-sanctuary-conditions',
+    eyebrow: 'Sanctuary System',
+    title: 'Built for all conditions.',
+    body: 'Engineered to handle sun, rain and wind while preserving architectural clarity.',
+    media: {
+      mediaType: 'video',
+      src: '/videos/gable-sanctuary.mp4',
+      ariaLabel: 'Gable Sanctuary highlight video',
+      playbackRate: 1,
+    },
+    tone: 'light',
+  },
+  {
+    id: 'project-tamaki-spotlight',
+    eyebrow: 'Project Spotlight',
+    title: 'Tamaki Drive',
+    body: 'A refined commercial install balancing weather cover, daylight and street presence.',
+    media: {
+      src: '/images/project-tamaki-dr-02.jpg',
+      alt: 'Tamaki Drive project spotlight',
+      fit: 'cover',
+    },
+    tone: 'light',
+  },
+  {
+    id: 'acrylic-daylight',
+    eyebrow: 'Roof Material',
+    title: 'Acrylic daylight response',
+    body: 'Clean light penetration for bright outdoor rooms and circulation zones.',
+    materialId: 'acrylic',
+    media: {
+      mediaType: 'video',
+      src: '/videos/gable-acrylic.mp4',
+      ariaLabel: 'Acrylic roof highlight video',
+      playbackRate: 2,
+    },
+    tone: 'light',
   },
 ];
 
@@ -228,13 +299,45 @@ function IconChevronDown() {
   );
 }
 
+function IconChevronLeft() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M10 12.5L5.5 8 10 3.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconChevronRight() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M6 3.5L10.5 8 6 12.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function StartExploreClient({ debug }: { debug?: boolean }) {
   const [active, setActive] = React.useState<MaterialId>('acrylic');
   const [mode, setMode] = React.useState<Mode>('browse');
   const [aluColor, setAluColor] = React.useState<AluminiumColorId>('silver');
   const [videoReplayNonce, setVideoReplayNonce] = React.useState(0);
+  const [highlightsSidePad, setHighlightsSidePad] = React.useState(16);
   const prefersReducedMotion = usePrefersReducedMotion();
   const prevActiveRef = React.useRef<MaterialId>('acrylic');
+  const highlightsTrackRef = React.useRef<HTMLDivElement | null>(null);
 
   const plusRefMap = React.useRef<Record<MaterialId, HTMLSpanElement | null>>({
     acrylic: null,
@@ -267,27 +370,30 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     prevActiveRef.current = active;
   }, [active]);
 
-  const enforceStageVideoPlaybackRate = React.useCallback((video: HTMLVideoElement) => {
-    if (video.defaultPlaybackRate !== STAGE_VIDEO_PLAYBACK_RATE) {
-      video.defaultPlaybackRate = STAGE_VIDEO_PLAYBACK_RATE;
+  const activeStageVideoPlaybackRate = mediaSpec.mediaType === 'video' ? mediaSpec.playbackRate : undefined;
+
+  const enforceVideoPlaybackRate = React.useCallback((video: HTMLVideoElement, playbackRate?: number) => {
+    const safePlaybackRate = playbackRate ?? DEFAULT_VIDEO_PLAYBACK_RATE;
+    if (video.defaultPlaybackRate !== safePlaybackRate) {
+      video.defaultPlaybackRate = safePlaybackRate;
     }
-    if (video.playbackRate !== STAGE_VIDEO_PLAYBACK_RATE) {
-      video.playbackRate = STAGE_VIDEO_PLAYBACK_RATE;
+    if (video.playbackRate !== safePlaybackRate) {
+      video.playbackRate = safePlaybackRate;
     }
   }, []);
 
   const onStageVideoLoadedMetadata = React.useCallback(
     (event: React.SyntheticEvent<HTMLVideoElement>) => {
-      enforceStageVideoPlaybackRate(event.currentTarget);
+      enforceVideoPlaybackRate(event.currentTarget, activeStageVideoPlaybackRate);
     },
-    [enforceStageVideoPlaybackRate]
+    [activeStageVideoPlaybackRate, enforceVideoPlaybackRate]
   );
 
   const onStageVideoPlay = React.useCallback(
     (event: React.SyntheticEvent<HTMLVideoElement>) => {
-      enforceStageVideoPlaybackRate(event.currentTarget);
+      enforceVideoPlaybackRate(event.currentTarget, activeStageVideoPlaybackRate);
     },
-    [enforceStageVideoPlaybackRate]
+    [activeStageVideoPlaybackRate, enforceVideoPlaybackRate]
   );
 
   const onStageVideoEnded = React.useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
@@ -299,6 +405,76 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
       }
     }
     video.pause();
+  }, []);
+
+  const recalcHighlightsSidePad = React.useCallback(() => {
+    const track = highlightsTrackRef.current;
+    if (!track) return;
+    const firstCard = track.querySelector<HTMLElement>('[data-highlight-card]');
+    if (!firstCard) return;
+
+    const minPad = window.innerWidth >= 1024 ? 40 : window.innerWidth >= 768 ? 24 : 16;
+    const centeredPad = Math.max(minPad, (track.clientWidth - firstCard.clientWidth) / 2);
+
+    setHighlightsSidePad((current) => (Math.abs(current - centeredPad) > 0.5 ? centeredPad : current));
+  }, []);
+
+  React.useEffect(() => {
+    let frame = 0;
+    const schedule = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        recalcHighlightsSidePad();
+      });
+    };
+
+    schedule();
+    window.addEventListener('resize', schedule);
+
+    const track = highlightsTrackRef.current;
+    let observer: ResizeObserver | null = null;
+    if (track && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(schedule);
+      observer.observe(track);
+
+      const firstCard = track.querySelector<HTMLElement>('[data-highlight-card]');
+      if (firstCard) {
+        observer.observe(firstCard);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('resize', schedule);
+      if (observer) observer.disconnect();
+      window.cancelAnimationFrame(frame);
+    };
+  }, [recalcHighlightsSidePad]);
+
+  const scrollHighlights = React.useCallback((direction: -1 | 1) => {
+    const track = highlightsTrackRef.current;
+    if (!track) return;
+
+    const cards = Array.from(track.querySelectorAll<HTMLElement>('[data-highlight-card]'));
+    if (!cards.length) return;
+
+    const trackCenter = track.scrollLeft + track.clientWidth / 2;
+    let currentIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    cards.forEach((card, index) => {
+      const cardCenter = card.offsetLeft + card.clientWidth / 2;
+      const distance = Math.abs(cardCenter - trackCenter);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        currentIndex = index;
+      }
+    });
+
+    const targetIndex = Math.min(cards.length - 1, Math.max(0, currentIndex + direction));
+    const targetCard = cards[targetIndex];
+    const targetLeft = targetCard.offsetLeft + targetCard.clientWidth / 2 - track.clientWidth / 2;
+
+    track.scrollTo({ left: targetLeft, behavior: 'smooth' });
   }, []);
 
   function enterFocus(nextActive?: MaterialId) {
@@ -354,6 +530,110 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
             </p>
           </div>
         </Container>
+      </section>
+
+      <section className={cn('border-b border-page bg-page [border-bottom-width:var(--bw)]', debug && 'outline outline-1 outline-cyan-500/30')}>
+        <Container className="py-8 md:py-10">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div className="max-w-[68ch]">
+              <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Highlights</p>
+              <h2 className="mt-2 text-[clamp(28px,3.2vw,42px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink">
+                Sanctuary material studies.
+              </h2>
+              <p className="mt-3 text-[16px] leading-[1.6] text-muted">
+                Large cards combine stills and motion so you can compare roof behavior before dialing in the final selection.
+              </p>
+            </div>
+
+            <div className="hidden items-center gap-2 md:flex">
+              <LineGlyphButton aria-label="Scroll highlights left" onClick={() => scrollHighlights(-1)}>
+                <IconChevronLeft />
+              </LineGlyphButton>
+              <LineGlyphButton aria-label="Scroll highlights right" onClick={() => scrollHighlights(1)}>
+                <IconChevronRight />
+              </LineGlyphButton>
+            </div>
+          </div>
+        </Container>
+
+        <div
+          ref={highlightsTrackRef}
+          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-8 md:gap-6 md:pb-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Material highlights"
+          style={{ paddingLeft: `${highlightsSidePad}px`, paddingRight: `${highlightsSidePad}px` }}
+        >
+          {HIGHLIGHT_CARDS.map((card) => {
+            const selected = card.materialId === active;
+            const textTone = card.tone ?? 'light';
+            const cardVideoPlaybackRate = card.media.mediaType === 'video' ? card.media.playbackRate : undefined;
+
+            return (
+              <button
+                key={card.id}
+                type="button"
+                data-highlight-card
+                onClick={() => {
+                  if (!card.materialId) return;
+                  enterFocus(card.materialId);
+                }}
+                className={cn(
+                  'group relative h-[clamp(360px,58vh,620px)] w-[min(88vw,1120px)] shrink-0 snap-center overflow-hidden border border-page bg-card text-left [border-width:var(--bw)]',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
+                  selected && 'ring-1 ring-brand/45'
+                )}
+                aria-label={card.materialId ? `${card.title}. Apply this material selection.` : card.title}
+                aria-pressed={card.materialId ? selected : undefined}
+              >
+                {card.media.mediaType === 'video' ? (
+                  <video
+                    autoPlay={!prefersReducedMotion}
+                    loop
+                    muted
+                    playsInline
+                    preload="metadata"
+                    aria-label={card.media.ariaLabel}
+                    tabIndex={-1}
+                    className="h-full w-full object-cover"
+                    onLoadedMetadata={(event) => {
+                      enforceVideoPlaybackRate(event.currentTarget, cardVideoPlaybackRate);
+                    }}
+                    onPlay={(event) => {
+                      enforceVideoPlaybackRate(event.currentTarget, cardVideoPlaybackRate);
+                    }}
+                  >
+                    <source src={card.media.src} type="video/mp4" />
+                  </video>
+                ) : (
+                  <Image
+                    src={card.media.src}
+                    alt={card.media.alt}
+                    fill
+                    sizes="(max-width: 768px) 88vw, (max-width: 1280px) 82vw, 1120px"
+                    className={card.media.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+                    style={{ objectPosition: card.media.position ?? 'center' }}
+                  />
+                )}
+
+                <div
+                  className={cn(
+                    'pointer-events-none absolute inset-0',
+                    textTone === 'dark' ? 'bg-gradient-to-t from-white/95 via-white/45 to-transparent' : 'bg-gradient-to-t from-black/65 via-black/25 to-transparent'
+                  )}
+                />
+
+                <div className={cn('pointer-events-none absolute inset-x-0 bottom-0 p-5 md:p-8', textTone === 'dark' ? 'text-ink' : 'text-white')}>
+                  <p className={cn('text-[11px] uppercase tracking-[0.12em]', textTone === 'dark' ? 'text-muted' : 'text-white/85')}>
+                    {card.eyebrow}
+                  </p>
+                  <h3 className="mt-2 text-[clamp(22px,2.7vw,36px)] font-semibold leading-[1.12] tracking-[-0.015em]">{card.title}</h3>
+                  <p className={cn('mt-3 max-w-[58ch] text-[15px] leading-[1.6]', textTone === 'dark' ? 'text-muted' : 'text-white/90')}>
+                    {card.body}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </section>
 
       <section className="bg-page py-[clamp(20px,4.5vh,56px)]">
