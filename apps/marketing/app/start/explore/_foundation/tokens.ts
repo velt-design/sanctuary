@@ -20,7 +20,7 @@ export const T = {
   TINT_BG: 'bg-[#f5f5f7]',
 
   // Surfaces / stages
-  STAGE_SURFACE: 'relative overflow-hidden rounded-[28px] bg-white ring-1 ring-black/5',
+  STAGE_SURFACE: 'relative w-full overflow-hidden rounded-[28px] bg-white ring-1 ring-black/5',
   STAGE_H: 'h-[clamp(520px,70vh,760px)]',
   STAGE_WIDE_H: 'h-[clamp(360px,45vh,560px)]',
 
@@ -56,7 +56,7 @@ export const T = {
     'inline-flex h-8 items-center rounded-full bg-transparent ring-1 ring-black/10 px-4 text-[12px] font-semibold text-[#1d1d1f] whitespace-nowrap',
 
   // Materials Explorer (Apple Take-a-closer-look parity)
-  ME_GRID: 'grid h-full grid-cols-1 gap-6 lg:grid-cols-[240px_360px_minmax(0,1fr)] lg:gap-10',
+  ME_GRID: 'grid h-full grid-cols-1 gap-6 lg:grid-cols-[1fr_2fr] lg:gap-10',
   ME_LANE_STACK: 'flex h-full min-h-0 flex-col',
   ME_MEDIA_LANE: 'flex h-full min-h-0 min-w-0 items-center justify-center',
 
@@ -81,7 +81,7 @@ export const T = {
   ME_BUBBLE_BODY: 'mt-2 text-[14px] leading-[1.5] text-[#6e6e73]',
 
   // Bubble (mobile insertion under active pill)
-  ME_BUBBLE_MOBILE_WRAP: 'mt-3 lg:hidden',
+  ME_BUBBLE_MOBILE_WRAP: 'mt-3',
 
   // Controls (focus mode)
   ME_CTRL_STACK: 'absolute left-6 top-1/2 hidden -translate-y-1/2 flex-col gap-3 lg:flex',
