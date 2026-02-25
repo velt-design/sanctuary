@@ -42,7 +42,7 @@ type MaterialConfig = {
   }>;
 };
 
-const COMBO_VIDEO_PLAYBACK_RATE = 2;
+const STAGE_VIDEO_PLAYBACK_RATE = 3;
 
 const MATERIALS: MaterialConfig[] = [
   {
@@ -52,12 +52,12 @@ const MATERIALS: MaterialConfig[] = [
     bubbleBody: 'Bright, clean light with a crisp finish. A minimal look that stays quiet in the architecture.',
     media: {
       browse: {
-        src: '/start-explore/materials/acrylic/browse.jpg',
+        src: '/images/gable-acrylic.png',
         alt: 'Acrylic material option',
         fit: 'contain',
       },
       focus: {
-        src: '/start-explore/materials/acrylic/focus.jpg',
+        src: '/images/gable-acrylic.png',
         alt: 'Acrylic material close-up',
         fit: 'cover',
         position: 'center',
@@ -71,15 +71,14 @@ const MATERIALS: MaterialConfig[] = [
     bubbleBody: 'Warm texture and a softer atmosphere. Designed to feel like part of the home, not an add-on.',
     media: {
       browse: {
-        src: '/start-explore/materials/timber/browse.jpg',
-        alt: 'Timber material option',
-        fit: 'contain',
+        mediaType: 'video',
+        src: '/videos/timber-pitched.mp4',
+        ariaLabel: 'Timber roof video',
       },
       focus: {
-        src: '/start-explore/materials/timber/focus.jpg',
-        alt: 'Timber material close-up',
-        fit: 'cover',
-        position: 'center',
+        mediaType: 'video',
+        src: '/videos/timber-pitched.mp4',
+        ariaLabel: 'Timber roof video',
       },
     },
   },
@@ -234,7 +233,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
   const [active, setActive] = React.useState<MaterialId>('acrylic');
   const [mode, setMode] = React.useState<Mode>('browse');
   const [aluColor, setAluColor] = React.useState<AluminiumColorId>('silver');
-  const [comboReplayNonce, setComboReplayNonce] = React.useState(0);
+  const [videoReplayNonce, setVideoReplayNonce] = React.useState(0);
   const prefersReducedMotion = usePrefersReducedMotion();
   const prevActiveRef = React.useRef<MaterialId>('acrylic');
 
@@ -259,36 +258,40 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
 
   React.useEffect(() => {
     const prev = prevActiveRef.current;
-    if (active === 'combo' && prev !== 'combo') {
-      setComboReplayNonce((current) => current + 1);
+
+    const activeCfgNow = MATERIALS.find((m) => m.id === active);
+    const activeIsVideo = activeCfgNow?.media.browse.mediaType === 'video' || activeCfgNow?.media.focus.mediaType === 'video';
+    if (activeIsVideo && prev !== active) {
+      setVideoReplayNonce((current) => current + 1);
     }
+
     prevActiveRef.current = active;
   }, [active]);
 
-  const enforceComboVideoPlaybackRate = React.useCallback((video: HTMLVideoElement) => {
-    if (video.defaultPlaybackRate !== COMBO_VIDEO_PLAYBACK_RATE) {
-      video.defaultPlaybackRate = COMBO_VIDEO_PLAYBACK_RATE;
+  const enforceStageVideoPlaybackRate = React.useCallback((video: HTMLVideoElement) => {
+    if (video.defaultPlaybackRate !== STAGE_VIDEO_PLAYBACK_RATE) {
+      video.defaultPlaybackRate = STAGE_VIDEO_PLAYBACK_RATE;
     }
-    if (video.playbackRate !== COMBO_VIDEO_PLAYBACK_RATE) {
-      video.playbackRate = COMBO_VIDEO_PLAYBACK_RATE;
+    if (video.playbackRate !== STAGE_VIDEO_PLAYBACK_RATE) {
+      video.playbackRate = STAGE_VIDEO_PLAYBACK_RATE;
     }
   }, []);
 
-  const onComboVideoLoadedMetadata = React.useCallback(
+  const onStageVideoLoadedMetadata = React.useCallback(
     (event: React.SyntheticEvent<HTMLVideoElement>) => {
-      enforceComboVideoPlaybackRate(event.currentTarget);
+      enforceStageVideoPlaybackRate(event.currentTarget);
     },
-    [enforceComboVideoPlaybackRate]
+    [enforceStageVideoPlaybackRate]
   );
 
-  const onComboVideoPlay = React.useCallback(
+  const onStageVideoPlay = React.useCallback(
     (event: React.SyntheticEvent<HTMLVideoElement>) => {
-      enforceComboVideoPlaybackRate(event.currentTarget);
+      enforceStageVideoPlaybackRate(event.currentTarget);
     },
-    [enforceComboVideoPlaybackRate]
+    [enforceStageVideoPlaybackRate]
   );
 
-  const onComboVideoEnded = React.useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
+  const onStageVideoEnded = React.useCallback((event: React.SyntheticEvent<HTMLVideoElement>) => {
     const video = event.currentTarget;
     if (Number.isFinite(video.duration) && video.duration > 0) {
       const finalTime = Math.max(video.duration - 1 / 60, 0);
@@ -457,7 +460,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                 <div className="relative h-[420px] overflow-hidden border border-card bg-card md:h-[520px] lg:h-full lg:min-h-[620px]">
                   {mediaSpec.mediaType === 'video' ? (
                     <video
-                      key={`${mediaSpec.src}:${comboReplayNonce}`}
+                      key={`${mediaSpec.src}:${videoReplayNonce}`}
                       autoPlay={!prefersReducedMotion}
                       muted
                       playsInline
@@ -465,9 +468,9 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                       aria-label={mediaSpec.ariaLabel}
                       tabIndex={-1}
                       className="h-full w-full object-cover"
-                      onLoadedMetadata={onComboVideoLoadedMetadata}
-                      onPlay={onComboVideoPlay}
-                      onEnded={onComboVideoEnded}
+                      onLoadedMetadata={onStageVideoLoadedMetadata}
+                      onPlay={onStageVideoPlay}
+                      onEnded={onStageVideoEnded}
                     >
                       <source src={mediaSpec.src} type="video/mp4" />
                     </video>
