@@ -11,6 +11,7 @@ import { usePrefersReducedMotion } from './_foundation/usePrefersReducedMotion';
 type MaterialId = 'acrylic' | 'timber' | 'combo' | 'aluminium';
 type Mode = 'browse' | 'focus';
 type AluminiumColorId = 'silver' | 'white' | 'black' | 'bronze';
+type RoofTypeFitId = 'acrylic' | 'timber' | 'combo';
 
 type ImageMediaSpec = {
   mediaType?: 'image';
@@ -52,6 +53,38 @@ type HighlightCard = {
   materialId?: MaterialId;
   tone?: 'light' | 'dark';
 };
+
+type RoofTypeFitMeters = {
+  daylight: 1 | 2 | 3 | 4 | 5;
+  heatGlare: 1 | 2 | 3 | 4 | 5;
+  rainNoise: 1 | 2 | 3 | 4 | 5;
+};
+
+const ROOF_TYPE_FIT_CONFIG: Record<RoofTypeFitId, { label: string; meters: RoofTypeFitMeters }> = {
+  acrylic: {
+    label: 'Acrylic',
+    meters: { daylight: 5, heatGlare: 3, rainNoise: 2 },
+  },
+  timber: {
+    label: 'Timber sarking',
+    meters: { daylight: 2, heatGlare: 5, rainNoise: 5 },
+  },
+  combo: {
+    label: 'Combination',
+    meters: { daylight: 4, heatGlare: 4, rainNoise: 4 },
+  },
+};
+
+const ROOF_TYPE_FIT_OPTIONS: RoofTypeFitId[] = ['acrylic', 'timber', 'combo'];
+
+const ROOF_TYPE_FIT_ROWS: Array<{
+  key: keyof RoofTypeFitMeters;
+  label: string;
+}> = [
+  { key: 'daylight', label: 'Daylight' },
+  { key: 'heatGlare', label: 'Heat & glare' },
+  { key: 'rainNoise', label: 'Rain-noise dampening' },
+];
 
 const DEFAULT_VIDEO_PLAYBACK_RATE = 2;
 const HIGHLIGHT_CARD_WIDTH = 'min(88vw, 1288px)';
@@ -333,6 +366,143 @@ function IconChevronRight() {
   );
 }
 
+function roofTypeFitQualitativeLabel(level: RoofTypeFitMeters[keyof RoofTypeFitMeters]) {
+  if (level <= 2) return 'Low';
+  if (level === 3) return 'Moderate';
+  return 'High';
+}
+
+function RoofTypeFitSection({ debug }: { debug?: boolean }) {
+  const [selected, setSelected] = React.useState<RoofTypeFitId>('acrylic');
+  const [isSwapping, setIsSwapping] = React.useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const selectedConfig = ROOF_TYPE_FIT_CONFIG[selected];
+  const selectedIndex = ROOF_TYPE_FIT_OPTIONS.indexOf(selected);
+  const hasMountedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (prefersReducedMotion) return;
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+    setIsSwapping(true);
+    const timeoutId = window.setTimeout(() => setIsSwapping(false), 180);
+    return () => window.clearTimeout(timeoutId);
+  }, [prefersReducedMotion, selected]);
+
+  return (
+    <section className={cn('bg-page -mt-[clamp(8px,1.2vh,14px)] pb-[clamp(12px,3vh,38px)]', debug && 'outline outline-1 outline-sky-500/30')}>
+      <div className="ui-box-center-viewport">
+        <div className="ui-box-center ui-line-surface overflow-hidden border-card bg-card">
+          <div className="border-b border-page px-4 pb-4 pt-5 md:px-6 md:pb-5 md:pt-6 [border-bottom-width:var(--bw)]">
+            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Roof response</p>
+            <h3 className="mt-2 text-balance text-[clamp(24px,2.8vw,40px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink">
+              Compare how each roof type performs.
+            </h3>
+          </div>
+
+          <div className="border-b border-page p-2 md:p-3 [border-bottom-width:var(--bw)]">
+            <div
+              role="group"
+              aria-label="Roof type selector"
+              className="relative grid grid-cols-3 overflow-hidden border border-page bg-[#dee1e5] [border-width:var(--bw)]"
+            >
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-[#4a3d3d]"
+                style={{
+                  transform: `translateX(${selectedIndex * 100}%)`,
+                  transition: prefersReducedMotion ? 'none' : 'transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1)',
+                }}
+              />
+
+              {ROOF_TYPE_FIT_OPTIONS.map((option, index) => {
+                const cfg = ROOF_TYPE_FIT_CONFIG[option];
+                const isSelected = option === selected;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setSelected(option)}
+                    aria-pressed={isSelected}
+                    className={cn(
+                      'relative z-10 h-14 px-3 text-center text-[13px] font-semibold uppercase tracking-[0.08em]',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-inset',
+                      index < ROOF_TYPE_FIT_OPTIONS.length - 1 && 'border-r border-page/60 [border-right-width:var(--bw)]',
+                      isSelected ? 'text-white' : 'text-ink/75 hover:text-ink'
+                    )}
+                    style={{ transition: prefersReducedMotion ? 'none' : 'color 220ms cubic-bezier(0.22, 0.61, 0.36, 1)' }}
+                  >
+                    {cfg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              'space-y-5 p-4 md:space-y-6 md:px-6 md:py-6',
+              !prefersReducedMotion && 'transition-opacity duration-200 ease-out',
+              !prefersReducedMotion && isSwapping && 'opacity-90'
+            )}
+          >
+            {ROOF_TYPE_FIT_ROWS.map((row) => {
+              const level = selectedConfig.meters[row.key];
+              const qualitative = roofTypeFitQualitativeLabel(level);
+              const fillPercent = (level / 5) * 100;
+              return (
+                <div key={row.key} className="grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(170px,220px)_minmax(340px,1fr)_100px] sm:items-center sm:gap-x-4 sm:gap-y-0">
+                  <span className="text-[13px] font-semibold uppercase tracking-[0.09em] text-ink md:text-[14px]">{row.label}</span>
+
+                  <div role="img" aria-label={`${row.label}: ${level} of 5`} className="w-full max-w-[700px]">
+                    <div className="relative h-4 md:h-[18px]">
+                      <div className="absolute inset-0 grid grid-cols-5 gap-1.5">
+                        {Array.from({ length: 5 }, (_, index) => (
+                          <span key={`${row.key}-base-${index}`} className="border border-page bg-[#d6d9de] [border-width:var(--bw)]" />
+                        ))}
+                      </div>
+
+                      <div
+                        className="absolute inset-0 grid grid-cols-5 gap-1.5"
+                        style={{
+                          clipPath: `inset(0 ${100 - fillPercent}% 0 0)`,
+                          transition: prefersReducedMotion ? 'none' : 'clip-path 260ms cubic-bezier(0.22, 0.61, 0.36, 1)',
+                        }}
+                      >
+                        {Array.from({ length: 5 }, (_, index) => {
+                          const edgeAccent = index === level - 1;
+                          return (
+                            <span
+                              key={`${row.key}-fill-${index}`}
+                              className="border [border-width:var(--bw)]"
+                              style={{
+                                backgroundColor: edgeAccent ? '#724443' : '#3f434a',
+                                borderColor: edgeAccent ? '#724443' : '#3f434a',
+                              }}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="text-[12px] font-medium uppercase tracking-[0.08em] text-muted sm:text-right">{qualitative}</span>
+                </div>
+              );
+            })}
+
+            <div className="border-t border-page pt-3 [border-top-width:var(--bw)]">
+              <p className="text-[12px] leading-[1.45] text-muted">Scale guide: 1 indicates lower influence, 5 indicates stronger influence.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function StartExploreClient({ debug }: { debug?: boolean }) {
   const [active, setActive] = React.useState<MaterialId>('acrylic');
   const [mode, setMode] = React.useState<Mode>('browse');
@@ -342,13 +512,6 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const prevActiveRef = React.useRef<MaterialId>('acrylic');
   const highlightsTrackRef = React.useRef<HTMLDivElement | null>(null);
-
-  const plusRefMap = React.useRef<Record<MaterialId, HTMLSpanElement | null>>({
-    acrylic: null,
-    timber: null,
-    combo: null,
-    aluminium: null,
-  });
 
   const isFocus = mode === 'focus';
   const activeCfg = MATERIALS.find((m) => m.id === active) ?? MATERIALS[0];
@@ -505,27 +668,12 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
   }
 
   function onPillClick(id: MaterialId) {
-    return (event: React.MouseEvent<HTMLButtonElement>) => {
-      const target = event.target as Node;
-      const plusEl = plusRefMap.current[id];
-      const hitPlus = plusEl ? plusEl.contains(target) : false;
-
+    return () => {
       if (isFocus) {
         setActive(id);
         return;
       }
-
-      if (hitPlus) {
-        enterFocus(id);
-        return;
-      }
-
-      if (id === active) {
-        enterFocus();
-        return;
-      }
-
-      setActive(id);
+      enterFocus(id);
     };
   }
 
@@ -684,7 +832,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
           <article
             className={cn(
               'ui-line-surface relative overflow-hidden',
-              'lg:min-h-[620px]',
+              'lg:h-[684px]',
               debug && 'outline outline-1 outline-rose-500/40'
             )}
           >
@@ -699,8 +847,8 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
               </div>
             ) : null}
 
-              <div className="grid gap-6 p-4 md:p-6 lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] lg:gap-0 lg:p-8">
-                <div className="flex min-h-0 flex-col lg:border-r lg:border-card lg:pr-8 lg:[border-right-width:var(--bw)]">
+              <div className="grid gap-6 p-4 md:p-6 lg:h-full lg:grid-cols-[minmax(260px,1fr)_minmax(0,2fr)] lg:gap-0 lg:p-8">
+                <div className="flex min-h-0 flex-col overflow-hidden lg:border-r lg:border-card lg:pr-8 lg:[border-right-width:var(--bw)]">
                   <div className="ui-line-surface overflow-hidden border-card bg-card">
                     {MATERIALS.map((m, index) => {
                       const activeRow = m.id === active;
@@ -731,14 +879,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                               <span className="ui-line-option-label truncate">{m.label}</span>
                             </span>
 
-                            <span
-                              ref={(el) => {
-                                plusRefMap.current[m.id] = el;
-                              }}
-                              className="ui-line-symbol"
-                              aria-hidden="true"
-                              style={{ opacity: activeRow ? 0 : 1 }}
-                            >
+                            <span className="ui-line-symbol" aria-hidden="true" style={{ opacity: activeRow ? 0 : 1 }}>
                               <IconPlus />
                             </span>
                           </button>
@@ -778,8 +919,8 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                   </div>
                 </div>
 
-                <div className="min-w-0 lg:pl-8">
-                  <div className="relative h-[420px] overflow-hidden border border-card bg-card md:h-[520px] lg:h-full lg:min-h-[620px]">
+                <div className="min-w-0 overflow-hidden lg:pl-8">
+                  <div className="relative h-[420px] overflow-hidden border border-card bg-card md:h-[520px] lg:h-full">
                     {mediaSpec.mediaType === 'video' ? (
                       <video
                         key={`${mediaSpec.src}:${videoReplayNonce}`}
@@ -814,6 +955,8 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
           </article>
         </div>
       </section>
+
+      <RoofTypeFitSection debug={debug} />
 
       <section className="border-y border-page bg-page [border-top-width:var(--bw)] [border-bottom-width:var(--bw)]">
         <Container className="py-6">
