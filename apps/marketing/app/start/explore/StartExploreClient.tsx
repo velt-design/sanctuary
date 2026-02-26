@@ -93,8 +93,13 @@ const ROOF_TYPE_FIT_ROWS: Array<{
 }> = [
   { key: 'daylight', label: 'Daylight' },
   { key: 'heatGlare', label: 'Heat & glare' },
-  { key: 'rainNoise', label: 'Rain-noise dampening' },
+  { key: 'rainNoise', label: 'Rain-noise' },
 ];
+
+const ROOF_TYPE_BAR_FILLED_COLOR = '#3a3d44';
+const ROOF_TYPE_BAR_UNFILLED_COLOR = '#dfe2e6';
+const ROOF_TYPE_BAR_UNFILLED_BORDER_COLOR = '#cfd3d8';
+const ROOF_TYPE_TOGGLE_ACTIVE_COLOR = '#76352f';
 
 const DEFAULT_VIDEO_PLAYBACK_RATE = 2;
 const HIGHLIGHT_CARD_WIDTH = 'min(88vw, 1288px)';
@@ -541,12 +546,6 @@ function IconClose() {
   );
 }
 
-function roofTypeFitQualitativeLabel(level: RoofTypeFitMeters[keyof RoofTypeFitMeters]) {
-  if (level <= 2) return 'Low';
-  if (level === 3) return 'Moderate';
-  return 'High';
-}
-
 function RoofTypeFitSection({ debug }: { debug?: boolean }) {
   const [selected, setSelected] = React.useState<RoofTypeFitId>('acrylic');
   const [isSwapping, setIsSwapping] = React.useState(false);
@@ -567,26 +566,30 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
   }, [prefersReducedMotion, selected]);
 
   return (
-    <section className={cn('bg-page -mt-[clamp(8px,1.2vh,14px)] pb-[clamp(12px,3vh,38px)]', debug && 'outline outline-1 outline-sky-500/30')}>
+    <section className={cn('bg-page -mt-[clamp(16px,2.4vh,28px)] pb-[clamp(8px,2.2vh,24px)]', debug && 'outline outline-1 outline-sky-500/30')}>
       <div className="ui-box-center-viewport">
-        <div className="ui-box-center ui-line-surface overflow-hidden border-card bg-card">
-          <div className="border-b border-page px-4 pb-4 pt-5 md:px-6 md:pb-5 md:pt-6 [border-bottom-width:var(--bw)]">
+        <div
+          className="ui-box-center ui-line-surface overflow-hidden border-card bg-card"
+          style={{ ['--ui-box-max' as string]: '1140px' } as React.CSSProperties}
+        >
+          <div className="border-b border-page px-5 pb-4 pt-5 md:px-7 md:pb-5 md:pt-6 [border-bottom-width:var(--bw)]">
             <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Roof response</p>
-            <h3 className="mt-2 text-balance text-[clamp(24px,2.8vw,40px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink">
+            <h3 className="mt-3 text-balance text-[clamp(26px,3.1vw,44px)] font-semibold leading-[1.06] tracking-[-0.018em] text-ink">
               Compare how each roof type performs.
             </h3>
           </div>
 
-          <div className="border-b border-page p-2 md:p-3 [border-bottom-width:var(--bw)]">
+          <div className="border-b border-page px-3 py-2.5 md:px-4 md:py-3 [border-bottom-width:var(--bw)]">
             <div
               role="group"
               aria-label="Roof type selector"
-              className="relative grid grid-cols-3 overflow-hidden border border-page bg-[#dee1e5] [border-width:var(--bw)]"
+              className="relative grid grid-cols-3 overflow-hidden border border-page bg-[#e6e9ec] [border-width:var(--bw)]"
             >
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-[#4a3d3d]"
+                className="pointer-events-none absolute inset-y-0 left-0 w-1/3"
                 style={{
+                  backgroundColor: ROOF_TYPE_TOGGLE_ACTIVE_COLOR,
                   transform: `translateX(${selectedIndex * 100}%)`,
                   transition: prefersReducedMotion ? 'none' : 'transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1)',
                 }}
@@ -602,10 +605,10 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                     onClick={() => setSelected(option)}
                     aria-pressed={isSelected}
                     className={cn(
-                      'relative z-10 h-14 px-3 text-center text-[13px] font-semibold uppercase tracking-[0.08em]',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60 focus-visible:ring-inset',
+                      'relative z-10 h-[60px] px-3 text-center text-[13px] font-medium uppercase tracking-[0.07em]',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 focus-visible:ring-inset',
                       index < ROOF_TYPE_FIT_OPTIONS.length - 1 && 'border-r border-page/60 [border-right-width:var(--bw)]',
-                      isSelected ? 'text-white' : 'text-ink/75 hover:text-ink'
+                      isSelected ? 'font-semibold text-white' : 'text-ink/75 hover:text-ink'
                     )}
                     style={{ transition: prefersReducedMotion ? 'none' : 'color 220ms cubic-bezier(0.22, 0.61, 0.36, 1)' }}
                   >
@@ -618,24 +621,30 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
 
           <div
             className={cn(
-              'space-y-5 p-4 md:space-y-6 md:px-6 md:py-6',
+              'space-y-9 px-5 py-4 md:space-y-10 md:px-7 md:py-6',
               !prefersReducedMotion && 'transition-opacity duration-200 ease-out',
               !prefersReducedMotion && isSwapping && 'opacity-90'
             )}
           >
             {ROOF_TYPE_FIT_ROWS.map((row) => {
               const level = selectedConfig.meters[row.key];
-              const qualitative = roofTypeFitQualitativeLabel(level);
               const fillPercent = (level / 5) * 100;
               return (
-                <div key={row.key} className="grid grid-cols-1 gap-y-2 sm:grid-cols-[minmax(170px,220px)_minmax(340px,1fr)_100px] sm:items-center sm:gap-x-4 sm:gap-y-0">
-                  <span className="text-[13px] font-semibold uppercase tracking-[0.09em] text-ink md:text-[14px]">{row.label}</span>
+                <div key={row.key} className="grid grid-cols-1 gap-y-3 sm:grid-cols-[minmax(180px,240px)_minmax(400px,1fr)] sm:items-center sm:gap-x-6 sm:gap-y-0">
+                  <span className="text-[14px] font-medium uppercase tracking-[0.05em] text-ink md:text-[15px]">{row.label}</span>
 
-                  <div role="img" aria-label={`${row.label}: ${level} of 5`} className="w-full max-w-[700px]">
-                    <div className="relative h-4 md:h-[18px]">
+                  <div role="img" aria-label={`${row.label}: ${level} of 5`} className="w-full max-w-[785px]">
+                    <div className="relative h-[7px] md:h-[8px]">
                       <div className="absolute inset-0 grid grid-cols-5 gap-1.5">
                         {Array.from({ length: 5 }, (_, index) => (
-                          <span key={`${row.key}-base-${index}`} className="border border-page bg-[#d6d9de] [border-width:var(--bw)]" />
+                          <span
+                            key={`${row.key}-base-${index}`}
+                            className="border [border-width:var(--bw)]"
+                            style={{
+                              backgroundColor: ROOF_TYPE_BAR_UNFILLED_COLOR,
+                              borderColor: ROOF_TYPE_BAR_UNFILLED_BORDER_COLOR,
+                            }}
+                          />
                         ))}
                       </div>
 
@@ -646,31 +655,22 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                           transition: prefersReducedMotion ? 'none' : 'clip-path 260ms cubic-bezier(0.22, 0.61, 0.36, 1)',
                         }}
                       >
-                        {Array.from({ length: 5 }, (_, index) => {
-                          const edgeAccent = index === level - 1;
-                          return (
-                            <span
-                              key={`${row.key}-fill-${index}`}
-                              className="border [border-width:var(--bw)]"
-                              style={{
-                                backgroundColor: edgeAccent ? '#724443' : '#3f434a',
-                                borderColor: edgeAccent ? '#724443' : '#3f434a',
-                              }}
-                            />
-                          );
-                        })}
+                        {Array.from({ length: 5 }, (_, index) => (
+                          <span
+                            key={`${row.key}-fill-${index}`}
+                            className="border [border-width:var(--bw)]"
+                            style={{
+                              backgroundColor: ROOF_TYPE_BAR_FILLED_COLOR,
+                              borderColor: ROOF_TYPE_BAR_FILLED_COLOR,
+                            }}
+                          />
+                        ))}
                       </div>
                     </div>
                   </div>
-
-                  <span className="text-[12px] font-medium uppercase tracking-[0.08em] text-muted sm:text-right">{qualitative}</span>
                 </div>
               );
             })}
-
-            <div className="border-t border-page pt-3 [border-top-width:var(--bw)]">
-              <p className="text-[12px] leading-[1.45] text-muted">Scale guide: 1 indicates lower influence, 5 indicates stronger influence.</p>
-            </div>
           </div>
         </div>
       </div>
