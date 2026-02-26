@@ -88,6 +88,9 @@ const ROOF_TYPE_FIT_ROWS: Array<{
 
 const DEFAULT_VIDEO_PLAYBACK_RATE = 2;
 const HIGHLIGHT_CARD_WIDTH = 'min(88vw, 1288px)';
+const DESKTOP_HIGHLIGHTS_BREAKPOINT = '(min-width: 1024px)';
+const COMPACT_HIGHLIGHT_GAP_PX = 24;
+const HIGHLIGHT_TRANSITION = '240ms cubic-bezier(0.22, 0.61, 0.36, 1)';
 const MATERIALS_STAGE_WIDTH = 'min(92vw, 1610px)';
 const REEL_ALIGNED_COPY_STYLE: React.CSSProperties = { width: HIGHLIGHT_CARD_WIDTH, marginInline: 'auto' };
 const MATERIALS_STAGE_WRAP_STYLE: React.CSSProperties = { width: MATERIALS_STAGE_WIDTH, marginInline: 'auto' };
@@ -367,6 +370,14 @@ function IconChevronRight() {
   );
 }
 
+function IconClose() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function roofTypeFitQualitativeLabel(level: RoofTypeFitMeters[keyof RoofTypeFitMeters]) {
   if (level <= 2) return 'Low';
   if (level === 3) return 'Moderate';
@@ -510,11 +521,19 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
   const [aluColor, setAluColor] = React.useState<AluminiumColorId>('silver');
   const [videoReplayNonce, setVideoReplayNonce] = React.useState(0);
   const [highlightsSidePad, setHighlightsSidePad] = React.useState(16);
+  const [selectedHighlightId, setSelectedHighlightId] = React.useState(HIGHLIGHT_CARDS[0]?.id ?? '');
+  const [isDesktopHighlights, setIsDesktopHighlights] = React.useState(false);
+  const [isHighlightsExpanded, setIsHighlightsExpanded] = React.useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
   const prevActiveRef = React.useRef<MaterialId>('acrylic');
   const highlightsTrackRef = React.useRef<HTMLDivElement | null>(null);
+  const highlightCardRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+  const highlightLastActivatorRef = React.useRef<string | null>(null);
 
   const isFocus = mode === 'focus';
+  const isCompactHighlights = isDesktopHighlights && !isHighlightsExpanded;
+  const shouldCenterHighlightsTrack = !isDesktopHighlights || isHighlightsExpanded;
+  const compactCardWidth = `calc((100% - ${COMPACT_HIGHLIGHT_GAP_PX * (HIGHLIGHT_CARDS.length - 1)}px) / ${HIGHLIGHT_CARDS.length})`;
   const activeCfg = MATERIALS.find((m) => m.id === active) ?? MATERIALS[0];
   const aluminiumCfg = activeCfg.id === 'aluminium' ? activeCfg : null;
   const activeAlu = aluminiumCfg?.aluminiumColors?.find((c) => c.id === aluColor) ?? null;
@@ -575,17 +594,44 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     video.pause();
   }, []);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const media = window.matchMedia(DESKTOP_HIGHLIGHTS_BREAKPOINT);
+    const apply = () => setIsDesktopHighlights(media.matches);
+
+    apply();
+
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', apply);
+      return () => media.removeEventListener('change', apply);
+    }
+
+    media.addListener(apply);
+    return () => media.removeListener(apply);
+  }, []);
+
+  React.useEffect(() => {
+    if (!isDesktopHighlights) return;
+    setIsHighlightsExpanded(false);
+  }, [isDesktopHighlights]);
+
   const recalcHighlightsSidePad = React.useCallback(() => {
     const track = highlightsTrackRef.current;
     if (!track) return;
+    if (!shouldCenterHighlightsTrack) {
+      setHighlightsSidePad(0);
+      return;
+    }
+
     const firstCard = track.querySelector<HTMLElement>('[data-highlight-card]');
     if (!firstCard) return;
 
-    const minPad = window.innerWidth >= 1024 ? 40 : window.innerWidth >= 768 ? 24 : 16;
+    const minPad = isDesktopHighlights ? 40 : window.innerWidth >= 768 ? 24 : 16;
     const centeredPad = Math.max(minPad, (track.clientWidth - firstCard.clientWidth) / 2);
 
     setHighlightsSidePad((current) => (Math.abs(current - centeredPad) > 0.5 ? centeredPad : current));
-  }, []);
+  }, [isDesktopHighlights, shouldCenterHighlightsTrack]);
 
   React.useEffect(() => {
     let frame = 0;
@@ -618,6 +664,21 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     };
   }, [recalcHighlightsSidePad]);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let frame = window.requestAnimationFrame(() => {
+      recalcHighlightsSidePad();
+    });
+    const timeout = window.setTimeout(() => {
+      recalcHighlightsSidePad();
+    }, 280);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
+  }, [recalcHighlightsSidePad, isCompactHighlights, isHighlightsExpanded]);
+
   const findCenteredHighlightCardIndex = React.useCallback((track: HTMLDivElement, cards: HTMLElement[]) => {
     const trackCenter = track.scrollLeft + track.clientWidth / 2;
     let centeredIndex = 0;
@@ -635,13 +696,27 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     return centeredIndex;
   }, []);
 
-  const scrollHighlightCardToCenter = React.useCallback((card: HTMLElement) => {
-    const track = highlightsTrackRef.current;
-    if (!track) return;
+  const scrollHighlightCardToCenter = React.useCallback(
+    (card: HTMLElement) => {
+      const track = highlightsTrackRef.current;
+      if (!track) return;
 
-    const targetLeft = card.offsetLeft + card.clientWidth / 2 - track.clientWidth / 2;
-    track.scrollTo({ left: targetLeft, behavior: 'smooth' });
-  }, []);
+      const targetLeft = card.offsetLeft + card.clientWidth / 2 - track.clientWidth / 2;
+      track.scrollTo({ left: targetLeft, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+    },
+    [prefersReducedMotion]
+  );
+
+  const centerHighlightCardById = React.useCallback(
+    (highlightId: string) => {
+      const track = highlightsTrackRef.current;
+      if (!track) return;
+      const targetCard = track.querySelector<HTMLElement>(`[data-highlight-card-id="${highlightId}"]`);
+      if (!targetCard) return;
+      scrollHighlightCardToCenter(targetCard);
+    },
+    [scrollHighlightCardToCenter]
+  );
 
   const scrollHighlights = React.useCallback((direction: -1 | 1) => {
     const track = highlightsTrackRef.current;
@@ -653,8 +728,50 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     const currentIndex = findCenteredHighlightCardIndex(track, cards);
     const targetIndex = Math.min(cards.length - 1, Math.max(0, currentIndex + direction));
     const targetCard = cards[targetIndex];
+    const targetId = targetCard.getAttribute('data-highlight-card-id');
+    if (targetId) {
+      setSelectedHighlightId(targetId);
+    }
     scrollHighlightCardToCenter(targetCard);
   }, [findCenteredHighlightCardIndex, scrollHighlightCardToCenter]);
+
+  const closeExpandedHighlights = React.useCallback(() => {
+    if (!isDesktopHighlights || !isHighlightsExpanded) return;
+    setIsHighlightsExpanded(false);
+  }, [isDesktopHighlights, isHighlightsExpanded]);
+
+  React.useEffect(() => {
+    if (!isDesktopHighlights || !isHighlightsExpanded) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeExpandedHighlights();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [closeExpandedHighlights, isDesktopHighlights, isHighlightsExpanded]);
+
+  React.useEffect(() => {
+    if (!shouldCenterHighlightsTrack) return;
+    if (!selectedHighlightId) return;
+    const frame = window.requestAnimationFrame(() => {
+      centerHighlightCardById(selectedHighlightId);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [centerHighlightCardById, selectedHighlightId, shouldCenterHighlightsTrack]);
+
+  React.useEffect(() => {
+    if (!isCompactHighlights) return;
+    const returnTarget = highlightLastActivatorRef.current;
+    if (!returnTarget) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      highlightCardRefs.current[returnTarget]?.focus();
+      highlightLastActivatorRef.current = null;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [isCompactHighlights]);
 
   function enterFocus(nextActive?: MaterialId) {
     if (nextActive) setActive(nextActive);
@@ -709,58 +826,89 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
               </p>
             </div>
 
-            <div className="hidden items-center gap-2 md:flex">
-              <LineGlyphButton aria-label="Scroll highlights left" onClick={() => scrollHighlights(-1)}>
-                <IconChevronLeft />
-              </LineGlyphButton>
-              <LineGlyphButton aria-label="Scroll highlights right" onClick={() => scrollHighlights(1)}>
-                <IconChevronRight />
-              </LineGlyphButton>
-            </div>
+            {isDesktopHighlights && isHighlightsExpanded ? (
+              <div className="hidden items-center gap-2 lg:flex">
+                <LineGlyphButton aria-label="Previous roof shape" onClick={() => scrollHighlights(-1)}>
+                  <IconChevronLeft />
+                </LineGlyphButton>
+                <LineGlyphButton aria-label="Next roof shape" onClick={() => scrollHighlights(1)}>
+                  <IconChevronRight />
+                </LineGlyphButton>
+                <LineGlyphButton aria-label="Close expanded roof shape view" onClick={closeExpandedHighlights}>
+                  <IconClose />
+                </LineGlyphButton>
+              </div>
+            ) : null}
           </div>
         </Container>
 
         <div
           ref={highlightsTrackRef}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-8 md:gap-6 md:pb-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className={cn(
+            'flex gap-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6 md:pb-10',
+            isCompactHighlights ? 'overflow-hidden snap-none' : 'snap-x snap-mandatory overflow-x-auto'
+          )}
           aria-label="Roof shape highlights"
-          style={{ paddingLeft: `${highlightsSidePad}px`, paddingRight: `${highlightsSidePad}px` }}
+          style={{
+            width: isCompactHighlights ? HIGHLIGHT_CARD_WIDTH : undefined,
+            marginInline: isCompactHighlights ? 'auto' : undefined,
+            paddingLeft: shouldCenterHighlightsTrack ? `${highlightsSidePad}px` : undefined,
+            paddingRight: shouldCenterHighlightsTrack ? `${highlightsSidePad}px` : undefined,
+            transition: prefersReducedMotion ? 'none' : `padding ${HIGHLIGHT_TRANSITION}`,
+          }}
         >
           {HIGHLIGHT_CARDS.map((card) => {
-            const selected = card.materialId === active;
+            const selected = card.id === selectedHighlightId;
             const textTone = card.tone ?? 'light';
             const cardVideoPlaybackRate = card.media.mediaType === 'video' ? card.media.playbackRate : undefined;
 
             return (
               <button
                 key={card.id}
+                ref={(el) => {
+                  highlightCardRefs.current[card.id] = el;
+                }}
                 type="button"
                 data-highlight-card
+                data-highlight-card-id={card.id}
                 onClick={(event) => {
-                  const track = highlightsTrackRef.current;
-                  if (track) {
-                    const cards = Array.from(track.querySelectorAll<HTMLElement>('[data-highlight-card]'));
-                    const clickedIndex = cards.indexOf(event.currentTarget);
-                    if (clickedIndex >= 0) {
-                      const centeredIndex = findCenteredHighlightCardIndex(track, cards);
-                      if (clickedIndex !== centeredIndex) {
-                        scrollHighlightCardToCenter(event.currentTarget);
-                        return;
-                      }
-                    }
+                  setSelectedHighlightId(card.id);
+
+                  if (isCompactHighlights) {
+                    highlightLastActivatorRef.current = card.id;
+                    setIsHighlightsExpanded(true);
+                    return;
                   }
 
-                  if (!card.materialId) return;
-                  enterFocus(card.materialId);
+                  if (isDesktopHighlights && isHighlightsExpanded) {
+                    scrollHighlightCardToCenter(event.currentTarget);
+                    return;
+                  }
+
+                  const track = highlightsTrackRef.current;
+                  if (!track) return;
+                  const cards = Array.from(track.querySelectorAll<HTMLElement>('[data-highlight-card]'));
+                  const clickedIndex = cards.indexOf(event.currentTarget);
+                  if (clickedIndex < 0) return;
+
+                  const centeredIndex = findCenteredHighlightCardIndex(track, cards);
+                  if (clickedIndex !== centeredIndex) {
+                    scrollHighlightCardToCenter(event.currentTarget);
+                  }
                 }}
                 className={cn(
-                  'group relative h-[640px] shrink-0 snap-center overflow-hidden border border-page bg-card text-left [border-width:var(--bw)]',
+                  'group relative h-[640px] shrink-0 overflow-hidden border border-page bg-card text-left [border-width:var(--bw)]',
+                  !isCompactHighlights && 'snap-center',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
                   selected && 'ring-1 ring-brand/45'
                 )}
-                style={{ width: HIGHLIGHT_CARD_WIDTH }}
-                aria-label={card.materialId ? `${card.title}. Apply this material selection.` : card.title}
-                aria-pressed={card.materialId ? selected : undefined}
+                style={{
+                  width: isCompactHighlights ? compactCardWidth : HIGHLIGHT_CARD_WIDTH,
+                  transition: prefersReducedMotion ? 'none' : `width ${HIGHLIGHT_TRANSITION}`,
+                }}
+                aria-label={card.title}
+                aria-pressed={selected}
+                aria-expanded={isDesktopHighlights ? isHighlightsExpanded && selected : undefined}
               >
                 {card.media.mediaType === 'video' ? (
                   <video
