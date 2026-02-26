@@ -82,18 +82,21 @@
   .ui-line-swatch-selected {
     @apply ring-2 ring-black/25 ring-offset-1 ring-offset-page;
   }
+}
 
-  /* Default shell for centered boxed sections on content pages */
-  .ui-box-center-viewport {
-    width: 100vw;
-    max-width: 100vw;
-    margin-left: calc(50% - 50vw);
-  }
+/* Default shell for centered boxed sections on content pages.
+   Keep unlayered so global resets cannot override centering margins. */
+.ui-box-center-viewport {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+}
 
-  .ui-box-center {
-    width: min(92vw, var(--ui-box-max, 1060px));
-    margin-inline: auto;
-  }
+.ui-box-center {
+  width: min(92vw, var(--ui-box-max, 1060px));
+  margin-left: auto !important;
+  margin-right: auto !important;
+  margin-inline: auto !important;
 }
 
 /* === Sanctuary Viewer CSS (from your prototype) === */
