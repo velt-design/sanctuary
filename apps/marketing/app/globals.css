@@ -82,6 +82,18 @@
   .ui-line-swatch-selected {
     @apply ring-2 ring-black/25 ring-offset-1 ring-offset-page;
   }
+
+  /* Default shell for centered boxed sections on content pages */
+  .ui-box-center-viewport {
+    width: 100vw;
+    max-width: 100vw;
+    margin-left: calc(50% - 50vw);
+  }
+
+  .ui-box-center {
+    width: min(92vw, var(--ui-box-max, 1060px));
+    margin-inline: auto;
+  }
 }
 
 /* === Sanctuary Viewer CSS (from your prototype) === */
