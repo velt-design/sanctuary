@@ -246,53 +246,54 @@ const MATERIALS: MaterialConfig[] = [
 
 const HIGHLIGHT_CARDS: HighlightCard[] = [
   {
-    id: 'project-velskov-spotlight',
-    eyebrow: 'Project Spotlight',
-    title: 'Velskov Forest Farm',
-    body: 'Commercial-scale pergola performance shaped for a high-use hospitality setting.',
-    media: {
-      src: '/images/project-velskov-01.jpg',
-      alt: 'Velskov Forest Farm project spotlight',
-      fit: 'cover',
-    },
-    tone: 'light',
-  },
-  {
-    id: 'gable-sanctuary-conditions',
-    eyebrow: 'Sanctuary System',
-    title: 'Built for all conditions.',
-    body: 'Engineered to handle sun, rain and wind while preserving architectural clarity.',
+    id: 'roof-shape-pitched',
+    eyebrow: 'Roof Shape',
+    title: 'Pitched',
+    body: 'A single clean pitch that keeps the form minimal and drainage straightforward.',
     media: {
       mediaType: 'video',
-      src: '/videos/gable-sanctuary-loop.mp4',
-      ariaLabel: 'Gable Sanctuary highlight video',
+      src: '/videos/pitched-subtle-movement.mp4',
+      ariaLabel: 'Pitched roof subtle movement video',
       playbackRate: 1,
     },
     tone: 'light',
   },
   {
-    id: 'project-tamaki-spotlight',
-    eyebrow: 'Project Spotlight',
-    title: 'Tamaki Drive',
-    body: 'A refined commercial install balancing weather cover, daylight and street presence.',
+    id: 'roof-shape-gable',
+    eyebrow: 'Roof Shape',
+    title: 'Gable',
+    body: 'A classic ridge profile that opens up volume while staying balanced in elevation.',
     media: {
-      src: '/images/project-tamaki-dr-02.jpg',
-      alt: 'Tamaki Drive project spotlight',
-      fit: 'cover',
+      mediaType: 'video',
+      src: '/videos/gable-subtle-movement.mp4',
+      ariaLabel: 'Gable roof subtle movement video',
+      playbackRate: 1,
     },
     tone: 'light',
   },
   {
-    id: 'acrylic-daylight',
-    eyebrow: 'Roof Material',
-    title: 'Acrylic daylight response',
-    body: 'Clean light penetration for bright outdoor rooms and circulation zones.',
-    materialId: 'acrylic',
+    id: 'roof-shape-hip',
+    eyebrow: 'Roof Shape',
+    title: 'Hip',
+    body: 'A composed, wrapped form that softens scale and reads more residential.',
     media: {
       mediaType: 'video',
-      src: '/videos/gable-acrylic.mp4',
-      ariaLabel: 'Acrylic roof highlight video',
-      playbackRate: 2,
+      src: '/videos/hip-subtle-movement.mp4',
+      ariaLabel: 'Hip roof subtle movement video',
+      playbackRate: 1,
+    },
+    tone: 'light',
+  },
+  {
+    id: 'roof-shape-box-perimeter',
+    eyebrow: 'Roof Shape',
+    title: 'Box-perimeter',
+    body: 'A crisp perimeter frame with strong horizontals for an architectural expression.',
+    media: {
+      mediaType: 'video',
+      src: '/videos/box-subtle-movement.mp4',
+      ariaLabel: 'Box-perimeter roof subtle movement video',
+      playbackRate: 1,
     },
     tone: 'light',
   },
@@ -701,10 +702,10 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
             <div className="max-w-[68ch]">
               <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Highlights</p>
               <h2 className="mt-2 text-[clamp(28px,3.2vw,42px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink">
-                Sanctuary material studies.
+                Sanctuary roof shape studies.
               </h2>
               <p className="mt-3 text-[16px] leading-[1.6] text-muted">
-                Large cards combine stills and motion so you can compare roof behavior before dialing in the final selection.
+                Review pitched, gable, hip and box-perimeter forms in motion before locking in your shape direction.
               </p>
             </div>
 
@@ -722,7 +723,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
         <div
           ref={highlightsTrackRef}
           className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-8 md:gap-6 md:pb-10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          aria-label="Material highlights"
+          aria-label="Roof shape highlights"
           style={{ paddingLeft: `${highlightsSidePad}px`, paddingRight: `${highlightsSidePad}px` }}
         >
           {HIGHLIGHT_CARDS.map((card) => {
