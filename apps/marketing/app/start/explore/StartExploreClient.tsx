@@ -49,8 +49,8 @@ type HighlightCard = {
   eyebrow: string;
   title: string;
   body: string;
-  media: MediaSpec;
-  materialId?: MaterialId;
+  compactMedia: ImageMediaSpec;
+  expandedMedia: VideoMediaSpec;
   tone?: 'light' | 'dark';
 };
 
@@ -90,7 +90,8 @@ const DEFAULT_VIDEO_PLAYBACK_RATE = 2;
 const HIGHLIGHT_CARD_WIDTH = 'min(88vw, 1288px)';
 const DESKTOP_HIGHLIGHTS_BREAKPOINT = '(min-width: 1024px)';
 const COMPACT_HIGHLIGHT_GAP_PX = 24;
-const HIGHLIGHT_TRANSITION = '240ms cubic-bezier(0.22, 0.61, 0.36, 1)';
+const HIGHLIGHT_TRANSITION_MS = 480;
+const HIGHLIGHT_TRANSITION = `${HIGHLIGHT_TRANSITION_MS}ms cubic-bezier(0.22, 0.61, 0.36, 1)`;
 const MATERIALS_STAGE_WIDTH = 'min(92vw, 1610px)';
 const REEL_ALIGNED_COPY_STYLE: React.CSSProperties = { width: HIGHLIGHT_CARD_WIDTH, marginInline: 'auto' };
 const MATERIALS_STAGE_WRAP_STYLE: React.CSSProperties = { width: MATERIALS_STAGE_WIDTH, marginInline: 'auto' };
@@ -253,7 +254,12 @@ const HIGHLIGHT_CARDS: HighlightCard[] = [
     eyebrow: 'Roof Shape',
     title: 'Pitched',
     body: 'A single clean pitch that keeps the form minimal and drainage straightforward.',
-    media: {
+    compactMedia: {
+      src: '/images/pitch-landing.jpg',
+      alt: 'Pitched roof shape landing image',
+      fit: 'cover',
+    },
+    expandedMedia: {
       mediaType: 'video',
       src: '/videos/pitched-subtle-movement.mp4',
       ariaLabel: 'Pitched roof subtle movement video',
@@ -266,7 +272,12 @@ const HIGHLIGHT_CARDS: HighlightCard[] = [
     eyebrow: 'Roof Shape',
     title: 'Gable',
     body: 'A classic ridge profile that opens up volume while staying balanced in elevation.',
-    media: {
+    compactMedia: {
+      src: '/images/gable-landing.jpg',
+      alt: 'Gable roof shape landing image',
+      fit: 'cover',
+    },
+    expandedMedia: {
       mediaType: 'video',
       src: '/videos/gable-subtle-movement.mp4',
       ariaLabel: 'Gable roof subtle movement video',
@@ -279,7 +290,12 @@ const HIGHLIGHT_CARDS: HighlightCard[] = [
     eyebrow: 'Roof Shape',
     title: 'Hip',
     body: 'A composed, wrapped form that softens scale and reads more residential.',
-    media: {
+    compactMedia: {
+      src: '/images/hip-landing.jpg',
+      alt: 'Hip roof shape landing image',
+      fit: 'cover',
+    },
+    expandedMedia: {
       mediaType: 'video',
       src: '/videos/hip-subtle-movement.mp4',
       ariaLabel: 'Hip roof subtle movement video',
@@ -292,7 +308,12 @@ const HIGHLIGHT_CARDS: HighlightCard[] = [
     eyebrow: 'Roof Shape',
     title: 'Box-perimeter',
     body: 'A crisp perimeter frame with strong horizontals for an architectural expression.',
-    media: {
+    compactMedia: {
+      src: '/images/box-landing.jpg',
+      alt: 'Box-perimeter roof shape landing image',
+      fit: 'cover',
+    },
+    expandedMedia: {
       mediaType: 'video',
       src: '/videos/box-subtle-movement.mp4',
       ariaLabel: 'Box-perimeter roof subtle movement video',
@@ -524,11 +545,13 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
   const [selectedHighlightId, setSelectedHighlightId] = React.useState(HIGHLIGHT_CARDS[0]?.id ?? '');
   const [isDesktopHighlights, setIsDesktopHighlights] = React.useState(false);
   const [isHighlightsExpanded, setIsHighlightsExpanded] = React.useState(false);
+  const [isHighlightExpandedMediaReady, setIsHighlightExpandedMediaReady] = React.useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
   const prevActiveRef = React.useRef<MaterialId>('acrylic');
   const highlightsTrackRef = React.useRef<HTMLDivElement | null>(null);
   const highlightCardRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
   const highlightLastActivatorRef = React.useRef<string | null>(null);
+  const highlightMediaSwapTimeoutRef = React.useRef<number | null>(null);
 
   const isFocus = mode === 'focus';
   const isCompactHighlights = isDesktopHighlights && !isHighlightsExpanded;
@@ -611,10 +634,55 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     return () => media.removeListener(apply);
   }, []);
 
+  const clearHighlightMediaSwapTimeout = React.useCallback(() => {
+    if (highlightMediaSwapTimeoutRef.current == null) return;
+    window.clearTimeout(highlightMediaSwapTimeoutRef.current);
+    highlightMediaSwapTimeoutRef.current = null;
+  }, []);
+
+  const scheduleHighlightMediaSwap = React.useCallback(
+    (target: 'expanded' | 'compact') => {
+      clearHighlightMediaSwapTimeout();
+
+      if (!isDesktopHighlights || prefersReducedMotion) {
+        setIsHighlightExpandedMediaReady(!isDesktopHighlights || target === 'expanded');
+        return;
+      }
+
+      if (target === 'expanded') {
+        setIsHighlightExpandedMediaReady(false);
+        highlightMediaSwapTimeoutRef.current = window.setTimeout(() => {
+          setIsHighlightExpandedMediaReady(true);
+          highlightMediaSwapTimeoutRef.current = null;
+        }, HIGHLIGHT_TRANSITION_MS);
+        return;
+      }
+
+      highlightMediaSwapTimeoutRef.current = window.setTimeout(() => {
+        setIsHighlightExpandedMediaReady(false);
+        highlightMediaSwapTimeoutRef.current = null;
+      }, HIGHLIGHT_TRANSITION_MS);
+    },
+    [clearHighlightMediaSwapTimeout, isDesktopHighlights, prefersReducedMotion]
+  );
+
   React.useEffect(() => {
-    if (!isDesktopHighlights) return;
+    return () => {
+      clearHighlightMediaSwapTimeout();
+    };
+  }, [clearHighlightMediaSwapTimeout]);
+
+  React.useEffect(() => {
+    clearHighlightMediaSwapTimeout();
+    if (!isDesktopHighlights) {
+      setIsHighlightsExpanded(false);
+      setIsHighlightExpandedMediaReady(true);
+      return;
+    }
+
     setIsHighlightsExpanded(false);
-  }, [isDesktopHighlights]);
+    setIsHighlightExpandedMediaReady(false);
+  }, [clearHighlightMediaSwapTimeout, isDesktopHighlights]);
 
   const recalcHighlightsSidePad = React.useCallback(() => {
     const track = highlightsTrackRef.current;
@@ -671,7 +739,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
     });
     const timeout = window.setTimeout(() => {
       recalcHighlightsSidePad();
-    }, 280);
+    }, HIGHLIGHT_TRANSITION_MS + 40);
 
     return () => {
       window.cancelAnimationFrame(frame);
@@ -738,7 +806,8 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
   const closeExpandedHighlights = React.useCallback(() => {
     if (!isDesktopHighlights || !isHighlightsExpanded) return;
     setIsHighlightsExpanded(false);
-  }, [isDesktopHighlights, isHighlightsExpanded]);
+    scheduleHighlightMediaSwap('compact');
+  }, [isDesktopHighlights, isHighlightsExpanded, scheduleHighlightMediaSwap]);
 
   React.useEffect(() => {
     if (!isDesktopHighlights || !isHighlightsExpanded) return;
@@ -860,7 +929,8 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
           {HIGHLIGHT_CARDS.map((card) => {
             const selected = card.id === selectedHighlightId;
             const textTone = card.tone ?? 'light';
-            const cardVideoPlaybackRate = card.media.mediaType === 'video' ? card.media.playbackRate : undefined;
+            const shouldRenderExpandedVideo = !isCompactHighlights && isHighlightExpandedMediaReady;
+            const cardVideoPlaybackRate = card.expandedMedia.playbackRate;
 
             return (
               <button
@@ -877,6 +947,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                   if (isCompactHighlights) {
                     highlightLastActivatorRef.current = card.id;
                     setIsHighlightsExpanded(true);
+                    scheduleHighlightMediaSwap('expanded');
                     return;
                   }
 
@@ -910,14 +981,14 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                 aria-pressed={selected}
                 aria-expanded={isDesktopHighlights ? isHighlightsExpanded && selected : undefined}
               >
-                {card.media.mediaType === 'video' ? (
+                {shouldRenderExpandedVideo ? (
                   <video
                     autoPlay={!prefersReducedMotion}
                     loop
                     muted
                     playsInline
                     preload="metadata"
-                    aria-label={card.media.ariaLabel}
+                    aria-label={card.expandedMedia.ariaLabel}
                     tabIndex={-1}
                     className="h-full w-full object-cover"
                     onLoadedMetadata={(event) => {
@@ -927,16 +998,21 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                       enforceVideoPlaybackRate(event.currentTarget, cardVideoPlaybackRate);
                     }}
                   >
-                    <source src={card.media.src} type="video/mp4" />
+                    <source src={card.expandedMedia.src} type="video/mp4" />
                   </video>
                 ) : (
                   <Image
-                    src={card.media.src}
-                    alt={card.media.alt}
+                    src={card.compactMedia.src}
+                    alt={card.compactMedia.alt}
                     fill
-                    sizes="(max-width: 768px) 88vw, (max-width: 1280px) 88vw, 1288px"
-                    className={card.media.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
-                    style={{ objectPosition: card.media.position ?? 'center' }}
+                    quality={95}
+                    sizes={
+                      isCompactHighlights
+                        ? '(min-width: 1024px) 980px, 88vw'
+                        : '(max-width: 768px) 88vw, (max-width: 1280px) 88vw, 1288px'
+                    }
+                    className={card.compactMedia.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+                    style={{ objectPosition: card.compactMedia.position ?? 'center' }}
                   />
                 )}
 
