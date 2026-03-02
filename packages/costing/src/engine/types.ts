@@ -395,6 +395,12 @@ export type DerivedV1 = {
   acrylic_joiner_top_total_m?: number;
   acrylic_joiner_bottom_fixings_each?: number;
   acrylic_install_area_m2?: number;
+  infill_instance_count?: number;
+  infill_joiner_total_m?: number;
+  infill_joiner_fixings_each?: number;
+  infill_sheet_area_m2?: number;
+  infill_strip_panel_count?: number;
+  infill_extra_supports_each?: number;
   flashing_0_200_total_m?: number;
   flashing_201_300_total_m?: number;
   flashing_301_400_total_m?: number;

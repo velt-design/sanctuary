@@ -1503,6 +1503,250 @@ describe('calculateCostV1', () => {
     expect(result.totals.notes_and_warnings.some((w) => w.includes('INVALID') && w.includes('Powdercoat'))).toBe(true);
   });
 
+  it('infills: no infills keeps infill labour actions disabled', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+    });
+
+    expect(result.derived.infill_instance_count ?? 0).toBe(0);
+    expect(result.derived.infill_joiner_total_m ?? 0).toBe(0);
+    expect(result.derived.infill_joiner_fixings_each ?? 0).toBe(0);
+    expect(result.derived.infill_sheet_area_m2 ?? 0).toBe(0);
+    expect(result.derived.infill_strip_panel_count ?? 0).toBe(0);
+    expect(result.derived.infill_extra_supports_each ?? 0).toBe(0);
+    expect(result.install.actions.some((a) => a.id.startsWith('infill.'))).toBe(false);
+  });
+
+  it('infills: sheet-panel infill drives sheet labour actions and drivers', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+      infills: [
+        {
+          id: 'infill-sheet-1',
+          qty: 2,
+          location: 'front',
+          acrylic_source: 'sheet_panels',
+          panel_orientation: 'vertical',
+          width_mode: 'target_width',
+          support: {
+            has_top: true,
+            has_bottom: true,
+            has_left: true,
+            has_right: true,
+            internal_support_mode: 'none',
+          },
+          shape: {
+            type: 'rect',
+            width_m: 2.4,
+            height_m: 1.8,
+          },
+        },
+      ],
+    });
+
+    expect(result.derived.infill_instance_count).toBe(2);
+    expect(result.derived.infill_sheet_area_m2 ?? 0).toBeGreaterThan(0);
+    expect(result.derived.infill_strip_panel_count ?? 0).toBe(0);
+
+    const setup = result.install.actions.find((a) => a.id === 'infill.setup_setout_each');
+    const finish = result.install.actions.find((a) => a.id === 'infill.finish_clean_each');
+    const panels = result.install.actions.find((a) => a.id === 'infill.install_sheet_panels_m2');
+    const stripPanels = result.install.actions.find((a) => a.id === 'infill.install_strip_panels_each');
+    const joiners = result.install.actions.find((a) => a.id === 'infill.install_joiner_m');
+    const fixings = result.install.actions.find((a) => a.id === 'infill.fix_joiner_each');
+
+    expect(setup?.qty).toBe(2);
+    expect(finish?.qty).toBe(2);
+    expect(panels?.qty).toBeCloseTo(Number(result.derived.infill_sheet_area_m2 ?? 0), 6);
+    expect(stripPanels).toBeFalsy();
+    expect(joiners?.qty).toBeCloseTo(Number(result.derived.infill_joiner_total_m ?? 0), 6);
+    expect(fixings?.qty).toBe(Number(result.derived.infill_joiner_fixings_each ?? 0));
+  });
+
+  it('infills: strip infill drives strip labour actions and sheet labour stays off', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+      infills: [
+        {
+          id: 'infill-strip-1',
+          qty: 1,
+          location: 'side',
+          acrylic_source: 'strip_620',
+          panel_orientation: 'vertical',
+          width_mode: 'target_width',
+          support: {
+            has_top: true,
+            has_bottom: true,
+            has_left: true,
+            has_right: true,
+            internal_support_mode: 'none',
+          },
+          shape: {
+            type: 'rect',
+            width_m: 2.4,
+            height_m: 1.8,
+          },
+        },
+      ],
+    });
+
+    expect(result.derived.infill_strip_panel_count ?? 0).toBeGreaterThan(0);
+    expect(result.derived.infill_sheet_area_m2 ?? 0).toBe(0);
+
+    const stripPanels = result.install.actions.find((a) => a.id === 'infill.install_strip_panels_each');
+    const sheetPanels = result.install.actions.find((a) => a.id === 'infill.install_sheet_panels_m2');
+    expect(stripPanels?.qty).toBe(Number(result.derived.infill_strip_panel_count ?? 0));
+    expect(sheetPanels).toBeFalsy();
+  });
+
+  it('infills: extra support driver includes missing jambs and unsupported internals', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+      infills: [
+        {
+          id: 'infill-supports-1',
+          qty: 1,
+          location: 'side',
+          acrylic_source: 'sheet_panels',
+          panel_orientation: 'vertical',
+          width_mode: 'target_width',
+          support: {
+            has_top: true,
+            has_bottom: true,
+            has_left: false,
+            has_right: false,
+            internal_support_mode: 'none',
+          },
+          shape: {
+            type: 'rect',
+            width_m: 2.4,
+            height_m: 1.8,
+          },
+        },
+      ],
+    });
+
+    // 2 missing jambs (left+right) + 1 unsupported internal boundary.
+    expect(result.derived.infill_extra_supports_each).toBe(3);
+    const extraSupports = result.install.actions.find((a) => a.id === 'infill.install_extra_supports_each');
+    expect(extraSupports?.qty).toBe(3);
+  });
+
+  it('infills: sheet vs strip variants produce different install labour totals', () => {
+    const base = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const sheet = calculateCostV1({
+      ...base,
+      infills: [
+        {
+          id: 'infill-compare',
+          qty: 1,
+          location: 'front',
+          acrylic_source: 'sheet_panels',
+          panel_orientation: 'vertical',
+          width_mode: 'target_width',
+          support: {
+            has_top: true,
+            has_bottom: true,
+            has_left: true,
+            has_right: true,
+            internal_support_mode: 'none',
+          },
+          shape: {
+            type: 'rect',
+            width_m: 2.4,
+            height_m: 1.8,
+          },
+        },
+      ],
+    });
+    const strip = calculateCostV1({
+      ...base,
+      infills: [
+        {
+          id: 'infill-compare',
+          qty: 1,
+          location: 'front',
+          acrylic_source: 'strip_620',
+          panel_orientation: 'vertical',
+          width_mode: 'target_width',
+          support: {
+            has_top: true,
+            has_bottom: true,
+            has_left: true,
+            has_right: true,
+            internal_support_mode: 'none',
+          },
+          shape: {
+            type: 'rect',
+            width_m: 2.4,
+            height_m: 1.8,
+          },
+        },
+      ],
+    });
+
+    expect(roundMoney(sheet.install.totals.install_ex_gst)).not.toBe(roundMoney(strip.install.totals.install_ex_gst));
+    expect(roundMoney(sheet.install.totals.crew_hours)).not.toBe(roundMoney(strip.install.totals.crew_hours));
+  });
+
   it('job rollup: overhead does not double with two modules', () => {
     const moduleInputs = {
       length_m: 6,
