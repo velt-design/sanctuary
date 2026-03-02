@@ -10,6 +10,8 @@ import HomeProcessSection, { HomeProcessCtaBar } from '@/components/home/HomePro
 import HomeFeatureBar from '@/components/home/HomeFeatureBar';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
 import HomeWarrantySupportSection from '@/components/home/HomeWarrantySupportSection';
+import RoofComparisonSection from '@/components/explore/RoofComparisonSection';
+import RoofStudiesSection from '@/components/explore/RoofStudiesSection';
 import { projects } from '@/data/projects';
 
 export type ProcessStep = { title: string; desc: string };
@@ -21,6 +23,11 @@ export type HomePageContent = {
   processSteps: ProcessStep[];
   copyTexts: string[];
   blurDataUrl: string;
+};
+
+const MATERIALS_COPY_STYLE: React.CSSProperties = {
+  width: 'min(88vw, 1288px)',
+  marginInline: 'auto',
 };
 
 export default function HomePageClient({
@@ -219,72 +226,94 @@ export default function HomePageClient({
   return (
     <div className="homepage">
       <main>
-        <HomeHeroSection
-          blurDataUrl={blurDataUrl}
-          showIntroContact={showIntroContact}
-          introContactIn={introContactIn}
-          titleIn={titleIn}
-          contactIn={contactIn}
-          revealImages={revealImages}
-          showProgress={showProgress}
-          progress={progress}
-          mobileHeroLoaded={mobileHeroLoaded}
-          setMobileHeroLoaded={setMobileHeroLoaded}
-          titleRef={titleRef}
-          contactRef={contactRef}
-        />
+        <div className="homepage-legacy-scope">
+          <HomeHeroSection
+            blurDataUrl={blurDataUrl}
+            showIntroContact={showIntroContact}
+            introContactIn={introContactIn}
+            titleIn={titleIn}
+            contactIn={contactIn}
+            revealImages={revealImages}
+            showProgress={showProgress}
+            progress={progress}
+            mobileHeroLoaded={mobileHeroLoaded}
+            setMobileHeroLoaded={setMobileHeroLoaded}
+            titleRef={titleRef}
+            contactRef={contactRef}
+          />
 
-        <div id="gallery" aria-hidden="true" />
+          <div id="gallery" aria-hidden="true" />
 
-        <HomeFeatureBar featureItems={featureItems} />
+          <HomeFeatureBar featureItems={featureItems} />
+        </div>
 
-        {/* Word-by-word statement section (text left + images right) */}
-        <SpReveal
-          id="sp-reveal-1"
-          sentence="Every |angle |resolved. Comfort in any weather. Beautiful from every view. Designed for the {way you live.}| Built for light, life, and leisure. Sanctuary |Pergolas."
-          images={["/images/project-dairy-flat-01.jpg", "/images/project-waiheke-02.jpg", "/images/product-pitched-06.jpg"]}
-          imageAlt="Project images"
-          style={
-            {
-              '--sp-gutter': 'clamp(16px, 2.8vw, 40px)',
-              '--sp-fit-nudge': '2px',
-              '--sp-top-nudge': '-6px',
-            } as React.CSSProperties
-          }
-        />
+        <RoofStudiesSection />
 
-        <section className="materials-head" aria-label="Materials heading">
-          <div className="container process-head__inner">
-            <h2 className="process-head__title">Materials</h2>
+        <section className="bg-page py-[clamp(36px,7vh,104px)]">
+          <div style={MATERIALS_COPY_STYLE}>
+            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Materials.</p>
+            <h2 className="mt-3 max-w-[24ch] text-balance text-[clamp(32px,4.4vw,62px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
+              Bright and open, or cool and shaded - dial it in with materials.
+            </h2>
+            <p className="mt-6 max-w-[76ch] text-[17px] leading-[1.66] text-muted">
+              Material choice sets the tone for the entire pergola - how light moves through it, how warm it feels, how much upkeep it asks for, and how it will age over time.{` `}
+              <span className="text-ink">Acrylic keeps spaces bright and open. Timber adds warmth and texture. Combination systems balance both.</span>{` `}
+              Aluminium stays crisp and architectural, with colour options that sit quietly alongside your exterior palette.
+            </p>
           </div>
         </section>
 
-        <TimberSection />
-        <AcrylicSection />
+        <RoofComparisonSection />
 
-        <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
+        <div className="homepage-legacy-scope">
+          <section className="materials-head" aria-label="Materials heading">
+            <div className="container process-head__inner">
+              <h2 className="process-head__title">Materials</h2>
+            </div>
+          </section>
 
-        <section className="projects-head" aria-label="Projects heading">
-          <div className="container process-head__inner">
-            <h2 className="process-head__title">Projects</h2>
-          </div>
-        </section>
-        <ProjectsCarouselMobile
-          projects={projects.slice(0, 4)}
-          seeMoreHref="/projects"
-          seeMoreLabel="See more projects"
-          showNav={false}
-          // From the homepage, deep-link into the projects
-          // index with a pre-selected slug rather than
-          // going straight to the standalone detail page.
-          linkVariant="index-with-slug"
-        />
+          <TimberSection />
+          <AcrylicSection />
 
-        <HomeProductsSection blurDataUrl={blurDataUrl} />
+          <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
 
-        <HomeWarrantySupportSection />
+          <section className="projects-head" aria-label="Projects heading">
+            <div className="container process-head__inner">
+              <h2 className="process-head__title">Projects</h2>
+            </div>
+          </section>
+          <ProjectsCarouselMobile
+            projects={projects.slice(0, 4)}
+            seeMoreHref="/projects"
+            seeMoreLabel="See more projects"
+            showNav={false}
+            // From the homepage, deep-link into the projects
+            // index with a pre-selected slug rather than
+            // going straight to the standalone detail page.
+            linkVariant="index-with-slug"
+          />
 
-        <HomeProcessCtaBar />
+          {/* Word-by-word statement section (text left + images right) */}
+          <SpReveal
+            id="sp-reveal-1"
+            sentence="Every |angle |resolved. Comfort in any weather. Beautiful from every view. Designed for the {way you live.}| Built for light, life, and leisure. Sanctuary |Pergolas."
+            images={["/images/project-dairy-flat-01.jpg", "/images/project-waiheke-02.jpg", "/images/product-pitched-06.jpg"]}
+            imageAlt="Project images"
+            style={
+              {
+                '--sp-gutter': 'clamp(16px, 2.8vw, 40px)',
+                '--sp-fit-nudge': '2px',
+                '--sp-top-nudge': '-6px',
+              } as React.CSSProperties
+            }
+          />
+
+          <HomeProductsSection blurDataUrl={blurDataUrl} />
+
+          <HomeWarrantySupportSection />
+
+          <HomeProcessCtaBar />
+        </div>
 
         {/* Contact red bar now appears above the global footer */}
       </main>
