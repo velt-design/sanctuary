@@ -92,23 +92,32 @@ const ROOF_TYPE_FIT_CONFIG: Record<RoofTypeFitId, { label: string; meters: RoofT
 };
 
 const ROOF_TYPE_FIT_OPTIONS: RoofTypeFitId[] = ['acrylic', 'timber', 'combo'];
+const ROOF_TYPE_MEDIA_COMBO_VERSION = '20260302-114943';
+const ROOF_TYPE_MEDIA_TIMBER_VERSION = '20260302-114843';
 
 const ROOF_TYPE_FIT_MEDIA: Record<RoofTypeFitId, RoofTypeFitMedia> = {
   acrylic: {
-    src: '/videos/materials-combo.mp4',
+    src: `/videos/materials-combo.mp4?v=${ROOF_TYPE_MEDIA_COMBO_VERSION}`,
     ariaLabel: 'Acrylic roof material video',
     playbackRate: 1,
   },
   timber: {
-    src: '/videos/materials-timber.mp4',
+    src: `/videos/materials-timber.mp4?v=${ROOF_TYPE_MEDIA_TIMBER_VERSION}`,
     ariaLabel: 'Timber roof material video',
     playbackRate: 1,
   },
   combo: {
-    src: '/videos/materials-combo.mp4',
+    src: `/videos/materials-combo.mp4?v=${ROOF_TYPE_MEDIA_COMBO_VERSION}`,
     ariaLabel: 'Combination roof material video',
     playbackRate: 1,
   },
+};
+
+const ROOF_TYPE_FIT_COPY: Record<RoofTypeFitId, string> = {
+  acrylic:
+    'Maximises daylight while filtering UV, reducing glare, and keeping the space protected from rain.',
+  timber: 'Delivers the most shade and acoustic comfort, ideal for bright north-facing decks.',
+  combo: 'Balances daylight and shade for the most versatile all-round performance.',
 };
 
 const ROOF_TYPE_FIT_ROWS: Array<{
@@ -578,6 +587,7 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const selectedConfig = ROOF_TYPE_FIT_CONFIG[selected];
   const selectedMedia = ROOF_TYPE_FIT_MEDIA[selected];
+  const selectedCopy = ROOF_TYPE_FIT_COPY[selected];
   const selectedIndex = ROOF_TYPE_FIT_OPTIONS.indexOf(selected);
   const hasMountedRef = React.useRef(false);
 
@@ -704,6 +714,8 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                     );
                   })}
                 </div>
+
+                <p className="mt-10 text-center text-[16px] leading-[1.45] text-muted/75 md:text-[17px]">{selectedCopy}</p>
               </div>
 
               <div className="mx-auto min-w-0 w-[min(88vw,420px)] max-w-full self-start lg:mx-0 lg:w-[clamp(360px,28vw,480px)]">
