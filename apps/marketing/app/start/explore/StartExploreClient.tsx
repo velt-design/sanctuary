@@ -611,7 +611,7 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                   </h3>
                 </div>
 
-                <div className="mt-[22px] lg:mt-6">
+                <div className="mt-[44px] lg:mt-12">
                   <div
                     role="group"
                     aria-label="Roof type selector"
@@ -637,7 +637,7 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                           onClick={() => setSelected(option)}
                           aria-pressed={isSelected}
                           className={cn(
-                            'relative z-10 h-[60px] px-3 text-center text-[13px] font-medium uppercase tracking-[0.07em]',
+                            'relative z-10 h-[51px] px-3 text-center text-[13px] font-medium uppercase tracking-[0.07em]',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 focus-visible:ring-inset',
                             index < ROOF_TYPE_FIT_OPTIONS.length - 1 && 'border-r border-page/60 [border-right-width:var(--bw)]',
                             isSelected ? 'font-semibold text-white' : 'text-ink/75 hover:text-ink'
@@ -653,7 +653,7 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
 
                 <div
                   className={cn(
-                    'mt-[28px] space-y-5',
+                    'mt-[56px] space-y-5',
                     !prefersReducedMotion && 'transition-opacity duration-200 ease-out',
                     !prefersReducedMotion && isSwapping && 'opacity-90'
                   )}
@@ -662,10 +662,10 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                     const level = selectedConfig.meters[row.key];
                     const fillPercent = (level / 5) * 100;
                     return (
-                      <div key={row.key} className="grid grid-cols-1 gap-y-[14px] sm:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] sm:items-center sm:gap-x-[26px] sm:gap-y-0">
+                      <div key={row.key} className="grid grid-cols-1 gap-y-[14px] sm:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] sm:items-center sm:gap-x-3 sm:gap-y-0">
                         <span className="text-[14px] font-medium uppercase tracking-[0.05em] text-ink md:text-[15px]">{row.label}</span>
 
-                        <div role="img" aria-label={`${row.label}: ${level} of 5`} className="w-full max-w-[520px] pr-4">
+                        <div role="img" aria-label={`${row.label}: ${level} of 5`} className="w-full">
                           <div className="relative h-[7px] md:h-[8px]">
                             <div className="absolute inset-0 grid grid-cols-5 gap-1.5">
                               {Array.from({ length: 5 }, (_, index) => (
