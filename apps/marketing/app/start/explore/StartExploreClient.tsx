@@ -136,6 +136,8 @@ const HIGHLIGHT_TRANSITION = `${HIGHLIGHT_TRANSITION_MS}ms ${HIGHLIGHT_MOTION_EA
 const HIGHLIGHT_POST_EXPAND_FADE_DELAY_MS = 400;
 const HIGHLIGHT_MEDIA_FADE_MS = 220;
 const HIGHLIGHT_DEEP_DIVE_TRANSITION_MS = 250;
+const HIGHLIGHT_HOVER_TRANSITION_MS = 260;
+const HIGHLIGHT_HOVER_EASING_CSS = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
 const MATERIALS_STAGE_WIDTH = 'min(92vw, 1610px)';
 const REEL_ALIGNED_COPY_STYLE: React.CSSProperties = { width: HIGHLIGHT_CARD_WIDTH, marginInline: 'auto' };
 const MATERIALS_STAGE_WRAP_STYLE: React.CSSProperties = { width: MATERIALS_STAGE_WIDTH, marginInline: 'auto' };
@@ -594,10 +596,10 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
     <section className={cn('bg-page py-8 md:py-14', debug && 'outline outline-1 outline-sky-500/30')}>
       <div className="ui-box-center-viewport">
         <div className="mx-auto w-full max-w-[1610px] pl-4 pr-5 md:pl-6 md:pr-12">
-          <div className="ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(420px,38vw,560px)]">
+          <div className="ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(380px,34vw,500px)]">
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute bottom-6 left-[calc(100%-clamp(360px,28vw,480px)-20px)] top-[72px] hidden w-px bg-page lg:block"
+              className="pointer-events-none absolute left-[calc(100%-clamp(360px,28vw,480px)-20px)] top-[72px] hidden w-px bg-page lg:block lg:bottom-[calc(100%-clamp(360px,28vw,480px)-24px)]"
             />
 
             <div className="grid items-start gap-8 lg:grid-cols-[1fr_auto] lg:gap-10">
@@ -609,7 +611,7 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                   </h3>
                 </div>
 
-                <div className="mt-[18px]">
+                <div className="mt-[22px] lg:mt-6">
                   <div
                     role="group"
                     aria-label="Roof type selector"
@@ -715,7 +717,7 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
                     preload="metadata"
                     aria-label={selectedMedia.ariaLabel}
                     tabIndex={-1}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-cover object-[50%_42%] scale-[1.06]"
                     onLoadedMetadata={(event) => {
                       const video = event.currentTarget;
                       if (video.defaultPlaybackRate !== selectedMedia.playbackRate) {
@@ -1542,6 +1544,12 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
             const deepDiveTransition = prefersReducedMotion
               ? 'none'
               : `opacity ${HIGHLIGHT_DEEP_DIVE_TRANSITION_MS}ms ease-out, transform ${HIGHLIGHT_DEEP_DIVE_TRANSITION_MS}ms ease-out`;
+            const compactHoverTransition = `${HIGHLIGHT_HOVER_TRANSITION_MS}ms ${HIGHLIGHT_HOVER_EASING_CSS}`;
+            const cardWidthTransition = `width ${HIGHLIGHT_TRANSITION}`;
+            const cardTransition = isCompactHighlights ? `${cardWidthTransition}, transform ${compactHoverTransition}` : cardWidthTransition;
+            const imageTransition = prefersReducedMotion
+              ? 'none'
+              : `opacity ${HIGHLIGHT_MEDIA_FADE_MS}ms ease-out${isCompactHighlights ? `, transform ${compactHoverTransition}` : ''}`;
 
             return (
               <article
@@ -1553,11 +1561,12 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                 data-highlight-card-id={card.id}
                 className={cn(
                   'group relative h-[640px] shrink-0 overflow-hidden border border-page bg-card text-left [border-width:var(--bw)]',
+                  isCompactHighlights && 'motion-safe:transition-transform motion-safe:hover:-translate-y-[2px]',
                   !isCompactHighlights && 'snap-center'
                 )}
                 style={{
                   width: isCompactHighlights ? compactCardWidth : HIGHLIGHT_CARD_WIDTH,
-                  transition: prefersReducedMotion ? 'none' : `width ${HIGHLIGHT_TRANSITION}`,
+                  transition: prefersReducedMotion ? 'none' : cardTransition,
                 }}
               >
                 <button
@@ -1567,7 +1576,7 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                   type="button"
                   disabled={isCardInteractionLocked || isDeepDiveOpen}
                   onClick={() => handleHighlightCardActivation(card.id)}
-                  className="absolute inset-0 z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-inset"
+                  className="absolute inset-0 z-10 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-inset disabled:cursor-not-allowed"
                   aria-label={card.title}
                   aria-pressed={selected}
                   aria-expanded={isDesktopHighlights ? isHighlightsExpanded && selected : undefined}
@@ -1584,11 +1593,14 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                         ? '(min-width: 1024px) 980px, 88vw'
                         : '(max-width: 768px) 88vw, (max-width: 1280px) 88vw, 1288px'
                     }
-                    className={card.compactMedia.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+                    className={cn(
+                      card.compactMedia.fit === 'contain' ? 'h-full w-full object-contain' : 'h-full w-full object-cover',
+                      isCompactHighlights && 'motion-safe:group-hover:scale-[1.01]'
+                    )}
                     style={{
                       objectPosition: card.compactMedia.position ?? 'center',
                       opacity: isDesktopExpandedHighlights && isVideoVisible ? 0 : 1,
-                      transition: prefersReducedMotion ? 'none' : `opacity ${HIGHLIGHT_MEDIA_FADE_MS}ms ease-out`,
+                      transition: imageTransition,
                     }}
                   />
                 ) : null}
@@ -1624,6 +1636,15 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                   </video>
                 ) : null}
 
+                {isCompactHighlights ? (
+                  <div
+                    className={cn(
+                      'pointer-events-none absolute inset-3 z-20 border opacity-0 transition-opacity duration-300 ease-out group-hover:opacity-100',
+                      textTone === 'dark' ? 'border-ink/25' : 'border-white/30'
+                    )}
+                  />
+                ) : null}
+
                 <div
                   className={cn(
                     'pointer-events-none absolute inset-0',
@@ -1632,10 +1653,24 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                 />
 
                 <div className={cn('pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 md:p-8', textTone === 'dark' ? 'text-ink' : 'text-white')}>
-                  <p className={cn('text-[11px] uppercase tracking-[0.12em]', textTone === 'dark' ? 'text-muted' : 'text-white/85')}>
+                  <p
+                    className={cn(
+                      'text-[11px] uppercase tracking-[0.12em]',
+                      textTone === 'dark' ? 'text-muted' : 'text-white/85',
+                      isCompactHighlights && (textTone === 'dark' ? 'transition-colors duration-200 ease-out group-hover:text-ink' : 'transition-colors duration-200 ease-out group-hover:text-white')
+                    )}
+                  >
                     {card.eyebrow}
                   </p>
-                  <h3 className="mt-2 text-[clamp(22px,2.7vw,36px)] font-semibold leading-[1.12] tracking-[-0.015em]">{card.title}</h3>
+                  <h3
+                    className={cn(
+                      'mt-2 text-[clamp(22px,2.7vw,36px)] font-semibold leading-[1.12] tracking-[-0.015em]',
+                      isCompactHighlights &&
+                        (textTone === 'dark' ? 'transition-colors duration-200 ease-out group-hover:text-ink' : 'transition-colors duration-200 ease-out group-hover:text-white')
+                    )}
+                  >
+                    {card.title}
+                  </h3>
                   <p className={cn('mt-3 max-w-[58ch] text-[15px] leading-[1.6]', textTone === 'dark' ? 'text-muted' : 'text-white/90')}>
                     {card.benefitLine}
                   </p>
@@ -1659,6 +1694,17 @@ export default function StartExploreClient({ debug }: { debug?: boolean }) {
                       Best for: {card.bestFor}
                     </span>
                   )}
+
+                  {isCompactHighlights ? (
+                    <p
+                      className={cn(
+                        'mt-3 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.12em] opacity-0 transition-all duration-200 ease-out group-hover:translate-x-[1px] group-hover:opacity-100',
+                        textTone === 'dark' ? 'text-ink/72' : 'text-white/78'
+                      )}
+                    >
+                      Explore <span aria-hidden="true">→</span>
+                    </p>
+                  ) : null}
                 </div>
 
                 {isExpandedSelectedCard ? (
