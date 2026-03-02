@@ -2076,6 +2076,10 @@ function buildMaterialsV1Internal(
   let infillSheetAreaM2 = 0;
   const infillSheetWasteFactor = INFILL_SHEET_WASTE_FACTOR_DEFAULT;
   let infillJoinerTotalM = 0;
+  let infillInstanceCount = 0;
+  let infillJoinerFixingsEach = 0;
+  let infillStripPanelCount = 0;
+  let infillExtraSupportsEach = 0;
 
   const isSupportedInternal = (mode: string | undefined, x: number, spanM: number, positions?: number[]) => {
     if (mode === 'match_roof_rafters') return true;
@@ -2156,6 +2160,7 @@ function buildMaterialsV1Internal(
 
     const panelWidthsAcross = splitWidths(acrossSideM, infillCentreLimitForSource(acrylicSource));
     if (!panelWidthsAcross.length) continue;
+    infillInstanceCount += qty;
 
     const boundaryAcross: number[] = [0];
     for (const span of panelWidthsAcross) boundaryAcross.push(boundaryAcross[boundaryAcross.length - 1] + span);
@@ -2182,6 +2187,13 @@ function buildMaterialsV1Internal(
       panelOrientation === 'vertical'
         ? Math.max(0, boundaryJoinerLens[boundaryJoinerLens.length - 1] ?? rightEdgeLen)
         : rightEdgeLen;
+    const joinerTotalEach =
+      boundaryJoinerLens.reduce((acc, len) => acc + Math.max(0, len), 0) + Math.max(0, topEdgeLen) + Math.max(0, bottomEdgeLen);
+    if (joinerTotalEach > 0) {
+      infillJoinerFixingsEach += Math.ceil(joinerTotalEach / ACRYLIC_JOINER_BOTTOM_FIXING_SPACING_M) * qty;
+    }
+    const missingJambsEach =
+      panelOrientation === 'vertical' ? (hasLeft ? 0 : 1) + (hasRight ? 0 : 1) : (hasBottom ? 0 : 1) + (hasTop ? 0 : 1);
 
     for (const len of boundaryJoinerLens) {
       if (len <= 0) continue;
@@ -2212,6 +2224,7 @@ function buildMaterialsV1Internal(
       for (let q = 0; q < qty; q += 1) addCuts('50x50', [bottomEdgeLen], 'Infill support 50x50 (bottom rail)', 'joinable', { origin_prefix: 'infill_5050_bottom' });
     }
 
+    let unsupportedInternalEach = 0;
     for (let i = 1; i < boundaryAcross.length - 1; i += 1) {
       const x = boundaryAcross[i];
       const supported =
@@ -2220,9 +2233,11 @@ function buildMaterialsV1Internal(
       if (supported) continue;
       const len = boundaryJoinerLens[i];
       if (len <= 0) continue;
+      unsupportedInternalEach += 1;
       for (let q = 0; q < qty; q += 1)
         addCuts('50x50', [len], 'Infill support 50x50 (internal mullion)', 'joinable', { origin_prefix: 'infill_5050_internal' });
     }
+    infillExtraSupportsEach += (unsupportedInternalEach + missingJambsEach) * qty;
 
     if (acrylicSource === 'strip_620') {
       const cuts: number[] = [];
@@ -2241,6 +2256,7 @@ function buildMaterialsV1Internal(
           for (let q = 0; q < qty; q += 1) cuts.push(requiredLen);
         }
       }
+      infillStripPanelCount += cuts.length;
 
       if (cuts.length) {
         const stripLenOptions = [4, 5, 6];
@@ -2848,6 +2864,12 @@ function buildMaterialsV1Internal(
       acrylic_joiner_top_total_m: roundMoney(acrylicJoinerTopTotalM),
       acrylic_joiner_bottom_fixings_each: Math.max(0, Math.round(acrylicJoinerBottomFixingsEach)),
       acrylic_install_area_m2: roundMoney(acrylicInstallAreaM2),
+      infill_instance_count: Math.max(0, Math.round(infillInstanceCount)),
+      infill_joiner_total_m: roundMoney(infillJoinerTotalM),
+      infill_joiner_fixings_each: Math.max(0, Math.round(infillJoinerFixingsEach)),
+      infill_sheet_area_m2: roundMoney(infillSheetAreaM2),
+      infill_strip_panel_count: Math.max(0, Math.round(infillStripPanelCount)),
+      infill_extra_supports_each: Math.max(0, Math.round(infillExtraSupportsEach)),
     },
   };
 }
