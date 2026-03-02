@@ -605,7 +605,7 @@ function RoofTypeFitSection({ debug }: { debug?: boolean }) {
   return (
     <section className={cn('bg-page py-8 md:py-14', debug && 'outline outline-1 outline-sky-500/30')}>
       <div className="ui-box-center-viewport">
-        <div className="mx-auto w-full max-w-[1610px] pl-4 pr-5 md:pl-6 md:pr-12">
+        <div className="mx-auto w-full max-w-[1610px] px-4 md:px-6">
           <div className="ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(380px,34vw,500px)]">
             <span
               aria-hidden="true"
