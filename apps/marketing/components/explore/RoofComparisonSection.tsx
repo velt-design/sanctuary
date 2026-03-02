@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/cn';
 
 type RoofTypeFitId = 'acrylic' | 'timber' | 'combo';
@@ -13,6 +14,7 @@ type RoofTypeFitMeters = {
 
 type RoofTypeFitMedia = {
   src: string;
+  posterSrcs: string[];
   ariaLabel: string;
   playbackRate: number;
 };
@@ -38,17 +40,25 @@ const ROOF_TYPE_MEDIA_TIMBER_VERSION = '20260302-114843';
 
 const ROOF_TYPE_FIT_MEDIA: Record<RoofTypeFitId, RoofTypeFitMedia> = {
   acrylic: {
-    src: `/videos/materials-combo.mp4?v=${ROOF_TYPE_MEDIA_COMBO_VERSION}`,
+    src: '/videos/materials-acrylic.mp4',
+    posterSrcs: ['/images/materials-acrylic.png', '/images/materials-acrylic.jpg', '/images/materials-acrylic.webp'],
     ariaLabel: 'Acrylic roof material video',
     playbackRate: 1,
   },
   timber: {
     src: `/videos/materials-timber.mp4?v=${ROOF_TYPE_MEDIA_TIMBER_VERSION}`,
+    posterSrcs: ['/images/materials-timber.png', '/images/materials-timber.jpg', '/images/materials-timber.webp'],
     ariaLabel: 'Timber roof material video',
     playbackRate: 1,
   },
   combo: {
     src: `/videos/materials-combo.mp4?v=${ROOF_TYPE_MEDIA_COMBO_VERSION}`,
+    posterSrcs: [
+      '/images/materials-combo.png',
+      '/images/materials-combo.jpg',
+      '/images/materials-combo.webp',
+      '/images/materials-combination.png',
+    ],
     ariaLabel: 'Combination roof material video',
     playbackRate: 1,
   },
@@ -104,11 +114,14 @@ type RoofComparisonSectionProps = {
 export default function RoofComparisonSection({ debug, className }: RoofComparisonSectionProps) {
   const [selected, setSelected] = React.useState<RoofTypeFitId>('acrylic');
   const [isSwapping, setIsSwapping] = React.useState(false);
+  const [isVideoReady, setIsVideoReady] = React.useState(false);
+  const [posterIndex, setPosterIndex] = React.useState(0);
   const prefersReducedMotion = usePrefersReducedMotion();
   const selectedConfig = ROOF_TYPE_FIT_CONFIG[selected];
   const selectedMedia = ROOF_TYPE_FIT_MEDIA[selected];
   const selectedCopy = ROOF_TYPE_FIT_COPY[selected];
   const selectedIndex = ROOF_TYPE_FIT_OPTIONS.indexOf(selected);
+  const selectedPosterSrc = selectedMedia.posterSrcs[posterIndex];
   const hasMountedRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -121,6 +134,11 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
     const timeoutId = window.setTimeout(() => setIsSwapping(false), 180);
     return () => window.clearTimeout(timeoutId);
   }, [prefersReducedMotion, selected]);
+
+  React.useEffect(() => {
+    setIsVideoReady(false);
+    setPosterIndex(0);
+  }, [selectedMedia.src]);
 
   return (
     <section className={cn('bg-page py-8 md:py-14', className, debug && 'outline outline-1 outline-sky-500/30')}>
@@ -239,7 +257,29 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
               </div>
 
               <div className="mx-auto min-w-0 w-[min(88vw,420px)] max-w-full self-start lg:mx-0 lg:w-[clamp(360px,28vw,480px)]">
-                <div className="relative aspect-square w-full overflow-hidden">
+                <div className="relative aspect-square w-full overflow-hidden bg-[#eceff2]">
+                  {selectedPosterSrc ? (
+                    <Image
+                      key={`${selected}:poster:${selectedPosterSrc}`}
+                      src={selectedPosterSrc}
+                      alt=""
+                      fill
+                      aria-hidden="true"
+                      sizes="(max-width: 1024px) 88vw, (max-width: 1440px) 35vw, 480px"
+                      className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-[1.06]"
+                      style={{
+                        opacity: isVideoReady ? 0 : 1,
+                        transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
+                      }}
+                      onError={() => {
+                        setPosterIndex((current) => {
+                          const next = current + 1;
+                          return next <= selectedMedia.posterSrcs.length ? next : current;
+                        });
+                      }}
+                    />
+                  ) : null}
+
                   <video
                     key={`${selected}:${selectedMedia.src}`}
                     autoPlay={!prefersReducedMotion}
@@ -247,9 +287,10 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                     muted
                     playsInline
                     preload="metadata"
+                    poster={selectedMedia.posterSrcs[0]}
                     aria-label={selectedMedia.ariaLabel}
                     tabIndex={-1}
-                    className="h-full w-full object-cover object-[50%_42%] scale-[1.06]"
+                    className="absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-[1.06]"
                     onLoadedMetadata={(event) => {
                       const video = event.currentTarget;
                       if (video.defaultPlaybackRate !== selectedMedia.playbackRate) {
@@ -259,6 +300,8 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                         video.playbackRate = selectedMedia.playbackRate;
                       }
                     }}
+                    onLoadedData={() => setIsVideoReady(true)}
+                    onCanPlay={() => setIsVideoReady(true)}
                     onPlay={(event) => {
                       const video = event.currentTarget;
                       if (video.playbackRate !== selectedMedia.playbackRate) {
