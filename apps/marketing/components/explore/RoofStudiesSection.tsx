@@ -977,11 +977,14 @@ export default function RoofStudiesSection({
   }, [isCompactHighlights]);
 
   return (
-    <section className={cn('border-b border-page bg-page [border-bottom-width:var(--bw)]', className, debug && 'outline outline-1 outline-cyan-500/30')}>
-      <Container className="py-8 md:py-10">
+    <section
+      data-roof-studies-root="true"
+      className={cn('border-b border-page bg-page [border-bottom-width:var(--bw)]', className, debug && 'outline outline-1 outline-cyan-500/30')}
+    >
+      <Container className="py-16 md:py-20">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-[68ch]">
-            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Highlights</p>
+            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Style</p>
             <h2 className="mt-2 text-[clamp(28px,3.2vw,42px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink">
               Sanctuary roof shape studies.
             </h2>
@@ -1009,7 +1012,7 @@ export default function RoofStudiesSection({
       <div
         ref={highlightsTrackRef}
         className={cn(
-          'flex gap-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6 md:pb-10',
+          'flex gap-4 pb-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6 md:pb-20',
           isCompactHighlights ? 'overflow-hidden snap-none' : 'overflow-x-auto',
           !isCompactHighlights && !isHighlightsWidthTransitioning && 'snap-x snap-mandatory',
           !isCompactHighlights && isHighlightsWidthTransitioning && 'snap-none'
@@ -1026,9 +1029,9 @@ export default function RoofStudiesSection({
         {HIGHLIGHT_CARDS.map((card) => {
           const selected = card.id === selectedHighlightId;
           const textTone = card.tone ?? 'light';
-          const shouldRenderExpandedVideo = !isCompactHighlights;
-          const shouldRenderImageLayer = isCompactHighlights || isDesktopExpandedHighlights;
-          const isVideoVisible = !isDesktopExpandedHighlights || Boolean(highlightVideoVisibleMap[card.id]);
+          const shouldRenderExpandedVideo = isDesktopExpandedHighlights;
+          const shouldRenderImageLayer = !isDesktopHighlights || isCompactHighlights || isDesktopExpandedHighlights;
+          const isVideoVisible = isDesktopExpandedHighlights && Boolean(highlightVideoVisibleMap[card.id]);
           const cardVideoPlaybackRate = card.expandedMedia.playbackRate;
           const isCardInteractionLocked = isDesktopExpandedHighlights && isHighlightsWidthTransitioning;
           const isExpandedSelectedCard = isDesktopExpandedHighlights && selected;
@@ -1144,13 +1147,18 @@ export default function RoofStudiesSection({
                 )}
               />
 
-              <div className={cn('pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 md:p-8', textTone === 'dark' ? 'text-ink' : 'text-white')}>
+              <div
+                className={cn('pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 md:p-8', textTone === 'dark' ? 'text-ink' : 'text-white')}
+                data-roof-overlay="true"
+                data-roof-overlay-card-id={card.id}
+              >
                 <p
                   className={cn(
                     'text-[11px] uppercase tracking-[0.12em]',
                     textTone === 'dark' ? 'text-muted' : 'text-white/85',
                     isCompactHighlights && (textTone === 'dark' ? 'transition-colors duration-200 ease-out group-hover:text-ink' : 'transition-colors duration-200 ease-out group-hover:text-white')
                   )}
+                  data-roof-overlay-eyebrow="true"
                 >
                   {card.eyebrow}
                 </p>
@@ -1160,10 +1168,14 @@ export default function RoofStudiesSection({
                     isCompactHighlights &&
                       (textTone === 'dark' ? 'transition-colors duration-200 ease-out group-hover:text-ink' : 'transition-colors duration-200 ease-out group-hover:text-white')
                   )}
+                  data-roof-overlay-title="true"
                 >
                   {card.title}
                 </h3>
-                <p className={cn('mt-3 max-w-[58ch] text-[15px] leading-[1.6]', textTone === 'dark' ? 'text-muted' : 'text-white/90')}>
+                <p
+                  className={cn('mt-3 max-w-[58ch] text-[15px] leading-[1.6]', textTone === 'dark' ? 'text-muted' : 'text-white/90')}
+                  data-roof-overlay-body="true"
+                >
                   {card.benefitLine}
                 </p>
 
@@ -1182,6 +1194,7 @@ export default function RoofStudiesSection({
                       'mt-3 inline-flex border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]',
                       textTone === 'dark' ? 'border-ink/20 bg-white/70 text-ink' : 'border-white/45 bg-black/25 text-white'
                     )}
+                    data-roof-overlay-tag="true"
                   >
                     Best for: {card.bestFor}
                   </span>
