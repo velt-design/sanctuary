@@ -79,6 +79,16 @@ const ROOF_TYPE_BAR_FILLED_COLOR = '#3a3d44';
 const ROOF_TYPE_BAR_UNFILLED_COLOR = '#dfe2e6';
 const ROOF_TYPE_BAR_UNFILLED_BORDER_COLOR = '#cfd3d8';
 const ROOF_TYPE_TOGGLE_ACTIVE_COLOR = '#76352f';
+const INITIAL_VIDEO_READY_STATE: Record<RoofTypeFitId, boolean> = {
+  acrylic: false,
+  timber: false,
+  combo: false,
+};
+const INITIAL_POSTER_INDEX_STATE: Record<RoofTypeFitId, number> = {
+  acrylic: 0,
+  timber: 0,
+  combo: 0,
+};
 
 function usePrefersReducedMotion() {
   const [reduced, setReduced] = React.useState(false);
@@ -101,6 +111,26 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
+function useIsMobileViewport(maxWidth = 1023) {
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const sync = () => setIsMobile(mediaQuery.matches);
+
+    sync();
+    mediaQuery.addEventListener?.('change', sync);
+    mediaQuery.addListener?.(sync);
+
+    return () => {
+      mediaQuery.removeEventListener?.('change', sync);
+      mediaQuery.removeListener?.(sync);
+    };
+  }, [maxWidth]);
+
+  return isMobile;
+}
+
 type RoofComparisonSectionProps = {
   debug?: boolean;
   className?: string;
@@ -109,14 +139,26 @@ type RoofComparisonSectionProps = {
 export default function RoofComparisonSection({ debug, className }: RoofComparisonSectionProps) {
   const [selected, setSelected] = React.useState<RoofTypeFitId>('acrylic');
   const [isSwapping, setIsSwapping] = React.useState(false);
-  const [isVideoReady, setIsVideoReady] = React.useState(false);
-  const [posterIndex, setPosterIndex] = React.useState(0);
+  const [isVideoReadyById, setIsVideoReadyById] =
+    React.useState<Record<RoofTypeFitId, boolean>>(INITIAL_VIDEO_READY_STATE);
+  const [posterIndexById, setPosterIndexById] =
+    React.useState<Record<RoofTypeFitId, number>>(INITIAL_POSTER_INDEX_STATE);
+  const [mobileVideoActivated, setMobileVideoActivated] = React.useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
+  const isMobileViewport = useIsMobileViewport();
+  const videoRefs = React.useRef<Record<RoofTypeFitId, HTMLVideoElement | null>>({
+    acrylic: null,
+    timber: null,
+    combo: null,
+  });
   const selectedConfig = ROOF_TYPE_FIT_CONFIG[selected];
   const selectedMedia = ROOF_TYPE_FIT_MEDIA[selected];
   const selectedCopy = ROOF_TYPE_FIT_COPY[selected];
   const selectedIndex = ROOF_TYPE_FIT_OPTIONS.indexOf(selected);
-  const selectedPosterSrc = selectedMedia.posterSrcs[posterIndex];
+  const selectedPosterIndex = posterIndexById[selected] ?? 0;
+  const selectedPosterSrc = selectedMedia.posterSrcs[selectedPosterIndex] ?? selectedMedia.posterSrcs[0];
+  const isSelectedVideoReady = Boolean(isVideoReadyById[selected]);
+  const shouldRenderVideos = !prefersReducedMotion && (!isMobileViewport || mobileVideoActivated);
   const hasMountedRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -131,9 +173,41 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
   }, [prefersReducedMotion, selected]);
 
   React.useEffect(() => {
-    setIsVideoReady(false);
-    setPosterIndex(0);
-  }, [selectedMedia.src]);
+    if (typeof window === 'undefined') return;
+
+    const seen = new Set<string>();
+    ROOF_TYPE_FIT_OPTIONS.forEach((id) => {
+      ROOF_TYPE_FIT_MEDIA[id].posterSrcs.forEach((src) => {
+        if (!src || seen.has(src)) return;
+        seen.add(src);
+        const image = new window.Image();
+        image.decoding = 'async';
+        image.src = src;
+      });
+    });
+  }, []);
+
+  React.useEffect(() => {
+    ROOF_TYPE_FIT_OPTIONS.forEach((id) => {
+      const video = videoRefs.current[id];
+      if (!video) return;
+
+      if (!shouldRenderVideos || id !== selected) {
+        video.pause();
+        return;
+      }
+
+      const playbackRate = ROOF_TYPE_FIT_MEDIA[id].playbackRate;
+      if (video.defaultPlaybackRate !== playbackRate) {
+        video.defaultPlaybackRate = playbackRate;
+      }
+      if (video.playbackRate !== playbackRate) {
+        video.playbackRate = playbackRate;
+      }
+
+      void video.play().catch(() => {});
+    });
+  }, [selected, shouldRenderVideos]);
 
   return (
     <section className={cn('bg-page py-8 md:py-14', className, debug && 'outline outline-1 outline-sky-500/30')}>
@@ -250,65 +324,102 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                 <p className="mt-10 text-center text-[16px] leading-[1.45] text-muted/75 md:text-[17px]">{selectedCopy}</p>
               </div>
 
-              <div className="mx-auto min-w-0 w-[min(88vw,420px)] max-w-full self-start lg:mx-0 lg:w-[clamp(360px,28vw,480px)]">
+              <div className="mx-auto min-w-0 w-full max-w-[420px] self-start lg:mx-0 lg:w-[clamp(360px,28vw,480px)] lg:max-w-none">
                 <div className="relative aspect-square w-full overflow-hidden bg-[#eceff2]">
                   {selectedPosterSrc ? (
                     <Image
-                      key={`${selected}:poster:${selectedPosterSrc}`}
                       src={selectedPosterSrc}
                       alt=""
                       fill
                       aria-hidden="true"
-                      sizes="(max-width: 1024px) 88vw, (max-width: 1440px) 35vw, 480px"
-                      className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-[1.06]"
+                      quality={55}
+                      sizes="(max-width: 640px) calc(100vw - 76px), (max-width: 1024px) 88vw, (max-width: 1440px) 35vw, 480px"
+                      className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-100 md:scale-[1.06]"
                       style={{
-                        opacity: isVideoReady ? 0 : 1,
+                        opacity: shouldRenderVideos && isSelectedVideoReady ? 0 : 1,
                         transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
                       }}
                       onError={() => {
-                        setPosterIndex((current) => {
-                          const next = current + 1;
-                          return next < selectedMedia.posterSrcs.length ? next : current;
+                        setPosterIndexById((current) => {
+                          const currentIndex = current[selected] ?? 0;
+                          const next = currentIndex + 1;
+                          if (next >= selectedMedia.posterSrcs.length) return current;
+                          return {
+                            ...current,
+                            [selected]: next,
+                          };
                         });
                       }}
                     />
                   ) : null}
 
-                  <video
-                    key={`${selected}:${selectedMedia.src}`}
-                    autoPlay={!prefersReducedMotion}
-                    loop
-                    muted
-                    playsInline
-                    preload="metadata"
-                    poster={selectedMedia.posterSrcs[0]}
-                    aria-label={selectedMedia.ariaLabel}
-                    tabIndex={-1}
-                    className="absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-[1.06]"
-                    style={{
-                      opacity: isVideoReady ? 1 : 0,
-                      transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
-                    }}
-                    onLoadedMetadata={(event) => {
-                      const video = event.currentTarget;
-                      if (video.defaultPlaybackRate !== selectedMedia.playbackRate) {
-                        video.defaultPlaybackRate = selectedMedia.playbackRate;
-                      }
-                      if (video.playbackRate !== selectedMedia.playbackRate) {
-                        video.playbackRate = selectedMedia.playbackRate;
-                      }
-                    }}
-                    onLoadedData={() => setIsVideoReady(true)}
-                    onCanPlay={() => setIsVideoReady(true)}
-                    onPlay={(event) => {
-                      const video = event.currentTarget;
-                      if (video.playbackRate !== selectedMedia.playbackRate) {
-                        video.playbackRate = selectedMedia.playbackRate;
-                      }
-                    }}
-                  >
-                    <source src={selectedMedia.src} type="video/mp4" />
-                  </video>
+                  {shouldRenderVideos
+                    ? ROOF_TYPE_FIT_OPTIONS.map((option) => {
+                        const media = ROOF_TYPE_FIT_MEDIA[option];
+                        const isSelectedOption = option === selected;
+                        const isReady = Boolean(isVideoReadyById[option]);
+                        return (
+                          <video
+                            key={option}
+                            ref={(node) => {
+                              videoRefs.current[option] = node;
+                            }}
+                            autoPlay={false}
+                            loop
+                            muted
+                            playsInline
+                            preload="auto"
+                            poster={media.posterSrcs[0]}
+                            aria-label={isSelectedOption ? media.ariaLabel : undefined}
+                            aria-hidden={!isSelectedOption}
+                            tabIndex={-1}
+                            className="absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-100 md:scale-[1.06]"
+                            style={{
+                              opacity: isSelectedOption && isReady ? 1 : 0,
+                              pointerEvents: 'none',
+                              transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
+                            }}
+                            onLoadedMetadata={(event) => {
+                              const video = event.currentTarget;
+                              if (video.defaultPlaybackRate !== media.playbackRate) {
+                                video.defaultPlaybackRate = media.playbackRate;
+                              }
+                              if (video.playbackRate !== media.playbackRate) {
+                                video.playbackRate = media.playbackRate;
+                              }
+                            }}
+                            onLoadedData={() =>
+                              setIsVideoReadyById((current) =>
+                                current[option] ? current : { ...current, [option]: true }
+                              )
+                            }
+                            onCanPlay={() =>
+                              setIsVideoReadyById((current) =>
+                                current[option] ? current : { ...current, [option]: true }
+                              )
+                            }
+                            onPlay={(event) => {
+                              const video = event.currentTarget;
+                              if (video.playbackRate !== media.playbackRate) {
+                                video.playbackRate = media.playbackRate;
+                              }
+                            }}
+                          >
+                            <source src={media.src} type="video/mp4" />
+                          </video>
+                        );
+                      })
+                    : null}
+
+                  {isMobileViewport && !mobileVideoActivated && !prefersReducedMotion ? (
+                    <button
+                      type="button"
+                      onClick={() => setMobileVideoActivated(true)}
+                      className="absolute bottom-3 right-3 z-10 border border-page bg-black/55 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-white transition-colors hover:bg-black/68 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/55 md:bottom-4 md:right-4"
+                    >
+                      Play motion preview
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
