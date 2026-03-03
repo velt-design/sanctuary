@@ -21,7 +21,12 @@ export function GET() {
     document.head.appendChild(s);
 
     window.gtag('js', new Date());
-    window.gtag('config', gaId, { anonymize_ip: true, transport_type: 'beacon' });
+    window.gtag('config', gaId, {
+      anonymize_ip: true,
+      transport_type: 'beacon',
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false,
+    });
   } catch (e) {}
 })();
 `;
@@ -30,7 +35,7 @@ export function GET() {
     status: 200,
     headers: {
       'Content-Type': 'application/javascript; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
     },
   });
 }

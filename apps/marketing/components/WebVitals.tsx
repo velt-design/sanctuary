@@ -1,23 +1,75 @@
 "use client";
 
-import Script from 'next/script';
+import { useEffect } from 'react';
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
+type GtagFn = (event: 'event', name: string, params: Record<string, unknown>) => void;
+
+type WebVitalsMetric = {
+  name: string;
+  value: number;
+  id: string;
+};
+
+function sendToGA(metric: WebVitalsMetric) {
+  const w = window as typeof window & { gtag?: GtagFn };
+  if (typeof w.gtag !== 'function') return;
+
+  const name = metric.name;
+  const value = metric.value;
+  const scaled = name === 'CLS' ? Math.round(value * 1000) : Math.round(value);
+
+  w.gtag('event', name, {
+    value: scaled,
+    metric_id: metric.id,
+    metric_value: value,
+    non_interaction: true,
+    event_category: 'Web Vitals',
+  });
+}
+
 export default function WebVitals() {
   if (!GA_ID) return null;
-  return (
-    <>
-      <Script
-        id="wv-src"
-        src="https://unpkg.com/web-vitals@3/dist/web-vitals.iife.js"
-        strategy="afterInteractive"
-      />
-      <Script
-        id="wv-init"
-        src="/web-vitals-init.js"
-        strategy="afterInteractive"
-      />
-    </>
-  );
+
+  useEffect(() => {
+    let cancelled = false;
+    let timerId: number | null = null;
+
+    const start = async () => {
+      try {
+        const mod = await import('web-vitals');
+        if (cancelled) return;
+
+        const report = (metric: WebVitalsMetric) => sendToGA(metric);
+        mod.onCLS(report);
+        mod.onLCP(report);
+        mod.onINP(report);
+        mod.onFCP(report);
+        mod.onTTFB(report);
+      } catch {
+        // Swallow failures so monitoring never breaks rendering.
+      }
+    };
+
+    const schedule = () => {
+      timerId = window.setTimeout(() => {
+        void start();
+      }, 2400);
+    };
+
+    if (document.readyState === 'complete') {
+      schedule();
+    } else {
+      window.addEventListener('load', schedule, { once: true });
+    }
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('load', schedule);
+      if (timerId !== null) window.clearTimeout(timerId);
+    };
+  }, []);
+
+  return null;
 }
