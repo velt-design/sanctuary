@@ -47,7 +47,7 @@ export function GET() {
     status: 200,
     headers: {
       'Content-Type': 'application/javascript; charset=utf-8',
-      'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
+      'Cache-Control': 'public, max-age=604800, stale-while-revalidate=2592000',
     },
   });
 }

@@ -1,0 +1,34 @@
+name: Governance Monthly
+
+on:
+  schedule:
+    - cron: "0 16 1 * *"
+  workflow_dispatch:
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Marketing tests
+        run: npm run test:marketing
+
+      - name: Security audit (production deps)
+        run: npm audit --omit=dev
+
+      - name: Lighthouse mobile
+        run: npm run audit:lighthouse:mobile
+
+      - name: Lighthouse desktop
+        run: npm run audit:lighthouse:desktop

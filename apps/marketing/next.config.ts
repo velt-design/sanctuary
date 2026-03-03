@@ -41,6 +41,29 @@ const nextConfig: NextConfig = {
         'upgrade-insecure-requests',
       ].join('; ');
       securityHeaders.push({ key: 'Content-Security-Policy', value: csp });
+
+      const cspReportOnly = [
+        "default-src 'self'",
+        "script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net https://pixel.archipro.co.nz https://static.cloudflareinsights.com https://googleads.g.doubleclick.net https://www.google.com",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob: https://www.google-analytics.com https://www.sanctuarypergolas.co.nz https://www.facebook.com https://stats.g.doubleclick.net https://www.googleadservices.com https://googleads.g.doubleclick.net https://www.google.com",
+        "font-src 'self' data:",
+        "connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://www.googleadservices.com https://www.facebook.com https://graph.facebook.com https://pixel.archipro.co.nz https://*.supabase.co wss://*.supabase.co https://www.google.com",
+        "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.googletagmanager.com",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+        "form-action 'self'",
+        "trusted-types default nextjs",
+        "require-trusted-types-for 'script'",
+        'report-to sp-csp-endpoint',
+        'report-uri /api/security/csp-report',
+      ].join('; ');
+      securityHeaders.push({ key: 'Content-Security-Policy-Report-Only', value: cspReportOnly });
+      securityHeaders.push({
+        key: 'Report-To',
+        value: '{"group":"sp-csp-endpoint","max_age":10886400,"endpoints":[{"url":"https://www.sanctuarypergolas.co.nz/api/security/csp-report"}]}',
+      });
     }
 
     const mediaCacheHeaders: { key: string; value: string }[] = [
@@ -48,7 +71,7 @@ const nextConfig: NextConfig = {
     ];
 
     const runtimeScriptCacheHeaders: { key: string; value: string }[] = [
-      { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+      { key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=2592000' },
     ];
 
     const imageOptimizerCacheHeaders: { key: string; value: string }[] = [
@@ -78,6 +101,10 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/runtime-meta.js',
+        headers: [...securityHeaders, ...runtimeScriptCacheHeaders],
+      },
+      {
+        source: '/runtime-archipro.js',
         headers: [...securityHeaders, ...runtimeScriptCacheHeaders],
       },
       {

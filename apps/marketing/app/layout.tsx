@@ -7,7 +7,6 @@ import Header from '@/components/Header';
 import ProductSubHeader from '@/components/ProductSubHeader';
 import SiteFooter from '@/components/SiteFooter';
 import FooterVisibilityGate from '@/components/FooterVisibilityGate';
-import PageTransitions from '@/components/PageTransitions';
 import FooterHeaderSync from '@/components/FooterHeaderSync';
 import Analytics from '@/components/Analytics';
 import WebVitals from '@/components/WebVitals';
@@ -104,7 +103,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ConsentProvider>
           <PortalMode />
           <WebVitals />
-          <PageTransitions />
           <FooterHeaderSync />
           <ScrollReset />
           <HeaderVisibilityGate>
