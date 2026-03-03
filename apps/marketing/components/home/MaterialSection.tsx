@@ -1,5 +1,4 @@
 import Image from 'next/image';
-import Container from '@/components/ui/Container';
 import { cn } from '@/lib/cn';
 
 type Characteristic = { label: string; text: string };
@@ -11,8 +10,7 @@ type MaterialSectionProps = {
   intro: string;
   image: { src: string; alt: string };
   characteristics: Characteristic[];
-  showTopBorder?: boolean;
-  showBottomBorder?: boolean;
+  bestFor?: string;
   className?: string;
 };
 
@@ -23,78 +21,53 @@ export default function MaterialSection({
   intro,
   image,
   characteristics,
-  showTopBorder = true,
-  showBottomBorder = true,
+  bestFor,
   className,
 }: MaterialSectionProps) {
   return (
-    <section
+    <article
       aria-labelledby={headingId}
-      className={cn(
-        'relative bg-page py-0 border-page',
-        showTopBorder && 'border-t [border-top-width:var(--bw)]',
-        showBottomBorder && 'border-b [border-bottom-width:var(--bw)]',
-        className
-      )}
+      className={cn('rounded-[2px] border border-page bg-card p-5 sm:p-6 md:p-8', className)}
     >
-      <div
-        aria-hidden
-        className="absolute left-1/2 top-0 hidden h-full w-[var(--bw)] -translate-x-1/2 bg-page md:block"
-      />
-
-      <Container>
-        <div className="grid items-start gap-gutter py-[var(--g)] [--material-buffer:var(--g)] md:grid-cols-2 md:gap-[calc(var(--material-buffer)*2)]">
-          <div>
-            <div className="relative aspect-square w-full overflow-hidden border border-page [border-width:var(--bw)] bg-panel">
-              <Image
-                src={image.src}
-                alt={image.alt}
-                fill
-                sizes="(max-width: 960px) 100vw, 50vw"
-                style={{ objectFit: 'cover' }}
-              />
-            </div>
-          </div>
-
-          <div className="md:max-w-[62ch]">
-            <p className="text-[12px] text-[#7A7A7A]">{eyebrow}</p>
-            <h2
-              id={headingId}
-              className="mt-2 text-[clamp(28.6px,3.64vw,41.6px)] leading-[1.15] uppercase text-ink"
-            >
-              {title}
-            </h2>
-            <p className="mt-4 text-[1.1rem] leading-[1.6] text-[#555]">{intro}</p>
-
-            <div className="mt-6 hidden md:block">
-              <p className="text-[17.6px] font-medium text-ink">Key characteristics</p>
-              <ul className="mt-3 list-inside list-disc space-y-3 text-[1.1rem] leading-[1.6] text-[#333]">
-                {characteristics.map((characteristic) => (
-                  <li key={characteristic.label}>
-                    <span className="font-medium">{characteristic.label}:</span> {characteristic.text}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <details className="mt-4 md:hidden">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2 text-[1.1rem] [&::-webkit-details-marker]:hidden">
-                <span className="font-medium text-ink">Key characteristics</span>
-                <span className="accordion__icon" aria-hidden />
-              </summary>
-              <div className="pt-3">
-                <ul className="list-inside list-disc space-y-3 text-[1.1rem] leading-[1.6] text-[#333]">
-                  {characteristics.map((characteristic) => (
-                    <li key={characteristic.label}>
-                      <span className="font-medium">{characteristic.label}:</span> {characteristic.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </details>
+      <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] md:gap-10">
+        <div className="overflow-hidden rounded-[2px] border border-page bg-page">
+          <div className="relative aspect-[4/3] w-full">
+            <Image
+              src={image.src}
+              alt={image.alt}
+              fill
+              sizes="(max-width: 960px) 100vw, (max-width: 1400px) 52vw, 640px"
+              className="object-cover"
+            />
           </div>
         </div>
-      </Container>
-    </section>
+
+        <div className="md:max-w-[58ch]">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-muted">{eyebrow}</p>
+          <h3
+            id={headingId}
+            className="mt-2 text-[clamp(26px,3.1vw,38px)] font-semibold leading-[1.12] tracking-[-0.015em] text-ink"
+          >
+            {title}
+          </h3>
+          <p className="mt-3 text-[16px] leading-[1.62] text-muted">{intro}</p>
+
+          <p className="mt-5 text-[14px] font-semibold uppercase tracking-[0.08em] text-ink/84">Key characteristics</p>
+          <ul className="mt-3 space-y-2 text-[15px] leading-[1.62] text-muted">
+            {characteristics.map((characteristic) => (
+              <li key={characteristic.label} className="ml-5 list-disc">
+                <span className="font-semibold text-ink">{characteristic.label}:</span> {characteristic.text}
+              </li>
+            ))}
+          </ul>
+
+          {bestFor ? (
+            <span className="mt-5 inline-flex border border-page px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">
+              Best for: {bestFor}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </article>
   );
 }

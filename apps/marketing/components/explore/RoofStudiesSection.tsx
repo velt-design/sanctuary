@@ -4,6 +4,7 @@ import * as React from 'react';
 import Image from 'next/image';
 import Container from '@/components/ui/Container';
 import { LineGlyphButton } from '@/components/ui/LineGlyphButton';
+import { OverlayCtaButton } from '@/components/ui/OverlayCta';
 import { cn } from '@/lib/cn';
 
 type ImageMediaSpec = {
@@ -1213,17 +1214,16 @@ export default function RoofStudiesSection({
               </div>
 
               {isExpandedSelectedCard ? (
-                <button
-                  type="button"
+                <OverlayCtaButton
                   onClick={(event) => {
                     event.stopPropagation();
                     handleHighlightCtaClick(card);
                   }}
                   disabled={isCardInteractionLocked}
-                  className="absolute bottom-5 right-5 z-40 border border-white/90 px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.09em] text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-not-allowed disabled:opacity-60 md:bottom-8 md:right-8"
+                  className="bottom-5 right-5 z-40 md:bottom-8 md:right-8"
                 >
                   {card.expanded.ctaLabel}
-                </button>
+                </OverlayCtaButton>
               ) : null}
 
               {isExpandedSelectedCard && !isDeepDiveOpen ? (

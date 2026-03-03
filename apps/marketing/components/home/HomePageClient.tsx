@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import SpReveal from '@/components/SpReveal';
-import ProjectsCarouselMobile from '@/app/projects/ProjectsCarouselMobile';
 import HomeHeroSection from '@/components/home/HomeHeroSection';
+import HomeProjectsSection from '@/components/home/HomeProjectsSection';
 import TimberSection from '@/components/home/TimberSection';
 import AcrylicSection from '@/components/home/AcrylicSection';
 import HomeProcessSection, { HomeProcessCtaBar } from '@/components/home/HomeProcessSection';
@@ -265,34 +266,47 @@ export default function HomePageClient({
 
         <RoofComparisonSection />
 
-        <div className="homepage-legacy-scope">
-          <section className="materials-head" aria-label="Materials heading">
-            <div className="container process-head__inner">
-              <h2 className="process-head__title">Materials</h2>
-            </div>
-          </section>
+        <section aria-label="Book a design consultation" className="bg-page">
+          <div className="mx-auto flex min-h-[120px] w-[min(88vw,1288px)] items-center justify-center py-6">
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center bg-[var(--accentRed,#813F39)] px-6 py-2.5 text-center text-[18px] font-medium uppercase tracking-[0.08em] !text-white no-underline visited:!text-white hover:!text-white transition-colors hover:bg-[color-mix(in_srgb,var(--accentRed,#813F39)_85%,#000_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accentRed,#813F39)]/35"
+            >
+              Book a design consultation
+            </Link>
+          </div>
+        </section>
 
-          <TimberSection />
-          <AcrylicSection />
+        <section
+          aria-labelledby="materials-compare-heading"
+          className="bg-page py-[clamp(56px,8vh,112px)]"
+        >
+          <div className="mx-auto w-[min(88vw,1288px)]">
+            <p
+              id="materials-compare-heading"
+              className="text-[12px] uppercase tracking-[0.12em] text-muted"
+            >
+              Material comparison
+            </p>
+            <div className="mt-6 grid gap-6 md:mt-8 md:gap-10">
+              <TimberSection />
+              <AcrylicSection />
+            </div>
+          </div>
+        </section>
+
+        <div className="homepage-legacy-scope">
 
           <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
+        </div>
 
-          <section className="projects-head" aria-label="Projects heading">
-            <div className="container process-head__inner">
-              <h2 className="process-head__title">Projects</h2>
-            </div>
-          </section>
-          <ProjectsCarouselMobile
-            projects={projects.slice(0, 4)}
-            seeMoreHref="/projects"
-            seeMoreLabel="See more projects"
-            showNav={false}
-            // From the homepage, deep-link into the projects
-            // index with a pre-selected slug rather than
-            // going straight to the standalone detail page.
-            linkVariant="index-with-slug"
-          />
+        <HomeProjectsSection
+          projects={projects.slice(0, 4)}
+          seeMoreHref="/projects"
+          seeMoreLabel="See more projects"
+        />
 
+        <div className="homepage-legacy-scope">
           {/* Word-by-word statement section (text left + images right) */}
           <SpReveal
             id="sp-reveal-1"
