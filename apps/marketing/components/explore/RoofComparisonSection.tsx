@@ -41,24 +41,19 @@ const ROOF_TYPE_MEDIA_TIMBER_VERSION = '20260302-114843';
 const ROOF_TYPE_FIT_MEDIA: Record<RoofTypeFitId, RoofTypeFitMedia> = {
   acrylic: {
     src: '/videos/materials-acrylic.mp4',
-    posterSrcs: ['/images/materials-acrylic.png', '/images/materials-acrylic.jpg', '/images/materials-acrylic.webp'],
+    posterSrcs: ['/images/materials-acrylic.png'],
     ariaLabel: 'Acrylic roof material video',
     playbackRate: 1,
   },
   timber: {
     src: `/videos/materials-timber.mp4?v=${ROOF_TYPE_MEDIA_TIMBER_VERSION}`,
-    posterSrcs: ['/images/materials-timber.png', '/images/materials-timber.jpg', '/images/materials-timber.webp'],
+    posterSrcs: ['/images/materials-timber.png'],
     ariaLabel: 'Timber roof material video',
     playbackRate: 1,
   },
   combo: {
     src: `/videos/materials-combo.mp4?v=${ROOF_TYPE_MEDIA_COMBO_VERSION}`,
-    posterSrcs: [
-      '/images/materials-combo.png',
-      '/images/materials-combo.jpg',
-      '/images/materials-combo.webp',
-      '/images/materials-combination.png',
-    ],
+    posterSrcs: ['/images/materials-combination.png'],
     ariaLabel: 'Combination roof material video',
     playbackRate: 1,
   },
@@ -142,9 +137,8 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
 
   return (
     <section className={cn('bg-page py-8 md:py-14', className, debug && 'outline outline-1 outline-sky-500/30')}>
-      <div className="ui-box-center-viewport">
-        <div className="mx-auto w-full max-w-[1610px] px-4 md:px-6">
-          <div className="ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(380px,34vw,500px)]">
+      <div className="mx-auto w-full max-w-[1610px] px-4 md:px-6">
+        <div className="ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(380px,34vw,500px)]">
             <span
               aria-hidden="true"
               className="pointer-events-none absolute left-[calc(100%-clamp(360px,28vw,480px)-20px)] top-[72px] hidden w-px bg-page lg:block lg:bottom-[calc(100%-clamp(360px,28vw,480px)-24px)]"
@@ -274,7 +268,7 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                       onError={() => {
                         setPosterIndex((current) => {
                           const next = current + 1;
-                          return next <= selectedMedia.posterSrcs.length ? next : current;
+                          return next < selectedMedia.posterSrcs.length ? next : current;
                         });
                       }}
                     />
@@ -291,6 +285,10 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                     aria-label={selectedMedia.ariaLabel}
                     tabIndex={-1}
                     className="absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-[1.06]"
+                    style={{
+                      opacity: isVideoReady ? 1 : 0,
+                      transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
+                    }}
                     onLoadedMetadata={(event) => {
                       const video = event.currentTarget;
                       if (video.defaultPlaybackRate !== selectedMedia.playbackRate) {
@@ -316,7 +314,6 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
             </div>
           </div>
         </div>
-      </div>
     </section>
   );
 }
