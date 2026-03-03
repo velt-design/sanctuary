@@ -28,8 +28,6 @@ export type Project = {
   blurb: string;
   description: string[];
   stats: ProjectStats;
-  scope: string[];
-  extras: string[];
   tags: string[];
   sections: ProjectSection[];
   related?: string[];
@@ -69,16 +67,6 @@ const baseProjects: Project[] = [
       area: '72 m²',
       pitch: '8°',
     },
-    scope: [
-      'Installed pitched aluminium and steel pergola structure to engineered details',
-      'Set out frame to clear course elements and existing services',
-      'Fixed acrylic roofing and perimeter flashings ready for follow-on trades',
-    ],
-    extras: [
-      'Dulux Slate Blue Matt powder coat to match site branding',
-      'Acrylic roof panels for durable, even daylight',
-      'Structure detailed for future lighting and signage by others',
-    ],
     tags: ['Commercial', 'Acrylic roof', 'Steel'],
     sections: [
       {
@@ -155,16 +143,6 @@ const baseProjects: Project[] = [
       area: '20.0 m²',
       pitch: '4°',
     },
-    scope: [
-      'Stainless base plates epoxied into the rocky shelf',
-      'Perimeter beams prefabricated for barge transport',
-      'Deck drainage tied back into the rain garden',
-    ],
-    extras: [
-      'Manual override louvre infill for storm mode',
-      'Sheer mesh blinds with coastal-rated hardware',
-      'Infrared heaters wired to Casambi scenes',
-    ],
     tags: ['Coastal', 'Screens', 'Perimeter'],
     sections: [
       {
@@ -242,16 +220,6 @@ const baseProjects: Project[] = [
       area: '67.7 m²',
       pitch: '25°',
     },
-    scope: [
-      'Fast-tracked consent and structural sign-off for hospitality loadings',
-      'Installed steel portals with cross bracing hidden inside planters',
-      'Integrated drainage into existing grease-trap infrastructure',
-    ],
-    extras: [
-      'RGBW strip lighting synced with AV scenes',
-      'Pendant feeds for festoon lighting and fans',
-      'PVC cafe blinds with printed branding',
-    ],
     tags: ['Hospitality', 'Lighting', 'Screens', 'Aluminium', 'Steel', 'Acrylic roof'],
     sections: [
       {
@@ -327,16 +295,6 @@ const baseProjects: Project[] = [
       area: '115 m²',
       pitch: '5°',
     },
-    scope: [
-      'Installed to rail safety methodology with overnight crane lifts',
-      'Bolted plate footings to existing concrete plinth with epoxy anchors',
-      'Added removable access panels for KiwiRail maintenance teams',
-    ],
-    extras: [
-      'High-output LED strip lighting on dimmable circuits',
-      'Cable tray allowance for CCTV and PA upgrades',
-      'Acoustic underside lining for PA clarity',
-    ],
     tags: ['Infrastructure', 'Lighting', 'Steel', 'Aluminium', 'Acrylic roof'],
     sections: [
       {
@@ -413,16 +371,6 @@ const baseProjects: Project[] = [
       height: '-',
       area: '108 m²',
     },
-    scope: [
-      'Lightweight portals to suit existing waterproof deck',
-      'Custom head flashings into plaster facade',
-      'Calibrated wind sensor to protect screens',
-    ],
-    extras: [
-      'Retractable insect screens concealed in beams',
-      'Wind and rain sensor pack for automation',
-      'Low-glare up-down wall lights',
-    ],
     tags: ['Coastal', 'Automation', 'Screens'],
     sections: [
       {
@@ -497,16 +445,6 @@ const baseProjects: Project[] = [
       area: '36 m²',
       pitch: '30°',
     },
-    scope: [
-      'After-hours installation to avoid trading disruption',
-      'Hidden brackets fixed back into the stucco facade',
-      'Integrated canopy signage and lighting power',
-    ],
-    extras: [
-      'Sliding glass panels for full enclosure',
-      'Integrated dimmable downlights',
-      'Under-bar power reticulation',
-    ],
     tags: ['Cafe', 'Screens', 'Commercial', 'Aluminium', 'Acrylic roof', 'Gable'],
     sections: [
       {
@@ -581,16 +519,6 @@ const baseProjects: Project[] = [
       area: '40.0 m²',
       pitch: '5°',
     },
-    scope: [
-      'Anchored posts into the concrete podium beside the fireplace',
-      'Designed oversize gutters to handle bush runoff',
-      'Added timber soffit with access hatches for services',
-    ],
-    extras: [
-      'Opal acrylic roofing for softened daylight',
-      'LED uplighting on the ridge beam',
-      'Provision for outdoor heating',
-    ],
     tags: ['Hip roof', 'Courtyard', 'Opal acrylic', 'Bush'],
     sections: [
       {
@@ -670,12 +598,6 @@ const baseProjects: Project[] = [
       area: '42.0 m²',
       pitch: '7°',
     },
-    scope: [
-      'Set out a 7.0 m by 6.0 m pergola footprint within the native forest',
-      'Installed a 3.5 m high pitched frame with a 7° fall',
-      'Coordinated installation to respect existing forest plantings and access',
-    ],
-    extras: [],
     tags: ['Commercial', 'Pitched', 'Bush'],
     sections: [],
     related: ['waitakere-ranges-lanai', 'goodhome-commercial-terrace'],
@@ -705,8 +627,6 @@ const baseProjects: Project[] = [
       height: '2.7 m',
       area: '18.0 m²',
     },
-    scope: [],
-    extras: [],
     tags: ['Residential', 'Gable', 'Opal acrylic', 'Aluminium'],
     sections: [],
   },
@@ -736,8 +656,6 @@ const baseProjects: Project[] = [
       height: '3.0 m',
       area: '28.4 m²',
     },
-    scope: [],
-    extras: [],
     tags: ['Residential', 'Gable'],
     sections: [],
   },
