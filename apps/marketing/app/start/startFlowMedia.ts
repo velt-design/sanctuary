@@ -168,7 +168,7 @@ export const SITE_ATTACHMENT_MEDIA: Record<SiteAttachment, MediaEntry> = {
     alt: 'Freestanding pergola illustration separate from existing building.',
   },
   not_sure: {
-    src: '/images/project-warkworth-01.png',
+    src: '/images/project-warkworth-01.jpg',
     alt: 'Not sure attachment placeholder illustration.',
   },
 };

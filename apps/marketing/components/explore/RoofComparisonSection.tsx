@@ -41,19 +41,19 @@ const ROOF_TYPE_MEDIA_TIMBER_VERSION = '20260302-114843';
 const ROOF_TYPE_FIT_MEDIA: Record<RoofTypeFitId, RoofTypeFitMedia> = {
   acrylic: {
     src: '/videos/materials-acrylic.mp4',
-    posterSrcs: ['/images/materials-acrylic.png'],
+    posterSrcs: ['/images/materials-acrylic.jpg'],
     ariaLabel: 'Acrylic roof material video',
     playbackRate: 1,
   },
   timber: {
     src: `/videos/materials-timber.mp4?v=${ROOF_TYPE_MEDIA_TIMBER_VERSION}`,
-    posterSrcs: ['/images/materials-timber.png'],
+    posterSrcs: ['/images/materials-timber.jpg'],
     ariaLabel: 'Timber roof material video',
     playbackRate: 1,
   },
   combo: {
     src: `/videos/materials-combo.mp4?v=${ROOF_TYPE_MEDIA_COMBO_VERSION}`,
-    posterSrcs: ['/images/materials-combination.png'],
+    posterSrcs: ['/images/materials-combination.jpg'],
     ariaLabel: 'Combination roof material video',
     playbackRate: 1,
   },
