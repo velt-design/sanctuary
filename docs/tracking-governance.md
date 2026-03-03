@@ -15,7 +15,7 @@ This register documents third-party tracking used on the marketing site and the 
 | Google Analytics (GA4) | analytics | `apps/marketing/components/Analytics.tsx`, `apps/marketing/app/runtime-ga.js/route.ts` | Page and event analytics, Web Vitals reporting | Marketing + Engineering | Monthly |
 | Meta Pixel (browser) | marketing | `apps/marketing/components/MetaPixel.tsx`, `apps/marketing/app/runtime-meta.js/route.ts` | Browser-side lead attribution | Marketing | Monthly |
 | Meta Conversions API (server) | marketing | `apps/marketing/app/api/contact/route.ts` | Server-side lead conversion reporting | Marketing + Engineering | Monthly |
-| ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx` | Campaign performance tracking | Marketing | Quarterly |
+| ArchiPro Pixel | marketing | `apps/marketing/components/ArchiproPixel.tsx`, `apps/marketing/app/runtime-archipro.js/route.ts` | Campaign performance tracking | Marketing | Quarterly |
 
 ## Operational rules
 

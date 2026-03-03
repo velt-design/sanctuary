@@ -128,7 +128,7 @@ export default function HomeHeroSection({
                 alt="Gable pergola in a rainforest setting"
                 fill
                 sizes="(max-width: 960px) 100vw, 50vw"
-                quality={50}
+                quality={46}
                 style={{ objectFit: 'cover' }}
                 placeholder="blur"
                 blurDataURL={blurDataUrl}
@@ -167,7 +167,7 @@ export default function HomeHeroSection({
               fill
               priority
               fetchPriority="high"
-              quality={55}
+              quality={50}
               placeholder="blur"
               blurDataURL={blurDataUrl}
               sizes="(max-width: 960px) 100vw, 50vw"
