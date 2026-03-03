@@ -35,12 +35,13 @@ const ROOF_TYPE_FIT_CONFIG: Record<RoofTypeFitId, { label: string; meters: RoofT
 };
 
 const ROOF_TYPE_FIT_OPTIONS: RoofTypeFitId[] = ['acrylic', 'timber', 'combo'];
-const ROOF_TYPE_MEDIA_COMBO_VERSION = '20260302-114943';
-const ROOF_TYPE_MEDIA_TIMBER_VERSION = '20260302-114843';
+const ROOF_TYPE_MEDIA_ACRYLIC_VERSION = '20260303-ffmpeg1';
+const ROOF_TYPE_MEDIA_COMBO_VERSION = '20260303-ffmpeg1';
+const ROOF_TYPE_MEDIA_TIMBER_VERSION = '20260303-ffmpeg1';
 
 const ROOF_TYPE_FIT_MEDIA: Record<RoofTypeFitId, RoofTypeFitMedia> = {
   acrylic: {
-    src: '/videos/materials-acrylic.mp4',
+    src: `/videos/materials-acrylic.mp4?v=${ROOF_TYPE_MEDIA_ACRYLIC_VERSION}`,
     posterSrcs: ['/images/materials-acrylic.jpg'],
     ariaLabel: 'Acrylic roof material video',
     playbackRate: 1,

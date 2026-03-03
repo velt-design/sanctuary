@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "images:optimize": "node scripts/optimize-images.js",
+    "videos:optimize": "node scripts/optimize-videos.mjs",
     "emails:preview": "tsx scripts/preview-email.ts",
     "portal:invite": "tsx scripts/invite-portal-user.ts"
   },
