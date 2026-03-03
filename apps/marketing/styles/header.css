@@ -5,7 +5,7 @@
   --panel:#F7F8F9;
   --g: clamp(12px, 2.2vw, 28px);
   --bw: clamp(1px, 0.12vw, 2.5px);
-  --navH: 68px; /* default; overridden in header scope */
+  --navH: 82px;
   --subH: 0px; /* secondary header height (0 when hidden) */
   --accentRed:#813F39;
   --navFade:#AEB4BA;

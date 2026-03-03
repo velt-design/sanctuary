@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: false },
   // Allow monorepo package resolution for workspace packages.
   turbopack: { root: path.resolve(__dirname, '../..') },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+    qualities: [45, 50, 55, 60, 65, 75],
+  },
   async headers() {
     const securityHeaders: { key: string; value: string }[] = [
       { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -42,7 +47,11 @@ const nextConfig: NextConfig = {
     ];
 
     const runtimeScriptCacheHeaders: { key: string; value: string }[] = [
-      { key: 'Cache-Control', value: 'public, max-age=3600, stale-while-revalidate=86400' },
+      { key: 'Cache-Control', value: 'public, max-age=86400, stale-while-revalidate=604800' },
+    ];
+
+    const imageOptimizerCacheHeaders: { key: string; value: string }[] = [
+      { key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=31536000' },
     ];
 
     return [
@@ -57,6 +66,10 @@ const nextConfig: NextConfig = {
       {
         source: '/videos/:path*',
         headers: [...securityHeaders, ...mediaCacheHeaders],
+      },
+      {
+        source: '/_next/image',
+        headers: [...securityHeaders, ...imageOptimizerCacheHeaders],
       },
       {
         source: '/runtime-ga.js',

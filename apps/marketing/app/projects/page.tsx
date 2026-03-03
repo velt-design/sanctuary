@@ -15,6 +15,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ProjectsPage() {
-  return <ProjectsExperience projects={projects} />;
+type ProjectsPageProps = {
+  searchParams?: Promise<{ slug?: string | string[] }>;
+};
+
+export default async function ProjectsPage({ searchParams }: ProjectsPageProps) {
+  const params = searchParams ? await searchParams : {};
+  const slugParam = Array.isArray(params.slug) ? params.slug[0] : params.slug;
+  return <ProjectsExperience projects={projects} initialSlugFromUrl={slugParam ?? ''} />;
 }

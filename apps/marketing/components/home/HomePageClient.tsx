@@ -5,14 +5,13 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import SpReveal from '@/components/SpReveal';
 import HomeHeroSection from '@/components/home/HomeHeroSection';
-import HomeProjectsSection from '@/components/home/HomeProjectsSection';
+import HomeProjectsSection, { type HomeProjectCard } from '@/components/home/HomeProjectsSection';
 import TimberSection from '@/components/home/TimberSection';
 import AcrylicSection from '@/components/home/AcrylicSection';
 import HomeProcessSection, { HomeProcessCtaBar } from '@/components/home/HomeProcessSection';
 import HomeFeatureBar from '@/components/home/HomeFeatureBar';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
 import HomeWarrantySupportSection from '@/components/home/HomeWarrantySupportSection';
-import { projects } from '@/data/projects';
 
 export type ProcessStep = { title: string; desc: string };
 
@@ -23,6 +22,7 @@ export type HomePageContent = {
   processSteps: ProcessStep[];
   copyTexts: string[];
   blurDataUrl: string;
+  featuredProjects: HomeProjectCard[];
 };
 
 const MATERIALS_COPY_STYLE: React.CSSProperties = {
@@ -45,6 +45,7 @@ export default function HomePageClient({
   processSteps,
   copyTexts,
   blurDataUrl,
+  featuredProjects,
 }: HomePageContent) {
   // Keep above-the-fold hero visible immediately for fast LCP.
   const showIntroContact = false;
@@ -303,7 +304,7 @@ export default function HomePageClient({
         </div>
 
         <HomeProjectsSection
-          projects={projects.slice(0, 4)}
+          projects={featuredProjects}
           seeMoreHref="/projects"
           seeMoreLabel="See more projects"
         />

@@ -3,11 +3,17 @@
 import * as React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import type { Project } from '@/data/projects';
 import { cn } from '@/lib/cn';
 
+export type HomeProjectCard = {
+  slug: string;
+  title: string;
+  location: string;
+  heroImage: { src: string; alt: string };
+};
+
 type HomeProjectsSectionProps = {
-  projects: Project[];
+  projects: HomeProjectCard[];
   seeMoreHref?: string;
   seeMoreLabel?: string;
   className?: string;
@@ -118,6 +124,7 @@ export default function HomeProjectsSection({
                   alt={project.heroImage.alt}
                   fill
                   sizes="(max-width: 768px) 86vw, (max-width: 1440px) 38vw, 560px"
+                  quality={60}
                   className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] group-hover:scale-[1.04]"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />

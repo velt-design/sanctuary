@@ -7,7 +7,8 @@
   --panel:#F7F8F9;
   --g: clamp(12px, 2.2vw, 28px);
   --bw: clamp(1px, 0.12vw, 2.5px);
-  --navH: 68px;
+  --navH: 82px;
+  --headerH: 82px;
   --ctaWipe:#2B2B2B;
   --pageWhite:#FFFFFF;
   --barPad: 12px;

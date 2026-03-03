@@ -429,17 +429,20 @@ body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,B
 .accordion__icon::before{ transform: translate(-50%, -50%) rotate(90deg); z-index:1; }
 details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(0deg); }
 .accordion__icon::after{ z-index:2; }
-.mobile-hero{ display:none; }
-.mobile-hero img{ width:100%; height:100%; object-fit:cover; object-position:center; display:block; }
-.mobile-hero .wipe-inner{ position:absolute; inset:0; }
-
 @media (max-width:960px){
   .hero .split{grid-template-columns:1fr}
   /* Ensure the hero occupies the initial viewport on mobile */
   .hero{min-height:calc(100dvh - var(--headerH, var(--navH)))}
-  /* Hide desktop hero images and show mobile-hero */
-  .hero-card, .hero-right{ display:none; }
-  .mobile-hero{ display:block; position:relative; height:clamp(360px, 62dvh, 860px); border:none; border-radius:0; overflow:hidden; }
+  .hero-card{ display:none; }
+  .hero-left-grid{ grid-template-rows:auto; gap:clamp(16px,4vw,24px); height:auto; }
+  .hero-right{
+    display:block;
+    position:relative;
+    height:clamp(360px, 62dvh, 860px);
+    border:none;
+    border-radius:0;
+    overflow:hidden;
+  }
 }
 
 @media (max-width:900px){

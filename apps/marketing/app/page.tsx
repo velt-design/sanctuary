@@ -1,6 +1,7 @@
 import HomePageClient, {
   type HomePageContent,
 } from '@/components/home/HomePageClient';
+import { projects } from '@/data/projects';
 import './home.css';
 import './projects/projects.css';
 
@@ -64,6 +65,13 @@ const copyTexts: HomePageContent['copyTexts'] = [
   "We advise on cleaning and maintenance so the structure and roofing keep performing well, and we send through your warranty certificate for your records. Before we leave, we make sure you're happy with the result and know how to get in touch if anything needs attention.",
 ];
 
+const featuredProjects: HomePageContent['featuredProjects'] = projects.slice(0, 4).map((project) => ({
+  slug: project.slug,
+  title: project.title,
+  location: project.location,
+  heroImage: project.heroImage,
+}));
+
 export default function HomePage() {
   return (
     <HomePageClient
@@ -71,6 +79,7 @@ export default function HomePage() {
       processSteps={processSteps}
       copyTexts={copyTexts}
       blurDataUrl={BLUR}
+      featuredProjects={featuredProjects}
     />
   );
 }
