@@ -1,8 +1,11 @@
 "use client";
 
 import '@/app/products/product.css';
+import { useConsent } from '@/components/ConsentProvider';
 
 export default function PrivacyPage(){
+  const { openBanner } = useConsent();
+
   return (
     <main className="two-col-page">
       <div className="product-split">
@@ -39,7 +42,12 @@ export default function PrivacyPage(){
                   <li>Analytics cookies help us understand usage and improve performance.</li>
                   <li>Marketing cookies support campaign measurement and advertising attribution.</li>
                 </ul>
-                <p>You can choose analytics and marketing cookies in the cookie preferences banner and reopen settings later using the "Cookie settings" button.</p>
+                <p>You can choose analytics and marketing cookies in the cookie preferences banner.</p>
+                <p>
+                  <button type="button" className="privacy-cookie-manage" onClick={openBanner}>
+                    Manage cookie preferences
+                  </button>
+                </p>
                 <p>You can also control or delete cookies in your browser settings. If you block cookies, some features may not work as intended, but you can still browse key pages and contact us.</p>
 
                 <h2>How we use it</h2>
