@@ -124,10 +124,11 @@ export default function HomeHeroSection({
           <div className={`mobile-hero ${mobileHeroLoaded && revealImages ? 'reveal' : ''}`}>
             <div className="wipe-inner">
               <Image
-                src="/images/product-pitched-01.jpg"
-                alt="Pitched pergola hero"
+                src="/images/dairy-flat-hero.jpg"
+                alt="Dairy Flat pergola at a modern home"
                 fill
                 sizes="100vw"
+                quality={55}
                 style={{ objectFit: 'cover' }}
                 placeholder="blur"
                 blurDataURL={blurDataUrl}
@@ -183,6 +184,7 @@ export default function HomeHeroSection({
               alt="Dairy Flat pergola at a modern home"
               fill
               priority
+              quality={60}
               placeholder="blur"
               blurDataURL={blurDataUrl}
               sizes="(max-width: 960px) 100vw, 50vw"
