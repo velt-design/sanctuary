@@ -8,9 +8,8 @@ export default function TimberSection() {
       headingId="timber-heading"
       eyebrow="Roofing"
       title="Timber"
-      intro="Visually it reads like an interior ceiling that's been extended outdoors, so it ties into timber floors, joinery and furniture and makes the pergola feel like a built-in room rather than a bolt-on cover."
-      showTopBorder={false}
-      showBottomBorder
+      intro="A lined timber ceiling that makes the pergola feel like an outdoor room, with warmth and depth that ties into interior finishes."
+      bestFor="Premium outdoor living rooms"
       image={{
         src: '/images/project-warkworth-01.png',
         alt: 'Timber roofing over a Warkworth outdoor space',
@@ -18,19 +17,19 @@ export default function TimberSection() {
       characteristics={[
         {
           label: 'Look/feel',
-          text: 'Natural grain, warm colour and a finished ceiling effect; suits higher-end projects or where you want the pergola to feel like an extension of the interior.',
+          text: 'Natural grain and warm tone with a finished ceiling effect that reads as part of the home, not an add-on.',
         },
         {
           label: 'Comfort',
-          text: 'Insulated panels plus timber lining give strong heat and glare reduction vs acrylic alone and noticeably soften rain noise and general sound.',
+          text: 'Strong heat and glare reduction, plus noticeably softer rain noise than clear roofing alone.',
         },
         {
           label: 'Light',
-          text: "More solid/opaque than acrylic, so it's often combined with acrylic skylight strips in selected bays to keep daylight levels up.",
+          text: 'More opaque than acrylic, often paired with targeted skylight strips to keep daylight balanced.',
         },
         {
           label: 'Maintenance',
-          text: "Needs periodic oiling or staining to keep the timber looking sharp, and occasional cleaning like any exterior timber; more upkeep than bare aluminium or acrylic but with a more premium, 'furnished' result.",
+          text: 'Requires periodic oiling or staining plus routine cleaning to maintain appearance over time.',
         },
       ]}
     />

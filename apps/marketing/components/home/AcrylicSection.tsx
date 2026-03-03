@@ -8,9 +8,8 @@ export default function AcrylicSection() {
       headingId="acrylic-heading"
       eyebrow="Roofing"
       title="Acrylic"
-      intro="Clear or tinted acrylic sheets that keep the pergola light and open while blocking UV and rain."
-      showTopBorder={false}
-      showBottomBorder={false}
+      intro="Clear or tinted acrylic sheets that keep spaces bright and open while still providing rain and UV protection."
+      bestFor="Bright, open courtyards"
       image={{
         src: '/images/project-dairy-flat-02.jpg',
         alt: 'Acrylic roof over an outdoor dining area',
@@ -18,19 +17,19 @@ export default function AcrylicSection() {
       characteristics={[
         {
           label: 'Look/feel',
-          text: 'Light, crisp roofline that keeps sky views and a clean, modern read.',
+          text: 'Light, crisp roofline that preserves sky views and a clean, modern look.',
         },
         {
           label: 'Comfort',
-          text: 'Good rain protection with moderate heat and glare control depending on tint.',
+          text: 'Strong rain protection with heat and glare control that varies by selected tint.',
         },
         {
           label: 'Light',
-          text: 'High daylight transmission; clear feels almost open, tints soften brightness and reduce glare.',
+          text: 'High daylight transmission; clear sheets feel almost open, while tints soften brightness.',
         },
         {
           label: 'Maintenance',
-          text: 'Occasional washing to remove dust and debris; no recoating required, but avoid harsh abrasives to keep the surface clear.',
+          text: 'Low upkeep with occasional washing; avoid abrasive cleaners to preserve long-term clarity.',
         },
       ]}
     />
