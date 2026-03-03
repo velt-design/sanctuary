@@ -5,14 +5,21 @@ import { useEffect, useState } from 'react';
 import { useConsent } from '@/components/ConsentProvider';
 
 export default function ConsentBanner() {
-  const { consent, hasStoredChoice, bannerOpen, setConsent, openBanner, closeBanner } = useConsent();
+  const { consent, hasStoredChoice, bannerOpen, setConsent, closeBanner } = useConsent();
   const [analytics, setAnalytics] = useState(consent.analytics);
   const [marketing, setMarketing] = useState(consent.marketing);
+  const [showChoices, setShowChoices] = useState(false);
 
   useEffect(() => {
     setAnalytics(consent.analytics);
     setMarketing(consent.marketing);
   }, [consent.analytics, consent.marketing]);
+
+  useEffect(() => {
+    if (!bannerOpen) {
+      setShowChoices(false);
+    }
+  }, [bannerOpen]);
 
   const savePreferences = () => {
     setConsent({ analytics, marketing });
@@ -26,51 +33,55 @@ export default function ConsentBanner() {
     setConsent({ analytics: false, marketing: false });
   };
 
+  if (!bannerOpen) return null;
+
   return (
-    <>
-      {bannerOpen ? (
-        <aside className="consent-banner" aria-label="Cookie preferences" role="dialog" aria-live="polite">
-          <p className="consent-banner__title">Cookie preferences</p>
-          <p className="consent-banner__body">
-            We use optional cookies for analytics and marketing. You can change these settings any time.
-            See our{' '}
-            <Link href="/privacy" className="consent-banner__link">
-              Privacy Policy
-            </Link>
-            .
-          </p>
-          <div className="consent-banner__options">
-            <label className="consent-banner__option">
-              <input type="checkbox" checked={analytics} onChange={(event) => setAnalytics(event.target.checked)} />
-              <span>Analytics cookies</span>
-            </label>
-            <label className="consent-banner__option">
-              <input type="checkbox" checked={marketing} onChange={(event) => setMarketing(event.target.checked)} />
-              <span>Marketing cookies</span>
-            </label>
-          </div>
-          <div className="consent-banner__actions">
-            <button type="button" className="consent-btn consent-btn--ghost" onClick={rejectOptional}>
-              Essential only
+    <aside className="consent-banner" aria-label="Cookie preferences" role="region" aria-live="polite">
+      <div className="consent-banner__row">
+        <p className="consent-banner__body">
+          We use optional cookies for analytics and marketing. See our{' '}
+          <Link href="/privacy" className="consent-banner__link">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+        <div className="consent-banner__actions">
+          <button type="button" className="consent-btn consent-btn--ghost" onClick={rejectOptional}>
+            Essential only
+          </button>
+          <button type="button" className="consent-btn consent-btn--solid" onClick={acceptAll}>
+            Accept all
+          </button>
+          <button
+            type="button"
+            className="consent-btn consent-btn--text"
+            onClick={() => setShowChoices((open) => !open)}
+            aria-expanded={showChoices}
+          >
+            {showChoices ? 'Hide choices' : 'Manage choices'}
+          </button>
+          {hasStoredChoice ? (
+            <button type="button" className="consent-btn consent-btn--text" onClick={closeBanner}>
+              Close
             </button>
-            <button type="button" className="consent-btn consent-btn--ghost" onClick={savePreferences}>
-              Save choices
-            </button>
-            <button type="button" className="consent-btn consent-btn--solid" onClick={acceptAll}>
-              Accept all
-            </button>
-            {hasStoredChoice ? (
-              <button type="button" className="consent-btn consent-btn--text" onClick={closeBanner}>
-                Close
-              </button>
-            ) : null}
-          </div>
-        </aside>
-      ) : hasStoredChoice ? (
-        <button type="button" className="consent-settings-button" onClick={openBanner}>
-          Cookie settings
-        </button>
+          ) : null}
+        </div>
+      </div>
+      {showChoices ? (
+        <div className="consent-banner__options">
+          <label className="consent-banner__option">
+            <input type="checkbox" checked={analytics} onChange={(event) => setAnalytics(event.target.checked)} />
+            <span>Analytics cookies</span>
+          </label>
+          <label className="consent-banner__option">
+            <input type="checkbox" checked={marketing} onChange={(event) => setMarketing(event.target.checked)} />
+            <span>Marketing cookies</span>
+          </label>
+          <button type="button" className="consent-btn consent-btn--ghost" onClick={savePreferences}>
+            Save choices
+          </button>
+        </div>
       ) : null}
-    </>
+    </aside>
   );
 }
