@@ -177,25 +177,6 @@ export default function ProjectDetailContent({
           ))}
         </div>
 
-        <div className="project-detail__grid">
-          <section>
-            <h3>Scope of work</h3>
-            <ul>
-              {project.scope.map(item => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </section>
-          <section>
-            <h3>Add-ons & services</h3>
-            <ul>
-              {project.extras.map(item => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </section>
-        </div>
-
         {project.videoYoutubeId ? (
           <section
             className="project-detail__video"
@@ -294,18 +275,6 @@ export function ProjectDetailSkeleton() {
               <div className="skeleton-line w-50" />
             </div>
           ))}
-        </div>
-        <div className="project-detail__grid">
-          <section>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="skeleton-line" />
-            ))}
-          </section>
-          <section>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="skeleton-line" />
-            ))}
-          </section>
         </div>
         <section className="project-detail__gallery">
           {Array.from({ length: 3 }).map((_, index) => (

@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { sections } from '@/data/mega';
-import { useSearchParams } from 'next/navigation';
 import './product.css';
 import '../home.css';
 import Image from 'next/image';
@@ -11,23 +10,13 @@ import { absoluteUrl } from '@/lib/seo';
 import { imagePairFor } from '@/lib/productImages';
 
 export default function ProductsIndex() {
-  const searchParams = useSearchParams();
-  const activeGroup = (searchParams?.get('group') || '').toLowerCase();
-
-  const toSlug = (heading: string) => heading.toLowerCase().replace(/\s*&\s*/g, '-').replace(/\s+/g, '-');
-
-  const items = sections.flatMap((s) =>
-    s.items.map((i) => ({
-      href: i.href,
-      title: i.title.replace(/\s*→\s*$/, ''),
-      desc: i.desc,
-      // Display group label mapping mirrors header labels
-      group: s.heading === 'Screens & walls' ? 'Slats & Screens' : s.heading === 'Lighting & heating' ? 'Lighting & Heating' : s.heading,
-      groupSlug: toSlug(s.heading),
-    }))
-  );
-
-  const filtered = activeGroup ? items.filter((it) => it.groupSlug === activeGroup) : items;
+  const pergolaSection = sections.find((s) => s.heading.toLowerCase() === 'pergolas');
+  const items = (pergolaSection?.items ?? []).map((i) => ({
+    href: i.href,
+    title: i.title.replace(/\s*[^\p{L}\p{N}]+\s*$/u, ''),
+    desc: i.desc,
+    group: 'Pergolas',
+  }));
 
   return (
     <main className="products-index">
@@ -37,7 +26,7 @@ export default function ProductsIndex() {
             '@context': 'https://schema.org',
             '@type': 'ItemList',
             name: 'Products',
-            itemListElement: filtered.map((it, idx) => ({
+            itemListElement: items.map((it, idx) => ({
               '@type': 'ListItem',
               position: idx + 1,
               url: absoluteUrl(it.href),
@@ -47,13 +36,13 @@ export default function ProductsIndex() {
         />
         <header className="products-index__head">
           <p className="product-kicker">Products</p>
-          <h1 className="product-title">Pergolas, screens and lighting options</h1>
+          <h1 className="product-title">Pergola styles</h1>
           <p className="product-desc">
-            Filter the Sanctuary range by structure style or add-ons, then open a tile to see detailed specs, imagery and installation notes.
+            Explore Sanctuary pergola styles, then open a tile to see detailed specs, imagery and installation notes.
           </p>
         </header>
         <div className="products-grid">
-          {filtered.map((it) => {
+          {items.map((it) => {
             const { primary, hover } = imagePairFor(it.href);
             const slug = it.href.split('/').pop() || '';
             return (
