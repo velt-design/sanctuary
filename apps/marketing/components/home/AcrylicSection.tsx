@@ -11,8 +11,9 @@ export default function AcrylicSection() {
       intro="Clear or tinted acrylic sheets that keep spaces bright and open while still providing rain and UV protection."
       bestFor="Bright, open courtyards"
       image={{
-        src: '/images/project-dairy-flat-02.jpg',
+        src: '/images/dairy-flat-hero.jpg',
         alt: 'Acrylic roof over an outdoor dining area',
+        quality: 48,
       }}
       characteristics={[
         {

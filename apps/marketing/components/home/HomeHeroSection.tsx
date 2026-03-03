@@ -128,7 +128,7 @@ export default function HomeHeroSection({
                 alt="Dairy Flat pergola at a modern home"
                 fill
                 sizes="100vw"
-                quality={55}
+                quality={48}
                 style={{ objectFit: 'cover' }}
                 placeholder="blur"
                 blurDataURL={blurDataUrl}
