@@ -69,28 +69,9 @@ export default function Header() {
     resetScrollTracking();
   }, [resetScrollTracking]);
 
-  // Expose the header height as a CSS variable so pages can offset content
+  // Hydration flag for mobile menu portal mounting.
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    const headerEl = document.querySelector<HTMLElement>('header.site');
-    if (!headerEl) return;
-
-    const setHeaderVar = () => {
-      const h = Math.max(0, Math.round(headerEl.getBoundingClientRect().height));
-      document.documentElement.style.setProperty('--headerH', `${h}px`);
-    };
-
-    setHeaderVar();
-    const ro = new ResizeObserver(setHeaderVar);
-    ro.observe(headerEl);
-    window.addEventListener('resize', setHeaderVar);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', setHeaderVar);
-    };
   }, []);
 
   useEffect(() => {

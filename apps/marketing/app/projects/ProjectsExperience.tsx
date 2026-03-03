@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import type { Project } from '@/data/projects';
 import ProjectDetailContent from './ProjectDetailContent';
 import ProjectsCarouselMobile from './ProjectsCarouselMobile';
@@ -9,22 +9,24 @@ import './projects.css';
 
 const cx = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ');
 
-export default function ProjectsExperience({ projects }: { projects: Project[] }) {
+type ProjectsExperienceProps = {
+  projects: Project[];
+  initialSlugFromUrl?: string;
+};
+
+export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }: ProjectsExperienceProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [detailLoading, setDetailLoading] = useState(false);
   const [isMobileList, setIsMobileList] = useState(false);
   const detailRef = useRef<HTMLElement | null>(null);
   const optionRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const initialSlug = useMemo(() => {
-    const slugFromUrl = searchParams?.get('slug');
-    if (slugFromUrl && projects.some(project => project.slug === slugFromUrl)) {
-      return slugFromUrl;
+    if (initialSlugFromUrl && projects.some(project => project.slug === initialSlugFromUrl)) {
+      return initialSlugFromUrl;
     }
     return projects[0]?.slug || '';
-  }, [projects, searchParams]);
+  }, [initialSlugFromUrl, projects]);
 
   const [selectedSlug, setSelectedSlug] = useState(initialSlug);
 
@@ -65,13 +67,13 @@ export default function ProjectsExperience({ projects }: { projects: Project[] }
   }, [isMobileList]);
 
   const updateUrlSlug = useCallback((slug: string) => {
-    if (!pathname) return;
-    const current = searchParams ? searchParams.toString() : '';
-    const params = new URLSearchParams(current);
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search || '');
     if (slug) params.set('slug', slug); else params.delete('slug');
     const query = params.toString();
+    const pathname = window.location.pathname || '/projects';
     router.replace(`${pathname}${query ? `?${query}` : ''}`, { scroll: false });
-  }, [pathname, router, searchParams]);
+  }, [router]);
 
   const filteredProjects = projects;
 

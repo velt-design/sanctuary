@@ -117,20 +117,6 @@ export default function HomeHeroSection({
               </div>
             </div>
           </div>
-          <div className={`mobile-hero ${revealImages ? 'reveal' : ''}`}>
-            <div className="wipe-inner">
-              <Image
-                src="/images/dairy-flat-hero.jpg"
-                alt="Dairy Flat pergola at a modern home"
-                fill
-                sizes="100vw"
-                quality={48}
-                style={{ objectFit: 'cover' }}
-                placeholder="blur"
-                blurDataURL={blurDataUrl}
-              />
-            </div>
-          </div>
           <div
             className={`hero-card ${revealImages ? 'reveal' : ''}`}
             onMouseEnter={handleLeftMediaEnter}
@@ -142,6 +128,7 @@ export default function HomeHeroSection({
                 alt="Gable pergola in a rainforest setting"
                 fill
                 sizes="(max-width: 960px) 100vw, 50vw"
+                quality={50}
                 style={{ objectFit: 'cover' }}
                 placeholder="blur"
                 blurDataURL={blurDataUrl}
@@ -179,7 +166,8 @@ export default function HomeHeroSection({
               alt="Dairy Flat pergola at a modern home"
               fill
               priority
-              quality={60}
+              fetchPriority="high"
+              quality={55}
               placeholder="blur"
               blurDataURL={blurDataUrl}
               sizes="(max-width: 960px) 100vw, 50vw"
