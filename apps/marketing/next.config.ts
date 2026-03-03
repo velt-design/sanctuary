@@ -18,9 +18,10 @@ const nextConfig: NextConfig = {
       { key: 'X-Content-Type-Options', value: 'nosniff' },
       { key: 'X-Frame-Options', value: 'DENY' },
       { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
       { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
-      // 6 months HSTS; include subdomains; preload optional if you submit to hstspreload.org
-      { key: 'Strict-Transport-Security', value: 'max-age=15552000; includeSubDomains' },
+      // 1 year HSTS for preload readiness.
+      { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
     ];
 
     if (process.env.NODE_ENV === 'production') {

@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
+import { useConsent } from '@/components/ConsentProvider';
 
 export default function Analytics() {
+  const { consent } = useConsent();
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
+    if (!consent.analytics) {
+      setShouldLoad(false);
+      return;
+    }
+
     let timerId: number | null = null;
 
     const schedule = () => {
@@ -23,9 +30,9 @@ export default function Analytics() {
       window.removeEventListener('load', schedule);
       if (timerId !== null) window.clearTimeout(timerId);
     };
-  }, []);
+  }, [consent.analytics]);
 
-  if (!shouldLoad) return null;
+  if (!consent.analytics || !shouldLoad) return null;
 
   return <Script id="sp-runtime-ga" src="/runtime-ga.js" strategy="afterInteractive" />;
 }

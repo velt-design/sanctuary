@@ -45,7 +45,7 @@ body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,B
 .hero-ctas{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
 .hero-ctas .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:999px;border:var(--bw) solid var(--fg);font-size:14px;letter-spacing:.04em;background:var(--fg);color:var(--pageWhite);transition:background .25s ease,color .25s ease}
 .hero-ctas .btn.secondary{background:transparent;color:var(--fg)}
-.hero-contact{display:flex;gap:18px;color:#777;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:1}
+.hero-contact{display:flex;gap:18px;color:#4f545a;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:1}
 .hero-contact.in{opacity:1}
 .hero-contact .label{margin-bottom:4px}
 .hero-card,.hero-right{border:none;border-radius:0;overflow:hidden;height:100%;min-height:0;position:relative}
@@ -60,7 +60,7 @@ body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,B
 }
 
 /* Homepage intro overlays */
-.intro-contact{position:absolute;left:var(--g);bottom:var(--g);display:flex;gap:18px;color:#777;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:0;transform:translateY(20px);transition:transform .5s ease,opacity .5s ease;pointer-events:none}
+.intro-contact{position:absolute;left:var(--g);bottom:var(--g);display:flex;gap:18px;color:#4f545a;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:0;transform:translateY(20px);transition:transform .5s ease,opacity .5s ease;pointer-events:none}
 .intro-contact.show{opacity:1;transform:translateY(0)}
 .intro-progress{position:absolute;right:var(--g);bottom:var(--g);z-index:3;background:rgba(236,237,238,.7);color:var(--fg);border-radius:999px;padding:6px 10px;font-size:13px;letter-spacing:.06em}
 

@@ -9,11 +9,23 @@ export function GET() {
   try {
     var gaId = ${JSON.stringify(gaId)};
     if (!gaId) return;
-    if (typeof window.gtag === 'function') return;
+
+    if (window.__spGaRuntimeLoaded) return;
+    window.__spGaRuntimeLoaded = true;
 
     window.dataLayer = window.dataLayer || [];
-    function gtag() { window.dataLayer.push(arguments); }
-    window.gtag = gtag;
+    if (typeof window.gtag !== 'function') {
+      function gtag() { window.dataLayer.push(arguments); }
+      window.gtag = gtag;
+    }
+
+    window.gtag('consent', 'default', {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      wait_for_update: 500,
+    });
 
     var s = document.createElement('script');
     s.async = true;

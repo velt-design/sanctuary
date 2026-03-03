@@ -120,7 +120,7 @@ header.site{ --navH: 82px; }
   flex-shrink:0;
   overflow:hidden;
   box-shadow:0 0 0 1px rgba(15,15,16,.12);
-  transition: width .36s cubic-bezier(.21,.8,.35,1), padding .36s cubic-bezier(.21,.8,.35,1), background .25s ease;
+  transition: background .25s ease, transform .25s ease;
 }
 .nav-cta:focus-visible{outline:2px solid rgba(15,15,16,.65);outline-offset:4px}
 .nav-cta__label{

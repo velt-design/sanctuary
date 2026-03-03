@@ -18,6 +18,8 @@ import ArchiproPixel from '@/components/ArchiproPixel';
 import JsonLd from '@/components/JsonLd';
 import PortalMode from '@/components/PortalMode';
 import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
+import ConsentBanner from '@/components/ConsentBanner';
+import { ConsentProvider } from '@/components/ConsentProvider';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.sanctuarypergolas.co.nz'),
@@ -99,25 +101,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <PortalMode />
-        <WebVitals />
-        <PageTransitions />
-        <FooterHeaderSync />
-        <ScrollReset />
-        <HeaderVisibilityGate>
-          <Header />
-        </HeaderVisibilityGate>
-        {/* Wrap searchParams-based subheader to satisfy CSR bailout rules */}
-        <Suspense fallback={null}>
-          <ProductSubHeader />
-        </Suspense>
-        <div className="page-viewport"><div className="page-layer">{children}</div></div>
-        <FooterVisibilityGate>
-          <SiteFooter />
-        </FooterVisibilityGate>
-        <Analytics />
-        <MetaPixel />
-        <ArchiproPixel />
+        <ConsentProvider>
+          <PortalMode />
+          <WebVitals />
+          <PageTransitions />
+          <FooterHeaderSync />
+          <ScrollReset />
+          <HeaderVisibilityGate>
+            <Header />
+          </HeaderVisibilityGate>
+          {/* Wrap searchParams-based subheader to satisfy CSR bailout rules */}
+          <Suspense fallback={null}>
+            <ProductSubHeader />
+          </Suspense>
+          <div className="page-viewport"><div className="page-layer">{children}</div></div>
+          <FooterVisibilityGate>
+            <SiteFooter />
+          </FooterVisibilityGate>
+          <ConsentBanner />
+          <Analytics />
+          <MetaPixel />
+          <ArchiproPixel />
+        </ConsentProvider>
       </body>
     </html>
   );

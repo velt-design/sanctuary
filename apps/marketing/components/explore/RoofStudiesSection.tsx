@@ -1024,7 +1024,7 @@ export default function RoofStudiesSection({
           marginInline: isCompactHighlights ? 'auto' : undefined,
           paddingLeft: shouldCenterHighlightsTrack ? `${highlightsSidePad}px` : undefined,
           paddingRight: shouldCenterHighlightsTrack ? `${highlightsSidePad}px` : undefined,
-          transition: prefersReducedMotion ? 'none' : `padding ${HIGHLIGHT_TRANSITION}`,
+          transition: 'none',
         }}
       >
         {HIGHLIGHT_CARDS.map((card) => {
@@ -1041,8 +1041,11 @@ export default function RoofStudiesSection({
             ? 'none'
             : `opacity ${HIGHLIGHT_DEEP_DIVE_TRANSITION_MS}ms ease-out, transform ${HIGHLIGHT_DEEP_DIVE_TRANSITION_MS}ms ease-out`;
           const compactHoverTransition = `${HIGHLIGHT_HOVER_TRANSITION_MS}ms ${HIGHLIGHT_HOVER_EASING_CSS}`;
-          const cardWidthTransition = `width ${HIGHLIGHT_TRANSITION}`;
-          const cardTransition = isCompactHighlights ? `${cardWidthTransition}, transform ${compactHoverTransition}` : cardWidthTransition;
+          const cardTransition = prefersReducedMotion
+            ? 'none'
+            : isCompactHighlights
+              ? `transform ${compactHoverTransition}`
+              : undefined;
           const imageTransition = prefersReducedMotion
             ? 'none'
             : `opacity ${HIGHLIGHT_MEDIA_FADE_MS}ms ease-out${isCompactHighlights ? `, transform ${compactHoverTransition}` : ''}`;
@@ -1062,7 +1065,7 @@ export default function RoofStudiesSection({
               )}
               style={{
                 width: isCompactHighlights ? compactCardWidth : HIGHLIGHT_CARD_WIDTH,
-                transition: prefersReducedMotion ? 'none' : cardTransition,
+                transition: cardTransition,
               }}
             >
               <button
