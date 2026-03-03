@@ -39,6 +39,8 @@ import InfillCutList from './InfillCutList';
 import ResolveWarningsPanel from './ResolveWarningsPanel';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
+import ModuleViewsCard, { type ModuleViewsStatus, type ModuleViewsTab } from './ModuleViewsCard';
+import { buildModulePlanModel, buildModuleSectionModel } from './moduleViews';
 import { useInfillClipboard } from './useInfillClipboard';
 import { useInfillHotkeys } from './useInfillHotkeys';
 import { trackInfillEvent } from './infillTelemetry';
@@ -1581,6 +1583,7 @@ export default function CalculatorGridClient({
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [uiMode, setUiMode] = useState<UiMode>('basic');
+  const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
   const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
@@ -2915,6 +2918,35 @@ export default function CalculatorGridClient({
     const pergola = result?.pergolas?.find((entry) => entry.id === route.pergolaId) ?? fallbackPergola;
     return pergola?.modules?.[route.localModuleIndex] ?? resultModules[activeModuleIndex] ?? resultModules[0] ?? null;
   }, [result, resultModules, activeModuleIndex, moduleRoutes]);
+  const activeModuleRoute = moduleRoutes[activeModuleIndex] ?? moduleRoutes[0] ?? null;
+  const activeModulePergolaLabel = getPergolaLabel(
+    pergolas,
+    activeModuleRoute?.pergolaId ?? activePergolaId,
+    activeModuleIndex,
+  );
+  const activeModuleLabel = `${activeModulePergolaLabel} - Module ${(activeModuleRoute?.localModuleIndex ?? 0) + 1}`;
+  const modulePlanModel = useMemo(() => buildModulePlanModel(activeModule, moduleResult), [activeModule, moduleResult]);
+  const moduleSectionModel = useMemo(() => buildModuleSectionModel(activeModule, moduleResult), [activeModule, moduleResult]);
+  const activeViewHasModel = moduleViewsTab === 'plan' ? Boolean(modulePlanModel) : Boolean(moduleSectionModel);
+  const activeViewSource = moduleViewsTab === 'plan' ? modulePlanModel?.dataSource : moduleSectionModel?.dataSource;
+  const moduleViewsStatus: ModuleViewsStatus =
+    isCalculating && !activeViewHasModel
+      ? 'loading'
+      : activeViewHasModel
+        ? 'ready'
+        : engineError
+          ? 'error'
+          : 'empty';
+  const moduleViewsStatusDetail =
+    moduleViewsStatus === 'error'
+      ? engineError ?? undefined
+      : moduleViewsStatus === 'empty'
+        ? 'Enter valid module dimensions to hydrate the view.'
+        : moduleViewsStatus === 'ready'
+          ? activeViewSource === 'derived'
+            ? `Using derived geometry. Active style: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' (box perimeter)' : ''}`
+            : `Using input fallback geometry. Active style: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' (box perimeter)' : ''}`
+          : undefined;
 
   useEffect(() => {
     if (!result) return;
@@ -5210,6 +5242,15 @@ export default function CalculatorGridClient({
               </div>
 
               <PriceImpactPanel diff={impactDiff} isAdvancedUi={isAdvancedUi} onResetBaseline={resetImpactBaseline} />
+              <ModuleViewsCard
+                moduleLabel={activeModuleLabel}
+                view={moduleViewsTab}
+                onViewChange={setModuleViewsTab}
+                status={moduleViewsStatus}
+                statusDetail={moduleViewsStatusDetail}
+                planModel={modulePlanModel}
+                sectionModel={moduleSectionModel}
+              />
 
               <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
                 <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
