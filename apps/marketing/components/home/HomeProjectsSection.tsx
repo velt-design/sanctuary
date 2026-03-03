@@ -105,7 +105,7 @@ export default function HomeProjectsSection({
 
         <div ref={trackRef} className="mt-8 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex snap-x snap-mandatory gap-4 md:gap-6">
-            {projects.map((project, index) => (
+            {projects.map((project) => (
               <Link
                 key={project.slug}
                 href={`/projects?slug=${project.slug}`}
@@ -117,7 +117,6 @@ export default function HomeProjectsSection({
                   src={project.heroImage.src}
                   alt={project.heroImage.alt}
                   fill
-                  priority={index === 0}
                   sizes="(max-width: 768px) 86vw, (max-width: 1440px) 38vw, 560px"
                   className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] group-hover:scale-[1.04]"
                 />

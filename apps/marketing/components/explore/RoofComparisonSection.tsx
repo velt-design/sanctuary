@@ -112,7 +112,7 @@ function usePrefersReducedMotion() {
 }
 
 function useIsMobileViewport(maxWidth = 1023) {
-  const [isMobile, setIsMobile] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
     const mediaQuery = window.matchMedia(`(max-width: ${maxWidth}px)`);
@@ -137,6 +137,7 @@ type RoofComparisonSectionProps = {
 };
 
 export default function RoofComparisonSection({ debug, className }: RoofComparisonSectionProps) {
+  const sectionRef = React.useRef<HTMLElement | null>(null);
   const [selected, setSelected] = React.useState<RoofTypeFitId>('acrylic');
   const [isSwapping, setIsSwapping] = React.useState(false);
   const [isVideoReadyById, setIsVideoReadyById] =
@@ -144,13 +145,10 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
   const [posterIndexById, setPosterIndexById] =
     React.useState<Record<RoofTypeFitId, number>>(INITIAL_POSTER_INDEX_STATE);
   const [mobileVideoActivated, setMobileVideoActivated] = React.useState(false);
+  const [isNearViewport, setIsNearViewport] = React.useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
   const isMobileViewport = useIsMobileViewport();
-  const videoRefs = React.useRef<Record<RoofTypeFitId, HTMLVideoElement | null>>({
-    acrylic: null,
-    timber: null,
-    combo: null,
-  });
+  const selectedVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const selectedConfig = ROOF_TYPE_FIT_CONFIG[selected];
   const selectedMedia = ROOF_TYPE_FIT_MEDIA[selected];
   const selectedCopy = ROOF_TYPE_FIT_COPY[selected];
@@ -158,7 +156,11 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
   const selectedPosterIndex = posterIndexById[selected] ?? 0;
   const selectedPosterSrc = selectedMedia.posterSrcs[selectedPosterIndex] ?? selectedMedia.posterSrcs[0];
   const isSelectedVideoReady = Boolean(isVideoReadyById[selected]);
-  const shouldRenderVideos = !prefersReducedMotion && (!isMobileViewport || mobileVideoActivated);
+  const shouldRenderSelectedVideo =
+    !prefersReducedMotion &&
+    isNearViewport &&
+    isMobileViewport !== null &&
+    (isMobileViewport === false || mobileVideoActivated);
   const hasMountedRef = React.useRef(false);
 
   React.useEffect(() => {
@@ -173,44 +175,52 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
   }, [prefersReducedMotion, selected]);
 
   React.useEffect(() => {
-    if (typeof window === 'undefined') return;
+    const sectionNode = sectionRef.current;
+    if (!sectionNode) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setIsNearViewport(true);
+      return;
+    }
 
-    const seen = new Set<string>();
-    ROOF_TYPE_FIT_OPTIONS.forEach((id) => {
-      ROOF_TYPE_FIT_MEDIA[id].posterSrcs.forEach((src) => {
-        if (!src || seen.has(src)) return;
-        seen.add(src);
-        const image = new window.Image();
-        image.decoding = 'async';
-        image.src = src;
-      });
-    });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setIsNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: '240px 0px' }
+    );
+
+    observer.observe(sectionNode);
+    return () => observer.disconnect();
   }, []);
 
   React.useEffect(() => {
-    ROOF_TYPE_FIT_OPTIONS.forEach((id) => {
-      const video = videoRefs.current[id];
-      if (!video) return;
+    const video = selectedVideoRef.current;
+    if (!video) return;
+    if (!shouldRenderSelectedVideo) {
+      video.pause();
+      return;
+    }
 
-      if (!shouldRenderVideos || id !== selected) {
-        video.pause();
-        return;
-      }
+    const playbackRate = selectedMedia.playbackRate;
+    if (video.defaultPlaybackRate !== playbackRate) {
+      video.defaultPlaybackRate = playbackRate;
+    }
+    if (video.playbackRate !== playbackRate) {
+      video.playbackRate = playbackRate;
+    }
 
-      const playbackRate = ROOF_TYPE_FIT_MEDIA[id].playbackRate;
-      if (video.defaultPlaybackRate !== playbackRate) {
-        video.defaultPlaybackRate = playbackRate;
-      }
-      if (video.playbackRate !== playbackRate) {
-        video.playbackRate = playbackRate;
-      }
-
+    if (video.readyState >= 2) {
       void video.play().catch(() => {});
-    });
-  }, [selected, shouldRenderVideos]);
+    }
+  }, [selectedMedia.playbackRate, selectedMedia.src, shouldRenderSelectedVideo]);
 
   return (
-    <section className={cn('bg-page py-8 md:py-14', className, debug && 'outline outline-1 outline-sky-500/30')}>
+    <section
+      ref={sectionRef}
+      className={cn('bg-page py-8 md:py-14', className, debug && 'outline outline-1 outline-sky-500/30')}
+    >
       <div className="mx-auto w-full max-w-[1610px] px-4 md:px-6">
         <div className="ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(380px,34vw,500px)]">
             <span
@@ -336,7 +346,7 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                       sizes="(max-width: 640px) calc(100vw - 76px), (max-width: 1024px) 88vw, (max-width: 1440px) 35vw, 480px"
                       className="pointer-events-none absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-100 md:scale-[1.06]"
                       style={{
-                        opacity: shouldRenderVideos && isSelectedVideoReady ? 0 : 1,
+                        opacity: shouldRenderSelectedVideo && isSelectedVideoReady ? 0 : 1,
                         transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
                       }}
                       onError={() => {
@@ -353,65 +363,60 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                     />
                   ) : null}
 
-                  {shouldRenderVideos
-                    ? ROOF_TYPE_FIT_OPTIONS.map((option) => {
-                        const media = ROOF_TYPE_FIT_MEDIA[option];
-                        const isSelectedOption = option === selected;
-                        const isReady = Boolean(isVideoReadyById[option]);
-                        return (
-                          <video
-                            key={option}
-                            ref={(node) => {
-                              videoRefs.current[option] = node;
-                            }}
-                            autoPlay={false}
-                            loop
-                            muted
-                            playsInline
-                            preload="auto"
-                            poster={media.posterSrcs[0]}
-                            aria-label={isSelectedOption ? media.ariaLabel : undefined}
-                            aria-hidden={!isSelectedOption}
-                            tabIndex={-1}
-                            className="absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-100 md:scale-[1.06]"
-                            style={{
-                              opacity: isSelectedOption && isReady ? 1 : 0,
-                              pointerEvents: 'none',
-                              transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
-                            }}
-                            onLoadedMetadata={(event) => {
-                              const video = event.currentTarget;
-                              if (video.defaultPlaybackRate !== media.playbackRate) {
-                                video.defaultPlaybackRate = media.playbackRate;
-                              }
-                              if (video.playbackRate !== media.playbackRate) {
-                                video.playbackRate = media.playbackRate;
-                              }
-                            }}
-                            onLoadedData={() =>
-                              setIsVideoReadyById((current) =>
-                                current[option] ? current : { ...current, [option]: true }
-                              )
-                            }
-                            onCanPlay={() =>
-                              setIsVideoReadyById((current) =>
-                                current[option] ? current : { ...current, [option]: true }
-                              )
-                            }
-                            onPlay={(event) => {
-                              const video = event.currentTarget;
-                              if (video.playbackRate !== media.playbackRate) {
-                                video.playbackRate = media.playbackRate;
-                              }
-                            }}
-                          >
-                            <source src={media.src} type="video/mp4" />
-                          </video>
+                  {shouldRenderSelectedVideo ? (
+                    <video
+                      key={selectedMedia.src}
+                      ref={selectedVideoRef}
+                      autoPlay={false}
+                      loop
+                      muted
+                      playsInline
+                      preload="metadata"
+                      aria-label={selectedMedia.ariaLabel}
+                      tabIndex={-1}
+                      className="absolute inset-0 h-full w-full object-cover object-[50%_42%] scale-100 md:scale-[1.06]"
+                      style={{
+                        opacity: isSelectedVideoReady ? 1 : 0,
+                        pointerEvents: 'none',
+                        transition: prefersReducedMotion ? 'none' : 'opacity 180ms ease-out',
+                      }}
+                      onLoadedMetadata={(event) => {
+                        const video = event.currentTarget;
+                        if (video.defaultPlaybackRate !== selectedMedia.playbackRate) {
+                          video.defaultPlaybackRate = selectedMedia.playbackRate;
+                        }
+                        if (video.playbackRate !== selectedMedia.playbackRate) {
+                          video.playbackRate = selectedMedia.playbackRate;
+                        }
+                      }}
+                      onLoadedData={(event) => {
+                        setIsVideoReadyById((current) =>
+                          current[selected] ? current : { ...current, [selected]: true }
                         );
-                      })
-                    : null}
+                        if (shouldRenderSelectedVideo) {
+                          void event.currentTarget.play().catch(() => {});
+                        }
+                      }}
+                      onCanPlay={(event) => {
+                        setIsVideoReadyById((current) =>
+                          current[selected] ? current : { ...current, [selected]: true }
+                        );
+                        if (shouldRenderSelectedVideo) {
+                          void event.currentTarget.play().catch(() => {});
+                        }
+                      }}
+                      onPlay={(event) => {
+                        const video = event.currentTarget;
+                        if (video.playbackRate !== selectedMedia.playbackRate) {
+                          video.playbackRate = selectedMedia.playbackRate;
+                        }
+                      }}
+                    >
+                      <source src={selectedMedia.src} type="video/mp4" />
+                    </video>
+                  ) : null}
 
-                  {isMobileViewport && !mobileVideoActivated && !prefersReducedMotion ? (
+                  {isMobileViewport === true && !mobileVideoActivated && !prefersReducedMotion ? (
                     <button
                       type="button"
                       onClick={() => setMobileVideoActivated(true)}

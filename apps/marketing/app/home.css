@@ -38,14 +38,14 @@ body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,B
 .hero-top{display:flex;flex-direction:column;min-height:0}
 .hero-top .hero-contact{margin-top:auto}
 .hero-info{padding:0}
-.hero-title{font-size:clamp(22px,2.7vw,36px);line-height:1.03;margin:0 0 6px 0;opacity:0;transition:opacity 1.5s ease}
+.hero-title{font-size:clamp(22px,2.7vw,36px);line-height:1.03;margin:0 0 6px 0;opacity:1}
 .hero-title.in{opacity:1}
 .hero-title .muted-line{color:var(--darkGrey)}
 .hero-subhead{margin:0;color:#666;font-size:15px}
 .hero-ctas{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
 .hero-ctas .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 20px;border-radius:999px;border:var(--bw) solid var(--fg);font-size:14px;letter-spacing:.04em;background:var(--fg);color:var(--pageWhite);transition:background .25s ease,color .25s ease}
 .hero-ctas .btn.secondary{background:transparent;color:var(--fg)}
-.hero-contact{display:flex;gap:18px;color:#777;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:0;transition:opacity 1.5s ease}
+.hero-contact{display:flex;gap:18px;color:#777;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:1}
 .hero-contact.in{opacity:1}
 .hero-contact .label{margin-bottom:4px}
 .hero-card,.hero-right{border:none;border-radius:0;overflow:hidden;height:100%;min-height:0;position:relative}
@@ -64,9 +64,8 @@ body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,B
 .intro-contact.show{opacity:1;transform:translateY(0)}
 .intro-progress{position:absolute;right:var(--g);bottom:var(--g);z-index:3;background:rgba(236,237,238,.7);color:var(--fg);border-radius:999px;padding:6px 10px;font-size:13px;letter-spacing:.06em}
 
-/* Wipe reveal for hero images */
-.hero-card .wipe-inner,.hero-right .wipe-inner{position:absolute;inset:0;transform:translateY(100%);transition:transform 1s ease}
-.hero-card.reveal .wipe-inner,.hero-right.reveal .wipe-inner{transform:translateY(0)}
+/* Keep hero media visible immediately to avoid LCP render delay. */
+.hero-card .wipe-inner,.hero-right .wipe-inner{position:absolute;inset:0}
 
 .feature-zone{position:relative;height:auto}
 .feature-bar{background:var(--bg);border-top:var(--bw) solid var(--border);border-bottom:var(--bw) solid var(--border);position:sticky;top:calc(50vh - var(--barH, 40px)/2);z-index:2}
@@ -432,8 +431,7 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 .accordion__icon::after{ z-index:2; }
 .mobile-hero{ display:none; }
 .mobile-hero img{ width:100%; height:100%; object-fit:cover; object-position:center; display:block; }
-.mobile-hero .wipe-inner{ position:absolute; inset:0; transform: translateY(100%); transition: transform 1s ease; }
-.mobile-hero.reveal .wipe-inner{ transform: none; }
+.mobile-hero .wipe-inner{ position:absolute; inset:0; }
 
 @media (max-width:960px){
   .hero .split{grid-template-columns:1fr}

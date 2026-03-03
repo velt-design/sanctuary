@@ -79,7 +79,7 @@ export default function SpReveal({
   ink = '#AEB4BA',
   imageSrc,
   imageAlt = 'Project image',
-  imageSizes = '(max-width: 960px) 100vw, 60vw',
+  imageSizes = '(max-width: 960px) calc(100vw - 32px), (max-width: 1440px) 44vw, 640px',
   images,
   className,
   style,
@@ -220,7 +220,7 @@ export default function SpReveal({
                       alt={imageAlt}
                       fill
                       sizes={imageSizes}
-                      priority={i === 0}
+                      quality={60}
                       style={{ objectFit: 'cover' }}
                     />
                   </div>
@@ -237,7 +237,7 @@ export default function SpReveal({
                   alt={imageAlt}
                   fill
                   sizes={imageSizes}
-                  priority={false}
+                  quality={60}
                   style={{ objectFit: 'cover' }}
                 />
               </div>
