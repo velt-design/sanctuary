@@ -12,8 +12,6 @@ type HeroSectionProps = {
   revealImages: boolean;
   showProgress: boolean;
   progress: number;
-  mobileHeroLoaded: boolean;
-  setMobileHeroLoaded: (loaded: boolean) => void;
   titleRef: MutableRefObject<HTMLHeadingElement | null>;
   contactRef: MutableRefObject<HTMLDivElement | null>;
 };
@@ -27,8 +25,6 @@ export default function HomeHeroSection({
   revealImages,
   showProgress,
   progress,
-  mobileHeroLoaded,
-  setMobileHeroLoaded,
   titleRef,
   contactRef,
 }: HeroSectionProps) {
@@ -121,7 +117,7 @@ export default function HomeHeroSection({
               </div>
             </div>
           </div>
-          <div className={`mobile-hero ${mobileHeroLoaded && revealImages ? 'reveal' : ''}`}>
+          <div className={`mobile-hero ${revealImages ? 'reveal' : ''}`}>
             <div className="wipe-inner">
               <Image
                 src="/images/dairy-flat-hero.jpg"
@@ -132,7 +128,6 @@ export default function HomeHeroSection({
                 style={{ objectFit: 'cover' }}
                 placeholder="blur"
                 blurDataURL={blurDataUrl}
-                onLoadingComplete={() => setMobileHeroLoaded(true)}
               />
             </div>
           </div>

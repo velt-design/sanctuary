@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import SpReveal from '@/components/SpReveal';
 import HomeHeroSection from '@/components/home/HomeHeroSection';
@@ -37,16 +37,14 @@ export default function HomePageClient({
   copyTexts,
   blurDataUrl,
 }: HomePageContent) {
-  // Intro transition state (homepage only)
-  const [showIntroContact, setShowIntroContact] = useState(false);
-  const [showProgress, setShowProgress] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [revealImages, setRevealImages] = useState(false);
-  const [introContactIn, setIntroContactIn] = useState(false);
-  const [titleIn, setTitleIn] = useState(false);
-  const [contactIn, setContactIn] = useState(false);
-  // Mobile hero load state (product-pitched-01)
-  const [mobileHeroLoaded, setMobileHeroLoaded] = useState(false);
+  // Keep above-the-fold hero visible immediately for fast LCP.
+  const showIntroContact = false;
+  const showProgress = false;
+  const progress = 0;
+  const revealImages = true;
+  const introContactIn = false;
+  const titleIn = true;
+  const contactIn = true;
 
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const contactRef = useRef<HTMLDivElement | null>(null);
@@ -166,64 +164,6 @@ export default function HomePageClient({
     };
   }, []);
 
-  // Run the requested homepage intro sequence on mount
-  useEffect(() => {
-
-    // 1) Contact info slides up and settles one gutter from bottom (0.5s)
-    setShowIntroContact(true);
-    // Trigger CSS transition on next frame
-    requestAnimationFrame(() => setIntroContactIn(true));
-    // H1/hero contact fade-in handled by IntersectionObserver below
-    const contactTimer = window.setTimeout(() => {
-      setIntroContactIn(false);
-      setShowIntroContact(false);
-
-      // 2) Progress counter 0% -> 100%
-      setShowProgress(true);
-      const duration = 1100; // ms
-      const start = performance.now();
-      const tick = (now: number) => {
-        const pct = Math.min(100, Math.round(((now - start) / duration) * 100));
-        setProgress(pct);
-        if (pct < 100) requestAnimationFrame(tick);
-        else {
-          setShowProgress(false);
-          // 3) Wipe reveal from bottom to top
-          setRevealImages(true);
-        }
-      };
-      requestAnimationFrame(tick);
-    }, 500);
-
-    return () => {
-      window.clearTimeout(contactTimer);
-    };
-  }, []);
-
-  // Fade-in when elements enter the viewport
-  useEffect(() => {
-    const titleEl = titleRef.current;
-    const contactEl = contactRef.current;
-    if (!titleEl && !contactEl) return;
-
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            if (entry.target === titleEl) setTitleIn(true);
-            if (entry.target === contactEl) setContactIn(true);
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    if (titleEl) io.observe(titleEl);
-    if (contactEl) io.observe(contactEl);
-
-    return () => io.disconnect();
-  }, []);
-
   return (
     <div className="homepage">
       <main>
@@ -237,8 +177,6 @@ export default function HomePageClient({
             revealImages={revealImages}
             showProgress={showProgress}
             progress={progress}
-            mobileHeroLoaded={mobileHeroLoaded}
-            setMobileHeroLoaded={setMobileHeroLoaded}
             titleRef={titleRef}
             contactRef={contactRef}
           />
