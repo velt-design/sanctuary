@@ -24,7 +24,10 @@
     "images:optimize": "node scripts/optimize-images.js",
     "videos:optimize": "node scripts/optimize-videos.mjs",
     "emails:preview": "tsx scripts/preview-email.ts",
-    "portal:invite": "tsx scripts/invite-portal-user.ts"
+    "portal:invite": "tsx scripts/invite-portal-user.ts",
+    "audit:lighthouse:mobile": "npx @lhci/cli autorun --config=.lighthouserc.mobile.json",
+    "audit:lighthouse:desktop": "npx @lhci/cli autorun --config=.lighthouserc.desktop.json",
+    "audit:lighthouse": "npm run audit:lighthouse:mobile && npm run audit:lighthouse:desktop"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

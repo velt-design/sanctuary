@@ -2,11 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import Script from 'next/script';
+import { useConsent } from '@/components/ConsentProvider';
 
 export default function ArchiproPixel() {
+  const { consent } = useConsent();
   const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
+    if (!consent.marketing) {
+      setShouldLoad(false);
+      return;
+    }
+
     let timerId: number | null = null;
 
     const schedule = () => {
@@ -23,9 +30,9 @@ export default function ArchiproPixel() {
       window.removeEventListener('load', schedule);
       if (timerId !== null) window.clearTimeout(timerId);
     };
-  }, []);
+  }, [consent.marketing]);
 
-  if (!shouldLoad) return null;
+  if (!consent.marketing || !shouldLoad) return null;
 
   return (
     <>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
+import { useConsent } from '@/components/ConsentProvider';
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
@@ -30,9 +31,11 @@ function sendToGA(metric: WebVitalsMetric) {
 }
 
 export default function WebVitals() {
-  if (!GA_ID) return null;
+  const { consent } = useConsent();
 
   useEffect(() => {
+    if (!GA_ID || !consent.analytics) return;
+
     let cancelled = false;
     let timerId: number | null = null;
 
@@ -69,7 +72,7 @@ export default function WebVitals() {
       window.removeEventListener('load', schedule);
       if (timerId !== null) window.clearTimeout(timerId);
     };
-  }, []);
+  }, [consent.analytics]);
 
   return null;
 }

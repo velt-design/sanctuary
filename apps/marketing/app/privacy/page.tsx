@@ -33,8 +33,14 @@ export default function PrivacyPage(){
                 </ul>
 
                 <h2>Cookies & analytics</h2>
-                <p>We may use cookies and similar technologies to keep the site working reliably and to understand how it is used. Analytics cookies help us see which pages are visited, how long visitors stay and which devices are used, so we can improve content and performance. We do not use this information to identify you personally.</p>
-                <p>You can control or delete cookies in your browser settings. If you block cookies, some features may not work as intended, but you can still browse key pages and contact us.</p>
+                <p>We use three categories of cookies: essential, analytics, and marketing.</p>
+                <ul>
+                  <li>Essential cookies keep core site functions working.</li>
+                  <li>Analytics cookies help us understand usage and improve performance.</li>
+                  <li>Marketing cookies support campaign measurement and advertising attribution.</li>
+                </ul>
+                <p>You can choose analytics and marketing cookies in the cookie preferences banner and reopen settings later using the "Cookie settings" button.</p>
+                <p>You can also control or delete cookies in your browser settings. If you block cookies, some features may not work as intended, but you can still browse key pages and contact us.</p>
 
                 <h2>How we use it</h2>
                 <ul>

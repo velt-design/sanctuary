@@ -89,11 +89,11 @@ export default function HomeHeroSection({
         <div className={`intro-contact ${introContactIn ? 'show' : ''}`} aria-hidden="true">
           <div>
             <div className="label">Phone</div>
-            <a href="tel:+6496349482">+64 9 634 9482</a>
+            <div>+64 9 634 9482</div>
           </div>
           <div>
             <div className="label">Email</div>
-            <a href="mailto:info@sanctuarypergolas.co.nz">info@sanctuarypergolas.co.nz</a>
+            <div>info@sanctuarypergolas.co.nz</div>
           </div>
         </div>
       )}
