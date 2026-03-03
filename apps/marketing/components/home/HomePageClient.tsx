@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import SpReveal from '@/components/SpReveal';
 import HomeHeroSection from '@/components/home/HomeHeroSection';
 import HomeProjectsSection from '@/components/home/HomeProjectsSection';
@@ -11,8 +12,6 @@ import HomeProcessSection, { HomeProcessCtaBar } from '@/components/home/HomePro
 import HomeFeatureBar from '@/components/home/HomeFeatureBar';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
 import HomeWarrantySupportSection from '@/components/home/HomeWarrantySupportSection';
-import RoofComparisonSection from '@/components/explore/RoofComparisonSection';
-import RoofStudiesSection from '@/components/explore/RoofStudiesSection';
 import { projects } from '@/data/projects';
 
 export type ProcessStep = { title: string; desc: string };
@@ -31,6 +30,16 @@ const MATERIALS_COPY_STYLE: React.CSSProperties = {
   marginInline: 'auto',
 };
 
+const LazyRoofComparisonSection = dynamic(() => import('@/components/explore/RoofComparisonSection'), {
+  ssr: false,
+  loading: () => <section className="bg-page py-[clamp(64px,10vh,128px)]" aria-hidden="true" />,
+});
+
+const LazyRoofStudiesSection = dynamic(() => import('@/components/explore/RoofStudiesSection'), {
+  ssr: false,
+  loading: () => <section className="bg-page py-[clamp(64px,10vh,128px)]" aria-hidden="true" />,
+});
+
 export default function HomePageClient({
   featureItems,
   processSteps,
@@ -45,9 +54,13 @@ export default function HomePageClient({
   const introContactIn = false;
   const titleIn = true;
   const contactIn = true;
+  const [shouldLoadRoofStudies, setShouldLoadRoofStudies] = useState(false);
+  const [shouldLoadRoofComparison, setShouldLoadRoofComparison] = useState(false);
 
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const contactRef = useRef<HTMLDivElement | null>(null);
+  const roofStudiesSentinelRef = useRef<HTMLDivElement | null>(null);
+  const roofComparisonSentinelRef = useRef<HTMLDivElement | null>(null);
   // Gate other scroll effects while highlight/process are active
   const scrollGateRef = useRef(false);
   useEffect(() => {
@@ -164,6 +177,45 @@ export default function HomePageClient({
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      setShouldLoadRoofStudies(true);
+      setShouldLoadRoofComparison(true);
+      return;
+    }
+
+    const observers: IntersectionObserver[] = [];
+
+    const observe = (
+      node: HTMLDivElement | null,
+      setVisible: (visible: boolean) => void,
+      rootMargin: string
+    ) => {
+      if (!node) {
+        setVisible(true);
+        return;
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          setVisible(true);
+          observer.disconnect();
+        },
+        { rootMargin }
+      );
+      observer.observe(node);
+      observers.push(observer);
+    };
+
+    observe(roofStudiesSentinelRef.current, setShouldLoadRoofStudies, '320px 0px');
+    observe(roofComparisonSentinelRef.current, setShouldLoadRoofComparison, '360px 0px');
+
+    return () => {
+      observers.forEach((observer) => observer.disconnect());
+    };
+  }, []);
+
   return (
     <div className="homepage">
       <main>
@@ -186,7 +238,13 @@ export default function HomePageClient({
           <HomeFeatureBar featureItems={featureItems} />
         </div>
 
-        <RoofStudiesSection />
+        <div ref={roofStudiesSentinelRef}>
+          {shouldLoadRoofStudies ? (
+            <LazyRoofStudiesSection />
+          ) : (
+            <section className="bg-page py-[clamp(64px,10vh,128px)]" aria-hidden="true" />
+          )}
+        </div>
 
         <section className="bg-page py-[clamp(36px,7vh,104px)]">
           <div style={MATERIALS_COPY_STYLE}>
@@ -202,7 +260,13 @@ export default function HomePageClient({
           </div>
         </section>
 
-        <RoofComparisonSection />
+        <div ref={roofComparisonSentinelRef}>
+          {shouldLoadRoofComparison ? (
+            <LazyRoofComparisonSection />
+          ) : (
+            <section className="bg-page py-[clamp(64px,10vh,128px)]" aria-hidden="true" />
+          )}
+        </div>
 
         <section aria-label="Book a design consultation" className="bg-page">
           <div className="mx-auto flex min-h-[120px] w-[min(88vw,1288px)] items-center justify-center py-6">
