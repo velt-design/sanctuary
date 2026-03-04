@@ -4,7 +4,13 @@ import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
-type ModuleDetailMode = 'technical' | 'clean';
+type ModuleDetailMode = 'technical' | 'clean' | 'diagnostic';
+
+type GeometryConsistency = {
+  level: 'ok' | 'warn';
+  summary: string;
+  details: string[];
+};
 
 type ModuleViewsCardProps = {
   moduleLabel: string;
@@ -24,6 +30,7 @@ const TAB_ITEMS: Array<{ id: ModuleViewsTab; label: string }> = [
 const DETAIL_ITEMS: Array<{ id: ModuleDetailMode; label: string }> = [
   { id: 'technical', label: 'Technical' },
   { id: 'clean', label: 'Clean' },
+  { id: 'diagnostic', label: 'Diag' },
 ];
 
 const STATUS_TEXT: Record<ModuleViewsStatus, string> = {
@@ -45,6 +52,12 @@ export default function ModuleViewsCard({
   const [detailMode, setDetailMode] = useState<ModuleDetailMode>('technical');
   const showPlan = view === 'plan' && Boolean(planModel);
   const showSection = view === 'section' && Boolean(sectionModel);
+  const planConsistency = planModel ? checkPlanConsistency(planModel) : null;
+  const sectionConsistency = sectionModel ? checkSectionConsistency(sectionModel) : null;
+  const sectionOverhangDisplayM = sectionModel ? sectionOverhangM(sectionModel) : 0;
+  const sectionOuterDisplayM = sectionModel ? sectionOuterGutterUndersideM(sectionModel) : null;
+  const sectionSupportDisplayM = sectionModel ? sectionSupportUndersideM(sectionModel) : null;
+  const activeConsistency = view === 'plan' ? planConsistency : sectionConsistency;
   const stateText = view === 'section' && status === 'ready' ? 'Section schematic ready.' : STATUS_TEXT[status];
   const svgId = useId().replace(/:/g, '_');
 
@@ -98,10 +111,17 @@ export default function ModuleViewsCard({
       <div className={styles.moduleViewsStage} aria-live="polite">
         {showPlan && planModel ? (
           <div className={styles.modulePlanFrame}>
-            <div className={planModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
-              {planModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
+            <div className={styles.modulePlanSourceRow}>
+              <div className={planModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
+                {planModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
+              </div>
+              {planConsistency ? (
+                <div className={planConsistency.level === 'ok' ? styles.modulePlanConsistencyOk : styles.modulePlanConsistencyWarn}>
+                  {planConsistency.level === 'ok' ? 'Geometry OK' : `Check ${planConsistency.details.length}`}
+                </div>
+              ) : null}
             </div>
-            <PlanSvg model={planModel} detailMode={detailMode} idBase={`${svgId}_plan`} />
+            <PlanSvg model={planModel} detailMode={detailMode} idBase={`${svgId}_plan`} consistency={planConsistency} />
             <LegendRow
               detailMode={detailMode}
               items={
@@ -125,10 +145,17 @@ export default function ModuleViewsCard({
           </div>
         ) : showSection && sectionModel ? (
           <div className={styles.modulePlanFrame}>
-            <div className={sectionModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
-              {sectionModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
+            <div className={styles.modulePlanSourceRow}>
+              <div className={sectionModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
+                {sectionModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
+              </div>
+              {sectionConsistency ? (
+                <div className={sectionConsistency.level === 'ok' ? styles.modulePlanConsistencyOk : styles.modulePlanConsistencyWarn}>
+                  {sectionConsistency.level === 'ok' ? 'Geometry OK' : `Check ${sectionConsistency.details.length}`}
+                </div>
+              ) : null}
             </div>
-            <SectionSvg model={sectionModel} detailMode={detailMode} />
+            <SectionSvg model={sectionModel} detailMode={detailMode} consistency={sectionConsistency} />
             <LegendRow
               detailMode={detailMode}
               items={
@@ -141,14 +168,20 @@ export default function ModuleViewsCard({
               <span className={styles.modulePlanStat}>{`Span: ${formatMetres(sectionModel.spanA)}`}</span>
               <span className={styles.modulePlanStat}>{`Pitch: ${sectionModel.pitchDeg.toFixed(1)} deg`}</span>
               <span className={styles.modulePlanStat}>{`House: ${formatMetres(sectionModel.leftEdgeHeightM)}`}</span>
-              <span className={styles.modulePlanStat}>{`Outer: ${formatMetres(sectionModel.rightEdgeHeightM)}`}</span>
+              <span className={styles.modulePlanStat}>{`Outer: ${formatMetres(sectionOuterDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span>
+              {sectionOverhangDisplayM > 0 ? <span className={styles.modulePlanStat}>{`Support: ${formatMetres(sectionSupportDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span> : null}
               <span className={styles.modulePlanStat}>{`Rafter: ${Math.round(sectionModel.rafterDepthM * 1000)}x${Math.round(sectionModel.rafterWidthM * 1000)}mm`}</span>
-              <span className={styles.modulePlanStat}>{`Gutter: ${Math.round(sectionModel.gutterDepthM * 1000)}mm`}</span>
+              <span className={styles.modulePlanStat}>{`Ledger: ${Math.round(sectionModel.ledgerBeamDepthM * 1000)}x${Math.round(sectionModel.ledgerBeamWidthM * 1000)}mm`}</span>
+              <span className={styles.modulePlanStat}>{`Support beam: ${Math.round(sectionModel.supportBeamDepthM * 1000)}x${Math.round(sectionModel.supportBeamWidthM * 1000)}mm`}</span>
+              <span className={styles.modulePlanStat}>{`Gutter: ${Math.round(sectionModel.gutterDepthM * 1000)}x${Math.round(sectionModel.gutterWidthM * 1000)}mm`}</span>
+              {typeof sectionModel.ridgeHeightM === 'number' ? (
+                <span className={styles.modulePlanStat}>{`Ridge beam: ${Math.round(sectionModel.ridgeBeamDepthM * 1000)}x${Math.round(sectionModel.ridgeBeamWidthM * 1000)}mm`}</span>
+              ) : null}
               {typeof sectionModel.ridgeHeightM === 'number' ? (
                 <span className={styles.modulePlanStat}>{`Ridge: ${formatMetres(sectionModel.ridgeHeightM)}`}</span>
               ) : null}
-              {sectionModel.overhangEnabled && sectionModel.overhangAmountM > 0 ? (
-                <span className={styles.modulePlanStat}>{`Overhang: ${formatMetres(sectionModel.overhangAmountM)}`}</span>
+              {sectionOverhangDisplayM > 0 ? (
+                <span className={styles.modulePlanStat}>{`Overhang: ${formatMetres(sectionOverhangDisplayM)}`}</span>
               ) : null}
               {sectionModel.boxPerimeterEnabled && sectionModel.boxRiseM ? (
                 <span className={styles.modulePlanStat}>{`Box fall: ${formatMetres(sectionModel.boxRiseM)}`}</span>
@@ -160,6 +193,23 @@ export default function ModuleViewsCard({
           <p className={styles.moduleViewsStateText}>{stateText}</p>
         )}
         {statusDetail ? <p className={styles.moduleViewsStateDetail}>{statusDetail}</p> : null}
+        {activeConsistency ? (
+          <p className={activeConsistency.level === 'ok' ? styles.moduleViewsConsistencyOk : styles.moduleViewsConsistencyWarn}>
+            {activeConsistency.summary}
+          </p>
+        ) : null}
+        {activeConsistency && activeConsistency.level === 'warn' ? (
+          <div className={styles.moduleViewsConsistencyList}>
+            {activeConsistency.details.slice(0, 4).map((detail, idx) => (
+              <p key={`${detail}-${idx}`} className={styles.moduleViewsConsistencyItem}>
+                {detail}
+              </p>
+            ))}
+            {activeConsistency.details.length > 4 ? (
+              <p className={styles.moduleViewsConsistencyItem}>{`+${activeConsistency.details.length - 4} more`}</p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className={styles.moduleViewsMeta}>
@@ -201,6 +251,234 @@ function roofTypeLabel(roofType: ModulePlanModel['roofType']): string {
   return 'Pitched';
 }
 
+function summariseConsistency(issues: string[]): GeometryConsistency {
+  if (issues.length === 0) {
+    return {
+      level: 'ok',
+      summary: 'Geometry consistency checks passed.',
+      details: [],
+    };
+  }
+  return {
+    level: 'warn',
+    summary: `${issues.length} geometry consistency issue${issues.length === 1 ? '' : 's'} detected.`,
+    details: issues,
+  };
+}
+
+function checkPlanConsistency(model: ModulePlanModel): GeometryConsistency {
+  const issues: string[] = [];
+  const tolM = 0.02;
+  const spacingTolM = 0.03;
+
+  if (!(model.lengthA > 0)) issues.push('A length must be > 0.');
+  if (!(model.spanA > 0)) issues.push('A span must be > 0.');
+  if (model.overhangEnabled && model.overhangAmountM >= model.spanA - 1e-6) {
+    issues.push(`Overhang ${formatMetres(model.overhangAmountM)} is not less than span ${formatMetres(model.spanA)}.`);
+  }
+
+  if (model.rafterPositionsA.length !== model.rafterCountA) {
+    issues.push(`Rafter count mismatch: positions=${model.rafterPositionsA.length}, count=${model.rafterCountA}.`);
+  }
+  if (model.rafterPositionsA.length >= 2) {
+    const start = model.rafterPositionsA[0] ?? 0;
+    const end = model.rafterPositionsA[model.rafterPositionsA.length - 1] ?? 0;
+    if (Math.abs(start) > tolM || Math.abs(end - model.lengthA) > tolM) {
+      issues.push('Rafter extents do not align with A length bounds.');
+    }
+
+    const spacings = model.rafterPositionsA.slice(1).map((pos, idx) => pos - (model.rafterPositionsA[idx] ?? 0));
+    const maxSpacing = Math.max(...spacings);
+    if (maxSpacing > model.rafterMaxSpacingM + 1e-6) {
+      issues.push(`Rafter spacing exceeds max (${formatMetres(maxSpacing)} > ${formatMetres(model.rafterMaxSpacingM)}).`);
+    }
+    const maxSpacingDelta = Math.max(...spacings.map((spacing) => Math.abs(spacing - model.rafterSpacingA)));
+    if (maxSpacingDelta > spacingTolM) {
+      issues.push(`Rafter spacing is non-uniform beyond tolerance (${formatMetres(maxSpacingDelta)}).`);
+    }
+  }
+
+  if (model.houseConnectionType === 'soffit' && model.soffitBracketPositionsA.length >= 2) {
+    const start = model.soffitBracketPositionsA[0] ?? 0;
+    const end = model.soffitBracketPositionsA[model.soffitBracketPositionsA.length - 1] ?? 0;
+    if (Math.abs(start - model.soffitBracketOffsetM) > tolM || Math.abs(end - (model.lengthA - model.soffitBracketOffsetM)) > tolM) {
+      issues.push('Soffit bracket start/end offsets do not match configured offset.');
+    }
+    const bracketSpacings = model.soffitBracketPositionsA.slice(1).map((pos, idx) => pos - (model.soffitBracketPositionsA[idx] ?? 0));
+    if (bracketSpacings.some((spacing) => spacing > model.soffitBracketMaxSpacingM + 1e-6)) {
+      issues.push('Soffit bracket spacing exceeds configured maximum.');
+    }
+  }
+
+  if (model.roofType === 'hip_corner' && model.lengthB && model.rafterPositionsB) {
+    if (model.rafterPositionsB.length !== (model.rafterCountB ?? model.rafterPositionsB.length)) {
+      issues.push('Hip corner B rafter count mismatch.');
+    }
+    if (model.rafterPositionsB.length >= 2) {
+      const start = model.rafterPositionsB[0] ?? 0;
+      const end = model.rafterPositionsB[model.rafterPositionsB.length - 1] ?? 0;
+      if (Math.abs(start) > tolM || Math.abs(end - model.lengthB) > tolM) {
+        issues.push('Hip corner B rafter extents do not align with B length.');
+      }
+    }
+  }
+
+  return summariseConsistency(issues);
+}
+
+function checkSectionConsistency(model: ModuleSectionModel): GeometryConsistency {
+  const issues: string[] = [];
+  const pitchTolDeg = 0.35;
+  const heightTolM = 0.03;
+
+  if (!(model.spanA > 0)) issues.push('Span must be > 0.');
+  if (model.leftEdgeHeightM < 0 || model.rightEdgeHeightM < 0) issues.push('Post underside heights must be non-negative.');
+
+  const overhangM = model.sectionKind === 'mono' && model.overhangEnabled ? Math.max(0, model.overhangAmountM) : 0;
+  if (overhangM > model.spanA + 1e-6) {
+    issues.push(`Overhang ${formatMetres(overhangM)} exceeds span ${formatMetres(model.spanA)}.`);
+  }
+
+  const supportXFromHouseM = model.sectionKind === 'mono' ? model.spanA - overhangM : model.spanA;
+  if (model.sectionKind === 'mono' && overhangM > 0 && supportXFromHouseM <= 0) {
+    issues.push('Support position is non-positive after overhang.');
+  }
+
+  if (model.sectionKind === 'mono' && model.spanA > 0) {
+    const outerGutterUndersideM = sectionOuterGutterUndersideM(model);
+    const fallM = outerGutterUndersideM - model.leftEdgeHeightM;
+    const impliedPitchDeg = (Math.atan(Math.abs(fallM) / model.spanA) * 180) / Math.PI;
+    if (Math.abs(impliedPitchDeg - model.pitchDeg) > pitchTolDeg) {
+      issues.push(`Pitch mismatch: model ${model.pitchDeg.toFixed(2)} deg vs implied ${impliedPitchDeg.toFixed(2)} deg.`);
+    }
+
+    if (model.slopeDirection === 'away_from_house' && outerGutterUndersideM > model.leftEdgeHeightM + heightTolM) {
+      issues.push('Slope direction says away from house, but outer underside is higher than house underside.');
+    }
+    if (model.slopeDirection === 'toward_house' && outerGutterUndersideM < model.leftEdgeHeightM - heightTolM) {
+      issues.push('Slope direction says toward house, but outer underside is lower than house underside.');
+    }
+  }
+
+  if (model.sectionKind === 'gable' && typeof model.ridgeHeightM === 'number' && Number.isFinite(model.ridgeHeightM)) {
+    const eaveHeight = Math.max(model.leftEdgeHeightM, model.rightEdgeHeightM);
+    const impliedRiseM = Math.tan((model.pitchDeg * Math.PI) / 180) * (model.spanA / 2);
+    const expectedRidgeM = eaveHeight + impliedRiseM;
+    if (Math.abs(expectedRidgeM - model.ridgeHeightM) > heightTolM) {
+      issues.push(`Ridge height mismatch: model ${formatMetres(model.ridgeHeightM)} vs implied ${formatMetres(expectedRidgeM)}.`);
+    }
+  }
+
+  return summariseConsistency(issues);
+}
+
+function sectionOverhangM(model: ModuleSectionModel): number {
+  return model.sectionKind === 'mono' && model.overhangEnabled ? Math.max(0, Math.min(model.overhangAmountM, Math.max(0, model.spanA - 0.01))) : 0;
+}
+
+function sectionSupportXFromHouseM(model: ModuleSectionModel): number {
+  const overhangM = sectionOverhangM(model);
+  return model.sectionKind === 'mono' ? Math.max(0.05, model.spanA - overhangM) : model.spanA;
+}
+
+function sectionLedgerBeamDepthM(model: ModuleSectionModel): number {
+  return Math.max(0.03, Number.isFinite(model.ledgerBeamDepthM) ? model.ledgerBeamDepthM : 0.1);
+}
+
+function sectionLedgerBeamWidthM(model: ModuleSectionModel): number {
+  return Math.max(0.02, Number.isFinite(model.ledgerBeamWidthM) ? model.ledgerBeamWidthM : 0.05);
+}
+
+function sectionSupportBeamDepthM(model: ModuleSectionModel): number {
+  return Math.max(0.03, Number.isFinite(model.supportBeamDepthM) ? model.supportBeamDepthM : 0.15);
+}
+
+function sectionSupportBeamWidthM(model: ModuleSectionModel): number {
+  return Math.max(0.02, Number.isFinite(model.supportBeamWidthM) ? model.supportBeamWidthM : 0.05);
+}
+
+function sectionRidgeBeamDepthM(model: ModuleSectionModel): number {
+  return Math.max(0.03, Number.isFinite(model.ridgeBeamDepthM) ? model.ridgeBeamDepthM : 0.15);
+}
+
+function sectionRidgeBeamWidthM(model: ModuleSectionModel): number {
+  return Math.max(0.02, Number.isFinite(model.ridgeBeamWidthM) ? model.ridgeBeamWidthM : 0.05);
+}
+
+type MonoDatumResolution = {
+  rightEdgeRole: 'gutter' | 'support';
+  supportUndersideM: number;
+  outerGutterUndersideM: number;
+};
+
+function resolveMonoDatums(model: ModuleSectionModel): MonoDatumResolution {
+  const overhangM = sectionOverhangM(model);
+  if (model.sectionKind !== 'mono' || overhangM <= 0) {
+    return {
+      rightEdgeRole: 'gutter',
+      supportUndersideM: model.rightEdgeHeightM,
+      outerGutterUndersideM: model.rightEdgeHeightM,
+    };
+  }
+
+  const spanM = Math.max(model.spanA, 0.001);
+  const supportXFromHouseM = sectionSupportXFromHouseM(model);
+  const leftUndersideM = model.leftEdgeHeightM;
+  const rightRawM = model.rightEdgeHeightM;
+  const pitchRad = (model.pitchDeg * Math.PI) / 180;
+  const fallPerM = Math.tan(pitchRad) * (model.slopeDirection === 'toward_house' ? 1 : -1);
+  const expectedSupportUndersideM = leftUndersideM + fallPerM * supportXFromHouseM;
+  const expectedOuterUndersideM = leftUndersideM + fallPerM * spanM;
+  const errAsSupport = Math.abs(rightRawM - expectedSupportUndersideM);
+  const errAsGutter = Math.abs(rightRawM - expectedOuterUndersideM);
+
+  // Derived right post height is often the support-post underside when overhang is enabled.
+  const treatRightAsSupport = errAsSupport + 0.03 < errAsGutter;
+  if (treatRightAsSupport) {
+    return {
+      rightEdgeRole: 'support',
+      supportUndersideM: rightRawM,
+      outerGutterUndersideM: Math.max(0, expectedOuterUndersideM),
+    };
+  }
+
+  const tSupport = clamp(supportXFromHouseM / spanM, 0, 1);
+  return {
+    rightEdgeRole: 'gutter',
+    supportUndersideM: Math.max(0, leftUndersideM + (rightRawM - leftUndersideM) * tSupport),
+    outerGutterUndersideM: rightRawM,
+  };
+}
+
+function sectionMonoRightEdgeRole(model: ModuleSectionModel): 'gutter' | 'support' {
+  return resolveMonoDatums(model).rightEdgeRole;
+}
+
+function sectionOuterGutterUndersideM(model: ModuleSectionModel): number {
+  if (model.sectionKind !== 'mono') return model.rightEdgeHeightM;
+  return resolveMonoDatums(model).outerGutterUndersideM;
+}
+
+function sectionMonoRafterUndersideAtM(model: ModuleSectionModel, xFromHouseM: number): number {
+  const spanM = Math.max(model.spanA, 0.001);
+  const t = clamp(xFromHouseM / spanM, 0, 1);
+  const houseRafterUndersideM = model.leftEdgeHeightM + sectionLedgerBeamDepthM(model);
+  const outerRafterUndersideM = sectionOuterGutterUndersideM(model) + model.gutterDepthM;
+  return houseRafterUndersideM + (outerRafterUndersideM - houseRafterUndersideM) * t;
+}
+
+function sectionSupportUndersideM(model: ModuleSectionModel): number {
+  if (model.sectionKind !== 'mono') return model.rightEdgeHeightM;
+  const resolved = resolveMonoDatums(model);
+  const overhangM = sectionOverhangM(model);
+  if (overhangM <= 0) return resolved.supportUndersideM;
+
+  const supportXFromHouseM = sectionSupportXFromHouseM(model);
+  const supportTopM = sectionMonoRafterUndersideAtM(model, supportXFromHouseM);
+  const supportFromStackM = Math.max(0, supportTopM - sectionSupportBeamDepthM(model));
+  return supportFromStackM;
+}
+
 function toPointsAttr(points: Point[]): string {
   return points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
 }
@@ -228,6 +506,36 @@ function sectionMemberPolygon(x1: number, y1: number, x2: number, y2: number, de
   ];
 }
 
+function sectionMemberPolygonPlumbCuts(
+  x1: number,
+  yUnder1: number,
+  x2: number,
+  yUnder2: number,
+  depthNormalPx: number,
+): { points: Point[]; yTop1: number; yTop2: number } {
+  const dx = x2 - x1;
+  if (Math.abs(dx) < 1e-6) {
+    const points = sectionMemberPolygon(x1, yUnder1, x2, yUnder2, depthNormalPx);
+    const yTop1 = Math.min(...points.map((point) => point.y));
+    const yTop2 = yTop1;
+    return { points, yTop1, yTop2 };
+  }
+  const slope = (yUnder2 - yUnder1) / dx;
+  const deltaY = depthNormalPx * Math.sqrt(1 + slope * slope);
+  const yTop1 = yUnder1 - deltaY;
+  const yTop2 = yUnder2 - deltaY;
+  return {
+    points: [
+      { x: x1, y: yUnder1 },
+      { x: x2, y: yUnder2 },
+      { x: x2, y: yTop2 },
+      { x: x1, y: yTop1 },
+    ],
+    yTop1,
+    yTop2,
+  };
+}
+
 function hipCornerInnerPoints(x: number, y: number, aW: number, bW: number, splitY: number, bottomY: number, inset: number): Point[] {
   const t = Math.max(0.2, inset);
   return [
@@ -246,7 +554,7 @@ function projectLinearPositions(positionsM: number[] | null, lengthM: number | n
 }
 
 function LegendRow({ detailMode, items }: { detailMode: ModuleDetailMode; items: string[] }) {
-  if (detailMode !== 'technical') return null;
+  if (detailMode === 'clean') return null;
   return (
     <div className={styles.moduleViewsLegend} aria-label="Drawing legend">
       {items.map((item) => (
@@ -256,6 +564,87 @@ function LegendRow({ detailMode, items }: { detailMode: ModuleDetailMode; items:
         </span>
       ))}
     </div>
+  );
+}
+
+function DiagnosticsOverlay({
+  title,
+  lines,
+  level,
+  x = 8.5,
+  y = 9.5,
+}: {
+  title: string;
+  lines: string[];
+  level: GeometryConsistency['level'];
+  x?: number;
+  y?: number;
+}) {
+  const pad = 1.4;
+  const lineStep = 2.8;
+  const width = 50;
+  const lineCount = Math.max(1, lines.length);
+  const height = pad * 2 + 2.6 + lineCount * lineStep;
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect x={0} y={0} width={width} height={height} className={level === 'ok' ? styles.moduleDiagPanelOk : styles.moduleDiagPanelWarn} />
+      <text x={pad} y={pad + 2.2} className={styles.moduleDiagTitle}>
+        {title}
+      </text>
+      {lines.map((line, idx) => (
+        <text key={`${line}-${idx}`} x={pad} y={pad + 4.8 + lineStep * idx} className={styles.moduleDiagText}>
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
+type DeltaRow = {
+  metric: string;
+  engine: number;
+  view: number;
+  tolerance: number;
+  unit: 'm' | 'deg';
+};
+
+function formatDeltaCell(value: number, unit: DeltaRow['unit']): string {
+  const digits = unit === 'deg' ? 2 : 3;
+  return `${value.toFixed(digits)}${unit}`;
+}
+
+function DeltaTableOverlay({
+  title,
+  rows,
+  x = 8.5,
+  y = 33.0,
+}: {
+  title: string;
+  rows: DeltaRow[];
+  x?: number;
+  y?: number;
+}) {
+  const pad = 1.2;
+  const rowStep = 2.7;
+  const width = 69;
+  const height = pad * 2 + 3.2 + rows.length * rowStep;
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect x={0} y={0} width={width} height={height} className={styles.moduleDeltaPanel} />
+      <text x={pad} y={pad + 2.2} className={styles.moduleDeltaTitle}>
+        {title}
+      </text>
+      {rows.map((row, idx) => {
+        const delta = row.view - row.engine;
+        const pass = Math.abs(delta) <= row.tolerance + 1e-9;
+        const yRow = pad + 4.6 + rowStep * idx;
+        return (
+          <text key={`${row.metric}-${idx}`} x={pad} y={yRow} className={pass ? styles.moduleDeltaTextPass : styles.moduleDeltaTextFail}>
+            {`${row.metric}: e=${formatDeltaCell(row.engine, row.unit)} v=${formatDeltaCell(row.view, row.unit)} d=${formatDeltaCell(delta, row.unit)} tol=${formatDeltaCell(row.tolerance, row.unit)} ${pass ? 'ok' : 'fail'}`}
+          </text>
+        );
+      })}
+    </g>
   );
 }
 
@@ -327,8 +716,19 @@ function ArrowHead({ x, y, direction }: { x: number; y: number; direction: 'up' 
   return <polygon points={`${x.toFixed(2)},${(y + 1.5).toFixed(2)} ${(x - 1.3).toFixed(2)},${(y - 1.1).toFixed(2)} ${(x + 1.3).toFixed(2)},${(y - 1.1).toFixed(2)}`} className={styles.moduleFallHead} />;
 }
 
-function PlanSvg({ model, detailMode, idBase }: { model: ModulePlanModel; detailMode: ModuleDetailMode; idBase: string }) {
-  const technical = detailMode === 'technical';
+function PlanSvg({
+  model,
+  detailMode,
+  idBase,
+  consistency,
+}: {
+  model: ModulePlanModel;
+  detailMode: ModuleDetailMode;
+  idBase: string;
+  consistency: GeometryConsistency | null;
+}) {
+  const diagnostic = detailMode === 'diagnostic';
+  const technical = detailMode === 'technical' || diagnostic;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const totalW = isHipCorner ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
@@ -401,10 +801,34 @@ function PlanSvg({ model, detailMode, idBase }: { model: ModulePlanModel; detail
 
   const yTopInner = y + memberW;
   const yBottomInner = y + aH - gutterW;
-  const overhangDepth = model.overhangEnabled ? Math.max(0.3, model.overhangAmountM * scale) : 0;
-  const overhangY = isHipCorner ? bottomY : y + aH;
+  const overhangFrameDepth = isHipCorner ? bH : aH;
+  const overhangDepth = model.overhangEnabled
+    ? Math.min(Math.max(0.3, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - memberW * 2))
+    : 0;
+  const overhangY = isHipCorner ? bottomY - overhangDepth : y + aH - overhangDepth;
   const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - memberW * 2);
   const overhangX = x + memberW;
+  const viewLengthA = aW / scale;
+  const viewSpanA = aH / scale;
+  const viewOverhangM = model.overhangEnabled ? overhangDepth / scale : 0;
+  const viewRafterSpacingA =
+    rafterXsA.length >= 2
+      ? (rafterXsA[rafterXsA.length - 1]! - rafterXsA[0]!) / (rafterXsA.length - 1) / scale
+      : model.rafterSpacingA;
+  const diagLines = [
+    `Source: ${model.dataSource === 'derived' ? 'derived' : 'input fallback'}`,
+    `A: ${formatMetres(model.lengthA)} x ${formatMetres(model.spanA)}`,
+    `Rafters: ${model.rafterCountA} @ ${formatMetres(model.rafterSpacingA)} c/c`,
+    `Max c/c: ${formatMetres(model.rafterMaxSpacingM)}`,
+    `Overhang: ${model.overhangEnabled ? formatMetres(model.overhangAmountM) : 'off'}`,
+    `Checks: ${consistency?.level === 'warn' ? `WARN (${consistency.details.length})` : 'OK'}`,
+  ];
+  const planDeltaRows: DeltaRow[] = [
+    { metric: 'A length', engine: model.lengthA, view: viewLengthA, tolerance: 0.01, unit: 'm' },
+    { metric: 'A span', engine: model.spanA, view: viewSpanA, tolerance: 0.01, unit: 'm' },
+    { metric: 'Overhang', engine: model.overhangEnabled ? model.overhangAmountM : 0, view: viewOverhangM, tolerance: 0.02, unit: 'm' },
+    { metric: 'Rafter c/c', engine: model.rafterSpacingA, view: viewRafterSpacingA, tolerance: 0.01, unit: 'm' },
+  ];
 
   return (
     <svg viewBox="0 0 120 90" role="img" aria-label="Module plan view" className={styles.modulePlanSvg}>
@@ -538,28 +962,65 @@ function PlanSvg({ model, detailMode, idBase }: { model: ModulePlanModel; detail
           </>
         );
       })() : null}
+
+      {diagnostic ? <DiagnosticsOverlay title="Plan Diagnostics" lines={diagLines} level={consistency?.level ?? 'ok'} /> : null}
+      {diagnostic ? <DeltaTableOverlay title="Plan Delta (engine vs view)" rows={planDeltaRows} /> : null}
     </svg>
   );
 }
 
-function SectionSvg({ model, detailMode }: { model: ModuleSectionModel; detailMode: ModuleDetailMode }) {
-  const technical = detailMode === 'technical';
-  const overhangM = model.sectionKind === 'mono' && model.overhangEnabled ? Math.max(0, model.overhangAmountM) : 0;
-  const totalSpanM = model.spanA + overhangM;
+function SectionSvg({
+  model,
+  detailMode,
+  consistency,
+}: {
+  model: ModuleSectionModel;
+  detailMode: ModuleDetailMode;
+  consistency: GeometryConsistency | null;
+}) {
+  const diagnostic = detailMode === 'diagnostic';
+  const technical = detailMode === 'technical' || diagnostic;
+  const overhangM = sectionOverhangM(model);
+  const totalSpanM = Math.max(model.spanA, 0.001);
+  const supportXFromHouseM = sectionSupportXFromHouseM(model);
+  const ledgerBeamDepthM = sectionLedgerBeamDepthM(model);
+  const ledgerBeamWidthM = sectionLedgerBeamWidthM(model);
+  const supportBeamDepthM = sectionSupportBeamDepthM(model);
+  const supportBeamWidthM = sectionSupportBeamWidthM(model);
+  const ridgeBeamDepthM = sectionRidgeBeamDepthM(model);
+  const ridgeBeamWidthM = sectionRidgeBeamWidthM(model);
+  const rightEaveBeamDepthM = model.sectionKind === 'gable' ? ledgerBeamDepthM : supportBeamDepthM;
+  const rightEaveBeamWidthM = model.sectionKind === 'gable' ? ledgerBeamWidthM : supportBeamWidthM;
+  const outerGutterUndersideM = sectionOuterGutterUndersideM(model);
+  const supportUndersideM = sectionSupportUndersideM(model);
+  const monoRightRole = model.sectionKind === 'mono' ? sectionMonoRightEdgeRole(model) : null;
+  const houseLedgerUndersideM = model.leftEdgeHeightM;
+  const houseRafterUndersideM = houseLedgerUndersideM + ledgerBeamDepthM;
+  const outerRafterUndersideM = outerGutterUndersideM + model.gutterDepthM;
+  const supportRafterUndersideM =
+    model.sectionKind === 'mono'
+      ? sectionMonoRafterUndersideAtM(model, supportXFromHouseM)
+      : model.rightEdgeHeightM + rightEaveBeamDepthM;
+  const supportBeamTopM = supportUndersideM + supportBeamDepthM;
 
   const chartWidth = 84;
   const topMargin = 16;
   const yGround = 72;
   const safeSpanM = Math.max(totalSpanM, 0.1);
 
-  const slopeHeightPerM = model.spanA > 0 ? (model.rightEdgeHeightM - model.leftEdgeHeightM) / model.spanA : 0;
-  const overhangHeightM = model.rightEdgeHeightM + slopeHeightPerM * overhangM;
-
   const heights = [
-    model.leftEdgeHeightM,
+    houseLedgerUndersideM,
     model.rightEdgeHeightM,
-    overhangM > 0 ? overhangHeightM : null,
+    supportUndersideM,
+    outerGutterUndersideM,
+    houseRafterUndersideM,
+    supportRafterUndersideM,
+    supportBeamTopM,
+    outerRafterUndersideM,
+    houseRafterUndersideM + model.rafterDepthM,
+    outerRafterUndersideM + model.rafterDepthM,
     typeof model.ridgeHeightM === 'number' ? model.ridgeHeightM : null,
+    typeof model.ridgeHeightM === 'number' ? model.ridgeHeightM + ridgeBeamDepthM + model.rafterDepthM : null,
   ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const maxHeightM = Math.max(0.1, ...(heights.length ? heights : [0.1]));
 
@@ -570,86 +1031,212 @@ function SectionSvg({ model, detailMode }: { model: ModuleSectionModel; detailMo
 
   const postW = clamp(model.rafterWidthM * scale, 0.9, 2.8);
   const rafterDepth = clamp(model.rafterDepthM * scale, 1.1, 6.4);
-  const gutterDepth = clamp(model.gutterDepthM * scale, 1.2, 6.2);
   const gutterWidth = clamp(model.gutterWidthM * scale, 0.9, 4.4);
-  const supportDepth = clamp(model.rafterWidthM * scale, 0.7, 2.3);
+  const ledgerDepth = clamp(ledgerBeamDepthM * scale, 0.9, 5.4);
+  const ledgerWidth = clamp(ledgerBeamWidthM * scale, 0.8, 3.8);
+  const supportCapDepth = clamp(supportBeamDepthM * scale, 0.9, 5.4);
+  const supportCapWidth = clamp(supportBeamWidthM * scale, 0.8, 3.8);
+  const rightEaveBeamDepth = clamp(rightEaveBeamDepthM * scale, 0.9, 5.4);
+  const rightEaveBeamWidth = clamp(rightEaveBeamWidthM * scale, 0.8, 3.8);
+  const ridgeBeamDepth = clamp(ridgeBeamDepthM * scale, 0.9, 5.4);
+  const ridgeBeamWidth = clamp(ridgeBeamWidthM * scale, 0.8, 3.8);
 
   const drawWidth = safeSpanM * scale;
   const xLeft = (120 - drawWidth) / 2;
-  const xMainRight = xLeft + model.spanA * scale;
-  const xRight = xLeft + safeSpanM * scale;
-  const ridgeX = (xLeft + xMainRight) / 2;
+  const xRight = xLeft + model.spanA * scale;
+  const xSupport = model.sectionKind === 'mono' ? xLeft + supportXFromHouseM * scale : xRight;
+  const ridgeX = (xLeft + xRight) / 2;
   const yForHeight = (heightM: number) => yGround - Math.max(0, heightM) * scale;
 
-  const yLeft = yForHeight(model.leftEdgeHeightM);
-  const yMainRight = yForHeight(model.rightEdgeHeightM);
-  const yRight = yForHeight(overhangM > 0 ? overhangHeightM : model.rightEdgeHeightM);
-  const yRidge = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM) : null;
-  const outerX = overhangM > 0 ? xRight : xMainRight;
-  const outerY = overhangM > 0 ? yRight : yMainRight;
+  const yHouseUnder = yForHeight(houseLedgerUndersideM);
+  const ySupportUnder = yForHeight(model.sectionKind === 'mono' ? supportUndersideM : model.rightEdgeHeightM);
+  const yOuterGutterUnder = yForHeight(outerGutterUndersideM);
+  const yHouseRafterUnder = yForHeight(houseRafterUndersideM);
+  const yOuterRafterUnder = yForHeight(outerRafterUndersideM);
+  const ySupportBeamTop = yForHeight(supportBeamTopM);
+  const yRidgeUnder = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM) : null;
+  const yRidgeBeamTop = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM + ridgeBeamDepthM) : null;
+  const supportPostTopY = ySupportUnder;
+  const supportCapTopY = ySupportBeamTop;
+  const gutterTopY = yOuterRafterUnder;
+  const ledgerX = model.sectionKind === 'gable' ? xLeft - ledgerWidth / 2 : xLeft - postW / 2;
+  const ledgerY = yForHeight(houseLedgerUndersideM + ledgerBeamDepthM);
+  const rightEaveX = xRight - rightEaveBeamWidth / 2;
+  const rightEaveY = yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM);
 
   const leftDimX = Math.max(6, xLeft - 7.4);
-  const rightDimX = Math.min(114, xMainRight + 7.4);
-  const spanDimY = Math.min(87, yGround + 6.3);
+  const rightDimX = Math.min(114, xRight + 8.2);
+  const spanAnchorLeftY = yHouseUnder;
+  const spanAnchorSupportY = ySupportUnder;
+  const spanAnchorRightY = yOuterGutterUnder;
+  const spanDatumY = Math.max(spanAnchorLeftY, spanAnchorSupportY, spanAnchorRightY);
+  const spanDimY = Math.min(88.5, Math.max(yGround + 9.0, spanDatumY + 7.4));
+  const overhangDimY = Math.max(spanAnchorRightY + 3.8, spanDimY - 4.8);
 
-  const monoRoofPoly = sectionMemberPolygon(xLeft, yLeft, xMainRight, yMainRight, rafterDepth);
-  const overhangRoofPoly = overhangM > 0 ? sectionMemberPolygon(xMainRight, yMainRight, xRight, yRight, rafterDepth) : null;
-  const gableLeftRoofPoly = model.sectionKind === 'gable' && yRidge !== null ? sectionMemberPolygon(xLeft, yLeft, ridgeX, yRidge, rafterDepth) : null;
-  const gableRightRoofPoly = model.sectionKind === 'gable' && yRidge !== null ? sectionMemberPolygon(ridgeX, yRidge, xMainRight, yMainRight, rafterDepth) : null;
-  const supportPoly = overhangM > 0 ? sectionMemberPolygon(xMainRight, yMainRight + rafterDepth + 0.6, xRight, yRight + rafterDepth + 0.6, supportDepth) : null;
+  const mainRoofNormal = segmentDownNormal(xLeft, yHouseRafterUnder, xRight, yOuterRafterUnder);
+  const ridgeLeftX = ridgeX - ridgeBeamWidth / 2;
+  const ridgeRightX = ridgeX + ridgeBeamWidth / 2;
 
-  const mainRoofNormal = segmentDownNormal(xLeft, yLeft, xMainRight, yMainRight);
-  const depthDimAnchorX = xLeft + (xMainRight - xLeft) * 0.24;
-  const depthDimAnchorY = yLeft + (yMainRight - yLeft) * 0.24;
-  const depthDimTop: Point = { x: depthDimAnchorX, y: depthDimAnchorY };
-  const depthDimBottom: Point = {
-    x: depthDimAnchorX + mainRoofNormal.nx * rafterDepth,
-    y: depthDimAnchorY + mainRoofNormal.ny * rafterDepth,
+  const monoRoofGeom =
+    model.sectionKind === 'mono' ? sectionMemberPolygonPlumbCuts(xLeft, yHouseRafterUnder, xRight, yOuterRafterUnder, rafterDepth) : null;
+
+  const gableLeftRoofGeom = (() => {
+    if (model.sectionKind !== 'gable' || yRidgeUnder === null) return null;
+    return sectionMemberPolygonPlumbCuts(xLeft, yHouseRafterUnder, ridgeLeftX, yRidgeUnder, rafterDepth);
+  })();
+
+  const gableRightRoofGeom = (() => {
+    if (model.sectionKind !== 'gable' || yRidgeUnder === null) return null;
+    return sectionMemberPolygonPlumbCuts(ridgeRightX, yRidgeUnder, xRight, yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM), rafterDepth);
+  })();
+
+  const monoSupportSplice = (() => {
+    if (model.sectionKind !== 'mono' || overhangM <= 0 || !monoRoofGeom || xRight - xLeft <= 1e-6) return null;
+    const t = clamp((xSupport - xLeft) / (xRight - xLeft), 0, 1);
+    const yUnder = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * t;
+    const topStart = monoRoofGeom.points[3]!;
+    const topEnd = monoRoofGeom.points[2]!;
+    const yTop = topStart.y + (topEnd.y - topStart.y) * t;
+    return { yTop, yUnder };
+  })();
+
+  const impliedPitchDeg =
+    model.sectionKind === 'mono' && model.spanA > 0
+      ? (Math.atan(Math.abs(outerRafterUndersideM - houseRafterUndersideM) / model.spanA) * 180) / Math.PI
+      : model.pitchDeg;
+  const supportEngineDatumM =
+    model.sectionKind === 'mono' && overhangM > 0 && monoRightRole === 'support' ? model.rightEdgeHeightM : supportUndersideM;
+  const rawRightDatumViewM =
+    model.sectionKind === 'mono' && overhangM > 0 && monoRightRole === 'support' ? (yGround - ySupportUnder) / scale : (yGround - yOuterGutterUnder) / scale;
+  const diagLines = [
+    `Source: ${model.dataSource === 'derived' ? 'derived' : 'input fallback'}`,
+    `Span: ${formatMetres(model.spanA)} | support at: ${formatMetres(supportXFromHouseM)}`,
+    `Overhang: ${overhangM > 0 ? formatMetres(overhangM) : 'off'}`,
+    ...(model.sectionKind === 'mono' && overhangM > 0 ? [`Right datum role: ${monoRightRole === 'support' ? 'support post' : 'outer gutter'}`] : []),
+    `Ledger U/S: ${formatMetres(houseLedgerUndersideM)} | Support U/S: ${formatMetres(model.sectionKind === 'mono' ? supportUndersideM : model.rightEdgeHeightM)}`,
+    `Outer gutter U/S: ${formatMetres(outerGutterUndersideM)}`,
+    `Pitch: ${model.pitchDeg.toFixed(2)} deg | implied: ${impliedPitchDeg.toFixed(2)} deg`,
+    `Checks: ${consistency?.level === 'warn' ? `WARN (${consistency.details.length})` : 'OK'}`,
+  ];
+  const sectionDeltaRows: DeltaRow[] = [
+    { metric: 'Span', engine: model.spanA, view: (xRight - xLeft) / scale, tolerance: 0.01, unit: 'm' },
+    { metric: 'Support position', engine: supportXFromHouseM, view: (xSupport - xLeft) / scale, tolerance: 0.01, unit: 'm' },
+    { metric: 'Overhang', engine: overhangM, view: (xRight - xSupport) / scale, tolerance: 0.01, unit: 'm' },
+    { metric: 'Pitch', engine: model.pitchDeg, view: impliedPitchDeg, tolerance: 0.1, unit: 'deg' },
+    { metric: 'Ledger U/S', engine: houseLedgerUndersideM, view: (yGround - yHouseUnder) / scale, tolerance: 0.01, unit: 'm' },
+    { metric: 'Support U/S', engine: model.sectionKind === 'mono' ? supportEngineDatumM : model.rightEdgeHeightM, view: (yGround - ySupportUnder) / scale, tolerance: 0.01, unit: 'm' },
+    { metric: 'Outer gutter U/S', engine: outerGutterUndersideM, view: (yGround - yOuterGutterUnder) / scale, tolerance: 0.01, unit: 'm' },
+    ...(model.sectionKind === 'mono' && overhangM > 0
+      ? [{ metric: 'Right datum raw', engine: model.rightEdgeHeightM, view: rawRightDatumViewM, tolerance: 0.01, unit: 'm' as const }]
+      : []),
+    { metric: 'Ledger beam depth', engine: ledgerBeamDepthM, view: ledgerDepth / scale, tolerance: 0.005, unit: 'm' },
+    ...(model.sectionKind === 'mono'
+      ? [{ metric: 'Support beam depth', engine: supportBeamDepthM, view: supportCapDepth / scale, tolerance: 0.005, unit: 'm' as const }]
+      : [{ metric: 'Eave beam depth', engine: rightEaveBeamDepthM, view: rightEaveBeamDepth / scale, tolerance: 0.005, unit: 'm' as const }]),
+    ...(model.sectionKind === 'gable'
+      ? [{ metric: 'Ridge beam depth', engine: ridgeBeamDepthM, view: ridgeBeamDepth / scale, tolerance: 0.005, unit: 'm' as const }]
+      : []),
+  ];
+
+  const depthDimUnderX = xLeft + (xRight - xLeft) * 0.24;
+  const depthDimUnderY = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * 0.24;
+  const depthDimTop: Point = {
+    x: depthDimUnderX - mainRoofNormal.nx * rafterDepth,
+    y: depthDimUnderY - mainRoofNormal.ny * rafterDepth,
   };
+  const depthDimBottom: Point = { x: depthDimUnderX, y: depthDimUnderY };
 
   return (
     <svg viewBox="0 0 120 90" role="img" aria-label="Module section view" className={styles.modulePlanSvg}>
       <rect x={Math.max(8, xLeft - 8)} y={yGround + 1.3} width={Math.min(104, xRight + 8) - Math.max(8, xLeft - 8)} height={8} className={styles.moduleSectionGroundFill} />
       <line x1={Math.max(8, xLeft - 8)} y1={yGround} x2={Math.min(112, xRight + 8)} y2={yGround} className={styles.moduleSectionGround} />
 
-      <rect x={xLeft - postW / 2} y={yLeft} width={postW} height={yGround - yLeft} className={styles.moduleSectionMember} />
-      <rect x={xMainRight - postW / 2} y={yMainRight} width={postW} height={yGround - yMainRight} className={styles.moduleSectionMember} />
-
-      {model.sectionKind === 'gable' && yRidge !== null ? <line x1={ridgeX} y1={yGround} x2={ridgeX} y2={yRidge} className={styles.moduleSectionPostGhost} /> : null}
-
-      {model.sectionKind === 'gable' && yRidge !== null ? (
+      {diagnostic ? (
         <>
-          {gableLeftRoofPoly ? <polygon points={toPointsAttr(gableLeftRoofPoly)} className={styles.moduleSectionMember} /> : null}
-          {gableRightRoofPoly ? <polygon points={toPointsAttr(gableRightRoofPoly)} className={styles.moduleSectionMember} /> : null}
+          <line x1={Math.max(8, xLeft - 7)} y1={yHouseUnder} x2={Math.min(112, xRight + 7)} y2={yHouseUnder} className={styles.moduleDiagDatum} />
+          <text x={Math.max(8, xLeft - 6.6)} y={yHouseUnder - 0.9} className={styles.moduleDiagDatumLabel}>
+            ledger underside datum
+          </text>
+          <line x1={Math.max(8, xLeft - 7)} y1={ySupportUnder} x2={Math.min(112, xRight + 7)} y2={ySupportUnder} className={styles.moduleDiagDatum} />
+          <text x={Math.max(8, xLeft - 6.6)} y={ySupportUnder - 0.9} className={styles.moduleDiagDatumLabel}>
+            support underside datum
+          </text>
+          <line x1={Math.max(8, xLeft - 7)} y1={yOuterGutterUnder} x2={Math.min(112, xRight + 7)} y2={yOuterGutterUnder} className={styles.moduleDiagDatum} />
+          <text x={Math.max(8, xLeft - 6.6)} y={yOuterGutterUnder - 0.9} className={styles.moduleDiagDatumLabel}>
+            gutter underside datum
+          </text>
+        </>
+      ) : null}
+
+      <rect x={xLeft - postW / 2} y={yHouseUnder} width={postW} height={yGround - yHouseUnder} className={styles.moduleSectionMember} />
+      <rect x={xSupport - postW / 2} y={supportPostTopY} width={postW} height={yGround - supportPostTopY} className={styles.moduleSectionMember} />
+      <rect x={ledgerX} y={ledgerY} width={ledgerWidth} height={ledgerDepth} className={styles.moduleSectionLedger} />
+      {model.sectionKind === 'mono' && overhangM > 0 ? (
+        <rect x={xSupport - supportCapWidth / 2} y={supportCapTopY} width={supportCapWidth} height={supportCapDepth} className={styles.moduleSectionOverhangBeam} />
+      ) : model.sectionKind === 'gable' ? (
+        <rect x={rightEaveX} y={rightEaveY} width={rightEaveBeamWidth} height={rightEaveBeamDepth} className={styles.moduleSectionLedger} />
+      ) : null}
+
+      {model.sectionKind === 'gable' && yRidgeUnder !== null ? <line x1={ridgeX} y1={yGround} x2={ridgeX} y2={yRidgeUnder} className={styles.moduleSectionPostGhost} /> : null}
+
+      {model.sectionKind === 'gable' && yRidgeUnder !== null ? (
+        <>
+          {gableLeftRoofGeom ? <polygon points={toPointsAttr(gableLeftRoofGeom.points)} className={styles.moduleSectionMember} /> : null}
+          {gableRightRoofGeom ? <polygon points={toPointsAttr(gableRightRoofGeom.points)} className={styles.moduleSectionMember} /> : null}
+          {yRidgeBeamTop !== null ? (
+            <rect
+              x={ridgeX - ridgeBeamWidth / 2}
+              y={yRidgeBeamTop ?? yRidgeUnder}
+              width={ridgeBeamWidth}
+              height={Math.max(0.2, yRidgeUnder - (yRidgeBeamTop ?? yRidgeUnder))}
+              className={styles.moduleSectionLedger}
+            />
+          ) : null}
         </>
       ) : (
         <>
-          <polygon points={toPointsAttr(monoRoofPoly)} className={styles.moduleSectionMember} />
-          {overhangRoofPoly ? <polygon points={toPointsAttr(overhangRoofPoly)} className={styles.moduleSectionMember} /> : null}
+          {monoRoofGeom ? <polygon points={toPointsAttr(monoRoofGeom.points)} className={styles.moduleSectionMember} /> : null}
         </>
       )}
 
-      <rect x={outerX - gutterWidth / 2} y={outerY + rafterDepth * 0.08} width={gutterWidth} height={gutterDepth} className={styles.moduleSectionGutter} />
+      {monoSupportSplice ? (
+        <line
+          x1={xSupport}
+          y1={monoSupportSplice.yTop}
+          x2={xSupport}
+          y2={monoSupportSplice.yUnder}
+          className={styles.moduleSectionMember}
+        />
+      ) : null}
 
-      {overhangM > 0 ? (
-        <>
-          {supportPoly ? <polygon points={toPointsAttr(supportPoly)} className={styles.moduleSectionOverhangBeam} /> : null}
-          <line x1={xRight} y1={yGround} x2={xRight} y2={yRight} className={styles.moduleSectionOverhangPost} />
-        </>
+      {model.sectionKind === 'mono' ? (
+        <rect
+          x={xRight - gutterWidth}
+          y={gutterTopY}
+          width={gutterWidth}
+          height={Math.max(0.2, yOuterGutterUnder - gutterTopY)}
+          className={styles.moduleSectionGutter}
+        />
       ) : null}
 
       {model.boxPerimeterEnabled ? (
         <>
-          {model.sectionKind === 'gable' && yRidge !== null ? (
+          {model.sectionKind === 'gable' && yRidgeUnder !== null ? (
             <>
-              <line x1={xLeft + 2.4} y1={yLeft + rafterDepth + 1.4} x2={ridgeX} y2={yRidge + rafterDepth + 1.4} className={styles.moduleSectionBoxRoof} />
-              <line x1={ridgeX} y1={yRidge + rafterDepth + 1.4} x2={xMainRight - 2.4} y2={yMainRight + rafterDepth + 1.4} className={styles.moduleSectionBoxRoof} />
+              <line x1={xLeft + 2.4} y1={yHouseRafterUnder + 1.4} x2={ridgeX} y2={yRidgeUnder + 1.4} className={styles.moduleSectionBoxRoof} />
+              <line
+                x1={ridgeX}
+                y1={yRidgeUnder + 1.4}
+                x2={xRight - 2.4}
+                y2={yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM) + 1.4}
+                className={styles.moduleSectionBoxRoof}
+              />
             </>
           ) : (
-            <line x1={xLeft + 2.4} y1={yLeft + rafterDepth + 1.4} x2={xRight - 2.4} y2={yRight + rafterDepth + 1.4} className={styles.moduleSectionBoxRoof} />
+            <line x1={xLeft + 2.4} y1={yHouseRafterUnder + 1.4} x2={xRight - 2.4} y2={yOuterRafterUnder + 1.4} className={styles.moduleSectionBoxRoof} />
           )}
           {technical ? (
-            <text x={(xLeft + xMainRight) / 2} y={Math.min(yGround - 2.5, Math.max(yLeft, yMainRight) + 8)} textAnchor="middle" className={styles.moduleSectionAngleLabel}>
+            <text x={(xLeft + xRight) / 2} y={Math.min(yGround - 2.5, Math.max(yHouseUnder, ySupportUnder) + 8)} textAnchor="middle" className={styles.moduleSectionAngleLabel}>
               {`Internal roof angle ${model.pitchDeg.toFixed(1)} deg`}
             </text>
           ) : null}
@@ -668,34 +1255,41 @@ function SectionSvg({ model, detailMode }: { model: ModuleSectionModel; detailMo
         />
       ) : null}
 
-      <line x1={xLeft} y1={yGround} x2={xLeft} y2={spanDimY} className={styles.moduleDimWitness} />
-      <line x1={xMainRight} y1={yGround} x2={xMainRight} y2={spanDimY} className={styles.moduleDimWitness} />
-      <TickDimension x1={xLeft} y1={spanDimY} x2={xMainRight} y2={spanDimY} label={formatMetres(model.spanA)} textY={spanDimY - 1.4} />
+      <line x1={leftDimX - 2.4} y1={yHouseUnder} x2={xLeft + 2.4} y2={yHouseUnder} className={styles.moduleDimGuide} />
+      <line x1={xRight - 2.4} y1={yOuterGutterUnder} x2={rightDimX + 2.4} y2={yOuterGutterUnder} className={styles.moduleDimGuide} />
+
       {overhangM > 0 ? (
         <>
-          <line x1={xMainRight} y1={yGround} x2={xMainRight} y2={Math.min(88.5, spanDimY + 4.9)} className={styles.moduleDimWitness} />
-          <line x1={xRight} y1={yGround} x2={xRight} y2={Math.min(88.5, spanDimY + 4.9)} className={styles.moduleDimWitness} />
-          <TickDimension x1={xMainRight} y1={Math.min(88.5, spanDimY + 4.9)} x2={xRight} y2={Math.min(88.5, spanDimY + 4.9)} label={`OH ${formatMetres(overhangM)}`} />
+          <line x1={xSupport} y1={spanAnchorSupportY} x2={xSupport} y2={overhangDimY} className={styles.moduleDimWitness} />
+          <line x1={xRight} y1={spanAnchorRightY} x2={xRight} y2={overhangDimY} className={styles.moduleDimWitness} />
+          <TickDimension x1={xSupport} y1={overhangDimY} x2={xRight} y2={overhangDimY} label={`OH ${formatMetres(overhangM)}`} />
         </>
       ) : null}
 
+      <line x1={xLeft} y1={spanAnchorLeftY} x2={xLeft} y2={spanDimY} className={styles.moduleDimWitness} />
+      <line x1={xRight} y1={spanAnchorRightY} x2={xRight} y2={spanDimY} className={styles.moduleDimWitness} />
+      <TickDimension x1={xLeft} y1={spanDimY} x2={xRight} y2={spanDimY} label={formatMetres(model.spanA)} textY={spanDimY - 1.4} />
+
       <line x1={xLeft - postW / 2} y1={yGround} x2={leftDimX} y2={yGround} className={styles.moduleDimWitness} />
-      <line x1={xLeft - postW / 2} y1={yLeft} x2={leftDimX} y2={yLeft} className={styles.moduleDimWitness} />
-      <TickDimension x1={leftDimX} y1={yGround} x2={leftDimX} y2={yLeft} label={formatMetres(model.leftEdgeHeightM)} />
+      <line x1={xLeft - postW / 2} y1={yHouseUnder} x2={leftDimX} y2={yHouseUnder} className={styles.moduleDimWitness} />
+      <TickDimension x1={leftDimX} y1={yGround} x2={leftDimX} y2={yHouseUnder} label={formatMetres(model.leftEdgeHeightM)} />
 
-      <line x1={xMainRight + postW / 2} y1={yGround} x2={rightDimX} y2={yGround} className={styles.moduleDimWitness} />
-      <line x1={xMainRight + postW / 2} y1={yMainRight} x2={rightDimX} y2={yMainRight} className={styles.moduleDimWitness} />
-      <TickDimension x1={rightDimX} y1={yGround} x2={rightDimX} y2={yMainRight} label={formatMetres(model.rightEdgeHeightM)} />
+      <line x1={xRight} y1={yGround} x2={rightDimX} y2={yGround} className={styles.moduleDimWitness} />
+      <line x1={xRight} y1={yOuterGutterUnder} x2={rightDimX} y2={yOuterGutterUnder} className={styles.moduleDimWitness} />
+      <TickDimension x1={rightDimX} y1={yGround} x2={rightDimX} y2={yOuterGutterUnder} label={formatMetres(outerGutterUndersideM)} />
 
-      <text x={(xLeft + xMainRight) / 2} y={88} textAnchor="middle" className={styles.moduleSectionPitchLabel}>
+      <text x={(xLeft + xRight) / 2} y={88} textAnchor="middle" className={styles.moduleSectionPitchLabel}>
         {`Pitch ${model.pitchDeg.toFixed(1)} deg`}
       </text>
 
       {model.roofType === 'hip_corner' ? (
-        <text x={(xLeft + xMainRight) / 2} y={84.8} textAnchor="middle" className={styles.moduleSectionMetaLabel}>
+        <text x={(xLeft + xRight) / 2} y={84.8} textAnchor="middle" className={styles.moduleSectionMetaLabel}>
           Primary wing section (A)
         </text>
       ) : null}
+
+      {diagnostic ? <DiagnosticsOverlay title="Section Diagnostics" lines={diagLines} level={consistency?.level ?? 'ok'} /> : null}
+      {diagnostic ? <DeltaTableOverlay title="Section Delta (engine vs view)" rows={sectionDeltaRows} /> : null}
     </svg>
   );
 }
