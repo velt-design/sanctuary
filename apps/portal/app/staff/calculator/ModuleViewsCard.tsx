@@ -57,6 +57,7 @@ export default function ModuleViewsCard({
   const sectionOverhangDisplayM = sectionModel ? sectionOverhangM(sectionModel) : 0;
   const sectionOuterDisplayM = sectionModel ? sectionOuterGutterUndersideM(sectionModel) : null;
   const sectionSupportDisplayM = sectionModel ? sectionSupportUndersideM(sectionModel) : null;
+  const sectionRafterCutDisplay = sectionModel ? sectionRafterCutLengthLabel(sectionModel) : null;
   const activeConsistency = view === 'plan' ? planConsistency : sectionConsistency;
   const stateText = view === 'section' && status === 'ready' ? 'Section schematic ready.' : STATUS_TEXT[status];
   const svgId = useId().replace(/:/g, '_');
@@ -172,6 +173,7 @@ export default function ModuleViewsCard({
               {sectionOverhangDisplayM > 0 ? <span className={styles.modulePlanStat}>{`Support: ${formatMetres(sectionSupportDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span> : null}
               <span className={styles.modulePlanStat}>{`Post: ${Math.round(sectionModel.postDepthM * 1000)}x${Math.round(sectionModel.postWidthM * 1000)}mm`}</span>
               <span className={styles.modulePlanStat}>{`Rafter: ${Math.round(sectionModel.rafterDepthM * 1000)}x${Math.round(sectionModel.rafterWidthM * 1000)}mm`}</span>
+              {sectionRafterCutDisplay ? <span className={styles.modulePlanStat}>{sectionRafterCutDisplay}</span> : null}
               <span className={styles.modulePlanStat}>{`Ledger: ${Math.round(sectionModel.ledgerBeamDepthM * 1000)}x${Math.round(sectionModel.ledgerBeamWidthM * 1000)}mm`}</span>
               <span className={styles.modulePlanStat}>{`Support beam: ${Math.round(sectionModel.supportBeamDepthM * 1000)}x${Math.round(sectionModel.supportBeamWidthM * 1000)}mm`}</span>
               <span className={styles.modulePlanStat}>{`Gutter: ${Math.round(sectionModel.gutterDepthM * 1000)}x${Math.round(sectionModel.gutterWidthM * 1000)}mm`}</span>
@@ -238,6 +240,10 @@ type TickDimensionProps = {
 
 function formatMetres(value: number): string {
   return `${value.toFixed(2)}m`;
+}
+
+function formatMetresPrecise(value: number, decimals = 3): string {
+  return `${value.toFixed(decimals)}m`;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -476,6 +482,52 @@ function sectionRafterPlumbCutDropM(model: ModuleSectionModel): number {
   const pitchRad = (Math.max(0, Math.min(85, model.pitchDeg)) * Math.PI) / 180;
   const cosPitch = Math.max(0.12, Math.cos(pitchRad));
   return model.rafterDepthM / cosPitch;
+}
+
+function sectionRafterPreCutAllowanceM(model: ModuleSectionModel): number {
+  const pitchRad = (Math.max(0, Math.min(85, model.pitchDeg)) * Math.PI) / 180;
+  const tanPitch = Math.max(0, Math.tan(pitchRad));
+  const allowancePerEnd = Math.max(0, model.rafterWidthM) * tanPitch;
+  return allowancePerEnd * 2;
+}
+
+function sectionMonoRafterCutLengthM(model: ModuleSectionModel): number {
+  const startM = sectionRafterBearingStartM(model);
+  const endM = sectionRafterBearingEndM(model);
+  const runM = Math.max(0.01, endM - startM);
+  const houseTopM = model.leftEdgeHeightM + sectionLedgerBeamDepthM(model);
+  const outerTopM = sectionOuterGutterUndersideM(model) + model.gutterDepthM;
+  const finishedCutLengthM = Math.hypot(runM, outerTopM - houseTopM);
+  return finishedCutLengthM + sectionRafterPreCutAllowanceM(model);
+}
+
+function sectionGableRafterCutLengthsM(model: ModuleSectionModel): { leftM: number; rightM: number } | null {
+  if (model.sectionKind !== 'gable' || typeof model.ridgeHeightM !== 'number' || !Number.isFinite(model.ridgeHeightM)) return null;
+
+  const ridgeWidthM = sectionRidgeBeamWidthM(model);
+  const eaveWidthM = Math.max(0.02, Number.isFinite(model.gutterWidthM) ? model.gutterWidthM : 0.1);
+  const leftRunM = Math.max(0.01, model.spanA / 2 - eaveWidthM - ridgeWidthM / 2);
+  const rightRunM = Math.max(0.01, model.spanA / 2 - eaveWidthM - ridgeWidthM / 2);
+  const plumbCutDropM = sectionRafterPlumbCutDropM(model);
+  const leftRafterUnderM = model.leftEdgeHeightM + model.gutterDepthM - plumbCutDropM;
+  const rightRafterUnderM = model.rightEdgeHeightM + model.gutterDepthM - plumbCutDropM;
+  const preCutAllowanceM = sectionRafterPreCutAllowanceM(model);
+  const leftM = Math.hypot(leftRunM, model.ridgeHeightM - leftRafterUnderM) + preCutAllowanceM;
+  const rightM = Math.hypot(rightRunM, model.ridgeHeightM - rightRafterUnderM) + preCutAllowanceM;
+  return { leftM, rightM };
+}
+
+function sectionRafterCutLengthLabel(model: ModuleSectionModel): string | null {
+  if (model.sectionKind === 'mono') {
+    return `Rafter length: ${formatMetresPrecise(sectionMonoRafterCutLengthM(model))}`;
+  }
+
+  const gableCuts = sectionGableRafterCutLengthsM(model);
+  if (!gableCuts) return null;
+  if (Math.abs(gableCuts.leftM - gableCuts.rightM) <= 0.01) {
+    return `Rafter length: ${formatMetresPrecise((gableCuts.leftM + gableCuts.rightM) / 2)} ea`;
+  }
+  return `Rafter length: L ${formatMetresPrecise(gableCuts.leftM)} / R ${formatMetresPrecise(gableCuts.rightM)}`;
 }
 
 function sectionMonoRafterUndersideAtM(model: ModuleSectionModel, xFromHouseM: number): number {
@@ -1185,6 +1237,60 @@ function SectionSvg({
     y: depthDimUnderY - mainRoofNormal.ny * rafterDepth,
   };
   const depthDimBottom: Point = { x: depthDimUnderX, y: depthDimUnderY };
+  const roofTopLengthDims = (() => {
+    const offset = 2.7;
+    if (model.sectionKind === 'mono' && monoRoofGeom) {
+      const topStart = monoRoofGeom.points[3]!;
+      const topEnd = monoRoofGeom.points[2]!;
+      const dimStart: Point = {
+        x: topStart.x - mainRoofNormal.nx * offset,
+        y: topStart.y - mainRoofNormal.ny * offset,
+      };
+      const dimEnd: Point = {
+        x: topEnd.x - mainRoofNormal.nx * offset,
+        y: topEnd.y - mainRoofNormal.ny * offset,
+      };
+      const lengthM = Math.hypot((topEnd.x - topStart.x) / scale, (topEnd.y - topStart.y) / scale);
+      return [{ topStart, topEnd, dimStart, dimEnd, lengthM }];
+    }
+
+    if (model.sectionKind === 'gable' && gableLeftRoofGeom && gableRightRoofGeom) {
+      const leftTopStart = gableLeftRoofGeom.points[3]!;
+      const leftTopEnd = gableLeftRoofGeom.points[2]!;
+      const rightTopStart = gableRightRoofGeom.points[3]!;
+      const rightTopEnd = gableRightRoofGeom.points[2]!;
+
+      const leftNormal = segmentDownNormal(leftTopStart.x, leftTopStart.y, leftTopEnd.x, leftTopEnd.y);
+      const rightNormal = segmentDownNormal(rightTopStart.x, rightTopStart.y, rightTopEnd.x, rightTopEnd.y);
+
+      const leftDimStart: Point = {
+        x: leftTopStart.x - leftNormal.nx * offset,
+        y: leftTopStart.y - leftNormal.ny * offset,
+      };
+      const leftDimEnd: Point = {
+        x: leftTopEnd.x - leftNormal.nx * offset,
+        y: leftTopEnd.y - leftNormal.ny * offset,
+      };
+      const rightDimStart: Point = {
+        x: rightTopStart.x - rightNormal.nx * offset,
+        y: rightTopStart.y - rightNormal.ny * offset,
+      };
+      const rightDimEnd: Point = {
+        x: rightTopEnd.x - rightNormal.nx * offset,
+        y: rightTopEnd.y - rightNormal.ny * offset,
+      };
+
+      const leftLengthM = Math.hypot((leftTopEnd.x - leftTopStart.x) / scale, (leftTopEnd.y - leftTopStart.y) / scale);
+      const rightLengthM = Math.hypot((rightTopEnd.x - rightTopStart.x) / scale, (rightTopEnd.y - rightTopStart.y) / scale);
+
+      return [
+        { topStart: leftTopStart, topEnd: leftTopEnd, dimStart: leftDimStart, dimEnd: leftDimEnd, lengthM: leftLengthM },
+        { topStart: rightTopStart, topEnd: rightTopEnd, dimStart: rightDimStart, dimEnd: rightDimEnd, lengthM: rightLengthM },
+      ];
+    }
+
+    return [];
+  })();
 
   return (
     <svg viewBox="0 0 120 90" role="img" aria-label="Module section view" className={styles.modulePlanSvg}>
@@ -1264,6 +1370,21 @@ function SectionSvg({
           className={styles.moduleSectionGutter}
         />
       ) : null}
+
+      {roofTopLengthDims.map((roofDim, idx) => (
+        <g key={`roof-top-len-${idx}`}>
+          <line x1={roofDim.topStart.x} y1={roofDim.topStart.y} x2={roofDim.dimStart.x} y2={roofDim.dimStart.y} className={styles.moduleDimWitness} />
+          <line x1={roofDim.topEnd.x} y1={roofDim.topEnd.y} x2={roofDim.dimEnd.x} y2={roofDim.dimEnd.y} className={styles.moduleDimWitness} />
+          <TickDimension
+            x1={roofDim.dimStart.x}
+            y1={roofDim.dimStart.y}
+            x2={roofDim.dimEnd.x}
+            y2={roofDim.dimEnd.y}
+            label={formatMetres(roofDim.lengthM)}
+            textY={(roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - 1.8}
+          />
+        </g>
+      ))}
 
       {model.boxPerimeterEnabled ? (
         <>
