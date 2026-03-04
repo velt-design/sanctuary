@@ -194,4 +194,63 @@ describe('buildModuleSectionModel', () => {
     const model = buildModuleSectionModel(module, null);
     expect(model).toBeNull();
   });
+
+  it('uses derived overhang values when available', () => {
+    const module = makeModule({
+      pergolaStyle: 'pitched',
+      projectionM: '3.0',
+      overhangEnabled: false,
+      overhangAmountM: '0.2',
+    });
+    const result = makeResult({
+      roofType: 'pitched',
+      spanA: 3,
+      slopeDirection: 'away_from_house',
+    });
+    (result.derived as any).overhang_enabled = true;
+    (result.derived as any).overhang_amount_m = 0.75;
+
+    const model = buildModuleSectionModel(module, result);
+    expect(model).not.toBeNull();
+    expect(model?.dataSource).toBe('derived');
+    expect(model?.overhangEnabled).toBe(true);
+    expect(model?.overhangAmountM).toBeCloseTo(0.75);
+  });
+
+  it('maps support beam profile dimensions for section rendering', () => {
+    const module = makeModule({
+      pergolaStyle: 'pitched',
+      projectionM: '3.0',
+      postCutHeightM: '2.4',
+    });
+    const result = makeResult({
+      roofType: 'pitched',
+      spanA: 3,
+      slopeDirection: 'away_from_house',
+    });
+    (result.derived as any).front_beam_profile_used = '100x50';
+
+    const model = buildModuleSectionModel(module, result);
+    expect(model).not.toBeNull();
+    expect(model?.supportBeamDepthM).toBeCloseTo(0.1);
+    expect(model?.supportBeamWidthM).toBeCloseTo(0.05);
+  });
+
+  it('uses section member defaults when profiles are unavailable', () => {
+    const module = makeModule({
+      pergolaStyle: 'pitched',
+      projectionM: '3.0',
+      postCutHeightM: '2.4',
+    });
+    const model = buildModuleSectionModel(module, null);
+    expect(model).not.toBeNull();
+    expect(model?.ledgerBeamDepthM).toBeCloseTo(0.1);
+    expect(model?.ledgerBeamWidthM).toBeCloseTo(0.05);
+    expect(model?.supportBeamDepthM).toBeCloseTo(0.15);
+    expect(model?.supportBeamWidthM).toBeCloseTo(0.05);
+    expect(model?.gutterDepthM).toBeCloseTo(0.15);
+    expect(model?.gutterWidthM).toBeCloseTo(0.1);
+    expect(model?.ridgeBeamDepthM).toBeCloseTo(0.15);
+    expect(model?.ridgeBeamWidthM).toBeCloseTo(0.05);
+  });
 });

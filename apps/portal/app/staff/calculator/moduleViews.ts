@@ -47,8 +47,14 @@ export type ModuleSectionModel = {
   pitchDeg: number;
   rafterWidthM: number;
   rafterDepthM: number;
+  ledgerBeamWidthM: number;
+  ledgerBeamDepthM: number;
+  supportBeamWidthM: number;
+  supportBeamDepthM: number;
   gutterWidthM: number;
   gutterDepthM: number;
+  ridgeBeamWidthM: number;
+  ridgeBeamDepthM: number;
   leftEdgeHeightM: number;
   rightEdgeHeightM: number;
   ridgeHeightM: number | null;
@@ -104,8 +110,14 @@ const SOFFIT_BRACKET_OFFSET_M = 0.5;
 const SOFFIT_BRACKET_MAX_SPACING_M = 1.5;
 const DEFAULT_RAFTER_WIDTH_M = 0.05;
 const DEFAULT_RAFTER_DEPTH_M = 0.15;
+const DEFAULT_LEDGER_WIDTH_M = 0.05;
+const DEFAULT_LEDGER_DEPTH_M = 0.1;
+const DEFAULT_SUPPORT_BEAM_WIDTH_M = 0.05;
+const DEFAULT_SUPPORT_BEAM_DEPTH_M = 0.15;
 const DEFAULT_GUTTER_WIDTH_M = 0.1;
-const DEFAULT_GUTTER_DEPTH_M = 0.1;
+const DEFAULT_GUTTER_DEPTH_M = 0.15;
+const DEFAULT_RIDGE_BEAM_WIDTH_M = 0.05;
+const DEFAULT_RIDGE_BEAM_DEPTH_M = 0.15;
 
 function parseProfilePairMm(value: unknown): { aMm: number; bMm: number } | null {
   const text = String(value ?? '').toLowerCase();
@@ -130,15 +142,41 @@ function profileDimsFromAny(
     };
   }
   const text = String(value ?? '').toLowerCase();
-  if (text.includes('sp gutter')) return { depthM: 0.1, widthM: 0.1 };
+  if (text.includes('sp gutter')) return { depthM: 0.15, widthM: 0.1 };
   if (text.includes('box_gutter_100x100') || text.includes('box gutter 100x100')) return { depthM: 0.1, widthM: 0.1 };
+  return { depthM: fallbackDepthM, widthM: fallbackWidthM };
+}
+
+function profileDimsStrict(
+  value: unknown,
+  fallbackDepthM: number,
+  fallbackWidthM: number,
+): { depthM: number; widthM: number } {
+  const parsed = parseProfilePairMm(value);
+  if (parsed) {
+    return {
+      depthM: Math.max(parsed.aMm, parsed.bMm) / 1000,
+      widthM: Math.min(parsed.aMm, parsed.bMm) / 1000,
+    };
+  }
   return { depthM: fallbackDepthM, widthM: fallbackWidthM };
 }
 
 function resolveMemberProfileDims(
   module: CalculatorModuleInputs,
   moduleResult: CostOutputV1 | null,
-): { rafterWidthM: number; rafterDepthM: number; gutterWidthM: number; gutterDepthM: number } {
+): {
+  rafterWidthM: number;
+  rafterDepthM: number;
+  ledgerBeamWidthM: number;
+  ledgerBeamDepthM: number;
+  supportBeamWidthM: number;
+  supportBeamDepthM: number;
+  gutterWidthM: number;
+  gutterDepthM: number;
+  ridgeBeamWidthM: number;
+  ridgeBeamDepthM: number;
+} {
   const normalized = moduleResult?.inputs_normalized as any;
   const derived = moduleResult?.derived as any;
   const rafterProfileRaw =
@@ -152,13 +190,36 @@ function resolveMemberProfileDims(
   const gutterTypeRaw = normalized?.gutter_type ?? derived?.gutter_mode ?? null;
   const frontBeamProfileRaw = derived?.front_beam_profile_used ?? module.overrides?.frontBeamProfile ?? 'SP Gutter';
   const gutterDims = profileDimsFromAny(gutterTypeRaw || frontBeamProfileRaw, DEFAULT_GUTTER_DEPTH_M, DEFAULT_GUTTER_WIDTH_M);
+  const ledgerBeamProfileRaw = derived?.ledger_profile_used ?? (module.overrides as any)?.ledgerProfile ?? null;
+  const ledgerBeamDims = profileDimsStrict(ledgerBeamProfileRaw, DEFAULT_LEDGER_DEPTH_M, DEFAULT_LEDGER_WIDTH_M);
+  const supportBeamProfileRaw = derived?.support_beam_profile_used ?? (module.overrides as any)?.supportBeamProfile ?? derived?.front_beam_profile_used ?? null;
+  const supportBeamDims = profileDimsStrict(supportBeamProfileRaw, DEFAULT_SUPPORT_BEAM_DEPTH_M, DEFAULT_SUPPORT_BEAM_WIDTH_M);
+  const ridgeBeamProfileRaw = derived?.ridge_beam_profile_used ?? (module.overrides as any)?.ridgeBeamProfile ?? null;
+  const ridgeBeamDims = profileDimsStrict(ridgeBeamProfileRaw, DEFAULT_RIDGE_BEAM_DEPTH_M, DEFAULT_RIDGE_BEAM_WIDTH_M);
 
   return {
     rafterWidthM: rafterDims.widthM,
     rafterDepthM: rafterDims.depthM,
+    ledgerBeamWidthM: ledgerBeamDims.widthM,
+    ledgerBeamDepthM: ledgerBeamDims.depthM,
+    supportBeamWidthM: supportBeamDims.widthM,
+    supportBeamDepthM: supportBeamDims.depthM,
     gutterWidthM: gutterDims.widthM,
     gutterDepthM: gutterDims.depthM,
+    ridgeBeamWidthM: ridgeBeamDims.widthM,
+    ridgeBeamDepthM: ridgeBeamDims.depthM,
   };
+}
+
+function resolveOverhangFromDerived(
+  module: CalculatorModuleInputs,
+  derived: Record<string, unknown>,
+): { enabled: boolean; amountM: number } {
+  const enabled = typeof derived.overhang_enabled === 'boolean' ? derived.overhang_enabled : Boolean(module.overhangEnabled);
+  if (!enabled) return { enabled: false, amountM: 0 };
+  const derivedAmount = toNonNegativeNumber(derived.overhang_amount_m);
+  const fallbackAmount = toNonNegativeNumber(module.overhangAmountM) ?? 0;
+  return { enabled: true, amountM: derivedAmount ?? fallbackAmount };
 }
 
 function calcRafterLayout(lengthM: number, preferredCount?: number): { count: number; spacingM: number; positionsM: number[] } {
@@ -212,7 +273,7 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
       : null;
   const bracketCount = toPositiveNumber(derived?.bracket_count);
   const soffitBracketPositionsA = calcSoffitBracketPositions(lengthA, module.houseConnectionType === 'soffit', bracketCount ?? undefined);
-  const overhangAmountM = toNonNegativeNumber(module.overhangAmountM) ?? 0;
+  const overhang = resolveOverhangFromDerived(module, derived);
 
   return {
     dataSource: 'derived',
@@ -220,8 +281,8 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
     roofType,
     boxPerimeterEnabled: Boolean(module.boxPerimeterEnabled),
     houseConnectionType: module.houseConnectionType,
-    overhangEnabled: Boolean(module.overhangEnabled),
-    overhangAmountM: module.overhangEnabled ? overhangAmountM : 0,
+    overhangEnabled: overhang.enabled,
+    overhangAmountM: overhang.amountM,
     slopeDirection: normalizeSlopeDirection(derived?.slope_direction) ?? slopeDirectionFromInputs(module),
     lengthA,
     spanA,
@@ -371,15 +432,15 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
   const spanB = roofType === 'hip_corner' ? toPositiveNumber(derived?.hip_corner_projection_b_m) : null;
 
   const heights = buildSectionHeights(roofType, slopeDirection, pitchDeg, spanA, baseHeightM, houseHeightM, outerHeightM);
-  const overhangAmountM = toNonNegativeNumber(module.overhangAmountM) ?? 0;
+  const overhang = resolveOverhangFromDerived(module, derived);
 
   return {
     dataSource: 'derived',
     pergolaStyle: module.pergolaStyle,
     roofType,
     boxPerimeterEnabled: Boolean(module.boxPerimeterEnabled),
-    overhangEnabled: Boolean(module.overhangEnabled),
-    overhangAmountM: module.overhangEnabled ? overhangAmountM : 0,
+    overhangEnabled: overhang.enabled,
+    overhangAmountM: overhang.amountM,
     slopeDirection,
     sectionKind: heights.sectionKind,
     spanA,
@@ -387,8 +448,14 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
     pitchDeg,
     rafterWidthM: memberDims.rafterWidthM,
     rafterDepthM: memberDims.rafterDepthM,
+    ledgerBeamWidthM: memberDims.ledgerBeamWidthM,
+    ledgerBeamDepthM: memberDims.ledgerBeamDepthM,
+    supportBeamWidthM: memberDims.supportBeamWidthM,
+    supportBeamDepthM: memberDims.supportBeamDepthM,
     gutterWidthM: memberDims.gutterWidthM,
     gutterDepthM: memberDims.gutterDepthM,
+    ridgeBeamWidthM: memberDims.ridgeBeamWidthM,
+    ridgeBeamDepthM: memberDims.ridgeBeamDepthM,
     leftEdgeHeightM: heights.leftEdgeHeightM,
     rightEdgeHeightM: heights.rightEdgeHeightM,
     ridgeHeightM: heights.ridgeHeightM,
@@ -426,8 +493,14 @@ function tryBuildSectionFromInputs(module: CalculatorModuleInputs): ModuleSectio
     pitchDeg,
     rafterWidthM: memberDims.rafterWidthM,
     rafterDepthM: memberDims.rafterDepthM,
+    ledgerBeamWidthM: memberDims.ledgerBeamWidthM,
+    ledgerBeamDepthM: memberDims.ledgerBeamDepthM,
+    supportBeamWidthM: memberDims.supportBeamWidthM,
+    supportBeamDepthM: memberDims.supportBeamDepthM,
     gutterWidthM: memberDims.gutterWidthM,
     gutterDepthM: memberDims.gutterDepthM,
+    ridgeBeamWidthM: memberDims.ridgeBeamWidthM,
+    ridgeBeamDepthM: memberDims.ridgeBeamDepthM,
     leftEdgeHeightM: heights.leftEdgeHeightM,
     rightEdgeHeightM: heights.rightEdgeHeightM,
     ridgeHeightM: heights.ridgeHeightM,
