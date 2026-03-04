@@ -170,6 +170,7 @@ export default function ModuleViewsCard({
               <span className={styles.modulePlanStat}>{`House: ${formatMetres(sectionModel.leftEdgeHeightM)}`}</span>
               <span className={styles.modulePlanStat}>{`Outer: ${formatMetres(sectionOuterDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span>
               {sectionOverhangDisplayM > 0 ? <span className={styles.modulePlanStat}>{`Support: ${formatMetres(sectionSupportDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span> : null}
+              <span className={styles.modulePlanStat}>{`Post: ${Math.round(sectionModel.postDepthM * 1000)}x${Math.round(sectionModel.postWidthM * 1000)}mm`}</span>
               <span className={styles.modulePlanStat}>{`Rafter: ${Math.round(sectionModel.rafterDepthM * 1000)}x${Math.round(sectionModel.rafterWidthM * 1000)}mm`}</span>
               <span className={styles.modulePlanStat}>{`Ledger: ${Math.round(sectionModel.ledgerBeamDepthM * 1000)}x${Math.round(sectionModel.ledgerBeamWidthM * 1000)}mm`}</span>
               <span className={styles.modulePlanStat}>{`Support beam: ${Math.round(sectionModel.supportBeamDepthM * 1000)}x${Math.round(sectionModel.supportBeamWidthM * 1000)}mm`}</span>
@@ -459,11 +460,32 @@ function sectionOuterGutterUndersideM(model: ModuleSectionModel): number {
   return resolveMonoDatums(model).outerGutterUndersideM;
 }
 
+function sectionRafterBearingStartM(model: ModuleSectionModel): number {
+  if (model.sectionKind !== 'mono') return 0;
+  return Math.max(0, Math.min(model.spanA, sectionLedgerBeamWidthM(model)));
+}
+
+function sectionRafterBearingEndM(model: ModuleSectionModel): number {
+  if (model.sectionKind !== 'mono') return model.spanA;
+  const startM = sectionRafterBearingStartM(model);
+  const endM = model.spanA - Math.max(0, Math.min(model.spanA, model.gutterWidthM));
+  return Math.max(startM + 0.01, endM);
+}
+
+function sectionRafterPlumbCutDropM(model: ModuleSectionModel): number {
+  const pitchRad = (Math.max(0, Math.min(85, model.pitchDeg)) * Math.PI) / 180;
+  const cosPitch = Math.max(0.12, Math.cos(pitchRad));
+  return model.rafterDepthM / cosPitch;
+}
+
 function sectionMonoRafterUndersideAtM(model: ModuleSectionModel, xFromHouseM: number): number {
-  const spanM = Math.max(model.spanA, 0.001);
-  const t = clamp(xFromHouseM / spanM, 0, 1);
-  const houseRafterUndersideM = model.leftEdgeHeightM + sectionLedgerBeamDepthM(model);
-  const outerRafterUndersideM = sectionOuterGutterUndersideM(model) + model.gutterDepthM;
+  const startM = sectionRafterBearingStartM(model);
+  const endM = sectionRafterBearingEndM(model);
+  const runM = Math.max(0.001, endM - startM);
+  const t = clamp((xFromHouseM - startM) / runM, 0, 1);
+  const plumbCutDropM = sectionRafterPlumbCutDropM(model);
+  const houseRafterUndersideM = model.leftEdgeHeightM + sectionLedgerBeamDepthM(model) - plumbCutDropM;
+  const outerRafterUndersideM = sectionOuterGutterUndersideM(model) + model.gutterDepthM - plumbCutDropM;
   return houseRafterUndersideM + (outerRafterUndersideM - houseRafterUndersideM) * t;
 }
 
@@ -648,7 +670,7 @@ function DeltaTableOverlay({
   );
 }
 
-function TickDimension({ x1, y1, x2, y2, label, textX, textY, rotateDeg, overrun = 2.7, showTermBars = true }: TickDimensionProps) {
+function TickDimension({ x1, y1, x2, y2, label, textX, textY, rotateDeg, overrun = 2.7, showTermBars = false }: TickDimensionProps) {
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
@@ -989,18 +1011,21 @@ function SectionSvg({
   const supportBeamWidthM = sectionSupportBeamWidthM(model);
   const ridgeBeamDepthM = sectionRidgeBeamDepthM(model);
   const ridgeBeamWidthM = sectionRidgeBeamWidthM(model);
-  const rightEaveBeamDepthM = model.sectionKind === 'gable' ? ledgerBeamDepthM : supportBeamDepthM;
-  const rightEaveBeamWidthM = model.sectionKind === 'gable' ? ledgerBeamWidthM : supportBeamWidthM;
+  const leftEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : ledgerBeamDepthM;
+  const leftEaveBeamWidthM = model.sectionKind === 'gable' ? model.gutterWidthM : ledgerBeamWidthM;
+  const rightEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : supportBeamDepthM;
+  const rightEaveBeamWidthM = model.sectionKind === 'gable' ? model.gutterWidthM : supportBeamWidthM;
   const outerGutterUndersideM = sectionOuterGutterUndersideM(model);
   const supportUndersideM = sectionSupportUndersideM(model);
   const monoRightRole = model.sectionKind === 'mono' ? sectionMonoRightEdgeRole(model) : null;
+  const rafterPlumbCutDropM = sectionRafterPlumbCutDropM(model);
   const houseLedgerUndersideM = model.leftEdgeHeightM;
-  const houseRafterUndersideM = houseLedgerUndersideM + ledgerBeamDepthM;
-  const outerRafterUndersideM = outerGutterUndersideM + model.gutterDepthM;
+  const houseRafterUndersideM = houseLedgerUndersideM + leftEaveBeamDepthM - rafterPlumbCutDropM;
+  const outerRafterUndersideM = outerGutterUndersideM + model.gutterDepthM - rafterPlumbCutDropM;
   const supportRafterUndersideM =
     model.sectionKind === 'mono'
       ? sectionMonoRafterUndersideAtM(model, supportXFromHouseM)
-      : model.rightEdgeHeightM + rightEaveBeamDepthM;
+      : model.rightEdgeHeightM + rightEaveBeamDepthM - rafterPlumbCutDropM;
   const supportBeamTopM = supportUndersideM + supportBeamDepthM;
 
   const chartWidth = 84;
@@ -1029,11 +1054,12 @@ function SectionSvg({
   const scaleY = availableHeight / maxHeightM;
   const scale = Math.min(scaleX, scaleY);
 
-  const postW = clamp(model.rafterWidthM * scale, 0.9, 2.8);
+  const postW = clamp(model.postWidthM * scale, 1.2, 4.8);
   const rafterDepth = clamp(model.rafterDepthM * scale, 1.1, 6.4);
   const gutterWidth = clamp(model.gutterWidthM * scale, 0.9, 4.4);
+  const leftEaveDepth = clamp(leftEaveBeamDepthM * scale, 0.9, 5.4);
+  const leftEaveWidth = clamp(leftEaveBeamWidthM * scale, 0.8, 4.4);
   const ledgerDepth = clamp(ledgerBeamDepthM * scale, 0.9, 5.4);
-  const ledgerWidth = clamp(ledgerBeamWidthM * scale, 0.8, 3.8);
   const supportCapDepth = clamp(supportBeamDepthM * scale, 0.9, 5.4);
   const supportCapWidth = clamp(supportBeamWidthM * scale, 0.8, 3.8);
   const rightEaveBeamDepth = clamp(rightEaveBeamDepthM * scale, 0.9, 5.4);
@@ -1053,16 +1079,24 @@ function SectionSvg({
   const yOuterGutterUnder = yForHeight(outerGutterUndersideM);
   const yHouseRafterUnder = yForHeight(houseRafterUndersideM);
   const yOuterRafterUnder = yForHeight(outerRafterUndersideM);
+  const yOuterGutterTop = yForHeight(outerGutterUndersideM + model.gutterDepthM);
+  const yRightEaveRafterUnder = yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM - rafterPlumbCutDropM);
   const ySupportBeamTop = yForHeight(supportBeamTopM);
   const yRidgeUnder = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM) : null;
   const yRidgeBeamTop = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM + ridgeBeamDepthM) : null;
   const supportPostTopY = ySupportUnder;
   const supportCapTopY = ySupportBeamTop;
-  const gutterTopY = yOuterRafterUnder;
-  const ledgerX = model.sectionKind === 'gable' ? xLeft - ledgerWidth / 2 : xLeft - postW / 2;
-  const ledgerY = yForHeight(houseLedgerUndersideM + ledgerBeamDepthM);
-  const rightEaveX = xRight - rightEaveBeamWidth / 2;
+  const gutterTopY = yOuterGutterTop;
+  const ledgerX = xLeft;
+  const ledgerY = yForHeight(houseLedgerUndersideM + leftEaveBeamDepthM);
+  const rightEaveX = xRight - rightEaveBeamWidth;
   const rightEaveY = yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM);
+  const leftPostX = xLeft;
+  const secondPostX = model.sectionKind === 'mono' ? (overhangM > 0 ? xSupport - postW / 2 : xRight - postW) : xRight - postW;
+  const monoRafterStartX = ledgerX + leftEaveWidth;
+  const monoRafterEndX = xRight - gutterWidth;
+  const gableLeftRafterStartX = ledgerX + leftEaveWidth;
+  const gableRightRafterEndX = xRight - rightEaveBeamWidth;
 
   const leftDimX = Math.max(6, xLeft - 7.4);
   const rightDimX = Math.min(114, xRight + 8.2);
@@ -1073,26 +1107,25 @@ function SectionSvg({
   const spanDimY = Math.min(88.5, Math.max(yGround + 9.0, spanDatumY + 7.4));
   const overhangDimY = Math.max(spanAnchorRightY + 3.8, spanDimY - 4.8);
 
-  const mainRoofNormal = segmentDownNormal(xLeft, yHouseRafterUnder, xRight, yOuterRafterUnder);
+  const mainRoofNormal = segmentDownNormal(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder);
   const ridgeLeftX = ridgeX - ridgeBeamWidth / 2;
   const ridgeRightX = ridgeX + ridgeBeamWidth / 2;
 
-  const monoRoofGeom =
-    model.sectionKind === 'mono' ? sectionMemberPolygonPlumbCuts(xLeft, yHouseRafterUnder, xRight, yOuterRafterUnder, rafterDepth) : null;
+  const monoRoofGeom = model.sectionKind === 'mono' ? sectionMemberPolygonPlumbCuts(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder, rafterDepth) : null;
 
   const gableLeftRoofGeom = (() => {
     if (model.sectionKind !== 'gable' || yRidgeUnder === null) return null;
-    return sectionMemberPolygonPlumbCuts(xLeft, yHouseRafterUnder, ridgeLeftX, yRidgeUnder, rafterDepth);
+    return sectionMemberPolygonPlumbCuts(gableLeftRafterStartX, yHouseRafterUnder, ridgeLeftX, yRidgeUnder, rafterDepth);
   })();
 
   const gableRightRoofGeom = (() => {
     if (model.sectionKind !== 'gable' || yRidgeUnder === null) return null;
-    return sectionMemberPolygonPlumbCuts(ridgeRightX, yRidgeUnder, xRight, yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM), rafterDepth);
+    return sectionMemberPolygonPlumbCuts(ridgeRightX, yRidgeUnder, gableRightRafterEndX, yRightEaveRafterUnder, rafterDepth);
   })();
 
   const monoSupportSplice = (() => {
-    if (model.sectionKind !== 'mono' || overhangM <= 0 || !monoRoofGeom || xRight - xLeft <= 1e-6) return null;
-    const t = clamp((xSupport - xLeft) / (xRight - xLeft), 0, 1);
+    if (model.sectionKind !== 'mono' || overhangM <= 0 || !monoRoofGeom || monoRafterEndX - monoRafterStartX <= 1e-6) return null;
+    const t = clamp((xSupport - monoRafterStartX) / (monoRafterEndX - monoRafterStartX), 0, 1);
     const yUnder = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * t;
     const topStart = monoRoofGeom.points[3]!;
     const topEnd = monoRoofGeom.points[2]!;
@@ -1129,16 +1162,23 @@ function SectionSvg({
     ...(model.sectionKind === 'mono' && overhangM > 0
       ? [{ metric: 'Right datum raw', engine: model.rightEdgeHeightM, view: rawRightDatumViewM, tolerance: 0.01, unit: 'm' as const }]
       : []),
+    ...(model.sectionKind === 'mono' && monoRoofGeom
+      ? [
+          { metric: 'Bearing gap (ledger)', engine: 0, view: (monoRoofGeom.points[3]!.y - ledgerY) / scale, tolerance: 0.003, unit: 'm' as const },
+          { metric: 'Bearing gap (gutter)', engine: 0, view: (monoRoofGeom.points[2]!.y - yOuterGutterTop) / scale, tolerance: 0.003, unit: 'm' as const },
+        ]
+      : []),
     { metric: 'Ledger beam depth', engine: ledgerBeamDepthM, view: ledgerDepth / scale, tolerance: 0.005, unit: 'm' },
     ...(model.sectionKind === 'mono'
       ? [{ metric: 'Support beam depth', engine: supportBeamDepthM, view: supportCapDepth / scale, tolerance: 0.005, unit: 'm' as const }]
       : [{ metric: 'Eave beam depth', engine: rightEaveBeamDepthM, view: rightEaveBeamDepth / scale, tolerance: 0.005, unit: 'm' as const }]),
+    { metric: 'Post width', engine: model.postWidthM, view: postW / scale, tolerance: 0.005, unit: 'm' },
     ...(model.sectionKind === 'gable'
       ? [{ metric: 'Ridge beam depth', engine: ridgeBeamDepthM, view: ridgeBeamDepth / scale, tolerance: 0.005, unit: 'm' as const }]
       : []),
   ];
 
-  const depthDimUnderX = xLeft + (xRight - xLeft) * 0.24;
+  const depthDimUnderX = monoRafterStartX + (monoRafterEndX - monoRafterStartX) * 0.24;
   const depthDimUnderY = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * 0.24;
   const depthDimTop: Point = {
     x: depthDimUnderX - mainRoofNormal.nx * rafterDepth,
@@ -1168,13 +1208,19 @@ function SectionSvg({
         </>
       ) : null}
 
-      <rect x={xLeft - postW / 2} y={yHouseUnder} width={postW} height={yGround - yHouseUnder} className={styles.moduleSectionMember} />
-      <rect x={xSupport - postW / 2} y={supportPostTopY} width={postW} height={yGround - supportPostTopY} className={styles.moduleSectionMember} />
-      <rect x={ledgerX} y={ledgerY} width={ledgerWidth} height={ledgerDepth} className={styles.moduleSectionLedger} />
+      <rect x={leftPostX} y={yHouseUnder} width={postW} height={yGround - yHouseUnder} className={styles.moduleSectionMember} />
+      <rect x={secondPostX} y={supportPostTopY} width={postW} height={yGround - supportPostTopY} className={styles.moduleSectionMember} />
+      <rect
+        x={ledgerX}
+        y={ledgerY}
+        width={leftEaveWidth}
+        height={leftEaveDepth}
+        className={model.sectionKind === 'gable' ? styles.moduleSectionGutter : styles.moduleSectionLedger}
+      />
       {model.sectionKind === 'mono' && overhangM > 0 ? (
         <rect x={xSupport - supportCapWidth / 2} y={supportCapTopY} width={supportCapWidth} height={supportCapDepth} className={styles.moduleSectionOverhangBeam} />
       ) : model.sectionKind === 'gable' ? (
-        <rect x={rightEaveX} y={rightEaveY} width={rightEaveBeamWidth} height={rightEaveBeamDepth} className={styles.moduleSectionLedger} />
+        <rect x={rightEaveX} y={rightEaveY} width={rightEaveBeamWidth} height={rightEaveBeamDepth} className={styles.moduleSectionGutter} />
       ) : null}
 
       {model.sectionKind === 'gable' && yRidgeUnder !== null ? <line x1={ridgeX} y1={yGround} x2={ridgeX} y2={yRidgeUnder} className={styles.moduleSectionPostGhost} /> : null}
@@ -1223,17 +1269,17 @@ function SectionSvg({
         <>
           {model.sectionKind === 'gable' && yRidgeUnder !== null ? (
             <>
-              <line x1={xLeft + 2.4} y1={yHouseRafterUnder + 1.4} x2={ridgeX} y2={yRidgeUnder + 1.4} className={styles.moduleSectionBoxRoof} />
+              <line x1={gableLeftRafterStartX + 1.6} y1={yHouseRafterUnder + 1.4} x2={ridgeX} y2={yRidgeUnder + 1.4} className={styles.moduleSectionBoxRoof} />
               <line
                 x1={ridgeX}
                 y1={yRidgeUnder + 1.4}
-                x2={xRight - 2.4}
-                y2={yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM) + 1.4}
+                x2={gableRightRafterEndX - 1.6}
+                y2={yRightEaveRafterUnder + 1.4}
                 className={styles.moduleSectionBoxRoof}
               />
             </>
           ) : (
-            <line x1={xLeft + 2.4} y1={yHouseRafterUnder + 1.4} x2={xRight - 2.4} y2={yOuterRafterUnder + 1.4} className={styles.moduleSectionBoxRoof} />
+            <line x1={monoRafterStartX + 1.6} y1={yHouseRafterUnder + 1.4} x2={monoRafterEndX - 1.6} y2={yOuterRafterUnder + 1.4} className={styles.moduleSectionBoxRoof} />
           )}
           {technical ? (
             <text x={(xLeft + xRight) / 2} y={Math.min(yGround - 2.5, Math.max(yHouseUnder, ySupportUnder) + 8)} textAnchor="middle" className={styles.moduleSectionAngleLabel}>
@@ -1270,8 +1316,8 @@ function SectionSvg({
       <line x1={xRight} y1={spanAnchorRightY} x2={xRight} y2={spanDimY} className={styles.moduleDimWitness} />
       <TickDimension x1={xLeft} y1={spanDimY} x2={xRight} y2={spanDimY} label={formatMetres(model.spanA)} textY={spanDimY - 1.4} />
 
-      <line x1={xLeft - postW / 2} y1={yGround} x2={leftDimX} y2={yGround} className={styles.moduleDimWitness} />
-      <line x1={xLeft - postW / 2} y1={yHouseUnder} x2={leftDimX} y2={yHouseUnder} className={styles.moduleDimWitness} />
+      <line x1={xLeft} y1={yGround} x2={leftDimX} y2={yGround} className={styles.moduleDimWitness} />
+      <line x1={xLeft} y1={yHouseUnder} x2={leftDimX} y2={yHouseUnder} className={styles.moduleDimWitness} />
       <TickDimension x1={leftDimX} y1={yGround} x2={leftDimX} y2={yHouseUnder} label={formatMetres(model.leftEdgeHeightM)} />
 
       <line x1={xRight} y1={yGround} x2={rightDimX} y2={yGround} className={styles.moduleDimWitness} />
