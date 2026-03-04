@@ -17,6 +17,10 @@ export type ModulePlanModel = {
   spanA: number;
   lengthB: number | null;
   spanB: number | null;
+  rafterWidthM: number;
+  rafterDepthM: number;
+  gutterWidthM: number;
+  gutterDepthM: number;
   rafterMaxSpacingM: number;
   rafterCountA: number;
   rafterSpacingA: number;
@@ -41,6 +45,10 @@ export type ModuleSectionModel = {
   spanA: number;
   spanB: number | null;
   pitchDeg: number;
+  rafterWidthM: number;
+  rafterDepthM: number;
+  gutterWidthM: number;
+  gutterDepthM: number;
   leftEdgeHeightM: number;
   rightEdgeHeightM: number;
   ridgeHeightM: number | null;
@@ -94,6 +102,64 @@ function isGableLike(roofType: RoofType): boolean {
 const RAFTER_MAX_SPACING_M = 0.642;
 const SOFFIT_BRACKET_OFFSET_M = 0.5;
 const SOFFIT_BRACKET_MAX_SPACING_M = 1.5;
+const DEFAULT_RAFTER_WIDTH_M = 0.05;
+const DEFAULT_RAFTER_DEPTH_M = 0.15;
+const DEFAULT_GUTTER_WIDTH_M = 0.1;
+const DEFAULT_GUTTER_DEPTH_M = 0.1;
+
+function parseProfilePairMm(value: unknown): { aMm: number; bMm: number } | null {
+  const text = String(value ?? '').toLowerCase();
+  const match = text.match(/(\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)/i);
+  if (!match) return null;
+  const a = Number.parseFloat(match[1] ?? '');
+  const b = Number.parseFloat(match[2] ?? '');
+  if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) return null;
+  return { aMm: a, bMm: b };
+}
+
+function profileDimsFromAny(
+  value: unknown,
+  fallbackDepthM: number,
+  fallbackWidthM: number,
+): { depthM: number; widthM: number } {
+  const parsed = parseProfilePairMm(value);
+  if (parsed) {
+    return {
+      depthM: Math.max(parsed.aMm, parsed.bMm) / 1000,
+      widthM: Math.min(parsed.aMm, parsed.bMm) / 1000,
+    };
+  }
+  const text = String(value ?? '').toLowerCase();
+  if (text.includes('sp gutter')) return { depthM: 0.1, widthM: 0.1 };
+  if (text.includes('box_gutter_100x100') || text.includes('box gutter 100x100')) return { depthM: 0.1, widthM: 0.1 };
+  return { depthM: fallbackDepthM, widthM: fallbackWidthM };
+}
+
+function resolveMemberProfileDims(
+  module: CalculatorModuleInputs,
+  moduleResult: CostOutputV1 | null,
+): { rafterWidthM: number; rafterDepthM: number; gutterWidthM: number; gutterDepthM: number } {
+  const normalized = moduleResult?.inputs_normalized as any;
+  const derived = moduleResult?.derived as any;
+  const rafterProfileRaw =
+    normalized?.rafter_profile ??
+    derived?.rafter_profile_auto ??
+    derived?.overhang_stringer_profile_used ??
+    module.overrides?.rafterProfile ??
+    null;
+  const rafterDims = profileDimsFromAny(rafterProfileRaw, DEFAULT_RAFTER_DEPTH_M, DEFAULT_RAFTER_WIDTH_M);
+
+  const gutterTypeRaw = normalized?.gutter_type ?? derived?.gutter_mode ?? null;
+  const frontBeamProfileRaw = derived?.front_beam_profile_used ?? module.overrides?.frontBeamProfile ?? 'SP Gutter';
+  const gutterDims = profileDimsFromAny(gutterTypeRaw || frontBeamProfileRaw, DEFAULT_GUTTER_DEPTH_M, DEFAULT_GUTTER_WIDTH_M);
+
+  return {
+    rafterWidthM: rafterDims.widthM,
+    rafterDepthM: rafterDims.depthM,
+    gutterWidthM: gutterDims.widthM,
+    gutterDepthM: gutterDims.depthM,
+  };
+}
 
 function calcRafterLayout(lengthM: number, preferredCount?: number): { count: number; spacingM: number; positionsM: number[] } {
   const safeLength = Math.max(0, lengthM);
@@ -126,6 +192,7 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
   const roofType = moduleResult.inputs_normalized?.roof_type;
   if (!roofType) return null;
   const derived = moduleResult.derived as any;
+  const memberDims = resolveMemberProfileDims(module, moduleResult);
 
   const lengthA = toPositiveNumber(derived?.length_m);
   const spanA = toPositiveNumber(derived?.projection_m);
@@ -160,6 +227,10 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
     spanA,
     lengthB: roofType === 'hip_corner' ? lengthB : null,
     spanB: roofType === 'hip_corner' ? spanB : null,
+    rafterWidthM: memberDims.rafterWidthM,
+    rafterDepthM: memberDims.rafterDepthM,
+    gutterWidthM: memberDims.gutterWidthM,
+    gutterDepthM: memberDims.gutterDepthM,
     rafterMaxSpacingM: RAFTER_MAX_SPACING_M,
     rafterCountA: rafterLayoutA.count,
     rafterSpacingA: rafterLayoutA.spacingM,
@@ -175,6 +246,7 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
 
 function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | null {
   const roofType = roofTypeFromModule(module);
+  const memberDims = resolveMemberProfileDims(module, null);
   const lengthA = toPositiveNumber(module.lengthM);
   const spanA = toPositiveNumber(module.projectionM);
   if (!lengthA || !spanA) return null;
@@ -201,6 +273,10 @@ function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | n
     spanA,
     lengthB: roofType === 'hip_corner' ? lengthB : null,
     spanB: roofType === 'hip_corner' ? spanB : null,
+    rafterWidthM: memberDims.rafterWidthM,
+    rafterDepthM: memberDims.rafterDepthM,
+    gutterWidthM: memberDims.gutterWidthM,
+    gutterDepthM: memberDims.gutterDepthM,
     rafterMaxSpacingM: RAFTER_MAX_SPACING_M,
     rafterCountA: rafterLayoutA.count,
     rafterSpacingA: rafterLayoutA.spacingM,
@@ -278,6 +354,7 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
   const roofType = moduleResult.inputs_normalized?.roof_type;
   if (!roofType) return null;
   const derived = moduleResult.derived as any;
+  const memberDims = resolveMemberProfileDims(module, moduleResult);
 
   const spanA = toPositiveNumber(derived?.projection_m);
   if (!spanA) return null;
@@ -308,6 +385,10 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
     spanA,
     spanB,
     pitchDeg,
+    rafterWidthM: memberDims.rafterWidthM,
+    rafterDepthM: memberDims.rafterDepthM,
+    gutterWidthM: memberDims.gutterWidthM,
+    gutterDepthM: memberDims.gutterDepthM,
     leftEdgeHeightM: heights.leftEdgeHeightM,
     rightEdgeHeightM: heights.rightEdgeHeightM,
     ridgeHeightM: heights.ridgeHeightM,
@@ -317,6 +398,7 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
 
 function tryBuildSectionFromInputs(module: CalculatorModuleInputs): ModuleSectionModel | null {
   const roofType = roofTypeFromModule(module);
+  const memberDims = resolveMemberProfileDims(module, null);
   const spanA = toPositiveNumber(module.projectionM);
   if (!spanA) return null;
 
@@ -342,6 +424,10 @@ function tryBuildSectionFromInputs(module: CalculatorModuleInputs): ModuleSectio
     spanA,
     spanB,
     pitchDeg,
+    rafterWidthM: memberDims.rafterWidthM,
+    rafterDepthM: memberDims.rafterDepthM,
+    gutterWidthM: memberDims.gutterWidthM,
+    gutterDepthM: memberDims.gutterDepthM,
     leftEdgeHeightM: heights.leftEdgeHeightM,
     rightEdgeHeightM: heights.rightEdgeHeightM,
     ridgeHeightM: heights.ridgeHeightM,
