@@ -1801,13 +1801,74 @@
 
 /* === Preview layout === */
 .split {
+  --preview-right-width: 520px;
   display: grid;
-  grid-template-columns: minmax(640px, 1fr) 520px;
-  gap: 16px;
+  grid-template-columns: minmax(640px, 1fr) 18px minmax(360px, var(--preview-right-width));
+  column-gap: 0;
   height: 100%;
   overflow: hidden;
   min-height: 0;
   min-width: 0;
+}
+
+.columnResizeHandle {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  position: relative;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.columnResizeHandle::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(15, 15, 16, 0.2);
+  transition: background-color 160ms ease, width 160ms ease;
+}
+
+.columnResizeHandle::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 40px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(15, 15, 16, 0.26);
+  transition: background-color 160ms ease;
+}
+
+.columnResizeHandle:hover::before,
+.columnResizeHandle:focus-visible::before,
+.columnResizeHandleActive::before {
+  width: 2px;
+  background: rgba(129, 63, 57, 0.58);
+}
+
+.columnResizeHandle:hover::after,
+.columnResizeHandle:focus-visible::after,
+.columnResizeHandleActive::after {
+  background: rgba(129, 63, 57, 0.72);
+}
+
+.columnResizeHandle:focus-visible {
+  outline: none;
+}
+
+.previewPageResizing {
+  user-select: none;
+  cursor: col-resize;
 }
 
 @media (max-width: 1200px) {
@@ -2220,12 +2281,14 @@
 .moduleHouseHatch {
   fill: rgba(15, 15, 16, 0.04);
   stroke: rgba(15, 15, 16, 0.16);
-  stroke-width: 0.5;
+  stroke-width: 0.22;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleHouseHatchLine {
   stroke: rgba(15, 15, 16, 0.18);
-  stroke-width: 0.5;
+  stroke-width: 0.16;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleHouseLabel {
@@ -2236,65 +2299,83 @@
 }
 
 .modulePlanFill {
-  fill: rgba(129, 63, 57, 0.06);
+  fill: rgba(129, 63, 57, 0.025);
 }
 
 .modulePlanPerimeter {
   fill: none;
   stroke: var(--mv-line-primary);
   stroke-linejoin: miter;
+  stroke-width: 0.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.modulePlanMemberBand {
+  fill: none;
+  stroke: var(--mv-line-primary);
+  stroke-width: 0.38;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanBoxInset {
   fill: none;
   stroke: rgba(129, 63, 57, 0.66);
-  stroke-width: 0.88;
+  stroke-width: 0.24;
   stroke-dasharray: 2.2 1.6;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanRidge {
   stroke: var(--mv-line-primary);
-  stroke-width: 1.02;
+  stroke-width: 0.3;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanHipLine {
   stroke: var(--mv-line-secondary);
-  stroke-width: 0.8;
+  stroke-width: 0.22;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanJointLine {
   stroke: var(--mv-line-hidden);
-  stroke-width: 0.78;
+  stroke-width: 0.2;
   stroke-dasharray: 1.8 1.4;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanRafter {
   stroke: var(--mv-line-secondary);
-  stroke-width: 0.56;
+  stroke-width: 0.22;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanSoffitGuide {
   stroke: var(--mv-line-hidden);
-  stroke-width: 0.62;
+  stroke-width: 0.16;
   stroke-dasharray: 1.3 1.3;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanSoffitBracket {
-  stroke: rgba(129, 63, 57, 0.92);
-  stroke-width: 0.62;
+  stroke: rgba(129, 63, 57, 0.72);
+  stroke-width: 0.18;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanOverhangZone {
-  fill: rgba(15, 15, 16, 0.045);
+  fill: rgba(15, 15, 16, 0.02);
   stroke: var(--mv-line-hidden);
-  stroke-width: 0.74;
+  stroke-width: 0.2;
   stroke-dasharray: 1.8 1.3;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanInternalAngle {
   stroke: rgba(129, 63, 57, 0.76);
-  stroke-width: 0.82;
+  stroke-width: 0.2;
   stroke-dasharray: 1.9 1.4;
+  vector-effect: non-scaling-stroke;
 }
 
 .modulePlanAngleText {
@@ -2304,7 +2385,8 @@
 
 .moduleFallLine {
   stroke: var(--mv-line-secondary);
-  stroke-width: 0.82;
+  stroke-width: 0.2;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleFallHead {
@@ -2318,18 +2400,36 @@
 
 .moduleDimLine {
   stroke: var(--mv-dim);
-  stroke-width: 0.78;
+  stroke-width: 0.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleDimTermBar {
+  stroke: var(--mv-dim);
+  stroke-width: 0.2;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleDimTick {
   stroke: var(--mv-dim);
-  stroke-width: 0.78;
+  stroke-width: 0.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleDimWitness {
+  stroke: rgba(28, 28, 29, 0.42);
+  stroke-width: 0.16;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleDimText {
   fill: rgba(15, 15, 16, 0.66);
   font-size: 2.5px;
   font-weight: 600;
+  paint-order: stroke fill;
+  stroke: rgba(255, 255, 255, 0.96);
+  stroke-width: 0.26;
+  stroke-linejoin: round;
 }
 
 .moduleSectionGroundFill {
@@ -2338,7 +2438,8 @@
 
 .moduleSectionGround {
   stroke: var(--mv-line-hidden);
-  stroke-width: 0.86;
+  stroke-width: 0.2;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionPost {
@@ -2347,8 +2448,23 @@
 
 .moduleSectionPostGhost {
   stroke: var(--mv-line-hidden);
-  stroke-width: 0.76;
+  stroke-width: 0.18;
   stroke-dasharray: 2.1 1.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionMember {
+  fill: none;
+  stroke: var(--mv-line-primary);
+  stroke-width: 0.38;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionGutter {
+  fill: none;
+  stroke: rgba(129, 63, 57, 0.7);
+  stroke-width: 0.24;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionRoof {
@@ -2356,21 +2472,25 @@
 }
 
 .moduleSectionOverhangBeam {
-  stroke: rgba(129, 63, 57, 0.8);
-  stroke-width: 0.95;
+  fill: none;
+  stroke: rgba(129, 63, 57, 0.68);
+  stroke-width: 0.24;
   stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionOverhangPost {
-  stroke: rgba(129, 63, 57, 0.72);
-  stroke-width: 0.76;
+  stroke: rgba(129, 63, 57, 0.62);
+  stroke-width: 0.2;
   stroke-dasharray: 1.8 1.2;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionBoxRoof {
   stroke: rgba(129, 63, 57, 0.64);
-  stroke-width: 0.84;
+  stroke-width: 0.2;
   stroke-dasharray: 2 1.4;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionAngleLabel {
@@ -2987,6 +3107,10 @@
     grid-template-columns: 1fr;
     height: auto;
     overflow: visible;
+  }
+
+  .columnResizeHandle {
+    display: none;
   }
 
   .leftCol,

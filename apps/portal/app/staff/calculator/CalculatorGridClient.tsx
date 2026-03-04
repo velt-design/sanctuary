@@ -2,7 +2,17 @@
 
 import type { CostInputsV1, CostOutputV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
 import FieldTile, { type FieldOption, type FieldTileType } from './FieldTile';
 import styles from './CalculatorGrid.module.css';
 import type {
@@ -170,6 +180,12 @@ const FLASHING_PURPOSE_OPTIONS: FieldOption[] = [
 ];
 type UiMode = 'basic' | 'advanced';
 const UI_MODE_STORAGE_KEY = 'sanctuary-portal:calculator:uiMode:v1';
+const PREVIEW_SPLIT_STORAGE_KEY = 'sanctuary-portal:calculator:previewRightWidthPx:v1';
+const PREVIEW_SPLIT_STACK_BREAKPOINT_PX = 1100;
+const PREVIEW_SPLIT_LEFT_MIN_PX = 640;
+const PREVIEW_SPLIT_RIGHT_MIN_PX = 360;
+const PREVIEW_SPLIT_RIGHT_DEFAULT_PX = 520;
+const PREVIEW_SPLIT_HANDLE_WIDTH_PX = 18;
 
 type InfillPresetKey = 'front' | 'house' | 'side' | 'gable_triangles' | 'wall_panel' | 'custom';
 
@@ -258,6 +274,12 @@ type InfillSectionId = InfillEditorSectionId;
 function clampNumber(n: number, min: number, max: number): number {
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, n));
+}
+
+function maxPreviewRightWidth(frameWidthPx: number): number {
+  if (!Number.isFinite(frameWidthPx) || frameWidthPx <= 0) return PREVIEW_SPLIT_RIGHT_DEFAULT_PX;
+  const max = Math.floor(frameWidthPx - PREVIEW_SPLIT_LEFT_MIN_PX - PREVIEW_SPLIT_HANDLE_WIDTH_PX);
+  return Math.max(PREVIEW_SPLIT_RIGHT_MIN_PX, max);
 }
 
 function isFrontOrHouseLocation(location: InfillLineItem['location']): boolean {
@@ -1586,9 +1608,15 @@ export default function CalculatorGridClient({
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
+  const [previewRightWidthPx, setPreviewRightWidthPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
+  const [previewRightWidthMaxPx, setPreviewRightWidthMaxPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
+  const [isPreviewSplitDragging, setIsPreviewSplitDragging] = useState(false);
   const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
   const baselineResultRef = useRef<SiteOutputV1 | null>(null);
   const [impactDiff, setImpactDiff] = useState<ImpactDiff | null>(null);
+  const previewSplitRef = useRef<HTMLDivElement | null>(null);
+  const previewSplitPointerIdRef = useRef<number | null>(null);
+  const previewSplitStorageReadyRef = useRef(false);
   const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const primaryFlashingManualOverrideRef = useRef<Record<string, boolean>>({});
 
@@ -1639,6 +1667,66 @@ export default function CalculatorGridClient({
       void 0;
     }
   }, [uiMode]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(PREVIEW_SPLIT_STORAGE_KEY);
+      if (raw) {
+        const parsed = Number.parseFloat(raw);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          setPreviewRightWidthPx(Math.round(parsed));
+        }
+      }
+    } catch {
+      void 0;
+    } finally {
+      previewSplitStorageReadyRef.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!previewSplitStorageReadyRef.current) return;
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(PREVIEW_SPLIT_STORAGE_KEY, String(Math.round(previewRightWidthPx)));
+    } catch {
+      void 0;
+    }
+  }, [previewRightWidthPx]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const frame = previewSplitRef.current;
+    if (!frame) return;
+
+    const syncSplitBounds = () => {
+      const width = frame.getBoundingClientRect().width;
+      if (!Number.isFinite(width) || width <= 0) return;
+      const maxWidth = maxPreviewRightWidth(width);
+      setPreviewRightWidthMaxPx(maxWidth);
+      setPreviewRightWidthPx((prev) => {
+        const next = Math.round(clampNumber(prev, PREVIEW_SPLIT_RIGHT_MIN_PX, maxWidth));
+        return next === prev ? prev : next;
+      });
+    };
+
+    syncSplitBounds();
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        syncSplitBounds();
+      });
+      observer.observe(frame);
+    }
+
+    window.addEventListener('resize', syncSplitBounds);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', syncSplitBounds);
+    };
+  }, []);
 
   const isAdvancedUi = uiMode === 'advanced';
 
@@ -5183,8 +5271,84 @@ export default function CalculatorGridClient({
     return actions.slice().sort((a, b) => (b.minutes ?? 0) - (a.minutes ?? 0));
   }, [result]);
 
+  const splitStyle = useMemo(
+    () =>
+      ({
+        ['--preview-right-width' as '--preview-right-width']: `${previewRightWidthPx}px`,
+      }) as CSSProperties,
+    [previewRightWidthPx],
+  );
+
+  const updatePreviewSplitFromClientX = (clientX: number) => {
+    const frame = previewSplitRef.current;
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
+    if (!Number.isFinite(rect.width) || rect.width <= 0) return;
+    const maxWidth = maxPreviewRightWidth(rect.width);
+    const candidate = rect.right - clientX;
+    setPreviewRightWidthMaxPx(maxWidth);
+    setPreviewRightWidthPx(Math.round(clampNumber(candidate, PREVIEW_SPLIT_RIGHT_MIN_PX, maxWidth)));
+  };
+
+  const stopPreviewSplitDrag = () => {
+    previewSplitPointerIdRef.current = null;
+    setIsPreviewSplitDragging(false);
+  };
+
+  const handlePreviewSplitPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) return;
+    if (typeof window !== 'undefined' && window.innerWidth <= PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
+    previewSplitPointerIdRef.current = event.pointerId;
+    setIsPreviewSplitDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updatePreviewSplitFromClientX(event.clientX);
+    event.preventDefault();
+  };
+
+  const handlePreviewSplitPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (previewSplitPointerIdRef.current !== event.pointerId) return;
+    updatePreviewSplitFromClientX(event.clientX);
+  };
+
+  const handlePreviewSplitPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (previewSplitPointerIdRef.current !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    stopPreviewSplitDrag();
+  };
+
+  const handlePreviewSplitLostPointerCapture = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (previewSplitPointerIdRef.current !== null && previewSplitPointerIdRef.current !== event.pointerId) return;
+    stopPreviewSplitDrag();
+  };
+
+  const handlePreviewSplitKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (typeof window !== 'undefined' && window.innerWidth <= PREVIEW_SPLIT_STACK_BREAKPOINT_PX) return;
+    const step = event.shiftKey ? 48 : 16;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      setPreviewRightWidthPx((prev) => Math.round(clampNumber(prev + step, PREVIEW_SPLIT_RIGHT_MIN_PX, previewRightWidthMaxPx)));
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      setPreviewRightWidthPx((prev) => Math.round(clampNumber(prev - step, PREVIEW_SPLIT_RIGHT_MIN_PX, previewRightWidthMaxPx)));
+      return;
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      setPreviewRightWidthPx(PREVIEW_SPLIT_RIGHT_MIN_PX);
+      return;
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      setPreviewRightWidthPx(previewRightWidthMaxPx);
+    }
+  };
+
   return (
-    <main className={`${styles.page} ${styles.previewPage}`}>
+    <main className={`${styles.page} ${styles.previewPage}${isPreviewSplitDragging ? ` ${styles.previewPageResizing}` : ''}`}>
       <h1 className="visually-hidden">Calculator</h1>
 
       <div className={styles.previewFrame}>
@@ -5204,7 +5368,7 @@ export default function CalculatorGridClient({
             Advanced
           </button>
         </div>
-        <div className={styles.split}>
+        <div className={styles.split} ref={previewSplitRef} style={splitStyle}>
           <div className={styles.leftCol}>
             <FieldGroup title="Context" fields={contextFields} />
             <FieldGroup title="Connections & Site" fields={connectionFields} />
@@ -5214,6 +5378,24 @@ export default function CalculatorGridClient({
             <FieldGroup title="Add-ons" fields={addonFields} />
             <FieldGroup title="Allowances" fields={allowanceFields} />
           </div>
+
+          <button
+            type="button"
+            className={isPreviewSplitDragging ? `${styles.columnResizeHandle} ${styles.columnResizeHandleActive}` : styles.columnResizeHandle}
+            onPointerDown={handlePreviewSplitPointerDown}
+            onPointerMove={handlePreviewSplitPointerMove}
+            onPointerUp={handlePreviewSplitPointerUp}
+            onPointerCancel={handlePreviewSplitPointerUp}
+            onLostPointerCapture={handlePreviewSplitLostPointerCapture}
+            onKeyDown={handlePreviewSplitKeyDown}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize preview panel width"
+            aria-valuemin={PREVIEW_SPLIT_RIGHT_MIN_PX}
+            aria-valuemax={previewRightWidthMaxPx}
+            aria-valuenow={Math.round(clampNumber(previewRightWidthPx, PREVIEW_SPLIT_RIGHT_MIN_PX, previewRightWidthMaxPx))}
+            title="Drag to resize preview panel"
+          />
 
           <aside className={styles.rightCol} aria-label="Preview outputs">
             <div className={styles.previewSummary}>
