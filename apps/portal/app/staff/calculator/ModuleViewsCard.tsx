@@ -160,9 +160,11 @@ export default function ModuleViewsCard({
             <LegendRow
               detailMode={detailMode}
               items={
-                sectionModel.overhangEnabled && sectionModel.overhangAmountM > 0
-                  ? ['Primary frame', 'Internal roof line', 'Overhang support']
-                  : ['Primary frame', 'Internal roof line']
+                sectionModel.sectionKind === 'gable'
+                  ? ['Primary frame', 'Internal roof line', 'Tie beam', 'King strut']
+                  : sectionModel.overhangEnabled && sectionModel.overhangAmountM > 0
+                    ? ['Primary frame', 'Internal roof line', 'Overhang support']
+                    : ['Primary frame', 'Internal roof line']
               }
             />
             <div className={styles.modulePlanStats}>
@@ -1061,6 +1063,8 @@ function SectionSvg({
   const ledgerBeamWidthM = sectionLedgerBeamWidthM(model);
   const supportBeamDepthM = sectionSupportBeamDepthM(model);
   const supportBeamWidthM = sectionSupportBeamWidthM(model);
+  const tieBeamDepthM = sectionSupportBeamDepthM(model);
+  const tieBeamWidthM = sectionSupportBeamWidthM(model);
   const ridgeBeamDepthM = sectionRidgeBeamDepthM(model);
   const ridgeBeamWidthM = sectionRidgeBeamWidthM(model);
   const leftEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : ledgerBeamDepthM;
@@ -1114,6 +1118,8 @@ function SectionSvg({
   const ledgerDepth = clamp(ledgerBeamDepthM * scale, 0.9, 5.4);
   const supportCapDepth = clamp(supportBeamDepthM * scale, 0.9, 5.4);
   const supportCapWidth = clamp(supportBeamWidthM * scale, 0.8, 3.8);
+  const tieBeamDepth = clamp(tieBeamDepthM * scale, 0.9, 5.4);
+  const kingStrutWidth = clamp(tieBeamWidthM * scale, 0.8, 3.8);
   const rightEaveBeamDepth = clamp(rightEaveBeamDepthM * scale, 0.9, 5.4);
   const rightEaveBeamWidth = clamp(rightEaveBeamWidthM * scale, 0.8, 3.8);
   const ridgeBeamDepth = clamp(ridgeBeamDepthM * scale, 0.9, 5.4);
@@ -1136,6 +1142,11 @@ function SectionSvg({
   const ySupportBeamTop = yForHeight(supportBeamTopM);
   const yRidgeUnder = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM) : null;
   const yRidgeBeamTop = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM + ridgeBeamDepthM) : null;
+  const tieBeamTopY = yHouseUnder;
+  const tieBeamBottomY = Math.min(yGround - 0.4, tieBeamTopY + tieBeamDepth);
+  const tieBeamLeftX = xLeft;
+  const tieBeamRightX = xRight;
+  const kingStrutBottomY = tieBeamTopY;
   const supportPostTopY = ySupportUnder;
   const supportCapTopY = ySupportBeamTop;
   const gutterTopY = yOuterGutterTop;
@@ -1327,6 +1338,25 @@ function SectionSvg({
         <rect x={xSupport - supportCapWidth / 2} y={supportCapTopY} width={supportCapWidth} height={supportCapDepth} className={styles.moduleSectionOverhangBeam} />
       ) : model.sectionKind === 'gable' ? (
         <rect x={rightEaveX} y={rightEaveY} width={rightEaveBeamWidth} height={rightEaveBeamDepth} className={styles.moduleSectionGutter} />
+      ) : null}
+
+      {model.sectionKind === 'gable' && yRidgeUnder !== null ? (
+        <>
+          <rect
+            x={tieBeamLeftX}
+            y={tieBeamTopY}
+            width={Math.max(0.4, tieBeamRightX - tieBeamLeftX)}
+            height={Math.max(0.2, tieBeamBottomY - tieBeamTopY)}
+            className={styles.moduleSectionMember}
+          />
+          <rect
+            x={ridgeX - kingStrutWidth / 2}
+            y={yRidgeUnder}
+            width={kingStrutWidth}
+            height={Math.max(0.2, kingStrutBottomY - yRidgeUnder)}
+            className={styles.moduleSectionMember}
+          />
+        </>
       ) : null}
 
       {model.sectionKind === 'gable' && yRidgeUnder !== null ? <line x1={ridgeX} y1={yGround} x2={ridgeX} y2={yRidgeUnder} className={styles.moduleSectionPostGhost} /> : null}
