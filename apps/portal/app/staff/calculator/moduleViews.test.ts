@@ -236,6 +236,25 @@ describe('buildModuleSectionModel', () => {
     expect(model?.supportBeamWidthM).toBeCloseTo(0.05);
   });
 
+  it('maps post profile dimensions for section rendering', () => {
+    const module = makeModule({
+      pergolaStyle: 'pitched',
+      projectionM: '3.0',
+      postCutHeightM: '2.4',
+    });
+    const result = makeResult({
+      roofType: 'pitched',
+      spanA: 3,
+      slopeDirection: 'away_from_house',
+    });
+    (result.derived as any).post_profile_used = '125x100';
+
+    const model = buildModuleSectionModel(module, result);
+    expect(model).not.toBeNull();
+    expect(model?.postDepthM).toBeCloseTo(0.125);
+    expect(model?.postWidthM).toBeCloseTo(0.1);
+  });
+
   it('uses section member defaults when profiles are unavailable', () => {
     const module = makeModule({
       pergolaStyle: 'pitched',
@@ -246,6 +265,8 @@ describe('buildModuleSectionModel', () => {
     expect(model).not.toBeNull();
     expect(model?.ledgerBeamDepthM).toBeCloseTo(0.1);
     expect(model?.ledgerBeamWidthM).toBeCloseTo(0.05);
+    expect(model?.postDepthM).toBeCloseTo(0.1);
+    expect(model?.postWidthM).toBeCloseTo(0.1);
     expect(model?.supportBeamDepthM).toBeCloseTo(0.15);
     expect(model?.supportBeamWidthM).toBeCloseTo(0.05);
     expect(model?.gutterDepthM).toBeCloseTo(0.15);

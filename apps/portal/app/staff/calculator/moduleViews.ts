@@ -45,6 +45,8 @@ export type ModuleSectionModel = {
   spanA: number;
   spanB: number | null;
   pitchDeg: number;
+  postWidthM: number;
+  postDepthM: number;
   rafterWidthM: number;
   rafterDepthM: number;
   ledgerBeamWidthM: number;
@@ -110,6 +112,8 @@ const SOFFIT_BRACKET_OFFSET_M = 0.5;
 const SOFFIT_BRACKET_MAX_SPACING_M = 1.5;
 const DEFAULT_RAFTER_WIDTH_M = 0.05;
 const DEFAULT_RAFTER_DEPTH_M = 0.15;
+const DEFAULT_POST_WIDTH_M = 0.1;
+const DEFAULT_POST_DEPTH_M = 0.1;
 const DEFAULT_LEDGER_WIDTH_M = 0.05;
 const DEFAULT_LEDGER_DEPTH_M = 0.1;
 const DEFAULT_SUPPORT_BEAM_WIDTH_M = 0.05;
@@ -166,6 +170,8 @@ function resolveMemberProfileDims(
   module: CalculatorModuleInputs,
   moduleResult: CostOutputV1 | null,
 ): {
+  postWidthM: number;
+  postDepthM: number;
   rafterWidthM: number;
   rafterDepthM: number;
   ledgerBeamWidthM: number;
@@ -186,6 +192,8 @@ function resolveMemberProfileDims(
     module.overrides?.rafterProfile ??
     null;
   const rafterDims = profileDimsFromAny(rafterProfileRaw, DEFAULT_RAFTER_DEPTH_M, DEFAULT_RAFTER_WIDTH_M);
+  const postProfileRaw = derived?.post_profile_used ?? (module.overrides as any)?.postProfile ?? null;
+  const postDims = profileDimsStrict(postProfileRaw, DEFAULT_POST_DEPTH_M, DEFAULT_POST_WIDTH_M);
 
   const gutterTypeRaw = normalized?.gutter_type ?? derived?.gutter_mode ?? null;
   const frontBeamProfileRaw = derived?.front_beam_profile_used ?? module.overrides?.frontBeamProfile ?? 'SP Gutter';
@@ -198,6 +206,8 @@ function resolveMemberProfileDims(
   const ridgeBeamDims = profileDimsStrict(ridgeBeamProfileRaw, DEFAULT_RIDGE_BEAM_DEPTH_M, DEFAULT_RIDGE_BEAM_WIDTH_M);
 
   return {
+    postWidthM: postDims.widthM,
+    postDepthM: postDims.depthM,
     rafterWidthM: rafterDims.widthM,
     rafterDepthM: rafterDims.depthM,
     ledgerBeamWidthM: ledgerBeamDims.widthM,
@@ -446,6 +456,8 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
     spanA,
     spanB,
     pitchDeg,
+    postWidthM: memberDims.postWidthM,
+    postDepthM: memberDims.postDepthM,
     rafterWidthM: memberDims.rafterWidthM,
     rafterDepthM: memberDims.rafterDepthM,
     ledgerBeamWidthM: memberDims.ledgerBeamWidthM,
@@ -491,6 +503,8 @@ function tryBuildSectionFromInputs(module: CalculatorModuleInputs): ModuleSectio
     spanA,
     spanB,
     pitchDeg,
+    postWidthM: memberDims.postWidthM,
+    postDepthM: memberDims.postDepthM,
     rafterWidthM: memberDims.rafterWidthM,
     rafterDepthM: memberDims.rafterDepthM,
     ledgerBeamWidthM: memberDims.ledgerBeamWidthM,
