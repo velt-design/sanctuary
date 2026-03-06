@@ -31,7 +31,7 @@ type QuoteEmailDesignPdf = {
   content: Buffer;
 };
 
-type QuoteEmailPayload = {
+export type QuoteEmailPayload = {
   to: string[];
   cc?: string[];
   bcc?: string[];
@@ -41,6 +41,8 @@ type QuoteEmailPayload = {
   bodyHtml?: string | null;
   designPdf?: QuoteEmailDesignPdf | null;
 };
+
+export type QuoteEmailMode = 'send' | 'resend';
 
 function messageFromError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
@@ -57,23 +59,56 @@ function toConfigError(error: unknown): EmailProviderConfigError | null {
   return null;
 }
 
-function pickSiteUrl(): string {
-  const raw =
+function siteUrlRawFromEnv(): string {
+  return (
     process.env.PUBLIC_SITE_URL?.trim() ||
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     process.env.NEXT_PUBLIC_MARKETING_SITE_URL?.trim() ||
-    '';
-  if (!raw) {
-    throw new EmailProviderConfigError('Missing env var: PUBLIC_SITE_URL');
-  }
+    ''
+  );
+}
 
+function normalizeSiteUrl(raw: string): string | null {
   const normalized = raw.replace(/\/+$/, '');
+  if (!normalized) return null;
   try {
     const parsed = new URL(normalized);
     return parsed.toString().replace(/\/+$/, '');
   } catch {
+    return null;
+  }
+}
+
+function pickSiteUrl(): string {
+  const raw = siteUrlRawFromEnv();
+  if (!raw) {
+    throw new EmailProviderConfigError('Missing env var: PUBLIC_SITE_URL');
+  }
+
+  const normalized = normalizeSiteUrl(raw);
+  if (!normalized) {
     throw new EmailProviderConfigError('PUBLIC_SITE_URL must be a valid absolute URL');
   }
+  return normalized;
+}
+
+function safeSiteUrl(): string | null {
+  const raw = siteUrlRawFromEnv();
+  if (!raw) return null;
+  return normalizeSiteUrl(raw);
+}
+
+function quoteLogoUrl(): string | undefined {
+  const base = safeSiteUrl();
+  if (!base) return undefined;
+  return `${base}/images/sp_dark_icon.png`;
+}
+
+function previewQuoteAcceptLink(quoteVersionId: string): string {
+  const base = safeSiteUrl();
+  const id = encodeURIComponent(quoteVersionId);
+  if (!base) return `https://preview.invalid/quote/${id}?token=preview`;
+  return `${base}/quote/${id}?token=preview`;
 }
 
 function quoteAcceptLink(quoteVersionId: string, token: string): string {
@@ -178,6 +213,14 @@ function providerMessageId(response: unknown): string | null {
   return typeof id === 'string' && id.trim() ? id.trim() : null;
 }
 
+async function loadQuoteForMode(quoteVersionId: string, mode: QuoteEmailMode): Promise<QuoteVersionDetail> {
+  const detail = await getQuoteVersionDetail(quoteVersionId);
+  if (!detail) throw new Error('Quote not found');
+  if (mode === 'send' && detail.status !== 'DRAFT') throw new Error('Quote is locked');
+  if (mode === 'resend' && detail.status === 'DRAFT') throw new Error('Quote must be sent first');
+  return detail;
+}
+
 async function resolveDesignPdfAttachment(params: {
   projectUuid: string;
   payload: QuoteEmailPayload;
@@ -214,13 +257,12 @@ async function resolveDesignPdfAttachment(params: {
   };
 }
 
-async function deliverQuoteReadyEmail(params: {
+async function renderQuoteReadyContent(params: {
   detail: QuoteVersionDetail;
   payload: QuoteEmailPayload;
   quoteAcceptUrl: string;
-  attachments: Array<{ filename: string; content: Buffer; contentType: string }>;
   expiresAtDate: string | null;
-}): Promise<{ subject: string; html: string; text: string | null; providerMessageId: string | null }> {
+}): Promise<{ subject: string; html: string; text: string | null }> {
   const note = personalNoteFromPayload(params.payload);
   const subject = quoteSubject(params.detail, params.payload.subject);
 
@@ -237,23 +279,40 @@ async function deliverQuoteReadyEmail(params: {
     quote_valid_until: renderExpiresLabel(params.expiresAtDate),
     next_step_text: 'Use the button above to accept the quote and proceed.',
     personal_note_html: personalNoteHtml(note),
+    logo_url: quoteLogoUrl(),
     reference_id: params.detail.reference ?? params.detail.project.quoteRef ?? undefined,
-  });
-
-  const response = await sendTransactionalEmail({
-    to: params.payload.to,
-    cc: params.payload.cc,
-    bcc: params.payload.bcc,
-    subject,
-    html: rendered.html,
-    text: rendered.text,
-    attachments: params.attachments,
   });
 
   return {
     subject,
     html: rendered.html,
     text: rendered.text ?? null,
+  };
+}
+
+async function deliverQuoteReadyEmail(params: {
+  detail: QuoteVersionDetail;
+  payload: QuoteEmailPayload;
+  quoteAcceptUrl: string;
+  attachments: Array<{ filename: string; content: Buffer; contentType: string }>;
+  expiresAtDate: string | null;
+}): Promise<{ subject: string; html: string; text: string | null; providerMessageId: string | null }> {
+  const rendered = await renderQuoteReadyContent(params);
+
+  const response = await sendTransactionalEmail({
+    to: params.payload.to,
+    cc: params.payload.cc,
+    bcc: params.payload.bcc,
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text ?? undefined,
+    attachments: params.attachments,
+  });
+
+  return {
+    subject: rendered.subject,
+    html: rendered.html,
+    text: rendered.text,
     providerMessageId: providerMessageId(response),
   };
 }
@@ -290,9 +349,7 @@ export async function sendQuote(
   payload: QuoteEmailPayload,
   actor: string | null,
 ): Promise<QuoteVersionDetail> {
-  const detail = await getQuoteVersionDetail(quoteVersionId);
-  if (!detail) throw new Error('Quote not found');
-  if (detail.status !== 'DRAFT') throw new Error('Quote is locked');
+  const detail = await loadQuoteForMode(quoteVersionId, 'send');
 
   const projectUuid = uuidFromAppId(detail.projectId, 'proj');
   const quoteVersionUuid = uuidFromAppId(detail.id, 'qv');
@@ -415,9 +472,7 @@ export async function resendQuote(
   payload: QuoteEmailPayload,
   actor: string | null,
 ): Promise<QuoteVersionDetail> {
-  const detail = await getQuoteVersionDetail(quoteVersionId);
-  if (!detail) throw new Error('Quote not found');
-  if (detail.status === 'DRAFT') throw new Error('Quote must be sent first');
+  const detail = await loadQuoteForMode(quoteVersionId, 'resend');
 
   const projectUuid = uuidFromAppId(detail.projectId, 'proj');
   const quoteVersionUuid = uuidFromAppId(detail.id, 'qv');
@@ -529,4 +584,21 @@ export async function resendQuote(
   const updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');
   return updated;
+}
+
+export async function previewQuoteEmail(
+  quoteVersionId: string,
+  payload: QuoteEmailPayload,
+  mode: QuoteEmailMode,
+): Promise<{ subject: string; html: string; text: string | null }> {
+  const detail = await loadQuoteForMode(quoteVersionId, mode);
+  const now = nowIso();
+  const expiresAtDate = detail.expiresAt ?? addDays(now, 30);
+  const quoteAcceptUrl = previewQuoteAcceptLink(detail.id);
+  return renderQuoteReadyContent({
+    detail,
+    payload,
+    quoteAcceptUrl,
+    expiresAtDate,
+  });
 }

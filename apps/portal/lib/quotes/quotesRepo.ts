@@ -12,6 +12,16 @@ type QuoteSendPayload = {
   designPdf?: File | null;
 };
 
+type QuotePreviewPayload = {
+  mode: 'send' | 'resend';
+  to?: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject?: string;
+  personalNote?: string | null;
+  bodyText?: string;
+};
+
 async function parseJsonSafe(res: Response): Promise<unknown> {
   const text = await res.text();
   if (!text) return null;
@@ -141,6 +151,28 @@ export async function resendQuote(
   return res.quoteVersion;
 }
 
+export async function previewQuoteEmail(
+  quoteVersionId: string,
+  payload: QuotePreviewPayload,
+  opts?: { signal?: AbortSignal },
+): Promise<{ subject: string; html: string; text: string | null }> {
+  const res = await apiJson<{ subject: string; html: string; text: string | null }>(
+    `/api/quotes/${encodeURIComponent(quoteVersionId)}/preview`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      skipSaveTracking: true,
+      signal: opts?.signal,
+    },
+  );
+  if (typeof res.html !== 'string') throw new Error('Failed to render quote preview');
+  return {
+    subject: typeof res.subject === 'string' ? res.subject : '',
+    html: res.html,
+    text: typeof res.text === 'string' ? res.text : null,
+  };
+}
+
 export async function reviseQuote(quoteVersionId: string): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/revise`, {
     method: 'POST',
@@ -165,6 +197,8 @@ export async function markQuoteDeclined(quoteVersionId: string): Promise<QuoteVe
   return res.quoteVersion;
 }
 
-export function quotePdfUrl(quoteVersionId: string): string {
-  return `/api/quotes/${encodeURIComponent(quoteVersionId)}/pdf`;
+export function quotePdfUrl(quoteVersionId: string, opts?: { inline?: boolean }): string {
+  const base = `/api/quotes/${encodeURIComponent(quoteVersionId)}/pdf`;
+  if (!opts?.inline) return base;
+  return `${base}?disposition=inline`;
 }

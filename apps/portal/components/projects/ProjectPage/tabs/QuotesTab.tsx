@@ -14,6 +14,7 @@ import {
   deleteDraftQuoteVersion,
   markQuoteAccepted,
   markQuoteDeclined,
+  previewQuoteEmail,
   quotePdfUrl,
   resendQuote,
   reviseQuote,
@@ -181,6 +182,9 @@ function defaultSubject(quoteRef: string): string {
 }
 
 const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
+const SEND_PREVIEW_DEBOUNCE_MS = 250;
+
+type SendEditorMode = 'compose' | 'preview';
 
 function validateDesignPdf(file: File): string | null {
   if (file.size <= 0) return 'Design PDF is empty.';
@@ -209,6 +213,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     const raw = searchParams.get('quoteId') ?? '';
     return raw.trim() || null;
   }, [searchParams]);
+  const pagePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
 
   const [selectedId, setSelectedId] = useState<string | null>(selectedFromUrl);
 
@@ -239,6 +244,13 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [sendSubject, setSendSubject] = useState('');
   const [sendPersonalNote, setSendPersonalNote] = useState('');
   const [sendDesignPdf, setSendDesignPdf] = useState<File | null>(null);
+  const [sendEditorMode, setSendEditorMode] = useState<SendEditorMode>('compose');
+  const [sendPreviewHtml, setSendPreviewHtml] = useState('');
+  const [sendPreviewLoading, setSendPreviewLoading] = useState(false);
+  const [sendPreviewError, setSendPreviewError] = useState<string | null>(null);
+  const [sendPreviewHeight, setSendPreviewHeight] = useState(640);
+  const sendPreviewRequestRef = useRef(0);
+  const sendPreviewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -331,12 +343,18 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     });
   }, []);
 
-  const updateParams = (next: { quoteId?: string | null }) => {
+  const updateParams = useCallback((next: { quoteId?: string | null }) => {
     const qs = new URLSearchParams(searchParams.toString());
-    if (!next.quoteId) qs.delete('quoteId');
-    else qs.set('quoteId', next.quoteId);
-    router.replace(`?${qs.toString()}`);
-  };
+    if (Object.prototype.hasOwnProperty.call(next, 'quoteId')) {
+      if (!next.quoteId) {
+        qs.delete('quoteId');
+        qs.delete('quotePreview');
+      }
+      else qs.set('quoteId', next.quoteId);
+    }
+    const query = qs.toString();
+    router.replace(query ? `?${query}` : '?');
+  }, [router, searchParams]);
 
   const latestEstimate = useMemo(() => {
     if (!estimates.length) return null;
@@ -372,6 +390,27 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     return false;
   }, [detail, effectiveDraftItems, draftReference, draftIntro, draftTerms, draftDepositPercent, draftExpiry]);
 
+  const quotePdfPreviewSrc = useMemo(() => (detail ? quotePdfUrl(detail.id, { inline: true }) : ''), [detail]);
+
+  const quotePdfPreviewKey = useMemo(() => {
+    if (!detail) return '';
+    const lineSignature = detail.lineItems
+      .map((item) => `${item.description}:${item.qty}:${item.unitPriceIncGstCents}`)
+      .join('|');
+    return [
+      detail.id,
+      detail.status,
+      detail.sentAt ?? '',
+      detail.expiresAt ?? '',
+      detail.reference ?? '',
+      detail.depositPercent,
+      detail.introText ?? '',
+      detail.termsText ?? '',
+      detail.totals.totalIncGstCents,
+      lineSignature,
+    ].join('::');
+  }, [detail]);
+
   const openCreateModal = () => {
     const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
     if (!defaultId) {
@@ -398,7 +437,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     }
   };
 
-  const openSendModal = (mode: 'send' | 'resend') => {
+  const openSendModal = useCallback((mode: 'send' | 'resend', editorMode: SendEditorMode = 'compose') => {
     if (!detail) return;
     if (mode === 'send' && draftDirty) {
       toast.error('Save the draft before sending.');
@@ -410,9 +449,88 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     setSendSubject(defaultSubject(detail.quoteRef));
     setSendPersonalNote(defaultPersonalNote());
     setSendDesignPdf(null);
+    setSendEditorMode(editorMode);
+    setSendPreviewHtml('');
+    setSendPreviewError(null);
+    setSendPreviewLoading(false);
+    setSendPreviewHeight(640);
+    sendPreviewRequestRef.current += 1;
     setSendError(null);
     setSendOpen(true);
-  };
+  }, [detail, draftDirty, toast]);
+
+  const closeSendModal = useCallback(() => {
+    setSendDesignPdf(null);
+    setSendEditorMode('compose');
+    setSendPreviewHtml('');
+    setSendPreviewError(null);
+    setSendPreviewLoading(false);
+    setSendPreviewHeight(640);
+    setSendError(null);
+    setSendOpen(false);
+    sendPreviewRequestRef.current += 1;
+  }, []);
+
+  const sizeSendPreviewIframe = useCallback(() => {
+    const frame = sendPreviewFrameRef.current;
+    if (!frame) return;
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    const next = Math.max(
+      doc.documentElement?.scrollHeight ?? 0,
+      doc.body?.scrollHeight ?? 0,
+      220,
+    );
+    setSendPreviewHeight((prev) => (Math.abs(prev - next) > 8 ? next : prev));
+  }, []);
+
+  useEffect(() => {
+    const previewQuoteId = detail?.id ?? '';
+    if (!sendOpen || sendEditorMode !== 'preview' || !previewQuoteId) return;
+
+    const requestId = sendPreviewRequestRef.current + 1;
+    sendPreviewRequestRef.current = requestId;
+    const ac = new AbortController();
+    const to = sendTo.split(',').map((entry) => entry.trim()).filter(Boolean);
+
+    const run = async () => {
+      setSendPreviewLoading(true);
+      setSendPreviewError(null);
+      try {
+        const rendered = await previewQuoteEmail(
+          previewQuoteId,
+          {
+            mode: sendMode,
+            to,
+            subject: sendSubject,
+            personalNote: sendPersonalNote,
+          },
+          { signal: ac.signal },
+        );
+        if (ac.signal.aborted || requestId !== sendPreviewRequestRef.current) return;
+        setSendPreviewHtml(rendered.html);
+        requestAnimationFrame(() => sizeSendPreviewIframe());
+      } catch (err) {
+        if (ac.signal.aborted || requestId !== sendPreviewRequestRef.current) return;
+        const msg = err instanceof Error ? err.message : 'Failed to load preview';
+        setSendPreviewHtml('');
+        setSendPreviewError(msg);
+      } finally {
+        if (!ac.signal.aborted && requestId === sendPreviewRequestRef.current) {
+          setSendPreviewLoading(false);
+        }
+      }
+    };
+
+    const timeout = window.setTimeout(() => {
+      void run();
+    }, SEND_PREVIEW_DEBOUNCE_MS);
+
+    return () => {
+      ac.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [detail?.id, sendEditorMode, sendMode, sendOpen, sendPersonalNote, sendSubject, sendTo, sizeSendPreviewIframe]);
 
   const handleSend = async () => {
     if (!detail || sendBusy) return;
@@ -447,9 +565,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       setDraftItems(updated.lineItems);
       setUnitInputDrafts({});
       setActiveUnitInputId(null);
-      setSendDesignPdf(null);
-      setSendOpen(false);
-      setSendError(null);
+      closeSendModal();
       await refreshQuotes();
       toast.success(sendMode === 'send' ? 'Quote sent.' : 'Quote resent.');
     } catch (err) {
@@ -661,6 +777,25 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
           <div className={styles.expiredBanner}>Expired on {detail.expiresAt ?? '—'}</div>
         ) : null}
 
+        {pagePreviewFromUrl ? (
+          <section className={styles.card}>
+            <div className={styles.cardHeader}>
+              <h4 className={styles.cardTitle}>Quote preview</h4>
+            </div>
+            {detail.status === 'DRAFT' && draftDirty ? (
+              <div className={styles.metaWarning}>Preview shows the latest saved draft. Save draft to include unsaved edits.</div>
+            ) : null}
+            <div className={styles.quotePreviewFrameWrap}>
+              <iframe
+                key={quotePdfPreviewKey}
+                title="Quote PDF preview"
+                className={styles.quotePreviewFrame}
+                src={quotePdfPreviewSrc}
+              />
+            </div>
+          </section>
+        ) : (
+          <>
         <section className={styles.card}>
           <div className={styles.cardHeader}>
             <h4 className={styles.cardTitle}>Quote details</h4>
@@ -971,83 +1106,137 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
             <p className={styles.muted}>No send attempts yet.</p>
           )}
         </section>
+          </>
+        )}
 
         {sendOpen ? (
           <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
+            <div className={`${styles.modal} ${styles.modalWide}`}>
               <div className={styles.modalHeader}>
                 <h4 className={styles.cardTitle}>{sendMode === 'send' ? 'Send quote' : 'Resend quote'}</h4>
                 <button
                   type="button"
                   className={styles.modalClose}
-                  onClick={() => {
-                    setSendDesignPdf(null);
-                    setSendOpen(false);
-                  }}
+                  onClick={() => closeSendModal()}
                 >
                   Close
                 </button>
               </div>
-              <div className={styles.modalBody}>
-                <label className={styles.metaLabel} htmlFor="sendTo">To</label>
-                <input id="sendTo" className={styles.metaInput} value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
-                <label className={styles.metaLabel} htmlFor="sendSubject">Subject</label>
-                <input id="sendSubject" className={styles.metaInput} value={sendSubject} onChange={(e) => setSendSubject(e.target.value)} />
-                <label className={styles.metaLabel} htmlFor="sendBody">Personal note (optional)</label>
-                <textarea
-                  id="sendBody"
-                  className={styles.textarea}
-                  value={sendPersonalNote}
-                  onChange={(e) => setSendPersonalNote(e.target.value)}
-                  rows={6}
-                  placeholder="Optional custom note to include in the template."
-                />
-                <label className={styles.metaLabel} htmlFor="sendDesignPdf">Design PDF (optional)</label>
-                <input
-                  id="sendDesignPdf"
-                  className={styles.fileInput}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  onChange={(event) => {
-                    const nextFile = event.currentTarget.files?.[0] ?? null;
-                    if (!nextFile) {
-                      setSendDesignPdf(null);
-                      setSendError(null);
-                      return;
-                    }
-                    const validation = validateDesignPdf(nextFile);
-                    if (validation) {
-                      event.currentTarget.value = '';
-                      setSendDesignPdf(null);
-                      setSendError(validation);
-                      toast.error(validation);
-                      return;
-                    }
-                    setSendDesignPdf(nextFile);
-                    setSendError(null);
-                  }}
-                />
-                <div className={styles.attachmentsHint}>
-                  Attachments: Quote PDF (auto attached).
-                  {sendDesignPdf
-                    ? ` Design PDF selected: ${sendDesignPdf.name} (${formatFileSize(sendDesignPdf.size)}).`
-                    : ' You can add one design PDF up to 20MB.'}
-                </div>
-                {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
+              <div className={styles.modalModeSwitch} role="tablist" aria-label="Email editor mode">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={sendEditorMode === 'compose'}
+                  className={`${styles.modalModeButton} ${sendEditorMode === 'compose' ? styles.modalModeButtonActive : ''}`}
+                  onClick={() => setSendEditorMode('compose')}
+                >
+                  Compose
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={sendEditorMode === 'preview'}
+                  className={`${styles.modalModeButton} ${sendEditorMode === 'preview' ? styles.modalModeButtonActive : ''}`}
+                  onClick={() => setSendEditorMode('preview')}
+                >
+                  Preview
+                </button>
               </div>
+              {sendEditorMode === 'compose' ? (
+                <div className={styles.modalBody}>
+                  <label className={styles.metaLabel} htmlFor="sendTo">To</label>
+                  <input id="sendTo" className={styles.metaInput} value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
+                  <label className={styles.metaLabel} htmlFor="sendSubject">Subject</label>
+                  <input id="sendSubject" className={styles.metaInput} value={sendSubject} onChange={(e) => setSendSubject(e.target.value)} />
+                  <label className={styles.metaLabel} htmlFor="sendBody">Personal note (optional)</label>
+                  <textarea
+                    id="sendBody"
+                    className={styles.textarea}
+                    value={sendPersonalNote}
+                    onChange={(e) => setSendPersonalNote(e.target.value)}
+                    rows={6}
+                    placeholder="Optional custom note to include in the template."
+                  />
+                  <label className={styles.metaLabel} htmlFor="sendDesignPdf">Design PDF (optional)</label>
+                  <input
+                    id="sendDesignPdf"
+                    className={styles.fileInput}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={(event) => {
+                      const nextFile = event.currentTarget.files?.[0] ?? null;
+                      if (!nextFile) {
+                        setSendDesignPdf(null);
+                        setSendError(null);
+                        return;
+                      }
+                      const validation = validateDesignPdf(nextFile);
+                      if (validation) {
+                        event.currentTarget.value = '';
+                        setSendDesignPdf(null);
+                        setSendError(validation);
+                        toast.error(validation);
+                        return;
+                      }
+                      setSendDesignPdf(nextFile);
+                      setSendError(null);
+                    }}
+                  />
+                  <div className={styles.attachmentsHint}>
+                    Attachments: Quote PDF (auto attached).
+                    {sendDesignPdf
+                      ? ` Design PDF selected: ${sendDesignPdf.name} (${formatFileSize(sendDesignPdf.size)}).`
+                      : ' You can add one design PDF up to 20MB.'}
+                  </div>
+                  {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
+                </div>
+              ) : (
+                <div className={styles.modalBody}>
+                  <div className={styles.previewMetaGrid}>
+                    <div className={styles.previewMetaItem}>
+                      <div className={styles.metaLabel}>To</div>
+                      <div className={styles.previewMetaValue}>{sendTo || '—'}</div>
+                    </div>
+                    <div className={styles.previewMetaItem}>
+                      <div className={styles.metaLabel}>Subject</div>
+                      <div className={styles.previewMetaValue}>{sendSubject || '—'}</div>
+                    </div>
+                  </div>
+                  <p className={styles.attachmentsHint}>
+                    Preview shows rendered email HTML. Action links are illustrative in preview mode.
+                  </p>
+                  {sendPreviewLoading ? <p className={legacy.note}>Loading preview...</p> : null}
+                  {sendPreviewError ? <div className={styles.errorText}>{sendPreviewError}</div> : null}
+                  {!sendPreviewLoading && !sendPreviewError && !sendPreviewHtml ? <p className={legacy.note}>No preview available.</p> : null}
+                  {!sendPreviewError && sendPreviewHtml ? (
+                    <div className={styles.previewFrameWrap}>
+                      <iframe
+                        ref={sendPreviewFrameRef}
+                        title="Quote email preview"
+                        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+                        style={{ width: '100%', height: sendPreviewHeight, border: 0, background: '#fff', display: 'block' }}
+                        srcDoc={sendPreviewHtml}
+                        onLoad={() => {
+                          sizeSendPreviewIframe();
+                          setTimeout(sizeSendPreviewIframe, 50);
+                          setTimeout(sizeSendPreviewIframe, 250);
+                        }}
+                        scrolling="no"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              )}
               <div className={styles.modalFooter}>
                 <button
                   type="button"
                   className={legacy.buttonSecondary}
-                  onClick={() => {
-                    setSendDesignPdf(null);
-                    setSendOpen(false);
-                  }}
+                  onClick={() => closeSendModal()}
                 >
                   Cancel
                 </button>
                 <button type="button" className={legacy.button} onClick={handleSend} disabled={sendBusy}>
-                  {sendBusy ? 'Sending…' : sendMode === 'send' ? 'Send quote' : 'Resend quote'}
+                  {sendBusy ? 'Sending...' : sendMode === 'send' ? 'Send quote' : 'Resend quote'}
                 </button>
               </div>
             </div>

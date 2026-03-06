@@ -21,6 +21,7 @@ export type QuoteReadyEmailInput = {
   excluded_item_2?: string;
   next_step_text?: string;
   personal_note_html?: string;
+  logo_url?: string;
   reference_id?: string;
   attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>;
 };

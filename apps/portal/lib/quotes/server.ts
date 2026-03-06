@@ -13,4 +13,4 @@ export {
   downloadQuotePdf,
 } from './serverCore';
 
-export { sendQuote, resendQuote, EmailProviderConfigError } from './serverEmail';
+export { sendQuote, resendQuote, previewQuoteEmail, EmailProviderConfigError } from './serverEmail';
