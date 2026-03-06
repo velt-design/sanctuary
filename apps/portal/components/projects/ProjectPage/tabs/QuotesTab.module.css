@@ -404,6 +404,10 @@
   box-shadow: 0 25px 70px rgba(15, 15, 16, 0.25);
 }
 
+.modalWide {
+  max-width: 920px;
+}
+
 .modalHeader {
   display: flex;
   align-items: center;
@@ -433,6 +437,86 @@
 .modalBody {
   display: grid;
   gap: 8px;
+}
+
+.modalModeSwitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 15, 16, 0.14);
+  background: rgba(15, 15, 16, 0.04);
+  margin-bottom: 10px;
+}
+
+.modalModeButton {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(15, 15, 16, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.modalModeButtonActive {
+  background: #fff;
+  color: rgba(15, 15, 16, 0.92);
+  box-shadow: 0 1px 2px rgba(15, 15, 16, 0.12);
+}
+
+.modalModeButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+}
+
+.previewMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.previewMetaItem {
+  border: 1px solid rgba(15, 15, 16, 0.1);
+  border-radius: 10px;
+  background: rgba(15, 15, 16, 0.02);
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.previewMetaValue {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(15, 15, 16, 0.9);
+  overflow-wrap: anywhere;
+}
+
+.previewFrameWrap {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.quotePreviewFrameWrap {
+  border: 1px solid rgba(15, 15, 16, 0.12);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(15, 15, 16, 0.03);
+}
+
+.quotePreviewFrame {
+  width: 100%;
+  min-height: 720px;
+  height: clamp(720px, 82vh, 1240px);
+  border: 0;
+  display: block;
+  background: #fff;
 }
 
 .modalBodyText {

@@ -25,6 +25,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]['key'];
 type ModeKey = 'general' | 'focus';
+type QuoteViewKey = 'edit' | 'preview';
 
 function coerceTab(value: string | undefined): TabKey {
   return (TABS.find((t) => t.key === value)?.key ?? 'activity') as TabKey;
@@ -56,14 +57,23 @@ export default function ProjectMainTabs({
   const tabFromUrl = useMemo(() => coerceTab(searchParams.get('tab') ?? tab), [searchParams, tab]);
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl);
   const activeMode = coerceMode(mode);
+  const quotePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
+  const quoteView: QuoteViewKey = quotePreviewFromUrl ? 'preview' : 'edit';
+  const hasSelectedQuote = useMemo(() => Boolean((searchParams.get('quoteId') ?? '').trim()), [searchParams]);
+  const showLegacyModeToggle = false;
 
   useEffect(() => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
 
-  const updateParams = (next: Partial<{ tab: TabKey }>) => {
+  const updateParams = (next: Partial<{ tab: TabKey; quotePreview: boolean }>) => {
     const qs = new URLSearchParams(searchParams.toString());
     if (next.tab) qs.set('tab', next.tab);
+    if (Object.prototype.hasOwnProperty.call(next, 'quotePreview')) {
+      if (next.quotePreview) qs.set('quotePreview', '1');
+      else qs.delete('quotePreview');
+    }
+    if (next.tab && next.tab !== 'quotes') qs.delete('quotePreview');
     const query = qs.toString();
     if (next.tab) setActiveTab(next.tab);
     router.replace(`${pathname}${query ? `?${query}` : ''}`);
@@ -128,22 +138,46 @@ export default function ProjectMainTabs({
         </div>
 
         <div className={legacy.actions}>
-          <div className={legacy.tabsPill} role="group" aria-label="Mode toggle">
-            {(['general', 'focus'] as const).map((value) => {
-              const active = activeMode === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setMode(value)}
-                  className={`${legacy.tabButton} ${active ? legacy.tabButtonActive : ''}`}
-                  aria-pressed={active}
-                >
-                  {value === 'focus' ? 'Focus' : 'General'}
-                </button>
-              );
-            })}
-          </div>
+          {showLegacyModeToggle ? (
+            <div className={legacy.tabsPill} role="group" aria-label="Mode toggle">
+              {(['general', 'focus'] as const).map((value) => {
+                const active = activeMode === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setMode(value)}
+                    className={`${legacy.tabButton} ${active ? legacy.tabButtonActive : ''}`}
+                    aria-pressed={active}
+                  >
+                    {value === 'focus' ? 'Focus' : 'General'}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {!showLegacyModeToggle && activeTab === 'quotes' ? (
+            <div className={legacy.tabsPill} role="group" aria-label="Quote view">
+              {(['edit', 'preview'] as const).map((value) => {
+                const active = quoteView === value;
+                const disabled = value === 'preview' && !hasSelectedQuote;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => updateParams({ tab: 'quotes', quotePreview: value === 'preview' })}
+                    className={`${legacy.tabButton} ${active ? legacy.tabButtonActive : ''}`}
+                    aria-pressed={active}
+                    disabled={disabled}
+                    title={disabled ? 'Select a quote to preview' : undefined}
+                  >
+                    {value === 'preview' ? 'Preview' : 'Edit'}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
 

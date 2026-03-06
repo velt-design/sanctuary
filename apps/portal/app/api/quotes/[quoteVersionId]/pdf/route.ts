@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-export async function GET(_req: Request, ctx: { params: Promise<{ quoteVersionId: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ quoteVersionId: string }> }) {
   const session = await requireStaffSession();
   if (!session) return jsonError('Unauthorized', 401);
 
@@ -17,11 +17,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ quoteVersionId
   try {
     const pdf = await downloadQuotePdf(id, actor);
     const body = new Uint8Array(pdf.bytes);
+    const reqUrl = new URL(req.url);
+    const inlineRequested = reqUrl.searchParams.get('disposition') === 'inline' || reqUrl.searchParams.get('inline') === '1';
+    const dispositionType = inlineRequested ? 'inline' : 'attachment';
     return new NextResponse(body, {
       status: 200,
       headers: {
         'content-type': 'application/pdf',
-        'content-disposition': `attachment; filename="${pdf.filename}"`,
+        'content-disposition': `${dispositionType}; filename="${pdf.filename}"`,
       },
     });
   } catch (err) {

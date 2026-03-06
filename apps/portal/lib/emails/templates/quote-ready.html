@@ -19,9 +19,20 @@
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:600px; max-width:600px; background:#ffffff;">
           <tr>
             <td style="padding:22px 24px 12px 24px; font-family:Arial, Helvetica, sans-serif; color:#111111;">
+              {{#if logo_url}}
+              <div style="margin:0; padding:0;">
+                <img
+                  src="{{logo_url}}"
+                  width="172"
+                  alt="Sanctuary Pergolas"
+                  style="display:block; width:172px; max-width:100%; height:auto; border:0; outline:none; text-decoration:none;"
+                />
+              </div>
+              {{else}}
               <div style="font-size:14px; letter-spacing:0.08em; text-transform:uppercase; color:#111111;">
                 Sanctuary Pergolas
               </div>
+              {{/if}}
               <div style="height:1px; background-color:#e6e6e6; margin-top:14px;"></div>
             </td>
           </tr>
