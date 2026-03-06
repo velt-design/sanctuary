@@ -1,4 +1,4 @@
-body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; font-weight:400; overflow-x:hidden}
+﻿body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; font-weight:400; overflow-x:hidden}
 /* Footer now shows on homepage too */
 
 .homepage-legacy-scope *:not([data-overlay-cta]),
@@ -72,7 +72,7 @@ body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,B
 .feature-bar .container{display:flex;flex-wrap:nowrap;justify-content:space-between;align-items:center;gap:8px;padding-block:calc(var(--barPad) * var(--barScale));font-size:calc(15px * 1.3);color:var(--fg);text-transform:uppercase;letter-spacing:.06em}
 .feature-bar .dot{position:relative;display:inline-flex;align-items:center;transition: color .5s ease}
 .feature-bar .dot .feature-bubble{display:none}
-.feature-bar .dot::after{content:"·";margin:0 8px;color:var(--muted)}
+.feature-bar .dot::after{content:"Â·";margin:0 8px;color:var(--muted)}
 .feature-bar .dot:last-child::after{content:"";margin:0}
 
 @media (min-width:961px){
@@ -387,7 +387,7 @@ body.homepage{background:var(--bg); color:var(--fg); font-family:-apple-system,B
 /* Process CTA bar (all viewports) */
 .process-cta-bar{
   display:block;
-  background: var(--accentRed, #813F39);
+  background: var(--accentRed);
   color: var(--pageWhite, #FDFDFD);
   text-decoration:none;
 }
@@ -494,7 +494,7 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 .sp-reveal__line{ font-weight:500; line-height:1.06; letter-spacing:.01em; font-size: var(--sp-size, clamp(22px, 3.2vw, 44px)); color: var(--sp-ink, var(--muted)); }
 .sp-reveal__word{ display:inline-block; margin-right:.35ch; }
 .sp-reveal__word.is-key{ color:#0A0B0C; }
-.sp-reveal__word.is-accent{ color: var(--accentRed, #813F39); }
+.sp-reveal__word.is-accent{ color: var(--accentRed); }
 
 /* Right: image */
 .sp-reveal__imagebox{ position:relative; height:100%; }
@@ -515,7 +515,7 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
     --sp-offset-bottom: var(--sp-edge, 24px);
   }
   .sp-reveal__sticky{ grid-template-columns: 1fr; }
-  /* Hide the text column on small screens – we only want the images stacked. */
+  /* Hide the text column on small screens â€“ we only want the images stacked. */
   .sp-reveal__text{ display:none; }
   .sp-reveal__linebox{ max-width: none; }
   .sp-reveal__imagepad{
@@ -558,3 +558,4 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 }
 
 /* Roofing options: legacy styles removed in favor of Tailwind-based two-column layout */
+

@@ -10,7 +10,7 @@
   --color-ink: var(--fg);
   --color-muted: var(--muted, #666);
   --color-border: var(--border);
-  --color-brand: var(--accentRed, #813F39);
+  --color-brand: var(--accentRed);
 
   /* Spacing */
   --spacing-gutter: var(--g);

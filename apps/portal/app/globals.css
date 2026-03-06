@@ -4,7 +4,8 @@
 
 :root {
   --portal-header-height: 48px;
-  --accentRed: #813f39;
+  --accentRed: var(--sp-accent);
+  --accentRgb: var(--sp-accent-rgb);
 }
 
 @media (max-width: 768px) {

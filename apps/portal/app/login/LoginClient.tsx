@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { fetchPortalRole } from '@/lib/queries/auth';
+import { BRAND_ACCENT_HEX } from '@sp/theme';
 
 const DEFAULT_CALLBACK_URL = '/dashboard';
 
@@ -165,7 +166,7 @@ export default function LoginClient() {
                 padding: '12px 14px',
                 borderRadius: 999,
                 border: 'none',
-                background: '#813F39',
+                background: BRAND_ACCENT_HEX,
                 color: '#fff',
                 fontWeight: 600,
                 letterSpacing: '0.02em',

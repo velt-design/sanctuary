@@ -273,7 +273,7 @@ export default function HomePageClient({
           <div className="mx-auto flex min-h-[120px] w-[min(88vw,1288px)] items-center justify-center py-6">
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center bg-[var(--accentRed,#813F39)] px-6 py-2.5 text-center text-[18px] font-medium uppercase tracking-[0.08em] !text-white no-underline visited:!text-white hover:!text-white transition-colors hover:bg-[color-mix(in_srgb,var(--accentRed,#813F39)_85%,#000_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accentRed,#813F39)]/35"
+              className="inline-flex items-center justify-center bg-[var(--accentRed)] px-6 py-2.5 text-center text-[18px] font-medium uppercase tracking-[0.08em] !text-white no-underline visited:!text-white hover:!text-white transition-colors hover:bg-[color-mix(in_srgb,var(--accentRed)_85%,#000_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accentRed)]/35"
             >
               Book a design consultation
             </Link>

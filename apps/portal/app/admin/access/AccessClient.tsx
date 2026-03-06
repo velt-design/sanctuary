@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import PageHeader from '@/components/layout/PageHeader';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import styles from './access.module.css';
+import { BRAND_ACCENT_HEX } from '@sp/theme';
 
 type Role = 'admin' | 'staff';
 
@@ -25,7 +26,7 @@ type CrewRow = {
   scheduled_item_count: number;
 };
 
-const DEFAULT_CREW_COLOR = '#7A3B3B';
+const DEFAULT_CREW_COLOR: string = BRAND_ACCENT_HEX;
 const DEFAULT_CREW_REGION = 'Auckland';
 
 function generatePassword(length = 14) {
@@ -103,7 +104,7 @@ export default function AccessClient() {
   const [loadingCrews, setLoadingCrews] = useState(true);
   const [crewsError, setCrewsError] = useState<string | null>(null);
   const [newCrewName, setNewCrewName] = useState('');
-  const [newCrewColor, setNewCrewColor] = useState(DEFAULT_CREW_COLOR);
+  const [newCrewColor, setNewCrewColor] = useState<string>(DEFAULT_CREW_COLOR);
   const [newCrewRegion, setNewCrewRegion] = useState(DEFAULT_CREW_REGION);
   const [newCrewBaseDate, setNewCrewBaseDate] = useState('');
   const [addingCrew, setAddingCrew] = useState(false);
@@ -463,7 +464,7 @@ export default function AccessClient() {
                   const normalized = normalizeHexColor(e.target.value);
                   if (normalized) setNewCrewColor(normalized);
                 }}
-                placeholder="#7A3B3B"
+                placeholder={DEFAULT_CREW_COLOR}
               />
             </div>
           </label>
@@ -553,7 +554,7 @@ export default function AccessClient() {
                               const normalized = normalizeHexColor(e.target.value);
                               if (normalized) updateCrewDraft(crew.id, { color: normalized });
                             }}
-                            placeholder="#7A3B3B"
+                            placeholder={DEFAULT_CREW_COLOR}
                           />
                         </div>
                       </td>

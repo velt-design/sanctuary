@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { InfillLineItem } from '@/lib/types/calculator';
 import styles from './CalculatorGrid.module.css';
 import type { InfillComputeStatus, InfillJoinerLine, InfillResolvedOrientation } from './infillCompute';
+import { brandAccentRgba } from '@sp/theme';
 
 type InfillPreviewProps = {
   status: InfillComputeStatus;
@@ -156,8 +157,8 @@ export default function InfillPreview({
       >
         <defs>
           <linearGradient id="infill-preview-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(129,63,57,0.2)" />
-            <stop offset="100%" stopColor="rgba(129,63,57,0.06)" />
+            <stop offset="0%" stopColor={brandAccentRgba(0.2)} />
+            <stop offset="100%" stopColor={brandAccentRgba(0.06)} />
           </linearGradient>
         </defs>
 

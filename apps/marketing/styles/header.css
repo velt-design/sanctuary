@@ -1,4 +1,4 @@
-:root{
+﻿:root{
   --bg:#ECEDEE;          /* page + dropdown bg */
   --fg:#0F0F10;
   --border:#D9DBDE;
@@ -7,7 +7,8 @@
   --bw: clamp(1px, 0.12vw, 2.5px);
   --navH: 82px;
   --subH: 0px; /* secondary header height (0 when hidden) */
-  --accentRed:#813F39;
+  --accentRed:var(--sp-accent);
+  --accentRgb:var(--sp-accent-rgb);
   --navFade:#AEB4BA;
   /* Glass background used by both headers */
   --headerGlassBg: rgba(236,237,238,.86);
@@ -112,7 +113,7 @@ header.site{ --navH: 82px; }
   padding:0;
   border-radius:999px;
   border:none;
-  background:#813F39 !important;
+  background:var(--accentRed) !important;
   color:#fff;
   cursor:pointer;
   align-items:center;
@@ -143,7 +144,7 @@ header.site{ --navH: 82px; }
 }
 
 .mobile-toggle{position:relative;display:none;width:24px;height:24px;border-radius:999px;border:none;
-  background:#813F39 !important;
+  background:var(--accentRed) !important;
   color:#fff;cursor:pointer;align-items:center;justify-content:center;transition:background .25s ease, transform .25s ease;
   flex-shrink:0;box-shadow:0 0 0 1px rgba(15,15,16,.12);z-index:32}
 .mobile-toggle:focus-visible{outline:2px solid rgba(15,15,16,.65);outline-offset:4px}
@@ -172,8 +173,8 @@ header.site{ --navH: 82px; }
 .mobile-menu__item-desc{display:block;font-size:13px;color:#777;line-height:1.3}
 
 @media (hover:hover){
-  .nav-cta:hover{background:#6F332F !important}
-  .mobile-toggle:hover{background:#6F332F !important}
+  .nav-cta:hover{background:color-mix(in srgb, var(--accentRed) 85%, #000 15%) !important}
+  .mobile-toggle:hover{background:color-mix(in srgb, var(--accentRed) 85%, #000 15%) !important}
   .mobile-menu__link:hover{color:var(--bg);opacity:.8}
   .mobile-menu__link--cta:hover{background:#1B1B1B;color:var(--bg)}
   .mobile-menu__sublink:hover{color:rgba(15,15,16,.75)}
@@ -188,7 +189,7 @@ body.mobile-menu-open header.site .site-brand{ color:#f5f6f7 !important; }
 body.mobile-menu-open .mobile-toggle{ background:#f5f6f7 !important; color:#000 !important; }
 body.mobile-menu-open .mobile-toggle__pulse{ border-color:rgba(245,246,247,.72); }
 
-/* --- Mega: full‑bleed, no gap, square edges --- */
+/* --- Mega: fullâ€‘bleed, no gap, square edges --- */
 @media (max-width:720px){
   .navbar{gap:0}
   header.site .navbar{align-items:center}
@@ -258,3 +259,4 @@ body.viewer-slider header.site{
     color:var(--fg) !important;
   }
 }
+

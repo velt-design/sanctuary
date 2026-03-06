@@ -103,9 +103,9 @@
   align-items: center;
   justify-content: center;
   min-height: 38px;
-  border: 1px solid var(--accentRed, #813f39);
+  border: 1px solid var(--accentRed);
   background: #ffffff;
-  color: var(--accentRed, #813f39);
+  color: var(--accentRed);
   border-radius: 4px;
   padding: 0 14px;
   font-size: 0.9rem;
@@ -119,7 +119,7 @@
 }
 
 .topBarButton:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accentRed, #813f39) 72%, #ffffff 28%);
+  outline: 2px solid color-mix(in srgb, var(--accentRed) 72%, #ffffff 28%);
   outline-offset: 2px;
 }
 
@@ -169,7 +169,7 @@
   font-size: 0.8rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accentRed, #813f39);
+  color: var(--accentRed);
   font-weight: 700;
   text-align: right;
 }
@@ -397,7 +397,7 @@
   min-height: 44px;
   border: 1px solid transparent;
   border-radius: 4px;
-  background: var(--accentRed, #813f39);
+  background: var(--accentRed);
   color: #ffffff;
   padding: 0 18px;
   font-size: 0.96rem;
@@ -406,11 +406,11 @@
 }
 
 .acceptButton:hover {
-  background: color-mix(in srgb, var(--accentRed, #813f39) 90%, #000000 10%);
+  background: color-mix(in srgb, var(--accentRed) 90%, #000000 10%);
 }
 
 .acceptButton:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accentRed, #813f39) 62%, #ffffff 38%);
+  outline: 2px solid color-mix(in srgb, var(--accentRed) 62%, #ffffff 38%);
   outline-offset: 2px;
 }
 
@@ -460,11 +460,11 @@
 }
 
 .attachmentLink {
-  color: var(--accentRed, #813f39);
+  color: var(--accentRed);
 }
 
 .attachmentLink:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accentRed, #813f39) 65%, #ffffff 35%);
+  outline: 2px solid color-mix(in srgb, var(--accentRed) 65%, #ffffff 35%);
   outline-offset: 2px;
 }
 

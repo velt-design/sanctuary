@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   padding: 12px 16px 16px;
   height: calc(100dvh - var(--portal-header-height, var(--appHeaderHeight, 72px)));
   display: grid;
@@ -8,7 +8,7 @@
 
   --border: rgba(15, 15, 16, 0.14);
   --muted: rgba(15, 15, 16, 0.65);
-  --focus: rgba(129, 63, 57, 0.95);
+  --focus: rgba(var(--accentRgb), 0.95);
   --bg: rgba(255, 255, 255, 0.92);
   --text: #0f0f10;
 
@@ -195,7 +195,7 @@
 }
 
 .attentionIndicatorHigh {
-  background: var(--accentRed, #813f39);
+  background: var(--accentRed);
 }
 
 .attentionIndicatorMedium {
@@ -262,7 +262,7 @@
 }
 
 .attentionActionLink {
-  color: #813f39;
+  color: var(--accentRed);
   text-decoration: underline;
   font-weight: 600;
 }
@@ -311,7 +311,7 @@
   padding: 0;
   background: none;
   font: inherit;
-  color: #813f39;
+  color: var(--accentRed);
   text-decoration: underline;
   cursor: pointer;
   font-weight: 600;
@@ -364,7 +364,7 @@
 }
 
 .flatRowLink {
-  color: #813f39;
+  color: var(--accentRed);
   text-decoration: underline;
   font-weight: 600;
 }
@@ -478,7 +478,7 @@
 }
 
 .workQueueLink {
-  color: #813f39;
+  color: var(--accentRed);
   text-decoration: underline;
   font-weight: 600;
 }
@@ -546,3 +546,4 @@
     background-position: -200% 0;
   }
 }
+

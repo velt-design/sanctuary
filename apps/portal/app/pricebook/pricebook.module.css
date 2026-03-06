@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   padding: 12px 16px 16px;
 }
 
@@ -19,8 +19,8 @@
 }
 
 .tabButtonActive {
-  background: rgba(129, 63, 57, 0.12);
-  border-color: rgba(129, 63, 57, 0.35);
+  background: rgba(var(--accentRgb), 0.12);
+  border-color: rgba(var(--accentRgb), 0.35);
 }
 
 .panel {
@@ -30,3 +30,4 @@
 .panelHidden {
   display: none;
 }
+

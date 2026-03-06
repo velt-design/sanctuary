@@ -21,6 +21,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@sp/theme": [
+        "./packages/theme/src/index.ts"
+      ],
+      "@sp/theme/*": [
+        "./packages/theme/src/*"
       ]
     },
     "plugins": [

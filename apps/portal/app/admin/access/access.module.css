@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   padding: 24px 24px 48px;
   max-width: 1180px;
 }
@@ -71,7 +71,7 @@
   padding: 10px 18px;
   border-radius: 999px;
   border: none;
-  background: #813f39;
+  background: var(--accentRed);
   color: #fff;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -289,3 +289,4 @@
     grid-template-columns: 1fr;
   }
 }
+

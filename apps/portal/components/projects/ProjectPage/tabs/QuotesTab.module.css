@@ -1,4 +1,4 @@
-.wrapper {
+﻿.wrapper {
   display: grid;
   gap: 14px;
 }
@@ -47,7 +47,7 @@
 .backButton:focus-visible {
   outline: none;
   border-radius: 10px;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .detailActions {
@@ -176,7 +176,7 @@
 .metaInput:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .fileInput {
@@ -193,7 +193,7 @@
 .fileInput:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .metaWarning {
@@ -278,7 +278,7 @@
 .textarea:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .numberInput {
@@ -295,7 +295,7 @@
 .numberInput:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .readonlyBlock {
@@ -431,7 +431,7 @@
 .modalClose:focus-visible {
   outline: none;
   border-radius: 10px;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .modalBody {
@@ -471,7 +471,7 @@
 
 .modalModeButton:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .previewMetaGrid {
@@ -542,3 +542,4 @@
   flex-wrap: wrap;
   margin-top: 14px;
 }
+

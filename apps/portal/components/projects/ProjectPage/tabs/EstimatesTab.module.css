@@ -1,4 +1,4 @@
-.wrapper {
+﻿.wrapper {
   display: grid;
   gap: 12px;
 }
@@ -52,12 +52,12 @@
 .versionTab:focus-visible {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .versionTabActive {
-  border-color: rgba(129, 63, 57, 0.5);
-  background: rgba(129, 63, 57, 0.06);
+  border-color: rgba(var(--accentRgb), 0.5);
+  background: rgba(var(--accentRgb), 0.06);
 }
 
 .addTab {
@@ -86,7 +86,7 @@
 .addTab:focus-visible {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .statusDot {
@@ -188,9 +188,9 @@
 }
 
 .versionRowActive {
-  border-color: rgba(129, 63, 57, 0.4);
-  box-shadow: inset 3px 0 0 rgba(129, 63, 57, 0.9);
-  background: rgba(129, 63, 57, 0.02);
+  border-color: rgba(var(--accentRgb), 0.4);
+  box-shadow: inset 3px 0 0 rgba(var(--accentRgb), 0.9);
+  background: rgba(var(--accentRgb), 0.02);
 }
 
 .versionRowTop {
@@ -378,7 +378,7 @@
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(15, 15, 16, 0.08);
-  background: rgba(129, 63, 57, 0.05);
+  background: rgba(var(--accentRgb), 0.05);
   display: grid;
   gap: 4px;
 }
@@ -690,7 +690,7 @@
 .textarea:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .cardActions {
@@ -736,7 +736,7 @@
 .quoteRow:focus-visible {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .quoteRowLabel {
@@ -836,9 +836,9 @@
 }
 
 .stepCurrent .stepMarker {
-  border-color: rgba(129, 63, 57, 0.6);
-  color: rgba(129, 63, 57, 1);
-  background: rgba(129, 63, 57, 0.08);
+  border-color: rgba(var(--accentRgb), 0.6);
+  color: rgba(var(--accentRgb), 1);
+  background: rgba(var(--accentRgb), 0.08);
 }
 
 .stepComplete .stepMarker {
@@ -896,7 +896,7 @@
 .linkButton {
   border: none;
   background: none;
-  color: #813f39;
+  color: var(--accentRed);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -966,3 +966,4 @@
   margin: 0;
   font-size: 16px;
 }
+

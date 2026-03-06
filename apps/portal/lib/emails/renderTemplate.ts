@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import Handlebars from 'handlebars';
+import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
 
 let cachedTemplateDir: string | null = null;
 
@@ -43,8 +44,14 @@ export async function renderTemplate(templateBaseName: string, variables: Record
     textSource = null;
   }
 
-  const html = Handlebars.compile(htmlSource)(variables);
-  const text = textSource ? Handlebars.compile(textSource)(variables) : undefined;
+  const themedVariables: Record<string, unknown> = {
+    brand_accent_hex: BRAND_ACCENT_HEX,
+    brand_accent_rgb: BRAND_ACCENT_RGB_CSV,
+    ...variables,
+  };
+
+  const html = Handlebars.compile(htmlSource)(themedVariables);
+  const text = textSource ? Handlebars.compile(textSource)(themedVariables) : undefined;
 
   return { html, text };
 }

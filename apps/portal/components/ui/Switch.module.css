@@ -1,4 +1,4 @@
-.switch {
+﻿.switch {
   width: 46px;
   height: 26px;
   border-radius: 999px;
@@ -17,12 +17,12 @@
 }
 
 .switch:focus-visible {
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .on {
-  background: var(--accentRed, #813f39);
-  border-color: rgba(129, 63, 57, 0.65);
+  background: var(--accentRed);
+  border-color: rgba(var(--accentRgb), 0.65);
 }
 
 .disabled {
@@ -43,4 +43,5 @@
 .on .knob {
   transform: translateX(20px);
 }
+
 
