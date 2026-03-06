@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   --page-pad: 8px;
   --tile-min-width: 240px;
   --tile-min-height: 100px;
@@ -9,7 +9,7 @@
   /* Design tokens (scoped to this page) */
   --border: rgba(15, 15, 16, 0.14);
   --muted: rgba(15, 15, 16, 0.65);
-  --focus: rgba(129, 63, 57, 0.95);
+  --focus: rgba(var(--accentRgb), 0.95);
   --error: rgb(185, 28, 28);
   --bg: var(--bg, #ECEDEE);
   --text: #0f0f10;
@@ -98,7 +98,7 @@
 .control:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .control[aria-invalid='true'] {
@@ -152,7 +152,7 @@
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(15, 15, 16, 0.14);
-  background: #813f39;
+  background: var(--accentRed);
   color: #fff;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -162,7 +162,7 @@
 
 .actionButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .helper,
@@ -255,7 +255,7 @@
 
 .drawerClose:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .drawerSection {
@@ -389,7 +389,7 @@
 
 .modalClose:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .modalBody {
@@ -467,7 +467,7 @@
 
 .issueRow:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .issueMain {
@@ -540,7 +540,7 @@
 }
 
 .modalButtonPrimary {
-  background: #813f39;
+  background: var(--accentRed);
   color: #fff;
 }
 
@@ -558,7 +558,7 @@
 .modalButtonPrimary:focus,
 .modalButtonSecondary:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .modalButtonDanger {
@@ -607,7 +607,7 @@
 }
 
 .infillPrimaryButton {
-  background: #813f39;
+  background: var(--accentRed);
   color: #fff;
 }
 
@@ -625,7 +625,7 @@
 .infillSecondaryButton:focus,
 .infillSecondaryButtonCompact:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .infillTileSummary {
@@ -717,7 +717,7 @@
 
 .infillDrawerClose:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .infillDrawerBody {
@@ -751,14 +751,14 @@
 }
 
 .infillSectionNavButtonActive {
-  border-color: rgba(129, 63, 57, 0.4);
-  background: rgba(129, 63, 57, 0.08);
+  border-color: rgba(var(--accentRgb), 0.4);
+  background: rgba(var(--accentRgb), 0.08);
   color: rgba(15, 15, 16, 0.9);
 }
 
 .infillSectionNavButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .infillListRows {
@@ -838,11 +838,11 @@
 
 .infillRow:focus-within {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .infillRowActive {
-  border-color: rgba(129, 63, 57, 0.25);
+  border-color: rgba(var(--accentRgb), 0.25);
   background: rgba(127, 29, 29, 0.06);
 }
 
@@ -854,7 +854,7 @@
   left: 0;
   width: 3px;
   border-radius: 0 2px 2px 0;
-  background: rgba(129, 63, 57, 0.85);
+  background: rgba(var(--accentRgb), 0.85);
 }
 
 .infillRowTitle {
@@ -955,7 +955,7 @@
 
 .infillIconButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .infillListEmpty {
@@ -1146,7 +1146,7 @@
 
 .infillSummaryTabButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .infillComputedTitle {
@@ -1204,7 +1204,7 @@
 
 .infillInlineAction:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .infillDecisionCard {
@@ -1269,7 +1269,7 @@
 
 .infillDecisionApply:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .infillAutoSwitchWhy {
@@ -1314,7 +1314,7 @@
 
 .infillWarningButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .infillWarningJump {
@@ -1322,7 +1322,7 @@
   font-size: 11px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: rgba(129, 63, 57, 0.85);
+  color: rgba(var(--accentRgb), 0.85);
 }
 
 .infillResolvePanel {
@@ -1430,7 +1430,7 @@
 
 .infillPresetCard:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .infillPreviewCard {
@@ -1583,7 +1583,7 @@
 
 .infillUndoButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .infillJumpFlash {
@@ -1592,11 +1592,11 @@
 
 @keyframes infillJumpFlashKeyframes {
   0% {
-    box-shadow: 0 0 0 0 rgba(129, 63, 57, 0.45);
-    border-color: rgba(129, 63, 57, 0.4);
+    box-shadow: 0 0 0 0 rgba(var(--accentRgb), 0.45);
+    border-color: rgba(var(--accentRgb), 0.4);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(129, 63, 57, 0);
+    box-shadow: 0 0 0 0 rgba(var(--accentRgb), 0);
     border-color: initial;
   }
 }
@@ -1669,7 +1669,7 @@
 }
 
 .flashingsRowPrimary {
-  background: rgba(129, 63, 57, 0.06);
+  background: rgba(var(--accentRgb), 0.06);
 }
 
 .flashingsCellItem {
@@ -1729,7 +1729,7 @@
 
 .flashingsRemoveButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .flashingsRemovePlaceholder {
@@ -1753,7 +1753,7 @@
 
 .flashingsAddButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .flashingsTotalsCard {
@@ -1853,13 +1853,13 @@
 .columnResizeHandle:focus-visible::before,
 .columnResizeHandleActive::before {
   width: 2px;
-  background: rgba(129, 63, 57, 0.58);
+  background: rgba(var(--accentRgb), 0.58);
 }
 
 .columnResizeHandle:hover::after,
 .columnResizeHandle:focus-visible::after,
 .columnResizeHandleActive::after {
-  background: rgba(129, 63, 57, 0.72);
+  background: rgba(var(--accentRgb), 0.72);
 }
 
 .columnResizeHandle:focus-visible {
@@ -2048,14 +2048,14 @@
 }
 
 .modeToggleButtonActive {
-  border-color: rgba(129, 63, 57, 0.4);
-  background: rgba(129, 63, 57, 0.12);
+  border-color: rgba(var(--accentRgb), 0.4);
+  background: rgba(var(--accentRgb), 0.12);
   color: rgba(15, 15, 16, 0.92);
 }
 
 .modeToggleButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .rightCol {
@@ -2159,14 +2159,14 @@
 
 .moduleViewsTabButtonActive,
 .moduleViewsDetailButtonActive {
-  background: rgba(129, 63, 57, 0.12);
+  background: rgba(var(--accentRgb), 0.12);
   color: rgba(15, 15, 16, 0.9);
 }
 
 .moduleViewsTabButton:focus,
 .moduleViewsDetailButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 @media (max-width: 1180px) {
@@ -2354,7 +2354,7 @@
 }
 
 .modulePlanFill {
-  fill: rgba(129, 63, 57, 0.025);
+  fill: rgba(var(--accentRgb), 0.025);
 }
 
 .modulePlanPerimeter {
@@ -2374,7 +2374,7 @@
 
 .modulePlanBoxInset {
   fill: none;
-  stroke: rgba(129, 63, 57, 0.66);
+  stroke: rgba(var(--accentRgb), 0.66);
   stroke-width: 0.24;
   stroke-dasharray: 2.2 1.6;
   vector-effect: non-scaling-stroke;
@@ -2413,7 +2413,7 @@
 }
 
 .modulePlanSoffitBracket {
-  stroke: rgba(129, 63, 57, 0.72);
+  stroke: rgba(var(--accentRgb), 0.72);
   stroke-width: 0.18;
   vector-effect: non-scaling-stroke;
 }
@@ -2427,7 +2427,7 @@
 }
 
 .modulePlanInternalAngle {
-  stroke: rgba(129, 63, 57, 0.76);
+  stroke: rgba(var(--accentRgb), 0.76);
   stroke-width: 0.2;
   stroke-dasharray: 1.9 1.4;
   vector-effect: non-scaling-stroke;
@@ -2524,14 +2524,14 @@
 
 .moduleSectionLedger {
   fill: none;
-  stroke: rgba(129, 63, 57, 0.78);
+  stroke: rgba(var(--accentRgb), 0.78);
   stroke-width: 0.26;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionGutter {
   fill: none;
-  stroke: rgba(129, 63, 57, 0.7);
+  stroke: rgba(var(--accentRgb), 0.7);
   stroke-width: 0.24;
   vector-effect: non-scaling-stroke;
 }
@@ -2542,21 +2542,21 @@
 
 .moduleSectionOverhangBeam {
   fill: none;
-  stroke: rgba(129, 63, 57, 0.68);
+  stroke: rgba(var(--accentRgb), 0.68);
   stroke-width: 0.24;
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionOverhangPost {
-  stroke: rgba(129, 63, 57, 0.62);
+  stroke: rgba(var(--accentRgb), 0.62);
   stroke-width: 0.2;
   stroke-dasharray: 1.8 1.2;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionBoxRoof {
-  stroke: rgba(129, 63, 57, 0.64);
+  stroke: rgba(var(--accentRgb), 0.64);
   stroke-width: 0.2;
   stroke-dasharray: 2 1.4;
   vector-effect: non-scaling-stroke;
@@ -2608,14 +2608,14 @@
 }
 
 .moduleDiagDatum {
-  stroke: rgba(129, 63, 57, 0.48);
+  stroke: rgba(var(--accentRgb), 0.48);
   stroke-dasharray: 1.5 1.4;
   stroke-width: 0.16;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleDiagDatumLabel {
-  fill: rgba(129, 63, 57, 0.72);
+  fill: rgba(var(--accentRgb), 0.72);
   font-size: 1.9px;
   letter-spacing: 0.02em;
 }
@@ -2677,7 +2677,7 @@
 
 .previewFieldGrid .tile:focus-within {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .previewSummary {
@@ -2775,7 +2775,7 @@
 
 .impactReset:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .impactGrid {
@@ -2954,7 +2954,7 @@
 
 .statusAction:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .previewActions {
@@ -2968,7 +2968,7 @@
   padding: 10px 12px;
   border-radius: 999px;
   border: 1px solid rgba(15, 15, 16, 0.14);
-  background: #813f39;
+  background: var(--accentRed);
   color: #fff;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -2984,7 +2984,7 @@
 
 .previewPrimaryAction:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .previewError {
@@ -3083,7 +3083,7 @@
 
 .warningJumpButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .previewTable {
@@ -3142,8 +3142,8 @@
 }
 
 .materialsDebugRowActive {
-  border-color: rgba(129, 63, 57, 0.55);
-  box-shadow: 0 0 0 2px rgba(129, 63, 57, 0.12);
+  border-color: rgba(var(--accentRgb), 0.55);
+  box-shadow: 0 0 0 2px rgba(var(--accentRgb), 0.12);
 }
 
 .materialsDebugExplain {
@@ -3257,3 +3257,4 @@
     overflow: visible;
   }
 }
+

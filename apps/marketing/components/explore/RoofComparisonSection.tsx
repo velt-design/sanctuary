@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/cn';
+import { BRAND_ACCENT_HEX } from '@sp/theme';
 
 type RoofTypeFitId = 'acrylic' | 'timber' | 'combo';
 
@@ -79,7 +80,7 @@ const ROOF_TYPE_FIT_ROWS: Array<{
 const ROOF_TYPE_BAR_FILLED_COLOR = '#3a3d44';
 const ROOF_TYPE_BAR_UNFILLED_COLOR = '#dfe2e6';
 const ROOF_TYPE_BAR_UNFILLED_BORDER_COLOR = '#cfd3d8';
-const ROOF_TYPE_TOGGLE_ACTIVE_COLOR = '#76352f';
+const ROOF_TYPE_TOGGLE_ACTIVE_COLOR = BRAND_ACCENT_HEX;
 const INITIAL_VIDEO_READY_STATE: Record<RoofTypeFitId, boolean> = {
   acrylic: false,
   timber: false,

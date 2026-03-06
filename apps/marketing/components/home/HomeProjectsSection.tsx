@@ -146,7 +146,7 @@ export default function HomeProjectsSection({
 
             <Link
               href={seeMoreHref}
-              className="group relative h-[clamp(345px,60vh,470px)] w-[min(70vw,420px)] shrink-0 snap-start overflow-hidden border border-page bg-[var(--accentRed,#813F39)] [border-width:var(--bw)]"
+              className="group relative h-[clamp(345px,60vh,470px)] w-[min(70vw,420px)] shrink-0 snap-start overflow-hidden border border-page bg-[var(--accentRed)] [border-width:var(--bw)]"
               aria-label={seeMoreLabel}
             >
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.24))]" />

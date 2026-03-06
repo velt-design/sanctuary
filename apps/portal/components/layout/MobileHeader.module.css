@@ -1,4 +1,4 @@
-:global(:root) {
+﻿:global(:root) {
   --sp-portal-mobile-header-h: 56px;
 }
 
@@ -50,7 +50,7 @@
   width: 26px;
   height: 26px;
   border-radius: 999px;
-  background: var(--accentRed, #813f39);
+  background: var(--accentRed);
   box-shadow: 0 0 0 1px rgba(15, 15, 16, 0.12);
 }
 
@@ -141,12 +141,12 @@
 }
 
 .navLink:focus-visible {
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .navLinkActive {
-  background: rgba(129, 63, 57, 0.12);
-  color: rgba(129, 63, 57, 1);
+  background: rgba(var(--accentRgb), 0.12);
+  color: rgba(var(--accentRgb), 1);
 }
 
 .divider {
@@ -204,5 +204,6 @@
 }
 
 .logout:focus-visible {
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
+

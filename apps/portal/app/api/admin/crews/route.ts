@@ -1,6 +1,7 @@
 import { jsonError, jsonOk, parseJsonBody, requireAdminSession } from '@/lib/api/adminApi';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { listCrewsWithCounts, sanitizeHexColor, isYmd } from './_shared';
+import { BRAND_ACCENT_HEX } from '@sp/theme';
 
 export const runtime = 'nodejs';
 
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
   if (!name) return jsonError('name is required', 400);
 
   const colorInput = typeof body.color === 'string' ? body.color : '';
-  const color = colorInput ? sanitizeHexColor(colorInput) : '#7A3B3B';
+  const color = colorInput ? sanitizeHexColor(colorInput) : BRAND_ACCENT_HEX;
   if (!color) return jsonError('color must be a valid hex value', 400);
 
   const regionInput = typeof body.calendar_region === 'string' ? body.calendar_region.trim() : '';

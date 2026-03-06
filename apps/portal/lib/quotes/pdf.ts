@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PDFDocument, rgb, type Color, type PDFImage } from 'pdf-lib';
 import { formatQuoteIntroText, formatQuoteLineDescription, formatQuoteTermsText } from '@sp/quote-format';
+import { BRAND_ACCENT_PDF_RGB } from '@sp/theme';
 import fontkit from './fontkit';
 import {
   drawDebugOverlay,
@@ -67,7 +68,7 @@ const theme = {
   colors: {
     textPrimary: rgb(0.1, 0.1, 0.12),
     textMuted: rgb(0.42, 0.42, 0.42),
-    accent: rgb(0.502, 0.251, 0.224),
+    accent: rgb(BRAND_ACCENT_PDF_RGB.r, BRAND_ACCENT_PDF_RGB.g, BRAND_ACCENT_PDF_RGB.b),
   },
   sizes: {
     brand: 13.5,

@@ -1,4 +1,4 @@
-.header {
+﻿.header {
   position: sticky;
   top: 0;
   z-index: 50;
@@ -62,7 +62,7 @@
 }
 
 .historyIconButton:focus-visible {
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .historyIconButton:disabled {
@@ -124,3 +124,4 @@
     gap: 6px;
   }
 }
+

@@ -1,4 +1,4 @@
-.viewport {
+﻿.viewport {
   position: fixed;
   right: 16px;
   bottom: 16px;
@@ -51,7 +51,7 @@
 
 .close:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.16);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
 }
 
 .kindSuccess {
@@ -83,4 +83,5 @@
     transform: translateY(0);
   }
 }
+
 

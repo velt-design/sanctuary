@@ -11,7 +11,7 @@ import FooterHeaderSync from '@/components/FooterHeaderSync';
 import Analytics from '@/components/Analytics';
 import WebVitals from '@/components/WebVitals';
 import ScrollReset from '@/components/ScrollReset';
-import { Suspense } from 'react';
+import { Suspense, type CSSProperties } from 'react';
 import MetaPixel from '@/components/MetaPixel';
 import ArchiproPixel from '@/components/ArchiproPixel';
 import JsonLd from '@/components/JsonLd';
@@ -19,6 +19,7 @@ import PortalMode from '@/components/PortalMode';
 import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
 import ConsentBanner from '@/components/ConsentBanner';
 import { ConsentProvider } from '@/components/ConsentProvider';
+import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.sanctuarypergolas.co.nz'),
@@ -53,9 +54,14 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+const brandCssVars = {
+  '--sp-accent': BRAND_ACCENT_HEX,
+  '--sp-accent-rgb': BRAND_ACCENT_RGB_CSV,
+} as CSSProperties;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" style={brandCssVars}>
       <head>
         <JsonLd
           data={[

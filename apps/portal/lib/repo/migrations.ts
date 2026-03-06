@@ -3,6 +3,7 @@ import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
 import { readJson, writeJson } from './storage';
+import { BRAND_ACCENT_HEX } from '@sp/theme';
 
 const QUOTES_KEY = 'sp_quotes_v1';
 const INSTALLERS_KEY = 'sp_installers_v1';
@@ -182,7 +183,7 @@ export function ensureQuotesMigration(): void {
 }
 
 const CREW_V2: Installer[] = [
-  { id: 'crew_jayden', name: 'Jayden', color: '#813f39', active: true, sortOrder: 1 },
+  { id: 'crew_jayden', name: 'Jayden', color: BRAND_ACCENT_HEX, active: true, sortOrder: 1 },
   { id: 'crew_david', name: 'David', color: '#1f6f8b', active: true, sortOrder: 2 },
   { id: 'crew_alistair', name: 'Alistair', color: '#2a9d8f', active: true, sortOrder: 3 },
   { id: 'crew_eder', name: 'Eder', color: '#f4a261', active: true, sortOrder: 4 },

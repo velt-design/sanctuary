@@ -1,7 +1,7 @@
+import { BRAND_ACCENT_HEX } from '@sp/theme';
+
 export const THEME = {
-  // Approx match to the CTA pill red in your screenshot.
-  // If you want the exact value, copy it from your CSS and replace here.
-  accent: '#804039',
+  accent: BRAND_ACCENT_HEX,
 
   bg: '#F5F5F5',
   card: '#FFFFFF',

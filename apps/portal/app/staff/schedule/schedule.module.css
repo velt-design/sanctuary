@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   padding: 12px 16px 16px;
   height: 100%;
   min-height: 0;
@@ -7,7 +7,7 @@
 
   --border: rgba(15, 15, 16, 0.14);
   --muted: rgba(15, 15, 16, 0.65);
-  --focus: rgba(129, 63, 57, 0.95);
+  --focus: rgba(var(--accentRgb), 0.95);
   --bg: rgba(255, 255, 255, 0.92);
   --text: #0f0f10;
   --scrollBottomBuffer: 14px;
@@ -85,7 +85,7 @@
 
 .buttonSecondary:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .buttonDanger {
@@ -129,7 +129,7 @@
   cursor: pointer;
   text-decoration: none;
   user-select: none;
-  background: #813f39;
+  background: var(--accentRed);
   color: #fff;
 }
 
@@ -251,7 +251,7 @@
 
 .panelCollapseButton:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .leftPanelCollapsed .panelHeader {
@@ -300,7 +300,7 @@
 .input:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .eventModalPanel {
@@ -420,9 +420,9 @@
 
 .unscheduledBody[data-over='true'],
 .laneBody[data-over='true'] {
-  box-shadow: inset 0 0 0 2px rgba(129, 63, 57, 0.25);
+  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.25);
   border-radius: 12px;
-  background: rgba(129, 63, 57, 0.04);
+  background: rgba(var(--accentRgb), 0.04);
 }
 
 .debugDetails {
@@ -565,13 +565,13 @@
 }
 
 .siteVisitCardTier1 {
-  border-left: 6px solid rgba(129, 63, 57, 0.95);
-  background: rgba(129, 63, 57, 0.06);
+  border-left: 6px solid rgba(var(--accentRgb), 0.95);
+  background: rgba(var(--accentRgb), 0.06);
 }
 
 .siteVisitCardTier2 {
-  border-left: 6px solid rgba(129, 63, 57, 0.55);
-  background: rgba(129, 63, 57, 0.035);
+  border-left: 6px solid rgba(var(--accentRgb), 0.55);
+  background: rgba(var(--accentRgb), 0.035);
 }
 
 .siteVisitCard:hover {
@@ -580,13 +580,13 @@
 }
 
 .siteVisitCardTier1:hover {
-  border-color: rgba(129, 63, 57, 0.95);
-  background: rgba(129, 63, 57, 0.08);
+  border-color: rgba(var(--accentRgb), 0.95);
+  background: rgba(var(--accentRgb), 0.08);
 }
 
 .siteVisitCardTier2:hover {
-  border-color: rgba(129, 63, 57, 0.55);
-  background: rgba(129, 63, 57, 0.05);
+  border-color: rgba(var(--accentRgb), 0.55);
+  background: rgba(var(--accentRgb), 0.05);
 }
 
 .siteVisitCardTop {
@@ -651,20 +651,20 @@
 }
 
 .siteVisitTierPill1 {
-  background: rgba(129, 63, 57, 0.12);
-  border-color: rgba(129, 63, 57, 0.3);
-  color: rgba(129, 63, 57, 0.95);
+  background: rgba(var(--accentRgb), 0.12);
+  border-color: rgba(var(--accentRgb), 0.3);
+  color: rgba(var(--accentRgb), 0.95);
 }
 
 .siteVisitTierPill2 {
-  background: rgba(129, 63, 57, 0.08);
-  border-color: rgba(129, 63, 57, 0.22);
-  color: rgba(129, 63, 57, 0.78);
+  background: rgba(var(--accentRgb), 0.08);
+  border-color: rgba(var(--accentRgb), 0.22);
+  color: rgba(var(--accentRgb), 0.78);
 }
 
 .siteVisitCardBook:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .siteVisitCardMetaRow {
@@ -832,16 +832,16 @@
 }
 
 .siteVisitSlot:not(.siteVisitSlotOffHours):hover {
-  background: rgba(129, 63, 57, 0.06);
-  box-shadow: inset 0 -1px 0 rgba(15, 15, 16, 0.06), inset 0 0 0 1px rgba(129, 63, 57, 0.18);
+  background: rgba(var(--accentRgb), 0.06);
+  box-shadow: inset 0 -1px 0 rgba(15, 15, 16, 0.06), inset 0 0 0 1px rgba(var(--accentRgb), 0.18);
 }
 
 .siteVisitSlot:not(.siteVisitSlotOffHours):focus-visible {
   outline: none;
   box-shadow:
     inset 0 -1px 0 rgba(15, 15, 16, 0.06),
-    inset 0 0 0 1px rgba(129, 63, 57, 0.28),
-    0 0 0 3px rgba(129, 63, 57, 0.12);
+    inset 0 0 0 1px rgba(var(--accentRgb), 0.28),
+    0 0 0 3px rgba(var(--accentRgb), 0.12);
 }
 
 .siteVisitSlotOffHours {
@@ -873,13 +873,13 @@
 }
 
 .siteVisitEventTier1 {
-  border-color: rgba(129, 63, 57, 0.85);
-  box-shadow: inset 0 0 0 1px rgba(129, 63, 57, 0.35);
+  border-color: rgba(var(--accentRgb), 0.85);
+  box-shadow: inset 0 0 0 1px rgba(var(--accentRgb), 0.35);
 }
 
 .siteVisitEventTier2 {
-  border-color: rgba(129, 63, 57, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(129, 63, 57, 0.2);
+  border-color: rgba(var(--accentRgb), 0.55);
+  box-shadow: inset 0 0 0 1px rgba(var(--accentRgb), 0.2);
 }
 
 .siteVisitEventTitle {
@@ -920,7 +920,7 @@
 }
 
 .siteVisitEventHighlight {
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.25);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.25);
   border-radius: 12px;
 }
 
@@ -964,7 +964,7 @@
 
 .insertionMarker {
   height: 0;
-  border-top: 3px solid rgba(129, 63, 57, 0.65);
+  border-top: 3px solid rgba(var(--accentRgb), 0.65);
   border-radius: 999px;
   margin: 6px 4px;
 }
@@ -988,7 +988,7 @@
 
 .jobCard:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18), 0 14px 36px rgba(15, 15, 16, 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18), 0 14px 36px rgba(15, 15, 16, 0.12);
 }
 
 .jobCard:hover {
@@ -997,8 +997,8 @@
 }
 
 .jobCard[data-drop-target='true'] {
-  box-shadow: inset 0 0 0 2px rgba(129, 63, 57, 0.35), 0 14px 36px rgba(15, 15, 16, 0.12);
-  border-color: rgba(129, 63, 57, 0.55);
+  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.35), 0 14px 36px rgba(15, 15, 16, 0.12);
+  border-color: rgba(var(--accentRgb), 0.55);
 }
 
 .jobCard[data-issue-level='warning'] {
@@ -1078,7 +1078,7 @@
   padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(129, 63, 57, 0.08);
+  background: rgba(var(--accentRgb), 0.08);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -1226,7 +1226,7 @@
 
 .kebab:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .menu {
@@ -1269,7 +1269,7 @@
 
 .menuItem:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .ganttPopoverBackdrop {
@@ -1294,7 +1294,7 @@
 
 .ganttPopover:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14), 0 20px 48px rgba(15, 15, 16, 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14), 0 20px 48px rgba(15, 15, 16, 0.2);
 }
 
 .ganttPopoverHeader {
@@ -1394,7 +1394,7 @@
 
 .ganttPopoverAction:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .ganttPopoverActionDanger {
@@ -1532,7 +1532,7 @@
 .ganttDensitySelect:focus {
   outline: none;
   border-color: var(--focus);
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.14);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .ganttMeta {
@@ -1699,7 +1699,7 @@
 
 .ganttLabelResizer:hover::before,
 .ganttLabelResizer[data-active='true']::before {
-  background: rgba(129, 63, 57, 0.6);
+  background: rgba(var(--accentRgb), 0.6);
 }
 
 .ganttCorner {
@@ -1792,7 +1792,7 @@
 
 .ganttCollapseBtn:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
 .ganttProjectText {
@@ -1818,7 +1818,7 @@
 
 .ganttProjectTextItem:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(129, 63, 57, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
   border-radius: 10px;
   padding-right: 8px;
   margin-right: -8px;
@@ -1962,13 +1962,13 @@
 }
 
 .ganttRowWrap[data-hovered='true'] .ganttTimelineRow {
-  box-shadow: inset 0 0 0 1px rgba(129, 63, 57, 0.35);
-  background-color: rgba(129, 63, 57, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(var(--accentRgb), 0.35);
+  background-color: rgba(var(--accentRgb), 0.04);
 }
 
 .ganttRowWrap[data-hovered='true'] .ganttLeftCell {
   box-shadow:
-    inset 0 0 0 1px rgba(129, 63, 57, 0.35),
+    inset 0 0 0 1px rgba(var(--accentRgb), 0.35),
     8px 0 12px rgba(0, 0, 0, 0.06);
   background-color: #fff;
 }
@@ -2129,8 +2129,8 @@
 }
 
 .lane[data-over='true'] {
-  box-shadow: inset 0 0 0 2px rgba(129, 63, 57, 0.25);
-  background: rgba(129, 63, 57, 0.03);
+  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.25);
+  background: rgba(var(--accentRgb), 0.03);
 }
 
 .laneHeader {
@@ -2221,3 +2221,4 @@
   font-size: 12px;
   color: rgba(15, 15, 16, 0.6);
 }
+
