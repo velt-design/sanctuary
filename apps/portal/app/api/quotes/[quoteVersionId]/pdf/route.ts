@@ -25,6 +25,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ quoteVersionId:
       headers: {
         'content-type': 'application/pdf',
         'content-disposition': `${dispositionType}; filename="${pdf.filename}"`,
+        'x-frame-options': 'SAMEORIGIN',
       },
     });
   } catch (err) {
