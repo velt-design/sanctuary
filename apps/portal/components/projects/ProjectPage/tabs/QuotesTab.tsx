@@ -201,6 +201,26 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
 }
 
+async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+  const contentType = res.headers.get('content-type')?.toLowerCase() ?? '';
+  if (contentType.includes('application/json')) {
+    try {
+      const body = await res.json();
+      const message = typeof body?.error === 'string' ? body.error.trim() : '';
+      if (message) return message;
+    } catch {
+      // Ignore parse errors and fall through to text handling.
+    }
+  }
+  try {
+    const text = (await res.text()).trim();
+    if (text) return text;
+  } catch {
+    // Ignore read errors and use fallback.
+  }
+  return fallback;
+}
+
 export default function QuotesTab({ projectId }: { projectId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -253,6 +273,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const sendPreviewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  const [quotePdfPreviewBlobUrl, setQuotePdfPreviewBlobUrl] = useState<string | null>(null);
+  const quotePdfPreviewBlobUrlRef = useRef<string | null>(null);
+  const [quotePdfPreviewLoading, setQuotePdfPreviewLoading] = useState(false);
+  const [quotePdfPreviewError, setQuotePdfPreviewError] = useState<string | null>(null);
 
   const [expiredPromptOpen, setExpiredPromptOpen] = useState(false);
   const [pendingResendId, setPendingResendId] = useState<string | null>(null);
@@ -410,6 +435,72 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       lineSignature,
     ].join('::');
   }, [detail]);
+
+  const setQuotePdfPreviewUrl = useCallback((next: string | null) => {
+    const prev = quotePdfPreviewBlobUrlRef.current;
+    if (prev && prev !== next) {
+      URL.revokeObjectURL(prev);
+    }
+    quotePdfPreviewBlobUrlRef.current = next;
+    setQuotePdfPreviewBlobUrl(next);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const prev = quotePdfPreviewBlobUrlRef.current;
+      if (prev) {
+        URL.revokeObjectURL(prev);
+        quotePdfPreviewBlobUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!pagePreviewFromUrl || !detail) {
+      setQuotePdfPreviewLoading(false);
+      setQuotePdfPreviewError(null);
+      setQuotePdfPreviewUrl(null);
+      return;
+    }
+
+    const ac = new AbortController();
+    setQuotePdfPreviewLoading(true);
+    setQuotePdfPreviewError(null);
+
+    const run = async () => {
+      try {
+        const res = await fetch(quotePdfPreviewSrc, {
+          method: 'GET',
+          cache: 'no-store',
+          credentials: 'same-origin',
+          signal: ac.signal,
+        });
+        if (!res.ok) {
+          const msg = await readErrorMessage(res, `Failed to load quote preview (${res.status})`);
+          throw new Error(msg);
+        }
+        const blob = await res.blob();
+        if (ac.signal.aborted) return;
+        const nextUrl = URL.createObjectURL(blob);
+        setQuotePdfPreviewUrl(nextUrl);
+      } catch (err) {
+        if (ac.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : 'Failed to load quote preview';
+        setQuotePdfPreviewError(msg);
+        setQuotePdfPreviewUrl(null);
+      } finally {
+        if (!ac.signal.aborted) {
+          setQuotePdfPreviewLoading(false);
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      ac.abort();
+    };
+  }, [detail?.id, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, setQuotePdfPreviewUrl]);
 
   const openCreateModal = () => {
     const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
@@ -785,14 +876,22 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
             {detail.status === 'DRAFT' && draftDirty ? (
               <div className={styles.metaWarning}>Preview shows the latest saved draft. Save draft to include unsaved edits.</div>
             ) : null}
-            <div className={styles.quotePreviewFrameWrap}>
-              <iframe
-                key={quotePdfPreviewKey}
-                title="Quote PDF preview"
-                className={styles.quotePreviewFrame}
-                src={quotePdfPreviewSrc}
-              />
-            </div>
+            {quotePdfPreviewLoading ? <p className={legacy.note}>Rendering quote preview...</p> : null}
+            {quotePdfPreviewError ? (
+              <div className={styles.errorText}>
+                {quotePdfPreviewError} <a href={quotePdfUrl(detail.id)}>Download PDF</a>
+              </div>
+            ) : null}
+            {!quotePdfPreviewLoading && !quotePdfPreviewError && quotePdfPreviewBlobUrl ? (
+              <div className={styles.quotePreviewFrameWrap}>
+                <iframe
+                  key={quotePdfPreviewKey}
+                  title="Quote PDF preview"
+                  className={styles.quotePreviewFrame}
+                  src={quotePdfPreviewBlobUrl}
+                />
+              </div>
+            ) : null}
           </section>
         ) : (
           <>

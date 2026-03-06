@@ -557,6 +557,8 @@ export async function updateDraftQuoteVersion(
     total_inc_gst_cents: totals.totalIncGstCents,
     total_ex_gst_cents: totals.totalExGstCents,
     gst_cents: totals.gstCents,
+    // Keep cached PDF in sync with saved draft edits.
+    pdf_file_id: null,
   };
 
   Object.keys(updatePayload).forEach((key) => updatePayload[key] === undefined && delete updatePayload[key]);
@@ -810,7 +812,7 @@ export async function ensurePdfForSend(detail: QuoteVersionDetail, actor: string
 
   const existingFileId = detail.pdfFileId ? uuidFromAppId(detail.pdfFileId, 'file') : null;
 
-  if (existingFileId && detail.status !== 'DRAFT') {
+  if (existingFileId) {
     const existing = await loadFileContent(existingFileId);
     if (existing) return { fileUuid: existingFileId, filename: existing.filename, content: existing.content };
   }
@@ -960,7 +962,7 @@ export async function downloadQuotePdf(quoteVersionId: string, actor: string | n
   if (!detail) throw new Error('Quote not found');
 
   const existingFileId = detail.pdfFileId ? uuidFromAppId(detail.pdfFileId, 'file') : null;
-  if (existingFileId && detail.status !== 'DRAFT') {
+  if (existingFileId) {
     const existing = await loadFileContent(existingFileId);
     if (existing) return { filename: existing.filename, bytes: existing.content };
   }

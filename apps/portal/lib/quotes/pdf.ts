@@ -2,7 +2,7 @@ import 'server-only';
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { PDFDocument, rgb, type Color } from 'pdf-lib';
+import { PDFDocument, rgb, type Color, type PDFImage } from 'pdf-lib';
 import { formatQuoteIntroText, formatQuoteLineDescription, formatQuoteTermsText } from '@sp/quote-format';
 import fontkit from './fontkit';
 import {
@@ -111,8 +111,11 @@ const theme = {
   },
   spacing: {
     headerBrandToQuote: 3,
+    headerQuoteToClient: 4,
+    headerClientToRef: 8,
     headerQuoteToRef: 10,
     headerRefToStatus: 8,
+    headerLogoToDates: 10,
     headerToIntro: 12,
     introToItems: 18,
     sectionToHeader: 6,
@@ -134,8 +137,10 @@ const FONT_FILES = {
   medium: 'Inter-Medium.ttf',
   semibold: 'Inter-SemiBold.ttf',
 };
+const HEADER_LOGO_FILE = 'sp_dark_icon.png';
 
 const fontCache = new Map<string, Uint8Array>();
+const imageCache = new Map<string, Uint8Array | null>();
 
 async function readFontFile(filename: string): Promise<Uint8Array> {
   if (fontCache.has(filename)) return fontCache.get(filename)!;
@@ -156,6 +161,27 @@ async function readFontFile(filename: string): Promise<Uint8Array> {
   }
 
   throw new Error(`Missing font file ${filename}. Last error: ${String(lastError)}`);
+}
+
+async function readImageFile(filename: string): Promise<Uint8Array | null> {
+  if (imageCache.has(filename)) return imageCache.get(filename) ?? null;
+  const candidates = [
+    path.resolve(process.cwd(), 'public', 'images', filename),
+    path.resolve(process.cwd(), 'apps', 'portal', 'public', 'images', filename),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const data = await readFile(candidate);
+      imageCache.set(filename, data);
+      return data;
+    } catch {
+      // Try the next candidate path.
+    }
+  }
+
+  imageCache.set(filename, null);
+  return null;
 }
 
 function formatMoneyFromCents(cents: number): string {
@@ -296,6 +322,16 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   const fontRegular = await pdfDoc.embedFont(regularData);
   const fontMedium = await pdfDoc.embedFont(mediumData);
   const fontSemiBold = await pdfDoc.embedFont(semiboldData);
+  const logoBytes = await readImageFile(HEADER_LOGO_FILE);
+  let headerLogo: PDFImage | null = null;
+  if (logoBytes) {
+    try {
+      headerLogo = await pdfDoc.embedPng(logoBytes);
+    } catch {
+      // Keep PDF generation resilient if the logo asset is invalid.
+      headerLogo = null;
+    }
+  }
 
   const vm = buildPdfQuoteViewModel(quote);
   const debugBounds = options.debugBounds ?? process.env.PDF_DEBUG_BOUNDS === '1';
@@ -805,6 +841,9 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   drawLeftRail();
 
   let cursorY = PAGE_HEIGHT - MARGIN_TOP;
+  const headerClientMaxWidth = CONTENT_W * 0.58;
+  const headerLogoMaxWidth = 84;
+  const headerLogoMaxHeight = 52;
 
   // Header left column
   let leftY = cursorY;
@@ -828,7 +867,35 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   });
 
   leftY -= theme.lineHeights.title;
-  leftY -= theme.spacing.headerQuoteToRef;
+  if (vm.client.name) {
+    leftY -= theme.spacing.headerQuoteToClient;
+    const clientLines = wrapText(fontSemiBold, vm.client.name, theme.sizes.client, headerClientMaxWidth);
+    if (clientLines.length) {
+      const layoutPage = currentLayoutPage();
+      if (layoutPage) {
+        layoutPage.headerClientName = {
+          text: vm.client.name,
+          xRight: CONTENT_X0 + headerClientMaxWidth,
+          y: leftY,
+        };
+      }
+      clientLines.forEach((line) => {
+        drawTextSafe(line, {
+          x: CONTENT_X0,
+          y: leftY,
+          size: theme.sizes.client,
+          font: fontSemiBold,
+          color: theme.colors.textPrimary,
+        });
+        leftY -= theme.lineHeights.client;
+      });
+      leftY -= theme.spacing.headerClientToRef;
+    } else {
+      leftY -= theme.spacing.headerQuoteToRef;
+    }
+  } else {
+    leftY -= theme.spacing.headerQuoteToRef;
+  }
 
   const refLine = `${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
   drawTextSafe(refLine, {
@@ -848,26 +915,36 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   let rightY = cursorY;
   let rightBottomY = cursorY;
 
-  if (vm.client.name) {
-    drawRightAligned(vm.client.name, CONTENT_X1, rightY, theme.sizes.client, fontSemiBold, theme.colors.textPrimary);
-    const layoutPage = currentLayoutPage();
-    if (layoutPage) {
-      layoutPage.headerClientName = { text: vm.client.name, xRight: CONTENT_X1, y: rightY };
-    }
-    rightBottomY = rightY;
-    rightY -= theme.lineHeights.client;
-    if (vm.issueDate) rightY -= 4;
+  if (headerLogo) {
+    const logoScale = Math.min(
+      headerLogoMaxWidth / headerLogo.width,
+      headerLogoMaxHeight / headerLogo.height,
+      1,
+    );
+    const logoWidth = headerLogo.width * logoScale;
+    const logoHeight = headerLogo.height * logoScale;
+    const logoX = CONTENT_X1 - logoWidth;
+    const logoTopY = cursorY + theme.lineHeights.brand + 2;
+    const logoY = logoTopY - logoHeight;
+    page.drawImage(headerLogo, {
+      x: logoX,
+      y: logoY,
+      width: logoWidth,
+      height: logoHeight,
+    });
+    rightY = logoY - theme.spacing.headerLogoToDates;
+    rightBottomY = logoY;
   }
 
   if (vm.issueDate) {
     drawRightAligned(`Issue date ${vm.issueDate}`, CONTENT_X1, rightY, theme.sizes.date, fontRegular, theme.colors.textMuted);
-    rightBottomY = rightY;
+    rightBottomY = Math.min(rightBottomY, rightY);
     rightY -= theme.lineHeights.date;
   }
 
   if (vm.expiryDate) {
     drawRightAligned(`Expiry ${vm.expiryDate}`, CONTENT_X1, rightY, theme.sizes.date, fontRegular, theme.colors.textMuted);
-    rightBottomY = rightY;
+    rightBottomY = Math.min(rightBottomY, rightY);
   }
 
   cursorY = Math.min(leftBottomY, rightBottomY);
