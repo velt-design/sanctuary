@@ -1,9 +1,9 @@
-export const BRAND_ACCENT_HEX = '#353d2f' as const;
+export const BRAND_ACCENT_HEX = '#4f5748' as const;
 
 export const BRAND_ACCENT_RGB = {
-  r: 53,
-  g: 61,
-  b: 47,
+  r: 79,
+  g: 87,
+  b: 72,
 } as const;
 
 export const BRAND_ACCENT_RGB_CSV = `${BRAND_ACCENT_RGB.r}, ${BRAND_ACCENT_RGB.g}, ${BRAND_ACCENT_RGB.b}` as const;
