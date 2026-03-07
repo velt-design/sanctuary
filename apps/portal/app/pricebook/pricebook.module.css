@@ -10,8 +10,8 @@
 }
 
 .tabButton {
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.03);
   padding: 6px 12px;
   border-radius: 999px;
   font-size: 13px;

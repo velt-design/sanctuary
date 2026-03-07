@@ -68,11 +68,11 @@ export default function SiteVisitHoverPopover({
         style={{
           display: 'grid',
           gap: 6,
-          border: '1px solid rgba(15, 15, 16, 0.16)',
+          border: '1px solid rgba(var(--portal-text-rgb), 0.16)',
           borderRadius: 12,
-          background: '#fff',
+          background: 'var(--portal-bg-surface)',
           padding: 10,
-          boxShadow: '0 18px 40px rgba(15, 15, 16, 0.18)',
+          boxShadow: '0 18px 40px rgba(var(--portal-text-rgb), 0.18)',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
@@ -83,7 +83,7 @@ export default function SiteVisitHoverPopover({
               fontWeight: 800,
               letterSpacing: '0.04em',
               textTransform: 'uppercase',
-              color: 'rgba(15,15,16,0.6)',
+              color: 'rgba(var(--portal-text-rgb), 0.6)',
             }}
           >
             {status}
@@ -91,13 +91,13 @@ export default function SiteVisitHoverPopover({
         </div>
 
         <div style={{ fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-        {address ? <div style={{ fontSize: 12, color: 'rgba(15,15,16,0.65)' }}>{address}</div> : null}
-        {phone ? <div style={{ fontSize: 12, color: 'rgba(15,15,16,0.65)' }}>{phone}</div> : null}
+        {address ? <div style={{ fontSize: 12, color: 'rgba(var(--portal-text-rgb), 0.65)' }}>{address}</div> : null}
+        {phone ? <div style={{ fontSize: 12, color: 'rgba(var(--portal-text-rgb), 0.65)' }}>{phone}</div> : null}
 
-        <div style={{ fontSize: 12, color: 'rgba(15,15,16,0.75)' }}>{when}</div>
-        {salespersonName ? <div style={{ fontSize: 11, color: 'rgba(15,15,16,0.6)' }}>Sales: {salespersonName}</div> : null}
+        <div style={{ fontSize: 12, color: 'rgba(var(--portal-text-rgb), 0.75)' }}>{when}</div>
+        {salespersonName ? <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.6)' }}>Sales: {salespersonName}</div> : null}
 
-        <div style={{ fontSize: 11, color: 'rgba(15,15,16,0.5)' }}>Click to edit</div>
+        <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.5)' }}>Click to edit</div>
       </div>
     </div>,
     portalRoot,

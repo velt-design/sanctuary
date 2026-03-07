@@ -39,8 +39,8 @@
   min-width: 44px;
   height: 36px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: var(--portal-bg-surface);
   color: inherit;
   font: inherit;
   font-weight: 600;
@@ -66,8 +66,8 @@
   width: 32px;
   height: 36px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: var(--portal-bg-surface);
   color: inherit;
   font: inherit;
   font-weight: 600;
@@ -80,7 +80,7 @@
 }
 
 .addTab:hover {
-  background: rgba(15, 15, 16, 0.04);
+  background: rgba(var(--portal-text-rgb), 0.04);
 }
 
 .addTab:focus-visible {
@@ -103,7 +103,7 @@
 }
 
 .statusDotUnapproved {
-  background: rgba(15, 15, 16, 0.35);
+  background: rgba(var(--portal-text-rgb), 0.35);
 }
 
 .title {
@@ -132,8 +132,8 @@
 
 .summaryItem {
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: var(--portal-bg-surface);
   padding: 10px 12px;
 }
 
@@ -141,7 +141,7 @@
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .summaryValue {
@@ -168,10 +168,10 @@
 }
 
 .versionRow {
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 12px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   text-align: left;
   display: grid;
   gap: 6px;
@@ -183,8 +183,8 @@
 
 
 .versionRow:hover {
-  border-color: rgba(15, 15, 16, 0.2);
-  box-shadow: 0 4px 10px rgba(15, 15, 16, 0.06);
+  border-color: rgba(var(--portal-text-rgb), 0.2);
+  box-shadow: 0 4px 10px rgba(var(--portal-text-rgb), 0.06);
 }
 
 .versionRowActive {
@@ -251,8 +251,8 @@
   flex-wrap: wrap;
   padding: 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.08);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: var(--portal-bg-surface);
 }
 
 .selectedTitle {
@@ -305,8 +305,8 @@
 
 .card {
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.08);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: var(--portal-bg-surface);
   padding: 12px;
 }
 
@@ -329,14 +329,14 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .cardSubTitle {
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .summaryGrid {
@@ -377,7 +377,7 @@
 .summaryTotalBlock {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   background: rgba(var(--accentRgb), 0.05);
   display: grid;
   gap: 4px;
@@ -396,8 +396,8 @@
 .summarySpecBox {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.08);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: var(--portal-bg-surface);
   display: grid;
   gap: 6px;
 }
@@ -405,7 +405,7 @@
 .summarySpecValue {
   font-size: 15px;
   font-weight: 600;
-  color: rgba(15, 15, 16, 0.85);
+  color: rgba(var(--portal-text-rgb), 0.85);
 }
 
 .summarySpecMeta {
@@ -452,13 +452,13 @@
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .summaryMetaValue {
   font-size: 13px;
   font-weight: 600;
-  color: rgba(15, 15, 16, 0.85);
+  color: rgba(var(--portal-text-rgb), 0.85);
   font-variant-numeric: tabular-nums;
 }
 
@@ -483,7 +483,7 @@
   gap: 12px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid rgba(15, 15, 16, 0.08);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .summaryStat {
@@ -512,17 +512,17 @@
   text-decoration: none;
   color: inherit;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.1);
-  background: rgba(15, 15, 16, 0.02);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.02);
   padding: 10px 12px;
   display: block;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .breakdownRowLink:hover {
-  border-color: rgba(15, 15, 16, 0.2);
-  box-shadow: 0 4px 10px rgba(15, 15, 16, 0.06);
-  background: rgba(15, 15, 16, 0.04);
+  border-color: rgba(var(--portal-text-rgb), 0.2);
+  box-shadow: 0 4px 10px rgba(var(--portal-text-rgb), 0.06);
+  background: rgba(var(--portal-text-rgb), 0.04);
 }
 
 .breakdownRowDisabled {
@@ -541,7 +541,7 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .breakdownValue {
@@ -551,15 +551,15 @@
 }
 
 .breakdownChevron {
-  color: rgba(15, 15, 16, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
   font-weight: 700;
 }
 
 .breakdownItem {
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   overflow: hidden;
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .breakdownSummary {
@@ -570,7 +570,7 @@
   align-items: center;
   justify-content: space-between;
   font-weight: 600;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
 }
 
 .breakdownSummary::-webkit-details-marker {
@@ -578,7 +578,7 @@
 }
 
 .breakdownTotal {
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
   font-weight: 600;
 }
 
@@ -591,8 +591,8 @@
   gap: 4px;
   padding: 4px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.03);
   margin-bottom: 10px;
   flex-wrap: wrap;
 }
@@ -605,21 +605,21 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .segmentedItemActive {
-  background: #fff;
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  color: rgba(15, 15, 16, 0.9);
+  background: var(--portal-bg-surface);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  color: rgba(var(--portal-text-rgb), 0.9);
 }
 
 .detailTableWrap {
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   overflow: auto;
   max-height: 320px;
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .detailTable {
@@ -634,13 +634,13 @@
 .detailTable thead th {
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--portal-bg-surface);
   z-index: 1;
 }
 
 .detailTable tfoot td {
   padding: 10px;
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
   font-weight: 600;
 }
 
@@ -667,7 +667,7 @@
 
 .detailSubtotalLabel {
   text-align: right;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .detailSubtotalValue {
@@ -679,8 +679,8 @@
   width: 100%;
   min-height: 90px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   color: inherit;
   font-size: 13px;
   padding: 10px 12px;
@@ -713,10 +713,10 @@
 }
 
 .quoteRow {
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 10px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -729,8 +729,8 @@
 }
 
 .quoteRow:hover {
-  border-color: rgba(15, 15, 16, 0.22);
-  box-shadow: 0 4px 10px rgba(15, 15, 16, 0.06);
+  border-color: rgba(var(--portal-text-rgb), 0.22);
+  box-shadow: 0 4px 10px rgba(var(--portal-text-rgb), 0.06);
 }
 
 .quoteRow:focus-visible {
@@ -749,8 +749,8 @@
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.03);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -758,9 +758,9 @@
 }
 
 .quoteStatusDraft {
-  background: rgba(15, 15, 16, 0.03);
-  border-color: rgba(15, 15, 16, 0.14);
-  color: rgba(15, 15, 16, 0.75);
+  background: rgba(var(--portal-text-rgb), 0.03);
+  border-color: rgba(var(--portal-text-rgb), 0.14);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .quoteStatusSent {
@@ -784,7 +784,7 @@
 .quoteEmpty {
   margin: 0 0 8px;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .quoteActions {
@@ -815,9 +815,9 @@
   place-items: center;
   font-size: 12px;
   font-weight: 600;
-  border: 1px solid rgba(15, 15, 16, 0.2);
-  color: rgba(15, 15, 16, 0.75);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.2);
+  color: rgba(var(--portal-text-rgb), 0.75);
+  background: var(--portal-bg-surface);
 }
 
 .stepContent {
@@ -848,9 +848,9 @@
 }
 
 .stepPending .stepMarker {
-  border-color: rgba(15, 15, 16, 0.18);
-  color: rgba(15, 15, 16, 0.5);
-  background: rgba(15, 15, 16, 0.04);
+  border-color: rgba(var(--portal-text-rgb), 0.18);
+  color: rgba(var(--portal-text-rgb), 0.5);
+  background: rgba(var(--portal-text-rgb), 0.04);
 }
 
 .statusRow {
@@ -880,7 +880,7 @@
 .previewList {
   margin: 0;
   padding-left: 16px;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .previewLabel {
@@ -890,7 +890,7 @@
 .tag {
   font-weight: 600;
   margin-right: 6px;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .linkButton {
@@ -927,9 +927,9 @@
 }
 
 .statusDraft {
-  background: rgba(15, 15, 16, 0.03);
-  border-color: rgba(15, 15, 16, 0.14);
-  color: rgba(15, 15, 16, 0.75);
+  background: rgba(var(--portal-text-rgb), 0.03);
+  border-color: rgba(var(--portal-text-rgb), 0.14);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .statusReview {
@@ -951,9 +951,9 @@
 }
 
 .statusMuted {
-  background: rgba(15, 15, 16, 0.04);
-  border-color: rgba(15, 15, 16, 0.12);
-  color: rgba(15, 15, 16, 0.55);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  border-color: rgba(var(--portal-text-rgb), 0.12);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .emptyState {

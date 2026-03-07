@@ -4595,9 +4595,9 @@ export default function ScheduleClient() {
       aria-label="Schedule diagnostics"
       style={{
         marginTop: 12,
-        border: '1px solid rgba(15, 15, 16, 0.14)',
+        border: '1px solid rgba(var(--portal-text-rgb), 0.14)',
         borderRadius: 14,
-        background: 'rgba(255, 255, 255, 0.92)',
+        background: 'rgba(var(--portal-bg-surface-rgb), 0.92)',
         overflow: 'hidden',
       }}
     >
@@ -4619,7 +4619,7 @@ export default function ScheduleClient() {
       </div>
 
       {diagnosticsOpen ? (
-        <div style={{ padding: 12, borderTop: '1px solid rgba(15, 15, 16, 0.08)' }}>
+        <div style={{ padding: 12, borderTop: '1px solid rgba(var(--portal-text-rgb), 0.08)' }}>
           <button
             type="button"
             className={styles.buttonSecondary}
@@ -5568,7 +5568,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
                 onClick={() => {
                   const item = scheduleItems.find((i) => i.id === quickEdit.id) ?? null;
                   if (!item) {
@@ -5825,7 +5825,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
                 disabled={(() => {
                   const validDuration = parsePositiveInt(commitmentEdit.durationDays) !== null;
                   const flexRaw = Number(commitmentEdit.flexDays.trim());
@@ -5936,7 +5936,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
                 onClick={() => {
                   const item = scheduleItemById.get(durationEdit.id) ?? null;
                   if (!item || item.itemType === 'downtime') {
@@ -6003,7 +6003,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
                 onClick={() => {
                   const item = scheduleItemById.get(pinEdit.id) ?? null;
                   if (!item || item.itemType === 'downtime') {
@@ -6071,7 +6071,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
                 onClick={() => {
                   const item = scheduleItemById.get(daysRemainingEdit.id) ?? null;
                   if (!item || item.itemType === 'downtime') {
@@ -6174,7 +6174,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
                 onClick={() => {
                   const daysRaw = downtimeEdit.durationDays.trim();
                   const days = Number(daysRaw);
@@ -6307,7 +6307,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
                 onClick={() => {
                   void runWithCommitConfirmation(
                     (force) =>

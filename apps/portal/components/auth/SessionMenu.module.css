@@ -8,16 +8,16 @@
   align-items: flex-start;
   gap: 2px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   padding: 8px 12px;
   cursor: pointer;
   user-select: none;
-  box-shadow: 0 1px 2px rgba(15, 15, 16, 0.06);
+  box-shadow: 0 1px 2px rgba(var(--portal-text-rgb), 0.06);
 }
 
 .pill:hover {
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
 }
 
 .pill:focus {
@@ -39,7 +39,7 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.9);
+  background: rgba(var(--portal-text-rgb), 0.9);
   flex: 0 0 auto;
 }
 
@@ -50,12 +50,12 @@
   white-space: nowrap;
   font-size: 13px;
   font-weight: 700;
-  color: rgba(15, 15, 16, 0.92);
+  color: rgba(var(--portal-text-rgb), 0.92);
 }
 
 .role {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .dropdown {
@@ -64,10 +64,10 @@
   top: calc(100% + 8px);
   width: 240px;
   border-radius: 14px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
   padding: 12px;
-  box-shadow: 0 18px 45px rgba(15, 15, 16, 0.18);
+  box-shadow: 0 18px 45px rgba(var(--portal-text-rgb), 0.18);
   z-index: 60;
 }
 
@@ -76,7 +76,7 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .menuButton {
@@ -85,7 +85,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   padding: 10px 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -93,7 +93,7 @@
   font-size: 12px;
   cursor: pointer;
   background: var(--accentRed);
-  color: #fff;
+  color: var(--portal-text-inverse);
 }
 
 .menuButton:focus {

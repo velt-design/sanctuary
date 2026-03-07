@@ -34,7 +34,7 @@ export default function SupabaseEnvStatus() {
   }, []);
 
   return (
-    <details style={{ marginTop: 16, padding: 12, border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10 }}>
+    <details style={{ marginTop: 16, padding: 12, border: '1px solid rgba(var(--portal-bg-surface-rgb), 0.15)', borderRadius: 10 }}>
       <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Supabase Env Status (dev only)</summary>
       <pre
         suppressHydrationWarning

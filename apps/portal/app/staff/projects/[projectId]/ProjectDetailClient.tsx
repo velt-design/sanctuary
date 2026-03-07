@@ -1099,8 +1099,8 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                 margin: 0,
                 padding: '12px',
                 borderRadius: 12,
-                border: '1px solid rgba(15, 15, 16, 0.18)',
-                background: '#fff',
+                border: '1px solid rgba(var(--portal-text-rgb), 0.18)',
+                background: 'var(--portal-bg-surface)',
                 color: 'inherit',
                 fontSize: 14,
                 resize: 'vertical',
@@ -1305,7 +1305,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
               value={createQuoteNotes}
               onChange={(e) => setCreateQuoteNotes(e.target.value)}
               rows={4}
-              style={{ width: '100%', margin: 0, padding: 12, borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)' }}
+              style={{ width: '100%', margin: 0, padding: 12, borderRadius: 10, border: '1px solid rgba(var(--portal-text-rgb), 0.12)' }}
               placeholder="Optional notes to include on the quote."
             />
           </div>
@@ -1636,4 +1636,3 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
     </main>
   );
 }
-

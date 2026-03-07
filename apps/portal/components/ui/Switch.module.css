@@ -2,7 +2,7 @@
   width: 46px;
   height: 26px;
   border-radius: 999px;
-  border: 2px solid rgba(15, 15, 16, 0.45);
+  border: 2px solid rgba(var(--portal-text-rgb), 0.45);
   background: #b8bcc1;
   display: inline-flex;
   align-items: center;
@@ -34,8 +34,8 @@
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: #fff;
-  border: 1px solid rgba(15, 15, 16, 0.35);
+  background: var(--portal-bg-surface);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.35);
   transform: translateX(0);
   transition: transform 0.2s ease;
 }

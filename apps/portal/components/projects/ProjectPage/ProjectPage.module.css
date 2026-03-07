@@ -5,10 +5,10 @@
   flex-direction: column;
   gap: 16px;
 
-  --border: rgba(15, 15, 16, 0.14);
-  --muted: rgba(15, 15, 16, 0.65);
-  --bg: rgba(255, 255, 255, 0.92);
-  --text: #0f0f10;
+  --border: rgba(var(--portal-text-rgb), 0.14);
+  --muted: rgba(var(--portal-text-rgb), 0.65);
+  --bg: rgba(var(--portal-bg-surface-rgb), 0.92);
+  --text: var(--portal-text);
 
   color: var(--text);
 }
@@ -39,7 +39,7 @@
   gap: 8px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   text-decoration: none;
   color: inherit;
   font-size: 12px;
@@ -49,7 +49,7 @@
 }
 
 .backLink:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(var(--portal-text-rgb), 0.04);
 }
 
 .surface {
@@ -67,7 +67,7 @@
 }
 
 .pipelineSurface {
-  background: rgba(0, 0, 0, 0.04);
+  background: rgba(var(--portal-text-rgb), 0.04);
   border-radius: 14px;
 }
 
@@ -83,22 +83,22 @@
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: rgba(var(--portal-text-rgb), 0.02);
 }
 
 .stageActive {
-  color: rgba(0, 0, 0, 0.88);
-  background: rgba(0, 0, 0, 0.08);
-  border-color: rgba(0, 0, 0, 0.14);
+  color: rgba(var(--portal-text-rgb), 0.88);
+  background: rgba(var(--portal-text-rgb), 0.08);
+  border-color: rgba(var(--portal-text-rgb), 0.14);
 }
 
 .stageDone {
-  color: rgba(0, 0, 0, 0.75);
-  background: rgba(0, 0, 0, 0.05);
+  color: rgba(var(--portal-text-rgb), 0.75);
+  background: rgba(var(--portal-text-rgb), 0.05);
 }
 
 .bodyGrid {
@@ -190,8 +190,8 @@
   font-size: 12px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: var(--portal-bg-surface);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -199,8 +199,8 @@
 }
 
 .tabButtonActive {
-  background: rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.14);
+  background: rgba(var(--portal-text-rgb), 0.06);
+  border-color: rgba(var(--portal-text-rgb), 0.14);
 }
 
 .modeToggle {
@@ -217,7 +217,7 @@
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
   margin: 0;
 }
 
@@ -230,14 +230,14 @@
 }
 
 .k {
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
   text-transform: uppercase;
   font-size: 11px;
   letter-spacing: 0.06em;
 }
 
 .v {
-  color: rgba(0, 0, 0, 0.88);
+  color: rgba(var(--portal-text-rgb), 0.88);
 }
 
 .tasksHeader {
@@ -250,7 +250,7 @@
 
 .tasksCount {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.5);
+  color: rgba(var(--portal-text-rgb), 0.5);
 }
 
 .list {
@@ -262,10 +262,10 @@
 }
 
 .listItem {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 12px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .listItemTitle {
@@ -276,12 +276,12 @@
 .listItemMeta {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .emptyState {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
   margin: 0;
 }
 
@@ -298,16 +298,16 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  color: rgba(0, 0, 0, 0.65);
-  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  color: rgba(var(--portal-text-rgb), 0.65);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .taskCard {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 12px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .taskTitle {
@@ -321,20 +321,20 @@
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .placeholder {
   padding: 12px;
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
   border-radius: 12px;
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .placeholderTitle {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 11px;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }

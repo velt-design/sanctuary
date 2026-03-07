@@ -7,11 +7,16 @@
   --portal-accent: #813F39;
   --portal-accent-rgb: 129, 63, 57;
   --portal-text: #0F0F10;
+  --portal-text-rgb: 15, 15, 16;
   --portal-text-muted: #666666;
   --portal-text-inverse: #FFFFFF;
+  --portal-text-inverse-rgb: 255, 255, 255;
   --portal-bg-page: #ECEDEE;
+  --portal-bg-page-rgb: 236, 237, 238;
   --portal-bg-surface: #F7F8F9;
+  --portal-bg-surface-rgb: 247, 248, 249;
   --portal-border: #D6D7D9;
+  --portal-border-rgb: 214, 215, 217;
   --accentRed: var(--portal-accent);
   --accentRgb: var(--portal-accent-rgb);
   --fg: var(--portal-text);

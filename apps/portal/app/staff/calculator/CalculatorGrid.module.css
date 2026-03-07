@@ -7,12 +7,12 @@
   min-height: 100vh;
 
   /* Design tokens (scoped to this page) */
-  --border: rgba(15, 15, 16, 0.14);
-  --muted: rgba(15, 15, 16, 0.65);
+  --border: rgba(var(--portal-text-rgb), 0.14);
+  --muted: rgba(var(--portal-text-rgb), 0.65);
   --focus: rgba(var(--accentRgb), 0.95);
   --error: rgb(185, 28, 28);
   --bg: var(--bg, #ECEDEE);
-  --text: #0f0f10;
+  --text: var(--portal-text);
 
   color: var(--text);
 }
@@ -49,7 +49,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(var(--portal-bg-surface-rgb), 0.9);
 }
 
 .emptyTile {
@@ -78,8 +78,8 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   color: inherit;
   font-size: 14px;
 }
@@ -114,7 +114,7 @@
 .control:disabled {
   opacity: 0.65;
   cursor: not-allowed;
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .toggleRow {
@@ -138,8 +138,8 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.03);
   font-size: 14px;
   font-weight: 600;
   overflow: hidden;
@@ -151,9 +151,9 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   background: var(--accentRed);
-  color: #fff;
+  color: var(--portal-text-inverse);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -207,7 +207,7 @@
   position: fixed;
   inset: 0;
   z-index: 4000;
-  background: rgba(15, 15, 16, 0.38);
+  background: rgba(var(--portal-text-rgb), 0.38);
   display: flex;
   justify-content: flex-end;
 }
@@ -215,9 +215,9 @@
 .drawer {
   width: min(620px, 100vw);
   height: 100%;
-  background: #fff;
+  background: var(--portal-bg-surface);
   color: var(--text);
-  box-shadow: -18px 0 40px rgba(0, 0, 0, 0.22);
+  box-shadow: -18px 0 40px rgba(var(--portal-text-rgb), 0.22);
   padding: 16px;
   overflow: auto;
 }
@@ -227,7 +227,7 @@
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.12);
   padding-bottom: 12px;
 }
 
@@ -241,12 +241,12 @@
 .drawerSubtitle {
   margin: 6px 0 0 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .drawerClose {
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
   border-radius: 999px;
   padding: 8px 12px;
@@ -267,18 +267,18 @@
   font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.8);
+  color: rgba(var(--portal-text-rgb), 0.8);
 }
 
 .drawerList {
   margin: 0;
   padding-left: 18px;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.85);
+  color: rgba(var(--portal-text-rgb), 0.85);
 }
 
 .drawerRows {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -288,7 +288,7 @@
   grid-template-columns: 1fr auto;
   gap: 12px;
   padding: 10px 12px;
-  border-top: 1px solid rgba(15, 15, 16, 0.08);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .drawerRow:first-child {
@@ -310,13 +310,13 @@
 .drawerRowMeta {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .drawerRowNotes {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -332,14 +332,14 @@
 .drawerEmpty {
   margin: 0;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .modalOverlay {
   position: fixed;
   inset: 0;
   z-index: 4500;
-  background: rgba(15, 15, 16, 0.42);
+  background: rgba(var(--portal-text-rgb), 0.42);
   display: grid;
   place-items: center;
   padding: 18px;
@@ -349,11 +349,11 @@
   width: min(720px, 100%);
   max-height: min(88vh, 860px);
   overflow: auto;
-  background: #fff;
+  background: var(--portal-bg-surface);
   color: var(--text);
   border-radius: 16px;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  box-shadow: 0 22px 60px rgba(var(--portal-text-rgb), 0.28);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
 }
 
 .modalHeader {
@@ -362,7 +362,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 16px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.12);
 }
 
 .modalTitle {
@@ -375,12 +375,12 @@
 .modalSubtitle {
   margin: 6px 0 0 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .modalClose {
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
   border-radius: 999px;
   padding: 8px 12px;
@@ -399,10 +399,10 @@
 }
 
 .modalSection {
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 14px;
   padding: 12px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
 }
 
 .modalSectionTitle {
@@ -410,7 +410,7 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .modalGrid {
@@ -423,7 +423,7 @@
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .modalVal {
@@ -436,7 +436,7 @@
   margin: 0;
   padding-left: 18px;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.85);
+  color: rgba(var(--portal-text-rgb), 0.85);
 }
 
 .issuesList {
@@ -450,8 +450,8 @@
 .issueRow {
   width: 100%;
   text-align: left;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   border-radius: 12px;
   padding: 10px 12px;
   cursor: pointer;
@@ -462,7 +462,7 @@
 }
 
 .issueRow:hover {
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .issueRow:focus {
@@ -482,7 +482,7 @@
 .issueMessage {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .issueJump {
@@ -492,13 +492,13 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .modalNote {
   margin: 0;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .modalCheckboxRow {
@@ -506,7 +506,7 @@
   align-items: flex-start;
   gap: 10px;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.85);
+  color: rgba(var(--portal-text-rgb), 0.85);
 }
 
 .modalCheckboxRow input {
@@ -524,14 +524,14 @@
   gap: 10px;
   justify-content: flex-end;
   padding: 16px;
-  border-top: 1px solid rgba(15, 15, 16, 0.12);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.12);
 }
 
 .modalButtonPrimary,
 .modalButtonSecondary {
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -541,11 +541,11 @@
 
 .modalButtonPrimary {
   background: var(--accentRed);
-  color: #fff;
+  color: var(--portal-text-inverse);
 }
 
 .modalButtonSecondary {
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
 }
 
@@ -564,7 +564,7 @@
 .modalButtonDanger {
   background: #b42318;
   border-color: rgba(142, 28, 28, 0.4);
-  color: #fff;
+  color: var(--portal-text-inverse);
 }
 
 /* === Infill drawer === */
@@ -592,7 +592,7 @@
 .infillPrimaryButton,
 .infillSecondaryButton,
 .infillSecondaryButtonCompact {
-  border: 1px solid rgba(15, 15, 16, 0.16);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
   border-radius: 999px;
   min-height: 36px;
   padding: 8px 12px;
@@ -608,12 +608,12 @@
 
 .infillPrimaryButton {
   background: var(--accentRed);
-  color: #fff;
+  color: var(--portal-text-inverse);
 }
 
 .infillSecondaryButton,
 .infillSecondaryButtonCompact {
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
 }
 
@@ -632,7 +632,7 @@
   display: grid;
   gap: 2px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
   line-height: 1.35;
 }
 
@@ -654,7 +654,7 @@
   position: fixed;
   inset: 0;
   z-index: 4500;
-  background: rgba(15, 15, 16, 0.42);
+  background: rgba(var(--portal-text-rgb), 0.42);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -665,10 +665,10 @@
   width: min(1520px, calc(100vw - 64px));
   max-width: none !important;
   max-height: calc(100vh - 64px) !important;
-  background: #fff;
+  background: var(--portal-bg-surface);
   color: var(--text);
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.24);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  box-shadow: 0 20px 44px rgba(var(--portal-text-rgb), 0.24);
   border-radius: 18px;
   overflow: hidden;
   display: flex;
@@ -691,7 +691,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 16px 18px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .infillDrawerTitle {
@@ -703,12 +703,12 @@
 .infillDrawerSubtitle {
   margin: 6px 0 0 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .infillDrawerClose {
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
   border-radius: 999px;
   padding: 8px 12px;
@@ -735,14 +735,14 @@
   gap: 8px;
   padding-bottom: 12px;
   margin-bottom: 12px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .infillSectionNavButton {
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.02);
-  color: rgba(15, 15, 16, 0.78);
+  background: rgba(var(--portal-text-rgb), 0.02);
+  color: rgba(var(--portal-text-rgb), 0.78);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -753,7 +753,7 @@
 .infillSectionNavButtonActive {
   border-color: rgba(var(--accentRgb), 0.4);
   background: rgba(var(--accentRgb), 0.08);
-  color: rgba(15, 15, 16, 0.9);
+  color: rgba(var(--portal-text-rgb), 0.9);
 }
 
 .infillSectionNavButton:focus {
@@ -774,15 +774,15 @@
   max-width: 360px;
   min-height: 0;
   overflow: hidden;
-  border-right: 1px solid rgba(15, 15, 16, 0.08);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.08);
   display: flex;
   flex-direction: column;
 }
 
 .infillRailHeader {
   padding: 12px;
-  background: #fff;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.06);
+  background: var(--portal-bg-surface);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.06);
   position: sticky;
   top: 0;
   z-index: 2;
@@ -802,20 +802,20 @@
 }
 
 .infillRailFooter {
-  border-top: 1px solid rgba(15, 15, 16, 0.06);
-  background: rgba(15, 15, 16, 0.02);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.06);
+  background: rgba(var(--portal-text-rgb), 0.02);
   padding: 12px;
   display: grid;
   gap: 4px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.66);
+  color: rgba(var(--portal-text-rgb), 0.66);
 }
 
 .infillRailFooter strong {
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.74);
+  color: rgba(var(--portal-text-rgb), 0.74);
 }
 
 .infillRailFooter p {
@@ -826,9 +826,9 @@
   width: 100%;
   position: relative;
   text-align: left;
-  border: 1px solid rgba(15, 15, 16, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   padding: 8px;
   display: flex;
   gap: 8px;
@@ -868,7 +868,7 @@
 
 .infillRowMeta {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -885,14 +885,14 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.06);
-  background: rgba(15, 15, 16, 0.04);
-  color: rgba(15, 15, 16, 0.74);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.06);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  color: rgba(var(--portal-text-rgb), 0.74);
 }
 
 .infillIconButton {
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
   border-radius: 999px;
   padding: 6px 10px;
@@ -938,9 +938,9 @@
 }
 
 .infillRowMoveButton {
-  border: 1px solid rgba(15, 15, 16, 0.18);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
   border-radius: 8px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   min-width: 30px;
   height: 28px;
   font-size: 13px;
@@ -959,7 +959,7 @@
 }
 
 .infillListEmpty {
-  border: 1px dashed rgba(15, 15, 16, 0.2);
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.2);
   border-radius: 12px;
   padding: 16px;
   display: grid;
@@ -969,7 +969,7 @@
 .infillListEmpty p {
   margin: 0;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .infillEditor {
@@ -985,7 +985,7 @@
 .infillEditorSubtitle {
   margin: 4px 0 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.62);
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .infillMobileSelectLabel {
@@ -1007,7 +1007,7 @@
   gap: 12px;
   padding-bottom: 12px;
   margin-bottom: 12px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .infillEditorTitle {
@@ -1050,20 +1050,20 @@
 }
 
 .infillSection {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   overflow: visible;
 }
 
 .infillSectionSecondary {
-  border-color: rgba(15, 15, 16, 0.08);
-  background: rgba(15, 15, 16, 0.015);
+  border-color: rgba(var(--portal-text-rgb), 0.08);
+  background: rgba(var(--portal-text-rgb), 0.015);
 }
 
 .infillSectionSecondary .infillSectionSummary {
   padding: 8px 10px;
-  color: rgba(15, 15, 16, 0.66);
+  color: rgba(var(--portal-text-rgb), 0.66);
 }
 
 .infillSectionSummary {
@@ -1073,7 +1073,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .infillBasicGrid {
@@ -1102,16 +1102,16 @@
 .infillFieldGrid .tile {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   height: auto;
   justify-content: flex-start;
   min-width: 0;
 }
 
 .infillComputedPanel {
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 14px;
-  background: rgba(15, 15, 16, 0.015);
+  background: rgba(var(--portal-text-rgb), 0.015);
   padding: 12px;
   display: grid;
   gap: 12px;
@@ -1121,10 +1121,10 @@
 .infillSummaryTabs {
   display: inline-flex;
   gap: 6px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 999px;
   padding: 4px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
 }
 
 .infillSummaryTabButton {
@@ -1134,14 +1134,14 @@
   padding: 6px 10px;
   font-size: 12px;
   font-weight: 600;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
   cursor: pointer;
 }
 
 .infillSummaryTabButtonActive {
-  background: #fff;
-  color: rgba(15, 15, 16, 0.85);
-  box-shadow: 0 2px 6px rgba(15, 15, 16, 0.08);
+  background: var(--portal-bg-surface);
+  color: rgba(var(--portal-text-rgb), 0.85);
+  box-shadow: 0 2px 6px rgba(var(--portal-text-rgb), 0.08);
 }
 
 .infillSummaryTabButton:focus {
@@ -1154,13 +1154,13 @@
   font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .infillComputedGhost {
   margin: -2px 0 2px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .infillComputedGroup {
@@ -1180,20 +1180,20 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .infillComputedNote {
   margin: 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .infillInlineAction {
   margin-top: 6px;
-  border: 1px solid rgba(15, 15, 16, 0.16);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   color: inherit;
   padding: 6px 10px;
   font-size: 11px;
@@ -1208,9 +1208,9 @@
 }
 
 .infillDecisionCard {
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   padding: 8px 10px;
   display: grid;
   gap: 6px;
@@ -1221,11 +1221,11 @@
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.66);
+  color: rgba(var(--portal-text-rgb), 0.66);
 }
 
 .infillDecisionRow {
-  border-top: 1px solid rgba(15, 15, 16, 0.08);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
   padding-top: 8px;
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1251,13 +1251,13 @@
 
 .infillDecisionMeta {
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .infillDecisionApply {
-  border: 1px solid rgba(15, 15, 16, 0.18);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   color: inherit;
   padding: 6px 10px;
   font-size: 10px;
@@ -1275,7 +1275,7 @@
 .infillAutoSwitchWhy {
   margin-top: -2px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .infillAutoSwitchWhy summary {
@@ -1291,7 +1291,7 @@
   margin: 0;
   padding: 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.85);
+  color: rgba(var(--portal-text-rgb), 0.85);
   display: grid;
   gap: 6px;
   list-style: none;
@@ -1299,9 +1299,9 @@
 
 .infillWarningButton {
   width: 100%;
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 10px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   color: inherit;
   text-align: left;
   padding: 8px 10px;
@@ -1326,9 +1326,9 @@
 }
 
 .infillResolvePanel {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -1349,7 +1349,7 @@
 .infillResolveMessage {
   margin: 0;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.86);
+  color: rgba(var(--portal-text-rgb), 0.86);
 }
 
 .infillResolveActions {
@@ -1377,7 +1377,7 @@
 }
 
 .infillCutListTable {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 10px;
   overflow: hidden;
   display: grid;
@@ -1394,13 +1394,13 @@
 }
 
 .infillCutListHead {
-  background: rgba(15, 15, 16, 0.04);
-  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.12);
   font-weight: 700;
 }
 
 .infillCutListRow {
-  border-top: 1px solid rgba(15, 15, 16, 0.08);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .infillCutListRow:first-of-type {
@@ -1414,9 +1414,9 @@
 }
 
 .infillPresetCard {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   padding: 12px;
   text-align: left;
   font-size: 12px;
@@ -1434,9 +1434,9 @@
 }
 
 .infillPreviewCard {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   padding: 10px;
   display: grid;
   gap: 8px;
@@ -1447,7 +1447,7 @@
   height: auto;
   display: block;
   border-radius: 8px;
-  background: rgba(15, 15, 16, 0.015);
+  background: rgba(var(--portal-text-rgb), 0.015);
 }
 
 .infillPreviewSvgSwap {
@@ -1456,12 +1456,12 @@
 }
 
 .infillPreviewShape {
-  stroke: rgba(15, 15, 16, 0.28);
+  stroke: rgba(var(--portal-text-rgb), 0.28);
   stroke-width: 1.1;
 }
 
 .infillPreviewJoiner {
-  stroke: rgba(15, 15, 16, 0.45);
+  stroke: rgba(var(--portal-text-rgb), 0.45);
   stroke-width: 1;
 }
 
@@ -1477,7 +1477,7 @@
 }
 
 .infillPreviewEdge {
-  stroke: rgba(15, 15, 16, 0.72);
+  stroke: rgba(var(--portal-text-rgb), 0.72);
   stroke-width: 1.3;
 }
 
@@ -1496,13 +1496,13 @@
 }
 
 .infillPreviewLabel {
-  fill: rgba(15, 15, 16, 0.72);
+  fill: rgba(var(--portal-text-rgb), 0.72);
   font-size: 2.4px;
   font-weight: 600;
 }
 
 .infillPreviewLabelMinor {
-  fill: rgba(15, 15, 16, 0.62);
+  fill: rgba(var(--portal-text-rgb), 0.62);
   font-size: 2.1px;
 }
 
@@ -1512,14 +1512,14 @@
   justify-content: space-between;
   gap: 10px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .infillPreviewPlaceholder {
-  border: 1px dashed rgba(15, 15, 16, 0.2);
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.2);
   border-radius: 12px;
-  background: rgba(15, 15, 16, 0.015);
-  color: rgba(15, 15, 16, 0.65);
+  background: rgba(var(--portal-text-rgb), 0.015);
+  color: rgba(var(--portal-text-rgb), 0.65);
   min-height: 120px;
   display: grid;
   place-items: center;
@@ -1527,7 +1527,7 @@
 }
 
 .infillEditorEmpty {
-  border: 1px dashed rgba(15, 15, 16, 0.2);
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.2);
   border-radius: 12px;
   padding: 18px;
   display: grid;
@@ -1536,12 +1536,12 @@
 
 .infillEditorEmpty p {
   margin: 0;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .infillDrawerFooter {
   flex: 0 0 auto;
-  border-top: 1px solid rgba(15, 15, 16, 0.12);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.12);
   padding: 12px 16px;
   display: flex;
   justify-content: space-between;
@@ -1551,7 +1551,7 @@
 
 .infillDrawerFooterNote {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .infillUndoToast {
@@ -1559,10 +1559,10 @@
   left: 16px;
   bottom: 16px;
   z-index: 3;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  background: var(--portal-bg-surface);
+  box-shadow: 0 10px 24px rgba(var(--portal-text-rgb), 0.16);
   padding: 8px 10px;
   display: inline-flex;
   align-items: center;
@@ -1571,9 +1571,9 @@
 }
 
 .infillUndoButton {
-  border: 1px solid rgba(15, 15, 16, 0.16);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
   padding: 4px 10px;
   font-size: 11px;
@@ -1632,9 +1632,9 @@
 }
 
 .flashingsTable {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   overflow: hidden;
 }
 
@@ -1649,18 +1649,18 @@
 }
 
 .flashingsGridHeader {
-  border-bottom: 1px solid rgba(15, 15, 16, 0.12);
-  background: rgba(15, 15, 16, 0.04);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.04);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .flashingsRow,
 .flashingsRowPrimary {
-  border-top: 1px solid rgba(15, 15, 16, 0.08);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .flashingsRow:first-of-type,
@@ -1685,12 +1685,12 @@
 
 .flashingsItemMeta {
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.66);
+  color: rgba(var(--portal-text-rgb), 0.66);
 }
 
 .flashingsWarning {
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .flashingsLengthCell {
@@ -1708,14 +1708,14 @@
   transform: translateY(-50%);
   font-size: 11px;
   font-weight: 700;
-  color: rgba(15, 15, 16, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
   pointer-events: none;
 }
 
 .flashingsRemoveButton {
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: rgba(15, 15, 16, 0.03);
-  color: rgba(15, 15, 16, 0.75);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.75);
   border-radius: 999px;
   width: 30px;
   height: 30px;
@@ -1739,8 +1739,8 @@
 }
 
 .flashingsAddButton {
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: inherit;
   border-radius: 999px;
   padding: 8px 12px;
@@ -1757,10 +1757,10 @@
 }
 
 .flashingsTotalsCard {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
   padding: 10px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   display: grid;
   gap: 6px;
 }
@@ -1770,7 +1770,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .flashingsTotalsRow {
@@ -1784,7 +1784,7 @@
   margin-top: 2px;
   border: none;
   background: transparent;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -1832,7 +1832,7 @@
   left: 50%;
   width: 1px;
   transform: translateX(-50%);
-  background: rgba(15, 15, 16, 0.2);
+  background: rgba(var(--portal-text-rgb), 0.2);
   transition: background-color 160ms ease, width 160ms ease;
 }
 
@@ -1845,7 +1845,7 @@
   height: 40px;
   transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.26);
+  background: rgba(var(--portal-text-rgb), 0.26);
   transition: background-color 160ms ease;
 }
 
@@ -1921,7 +1921,7 @@
   }
 
   .infillEditorSummary .infillComputedPanel {
-    box-shadow: 0 18px 36px rgba(15, 15, 16, 0.22);
+    box-shadow: 0 18px 36px rgba(var(--portal-text-rgb), 0.22);
   }
 
   .infillCutListHead,
@@ -1961,17 +1961,17 @@
     margin-top: 8px;
     display: inline-block;
     font-size: 11px;
-    color: rgba(15, 15, 16, 0.6);
+    color: rgba(var(--portal-text-rgb), 0.6);
   }
 
   .infillMobileSelect {
     display: block;
     margin-top: 4px;
     width: min(320px, 100%);
-    border: 1px solid rgba(15, 15, 16, 0.16);
+    border: 1px solid rgba(var(--portal-text-rgb), 0.16);
     border-radius: 10px;
     padding: 7px 10px;
-    background: #fff;
+    background: var(--portal-bg-surface);
     color: inherit;
     font-size: 13px;
   }
@@ -2023,8 +2023,8 @@
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 6px 16px rgba(15, 15, 16, 0.08);
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  box-shadow: 0 6px 16px rgba(var(--portal-text-rgb), 0.08);
 }
 
 .modeToggleFloating {
@@ -2038,7 +2038,7 @@
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -2050,7 +2050,7 @@
 .modeToggleButtonActive {
   border-color: rgba(var(--accentRgb), 0.4);
   background: rgba(var(--accentRgb), 0.12);
-  color: rgba(15, 15, 16, 0.92);
+  color: rgba(var(--portal-text-rgb), 0.92);
 }
 
 .modeToggleButton:focus {
@@ -2087,7 +2087,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
 }
 
 .previewCardTitle {
@@ -2095,7 +2095,7 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .moduleViewsCard {
@@ -2120,7 +2120,7 @@
 .moduleViewsSubtitle {
   margin-top: -6px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.64);
+  color: rgba(var(--portal-text-rgb), 0.64);
 }
 
 .moduleViewsControls {
@@ -2132,17 +2132,17 @@
 .moduleViewsTabs,
 .moduleViewsDetailToggle {
   display: inline-flex;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   border-radius: 999px;
   padding: 2px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(var(--portal-bg-surface-rgb), 0.94);
 }
 
 .moduleViewsTabButton,
 .moduleViewsDetailButton {
   border: none;
   background: transparent;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
   border-radius: 999px;
   padding: 5px 10px;
   font-size: 11px;
@@ -2160,7 +2160,7 @@
 .moduleViewsTabButtonActive,
 .moduleViewsDetailButtonActive {
   background: rgba(var(--accentRgb), 0.12);
-  color: rgba(15, 15, 16, 0.9);
+  color: rgba(var(--portal-text-rgb), 0.9);
 }
 
 .moduleViewsTabButton:focus,
@@ -2182,11 +2182,11 @@
 
 .moduleViewsStage {
   margin-top: 10px;
-  border: 1px dashed rgba(15, 15, 16, 0.2);
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.2);
   border-radius: 12px;
   min-height: 170px;
   padding: 12px;
-  background: rgba(15, 15, 16, 0.015);
+  background: rgba(var(--portal-text-rgb), 0.015);
   display: grid;
   align-content: center;
   justify-items: center;
@@ -2198,13 +2198,13 @@
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(15, 15, 16, 0.8);
+  color: rgba(var(--portal-text-rgb), 0.8);
 }
 
 .moduleViewsStateDetail {
   margin: 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.62);
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .moduleViewsConsistencyOk,
@@ -2232,7 +2232,7 @@
 .moduleViewsConsistencyItem {
   margin: 0;
   font-size: 10px;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .moduleViewsMeta {
@@ -2242,7 +2242,7 @@
   justify-content: space-between;
   gap: 10px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .modulePlanFrame {
@@ -2260,7 +2260,7 @@
 
 .modulePlanSourceDerived,
 .modulePlanSourceFallback {
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 10px;
@@ -2287,7 +2287,7 @@
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
 }
 
 .modulePlanConsistencyOk {
@@ -2304,8 +2304,8 @@
   width: 100%;
   height: auto;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  background: rgba(var(--portal-bg-surface-rgb), 0.95);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
 }
 
 .moduleViewsLegend {
@@ -2318,12 +2318,12 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 10px;
-  color: rgba(15, 15, 16, 0.72);
-  background: rgba(15, 15, 16, 0.03);
+  color: rgba(var(--portal-text-rgb), 0.72);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .moduleViewsLegendSwatch {
@@ -2334,20 +2334,20 @@
 }
 
 .moduleHouseHatch {
-  fill: rgba(15, 15, 16, 0.04);
-  stroke: rgba(15, 15, 16, 0.16);
+  fill: rgba(var(--portal-text-rgb), 0.04);
+  stroke: rgba(var(--portal-text-rgb), 0.16);
   stroke-width: 0.22;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleHouseHatchLine {
-  stroke: rgba(15, 15, 16, 0.18);
+  stroke: rgba(var(--portal-text-rgb), 0.18);
   stroke-width: 0.16;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleHouseLabel {
-  fill: rgba(15, 15, 16, 0.54);
+  fill: rgba(var(--portal-text-rgb), 0.54);
   font-size: 2.4px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -2419,7 +2419,7 @@
 }
 
 .modulePlanOverhangZone {
-  fill: rgba(15, 15, 16, 0.02);
+  fill: rgba(var(--portal-text-rgb), 0.02);
   stroke: var(--mv-line-hidden);
   stroke-width: 0.2;
   stroke-dasharray: 1.8 1.3;
@@ -2434,7 +2434,7 @@
 }
 
 .modulePlanAngleText {
-  fill: rgba(15, 15, 16, 0.56);
+  fill: rgba(var(--portal-text-rgb), 0.56);
   font-size: 2.2px;
 }
 
@@ -2445,11 +2445,11 @@
 }
 
 .moduleFallHead {
-  fill: rgba(15, 15, 16, 0.62);
+  fill: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .moduleFallLabel {
-  fill: rgba(15, 15, 16, 0.62);
+  fill: rgba(var(--portal-text-rgb), 0.62);
   font-size: 2.3px;
 }
 
@@ -2485,17 +2485,17 @@
 }
 
 .moduleDimText {
-  fill: rgba(15, 15, 16, 0.66);
+  fill: rgba(var(--portal-text-rgb), 0.66);
   font-size: 2.5px;
   font-weight: 600;
   paint-order: stroke fill;
-  stroke: rgba(255, 255, 255, 0.96);
+  stroke: rgba(var(--portal-bg-surface-rgb), 0.96);
   stroke-width: 0.26;
   stroke-linejoin: round;
 }
 
 .moduleSectionGroundFill {
-  fill: rgba(15, 15, 16, 0.03);
+  fill: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .moduleSectionGround {
@@ -2563,18 +2563,18 @@
 }
 
 .moduleSectionAngleLabel {
-  fill: rgba(15, 15, 16, 0.6);
+  fill: rgba(var(--portal-text-rgb), 0.6);
   font-size: 2.3px;
 }
 
 .moduleSectionPitchLabel {
-  fill: rgba(15, 15, 16, 0.68);
+  fill: rgba(var(--portal-text-rgb), 0.68);
   font-size: 2.7px;
   font-weight: 600;
 }
 
 .moduleSectionMetaLabel {
-  fill: rgba(15, 15, 16, 0.55);
+  fill: rgba(var(--portal-text-rgb), 0.55);
   font-size: 2.2px;
 }
 
@@ -2595,7 +2595,7 @@
 }
 
 .moduleDiagTitle {
-  fill: rgba(15, 15, 16, 0.82);
+  fill: rgba(var(--portal-text-rgb), 0.82);
   font-size: 2.2px;
   font-weight: 700;
   text-transform: uppercase;
@@ -2603,7 +2603,7 @@
 }
 
 .moduleDiagText {
-  fill: rgba(15, 15, 16, 0.72);
+  fill: rgba(var(--portal-text-rgb), 0.72);
   font-size: 2.1px;
 }
 
@@ -2621,14 +2621,14 @@
 }
 
 .moduleDeltaPanel {
-  fill: rgba(15, 15, 16, 0.03);
-  stroke: rgba(15, 15, 16, 0.22);
+  fill: rgba(var(--portal-text-rgb), 0.03);
+  stroke: rgba(var(--portal-text-rgb), 0.22);
   stroke-width: 0.2;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleDeltaTitle {
-  fill: rgba(15, 15, 16, 0.78);
+  fill: rgba(var(--portal-text-rgb), 0.78);
   font-size: 1.95px;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -2654,12 +2654,12 @@
 }
 
 .modulePlanStat {
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.03);
   border-radius: 999px;
   padding: 2px 8px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .previewFieldGrid {
@@ -2671,7 +2671,7 @@
 .previewFieldGrid .tile {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   height: auto;
 }
 
@@ -2685,8 +2685,8 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 20px rgba(15, 15, 16, 0.08);
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.08);
 }
 
 .previewSummaryHeader {
@@ -2707,7 +2707,7 @@
 .previewSummarySub {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .previewIssueButton {
@@ -2744,7 +2744,7 @@
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.55);
+  color: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .previewStatValue {
@@ -2761,9 +2761,9 @@
 }
 
 .impactReset {
-  border: 1px solid rgba(15, 15, 16, 0.16);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   color: inherit;
   padding: 6px 10px;
   font-size: 11px;
@@ -2785,9 +2785,9 @@
 }
 
 .impactStat {
-  border: 1px solid rgba(15, 15, 16, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 10px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   padding: 8px 10px;
   display: grid;
   gap: 2px;
@@ -2797,7 +2797,7 @@
   font-size: 11px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.58);
+  color: rgba(var(--portal-text-rgb), 0.58);
 }
 
 .impactStat strong {
@@ -2816,7 +2816,7 @@
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.62);
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .impactList {
@@ -2828,9 +2828,9 @@
 }
 
 .impactRow {
-  border: 1px solid rgba(15, 15, 16, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 10px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   padding: 8px 10px;
   display: flex;
   align-items: center;
@@ -2894,9 +2894,9 @@
 }
 
 .statusRow {
-  border: 1px solid rgba(15, 15, 16, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   padding: 8px 10px;
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -2936,13 +2936,13 @@
 .statusDetail {
   margin-top: 2px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.62);
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .statusAction {
-  border: 1px solid rgba(15, 15, 16, 0.18);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   color: inherit;
   padding: 5px 10px;
   font-size: 11px;
@@ -2967,9 +2967,9 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   background: var(--accentRed);
-  color: #fff;
+  color: var(--portal-text-inverse);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -2996,14 +2996,14 @@
 .previewMuted {
   margin: 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .previewList {
   margin: 0;
   padding-left: 18px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.85);
+  color: rgba(var(--portal-text-rgb), 0.85);
   display: grid;
   gap: 6px;
 }
@@ -3022,9 +3022,9 @@
 }
 
 .warningRow {
-  border: 1px solid rgba(15, 15, 16, 0.1);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 10px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   padding: 8px 10px;
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -3058,20 +3058,20 @@
 }
 
 .warningBadgeInfo {
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: rgba(15, 15, 16, 0.04);
-  color: rgba(15, 15, 16, 0.68);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .warningMessage {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.86);
+  color: rgba(var(--portal-text-rgb), 0.86);
 }
 
 .warningJumpButton {
-  border: 1px solid rgba(15, 15, 16, 0.18);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
   color: inherit;
   padding: 4px 10px;
   font-size: 10px;
@@ -3113,7 +3113,7 @@
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .materialsDebugDetail .control {
@@ -3133,10 +3133,10 @@
   justify-content: space-between;
   gap: 12px;
   text-align: left;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 10px;
   padding: 8px 10px;
-  background: #fff;
+  background: var(--portal-bg-surface);
   cursor: pointer;
   font-size: 12px;
 }
@@ -3148,10 +3148,10 @@
 
 .materialsDebugExplain {
   margin-top: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
   padding: 10px;
-  background: rgba(15, 15, 16, 0.02);
+  background: rgba(var(--portal-text-rgb), 0.02);
 }
 
 .materialsDebugJson {
@@ -3159,8 +3159,8 @@
   max-height: 260px;
   overflow: auto;
   border-radius: 8px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: var(--portal-bg-surface);
   padding: 10px;
   font-size: 11px;
   line-height: 1.4;
@@ -3195,7 +3195,7 @@
 .previewRowMeta {
   margin-top: 4px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .previewRowValue {
@@ -3209,7 +3209,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid rgba(15, 15, 16, 0.12);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.12);
   padding-top: 8px;
   font-size: 12px;
   font-weight: 700;
@@ -3219,7 +3219,7 @@
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
 }
 
 .previewDetails > summary {
@@ -3228,7 +3228,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-weight: 600;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .previewDetails[open] > summary {

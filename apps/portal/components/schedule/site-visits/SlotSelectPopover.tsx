@@ -76,17 +76,17 @@ export default function SlotSelectPopover({
         style={{
           display: 'grid',
           gap: 8,
-          border: '1px solid rgba(15, 15, 16, 0.16)',
+          border: '1px solid rgba(var(--portal-text-rgb), 0.16)',
           borderRadius: 12,
-          background: '#fff',
+          background: 'var(--portal-bg-surface)',
           padding: 10,
-          boxShadow: '0 18px 40px rgba(15, 15, 16, 0.18)',
+          boxShadow: '0 18px 40px rgba(var(--portal-text-rgb), 0.18)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ display: 'grid', gap: 2 }}>
             <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Book slot</div>
-            {label ? <div style={{ fontSize: 11, color: 'rgba(15,15,16,0.6)' }}>{label}</div> : null}
+            {label ? <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.6)' }}>{label}</div> : null}
           </div>
           <button type="button" className={styles.buttonSecondary} onClick={onClose} style={{ padding: '6px 8px' }}>
             Close
@@ -117,7 +117,7 @@ export default function SlotSelectPopover({
           </button>
         </div>
 
-        <div style={{ fontSize: 11, color: 'rgba(15,15,16,0.6)' }}>
+        <div style={{ fontSize: 11, color: 'rgba(var(--portal-text-rgb), 0.6)' }}>
           {unscheduledCount === 0 ? 'No unscheduled visits available.' : `${unscheduledCount} unscheduled visit${unscheduledCount === 1 ? '' : 's'} available.`}
         </div>
       </div>

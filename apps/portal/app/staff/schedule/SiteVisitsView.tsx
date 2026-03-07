@@ -958,7 +958,7 @@ export default function SiteVisitsView() {
 
           <main className={styles.siteVisitsCalendar} aria-label="Site visits week calendar">
             {actionError ? (
-              <div style={{ padding: 10, borderBottom: '1px solid rgba(15,15,16,0.08)', background: 'rgba(185,28,28,0.08)' }}>
+              <div style={{ padding: 10, borderBottom: '1px solid rgba(var(--portal-text-rgb), 0.08)', background: 'rgba(185,28,28,0.08)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                   <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Booking error</strong>
                   <button type="button" className={styles.buttonSecondary} onClick={() => setActionError(null)}>
