@@ -138,7 +138,7 @@ function formatMaybeNumber(n: number | undefined, digits = 2): string {
 }
 
 function formatSignedMoney(n: number | undefined): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '\u2014';
   if (Math.abs(n) < 0.005) return '$0.00';
   const sign = n > 0 ? '+' : '-';
   return `${sign}$${Math.abs(n).toFixed(2)}`;
@@ -6825,5 +6825,4 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
 
