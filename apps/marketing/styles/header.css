@@ -189,7 +189,7 @@ body.mobile-menu-open header.site .site-brand{ color:#f5f6f7 !important; }
 body.mobile-menu-open .mobile-toggle{ background:#f5f6f7 !important; color:#000 !important; }
 body.mobile-menu-open .mobile-toggle__pulse{ border-color:rgba(245,246,247,.72); }
 
-/* --- Mega: fullâ€‘bleed, no gap, square edges --- */
+/* --- Mega: full-bleed, no gap, square edges --- */
 @media (max-width:720px){
   .navbar{gap:0}
   header.site .navbar{align-items:center}
