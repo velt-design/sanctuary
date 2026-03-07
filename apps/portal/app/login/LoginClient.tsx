@@ -48,11 +48,11 @@ export default function LoginClient() {
           borderRadius: 18,
           background: 'var(--portal-bg-surface)',
           padding: 24,
-          boxShadow: '0 22px 60px rgba(17,17,17,.08)',
+          boxShadow: '0 22px 60px rgba(var(--portal-text-rgb), 0.08)',
         }}
       >
         <h1 style={{ margin: 0, fontSize: 28, letterSpacing: '-0.02em' }}>Staff Login</h1>
-        <p style={{ marginTop: 8, color: 'rgba(15,15,16,.7)' }}>
+        <p style={{ marginTop: 8, color: 'rgba(var(--portal-text-rgb), 0.7)' }}>
           Use your Sanctuary Pergolas staff email to sign in.
         </p>
 
@@ -117,7 +117,7 @@ export default function LoginClient() {
         >
           <div style={{ display: 'grid', gap: 12 }}>
             <label style={{ display: 'grid', gap: 6 }}>
-              <span style={{ fontSize: 13, color: 'rgba(15,15,16,.7)' }}>Email</span>
+              <span style={{ fontSize: 13, color: 'rgba(var(--portal-text-rgb), 0.7)' }}>Email</span>
               <input
                 style={{
                   width: '100%',
@@ -137,7 +137,7 @@ export default function LoginClient() {
             </label>
 
             <label style={{ display: 'grid', gap: 6 }}>
-              <span style={{ fontSize: 13, color: 'rgba(15,15,16,.7)' }}>Password</span>
+              <span style={{ fontSize: 13, color: 'rgba(var(--portal-text-rgb), 0.7)' }}>Password</span>
               <input
                 style={{
                   width: '100%',
@@ -166,7 +166,7 @@ export default function LoginClient() {
                 borderRadius: 999,
                 border: 'none',
                 background: 'var(--portal-accent)',
-                color: '#fff',
+                color: 'var(--portal-text-inverse)',
                 fontWeight: 600,
                 letterSpacing: '0.02em',
                 textTransform: 'uppercase',

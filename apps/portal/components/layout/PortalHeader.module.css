@@ -36,7 +36,7 @@
   border-radius: 999px;
   border: 1px solid var(--portal-border);
   background: var(--portal-bg-surface);
-  box-shadow: 0 1px 2px rgba(15, 15, 16, 0.06);
+  box-shadow: 0 1px 2px rgba(var(--portal-text-rgb), 0.06);
   overflow: hidden;
 }
 
@@ -54,7 +54,7 @@
 }
 
 .historyIconButton:hover:not(:disabled) {
-  background: rgba(15, 15, 16, 0.05);
+  background: rgba(var(--portal-text-rgb), 0.05);
 }
 
 .historyIconButton:focus {
@@ -85,7 +85,7 @@
   border-radius: 999px;
   border: 1px solid var(--portal-border);
   background: var(--portal-bg-surface);
-  box-shadow: 0 1px 2px rgba(15, 15, 16, 0.06);
+  box-shadow: 0 1px 2px rgba(var(--portal-text-rgb), 0.06);
   color: color-mix(in srgb, var(--portal-text) 82%, #ffffff 18%);
   font-size: 12px;
   user-select: none;
@@ -95,7 +95,7 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(15, 15, 16, 0.45);
+  background: rgba(var(--portal-text-rgb), 0.45);
 }
 
 .saveDot[data-status='saved'] {
@@ -107,7 +107,7 @@
 }
 
 .saveDot[data-status='offline'] {
-  background: rgba(15, 15, 16, 0.35);
+  background: rgba(var(--portal-text-rgb), 0.35);
 }
 
 .saveDot[data-status='error'] {
@@ -124,4 +124,3 @@
     gap: 6px;
   }
 }
-

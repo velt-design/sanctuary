@@ -5,11 +5,11 @@
   display: flex;
   flex-direction: column;
 
-  --border: rgba(15, 15, 16, 0.14);
-  --muted: rgba(15, 15, 16, 0.65);
+  --border: rgba(var(--portal-text-rgb), 0.14);
+  --muted: rgba(var(--portal-text-rgb), 0.65);
   --focus: rgba(var(--accentRgb), 0.95);
-  --bg: rgba(255, 255, 255, 0.92);
-  --text: #0f0f10;
+  --bg: rgba(var(--portal-bg-surface-rgb), 0.92);
+  --text: var(--portal-text);
   --scrollBottomBuffer: 14px;
 
   color: var(--text);
@@ -71,7 +71,7 @@
   justify-content: center;
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -79,7 +79,7 @@
   cursor: pointer;
   text-decoration: none;
   user-select: none;
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: var(--text);
 }
 
@@ -121,7 +121,7 @@
   justify-content: center;
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -130,7 +130,7 @@
   text-decoration: none;
   user-select: none;
   background: var(--accentRed);
-  color: #fff;
+  color: var(--portal-text-inverse);
 }
 
 .buttonPrimary:disabled {
@@ -142,7 +142,7 @@
   margin: 0;
   border: 1px solid rgba(185, 28, 28, 0.22);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   overflow: hidden;
 }
 
@@ -223,7 +223,7 @@
 
 .panelHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -243,9 +243,9 @@
   width: 24px;
   height: 24px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.03);
-  color: rgba(15, 15, 16, 0.8);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.8);
   cursor: pointer;
 }
 
@@ -276,14 +276,14 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.8);
+  color: rgba(var(--portal-text-rgb), 0.8);
 }
 
 .filters {
   padding: 14px;
   display: grid;
   gap: 10px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .input {
@@ -291,8 +291,8 @@
   margin: 0;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   color: inherit;
   font-size: 14px;
 }
@@ -307,9 +307,9 @@
   width: 100%;
   overflow: hidden;
   border-radius: 18px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: #fff;
-  box-shadow: 0 22px 60px rgba(15, 15, 16, 0.22);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: var(--portal-bg-surface);
+  box-shadow: 0 22px 60px rgba(var(--portal-text-rgb), 0.22);
 }
 
 .eventModalOverlay {
@@ -319,12 +319,12 @@
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(15, 15, 16, 0.55);
+  background: rgba(var(--portal-text-rgb), 0.55);
 }
 
 .eventModalHeader {
   padding: 16px 18px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
   display: grid;
   gap: 10px;
 }
@@ -339,7 +339,7 @@
 .eventModalSubtitle {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .eventModalActions {
@@ -368,7 +368,7 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.8);
+  color: rgba(var(--portal-text-rgb), 0.8);
 }
 
 .eventModalGrid {
@@ -385,8 +385,8 @@
 .eventModalReadOnly {
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.03);
   font-size: 13px;
 }
 
@@ -398,7 +398,7 @@
 .hint {
   margin: 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .unscheduledBody,
@@ -427,9 +427,9 @@
 
 .debugDetails {
   margin: 12px 14px 14px 14px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(var(--portal-bg-surface-rgb), 0.75);
 }
 
 /* --- Site visits calendar (Week view) --- */
@@ -462,8 +462,8 @@
 .siteVisitsSelect {
   padding: 8px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   color: inherit;
   font-size: 14px;
 }
@@ -490,9 +490,9 @@
 }
 
 .siteVisitsQueue {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -501,7 +501,7 @@
 
 .siteVisitsQueueHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -511,7 +511,7 @@
 
 .siteVisitsQueueSearchRow {
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
   flex: 0 0 auto;
 }
 
@@ -533,8 +533,8 @@
   max-width: 220px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   font-size: 14px;
 }
 
@@ -550,10 +550,10 @@
 }
 
 .siteVisitCard {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
   padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -575,8 +575,8 @@
 }
 
 .siteVisitCard:hover {
-  border-color: rgba(15, 15, 16, 0.22);
-  background: rgba(15, 15, 16, 0.03);
+  border-color: rgba(var(--portal-text-rgb), 0.22);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .siteVisitCardTier1:hover {
@@ -619,15 +619,15 @@
 
 .siteVisitCardAddress {
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .siteVisitCardBook {
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: var(--text);
   border-radius: 999px;
   padding: 4px 8px;
@@ -646,7 +646,7 @@
   text-transform: uppercase;
   padding: 4px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   white-space: nowrap;
 }
 
@@ -673,7 +673,7 @@
   justify-content: space-between;
   gap: 8px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .siteVisitCardMeta {
@@ -684,9 +684,9 @@
 }
 
 .siteVisitsCalendar {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -704,25 +704,25 @@
 .siteVisitsCalendarHeader {
   display: grid;
   grid-template-columns: 33.6px repeat(7, minmax(136.5px, 1fr));
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
-  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: rgba(var(--portal-bg-surface-rgb), 0.95);
   position: sticky;
   top: 0;
   z-index: 10;
 }
 
 .siteVisitsTimeHeader {
-  border-right: 1px solid rgba(15, 15, 16, 0.08);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.08);
   position: sticky;
   left: 0;
   z-index: 11;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
 }
 
 .siteVisitsDayHeader {
   display: grid;
   grid-template-rows: auto auto;
-  border-right: 1px solid rgba(15, 15, 16, 0.08);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .siteVisitsDayHeader:last-child {
@@ -741,15 +741,15 @@
   display: grid;
   grid-template-columns: repeat(var(--site-visits-lane-count, 6), 1fr);
   gap: 0;
-  border-top: 1px solid rgba(15, 15, 16, 0.08);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .siteVisitsLaneHeaderCell {
   padding: 6px 8px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(15, 15, 16, 0.7);
-  border-right: 1px solid rgba(15, 15, 16, 0.08);
+  color: rgba(var(--portal-text-rgb), 0.7);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.08);
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
@@ -769,8 +769,8 @@
 }
 
 .siteVisitsTimeColumn {
-  border-right: 1px solid rgba(15, 15, 16, 0.08);
-  background: rgba(15, 15, 16, 0.02);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: rgba(var(--portal-text-rgb), 0.02);
   position: sticky;
   left: 0;
   z-index: 9;
@@ -779,8 +779,8 @@
 .siteVisitsTimeCell {
   padding: 2px 6px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.6);
-  border-bottom: 1px solid rgba(15, 15, 16, 0.06);
+  color: rgba(var(--portal-text-rgb), 0.6);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -788,12 +788,12 @@
 }
 
 .siteVisitsTimeCellOffHours {
-  background: rgba(15, 15, 16, 0.04);
+  background: rgba(var(--portal-text-rgb), 0.04);
 }
 
 .siteVisitsDayColumn {
   display: block;
-  border-right: 1px solid rgba(15, 15, 16, 0.08);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .siteVisitsDayColumn:last-child {
@@ -807,7 +807,7 @@
 
 .siteVisitsLaneColumn {
   position: relative;
-  border-right: 1px solid rgba(15, 15, 16, 0.06);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.06);
   background: transparent;
 }
 
@@ -828,18 +828,18 @@
   border-radius: 6px;
   position: relative;
   z-index: 1;
-  box-shadow: inset 0 -1px 0 rgba(15, 15, 16, 0.06);
+  box-shadow: inset 0 -1px 0 rgba(var(--portal-text-rgb), 0.06);
 }
 
 .siteVisitSlot:not(.siteVisitSlotOffHours):hover {
   background: rgba(var(--accentRgb), 0.06);
-  box-shadow: inset 0 -1px 0 rgba(15, 15, 16, 0.06), inset 0 0 0 1px rgba(var(--accentRgb), 0.18);
+  box-shadow: inset 0 -1px 0 rgba(var(--portal-text-rgb), 0.06), inset 0 0 0 1px rgba(var(--accentRgb), 0.18);
 }
 
 .siteVisitSlot:not(.siteVisitSlotOffHours):focus-visible {
   outline: none;
   box-shadow:
-    inset 0 -1px 0 rgba(15, 15, 16, 0.06),
+    inset 0 -1px 0 rgba(var(--portal-text-rgb), 0.06),
     inset 0 0 0 1px rgba(var(--accentRgb), 0.28),
     0 0 0 3px rgba(var(--accentRgb), 0.12);
 }
@@ -863,7 +863,7 @@
   width: 100%;
   height: 100%;
   border-radius: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   text-align: center;
   padding: 0;
   cursor: pointer;
@@ -910,13 +910,13 @@
 }
 
 .siteVisitEventCompleted {
-  background: rgba(15, 15, 16, 0.10);
-  color: rgba(15, 15, 16, 0.75);
+  background: rgba(var(--portal-text-rgb), 0.10);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .siteVisitEventCancelled {
   background: rgba(185, 28, 28, 0.16);
-  color: rgba(15, 15, 16, 0.8);
+  color: rgba(var(--portal-text-rgb), 0.8);
 }
 
 .siteVisitEventHighlight {
@@ -930,7 +930,7 @@
   font-size: 12px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .debugBody {
@@ -950,11 +950,11 @@
 .debugSectionTitle {
   margin-top: 6px;
   padding-top: 10px;
-  border-top: 1px solid rgba(15, 15, 16, 0.1);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.1);
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.62);
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .cardList {
@@ -970,11 +970,11 @@
 }
 
 .jobCard {
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
   padding: 8px;
-  box-shadow: 0 8px 22px rgba(15, 15, 16, 0.06);
+  box-shadow: 0 8px 22px rgba(var(--portal-text-rgb), 0.06);
   transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
@@ -988,16 +988,16 @@
 
 .jobCard:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18), 0 14px 36px rgba(15, 15, 16, 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18), 0 14px 36px rgba(var(--portal-text-rgb), 0.12);
 }
 
 .jobCard:hover {
-  box-shadow: 0 14px 36px rgba(15, 15, 16, 0.12);
-  border-color: rgba(15, 15, 16, 0.22);
+  box-shadow: 0 14px 36px rgba(var(--portal-text-rgb), 0.12);
+  border-color: rgba(var(--portal-text-rgb), 0.22);
 }
 
 .jobCard[data-drop-target='true'] {
-  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.35), 0 14px 36px rgba(15, 15, 16, 0.12);
+  box-shadow: inset 0 0 0 2px rgba(var(--accentRgb), 0.35), 0 14px 36px rgba(var(--portal-text-rgb), 0.12);
   border-color: rgba(var(--accentRgb), 0.55);
 }
 
@@ -1045,7 +1045,7 @@
 .jobDescriptor {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1064,8 +1064,8 @@
   align-items: center;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.03);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1077,7 +1077,7 @@
   align-items: center;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   background: rgba(var(--accentRgb), 0.08);
   font-size: 11px;
   font-weight: 900;
@@ -1090,7 +1090,7 @@
   align-items: center;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   background: rgba(42, 157, 143, 0.16);
   font-size: 11px;
   font-weight: 900;
@@ -1103,8 +1103,8 @@
   align-items: center;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.06);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.06);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -1173,8 +1173,8 @@
   gap: 6px;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: rgba(15, 15, 16, 0.06);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: rgba(var(--portal-text-rgb), 0.06);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -1185,8 +1185,8 @@
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.65);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.65);
+  background: var(--portal-bg-surface);
 }
 
 .warnBadge {
@@ -1206,7 +1206,7 @@
 .dateLine {
   margin-top: 8px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .menuWrap {
@@ -1214,9 +1214,9 @@
 }
 
 .kebab {
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.03);
-  color: rgba(15, 15, 16, 0.75);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.75);
   border-radius: 999px;
   padding: 6px 10px;
   font-size: 18px;
@@ -1235,17 +1235,17 @@
   top: calc(100% + 8px);
   width: 160px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 50px rgba(15, 15, 16, 0.18);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  box-shadow: 0 18px 50px rgba(var(--portal-text-rgb), 0.18);
   padding: 8px;
   z-index: 5;
 }
 
 .menuItem {
   width: 100%;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: var(--text);
   border-radius: 10px;
   padding: 10px 12px;
@@ -1286,15 +1286,15 @@
   max-height: min(72vh, 560px);
   overflow: auto;
   border-radius: 14px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 20px 48px rgba(15, 15, 16, 0.2);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  box-shadow: 0 20px 48px rgba(var(--portal-text-rgb), 0.2);
   padding: 16px;
 }
 
 .ganttPopover:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14), 0 20px 48px rgba(15, 15, 16, 0.2);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14), 0 20px 48px rgba(var(--portal-text-rgb), 0.2);
 }
 
 .ganttPopoverHeader {
@@ -1314,7 +1314,7 @@
 
 .ganttPopoverMeta {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .ganttPopoverStatus {
@@ -1323,8 +1323,8 @@
   align-items: center;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(15, 15, 16, 0.04);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.04);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.05em;
@@ -1344,7 +1344,7 @@
 
 .ganttPopoverDivider {
   height: 1px;
-  background: rgba(15, 15, 16, 0.1);
+  background: rgba(var(--portal-text-rgb), 0.1);
   margin: 2px 0 2px;
 }
 
@@ -1353,7 +1353,7 @@
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .ganttPopoverActionList {
@@ -1366,7 +1366,7 @@
   gap: 6px;
   margin-bottom: 10px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.1);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.1);
 }
 
 .ganttPopoverAction {
@@ -1375,9 +1375,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   border-radius: 11px;
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: var(--text);
   text-align: left;
   padding: 10px 12px;
@@ -1406,7 +1406,7 @@
 .ganttPopoverShortcut {
   font-size: 11px;
   font-weight: 900;
-  color: rgba(15, 15, 16, 0.62);
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .lanes {
@@ -1428,7 +1428,7 @@
   gap: 12px;
   padding: 8px 14px 0 14px;
   flex-wrap: wrap;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
   font-size: 12px;
 }
 
@@ -1445,8 +1445,8 @@
   width: 14px;
   height: 10px;
   border-radius: 6px;
-  border: 1px solid rgba(15, 15, 16, 0.22);
-  background: rgba(15, 15, 16, 0.08);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.22);
+  background: rgba(var(--portal-text-rgb), 0.08);
 }
 
 .legendSwatchConflict {
@@ -1456,15 +1456,15 @@
 
 .legendSwatchPlanned {
   border-style: dashed;
-  background: rgba(15, 15, 16, 0.05);
+  background: rgba(var(--portal-text-rgb), 0.05);
 }
 
 .legendDot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.6);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.6);
+  background: var(--portal-bg-surface);
 }
 
 .gantt {
@@ -1508,7 +1508,7 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -1521,8 +1521,8 @@
   margin: 0;
   padding: 5px 8px;
   border-radius: 9px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   color: inherit;
   font-size: 11px;
   min-height: 30px;
@@ -1538,7 +1538,7 @@
 .ganttMeta {
   font-size: 12px;
   line-height: 1.2;
-  color: rgba(15, 15, 16, 0.8);
+  color: rgba(var(--portal-text-rgb), 0.8);
 }
 
 .ganttControlSelect {
@@ -1566,7 +1566,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .ganttLegendInline .legendItem {
@@ -1587,9 +1587,9 @@
   min-height: 0;
   overflow: auto;
   padding-bottom: var(--scrollBottomBuffer);
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.88);
+  background: rgba(var(--portal-bg-surface-rgb), 0.88);
 }
 
 .ganttTable {
@@ -1636,7 +1636,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  background: rgba(15, 15, 16, 0.04);
+  background: rgba(var(--portal-text-rgb), 0.04);
   pointer-events: none;
   z-index: 0;
 }
@@ -1669,11 +1669,11 @@
 }
 
 .ganttDayBoundary {
-  background: rgba(15, 15, 16, 0.045);
+  background: rgba(var(--portal-text-rgb), 0.045);
 }
 
 .ganttWeekBoundary {
-  background: rgba(15, 15, 16, 0.14);
+  background: rgba(var(--portal-text-rgb), 0.14);
 }
 
 .ganttLabelResizer {
@@ -1693,7 +1693,7 @@
   top: 0;
   bottom: 0;
   width: 2px;
-  background: rgba(15, 15, 16, 0.22);
+  background: rgba(var(--portal-text-rgb), 0.22);
   transition: background 120ms ease;
 }
 
@@ -1713,10 +1713,10 @@
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: #fff;
-  box-shadow: 8px 0 12px rgba(0, 0, 0, 0.06);
-  border-right: 1px solid rgba(15, 15, 16, 0.1);
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  background: var(--portal-bg-surface);
+  box-shadow: 8px 0 12px rgba(var(--portal-text-rgb), 0.06);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .ganttLeftHeaderGrid,
@@ -1728,7 +1728,7 @@
 }
 
 .ganttLeftHeaderGrid {
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .ganttLeftCell {
@@ -1737,14 +1737,14 @@
   z-index: 17;
   min-height: var(--ganttRowHItem);
   padding: var(--ganttLeftPadYItem) 12px;
-  background: #fff;
-  box-shadow: 8px 0 12px rgba(0, 0, 0, 0.06);
-  border-right: 1px solid rgba(15, 15, 16, 0.1);
-  border-top: 1px solid rgba(15, 15, 16, 0.06);
+  background: var(--portal-bg-surface);
+  box-shadow: 8px 0 12px rgba(var(--portal-text-rgb), 0.06);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.06);
 }
 
 .ganttLeftCellGroup {
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .ganttRowWrap[data-kind='group'] .ganttLeftCell {
@@ -1764,7 +1764,7 @@
 .ganttColStart,
 .ganttColEnd {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1782,9 +1782,9 @@
   width: 22px;
   height: 22px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.9);
-  color: rgba(15, 15, 16, 0.72);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.9);
+  color: rgba(var(--portal-text-rgb), 0.72);
   font-weight: 900;
   line-height: 1;
   cursor: pointer;
@@ -1828,15 +1828,15 @@
   flex: 0 0 auto;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
   font-size: 11px;
   font-weight: 900;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .ganttEmptyLabel {
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
   font-size: 12px;
 }
 
@@ -1845,8 +1845,8 @@
   top: 0;
   z-index: 5;
   height: var(--ganttHeaderH, 74px);
-  background: rgba(255, 255, 255, 0.98);
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
 }
 
 .ganttTodayPillTrack {
@@ -1867,11 +1867,11 @@
   gap: 6px;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
   font-size: 11px;
   font-weight: 700;
-  color: rgba(15, 15, 16, 0.84);
+  color: rgba(var(--portal-text-rgb), 0.84);
   white-space: nowrap;
 }
 
@@ -1907,13 +1907,13 @@
 .ganttMonthLabel {
   font-size: 11px;
   font-weight: 700;
-  color: rgba(15, 15, 16, 0.68);
+  color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .ganttWeekLabel {
   font-size: 10px;
   letter-spacing: 0.02em;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .ganttHolidayHoverZone {
@@ -1939,7 +1939,7 @@
   top: var(--ganttHeaderH, 74px);
   bottom: 0;
   width: 1px;
-  background: rgba(15, 15, 16, 0.26);
+  background: rgba(var(--portal-text-rgb), 0.26);
   z-index: 6;
   pointer-events: none;
 }
@@ -1947,12 +1947,12 @@
 .ganttTimelineRow {
   position: relative;
   height: var(--ganttRowHItem);
-  border-top: 1px solid rgba(15, 15, 16, 0.06);
-  background-color: rgba(255, 255, 255, 0.86);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.06);
+  background-color: rgba(var(--portal-bg-surface-rgb), 0.86);
 }
 
 .ganttTimelineRowGroup {
-  background-color: rgba(15, 15, 16, 0.03);
+  background-color: rgba(var(--portal-text-rgb), 0.03);
   background-image: none;
   cursor: pointer;
 }
@@ -1969,8 +1969,8 @@
 .ganttRowWrap[data-hovered='true'] .ganttLeftCell {
   box-shadow:
     inset 0 0 0 1px rgba(var(--accentRgb), 0.35),
-    8px 0 12px rgba(0, 0, 0, 0.06);
-  background-color: #fff;
+    8px 0 12px rgba(var(--portal-text-rgb), 0.06);
+  background-color: var(--portal-text-inverse);
 }
 
 .ganttCrewSummaryBar {
@@ -1979,7 +1979,7 @@
   transform: translateY(-50%);
   height: 12px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.22);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.22);
   opacity: 0.78;
   z-index: 3;
   pointer-events: none;
@@ -1991,8 +1991,8 @@
   transform: translateY(-50%);
   height: 12px;
   border-radius: 8px;
-  border: 1px dashed rgba(15, 15, 16, 0.45);
-  background: rgba(15, 15, 16, 0.06);
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.45);
+  background: rgba(var(--portal-text-rgb), 0.06);
   z-index: 2;
   pointer-events: none;
 }
@@ -2003,8 +2003,8 @@
   transform: translateY(-50%);
   height: calc(var(--ganttBarH) + 6px);
   border-radius: 10px;
-  border: 1px dashed rgba(15, 15, 16, 0.4);
-  background: rgba(15, 15, 16, 0.1);
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.4);
+  background: rgba(var(--portal-text-rgb), 0.1);
   opacity: 0.35;
   pointer-events: none;
   z-index: 2;
@@ -2015,14 +2015,14 @@
   top: 50%;
   transform: translateY(-50%);
   height: var(--ganttBarH);
-  border: 1px solid rgba(15, 15, 16, 0.22);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.22);
   border-radius: calc(var(--ganttBarH) / 2 + 1px);
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 0 16px 0 10px;
   overflow: hidden;
-  box-shadow: 0 4px 14px rgba(15, 15, 16, 0.16);
+  box-shadow: 0 4px 14px rgba(var(--portal-text-rgb), 0.16);
   cursor: pointer;
   transition:
     box-shadow 140ms ease,
@@ -2043,11 +2043,11 @@
   transform: translateY(-50%);
   width: 8px;
   height: 12px;
-  border-left: 1px solid rgba(15, 15, 16, 0.38);
-  border-right: 1px solid rgba(15, 15, 16, 0.22);
+  border-left: 1px solid rgba(var(--portal-text-rgb), 0.38);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.22);
   border-radius: 1px;
   cursor: ew-resize;
-  background: rgba(255, 255, 255, 0.52);
+  background: rgba(var(--portal-bg-surface-rgb), 0.52);
   opacity: 0;
   pointer-events: none;
   transition: opacity 120ms ease;
@@ -2060,7 +2060,7 @@
 }
 
 .ganttRowWrap[data-hovered='true'] .ganttBar {
-  box-shadow: 0 8px 20px rgba(15, 15, 16, 0.22);
+  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.22);
   filter: brightness(0.96);
 }
 
@@ -2073,11 +2073,11 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.55);
-  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.55);
+  background: rgba(var(--portal-bg-surface-rgb), 0.85);
   margin-right: 6px;
   flex: 0 0 auto;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(var(--portal-bg-surface-rgb), 0.45);
 }
 
 .ganttBarText {
@@ -2103,24 +2103,24 @@
   pointer-events: none;
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 8px 20px rgba(15, 15, 16, 0.16);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.16);
   font-size: 12px;
   font-weight: 600;
-  color: rgba(15, 15, 16, 0.86);
+  color: rgba(var(--portal-text-rgb), 0.86);
   display: grid;
   gap: 2px;
 }
 
 .lane {
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-left-width: 6px;
   border-left-style: solid;
-  border-left-color: rgba(15, 15, 16, 0.12);
+  border-left-color: rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -2135,7 +2135,7 @@
 
 .laneHeader {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2143,7 +2143,7 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
 }
 
 .laneNameRow {
@@ -2169,21 +2169,21 @@
 .smallMeta {
   margin: 6px 2px 0 2px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .dragOverlay {
-  border: 1px solid rgba(15, 15, 16, 0.14);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
   padding: 10px 12px;
-  box-shadow: 0 18px 50px rgba(15, 15, 16, 0.25);
+  box-shadow: 0 18px 50px rgba(var(--portal-text-rgb), 0.25);
 }
 
 .note {
   margin: 0;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .emptyLane {
@@ -2193,19 +2193,19 @@
   text-align: center;
   padding: 18px 10px;
   gap: 8px;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .emptyLaneIcon {
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  border: 1px dashed rgba(15, 15, 16, 0.22);
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.22);
   display: grid;
   place-items: center;
   font-weight: 900;
-  color: rgba(15, 15, 16, 0.55);
-  background: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.55);
+  background: rgba(var(--portal-bg-surface-rgb), 0.6);
 }
 
 .emptyLaneTitle {
@@ -2219,6 +2219,5 @@
 .emptyLaneHint {
   margin: 0;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
-

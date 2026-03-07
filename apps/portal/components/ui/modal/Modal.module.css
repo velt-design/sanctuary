@@ -5,7 +5,7 @@
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(var(--portal-text-rgb), 0.4);
   -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
@@ -15,7 +15,7 @@
   max-height: calc(100vh - 2rem);
   overflow: auto;
   border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  background: #ffffff;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.15);
+  background: var(--portal-bg-surface);
+  box-shadow: 0 22px 60px rgba(var(--portal-text-rgb), 0.28);
 }

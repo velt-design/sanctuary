@@ -3,8 +3,8 @@
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  background: rgba(var(--portal-bg-surface-rgb), 0.92);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
   padding: 14px;
 }
@@ -27,7 +27,7 @@
 .meta {
   margin-top: 8px;
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
   display: grid;
   gap: 4px;
 }
@@ -49,8 +49,8 @@
   text-decoration: none;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
-  background: rgba(15, 15, 16, 0.03);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .nav a[aria-current='page'] {
@@ -73,29 +73,29 @@
   font-size: 12px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.75);
+  color: rgba(var(--portal-text-rgb), 0.75);
 }
 
 .searchInput {
   width: min(520px, 100%);
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   font-size: 14px;
 }
 
 .count {
   font-size: 13px;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .tableWrap {
   margin-top: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;
   overflow: auto;
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .table {
@@ -107,7 +107,7 @@
 
 .table th,
 .table td {
-  border-bottom: 1px solid rgba(15, 15, 16, 0.08);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
   padding: 10px 12px;
   text-align: left;
   vertical-align: top;
@@ -160,7 +160,7 @@
   width: 96px;
   padding: 6px 8px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 15, 16, 0.2);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.2);
   font-size: 13px;
 }
 
@@ -176,6 +176,6 @@
 
 .saving {
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 

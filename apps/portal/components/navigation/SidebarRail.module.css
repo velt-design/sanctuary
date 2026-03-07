@@ -7,7 +7,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(var(--portal-bg-surface-rgb), 0.12);
   background: var(--accentRed);
 }
 
@@ -40,7 +40,7 @@
 }
 
 .iconButton:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(var(--portal-text-rgb), 0.1);
 }
 
 .iconButton:focus {
@@ -48,15 +48,15 @@
 }
 
 .iconButton:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(var(--portal-bg-surface-rgb), 0.5);
 }
 
 .iconButtonActive {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--portal-bg-surface-rgb), 0.1);
 }
 
 .iconButtonActive:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(var(--portal-bg-surface-rgb), 0.12);
 }
 
 .activeBar {
@@ -66,11 +66,11 @@
   width: 2px;
   height: 32px;
   border-radius: 0 2px 2px 0;
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .icon {
-  color: #fff;
+  color: var(--portal-text-inverse);
 }
 
 .bottom {

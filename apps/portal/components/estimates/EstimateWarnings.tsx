@@ -6,7 +6,7 @@ export default function EstimateWarnings({ warnings }: { warnings: WarningItem[]
   const critical = warnings.filter((w) => w.level === 'critical');
   const info = warnings.filter((w) => w.level === 'info');
 
-  if (!warnings.length) return <p style={{ margin: 0, fontSize: 13, color: 'rgba(15, 15, 16, 0.75)' }}>No warnings.</p>;
+  if (!warnings.length) return <p style={{ margin: 0, fontSize: 13, color: 'rgba(var(--portal-text-rgb), 0.75)' }}>No warnings.</p>;
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
@@ -24,7 +24,7 @@ export default function EstimateWarnings({ warnings }: { warnings: WarningItem[]
       ) : null}
       {info.length ? (
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'rgba(15, 15, 16, 0.8)' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'rgba(var(--portal-text-rgb), 0.8)' }}>
             Info
           </div>
           <ul style={{ margin: '8px 0 0 0', paddingLeft: 18 }}>
@@ -37,4 +37,3 @@ export default function EstimateWarnings({ warnings }: { warnings: WarningItem[]
     </div>
   );
 }
-

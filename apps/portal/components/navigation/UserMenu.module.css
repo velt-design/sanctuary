@@ -13,7 +13,7 @@
 }
 
 .trigger:hover {
-  background: rgba(0, 0, 0, 0.1);
+  background: rgba(var(--portal-text-rgb), 0.1);
 }
 
 .trigger:focus {
@@ -21,7 +21,7 @@
 }
 
 .trigger:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 2px rgba(var(--portal-bg-surface-rgb), 0.5);
 }
 
 .icon {
@@ -48,7 +48,7 @@
 
 .role {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .themeSection {
@@ -72,15 +72,15 @@
   display: grid;
   gap: 6px;
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.72);
+  color: rgba(var(--portal-text-rgb), 0.72);
 }
 
 .themeSelect {
   width: 100%;
   min-height: 34px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: var(--portal-bg-surface);
   color: var(--portal-text);
   font-size: 13px;
   padding: 6px 10px;
@@ -95,8 +95,8 @@
 .themeButton {
   min-height: 32px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: var(--portal-bg-surface);
   color: var(--portal-text);
   font-size: 12px;
   font-weight: 600;
@@ -134,7 +134,7 @@
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(15, 15, 16, 0.66);
+  color: rgba(var(--portal-text-rgb), 0.66);
 }
 
 .colorInputRow {
@@ -147,17 +147,17 @@
   width: 36px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 15, 16, 0.2);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.2);
   padding: 0;
-  background: #fff;
+  background: var(--portal-bg-surface);
   cursor: pointer;
 }
 
 .colorText {
   min-height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: var(--portal-bg-surface);
   color: var(--portal-text);
   font-size: 12px;
   padding: 6px 8px;
@@ -186,7 +186,7 @@
 
 .themeHint {
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .signOutItem {

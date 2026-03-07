@@ -5,8 +5,8 @@
 
 .card {
   margin-top: 16px;
-  background: #fff;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  background: var(--portal-bg-surface);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 16px;
   padding: 24px;
   box-shadow: 0 18px 40px rgba(17, 17, 17, 0.08);
@@ -14,7 +14,7 @@
 
 .intro {
   margin: 0;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .form {
@@ -40,7 +40,7 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: rgba(15, 15, 16, 0.65);
+  color: rgba(var(--portal-text-rgb), 0.65);
 }
 
 .input,
@@ -48,8 +48,8 @@
   width: 100%;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   font-size: 14px;
 }
 
@@ -72,7 +72,7 @@
   border-radius: 999px;
   border: none;
   background: var(--accentRed);
-  color: #fff;
+  color: var(--portal-text-inverse);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -82,9 +82,9 @@
 .buttonSecondary {
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
-  color: rgba(15, 15, 16, 0.85);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
+  color: rgba(var(--portal-text-rgb), 0.85);
   cursor: pointer;
 }
 
@@ -97,7 +97,7 @@
 
 .helper {
   font-size: 12px;
-  color: rgba(15, 15, 16, 0.6);
+  color: rgba(var(--portal-text-rgb), 0.6);
 }
 
 .result {
@@ -129,7 +129,7 @@
 
 .sectionHelper {
   margin: 0;
-  color: rgba(15, 15, 16, 0.7);
+  color: rgba(var(--portal-text-rgb), 0.7);
   font-size: 13px;
 }
 
@@ -151,10 +151,10 @@
   width: 40px;
   min-width: 40px;
   height: 40px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
   border-radius: 10px;
   padding: 0;
-  background: #fff;
+  background: var(--portal-bg-surface);
 }
 
 .addCrewActions {
@@ -170,7 +170,7 @@
 
 .crewTableWrap {
   margin-top: 14px;
-  border: 1px solid rgba(15, 15, 16, 0.12);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 14px;
   overflow: auto;
 }
@@ -185,7 +185,7 @@
 .crewTable td {
   text-align: left;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(15, 15, 16, 0.1);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.1);
   vertical-align: top;
 }
 
@@ -193,12 +193,12 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: rgba(15, 15, 16, 0.6);
-  background: rgba(15, 15, 16, 0.03);
+  color: rgba(var(--portal-text-rgb), 0.6);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .crewRowInactive {
-  background: rgba(15, 15, 16, 0.03);
+  background: rgba(var(--portal-text-rgb), 0.03);
 }
 
 .reorderButtons {
@@ -210,8 +210,8 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
-  background: #fff;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
   cursor: pointer;
   font-weight: 600;
 }
@@ -226,7 +226,7 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 1px solid rgba(15, 15, 16, 0.22);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.22);
   flex-shrink: 0;
 }
 
@@ -234,7 +234,7 @@
   width: 110px;
   padding: 9px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(15, 15, 16, 0.18);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
@@ -252,8 +252,8 @@
   justify-content: center;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(15, 15, 16, 0.16);
-  background: rgba(15, 15, 16, 0.04);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.04);
   font-size: 12px;
 }
 
@@ -266,7 +266,7 @@
 
 .deactivateHelper {
   font-size: 11px;
-  color: rgba(15, 15, 16, 0.58);
+  color: rgba(var(--portal-text-rgb), 0.58);
   max-width: 210px;
 }
 

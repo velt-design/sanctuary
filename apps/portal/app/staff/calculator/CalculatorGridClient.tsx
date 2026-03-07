@@ -5434,7 +5434,7 @@ export default function CalculatorGridClient({
                 sectionModel={moduleSectionModel}
               />
 
-              <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(15, 15, 16, 0.02)' }}>
+              <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(var(--portal-text-rgb), 0.02)' }}>
                 <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
                   Add‑ons (informational)
                 </div>
@@ -6825,4 +6825,3 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
