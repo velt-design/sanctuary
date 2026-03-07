@@ -3,7 +3,7 @@
   --fg:#0F0F10;
   --muted:#666;
   --border:#D6D7D9;
-  --accentRed:#4F5748;
+  --accentRed:var(--sp-accent, #4F5748);
   --darkGrey:#3A3A3A;
   --panel:#F7F8F9;
   --g: clamp(12px, 2.2vw, 28px);
