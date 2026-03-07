@@ -2,10 +2,10 @@ import type { Installer } from '@/lib/types/scheduling';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
-import { BRAND_ACCENT_HEX } from '@sp/theme';
+import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 
 const DEFAULT_SEED: Array<{ name: string; color: string; sort_order: number }> = [
-  { name: 'Jayden', color: BRAND_ACCENT_HEX, sort_order: 1 },
+  { name: 'Jayden', color: PORTAL_DEFAULT_ACCENT_HEX, sort_order: 1 },
   { name: 'David', color: '#1F6E8C', sort_order: 2 },
   { name: 'Alistair', color: '#2A9D8F', sort_order: 3 },
   { name: 'Eder', color: '#E09F3E', sort_order: 4 },
@@ -47,7 +47,7 @@ function installerFromRow(row: any): Installer {
   return {
     id: appIdFromUuid('crew', id),
     name: typeof row?.name === 'string' ? row.name : 'Crew',
-    color: typeof row?.color === 'string' && row.color.trim() ? row.color : BRAND_ACCENT_HEX,
+    color: typeof row?.color === 'string' && row.color.trim() ? row.color : PORTAL_DEFAULT_ACCENT_HEX,
     active: typeof row?.is_active === 'boolean' ? row.is_active : true,
     calendarRegion: typeof row?.calendar_region === 'string' ? row.calendar_region : null,
     baseAvailableDate: typeof row?.base_available_date === 'string' ? row.base_available_date : null,

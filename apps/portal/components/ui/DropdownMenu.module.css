@@ -3,8 +3,8 @@
   padding: 8px;
   border-radius: 14px;
   border: 1px solid rgba(15, 15, 16, 0.14);
-  background: rgba(255, 255, 255, 0.98);
-  color: #0f0f10;
+  background: color-mix(in srgb, var(--portal-bg-surface) 98%, #ffffff 2%);
+  color: var(--portal-text);
   box-shadow: 0 18px 40px rgba(15, 15, 16, 0.16);
   z-index: 80;
 }
@@ -31,7 +31,7 @@
   font-size: 13px;
   cursor: pointer;
   user-select: none;
-  color: #0f0f10;
+  color: var(--portal-text);
 }
 
 .item:focus {

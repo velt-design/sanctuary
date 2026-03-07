@@ -5,21 +5,26 @@ import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import PortalShell from '@/components/layout/PortalShell';
 import { Suspense, type CSSProperties } from 'react';
 import { Providers } from './providers';
-import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
+import { getPortalSession } from '@/lib/auth';
+import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
 
 export const metadata: Metadata = {
   title: 'Sanctuary Portal',
   robots: { index: false, follow: false },
 };
 
-const brandCssVars = {
-  '--sp-accent': BRAND_ACCENT_HEX,
-  '--sp-accent-rgb': BRAND_ACCENT_RGB_CSV,
-} as CSSProperties;
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  let cssVars: CSSProperties = {} as CSSProperties;
+  try {
+    const session = await getPortalSession();
+    const theme = await loadPortalThemeForUser(session?.user.id ?? null);
+    cssVars = portalThemeStyleVars(theme) as CSSProperties;
+  } catch {
+    cssVars = {} as CSSProperties;
+  }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" style={brandCssVars}>
+    <html lang="en" style={cssVars}>
       <body>
         <Providers>
           <PortalAuthProvider>

@@ -9,7 +9,7 @@
   justify-content: center;
   cursor: pointer;
   transition: background 0.15s ease;
-  color: #fff;
+  color: var(--portal-text-inverse);
 }
 
 .trigger:hover {
@@ -25,8 +25,13 @@
 }
 
 .icon {
-  color: #fff;
+  color: var(--portal-text-inverse);
   opacity: 0.9;
+}
+
+.menuContent {
+  min-width: 340px;
+  max-width: min(92vw, 420px);
 }
 
 .labelContent {
@@ -38,11 +43,149 @@
 .email {
   font-size: 13px;
   font-weight: 600;
-  color: #0f0f10;
+  color: var(--portal-text);
 }
 
 .role {
   font-size: 12px;
+  color: rgba(15, 15, 16, 0.6);
+}
+
+.themeSection {
+  display: grid;
+  gap: 10px;
+  padding: 4px 2px;
+}
+
+.themeHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--portal-text);
+}
+
+.themeLabel {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(15, 15, 16, 0.72);
+}
+
+.themeSelect {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  background: #fff;
+  color: var(--portal-text);
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+.themeButtonRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.themeButton {
+  min-height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  background: #fff;
+  color: var(--portal-text);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.themeButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.themeButton:focus-visible,
+.themeSelect:focus-visible,
+.colorText:focus-visible,
+.themeSaveButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--portal-accent-rgb), 0.18);
+}
+
+.colorGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.colorField {
+  display: grid;
+  gap: 5px;
+}
+
+.colorLabel {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(15, 15, 16, 0.66);
+}
+
+.colorInputRow {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 8px;
+}
+
+.colorPicker {
+  width: 36px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 15, 16, 0.2);
+  padding: 0;
+  background: #fff;
+  cursor: pointer;
+}
+
+.colorText {
+  min-height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 15, 16, 0.16);
+  background: #fff;
+  color: var(--portal-text);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.themeSaveButton {
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--portal-accent-rgb), 0.5);
+  background: var(--portal-accent);
+  color: var(--portal-text-inverse);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.themeSaveButton:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.themeHint {
+  font-size: 11px;
   color: rgba(15, 15, 16, 0.6);
 }
 

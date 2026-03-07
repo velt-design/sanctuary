@@ -50,7 +50,7 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { ApiError } from '@/lib/repo/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BRAND_ACCENT_HEX, brandAccentRgba } from '@sp/theme';
+import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 import { runScheduleDiagnostics } from '@/lib/queries/scheduleDiagnostics';
 import {
   closestCenter,
@@ -2131,7 +2131,7 @@ export default function ScheduleClient() {
       const cachedInstallers: Installer[] = cachedSnapshot.crews.map((c) => ({
         id: appIdFromUuid('crew', c.id),
         name: c.name,
-        color: c.color ?? BRAND_ACCENT_HEX,
+        color: c.color ?? PORTAL_DEFAULT_ACCENT_HEX,
         active: c.is_active,
         sortOrder: c.sort_order,
       }));
@@ -5568,7 +5568,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: BRAND_ACCENT_HEX, borderColor: brandAccentRgba(0.6), color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
                 onClick={() => {
                   const item = scheduleItems.find((i) => i.id === quickEdit.id) ?? null;
                   if (!item) {
@@ -5825,7 +5825,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: BRAND_ACCENT_HEX, borderColor: brandAccentRgba(0.6), color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
                 disabled={(() => {
                   const validDuration = parsePositiveInt(commitmentEdit.durationDays) !== null;
                   const flexRaw = Number(commitmentEdit.flexDays.trim());
@@ -5936,7 +5936,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: BRAND_ACCENT_HEX, borderColor: brandAccentRgba(0.6), color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
                 onClick={() => {
                   const item = scheduleItemById.get(durationEdit.id) ?? null;
                   if (!item || item.itemType === 'downtime') {
@@ -6003,7 +6003,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: BRAND_ACCENT_HEX, borderColor: brandAccentRgba(0.6), color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
                 onClick={() => {
                   const item = scheduleItemById.get(pinEdit.id) ?? null;
                   if (!item || item.itemType === 'downtime') {
@@ -6071,7 +6071,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: BRAND_ACCENT_HEX, borderColor: brandAccentRgba(0.6), color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
                 onClick={() => {
                   const item = scheduleItemById.get(daysRemainingEdit.id) ?? null;
                   if (!item || item.itemType === 'downtime') {
@@ -6174,7 +6174,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: BRAND_ACCENT_HEX, borderColor: brandAccentRgba(0.6), color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
                 onClick={() => {
                   const daysRaw = downtimeEdit.durationDays.trim();
                   const days = Number(daysRaw);
@@ -6307,7 +6307,7 @@ export default function ScheduleClient() {
               <button
                 type="button"
                 className={styles.buttonSecondary}
-                style={{ background: BRAND_ACCENT_HEX, borderColor: brandAccentRgba(0.6), color: '#fff' }}
+                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: '#fff' }}
                 onClick={() => {
                   void runWithCommitConfirmation(
                     (force) =>
