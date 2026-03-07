@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import PageHeader from '@/components/layout/PageHeader';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import styles from './access.module.css';
-import { BRAND_ACCENT_HEX } from '@sp/theme';
+import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 
 type Role = 'admin' | 'staff';
 
@@ -26,7 +26,7 @@ type CrewRow = {
   scheduled_item_count: number;
 };
 
-const DEFAULT_CREW_COLOR: string = BRAND_ACCENT_HEX;
+const DEFAULT_CREW_COLOR: string = PORTAL_DEFAULT_ACCENT_HEX;
 const DEFAULT_CREW_REGION = 'Auckland';
 
 function generatePassword(length = 14) {

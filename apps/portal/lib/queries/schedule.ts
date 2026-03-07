@@ -9,7 +9,7 @@ import type { CompanyClosure, NzHoliday } from '@/lib/scheduling/workingDays';
 import type { Project } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
 import { qk } from './keys';
-import { BRAND_ACCENT_HEX } from '@sp/theme';
+import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 
 export type ScheduleV2UnscheduledJob = {
   projectId: string;
@@ -52,7 +52,7 @@ async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapsho
     return {
       id: installerId,
       name: crew.name,
-      color: crew.color ?? BRAND_ACCENT_HEX,
+      color: crew.color ?? PORTAL_DEFAULT_ACCENT_HEX,
       active: typeof crew.is_active === 'boolean' ? crew.is_active : true,
       sortOrder: Number.isFinite(crew.sort_order) ? crew.sort_order : 0,
       calendarRegion: typeof crew.calendar_region === 'string' ? crew.calendar_region : null,

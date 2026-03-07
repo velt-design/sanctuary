@@ -4,8 +4,21 @@
 
 :root {
   --portal-header-height: 48px;
-  --accentRed: var(--sp-accent);
-  --accentRgb: var(--sp-accent-rgb);
+  --portal-accent: #813F39;
+  --portal-accent-rgb: 129, 63, 57;
+  --portal-text: #0F0F10;
+  --portal-text-muted: #666666;
+  --portal-text-inverse: #FFFFFF;
+  --portal-bg-page: #ECEDEE;
+  --portal-bg-surface: #F7F8F9;
+  --portal-border: #D6D7D9;
+  --accentRed: var(--portal-accent);
+  --accentRgb: var(--portal-accent-rgb);
+  --fg: var(--portal-text);
+  --muted: var(--portal-text-muted);
+  --bg: var(--portal-bg-page);
+  --panel: var(--portal-bg-surface);
+  --border: var(--portal-border);
 }
 
 @media (max-width: 768px) {
@@ -19,7 +32,8 @@ html, body { height: 100%; }
 body {
   margin: 0;
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
-  background: var(--bg, #ECEDEE);
+  background: var(--portal-bg-page);
+  color: var(--portal-text);
 }
 
 /* Portal layout utilities */

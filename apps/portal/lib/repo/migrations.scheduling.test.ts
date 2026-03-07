@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ensureSchedulingCrewsV2Migration } from '@/lib/repo/migrations';
-import { BRAND_ACCENT_HEX } from '@sp/theme';
+import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 
 function setJson(key: string, value: unknown) {
   window.localStorage.setItem(key, JSON.stringify(value));
@@ -75,7 +75,7 @@ describe('ensureSchedulingCrewsV2Migration', () => {
 
   it('removes schedule items that reference missing installers even when v2 is already installed', () => {
     setJson('sp_installers_v1', [
-      { id: 'crew_jayden', name: 'Jayden', color: BRAND_ACCENT_HEX, active: true, sortOrder: 1 },
+      { id: 'crew_jayden', name: 'Jayden', color: PORTAL_DEFAULT_ACCENT_HEX, active: true, sortOrder: 1 },
       { id: 'crew_david', name: 'David', color: '#1f6f8b', active: true, sortOrder: 2 },
       { id: 'crew_alistair', name: 'Alistair', color: '#2a9d8f', active: true, sortOrder: 3 },
       { id: 'crew_eder', name: 'Eder', color: '#f4a261', active: true, sortOrder: 4 },
@@ -95,4 +95,3 @@ describe('ensureSchedulingCrewsV2Migration', () => {
     expect(items[0].installerId).toBe('crew_jayden');
   });
 });
-

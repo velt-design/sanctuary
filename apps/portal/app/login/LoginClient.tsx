@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { fetchPortalRole } from '@/lib/queries/auth';
-import { BRAND_ACCENT_HEX } from '@sp/theme';
 
 const DEFAULT_CALLBACK_URL = '/dashboard';
 
@@ -39,15 +38,15 @@ export default function LoginClient() {
         padding: 'calc(var(--navH, 82px) + 48px) 24px 48px',
         display: 'grid',
         placeItems: 'center',
-        background: '#fff',
+        background: 'var(--portal-bg-page)',
       }}
     >
       <div
         style={{
           width: 'min(420px, 100%)',
-          border: '1px solid rgba(15,15,16,.12)',
+          border: '1px solid var(--portal-border)',
           borderRadius: 18,
-          background: '#fff',
+          background: 'var(--portal-bg-surface)',
           padding: 24,
           boxShadow: '0 22px 60px rgba(17,17,17,.08)',
         }}
@@ -124,8 +123,8 @@ export default function LoginClient() {
                   width: '100%',
                   padding: '12px 14px',
                   borderRadius: 12,
-                  border: '1px solid rgba(15,15,16,.18)',
-                  background: '#fff',
+                  border: '1px solid var(--portal-border)',
+                  background: 'var(--portal-bg-surface)',
                   fontSize: 14,
                   outline: 'none',
                 }}
@@ -144,8 +143,8 @@ export default function LoginClient() {
                   width: '100%',
                   padding: '12px 14px',
                   borderRadius: 12,
-                  border: '1px solid rgba(15,15,16,.18)',
-                  background: '#fff',
+                  border: '1px solid var(--portal-border)',
+                  background: 'var(--portal-bg-surface)',
                   fontSize: 14,
                   outline: 'none',
                 }}
@@ -166,7 +165,7 @@ export default function LoginClient() {
                 padding: '12px 14px',
                 borderRadius: 999,
                 border: 'none',
-                background: BRAND_ACCENT_HEX,
+                background: 'var(--portal-accent)',
                 color: '#fff',
                 fontWeight: 600,
                 letterSpacing: '0.02em',
