@@ -2,7 +2,13 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { PORTAL_THEME_PRESETS, findPortalThemePresetById } from '@/lib/theme/presets';
 import { resolvePortalTheme } from '@/lib/theme/resolve';
-import { isMissingPortalThemeSettingsTableError, parsePortalThemeRow, validateOverridesForPatch } from '@/lib/theme/server';
+import {
+  getPortalUserPresetById,
+  isMissingPortalThemeSettingsTableError,
+  listPortalUserPresets,
+  parsePortalThemeRow,
+  validateOverridesForPatch,
+} from '@/lib/theme/server';
 import type { PortalThemeMode, PortalThemeOverrides, PortalThemePresetId } from '@/lib/theme/types';
 import { sanitizePortalThemeOverrides } from '@/lib/theme/utils';
 
@@ -19,8 +25,14 @@ function parsePresetId(raw: unknown): PortalThemePresetId | null {
   return preset?.id ?? null;
 }
 
-function listPresetSummaries() {
-  return PORTAL_THEME_PRESETS.map((preset) => ({ id: preset.id, label: preset.label, tokens: preset.tokens }));
+function parseUserPresetId(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const value = raw.trim();
+  return value || null;
+}
+
+function listSystemPresetSummaries() {
+  return PORTAL_THEME_PRESETS.map((preset) => ({ id: preset.id, label: preset.label, tokens: preset.tokens, immutable: true as const }));
 }
 
 export async function GET() {
@@ -28,29 +40,47 @@ export async function GET() {
   if (!session) return jsonError('Unauthorized', 401);
 
   const supabase = await getSupabaseServerAuth();
-  const res = await supabase
+  const systemPresets = listSystemPresetSummaries();
+
+  const settingsRes = await supabase
     .from('portal_user_theme_settings')
-    .select('preset_id,overrides,updated_at')
+    .select('preset_id,user_preset_id,overrides,updated_at')
     .eq('user_id', session.user.id)
     .maybeSingle();
 
-  if (res.error) {
-    if (isMissingPortalThemeSettingsTableError(res.error)) {
+  if (settingsRes.error) {
+    if (isMissingPortalThemeSettingsTableError(settingsRes.error)) {
       const fallback = resolvePortalTheme();
       return jsonOk({
         ok: true,
-        presets: listPresetSummaries(),
+        presets: systemPresets,
+        system_presets: systemPresets,
+        user_presets: [],
         theme: fallback,
         missing_table: true,
       });
     }
-    return jsonError(res.error.message ?? 'Failed to load theme settings', 500);
+    return jsonError(settingsRes.error.message ?? 'Failed to load theme settings', 500);
   }
 
-  const theme = parsePortalThemeRow((res.data ?? null) as any);
+  let userPresets = [] as Awaited<ReturnType<typeof listPortalUserPresets>>;
+  try {
+    userPresets = await listPortalUserPresets(session.user.id);
+  } catch (err) {
+    if (!isMissingPortalThemeSettingsTableError(err)) {
+      return jsonError((err as { message?: string })?.message ?? 'Failed to load theme presets', 500);
+    }
+  }
+
+  const row = (settingsRes.data ?? null) as any;
+  const selectedUserPreset = row?.user_preset_id ? userPresets.find((preset) => preset.id === row.user_preset_id) ?? null : null;
+  const theme = parsePortalThemeRow(row, selectedUserPreset);
+
   return jsonOk({
     ok: true,
-    presets: listPresetSummaries(),
+    presets: systemPresets,
+    system_presets: systemPresets,
+    user_presets: userPresets,
     theme,
   });
 }
@@ -66,9 +96,19 @@ export async function PATCH(req: Request) {
 
   const mode = parseMode(body.mode);
   if (!mode) return jsonError('mode must be one of: merge, replace, reset', 400);
+
   const requestedPreset = typeof body.preset_id === 'string' ? parsePresetId(body.preset_id) : null;
   if (typeof body.preset_id === 'string' && !requestedPreset) {
     return jsonError(`Unsupported preset_id: ${body.preset_id}`, 400);
+  }
+
+  const requestedUserPresetIdRaw = typeof body.user_preset_id === 'undefined' ? undefined : parseUserPresetId(body.user_preset_id);
+  if (typeof body.user_preset_id !== 'undefined' && !requestedUserPresetIdRaw) {
+    return jsonError('user_preset_id must be a non-empty string', 400);
+  }
+
+  if (requestedPreset && requestedUserPresetIdRaw) {
+    return jsonError('Provide either preset_id or user_preset_id, not both', 400);
   }
 
   let requestedOverrides: PortalThemeOverrides | null = null;
@@ -80,7 +120,7 @@ export async function PATCH(req: Request) {
 
   const existingRes = await supabase
     .from('portal_user_theme_settings')
-    .select('preset_id,overrides')
+    .select('preset_id,user_preset_id,overrides')
     .eq('user_id', session.user.id)
     .maybeSingle();
   if (existingRes.error) {
@@ -91,9 +131,23 @@ export async function PATCH(req: Request) {
   }
 
   const existingPreset = parsePresetId(existingRes.data?.preset_id) ?? resolvePortalTheme().preset_id;
+  const existingUserPresetId = parseUserPresetId(existingRes.data?.user_preset_id);
   const existingOverrides = sanitizePortalThemeOverrides(existingRes.data?.overrides).overrides;
 
-  const nextPreset = requestedPreset ?? existingPreset;
+  let nextPreset = existingPreset;
+  let nextUserPresetId = existingUserPresetId;
+
+  if (requestedPreset) {
+    nextPreset = requestedPreset;
+    nextUserPresetId = null;
+  }
+
+  if (requestedUserPresetIdRaw) {
+    const selected = await getPortalUserPresetById(session.user.id, requestedUserPresetIdRaw);
+    if (!selected) return jsonError('Unsupported user_preset_id', 400);
+    nextUserPresetId = selected.id;
+  }
+
   let nextOverrides: PortalThemeOverrides;
   if (mode === 'reset') {
     nextOverrides = {};
@@ -112,21 +166,30 @@ export async function PATCH(req: Request) {
       {
         user_id: session.user.id,
         preset_id: nextPreset,
+        user_preset_id: nextUserPresetId,
         overrides: nextOverrides,
         updated_at: new Date().toISOString(),
       } as any,
       { onConflict: 'user_id' },
     )
-    .select('preset_id,overrides,updated_at')
+    .select('preset_id,user_preset_id,overrides,updated_at')
     .single();
   if (upsertRes.error) {
     return jsonError(upsertRes.error.message ?? 'Failed to save theme settings', 500);
   }
 
-  const theme = parsePortalThemeRow(upsertRes.data as any);
+  const userPresets = await listPortalUserPresets(session.user.id);
+  const selectedUserPreset = upsertRes.data?.user_preset_id
+    ? userPresets.find((preset) => preset.id === upsertRes.data.user_preset_id) ?? null
+    : null;
+  const theme = parsePortalThemeRow(upsertRes.data as any, selectedUserPreset);
+  const systemPresets = listSystemPresetSummaries();
+
   return jsonOk({
     ok: true,
-    presets: listPresetSummaries(),
+    presets: systemPresets,
+    system_presets: systemPresets,
+    user_presets: userPresets,
     theme,
   });
 }

@@ -114,10 +114,22 @@
 
 .themeButton:focus-visible,
 .themeSelect:focus-visible,
+.themeTextInput:focus-visible,
 .colorText:focus-visible,
 .themeSaveButton:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px rgba(var(--portal-accent-rgb), 0.18);
+}
+
+.themeTextInput {
+  width: 100%;
+  min-height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: var(--portal-bg-surface);
+  color: var(--portal-text);
+  font-size: 13px;
+  padding: 6px 10px;
 }
 
 .colorGrid {
@@ -182,6 +194,11 @@
 .themeSaveButton:disabled {
   opacity: 0.65;
   cursor: not-allowed;
+}
+
+.themeDangerButton {
+  border-color: rgba(185, 28, 28, 0.32);
+  color: rgb(185, 28, 28);
 }
 
 .themeHint {
