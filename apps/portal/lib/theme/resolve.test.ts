@@ -36,6 +36,30 @@ describe('resolvePortalTheme', () => {
     expect(theme.tokens.accent).toBe('#112233');
   });
 
+  it('retains system preset_id while using user preset as active selection', () => {
+    const theme = resolvePortalTheme({
+      preset_id: 'stone-olive',
+      user_preset: {
+        id: 'preset_custom_42',
+        name: 'Custom Olive',
+        tokens: {
+          accent: '#223344',
+          text: '#111111',
+          text_muted: '#666666',
+          text_inverse: '#FFFFFF',
+          bg_page: '#EFEFEF',
+          bg_surface: '#F7F7F7',
+          border: '#D9D9D9',
+        },
+      },
+    });
+
+    expect(theme.preset_id).toBe('stone-olive');
+    expect(theme.active_preset_kind).toBe('user');
+    expect(theme.user_preset_id).toBe('preset_custom_42');
+    expect(theme.active_preset_id).toBe('preset_custom_42');
+  });
+
   it('falls back to system preset when user preset tokens are invalid', () => {
     const theme = resolvePortalTheme({
       preset_id: 'stone-olive',
