@@ -21,7 +21,7 @@ export function resolvePortalTheme(input?: ResolvePortalThemeInput): PortalResol
 
   let baseTokens: PortalThemeTokens = preset.tokens;
   let activePresetKind: PortalResolvedTheme['active_preset_kind'] = 'system';
-  let activePresetId = preset.id;
+  let activePresetId: PortalResolvedTheme['active_preset_id'] = preset.id;
   let activePresetLabel = preset.label;
 
   if (userPresetId && userPresetName) {

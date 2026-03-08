@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import Handlebars from 'handlebars';
-import { PORTAL_DEFAULT_ACCENT_HEX, PORTAL_DEFAULT_ACCENT_RGB_CSV } from '@/lib/theme/presets';
+import { PORTAL_DEFAULT_ACCENT_HEX, PORTAL_DEFAULT_ACCENT_RGB_CSV } from '../theme/presets';
 
 let cachedTemplateDir: string | null = null;
 
