@@ -1,5 +1,5 @@
 import { PORTAL_THEME_OVERRIDE_KEYS } from './types';
-import type { HexColor, PortalThemeOverrideKey, PortalThemeOverrides } from './types';
+import type { HexColor, PortalThemeOverrideKey, PortalThemeOverrides, PortalThemeTokens } from './types';
 
 const OVERRIDE_KEY_SET = new Set<string>(PORTAL_THEME_OVERRIDE_KEYS);
 
@@ -66,3 +66,18 @@ export function sanitizePortalThemeOverrides(raw: unknown): {
   };
 }
 
+export function sanitizePortalThemeTokens(raw: unknown): {
+  tokens: Partial<PortalThemeTokens>;
+  invalid_keys: string[];
+  invalid_values: string[];
+  missing_keys: string[];
+} {
+  const sanitized = sanitizePortalThemeOverrides(raw);
+  const missingKeys = PORTAL_THEME_OVERRIDE_KEYS.filter((key) => !sanitized.overrides[key]);
+  return {
+    tokens: sanitized.overrides,
+    invalid_keys: sanitized.invalid_keys,
+    invalid_values: sanitized.invalid_values,
+    missing_keys: missingKeys,
+  };
+}
