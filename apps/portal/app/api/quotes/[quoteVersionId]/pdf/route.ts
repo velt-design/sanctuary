@@ -13,12 +13,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ quoteVersionId:
   if (!id) return jsonError('Invalid quoteVersionId', 400);
 
   const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
+  const reqUrl = new URL(req.url);
+  const inlineRequested = reqUrl.searchParams.get('disposition') === 'inline' || reqUrl.searchParams.get('inline') === '1';
 
   try {
-    const pdf = await downloadQuotePdf(id, actor);
+    const pdf = await downloadQuotePdf(id, actor, { forceRegenerate: inlineRequested });
     const body = new Uint8Array(pdf.bytes);
-    const reqUrl = new URL(req.url);
-    const inlineRequested = reqUrl.searchParams.get('disposition') === 'inline' || reqUrl.searchParams.get('inline') === '1';
     const dispositionType = inlineRequested ? 'inline' : 'attachment';
     return new NextResponse(body, {
       status: 200,

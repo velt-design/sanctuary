@@ -70,4 +70,23 @@ describe('quote pdf layout', () => {
     const { layout } = await generateQuotePdfBytesWithLayout(quote);
     expect(layout.pages[0]?.headerClientName?.text).toBe('Grace Hopper');
   });
+
+  it('records the client address when a site address exists', async () => {
+    const quote = buildQuoteDetail({
+      project: {
+        name: 'Test Project',
+        siteAddress: '55 Example Street, Onehunga, 1061, Auckland',
+        region: null,
+        quoteRef: null,
+      },
+    });
+    const { layout } = await generateQuotePdfBytesWithLayout(quote);
+    expect(layout.pages[0]?.headerClientAddress?.lines).toEqual(['55 Example Street', 'Onehunga, 1061, Auckland']);
+  });
+
+  it('records warehouse address lines on the right header block', async () => {
+    const quote = buildQuoteDetail();
+    const { layout } = await generateQuotePdfBytesWithLayout(quote);
+    expect(layout.pages[0]?.headerWarehouseAddress?.lines).toEqual(['71G Montgomerie Road', 'Mangere, 2022, Auckland']);
+  });
 });

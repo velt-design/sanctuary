@@ -49,6 +49,15 @@ function safeStringArray(value: unknown): string[] {
   return [];
 }
 
+function firstTrimmedString(...values: unknown[]): string | null {
+  for (const value of values) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
   const message = typeof (error as any)?.message === 'string' ? String((error as any).message) : '';
@@ -372,7 +381,7 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
     supabaseServer.from('quote_send_logs').select('*').eq('quote_version_id', quoteVersionUuid).order('created_at', { ascending: false }),
     supabaseServer
       .from('projects')
-      .select('id, name, site_address, region, quote_ref, contact_id, contacts ( id, name, email, phone )')
+      .select('*, contacts ( id, name, email, phone, address )')
       .eq('id', projectUuid)
       .maybeSingle(),
   ]);
@@ -382,23 +391,53 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
   const lineItems = (Array.isArray(lineItemsRes.data) ? lineItemsRes.data : []).map(mapLineItemRow);
   const sendLogs = (Array.isArray(logsRes.data) ? logsRes.data : []).map(mapSendLogRow);
 
-  const projectRow = projectRes?.data as any;
-  const contactRow = Array.isArray(projectRow?.contacts) ? projectRow.contacts[0] : projectRow?.contacts ?? null;
+  let projectRow = projectRes?.data as any;
+  let contactRow = Array.isArray(projectRow?.contacts) ? projectRow.contacts[0] : projectRow?.contacts ?? null;
+
+  // Keep quote rendering resilient to schema drift in the optional relation select above.
+  if (!projectRow && projectRes?.error) {
+    const fallbackProjectRes = await supabaseServer.from('projects').select('*').eq('id', projectUuid).maybeSingle();
+    if (fallbackProjectRes.data) {
+      projectRow = fallbackProjectRes.data as any;
+      const contactId = firstTrimmedString(projectRow?.contact_id, projectRow?.contactId);
+      if (contactId) {
+        const fallbackContactRes = await supabaseServer.from('contacts').select('*').eq('id', contactId).maybeSingle();
+        contactRow = fallbackContactRes.data as any;
+      }
+    }
+  }
+
+  const projectData = projectRow?.data && typeof projectRow.data === 'object' ? (projectRow.data as Record<string, unknown>) : null;
+  const contactData = contactRow?.data && typeof contactRow.data === 'object' ? (contactRow.data as Record<string, unknown>) : null;
+  const projectSiteAddress = firstTrimmedString(
+    projectRow?.site_address,
+    projectRow?.siteAddress,
+    projectRow?.address,
+    projectData?.site_address,
+    projectData?.siteAddress,
+    projectData?.address,
+  );
+  const contactAddress = firstTrimmedString(
+    contactRow?.address,
+    contactData?.address,
+    contactData?.site_address,
+    contactData?.siteAddress,
+  );
 
   return {
     ...version,
     lineItems,
     sendLogs,
     contact: {
-      name: typeof contactRow?.name === 'string' ? contactRow.name : '',
-      email: typeof contactRow?.email === 'string' ? contactRow.email : '',
-      phone: typeof contactRow?.phone === 'string' ? contactRow.phone : null,
+      name: firstTrimmedString(contactRow?.name) ?? '',
+      email: firstTrimmedString(contactRow?.email) ?? '',
+      phone: firstTrimmedString(contactRow?.phone),
     },
     project: {
-      name: typeof projectRow?.name === 'string' ? projectRow.name : '',
-      siteAddress: typeof projectRow?.site_address === 'string' ? projectRow.site_address : null,
-      region: typeof projectRow?.region === 'string' ? projectRow.region : null,
-      quoteRef: typeof projectRow?.quote_ref === 'string' ? projectRow.quote_ref : null,
+      name: firstTrimmedString(projectRow?.name, projectData?.projectName, projectData?.name) ?? '',
+      siteAddress: projectSiteAddress ?? contactAddress,
+      region: firstTrimmedString(projectRow?.region, projectData?.region),
+      quoteRef: firstTrimmedString(projectRow?.quote_ref, projectRow?.quoteRef, projectData?.quoteRef, projectData?.quote_ref),
     },
   };
 }
@@ -957,12 +996,17 @@ export async function markQuoteDeclined(quoteVersionId: string, actor: string | 
   return updated;
 }
 
-export async function downloadQuotePdf(quoteVersionId: string, actor: string | null): Promise<{ filename: string; bytes: Uint8Array }> {
+export async function downloadQuotePdf(
+  quoteVersionId: string,
+  actor: string | null,
+  opts: { forceRegenerate?: boolean } = {},
+): Promise<{ filename: string; bytes: Uint8Array }> {
   const detail = await getQuoteVersionDetail(quoteVersionId);
   if (!detail) throw new Error('Quote not found');
 
+  const shouldForceRegenerate = Boolean(opts.forceRegenerate) && detail.status === 'DRAFT';
   const existingFileId = detail.pdfFileId ? uuidFromAppId(detail.pdfFileId, 'file') : null;
-  if (existingFileId) {
+  if (!shouldForceRegenerate && existingFileId) {
     const existing = await loadFileContent(existingFileId);
     if (existing) return { filename: existing.filename, bytes: existing.content };
   }
