@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PDFDocument, rgb, type Color, type PDFImage } from 'pdf-lib';
 import { formatQuoteIntroText, formatQuoteLineDescription, formatQuoteTermsText } from '@sp/quote-format';
-import { PORTAL_DEFAULT_ACCENT_PDF_RGB } from '@/lib/theme/presets';
+import { BRAND_ACCENT_PDF_RGB } from '@sp/theme';
 import fontkit from './fontkit';
 import {
   drawDebugOverlay,
@@ -43,7 +43,9 @@ type PdfQuoteViewModel = {
   };
   client: {
     name?: string;
+    addressLines: string[];
   };
+  warehouseAddressLines: string[];
   issueDate?: string;
   expiryDate?: string;
   intro?: string;
@@ -68,7 +70,7 @@ const theme = {
   colors: {
     textPrimary: rgb(0.1, 0.1, 0.12),
     textMuted: rgb(0.42, 0.42, 0.42),
-    accent: rgb(PORTAL_DEFAULT_ACCENT_PDF_RGB.r, PORTAL_DEFAULT_ACCENT_PDF_RGB.g, PORTAL_DEFAULT_ACCENT_PDF_RGB.b),
+    accent: rgb(BRAND_ACCENT_PDF_RGB.r, BRAND_ACCENT_PDF_RGB.g, BRAND_ACCENT_PDF_RGB.b),
   },
   sizes: {
     brand: 13.5,
@@ -86,6 +88,7 @@ const theme = {
     terms: 9.5,
     footer: 9,
     client: 12,
+    address: 9.5,
     date: 9.5,
     miniHeader: 10,
     intro: 10,
@@ -106,6 +109,7 @@ const theme = {
     terms: 12,
     footer: 11,
     client: 15,
+    address: 12,
     date: 12,
     miniHeader: 12,
     intro: 13,
@@ -113,10 +117,13 @@ const theme = {
   spacing: {
     headerBrandToQuote: 3,
     headerQuoteToClient: 4,
+    headerClientToAddress: 3,
     headerClientToRef: 8,
+    headerAddressToRef: 8,
     headerQuoteToRef: 10,
     headerRefToStatus: 8,
     headerLogoToDates: 10,
+    headerWarehouseToDates: 8,
     headerToIntro: 12,
     introToItems: 18,
     sectionToHeader: 6,
@@ -139,6 +146,7 @@ const FONT_FILES = {
   semibold: 'Inter-SemiBold.ttf',
 };
 const HEADER_LOGO_FILE = 'sp_dark_icon.png';
+const WAREHOUSE_ADDRESS = '71G Montgomerie Road, Mangere, 2022, Auckland';
 
 const fontCache = new Map<string, Uint8Array>();
 const imageCache = new Map<string, Uint8Array | null>();
@@ -203,6 +211,28 @@ function addDays(value: string, days: number): string | null {
   return date.toISOString();
 }
 
+function addressLines(value: string | null | undefined): string[] {
+  if (typeof value !== 'string') return [];
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+
+  const byNewline = trimmed
+    .split('\n')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (byNewline.length > 1) return byNewline;
+
+  const byComma = trimmed
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (byComma.length >= 3) {
+    return [byComma[0], byComma.slice(1).join(', ')];
+  }
+
+  return [trimmed];
+}
+
 function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
   const issueDate = quote.sentAt ? formatDate(quote.sentAt) : null;
   let expiryDate: string | null = null;
@@ -236,6 +266,7 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
 
   const client = {
     name: formatQuoteIntroText(quote.customerName ?? quote.contact.name) ?? undefined,
+    addressLines: addressLines(quote.project.siteAddress ?? null),
   };
 
   return {
@@ -245,6 +276,7 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
       status: quote.status,
     },
     client,
+    warehouseAddressLines: addressLines(WAREHOUSE_ADDRESS),
     issueDate: issueDate ?? undefined,
     expiryDate: expiryDate ?? undefined,
     intro: formatQuoteIntroText(quote.introText) ?? undefined,
@@ -296,6 +328,8 @@ export function quotePdfFilename(quoteRef: string, versionNumber: number): strin
 type QuotePdfLayoutPage = {
   hasLeftRail: boolean;
   headerClientName?: { text: string; xRight: number; y: number };
+  headerClientAddress?: { lines: string[]; xRight: number; y: number };
+  headerWarehouseAddress?: { lines: string[]; xRight: number; y: number };
   tableBounds?: TableBounds | null;
   totalsBounds?: TotalsBounds | null;
   rules: RuleDrawn[];
@@ -843,11 +877,15 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
 
   let cursorY = PAGE_HEIGHT - MARGIN_TOP;
   const headerClientMaxWidth = CONTENT_W * 0.58;
+  const headerWarehouseMaxWidth = CONTENT_W * 0.34;
   const headerLogoMaxWidth = 84;
   const headerLogoMaxHeight = 52;
 
   // Header left column
   let leftY = cursorY;
+  let clientNameTopY: number | null = null;
+  let clientAddressTopY: number | null = null;
+  let drewClientName = false;
   drawTextSafe('SANCTUARY PERGOLAS', {
     x: CONTENT_X0,
     y: leftY,
@@ -872,6 +910,8 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     leftY -= theme.spacing.headerQuoteToClient;
     const clientLines = wrapText(fontSemiBold, vm.client.name, theme.sizes.client, headerClientMaxWidth);
     if (clientLines.length) {
+      drewClientName = true;
+      clientNameTopY = leftY;
       const layoutPage = currentLayoutPage();
       if (layoutPage) {
         layoutPage.headerClientName = {
@@ -890,12 +930,36 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         });
         leftY -= theme.lineHeights.client;
       });
-      leftY -= theme.spacing.headerClientToRef;
-    } else {
-      leftY -= theme.spacing.headerQuoteToRef;
     }
+  }
+
+  const clientAddressLines = vm.client.addressLines.flatMap((line) =>
+    wrapText(fontRegular, line, theme.sizes.address, headerClientMaxWidth),
+  );
+  if (clientAddressLines.length) {
+    leftY -= drewClientName ? theme.spacing.headerClientToAddress : theme.spacing.headerQuoteToClient;
+    clientAddressTopY = leftY;
+    const layoutPage = currentLayoutPage();
+    if (layoutPage) {
+      layoutPage.headerClientAddress = {
+        lines: clientAddressLines,
+        xRight: CONTENT_X0 + headerClientMaxWidth,
+        y: leftY,
+      };
+    }
+    clientAddressLines.forEach((line) => {
+      drawTextSafe(line, {
+        x: CONTENT_X0,
+        y: leftY,
+        size: theme.sizes.address,
+        font: fontRegular,
+        color: theme.colors.textMuted,
+      });
+      leftY -= theme.lineHeights.address;
+    });
+    leftY -= theme.spacing.headerAddressToRef;
   } else {
-    leftY -= theme.spacing.headerQuoteToRef;
+    leftY -= drewClientName ? theme.spacing.headerClientToRef : theme.spacing.headerQuoteToRef;
   }
 
   const refLine = `${vm.header.quoteNumber} • v${vm.header.versionNumber}`;
@@ -935,6 +999,28 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     });
     rightY = logoY - theme.spacing.headerLogoToDates;
     rightBottomY = logoY;
+  }
+
+  const warehouseLines = vm.warehouseAddressLines.flatMap((line) =>
+    wrapText(fontRegular, line, theme.sizes.address, headerWarehouseMaxWidth),
+  );
+  if (warehouseLines.length) {
+    const warehouseTopY = clientAddressTopY ?? clientNameTopY ?? rightY;
+    let warehouseY = warehouseTopY;
+    const layoutPage = currentLayoutPage();
+    if (layoutPage) {
+      layoutPage.headerWarehouseAddress = {
+        lines: warehouseLines,
+        xRight: CONTENT_X1,
+        y: warehouseTopY,
+      };
+    }
+    warehouseLines.forEach((line) => {
+      drawRightAligned(line, CONTENT_X1, warehouseY, theme.sizes.address, fontRegular, theme.colors.textMuted);
+      rightBottomY = Math.min(rightBottomY, warehouseY);
+      warehouseY -= theme.lineHeights.address;
+    });
+    rightY = Math.min(rightY, warehouseY - theme.spacing.headerWarehouseToDates);
   }
 
   if (vm.issueDate) {
