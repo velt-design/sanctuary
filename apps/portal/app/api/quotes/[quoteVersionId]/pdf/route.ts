@@ -18,7 +18,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ quoteVersionId:
   const inlineRequested = reqUrl.searchParams.get('disposition') === 'inline' || reqUrl.searchParams.get('inline') === '1';
 
   try {
-    const pdf = await downloadQuotePdf(id, actor);
+    const pdf = await downloadQuotePdf(id, actor, { forceRegenerateDraft: inlineRequested });
     const body = new Uint8Array(pdf.bytes);
     const dispositionType = inlineRequested ? 'inline' : 'attachment';
     return new NextResponse(body, {

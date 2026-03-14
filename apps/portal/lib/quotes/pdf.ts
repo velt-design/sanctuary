@@ -68,6 +68,7 @@ type PdfQuoteViewModel = {
 
 const theme = {
   colors: {
+    pageBackground: rgb(1, 1, 1),
     textPrimary: rgb(0.1, 0.1, 0.12),
     textMuted: rgb(0.42, 0.42, 0.42),
     accent: rgb(BRAND_ACCENT_PDF_RGB.r, BRAND_ACCENT_PDF_RGB.g, BRAND_ACCENT_PDF_RGB.b),
@@ -326,6 +327,7 @@ export function quotePdfFilename(quoteRef: string, versionNumber: number): strin
 }
 
 type QuotePdfLayoutPage = {
+  hasPageBackground: boolean;
   hasLeftRail: boolean;
   headerClientName?: { text: string; xRight: number; y: number };
   headerClientAddress?: { lines: string[]; xRight: number; y: number };
@@ -501,7 +503,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   const ensureLayoutPage = (index: number) => {
     if (!layout) return null;
     if (!layout.pages[index]) {
-      layout.pages[index] = { hasLeftRail: false, rules: [] };
+      layout.pages[index] = { hasPageBackground: false, hasLeftRail: false, rules: [] };
     }
     return layout.pages[index];
   };
@@ -513,6 +515,20 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     const layoutPage = currentLayoutPage();
     if (layoutPage) {
       layoutPage.rules.push(rule);
+    }
+  };
+
+  const drawPageBackground = () => {
+    page.drawRectangle({
+      x: 0,
+      y: 0,
+      width: PAGE_WIDTH,
+      height: PAGE_HEIGHT,
+      color: theme.colors.pageBackground,
+    });
+    const layoutPage = currentLayoutPage();
+    if (layoutPage) {
+      layoutPage.hasPageBackground = true;
     }
   };
 
@@ -873,6 +889,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     return count;
   };
 
+  drawPageBackground();
   drawLeftRail();
 
   let cursorY = PAGE_HEIGHT - MARGIN_TOP;
@@ -1143,6 +1160,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
       while (overflowRows.length) {
         page = pdfDoc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
         pageIndex += 1;
+        drawPageBackground();
         drawLeftRail();
 
         const continuationTopY = drawContinuationHeader();

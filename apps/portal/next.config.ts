@@ -53,12 +53,13 @@ const nextConfig: NextConfig = {
         headers: [...securityHeaders, { key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
       },
       {
-        source: '/api/quotes/:quoteVersionId/pdf',
-        headers: quotePdfPreviewHeaders,
-      },
-      {
         source: '/:path*',
         headers: securityHeaders,
+      },
+      // Keep the PDF rule last so it overrides the catch-all frame policy.
+      {
+        source: '/api/quotes/:quoteVersionId/pdf',
+        headers: quotePdfPreviewHeaders,
       },
     ];
   },

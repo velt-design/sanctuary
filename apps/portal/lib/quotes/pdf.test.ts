@@ -59,6 +59,12 @@ const buildQuoteDetail = (overrides: Partial<QuoteVersionDetail> = {}): QuoteVer
 };
 
 describe('quote pdf layout', () => {
+  it('paints an explicit page background', async () => {
+    const quote = buildQuoteDetail();
+    const { layout } = await generateQuotePdfBytesWithLayout(quote);
+    expect(layout.pages[0]?.hasPageBackground).toBe(true);
+  });
+
   it('records the client name when present', async () => {
     const quote = buildQuoteDetail();
     const { layout } = await generateQuotePdfBytesWithLayout(quote);

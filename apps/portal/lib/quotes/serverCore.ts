@@ -1205,8 +1205,16 @@ export async function markQuoteDeclined(quoteVersionId: string, actor: string | 
 export async function downloadQuotePdf(
   quoteVersionId: string,
   actor: string | null,
+  opts: { forceRegenerateDraft?: boolean } = {},
 ): Promise<{ filename: string; bytes: Uint8Array; cacheHit: boolean }> {
-  const ensured = await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true });
+  let allowCached = true;
+  if (opts.forceRegenerateDraft) {
+    const detail = await getQuoteVersionDetail(quoteVersionId);
+    if (!detail) throw new Error('Quote not found');
+    allowCached = detail.status !== 'DRAFT';
+  }
+
+  const ensured = await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true, allowCached });
   if (!ensured.pdf) throw new Error('Failed to load quote PDF');
   return {
     filename: ensured.pdf.filename,
