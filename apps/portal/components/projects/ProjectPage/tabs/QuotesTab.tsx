@@ -7,6 +7,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './QuotesTab.module.css';
+import QuotePdfInlinePreview from './QuotePdfInlinePreview';
 import type { EstimateMeta } from '@/lib/estimates/types';
 import type { QuoteLineItem, QuoteStatus, QuoteVersion, QuoteVersionDetail } from '@/lib/quotes/types';
 import {
@@ -910,12 +911,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
             ) : null}
             {!quotePdfPreviewLoading && !quotePdfPreviewError && quotePdfPreviewBlobUrl ? (
               <div className={styles.quotePreviewFrameWrap}>
-                <iframe
-                  key={quotePdfPreviewKey}
-                  title="Quote PDF preview"
-                  className={styles.quotePreviewFrame}
-                  src={quotePdfPreviewBlobUrl}
-                />
+                <QuotePdfInlinePreview key={quotePdfPreviewKey} src={quotePdfPreviewBlobUrl} />
               </div>
             ) : null}
           </section>
