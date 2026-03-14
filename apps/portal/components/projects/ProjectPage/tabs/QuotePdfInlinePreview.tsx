@@ -3,12 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from './QuotesTab.module.css';
 
-type PdfJsModule = typeof import('pdfjs-dist');
-type PdfDocumentProxy = import('pdfjs-dist').PDFDocumentProxy;
+type PdfJsModule = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
+type PdfDocumentProxy = import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentProxy;
 type PdfLoadingTask = ReturnType<PdfJsModule['getDocument']>;
-type PdfRenderTask = import('pdfjs-dist').RenderTask;
+type PdfRenderTask = import('pdfjs-dist/legacy/build/pdf.mjs').RenderTask;
 
-const PDF_WORKER_SRC = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+const PDF_WORKER_SRC = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+
+type PromiseWithResolversCtor = PromiseConstructor & {
+  withResolvers?: unknown;
+};
 
 function isCancellationError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -16,13 +20,45 @@ function isCancellationError(error: unknown): boolean {
   return error.name === 'AbortException' || error.name === 'RenderingCancelledException' || message.includes('cancel');
 }
 
-export default function QuotePdfInlinePreview({ src }: { src: string }) {
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+    if (message) return message;
+    return error.name || 'Unknown error';
+  }
+  if (typeof error === 'string' && error.trim()) return error.trim();
+  return 'Unknown error';
+}
+
+function previewDiagnostics() {
+  const promiseCtor = Promise as PromiseWithResolversCtor;
+  return {
+    promiseWithResolvers: typeof promiseCtor.withResolvers === 'function',
+    offscreenCanvas: typeof window !== 'undefined' && typeof window.OffscreenCanvas === 'function',
+    imageDecoder: typeof window !== 'undefined' && 'ImageDecoder' in window,
+  };
+}
+
+function formatPhaseError(phase: string, error: unknown): string {
+  return `Quote preview failed during ${phase}: ${errorMessage(error)}`;
+}
+
+async function destroyLoadingTask(task: PdfLoadingTask | null): Promise<void> {
+  if (!task) return;
+  try {
+    await task.destroy();
+  } catch {
+    // Ignore teardown failures while replacing the loading task.
+  }
+}
+
+export default function QuotePdfInlinePreview({ data }: { data: Uint8Array }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pdfRef = useRef<PdfDocumentProxy | null>(null);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const [pageCount, setPageCount] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [rendering, setRendering] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,7 +85,7 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
 
     setPageCount(0);
     setRenderError(null);
-    setRendering(Boolean(src));
+    setStatusMessage(data.byteLength ? 'Loading quote preview...' : null);
     canvasRefs.current = [];
 
     const previousPdf = pdfRef.current;
@@ -59,19 +95,53 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
     }
 
     const run = async () => {
-      if (!src) {
-        setRendering(false);
+      if (!data.byteLength) {
+        setStatusMessage(null);
         return;
       }
 
       try {
-        const pdfjs = await import('pdfjs-dist');
-        if (pdfjs.GlobalWorkerOptions.workerSrc !== PDF_WORKER_SRC) {
-          pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+        const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+        const loadPdf = async (mode: 'auto' | 'fake'): Promise<PdfDocumentProxy> => {
+          if (pdfjs.GlobalWorkerOptions.workerSrc !== PDF_WORKER_SRC) {
+            pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+          }
+          if (mode === 'fake') {
+            await pdfjs.PDFWorker._setupFakeWorkerGlobal;
+          }
+
+          const task = pdfjs.getDocument({
+            data: new Uint8Array(data),
+          });
+          loadingTask = task;
+
+          try {
+            return await task.promise;
+          } catch (error) {
+            await destroyLoadingTask(task);
+            throw error;
+          } finally {
+            if (loadingTask === task) {
+              loadingTask = null;
+            }
+          }
+        };
+
+        let pdf: PdfDocumentProxy;
+        try {
+          pdf = await loadPdf('auto');
+        } catch (workerError) {
+          if (cancelled || isCancellationError(workerError)) return;
+          console.warn('[quote_preview] worker load failed, retrying with fake worker', {
+            error: workerError,
+            diagnostics: previewDiagnostics(),
+            byteLength: data.byteLength,
+          });
+          setStatusMessage('Retrying quote preview with fallback renderer...');
+          pdf = await loadPdf('fake');
         }
 
-        loadingTask = pdfjs.getDocument(src);
-        const pdf = await loadingTask.promise;
         if (cancelled) {
           void pdf.destroy();
           return;
@@ -80,10 +150,16 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
         pdfRef.current = pdf;
         canvasRefs.current = new Array(pdf.numPages).fill(null);
         setPageCount(pdf.numPages);
+        setStatusMessage('Rendering quote preview...');
       } catch (error) {
         if (cancelled || isCancellationError(error)) return;
-        setRenderError('Failed to render quote preview.');
-        setRendering(false);
+        console.error('[quote_preview] document load failed', {
+          error,
+          diagnostics: previewDiagnostics(),
+          byteLength: data.byteLength,
+        });
+        setRenderError(formatPhaseError('PDF load', error));
+        setStatusMessage(null);
       }
     };
 
@@ -92,7 +168,7 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
     return () => {
       cancelled = true;
       if (loadingTask) {
-        void loadingTask.destroy();
+        void destroyLoadingTask(loadingTask);
       }
       const activePdf = pdfRef.current;
       pdfRef.current = null;
@@ -100,7 +176,7 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
         void activePdf.destroy();
       }
     };
-  }, [src]);
+  }, [data]);
 
   useEffect(() => {
     const pdf = pdfRef.current;
@@ -109,7 +185,7 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
     let cancelled = false;
     const renderTasks: PdfRenderTask[] = [];
     setRenderError(null);
-    setRendering(true);
+    setStatusMessage('Rendering quote preview...');
 
     const run = async () => {
       try {
@@ -120,7 +196,9 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
           if (cancelled) return;
 
           const canvas = canvasRefs.current[pageIndex];
-          if (!canvas) continue;
+          if (!canvas) {
+            throw new Error(`Canvas missing for page ${pageIndex + 1}`);
+          }
 
           const context = canvas.getContext('2d', { alpha: false });
           if (!context) throw new Error('Canvas unavailable');
@@ -146,12 +224,18 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
         }
 
         if (!cancelled) {
-          setRendering(false);
+          setStatusMessage(null);
         }
       } catch (error) {
         if (cancelled || isCancellationError(error)) return;
-        setRenderError('Failed to render quote preview.');
-        setRendering(false);
+        console.error('[quote_preview] page render failed', {
+          error,
+          diagnostics: previewDiagnostics(),
+          pageCount,
+          containerWidth,
+        });
+        setRenderError(formatPhaseError('page rendering', error));
+        setStatusMessage(null);
       }
     };
 
@@ -167,12 +251,12 @@ export default function QuotePdfInlinePreview({ src }: { src: string }) {
         }
       }
     };
-  }, [containerWidth, pageCount, src]);
+  }, [containerWidth, pageCount, data]);
 
   return (
     <div ref={containerRef} className={styles.quotePreviewDocument}>
       {renderError ? <p className={styles.quotePreviewRenderState}>{renderError}</p> : null}
-      {!renderError && rendering ? <p className={styles.quotePreviewRenderState}>Rendering preview...</p> : null}
+      {!renderError && statusMessage ? <p className={styles.quotePreviewRenderState}>{statusMessage}</p> : null}
       {Array.from({ length: pageCount }, (_, pageIndex) => (
         <div key={pageIndex} className={styles.quotePreviewPage}>
           <canvas

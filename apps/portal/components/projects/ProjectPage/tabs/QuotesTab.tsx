@@ -116,6 +116,26 @@ function sanitizeMoneyInput(value: string): string {
   return next;
 }
 
+function hasPdfSignature(bytes: Uint8Array): boolean {
+  return (
+    bytes.byteLength >= 5 &&
+    bytes[0] === 0x25 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x44 &&
+    bytes[3] === 0x46 &&
+    bytes[4] === 0x2d
+  );
+}
+
+function validateQuotePreviewPdf(contentType: string | null, bytes: Uint8Array): string | null {
+  if (!bytes.byteLength) return 'Failed to load quote preview: empty PDF response.';
+  if (!hasPdfSignature(bytes)) {
+    const typeLabel = contentType?.trim() || 'unknown content type';
+    return `Failed to load quote preview: expected PDF bytes, received ${typeLabel}.`;
+  }
+  return null;
+}
+
 function formatMoneyInputValue(valueCents: number): string {
   if (!Number.isFinite(valueCents)) return '0';
   const value = valueCents / 100;
@@ -276,9 +296,8 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
-  const [quotePdfPreviewBlobUrl, setQuotePdfPreviewBlobUrl] = useState<string | null>(null);
-  const quotePdfPreviewBlobUrlRef = useRef<string | null>(null);
-  const quotePdfPreviewCacheRef = useRef(new Map<string, string>());
+  const [quotePdfPreviewData, setQuotePdfPreviewData] = useState<Uint8Array | null>(null);
+  const quotePdfPreviewCacheRef = useRef(new Map<string, Uint8Array>());
   const [quotePdfPreviewLoading, setQuotePdfPreviewLoading] = useState(false);
   const [quotePdfPreviewError, setQuotePdfPreviewError] = useState<string | null>(null);
 
@@ -451,18 +470,9 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     ].join('::');
   }, [detail]);
 
-  const setQuotePdfPreviewUrl = useCallback((next: string | null) => {
-    quotePdfPreviewBlobUrlRef.current = next;
-    setQuotePdfPreviewBlobUrl(next);
-  }, []);
-
   useEffect(() => {
     return () => {
-      for (const value of quotePdfPreviewCacheRef.current.values()) {
-        URL.revokeObjectURL(value);
-      }
       quotePdfPreviewCacheRef.current.clear();
-      quotePdfPreviewBlobUrlRef.current = null;
     };
   }, []);
 
@@ -470,7 +480,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!pagePreviewFromUrl || !detail) {
       setQuotePdfPreviewLoading(false);
       setQuotePdfPreviewError(null);
-      setQuotePdfPreviewUrl(null);
+      setQuotePdfPreviewData(null);
       return;
     }
 
@@ -478,11 +488,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     setQuotePdfPreviewLoading(true);
     setQuotePdfPreviewError(null);
 
-    const cachedUrl = quotePdfPreviewCacheRef.current.get(quotePdfPreviewKey);
-    if (cachedUrl) {
+    const cachedData = quotePdfPreviewCacheRef.current.get(quotePdfPreviewKey);
+    if (cachedData) {
       setQuotePdfPreviewLoading(false);
       setQuotePdfPreviewError(null);
-      setQuotePdfPreviewUrl(cachedUrl);
+      setQuotePdfPreviewData(cachedData);
       return () => {
         ac.abort();
       };
@@ -499,22 +509,26 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
           const msg = await readErrorMessage(res, `Failed to load quote preview (${res.status})`);
           throw new Error(msg);
         }
-        const blob = await res.blob();
+        const contentType = res.headers.get('content-type');
+        const bytes = new Uint8Array(await res.arrayBuffer());
         if (ac.signal.aborted) return;
-        const nextUrl = URL.createObjectURL(blob);
-        if (quotePdfPreviewKey) {
-          const prev = quotePdfPreviewCacheRef.current.get(quotePdfPreviewKey);
-          if (prev && prev !== nextUrl) {
-            URL.revokeObjectURL(prev);
-          }
-          quotePdfPreviewCacheRef.current.set(quotePdfPreviewKey, nextUrl);
+        const validationError = validateQuotePreviewPdf(contentType, bytes);
+        if (validationError) {
+          throw new Error(validationError);
         }
-        setQuotePdfPreviewUrl(nextUrl);
+        if (contentType && !contentType.toLowerCase().includes('application/pdf')) {
+          console.warn('[quote_preview] unexpected PDF content type', { contentType, byteLength: bytes.byteLength });
+        }
+        if (quotePdfPreviewKey) {
+          quotePdfPreviewCacheRef.current.set(quotePdfPreviewKey, bytes);
+        }
+        setQuotePdfPreviewData(bytes);
       } catch (err) {
         if (ac.signal.aborted) return;
         const msg = err instanceof Error ? err.message : 'Failed to load quote preview';
+        console.error('[quote_preview] failed to fetch preview PDF', { error: err, quoteVersionId: detail.id });
         setQuotePdfPreviewError(msg);
-        setQuotePdfPreviewUrl(null);
+        setQuotePdfPreviewData(null);
       } finally {
         if (!ac.signal.aborted) {
           setQuotePdfPreviewLoading(false);
@@ -527,7 +541,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     return () => {
       ac.abort();
     };
-  }, [detail?.id, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, setQuotePdfPreviewUrl, detail]);
+  }, [detail?.id, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, detail]);
 
   const openCreateModal = () => {
     const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
@@ -909,9 +923,9 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                 {quotePdfPreviewError} <a href={quotePdfUrl(detail.id)}>Download PDF</a>
               </div>
             ) : null}
-            {!quotePdfPreviewLoading && !quotePdfPreviewError && quotePdfPreviewBlobUrl ? (
+            {!quotePdfPreviewLoading && !quotePdfPreviewError && quotePdfPreviewData ? (
               <div className={styles.quotePreviewFrameWrap}>
-                <QuotePdfInlinePreview key={quotePdfPreviewKey} src={quotePdfPreviewBlobUrl} />
+                <QuotePdfInlinePreview key={quotePdfPreviewKey} data={quotePdfPreviewData} />
               </div>
             ) : null}
           </section>
