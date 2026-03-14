@@ -67,3 +67,8 @@ export type ProjectPageSnapshot = {
   activity: ProjectActivityItem[];
   emails: ProjectEmailLog[]; // may be empty for now
 };
+
+export type ProjectPageSnapshotResponse = {
+  snapshot: ProjectPageSnapshot;
+  generatedAt: string;
+};

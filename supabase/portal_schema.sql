@@ -182,7 +182,10 @@ create table if not exists public.quote_versions (
   total_inc_gst_cents int not null default 0,
   total_ex_gst_cents int not null default 0,
   gst_cents int not null default 0,
-  pdf_file_id uuid references public.file_artifacts(id) on delete set null
+  pdf_file_id uuid references public.file_artifacts(id) on delete set null,
+  render_hash text,
+  preview_base_payload jsonb,
+  preview_rendered_at timestamptz
 );
 do $$
 begin
@@ -199,13 +202,17 @@ end $$;
 
 alter table public.quote_versions
   add column if not exists customer_name text,
-  add column if not exists updated_at timestamptz not null default now();
+  add column if not exists updated_at timestamptz not null default now(),
+  add column if not exists render_hash text,
+  add column if not exists preview_base_payload jsonb,
+  add column if not exists preview_rendered_at timestamptz;
 drop trigger if exists quote_versions_set_updated_at on public.quote_versions;
 create trigger quote_versions_set_updated_at before update on public.quote_versions
 for each row execute function public.set_updated_at();
 
 create index if not exists quote_versions_by_quote on public.quote_versions(quote_id, version_number);
 create index if not exists quote_versions_by_status on public.quote_versions(status);
+create index if not exists quote_versions_render_hash_idx on public.quote_versions(render_hash);
 
 create table if not exists public.quote_line_items (
   id uuid primary key default gen_random_uuid(),

@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 
 export async function GET(req: Request, ctx: { params: Promise<{ quoteVersionId: string }> }) {
+  const startedAt = performance.now();
   const session = await requireStaffSession();
   if (!session) return jsonError('Unauthorized', 401);
 
@@ -17,7 +18,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ quoteVersionId:
   const inlineRequested = reqUrl.searchParams.get('disposition') === 'inline' || reqUrl.searchParams.get('inline') === '1';
 
   try {
-    const pdf = await downloadQuotePdf(id, actor, { forceRegenerate: inlineRequested });
+    const pdf = await downloadQuotePdf(id, actor);
     const body = new Uint8Array(pdf.bytes);
     const dispositionType = inlineRequested ? 'inline' : 'attachment';
     return new NextResponse(body, {
@@ -25,6 +26,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ quoteVersionId:
       headers: {
         'content-type': 'application/pdf',
         'content-disposition': `${dispositionType}; filename="${pdf.filename}"`,
+        'server-timing': `total;dur=${(performance.now() - startedAt).toFixed(1)}, pdfcache;desc="${pdf.cacheHit ? 'hit' : 'miss'}"`,
         'x-frame-options': 'SAMEORIGIN',
       },
     });

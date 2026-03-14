@@ -3,6 +3,9 @@ import { apiJson } from '@/lib/repo/apiClient';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
 import { qk } from './keys';
 
+const ONE_DAY = 1000 * 60 * 60 * 24;
+const TEN_MINUTES = 1000 * 60 * 10;
+
 async function fetchEstimateMetasByProject(projectId: string): Promise<EstimateMeta[]> {
   const res = await apiJson<{ estimates: EstimateMeta[] }>(`/api/projects/${encodeURIComponent(projectId)}/estimates`);
   return Array.isArray(res.estimates) ? res.estimates : [];
@@ -18,11 +21,14 @@ export const estimateMetasByProjectQueryOptions = (host: string, projectId: stri
   queryOptions({
     queryKey: qk.estimates.metaByProject(host, projectId),
     queryFn: () => fetchEstimateMetasByProject(projectId),
+    staleTime: TEN_MINUTES,
+    gcTime: ONE_DAY,
   });
 
 export const estimateDetailQueryOptions = (host: string, estimateId: string) =>
   queryOptions({
     queryKey: qk.estimates.detail(host, estimateId),
     queryFn: () => fetchEstimateDetail(estimateId),
+    staleTime: TEN_MINUTES,
+    gcTime: ONE_DAY,
   });
-

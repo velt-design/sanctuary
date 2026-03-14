@@ -6,9 +6,11 @@ import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS, stageKeyToStatus } from '@/lib/
 import { correctProjectStage } from '@/lib/repo/projectsRepo';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 import legacy from '@/app/staff/projects/projects.module.css';
+import { invalidateProjectReadCaches, patchProjectListItem, patchProjectSnapshot } from '@/lib/queries/projectCache';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import LegacyChevronPipeline from '@/components/projects/legacyStyle/LegacyChevronPipeline';
 
 type StageConfirmState = {
@@ -17,10 +19,11 @@ type StageConfirmState = {
 };
 
 export default function ProjectPipelineBar({ projectId, stage }: { projectId: string; stage: ProjectStage }) {
-  const router = useRouter();
   const toast = useToast();
   const { role } = usePortalSession();
   const isAdmin = role === 'admin';
+  const queryClient = useQueryClient();
+  const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
 
   const [confirm, setConfirm] = useState<StageConfirmState | null>(null);
   const [confirmText, setConfirmText] = useState('');
@@ -85,10 +88,27 @@ export default function ProjectPipelineBar({ projectId, stage }: { projectId: st
                       } else {
                         toast.success(`Stage corrected to ${confirm.label}.`);
                       }
+                      patchProjectSnapshot(queryClient, hostKey, projectId, (current) => {
+                        if (!current) return current;
+                        return {
+                          ...current,
+                          generatedAt: new Date().toISOString(),
+                          snapshot: {
+                            ...current.snapshot,
+                            project: { ...current.snapshot.project, stage: confirm.next },
+                            pipeline: { stage: confirm.next },
+                            tasks: { ...current.snapshot.tasks, stage: confirm.next },
+                          },
+                        };
+                      });
+                      patchProjectListItem(queryClient, hostKey, projectId, (project) => ({
+                        ...project,
+                        status: stageKeyToStatus(confirm.next),
+                      }));
                       setConfirm(null);
                       setConfirmText('');
                       setReason('');
-                      router.refresh();
+                      void invalidateProjectReadCaches(queryClient, hostKey, projectId);
                     } catch (err) {
                       const msg = err instanceof Error ? err.message : 'Failed to correct stage';
                       toast.error(msg);

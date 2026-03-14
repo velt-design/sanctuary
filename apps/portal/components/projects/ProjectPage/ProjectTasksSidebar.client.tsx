@@ -3,12 +3,15 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { PIPELINE_STAGE_LABELS, normalizePipelineStageKey, stageKeyToStatus } from '@/lib/projects/pipelineDefinition';
 import { STAGE_COMPLETE_MODAL, type StageCompleteAction } from '@/lib/projects/stageCompleteModal';
 import { consumeStageCompleteIntent, setStageCompleteIntent } from '@/lib/projects/stageCompleteIntent';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 import legacy from '@/app/staff/projects/projects.module.css';
+import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 type TaskItem = ProjectPageSnapshot['tasks']['items'][number];
 
@@ -26,6 +29,8 @@ export default function ProjectTasksSidebarClient({
   tasks: ProjectPageSnapshot['tasks'];
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const [view, setView] = useState<'todo' | 'completed'>('todo');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -116,9 +121,9 @@ export default function ProjectTasksSidebarClient({
     setSiteVisitTierError(null);
     if (pendingRefresh.current) {
       pendingRefresh.current = false;
-      router.refresh();
+      void invalidateProjectReadCaches(queryClient, hostKey, projectId);
     }
-  }, [stageModalOpen]);
+  }, [hostKey, projectId, queryClient, stageModalOpen]);
 
   useEffect(() => {
     if (!hasSiteVisitAction) {
@@ -185,7 +190,7 @@ export default function ProjectTasksSidebarClient({
         pendingRefresh.current = true;
       } else {
         pendingRefresh.current = false;
-        router.refresh();
+        void invalidateProjectReadCaches(queryClient, hostKey, projectId);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update task';
@@ -261,7 +266,7 @@ export default function ProjectTasksSidebarClient({
 
       setStageModalOpen(false);
       pendingRefresh.current = false;
-      router.refresh();
+      void invalidateProjectReadCaches(queryClient, hostKey, projectId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update stage';
       setStageModalError(msg);
@@ -318,7 +323,7 @@ export default function ProjectTasksSidebarClient({
 
       setStageModalOpen(false);
       pendingRefresh.current = false;
-      router.refresh();
+      void invalidateProjectReadCaches(queryClient, hostKey, projectId);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update reminder';
       setStageModalError(msg);

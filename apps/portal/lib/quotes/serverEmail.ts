@@ -1,6 +1,5 @@
 import 'server-only';
 
-import { renderQuoteReadyEmail } from '@/lib/emails/quote';
 import { sendTransactionalEmail } from '@/lib/emails/sendTransactionalEmail';
 import { generateAcceptToken } from '@/lib/quotes/acceptToken';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
@@ -10,12 +9,22 @@ import {
   addDays,
   createFileArtifact,
   ensurePdfForSend,
+  ensureQuoteArtifacts,
   getQuoteVersionDetail,
   insertAuditEvent,
   insertSendLog,
   nowIso,
   updateProjectStage,
 } from './serverCore';
+import {
+  buildQuotePreviewBasePayload,
+  isQuotePreviewBasePayload,
+  quoteLogoUrl,
+  quoteNumber,
+  renderExpiresLabel,
+  renderQuotePreviewFromBasePayload,
+  type QuotePreviewBasePayload,
+} from './renderArtifacts';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
 const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
@@ -59,56 +68,25 @@ function toConfigError(error: unknown): EmailProviderConfigError | null {
   return null;
 }
 
-function siteUrlRawFromEnv(): string {
-  return (
+function pickSiteUrl(): string {
+  const raw =
     process.env.PUBLIC_SITE_URL?.trim() ||
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     process.env.NEXT_PUBLIC_MARKETING_SITE_URL?.trim() ||
-    ''
-  );
-}
-
-function normalizeSiteUrl(raw: string): string | null {
-  const normalized = raw.replace(/\/+$/, '');
-  if (!normalized) return null;
-  try {
-    const parsed = new URL(normalized);
-    return parsed.toString().replace(/\/+$/, '');
-  } catch {
-    return null;
-  }
-}
-
-function pickSiteUrl(): string {
-  const raw = siteUrlRawFromEnv();
+    '';
   if (!raw) {
     throw new EmailProviderConfigError('Missing env var: PUBLIC_SITE_URL');
   }
 
-  const normalized = normalizeSiteUrl(raw);
+  const normalized = raw.replace(/\/+$/, '');
   if (!normalized) {
     throw new EmailProviderConfigError('PUBLIC_SITE_URL must be a valid absolute URL');
   }
-  return normalized;
-}
-
-function safeSiteUrl(): string | null {
-  const raw = siteUrlRawFromEnv();
-  if (!raw) return null;
-  return normalizeSiteUrl(raw);
-}
-
-function quoteLogoUrl(): string | undefined {
-  const base = safeSiteUrl();
-  if (!base) return undefined;
-  return `${base}/images/sp_dark_icon.png`;
-}
-
-function previewQuoteAcceptLink(quoteVersionId: string): string {
-  const base = safeSiteUrl();
-  const id = encodeURIComponent(quoteVersionId);
-  if (!base) return `https://preview.invalid/quote/${id}?token=preview`;
-  return `${base}/quote/${id}?token=preview`;
+  try {
+    return new URL(normalized).toString().replace(/\/+$/, '');
+  } catch {
+    throw new EmailProviderConfigError('PUBLIC_SITE_URL must be a valid absolute URL');
+  }
 }
 
 function quoteAcceptLink(quoteVersionId: string, token: string): string {
@@ -116,25 +94,6 @@ function quoteAcceptLink(quoteVersionId: string, token: string): string {
   const id = encodeURIComponent(quoteVersionId);
   const tokenParam = encodeURIComponent(token);
   return `${base}/quote/${id}?token=${tokenParam}`;
-}
-
-function formatCurrency(cents: number): string {
-  const dollars = Number.isFinite(cents) ? cents / 100 : 0;
-  return new Intl.NumberFormat('en-NZ', {
-    style: 'currency',
-    currency: 'NZD',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(dollars);
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
 }
 
 function personalNoteFromPayload(payload: QuoteEmailPayload): string | null {
@@ -148,18 +107,9 @@ function personalNoteFromPayload(payload: QuoteEmailPayload): string | null {
   return trimmed ? trimmed : null;
 }
 
-function personalNoteHtml(note: string | null): string | undefined {
-  if (!note) return undefined;
-  return escapeHtml(note).replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n/g, '<br />');
-}
-
 function redactToken(value: string | null): string | null {
   if (typeof value !== 'string') return value;
   return value.replace(/([?&]token=)[^&\\s\"'<>]+/gi, '$1[redacted]');
-}
-
-function quoteNumber(detail: QuoteVersionDetail): string {
-  return `${detail.quoteRef} v${detail.versionNumber}`;
 }
 
 function quoteSubject(detail: QuoteVersionDetail, explicit: string | undefined): string {
@@ -195,19 +145,6 @@ function tokenExpiryIso(expiresAtDate: string, sentAtIso: string): string {
   return fallback ? fallback.toISOString() : new Date(sentAtIso).toISOString();
 }
 
-function renderExpiresLabel(expiresAtDate: string | null): string | undefined {
-  if (!expiresAtDate) return undefined;
-  const parsed = new Date(`${expiresAtDate}T00:00:00Z`);
-  if (!Number.isFinite(parsed.getTime())) return expiresAtDate;
-
-  return new Intl.DateTimeFormat('en-NZ', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'Pacific/Auckland',
-  }).format(parsed);
-}
-
 function providerMessageId(response: unknown): string | null {
   const id = (response as any)?.data?.id;
   return typeof id === 'string' && id.trim() ? id.trim() : null;
@@ -219,6 +156,35 @@ async function loadQuoteForMode(quoteVersionId: string, mode: QuoteEmailMode): P
   if (mode === 'send' && detail.status !== 'DRAFT') throw new Error('Quote is locked');
   if (mode === 'resend' && detail.status === 'DRAFT') throw new Error('Quote must be sent first');
   return detail;
+}
+
+async function loadPreviewBaseForMode(
+  quoteVersionId: string,
+  mode: QuoteEmailMode,
+): Promise<{ base: QuotePreviewBasePayload; cacheHit: boolean }> {
+  const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
+  const res = await supabaseServer
+    .from('quote_versions')
+    .select('status, preview_base_payload')
+    .eq('id', quoteVersionUuid)
+    .maybeSingle();
+
+  if (res.error) {
+    throw new Error(res.error.message ?? 'Failed to load quote preview');
+  }
+  if (!res.data) throw new Error('Quote not found');
+
+  const status = typeof (res.data as any)?.status === 'string' ? String((res.data as any).status).toUpperCase() : 'DRAFT';
+  if (mode === 'send' && status !== 'DRAFT') throw new Error('Quote is locked');
+  if (mode === 'resend' && status === 'DRAFT') throw new Error('Quote must be sent first');
+
+  const cachedBase = isQuotePreviewBasePayload((res.data as any)?.preview_base_payload)
+    ? ((res.data as any).preview_base_payload as QuotePreviewBasePayload)
+    : null;
+  if (cachedBase) return { base: cachedBase, cacheHit: true };
+
+  const ensured = await ensureQuoteArtifacts(quoteVersionId, null, { requirePdf: false });
+  return { base: ensured.previewBase, cacheHit: ensured.cacheHit };
 }
 
 async function resolveDesignPdfAttachment(params: {
@@ -258,44 +224,16 @@ async function resolveDesignPdfAttachment(params: {
 }
 
 async function renderQuoteReadyContent(params: {
-  detail: QuoteVersionDetail;
+  base: QuotePreviewBasePayload;
   payload: QuoteEmailPayload;
-  quoteAcceptUrl: string;
-  expiresAtDate: string | null;
 }): Promise<{ subject: string; html: string; text: string | null }> {
-  const note = personalNoteFromPayload(params.payload);
-  const subject = quoteSubject(params.detail, params.payload.subject);
-
-  const rendered = await renderQuoteReadyEmail({
-    to: params.payload.to,
-    cc: params.payload.cc,
-    bcc: params.payload.bcc,
-    subject,
-    name: params.detail.customerName || params.detail.contact.name || 'there',
-    quote_number: quoteNumber(params.detail),
-    quote_total_inc_gst: formatCurrency(params.detail.totals.totalIncGstCents),
-    project_address: params.detail.project.siteAddress ?? undefined,
-    quote_accept_link: params.quoteAcceptUrl,
-    quote_valid_until: renderExpiresLabel(params.expiresAtDate),
-    next_step_text: 'Use the button above to accept the quote and proceed.',
-    personal_note_html: personalNoteHtml(note),
-    logo_url: quoteLogoUrl(),
-    reference_id: params.detail.reference ?? params.detail.project.quoteRef ?? undefined,
-  });
-
-  return {
-    subject,
-    html: rendered.html,
-    text: rendered.text ?? null,
-  };
+  return renderQuotePreviewFromBasePayload(params.base, params.payload);
 }
 
 async function deliverQuoteReadyEmail(params: {
-  detail: QuoteVersionDetail;
+  base: QuotePreviewBasePayload;
   payload: QuoteEmailPayload;
-  quoteAcceptUrl: string;
   attachments: Array<{ filename: string; content: Buffer; contentType: string }>;
-  expiresAtDate: string | null;
 }): Promise<{ subject: string; html: string; text: string | null; providerMessageId: string | null }> {
   const rendered = await renderQuoteReadyContent(params);
 
@@ -384,12 +322,16 @@ export async function sendQuote(
 
   try {
     const quoteAcceptUrl = quoteAcceptLink(detail.id, token);
-    delivered = await deliverQuoteReadyEmail({
+    const base = buildQuotePreviewBasePayload({
       detail,
-      payload,
       quoteAcceptUrl,
+      expiresAtLabel: renderExpiresLabel(expiresAtDate),
+      logoUrl: quoteLogoUrl(),
+    });
+    delivered = await deliverQuoteReadyEmail({
+      base,
+      payload,
       attachments: emailAttachments,
-      expiresAtDate,
     });
   } catch (error) {
     sendError = messageFromError(error, 'Failed to send email');
@@ -462,8 +404,14 @@ export async function sendQuote(
     throw new Error(sendError ?? 'Failed to send email');
   }
 
-  const updated = await getQuoteVersionDetail(quoteVersionId);
+  let updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');
+  try {
+    await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true, allowCached: false });
+    updated = (await getQuoteVersionDetail(quoteVersionId)) ?? updated;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after send', { quoteVersionId, error });
+  }
   return updated;
 }
 
@@ -507,12 +455,16 @@ export async function resendQuote(
 
   try {
     const quoteAcceptUrl = quoteAcceptLink(detail.id, token);
-    delivered = await deliverQuoteReadyEmail({
+    const base = buildQuotePreviewBasePayload({
       detail,
-      payload,
       quoteAcceptUrl,
+      expiresAtLabel: renderExpiresLabel(expiresAtDate),
+      logoUrl: quoteLogoUrl(),
+    });
+    delivered = await deliverQuoteReadyEmail({
+      base,
+      payload,
       attachments: emailAttachments,
-      expiresAtDate,
     });
   } catch (error) {
     sendError = messageFromError(error, 'Failed to send email');
@@ -581,8 +533,14 @@ export async function resendQuote(
     throw new Error(sendError ?? 'Failed to send email');
   }
 
-  const updated = await getQuoteVersionDetail(quoteVersionId);
+  let updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');
+  try {
+    await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true, allowCached: false });
+    updated = (await getQuoteVersionDetail(quoteVersionId)) ?? updated;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after resend', { quoteVersionId, error });
+  }
   return updated;
 }
 
@@ -590,15 +548,11 @@ export async function previewQuoteEmail(
   quoteVersionId: string,
   payload: QuoteEmailPayload,
   mode: QuoteEmailMode,
-): Promise<{ subject: string; html: string; text: string | null }> {
-  const detail = await loadQuoteForMode(quoteVersionId, mode);
-  const now = nowIso();
-  const expiresAtDate = detail.expiresAt ?? addDays(now, 30);
-  const quoteAcceptUrl = previewQuoteAcceptLink(detail.id);
-  return renderQuoteReadyContent({
-    detail,
+): Promise<{ subject: string; html: string; text: string | null; cacheHit: boolean }> {
+  const { base, cacheHit } = await loadPreviewBaseForMode(quoteVersionId, mode);
+  const rendered = await renderQuoteReadyContent({
+    base,
     payload,
-    quoteAcceptUrl,
-    expiresAtDate,
   });
+  return { ...rendered, cacheHit };
 }

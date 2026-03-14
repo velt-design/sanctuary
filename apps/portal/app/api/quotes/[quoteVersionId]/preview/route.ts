@@ -1,5 +1,6 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { previewQuoteEmail } from '@/lib/quotes/server';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
@@ -43,6 +44,7 @@ function parsePayload(body: Record<string, unknown>): QuoteEmailPayload {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ quoteVersionId: string }> }) {
+  const startedAt = performance.now();
   const session = await requireStaffSession();
   if (!session) return jsonError('Unauthorized', 401);
 
@@ -59,7 +61,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ quoteVersionId
 
   try {
     const rendered = await previewQuoteEmail(id, parsePayload(body), mode);
-    return jsonOk(rendered);
+    const response = NextResponse.json({
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+    });
+    response.headers.set(
+      'server-timing',
+      `total;dur=${(performance.now() - startedAt).toFixed(1)}, previewcache;desc="${rendered.cacheHit ? 'hit' : 'miss'}"`,
+    );
+    return response;
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to render quote preview';
     if (msg === 'Quote not found') return jsonError(msg, 404);

@@ -24,13 +24,14 @@ async function parseJsonSafe(res: Response): Promise<unknown> {
 
 export async function apiJson<T>(path: string, init?: RequestInit & { skipSaveTracking?: boolean }): Promise<T> {
   const run = async () => {
+    const method = String(init?.method ?? 'GET').toUpperCase();
     const res = await fetch(path, {
       ...init,
       headers: {
         'content-type': 'application/json',
         ...(init?.headers ?? {}),
       },
-      cache: 'no-store',
+      ...(method === 'GET' ? {} : { cache: 'no-store' }),
       credentials: 'same-origin',
     });
 
