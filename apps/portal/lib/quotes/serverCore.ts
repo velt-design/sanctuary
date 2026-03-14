@@ -15,6 +15,14 @@ import {
 import { buildQuoteLineItemsFromEstimate } from './mapping';
 import { lineTotalCents, totalsFromLineItems } from './utils';
 import { generateQuotePdfBytes, quotePdfFilename } from './pdf';
+import {
+  buildQuotePreviewBasePayload,
+  buildQuoteRenderHash,
+  previewQuoteAcceptLink,
+  quoteLogoUrl,
+  renderExpiresLabel,
+  type QuotePreviewBasePayload,
+} from './renderArtifacts';
 import { ensureDepositInvoiceForAcceptedQuote, voidOpenDepositInvoiceForQuote } from '../invoices/server';
 
 export function nowIso(): string {
@@ -148,6 +156,7 @@ function mapQuoteVersionRow(row: any, estimateLabelMap: Map<string, string>, pro
       gstCents: Number(row?.gst_cents ?? 0) || 0,
     },
     pdfFileId: row?.pdf_file_id ? appIdFromUuid('file', String(row.pdf_file_id)) : null,
+    renderHash: typeof row?.render_hash === 'string' && row.render_hash.trim() ? row.render_hash.trim() : null,
   };
 }
 
@@ -517,8 +526,14 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
   await updateProjectStage(projectUuid, 'QUOTING', quoteVersionUuid);
   await insertAuditEvent({ projectId: projectUuid, type: 'quote.created', payload: { quoteVersionId: quoteVersionUuid } });
 
-  const detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
+  let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
   if (!detail) throw new Error('Failed to load quote version');
+  try {
+    await refreshQuoteArtifactsAfterMutation(detail.id, actor);
+    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after create', { quoteVersionId: detail.id, error });
+  }
   return detail;
 }
 
@@ -596,8 +611,10 @@ export async function updateDraftQuoteVersion(
     total_inc_gst_cents: totals.totalIncGstCents,
     total_ex_gst_cents: totals.totalExGstCents,
     gst_cents: totals.gstCents,
-    // Keep cached PDF in sync with saved draft edits.
     pdf_file_id: null,
+    render_hash: null,
+    preview_base_payload: null,
+    preview_rendered_at: null,
   };
 
   Object.keys(updatePayload).forEach((key) => updatePayload[key] === undefined && delete updatePayload[key]);
@@ -635,8 +652,14 @@ export async function updateDraftQuoteVersion(
     }
   }
 
-  const detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
+  let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
   if (!detail) throw new Error('Failed to load quote');
+  try {
+    await refreshQuoteArtifactsAfterMutation(detail.id, null);
+    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after draft update', { quoteVersionId: detail.id, error });
+  }
   return detail;
 }
 
@@ -756,37 +779,34 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
     await insertAuditEvent({ projectId: projectUuid, type: 'quote.revised', payload: { quoteVersionId: newQuoteVersionUuid, from: quoteVersionUuid } });
   }
 
-  const detail = await getQuoteVersionDetail(appIdFromUuid('qv', newQuoteVersionUuid));
+  let detail = await getQuoteVersionDetail(appIdFromUuid('qv', newQuoteVersionUuid));
   if (!detail) throw new Error('Failed to load revised quote');
+  try {
+    await refreshQuoteArtifactsAfterMutation(detail.id, actor);
+    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after revise', { quoteVersionId: detail.id, error });
+  }
   return detail;
 }
 
-export async function generateQuotePdf(quoteVersionId: string, actor: string | null): Promise<{ fileId: string; filename: string; bytes: Uint8Array }> {
-  const detail = await getQuoteVersionDetail(quoteVersionId);
-  if (!detail) throw new Error('Quote not found');
-
+async function buildQuotePdfArtifact(
+  detail: QuoteVersionDetail,
+  actor: string | null,
+): Promise<{ fileUuid: string; filename: string; bytes: Uint8Array; content: Buffer }> {
   const filename = quotePdfFilename(detail.quoteRef, detail.versionNumber);
   const bytes = await generateQuotePdfBytes(detail);
   const projectUuid = uuidFromAppId(detail.projectId, 'proj');
+  const content = Buffer.from(bytes);
   const file = await createFileArtifact({
     projectUuid,
     filename,
     contentType: 'application/pdf',
-    content: Buffer.from(bytes),
+    content,
     actor,
   });
-  const fileUuid = file.fileUuid;
 
-  const updateRes = await supabaseServer
-    .from('quote_versions')
-    .update({ pdf_file_id: fileUuid } as any)
-    .eq('id', uuidFromAppId(quoteVersionId, 'qv'));
-  if (updateRes.error) {
-    if (missingTableError(updateRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(updateRes.error, 'Failed to store PDF'));
-  }
-
-  return { fileId: appIdFromUuid('file', fileUuid), filename, bytes };
+  return { fileUuid: file.fileUuid, filename, bytes, content };
 }
 
 export async function createFileArtifact(params: {
@@ -836,6 +856,182 @@ async function loadFileContent(fileUuid: string): Promise<{ filename: string; co
   return { filename, content: Buffer.from(base64, 'base64') };
 }
 
+function parsePreviewBasePayload(value: unknown): QuotePreviewBasePayload | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.quote_number !== 'string' || typeof record.quote_total_inc_gst !== 'string') return null;
+
+  return {
+    name: typeof record.name === 'string' ? record.name : 'there',
+    quote_number: record.quote_number,
+    quote_total_inc_gst: record.quote_total_inc_gst,
+    project_address: typeof record.project_address === 'string' ? record.project_address : undefined,
+    quote_accept_link: typeof record.quote_accept_link === 'string' ? record.quote_accept_link : 'https://preview.invalid',
+    quote_valid_until: typeof record.quote_valid_until === 'string' ? record.quote_valid_until : undefined,
+    next_step_text: typeof record.next_step_text === 'string' ? record.next_step_text : 'Use the button above to accept the quote and proceed.',
+    logo_url: typeof record.logo_url === 'string' ? record.logo_url : undefined,
+    reference_id: typeof record.reference_id === 'string' ? record.reference_id : undefined,
+    default_subject:
+      typeof record.default_subject === 'string' && record.default_subject.trim()
+        ? record.default_subject
+        : `Quote ready - ${record.quote_number}`,
+  };
+}
+
+function buildStoredPreviewBasePayload(detail: QuoteVersionDetail): QuotePreviewBasePayload {
+  const expiresAtDate = detail.expiresAt ?? addDays(nowIso(), 30);
+  return buildQuotePreviewBasePayload({
+    detail,
+    quoteAcceptUrl: previewQuoteAcceptLink(detail.id),
+    expiresAtLabel: renderExpiresLabel(expiresAtDate),
+    logoUrl: quoteLogoUrl(),
+  });
+}
+
+async function loadQuoteArtifactRow(
+  quoteVersionId: string,
+): Promise<{ renderHash: string | null; previewBase: QuotePreviewBasePayload | null }> {
+  const res = await supabaseServer
+    .from('quote_versions')
+    .select('render_hash, preview_base_payload')
+    .eq('id', uuidFromAppId(quoteVersionId, 'qv'))
+    .maybeSingle();
+  if (res.error) {
+    if (missingTableError(res.error)) throw schemaMissingError();
+    throw new Error(errorMessage(res.error, 'Failed to load quote artifacts'));
+  }
+
+  const row = res.data as any;
+  const renderHash = typeof row?.render_hash === 'string' && row.render_hash.trim() ? row.render_hash.trim() : null;
+  return {
+    renderHash,
+    previewBase: parsePreviewBasePayload(row?.preview_base_payload),
+  };
+}
+
+async function persistQuoteArtifacts(params: {
+  quoteVersionId: string;
+  renderHash: string;
+  previewBase: QuotePreviewBasePayload;
+  pdfFileUuid?: string;
+}) {
+  const payload: Record<string, unknown> = {
+    render_hash: params.renderHash,
+    preview_base_payload: params.previewBase,
+    preview_rendered_at: nowIso(),
+  };
+  if (params.pdfFileUuid !== undefined) payload.pdf_file_id = params.pdfFileUuid;
+
+  const updateRes = await supabaseServer
+    .from('quote_versions')
+    .update(payload as any)
+    .eq('id', uuidFromAppId(params.quoteVersionId, 'qv'));
+  if (updateRes.error) {
+    if (missingTableError(updateRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(updateRes.error, 'Failed to store quote artifacts'));
+  }
+}
+
+export async function clearQuoteArtifacts(quoteVersionId: string): Promise<void> {
+  const updateRes = await supabaseServer
+    .from('quote_versions')
+    .update({
+      pdf_file_id: null,
+      render_hash: null,
+      preview_base_payload: null,
+      preview_rendered_at: null,
+    } as any)
+    .eq('id', uuidFromAppId(quoteVersionId, 'qv'));
+  if (updateRes.error) {
+    if (missingTableError(updateRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(updateRes.error, 'Failed to clear quote artifacts'));
+  }
+}
+
+export async function ensureQuoteArtifacts(
+  quoteVersionId: string,
+  actor: string | null,
+  opts?: { requirePdf?: boolean; allowCached?: boolean },
+): Promise<{
+  detail: QuoteVersionDetail;
+  previewBase: QuotePreviewBasePayload;
+  renderHash: string;
+  cacheHit: boolean;
+  pdf?: { fileUuid: string; filename: string; bytes: Uint8Array; content: Buffer };
+}> {
+  const detail = await getQuoteVersionDetail(quoteVersionId);
+  if (!detail) throw new Error('Quote not found');
+
+  const { renderHash: storedRenderHash, previewBase: storedPreviewBase } = await loadQuoteArtifactRow(quoteVersionId);
+  const expectedRenderHash = buildQuoteRenderHash(detail);
+  const allowCached = opts?.allowCached !== false;
+
+  if (allowCached && storedRenderHash === expectedRenderHash && storedPreviewBase) {
+    if (!opts?.requirePdf) {
+      return {
+        detail,
+        previewBase: storedPreviewBase,
+        renderHash: expectedRenderHash,
+        cacheHit: true,
+      };
+    }
+
+    const existingFileId = detail.pdfFileId ? uuidFromAppId(detail.pdfFileId, 'file') : null;
+    if (existingFileId) {
+      const existing = await loadFileContent(existingFileId);
+      if (existing) {
+        return {
+          detail,
+          previewBase: storedPreviewBase,
+          renderHash: expectedRenderHash,
+          cacheHit: true,
+          pdf: {
+            fileUuid: existingFileId,
+            filename: existing.filename,
+            bytes: existing.content,
+            content: existing.content,
+          },
+        };
+      }
+    }
+  }
+
+  const previewBase = buildStoredPreviewBasePayload(detail);
+  const pdf = opts?.requirePdf ? await buildQuotePdfArtifact(detail, actor) : undefined;
+  await persistQuoteArtifacts({
+    quoteVersionId,
+    renderHash: expectedRenderHash,
+    previewBase,
+    ...(pdf ? { pdfFileUuid: pdf.fileUuid } : {}),
+  });
+
+  return {
+    detail: {
+      ...detail,
+      renderHash: expectedRenderHash,
+      ...(pdf ? { pdfFileId: appIdFromUuid('file', pdf.fileUuid) } : {}),
+    },
+    previewBase,
+    renderHash: expectedRenderHash,
+    cacheHit: false,
+    ...(pdf ? { pdf } : {}),
+  };
+}
+
+export async function refreshQuoteArtifactsAfterMutation(quoteVersionId: string, actor: string | null): Promise<void> {
+  await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true, allowCached: false });
+}
+
+export async function generateQuotePdf(quoteVersionId: string, actor: string | null): Promise<{ fileId: string; filename: string; bytes: Uint8Array }> {
+  const ensured = await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true });
+  if (!ensured.pdf) throw new Error('Failed to generate quote PDF');
+  return {
+    fileId: appIdFromUuid('file', ensured.pdf.fileUuid),
+    filename: ensured.pdf.filename,
+    bytes: ensured.pdf.bytes,
+  };
+}
+
 export async function ensurePdfForSend(detail: QuoteVersionDetail, actor: string | null): Promise<{ fileUuid: string; filename: string; content: Buffer }> {
   const unpriced = detail.lineItems
     .map((item, idx) => {
@@ -849,15 +1045,13 @@ export async function ensurePdfForSend(detail: QuoteVersionDetail, actor: string
     throw new Error(`Quote contains unpriced items (e.g. ${example}). Price or remove before sending.`);
   }
 
-  const existingFileId = detail.pdfFileId ? uuidFromAppId(detail.pdfFileId, 'file') : null;
-
-  if (existingFileId) {
-    const existing = await loadFileContent(existingFileId);
-    if (existing) return { fileUuid: existingFileId, filename: existing.filename, content: existing.content };
-  }
-
-  const generated = await generateQuotePdf(detail.id, actor);
-  return { fileUuid: uuidFromAppId(generated.fileId, 'file'), filename: generated.filename, content: Buffer.from(generated.bytes) };
+  const ensured = await ensureQuoteArtifacts(detail.id, actor, { requirePdf: true });
+  if (!ensured.pdf) throw new Error('Failed to prepare quote PDF');
+  return {
+    fileUuid: ensured.pdf.fileUuid,
+    filename: ensured.pdf.filename,
+    content: ensured.pdf.content,
+  };
 }
 
 export async function insertSendLog(params: {
@@ -945,8 +1139,14 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   }
   await ensureDepositInvoiceForAcceptedQuote({ quoteVersionUuid, actor });
 
-  const updated = await getQuoteVersionDetail(quoteVersionId);
+  let updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');
+  try {
+    await refreshQuoteArtifactsAfterMutation(updated.id, actor);
+    updated = (await getQuoteVersionDetail(updated.id)) ?? updated;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after accept', { quoteVersionId: updated.id, error });
+  }
   return updated;
 }
 
@@ -991,26 +1191,26 @@ export async function markQuoteDeclined(quoteVersionId: string, actor: string | 
     });
   }
 
-  const updated = await getQuoteVersionDetail(quoteVersionId);
+  let updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');
+  try {
+    await refreshQuoteArtifactsAfterMutation(updated.id, actor);
+    updated = (await getQuoteVersionDetail(updated.id)) ?? updated;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after decline', { quoteVersionId: updated.id, error });
+  }
   return updated;
 }
 
 export async function downloadQuotePdf(
   quoteVersionId: string,
   actor: string | null,
-  opts: { forceRegenerate?: boolean } = {},
-): Promise<{ filename: string; bytes: Uint8Array }> {
-  const detail = await getQuoteVersionDetail(quoteVersionId);
-  if (!detail) throw new Error('Quote not found');
-
-  const shouldForceRegenerate = Boolean(opts.forceRegenerate) && detail.status === 'DRAFT';
-  const existingFileId = detail.pdfFileId ? uuidFromAppId(detail.pdfFileId, 'file') : null;
-  if (!shouldForceRegenerate && existingFileId) {
-    const existing = await loadFileContent(existingFileId);
-    if (existing) return { filename: existing.filename, bytes: existing.content };
-  }
-
-  const generated = await generateQuotePdf(quoteVersionId, actor);
-  return { filename: generated.filename, bytes: generated.bytes };
+): Promise<{ filename: string; bytes: Uint8Array; cacheHit: boolean }> {
+  const ensured = await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true });
+  if (!ensured.pdf) throw new Error('Failed to load quote PDF');
+  return {
+    filename: ensured.pdf.filename,
+    bytes: ensured.pdf.bytes,
+    cacheHit: ensured.cacheHit,
+  };
 }

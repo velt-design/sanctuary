@@ -17,6 +17,7 @@ import EstimateVersionTabs from './_components/EstimateVersionTabs';
 import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { qk } from '@/lib/queries/keys';
+import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 function formatMoney(value: number | null | undefined): string | null {
@@ -757,7 +758,10 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     try {
       const created = await createQuoteFromEstimate(projectId, selectedMeta.id);
       queryClient.setQueryData(qk.quotes.detail(hostKey, created.id), created);
-      await queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(hostKey, projectId) });
+      await invalidateProjectReadCaches(queryClient, hostKey, projectId, {
+        includeQuotes: true,
+        includeEstimates: true,
+      });
       updateParams({ tab: 'quotes', quoteId: created.id });
       toast.success('Draft quote created.');
     } catch (err) {

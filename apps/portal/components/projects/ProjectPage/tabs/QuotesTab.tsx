@@ -24,6 +24,7 @@ import {
 import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { qk } from '@/lib/queries/keys';
+import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 function formatMoneyFromCents(value: number): string {
@@ -276,6 +277,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
 
   const [quotePdfPreviewBlobUrl, setQuotePdfPreviewBlobUrl] = useState<string | null>(null);
   const quotePdfPreviewBlobUrlRef = useRef<string | null>(null);
+  const quotePdfPreviewCacheRef = useRef(new Map<string, string>());
   const [quotePdfPreviewLoading, setQuotePdfPreviewLoading] = useState(false);
   const [quotePdfPreviewError, setQuotePdfPreviewError] = useState<string | null>(null);
 
@@ -293,10 +295,21 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const [draftDepositPercent, setDraftDepositPercent] = useState('50');
   const [draftExpiry, setDraftExpiry] = useState('');
   const [savingDraft, setSavingDraft] = useState(false);
+  const prefetchedQuoteDetailsRef = useRef(new Set<string>());
 
-  const refreshQuotes = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(hostKey, projectId) });
+  const refreshQuotes = useCallback(async (opts?: { includeEstimates?: boolean }) => {
+    await invalidateProjectReadCaches(queryClient, hostKey, projectId, {
+      includeQuotes: true,
+      includeEstimates: opts?.includeEstimates,
+    });
   }, [hostKey, projectId, queryClient]);
+
+  const prefetchQuoteDetail = useCallback((quoteVersionId: string) => {
+    const token = `${hostKey}:${quoteVersionId}`;
+    if (prefetchedQuoteDetailsRef.current.has(token)) return;
+    prefetchedQuoteDetailsRef.current.add(token);
+    void queryClient.prefetchQuery(quoteVersionDetailQueryOptions(hostKey, quoteVersionId));
+  }, [hostKey, queryClient]);
 
   const detailErrorNotifiedRef = useRef<string | null>(null);
   useEffect(() => {
@@ -419,6 +432,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
 
   const quotePdfPreviewKey = useMemo(() => {
     if (!detail) return '';
+    if (typeof detail.renderHash === 'string' && detail.renderHash.trim()) return detail.renderHash.trim();
     const lineSignature = detail.lineItems
       .map((item) => `${item.description}:${item.qty}:${item.unitPriceIncGstCents}`)
       .join('|');
@@ -437,21 +451,17 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   }, [detail]);
 
   const setQuotePdfPreviewUrl = useCallback((next: string | null) => {
-    const prev = quotePdfPreviewBlobUrlRef.current;
-    if (prev && prev !== next) {
-      URL.revokeObjectURL(prev);
-    }
     quotePdfPreviewBlobUrlRef.current = next;
     setQuotePdfPreviewBlobUrl(next);
   }, []);
 
   useEffect(() => {
     return () => {
-      const prev = quotePdfPreviewBlobUrlRef.current;
-      if (prev) {
-        URL.revokeObjectURL(prev);
-        quotePdfPreviewBlobUrlRef.current = null;
+      for (const value of quotePdfPreviewCacheRef.current.values()) {
+        URL.revokeObjectURL(value);
       }
+      quotePdfPreviewCacheRef.current.clear();
+      quotePdfPreviewBlobUrlRef.current = null;
     };
   }, []);
 
@@ -467,11 +477,20 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     setQuotePdfPreviewLoading(true);
     setQuotePdfPreviewError(null);
 
+    const cachedUrl = quotePdfPreviewCacheRef.current.get(quotePdfPreviewKey);
+    if (cachedUrl) {
+      setQuotePdfPreviewLoading(false);
+      setQuotePdfPreviewError(null);
+      setQuotePdfPreviewUrl(cachedUrl);
+      return () => {
+        ac.abort();
+      };
+    }
+
     const run = async () => {
       try {
         const res = await fetch(quotePdfPreviewSrc, {
           method: 'GET',
-          cache: 'no-store',
           credentials: 'same-origin',
           signal: ac.signal,
         });
@@ -482,6 +501,13 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         const blob = await res.blob();
         if (ac.signal.aborted) return;
         const nextUrl = URL.createObjectURL(blob);
+        if (quotePdfPreviewKey) {
+          const prev = quotePdfPreviewCacheRef.current.get(quotePdfPreviewKey);
+          if (prev && prev !== nextUrl) {
+            URL.revokeObjectURL(prev);
+          }
+          quotePdfPreviewCacheRef.current.set(quotePdfPreviewKey, nextUrl);
+        }
         setQuotePdfPreviewUrl(nextUrl);
       } catch (err) {
         if (ac.signal.aborted) return;
@@ -500,7 +526,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     return () => {
       ac.abort();
     };
-  }, [detail?.id, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, setQuotePdfPreviewUrl]);
+  }, [detail?.id, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, setQuotePdfPreviewUrl, detail]);
 
   const openCreateModal = () => {
     const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
@@ -517,7 +543,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     try {
       const created = await createQuoteFromEstimate(projectId, createEstimateId);
       queryClient.setQueryData(qk.quotes.detail(hostKey, created.id), created);
-      await refreshQuotes();
+      await refreshQuotes({ includeEstimates: true });
       setCreateOpen(false);
       setSelectedId(created.id);
       updateParams({ quoteId: created.id });
@@ -673,7 +699,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     try {
       const revised = await reviseQuote(detail.id);
       queryClient.setQueryData(qk.quotes.detail(hostKey, revised.id), revised);
-      await refreshQuotes();
+      await refreshQuotes({ includeEstimates: true });
       setSelectedId(revised.id);
       updateParams({ quoteId: revised.id });
       toast.success('Draft revision created.');
@@ -1431,7 +1457,16 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
               {quotes.map((quote) => {
                 const expired = isExpired(quote.expiresAt);
                 return (
-                  <tr key={quote.id} className={styles.rowClickable} onClick={() => updateParams({ quoteId: quote.id })}>
+                  <tr
+                    key={quote.id}
+                    className={styles.rowClickable}
+                    onClick={() => {
+                      prefetchQuoteDetail(quote.id);
+                      updateParams({ quoteId: quote.id });
+                    }}
+                    onMouseEnter={() => prefetchQuoteDetail(quote.id)}
+                    onFocus={() => prefetchQuoteDetail(quote.id)}
+                  >
                     <td>{`${quote.quoteRef} • v${quote.versionNumber}`}</td>
                     <td>{quote.sourceEstimateVersionLabel}</td>
                     <td>{quote.status === 'DRAFT' ? '—' : formatDateShort(quote.sentAt)}</td>

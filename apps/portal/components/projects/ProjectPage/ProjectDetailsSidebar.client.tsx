@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
+import { invalidateProjectReadCaches, patchProjectListItem, patchProjectSnapshot } from '@/lib/queries/projectCache';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 type Draft = {
   contactName: string;
@@ -35,7 +37,8 @@ function isValidYmd(value: string): boolean {
 }
 
 export default function ProjectDetailsSidebarClient({ project }: { project: ProjectPageSnapshot['project'] }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [current, setCurrent] = useState<Draft>(() => toDraft(project));
@@ -102,9 +105,42 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
       }
 
       setCurrent(draft);
+      patchProjectSnapshot(queryClient, hostKey, project.id, (currentSnapshot) => {
+        if (!currentSnapshot) return currentSnapshot;
+        return {
+          ...currentSnapshot,
+          generatedAt: new Date().toISOString(),
+          snapshot: {
+            ...currentSnapshot.snapshot,
+            project: {
+              ...currentSnapshot.snapshot.project,
+              name: draft.projectName.trim(),
+              contactName: draft.contactName.trim() || undefined,
+              contactEmail: draft.contactEmail.trim() || undefined,
+              contactPhone: draft.contactPhone.trim() || undefined,
+              siteAddress: draft.siteAddress.trim() || undefined,
+              region: draft.region.trim() || undefined,
+              quoteRef: draft.quoteRef.trim() || undefined,
+              nextActionDate: draft.nextActionDate.trim() || undefined,
+            },
+          },
+        };
+      });
+      patchProjectListItem(queryClient, hostKey, project.id, (currentProject) => ({
+        ...currentProject,
+        projectName: draft.projectName.trim(),
+        name: draft.projectName.trim(),
+        region: draft.region.trim() || undefined,
+        quoteRef: draft.quoteRef.trim() || undefined,
+        siteAddress: draft.siteAddress.trim() || undefined,
+        address: draft.siteAddress.trim() || undefined,
+        nextActionDate: draft.nextActionDate.trim() || null,
+        followUpDate: draft.nextActionDate.trim() || null,
+        clientName: draft.contactName.trim() || currentProject.clientName,
+      }));
       setIsEditing(false);
       setDraft(null);
-      router.refresh();
+      void invalidateProjectReadCaches(queryClient, hostKey, project.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save project details';
       setError(msg);

@@ -11,6 +11,7 @@ export const qk = {
   projects: {
     list: (host: string) => ['projects', host, 'list'] as const,
     detail: (host: string, id: string) => ['projects', host, 'detail', id] as const,
+    snapshot: (host: string, id: string) => ['projects', host, 'snapshot', id] as const,
     byContact: (host: string, contactId: string) => ['projects', host, 'byContact', contactId] as const,
   },
   estimates: {

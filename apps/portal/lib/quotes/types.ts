@@ -37,6 +37,7 @@ export type QuoteVersion = {
   termsText?: string | null;
   totals: QuoteTotals;
   pdfFileId?: string | null;
+  renderHash?: string | null;
 };
 
 export type QuoteSendLog = {

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { normalizeProjectStatus, PROJECT_STATUS_ORDER, nextActionTypeLabel, projectStatusLabel } from '@/lib/types/project';
@@ -10,9 +10,9 @@ import styles from './projects.module.css';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
-import { projectsListQueryOptions } from '@/lib/queries/projects';
+import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from '@/lib/queries/projects';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
@@ -48,6 +48,8 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   const [isDeleteBusy, setIsDeleteBusy] = useState(false);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const queryClient = useQueryClient();
+  const prefetchedSnapshotsRef = useRef(new Set<string>());
 
   const isLoadingMode = mode === 'loading';
   const { data: projectsData, error: projectsError, refetch: refetchProjects } = useQuery({
@@ -173,6 +175,20 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
     });
   }, [contactsById, dueFilter, projects, query, statusFilter, todayYmd]);
 
+  const prefetchProjectSnapshot = (projectId: string) => {
+    const token = `${host}:${projectId}`;
+    if (prefetchedSnapshotsRef.current.has(token)) return;
+    prefetchedSnapshotsRef.current.add(token);
+    void queryClient.prefetchQuery(projectPageSnapshotQueryOptions(host, projectId));
+  };
+
+  useEffect(() => {
+    if (isLoadingMode || !filteredProjects.length) return;
+    for (const project of filteredProjects.slice(0, 3)) {
+      prefetchProjectSnapshot(project.id);
+    }
+  }, [filteredProjects, isLoadingMode]);
+
   const closeDeleteModal = () => {
     if (isDeleteBusy) return;
     setDeleteTarget(null);
@@ -282,7 +298,12 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
                           key={p.id}
                           className={styles.rowClickable}
                           tabIndex={0}
-                          onClick={() => router.push(`/staff/projects/${encodeURIComponent(p.id)}`)}
+                          onClick={() => {
+                            prefetchProjectSnapshot(p.id);
+                            router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
+                          }}
+                          onMouseEnter={() => prefetchProjectSnapshot(p.id)}
+                          onFocus={() => prefetchProjectSnapshot(p.id)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
                           }}
