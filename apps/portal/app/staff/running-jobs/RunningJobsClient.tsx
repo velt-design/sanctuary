@@ -8,7 +8,6 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type MutableRefObject,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/layout/PageHeader';
@@ -53,6 +52,7 @@ type Filters = {
   crewId: string;
   stage: string;
   overdueOnly: boolean;
+  showCompleted: boolean;
 };
 
 const DEFAULT_FILTERS: Filters = {
@@ -61,6 +61,7 @@ const DEFAULT_FILTERS: Filters = {
   crewId: 'all',
   stage: 'all',
   overdueOnly: false,
+  showCompleted: false,
 };
 
 const ALL_CELLS = RUNNING_JOBS_COLUMNS.map((column) => column.key);
@@ -111,12 +112,12 @@ function isScheduleColumn(column: RunningJobsColumnConfig): boolean {
   return column.source === 'schedule';
 }
 
-function hasModifierKey(event: MouseEvent | React.MouseEvent | ReactKeyboardEvent): boolean {
-  return event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
-}
-
 function isPrintableKey(event: ReactKeyboardEvent): boolean {
   return event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+}
+
+function isCompletedRow(row: RunningJobRow): boolean {
+  return row.cells.job_completed || row.stage === 'COMPLETED' || row.stage === 'PAID';
 }
 
 function promptForFinishEarly(freedDays: number): 'pull_forward' | 'keep_schedule' | null {
@@ -203,6 +204,7 @@ function groupRowsByFilters(groups: RunningJobsResponse['groups'], filters: Filt
     if (filters.crewId !== 'all' && row.state.schedule.crewId !== filters.crewId) return false;
     if (filters.stage !== 'all' && row.stage !== filters.stage) return false;
     if (filters.overdueOnly && !isOverdue(row)) return false;
+    if (!filters.showCompleted && isCompletedRow(row)) return false;
     if (!query) return true;
 
     return [
@@ -297,6 +299,11 @@ function Toolbar({
       <label className={styles.toolbarToggle}>
         <input type="checkbox" checked={filters.overdueOnly} onChange={(event) => onChange({ overdueOnly: event.target.checked })} />
         <span>Overdue only</span>
+      </label>
+
+      <label className={styles.toolbarToggle}>
+        <input type="checkbox" checked={filters.showCompleted} onChange={(event) => onChange({ showCompleted: event.target.checked })} />
+        <span>Show completed</span>
       </label>
 
       <div className={styles.meta}>

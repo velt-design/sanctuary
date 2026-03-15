@@ -296,6 +296,11 @@
   z-index: 3;
 }
 
+.headerCell.frozenCell {
+  z-index: 6;
+  background: color-mix(in srgb, var(--portal-bg-surface) 90%, #efe6cf 10%);
+}
+
 .bodyCell.frozenCell {
   background: color-mix(in srgb, var(--portal-bg-surface) 96%, #f4eee1 4%);
 }
