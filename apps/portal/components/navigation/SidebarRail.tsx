@@ -42,6 +42,7 @@ export default function SidebarRail({
   role?: 'admin' | 'staff';
 }) {
   const pathname = usePathname();
+  const tooltipsEnabled = pathname !== '/staff/sidebar-lab';
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
 
@@ -62,33 +63,38 @@ export default function SidebarRail({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <aside className={styles.rail} style={{ width: SIDEBAR_WIDTH_PX }}>
+      <aside className={styles.rail} style={{ width: SIDEBAR_WIDTH_PX }} data-portal-sidebar-rail="true">
         <div className={styles.section}>
           <nav className={styles.nav} aria-label="Portal navigation">
             {visibleItems.map(({ key, label, href, Icon }) => {
               const active = isActive(pathname, href);
+              const iconLink = (
+                <Link
+                  key={key}
+                  href={href}
+                  aria-label={label}
+                  aria-current={active ? 'page' : undefined}
+                  className={cx(styles.iconButton, active && styles.iconButtonActive)}
+                  data-nav-key={key}
+                  onMouseEnter={() => prefetchFor(key)}
+                  onFocus={() => prefetchFor(key)}
+                >
+                  {active ? <span className={styles.activeBar} aria-hidden="true" /> : null}
+                  <Icon
+                    aria-hidden="true"
+                    size={22}
+                    strokeWidth={2}
+                    className={styles.icon}
+                    style={{ opacity: active ? 1 : 0.85 }}
+                  />
+                </Link>
+              );
+
+              if (!tooltipsEnabled) return iconLink;
 
               return (
                 <Tooltip key={key}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      href={href}
-                      aria-label={label}
-                      aria-current={active ? 'page' : undefined}
-                      className={cx(styles.iconButton, active && styles.iconButtonActive)}
-                      onMouseEnter={() => prefetchFor(key)}
-                      onFocus={() => prefetchFor(key)}
-                    >
-                      {active ? <span className={styles.activeBar} aria-hidden="true" /> : null}
-                      <Icon
-                        aria-hidden="true"
-                        size={22}
-                        strokeWidth={2}
-                        className={styles.icon}
-                        style={{ opacity: active ? 1 : 0.85 }}
-                      />
-                    </Link>
-                  </TooltipTrigger>
+                  <TooltipTrigger asChild>{iconLink}</TooltipTrigger>
                   <TooltipContent side="right" align="center">
                     {label}
                   </TooltipContent>
