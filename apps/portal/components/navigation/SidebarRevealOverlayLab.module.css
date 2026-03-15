@@ -15,9 +15,7 @@
   inset: 0 auto 0 0;
   width: 100%;
   padding-top: 8px;
-  background:
-    linear-gradient(180deg, rgba(var(--portal-bg-surface-rgb), 0.035), rgba(var(--portal-bg-surface-rgb), 0)),
-    var(--accentRed);
+  background: var(--accentRed);
   box-shadow: 14px 0 28px -24px rgba(0, 0, 0, 0.48);
   opacity: 0;
   visibility: hidden;
@@ -51,6 +49,10 @@
   pointer-events: auto;
   transform: translateX(0);
   transition-delay: 32ms, 32ms, 0s;
+}
+
+.labelLayerExpanded::before {
+  background: transparent;
 }
 
 .labelNav {
@@ -150,13 +152,13 @@
 }
 
 .labelRowActive {
-  background: rgba(var(--portal-bg-surface-rgb), 0.072);
-  color: rgba(var(--portal-bg-surface-rgb), 0.99);
-  box-shadow: inset 0 0 0 1px rgba(var(--portal-bg-surface-rgb), 0.06);
+  background: transparent;
+  color: rgba(var(--portal-bg-surface-rgb), 0.98);
+  box-shadow: none;
 }
 
 .labelRowActive::before {
-  background: rgba(var(--portal-bg-surface-rgb), 0.3);
+  background: transparent;
 }
 
 .labelRowActive:visited {
@@ -170,7 +172,7 @@
 
 .labelRowActive:hover,
 .labelRowActive:focus-visible {
-  background: rgba(var(--portal-bg-surface-rgb), 0.1);
+  background: transparent;
   color: rgba(var(--portal-bg-surface-rgb), 1);
 }
 

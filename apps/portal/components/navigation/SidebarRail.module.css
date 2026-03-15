@@ -9,6 +9,11 @@
   justify-content: space-between;
   border-right: 1px solid rgba(var(--portal-bg-surface-rgb), 0.12);
   background: var(--accentRed);
+  transition: border-color 120ms ease;
+}
+
+.rail[data-reveal-expanded='true'] {
+  border-right-color: transparent;
 }
 
 .section {
@@ -67,6 +72,11 @@
   background: rgba(var(--portal-bg-surface-rgb), 0.12);
 }
 
+.rail[data-reveal-expanded='true'] .iconButtonActive,
+.rail[data-reveal-expanded='true'] .iconButtonActive:hover {
+  background: transparent;
+}
+
 .activeBar {
   position: absolute;
   left: 0;
@@ -75,6 +85,10 @@
   height: 32px;
   border-radius: 0 2px 2px 0;
   background: var(--portal-bg-surface);
+}
+
+.rail[data-reveal-expanded='true'] .activeBar {
+  opacity: 0;
 }
 
 .icon {

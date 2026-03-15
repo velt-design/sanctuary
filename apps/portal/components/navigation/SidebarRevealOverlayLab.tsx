@@ -235,6 +235,11 @@ export default function SidebarRevealOverlayLab() {
     () => visibleItems.findIndex((item) => item.key === hoveredKey),
     [hoveredKey, visibleItems],
   );
+  const activeIndex = useMemo(
+    () => visibleItems.findIndex((item) => isActive(pathname, item.href)),
+    [pathname, visibleItems],
+  );
+  const bubbleIndex = hoveredIndex >= 0 ? hoveredIndex : activeIndex;
 
   return (
     <div
@@ -250,8 +255,8 @@ export default function SidebarRevealOverlayLab() {
     >
       <div className={cx(styles.labelLayer, expanded && styles.labelLayerExpanded)} aria-hidden={!expanded}>
         <div
-          className={cx(styles.hoverBubble, hoveredIndex >= 0 && styles.hoverBubbleVisible)}
-          style={hoveredIndex >= 0 ? { top: `${8 + hoveredIndex * 52}px` } : undefined}
+          className={cx(styles.hoverBubble, bubbleIndex >= 0 && styles.hoverBubbleVisible)}
+          style={bubbleIndex >= 0 ? { top: `${8 + bubbleIndex * 52}px` } : undefined}
           aria-hidden="true"
         />
         <div className={styles.labelNav}>
