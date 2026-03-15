@@ -43,12 +43,20 @@
   background: rgba(var(--portal-text-rgb), 0.1);
 }
 
+.rail[data-reveal-expanded='true'] .iconButton:hover {
+  background: transparent;
+}
+
 .iconButton:focus {
   outline: none;
 }
 
 .iconButton:focus-visible {
   box-shadow: 0 0 0 2px rgba(var(--portal-bg-surface-rgb), 0.5);
+}
+
+.rail[data-reveal-expanded='true'] .iconButton:focus-visible {
+  box-shadow: none;
 }
 
 .iconButtonActive {
@@ -79,4 +87,3 @@
   align-items: center;
   padding-bottom: 8px;
 }
-

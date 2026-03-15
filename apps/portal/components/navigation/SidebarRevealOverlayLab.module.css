@@ -1,0 +1,181 @@
+.overlay {
+  position: fixed;
+  inset: 0 auto 0 56px;
+  z-index: 70;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.overlayExpanded {
+  pointer-events: auto;
+}
+
+.labelLayer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 100%;
+  padding-top: 8px;
+  background:
+    linear-gradient(180deg, rgba(var(--portal-bg-surface-rgb), 0.035), rgba(var(--portal-bg-surface-rgb), 0)),
+    var(--accentRed);
+  box-shadow: 14px 0 28px -24px rgba(0, 0, 0, 0.48);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(-4px);
+  transition:
+    opacity 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s linear 160ms;
+}
+
+.labelLayer::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.14);
+}
+
+.labelLayer::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 1px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.08);
+}
+
+.labelLayerExpanded {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(0);
+  transition-delay: 32ms, 32ms, 0s;
+}
+
+.labelNav {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1;
+}
+
+.hoverBubble {
+  position: absolute;
+  left: -52px;
+  right: 8px;
+  height: 48px;
+  border-radius: 14px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.08);
+  box-shadow: inset 0 0 0 1px rgba(var(--portal-bg-surface-rgb), 0.08);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    top 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 120ms ease;
+  z-index: 0;
+}
+
+.hoverBubbleVisible {
+  opacity: 1;
+}
+
+.labelRow {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  width: calc(100% - 8px);
+  margin-right: 8px;
+  border-radius: 10px;
+  padding: 0 16px 0 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none !important;
+  text-decoration-line: none;
+  text-underline-offset: 0;
+  text-decoration-color: transparent !important;
+  -webkit-text-decoration-skip: none;
+  font-size: 18.72px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgba(var(--portal-bg-surface-rgb), 0.78);
+  background: transparent;
+  transition:
+    color 120ms ease,
+    box-shadow 120ms ease;
+  z-index: 1;
+}
+
+.labelRow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 11px;
+  width: 1px;
+  height: 26px;
+  border-radius: 999px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.labelRow:visited {
+  color: rgba(var(--portal-bg-surface-rgb), 0.78);
+  text-decoration: none !important;
+}
+
+.labelRow:link,
+.labelRow:active {
+  text-decoration: none !important;
+}
+
+.labelRow:hover {
+  text-decoration: none !important;
+  color: rgba(var(--portal-bg-surface-rgb), 0.98);
+}
+
+.labelRow:focus {
+  outline: none;
+  text-decoration: none !important;
+}
+
+.labelRow:focus-visible {
+  text-decoration: none !important;
+  box-shadow: none;
+  color: rgba(var(--portal-bg-surface-rgb), 0.98);
+}
+
+.labelRowActive {
+  background: rgba(var(--portal-bg-surface-rgb), 0.072);
+  color: rgba(var(--portal-bg-surface-rgb), 0.99);
+  box-shadow: inset 0 0 0 1px rgba(var(--portal-bg-surface-rgb), 0.06);
+}
+
+.labelRowActive::before {
+  background: rgba(var(--portal-bg-surface-rgb), 0.3);
+}
+
+.labelRowActive:visited {
+  color: rgba(var(--portal-bg-surface-rgb), 0.99);
+}
+
+.labelRowActive:link,
+.labelRowActive:active {
+  text-decoration: none !important;
+}
+
+.labelRowActive:hover,
+.labelRowActive:focus-visible {
+  background: rgba(var(--portal-bg-surface-rgb), 0.1);
+  color: rgba(var(--portal-bg-surface-rgb), 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .labelLayer {
+    transition: none;
+  }
+}
