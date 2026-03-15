@@ -28,6 +28,7 @@ export type TaskKey =
   | 'schedule_install'
   | 'confirm_schedule'
   | 'order_materials'
+  | 'roofing_ordered'
   | 'job_complete'
   | 'reminder'
   | 'upload_pictures';
@@ -138,6 +139,7 @@ export const STAGE_TASKS: Record<PipelineStageKey, TaskDefinition[]> = {
   ],
   scheduled: [
     { key: 'order_materials', label: 'Order materials', kind: 'manual' },
+    { key: 'roofing_ordered', label: 'Roofing ordered', kind: 'manual' },
     {
       key: 'job_complete',
       label: 'Job complete',

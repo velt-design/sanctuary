@@ -9,7 +9,6 @@ This page is an operations tool, not a project-detail variant. It should support
 - Fast scanning across all live running jobs
 - Inline editing per cell
 - Spreadsheet keyboard navigation
-- Bulk paste
 - Optimistic save with conflict detection
 - Year grouping to match the current workbook mental model
 
@@ -24,22 +23,23 @@ Reason:
 
 - The sheet is cross-project operational work
 - It overlaps schedule, deposit, completion, ordering, and notes
-- It needs its own keyboard and paste model that would be awkward inside the existing project page
+- It needs its own spreadsheet interaction model that would be awkward inside the existing project page
 
 ### V1 scope
 
 - Columns `A-S` only
 - Year separators
+- Secondary `Blinds to install` subsection
 - Sticky header
 - Frozen columns `A-C`
 - Single-cell edit
 - Keyboard nav
-- Bulk paste
 - Optimistic updates
 - Conflict indicator
 
 ### Explicitly out of scope for V1
 
+- Bulk paste
 - The extra Excel columns visible to the right of `S`
 - A generic formula engine
 - Importing raw `.xlsx`
@@ -115,8 +115,7 @@ The running-job list should not invent new sources for scheduling state.
 
 Use it only for:
 
-- Text overrides where ops needs a display override
-- Lights/blinds manual status override
+- Manual lights status
 - Notes
 
 Do not copy schedule state into this table.
@@ -138,12 +137,7 @@ Create:
 ```sql
 create table if not exists public.project_running_job_meta (
   project_id uuid primary key references public.projects(id) on delete cascade,
-  pergola_type_override text null,
   lights_status text null check (lights_status in ('No','Yes','TBC')),
-  blinds_status text null check (blinds_status in ('No','Yes','TBC')),
-  size_override text null,
-  colour_override text null,
-  roofing_override text null,
   notes text null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -183,6 +177,28 @@ type SalesPerson = {
 ```
 
 Use `shortLabel` for column `D`.
+
+### 6. Current short-label roster
+
+Use the following display codes wherever these people appear in the sales or crew lists:
+
+- Alistair -> `AW`
+- Jayden -> `JW`
+- Jesse -> `JI`
+- Jordan -> `JB`
+- Steve -> `SC`
+- Bruce -> `BB`
+- David -> `DH`
+
+If a person exists in both a sales config and a crew config, reuse the same short label.
+
+### 7. Permissions
+
+V1 permission rule:
+
+- any authenticated staff user can edit any editable running-job-list cell
+
+Field-level restrictions can be added later if finance or contact governance becomes tighter.
 
 ## Read model
 
@@ -308,6 +324,10 @@ Write target:
 
 - `contacts.name`
 
+Important:
+
+- this updates the shared contact, not only this project row
+
 ### Pergola type
 
 Create a shared helper that maps calculator inputs to ops-friendly labels.
@@ -325,15 +345,19 @@ If this label logic is still fuzzy, keep it in one helper so ops can iterate on 
 
 ### Lights
 
-Derived status:
+V1 rule:
 
-1. `Yes` if latest estimate has a positive lighting total using the same detection logic already present in quote mapping
-2. `No` if a latest estimate exists and no lighting signal is present
-3. `TBC` if there is no usable estimate
+- `Lights` is manual-only
+- store it in `project_running_job_meta.lights_status`
+- default to `TBC` if unset
 
-Current source to reuse:
+Future rule once calculator support exists:
 
-- [`apps/portal/lib/quotes/mapping.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/quotes/mapping.ts)
+- `manual value if present`
+- else `derived from latest estimate`
+- else `TBC`
+
+Do not auto-overwrite an existing manual value when estimate support lands.
 
 ### Blinds
 
@@ -345,6 +369,10 @@ Derived status:
 
 Reuse the same normalization rules already used by quote mapping instead of writing a second blind detector.
 
+V1 edit rule:
+
+- read-only on the running-job list
+
 ### Size
 
 Derive from the first active module:
@@ -354,6 +382,10 @@ Derive from the first active module:
 
 Display should be normalized without trailing zeros.
 
+V1 edit rule:
+
+- read-only on the running-job list
+
 ### Colour
 
 Derive from module finish:
@@ -361,6 +393,10 @@ Derive from module finish:
 - If `powdercoatIsCustom`, show custom colour name
 - Else if `extrusionColour === 'Mill'` and `powdercoatStandardColour` exists, show powdercoat colour
 - Else show `extrusionColour`
+
+V1 edit rule:
+
+- read-only on the running-job list
 
 ### Roofing
 
@@ -375,47 +411,44 @@ Current related source:
 
 - [`apps/portal/lib/outputs/jobPack.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/outputs/jobPack.ts)
 
+V1 edit rule:
+
+- read-only on the running-job list
+
 ## Write model
 
 ## Recommendation
 
-Use one dedicated batch cell-mutation endpoint for the running-job list.
+Use one dedicated single-cell mutation endpoint for the running-job list.
 
 Do not make the page directly orchestrate half a dozen unrelated APIs on its own.
 
 ### API
 
-- `POST /api/staff/v1/running-jobs/cells`
+- `POST /api/staff/v1/running-jobs/cell`
 
 Request:
 
 ```ts
 type RunningJobCellMutationRequest = {
-  operations: Array<{
-    projectId: string;
-    rowVersion: string;
-    key:
-      | 'client_name'
-      | 'phone_number'
-      | 'site_address'
-      | 'site_visit_rep'
-      | 'deposit_paid_date'
-      | 'materials_ordered'
-      | 'pergola_type'
-      | 'estimated_start_date'
-      | 'final_payment_date'
-      | 'job_assigned_to'
-      | 'job_completed'
-      | 'lights_status'
-      | 'blinds_status'
-      | 'install_days'
-      | 'size_text'
-      | 'colour_text'
-      | 'roofing_text'
-      | 'roofing_ordered'
-      | 'running_notes';
-    value: unknown;
-  }>;
+  projectId: string;
+  rowVersion: string;
+  key:
+    | 'client_name'
+    | 'phone_number'
+    | 'site_address'
+    | 'site_visit_rep'
+    | 'deposit_paid_date'
+    | 'materials_ordered'
+    | 'estimated_start_date'
+    | 'final_payment_date'
+    | 'job_assigned_to'
+    | 'job_completed'
+    | 'lights_status'
+    | 'install_days'
+    | 'roofing_ordered'
+    | 'running_notes';
+  value: unknown;
 };
 ```
 
@@ -424,24 +457,9 @@ Response:
 ```ts
 type RunningJobCellMutationResponse = {
   ok: true;
-  updatedRows: RunningJobRow[];
+  updatedRow: RunningJobRow;
 };
 ```
-
-### Atomicity rule
-
-For bulk paste, make the request atomic:
-
-- If any operation fails validation
-- or any operation hits a row-version conflict
-- or any operation needs an interactive schedule confirmation
-
-Then apply none of the operations.
-
-Reason:
-
-- Spreadsheet users expect predictable paste behavior
-- Partial success is hard to understand when schedule recompute side effects are involved
 
 ### Row version rule
 
@@ -472,13 +490,10 @@ That gives you the conflict indicator required by the sheet UX.
 - `site_address` -> `projects.site_address`
 - `deposit_paid_date` -> `projects.deposit_paid_date`
 - `final_payment_date` -> `projects.final_payment_date`
-- `pergola_type` -> `project_running_job_meta.pergola_type_override`
 - `lights_status` -> `project_running_job_meta.lights_status`
-- `blinds_status` -> `project_running_job_meta.blinds_status`
-- `size_text` -> `project_running_job_meta.size_override`
-- `colour_text` -> `project_running_job_meta.colour_override`
-- `roofing_text` -> `project_running_job_meta.roofing_override`
 - `running_notes` -> `project_running_job_meta.notes`
+
+These are editable by any staff user in V1.
 
 ### Manual task writes
 
@@ -490,6 +505,10 @@ That gives you the conflict indicator required by the sheet UX.
 - `site_visit_rep` -> `site_visit_events.assigned_sales_owner_id`
 
 This needs the row payload to include `siteVisitEventId`.
+
+If a project does not yet have a `site_visit_events` row:
+
+- editing `D` should create one in an unscheduled state, then assign the salesperson
 
 ### Schedule-owned writes
 
@@ -509,9 +528,45 @@ Use the existing schedule mutation behavior as the source of truth:
 - [`apps/portal/app/api/staff/v1/schedule/job/mark-in-progress/route.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/api/staff/v1/schedule/job/mark-in-progress/route.ts)
 - [`apps/portal/app/api/staff/v1/schedule/job/mark-done/route.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/api/staff/v1/schedule/job/mark-done/route.ts)
 
+If a project does not yet have schedule state:
+
+- editing `J` should create the schedule row by assigning the job to a crew
+- editing `H` requires a crew first
+- editing `N` is disabled until a schedule row exists
+- editing `K` is disabled until a schedule row exists
+
+### Read-only quote-derived columns
+
+These should be visible on the page but not editable in V1:
+
+- `pergola_type`
+- `blinds_status`
+- `size_text`
+- `colour_text`
+- `roofing_text`
+
+Reason:
+
+- they come from the latest estimate
+- changing them on this page would create a second source of truth for quote scope
+- if these are wrong, the estimate should be corrected and the running-job row should refresh automatically
+
 ## Stage side effects
 
 Keep these explicit.
+
+### Forward-only automation rule
+
+The running-job list can auto-advance stage as operational data becomes more complete:
+
+- `SENT -> DEPOSIT`
+- `DEPOSIT -> SCHEDULED`
+- `SCHEDULED -> COMPLETED`
+- `COMPLETED -> PAID`
+
+V1 should not auto-roll stage backward when a user later clears a value or unticks a box.
+
+If rollback is needed, keep it explicit and outside this page’s normal inline-edit flow.
 
 ### Deposit paid date (`E`)
 
@@ -586,7 +641,7 @@ Suggested file layout:
 - `apps/portal/lib/runningJobs/writeOps.ts`
 - `apps/portal/lib/queries/runningJobs.ts`
 - `apps/portal/app/api/staff/v1/running-jobs/route.ts`
-- `apps/portal/app/api/staff/v1/running-jobs/cells/route.ts`
+- `apps/portal/app/api/staff/v1/running-jobs/cell/route.ts`
 
 ### Column config
 
@@ -598,11 +653,50 @@ Define one shared `RUNNING_JOB_COLUMNS` array with:
 - cell type
 - parse function
 - validate function
-- paste coercion
 - text alignment
 - whether it is frozen
 
 This prevents the UI and API from drifting on validation.
+
+### Page composition
+
+Use a single page with three vertical zones:
+
+1. Toolbar
+2. Main running-job grid
+3. `Blinds to install` subsection
+
+Toolbar should include:
+
+- quick search
+- year filter
+- crew filter
+- stage filter
+- toggle for overdue only
+
+The main grid is the primary operational surface.
+
+The `Blinds to install` subsection is not a separate dataset. It is a saved view of the same rows where:
+
+- `blinds_status = Yes`
+- and the project is still active
+
+V1 meaning:
+
+- this section means "jobs that include blinds"
+- it does not yet mean "blinds-only follow-up still outstanding after pergola completion"
+
+If ops later needs true blinds completion tracking, add a dedicated operational field instead of inferring it from the estimate.
+
+### Cell presentation
+
+Use three clear visual treatments:
+
+- editable ops cells: normal contrast, hover affordance
+- schedule-owned cells: normal contrast plus schedule iconography/status hints
+- quote-derived read-only cells: muted background plus small `Estimate` source pill
+
+That gives operators a fast visual distinction between "safe to edit here" and "change upstream in estimate".
 
 ### Grid implementation
 
@@ -612,7 +706,6 @@ Reason:
 
 - Frozen columns
 - Spreadsheet keyboard rules
-- Bulk paste
 - Active-cell editing
 - Optimistic cell state
 
@@ -644,7 +737,7 @@ The interaction model is more important than premature scaling.
 
 - `D`: sales rep short label
 - `J`: crew short code
-- `L/M`: enum chips `No`, `Yes`, `TBC`
+- `L`: enum chips `No`, `Yes`, `TBC`
 
 ### Long text notes
 
@@ -655,33 +748,6 @@ The interaction model is more important than premature scaling.
 
 - Clicking the client name opens project detail in a new tab or with modifier key
 - Plain row/cell click should stay in-grid
-
-## Bulk paste rules
-
-### Supported
-
-- Rectangular paste only
-- Text/date/checkbox/enum cells
-
-### Coercion
-
-- `Y`, `y`, `yes`, `true`, `1` => checked
-- blank => unchecked for checkbox columns
-- date values must normalize to `YYYY-MM-DD`
-- enum text is case-insensitive
-- numbers must parse cleanly
-
-### Failure behavior
-
-- Any validation failure aborts the whole paste
-- Any conflict aborts the whole paste
-- Any schedule confirmation requirement aborts the whole paste
-
-Show a paste error summary with:
-
-- row + column
-- original text
-- validation reason
 
 ## Colors
 
@@ -721,6 +787,8 @@ Optimistic behavior:
 - on success, replace row from server payload
 - on conflict, restore current server row and show conflict marker
 
+Because there is no bulk paste in V1, keep optimistic state strictly per-cell.
+
 ## Delivery plan
 
 ### Phase 1: schema and shared helpers
@@ -741,7 +809,7 @@ Optimistic behavior:
 ### Phase 3: single-cell edits
 
 - add mutation endpoint
-- implement columns with direct table writes first: `A-C`, `E-G`, `I`, `L-S`
+- implement columns with direct table writes first: `A-F`, `I`, `L`, `R-S`
 - wire optimistic updates and conflict state
 
 ### Phase 4: schedule-owned cells
@@ -750,9 +818,10 @@ Optimistic behavior:
 - surface schedule confirmation prompts
 - add stage side effects
 
-### Phase 5: paste and polish
+### Phase 5: polish
 
-- rectangular paste
+- add toolbar filters
+- add `Blinds to install` subsection
 - keyboard refinements
 - color rules
 - project link affordances
@@ -762,7 +831,7 @@ Optimistic behavior:
 ### Unit tests
 
 - latest estimate selection
-- derivation helpers for `G`, `L`, `M`, `O`, `P`, `Q`
+- derivation helpers for `G`, `M`, `O`, `P`, `Q`
 - row inclusion and sorting
 - cell parsing and validation
 
@@ -775,18 +844,19 @@ Optimistic behavior:
 
 ### Manual QA
 
-- paste mixed cell types
 - assign crew then set date
 - mark complete on early-finish job
 - conflict from two tabs
 - freeze columns under horizontal scroll
+- confirm quote-derived cells are visibly read-only
+- confirm shared contact edits update all linked project views
 
 ## Final recommendations
 
 ### Keep
 
 - `scheduled_jobs` as the canonical schedule source
-- estimate-derived display fields with override fallback
+- estimate-derived quote fields as read-only in V1
 - a dedicated page and dedicated read/write API
 
 ### Add before UI polish
@@ -798,5 +868,6 @@ Optimistic behavior:
 ### Do not do
 
 - Do not store duplicated schedule values in `project_running_job_meta`
+- Do not make quote-derived fields editable in V1
 - Do not keep free-text pseudo-dates in column `H`
 - Do not try to force this into the existing Projects index table
