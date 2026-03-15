@@ -36,6 +36,9 @@ export const qk = {
     gantt: (host: string, rangeStart: string, rangeEnd: string, today: string) =>
       ['schedule', host, 'gantt', rangeStart, rangeEnd, today] as const,
   },
+  runningJobs: {
+    snapshot: (host: string) => ['runningJobs', host, 'snapshot'] as const,
+  },
   siteVisits: {
     snapshot: (host: string, rangeKey: string) => ['siteVisits', host, 'snapshot', rangeKey] as const,
   },

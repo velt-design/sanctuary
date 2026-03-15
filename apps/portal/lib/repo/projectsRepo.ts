@@ -87,6 +87,9 @@ function projectFromRow(row: any): Project {
   const followUpDate = typeof row?.follow_up_date === 'string' ? row.follow_up_date : null;
   const isArchived = Boolean(row?.archived_at);
   const notes = typeof row?.notes === 'string' ? row.notes : '';
+  const depositAmountCents = typeof row?.deposit_amount_cents === 'number' && Number.isFinite(row.deposit_amount_cents) ? row.deposit_amount_cents : null;
+  const depositPaidDate = typeof row?.deposit_paid_date === 'string' ? row.deposit_paid_date : null;
+  const finalPaymentDate = typeof row?.final_payment_date === 'string' ? row.final_payment_date : null;
 
   return normaliseProjectShape({
     id: appIdFromUuid('proj', id),
@@ -103,6 +106,9 @@ function projectFromRow(row: any): Project {
     isArchived,
     nextActionDate: followUpDate,
     followUpDate,
+    depositAmountCents,
+    depositPaidDate,
+    finalPaymentDate,
     notes,
   } as Project);
 }
@@ -271,6 +277,9 @@ export async function createProject(data: {
     site_address: project.siteAddress ?? project.address ?? null,
     pipeline_stage: (project.status ?? 'NEW') as any,
     follow_up_date: null,
+    deposit_amount_cents: typeof project.depositAmountCents === 'number' && Number.isFinite(project.depositAmountCents) ? Math.round(project.depositAmountCents) : null,
+    deposit_paid_date: typeof project.depositPaidDate === 'string' ? project.depositPaidDate : null,
+    final_payment_date: typeof project.finalPaymentDate === 'string' ? project.finalPaymentDate : null,
     notes: project.notes ?? '',
     created_at: project.createdAt,
     updated_at: project.updatedAt ?? project.createdAt,
@@ -310,6 +319,12 @@ export async function upsertProject(project: Project): Promise<Project> {
       typeof project.siteAddress === 'string' ? project.siteAddress.trim() || null : typeof project.address === 'string' ? project.address.trim() || null : null,
     pipeline_stage: (project.status ?? 'NEW') as any,
     follow_up_date: typeof followUpDate === 'string' ? followUpDate : null,
+    deposit_amount_cents:
+      typeof project.depositAmountCents === 'number' && Number.isFinite(project.depositAmountCents)
+        ? Math.round(project.depositAmountCents)
+        : null,
+    deposit_paid_date: typeof project.depositPaidDate === 'string' ? project.depositPaidDate : null,
+    final_payment_date: typeof project.finalPaymentDate === 'string' ? project.finalPaymentDate : null,
     notes: typeof project.notes === 'string' ? project.notes : '',
     created_at: typeof project.createdAt === 'string' && project.createdAt.trim() ? project.createdAt.trim() : now,
     updated_at: typeof project.updatedAt === 'string' && project.updatedAt.trim() ? project.updatedAt.trim() : now,
@@ -361,6 +376,10 @@ export async function updateProject(
     site_address: typeof next.siteAddress === 'string' ? next.siteAddress.trim() || null : typeof next.address === 'string' ? next.address.trim() || null : null,
     pipeline_stage: (next.status ?? 'NEW') as any,
     follow_up_date: typeof next.nextActionDate === 'string' ? next.nextActionDate : typeof next.followUpDate === 'string' ? next.followUpDate : null,
+    deposit_amount_cents:
+      typeof next.depositAmountCents === 'number' && Number.isFinite(next.depositAmountCents) ? Math.round(next.depositAmountCents) : null,
+    deposit_paid_date: typeof next.depositPaidDate === 'string' ? next.depositPaidDate : null,
+    final_payment_date: typeof next.finalPaymentDate === 'string' ? next.finalPaymentDate : null,
     notes: typeof next.notes === 'string' ? next.notes : '',
     updated_at: now,
   };

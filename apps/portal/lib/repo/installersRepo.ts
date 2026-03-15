@@ -4,12 +4,12 @@ import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRunti
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 
-const DEFAULT_SEED: Array<{ name: string; color: string; sort_order: number }> = [
-  { name: 'Jayden', color: PORTAL_DEFAULT_ACCENT_HEX, sort_order: 1 },
-  { name: 'David', color: '#1F6E8C', sort_order: 2 },
-  { name: 'Alistair', color: '#2A9D8F', sort_order: 3 },
-  { name: 'Eder', color: '#E09F3E', sort_order: 4 },
-  { name: 'Jesse', color: '#6D597A', sort_order: 5 },
+const DEFAULT_SEED: Array<{ name: string; color: string; sort_order: number; short_code: string | null }> = [
+  { name: 'Jayden', color: PORTAL_DEFAULT_ACCENT_HEX, sort_order: 1, short_code: 'JW' },
+  { name: 'David', color: '#1F6E8C', sort_order: 2, short_code: 'DH' },
+  { name: 'Alistair', color: '#2A9D8F', sort_order: 3, short_code: 'AW' },
+  { name: 'Eder', color: '#E09F3E', sort_order: 4, short_code: null },
+  { name: 'Jesse', color: '#6D597A', sort_order: 5, short_code: 'JI' },
 ];
 
 function toPostgrestError(value: unknown): PostgrestErrorLike | null {
@@ -86,7 +86,10 @@ async function ensureSeededIfEmpty(): Promise<void> {
   for (const m of legacyMap) {
     const row = byName.get(m.legacy);
     if (!row) continue;
-    const update = await supabase.from('schedule_crews').update({ name: m.next.name, color: m.next.color, sort_order: m.next.sort_order } as any).eq('id', row.id);
+    const update = await supabase
+      .from('schedule_crews')
+      .update({ name: m.next.name, color: m.next.color, sort_order: m.next.sort_order, short_code: m.next.short_code } as any)
+      .eq('id', row.id);
     if (update.error) throw wrapError('schedule_crews', update.error);
   }
 
