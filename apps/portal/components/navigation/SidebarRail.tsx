@@ -6,7 +6,6 @@ import { useCallback, useMemo, useRef } from 'react';
 import { NAV_ITEMS, SIDEBAR_WIDTH_PX } from './navItems';
 import UserMenu from './UserMenu';
 import styles from './SidebarRail.module.css';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQueryClient } from '@tanstack/react-query';
 import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
 import { todayYmd } from '@/lib/scheduling/date';
@@ -42,7 +41,6 @@ export default function SidebarRail({
   role?: 'admin' | 'staff';
 }) {
   const pathname = usePathname();
-  const tooltipsEnabled = pathname !== '/staff/sidebar-lab';
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
 
@@ -62,52 +60,40 @@ export default function SidebarRail({
   );
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <aside className={styles.rail} style={{ width: SIDEBAR_WIDTH_PX }} data-portal-sidebar-rail="true">
-        <div className={styles.section}>
-          <nav className={styles.nav} aria-label="Portal navigation">
-            {visibleItems.map(({ key, label, href, Icon }) => {
-              const active = isActive(pathname, href);
-              const iconLink = (
-                <Link
-                  key={key}
-                  href={href}
-                  aria-label={label}
-                  aria-current={active ? 'page' : undefined}
-                  className={cx(styles.iconButton, active && styles.iconButtonActive)}
-                  data-nav-key={key}
-                  onMouseEnter={() => prefetchFor(key)}
-                  onFocus={() => prefetchFor(key)}
-                >
-                  {active ? <span className={styles.activeBar} aria-hidden="true" /> : null}
-                  <Icon
-                    aria-hidden="true"
-                    size={22}
-                    strokeWidth={2}
-                    className={styles.icon}
-                    style={{ opacity: active ? 1 : 0.85 }}
-                  />
-                </Link>
-              );
+    <aside className={styles.rail} style={{ width: SIDEBAR_WIDTH_PX }} data-portal-sidebar-rail="true">
+      <div className={styles.section}>
+        <nav className={styles.nav} aria-label="Portal navigation">
+          {visibleItems.map(({ key, label, href, Icon }) => {
+            const active = isActive(pathname, href);
 
-              if (!tooltipsEnabled) return iconLink;
+            return (
+              <Link
+                key={key}
+                href={href}
+                aria-label={label}
+                aria-current={active ? 'page' : undefined}
+                className={cx(styles.iconButton, active && styles.iconButtonActive)}
+                data-nav-key={key}
+                onMouseEnter={() => prefetchFor(key)}
+                onFocus={() => prefetchFor(key)}
+              >
+                {active ? <span className={styles.activeBar} aria-hidden="true" /> : null}
+                <Icon
+                  aria-hidden="true"
+                  size={22}
+                  strokeWidth={2}
+                  className={styles.icon}
+                  style={{ opacity: active ? 1 : 0.85 }}
+                />
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
 
-              return (
-                <Tooltip key={key}>
-                  <TooltipTrigger asChild>{iconLink}</TooltipTrigger>
-                  <TooltipContent side="right" align="center">
-                    {label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className={styles.bottom}>
-          <UserMenu email={email} roleLabel={roleLabel} />
-        </div>
-      </aside>
-    </TooltipProvider>
+      <div className={styles.bottom}>
+        <UserMenu email={email} roleLabel={roleLabel} />
+      </div>
+    </aside>
   );
 }

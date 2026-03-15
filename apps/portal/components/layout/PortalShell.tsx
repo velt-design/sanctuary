@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import SidebarRail from '@/components/navigation/SidebarRail';
+import SidebarRevealOverlayLab from '@/components/navigation/SidebarRevealOverlayLab';
 import { SIDEBAR_WIDTH_PX } from '@/components/navigation/navItems';
 import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
@@ -36,6 +37,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   return (
     <div className={cx(styles.shell, isSchedulePath && styles.shellViewportLocked)}>
       <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
+      <SidebarRevealOverlayLab />
       <div className={cx(styles.content, isSchedulePath && styles.contentViewportLocked)} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
         {children}
       </div>
