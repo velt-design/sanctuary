@@ -5,8 +5,6 @@ import {
   migrateLegacyCalculatorInputsToV2,
   normalizeBlindsState,
 } from '@/lib/types/calculator';
-import type { Estimate } from '@/lib/types/estimate';
-import { buildJobPack } from '@/lib/outputs/jobPack';
 import { isRecord } from '@/lib/supabase/mappers';
 import type { RunningJobStatusValue } from './types';
 
@@ -84,48 +82,6 @@ function normalizeLightsStatus(value: unknown): RunningJobStatusValue | null {
   return null;
 }
 
-function estimateToJobPackEstimate(row: RunningJobsEstimateLite): Estimate {
-  const outputs = isRecord(row.outputs) ? row.outputs : {};
-  const configVersions = isRecord((outputs as any).configVersions)
-    ? (outputs as any).configVersions
-    : { pricebook: '', installActions: '', overheads: '', rules: '', manifest: '' };
-
-  return {
-    id: row.id,
-    projectId: row.project_id,
-    version: typeof row.version === 'number' && Number.isFinite(row.version) ? row.version : undefined,
-    createdAt: typeof row.created_at === 'string' && row.created_at ? row.created_at : new Date().toISOString(),
-    updatedAt: typeof (outputs as any).updated_at === 'string' ? (outputs as any).updated_at : undefined,
-    status: normalizeEstimateStatus(row.status) === 'archived' ? 'archived' : 'draft',
-    inputs: (row.inputs ?? {}) as any,
-    derived: ((outputs as any).derived ?? {}) as any,
-    outputs: {
-      cost_snapshot_version: (outputs as any).cost_snapshot_version === 'v2' ? 'v2' : 'v1',
-      materials: ((outputs as any).materials ?? {}) as any,
-      install: ((outputs as any).install ?? {}) as any,
-      overhead: ((outputs as any).overhead ?? {}) as any,
-      totals: ((outputs as any).totals ?? {}) as any,
-      warnings: Array.isArray((outputs as any).warnings) ? (outputs as any).warnings : [],
-      pergolas: Array.isArray((outputs as any).pergolas) ? (outputs as any).pergolas : undefined,
-      siteShared:
-        (outputs as any).siteShared && typeof (outputs as any).siteShared === 'object'
-          ? (outputs as any).siteShared
-          : (outputs as any).shared && typeof (outputs as any).shared === 'object'
-            ? (outputs as any).shared
-            : undefined,
-      shared:
-        (outputs as any).shared && typeof (outputs as any).shared === 'object'
-          ? (outputs as any).shared
-          : (outputs as any).siteShared && typeof (outputs as any).siteShared === 'object'
-            ? (outputs as any).siteShared
-            : undefined,
-    },
-    configVersions: configVersions as any,
-    ...(isRecord((outputs as any).projectSnapshot) ? { projectSnapshot: (outputs as any).projectSnapshot as any } : null),
-    ...(isRecord((outputs as any).snapshot) ? { snapshot: (outputs as any).snapshot as any } : null),
-  };
-}
-
 function extractEstimateSnapshotContactName(row: RunningJobsEstimateLite | null): string {
   if (!row || !isRecord(row.outputs)) return '';
   const snapshot = isRecord((row.outputs as any).snapshot) ? ((row.outputs as any).snapshot as Record<string, unknown>) : null;
@@ -185,20 +141,19 @@ function deriveColourText(module: CalculatorModuleInputs | null): string | null 
   return typeof module.extrusionColour === 'string' ? module.extrusionColour : null;
 }
 
-function deriveRoofingText(row: RunningJobsEstimateLite | null, module: CalculatorModuleInputs | null): string | null {
-  if (!row) {
-    return module ? toTitleCase(module.roofMaterial) : null;
-  }
+function deriveRoofingText(_row: RunningJobsEstimateLite | null, module: CalculatorModuleInputs | null): string | null {
+  if (!module) return null;
 
-  const jobPack = buildJobPack(estimateToJobPackEstimate(row));
-  const acrylicLines = Array.isArray(jobPack.orderLists?.acrylic) ? jobPack.orderLists.acrylic : [];
-  if (acrylicLines.length) {
-    const head = acrylicLines.slice(0, 2).map((line) => `${line.qty} ${line.item}`.trim());
-    const suffix = acrylicLines.length > 2 ? ` +${acrylicLines.length - 2} more` : '';
-    return `${head.join(', ')}${suffix}`;
+  switch (module.roofMaterial) {
+    case 'acrylic':
+      return 'Acrylic';
+    case 'timber':
+      return 'Timber';
+    case 'mixed':
+      return 'Combination';
+    default:
+      return toTitleCase(module.roofMaterial);
   }
-
-  return module ? toTitleCase(module.roofMaterial) : null;
 }
 
 export function deriveCrewShortCode(shortCode: unknown, name: unknown): string | null {

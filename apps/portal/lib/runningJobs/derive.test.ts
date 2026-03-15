@@ -176,6 +176,40 @@ describe('deriveRunningJobFields', () => {
     expect(derived.effectiveLightsStatus).toBe('Yes');
   });
 
+  it('normalizes roofing labels to the three ops categories', () => {
+    const timber = deriveRunningJobFields(
+      makeEstimate({
+        inputs: {
+          ...(makeEstimate().inputs as any),
+          modules: [
+            {
+              ...(makeEstimate().inputs as any).modules[0],
+              roofMaterial: 'timber',
+            },
+          ],
+        },
+      }),
+      null,
+    );
+    const combination = deriveRunningJobFields(
+      makeEstimate({
+        inputs: {
+          ...(makeEstimate().inputs as any),
+          modules: [
+            {
+              ...(makeEstimate().inputs as any).modules[0],
+              roofMaterial: 'mixed',
+            },
+          ],
+        },
+      }),
+      null,
+    );
+
+    expect(timber.derived.roofing_text).toBe('Timber');
+    expect(combination.derived.roofing_text).toBe('Combination');
+  });
+
   it('returns TBC for estimate-backed statuses when no estimate exists', () => {
     const derived = deriveRunningJobFields(null, null);
 
