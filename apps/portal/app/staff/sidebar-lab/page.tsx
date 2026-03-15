@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react';
-import SidebarRevealOverlayLab from '@/components/navigation/SidebarRevealOverlayLab';
 
 const sectionStyle: CSSProperties = {
   display: 'flex',
@@ -25,7 +24,6 @@ const copyStyle: CSSProperties = {
 export default function SidebarLabPage() {
   return (
     <>
-      <SidebarRevealOverlayLab />
       <main
         style={{
           display: 'flex',
