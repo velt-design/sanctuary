@@ -2,6 +2,22 @@ export type RunningJobStage = 'SENT' | 'DEPOSIT' | 'SCHEDULED' | 'COMPLETED' | '
 
 export type RunningJobStatusValue = 'No' | 'Yes' | 'TBC';
 
+export type RunningJobEditableCellKey =
+  | 'client_name'
+  | 'phone_number'
+  | 'site_address'
+  | 'site_visit_rep'
+  | 'deposit_paid_date'
+  | 'materials_ordered'
+  | 'estimated_start_date'
+  | 'final_payment_date'
+  | 'job_assigned_to'
+  | 'job_completed'
+  | 'lights_status'
+  | 'install_days'
+  | 'roofing_ordered'
+  | 'running_notes';
+
 export type RunningJobCellKey =
   | 'client_name'
   | 'phone_number'
@@ -122,3 +138,45 @@ export type RunningJobsResponse = {
     rows: RunningJobRow[];
   }>;
 };
+
+export type RunningJobCellMutationRequest = {
+  projectId: string;
+  rowVersion: string;
+  key: RunningJobEditableCellKey;
+  value: unknown;
+  force?: boolean;
+  finishEarlyAction?: 'pull_forward' | 'keep_schedule';
+};
+
+export type RunningJobCellMutationSuccess = {
+  ok: true;
+  updatedRow: RunningJobRow;
+};
+
+export type RunningJobCellMutationRequiresConfirmation = {
+  requires_confirmation: true;
+  impacts: Array<{
+    job_id: string;
+    scheduled_job_id: string;
+    before_start: string | null;
+    after_start: string | null;
+  }>;
+};
+
+export type RunningJobCellMutationRequiresFinishEarly = {
+  requires_finish_early: true;
+  freed_days: number;
+  actual_finish: string;
+  forecast_end_exclusive: string | null;
+  impacts: Array<{
+    job_id: string;
+    scheduled_job_id: string;
+    before_start: string | null;
+    after_start: string | null;
+  }>;
+};
+
+export type RunningJobCellMutationResponse =
+  | RunningJobCellMutationSuccess
+  | RunningJobCellMutationRequiresConfirmation
+  | RunningJobCellMutationRequiresFinishEarly;

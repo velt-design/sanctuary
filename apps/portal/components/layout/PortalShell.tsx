@@ -18,12 +18,14 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const { status, email, role } = usePortalSession();
 
   const isLogin = typeof pathname === 'string' && pathname.startsWith('/login');
-  const isSchedulePath =
+  const isViewportLockedPath =
     typeof pathname === 'string' &&
     (pathname === '/schedule' ||
       pathname.startsWith('/schedule/') ||
       pathname === '/staff/schedule' ||
-      pathname.startsWith('/staff/schedule/'));
+      pathname.startsWith('/staff/schedule/') ||
+      pathname === '/staff/running-jobs' ||
+      pathname.startsWith('/staff/running-jobs/'));
   const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';
 
   useEffect(() => {
@@ -35,10 +37,10 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   if (status !== 'authenticated') return null;
 
   return (
-    <div className={cx(styles.shell, isSchedulePath && styles.shellViewportLocked)}>
+    <div className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}>
       <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
       <SidebarRevealOverlayLab />
-      <div className={cx(styles.content, isSchedulePath && styles.contentViewportLocked)} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
+      <div className={cx(styles.content, isViewportLockedPath && styles.contentViewportLocked)} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
         {children}
       </div>
     </div>

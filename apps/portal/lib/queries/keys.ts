@@ -37,6 +37,7 @@ export const qk = {
       ['schedule', host, 'gantt', rangeStart, rangeEnd, today] as const,
   },
   runningJobs: {
+    list: (host: string) => ['runningJobs', host, 'list'] as const,
     snapshot: (host: string) => ['runningJobs', host, 'snapshot'] as const,
   },
   siteVisits: {

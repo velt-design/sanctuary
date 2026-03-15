@@ -6,6 +6,7 @@ import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { deriveCrewShortCode, deriveRunningJobFields, getLatestRunningJobsEstimate, type RunningJobsEstimateLite } from './derive';
+import { groupRunningJobRows } from './group';
 import type { RunningJobRow, RunningJobsResponse, RunningJobStatusValue } from './types';
 
 const INCLUDED_STAGES = new Set(['SENT', 'DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
@@ -83,20 +84,6 @@ function toYmd(value: unknown): string | null {
   return match ? match[1] : null;
 }
 
-function toDateYear(value: string | null | undefined, fallback: string | null | undefined): number {
-  const primary = typeof value === 'string' ? value.trim() : '';
-  if (primary) {
-    const match = primary.match(/^(\d{4})/);
-    if (match) return Number(match[1]);
-  }
-  const secondary = typeof fallback === 'string' ? fallback.trim() : '';
-  if (secondary) {
-    const match = secondary.match(/^(\d{4})/);
-    if (match) return Number(match[1]);
-  }
-  return new Date().getFullYear();
-}
-
 function contactFromProject(project: ProjectRow): { id: string | null; name: string; phone: string; updatedAt: string | null } {
   const raw = Array.isArray(project.contacts) ? project.contacts[0] : project.contacts ?? null;
   return {
@@ -143,15 +130,6 @@ function compareQuoteVersions(a: QuoteVersionRow, b: QuoteVersionRow): number {
   return String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''));
 }
 
-function compareRows(a: RunningJobRow, b: RunningJobRow): number {
-  const aDate = a.cells.estimated_start_date;
-  const bDate = b.cells.estimated_start_date;
-  if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate);
-  if (aDate && !bDate) return -1;
-  if (!aDate && bDate) return 1;
-  return a.cells.client_name.localeCompare(b.cells.client_name, undefined, { sensitivity: 'base' });
-}
-
 function isMissingSchemaError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const code = typeof (error as any).code === 'string' ? (error as any).code.trim() : '';
@@ -159,25 +137,31 @@ function isMissingSchemaError(error: unknown): boolean {
   return code === 'PGRST204' || code === '42703' || message.includes('does not exist') || message.includes('missing');
 }
 
-async function loadProjectsAndCrews(): Promise<{ projects: ProjectRow[]; crews: RunningJobsResponse['lookups']['crews'] }> {
+async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ projects: ProjectRow[]; crews: RunningJobsResponse['lookups']['crews'] }> {
+  const projectsQuery = supabaseServer
+    .from('projects')
+    .select(
+      [
+        'id',
+        'name',
+        'contact_id',
+        'site_address',
+        'pipeline_stage',
+        'created_at',
+        'updated_at',
+        'deposit_paid_date',
+        'final_payment_date',
+        'contacts ( id, name, phone, updated_at )',
+      ].join(','),
+    )
+    .is('archived_at', null);
+
+  if (projectIdsFilter?.length) {
+    projectsQuery.in('id', projectIdsFilter);
+  }
+
   const [projectsRes, crewsRes] = await Promise.all([
-    supabaseServer
-      .from('projects')
-      .select(
-        [
-          'id',
-          'name',
-          'contact_id',
-          'site_address',
-          'pipeline_stage',
-          'created_at',
-          'updated_at',
-          'deposit_paid_date',
-          'final_payment_date',
-          'contacts ( id, name, phone, updated_at )',
-        ].join(','),
-      )
-      .is('archived_at', null),
+    projectsQuery,
     supabaseServer.from('schedule_crews').select('id, name, short_code, color, sort_order, is_active').order('sort_order', { ascending: true }),
   ]);
 
@@ -208,9 +192,9 @@ async function loadProjectsAndCrews(): Promise<{ projects: ProjectRow[]; crews: 
   return { projects, crews };
 }
 
-export async function loadRunningJobs(): Promise<RunningJobsResponse> {
+async function loadRunningJobsByProjectIds(projectIdsFilter?: string[]): Promise<RunningJobsResponse> {
   const generatedAt = new Date().toISOString();
-  const { projects, crews } = await loadProjectsAndCrews();
+  const { projects, crews } = await loadProjectsAndCrews(projectIdsFilter);
   const projectIds = projects.map((project) => project.id).filter(Boolean);
 
   const salesPeople = SALES_PEOPLE.map((person) => ({
@@ -281,8 +265,9 @@ export async function loadRunningJobs(): Promise<RunningJobsResponse> {
   const salesPeopleById = new Map(salesPeople.map((person) => [person.id, person]));
   const crewsById = new Map(crews.map((crew) => [crew.id, crew]));
 
+  const siteVisitRows = Array.isArray(siteVisitsRes.data) ? (siteVisitsRes.data as any[]) : [];
   const siteVisitByProjectId = new Map<string, SiteVisitRow>();
-  for (const row of Array.isArray(siteVisitsRes.data) ? siteVisitsRes.data : []) {
+  for (const row of siteVisitRows) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
     if (!projectId) continue;
     siteVisitByProjectId.set(projectId, {
@@ -294,8 +279,9 @@ export async function loadRunningJobs(): Promise<RunningJobsResponse> {
     });
   }
 
+  const scheduledJobRows = Array.isArray(scheduledJobsRes.data) ? (scheduledJobsRes.data as any[]) : [];
   const scheduledJobByProjectId = new Map<string, ScheduledJobRow>();
-  for (const row of Array.isArray(scheduledJobsRes.data) ? scheduledJobsRes.data : []) {
+  for (const row of scheduledJobRows) {
     const projectId = typeof row?.job_id === 'string' ? row.job_id : '';
     if (!projectId) continue;
     scheduledJobByProjectId.set(projectId, {
@@ -313,10 +299,12 @@ export async function loadRunningJobs(): Promise<RunningJobsResponse> {
     });
   }
 
-  const tasksByProjectId = taskSetByProject((Array.isArray(tasksRes.data) ? tasksRes.data : []) as TaskRow[]);
+  const taskRows = Array.isArray(tasksRes.data) ? (tasksRes.data as TaskRow[]) : [];
+  const tasksByProjectId = taskSetByProject(taskRows);
 
+  const metaRows = Array.isArray(metaRes.data) ? (metaRes.data as any[]) : [];
   const metaByProjectId = new Map<string, MetaRow>();
-  for (const row of Array.isArray(metaRes.data) ? metaRes.data : []) {
+  for (const row of metaRows) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
     if (!projectId) continue;
     metaByProjectId.set(projectId, {
@@ -327,8 +315,9 @@ export async function loadRunningJobs(): Promise<RunningJobsResponse> {
     });
   }
 
+  const estimateRows = Array.isArray(estimatesRes.data) ? (estimatesRes.data as any[]) : [];
   const estimatesByProjectId = new Map<string, RunningJobsEstimateLite[]>();
-  for (const row of Array.isArray(estimatesRes.data) ? estimatesRes.data : []) {
+  for (const row of estimateRows) {
     const projectId = typeof row?.project_id === 'string' ? row.project_id : '';
     if (!projectId) continue;
     const bucket = estimatesByProjectId.get(projectId) ?? [];
@@ -365,7 +354,7 @@ export async function loadRunningJobs(): Promise<RunningJobsResponse> {
     }
   }
 
-  const rows: Array<{ year: number; row: RunningJobRow }> = [];
+  const rows: RunningJobRow[] = [];
 
   for (const project of projects) {
     const normalizedStage = normalizeProjectStatus(project.pipeline_stage);
@@ -476,25 +465,8 @@ export async function loadRunningJobs(): Promise<RunningJobsResponse> {
       },
     };
 
-    rows.push({
-      year: toDateYear(estimatedStartDate, project.created_at),
-      row,
-    });
+    rows.push(row);
   }
-
-  const groupsMap = new Map<number, RunningJobRow[]>();
-  for (const entry of rows) {
-    const bucket = groupsMap.get(entry.year) ?? [];
-    bucket.push(entry.row);
-    groupsMap.set(entry.year, bucket);
-  }
-
-  const groups = Array.from(groupsMap.entries())
-    .sort((a, b) => b[0] - a[0])
-    .map(([year, yearRows]) => ({
-      year,
-      rows: yearRows.sort(compareRows),
-    }));
 
   return {
     generatedAt,
@@ -502,8 +474,17 @@ export async function loadRunningJobs(): Promise<RunningJobsResponse> {
       crews,
       salesPeople,
     },
-    groups,
+    groups: groupRunningJobRows(rows),
   };
+}
+
+export async function loadRunningJobs(): Promise<RunningJobsResponse> {
+  return loadRunningJobsByProjectIds();
+}
+
+export async function loadRunningJobRow(projectUuid: string): Promise<RunningJobRow | null> {
+  const payload = await loadRunningJobsByProjectIds([projectUuid]);
+  return payload.groups[0]?.rows[0] ?? null;
 }
 
 export { isMissingSchemaError };

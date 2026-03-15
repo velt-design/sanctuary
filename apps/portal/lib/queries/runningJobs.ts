@@ -7,7 +7,7 @@ const TWO_MINUTES = 1000 * 60 * 2;
 
 export const runningJobsQueryOptions = (host: string) =>
   queryOptions({
-    queryKey: qk.runningJobs.snapshot(host),
+    queryKey: qk.runningJobs.list(host),
     queryFn: fetchRunningJobs,
     staleTime: TWO_MINUTES,
     gcTime: ONE_DAY,
