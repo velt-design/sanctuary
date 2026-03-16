@@ -55,6 +55,27 @@ type Filters = {
   showCompleted: boolean;
 };
 
+type SheetDisplayColumn =
+  | {
+      kind: 'actual';
+      actualIndex: number;
+      column: RunningJobsColumnConfig;
+      letter: string;
+      widthPx: number;
+    }
+  | {
+      kind: 'filler';
+      actualIndex: number;
+      key: string;
+      letter: string;
+      widthPx: number;
+    };
+
+type SheetDisplayRow =
+  | { kind: 'year'; year: number }
+  | { kind: 'project'; row: RunningJobRow; rowNumber: number; source: 'live' }
+  | { kind: 'filler'; key: string };
+
 const DEFAULT_FILTERS: Filters = {
   search: '',
   year: 'all',
@@ -66,6 +87,20 @@ const DEFAULT_FILTERS: Filters = {
 
 const ALL_CELLS = RUNNING_JOBS_COLUMNS.map((column) => column.key);
 const TODAY_YMD = new Date().toISOString().slice(0, 10);
+const SHEET_ZOOM_STORAGE_KEY = 'sp_running_jobs_sheet_zoom_v1';
+const SHEET_ZOOM_MIN = 50;
+const SHEET_ZOOM_MAX = 200;
+const SHEET_ZOOM_STEP = 5;
+const SHEET_ZOOM_DEFAULT = 100;
+const SHEET_ZOOM_PRESETS = [50, 75, 100, 125, 150, 200] as const;
+const SHEET_ROW_NUMBER_WIDTH_PX = 58;
+const SHEET_LETTER_BAND_HEIGHT_PX = 28;
+const SHEET_HEADER_HEIGHT_PX = 54;
+const SHEET_PROJECT_ROW_HEIGHT_PX = 46;
+const SHEET_YEAR_ROW_HEIGHT_PX = 32;
+const SHEET_FILLER_COLUMN_WIDTH_PX = 118;
+const MIN_FILLER_COLUMNS = 6;
+const MIN_FILLER_ROWS = 12;
 
 function cellId(projectId: string, key: RunningJobCellKey): string {
   return `${projectId}:${key}`;
@@ -79,13 +114,57 @@ function countRows(groups: RunningJobsResponse['groups']): number {
   return groups.reduce((sum, group) => sum + group.rows.length, 0);
 }
 
-function stickyLeftFor(columnIndex: number): number {
-  let left = 0;
+function clampSheetZoomPercent(value: number): number {
+  if (!Number.isFinite(value)) return SHEET_ZOOM_DEFAULT;
+  return Math.max(SHEET_ZOOM_MIN, Math.min(SHEET_ZOOM_MAX, Math.round(value)));
+}
+
+function readSheetZoomPreference(): number {
+  if (typeof window === 'undefined') return SHEET_ZOOM_DEFAULT;
+  try {
+    const raw = window.localStorage.getItem(SHEET_ZOOM_STORAGE_KEY);
+    if (!raw) return SHEET_ZOOM_DEFAULT;
+    return clampSheetZoomPercent(Number.parseInt(raw, 10));
+  } catch {
+    return SHEET_ZOOM_DEFAULT;
+  }
+}
+
+function writeSheetZoomPreference(value: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SHEET_ZOOM_STORAGE_KEY, String(clampSheetZoomPercent(value)));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+function scaledPixels(basePx: number, zoomPercent: number): number {
+  return Math.max(1, Math.round((basePx * zoomPercent) / 100));
+}
+
+function rowNumberWidthPx(zoomPercent: number): number {
+  return scaledPixels(SHEET_ROW_NUMBER_WIDTH_PX, zoomPercent);
+}
+
+function stickyLeftFor(columnIndex: number, zoomPercent: number): number {
+  let left = rowNumberWidthPx(zoomPercent);
   for (let index = 0; index < columnIndex; index += 1) {
     const column = RUNNING_JOBS_COLUMNS[index];
-    if (column?.frozen) left += column.widthPx;
+    if (column?.frozen) left += scaledPixels(column.widthPx, zoomPercent);
   }
   return left;
+}
+
+function toExcelColumnLetter(index: number): string {
+  let next = index + 1;
+  let out = '';
+  while (next > 0) {
+    const remainder = (next - 1) % 26;
+    out = String.fromCharCode(65 + remainder) + out;
+    next = Math.floor((next - 1) / 26);
+  }
+  return out;
 }
 
 function formatCellValue(row: RunningJobRow, key: RunningJobCellKey): string {
@@ -118,6 +197,10 @@ function isPrintableKey(event: ReactKeyboardEvent): boolean {
 
 function isCompletedRow(row: RunningJobRow): boolean {
   return row.cells.job_completed || row.stage === 'COMPLETED' || row.stage === 'PAID';
+}
+
+function isPresetZoom(value: number): boolean {
+  return SHEET_ZOOM_PRESETS.includes(value as (typeof SHEET_ZOOM_PRESETS)[number]);
 }
 
 function promptForFinishEarly(freedDays: number): 'pull_forward' | 'keep_schedule' | null {
@@ -236,8 +319,51 @@ function patchResponse(
   };
 }
 
-function cellStyle(column: RunningJobsColumnConfig, index: number): React.CSSProperties | undefined {
-  return column.frozen ? { left: stickyLeftFor(index) } : undefined;
+function cellStyle(column: RunningJobsColumnConfig, index: number, zoomPercent: number): React.CSSProperties | undefined {
+  return column.frozen ? { left: stickyLeftFor(index, zoomPercent) } : undefined;
+}
+
+function buildDisplayRows(filteredGroups: RunningJobsResponse['groups'], rowNumberByProjectId: Map<string, number>, fillerRowCount: number): SheetDisplayRow[] {
+  const rows: SheetDisplayRow[] = [];
+  for (const group of filteredGroups) {
+    rows.push({ kind: 'year', year: group.year });
+    for (const row of group.rows) {
+      rows.push({
+        kind: 'project',
+        row,
+        rowNumber: rowNumberByProjectId.get(row.projectId) ?? 0,
+        source: 'live',
+      });
+    }
+  }
+  for (let index = 0; index < fillerRowCount; index += 1) {
+    rows.push({ kind: 'filler', key: `filler_${index}` });
+  }
+  return rows;
+}
+
+function buildDisplayColumns(fillerColumnCount: number): SheetDisplayColumn[] {
+  return [
+    ...RUNNING_JOBS_COLUMNS.map(
+      (column, actualIndex): SheetDisplayColumn => ({
+        kind: 'actual',
+        actualIndex,
+        column,
+        letter: column.letter,
+        widthPx: column.widthPx,
+      }),
+    ),
+    ...Array.from({ length: fillerColumnCount }, (_, fillerIndex): SheetDisplayColumn => {
+      const actualIndex = RUNNING_JOBS_COLUMNS.length + fillerIndex;
+      return {
+        kind: 'filler',
+        actualIndex,
+        key: `filler_col_${fillerIndex}`,
+        letter: toExcelColumnLetter(actualIndex),
+        widthPx: SHEET_FILLER_COLUMN_WIDTH_PX,
+      };
+    }),
+  ];
 }
 
 function Toolbar({
@@ -249,6 +375,11 @@ function Toolbar({
   totalRows,
   visibleRows,
   generatedAt,
+  zoomPercent,
+  zoomPresetValue,
+  onZoomChange,
+  onZoomStep,
+  onFitVisibleColumns,
 }: {
   filters: Filters;
   onChange: (patch: Partial<Filters>) => void;
@@ -258,6 +389,11 @@ function Toolbar({
   totalRows: number;
   visibleRows: number;
   generatedAt: string | null;
+  zoomPercent: number;
+  zoomPresetValue: string;
+  onZoomChange: (value: number) => void;
+  onZoomStep: (direction: -1 | 1) => void;
+  onFitVisibleColumns: () => void;
 }) {
   return (
     <div className={styles.toolbar}>
@@ -306,6 +442,37 @@ function Toolbar({
         <span>Show completed</span>
       </label>
 
+      <div className={styles.zoomControls} aria-label="Sheet zoom controls">
+        <button type="button" className={styles.zoomButton} onClick={() => onZoomStep(-1)} aria-label="Zoom out">
+          -
+        </button>
+        <input
+          className={styles.zoomSlider}
+          type="range"
+          min={SHEET_ZOOM_MIN}
+          max={SHEET_ZOOM_MAX}
+          step={SHEET_ZOOM_STEP}
+          value={zoomPercent}
+          onChange={(event) => onZoomChange(Number.parseInt(event.target.value, 10))}
+          aria-label="Sheet zoom"
+        />
+        <button type="button" className={styles.zoomButton} onClick={() => onZoomStep(1)} aria-label="Zoom in">
+          +
+        </button>
+        <select className={styles.zoomPreset} value={zoomPresetValue} onChange={(event) => onZoomChange(Number.parseInt(event.target.value, 10))} aria-label="Zoom preset">
+          {SHEET_ZOOM_PRESETS.map((preset) => (
+            <option key={preset} value={preset}>
+              {preset}%
+            </option>
+          ))}
+          {!isPresetZoom(zoomPercent) ? <option value={zoomPercent}>{zoomPercent}%</option> : null}
+        </select>
+        <button type="button" className={styles.fitButton} onClick={onFitVisibleColumns}>
+          Fit visible columns
+        </button>
+        <span className={styles.zoomValue}>{zoomPercent}%</span>
+      </div>
+
       <div className={styles.meta}>
         <span>
           {visibleRows} of {totalRows} jobs
@@ -324,10 +491,12 @@ export default function RunningJobsClient() {
   const query = useQuery(runningJobsQueryOptions(host));
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [zoomPercent, setZoomPercent] = useState<number>(() => readSheetZoomPreference());
   const [activeCell, setActiveCell] = useState<ActiveCell | null>(null);
   const [editing, setEditing] = useState<EditingCell | null>(null);
   const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
   const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
+  const [gridViewport, setGridViewport] = useState({ width: 0, height: 0 });
 
   const gridRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null>(null);
@@ -345,11 +514,47 @@ export default function RunningJobsClient() {
   const filteredGroups = useMemo(() => groupRowsByFilters(allGroups, filters), [allGroups, filters]);
   const allRows = useMemo(() => flattenRunningJobGroups(allGroups), [allGroups]);
   const visibleRows = useMemo(() => flattenRunningJobGroups(filteredGroups), [filteredGroups]);
+  const rowNumberByProjectId = useMemo(() => new Map(allRows.map((row, index) => [row.projectId, index + 1])), [allRows]);
   const rowsByProjectId = useMemo(() => new Map(allRows.map((row) => [row.projectId, row])), [allRows]);
   const visibleProjectIds = useMemo(() => new Set(visibleRows.map((row) => row.projectId)), [visibleRows]);
 
   const years = useMemo(() => Array.from(new Set(allRows.map((row) => String(row.cells.estimated_start_date?.slice(0, 4) ?? row.state.projectCreatedAt?.slice(0, 4) ?? '')))).filter(Boolean).sort().reverse(), [allRows]);
   const stages = useMemo(() => Array.from(new Set(allRows.map((row) => row.stage))).sort(), [allRows]);
+  const actualColumnsWidthPx = useMemo(() => RUNNING_JOBS_COLUMNS.reduce((sum, column) => sum + column.widthPx, 0), []);
+  const scaledActualColumnsWidthPx = useMemo(
+    () => RUNNING_JOBS_COLUMNS.reduce((sum, column) => sum + scaledPixels(column.widthPx, zoomPercent), 0),
+    [zoomPercent],
+  );
+  const fillerColumnCount = useMemo(() => {
+    const fillerWidth = scaledPixels(SHEET_FILLER_COLUMN_WIDTH_PX, zoomPercent);
+    const remaining = Math.max(0, gridViewport.width - rowNumberWidthPx(zoomPercent) - scaledActualColumnsWidthPx);
+    return Math.max(MIN_FILLER_COLUMNS, Math.ceil(remaining / Math.max(1, fillerWidth)) + 2);
+  }, [gridViewport.width, scaledActualColumnsWidthPx, zoomPercent]);
+  const projectRowHeightPx = useMemo(() => scaledPixels(SHEET_PROJECT_ROW_HEIGHT_PX, zoomPercent), [zoomPercent]);
+  const yearRowHeightPx = useMemo(() => scaledPixels(SHEET_YEAR_ROW_HEIGHT_PX, zoomPercent), [zoomPercent]);
+  const fillerRowCount = useMemo(() => {
+    const existingBodyHeight = visibleRows.length * projectRowHeightPx + filteredGroups.length * yearRowHeightPx;
+    const remaining = Math.max(
+      0,
+      gridViewport.height - scaledPixels(SHEET_LETTER_BAND_HEIGHT_PX, zoomPercent) - scaledPixels(SHEET_HEADER_HEIGHT_PX, zoomPercent) - existingBodyHeight,
+    );
+    return Math.max(MIN_FILLER_ROWS, Math.ceil(remaining / Math.max(1, projectRowHeightPx)) + 2);
+  }, [filteredGroups.length, gridViewport.height, projectRowHeightPx, visibleRows.length, yearRowHeightPx, zoomPercent]);
+  const displayColumns = useMemo(() => buildDisplayColumns(fillerColumnCount), [fillerColumnCount]);
+  const displayRows = useMemo(() => buildDisplayRows(filteredGroups, rowNumberByProjectId, fillerRowCount), [filteredGroups, fillerRowCount, rowNumberByProjectId]);
+  const zoomPresetValue = isPresetZoom(zoomPercent) ? String(zoomPercent) : String(zoomPercent);
+  const sheetVars = useMemo(
+    () =>
+      ({
+        '--sheet-scale': String(zoomPercent / 100),
+        '--sheet-row-number-width': `${rowNumberWidthPx(zoomPercent)}px`,
+        '--sheet-letter-band-height': `${scaledPixels(SHEET_LETTER_BAND_HEIGHT_PX, zoomPercent)}px`,
+        '--sheet-header-height': `${scaledPixels(SHEET_HEADER_HEIGHT_PX, zoomPercent)}px`,
+        '--sheet-row-height': `${projectRowHeightPx}px`,
+        '--sheet-year-row-height': `${yearRowHeightPx}px`,
+      }) as React.CSSProperties,
+    [projectRowHeightPx, yearRowHeightPx, zoomPercent],
+  );
 
   useEffect(() => {
     if (!visibleRows.length) {
@@ -360,6 +565,10 @@ export default function RunningJobsClient() {
     if (activeCell && visibleProjectIds.has(activeCell.projectId)) return;
     setActiveCell({ projectId: visibleRows[0].projectId, key: 'client_name' });
   }, [activeCell, visibleProjectIds, visibleRows]);
+
+  useEffect(() => {
+    writeSheetZoomPreference(zoomPercent);
+  }, [zoomPercent]);
 
   useEffect(() => {
     if (!editing) return;
@@ -375,6 +584,23 @@ export default function RunningJobsClient() {
     node?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [activeCell]);
 
+  useEffect(() => {
+    const node = gridRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+
+    const measure = () => {
+      setGridViewport({
+        width: node.clientWidth,
+        height: node.clientHeight,
+      });
+    };
+
+    measure();
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
   const setCellRef = useCallback((id: string, node: HTMLTableCellElement | null) => {
     if (!node) {
       cellRefs.current.delete(id);
@@ -387,6 +613,62 @@ export default function RunningJobsClient() {
     window.setTimeout(() => {
       setConflictCells((prev) => setInRecord(prev, id, false));
     }, 4000);
+  }, []);
+
+  const updateZoomPercent = useCallback((value: number) => {
+    setZoomPercent(clampSheetZoomPercent(value));
+  }, []);
+
+  const handleZoomStep = useCallback(
+    (direction: -1 | 1) => {
+      updateZoomPercent(zoomPercent + direction * SHEET_ZOOM_STEP);
+    },
+    [updateZoomPercent, zoomPercent],
+  );
+
+  const handleFitVisibleColumns = useCallback(() => {
+    if (!gridViewport.width) return;
+    const next = clampSheetZoomPercent((gridViewport.width / Math.max(1, SHEET_ROW_NUMBER_WIDTH_PX + actualColumnsWidthPx)) * 100);
+    setZoomPercent(next);
+  }, [actualColumnsWidthPx, gridViewport.width]);
+
+  useEffect(() => {
+    const node = gridRef.current;
+    if (!node) return;
+
+    let lastGestureScale = 1;
+
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      setZoomPercent((prev) => clampSheetZoomPercent(prev - event.deltaY / 12));
+    };
+
+    const onGestureStart = (event: Event) => {
+      const gestureEvent = event as Event & { scale?: number; preventDefault: () => void };
+      gestureEvent.preventDefault();
+      lastGestureScale = typeof gestureEvent.scale === 'number' && Number.isFinite(gestureEvent.scale) ? gestureEvent.scale : 1;
+    };
+
+    const onGestureChange = (event: Event) => {
+      const gestureEvent = event as Event & { scale?: number; preventDefault: () => void };
+      gestureEvent.preventDefault();
+      const scale = typeof gestureEvent.scale === 'number' && Number.isFinite(gestureEvent.scale) ? gestureEvent.scale : lastGestureScale;
+      if (!Number.isFinite(scale) || scale <= 0) return;
+      const factor = scale / Math.max(0.0001, lastGestureScale);
+      lastGestureScale = scale;
+      setZoomPercent((prev) => clampSheetZoomPercent(prev * factor));
+    };
+
+    node.addEventListener('wheel', onWheel, { passive: false });
+    node.addEventListener('gesturestart', onGestureStart as EventListener, { passive: false } as AddEventListenerOptions);
+    node.addEventListener('gesturechange', onGestureChange as EventListener, { passive: false } as AddEventListenerOptions);
+
+    return () => {
+      node.removeEventListener('wheel', onWheel);
+      node.removeEventListener('gesturestart', onGestureStart as EventListener);
+      node.removeEventListener('gesturechange', onGestureChange as EventListener);
+    };
   }, []);
 
   const persistCell = useCallback(
@@ -773,13 +1055,6 @@ export default function RunningJobsClient() {
 
       <div className={styles.stack}>
         <section className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <div>
-              <h2 className={styles.sectionTitle}>Live Sheet</h2>
-              <p className={styles.sectionCopy}>Shared operations grid for live install jobs. Schedule remains authoritative for crew, dates, completion, and install days.</p>
-            </div>
-          </div>
-
           <Toolbar
             filters={filters}
             onChange={(patch) => setFilters((prev) => ({ ...prev, ...patch }))}
@@ -789,6 +1064,11 @@ export default function RunningJobsClient() {
             totalRows={allRows.length}
             visibleRows={countRows(filteredGroups)}
             generatedAt={query.data?.generatedAt ?? null}
+            zoomPercent={zoomPercent}
+            zoomPresetValue={zoomPresetValue}
+            onZoomChange={updateZoomPercent}
+            onZoomStep={handleZoomStep}
+            onFitVisibleColumns={handleFitVisibleColumns}
           />
 
           {query.isLoading && !query.data ? (
@@ -798,40 +1078,94 @@ export default function RunningJobsClient() {
           ) : !visibleRows.length ? (
             <div className={styles.emptyTable}>No matching jobs.</div>
           ) : (
-            <div ref={gridRef} className={styles.tableScroller} tabIndex={0} onKeyDown={handleGridKeyDown}>
+            <div ref={gridRef} className={styles.tableScroller} style={sheetVars} tabIndex={0} onKeyDown={handleGridKeyDown}>
               <table className={styles.table}>
                 <colgroup>
-                  {RUNNING_JOBS_COLUMNS.map((column) => (
-                    <col key={column.key} style={{ width: column.widthPx }} />
+                  <col style={{ width: rowNumberWidthPx(zoomPercent) }} />
+                  {displayColumns.map((column) => (
+                    <col key={column.kind === 'actual' ? column.column.key : column.key} style={{ width: scaledPixels(column.widthPx, zoomPercent) }} />
                   ))}
                 </colgroup>
                 <thead>
-                  <tr>
-                    {RUNNING_JOBS_COLUMNS.map((column, index) => (
+                  <tr className={styles.letterRow}>
+                    <th className={`${styles.cornerCell} ${styles.rowNumberBandCell}`} />
+                    {displayColumns.map((column) => (
                       <th
-                        key={column.key}
-                        className={`${styles.headerCell} ${column.frozen ? styles.frozenCell : ''}`}
-                        style={cellStyle(column, index)}
+                        key={column.kind === 'actual' ? `${column.column.key}_letter` : `${column.key}_letter`}
+                        className={`${styles.letterCell} ${column.kind === 'actual' && column.column.frozen ? styles.frozenLetterCell : ''}`}
+                        style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
                         scope="col"
                       >
-                        <span className={styles.headerLetter}>{column.letter}</span>
-                        <span className={styles.headerLabel}>{column.label}</span>
-                        {column.source === 'estimate' ? <span className={styles.headerSource}>Estimate</span> : null}
-                        {column.source === 'schedule' ? <span className={styles.headerSource}>Schedule</span> : null}
+                        {column.letter}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr className={styles.labelsRow}>
+                    <th className={`${styles.rowNumberHeaderCell} ${styles.rowNumberBandCell}`} />
+                    {displayColumns.map((column) => (
+                      <th
+                        key={column.kind === 'actual' ? `${column.column.key}_header` : `${column.key}_header`}
+                        className={
+                          column.kind === 'actual'
+                            ? `${styles.headerCell} ${column.column.frozen ? styles.frozenHeaderCell : ''}`
+                            : styles.fillerHeaderCell
+                        }
+                        style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
+                        scope="col"
+                      >
+                        {column.kind === 'actual' ? (
+                          <>
+                            <span className={styles.headerLabel}>{column.column.label}</span>
+                            {column.column.source === 'estimate' ? <span className={styles.headerSource}>Estimate</span> : null}
+                            {column.column.source === 'schedule' ? <span className={styles.headerSource}>Schedule</span> : null}
+                          </>
+                        ) : null}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                {filteredGroups.map((group) => (
-                  <tbody key={group.year}>
-                    <tr>
-                      <th className={styles.yearRow} colSpan={RUNNING_JOBS_COLUMNS.length} scope="rowgroup">
-                        {group.year}
-                      </th>
-                    </tr>
-                    {group.rows.map((row) => (
+                <tbody>
+                  {displayRows.map((displayRow) => {
+                    if (displayRow.kind === 'year') {
+                      return (
+                        <tr key={`year_${displayRow.year}`} className={styles.yearDividerRow}>
+                          <th className={`${styles.rowNumberCell} ${styles.rowNumberBlankCell}`} />
+                          <th className={styles.yearRow} colSpan={displayColumns.length} scope="rowgroup">
+                            {displayRow.year}
+                          </th>
+                        </tr>
+                      );
+                    }
+
+                    if (displayRow.kind === 'filler') {
+                      return (
+                        <tr key={displayRow.key} className={styles.fillerRow}>
+                          <th className={`${styles.rowNumberCell} ${styles.rowNumberBlankCell}`} />
+                          {displayColumns.map((column) => (
+                            <td
+                              key={column.kind === 'actual' ? `${displayRow.key}_${column.column.key}` : `${displayRow.key}_${column.key}`}
+                              className={`${styles.bodyCell} ${styles.fillerCell} ${
+                                column.kind === 'actual' && column.column.frozen ? styles.frozenFillerCell : ''
+                              }`}
+                              style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
+                            />
+                          ))}
+                        </tr>
+                      );
+                    }
+
+                    const { row, rowNumber } = displayRow;
+                    return (
                       <tr key={row.projectId} className={getRowClasses(row)}>
-                        {RUNNING_JOBS_COLUMNS.map((column, index) => {
+                        <th className={styles.rowNumberCell} scope="row">
+                          {rowNumber}
+                        </th>
+                        {displayColumns.map((displayColumn) => {
+                          if (displayColumn.kind === 'filler') {
+                            return <td key={`${row.projectId}_${displayColumn.key}`} className={`${styles.bodyCell} ${styles.fillerCell}`} />;
+                          }
+
+                          const column = displayColumn.column;
                           const id = cellId(row.projectId, column.key);
                           const isActive = activeCell?.projectId === row.projectId && activeCell?.key === column.key;
                           const isEditing = editing?.projectId === row.projectId && editing?.key === column.key;
@@ -869,7 +1203,7 @@ export default function RunningJobsClient() {
                                 saving: Boolean(savingCells[id]),
                                 conflict: Boolean(conflictCells[id]),
                               })}
-                              style={cellStyle(column, index)}
+                              style={cellStyle(column, displayColumn.actualIndex, zoomPercent)}
                               onClick={() => {
                                 setActiveCell({ projectId: row.projectId, key: column.key });
                                 gridRef.current?.focus();
@@ -887,9 +1221,9 @@ export default function RunningJobsClient() {
                           );
                         })}
                       </tr>
-                    ))}
-                  </tbody>
-                ))}
+                    );
+                  })}
+                </tbody>
               </table>
             </div>
           )}

@@ -29,9 +29,12 @@ Reason:
 
 - Columns `A-S` only
 - Year separators
-- Secondary `Blinds to install` subsection
-- Sticky header
-- Frozen columns `A-C`
+- Excel-style sheet chrome with separate column-letter and row-number bands
+- Sticky sheet chrome
+- Frozen column `A` only
+- Row numbers tied to canonical project order
+- Sheet zoom controls with per-browser persistence
+- Filler rows and columns for spreadsheet canvas continuity
 - Single-cell edit
 - Keyboard nav
 - Optimistic updates
@@ -42,7 +45,7 @@ Reason:
 - Bulk paste
 - The extra Excel columns visible to the right of `S`
 - A generic formula engine
-- Importing raw `.xlsx`
+- Legacy Excel data import
 - Virtualization
 
 If row count becomes a problem later, add virtualization after the interaction model is stable.
@@ -660,11 +663,10 @@ This prevents the UI and API from drifting on validation.
 
 ### Page composition
 
-Use a single page with three vertical zones:
+Use a single page with two vertical zones:
 
 1. Toolbar
 2. Main running-job grid
-3. `Blinds to install` subsection
 
 Toolbar should include:
 
@@ -673,20 +675,10 @@ Toolbar should include:
 - crew filter
 - stage filter
 - toggle for overdue only
+- toggle for show completed
+- sheet zoom controls
 
-The main grid is the primary operational surface.
-
-The `Blinds to install` subsection is not a separate dataset. It is a saved view of the same rows where:
-
-- `blinds_status = Yes`
-- and the project is still active
-
-V1 meaning:
-
-- this section means "jobs that include blinds"
-- it does not yet mean "blinds-only follow-up still outstanding after pergola completion"
-
-If ops later needs true blinds completion tracking, add a dedicated operational field instead of inferring it from the estimate.
+The main grid is the operational surface. Jobs that include blinds remain in the main list.
 
 ### Cell presentation
 
@@ -704,6 +696,7 @@ Use a purpose-built grid, not a generic data table abstraction.
 
 Reason:
 
+- Separate row-number and column-letter bands
 - Frozen columns
 - Spreadsheet keyboard rules
 - Active-cell editing
@@ -713,10 +706,41 @@ Reason:
 
 Use a normal scroll container with:
 
-- sticky header
-- sticky left offsets for `A-C`
+- sticky column-letter band
+- sticky row-number band
+- sticky field-label header row
+- sticky left offset for `A`
 
 The interaction model is more important than premature scaling.
+
+### Sheet chrome and numbering
+
+- Remove the extra in-card title and descriptive copy from the page
+- Add a dedicated top band for column letters
+- Add a dedicated left band for row numbers
+- Keep the field-label header in its own row below the letter band
+- Keep a blank top-left corner cell where the two bands intersect
+- Row numbers apply only to real rendered data rows
+- Row numbers apply to live project rows and future visible legacy rows
+- Year divider rows do not receive row numbers
+- Filler rows do not receive row numbers
+- Row numbering starts at `1`
+- Row numbering reflects canonical full-sheet order before filtering
+- Filtering does not renumber rows, so hidden rows create visible gaps
+
+### Zoom and filler canvas
+
+- Persist sheet zoom per browser
+- Provide `-` and `+` controls
+- Provide a zoom slider
+- Provide preset zoom values: `50%`, `75%`, `100%`, `125%`, `150%`, `200%`
+- Provide `Fit visible columns`
+- Do not ship `Fit selection`
+- Implement sheet zoom through shared sizing variables, not CSS transform scaling
+- Treat trackpad pinch as progressive enhancement over the sheet area only
+- Do not globally disable browser page zoom on this page
+- When zooming out, render presentation-only filler rows and columns so the sheet still looks like a grid rather than blank page space
+- Filler rows and columns are not selectable and have no backing data
 
 ## Interaction rules
 
@@ -821,10 +845,16 @@ Because there is no bulk paste in V1, keep optimistic state strictly per-cell.
 ### Phase 5: polish
 
 - add toolbar filters
-- add `Blinds to install` subsection
 - keyboard refinements
 - color rules
 - project link affordances
+
+### Phase 6: legacy sheet import
+
+- import the old Excel running-job list once
+- store imported rows separately from live operational tables
+- dedupe imported rows against live projects
+- render remaining legacy rows inline, greyed, and read-only
 
 ## Testing
 
