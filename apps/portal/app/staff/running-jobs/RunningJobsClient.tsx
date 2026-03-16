@@ -172,13 +172,17 @@ function toExcelColumnLetter(index: number): string {
 }
 
 function formatCellValue(row: RunningJobRow, key: RunningJobCellKey): string {
-  const display = row.displayTextByCell[key];
+  const display = row.displayTextByCell?.[key];
   if (typeof display === 'string') return display;
   const value = row.cells[key];
   if (typeof value === 'boolean') return value ? 'Y' : '';
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
   if (typeof value === 'string') return value;
   return value ?? '';
+}
+
+function isLegacySheetRow(row: RunningJobRow): boolean {
+  return row.source === 'legacy';
 }
 
 function searchTextForCell(row: RunningJobRow, key: RunningJobCellKey): string {
@@ -261,7 +265,7 @@ function getCellClasses(input: {
   conflict: boolean;
 }): string {
   const classNames = [styles.bodyCell];
-  if (input.row.source === 'legacy') classNames.push(styles.legacyCell);
+  if (isLegacySheetRow(input.row)) classNames.push(styles.legacyCell);
   if (input.column.frozen) classNames.push(styles.frozenCell);
   if (input.column.kind === 'notes') classNames.push(styles.notesCell);
   if (input.column.editable) classNames.push(styles.editableCell);
@@ -290,7 +294,7 @@ function getCellClasses(input: {
 
 function getRowClasses(row: RunningJobRow): string {
   const classNames = [styles.row];
-  if (row.source === 'legacy') classNames.push(styles.rowLegacy);
+  if (isLegacySheetRow(row)) classNames.push(styles.rowLegacy);
   if (row.stage === 'DEPOSIT' && !row.state.hasCrewAssigned && !row.state.hasEstimatedStartDate) classNames.push(styles.rowDeposit);
   if (isInProgress(row)) classNames.push(styles.rowInProgress);
   if (row.stage === 'COMPLETED') classNames.push(styles.rowCompleted);
@@ -498,7 +502,7 @@ export default function RunningJobsClient() {
   const filteredGroups = useMemo(() => groupRowsByFilters(allGroups, filters), [allGroups, filters]);
   const allRows = useMemo(() => flattenRunningJobGroups(allGroups), [allGroups]);
   const visibleRows = useMemo(() => flattenRunningJobGroups(filteredGroups), [filteredGroups]);
-  const selectableRows = useMemo(() => visibleRows.filter((row) => row.source === 'live'), [visibleRows]);
+  const selectableRows = useMemo(() => visibleRows.filter((row) => !isLegacySheetRow(row)), [visibleRows]);
   const rowNumberByProjectId = useMemo(() => new Map(allRows.map((row, index) => [row.projectId, index + 1])), [allRows]);
   const rowsByProjectId = useMemo(() => new Map(allRows.map((row) => [row.projectId, row])), [allRows]);
   const visibleProjectIds = useMemo(() => new Set(selectableRows.map((row) => row.projectId)), [selectableRows]);
@@ -1189,7 +1193,7 @@ export default function RunningJobsClient() {
                       }
 
                       const { row, rowNumber } = displayRow;
-                      const isLegacyRow = row.source === 'legacy';
+                      const isLegacyRow = isLegacySheetRow(row);
                       return (
                         <tr key={row.projectId} className={getRowClasses(row)}>
                           <th className={styles.rowNumberCell} scope="row">
