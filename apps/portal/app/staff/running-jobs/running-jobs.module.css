@@ -90,25 +90,82 @@
   margin: 0;
 }
 
-.zoomControls {
+.sheetViewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.zoomDockLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 29;
+  pointer-events: none;
+}
+
+.zoomDock {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 30;
+  max-width: calc(100% - 28px);
   padding: 6px 8px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 999px;
-  background: rgba(var(--portal-text-rgb), 0.03);
+  background: rgba(255, 253, 247, 0.2);
+  backdrop-filter: blur(3px) saturate(120%);
+  box-shadow: 0 8px 18px rgba(var(--portal-text-rgb), 0.05);
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    backdrop-filter 220ms ease;
+  pointer-events: auto;
+}
+
+.zoomDockLayer[data-active='true'] .zoomDock,
+.zoomDock:hover,
+.zoomDock:focus-within,
+.sheetViewport:focus-within .zoomDock {
+  background: rgba(255, 253, 247, 0.76);
+  border-color: rgba(var(--portal-text-rgb), 0.14);
+  backdrop-filter: blur(12px) saturate(155%);
+  box-shadow: 0 16px 34px rgba(var(--portal-text-rgb), 0.12);
 }
 
 .zoomButton,
 .fitButton {
   border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 999px;
-  background: #fffdf7;
-  color: rgba(var(--portal-text-rgb), 0.86);
+  background: rgba(255, 253, 247, 0.22);
+  color: rgba(var(--portal-text-rgb), 0.66);
   font: inherit;
   cursor: pointer;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.zoomDockLayer[data-active='true'] .zoomButton,
+.zoomDockLayer[data-active='true'] .fitButton,
+.zoomDock:hover .zoomButton,
+.zoomDock:hover .fitButton,
+.zoomDock:focus-within .zoomButton,
+.zoomDock:focus-within .fitButton,
+.sheetViewport:focus-within .zoomButton,
+.sheetViewport:focus-within .fitButton {
+  background: rgba(255, 253, 247, 0.92);
+  border-color: rgba(var(--portal-text-rgb), 0.14);
+  color: rgba(var(--portal-text-rgb), 0.9);
 }
 
 .zoomButton {
@@ -127,26 +184,60 @@
 .zoomSlider {
   width: 112px;
   accent-color: rgba(126, 74, 47, 0.92);
+  opacity: 0.82;
+  transition: opacity 220ms ease;
 }
 
 .zoomPreset {
   width: auto;
   min-width: 84px;
   padding: 7px 10px;
+  background: rgba(255, 253, 247, 0.22);
+  border-color: rgba(var(--portal-text-rgb), 0.12);
+  color: rgba(var(--portal-text-rgb), 0.66);
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease;
 }
 
 .zoomValue {
   min-width: 48px;
-  color: rgba(var(--portal-text-rgb), 0.7);
+  color: rgba(var(--portal-text-rgb), 0.66);
   font-size: 0.84rem;
   font-weight: 700;
   text-align: right;
+  transition: color 220ms ease;
+}
+
+.zoomDockLayer[data-active='true'] .zoomValue,
+.zoomDock:hover .zoomValue,
+.zoomDock:focus-within .zoomValue,
+.sheetViewport:focus-within .zoomValue {
+  color: rgba(var(--portal-text-rgb), 0.88);
+}
+
+.zoomDockLayer[data-active='true'] .zoomPreset,
+.zoomDock:hover .zoomPreset,
+.zoomDock:focus-within .zoomPreset,
+.sheetViewport:focus-within .zoomPreset {
+  background: rgba(255, 253, 247, 0.92);
+  border-color: rgba(var(--portal-text-rgb), 0.14);
+  color: rgba(var(--portal-text-rgb), 0.9);
+}
+
+.zoomDockLayer[data-active='true'] .zoomSlider,
+.zoomDock:hover .zoomSlider,
+.zoomDock:focus-within .zoomSlider,
+.sheetViewport:focus-within .zoomSlider {
+  opacity: 1;
 }
 
 .meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-left: auto;
   justify-content: flex-end;
   color: rgba(var(--portal-text-rgb), 0.65);
   font-size: 0.84rem;
@@ -169,6 +260,8 @@
 
   flex: 1;
   min-height: 0;
+  min-width: 0;
+  height: 100%;
   overflow: auto;
   border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 16px;
@@ -210,7 +303,7 @@
 .cornerCell,
 .rowNumberBandCell {
   left: 0;
-  z-index: 10;
+  z-index: 18;
   width: var(--sheet-row-number-width);
   min-width: var(--sheet-row-number-width);
   background: color-mix(in srgb, var(--portal-bg-surface) 88%, #e7dcc6 12%);
@@ -223,32 +316,31 @@
 
 .letterCell {
   top: 0;
-  z-index: 8;
+  z-index: 16;
   height: var(--sheet-letter-band-height);
   padding: 0 calc(10px * var(--sheet-scale));
   background: color-mix(in srgb, var(--portal-bg-surface) 88%, #efe3cb 12%);
   color: rgba(var(--portal-text-rgb), 0.62);
-  font-size: calc(11px * var(--sheet-scale));
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: calc(14px * var(--sheet-scale));
+  font-weight: 400;
+  letter-spacing: 0;
   text-align: center;
-  text-transform: uppercase;
 }
 
 .frozenLetterCell {
-  z-index: 11;
+  z-index: 19;
 }
 
 .rowNumberHeaderCell {
   top: var(--sheet-letter-band-height);
-  z-index: 9;
+  z-index: 17;
   height: var(--sheet-header-height);
 }
 
 .headerCell,
 .fillerHeaderCell {
   top: var(--sheet-letter-band-height);
-  z-index: 7;
+  z-index: 15;
   height: var(--sheet-header-height);
   padding: calc(8px * var(--sheet-scale)) calc(12px * var(--sheet-scale));
   background: color-mix(in srgb, var(--portal-bg-surface) 92%, #f4ecdc 8%);
@@ -257,7 +349,7 @@
 }
 
 .frozenHeaderCell {
-  z-index: 10;
+  z-index: 18;
 }
 
 .headerLabel {
@@ -299,22 +391,26 @@
 .rowNumberCell {
   position: sticky;
   left: 0;
-  z-index: 6;
+  z-index: 12;
   width: var(--sheet-row-number-width);
   min-width: var(--sheet-row-number-width);
-  padding: 0 calc(8px * var(--sheet-scale));
+  padding: 0 calc(5px * var(--sheet-scale));
   border-right: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
   background: color-mix(in srgb, var(--portal-bg-surface) 90%, #ede3cf 10%);
   color: rgba(var(--portal-text-rgb), 0.55);
-  font-size: calc(11px * var(--sheet-scale));
-  font-weight: 700;
+  font-size: calc(14px * var(--sheet-scale));
+  font-weight: 400;
   text-align: right;
   white-space: nowrap;
 }
 
 .rowNumberBlankCell {
   color: transparent;
+}
+
+.fillerRow {
+  height: var(--sheet-row-height);
 }
 
 .yearRow {
@@ -346,7 +442,7 @@
 .frozenCell,
 .frozenFillerCell {
   position: sticky;
-  z-index: 5;
+  z-index: 10;
 }
 
 .bodyCell.frozenCell,
@@ -477,6 +573,7 @@
 
 .fillerRow .rowNumberCell,
 .fillerCell {
+  height: var(--sheet-row-height);
   background:
     linear-gradient(0deg, rgba(var(--portal-text-rgb), 0.02), rgba(var(--portal-text-rgb), 0.02)),
     var(--portal-bg);
@@ -492,13 +589,9 @@
 }
 
 @media (max-width: 1180px) {
-  .zoomControls {
-    margin-left: 0;
-    order: 2;
-  }
-
   .meta {
     width: 100%;
+    margin-left: 0;
     justify-content: flex-start;
   }
 }
@@ -521,9 +614,10 @@
     width: 100%;
   }
 
-  .zoomControls {
-    width: 100%;
+  .zoomDock {
+    width: calc(100% - 24px);
     flex-wrap: wrap;
     justify-content: flex-start;
   }
+
 }

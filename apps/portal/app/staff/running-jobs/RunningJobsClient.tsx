@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/layout/PageHeader';
@@ -93,14 +94,16 @@ const SHEET_ZOOM_MAX = 200;
 const SHEET_ZOOM_STEP = 5;
 const SHEET_ZOOM_DEFAULT = 100;
 const SHEET_ZOOM_PRESETS = [50, 75, 100, 125, 150, 200] as const;
-const SHEET_ROW_NUMBER_WIDTH_PX = 58;
+const SHEET_ROW_NUMBER_WIDTH_PX = 41;
 const SHEET_LETTER_BAND_HEIGHT_PX = 28;
 const SHEET_HEADER_HEIGHT_PX = 54;
 const SHEET_PROJECT_ROW_HEIGHT_PX = 46;
 const SHEET_YEAR_ROW_HEIGHT_PX = 32;
 const SHEET_FILLER_COLUMN_WIDTH_PX = 118;
-const MIN_FILLER_COLUMNS = 6;
-const MIN_FILLER_ROWS = 12;
+const MIN_FILLER_COLUMNS = 18;
+const MIN_FILLER_ROWS = 20;
+const FILLER_COLUMN_BUFFER_COLUMNS = 12;
+const FILLER_ROW_BUFFER_ROWS = 12;
 
 function cellId(projectId: string, key: RunningJobCellKey): string {
   return `${projectId}:${key}`;
@@ -375,11 +378,6 @@ function Toolbar({
   totalRows,
   visibleRows,
   generatedAt,
-  zoomPercent,
-  zoomPresetValue,
-  onZoomChange,
-  onZoomStep,
-  onFitVisibleColumns,
 }: {
   filters: Filters;
   onChange: (patch: Partial<Filters>) => void;
@@ -389,11 +387,6 @@ function Toolbar({
   totalRows: number;
   visibleRows: number;
   generatedAt: string | null;
-  zoomPercent: number;
-  zoomPresetValue: string;
-  onZoomChange: (value: number) => void;
-  onZoomStep: (direction: -1 | 1) => void;
-  onFitVisibleColumns: () => void;
 }) {
   return (
     <div className={styles.toolbar}>
@@ -442,37 +435,6 @@ function Toolbar({
         <span>Show completed</span>
       </label>
 
-      <div className={styles.zoomControls} aria-label="Sheet zoom controls">
-        <button type="button" className={styles.zoomButton} onClick={() => onZoomStep(-1)} aria-label="Zoom out">
-          -
-        </button>
-        <input
-          className={styles.zoomSlider}
-          type="range"
-          min={SHEET_ZOOM_MIN}
-          max={SHEET_ZOOM_MAX}
-          step={SHEET_ZOOM_STEP}
-          value={zoomPercent}
-          onChange={(event) => onZoomChange(Number.parseInt(event.target.value, 10))}
-          aria-label="Sheet zoom"
-        />
-        <button type="button" className={styles.zoomButton} onClick={() => onZoomStep(1)} aria-label="Zoom in">
-          +
-        </button>
-        <select className={styles.zoomPreset} value={zoomPresetValue} onChange={(event) => onZoomChange(Number.parseInt(event.target.value, 10))} aria-label="Zoom preset">
-          {SHEET_ZOOM_PRESETS.map((preset) => (
-            <option key={preset} value={preset}>
-              {preset}%
-            </option>
-          ))}
-          {!isPresetZoom(zoomPercent) ? <option value={zoomPercent}>{zoomPercent}%</option> : null}
-        </select>
-        <button type="button" className={styles.fitButton} onClick={onFitVisibleColumns}>
-          Fit visible columns
-        </button>
-        <span className={styles.zoomValue}>{zoomPercent}%</span>
-      </div>
-
       <div className={styles.meta}>
         <span>
           {visibleRows} of {totalRows} jobs
@@ -498,10 +460,15 @@ export default function RunningJobsClient() {
   const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
   const [gridViewport, setGridViewport] = useState({ width: 0, height: 0 });
 
+  const sheetViewportRef = useRef<HTMLDivElement | null>(null);
   const gridRef = useRef<HTMLDivElement | null>(null);
   const editorRef = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null>(null);
   const cellRefs = useRef(new Map<string, HTMLTableCellElement>());
   const skipBlurCommitRef = useRef(false);
+  const zoomDockTimeoutRef = useRef<number | null>(null);
+  const [zoomDockVisible, setZoomDockVisible] = useState(false);
+  const [zoomDockHoverVisible, setZoomDockHoverVisible] = useState(false);
+  const sheetGestureArmedRef = useRef(false);
 
   useEffect(() => {
     if (!query.error) return;
@@ -520,25 +487,22 @@ export default function RunningJobsClient() {
 
   const years = useMemo(() => Array.from(new Set(allRows.map((row) => String(row.cells.estimated_start_date?.slice(0, 4) ?? row.state.projectCreatedAt?.slice(0, 4) ?? '')))).filter(Boolean).sort().reverse(), [allRows]);
   const stages = useMemo(() => Array.from(new Set(allRows.map((row) => row.stage))).sort(), [allRows]);
-  const actualColumnsWidthPx = useMemo(() => RUNNING_JOBS_COLUMNS.reduce((sum, column) => sum + column.widthPx, 0), []);
-  const scaledActualColumnsWidthPx = useMemo(
-    () => RUNNING_JOBS_COLUMNS.reduce((sum, column) => sum + scaledPixels(column.widthPx, zoomPercent), 0),
-    [zoomPercent],
-  );
   const fillerColumnCount = useMemo(() => {
     const fillerWidth = scaledPixels(SHEET_FILLER_COLUMN_WIDTH_PX, zoomPercent);
-    const remaining = Math.max(0, gridViewport.width - rowNumberWidthPx(zoomPercent) - scaledActualColumnsWidthPx);
-    return Math.max(MIN_FILLER_COLUMNS, Math.ceil(remaining / Math.max(1, fillerWidth)) + 2);
-  }, [gridViewport.width, scaledActualColumnsWidthPx, zoomPercent]);
+    const visibleViewportColumns = Math.ceil(gridViewport.width / Math.max(1, fillerWidth));
+    return Math.max(MIN_FILLER_COLUMNS, visibleViewportColumns + FILLER_COLUMN_BUFFER_COLUMNS);
+  }, [gridViewport.width, zoomPercent]);
   const projectRowHeightPx = useMemo(() => scaledPixels(SHEET_PROJECT_ROW_HEIGHT_PX, zoomPercent), [zoomPercent]);
   const yearRowHeightPx = useMemo(() => scaledPixels(SHEET_YEAR_ROW_HEIGHT_PX, zoomPercent), [zoomPercent]);
   const fillerRowCount = useMemo(() => {
     const existingBodyHeight = visibleRows.length * projectRowHeightPx + filteredGroups.length * yearRowHeightPx;
-    const remaining = Math.max(
-      0,
-      gridViewport.height - scaledPixels(SHEET_LETTER_BAND_HEIGHT_PX, zoomPercent) - scaledPixels(SHEET_HEADER_HEIGHT_PX, zoomPercent) - existingBodyHeight,
+    const visibleViewportRows = Math.ceil(
+      Math.max(
+        0,
+        gridViewport.height - scaledPixels(SHEET_LETTER_BAND_HEIGHT_PX, zoomPercent) - scaledPixels(SHEET_HEADER_HEIGHT_PX, zoomPercent) - existingBodyHeight,
+      ) / Math.max(1, projectRowHeightPx),
     );
-    return Math.max(MIN_FILLER_ROWS, Math.ceil(remaining / Math.max(1, projectRowHeightPx)) + 2);
+    return Math.max(MIN_FILLER_ROWS, visibleViewportRows + FILLER_ROW_BUFFER_ROWS);
   }, [filteredGroups.length, gridViewport.height, projectRowHeightPx, visibleRows.length, yearRowHeightPx, zoomPercent]);
   const displayColumns = useMemo(() => buildDisplayColumns(fillerColumnCount), [fillerColumnCount]);
   const displayRows = useMemo(() => buildDisplayRows(filteredGroups, rowNumberByProjectId, fillerRowCount), [filteredGroups, fillerRowCount, rowNumberByProjectId]);
@@ -615,9 +579,30 @@ export default function RunningJobsClient() {
     }, 4000);
   }, []);
 
-  const updateZoomPercent = useCallback((value: number) => {
-    setZoomPercent(clampSheetZoomPercent(value));
+  const revealZoomDock = useCallback((durationMs = 1500) => {
+    setZoomDockVisible(true);
+    if (zoomDockTimeoutRef.current !== null) {
+      window.clearTimeout(zoomDockTimeoutRef.current);
+      zoomDockTimeoutRef.current = null;
+    }
+    zoomDockTimeoutRef.current = window.setTimeout(() => {
+      setZoomDockVisible(false);
+      zoomDockTimeoutRef.current = null;
+    }, durationMs);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (zoomDockTimeoutRef.current !== null) {
+        window.clearTimeout(zoomDockTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const updateZoomPercent = useCallback((value: number) => {
+    revealZoomDock();
+    setZoomPercent(clampSheetZoomPercent(value));
+  }, [revealZoomDock]);
 
   const handleZoomStep = useCallback(
     (direction: -1 | 1) => {
@@ -628,19 +613,29 @@ export default function RunningJobsClient() {
 
   const handleFitVisibleColumns = useCallback(() => {
     if (!gridViewport.width) return;
+    const actualColumnsWidthPx = RUNNING_JOBS_COLUMNS.reduce((sum, column) => sum + column.widthPx, 0);
     const next = clampSheetZoomPercent((gridViewport.width / Math.max(1, SHEET_ROW_NUMBER_WIDTH_PX + actualColumnsWidthPx)) * 100);
+    revealZoomDock();
     setZoomPercent(next);
-  }, [actualColumnsWidthPx, gridViewport.width]);
+  }, [gridViewport.width, revealZoomDock]);
+
+  const handleSheetViewportPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    sheetGestureArmedRef.current = true;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const nearBottomRight = rect.right - event.clientX <= 360 && rect.bottom - event.clientY <= 148;
+    setZoomDockHoverVisible((prev) => (prev === nearBottomRight ? prev : nearBottomRight));
+  }, []);
 
   useEffect(() => {
-    const node = gridRef.current;
-    if (!node) return;
+    const viewportNode = sheetViewportRef.current;
+    if (!viewportNode) return;
 
     let lastGestureScale = 1;
 
     const onWheel = (event: WheelEvent) => {
       if (!event.ctrlKey) return;
       event.preventDefault();
+      revealZoomDock();
       setZoomPercent((prev) => clampSheetZoomPercent(prev - event.deltaY / 12));
     };
 
@@ -657,19 +652,30 @@ export default function RunningJobsClient() {
       if (!Number.isFinite(scale) || scale <= 0) return;
       const factor = scale / Math.max(0.0001, lastGestureScale);
       lastGestureScale = scale;
+      revealZoomDock();
       setZoomPercent((prev) => clampSheetZoomPercent(prev * factor));
     };
 
-    node.addEventListener('wheel', onWheel, { passive: false });
-    node.addEventListener('gesturestart', onGestureStart as EventListener, { passive: false } as AddEventListenerOptions);
-    node.addEventListener('gesturechange', onGestureChange as EventListener, { passive: false } as AddEventListenerOptions);
+    const onDocumentGestureStart = (event: Event) => {
+      if (!sheetGestureArmedRef.current) return;
+      onGestureStart(event);
+    };
+
+    const onDocumentGestureChange = (event: Event) => {
+      if (!sheetGestureArmedRef.current) return;
+      onGestureChange(event);
+    };
+
+    viewportNode.addEventListener('wheel', onWheel, { passive: false });
+    document.addEventListener('gesturestart', onDocumentGestureStart as EventListener, { passive: false } as AddEventListenerOptions);
+    document.addEventListener('gesturechange', onDocumentGestureChange as EventListener, { passive: false } as AddEventListenerOptions);
 
     return () => {
-      node.removeEventListener('wheel', onWheel);
-      node.removeEventListener('gesturestart', onGestureStart as EventListener);
-      node.removeEventListener('gesturechange', onGestureChange as EventListener);
+      viewportNode.removeEventListener('wheel', onWheel);
+      document.removeEventListener('gesturestart', onDocumentGestureStart as EventListener);
+      document.removeEventListener('gesturechange', onDocumentGestureChange as EventListener);
     };
-  }, []);
+  }, [revealZoomDock]);
 
   const persistCell = useCallback(
     async (
@@ -1064,11 +1070,6 @@ export default function RunningJobsClient() {
             totalRows={allRows.length}
             visibleRows={countRows(filteredGroups)}
             generatedAt={query.data?.generatedAt ?? null}
-            zoomPercent={zoomPercent}
-            zoomPresetValue={zoomPresetValue}
-            onZoomChange={updateZoomPercent}
-            onZoomStep={handleZoomStep}
-            onFitVisibleColumns={handleFitVisibleColumns}
           />
 
           {query.isLoading && !query.data ? (
@@ -1078,153 +1079,203 @@ export default function RunningJobsClient() {
           ) : !visibleRows.length ? (
             <div className={styles.emptyTable}>No matching jobs.</div>
           ) : (
-            <div ref={gridRef} className={styles.tableScroller} style={sheetVars} tabIndex={0} onKeyDown={handleGridKeyDown}>
-              <table className={styles.table}>
-                <colgroup>
-                  <col style={{ width: rowNumberWidthPx(zoomPercent) }} />
-                  {displayColumns.map((column) => (
-                    <col key={column.kind === 'actual' ? column.column.key : column.key} style={{ width: scaledPixels(column.widthPx, zoomPercent) }} />
-                  ))}
-                </colgroup>
-                <thead>
-                  <tr className={styles.letterRow}>
-                    <th className={`${styles.cornerCell} ${styles.rowNumberBandCell}`} />
+            <div
+              ref={sheetViewportRef}
+              className={styles.sheetViewport}
+              onPointerEnter={() => {
+                sheetGestureArmedRef.current = true;
+              }}
+              onPointerMove={handleSheetViewportPointerMove}
+              onPointerLeave={() => {
+                sheetGestureArmedRef.current = false;
+                setZoomDockHoverVisible(false);
+              }}
+            >
+              <div ref={gridRef} className={styles.tableScroller} style={sheetVars} tabIndex={0} onKeyDown={handleGridKeyDown}>
+                <table className={styles.table}>
+                  <colgroup>
+                    <col style={{ width: rowNumberWidthPx(zoomPercent) }} />
                     {displayColumns.map((column) => (
-                      <th
-                        key={column.kind === 'actual' ? `${column.column.key}_letter` : `${column.key}_letter`}
-                        className={`${styles.letterCell} ${column.kind === 'actual' && column.column.frozen ? styles.frozenLetterCell : ''}`}
-                        style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
-                        scope="col"
-                      >
-                        {column.letter}
-                      </th>
+                      <col key={column.kind === 'actual' ? column.column.key : column.key} style={{ width: scaledPixels(column.widthPx, zoomPercent) }} />
                     ))}
-                  </tr>
-                  <tr className={styles.labelsRow}>
-                    <th className={`${styles.rowNumberHeaderCell} ${styles.rowNumberBandCell}`} />
-                    {displayColumns.map((column) => (
-                      <th
-                        key={column.kind === 'actual' ? `${column.column.key}_header` : `${column.key}_header`}
-                        className={
-                          column.kind === 'actual'
-                            ? `${styles.headerCell} ${column.column.frozen ? styles.frozenHeaderCell : ''}`
-                            : styles.fillerHeaderCell
-                        }
-                        style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
-                        scope="col"
-                      >
-                        {column.kind === 'actual' ? (
-                          <>
-                            <span className={styles.headerLabel}>{column.column.label}</span>
-                            {column.column.source === 'estimate' ? <span className={styles.headerSource}>Estimate</span> : null}
-                            {column.column.source === 'schedule' ? <span className={styles.headerSource}>Schedule</span> : null}
-                          </>
-                        ) : null}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayRows.map((displayRow) => {
-                    if (displayRow.kind === 'year') {
-                      return (
-                        <tr key={`year_${displayRow.year}`} className={styles.yearDividerRow}>
-                          <th className={`${styles.rowNumberCell} ${styles.rowNumberBlankCell}`} />
-                          <th className={styles.yearRow} colSpan={displayColumns.length} scope="rowgroup">
-                            {displayRow.year}
-                          </th>
-                        </tr>
-                      );
-                    }
-
-                    if (displayRow.kind === 'filler') {
-                      return (
-                        <tr key={displayRow.key} className={styles.fillerRow}>
-                          <th className={`${styles.rowNumberCell} ${styles.rowNumberBlankCell}`} />
-                          {displayColumns.map((column) => (
-                            <td
-                              key={column.kind === 'actual' ? `${displayRow.key}_${column.column.key}` : `${displayRow.key}_${column.key}`}
-                              className={`${styles.bodyCell} ${styles.fillerCell} ${
-                                column.kind === 'actual' && column.column.frozen ? styles.frozenFillerCell : ''
-                              }`}
-                              style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
-                            />
-                          ))}
-                        </tr>
-                      );
-                    }
-
-                    const { row, rowNumber } = displayRow;
-                    return (
-                      <tr key={row.projectId} className={getRowClasses(row)}>
-                        <th className={styles.rowNumberCell} scope="row">
-                          {rowNumber}
+                  </colgroup>
+                  <thead>
+                    <tr className={styles.letterRow}>
+                      <th className={`${styles.cornerCell} ${styles.rowNumberBandCell}`} />
+                      {displayColumns.map((column) => (
+                        <th
+                          key={column.kind === 'actual' ? `${column.column.key}_letter` : `${column.key}_letter`}
+                          className={`${styles.letterCell} ${column.kind === 'actual' && column.column.frozen ? styles.frozenLetterCell : ''}`}
+                          style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
+                          scope="col"
+                        >
+                          {column.letter}
                         </th>
-                        {displayColumns.map((displayColumn) => {
-                          if (displayColumn.kind === 'filler') {
-                            return <td key={`${row.projectId}_${displayColumn.key}`} className={`${styles.bodyCell} ${styles.fillerCell}`} />;
+                      ))}
+                    </tr>
+                    <tr className={styles.labelsRow}>
+                      <th className={`${styles.rowNumberHeaderCell} ${styles.rowNumberBandCell}`} />
+                      {displayColumns.map((column) => (
+                        <th
+                          key={column.kind === 'actual' ? `${column.column.key}_header` : `${column.key}_header`}
+                          className={
+                            column.kind === 'actual'
+                              ? `${styles.headerCell} ${column.column.frozen ? styles.frozenHeaderCell : ''}`
+                              : styles.fillerHeaderCell
                           }
+                          style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
+                          scope="col"
+                        >
+                          {column.kind === 'actual' ? (
+                            <>
+                              <span className={styles.headerLabel}>{column.column.label}</span>
+                              {column.column.source === 'estimate' ? <span className={styles.headerSource}>Estimate</span> : null}
+                              {column.column.source === 'schedule' ? <span className={styles.headerSource}>Schedule</span> : null}
+                            </>
+                          ) : null}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayRows.map((displayRow) => {
+                      if (displayRow.kind === 'year') {
+                        return (
+                          <tr key={`year_${displayRow.year}`} className={styles.yearDividerRow}>
+                            <th className={`${styles.rowNumberCell} ${styles.rowNumberBlankCell}`} />
+                            <th className={styles.yearRow} colSpan={displayColumns.length} scope="rowgroup">
+                              {displayRow.year}
+                            </th>
+                          </tr>
+                        );
+                      }
 
-                          const column = displayColumn.column;
-                          const id = cellId(row.projectId, column.key);
-                          const isActive = activeCell?.projectId === row.projectId && activeCell?.key === column.key;
-                          const isEditing = editing?.projectId === row.projectId && editing?.key === column.key;
-                          const text = formatCellValue(row, column.key);
+                      if (displayRow.kind === 'filler') {
+                        return (
+                          <tr key={displayRow.key} className={styles.fillerRow}>
+                            <th className={`${styles.rowNumberCell} ${styles.rowNumberBlankCell}`} />
+                            {displayColumns.map((column) => (
+                              <td
+                                key={column.kind === 'actual' ? `${displayRow.key}_${column.column.key}` : `${displayRow.key}_${column.key}`}
+                                className={`${styles.bodyCell} ${styles.fillerCell} ${
+                                  column.kind === 'actual' && column.column.frozen ? styles.frozenFillerCell : ''
+                                }`}
+                                style={column.kind === 'actual' ? cellStyle(column.column, column.actualIndex, zoomPercent) : undefined}
+                              />
+                            ))}
+                          </tr>
+                        );
+                      }
 
-                          const content =
-                            column.key === 'client_name' ? (
-                              <div className={styles.clientCell}>
-                                <span>{text || 'Untitled'}</span>
-                                <Link
-                                  className={styles.projectLink}
-                                  href={`/staff/projects/${encodeURIComponent(row.projectId)}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  onClick={(event) => event.stopPropagation()}
-                                  onKeyDown={(event) => event.stopPropagation()}
-                                >
-                                  Open
-                                </Link>
-                              </div>
-                            ) : column.key === 'running_notes' ? (
-                              <span className={styles.notesPreview}>{text || '—'}</span>
-                            ) : text || <span className={styles.muted}>-</span>;
+                      const { row, rowNumber } = displayRow;
+                      return (
+                        <tr key={row.projectId} className={getRowClasses(row)}>
+                          <th className={styles.rowNumberCell} scope="row">
+                            {rowNumber}
+                          </th>
+                          {displayColumns.map((displayColumn) => {
+                            if (displayColumn.kind === 'filler') {
+                              return <td key={`${row.projectId}_${displayColumn.key}`} className={`${styles.bodyCell} ${styles.fillerCell}`} />;
+                            }
 
-                          return (
-                            <td
-                              key={column.key}
-                              ref={(node) => setCellRef(id, node)}
-                              data-cell-id={id}
-                              className={getCellClasses({
-                                row,
-                                column,
-                                active: Boolean(isActive),
-                                editing: Boolean(isEditing),
-                                saving: Boolean(savingCells[id]),
-                                conflict: Boolean(conflictCells[id]),
-                              })}
-                              style={cellStyle(column, displayColumn.actualIndex, zoomPercent)}
-                              onClick={() => {
-                                setActiveCell({ projectId: row.projectId, key: column.key });
-                                gridRef.current?.focus();
-                              }}
-                              onDoubleClick={() => {
-                                if (column.key === 'materials_ordered' || column.key === 'roofing_ordered' || column.key === 'job_completed') {
-                                  if (isEditableKey(column.key)) void toggleBooleanCell(row, column.key);
-                                  return;
-                                }
-                                if (isEditableKey(column.key)) beginEdit(row, column.key);
-                              }}
-                            >
-                              {isEditing && isEditableKey(column.key) ? renderEditor(row, column.key) : content}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                            const column = displayColumn.column;
+                            const id = cellId(row.projectId, column.key);
+                            const isActive = activeCell?.projectId === row.projectId && activeCell?.key === column.key;
+                            const isEditing = editing?.projectId === row.projectId && editing?.key === column.key;
+                            const text = formatCellValue(row, column.key);
+
+                            const content =
+                              column.key === 'client_name' ? (
+                                <div className={styles.clientCell}>
+                                  <span>{text || 'Untitled'}</span>
+                                  <Link
+                                    className={styles.projectLink}
+                                    href={`/staff/projects/${encodeURIComponent(row.projectId)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(event) => event.stopPropagation()}
+                                    onKeyDown={(event) => event.stopPropagation()}
+                                  >
+                                    Open
+                                  </Link>
+                                </div>
+                              ) : column.key === 'running_notes' ? (
+                                <span className={styles.notesPreview}>{text || '—'}</span>
+                              ) : text || <span className={styles.muted}>-</span>;
+
+                            return (
+                              <td
+                                key={column.key}
+                                ref={(node) => setCellRef(id, node)}
+                                data-cell-id={id}
+                                className={getCellClasses({
+                                  row,
+                                  column,
+                                  active: Boolean(isActive),
+                                  editing: Boolean(isEditing),
+                                  saving: Boolean(savingCells[id]),
+                                  conflict: Boolean(conflictCells[id]),
+                                })}
+                                style={cellStyle(column, displayColumn.actualIndex, zoomPercent)}
+                                onClick={() => {
+                                  setActiveCell({ projectId: row.projectId, key: column.key });
+                                  gridRef.current?.focus();
+                                }}
+                                onDoubleClick={() => {
+                                  if (column.key === 'materials_ordered' || column.key === 'roofing_ordered' || column.key === 'job_completed') {
+                                    if (isEditableKey(column.key)) void toggleBooleanCell(row, column.key);
+                                    return;
+                                  }
+                                  if (isEditableKey(column.key)) beginEdit(row, column.key);
+                                }}
+                              >
+                                {isEditing && isEditableKey(column.key) ? renderEditor(row, column.key) : content}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className={styles.zoomDockLayer} data-active={zoomDockVisible || zoomDockHoverVisible ? 'true' : 'false'}>
+                <div className={styles.zoomDock} aria-label="Sheet zoom controls">
+                  <button type="button" className={styles.zoomButton} onClick={() => handleZoomStep(-1)} aria-label="Zoom out">
+                    -
+                  </button>
+                  <input
+                    className={styles.zoomSlider}
+                    type="range"
+                    min={SHEET_ZOOM_MIN}
+                    max={SHEET_ZOOM_MAX}
+                    step={SHEET_ZOOM_STEP}
+                    value={zoomPercent}
+                    onChange={(event) => updateZoomPercent(Number.parseInt(event.target.value, 10))}
+                    aria-label="Sheet zoom"
+                  />
+                  <button type="button" className={styles.zoomButton} onClick={() => handleZoomStep(1)} aria-label="Zoom in">
+                    +
+                  </button>
+                  <select
+                    className={styles.zoomPreset}
+                    value={zoomPresetValue}
+                    onChange={(event) => updateZoomPercent(Number.parseInt(event.target.value, 10))}
+                    aria-label="Zoom preset"
+                  >
+                    {SHEET_ZOOM_PRESETS.map((preset) => (
+                      <option key={preset} value={preset}>
+                        {preset}%
+                      </option>
+                    ))}
+                    {!isPresetZoom(zoomPercent) ? <option value={zoomPercent}>{zoomPercent}%</option> : null}
+                  </select>
+                  <button type="button" className={styles.fitButton} onClick={handleFitVisibleColumns}>
+                    Fit visible columns
+                  </button>
+                  <span className={styles.zoomValue}>{zoomPercent}%</span>
+                </div>
+              </div>
             </div>
           )}
         </section>
