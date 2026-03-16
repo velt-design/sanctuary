@@ -58,6 +58,7 @@ export const NAV_ITEMS = [
       { key: 'pricebook-materials', label: 'Materials', href: '/pricebook#materials' },
       { key: 'pricebook-actions', label: 'Actions', href: '/pricebook#actions' },
       { key: 'pricebook-overheads', label: 'Overheads', href: '/pricebook#overheads' },
+      { key: 'pricebook-calculator', label: 'Calculator', href: '/staff/calculator' },
     ],
   },
   { key: 'access', label: 'Access', href: '/admin/access', Icon: KeyRound, adminOnly: true },
