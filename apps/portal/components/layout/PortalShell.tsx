@@ -25,7 +25,9 @@ export default function PortalShell({ children }: { children: React.ReactNode })
       pathname === '/staff/schedule' ||
       pathname.startsWith('/staff/schedule/') ||
       pathname === '/staff/running-jobs' ||
-      pathname.startsWith('/staff/running-jobs/'));
+      pathname.startsWith('/staff/running-jobs/') ||
+      pathname === '/staff/projects/running-jobs' ||
+      pathname.startsWith('/staff/projects/running-jobs/'));
   const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';
 
   useEffect(() => {
