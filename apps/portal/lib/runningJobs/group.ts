@@ -38,7 +38,7 @@ export function groupRunningJobRows(rows: RunningJobRow[]): RunningJobsResponse[
   }
 
   return Array.from(groupsMap.entries())
-    .sort((a, b) => b[0] - a[0])
+    .sort((a, b) => a[0] - b[0])
     .map(([year, yearRows]) => ({
       year,
       rows: yearRows.slice().sort(compareRunningJobRows),

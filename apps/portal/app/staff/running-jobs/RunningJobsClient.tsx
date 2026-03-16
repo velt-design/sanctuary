@@ -25,7 +25,7 @@ import {
   normalizeRunningJobCellInput,
   type NormalizedRunningJobCellValue,
 } from '@/lib/runningJobs/editing';
-import { flattenRunningJobGroups, groupRunningJobRows, updateRunningJobRowInGroups } from '@/lib/runningJobs/group';
+import { compareRunningJobRows, flattenRunningJobGroups, groupRunningJobRows, updateRunningJobRowInGroups, yearForRunningJobRow } from '@/lib/runningJobs/group';
 import type {
   RunningJobCellKey,
   RunningJobEditableCellKey,
@@ -503,12 +503,25 @@ export default function RunningJobsClient() {
   const allRows = useMemo(() => flattenRunningJobGroups(allGroups), [allGroups]);
   const visibleRows = useMemo(() => flattenRunningJobGroups(filteredGroups), [filteredGroups]);
   const selectableRows = useMemo(() => visibleRows.filter((row) => !isLegacySheetRow(row)), [visibleRows]);
-  const rowNumberByProjectId = useMemo(() => new Map(allRows.map((row, index) => [row.projectId, index + 1])), [allRows]);
+  const rowNumberByProjectId = useMemo(
+    () =>
+      new Map(
+        allRows
+          .slice()
+          .sort((a, b) => {
+            const yearDiff = yearForRunningJobRow(a) - yearForRunningJobRow(b);
+            if (yearDiff !== 0) return yearDiff;
+            return compareRunningJobRows(a, b);
+          })
+          .map((row, index) => [row.projectId, index + 1]),
+      ),
+    [allRows],
+  );
   const rowsByProjectId = useMemo(() => new Map(allRows.map((row) => [row.projectId, row])), [allRows]);
   const visibleProjectIds = useMemo(() => new Set(selectableRows.map((row) => row.projectId)), [selectableRows]);
 
   const years = useMemo(
-    () => Array.from(new Set(allRows.map((row) => rowYearValue(row)))).filter(Boolean).sort().reverse(),
+    () => Array.from(new Set(allRows.map((row) => rowYearValue(row)))).filter(Boolean).sort(),
     [allRows],
   );
   const stages = useMemo(() => Array.from(new Set(allRows.map((row) => row.stage).filter((stage) => stage !== 'LEGACY'))).sort(), [allRows]);
