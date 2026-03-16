@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import {
   useCallback,
   useEffect,
@@ -22,7 +23,11 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
-function isActive(pathname: string, href: string) {
+function itemChildren(item: (typeof NAV_ITEMS)[number]) {
+  return 'children' in item ? item.children : undefined;
+}
+
+function isParentActive(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
   if (pathname === href || pathname.startsWith(`${href}/`)) return true;
 
@@ -31,6 +36,7 @@ function isActive(pathname: string, href: string) {
     '/contacts': ['/staff/contacts'],
     '/schedule': ['/staff/schedule'],
     '/imports': ['/admin/imports'],
+    '/pricebook': ['/admin/costs'],
   };
 
   const matches = aliases[href];
@@ -53,8 +59,71 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion;
 }
 
+function isChildActive(
+  parentKey: string,
+  childKey: string,
+  pathname: string,
+  scheduleView: string,
+  hashValue: string,
+) {
+  switch (parentKey) {
+    case 'projects': {
+      if (childKey === 'all-projects') return pathname === '/projects' || pathname === '/staff/projects';
+      if (childKey === 'new-project') return pathname === '/projects/new' || pathname === '/staff/projects/new';
+      if (childKey === 'running-jobs') {
+        return (
+          pathname === '/staff/projects/running-jobs' ||
+          pathname.startsWith('/staff/projects/running-jobs/') ||
+          pathname === '/staff/running-jobs' ||
+          pathname.startsWith('/staff/running-jobs/')
+        );
+      }
+      return false;
+    }
+    case 'contacts': {
+      if (childKey === 'all-contacts') return pathname === '/contacts' || pathname === '/staff/contacts';
+      if (childKey === 'new-contact') return pathname === '/contacts/new' || pathname === '/staff/contacts/new';
+      return false;
+    }
+    case 'schedule': {
+      const schedulePath =
+        pathname === '/schedule' ||
+        pathname.startsWith('/schedule/') ||
+        pathname === '/staff/schedule' ||
+        pathname.startsWith('/staff/schedule/');
+      if (!schedulePath) return false;
+
+      if (childKey === 'schedule-board') return scheduleView === 'board';
+      if (childKey === 'schedule-gantt') return scheduleView === 'gantt';
+      if (childKey === 'schedule-site-visits') return scheduleView === 'site-visits';
+      return false;
+    }
+    case 'pricebook': {
+      const onPricebookPath =
+        pathname === '/pricebook' ||
+        pathname.startsWith('/pricebook/') ||
+        pathname.startsWith('/admin/costs/');
+      if (!onPricebookPath) return false;
+
+      if (childKey === 'pricebook-actions') {
+        return hashValue === '#actions' || pathname.startsWith('/admin/costs/actions');
+      }
+      if (childKey === 'pricebook-overheads') {
+        return hashValue === '#overheads' || pathname.startsWith('/admin/costs/overheads');
+      }
+      if (childKey === 'pricebook-materials') {
+        return hashValue === '#materials' || hashValue === '' || pathname.startsWith('/admin/costs/materials');
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
 export default function SidebarRevealOverlayLab() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { role } = usePortalSession();
   const prefersReducedMotion = usePrefersReducedMotion();
   const [expanded, setExpanded] = useState(false);
@@ -66,8 +135,25 @@ export default function SidebarRevealOverlayLab() {
   const railElementRef = useRef<HTMLElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [openParentKey, setOpenParentKey] = useState<string | null>(null);
+  const submenuOpenTimerRef = useRef<number | null>(null);
+  const submenuCloseTimerRef = useRef<number | null>(null);
+  const [hashValue, setHashValue] = useState('');
 
+  const submenuEnabled = pathname === '/staff/sidebar-lab';
+  const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
+
+  useEffect(() => {
+    const readHash = () => setHashValue(window.location.hash.toLowerCase());
+    readHash();
+    window.addEventListener('hashchange', readHash);
+    window.addEventListener('popstate', readHash);
+    return () => {
+      window.removeEventListener('hashchange', readHash);
+      window.removeEventListener('popstate', readHash);
+    };
+  }, []);
 
   const clearTimer = useCallback((timerRef: { current: number | null }) => {
     if (timerRef.current === null) return;
@@ -75,20 +161,35 @@ export default function SidebarRevealOverlayLab() {
     timerRef.current = null;
   }, []);
 
-  const clearTimers = useCallback(() => {
+  const clearExpandTimers = useCallback(() => {
     clearTimer(openTimerRef);
     clearTimer(closeTimerRef);
   }, [clearTimer]);
+
+  const clearSubmenuTimers = useCallback(() => {
+    clearTimer(submenuOpenTimerRef);
+    clearTimer(submenuCloseTimerRef);
+  }, [clearTimer]);
+
+  useEffect(() => clearExpandTimers, [clearExpandTimers]);
+  useEffect(() => clearSubmenuTimers, [clearSubmenuTimers]);
 
   const isPointerInside = useCallback(
     () => pointerInRailRef.current || pointerInOverlayRef.current,
     [],
   );
 
-  useEffect(() => clearTimers, [clearTimers]);
-
   const openDelay = prefersReducedMotion ? 0 : 90;
   const closeDelay = prefersReducedMotion ? 0 : 170;
+  const submenuOpenDelay = prefersReducedMotion ? 0 : 200;
+  const submenuCloseDelay = prefersReducedMotion ? 0 : 260;
+
+  const activeParentKey = useMemo(() => {
+    const parentWithActiveChild = visibleItems.find((item) =>
+      itemChildren(item)?.some((child) => isChildActive(item.key, child.key, pathname, scheduleView, hashValue)),
+    );
+    return parentWithActiveChild?.key ?? null;
+  }, [hashValue, pathname, scheduleView, visibleItems]);
 
   const openNow = useCallback(() => {
     clearTimer(closeTimerRef);
@@ -99,11 +200,13 @@ export default function SidebarRevealOverlayLab() {
   const closeNow = useCallback(() => {
     clearTimer(openTimerRef);
     clearTimer(closeTimerRef);
+    clearSubmenuTimers();
     pointerInRailRef.current = false;
     pointerInOverlayRef.current = false;
     setHoveredKey(null);
+    setOpenParentKey(null);
     setExpanded(false);
-  }, [clearTimer]);
+  }, [clearSubmenuTimers, clearTimer]);
 
   const scheduleOpen = useCallback(() => {
     clearTimer(closeTimerRef);
@@ -121,10 +224,45 @@ export default function SidebarRevealOverlayLab() {
     closeTimerRef.current = window.setTimeout(() => {
       closeTimerRef.current = null;
       if (isPointerInside() || focusWithinRef.current) return;
+      clearSubmenuTimers();
       setHoveredKey(null);
+      setOpenParentKey(null);
       setExpanded(false);
     }, closeDelay);
-  }, [clearTimer, closeDelay, isPointerInside]);
+  }, [clearSubmenuTimers, clearTimer, closeDelay, isPointerInside]);
+
+  const scheduleSubmenuOpen = useCallback(
+    (key: string) => {
+      clearTimer(submenuCloseTimerRef);
+      clearTimer(submenuOpenTimerRef);
+      submenuOpenTimerRef.current = window.setTimeout(() => {
+        submenuOpenTimerRef.current = null;
+        setOpenParentKey(key);
+      }, submenuOpenDelay);
+    },
+    [clearTimer, submenuOpenDelay],
+  );
+
+  const scheduleSubmenuClose = useCallback(
+    (key: string) => {
+      clearTimer(submenuOpenTimerRef);
+      clearTimer(submenuCloseTimerRef);
+      submenuCloseTimerRef.current = window.setTimeout(() => {
+        submenuCloseTimerRef.current = null;
+        setOpenParentKey((current) => (current === key ? activeParentKey : current));
+      }, submenuCloseDelay);
+    },
+    [activeParentKey, clearTimer, submenuCloseDelay],
+  );
+
+  useEffect(() => {
+    if (!expanded || !submenuEnabled) {
+      setOpenParentKey(null);
+      return;
+    }
+    if (!activeParentKey) return;
+    setOpenParentKey((current) => current ?? activeParentKey);
+  }, [activeParentKey, expanded, submenuEnabled]);
 
   const handleMouseEnter = useCallback(() => {
     pointerInOverlayRef.current = true;
@@ -231,16 +369,6 @@ export default function SidebarRevealOverlayLab() {
     return;
   }, [expanded]);
 
-  const hoveredIndex = useMemo(
-    () => visibleItems.findIndex((item) => item.key === hoveredKey),
-    [hoveredKey, visibleItems],
-  );
-  const activeIndex = useMemo(
-    () => visibleItems.findIndex((item) => isActive(pathname, item.href)),
-    [pathname, visibleItems],
-  );
-  const bubbleIndex = hoveredIndex >= 0 ? hoveredIndex : activeIndex;
-
   return (
     <div
       ref={overlayRef}
@@ -254,27 +382,75 @@ export default function SidebarRevealOverlayLab() {
       onMouseLeave={handleMouseLeave}
     >
       <div className={cx(styles.labelLayer, expanded && styles.labelLayerExpanded)} aria-hidden={!expanded}>
-        <div
-          className={cx(styles.hoverBubble, bubbleIndex >= 0 && styles.hoverBubbleVisible)}
-          style={bubbleIndex >= 0 ? { top: `${8 + bubbleIndex * 52}px` } : undefined}
-          aria-hidden="true"
-        />
         <div className={styles.labelNav}>
           {visibleItems.map((item) => {
-            const active = isActive(pathname, item.href);
+            const children = itemChildren(item);
+            const hasSubmenu = submenuEnabled && Boolean(children?.length);
+            const isParentCurrent =
+              isParentActive(pathname, item.href) ||
+              Boolean(children?.some((child) => isChildActive(item.key, child.key, pathname, scheduleView, hashValue)));
+            const isBubbled = hoveredKey === item.key || isParentCurrent;
+            const isSubmenuOpen = openParentKey === item.key && hasSubmenu;
 
             return (
-              <Link
+              <div
                 key={item.key}
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                className={cx(styles.labelRow, active && styles.labelRowActive)}
-                tabIndex={expanded ? 0 : -1}
-                onMouseEnter={() => setHoveredKey(item.key)}
-                onFocus={() => setHoveredKey(item.key)}
+                className={styles.parentGroup}
+                onMouseEnter={() => {
+                  setHoveredKey(item.key);
+                  if (!hasSubmenu) return;
+                  scheduleSubmenuOpen(item.key);
+                }}
+                onMouseLeave={() => {
+                  if (!hasSubmenu) return;
+                  scheduleSubmenuClose(item.key);
+                }}
               >
-                {item.label}
-              </Link>
+                <Link
+                  href={item.href}
+                  aria-current={isParentCurrent ? 'page' : undefined}
+                  className={cx(styles.parentRow, isBubbled && styles.parentRowBubbled)}
+                  tabIndex={expanded ? 0 : -1}
+                  onFocus={() => {
+                    setHoveredKey(item.key);
+                    if (!hasSubmenu) return;
+                    setOpenParentKey(item.key);
+                  }}
+                >
+                  <span className={styles.parentLabel}>{item.label}</span>
+                  {hasSubmenu ? (
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={cx(styles.chevron, isSubmenuOpen && styles.chevronOpen)}
+                    />
+                  ) : null}
+                </Link>
+
+                {hasSubmenu ? (
+                  <div className={cx(styles.submenu, isSubmenuOpen && styles.submenuOpen)}>
+                    <div className={styles.submenuInner}>
+                      {children?.map((child) => {
+                        const childActive = isChildActive(item.key, child.key, pathname, scheduleView, hashValue);
+                        return (
+                          <Link
+                            key={child.key}
+                            href={child.href}
+                            aria-current={childActive ? 'page' : undefined}
+                            className={cx(styles.childRow, childActive && styles.childRowActive)}
+                            tabIndex={expanded ? 0 : -1}
+                            onFocus={() => {
+                              setHoveredKey(item.key);
+                              setOpenParentKey(item.key);
+                            }}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             );
           })}
         </div>
