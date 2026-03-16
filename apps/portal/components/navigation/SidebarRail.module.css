@@ -41,7 +41,17 @@
   justify-content: center;
   text-decoration: none;
   color: inherit;
-  transition: background 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.rail:not([data-reveal-expanded='true']) .iconButton {
+  transform: none;
+}
+
+.rail[data-reveal-expanded='true'][data-icon-sync-enabled='true'] .iconButton {
+  transform: translateY(var(--icon-shift, 0px));
 }
 
 .iconButton:hover {

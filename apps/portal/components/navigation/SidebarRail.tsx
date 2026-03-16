@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { CSSProperties } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
 import { NAV_ITEMS, SIDEBAR_WIDTH_PX } from './navItems';
 import UserMenu from './UserMenu';
@@ -41,6 +42,7 @@ export default function SidebarRail({
   role?: 'admin' | 'staff';
 }) {
   const pathname = usePathname();
+  const iconSyncEnabled = true;
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
 
@@ -60,7 +62,12 @@ export default function SidebarRail({
   );
 
   return (
-    <aside className={styles.rail} style={{ width: SIDEBAR_WIDTH_PX }} data-portal-sidebar-rail="true">
+    <aside
+      className={styles.rail}
+      style={{ width: SIDEBAR_WIDTH_PX }}
+      data-portal-sidebar-rail="true"
+      data-icon-sync-enabled={iconSyncEnabled ? 'true' : undefined}
+    >
       <div className={styles.section}>
         <nav className={styles.nav} aria-label="Portal navigation">
           {visibleItems.map(({ key, label, href, Icon }) => {
@@ -74,6 +81,7 @@ export default function SidebarRail({
                 aria-current={active ? 'page' : undefined}
                 className={cx(styles.iconButton, active && styles.iconButtonActive)}
                 data-nav-key={key}
+                style={{ '--icon-shift': `var(--icon-shift-${key}, 0px)` } as CSSProperties}
                 onMouseEnter={() => prefetchFor(key)}
                 onFocus={() => prefetchFor(key)}
               >
