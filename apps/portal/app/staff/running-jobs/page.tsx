@@ -1,5 +1,5 @@
-import RunningJobsClient from './RunningJobsClient';
+import { redirect } from 'next/navigation';
 
-export default function StaffRunningJobsPage() {
-  return <RunningJobsClient />;
+export default function StaffRunningJobsRedirectPage() {
+  redirect('/staff/projects/running-jobs');
 }
