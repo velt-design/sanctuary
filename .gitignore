@@ -26,6 +26,7 @@ apps/**/out/
 # misc
 .DS_Store
 *.pem
+/tmp/running-jobs-legacy/
 
 # debug
 npm-debug.log*

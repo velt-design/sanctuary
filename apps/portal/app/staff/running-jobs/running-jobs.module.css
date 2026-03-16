@@ -521,6 +521,19 @@
   background: color-mix(in srgb, var(--portal-bg-surface) 82%, #c8ddf5 18%);
 }
 
+.rowLegacy td,
+.rowLegacy th.rowNumberCell {
+  background: color-mix(in srgb, var(--portal-bg-surface) 88%, #e3e5e9 12%);
+}
+
+.legacyCell {
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.rowLegacy .editableCell {
+  cursor: default;
+}
+
 .notesCell {
   white-space: normal;
 }
@@ -553,6 +566,15 @@
 
 .projectLink:hover {
   text-decoration: underline;
+}
+
+.projectLinkMuted {
+  flex: none;
+  color: rgba(var(--portal-text-rgb), 0.42);
+  font-size: calc(11px * var(--sheet-scale));
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .muted {

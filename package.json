@@ -27,6 +27,7 @@
     "videos:optimize": "node scripts/optimize-videos.mjs",
     "emails:preview": "tsx scripts/preview-email.ts",
     "portal:invite": "tsx scripts/invite-portal-user.ts",
+    "running-jobs:legacy-import": "tsx scripts/import-running-jobs-legacy.ts",
     "audit:lighthouse:mobile": "npx @lhci/cli autorun --config=.lighthouserc.mobile.json",
     "audit:lighthouse:desktop": "npx @lhci/cli autorun --config=.lighthouserc.desktop.json",
     "audit:lighthouse": "npm run audit:lighthouse:mobile && npm run audit:lighthouse:desktop",
@@ -66,6 +67,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5",
-    "vitest": "^4.0.16"
+    "vitest": "^4.0.16",
+    "xlsx": "^0.18.5"
   }
 }

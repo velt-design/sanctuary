@@ -7,7 +7,13 @@ import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { deriveCrewShortCode, deriveRunningJobFields, getLatestRunningJobsEstimate, type RunningJobsEstimateLite } from './derive';
 import { groupRunningJobRows } from './group';
-import type { RunningJobRow, RunningJobsResponse, RunningJobStatusValue } from './types';
+import {
+  parseLegacyBoolean,
+  parseLegacyPositiveInt,
+  parseLegacyStatusValue,
+  type LegacyRunningJobDisplayCells,
+} from './legacy';
+import type { RunningJobCellKey, RunningJobRow, RunningJobsResponse, RunningJobStatusValue } from './types';
 
 const INCLUDED_STAGES = new Set(['SENT', 'DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
 
@@ -71,6 +77,21 @@ type QuoteVersionRow = {
   customer_name: string | null;
 };
 
+type LegacyImportBatchRow = {
+  id: string;
+};
+
+type LegacyImportRow = {
+  id: string;
+  batch_id: string;
+  source_row_number: number;
+  display_cells: unknown;
+  group_year: number | null;
+  sort_date: string | null;
+  matched_project_id: string | null;
+  match_method: string | null;
+};
+
 function firstNonEmpty(...values: Array<string | null | undefined>): string {
   for (const value of values) {
     if (typeof value === 'string' && value.trim()) return value.trim();
@@ -82,6 +103,24 @@ function toYmd(value: unknown): string | null {
   if (typeof value !== 'string' || !value.trim()) return null;
   const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
   return match ? match[1] : null;
+}
+
+function trimCellText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function displayCellsFromUnknown(value: unknown): LegacyRunningJobDisplayCells {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: LegacyRunningJobDisplayCells = {};
+  for (const [rawKey, rawValue] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof rawValue !== 'string' || !rawValue.trim()) continue;
+    out[rawKey as RunningJobCellKey] = rawValue.trim();
+  }
+  return out;
+}
+
+function legacyDisplayValue(displayCells: LegacyRunningJobDisplayCells, key: RunningJobCellKey): string {
+  return trimCellText(displayCells[key] ?? '');
 }
 
 function contactFromProject(project: ProjectRow): { id: string | null; name: string; phone: string; updatedAt: string | null } {
@@ -192,7 +231,135 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
   return { projects, crews };
 }
 
-async function loadRunningJobsByProjectIds(projectIdsFilter?: string[]): Promise<RunningJobsResponse> {
+async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
+  const activeBatchRes = await supabaseServer
+    .from('running_job_legacy_import_batches')
+    .select('id')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (activeBatchRes.error) {
+    if (isMissingSchemaError(activeBatchRes.error)) return [];
+    throw activeBatchRes.error;
+  }
+  const activeBatch = activeBatchRes.data as LegacyImportBatchRow | null;
+  if (!activeBatch?.id) return [];
+
+  const rowsRes = await supabaseServer
+    .from('running_job_legacy_rows')
+    .select('id, batch_id, source_row_number, display_cells, group_year, sort_date, matched_project_id, match_method')
+    .eq('batch_id', activeBatch.id)
+    .eq('match_status', 'unmatched')
+    .order('source_row_number', { ascending: true });
+
+  if (rowsRes.error) {
+    if (isMissingSchemaError(rowsRes.error)) return [];
+    throw rowsRes.error;
+  }
+
+  return (Array.isArray(rowsRes.data) ? rowsRes.data : []).map((raw: any) => {
+    const row = raw as LegacyImportRow;
+    const displayCells = displayCellsFromUnknown(row.display_cells);
+    const estimatedStart = legacyDisplayValue(displayCells, 'estimated_start_date');
+    const finalPayment = legacyDisplayValue(displayCells, 'final_payment_date');
+    const depositPaid = legacyDisplayValue(displayCells, 'deposit_paid_date');
+    const clientName = legacyDisplayValue(displayCells, 'client_name');
+    const lightsRaw = legacyDisplayValue(displayCells, 'lights_status');
+    const blindsRaw = legacyDisplayValue(displayCells, 'blinds_status');
+    const installDaysRaw = legacyDisplayValue(displayCells, 'install_days');
+    const materialsOrderedRaw = legacyDisplayValue(displayCells, 'materials_ordered');
+    const roofingOrderedRaw = legacyDisplayValue(displayCells, 'roofing_ordered');
+    const completedRaw = legacyDisplayValue(displayCells, 'job_completed');
+
+    return {
+      projectId: appIdFromUuid('rjl', String(row.id)),
+      source: 'legacy',
+      groupYear: typeof row.group_year === 'number' ? row.group_year : null,
+      sourceRowNumber: typeof row.source_row_number === 'number' ? row.source_row_number : null,
+      contactId: null,
+      siteVisitEventId: null,
+      scheduledJobId: null,
+      latestEstimateId: null,
+      latestQuoteVersionId: null,
+      legacy: {
+        batchId: String(row.batch_id ?? ''),
+        importRowId: String(row.id ?? ''),
+        matchedProjectId: row.matched_project_id ? appIdFromUuid('proj', row.matched_project_id) : null,
+        matchMethod: typeof row.match_method === 'string' ? row.match_method : null,
+      },
+      stage: 'LEGACY',
+      sortDate: toYmd(row.sort_date) ?? null,
+      rowVersion: createHash('sha256').update(JSON.stringify({ id: row.id, batchId: row.batch_id, sortDate: row.sort_date })).digest('hex'),
+      displayTextByCell: displayCells,
+      cells: {
+        client_name: clientName,
+        phone_number: legacyDisplayValue(displayCells, 'phone_number'),
+        site_address: legacyDisplayValue(displayCells, 'site_address'),
+        site_visit_rep: legacyDisplayValue(displayCells, 'site_visit_rep') || null,
+        deposit_paid_date: depositPaid || null,
+        materials_ordered: parseLegacyBoolean(materialsOrderedRaw),
+        pergola_type: legacyDisplayValue(displayCells, 'pergola_type'),
+        estimated_start_date: estimatedStart || null,
+        final_payment_date: finalPayment || null,
+        job_assigned_to: legacyDisplayValue(displayCells, 'job_assigned_to') || null,
+        job_completed: parseLegacyBoolean(completedRaw),
+        lights_status: parseLegacyStatusValue(lightsRaw || null),
+        blinds_status: parseLegacyStatusValue(blindsRaw || null),
+        install_days: parseLegacyPositiveInt(installDaysRaw || null),
+        size_text: legacyDisplayValue(displayCells, 'size_text'),
+        colour_text: legacyDisplayValue(displayCells, 'colour_text'),
+        roofing_text: legacyDisplayValue(displayCells, 'roofing_text'),
+        roofing_ordered: parseLegacyBoolean(roofingOrderedRaw),
+        running_notes: legacyDisplayValue(displayCells, 'running_notes'),
+      },
+      derived: {
+        pergola_type: legacyDisplayValue(displayCells, 'pergola_type') || null,
+        lights_status: parseLegacyStatusValue(lightsRaw || null),
+        blinds_status: parseLegacyStatusValue(blindsRaw || null),
+        size_text: legacyDisplayValue(displayCells, 'size_text') || null,
+        colour_text: legacyDisplayValue(displayCells, 'colour_text') || null,
+        roofing_text: legacyDisplayValue(displayCells, 'roofing_text') || null,
+      },
+      state: {
+        projectCreatedAt: null,
+        hasSiteVisit: false,
+        hasSchedule: false,
+        hasCrewAssigned: false,
+        hasEstimatedStartDate: Boolean(estimatedStart),
+        hasLatestEstimate: false,
+        tasks: {
+          materialsOrdered: parseLegacyBoolean(materialsOrderedRaw),
+          roofingOrdered: parseLegacyBoolean(roofingOrderedRaw),
+          jobComplete: parseLegacyBoolean(completedRaw),
+        },
+        siteVisit: {
+          salespersonId: null,
+          status: null,
+          updatedAt: null,
+        },
+        schedule: {
+          crewId: null,
+          plannedStart: null,
+          forecastStart: toYmd(estimatedStart) ?? null,
+          plannedDurationDays: null,
+          forecastDurationDays: parseLegacyPositiveInt(installDaysRaw || null),
+          actualStart: null,
+          actualFinish: parseLegacyBoolean(completedRaw) ? toYmd(finalPayment) ?? null : null,
+          status: parseLegacyBoolean(completedRaw) ? 'done' : null,
+          updatedAt: null,
+        },
+        meta: {
+          lightsStatus: parseLegacyStatusValue(lightsRaw || null),
+          updatedAt: null,
+        },
+      },
+    } satisfies RunningJobRow;
+  });
+}
+
+async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Promise<RunningJobsResponse> {
   const generatedAt = new Date().toISOString();
   const { projects, crews } = await loadProjectsAndCrews(projectIdsFilter);
   const projectIds = projects.map((project) => project.id).filter(Boolean);
@@ -386,11 +553,15 @@ async function loadRunningJobsByProjectIds(projectIdsFilter?: string[]): Promise
 
     const row: RunningJobRow = {
       projectId: appIdFromUuid('proj', project.id),
+      source: 'live',
+      groupYear: null,
+      sourceRowNumber: null,
       contactId: contact.id ? appIdFromUuid('ct', contact.id) : null,
       siteVisitEventId: siteVisit?.id ? appIdFromUuid('sv', siteVisit.id) : null,
       scheduledJobId: scheduledJob?.id ?? null,
       latestEstimateId: latestEstimate?.id ? appIdFromUuid('est', latestEstimate.id) : null,
       latestQuoteVersionId: latestQuoteVersion?.id ? appIdFromUuid('qv', latestQuoteVersion.id) : null,
+      legacy: null,
       stage,
       sortDate: estimatedStartDate,
       rowVersion: hashRowVersion({
@@ -406,6 +577,7 @@ async function loadRunningJobsByProjectIds(projectIdsFilter?: string[]): Promise
           jobComplete: jobCompleteTask,
         },
       }),
+      displayTextByCell: {},
       cells: {
         client_name: clientName,
         phone_number: contact.phone,
@@ -479,11 +651,19 @@ async function loadRunningJobsByProjectIds(projectIdsFilter?: string[]): Promise
 }
 
 export async function loadRunningJobs(): Promise<RunningJobsResponse> {
-  return loadRunningJobsByProjectIds();
+  const livePayload = await loadLiveRunningJobsByProjectIds();
+  const legacyRows = await loadLegacyRunningJobRows();
+  if (!legacyRows.length) return livePayload;
+
+  return {
+    ...livePayload,
+    generatedAt: new Date().toISOString(),
+    groups: groupRunningJobRows([...livePayload.groups.flatMap((group) => group.rows), ...legacyRows]),
+  };
 }
 
 export async function loadRunningJobRow(projectUuid: string): Promise<RunningJobRow | null> {
-  const payload = await loadRunningJobsByProjectIds([projectUuid]);
+  const payload = await loadLiveRunningJobsByProjectIds([projectUuid]);
   return payload.groups[0]?.rows[0] ?? null;
 }
 

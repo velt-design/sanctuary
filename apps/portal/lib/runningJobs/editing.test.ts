@@ -6,14 +6,19 @@ import type { RunningJobRow, RunningJobsResponse } from './types';
 function makeRow(overrides: Partial<RunningJobRow> = {}): RunningJobRow {
   return {
     projectId: 'proj_1',
+    source: 'live',
+    groupYear: null,
+    sourceRowNumber: null,
     contactId: 'ct_1',
     siteVisitEventId: null,
     scheduledJobId: null,
     latestEstimateId: null,
     latestQuoteVersionId: null,
+    legacy: null,
     stage: 'DEPOSIT',
     sortDate: null,
     rowVersion: 'v1',
+    displayTextByCell: {},
     cells: {
       client_name: 'Alex Santos',
       phone_number: '021',
