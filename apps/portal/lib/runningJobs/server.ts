@@ -289,7 +289,7 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
         matchedProjectId: row.matched_project_id ? appIdFromUuid('proj', row.matched_project_id) : null,
         matchMethod: typeof row.match_method === 'string' ? row.match_method : null,
       },
-      stage: 'LEGACY',
+      stage: 'COMPLETED',
       sortDate: toYmd(row.sort_date) ?? null,
       rowVersion: createHash('sha256').update(JSON.stringify({ id: row.id, batchId: row.batch_id, sortDate: row.sort_date })).digest('hex'),
       displayTextByCell: displayCells,
@@ -304,7 +304,7 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
         estimated_start_date: estimatedStart || null,
         final_payment_date: finalPayment || null,
         job_assigned_to: legacyDisplayValue(displayCells, 'job_assigned_to') || null,
-        job_completed: parseLegacyBoolean(completedRaw),
+        job_completed: true,
         lights_status: parseLegacyStatusValue(lightsRaw || null),
         blinds_status: parseLegacyStatusValue(blindsRaw || null),
         install_days: parseLegacyPositiveInt(installDaysRaw || null),
@@ -332,7 +332,7 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
         tasks: {
           materialsOrdered: parseLegacyBoolean(materialsOrderedRaw),
           roofingOrdered: parseLegacyBoolean(roofingOrderedRaw),
-          jobComplete: parseLegacyBoolean(completedRaw),
+          jobComplete: true,
         },
         siteVisit: {
           salespersonId: null,
@@ -346,8 +346,8 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
           plannedDurationDays: null,
           forecastDurationDays: parseLegacyPositiveInt(installDaysRaw || null),
           actualStart: null,
-          actualFinish: parseLegacyBoolean(completedRaw) ? toYmd(finalPayment) ?? null : null,
-          status: parseLegacyBoolean(completedRaw) ? 'done' : null,
+          actualFinish: toYmd(finalPayment) ?? toYmd(estimatedStart) ?? null,
+          status: 'done',
           updatedAt: null,
         },
         meta: {
