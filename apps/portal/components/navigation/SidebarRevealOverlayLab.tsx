@@ -6,6 +6,7 @@ import { ChevronDown } from 'lucide-react';
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -134,15 +135,30 @@ export default function SidebarRevealOverlayLab() {
   const closeTimerRef = useRef<number | null>(null);
   const railElementRef = useRef<HTMLElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const labelLayerRef = useRef<HTMLDivElement | null>(null);
+  const labelNavRef = useRef<HTMLDivElement | null>(null);
+  const parentRowRefs = useRef(new Map<string, HTMLAnchorElement>());
+  const iconSyncRafRef = useRef<number | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [openParentKey, setOpenParentKey] = useState<string | null>(null);
   const submenuOpenTimerRef = useRef<number | null>(null);
   const submenuCloseTimerRef = useRef<number | null>(null);
   const [hashValue, setHashValue] = useState('');
 
-  const submenuEnabled = pathname === '/staff/sidebar-lab';
+  const submenuEnabled = true;
   const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
+
+  const setParentRowRef = useCallback(
+    (key: string) => (node: HTMLAnchorElement | null) => {
+      if (node) {
+        parentRowRefs.current.set(key, node);
+        return;
+      }
+      parentRowRefs.current.delete(key);
+    },
+    [],
+  );
 
   useEffect(() => {
     const readHash = () => setHashValue(window.location.hash.toLowerCase());
@@ -171,8 +187,60 @@ export default function SidebarRevealOverlayLab() {
     clearTimer(submenuCloseTimerRef);
   }, [clearTimer]);
 
+  const clearIconShiftVars = useCallback(() => {
+    const railElement = railElementRef.current;
+    if (!railElement) return;
+    visibleItems.forEach((item) => {
+      railElement.style.removeProperty(`--icon-shift-${item.key}`);
+    });
+  }, [visibleItems]);
+
+  const syncIconShifts = useCallback(() => {
+    const railElement = railElementRef.current;
+    const labelLayerElement = labelLayerRef.current;
+    if (!railElement || !labelLayerElement) return;
+
+    const layerTop = labelLayerElement.getBoundingClientRect().top;
+    const baseTopStart = 8;
+    const rowStep = 52;
+
+    visibleItems.forEach((item, index) => {
+      const rowElement = parentRowRefs.current.get(item.key);
+      if (!rowElement) return;
+      const rowTop = rowElement.getBoundingClientRect().top - layerTop;
+      const shift = Math.round((rowTop - (baseTopStart + index * rowStep)) * 100) / 100;
+      railElement.style.setProperty(`--icon-shift-${item.key}`, `${shift}px`);
+    });
+  }, [visibleItems]);
+
+  const runIconSyncFor = useCallback(
+    (durationMs: number) => {
+      if (iconSyncRafRef.current !== null) {
+        cancelAnimationFrame(iconSyncRafRef.current);
+        iconSyncRafRef.current = null;
+      }
+      const start = performance.now();
+      const tick = (now: number) => {
+        syncIconShifts();
+        if (now - start < durationMs) {
+          iconSyncRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+        iconSyncRafRef.current = null;
+      };
+      iconSyncRafRef.current = requestAnimationFrame(tick);
+    },
+    [syncIconShifts],
+  );
+
   useEffect(() => clearExpandTimers, [clearExpandTimers]);
   useEffect(() => clearSubmenuTimers, [clearSubmenuTimers]);
+  useEffect(
+    () => () => {
+      if (iconSyncRafRef.current !== null) cancelAnimationFrame(iconSyncRafRef.current);
+    },
+    [],
+  );
 
   const isPointerInside = useCallback(
     () => pointerInRailRef.current || pointerInOverlayRef.current,
@@ -366,8 +434,40 @@ export default function SidebarRevealOverlayLab() {
       return () => railElement.removeAttribute('data-reveal-expanded');
     }
     railElement.removeAttribute('data-reveal-expanded');
+    clearIconShiftVars();
     return;
-  }, [expanded]);
+  }, [clearIconShiftVars, expanded]);
+
+  useLayoutEffect(() => {
+    if (!expanded || !submenuEnabled) {
+      clearIconShiftVars();
+      return;
+    }
+
+    runIconSyncFor(220);
+
+    const labelNavElement = labelNavRef.current;
+    if (!labelNavElement) return;
+
+    let rafId = 0;
+    const scheduleSync = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        syncIconShifts();
+      });
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleSync);
+    resizeObserver.observe(labelNavElement);
+    window.addEventListener('resize', scheduleSync);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', scheduleSync);
+    };
+  }, [clearIconShiftVars, expanded, openParentKey, runIconSyncFor, submenuEnabled, syncIconShifts]);
 
   return (
     <div
@@ -381,8 +481,12 @@ export default function SidebarRevealOverlayLab() {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={cx(styles.labelLayer, expanded && styles.labelLayerExpanded)} aria-hidden={!expanded}>
-        <div className={styles.labelNav}>
+      <div
+        ref={labelLayerRef}
+        className={cx(styles.labelLayer, expanded && styles.labelLayerExpanded)}
+        aria-hidden={!expanded}
+      >
+        <div ref={labelNavRef} className={styles.labelNav}>
           {visibleItems.map((item) => {
             const children = itemChildren(item);
             const hasSubmenu = submenuEnabled && Boolean(children?.length);
@@ -410,6 +514,7 @@ export default function SidebarRevealOverlayLab() {
                   href={item.href}
                   aria-current={isParentCurrent ? 'page' : undefined}
                   className={cx(styles.parentRow, isBubbled && styles.parentRowBubbled)}
+                  ref={setParentRowRef(item.key)}
                   tabIndex={expanded ? 0 : -1}
                   onFocus={() => {
                     setHoveredKey(item.key);
