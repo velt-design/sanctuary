@@ -855,6 +855,15 @@ Because there is no bulk paste in V1, keep optimistic state strictly per-cell.
 - store imported rows separately from live operational tables
 - dedupe imported rows against live projects
 - render remaining legacy rows inline, greyed, and read-only
+- use `running_job_legacy_import_batches` and `running_job_legacy_rows`
+- preserve a raw `A:S` snapshot plus a normalized display projection per imported row
+- keep only one active import batch at a time
+- default import workflow is:
+  - place workbook in `tmp/running-jobs-legacy/`
+  - run `npm run running-jobs:legacy-import` for a dry run
+  - apply the migration
+  - run `npm run running-jobs:legacy-import -- --apply`
+- live running-job rows always win; matched legacy rows are suppressed, not merged into live records
 
 ## Testing
 

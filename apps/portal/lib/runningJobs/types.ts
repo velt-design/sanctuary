@@ -1,6 +1,7 @@
 export type RunningJobStage = 'SENT' | 'DEPOSIT' | 'SCHEDULED' | 'COMPLETED' | 'PAID' | string;
 
 export type RunningJobStatusValue = 'No' | 'Yes' | 'TBC';
+export type RunningJobRowSource = 'live' | 'legacy';
 
 export type RunningJobEditableCellKey =
   | 'client_name'
@@ -53,16 +54,28 @@ export type RunningJobsSalesPersonLookup = {
   shortLabel: string;
 };
 
+export type RunningJobLegacyMeta = {
+  batchId: string;
+  importRowId: string;
+  matchedProjectId: string | null;
+  matchMethod: string | null;
+};
+
 export type RunningJobRow = {
   projectId: string;
+  source: RunningJobRowSource;
+  groupYear: number | null;
+  sourceRowNumber: number | null;
   contactId: string | null;
   siteVisitEventId: string | null;
   scheduledJobId: string | null;
   latestEstimateId: string | null;
   latestQuoteVersionId: string | null;
+  legacy: RunningJobLegacyMeta | null;
   stage: RunningJobStage;
   sortDate: string | null;
   rowVersion: string;
+  displayTextByCell: Partial<Record<RunningJobCellKey, string>>;
   cells: {
     client_name: string;
     phone_number: string;

@@ -104,6 +104,9 @@ export function normalizeRunningJobCellInput(
 }
 
 export function getRunningJobCellEditability(row: RunningJobRow, key: RunningJobEditableCellKey): RunningJobEditability {
+  if (row.source === 'legacy') {
+    return { editable: false, reason: 'Legacy import rows are read-only.' };
+  }
   switch (key) {
     case 'estimated_start_date':
       return row.state.hasCrewAssigned ? { editable: true } : { editable: false, reason: 'Assign a crew first.' };

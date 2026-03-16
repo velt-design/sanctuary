@@ -7,15 +7,20 @@ function firstYear(value: string | null | undefined): number | null {
 }
 
 export function yearForRunningJobRow(row: RunningJobRow): number {
-  return firstYear(row.cells.estimated_start_date) ?? firstYear(row.state.projectCreatedAt) ?? new Date().getFullYear();
+  return row.groupYear ?? firstYear(row.cells.estimated_start_date) ?? firstYear(row.state.projectCreatedAt) ?? new Date().getFullYear();
 }
 
 export function compareRunningJobRows(a: RunningJobRow, b: RunningJobRow): number {
-  const aDate = a.cells.estimated_start_date;
-  const bDate = b.cells.estimated_start_date;
+  const aDate = firstYear(a.sortDate) ? a.sortDate : a.cells.estimated_start_date;
+  const bDate = firstYear(b.sortDate) ? b.sortDate : b.cells.estimated_start_date;
   if (aDate && bDate && aDate !== bDate) return aDate.localeCompare(bDate);
   if (aDate && !bDate) return -1;
   if (!aDate && bDate) return 1;
+  if (a.source === 'legacy' && b.source === 'legacy') {
+    const aRow = a.sourceRowNumber ?? Number.MAX_SAFE_INTEGER;
+    const bRow = b.sourceRowNumber ?? Number.MAX_SAFE_INTEGER;
+    if (aRow !== bRow) return aRow - bRow;
+  }
   return a.cells.client_name.localeCompare(b.cells.client_name, undefined, { sensitivity: 'base' });
 }
 

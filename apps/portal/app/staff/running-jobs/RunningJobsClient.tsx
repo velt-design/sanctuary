@@ -30,6 +30,7 @@ import type {
   RunningJobCellKey,
   RunningJobEditableCellKey,
   RunningJobRow,
+  RunningJobRowSource,
   RunningJobsResponse,
   RunningJobStatusValue,
 } from '@/lib/runningJobs/types';
@@ -74,7 +75,7 @@ type SheetDisplayColumn =
 
 type SheetDisplayRow =
   | { kind: 'year'; year: number }
-  | { kind: 'project'; row: RunningJobRow; rowNumber: number; source: 'live' }
+  | { kind: 'project'; row: RunningJobRow; rowNumber: number; source: RunningJobRowSource }
   | { kind: 'filler'; key: string };
 
 const DEFAULT_FILTERS: Filters = {
@@ -171,11 +172,25 @@ function toExcelColumnLetter(index: number): string {
 }
 
 function formatCellValue(row: RunningJobRow, key: RunningJobCellKey): string {
+  const display = row.displayTextByCell[key];
+  if (typeof display === 'string') return display;
   const value = row.cells[key];
   if (typeof value === 'boolean') return value ? 'Y' : '';
   if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
   if (typeof value === 'string') return value;
   return value ?? '';
+}
+
+function searchTextForCell(row: RunningJobRow, key: RunningJobCellKey): string {
+  return formatCellValue(row, key);
+}
+
+function rowYearValue(row: RunningJobRow): string {
+  if (typeof row.groupYear === 'number') return String(row.groupYear);
+  const estimated = row.cells.estimated_start_date?.match(/^(\d{4})/)?.[1];
+  if (estimated) return estimated;
+  const created = row.state.projectCreatedAt?.match(/^(\d{4})/)?.[1];
+  return created ?? '';
 }
 
 function isOverdue(row: RunningJobRow): boolean {
@@ -246,6 +261,7 @@ function getCellClasses(input: {
   conflict: boolean;
 }): string {
   const classNames = [styles.bodyCell];
+  if (input.row.source === 'legacy') classNames.push(styles.legacyCell);
   if (input.column.frozen) classNames.push(styles.frozenCell);
   if (input.column.kind === 'notes') classNames.push(styles.notesCell);
   if (input.column.editable) classNames.push(styles.editableCell);
@@ -274,6 +290,7 @@ function getCellClasses(input: {
 
 function getRowClasses(row: RunningJobRow): string {
   const classNames = [styles.row];
+  if (row.source === 'legacy') classNames.push(styles.rowLegacy);
   if (row.stage === 'DEPOSIT' && !row.state.hasCrewAssigned && !row.state.hasEstimatedStartDate) classNames.push(styles.rowDeposit);
   if (isInProgress(row)) classNames.push(styles.rowInProgress);
   if (row.stage === 'COMPLETED') classNames.push(styles.rowCompleted);
@@ -284,7 +301,7 @@ function getRowClasses(row: RunningJobRow): string {
 function groupRowsByFilters(groups: RunningJobsResponse['groups'], filters: Filters): RunningJobsResponse['groups'] {
   const query = filters.search.trim().toLowerCase();
   const rows = flattenRunningJobGroups(groups).filter((row) => {
-    if (filters.year !== 'all' && String(row.cells.estimated_start_date?.slice(0, 4) ?? row.state.projectCreatedAt?.slice(0, 4) ?? '') !== filters.year) {
+    if (filters.year !== 'all' && rowYearValue(row) !== filters.year) {
       return false;
     }
     if (filters.crewId !== 'all' && row.state.schedule.crewId !== filters.crewId) return false;
@@ -294,13 +311,13 @@ function groupRowsByFilters(groups: RunningJobsResponse['groups'], filters: Filt
     if (!query) return true;
 
     return [
-      row.cells.client_name,
-      row.cells.phone_number,
-      row.cells.site_address,
-      row.cells.pergola_type,
-      row.cells.running_notes,
-      row.cells.job_assigned_to ?? '',
-      row.cells.site_visit_rep ?? '',
+      searchTextForCell(row, 'client_name'),
+      searchTextForCell(row, 'phone_number'),
+      searchTextForCell(row, 'site_address'),
+      searchTextForCell(row, 'pergola_type'),
+      searchTextForCell(row, 'running_notes'),
+      searchTextForCell(row, 'job_assigned_to'),
+      searchTextForCell(row, 'site_visit_rep'),
     ]
       .join(' ')
       .toLowerCase()
@@ -335,7 +352,7 @@ function buildDisplayRows(filteredGroups: RunningJobsResponse['groups'], rowNumb
         kind: 'project',
         row,
         rowNumber: rowNumberByProjectId.get(row.projectId) ?? 0,
-        source: 'live',
+        source: row.source,
       });
     }
   }
@@ -481,12 +498,16 @@ export default function RunningJobsClient() {
   const filteredGroups = useMemo(() => groupRowsByFilters(allGroups, filters), [allGroups, filters]);
   const allRows = useMemo(() => flattenRunningJobGroups(allGroups), [allGroups]);
   const visibleRows = useMemo(() => flattenRunningJobGroups(filteredGroups), [filteredGroups]);
+  const selectableRows = useMemo(() => visibleRows.filter((row) => row.source === 'live'), [visibleRows]);
   const rowNumberByProjectId = useMemo(() => new Map(allRows.map((row, index) => [row.projectId, index + 1])), [allRows]);
   const rowsByProjectId = useMemo(() => new Map(allRows.map((row) => [row.projectId, row])), [allRows]);
-  const visibleProjectIds = useMemo(() => new Set(visibleRows.map((row) => row.projectId)), [visibleRows]);
+  const visibleProjectIds = useMemo(() => new Set(selectableRows.map((row) => row.projectId)), [selectableRows]);
 
-  const years = useMemo(() => Array.from(new Set(allRows.map((row) => String(row.cells.estimated_start_date?.slice(0, 4) ?? row.state.projectCreatedAt?.slice(0, 4) ?? '')))).filter(Boolean).sort().reverse(), [allRows]);
-  const stages = useMemo(() => Array.from(new Set(allRows.map((row) => row.stage))).sort(), [allRows]);
+  const years = useMemo(
+    () => Array.from(new Set(allRows.map((row) => rowYearValue(row)))).filter(Boolean).sort().reverse(),
+    [allRows],
+  );
+  const stages = useMemo(() => Array.from(new Set(allRows.map((row) => row.stage).filter((stage) => stage !== 'LEGACY'))).sort(), [allRows]);
   const fillerColumnCount = useMemo(() => {
     const fillerWidth = scaledPixels(SHEET_FILLER_COLUMN_WIDTH_PX, zoomPercent);
     const visibleViewportColumns = Math.ceil(gridViewport.width / Math.max(1, fillerWidth));
@@ -521,14 +542,14 @@ export default function RunningJobsClient() {
   );
 
   useEffect(() => {
-    if (!visibleRows.length) {
+    if (!selectableRows.length) {
       setActiveCell(null);
       setEditing(null);
       return;
     }
     if (activeCell && visibleProjectIds.has(activeCell.projectId)) return;
-    setActiveCell({ projectId: visibleRows[0].projectId, key: 'client_name' });
-  }, [activeCell, visibleProjectIds, visibleRows]);
+    setActiveCell({ projectId: selectableRows[0].projectId, key: 'client_name' });
+  }, [activeCell, selectableRows, visibleProjectIds]);
 
   useEffect(() => {
     writeSheetZoomPreference(zoomPercent);
@@ -777,14 +798,14 @@ export default function RunningJobsClient() {
 
   const moveActiveCell = useCallback(
     (rowDelta: number, columnDelta: number) => {
-      if (!activeCell || !visibleRows.length) return;
-      const rowIndex = visibleRows.findIndex((row) => row.projectId === activeCell.projectId);
+      if (!activeCell || !selectableRows.length) return;
+      const rowIndex = selectableRows.findIndex((row) => row.projectId === activeCell.projectId);
       const columnIndex = ALL_CELLS.indexOf(activeCell.key);
-      const nextRow = visibleRows[Math.max(0, Math.min(visibleRows.length - 1, rowIndex + rowDelta))];
+      const nextRow = selectableRows[Math.max(0, Math.min(selectableRows.length - 1, rowIndex + rowDelta))];
       const nextColumn = ALL_CELLS[Math.max(0, Math.min(ALL_CELLS.length - 1, columnIndex + columnDelta))] ?? activeCell.key;
       setActiveCell({ projectId: nextRow.projectId, key: nextColumn });
     },
-    [activeCell, visibleRows],
+    [activeCell, selectableRows],
   );
 
   const beginEdit = useCallback(
@@ -898,9 +919,9 @@ export default function RunningJobsClient() {
       if (!editing || editing.projectId !== row.projectId || editing.key !== key) return null;
 
       const commitToNeighbor = async (columnDelta: number) => {
-        const rowIndex = visibleRows.findIndex((item) => item.projectId === row.projectId);
+        const rowIndex = selectableRows.findIndex((item) => item.projectId === row.projectId);
         const columnIndex = ALL_CELLS.indexOf(key);
-        const nextRow = visibleRows[Math.max(0, rowIndex)];
+        const nextRow = selectableRows[Math.max(0, rowIndex)];
         const nextColumn = ALL_CELLS[Math.max(0, Math.min(ALL_CELLS.length - 1, columnIndex + columnDelta))] ?? key;
         await commitEditing({ projectId: nextRow.projectId, key: nextColumn });
       };
@@ -1052,7 +1073,7 @@ export default function RunningJobsClient() {
         />
       );
     },
-    [commitEditing, editing, lookups.crews, lookups.salesPeople, visibleRows],
+    [commitEditing, editing, lookups.crews, lookups.salesPeople, selectableRows],
   );
 
   return (
@@ -1168,6 +1189,7 @@ export default function RunningJobsClient() {
                       }
 
                       const { row, rowNumber } = displayRow;
+                      const isLegacyRow = row.source === 'legacy';
                       return (
                         <tr key={row.projectId} className={getRowClasses(row)}>
                           <th className={styles.rowNumberCell} scope="row">
@@ -1188,16 +1210,19 @@ export default function RunningJobsClient() {
                               column.key === 'client_name' ? (
                                 <div className={styles.clientCell}>
                                   <span>{text || 'Untitled'}</span>
-                                  <Link
-                                    className={styles.projectLink}
-                                    href={`/staff/projects/${encodeURIComponent(row.projectId)}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(event) => event.stopPropagation()}
-                                    onKeyDown={(event) => event.stopPropagation()}
-                                  >
-                                    Open
-                                  </Link>
+                                  {isLegacyRow ? <span className={styles.projectLinkMuted}>Legacy</span> : null}
+                                  {!isLegacyRow ? (
+                                    <Link
+                                      className={styles.projectLink}
+                                      href={`/staff/projects/${encodeURIComponent(row.projectId)}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(event) => event.stopPropagation()}
+                                      onKeyDown={(event) => event.stopPropagation()}
+                                    >
+                                      Open
+                                    </Link>
+                                  ) : null}
                                 </div>
                               ) : column.key === 'running_notes' ? (
                                 <span className={styles.notesPreview}>{text || '—'}</span>
@@ -1218,10 +1243,12 @@ export default function RunningJobsClient() {
                                 })}
                                 style={cellStyle(column, displayColumn.actualIndex, zoomPercent)}
                                 onClick={() => {
+                                  if (isLegacyRow) return;
                                   setActiveCell({ projectId: row.projectId, key: column.key });
                                   gridRef.current?.focus();
                                 }}
                                 onDoubleClick={() => {
+                                  if (isLegacyRow) return;
                                   if (column.key === 'materials_ordered' || column.key === 'roofing_ordered' || column.key === 'job_completed') {
                                     if (isEditableKey(column.key)) void toggleBooleanCell(row, column.key);
                                     return;
