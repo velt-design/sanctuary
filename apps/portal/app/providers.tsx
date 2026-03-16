@@ -24,7 +24,7 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   const [persister] = useState(() => createIDBPersister('sanctuary-portal-react-query'));
-  const buster = process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER ?? 'v1';
+  const buster = process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER ?? 'v2';
 
   return (
     <PersistQueryClientProvider

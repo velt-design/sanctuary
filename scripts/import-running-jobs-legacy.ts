@@ -171,9 +171,9 @@ function parseWorkbook(filePath: string, requestedSheetName?: string | null): { 
     if (!isLegacyProjectRow(rowNumber, rawCells)) continue;
 
     const displayCells = toDisplayCells(sheet, rowNumber, rawCells);
-    const estimatedStart = displayCells.estimated_start_date ?? null;
-    const finalPayment = displayCells.final_payment_date ?? null;
-    const depositPaid = displayCells.deposit_paid_date ?? null;
+    const estimatedStart = worksheetCellDateYmd(sheet[`H${rowNumber}`]);
+    const finalPayment = worksheetCellDateYmd(sheet[`I${rowNumber}`]);
+    const depositPaid = worksheetCellDateYmd(sheet[`E${rowNumber}`]);
 
     rows.push({
       sourceRowNumber: rowNumber,
