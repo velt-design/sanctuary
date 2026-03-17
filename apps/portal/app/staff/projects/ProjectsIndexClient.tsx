@@ -204,6 +204,9 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
         title="Projects"
         right={
           <HeaderActions>
+            <Link className={styles.button} href="/staff/projects/design-packages">
+              Design List
+            </Link>
             <Link className={styles.button} href="/staff/projects/running-jobs">
               Running Jobs
             </Link>

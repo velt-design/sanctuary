@@ -40,6 +40,9 @@ export const qk = {
     list: (host: string) => ['runningJobs', host, 'list'] as const,
     snapshot: (host: string) => ['runningJobs', host, 'snapshot'] as const,
   },
+  designPackages: {
+    list: (host: string) => ['designPackages', host, 'list'] as const,
+  },
   siteVisits: {
     snapshot: (host: string, rangeKey: string) => ['siteVisits', host, 'snapshot', rangeKey] as const,
   },

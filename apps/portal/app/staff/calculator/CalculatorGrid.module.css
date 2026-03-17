@@ -513,6 +513,33 @@
   margin-top: 2px;
 }
 
+.modalField {
+  display: grid;
+  gap: 8px;
+}
+
+.modalField label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(var(--portal-text-rgb), 0.82);
+}
+
+.modalSelect {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  border-radius: 12px;
+  background: var(--portal-bg-surface);
+  color: rgba(var(--portal-text-rgb), 0.92);
+  font: inherit;
+}
+
+.modalSelect:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+}
+
 .modalError {
   margin: 0;
   font-size: 12px;
@@ -3257,4 +3284,3 @@
     overflow: visible;
   }
 }
-

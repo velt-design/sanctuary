@@ -1,22 +1,13 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
-const TIERS = new Set(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4']);
-
-export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
+export async function POST(_req: Request, ctx: { params: Promise<{ projectId: string }> }) {
   const session = await requireStaffSession();
   if (!session) return jsonError('Unauthorized', 401);
-
-  const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
-  const body = parsed.body ?? {};
-
-  const tierRaw = typeof body.tier === 'string' ? body.tier.trim().toUpperCase() : '';
-  const tier = TIERS.has(tierRaw) ? tierRaw : 'TIER_2';
 
   let projectUuid: string;
   try {
@@ -50,9 +41,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     type: 'ui.action.generate_cost_plan',
     projectId: projectUuid,
     stage: 'QUOTING',
-    payload: { tier },
+    payload: {},
   });
 
   return jsonOk({ ok: true });
 }
-

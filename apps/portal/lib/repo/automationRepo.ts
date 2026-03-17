@@ -97,6 +97,38 @@ export async function setTaskDone(taskId: string, done: boolean): Promise<void> 
 export async function getDesignTicket(projectId: string): Promise<DesignTicket | null> {
   const supabase = getSupabaseBrowser();
   const projectUuid = uuidFromAppId(projectId, 'proj');
+  const requestsRes = await supabase
+    .from('design_package_requests')
+    .select('id, project_id, priority_tier, status, due_at, request_note, designer_note, requested_at, completed_at')
+    .eq('project_id', projectUuid)
+    .order('request_version', { ascending: false });
+
+  if (!requestsRes.error) {
+    const rows = Array.isArray(requestsRes.data) ? requestsRes.data : [];
+    const active = rows.find((row: any) => {
+      const status = String(row?.status ?? 'OPEN').toUpperCase();
+      return status === 'OPEN' || status === 'IN_PROGRESS' || status === 'BLOCKED';
+    });
+    const row: any = active ?? rows[0] ?? null;
+    if (row) {
+      return {
+        id: String(row.id ?? ''),
+        projectId: String(row.project_id ?? ''),
+        tier: String(row.priority_tier ?? 'UNPRICED') as any,
+        status: String(row.status ?? 'OPEN') as any,
+        dueAt: typeof row.due_at === 'string' ? row.due_at : null,
+        notes:
+          typeof row.designer_note === 'string' && row.designer_note.trim()
+            ? row.designer_note
+            : typeof row.request_note === 'string'
+              ? row.request_note
+              : null,
+        createdAt: typeof row.requested_at === 'string' ? row.requested_at : '',
+        completedAt: typeof row.completed_at === 'string' ? row.completed_at : null,
+      };
+    }
+  }
+
   const { data, error } = await supabase.from('design_package_tickets').select('*').eq('project_id', projectUuid).maybeSingle();
   if (error) throw new Error(`Failed to load design ticket${hostSuffix()}`);
   return data ? mapDesignTicket(data) : null;
@@ -139,4 +171,3 @@ export async function listAuditEvents(projectId: string, limit = 30): Promise<Au
   if (error) throw new Error(`Failed to load automation log${hostSuffix()}`);
   return (Array.isArray(data) ? data : []).map(mapAuditEvent);
 }
-
