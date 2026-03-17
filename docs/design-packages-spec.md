@@ -665,7 +665,10 @@ The `Design List` page must reuse the running-jobs spreadsheet experience, not j
 That means parity with:
 
 - [`apps/portal/app/staff/projects/running-jobs/RunningJobsClient.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/running-jobs/RunningJobsClient.tsx)
-- [`apps/portal/app/staff/projects/running-jobs/running-jobs.module.css`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/running-jobs/running-jobs.module.css)
+- [`apps/portal/app/staff/projects/running-jobs/useRunningJobsSpreadsheetAdapter.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/running-jobs/useRunningJobsSpreadsheetAdapter.tsx)
+- [`apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx)
+- [`apps/portal/components/spreadsheet/useSpreadsheetShell.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/useSpreadsheetShell.ts)
+- [`apps/portal/components/spreadsheet/spreadsheet.module.css`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/spreadsheet.module.css)
 - [`apps/portal/lib/runningJobs/columns.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/runningJobs/columns.ts)
 - [`apps/portal/lib/runningJobs/group.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/runningJobs/group.ts)
 - [`apps/portal/lib/runningJobs/editing.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/runningJobs/editing.ts)
@@ -710,7 +713,10 @@ Primary design-list files:
 
 - `apps/portal/app/staff/projects/design-packages/page.tsx`
 - `apps/portal/app/staff/projects/design-packages/DesignPackagesClient.tsx`
-- `apps/portal/app/staff/projects/design-packages/design-packages.module.css`
+- `apps/portal/app/staff/projects/design-packages/useDesignListSpreadsheetAdapter.tsx`
+- `apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx`
+- `apps/portal/components/spreadsheet/useSpreadsheetShell.ts`
+- `apps/portal/components/spreadsheet/spreadsheet.module.css`
 - `apps/portal/lib/designPackages/types.ts`
 - `apps/portal/lib/designPackages/columns.ts`
 - `apps/portal/lib/designPackages/group.ts`
@@ -726,7 +732,10 @@ Primary design-list files:
 Supporting parity targets from Running Jobs:
 
 - `apps/portal/app/staff/projects/running-jobs/RunningJobsClient.tsx`
-- `apps/portal/app/staff/projects/running-jobs/running-jobs.module.css`
+- `apps/portal/app/staff/projects/running-jobs/useRunningJobsSpreadsheetAdapter.tsx`
+- `apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx`
+- `apps/portal/components/spreadsheet/useSpreadsheetShell.ts`
+- `apps/portal/components/spreadsheet/spreadsheet.module.css`
 - `apps/portal/lib/runningJobs/columns.ts`
 - `apps/portal/lib/runningJobs/group.ts`
 - `apps/portal/lib/runningJobs/editing.ts`
@@ -736,7 +745,7 @@ User-facing labels inside this area should use `Design List`, but file and route
 
 ### Implementation note
 
-The current custom `DesignPackagesClient.tsx` card/list layout should be treated as temporary and replaced.
+The shared spreadsheet shell now lives under `apps/portal/components/spreadsheet/`; design-list-specific UI changes should usually land in the adapter hook or design-package domain files, not in a page-local layout.
 
 The end state is:
 
@@ -915,7 +924,10 @@ Conflict handling should match Running Jobs:
 Minimum frontend files expected to change for parity work:
 
 - [`apps/portal/app/staff/projects/design-packages/DesignPackagesClient.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/design-packages/DesignPackagesClient.tsx)
-- [`apps/portal/app/staff/projects/design-packages/design-packages.module.css`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/design-packages/design-packages.module.css)
+- [`apps/portal/app/staff/projects/design-packages/useDesignListSpreadsheetAdapter.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/design-packages/useDesignListSpreadsheetAdapter.tsx)
+- [`apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx)
+- [`apps/portal/components/spreadsheet/useSpreadsheetShell.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/useSpreadsheetShell.ts)
+- [`apps/portal/components/spreadsheet/spreadsheet.module.css`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/spreadsheet.module.css)
 - [`apps/portal/lib/designPackages/columns.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/designPackages/columns.ts)
 - [`apps/portal/lib/designPackages/group.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/designPackages/group.ts)
 - [`apps/portal/lib/designPackages/editing.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/designPackages/editing.ts)
@@ -926,7 +938,10 @@ Minimum frontend files expected to change for parity work:
 Reference files to follow closely:
 
 - [`apps/portal/app/staff/projects/running-jobs/RunningJobsClient.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/running-jobs/RunningJobsClient.tsx)
-- [`apps/portal/app/staff/projects/running-jobs/running-jobs.module.css`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/running-jobs/running-jobs.module.css)
+- [`apps/portal/app/staff/projects/running-jobs/useRunningJobsSpreadsheetAdapter.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/app/staff/projects/running-jobs/useRunningJobsSpreadsheetAdapter.tsx)
+- [`apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx)
+- [`apps/portal/components/spreadsheet/useSpreadsheetShell.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/useSpreadsheetShell.ts)
+- [`apps/portal/components/spreadsheet/spreadsheet.module.css`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/components/spreadsheet/spreadsheet.module.css)
 - [`apps/portal/lib/runningJobs/columns.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/runningJobs/columns.ts)
 - [`apps/portal/lib/runningJobs/group.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/runningJobs/group.ts)
 - [`apps/portal/lib/runningJobs/editing.ts`](/Users/velt_mac/Documents/Projects/my-site/apps/portal/lib/runningJobs/editing.ts)
