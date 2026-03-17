@@ -34,6 +34,8 @@ import type { Project } from '@/lib/types/project';
 import { getContact } from '@/lib/repo/contactsRepo';
 import { addProjectActivity, getProject } from '@/lib/repo/projectsRepo';
 import { createEstimate, duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
+import { createDesignRequest } from '@/lib/repo/designPackagesRepo';
+import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import { getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
@@ -115,6 +117,20 @@ type MaterialsExplainApiResponse = {
 function toNumber(value: string): number {
   const n = Number.parseFloat(value);
   return Number.isFinite(n) ? n : NaN;
+}
+
+function designRequestTierFromTotal(totalIncGst: number | null | undefined): DesignRequestPriorityTier {
+  if (typeof totalIncGst !== 'number' || !Number.isFinite(totalIncGst)) return 'UNPRICED';
+  if (totalIncGst < 12_000) return 'TIER_4';
+  if (totalIncGst < 24_000) return 'TIER_3';
+  if (totalIncGst < 48_000) return 'TIER_2';
+  return 'TIER_1';
+}
+
+function formatDesignRequestTierLabel(value: DesignRequestPriorityTier): string {
+  if (value === 'UNPRICED') return 'Unpriced';
+  const suffix = value.split('_').at(-1) ?? '';
+  return `Tier ${suffix}`;
 }
 
 function formatMoney(n: number): string {
@@ -2746,6 +2762,8 @@ export default function CalculatorGridClient({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmReady, setConfirmReady] = useState(false);
   const [confirmAcknowledgeWarnings, setConfirmAcknowledgeWarnings] = useState(false);
+  const [confirmRequestDesign, setConfirmRequestDesign] = useState(false);
+  const [confirmRequestDesignPriority, setConfirmRequestDesignPriority] = useState<DesignRequestPriorityTier>('UNPRICED');
   const [issuesOpen, setIssuesOpen] = useState(false);
   const pendingIssueFocusRef = useRef<{ moduleIndex: number; fieldId: string } | null>(null);
   const infillRowRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
@@ -2769,6 +2787,10 @@ export default function CalculatorGridClient({
   }, [errorsByModule]);
 
   const issuesCount = issues.length;
+  const suggestedDesignRequestTier = useMemo(
+    () => designRequestTierFromTotal(result?.totals?.cost_inc_gst ?? null),
+    [result?.totals?.cost_inc_gst],
+  );
 
   useEffect(() => {
     if (issuesOpen) return;
@@ -5138,6 +5160,8 @@ export default function CalculatorGridClient({
 
         setConfirmReady(false);
         setConfirmAcknowledgeWarnings(false);
+        setConfirmRequestDesign(false);
+        setConfirmRequestDesignPriority(suggestedDesignRequestTier);
         setConfirmOpen(true);
       },
       helperText: projectId ? 'Create immutable snapshot' : 'Requires project context',
@@ -6638,6 +6662,37 @@ export default function CalculatorGridClient({
                 <span>I confirm this estimate is ready to generate</span>
               </label>
 
+              <label className={styles.modalCheckboxRow}>
+                <input
+                  type="checkbox"
+                  checked={confirmRequestDesign}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setConfirmRequestDesign(checked);
+                    if (checked) setConfirmRequestDesignPriority(suggestedDesignRequestTier);
+                  }}
+                />
+                <span>Request design package after generating this estimate</span>
+              </label>
+
+              {confirmRequestDesign ? (
+                <div className={styles.modalField}>
+                  <label htmlFor="calculatorDesignRequestPriority">Priority tier</label>
+                  <select
+                    id="calculatorDesignRequestPriority"
+                    className={styles.modalSelect}
+                    value={confirmRequestDesignPriority}
+                    onChange={(event) => setConfirmRequestDesignPriority(event.target.value as DesignRequestPriorityTier)}
+                  >
+                    {(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'] as const).map((tier) => (
+                      <option key={tier} value={tier}>
+                        {formatDesignRequestTierLabel(tier)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
               {generateError ? <p className={styles.modalError}>{generateError}</p> : null}
             </div>
 
@@ -6755,8 +6810,29 @@ export default function CalculatorGridClient({
                       meta: { estimateId: estimate.id },
                     });
 
+                    let designRequestCreated = false;
+                    if (confirmRequestDesign) {
+                      try {
+                        await createDesignRequest({
+                          projectId,
+                          estimateId: estimate.id,
+                          requestSource: 'calculator_generate',
+                          priorityTier: confirmRequestDesignPriority,
+                        });
+                        designRequestCreated = true;
+                      } catch (requestError) {
+                        const requestMessage =
+                          requestError instanceof Error ? requestError.message : 'Failed to create design request';
+                        toast.error(`Estimate created, but design request failed: ${requestMessage}`);
+                      }
+                    }
+
                     setConfirmOpen(false);
-                    toast.success(`Estimate created (v${estimate.version ?? '—'}).`);
+                    toast.success(
+                      designRequestCreated
+                        ? `Estimate created (v${estimate.version ?? '—'}) and design request created.`
+                        : `Estimate created (v${estimate.version ?? '—'}).`,
+                    );
                     if (projectId) {
                       router.push(
                         `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}`,

@@ -11,6 +11,7 @@ import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/ca
 import { createQuoteFromEstimate } from '@/lib/quotes/quotesRepo';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './EstimatesTab.module.css';
 import EstimateVersionTabs from './_components/EstimateVersionTabs';
@@ -508,6 +509,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [focusCategory, setFocusCategory] = useState('');
   const [quoteBusy, setQuoteBusy] = useState(false);
+  const [requestDesignOpen, setRequestDesignOpen] = useState(false);
 
   const urlEstimateId = useMemo(() => {
     const raw = searchParams?.get('estimateId') ?? '';
@@ -1070,6 +1072,14 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                       View all quotes
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    className={legacy.buttonSecondary}
+                    onClick={() => setRequestDesignOpen(true)}
+                    disabled={!selectedMeta}
+                  >
+                    Request Design
+                  </button>
                   <button type="button" className={legacy.button} onClick={handleCreateQuote} disabled={quoteBusy}>
                     {quoteBusy ? 'Creating…' : 'Create quote'}
                   </button>
@@ -1248,6 +1258,20 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
           ) : null}
         </div>
       </div>
+
+      {selectedMeta ? (
+        <RequestDesignModal
+          open={requestDesignOpen}
+          onOpenChange={setRequestDesignOpen}
+          projectId={projectId}
+          estimateId={selectedMeta.id}
+          estimateLabel={selectedMeta.versionLabel}
+          requestSource="estimates_tab"
+          onCreated={async () => {
+            await queryClient.invalidateQueries({ queryKey: qk.designPackages.list(hostKey) });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

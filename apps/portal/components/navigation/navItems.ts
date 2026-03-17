@@ -21,6 +21,7 @@ export const NAV_ITEMS = [
     children: [
       { key: 'all-projects', label: 'All Projects', href: '/staff/projects' },
       { key: 'new-project', label: 'New Project', href: '/staff/projects/new' },
+      { key: 'design-list', label: 'Design List', href: '/staff/projects/design-packages' },
       { key: 'running-jobs', label: 'Running Jobs', href: '/staff/projects/running-jobs' },
     ],
   },

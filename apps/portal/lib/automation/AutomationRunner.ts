@@ -569,16 +569,6 @@ async function ensureUnscheduledSiteVisit(projectId: string): Promise<void> {
   await upsertSiteVisitEvent(projectId, { status: 'UNSCHEDULED', scheduled_start: null, scheduled_end: null });
 }
 
-async function upsertDesignTicket(projectId: string, patch: Record<string, unknown>): Promise<{ id: string } | null> {
-  const res = await supabaseServer
-    .from('design_package_tickets')
-    .upsert({ project_id: projectId, ...patch } as any, { onConflict: 'project_id' })
-    .select('id')
-    .single();
-  if (res.error || !res.data) return null;
-  return res.data as any;
-}
-
 async function setProjectNextAction(projectId: string, nextActionAt: string | null, nextActionType: string | null): Promise<void> {
   const { error } = await supabaseServer
     .from('projects')
@@ -852,35 +842,8 @@ export class AutomationRunner {
   }
 
   private async onGenerateCostPlan(projectId: string, payload: GenerateCostPlanPayload): Promise<void> {
-    const tier = payload.tier ?? 'TIER_2';
-    const due =
-      tier === 'TIER_1'
-        ? withUtcHour(addBusinessDays(now(), 2), 9).toISOString()
-        : tier === 'TIER_2'
-          ? withUtcHour(addBusinessDays(now(), 3), 9).toISOString()
-          : tier === 'TIER_3'
-            ? withUtcHour(addBusinessDays(now(), 4), 9).toISOString()
-            : null;
-
-    const status = tier === 'TIER_4' ? 'BLOCKED' : 'OPEN';
-
-    await upsertDesignTicket(projectId, {
-      tier,
-      status,
-      due_at: due,
-    });
-
-    if (status !== 'BLOCKED') {
-      await upsertTask({
-        projectId,
-        type: 'CREATE_DESIGN_PACKAGE',
-        title: `Create design package (${tier.replace('_', ' ')})`,
-        dueAt: due,
-        details: null,
-        meta: { tier, source: 'automation' },
-        idempotencyKey: makeIdempotencyKey([projectId, 'task', 'CREATE_DESIGN_PACKAGE']),
-      });
-    }
+    void projectId;
+    void payload;
   }
 
   private async onDesignTicketMarkedDone(projectId: string): Promise<void> {

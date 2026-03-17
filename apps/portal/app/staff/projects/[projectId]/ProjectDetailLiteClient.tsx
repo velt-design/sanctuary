@@ -414,25 +414,20 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                 >
                   Complete site visit
                 </button>
-	                <button
-	                  type="button"
-	                  className={styles.buttonSecondary}
-	                  disabled={Boolean(busy) || isStageSaving}
-	                  onClick={() => {
-	                    if (typeof window === 'undefined') return;
-	                    const tierInput = window.prompt('Design tier (1-4). Leave blank for Tier 2:', '2') ?? '';
-	                    const t = tierInput.trim();
-	                    const tier = t === '1' ? 'TIER_1' : t === '3' ? 'TIER_3' : t === '4' ? 'TIER_4' : 'TIER_2';
-	                    void runStageTransition({
-	                      key: 'generate_cost_plan',
-	                      toStage: 'QUOTING',
-	                      action: async () => {
-	                        await apiJson(`/api/staff/v1/projects/${encodeURIComponent(project.id)}/action/generate_cost_plan`, {
-	                          method: 'POST',
-	                          body: JSON.stringify({ tier }),
-	                        });
-	                        toast.success('Moved to Quoting (dry-run).');
-	                      },
+                <button
+                  type="button"
+                  className={styles.buttonSecondary}
+                  disabled={Boolean(busy) || isStageSaving}
+                  onClick={() => {
+                    void runStageTransition({
+                      key: 'generate_cost_plan',
+                      toStage: 'QUOTING',
+                      action: async () => {
+                        await apiJson(`/api/staff/v1/projects/${encodeURIComponent(project.id)}/action/generate_cost_plan`, {
+                          method: 'POST',
+                        });
+                        toast.success('Moved to Quoting (dry-run).');
+                      },
 	                    });
 	                  }}
 	                >
@@ -843,9 +838,9 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
         </section>
       </div>
 
-      <section className={styles.section} aria-label="Design ticket">
+      <section className={styles.section} aria-label="Design request">
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Design Ticket</h2>
+          <h2 className={styles.sectionTitle}>Design Request</h2>
           {mounted && ticketRes.isRefreshing ? <span className={styles.muted}>Refreshing…</span> : null}
           {ticketData && ticketData.status !== 'DONE' ? (
             <div className={styles.actions}>
@@ -856,7 +851,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                 onClick={() => {
                   void runAction('design_done', async () => {
                     await apiJson(`/api/staff/v1/design_tickets/${encodeURIComponent(ticketData.id)}/action/mark_done`, { method: 'POST' });
-                    toast.success('Design ticket marked done.');
+                    toast.success('Design request marked done.');
                   });
                 }}
               >
@@ -866,7 +861,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
           ) : null}
         </div>
         <div className={styles.sectionBody}>
-          {!mounted ? <p className={styles.note}>Loading design ticket…</p> : null}
+          {!mounted ? <p className={styles.note}>Loading design request…</p> : null}
           {mounted && ticketRes.error ? <p className={styles.error}>{ticketRes.error}</p> : null}
           {ticketData ? (
             <table className={styles.table}>
@@ -886,7 +881,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
               </tbody>
             </table>
           ) : (
-            <p className={styles.note}>No design ticket yet.</p>
+            <p className={styles.note}>No design request yet.</p>
           )}
         </div>
       </section>
@@ -1239,4 +1234,3 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
     </main>
   );
 }
-

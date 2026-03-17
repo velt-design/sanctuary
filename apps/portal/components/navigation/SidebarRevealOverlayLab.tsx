@@ -71,6 +71,9 @@ function isChildActive(
     case 'projects': {
       if (childKey === 'all-projects') return pathname === '/projects' || pathname === '/staff/projects';
       if (childKey === 'new-project') return pathname === '/projects/new' || pathname === '/staff/projects/new';
+      if (childKey === 'design-list') {
+        return pathname === '/staff/projects/design-packages' || pathname.startsWith('/staff/projects/design-packages/');
+      }
       if (childKey === 'running-jobs') {
         return (
           pathname === '/staff/projects/running-jobs' ||
@@ -144,10 +147,15 @@ export default function SidebarRevealOverlayLab() {
   const submenuOpenTimerRef = useRef<number | null>(null);
   const submenuCloseTimerRef = useRef<number | null>(null);
   const [hashValue, setHashValue] = useState('');
+  const prevRouteKeyRef = useRef<string | null>(null);
 
   const submenuEnabled = true;
   const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
+  const routeKey = useMemo(
+    () => `${pathname}?${searchParams.toString()}#${hashValue}`,
+    [hashValue, pathname, searchParams],
+  );
 
   const setParentRowRef = useCallback(
     (key: string) => (node: HTMLAnchorElement | null) => {
@@ -247,6 +255,27 @@ export default function SidebarRevealOverlayLab() {
     [],
   );
 
+  const syncInteractionStateFromDom = useCallback(() => {
+    const railElement = railElementRef.current;
+    const overlayElement = overlayRef.current;
+
+    const pointerInRail = Boolean(railElement?.matches(':hover'));
+    const pointerInOverlay = Boolean(overlayElement?.matches(':hover'));
+    pointerInRailRef.current = pointerInRail;
+    pointerInOverlayRef.current = pointerInOverlay;
+
+    const activeElement = document.activeElement;
+    const focusInside =
+      activeElement instanceof Node &&
+      ((railElement?.contains(activeElement) ?? false) || (overlayElement?.contains(activeElement) ?? false));
+    focusWithinRef.current = Boolean(focusInside);
+
+    return {
+      pointerInside: pointerInRail || pointerInOverlay,
+      focusInside: Boolean(focusInside),
+    };
+  }, []);
+
   const openDelay = prefersReducedMotion ? 0 : 90;
   const closeDelay = prefersReducedMotion ? 0 : 170;
   const submenuOpenDelay = prefersReducedMotion ? 0 : 200;
@@ -276,6 +305,17 @@ export default function SidebarRevealOverlayLab() {
     setExpanded(false);
   }, [clearSubmenuTimers, clearTimer]);
 
+  useEffect(() => {
+    const previousRouteKey = prevRouteKeyRef.current;
+    prevRouteKeyRef.current = routeKey;
+    if (!previousRouteKey || previousRouteKey === routeKey) return;
+
+    clearSubmenuTimers();
+    setHoveredKey(null);
+    setOpenParentKey(null);
+    closeNow();
+  }, [clearSubmenuTimers, closeNow, routeKey]);
+
   const scheduleOpen = useCallback(() => {
     clearTimer(closeTimerRef);
     if (expanded) return;
@@ -291,13 +331,14 @@ export default function SidebarRevealOverlayLab() {
     clearTimer(closeTimerRef);
     closeTimerRef.current = window.setTimeout(() => {
       closeTimerRef.current = null;
-      if (isPointerInside() || focusWithinRef.current) return;
+      const { pointerInside, focusInside } = syncInteractionStateFromDom();
+      if (pointerInside || focusInside) return;
       clearSubmenuTimers();
       setHoveredKey(null);
       setOpenParentKey(null);
       setExpanded(false);
     }, closeDelay);
-  }, [clearSubmenuTimers, clearTimer, closeDelay, isPointerInside]);
+  }, [clearSubmenuTimers, clearTimer, closeDelay, syncInteractionStateFromDom]);
 
   const scheduleSubmenuOpen = useCallback(
     (key: string) => {

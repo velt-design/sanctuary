@@ -27,8 +27,8 @@ export type Task = {
   meta: Record<string, unknown>;
 };
 
-export type DesignTier = 'TIER_1' | 'TIER_2' | 'TIER_3' | 'TIER_4';
-export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED';
+export type DesignTier = 'TIER_1' | 'TIER_2' | 'TIER_3' | 'TIER_4' | 'UNPRICED';
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'BLOCKED' | 'CANCELLED';
 
 export type DesignTicket = {
   id: string; // uuid

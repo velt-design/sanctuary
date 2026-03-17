@@ -27,6 +27,7 @@ import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import MoreMenu from '@/components/portal/MoreMenu';
 import { useToast } from '@/components/ui/toast/ToastProvider';
+import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
 import { NEXT_ACTION_TYPE_ORDER, nextActionTypeLabel, PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import Modal from '@/components/ui/modal/Modal';
 import ConflictModal from '@/components/ui/ConflictModal';
@@ -98,6 +99,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
   const [createQuoteTotalOverride, setCreateQuoteTotalOverride] = useState<string>('');
   const [createQuoteTotalTouched, setCreateQuoteTotalTouched] = useState(false);
   const [createQuoteNotes, setCreateQuoteNotes] = useState<string>('');
+  const [requestDesignEstimate, setRequestDesignEstimate] = useState<Estimate | null>(null);
   const [quoteConfirm, setQuoteConfirm] = useState<
     | { kind: 'delete'; quoteId: string }
     | { kind: 'duplicate'; quoteId: string }
@@ -892,6 +894,14 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                             >
                               Create Quote
                             </button>
+                            <button
+                              type="button"
+                              className={styles.buttonSecondary}
+                              disabled={Boolean(busy)}
+                              onClick={() => setRequestDesignEstimate(e)}
+                            >
+                              Request Design
+                            </button>
                             <Link
                               className={styles.link}
                               href={`/staff/calculator?projectId=${encodeURIComponent(projectId)}&fromEstimateId=${encodeURIComponent(e.id)}`}
@@ -1350,6 +1360,19 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
             </button>
           </div>
         </Modal>
+      ) : null}
+
+      {requestDesignEstimate ? (
+        <RequestDesignModal
+          open
+          onOpenChange={(open) => {
+            if (!open) setRequestDesignEstimate(null);
+          }}
+          projectId={projectId}
+          estimateId={requestDesignEstimate.id}
+          estimateLabel={`v${requestDesignEstimate.version ?? '—'}`}
+          requestSource="estimates_tab"
+        />
       ) : null}
 
       {quoteConfirm ? (
