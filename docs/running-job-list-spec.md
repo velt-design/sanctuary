@@ -637,7 +637,10 @@ Suggested file layout:
 
 - `apps/portal/app/staff/running-jobs/page.tsx`
 - `apps/portal/app/staff/running-jobs/RunningJobsClient.tsx`
-- `apps/portal/app/staff/running-jobs/running-jobs.module.css`
+- `apps/portal/app/staff/projects/running-jobs/useRunningJobsSpreadsheetAdapter.tsx`
+- `apps/portal/components/spreadsheet/SpreadsheetPageTemplate.tsx`
+- `apps/portal/components/spreadsheet/useSpreadsheetShell.ts`
+- `apps/portal/components/spreadsheet/spreadsheet.module.css`
 - `apps/portal/lib/runningJobs/types.ts`
 - `apps/portal/lib/runningJobs/columns.ts`
 - `apps/portal/lib/runningJobs/derive.ts`
