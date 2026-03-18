@@ -137,6 +137,7 @@ export function useSpreadsheetShell<TRow, TKey extends string>({
   const sheetGestureArmedRef = useRef(false);
 
   const visibleRows = useMemo(() => groups.flatMap((group) => group.rows), [groups]);
+  const visibleGroupHeaderCount = useMemo(() => groups.filter((group) => group.showHeader !== false).length, [groups]);
   const selectableRows = useMemo(() => visibleRows.filter((row) => selectable(row)), [selectable, visibleRows]);
   const visibleRowIds = useMemo(() => new Set(selectableRows.map((row) => getRowId(row))), [getRowId, selectableRows]);
   const rowNumberByRowId = useMemo(
@@ -177,13 +178,13 @@ export function useSpreadsheetShell<TRow, TKey extends string>({
   const groupRowHeightPx = useMemo(() => scaledPixels(SHEET_GROUP_ROW_HEIGHT_PX), [scaledPixels]);
 
   const fillerRowCount = useMemo(() => {
-    const existingBodyHeight = visibleRows.length * bodyRowHeightPx + groups.length * groupRowHeightPx;
+    const existingBodyHeight = visibleRows.length * bodyRowHeightPx + visibleGroupHeaderCount * groupRowHeightPx;
     const visibleViewportRows = Math.ceil(
       Math.max(0, gridViewport.height - scaledPixels(SHEET_LETTER_BAND_HEIGHT_PX) - scaledPixels(SHEET_HEADER_HEIGHT_PX) - existingBodyHeight) /
         Math.max(1, bodyRowHeightPx),
     );
     return Math.max(MIN_FILLER_ROWS, visibleViewportRows + FILLER_ROW_BUFFER_ROWS);
-  }, [bodyRowHeightPx, gridViewport.height, groupRowHeightPx, groups.length, scaledPixels, visibleRows.length]);
+  }, [bodyRowHeightPx, gridViewport.height, groupRowHeightPx, scaledPixels, visibleGroupHeaderCount, visibleRows.length]);
 
   const displayColumns = useMemo<SpreadsheetDisplayColumn<TKey>[]>(
     () => [
@@ -213,7 +214,7 @@ export function useSpreadsheetShell<TRow, TKey extends string>({
   const displayRows = useMemo<SpreadsheetDisplayRow<TRow>[]>(
     () => [
       ...groups.flatMap<SpreadsheetDisplayRow<TRow>>((group) => [
-        { kind: 'group', key: group.key, label: group.label },
+        ...(group.showHeader === false ? [] : [{ kind: 'group', key: group.key, label: group.label } as const]),
         ...group.rows.map(
           (row): SpreadsheetDisplayRow<TRow> => ({
             kind: 'row',

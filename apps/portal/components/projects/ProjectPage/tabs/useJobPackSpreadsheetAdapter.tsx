@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import type { MaterialsLineV1 } from '@sp/costing';
 import type { SpreadsheetAdapter, SpreadsheetColumn, SpreadsheetGroup } from '@/components/spreadsheet/types';
 import spreadsheetStyles from '@/components/spreadsheet/spreadsheet.module.css';
 import type { EstimateDetail } from '@/lib/estimates/types';
@@ -12,12 +13,11 @@ import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/ca
 
 export const JOB_PACK_SHEETS = [
   { key: 'materials', label: 'Materials' },
+  { key: 'powdercoating-order', label: 'Powdercoating Order' },
   { key: 'labour', label: 'Labour' },
   { key: 'overheads', label: 'Overheads' },
   { key: 'inputs', label: 'Inputs' },
   { key: 'summary', label: 'Summary' },
-  { key: 'warnings', label: 'Warnings' },
-  { key: 'spec', label: 'Spec' },
 ] as const;
 
 export type JobPackSheetKey = (typeof JOB_PACK_SHEETS)[number]['key'];
@@ -47,11 +47,6 @@ type ReadableInputs = {
   jobRows: Array<{ label: string; value: string }>;
 };
 
-type WarningLike = {
-  level: 'critical' | 'info';
-  message: string;
-};
-
 type SnapshotFields = {
   contact: { displayName: string; email: string; phone: string };
   project: { projectName: string; region?: string; siteAddress?: string; quoteRef?: string };
@@ -62,7 +57,6 @@ type WorkbookContext = {
   estimate: Estimate;
   jobPack: JobPack;
   readableInputs: ReadableInputs;
-  warnings: WarningLike[];
   snapshot: SnapshotFields;
 };
 
@@ -196,25 +190,6 @@ function getSnapshot(estimate: Estimate): SnapshotFields {
   };
 }
 
-function normaliseWarnings(value: unknown): WarningLike[] {
-  if (!Array.isArray(value)) return [];
-
-  const out: WarningLike[] = [];
-  for (const item of value) {
-    if (typeof item === 'string') {
-      const message = item.trim();
-      if (message) out.push({ level: 'info', message });
-      continue;
-    }
-    if (item && typeof item === 'object') {
-      const level = (item as any).level === 'critical' ? 'critical' : 'info';
-      const message = String((item as any).message ?? '').trim();
-      if (message) out.push({ level, message });
-    }
-  }
-  return out;
-}
-
 function buildReadableInputs(inputs: unknown): ReadableInputs {
   if (!inputs) return { modules: [], jobRows: [] };
 
@@ -304,6 +279,29 @@ function ensureRows(rows: JobPackRow[], groupKey: string, message: string): JobP
   return rows.length ? rows : [makeRow(`${groupKey}-empty`, { a: message }, 'muted')];
 }
 
+function stripMaterialPrefix(label: string): string {
+  return label.replace(/^\[[^\]]+\]\s*/g, '').trim();
+}
+
+function inferMaterialColour(label: string): string {
+  const match = label.match(/\(([^)]+)\)(?!.*\([^)]*\))/);
+  return match?.[1]?.trim() || '-';
+}
+
+function inferMaterialStockLength(label: string): string {
+  const match = label.match(/(\d+(?:\.\d+)?)m\b/i);
+  if (!match) return '-';
+  const parsed = Number.parseFloat(match[1] ?? '');
+  return Number.isFinite(parsed) ? `${formatNumber(parsed)}m` : '-';
+}
+
+function buildMaterialItemLabel(line: MaterialsLineV1): string {
+  const strippedLabel = stripMaterialPrefix(line.label ?? '');
+  const withoutTrailingColour = strippedLabel.replace(/\s*\(([^)]+)\)\s*$/, '').trim();
+  const profile = typeof line.profile === 'string' ? line.profile.trim() : '';
+  return withoutTrailingColour || profile || '-';
+}
+
 function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookContext): JobPackSheetModel {
   const summaryRows = ensureRows(
     [
@@ -388,74 +386,111 @@ function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookCont
   };
 }
 
-function buildMaterialsSheet({ jobPack }: WorkbookContext): JobPackSheetModel {
-  const powdercoatRows = ensureRows(
-    jobPack.orderLists.powdercoat.map((line, index) =>
-      makeRow(`powdercoat-${index}`, {
-        a: line.profile || '-',
-        b: '',
-        c: line.colour || '-',
-        d: typeof line.stock_length_m === 'number' ? `${formatNumber(line.stock_length_m)}m` : '-',
-        e: formatNumber(line.qty),
-        f: line.unit || '-',
-        g: line.notes || '',
-      }),
-    ),
-    'materials-powdercoat',
-    'No powdercoat rows are available.',
-  );
+function buildMaterialsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
+  const groupedRows = new Map<
+    string,
+    {
+      item: string;
+      colour: string;
+      stockLength: string;
+      qty: number;
+      unit: string;
+      notes: string;
+    }
+  >();
 
-  const acrylicRows = ensureRows(
-    jobPack.orderLists.acrylic.map((line, index) =>
-      makeRow(`acrylic-${index}`, {
-        a: line.item || '-',
-        b: line.profile || '-',
-        c: line.colour || '-',
-        d: typeof line.stock_length_m === 'number' ? `${formatNumber(line.stock_length_m)}m` : '-',
-        e: formatNumber(line.qty),
-        f: line.unit || '-',
-        g: line.notes || '',
-      }),
-    ),
-    'materials-acrylic',
-    'No acrylic rows are available.',
-  );
+  for (const line of estimate.outputs.materials.lines ?? []) {
+    const item = buildMaterialItemLabel(line);
+    const colour = inferMaterialColour(line.label ?? '');
+    const stockLength = inferMaterialStockLength(line.label ?? '');
+    const unit = line.unit || '-';
+    const notes = line.notes?.trim() || '';
+    const key = [item, colour, stockLength, unit, notes].join('|');
+    const existing = groupedRows.get(key);
+    if (existing) {
+      existing.qty += line.qty;
+      continue;
+    }
+    groupedRows.set(key, {
+      item,
+      colour,
+      stockLength,
+      qty: line.qty,
+      unit,
+      notes,
+    });
+  }
 
-  const hardwareRows = ensureRows(
-    jobPack.orderLists.hardware.map((line, index) =>
-      makeRow(`hardware-${index}`, {
-        a: line.item || '-',
-        b: '',
-        c: '',
-        d: '',
-        e: formatNumber(line.qty),
-        f: line.unit || '-',
-        g: line.notes || '',
-      }),
-    ),
-    'materials-hardware',
-    'No hardware rows are available.',
+  const rows = ensureRows(
+    Array.from(groupedRows.values())
+      .sort((left, right) => {
+        const itemCompare = left.item.localeCompare(right.item);
+        if (itemCompare !== 0) return itemCompare;
+        const colourCompare = left.colour.localeCompare(right.colour);
+        if (colourCompare !== 0) return colourCompare;
+        return left.stockLength.localeCompare(right.stockLength);
+      })
+      .map((line, index) =>
+        makeRow(`material-${index}`, {
+          a: line.item,
+          b: line.colour,
+          c: line.stockLength,
+          d: formatNumber(line.qty),
+          e: line.unit,
+          f: line.notes,
+        }),
+      ),
+    'materials',
+    'No material rows are available.',
   );
 
   return {
     title: 'Materials',
     columns: makeColumns([
       { key: 'a', label: 'Item', widthPx: 280 },
-      { key: 'b', label: 'Detail', widthPx: 220 },
-      { key: 'c', label: 'Colour', widthPx: 160 },
-      { key: 'd', label: 'Stock length', widthPx: 140 },
-      { key: 'e', label: 'Qty', widthPx: 110 },
-      { key: 'f', label: 'Unit', widthPx: 100 },
-      { key: 'g', label: 'Notes', widthPx: 320 },
+      { key: 'b', label: 'Colour', widthPx: 160 },
+      { key: 'c', label: 'Stock length', widthPx: 140 },
+      { key: 'd', label: 'Qty', widthPx: 110 },
+      { key: 'e', label: 'Unit', widthPx: 100 },
+      { key: 'f', label: 'Notes', widthPx: 320 },
     ]),
-    groups: [
-      { key: 'materials-powdercoat', label: 'Powdercoat', rows: powdercoatRows },
-      { key: 'materials-acrylic', label: 'Acrylic', rows: acrylicRows },
-      { key: 'materials-hardware', label: 'Hardware', rows: hardwareRows },
-    ],
+    groups: [{ key: 'materials', label: 'Materials', showHeader: false, rows }],
     defaultActiveKey: 'a',
-    notesColumnKey: 'g',
+    notesColumnKey: 'f',
     emptyMessage: 'No material rows are available for this job pack.',
+  };
+}
+
+function buildPowdercoatingOrderSheet({ jobPack }: WorkbookContext): JobPackSheetModel {
+  const rows = ensureRows(
+    jobPack.orderLists.powdercoat.map((line, index) =>
+      makeRow(`powdercoating-${index}`, {
+        a: line.profile || '-',
+        b: line.colour || '-',
+        c: typeof line.stock_length_m === 'number' ? `${formatNumber(line.stock_length_m)}m` : '-',
+        d: formatNumber(line.qty),
+        e: line.unit || '-',
+        f: line.notes || '',
+      }),
+    ),
+    'powdercoating-order',
+    'No powdercoating rows are available.',
+  );
+
+  return {
+    title: 'Powdercoating Order',
+    columns: makeColumns([
+      { key: 'a', label: 'Profile', widthPx: 280 },
+      { key: 'b', label: 'Colour', widthPx: 160 },
+      { key: 'c', label: 'Stock length', widthPx: 140 },
+      { key: 'd', label: 'Qty', widthPx: 110 },
+      { key: 'e', label: 'Unit', widthPx: 100 },
+      { key: 'f', label: 'Notes', widthPx: 320 },
+    ]),
+    groups: [{ key: 'powdercoating-order', label: 'Powdercoating order', showHeader: false, rows }],
+    defaultActiveKey: 'a',
+    notesColumnKey: 'f',
+    emptyMessage: 'No powdercoating order rows are available for this job pack.',
   };
 }
 
@@ -592,63 +627,6 @@ function buildInputsSheet({ readableInputs }: WorkbookContext): JobPackSheetMode
   };
 }
 
-function buildWarningsSheet({ jobPack, warnings }: WorkbookContext): JobPackSheetModel {
-  const assumptionRows = jobPack.assumptions
-    .filter((message) => !warnings.some((warning) => warning.message === message))
-    .map((message, index) => makeRow(`assumption-${index}`, { a: 'assumption', b: message }));
-
-  return {
-    title: 'Warnings',
-    columns: makeColumns([
-      { key: 'a', label: 'Type', widthPx: 160 },
-      { key: 'b', label: 'Message', widthPx: 520 },
-      { key: 'c', label: 'Notes', widthPx: 220 },
-    ]),
-    groups: [
-      {
-        key: 'warnings',
-        label: 'Warnings',
-        rows: ensureRows(
-          warnings.map((warning, index) => makeRow(`warning-${index}`, { a: warning.level, b: warning.message })),
-          'warnings',
-          'No warnings are recorded for this job pack.',
-        ),
-      },
-      {
-        key: 'assumptions',
-        label: 'Assumptions',
-        rows: ensureRows(assumptionRows, 'assumptions', 'No additional assumptions are recorded.'),
-      },
-    ],
-    defaultActiveKey: 'a',
-    notesColumnKey: 'c',
-    emptyMessage: 'No warnings are available for this job pack.',
-  };
-}
-
-function buildSpecSheet({ jobPack }: WorkbookContext): JobPackSheetModel {
-  const rows = ensureRows(
-    jobPack.specText.split(/\r?\n/).map((line, index) =>
-      makeRow(`spec-${index}`, { a: String(index + 1), b: line || '' }, line.trim() ? 'default' : 'muted'),
-    ),
-    'spec',
-    'No builder spec is available.',
-  );
-
-  return {
-    title: 'Spec',
-    columns: makeColumns([
-      { key: 'a', label: 'Line', widthPx: 110 },
-      { key: 'b', label: 'Content', widthPx: 700 },
-      { key: 'c', label: 'Notes', widthPx: 220 },
-    ]),
-    groups: [{ key: 'spec', label: 'Builder spec', rows }],
-    defaultActiveKey: 'b',
-    notesColumnKey: 'c',
-    emptyMessage: 'No builder spec is available for this job pack.',
-  };
-}
-
 function buildWorkbook(detail: EstimateDetail): WorkbookContext & { sheets: Record<JobPackSheetKey, JobPackSheetModel> } {
   const estimate = toEstimate(detail);
   if (!estimate) {
@@ -657,22 +635,18 @@ function buildWorkbook(detail: EstimateDetail): WorkbookContext & { sheets: Reco
 
   const jobPack = buildJobPack(estimate);
   const readableInputs = buildReadableInputs((estimate as any).inputs);
-  const warnings = normaliseWarnings(
-    (estimate.outputs as any).warnings ?? (estimate.outputs.totals as any).warnings ?? (estimate.outputs.totals as any).notes_and_warnings,
-  );
   const snapshot = getSnapshot(estimate);
-  const context = { detail, estimate, jobPack, readableInputs, warnings, snapshot };
+  const context = { detail, estimate, jobPack, readableInputs, snapshot };
 
   return {
     ...context,
     sheets: {
       summary: buildSummarySheet(context),
       materials: buildMaterialsSheet(context),
+      'powdercoating-order': buildPowdercoatingOrderSheet(context),
       labour: buildLabourSheet(context),
       overheads: buildOverheadsSheet(context),
       inputs: buildInputsSheet(context),
-      warnings: buildWarningsSheet(context),
-      spec: buildSpecSheet(context),
     },
   };
 }
