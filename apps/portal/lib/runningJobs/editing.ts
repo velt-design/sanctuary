@@ -155,6 +155,15 @@ export function getRunningJobEditorValue(row: RunningJobRow, key: RunningJobEdit
   }
 }
 
+export function isRunningJobCellValueUnchanged(
+  row: RunningJobRow,
+  key: RunningJobEditableCellKey,
+  nextValue: NormalizedRunningJobCellValue,
+): boolean {
+  const current = normalizeRunningJobCellInput(key, getRunningJobEditorValue(row, key));
+  return current.ok ? Object.is(current.value, nextValue) : false;
+}
+
 export function applyOptimisticRunningJobCellValue(
   row: RunningJobRow,
   key: RunningJobEditableCellKey,

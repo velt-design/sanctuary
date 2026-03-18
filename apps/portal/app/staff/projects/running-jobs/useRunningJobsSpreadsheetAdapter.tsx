@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import type { SpreadsheetAdapter } from '@/components/spreadsheet/types';
@@ -13,6 +13,7 @@ import {
   applyOptimisticRunningJobCellValue,
   getRunningJobCellEditability,
   getRunningJobEditorValue,
+  isRunningJobCellValueUnchanged,
   normalizeRunningJobCellInput,
   type NormalizedRunningJobCellValue,
 } from '@/lib/runningJobs/editing';
@@ -157,6 +158,23 @@ function patchResponse(
     groups: updateRunningJobRowInGroups(prev.groups, projectId, updater),
   };
 }
+
+type QueuedRunningJobEdit = {
+  rowId: string;
+  cellId: string;
+  key: RunningJobEditableCellKey;
+  value: NormalizedRunningJobCellValue;
+};
+
+type PendingRunningJobRowState = {
+  confirmedRow: RunningJobRow;
+  queue: QueuedRunningJobEdit[];
+  running: boolean;
+};
+
+type RunningJobQueueOutcome =
+  | { kind: 'success'; row: RunningJobRow }
+  | { kind: 'drop'; row?: RunningJobRow; toast?: string; conflict?: boolean };
 
 function Toolbar({
   filters,
