@@ -13,6 +13,7 @@ export type SpreadsheetColumn<TKey extends string> = {
 export type SpreadsheetGroup<TRow> = {
   key: string;
   label: string;
+  showHeader?: boolean;
   rows: TRow[];
 };
 
