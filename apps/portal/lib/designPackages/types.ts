@@ -1,8 +1,8 @@
 export type DesignRequestStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED' | 'BLOCKED';
 export type DesignRequestPriorityTier = 'TIER_1' | 'TIER_2' | 'TIER_3' | 'TIER_4' | 'UNPRICED';
 export type DesignRequestSource = 'calculator_generate' | 'estimates_tab' | 'legacy_backfill';
-export type DesignListCellKey = 'date' | 'quote_name' | 'site_visit_rep' | 'design_ready' | 'priority' | 'sent' | 'visited' | 'notes';
-export type DesignListEditableCellKey = 'design_ready' | 'priority' | 'notes';
+export type DesignListCellKey = 'date' | 'quote_name' | 'site_visit_rep' | 'designer' | 'design_ready' | 'priority' | 'sent' | 'visited' | 'notes';
+export type DesignListEditableCellKey = 'designer' | 'design_ready' | 'priority' | 'notes';
 
 export type DesignRequestPreview = {
   projectId: string;

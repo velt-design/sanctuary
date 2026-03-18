@@ -4,6 +4,7 @@ import { buildVersionLabelMap, extractVersionNumber } from '@/lib/estimates/serv
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
+import { buildDesignPackageDesignerLookups } from './designers';
 import type {
   DesignListRow,
   DesignPackagesResponse,
@@ -201,10 +202,6 @@ function appRequestId(requestUuid: string): string {
   return appIdFromUuid('dpr', requestUuid);
 }
 
-function designerLookupLabel(userId: string): string {
-  return `Designer ${userId.slice(0, 8)}`;
-}
-
 function rowVersionFromParts(parts: Array<string | null>): string {
   return parts.map((part) => part ?? '').join('|');
 }
@@ -217,8 +214,18 @@ function rowVersionForDesignRequestRow(input: {
   notes: string;
   status: DesignRequestStatus;
   priorityTier: DesignRequestPriorityTier;
+  assignedDesignerId: string | null;
 }): string {
-  return rowVersionFromParts([input.updatedAt, input.sentAt, input.visitStatus, input.visitCompletedAt, input.notes, input.status, input.priorityTier]);
+  return rowVersionFromParts([
+    input.updatedAt,
+    input.sentAt,
+    input.visitStatus,
+    input.visitCompletedAt,
+    input.notes,
+    input.status,
+    input.priorityTier,
+    input.assignedDesignerId,
+  ]);
 }
 
 async function loadEstimateVersionLabels(projectIds: string[]): Promise<Map<string, string>> {
@@ -324,7 +331,7 @@ async function loadRawDesignRequestById(requestUuid: string): Promise<DesignRequ
 async function hydrateDesignListRows(requests: DesignRequestRow[]): Promise<Pick<DesignPackagesResponse, 'lookups' | 'rows'>> {
   if (!requests.length) {
     return {
-      lookups: { designers: [] },
+      lookups: { designers: buildDesignPackageDesignerLookups([]) },
       rows: [],
     };
   }
@@ -428,6 +435,7 @@ async function hydrateDesignListRows(requests: DesignRequestRow[]): Promise<Pick
           notes,
           status,
           priorityTier: asPriorityTier(row.priority_tier),
+          assignedDesignerId: designerId,
         }),
         quoteName: quoteLabelForProject(project),
         projectName: trimString(project.name),
@@ -449,9 +457,7 @@ async function hydrateDesignListRows(requests: DesignRequestRow[]): Promise<Pick
 
   return {
     lookups: {
-      designers: Array.from(designerIds)
-        .sort((a, b) => a.localeCompare(b))
-        .map((id) => ({ id, label: designerLookupLabel(id) })),
+      designers: buildDesignPackageDesignerLookups(Array.from(designerIds).sort((a, b) => a.localeCompare(b))),
     },
     rows,
   };
@@ -739,6 +745,23 @@ export async function setDesignRequestPriorityTier(
 
   if (updateRes.error) throw updateRes.error;
   await syncDesignRequestTaskPriority(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), dueAt);
+  return { ok: true, requestId: appRequestId(requestUuid) };
+}
+
+export async function setDesignRequestAssignedDesigner(
+  requestId: string,
+  designerId: string | null,
+): Promise<DesignRequestMutationResponse> {
+  const requestUuid = uuidFromAppId(requestId, 'dpr');
+  await requireExistingRequest(requestUuid);
+
+  const normalized = trimString(designerId) ?? null;
+  const updateRes = await supabaseServer
+    .from('design_package_requests')
+    .update({ assigned_designer: normalized } as any)
+    .eq('id', requestUuid);
+
+  if (updateRes.error) throw updateRes.error;
   return { ok: true, requestId: appRequestId(requestUuid) };
 }
 

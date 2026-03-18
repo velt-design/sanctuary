@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import type { SpreadsheetAdapter } from '@/components/spreadsheet/types';
 import styles from '@/components/spreadsheet/spreadsheet.module.css';
 import { DESIGN_LIST_COLUMNS } from '@/lib/designPackages/columns';
+import { DESIGN_PACKAGE_DESIGNERS, getDesignPackageDesignerLabel, isKnownDesignPackageDesignerId } from '@/lib/designPackages/designers';
 import {
   applyOptimisticDesignListCellValue,
   getDesignListCellEditability,
@@ -83,6 +84,8 @@ function formatCellValue(row: DesignListRow, key: DesignListCellKey): string {
       return row.quoteName;
     case 'site_visit_rep':
       return row.siteVisitRep ?? '';
+    case 'designer':
+      return getDesignPackageDesignerLabel(row.assignedDesignerId);
     case 'design_ready':
       return formatStatusLabel(row.status);
     case 'priority':
@@ -109,6 +112,7 @@ function searchTextForRow(row: DesignListRow): string {
     row.notes,
     row.requestNote,
     row.designerNote,
+    getDesignPackageDesignerLabel(row.assignedDesignerId),
     row.siteVisitRep,
     row.sentQuoteRef,
     row.estimateVersionLabel,
@@ -155,6 +159,14 @@ function patchResponse(prev: DesignPackagesResponse, requestId: string, updater:
     ...prev,
     generatedAt: new Date().toISOString(),
     rows: updateDesignListRow(prev.rows, requestId, updater),
+  };
+}
+
+function replaceResponseRow(prev: DesignPackagesResponse, updatedRow: DesignListRow): DesignPackagesResponse {
+  return {
+    ...prev,
+    generatedAt: new Date().toISOString(),
+    rows: updateDesignListRow(prev.rows, updatedRow.requestId, () => updatedRow),
   };
 }
 
@@ -263,12 +275,6 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
 
   const years = useMemo(() => Array.from(new Set(allRows.map((row) => String(yearForDesignListRow(row))))).sort(), [allRows]);
 
-  const clearConflictLater = useCallback((id: string) => {
-    window.setTimeout(() => {
-      setConflictCells((prev) => setInRecord(prev, id, false));
-    }, 4000);
-  }, []);
-
   const persistCell = useCallback(
     async (row: DesignListRow, key: DesignListEditableCellKey, value: NormalizedDesignListCellValue): Promise<boolean> => {
       const normalized = normalizeDesignListCellInput(key, value);
@@ -296,21 +302,39 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
       }
 
       try {
-        const response = await mutateDesignListCell({
-          requestId: row.requestId,
-          rowVersion: row.rowVersion,
-          key,
-          value: normalized.value,
-        });
+        const saveCell = async (targetRowVersion: string) =>
+          mutateDesignListCell({
+            requestId: row.requestId,
+            rowVersion: targetRowVersion,
+            key,
+            value: normalized.value,
+          });
+
+        let response;
+
+        try {
+          response = await saveCell(row.rowVersion);
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.status !== 409) {
+            throw error;
+          }
+
+          const currentRow = (error.body as any)?.currentRow as DesignListRow | undefined;
+          if (!currentRow) throw error;
+
+          queryClient.setQueryData<DesignPackagesResponse>(queryKey, (current) =>
+            current
+              ? patchResponse(current, currentRow.requestId, () =>
+                  applyOptimisticDesignListCellValue(currentRow, key, normalized.value, lookups),
+                )
+              : current,
+          );
+
+          response = await saveCell(currentRow.rowVersion);
+        }
 
         queryClient.setQueryData<DesignPackagesResponse>(queryKey, (current) =>
-          current
-            ? {
-                ...current,
-                generatedAt: new Date().toISOString(),
-                rows: updateDesignListRow(current.rows, response.updatedRow.requestId, () => response.updatedRow),
-              }
-            : current,
+          current ? replaceResponseRow(current, response.updatedRow) : current,
         );
 
         void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, row.projectId) });
@@ -319,23 +343,6 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         void queryClient.invalidateQueries({ queryKey: qk.automation.tasks(host, row.projectId) });
         return true;
       } catch (error) {
-        if (error instanceof ApiError && error.status === 409) {
-          const currentRow = (error.body as any)?.currentRow as DesignListRow | undefined;
-          if (currentRow && previous) {
-            queryClient.setQueryData<DesignPackagesResponse>(queryKey, {
-              ...previous,
-              generatedAt: new Date().toISOString(),
-              rows: updateDesignListRow(previous.rows, currentRow.requestId, () => currentRow),
-            });
-          } else if (previous) {
-            queryClient.setQueryData(queryKey, previous);
-          }
-          setConflictCells((prev) => setInRecord(prev, id, true));
-          clearConflictLater(id);
-          toast.error('This row changed in another tab. The latest server row has been reloaded.');
-          return false;
-        }
-
         if (previous) queryClient.setQueryData(queryKey, previous);
         toast.error(error instanceof Error ? error.message : 'Failed to save cell.');
         return false;
@@ -343,7 +350,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         setSavingCells((prev) => setInRecord(prev, id, false));
       }
     },
-    [clearConflictLater, host, lookups, queryClient, queryKey, toast],
+    [host, lookups, queryClient, queryKey, toast],
   );
 
   const columns = useMemo(
@@ -389,7 +396,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
     savingCells,
     conflictCells,
     getRowId: (row) => row.requestId,
-    isEditableKey: (key): key is DesignListEditableCellKey => key === 'design_ready' || key === 'priority' || key === 'notes',
+    isEditableKey: (key): key is DesignListEditableCellKey => key === 'designer' || key === 'design_ready' || key === 'priority' || key === 'notes',
     getRowClassName: (row) => {
       const classNames = [styles.row];
       if (row.status === 'IN_PROGRESS') classNames.push(styles.rowInProgress);
@@ -467,6 +474,40 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         }
       };
 
+      if (key === 'designer') {
+        const currentDesignerId = typeof value === 'string' ? value : row.assignedDesignerId;
+        const hasLegacyDesignerOption = Boolean(currentDesignerId && !isKnownDesignPackageDesignerId(currentDesignerId));
+
+        return (
+          <select
+            ref={editorRef}
+            onBlur={onBlur}
+            className={styles.cellSelect}
+            value={currentDesignerId ?? ''}
+            onChange={(event) => setValue(event.target.value || null)}
+            onKeyDown={async (event) => {
+              if (event.key === 'Escape') {
+                cancel();
+              }
+              if (event.key === 'Tab') {
+                event.preventDefault();
+                await commitToNeighbor(event.shiftKey ? -1 : 1);
+              }
+            }}
+          >
+            <option value="">Unassigned</option>
+            {hasLegacyDesignerOption && currentDesignerId ? (
+              <option value={currentDesignerId}>{getDesignPackageDesignerLabel(currentDesignerId)}</option>
+            ) : null}
+            {DESIGN_PACKAGE_DESIGNERS.map((designer) => (
+              <option key={designer.id} value={designer.id}>
+                {designer.code}
+              </option>
+            ))}
+          </select>
+        );
+      }
+
       if (key === 'design_ready') {
         return (
           <select
@@ -535,11 +576,11 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
     },
     commitEdit: persistCell,
     onCellActivated: async ({ trigger, key, beginEdit, seed }) => {
-      if (key !== 'design_ready' && key !== 'priority' && key !== 'notes') {
+      if (key !== 'designer' && key !== 'design_ready' && key !== 'priority' && key !== 'notes') {
         return 'noop';
       }
 
-      if (trigger === 'enter' || trigger === 'double_click') {
+      if (trigger === 'click' || trigger === 'enter' || trigger === 'double_click') {
         beginEdit();
         return 'handled';
       }

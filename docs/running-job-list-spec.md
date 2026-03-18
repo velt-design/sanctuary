@@ -749,8 +749,8 @@ The interaction model is more important than premature scaling.
 
 ### Navigation
 
-- Click selects cell
-- `Enter` or typing starts edit
+- Click opens editable non-boolean cells; read-only and checkbox cells still select
+- `Enter` or typing starts edit from the active cell
 - `Tab` / `Shift+Tab` moves horizontally
 - Arrow keys move selection
 - `Escape` cancels edit
@@ -758,7 +758,7 @@ The interaction model is more important than premature scaling.
 ### Checkboxes
 
 - Render as `Y` or blank
-- Space toggles
+- `Enter`, `Space`, or double click toggles
 
 ### Select cells
 
@@ -769,7 +769,7 @@ The interaction model is more important than premature scaling.
 ### Long text notes
 
 - Inline single-line preview
-- Expand editor on enter or double click
+- Expand editor on click, enter, direct type, or double click
 
 ### Row click behavior
 

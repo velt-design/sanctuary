@@ -5,6 +5,7 @@ import type {
   DesignRequestPriorityTier,
   DesignRequestStatus,
 } from './types';
+import { isKnownDesignPackageDesignerId } from './designers';
 
 export type NormalizedDesignListCellValue = string | DesignRequestPriorityTier | DesignRequestStatus | null;
 
@@ -17,11 +18,23 @@ function toTrimmedString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 export function normalizeDesignListCellInput(
   key: DesignListEditableCellKey,
   value: unknown,
 ): { ok: true; value: NormalizedDesignListCellValue } | { ok: false; error: string } {
   switch (key) {
+    case 'designer': {
+      const next = toTrimmedString(value);
+      if (!next) return { ok: true, value: null };
+      if (isKnownDesignPackageDesignerId(next) || isUuidLike(next)) {
+        return { ok: true, value: next };
+      }
+      return { ok: false, error: 'Designer must be a valid option.' };
+    }
     case 'notes':
       return { ok: true, value: typeof value === 'string' ? value.trim() : '' };
     case 'design_ready': {
@@ -46,8 +59,7 @@ export function normalizeDesignListCellInput(
 }
 
 export function getDesignListCellEditability(row: DesignListRow, key: DesignListEditableCellKey): DesignListCellEditability {
-  if (key === 'priority') return { editable: true };
-  if (key === 'notes') return { editable: true };
+  if (key === 'designer' || key === 'priority' || key === 'notes') return { editable: true };
   if (row.status === 'DONE' || row.status === 'CANCELLED') {
     return { editable: false, reason: 'Completed requests are read-only.' };
   }
@@ -56,6 +68,8 @@ export function getDesignListCellEditability(row: DesignListRow, key: DesignList
 
 export function getDesignListEditorValue(row: DesignListRow, key: DesignListEditableCellKey): NormalizedDesignListCellValue {
   switch (key) {
+    case 'designer':
+      return row.assignedDesignerId;
     case 'design_ready':
       return row.status;
     case 'priority':
@@ -90,6 +104,10 @@ export function applyOptimisticDesignListCellValue(
     next.designerNote = next.notes || null;
   }
 
+  if (key === 'designer') {
+    next.assignedDesignerId = typeof value === 'string' ? value : null;
+  }
+
   if (key === 'priority' && typeof value === 'string') {
     next.priorityTier = value as DesignRequestPriorityTier;
   }
@@ -110,6 +128,15 @@ export function applyOptimisticDesignListCellValue(
     }
   }
 
-  next.rowVersion = rowVersionFromParts([next.updatedAt, next.sentAt, next.visitStatus, next.visitCompletedAt, next.notes, next.status, next.priorityTier]);
+  next.rowVersion = rowVersionFromParts([
+    next.updatedAt,
+    next.sentAt,
+    next.visitStatus,
+    next.visitCompletedAt,
+    next.notes,
+    next.status,
+    next.priorityTier,
+    next.assignedDesignerId,
+  ]);
   return next;
 }

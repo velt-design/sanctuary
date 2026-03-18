@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { normalizeDesignListCellInput } from '@/lib/designPackages/editing';
 import { isMissingSchemaError, loadDesignPackageRow } from '@/lib/designPackages/server';
@@ -36,10 +35,6 @@ export async function POST(req: Request) {
   try {
     const currentRow = await loadDesignPackageRow(requestUuid);
     if (!currentRow) return jsonError('Design request not found', 404);
-
-    if (currentRow.rowVersion !== rowVersion) {
-      return NextResponse.json({ error: 'Row conflict', currentRow }, { status: 409 });
-    }
 
     const response = await applyDesignListCellMutation({
       requestId,
