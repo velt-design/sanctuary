@@ -628,9 +628,16 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const breakdown = useMemo(() => buildBreakdown(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
   const breakdownTotals = useMemo(() => buildBreakdownTotals(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
   const focusGroups = useMemo(() => buildFocusGroups(breakdown), [breakdown]);
-  const jobPackUrl = selectedMeta
-    ? `/staff/projects/${encodeURIComponent(projectId)}/estimate/${encodeURIComponent(selectedMeta.id)}`
-    : '';
+  const jobPackUrlForSheet = useCallback(
+    (sheet: 'materials' | 'labour' | 'overheads') =>
+      selectedMeta
+        ? `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
+            selectedMeta.id,
+          )}&sheet=${encodeURIComponent(sheet)}&mode=focus`
+        : '',
+    [projectId, selectedMeta],
+  );
+  const jobPackUrl = jobPackUrlForSheet('materials');
   const breakdownCount = isFocus ? focusGroups.length : breakdownTotals.length;
   const pergolaSpecs = useMemo(() => getPergolaSpecs(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
   const moduleLines = useMemo(() => {
@@ -989,11 +996,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                         Edit estimate
                       </button>
                     ) : null}
-                    {jobPackUrl ? (
-                      <a className={legacy.buttonSecondary} href={jobPackUrl} target="_blank" rel="noreferrer">
-                        Open Job Pack <span className={styles.externalIcon} aria-hidden="true">↗</span>
-                      </a>
-                    ) : null}
+                    {jobPackUrl ? <Link className={legacy.buttonSecondary} href={jobPackUrl}>Open Job Pack</Link> : null}
                   </div>
                 </div>
                 {estimateLockMessage ? <div className={styles.lockNotice}>{estimateLockMessage}</div> : null}
@@ -1281,14 +1284,10 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                           </span>
                         </div>
                       );
+                      const breakdownSheet = category.id === 'materials' ? 'materials' : category.id === 'overhead' ? 'overheads' : 'labour';
+                      const categoryJobPackUrl = jobPackUrlForSheet(breakdownSheet);
                       return jobPackUrl ? (
-                        <a
-                          key={category.id}
-                          className={styles.breakdownRowLink}
-                          href={jobPackUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
+                        <a key={category.id} className={styles.breakdownRowLink} href={categoryJobPackUrl}>
                           {rowContent}
                         </a>
                       ) : (

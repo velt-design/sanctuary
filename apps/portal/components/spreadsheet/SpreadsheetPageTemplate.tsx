@@ -49,8 +49,10 @@ function maybeOpenPicker(node: SpreadsheetEditorElement | null, trigger: Spreads
 
 export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEditableKey extends TKey, TEditorValue>({
   adapter,
+  embedded = false,
 }: {
   adapter: SpreadsheetAdapter<TRow, TKey, TEditableKey, TEditorValue>;
+  embedded?: boolean;
 }) {
   const shell = useSpreadsheetShell({
     columns: adapter.columns,
@@ -273,8 +275,8 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
   );
 
   return (
-    <main className={styles.page}>
-      <PageHeader title={adapter.title} />
+    <main className={`${styles.page} ${embedded ? styles.pageEmbedded : ''}`}>
+      {embedded ? null : <PageHeader title={adapter.title} />}
 
       <div className={styles.stack}>
         <section className={styles.section}>

@@ -2,12 +2,12 @@ import Link from 'next/link';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 
-const VALID_TABS = new Set(['activity', 'emails', 'estimates', 'quotes', 'files']);
+const VALID_TABS = new Set(['estimates', 'quotes', 'job-packs', 'emails', 'files']);
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
   if (raw && VALID_TABS.has(raw)) return raw;
-  return 'activity';
+  return 'estimates';
 }
 
 function parseMode(value: string | string[] | undefined): string {

@@ -1,4 +1,4 @@
-import EstimateViewerClient from './EstimateViewerClient';
+import { redirect } from 'next/navigation';
 
 export default async function EstimateViewerPage({
   params,
@@ -6,5 +6,9 @@ export default async function EstimateViewerPage({
   params: Promise<{ projectId: string; estimateId: string }>;
 }) {
   const { projectId, estimateId } = await params;
-  return <EstimateViewerClient projectId={projectId} estimateId={estimateId} />;
+  redirect(
+    `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
+      estimateId,
+    )}&sheet=materials&mode=focus`,
+  );
 }
