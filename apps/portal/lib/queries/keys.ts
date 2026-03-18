@@ -19,6 +19,9 @@ export const qk = {
     metaByProject: (host: string, projectId: string) => ['estimates', host, 'metaByProject', projectId] as const,
     detail: (host: string, estimateId: string) => ['estimates', host, 'detail', estimateId] as const,
   },
+  jobPacks: {
+    powdercoating: (host: string, estimateId: string) => ['jobPacks', host, 'powdercoating', estimateId] as const,
+  },
   quotes: {
     versionsByProject: (host: string, projectId: string) => ['quotes', host, 'versionsByProject', projectId] as const,
     detail: (host: string, quoteVersionId: string) => ['quotes', host, 'detail', quoteVersionId] as const,

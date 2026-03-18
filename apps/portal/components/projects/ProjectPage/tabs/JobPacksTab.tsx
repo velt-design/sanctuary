@@ -111,6 +111,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
   }, [selectedEstimateId, updateParams]);
 
   const adapter = useJobPackSpreadsheetAdapter({
+    hostKey,
     detail: selectedDetail,
     sheet,
     onSheetChange: handleSheetChange,
