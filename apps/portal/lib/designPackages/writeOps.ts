@@ -3,7 +3,7 @@ import 'server-only';
 import { POST as markDoneRoute } from '@/app/api/staff/v1/design-packages/[requestId]/action/mark_done/route';
 import { POST as startRoute } from '@/app/api/staff/v1/design-packages/[requestId]/action/start/route';
 import { getDesignListCellEditability, type NormalizedDesignListCellValue } from './editing';
-import { loadDesignPackageRow, setDesignRequestPriorityTier, setDesignRequestStatus, updateDesignRequestDesignerNote } from './server';
+import { loadDesignPackageRow, setDesignRequestAssignedDesigner, setDesignRequestPriorityTier, setDesignRequestStatus, updateDesignRequestDesignerNote } from './server';
 import type { DesignListCellMutationResponse, DesignListEditableCellKey, DesignListRow } from './types';
 
 type RouteHandler = (...args: any[]) => Promise<Response>;
@@ -51,6 +51,9 @@ export async function applyDesignListCellMutation(input: {
   if (!editability.editable) throw new Error(editability.reason ?? 'This cell is not editable.');
 
   switch (input.key) {
+    case 'designer':
+      await setDesignRequestAssignedDesigner(input.requestId, typeof input.value === 'string' ? input.value : null);
+      break;
     case 'notes':
       await updateDesignRequestDesignerNote(input.requestId, typeof input.value === 'string' ? input.value : null);
       break;

@@ -833,8 +833,8 @@ The exact visual treatment can differ by cell content, but the interaction style
 
 `Notes` must use the same inline editing pattern as Running Jobs:
 
-- cell selection first
-- editor on enter, direct type, or double click
+- one click opens editable cells
+- editor still opens on enter, direct type, or double click
 - optimistic save
 - row-version conflict handling
 

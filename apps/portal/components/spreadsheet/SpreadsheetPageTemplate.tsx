@@ -3,13 +3,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import PageHeader from '@/components/layout/PageHeader';
 import { useSpreadsheetShell, type SharedSpreadsheetEditingCell } from './useSpreadsheetShell';
-import type { SpreadsheetActiveCell, SpreadsheetAdapter } from './types';
+import type { SpreadsheetActiveCell, SpreadsheetActivationTrigger, SpreadsheetAdapter } from './types';
 import styles from './spreadsheet.module.css';
 
 type EditorElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 function isPrintableKey(event: ReactKeyboardEvent): boolean {
   return event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+}
+
+function maybeOpenPicker(node: EditorElement | null, trigger: SpreadsheetActivationTrigger | null): void {
+  if (!node || trigger !== 'click') return;
+
+  const supportsPicker =
+    node instanceof HTMLSelectElement || (node instanceof HTMLInputElement && node.type === 'date');
+  if (!supportsPicker) return;
+
+  const pickerNode = node as EditorElement & { showPicker?: () => void };
+  if (typeof pickerNode.showPicker !== 'function') return;
+
+  try {
+    pickerNode.showPicker();
+  } catch {
+    // Ignore picker APIs blocked by browser gesture rules.
+  }
 }
 
 export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEditableKey extends TKey, TEditorValue>({
@@ -29,6 +46,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
 
   const [editing, setEditing] = useState<SharedSpreadsheetEditingCell<TEditableKey, TEditorValue> | null>(null);
   const editorRef = useRef<EditorElement | null>(null);
+  const editingTriggerRef = useRef<SpreadsheetActivationTrigger | null>(null);
   const skipBlurCommitRef = useRef(false);
 
   const allCellKeys = useMemo(() => adapter.columns.map((column) => column.key), [adapter.columns]);
@@ -36,6 +54,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
 
   useEffect(() => {
     if (!shell.visibleRows.length) {
+      editingTriggerRef.current = null;
       setEditing(null);
     }
   }, [shell.visibleRows.length]);
@@ -45,12 +64,16 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
     const node = editorRef.current;
     if (!node) return;
     node.focus();
-    if ('select' in node) node.select?.();
+    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) {
+      node.select();
+    }
+    maybeOpenPicker(node, editingTriggerRef.current);
   }, [editing]);
 
   const beginEdit = useCallback(
-    (row: TRow, key: TEditableKey, seeded?: TEditorValue) => {
+    (row: TRow, key: TEditableKey, trigger: SpreadsheetActivationTrigger, seeded?: TEditorValue) => {
       const rowId = adapter.getRowId(row);
+      editingTriggerRef.current = trigger;
       setEditing({
         rowId,
         key,
@@ -63,6 +86,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
 
   const cancelEditing = useCallback(() => {
     skipBlurCommitRef.current = true;
+    editingTriggerRef.current = null;
     setEditing(null);
   }, []);
 
@@ -71,12 +95,14 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
       if (!editing) return true;
       const row = rowsById.get(editing.rowId);
       if (!row) {
+        editingTriggerRef.current = null;
         setEditing(null);
         return false;
       }
 
       const ok = await adapter.commitEdit(row, editing.key, editing.value);
       if (ok) {
+        editingTriggerRef.current = null;
         setEditing(null);
         if (nextSelection) shell.setActiveCell(nextSelection);
       }
@@ -98,7 +124,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
   );
 
   const handleCellActivation = useCallback(
-    async (trigger: 'enter' | 'space' | 'double_click' | 'printable', row: TRow, key: TKey, seed?: string) => {
+    async (trigger: SpreadsheetActivationTrigger, row: TRow, key: TKey, seed?: string) => {
       return adapter.onCellActivated({
         trigger,
         row,
@@ -106,7 +132,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
         seed,
         beginEdit: (seeded) => {
           if (!adapter.isEditableKey(key)) return;
-          beginEdit(row, key, seeded);
+          beginEdit(row, key, trigger, seeded);
         },
       });
     },
@@ -292,6 +318,8 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
                                   if (!rowSelectable) return;
                                   shell.setActiveCell({ rowId, key: column.key });
                                   shell.focusGrid();
+                                  if (editing) return;
+                                  void handleCellActivation('click', row, column.key);
                                 }}
                                 onDoubleClick={async () => {
                                   if (!rowSelectable) return;

@@ -8,7 +8,7 @@ type PdfDocumentProxy = import('pdfjs-dist/legacy/build/pdf.mjs').PDFDocumentPro
 type PdfLoadingTask = ReturnType<PdfJsModule['getDocument']>;
 type PdfRenderTask = import('pdfjs-dist/legacy/build/pdf.mjs').RenderTask;
 
-const PDF_WORKER_SRC = new URL('pdfjs-dist/legacy/build/pdf.worker.min.mjs', import.meta.url).toString();
+const PDF_WORKER_SRC = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
 
 type PromiseWithResolversCtor = PromiseConstructor & {
   withResolvers?: unknown;

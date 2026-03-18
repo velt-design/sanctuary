@@ -647,7 +647,7 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
         return 'noop';
       }
 
-      if (trigger === 'enter' || trigger === 'double_click') {
+      if (trigger === 'click' || trigger === 'enter' || trigger === 'double_click') {
         beginEdit();
         return 'handled';
       }

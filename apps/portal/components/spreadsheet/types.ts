@@ -48,7 +48,7 @@ export type SpreadsheetEditingCell<TKey extends string, TValue> = {
   value: TValue;
 };
 
-export type SpreadsheetActivationTrigger = 'enter' | 'space' | 'double_click' | 'printable';
+export type SpreadsheetActivationTrigger = 'click' | 'enter' | 'space' | 'double_click' | 'printable';
 
 export type SpreadsheetAdapter<TRow, TKey extends string, TEditableKey extends TKey, TEditorValue> = {
   title: string;
