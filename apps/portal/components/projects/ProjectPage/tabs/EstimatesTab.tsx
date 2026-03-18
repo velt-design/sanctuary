@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import ModuleViewsCard, { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import { apiJson } from '@/lib/repo/apiClient';
+import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import type { EstimateDetail, EstimateMeta, EstimateStatus, EstimateSummary } from '@/lib/estimates/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import { createQuoteFromEstimate } from '@/lib/quotes/quotesRepo';
@@ -36,6 +38,13 @@ function formatDateShort(value: string | null | undefined): string | null {
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
   return date.toLocaleDateString();
+}
+
+function formatDateLong(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) return value;
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatTime(value: string | null | undefined): string | null {
@@ -487,6 +496,27 @@ function detailToMeta(detail: EstimateDetail): EstimateMeta {
   };
 }
 
+function formatEstimateLockMessage(detail: EstimateDetail | null): string | null {
+  const editability = detail?.editability;
+  if (!editability?.isLocked) return null;
+  const quoteLabel = editability.lockedByQuoteRef
+    ? `${editability.lockedByQuoteRef}${editability.lockedByQuoteVersionNumber ? ` V${editability.lockedByQuoteVersionNumber}` : ''}`
+    : editability.lockedByQuoteVersionNumber
+      ? `quote version V${editability.lockedByQuoteVersionNumber}`
+      : 'a related quote';
+  const lockedDate = formatDateLong(editability.lockedAt);
+  return lockedDate ? `Locked after ${quoteLabel} was sent on ${lockedDate}.` : `Locked after ${quoteLabel} was sent.`;
+}
+
+function formatDraftQuoteEditWarning(detail: EstimateDetail | null): string | null {
+  const editability = detail?.editability;
+  if (!editability || editability.isLocked || !editability.hasDraftQuotes) return null;
+  if (editability.draftQuoteCount === 1) {
+    return 'This estimate has 1 draft quote. Editing it will not update that draft automatically.';
+  }
+  return `This estimate has ${editability.draftQuoteCount} draft quotes. Editing it will not update those drafts automatically.`;
+}
+
 type ModeKey = 'general' | 'focus';
 
 export default function EstimatesTab({ projectId, mode }: { projectId: string; mode: ModeKey }) {
@@ -510,6 +540,8 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const [focusCategory, setFocusCategory] = useState('');
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [requestDesignOpen, setRequestDesignOpen] = useState(false);
+  const [drawingView, setDrawingView] = useState<ModuleViewsTab>('plan');
+  const [drawingModuleIndex, setDrawingModuleIndex] = useState(0);
 
   const urlEstimateId = useMemo(() => {
     const raw = searchParams?.get('estimateId') ?? '';
@@ -605,7 +637,32 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     const specs = getModuleSpecs(selectedDetail?.calculatorSnapshot ?? null);
     return specs.map((spec, idx) => formatModuleLine(spec, idx));
   }, [selectedDetail?.id]);
+  const drawingModules = useMemo(
+    () => buildEstimateDrawingModules(selectedDetail?.calculatorSnapshot ?? null),
+    [selectedDetail?.id],
+  );
   const salesPerson = selectedMeta?.createdBy ?? null;
+  const activeDrawingModule = drawingModules[drawingModuleIndex] ?? null;
+  const drawingStatus: ModuleViewsStatus =
+    activeDrawingModule && (activeDrawingModule.planModel || activeDrawingModule.sectionModel) ? 'ready' : 'empty';
+  const drawingModuleLabel = moduleLines[drawingModuleIndex] ?? activeDrawingModule?.label ?? 'Module';
+  const estimateLockMessage = useMemo(() => formatEstimateLockMessage(selectedDetail), [selectedDetail]);
+  const draftQuoteEditWarning = useMemo(() => formatDraftQuoteEditWarning(selectedDetail), [selectedDetail]);
+  const isEstimateLocked = Boolean(selectedDetail?.editability?.isLocked);
+
+  useEffect(() => {
+    setDrawingModuleIndex(0);
+  }, [selectedDetail?.id]);
+
+  useEffect(() => {
+    if (!drawingModules.length) {
+      setDrawingModuleIndex(0);
+      return;
+    }
+    if (drawingModuleIndex >= drawingModules.length) {
+      setDrawingModuleIndex(0);
+    }
+  }, [drawingModuleIndex, drawingModules]);
 
   useEffect(() => {
     if (!focusGroups.length) {
@@ -734,6 +791,12 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const handleCreateFromTabs = useCallback(() => {
     router.push(calculatorHref);
   }, [calculatorHref, router]);
+  const handleEditEstimate = useCallback(() => {
+    if (!selectedDetail || selectedDetail.editability.isLocked) return;
+    router.push(
+      `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(selectedDetail.id)}`,
+    );
+  }, [projectId, router, selectedDetail]);
 
   const handleDuplicate = async () => {
     if (!selectedId || actionBusy) return;
@@ -916,12 +979,21 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                     </div>
                     {createdMeta ? <div className={styles.summaryHeaderMeta}>Created {createdMeta}</div> : null}
                   </div>
-                  {jobPackUrl ? (
-                    <a className={legacy.buttonSecondary} href={jobPackUrl} target="_blank" rel="noreferrer">
-                      Open Job Pack <span className={styles.externalIcon} aria-hidden="true">↗</span>
-                    </a>
-                  ) : null}
+                  <div className={styles.summaryHeaderActions}>
+                    {!isEstimateLocked ? (
+                      <button type="button" className={legacy.buttonSecondary} onClick={handleEditEstimate} disabled={!selectedDetail}>
+                        Edit estimate
+                      </button>
+                    ) : null}
+                    {jobPackUrl ? (
+                      <a className={legacy.buttonSecondary} href={jobPackUrl} target="_blank" rel="noreferrer">
+                        Open Job Pack <span className={styles.externalIcon} aria-hidden="true">↗</span>
+                      </a>
+                    ) : null}
+                  </div>
                 </div>
+                {estimateLockMessage ? <div className={styles.lockNotice}>{estimateLockMessage}</div> : null}
+                {draftQuoteEditWarning ? <div className={styles.infoNotice}>{draftQuoteEditWarning}</div> : null}
                 {isFocus ? (
                   <div className={styles.summaryPrimary}>
                     <div className={styles.summaryTotalBlock}>
@@ -970,46 +1042,78 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                 ) : (
                   <div className={`${styles.summaryPrimary} ${styles.summaryPrimaryStacked}`}>
                     <div className={styles.summaryTopGrid}>
-                      <div className={styles.summarySpecBox}>
-                        <div className={styles.summaryLabel}>Pergola</div>
-                        <div className={styles.summaryModuleList}>
-                          {moduleLines.length ? (
-                            moduleLines.map((line, idx) => (
-                              <div key={`${line}-${idx}`} className={styles.summaryModuleLine}>
-                                {line}
-                              </div>
-                            ))
+                      <div className={styles.summaryInfoColumn}>
+                        <div className={styles.summarySpecBox}>
+                          <div className={styles.summaryLabel}>Pergola</div>
+                          <div className={styles.summaryModuleList}>
+                            {moduleLines.length ? (
+                              moduleLines.map((line, idx) => (
+                                <div key={`${line}-${idx}`} className={styles.summaryModuleLine}>
+                                  {line}
+                                </div>
+                              ))
+                            ) : (
+                              <div className={`${styles.summaryModuleLine} ${styles.mutedValue}`}>M1 - Details not set</div>
+                            )}
+                          </div>
+                          {salesPerson ? (
+                            <div className={styles.summarySpecMeta}>
+                              <span className={styles.summaryMetaLabel}>Sales</span>
+                              <span className={`${styles.summaryMetaValue} ${styles.summaryMetaValueTruncate}`} title={salesPerson}>
+                                {salesPerson}
+                              </span>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className={`${styles.summaryTotalBlock} ${styles.summaryTotalBoxLeft}`}>
+                          <div className={styles.summaryLabel}>{totalPrimary.label}</div>
+                          <div className={styles.summaryPrimaryValue}>{renderValue(formatMoney(totalPrimary.value))}</div>
+                          {totalPrimary.secondaryLabel ? (
+                            <div className={styles.summarySubValue}>
+                              {totalPrimary.secondaryLabel} {renderValue(formatMoney(totalPrimary.secondaryValue ?? null))}
+                            </div>
+                          ) : null}
+                        </div>
+                        {showMargin ? (
+                          <div className={styles.summaryInfoStats}>
+                            <div className={`${styles.summaryStat} ${styles.summaryInfoStatCard}`}>
+                              <div className={styles.summaryLabel}>Margin</div>
+                              <div className={styles.summaryValue}>{renderValue(formatMargin(summary))}</div>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className={styles.summaryDrawingColumn}>
+                        {drawingModules.length > 1 ? (
+                          <div className={styles.segmentedControl}>
+                            {drawingModules.map((module, index) => (
+                              <button
+                                type="button"
+                                key={module.id}
+                                className={`${styles.segmentedItem} ${index === drawingModuleIndex ? styles.segmentedItemActive : ''}`}
+                                onClick={() => setDrawingModuleIndex(index)}
+                              >
+                                {module.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        <div className={styles.summaryDrawingArea}>
+                          {activeDrawingModule ? (
+                            <ModuleViewsCard
+                              moduleLabel={drawingModuleLabel}
+                              view={drawingView}
+                              onViewChange={setDrawingView}
+                              status={drawingStatus}
+                              planModel={activeDrawingModule.planModel}
+                              sectionModel={activeDrawingModule.sectionModel}
+                            />
                           ) : (
-                            <div className={`${styles.summaryModuleLine} ${styles.mutedValue}`}>M1 - Details not set</div>
+                            <div className={styles.drawingEmpty}>No plan or section drawing is available for this estimate.</div>
                           )}
                         </div>
-                        {salesPerson ? (
-                          <div className={styles.summarySpecMeta}>
-                            <span className={styles.summaryMetaLabel}>Sales</span>
-                            <span className={`${styles.summaryMetaValue} ${styles.summaryMetaValueTruncate}`} title={salesPerson}>
-                              {salesPerson}
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className={`${styles.summaryTotalBlock} ${styles.summaryTotalBox}`}>
-                        <div className={styles.summaryLabel}>{totalPrimary.label}</div>
-                        <div className={styles.summaryPrimaryValue}>{renderValue(formatMoney(totalPrimary.value))}</div>
-                        {totalPrimary.secondaryLabel ? (
-                          <div className={styles.summarySubValue}>
-                            {totalPrimary.secondaryLabel} {renderValue(formatMoney(totalPrimary.secondaryValue ?? null))}
-                          </div>
-                        ) : null}
                       </div>
                     </div>
-                    {showMargin ? (
-                      <div className={styles.summaryInlineStats}>
-                        <div className={styles.summaryStat}>
-                          <div className={styles.summaryLabel}>Margin</div>
-                          <div className={styles.summaryValue}>{renderValue(formatMargin(summary))}</div>
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 )}
                 {isFocus ? (
@@ -1055,7 +1159,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                         className={styles.quoteRow}
                         onClick={() => handleOpenQuote(quote.id)}
                       >
-                        <div className={styles.quoteRowLabel}>{`${quote.quoteRef} • v${quote.versionNumber}`}</div>
+                        <div className={styles.quoteRowLabel}>{`${quote.quoteRef} • V${quote.versionNumber}`}</div>
                         <span className={`${styles.quoteStatusPill} ${quoteStatusClass(quote.status)}`}>
                           {quoteStatusLabel(quote.status)}
                         </span>

@@ -281,6 +281,13 @@
   margin-bottom: 10px;
 }
 
+.summaryHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .summaryHeaderTitle {
   display: flex;
   align-items: center;
@@ -295,6 +302,27 @@
 .summaryHeaderMeta {
   margin-top: 4px;
   color: var(--muted);
+  font-size: 12px;
+}
+
+.lockNotice {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(185, 28, 28, 0.18);
+  background: rgba(185, 28, 28, 0.06);
+  color: rgba(127, 29, 29, 0.95);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.infoNotice {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(2, 132, 199, 0.16);
+  background: rgba(2, 132, 199, 0.06);
+  color: rgba(7, 89, 133, 0.95);
   font-size: 12px;
 }
 
@@ -363,8 +391,8 @@
 
 .summaryTopGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: 16px;
   align-items: stretch;
 }
 
@@ -372,6 +400,26 @@
   .summaryTopGrid {
     grid-template-columns: 1fr;
   }
+}
+
+.summaryInfoColumn {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.summaryDrawingColumn {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+}
+
+.summarySideColumn {
+  display: grid;
+  gap: 12px;
+  align-content: start;
 }
 
 .summaryTotalBlock {
@@ -393,6 +441,15 @@
   }
 }
 
+.summaryTotalBoxLeft {
+  text-align: left;
+}
+
+.summaryTotalBoxLeft .summaryPrimaryValue,
+.summaryTotalBoxLeft .summarySubValue {
+  text-align: left;
+}
+
 .summarySpecBox {
   padding: 10px 12px;
   border-radius: 12px;
@@ -400,6 +457,38 @@
   background: var(--portal-bg-surface);
   display: grid;
   gap: 6px;
+}
+
+.summaryDrawingArea {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.summaryInfoStats {
+  display: grid;
+  gap: 10px;
+}
+
+.summaryInfoStatCard {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: rgba(var(--portal-text-rgb), 0.02);
+}
+
+.summaryInfoStatCard .summaryValue,
+.summaryInfoStatCard .summarySubValue {
+  text-align: left;
+}
+
+.drawingEmpty {
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.02);
+  padding: 14px 16px;
+  color: rgba(var(--portal-text-rgb), 0.7);
+  font-size: 13px;
 }
 
 .summarySpecValue {

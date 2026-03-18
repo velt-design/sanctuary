@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import PageHeader from '@/components/layout/PageHeader';
 import { useSpreadsheetShell, type SharedSpreadsheetEditingCell } from './useSpreadsheetShell';
 import type { SpreadsheetActiveCell, SpreadsheetActivationTrigger, SpreadsheetAdapter } from './types';
@@ -29,6 +29,35 @@ function maybeOpenPicker(node: EditorElement | null, trigger: SpreadsheetActivat
   }
 }
 
+function moveCaretToEnd(node: HTMLInputElement | HTMLTextAreaElement): void {
+  try {
+    const end = node.value.length;
+    node.setSelectionRange(end, end);
+  } catch {
+    // Some input types do not support text selection APIs.
+  }
+}
+
+function focusEditorForTrigger(node: EditorElement | null, trigger: SpreadsheetActivationTrigger | null): void {
+  if (!node) return;
+  node.focus();
+
+  if (!(node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)) return;
+
+  if (trigger === 'enter' || trigger === 'double_click') {
+    try {
+      node.select();
+    } catch {
+      // Some input types do not support text selection APIs.
+    }
+    return;
+  }
+
+  if (trigger === 'click' || trigger === 'printable') {
+    moveCaretToEnd(node);
+  }
+}
+
 export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEditableKey extends TKey, TEditorValue>({
   adapter,
 }: {
@@ -51,6 +80,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
 
   const allCellKeys = useMemo(() => adapter.columns.map((column) => column.key), [adapter.columns]);
   const rowsById = useMemo(() => new Map(adapter.allRows.map((row) => [adapter.getRowId(row), row])), [adapter.allRows, adapter.getRowId]);
+  const editingSessionKey = editing ? `${editing.rowId}:${editing.key}` : null;
 
   useEffect(() => {
     if (!shell.visibleRows.length) {
@@ -59,16 +89,13 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
     }
   }, [shell.visibleRows.length]);
 
-  useEffect(() => {
-    if (!editing) return;
+  useLayoutEffect(() => {
+    if (!editingSessionKey) return;
     const node = editorRef.current;
     if (!node) return;
-    node.focus();
-    if (node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement) {
-      node.select();
-    }
+    focusEditorForTrigger(node, editingTriggerRef.current);
     maybeOpenPicker(node, editingTriggerRef.current);
-  }, [editing]);
+  }, [editingSessionKey]);
 
   const beginEdit = useCallback(
     (row: TRow, key: TEditableKey, trigger: SpreadsheetActivationTrigger, seeded?: TEditorValue) => {

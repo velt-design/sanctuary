@@ -1,8 +1,10 @@
 import 'server-only';
 
+import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, isRecord } from '@/lib/supabase/mappers';
+import { computeEstimateEditability, emptyEstimateEditability } from './editability';
 import { summarizeCalculatorSnapshot } from './summarize';
-import type { EstimateDetail, EstimateMeta, EstimateStatus, EstimateSummary } from './types';
+import type { EstimateDetail, EstimateEditability, EstimateMeta, EstimateStatus, EstimateSummary } from './types';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -31,14 +33,14 @@ export function buildVersionLabelMap(rows: any[]): Map<string, string> {
   if (allHaveVersion) {
     for (const row of rows) {
       const version = extractVersionNumber(row);
-      if (version !== null) labels.set(String(row?.id ?? ''), `v${version}`);
+      if (version !== null) labels.set(String(row?.id ?? ''), `V${version}`);
     }
     return labels;
   }
 
   const asc = rows.slice().sort((a, b) => String(a?.created_at ?? '').localeCompare(String(b?.created_at ?? '')));
   asc.forEach((row, idx) => {
-    labels.set(String(row?.id ?? ''), `v${idx + 1}`);
+    labels.set(String(row?.id ?? ''), `V${idx + 1}`);
   });
   return labels;
 }
@@ -91,11 +93,38 @@ export function mapEstimateMeta(row: any, versionLabel: string): EstimateMeta {
   };
 }
 
-export function mapEstimateDetail(row: any, versionLabel: string): EstimateDetail {
+export function mapEstimateDetail(row: any, versionLabel: string, editability?: EstimateEditability | null): EstimateDetail {
   const meta = mapEstimateMeta(row, versionLabel);
   return {
     ...meta,
     calculatorSnapshot: calculatorSnapshotFromRow(row),
     internalNotes: asString(row?.internal_notes),
+    editability: editability ?? emptyEstimateEditability(),
   };
+}
+
+export async function loadEstimateEditability(estimateUuid: string): Promise<EstimateEditability> {
+  const quoteVersionsRes = await supabaseServer
+    .from('quote_versions')
+    .select('id, status, sent_at, created_at, version_number, quotes(quote_ref)')
+    .eq('source_estimate_version_id', estimateUuid);
+
+  if (quoteVersionsRes.error) throw new Error(quoteVersionsRes.error.message ?? 'Failed to load related quotes');
+  const quoteVersions = Array.isArray(quoteVersionsRes.data) ? quoteVersionsRes.data : [];
+  const quoteVersionIds = quoteVersions
+    .map((row) => asString(row?.id))
+    .filter((value): value is string => Boolean(value));
+
+  let sendLogs: any[] = [];
+  if (quoteVersionIds.length) {
+    const sendLogsRes = await supabaseServer
+      .from('quote_send_logs')
+      .select('quote_version_id, status, sent_at, created_at')
+      .in('quote_version_id', quoteVersionIds);
+
+    if (sendLogsRes.error) throw new Error(sendLogsRes.error.message ?? 'Failed to load quote send logs');
+    sendLogs = Array.isArray(sendLogsRes.data) ? sendLogsRes.data : [];
+  }
+
+  return computeEstimateEditability({ quoteVersions, sendLogs });
 }

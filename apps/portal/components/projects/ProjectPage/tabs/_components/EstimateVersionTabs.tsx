@@ -38,7 +38,6 @@ export default function EstimateVersionTabs({
       <div className={styles.versionTabs} role="tablist" aria-label="Estimate versions">
         {sorted.map((estimate) => {
           const isActive = estimate.id === activeEstimateId;
-          const isArchived = estimate.status === 'archived';
           return (
             <button
               key={estimate.id}
@@ -50,10 +49,6 @@ export default function EstimateVersionTabs({
               tabIndex={isActive ? 0 : -1}
             >
               {estimate.label}
-              <span
-                className={`${styles.statusDot} ${isArchived ? styles.statusDotUnapproved : styles.statusDotApproved}`}
-                aria-hidden="true"
-              />
             </button>
           );
         })}

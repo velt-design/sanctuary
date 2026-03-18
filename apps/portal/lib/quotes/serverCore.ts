@@ -127,7 +127,7 @@ export async function updateProjectStage(projectUuid: string, toStage: string, q
 function mapQuoteVersionRow(row: any, estimateLabelMap: Map<string, string>, projectIdApp: string): QuoteVersion {
   const quoteRef = String(row?.quotes?.quote_ref ?? row?.quote_ref ?? '');
   const estimateId = String(row?.source_estimate_version_id ?? '');
-  const estimateLabelRaw = estimateLabelMap.get(estimateId) ?? 'v—';
+  const estimateLabelRaw = estimateLabelMap.get(estimateId) ?? 'V-';
   const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
 
   return {
