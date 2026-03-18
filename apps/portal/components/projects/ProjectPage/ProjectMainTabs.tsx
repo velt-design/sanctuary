@@ -75,6 +75,7 @@ export default function ProjectMainTabs({
     }
     if (next.tab && next.tab !== 'quotes') qs.delete('quotePreview');
     if (next.tab && next.tab !== 'job-packs') qs.delete('sheet');
+    if (next.tab && next.tab !== 'job-packs') qs.delete('mode');
     const query = qs.toString();
     if (next.tab) setActiveTab(next.tab);
     router.replace(`${pathname}${query ? `?${query}` : ''}`);

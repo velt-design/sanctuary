@@ -3,8 +3,7 @@
   gap: 14px;
 }
 
-.header,
-.detailHeader {
+.header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -25,32 +24,6 @@
   font-size: 12px;
 }
 
-.backButton {
-  border: 0;
-  background: transparent;
-  padding: 6px 8px;
-  font: inherit;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  cursor: pointer;
-  color: rgba(var(--portal-text-rgb), 0.7);
-}
-
-.backButton:focus-visible,
-.rowClickable:focus-visible {
-  outline: none;
-  border-radius: 10px;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
-}
-
-.detailMeta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.pill,
 .statusPill {
   display: inline-flex;
   align-items: center;
@@ -62,6 +35,12 @@
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.rowClickable:focus-visible {
+  outline: none;
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
 .statusDraft {
@@ -113,12 +92,6 @@
 
 .rowClickable:hover td {
   background: rgba(var(--portal-text-rgb), 0.03);
-}
-
-.detailActions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .sheetWrap {

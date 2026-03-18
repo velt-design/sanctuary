@@ -56,8 +56,11 @@ export default function ProjectSnapshotPageClient({
 
   return (
     <main className={styles.page}>
-      <ProjectHeader project={snapshot.project} />
-      <ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} />
+      <ProjectHeader
+        project={snapshot.project}
+        currentStage={snapshot.pipeline.stage}
+        pipeline={<ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} compact />}
+      />
       <ProjectPageShell snapshot={snapshot} tab={tab} mode={mode} />
     </main>
   );

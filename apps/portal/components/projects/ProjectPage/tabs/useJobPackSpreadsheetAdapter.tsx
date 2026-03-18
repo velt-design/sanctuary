@@ -35,6 +35,7 @@ type JobPackSheetModel = {
   columns: readonly SpreadsheetColumn<JobPackCellKey>[];
   groups: readonly SpreadsheetGroup<JobPackRow>[];
   defaultActiveKey: JobPackCellKey;
+  notesColumnKey?: JobPackCellKey;
   emptyMessage: string;
 };
 
@@ -110,6 +111,10 @@ function formatDate(value: string | null | undefined): string {
     month: 'short',
     day: 'numeric',
   });
+}
+
+function formatEstimateStatus(value: string): string {
+  return value === 'archived' ? 'Archived' : 'Draft';
 }
 
 function withUnit(value: number | null | undefined, unit: string): string {
@@ -378,6 +383,7 @@ function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookCont
       { key: 'summary-config', label: 'Config versions', rows: configRows },
     ],
     defaultActiveKey: 'a',
+    notesColumnKey: 'c',
     emptyMessage: 'No job pack summary is available.',
   };
 }
@@ -448,6 +454,7 @@ function buildMaterialsSheet({ jobPack }: WorkbookContext): JobPackSheetModel {
       { key: 'materials-hardware', label: 'Hardware', rows: hardwareRows },
     ],
     defaultActiveKey: 'a',
+    notesColumnKey: 'g',
     emptyMessage: 'No material rows are available for this job pack.',
   };
 }
@@ -541,6 +548,7 @@ function buildOverheadsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
       },
     ],
     defaultActiveKey: 'a',
+    notesColumnKey: 'c',
     emptyMessage: 'No overhead data is available for this job pack.',
   };
 }
@@ -579,6 +587,7 @@ function buildInputsSheet({ readableInputs }: WorkbookContext): JobPackSheetMode
     ]),
     groups,
     defaultActiveKey: 'a',
+    notesColumnKey: 'c',
     emptyMessage: 'No calculator inputs are available for this job pack.',
   };
 }
@@ -612,6 +621,7 @@ function buildWarningsSheet({ jobPack, warnings }: WorkbookContext): JobPackShee
       },
     ],
     defaultActiveKey: 'a',
+    notesColumnKey: 'c',
     emptyMessage: 'No warnings are available for this job pack.',
   };
 }
@@ -634,6 +644,7 @@ function buildSpecSheet({ jobPack }: WorkbookContext): JobPackSheetModel {
     ]),
     groups: [{ key: 'spec', label: 'Builder spec', rows }],
     defaultActiveKey: 'b',
+    notesColumnKey: 'c',
     emptyMessage: 'No builder spec is available for this job pack.',
   };
 }
@@ -670,32 +681,69 @@ function SheetToolbar({
   detail,
   sheet,
   trueCostExGst,
+  estimateTotal,
   onSheetChange,
+  onBackToList,
+  onOpenEstimate,
+  showHideNotesToggle,
+  hideNotesColumn,
+  onHideNotesColumnChange,
 }: {
   detail: EstimateDetail;
   sheet: JobPackSheetKey;
   trueCostExGst: number;
+  estimateTotal: number | null | undefined;
   onSheetChange: (sheet: JobPackSheetKey) => void;
+  onBackToList: () => void;
+  onOpenEstimate: () => void;
+  showHideNotesToggle: boolean;
+  hideNotesColumn: boolean;
+  onHideNotesColumnChange: (checked: boolean) => void;
 }) {
   return (
     <div className={spreadsheetStyles.toolbar}>
-      <select
-        className={spreadsheetStyles.toolbarSelect}
-        value={sheet}
-        aria-label="Job pack sheet"
-        onChange={(event) => onSheetChange(coerceJobPackSheet(event.target.value))}
-      >
-        {JOB_PACK_SHEETS.map((item) => (
-          <option key={item.key} value={item.key}>
-            {item.label}
-          </option>
-        ))}
-      </select>
+      <div className={spreadsheetStyles.toolbarPrimary}>
+        <button type="button" className={spreadsheetStyles.toolbarAction} onClick={onBackToList}>
+          Back to job packs
+        </button>
 
-      <div className={spreadsheetStyles.meta}>
-        <span>{detail.versionLabel}</span>
-        <span>{formatDate(detail.createdAt)}</span>
-        <span>{`True cost ${formatMoney(trueCostExGst)}`}</span>
+        <select
+          className={spreadsheetStyles.toolbarSelect}
+          value={sheet}
+          aria-label="Job pack sheet"
+          onChange={(event) => onSheetChange(coerceJobPackSheet(event.target.value))}
+        >
+          {JOB_PACK_SHEETS.map((item) => (
+            <option key={item.key} value={item.key}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+
+        {showHideNotesToggle ? (
+          <label className={spreadsheetStyles.toolbarToggle}>
+            <input
+              type="checkbox"
+              checked={hideNotesColumn}
+              onChange={(event) => onHideNotesColumnChange(event.target.checked)}
+            />
+            <span>Hide notes column</span>
+          </label>
+        ) : null}
+      </div>
+
+      <div className={spreadsheetStyles.toolbarSecondary}>
+        <div className={spreadsheetStyles.toolbarMeta}>
+          <span>{detail.versionLabel}</span>
+          <span>{formatDate(detail.createdAt)}</span>
+          <span>{formatEstimateStatus(detail.status)}</span>
+          {estimateTotal !== null && estimateTotal !== undefined ? <span>{`Estimate ${formatMoney(estimateTotal)}`}</span> : null}
+          <span>{`True cost ${formatMoney(trueCostExGst)}`}</span>
+        </div>
+
+        <button type="button" className={spreadsheetStyles.toolbarAction} onClick={onOpenEstimate}>
+          Open estimate
+        </button>
       </div>
     </div>
   );
@@ -709,10 +757,18 @@ export function useJobPackSpreadsheetAdapter({
   detail,
   sheet,
   onSheetChange,
+  onBackToList,
+  onOpenEstimate,
+  hideNotesColumn,
+  onHideNotesColumnChange,
 }: {
   detail: EstimateDetail | null;
   sheet: JobPackSheetKey;
   onSheetChange: (sheet: JobPackSheetKey) => void;
+  onBackToList: () => void;
+  onOpenEstimate: () => void;
+  hideNotesColumn: boolean;
+  onHideNotesColumnChange: (checked: boolean) => void;
 }): SpreadsheetAdapter<JobPackRow, JobPackCellKey, never, string> | null {
   return useMemo(() => {
     if (!detail) return null;
@@ -724,6 +780,14 @@ export function useJobPackSpreadsheetAdapter({
       return null;
     }
     const activeSheet = workbook.sheets[sheet] ?? workbook.sheets[DEFAULT_SHEET];
+    const visibleColumns =
+      hideNotesColumn && activeSheet.notesColumnKey
+        ? activeSheet.columns.filter((column) => column.key !== activeSheet.notesColumnKey)
+        : activeSheet.columns;
+    const defaultActiveKey =
+      hideNotesColumn && activeSheet.notesColumnKey === activeSheet.defaultActiveKey
+        ? (visibleColumns[0]?.key ?? activeSheet.defaultActiveKey)
+        : activeSheet.defaultActiveKey;
     const allRows = activeSheet.groups.flatMap((group) => group.rows);
 
     return {
@@ -733,15 +797,21 @@ export function useJobPackSpreadsheetAdapter({
           detail={detail}
           sheet={sheet}
           trueCostExGst={workbook.jobPack.summary.totals.trueCostExGst}
+          estimateTotal={detail.summary.total ?? null}
           onSheetChange={onSheetChange}
+          onBackToList={onBackToList}
+          onOpenEstimate={onOpenEstimate}
+          showHideNotesToggle={Boolean(activeSheet.notesColumnKey)}
+          hideNotesColumn={hideNotesColumn}
+          onHideNotesColumnChange={onHideNotesColumnChange}
         />
       ),
-      columns: activeSheet.columns,
+      columns: visibleColumns,
       allRows,
       rowNumberRows: allRows,
       groups: activeSheet.groups,
       zoomStorageKey: `sp_job_pack_${sheet}_zoom_v1`,
-      defaultActiveKey: activeSheet.defaultActiveKey,
+      defaultActiveKey,
       loading: false,
       hasError: false,
       loadingMessage: 'Loading job pack...',
@@ -772,5 +842,5 @@ export function useJobPackSpreadsheetAdapter({
       commitEdit: async () => false,
       onCellActivated: () => 'noop',
     };
-  }, [detail, onSheetChange, sheet]);
+  }, [detail, hideNotesColumn, onBackToList, onHideNotesColumnChange, onOpenEstimate, onSheetChange, sheet]);
 }

@@ -34,10 +34,12 @@ export default function LegacyChevronPipeline({
   stage,
   onRequestChange,
   disabled,
+  compact = false,
 }: {
   stage: PipelineStageKey;
   onRequestChange?: (next: PipelineStageKey, label: string, trigger: HTMLButtonElement) => void;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   const stripRef = useRef<HTMLDivElement | null>(null);
   const [fade, setFade] = useState({ left: false, right: false });
@@ -81,6 +83,7 @@ export default function LegacyChevronPipeline({
       ref={stripRef}
       className={[
         legacy.pipelineStrip,
+        compact ? legacy.pipelineStripCompact : null,
         fade.left ? legacy.pipelineStripFadeLeft : null,
         fade.right ? legacy.pipelineStripFadeRight : null,
       ]
@@ -94,6 +97,7 @@ export default function LegacyChevronPipeline({
           const state = stepState(stage, stageDef.key);
           const isFirst = idx === 0;
           const classes = [legacy.pipelineButton, isFirst && legacy.pipelineButtonFirst, classForState(state)]
+            .concat(compact ? [legacy.pipelineButtonCompact] : [])
             .filter(Boolean)
             .join(' ');
 

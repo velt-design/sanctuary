@@ -40,6 +40,20 @@
   align-items: center;
 }
 
+.toolbarPrimary,
+.toolbarSecondary,
+.toolbarMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.toolbarSecondary {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .toolbarInput,
 .toolbarSelect,
 .cellInput,
@@ -66,6 +80,7 @@
 
 .toolbarInput:focus,
 .toolbarSelect:focus,
+.toolbarAction:focus,
 .cellInput:focus,
 .cellSelect:focus,
 .notesEditor:focus,
@@ -95,6 +110,30 @@
   margin: 0;
 }
 
+.toolbarAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 999px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.88);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.toolbarAction:hover {
+  background: rgba(var(--portal-text-rgb), 0.06);
+}
+
 .sheetViewport {
   position: relative;
   flex: 1;
@@ -110,6 +149,16 @@
   inset: 0;
   z-index: 29;
   pointer-events: none;
+}
+
+.zoomDockLayer[data-visible='false'] {
+  display: none;
+}
+
+.zoomDockLayerViewport {
+  position: fixed;
+  inset: auto 16px 16px auto;
+  z-index: 70;
 }
 
 .zoomDock {
@@ -133,6 +182,13 @@
     box-shadow 220ms ease,
     backdrop-filter 220ms ease;
   pointer-events: auto;
+}
+
+.zoomDockViewport {
+  position: static;
+  right: auto;
+  bottom: auto;
+  max-width: calc(100vw - 32px);
 }
 
 .zoomDockLayer[data-active='true'] .zoomDock,
@@ -248,11 +304,18 @@
   font-size: 0.84rem;
 }
 
-.meta span {
+.meta span,
+.toolbarMeta span {
   padding: 6px 10px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 999px;
   background: rgba(var(--portal-text-rgb), 0.03);
+}
+
+.toolbarMeta {
+  justify-content: flex-end;
+  color: rgba(var(--portal-text-rgb), 0.65);
+  font-size: 0.84rem;
 }
 
 .tableScroller {
@@ -621,6 +684,16 @@
     margin-left: 0;
     justify-content: flex-start;
   }
+
+  .toolbarSecondary {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .toolbarMeta {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 980px) {
@@ -636,8 +709,20 @@
     align-items: stretch;
   }
 
+  .toolbarPrimary,
+  .toolbarSecondary {
+    width: 100%;
+  }
+
+  .toolbarPrimary,
+  .toolbarSecondary,
+  .toolbarMeta {
+    justify-content: flex-start;
+  }
+
   .toolbarInput,
-  .toolbarSelect {
+  .toolbarSelect,
+  .toolbarAction {
     width: 100%;
   }
 
@@ -645,6 +730,15 @@
     width: calc(100% - 24px);
     flex-wrap: wrap;
     justify-content: flex-start;
+  }
+
+  .zoomDockLayerViewport {
+    inset: auto 12px 12px 12px;
+  }
+
+  .zoomDockViewport {
+    width: min(calc(100vw - 24px), 720px);
+    max-width: none;
   }
 
 }
