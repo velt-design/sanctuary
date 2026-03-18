@@ -4,11 +4,11 @@ import { resolvePortalTheme } from './resolve';
 describe('resolvePortalTheme', () => {
   it('resolves to default system preset when no input is provided', () => {
     const theme = resolvePortalTheme();
-    expect(theme.preset_id).toBe('sanctuary-burgundy');
+    expect(theme.preset_id).toBe('stone-olive');
     expect(theme.active_preset_kind).toBe('system');
-    expect(theme.active_preset_id).toBe('sanctuary-burgundy');
+    expect(theme.active_preset_id).toBe('stone-olive');
     expect(theme.user_preset_id).toBeNull();
-    expect(theme.tokens.accent).toBe('#813F39');
+    expect(theme.tokens.accent).toBe('#4F5748');
   });
 
   it('uses user preset tokens when a valid user preset is provided', () => {
@@ -101,5 +101,15 @@ describe('resolvePortalTheme', () => {
     expect(theme.active_preset_kind).toBe('user');
     expect(theme.tokens.accent).toBe('#ABCDEF');
     expect(theme.is_customized).toBe(true);
+  });
+
+  it('resolves the monochrome system preset by id', () => {
+    const theme = resolvePortalTheme({ preset_id: 'monochrome' });
+
+    expect(theme.preset_id).toBe('monochrome');
+    expect(theme.active_preset_kind).toBe('system');
+    expect(theme.active_preset_id).toBe('monochrome');
+    expect(theme.tokens.accent).toBe('#333333');
+    expect(theme.tokens.bg_page).toBe('#D9D9D9');
   });
 });

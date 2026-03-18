@@ -1,7 +1,7 @@
 export const PORTAL_THEME_OVERRIDE_KEYS = ['accent', 'text', 'text_muted', 'text_inverse', 'bg_page', 'bg_surface', 'border'] as const;
 
 export type PortalThemeOverrideKey = (typeof PORTAL_THEME_OVERRIDE_KEYS)[number];
-export type PortalThemePresetId = 'sanctuary-burgundy' | 'stone-olive' | 'harbor-blue';
+export type PortalThemePresetId = 'sanctuary-burgundy' | 'stone-olive' | 'harbor-blue' | 'monochrome';
 export type PortalThemePresetKind = 'system' | 'user';
 export type PortalThemeMode = 'merge' | 'replace' | 'reset';
 export type HexColor = `#${string}`;

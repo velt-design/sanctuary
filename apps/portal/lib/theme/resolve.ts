@@ -37,7 +37,7 @@ export function resolvePortalTheme(input?: ResolvePortalThemeInput): PortalResol
   const sanitized = sanitizePortalThemeOverrides(input?.overrides);
   const overrides = sanitized.overrides as PortalThemeOverrides;
   const tokens = { ...baseTokens, ...overrides };
-  const accentRgbCsv = hexToRgbCsv(tokens.accent) || hexToRgbCsv(PORTAL_DEFAULT_THEME_PRESET.tokens.accent) || '129, 63, 57';
+  const accentRgbCsv = hexToRgbCsv(tokens.accent) || hexToRgbCsv(PORTAL_DEFAULT_THEME_PRESET.tokens.accent) || '79, 87, 72';
   const updatedAt = typeof input?.updated_at === 'string' && input.updated_at ? input.updated_at : null;
 
   return {
