@@ -1,26 +1,43 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import PageHeader from '../layout/PageHeader';
 import { editingSessionKey, focusEditorForTrigger } from './editorFocus';
 import { useSpreadsheetShell, type SharedSpreadsheetEditingCell } from './useSpreadsheetShell';
-import type { SpreadsheetActiveCell, SpreadsheetActivationTrigger, SpreadsheetAdapter } from './types';
+import type {
+  SpreadsheetActiveCell,
+  SpreadsheetActivationTrigger,
+  SpreadsheetAdapter,
+  SpreadsheetEditorElement,
+} from './types';
 import styles from './spreadsheet.module.css';
 
-type EditorElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+type PendingPointerCell<TKey extends string> = {
+  rowId: string;
+  key: TKey;
+};
 
 function isPrintableKey(event: ReactKeyboardEvent): boolean {
   return event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
 }
 
-function maybeOpenPicker(node: EditorElement | null, trigger: SpreadsheetActivationTrigger | null): void {
+function maybeOpenPicker(node: SpreadsheetEditorElement | null, trigger: SpreadsheetActivationTrigger | null): void {
   if (!node || trigger !== 'click') return;
 
   const supportsPicker =
     node instanceof HTMLSelectElement || (node instanceof HTMLInputElement && node.type === 'date');
   if (!supportsPicker) return;
 
-  const pickerNode = node as EditorElement & { showPicker?: () => void };
+  const pickerNode = node as SpreadsheetEditorElement & { showPicker?: () => void };
   if (typeof pickerNode.showPicker !== 'function') return;
 
   try {
@@ -46,8 +63,10 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
   });
 
   const [editing, setEditing] = useState<SharedSpreadsheetEditingCell<TEditableKey, TEditorValue> | null>(null);
-  const editorRef = useRef<EditorElement | null>(null);
+  const editorRef = useRef<SpreadsheetEditorElement | null>(null);
+  const editingCellRef = useRef<HTMLTableCellElement | null>(null);
   const editingTriggerRef = useRef<SpreadsheetActivationTrigger | null>(null);
+  const pendingPointerCellRef = useRef<PendingPointerCell<TKey> | null>(null);
   const skipBlurCommitRef = useRef(false);
 
   const allCellKeys = useMemo(() => adapter.columns.map((column) => column.key), [adapter.columns]);
@@ -56,6 +75,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
 
   useEffect(() => {
     if (!shell.visibleRows.length) {
+      pendingPointerCellRef.current = null;
       editingTriggerRef.current = null;
       setEditing(null);
     }
@@ -136,6 +156,70 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
       });
     },
     [adapter, beginEdit],
+  );
+
+  const keepEditingWithinCell = useCallback(() => {
+    pendingPointerCellRef.current = null;
+    window.requestAnimationFrame(() => {
+      editorRef.current?.focus();
+    });
+  }, []);
+
+  const handleEditorBlur = useCallback(
+    async (event: ReactFocusEvent<SpreadsheetEditorElement>) => {
+      if (skipBlurCommitRef.current) {
+        skipBlurCommitRef.current = false;
+        pendingPointerCellRef.current = null;
+        return;
+      }
+
+      const currentEditing = editing;
+      const pendingPointerCell = pendingPointerCellRef.current;
+      const nextFocusedNode = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+      const blurStayedInsideEditingCell = Boolean(
+        editingCellRef.current && nextFocusedNode && editingCellRef.current.contains(nextFocusedNode),
+      );
+      const pointerStayedInsideEditingCell = Boolean(
+        currentEditing &&
+          pendingPointerCell &&
+          pendingPointerCell.rowId === currentEditing.rowId &&
+          pendingPointerCell.key === currentEditing.key,
+      );
+
+      if (blurStayedInsideEditingCell || pointerStayedInsideEditingCell) {
+        keepEditingWithinCell();
+        return;
+      }
+
+      const nextSelection = pendingPointerCell
+        ? ({
+            rowId: pendingPointerCell.rowId,
+            key: pendingPointerCell.key,
+          } satisfies SpreadsheetActiveCell<TKey>)
+        : undefined;
+
+      pendingPointerCellRef.current = null;
+      const ok = await commitEditing(nextSelection);
+      if (!ok) {
+        window.requestAnimationFrame(() => {
+          editorRef.current?.focus();
+        });
+        return;
+      }
+
+      if (!pendingPointerCell) return;
+      const targetRow = rowsById.get(pendingPointerCell.rowId);
+      if (!targetRow) {
+        shell.focusGrid();
+        return;
+      }
+
+      const result = await handleCellActivation('click', targetRow, pendingPointerCell.key);
+      if (result === 'noop') {
+        shell.focusGrid();
+      }
+    },
+    [commitEditing, editing, handleCellActivation, keepEditingWithinCell, rowsById, shell],
   );
 
   const handleGridKeyDown = useCallback(
@@ -302,7 +386,14 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
                             return (
                               <td
                                 key={column.key}
-                                ref={(node) => shell.setCellRef(cellKey, node)}
+                                ref={(node) => {
+                                  shell.setCellRef(cellKey, node);
+                                  if (isEditing) {
+                                    editingCellRef.current = node;
+                                  } else if (editingCellRef.current?.dataset.cellId === cellKey) {
+                                    editingCellRef.current = null;
+                                  }
+                                }}
                                 data-cell-id={cellKey}
                                 className={adapter.getCellClassName({
                                   row,
@@ -313,11 +404,20 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
                                   conflict: Boolean(adapter.conflictCells[cellKey]),
                                 })}
                                 style={shell.cellStyle(column, displayColumn.actualIndex)}
+                                onPointerDownCapture={() => {
+                                  if (!rowSelectable || !editing) return;
+                                  pendingPointerCellRef.current = { rowId, key: column.key };
+                                }}
                                 onClick={() => {
                                   if (!rowSelectable) return;
+                                  const clickedEditingCell = Boolean(editing?.rowId === rowId && editing?.key === column.key);
+                                  if (clickedEditingCell) {
+                                    keepEditingWithinCell();
+                                    return;
+                                  }
+                                  if (editing) return;
                                   shell.setActiveCell({ rowId, key: column.key });
                                   shell.focusGrid();
-                                  if (editing) return;
                                   void handleCellActivation('click', row, column.key);
                                 }}
                                 onDoubleClick={async () => {
@@ -345,13 +445,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
                                       editorRef: (node) => {
                                         editorRef.current = node;
                                       },
-                                      onBlur: async () => {
-                                        if (skipBlurCommitRef.current) {
-                                          skipBlurCommitRef.current = false;
-                                          return;
-                                        }
-                                        await commitEditing();
-                                      },
+                                      onBlur: handleEditorBlur,
                                     })
                                   : adapter.renderCellContent({ row, column, text })}
                               </td>

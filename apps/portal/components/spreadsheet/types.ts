@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { FocusEvent as ReactFocusEvent, ReactNode } from 'react';
 
 export type SpreadsheetColumn<TKey extends string> = {
   key: TKey;
@@ -49,6 +49,7 @@ export type SpreadsheetEditingCell<TKey extends string, TValue> = {
 };
 
 export type SpreadsheetActivationTrigger = 'click' | 'enter' | 'space' | 'double_click' | 'printable';
+export type SpreadsheetEditorElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 export type SpreadsheetAdapter<TRow, TKey extends string, TEditableKey extends TKey, TEditorValue> = {
   title: string;
@@ -89,8 +90,8 @@ export type SpreadsheetAdapter<TRow, TKey extends string, TEditableKey extends T
     commit: () => Promise<boolean>;
     cancel: () => void;
     commitToNeighbor: (columnDelta: number) => Promise<boolean>;
-    editorRef: (node: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null) => void;
-    onBlur: () => Promise<void>;
+    editorRef: (node: SpreadsheetEditorElement | null) => void;
+    onBlur: (event: ReactFocusEvent<SpreadsheetEditorElement>) => Promise<void>;
   }) => ReactNode;
   commitEdit: (row: TRow, key: TEditableKey, value: TEditorValue) => Promise<boolean>;
   onCellActivated: (args: {
