@@ -18,7 +18,15 @@ type StageConfirmState = {
   label: string;
 };
 
-export default function ProjectPipelineBar({ projectId, stage }: { projectId: string; stage: ProjectStage }) {
+export default function ProjectPipelineBar({
+  projectId,
+  stage,
+  compact = false,
+}: {
+  projectId: string;
+  stage: ProjectStage;
+  compact?: boolean;
+}) {
   const toast = useToast();
   const { role } = usePortalSession();
   const isAdmin = role === 'admin';
@@ -36,26 +44,35 @@ export default function ProjectPipelineBar({ projectId, stage }: { projectId: st
   const rollback = Boolean(confirm && currentIndex !== -1 && nextIndex !== -1 && nextIndex < currentIndex);
   const currentLabel = PIPELINE_STAGE_LABELS[stage] ?? String(stage);
 
+  const pipeline = (
+    <LegacyChevronPipeline
+      stage={stage}
+      compact={compact}
+      disabled={busy}
+      onRequestChange={
+        isAdmin
+          ? (next, label) => {
+              setConfirm({ next, label });
+              setConfirmText('');
+              setReason('');
+            }
+          : undefined
+      }
+    />
+  );
+
   return (
-    <section className={legacy.section} aria-label="Pipeline">
-      <div className={legacy.sectionHeader}>
-        <h2 className={legacy.sectionTitle}>Pipeline</h2>
-      </div>
-      <div className={legacy.sectionBody}>
-        <LegacyChevronPipeline
-          stage={stage}
-          disabled={busy}
-          onRequestChange={
-            isAdmin
-              ? (next, label) => {
-                  setConfirm({ next, label });
-                  setConfirmText('');
-                  setReason('');
-                }
-              : undefined
-          }
-        />
-      </div>
+    <>
+      {compact ? (
+        pipeline
+      ) : (
+        <section className={legacy.section} aria-label="Pipeline">
+          <div className={legacy.sectionHeader}>
+            <h2 className={legacy.sectionTitle}>Pipeline</h2>
+          </div>
+          <div className={legacy.sectionBody}>{pipeline}</div>
+        </section>
+      )}
 
       {confirm ? (
         <PipelineModal
@@ -167,6 +184,6 @@ export default function ProjectPipelineBar({ projectId, stage }: { projectId: st
           </div>
         </PipelineModal>
       ) : null}
-    </section>
+    </>
   );
 }

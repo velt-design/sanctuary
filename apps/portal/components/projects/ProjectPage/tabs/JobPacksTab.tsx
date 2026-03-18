@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
@@ -40,6 +40,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const [hideNotesColumn, setHideNotesColumn] = useState(false);
 
   const selectedEstimateId = useMemo(() => {
     const raw = searchParams.get('estimateId') ?? '';
@@ -54,10 +55,6 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     enabled: Boolean(selectedEstimateId),
   });
 
-  const selectedMeta = useMemo(
-    () => estimatesQuery.data?.find((estimate) => estimate.id === selectedEstimateId) ?? null,
-    [estimatesQuery.data, selectedEstimateId],
-  );
   const selectedDetail = selectedDetailQuery.data ?? null;
 
   const updateParams = useCallback(
@@ -68,7 +65,8 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
       tab?: 'job-packs' | 'estimates' | 'quotes' | 'emails' | 'files';
     }) => {
       const qs = new URLSearchParams(searchParams.toString());
-      qs.set('tab', next.tab ?? 'job-packs');
+      const nextTab = next.tab ?? 'job-packs';
+      qs.set('tab', nextTab);
       qs.delete('quotePreview');
 
       if (Object.prototype.hasOwnProperty.call(next, 'estimateId')) {
@@ -79,13 +77,15 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
       if (Object.prototype.hasOwnProperty.call(next, 'sheet')) {
         if (next.sheet) qs.set('sheet', next.sheet);
         else qs.delete('sheet');
-      } else if ((next.tab ?? 'job-packs') !== 'job-packs') {
+      } else if (nextTab !== 'job-packs') {
         qs.delete('sheet');
       }
 
       if (Object.prototype.hasOwnProperty.call(next, 'mode')) {
         if (next.mode === 'focus') qs.set('mode', 'focus');
         else qs.delete('mode');
+      } else if (nextTab !== 'job-packs') {
+        qs.delete('mode');
       }
 
       const query = qs.toString();
@@ -93,6 +93,10 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     },
     [pathname, router, searchParams],
   );
+
+  const handleBackToList = useCallback(() => {
+    updateParams({ estimateId: null, sheet: null, mode: 'general' });
+  }, [updateParams]);
 
   const handleSheetChange = useCallback(
     (nextSheet: JobPackSheetKey) => {
@@ -103,13 +107,17 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
 
   const handleOpenEstimate = useCallback(() => {
     if (!selectedEstimateId) return;
-    updateParams({ tab: 'estimates', estimateId: selectedEstimateId, sheet: null });
+    updateParams({ tab: 'estimates', estimateId: selectedEstimateId, sheet: null, mode: 'general' });
   }, [selectedEstimateId, updateParams]);
 
   const adapter = useJobPackSpreadsheetAdapter({
     detail: selectedDetail,
     sheet,
     onSheetChange: handleSheetChange,
+    onBackToList: handleBackToList,
+    onOpenEstimate: handleOpenEstimate,
+    hideNotesColumn,
+    onHideNotesColumnChange: setHideNotesColumn,
   });
 
   const prefetchDetail = useCallback(
@@ -120,38 +128,8 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
   );
 
   if (selectedEstimateId) {
-    const detailVersionLabel = selectedDetail?.versionLabel ?? selectedMeta?.versionLabel ?? 'Job pack';
-    const detailCreatedAt = selectedDetail?.createdAt ?? selectedMeta?.createdAt ?? null;
-    const detailTotal = selectedDetail?.summary.total ?? selectedMeta?.summary.total ?? null;
-    const detailStatus = selectedDetail?.status ?? selectedMeta?.status ?? 'draft';
-
     return (
       <div className={styles.wrapper}>
-        <div className={styles.detailHeader}>
-          <div>
-            <button
-              type="button"
-              className={styles.backButton}
-              onClick={() => updateParams({ estimateId: null, sheet: null, mode: 'general' })}
-            >
-              Back to job packs
-            </button>
-            <h3 className={styles.title}>{`Job Pack ${detailVersionLabel}`}</h3>
-            <p className={styles.subtitle}>Spreadsheet view of the selected estimate-backed job pack.</p>
-          </div>
-
-          <div className={styles.detailActions}>
-            <div className={styles.detailMeta}>
-              <span className={styles.pill}>{formatDate(detailCreatedAt)}</span>
-              <span className={`${styles.statusPill} ${statusClass(detailStatus)}`}>{statusLabel(detailStatus)}</span>
-              {detailTotal !== null ? <span className={styles.pill}>{`Estimate ${formatMoney(detailTotal)}`}</span> : null}
-            </div>
-            <button type="button" className={legacy.buttonSecondary} onClick={handleOpenEstimate}>
-              Open estimate
-            </button>
-          </div>
-        </div>
-
         {selectedDetailQuery.isLoading ? (
           <div className={styles.emptyState}>
             <p className={styles.emptyTitle}>Loading job pack</p>
@@ -169,7 +147,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
           </div>
         ) : (
           <div className={styles.sheetWrap}>
-            <SpreadsheetPageTemplate adapter={adapter} embedded />
+            <SpreadsheetPageTemplate adapter={adapter} embedded zoomDockPlacement="viewport" />
           </div>
         )}
       </div>

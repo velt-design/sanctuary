@@ -50,9 +50,11 @@ function maybeOpenPicker(node: SpreadsheetEditorElement | null, trigger: Spreads
 export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEditableKey extends TKey, TEditorValue>({
   adapter,
   embedded = false,
+  zoomDockPlacement = 'sheet',
 }: {
   adapter: SpreadsheetAdapter<TRow, TKey, TEditableKey, TEditorValue>;
   embedded?: boolean;
+  zoomDockPlacement?: 'sheet' | 'viewport';
 }) {
   const shell = useSpreadsheetShell({
     columns: adapter.columns,
@@ -70,10 +72,13 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
   const editingTriggerRef = useRef<SpreadsheetActivationTrigger | null>(null);
   const pendingPointerCellRef = useRef<PendingPointerCell<TKey> | null>(null);
   const skipBlurCommitRef = useRef(false);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [viewportZoomDockVisible, setViewportZoomDockVisible] = useState(zoomDockPlacement !== 'viewport');
 
   const allCellKeys = useMemo(() => adapter.columns.map((column) => column.key), [adapter.columns]);
   const rowsById = useMemo(() => new Map(adapter.allRows.map((row) => [adapter.getRowId(row), row])), [adapter.allRows, adapter.getRowId]);
   const activeEditingSessionKey = editingSessionKey(editing);
+  const useViewportZoomDock = zoomDockPlacement === 'viewport';
 
   useEffect(() => {
     if (!shell.visibleRows.length) {
@@ -82,6 +87,30 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
       setEditing(null);
     }
   }, [shell.visibleRows.length]);
+
+  useEffect(() => {
+    if (!useViewportZoomDock) {
+      setViewportZoomDockVisible(true);
+      return;
+    }
+
+    const node = sectionRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setViewportZoomDockVisible(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setViewportZoomDockVisible(Boolean(entry?.isIntersecting));
+      },
+      { threshold: [0, 0.05, 0.1] },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [useViewportZoomDock]);
 
   useLayoutEffect(() => {
     if (!activeEditingSessionKey) return;
@@ -279,7 +308,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
       {embedded ? null : <PageHeader title={adapter.title} />}
 
       <div className={styles.stack}>
-        <section className={styles.section}>
+        <section ref={sectionRef} className={styles.section}>
           {adapter.toolbar}
 
           {adapter.loading && !adapter.allRows.length ? (
@@ -459,8 +488,12 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
                   </tbody>
                 </table>
               </div>
-              <div className={styles.zoomDockLayer} data-active={shell.zoom.dockActive ? 'true' : 'false'}>
-                <div className={styles.zoomDock} aria-label="Sheet zoom controls">
+              <div
+                className={`${styles.zoomDockLayer} ${useViewportZoomDock ? styles.zoomDockLayerViewport : ''}`}
+                data-active={shell.zoom.dockActive ? 'true' : 'false'}
+                data-visible={viewportZoomDockVisible ? 'true' : 'false'}
+              >
+                <div className={`${styles.zoomDock} ${useViewportZoomDock ? styles.zoomDockViewport : ''}`} aria-label="Sheet zoom controls">
                   <button type="button" className={styles.zoomButton} onClick={() => shell.zoom.stepBy(-1)} aria-label="Zoom out">
                     -
                   </button>

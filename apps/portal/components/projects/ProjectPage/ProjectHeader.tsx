@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import Modal from '@/components/ui/modal/Modal';
@@ -10,6 +10,7 @@ import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { deleteProject } from '@/lib/repo/projectsRepo';
 import { PIPELINE_STAGE_LABELS } from '@/lib/projects/pipelineDefinition';
+import styles from './ProjectPage.module.css';
 
 const EXTRA_DELETE_CONFIRM_STAGES = new Set(['deposit', 'scheduled', 'completed', 'paid']);
 
@@ -17,7 +18,15 @@ function requiredDeleteConfirmation(projectId: string, stage: string): string {
   return EXTRA_DELETE_CONFIRM_STAGES.has(stage) ? `DELETE ${projectId}` : 'DELETE';
 }
 
-export default function ProjectHeader({ project }: { project: ProjectPageSnapshot['project'] }) {
+export default function ProjectHeader({
+  project,
+  currentStage,
+  pipeline,
+}: {
+  project: ProjectPageSnapshot['project'];
+  currentStage: ProjectPageSnapshot['pipeline']['stage'];
+  pipeline?: ReactNode;
+}) {
   const router = useRouter();
   const toast = useToast();
   const { role } = usePortalSession();
@@ -28,9 +37,9 @@ export default function ProjectHeader({ project }: { project: ProjectPageSnapsho
   const [deleteReason, setDeleteReason] = useState('');
   const [deleteBusy, setDeleteBusy] = useState(false);
 
-  const subtext = [project.contactName, project.region].filter(Boolean).join(' - ');
-  const stageLabel = PIPELINE_STAGE_LABELS[project.stage] ?? String(project.stage);
-  const requiredText = requiredDeleteConfirmation(project.id, project.stage);
+  const subtext = [project.contactName, project.region].filter(Boolean).join(' / ');
+  const stageLabel = PIPELINE_STAGE_LABELS[currentStage] ?? String(currentStage);
+  const requiredText = requiredDeleteConfirmation(project.id, currentStage);
 
   const closeDeleteModal = () => {
     if (deleteBusy) return;
@@ -40,29 +49,37 @@ export default function ProjectHeader({ project }: { project: ProjectPageSnapsho
   };
 
   return (
-    <header className={legacy.header}>
-      <div>
-        <h1 className={legacy.title}>{project.name}</h1>
-        {subtext ? <p className={legacy.subtitle}>{subtext}</p> : null}
+    <section className={styles.masthead} aria-label="Project summary">
+      <div className={styles.mastheadTop}>
+        <div className={styles.mastheadIdentity}>
+          <div className={styles.mastheadTitleRow}>
+            <h1 className={styles.mastheadTitle}>{project.name}</h1>
+            <span className={styles.mastheadStagePill}>{stageLabel}</span>
+            {subtext ? <p className={styles.mastheadMeta}>{subtext}</p> : null}
+          </div>
+        </div>
+
+        <div className={styles.mastheadActions}>
+          <Link href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
+            Projects
+          </Link>
+          {isAdmin ? (
+            <button
+              type="button"
+              className={`${legacy.buttonDanger} ${styles.mastheadAction}`}
+              onClick={() => {
+                setDeleteConfirmText('');
+                setDeleteReason('');
+                setDeleteOpen(true);
+              }}
+            >
+              Delete project
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className={legacy.actions}>
-        <Link href="/staff/projects" className={legacy.buttonSecondary}>
-          Projects
-        </Link>
-        {isAdmin ? (
-          <button
-            type="button"
-            className={legacy.buttonDanger}
-            onClick={() => {
-              setDeleteConfirmText('');
-              setDeleteReason('');
-              setDeleteOpen(true);
-            }}
-          >
-            Delete project
-          </button>
-        ) : null}
-      </div>
+
+      {pipeline ? <div className={styles.mastheadPipeline}>{pipeline}</div> : null}
 
       {deleteOpen ? (
         <Modal
@@ -142,6 +159,6 @@ export default function ProjectHeader({ project }: { project: ProjectPageSnapsho
           </div>
         </Modal>
       ) : null}
-    </header>
+    </section>
   );
 }
