@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import type { SpreadsheetAdapter } from '@/components/spreadsheet/types';
+import type { SpreadsheetAdapter, SpreadsheetOptimisticEditOutcome } from '@/components/spreadsheet/types';
 import styles from '@/components/spreadsheet/spreadsheet.module.css';
 import { DESIGN_LIST_COLUMNS } from '@/lib/designPackages/columns';
 import { DESIGN_PACKAGE_DESIGNERS, getDesignPackageDesignerLabel, isKnownDesignPackageDesignerId } from '@/lib/designPackages/designers';
@@ -131,14 +131,6 @@ function isCompletedRow(row: DesignListRow): boolean {
   return row.status === 'DONE' || row.status === 'CANCELLED';
 }
 
-function setInRecord(record: Record<string, boolean>, key: string, value: boolean): Record<string, boolean> {
-  if (value) return { ...record, [key]: true };
-  if (!(key in record)) return record;
-  const next = { ...record };
-  delete next[key];
-  return next;
-}
-
 function groupRowsByFilters(rows: DesignListRow[], filters: Filters): Array<{ year: number; rows: DesignListRow[] }> {
   const query = filters.search.trim().toLowerCase();
   const filteredRows = rows.filter((row) => {
@@ -170,23 +162,6 @@ function replaceResponseRow(prev: DesignPackagesResponse, updatedRow: DesignList
     rows: updateDesignListRow(prev.rows, updatedRow.requestId, () => updatedRow),
   };
 }
-
-type QueuedDesignListEdit = {
-  rowId: string;
-  cellId: string;
-  key: DesignListEditableCellKey;
-  value: NormalizedDesignListCellValue;
-};
-
-type PendingDesignListRowState = {
-  confirmedRow: DesignListRow;
-  queue: QueuedDesignListEdit[];
-  running: boolean;
-};
-
-type DesignListQueueOutcome =
-  | { kind: 'success'; row: DesignListRow; toast?: string; conflict?: boolean }
-  | { kind: 'drop'; row?: DesignListRow; toast?: string; conflict?: boolean };
 
 function Toolbar({
   filters,
@@ -267,7 +242,8 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   DesignListRow,
   DesignListCellKey,
   DesignListEditableCellKey,
-  NormalizedDesignListCellValue
+  NormalizedDesignListCellValue,
+  DesignListRow
 > {
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -276,9 +252,6 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   const query = useQuery(designPackagesQueryOptions(host));
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [savingCellCounts, setSavingCellCounts] = useState<Record<string, number>>({});
-  const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
-  const pendingRowsRef = useRef(new Map<string, PendingDesignListRowState>());
 
   useEffect(() => {
     if (!query.error) return;
@@ -293,28 +266,6 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   const rowNumberRows = useMemo(() => allRows.slice().sort(compareDesignListRows), [allRows]);
 
   const years = useMemo(() => Array.from(new Set(allRows.map((row) => String(yearForDesignListRow(row))))).sort(), [allRows]);
-
-  const clearConflictLater = useCallback((id: string) => {
-    window.setTimeout(() => {
-      setConflictCells((prev) => setInRecord(prev, id, false));
-    }, 4000);
-  }, []);
-
-  const savingCells = useMemo<Record<string, boolean>>(
-    () => Object.fromEntries(Object.keys(savingCellCounts).map((id) => [id, true])),
-    [savingCellCounts],
-  );
-
-  const changeSavingCellCount = useCallback((id: string, delta: number) => {
-    setSavingCellCounts((prev) => {
-      const nextCount = Math.max(0, (prev[id] ?? 0) + delta);
-      if (nextCount === (prev[id] ?? 0)) return prev;
-      const next = { ...prev };
-      if (nextCount > 0) next[id] = nextCount;
-      else delete next[id];
-      return next;
-    });
-  }, []);
 
   const getCachedDesignListRow = useCallback(
     (requestId: string): DesignListRow | null => {
@@ -334,62 +285,47 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
     [queryClient, queryKey],
   );
 
-  const applyQueuedDesignListRow = useCallback(
-    (confirmedRow: DesignListRow, queue: QueuedDesignListEdit[]) =>
-      queue.reduce(
-        (currentRow, queuedEdit) => applyOptimisticDesignListCellValue(currentRow, queuedEdit.key, queuedEdit.value, lookups),
-        confirmedRow,
-      ),
-    [lookups],
-  );
-
-  const syncQueuedDesignListRow = useCallback(
-    (requestId: string) => {
-      const state = pendingRowsRef.current.get(requestId);
-      if (!state) return;
-      const displayedRow = state.queue.length ? applyQueuedDesignListRow(state.confirmedRow, state.queue) : state.confirmedRow;
-      setDisplayedDesignListRow(requestId, displayedRow);
-    },
-    [applyQueuedDesignListRow, setDisplayedDesignListRow],
-  );
-
   const persistQueuedDesignListEdit = useCallback(
-    async (baseRow: DesignListRow, queuedEdit: QueuedDesignListEdit): Promise<DesignListQueueOutcome> => {
+    async (
+      baseRow: DesignListRow,
+      key: DesignListEditableCellKey,
+      value: NormalizedDesignListCellValue,
+    ): Promise<SpreadsheetOptimisticEditOutcome<DesignListRow>> => {
       let currentRow = baseRow;
       let conflictRetries = 0;
 
       while (true) {
         try {
           const response = await mutateDesignListCell({
-            requestId: queuedEdit.rowId,
+            requestId: currentRow.requestId,
             rowVersion: currentRow.rowVersion,
-            key: queuedEdit.key,
-            value: queuedEdit.value,
+            key,
+            value,
           });
 
-          return { kind: 'success', row: response.updatedRow };
+          return { kind: 'success', confirmedModel: response.updatedRow };
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) {
             const latestRow = (error.body as any)?.currentRow as DesignListRow | undefined;
             if (!latestRow) {
               return {
                 kind: 'drop',
-                row: currentRow,
-                toast: 'This row changed in another tab. The latest server row has been reloaded.',
+                confirmedModel: currentRow,
+                message: 'This row changed in another tab. The latest server row has been reloaded.',
                 conflict: true,
               };
             }
 
-            if (isDesignListCellValueUnchanged(latestRow, queuedEdit.key, queuedEdit.value)) {
-              return { kind: 'drop', row: latestRow };
+            if (isDesignListCellValueUnchanged(latestRow, key, value)) {
+              return { kind: 'drop', confirmedModel: latestRow };
             }
 
-            const editability = getDesignListCellEditability(latestRow, queuedEdit.key);
+            const editability = getDesignListCellEditability(latestRow, key);
             if (!editability.editable) {
               return {
                 kind: 'drop',
-                row: latestRow,
-                toast: editability.reason ?? 'This cell cannot be edited right now.',
+                confirmedModel: latestRow,
+                message: editability.reason ?? 'This cell cannot be edited right now.',
                 conflict: true,
               };
             }
@@ -397,8 +333,8 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
             if (conflictRetries >= 1) {
               return {
                 kind: 'drop',
-                row: latestRow,
-                toast: 'This row changed in another tab. The latest server row has been reloaded.',
+                confirmedModel: latestRow,
+                message: 'This row changed in another tab. The latest server row has been reloaded.',
                 conflict: true,
               };
             }
@@ -410,127 +346,13 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
 
           return {
             kind: 'drop',
-            row: currentRow,
-            toast: error instanceof Error ? error.message : 'Failed to save cell.',
+            confirmedModel: currentRow,
+            message: error instanceof Error ? error.message : 'Failed to save cell.',
           };
         }
       }
     },
     [],
-  );
-
-  const processQueuedDesignListRow = useCallback(
-    (requestId: string) => {
-      const existing = pendingRowsRef.current.get(requestId);
-      if (!existing || existing.running) return;
-      existing.running = true;
-
-      void (async () => {
-        try {
-          while (true) {
-            const state = pendingRowsRef.current.get(requestId);
-            if (!state || !state.queue.length) break;
-
-            const queuedEdit = state.queue[0];
-            const outcome = await persistQueuedDesignListEdit(state.confirmedRow, queuedEdit);
-
-            state.queue.shift();
-            changeSavingCellCount(queuedEdit.cellId, -1);
-
-            if (outcome.row) {
-              state.confirmedRow = outcome.row;
-            }
-
-            if (outcome.conflict) {
-              setConflictCells((prev) => setInRecord(prev, queuedEdit.cellId, true));
-              clearConflictLater(queuedEdit.cellId);
-            }
-
-            if (outcome.toast) {
-              toast.error(outcome.toast);
-            }
-
-            if (outcome.kind === 'success') {
-              const projectId = state.confirmedRow.projectId;
-              void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) });
-              void queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) });
-              void queryClient.invalidateQueries({ queryKey: qk.automation.designTicket(host, projectId) });
-              void queryClient.invalidateQueries({ queryKey: qk.automation.tasks(host, projectId) });
-            }
-
-            if (state.queue.length) {
-              syncQueuedDesignListRow(requestId);
-            } else {
-              setDisplayedDesignListRow(requestId, state.confirmedRow);
-            }
-          }
-        } finally {
-          const state = pendingRowsRef.current.get(requestId);
-          if (state) {
-            state.running = false;
-            if (!state.queue.length) {
-              pendingRowsRef.current.delete(requestId);
-            } else {
-              processQueuedDesignListRow(requestId);
-            }
-          }
-        }
-      })();
-    },
-    [
-      changeSavingCellCount,
-      clearConflictLater,
-      host,
-      persistQueuedDesignListEdit,
-      queryClient,
-      setDisplayedDesignListRow,
-      syncQueuedDesignListRow,
-      toast,
-    ],
-  );
-
-  const persistCell = useCallback(
-    async (row: DesignListRow, key: DesignListEditableCellKey, value: NormalizedDesignListCellValue): Promise<boolean> => {
-      const normalized = normalizeDesignListCellInput(key, value);
-      if (!normalized.ok) {
-        toast.error(normalized.error);
-        return false;
-      }
-
-      const latestRow = getCachedDesignListRow(row.requestId) ?? row;
-      const editability = getDesignListCellEditability(latestRow, key);
-      if (!editability.editable) {
-        toast.error(editability.reason ?? 'This cell cannot be edited right now.');
-        return false;
-      }
-
-      if (isDesignListCellValueUnchanged(latestRow, key, normalized.value)) {
-        return true;
-      }
-
-      const id = `${row.requestId}:${key}`;
-      setConflictCells((prev) => setInRecord(prev, id, false));
-
-      const existingState = pendingRowsRef.current.get(row.requestId);
-      if (existingState) {
-        if (!existingState.queue.length) {
-          existingState.confirmedRow = latestRow;
-        }
-        existingState.queue.push({ rowId: row.requestId, cellId: id, key, value: normalized.value });
-      } else {
-        pendingRowsRef.current.set(row.requestId, {
-          confirmedRow: latestRow,
-          queue: [{ rowId: row.requestId, cellId: id, key, value: normalized.value }],
-          running: false,
-        });
-      }
-
-      changeSavingCellCount(id, 1);
-      syncQueuedDesignListRow(row.requestId);
-      processQueuedDesignListRow(row.requestId);
-      return true;
-    },
-    [changeSavingCellCount, getCachedDesignListRow, processQueuedDesignListRow, syncQueuedDesignListRow, toast],
   );
 
   const columns = useMemo(
@@ -573,8 +395,6 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
     loadingMessage: 'Loading design list...',
     errorMessage: 'Could not load design list.',
     emptyMessage: 'No matching requests.',
-    savingCells,
-    conflictCells,
     getRowId: (row) => row.requestId,
     isEditableKey: (key): key is DesignListEditableCellKey => key === 'designer' || key === 'design_ready' || key === 'priority' || key === 'notes',
     getRowClassName: (row) => {
@@ -754,7 +574,44 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         />
       );
     },
-    commitEdit: persistCell,
+    optimisticEditing: {
+      getLatestConfirmedModel: ({ rowId, row }) => getCachedDesignListRow(rowId) ?? row,
+      displayModel: (queueKey, model) => {
+        setDisplayedDesignListRow(queueKey, model);
+      },
+      prepareEdit: ({ row, key, value, confirmedModel }) => {
+        const normalized = normalizeDesignListCellInput(key, value);
+        if (!normalized.ok) {
+          return { kind: 'error', message: normalized.error } as const;
+        }
+
+        const latestRow = confirmedModel ?? row;
+        const editability = getDesignListCellEditability(latestRow, key);
+        if (!editability.editable) {
+          return { kind: 'error', message: editability.reason ?? 'This cell cannot be edited right now.' } as const;
+        }
+
+        if (isDesignListCellValueUnchanged(latestRow, key, normalized.value)) {
+          return { kind: 'noop' } as const;
+        }
+
+        return {
+          kind: 'enqueue',
+          edit: {
+            applyToModel: (currentRow) => applyOptimisticDesignListCellValue(currentRow, key, normalized.value, lookups),
+            persist: (currentRow) => persistQueuedDesignListEdit(currentRow, key, normalized.value),
+          },
+        } as const;
+      },
+      onEditOutcome: ({ outcome, confirmedModel }) => {
+        if (outcome.kind !== 'success') return;
+        const projectId = confirmedModel.projectId;
+        void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) });
+        void queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) });
+        void queryClient.invalidateQueries({ queryKey: qk.automation.designTicket(host, projectId) });
+        void queryClient.invalidateQueries({ queryKey: qk.automation.tasks(host, projectId) });
+      },
+    },
     onCellActivated: async ({ trigger, key, beginEdit, seed }) => {
       if (key !== 'designer' && key !== 'design_ready' && key !== 'priority' && key !== 'notes') {
         return 'noop';
