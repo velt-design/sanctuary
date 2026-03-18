@@ -1,12 +1,23 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { MaterialsLineV1 } from '@sp/costing';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SpreadsheetAdapter, SpreadsheetColumn, SpreadsheetGroup } from '@/components/spreadsheet/types';
 import spreadsheetStyles from '@/components/spreadsheet/spreadsheet.module.css';
 import type { EstimateDetail } from '@/lib/estimates/types';
+import {
+  buildPowdercoatBaseRowId,
+  buildPowdercoatOptionMap,
+  normalizePowdercoatProfile,
+  powdercoatStoredRowFromLine,
+  summarizePowdercoatChanges,
+} from '@/lib/jobPacks/powdercoating';
+import type { JobPackPowdercoatOption, JobPackPowdercoatOverrideState, JobPackPowdercoatSheetResponse, JobPackPowdercoatStoredRow, JobPackPowdercoatUpdateResponse } from '@/lib/jobPacks/types';
 import { buildJobPack } from '@/lib/outputs/jobPack';
 import type { JobPack } from '@/lib/outputs/types';
+import { jobPackPowdercoatingQueryOptions } from '@/lib/queries/jobPackPowdercoating';
+import { ApiError, apiJson } from '@/lib/repo/apiClient';
 import type { Estimate } from '@/lib/types/estimate';
 import type { CalculatorInputs } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
@@ -23,11 +34,22 @@ export const JOB_PACK_SHEETS = [
 export type JobPackSheetKey = (typeof JOB_PACK_SHEETS)[number]['key'];
 
 type JobPackCellKey = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
+type JobPackEditableCellKey = 'a' | 'c' | 'd';
+type PowdercoatRowOrigin = 'base' | 'manual' | 'draft';
+
+type PowdercoatSpreadsheetRow = {
+  origin: PowdercoatRowOrigin;
+  storedRow: JobPackPowdercoatStoredRow;
+  baseRow: JobPackPowdercoatStoredRow | null;
+  stockLengthOptionsM: number[];
+  changeSummary: string | null;
+};
 
 type JobPackRow = {
   id: string;
   cells: Partial<Record<JobPackCellKey, string>>;
   tone?: 'default' | 'muted' | 'total';
+  powdercoat?: PowdercoatSpreadsheetRow | null;
 };
 
 type JobPackSheetModel = {
@@ -61,6 +83,11 @@ type WorkbookContext = {
 };
 
 const DEFAULT_SHEET: JobPackSheetKey = 'materials';
+const POWDERCOAT_DRAFT_ROW_ID = '__powdercoating_draft__';
+
+function emptyPowdercoatOverrideState(): JobPackPowdercoatOverrideState {
+  return { version: null, rows: [] };
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -302,6 +329,191 @@ function buildMaterialItemLabel(line: MaterialsLineV1): string {
   return withoutTrailingColour || profile || '-';
 }
 
+function isPowdercoatMaterialLine(line: MaterialsLineV1): boolean {
+  return String(line.id ?? '')
+    .toLowerCase()
+    .includes('aluminium-extrusion');
+}
+
+function formatStockLengthM(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? `${formatNumber(value)}m` : '-';
+}
+
+function buildBasePowdercoatRows(jobPack: JobPack): JobPackPowdercoatStoredRow[] {
+  return jobPack.orderLists.powdercoat.map(powdercoatStoredRowFromLine);
+}
+
+function resolvePowdercoatStockLengthOptions(
+  optionMap: Map<string, JobPackPowdercoatOption>,
+  row: JobPackPowdercoatStoredRow,
+): number[] {
+  const options = optionMap.get(normalizePowdercoatProfile(row.profile))?.stockLengthsM ?? [];
+  if (options.length) return options;
+  return typeof row.stockLengthM === 'number' && Number.isFinite(row.stockLengthM) ? [row.stockLengthM] : [];
+}
+
+function mergePowdercoatRows(
+  baseRows: JobPackPowdercoatStoredRow[],
+  overrides: JobPackPowdercoatOverrideState,
+  optionMap: Map<string, JobPackPowdercoatOption>,
+): PowdercoatSpreadsheetRow[] {
+  const overrideByBaseId = new Map(
+    overrides.rows
+      .filter((row) => row.source === 'base' && row.baseRowId)
+      .map((row) => [row.baseRowId as string, row]),
+  );
+  const consumedOverrideIds = new Set<string>();
+
+  const mergedBaseRows = baseRows.map((baseRow) => {
+    const override = overrideByBaseId.get(baseRow.baseRowId ?? baseRow.id) ?? null;
+    if (override) consumedOverrideIds.add(override.id);
+    const storedRow = override ?? baseRow;
+    return {
+      origin: override ? 'base' : 'base',
+      storedRow,
+      baseRow,
+      stockLengthOptionsM: resolvePowdercoatStockLengthOptions(optionMap, storedRow),
+      changeSummary: summarizePowdercoatChanges(baseRow, storedRow),
+    } satisfies PowdercoatSpreadsheetRow;
+  });
+
+  const manualRows = overrides.rows
+    .filter((row) => row.source === 'manual' || !consumedOverrideIds.has(row.id))
+    .map((row) => ({
+      origin: 'manual' as const,
+      storedRow: row,
+      baseRow: row.source === 'base' ? baseRows.find((item) => item.baseRowId === row.baseRowId) ?? null : null,
+      stockLengthOptionsM: resolvePowdercoatStockLengthOptions(optionMap, row),
+      changeSummary: summarizePowdercoatChanges(
+        row.source === 'base' ? baseRows.find((item) => item.baseRowId === row.baseRowId) ?? null : null,
+        row,
+      ),
+    }));
+
+  return [...mergedBaseRows, ...manualRows];
+}
+
+function createPowdercoatDraftRow(defaultColour: string): PowdercoatSpreadsheetRow {
+  return {
+    origin: 'draft',
+    storedRow: {
+      id: POWDERCOAT_DRAFT_ROW_ID,
+      source: 'manual',
+      baseRowId: null,
+      profile: '',
+      colour: defaultColour,
+      stockLengthM: null,
+      qty: 1,
+      unit: 'bar',
+      notes: '',
+    },
+    baseRow: null,
+    stockLengthOptionsM: [],
+    changeSummary: null,
+  };
+}
+
+function buildPowdercoatSheetRow(row: PowdercoatSpreadsheetRow, includeChangesColumn: boolean): JobPackRow {
+  const cells: Partial<Record<JobPackCellKey, string>> = {
+    a: row.storedRow.profile,
+    b: row.storedRow.colour || '-',
+    c: formatStockLengthM(row.storedRow.stockLengthM),
+    d: formatNumber(row.storedRow.qty),
+    e: row.storedRow.unit || '-',
+    f: row.storedRow.notes || '',
+  };
+
+  if (includeChangesColumn) {
+    cells.g = row.changeSummary || '';
+  }
+
+  if (row.origin === 'draft') {
+    cells.a = '';
+    cells.b = '';
+    cells.c = '';
+    cells.d = '';
+    cells.e = '';
+    cells.f = '';
+    if (includeChangesColumn) cells.g = '';
+  }
+
+  return {
+    id: row.storedRow.id,
+    cells,
+    tone: row.origin === 'draft' ? 'default' : 'default',
+    powdercoat: row,
+  };
+}
+
+function nextPowdercoatRowsForPersist(
+  rows: PowdercoatSpreadsheetRow[],
+  editedRow: PowdercoatSpreadsheetRow,
+  key: JobPackEditableCellKey,
+  value: string,
+  defaultColour: string,
+  optionMap: Map<string, JobPackPowdercoatOption>,
+): JobPackPowdercoatStoredRow[] | null {
+  const persistedRows = rows
+    .filter((row) => row.origin !== 'draft')
+    .map((row) => row.storedRow);
+
+  if (editedRow.origin === 'draft') {
+    if (key !== 'a') return null;
+    const profile = normalizePowdercoatProfile(value);
+    if (!profile) return null;
+    const stockLengthOptionsM = optionMap.get(profile)?.stockLengthsM ?? [];
+    const manualRow: JobPackPowdercoatStoredRow = {
+      id: typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? `manual:${crypto.randomUUID()}` : `manual:${Date.now()}`,
+      source: 'manual',
+      baseRowId: null,
+      profile,
+      colour: defaultColour,
+      stockLengthM: stockLengthOptionsM.length === 1 ? stockLengthOptionsM[0] ?? null : null,
+      qty: 1,
+      unit: 'bar',
+      notes: '',
+    };
+    return [...persistedRows, manualRow];
+  }
+
+  const nextRow: JobPackPowdercoatStoredRow = { ...editedRow.storedRow };
+
+  if (key === 'a') {
+    const profile = normalizePowdercoatProfile(value);
+    if (!profile) return null;
+    nextRow.profile = profile;
+    const profileOptions = optionMap.get(profile)?.stockLengthsM ?? [];
+    const currentStockLength = nextRow.stockLengthM;
+    if (profileOptions.length === 1) {
+      nextRow.stockLengthM = profileOptions[0] ?? null;
+    } else if (
+      profileOptions.length > 1 &&
+      (typeof currentStockLength !== 'number' || !profileOptions.some((option) => Math.abs(option - currentStockLength) < 1e-6))
+    ) {
+      nextRow.stockLengthM = null;
+    }
+  }
+
+  if (key === 'c') {
+    const parsed = value.trim() ? Number.parseFloat(value) : NaN;
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    nextRow.stockLengthM = Math.round(parsed * 1000) / 1000;
+  }
+
+  if (key === 'd') {
+    const parsed = value.trim() ? Number.parseFloat(value) : NaN;
+    if (!Number.isFinite(parsed) || parsed <= 0) return null;
+    nextRow.qty = Math.round(parsed * 1000) / 1000;
+  }
+
+  const nextPersistedRows = persistedRows.filter((row) => row.id !== editedRow.storedRow.id);
+  if (editedRow.baseRow && summarizePowdercoatChanges(editedRow.baseRow, nextRow) === null) {
+    return nextPersistedRows;
+  }
+
+  return [...nextPersistedRows, nextRow];
+}
+
 function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookContext): JobPackSheetModel {
   const summaryRows = ensureRows(
     [
@@ -386,7 +598,13 @@ function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookCont
   };
 }
 
-function buildMaterialsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
+function buildMaterialsSheet({
+  estimate,
+  powdercoatRows,
+}: {
+  estimate: Estimate;
+  powdercoatRows: JobPackPowdercoatStoredRow[];
+}): JobPackSheetModel {
   const groupedRows = new Map<
     string,
     {
@@ -399,7 +617,7 @@ function buildMaterialsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
     }
   >();
 
-  for (const line of estimate.outputs.materials.lines ?? []) {
+  for (const line of (estimate.outputs.materials.lines ?? []).filter((item) => !isPowdercoatMaterialLine(item))) {
     const item = buildMaterialItemLabel(line);
     const colour = inferMaterialColour(line.label ?? '');
     const stockLength = inferMaterialStockLength(line.label ?? '');
@@ -418,6 +636,23 @@ function buildMaterialsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
       qty: line.qty,
       unit,
       notes,
+    });
+  }
+
+  for (const line of powdercoatRows) {
+    const key = [line.profile, line.colour || '-', formatStockLengthM(line.stockLengthM), line.unit || '-', line.notes || ''].join('|');
+    const existing = groupedRows.get(key);
+    if (existing) {
+      existing.qty += line.qty;
+      continue;
+    }
+    groupedRows.set(key, {
+      item: line.profile || '-',
+      colour: line.colour || '-',
+      stockLength: formatStockLengthM(line.stockLengthM),
+      qty: line.qty,
+      unit: line.unit || '-',
+      notes: line.notes || '',
     });
   }
 
@@ -461,18 +696,10 @@ function buildMaterialsSheet({ estimate }: WorkbookContext): JobPackSheetModel {
   };
 }
 
-function buildPowdercoatingOrderSheet({ jobPack }: WorkbookContext): JobPackSheetModel {
+function buildPowdercoatingOrderSheet(powdercoatRows: PowdercoatSpreadsheetRow[]): JobPackSheetModel {
+  const hasChangesColumn = powdercoatRows.some((row) => Boolean(row.changeSummary));
   const rows = ensureRows(
-    jobPack.orderLists.powdercoat.map((line, index) =>
-      makeRow(`powdercoating-${index}`, {
-        a: line.profile || '-',
-        b: line.colour || '-',
-        c: typeof line.stock_length_m === 'number' ? `${formatNumber(line.stock_length_m)}m` : '-',
-        d: formatNumber(line.qty),
-        e: line.unit || '-',
-        f: line.notes || '',
-      }),
-    ),
+    powdercoatRows.map((row) => buildPowdercoatSheetRow(row, hasChangesColumn)),
     'powdercoating-order',
     'No powdercoating rows are available.',
   );
@@ -486,6 +713,7 @@ function buildPowdercoatingOrderSheet({ jobPack }: WorkbookContext): JobPackShee
       { key: 'd', label: 'Qty', widthPx: 110 },
       { key: 'e', label: 'Unit', widthPx: 100 },
       { key: 'f', label: 'Notes', widthPx: 320 },
+      ...(hasChangesColumn ? [{ key: 'g' as const, label: 'Changes', widthPx: 300 }] : []),
     ]),
     groups: [{ key: 'powdercoating-order', label: 'Powdercoating order', showHeader: false, rows }],
     defaultActiveKey: 'a',
@@ -627,7 +855,11 @@ function buildInputsSheet({ readableInputs }: WorkbookContext): JobPackSheetMode
   };
 }
 
-function buildWorkbook(detail: EstimateDetail): WorkbookContext & { sheets: Record<JobPackSheetKey, JobPackSheetModel> } {
+function buildWorkbook(
+  detail: EstimateDetail,
+  powdercoatOverrides: JobPackPowdercoatOverrideState,
+  powdercoatOptions: JobPackPowdercoatOption[],
+): WorkbookContext & { sheets: Record<JobPackSheetKey, JobPackSheetModel>; powdercoatRows: PowdercoatSpreadsheetRow[] } {
   const estimate = toEstimate(detail);
   if (!estimate) {
     throw new Error('This estimate snapshot is missing the data needed to build a job pack workbook.');
@@ -637,13 +869,21 @@ function buildWorkbook(detail: EstimateDetail): WorkbookContext & { sheets: Reco
   const readableInputs = buildReadableInputs((estimate as any).inputs);
   const snapshot = getSnapshot(estimate);
   const context = { detail, estimate, jobPack, readableInputs, snapshot };
+  const optionMap = buildPowdercoatOptionMap(powdercoatOptions);
+  const mergedPowdercoatRows = mergePowdercoatRows(buildBasePowdercoatRows(jobPack), powdercoatOverrides, optionMap);
+  const defaultPowdercoatColour = mergedPowdercoatRows.find((row) => row.storedRow.colour)?.storedRow.colour || '';
+  const powdercoatRows = [...mergedPowdercoatRows, createPowdercoatDraftRow(defaultPowdercoatColour)];
 
   return {
     ...context,
+    powdercoatRows,
     sheets: {
       summary: buildSummarySheet(context),
-      materials: buildMaterialsSheet(context),
-      'powdercoating-order': buildPowdercoatingOrderSheet(context),
+      materials: buildMaterialsSheet({
+        estimate,
+        powdercoatRows: mergedPowdercoatRows.map((row) => row.storedRow),
+      }),
+      'powdercoating-order': buildPowdercoatingOrderSheet(powdercoatRows),
       labour: buildLabourSheet(context),
       overheads: buildOverheadsSheet(context),
       inputs: buildInputsSheet(context),
@@ -728,6 +968,7 @@ export function coerceJobPackSheet(value: string | null | undefined): JobPackShe
 }
 
 export function useJobPackSpreadsheetAdapter({
+  hostKey,
   detail,
   sheet,
   onSheetChange,
@@ -736,6 +977,7 @@ export function useJobPackSpreadsheetAdapter({
   showNotesColumn,
   onShowNotesColumnChange,
 }: {
+  hostKey: string;
   detail: EstimateDetail | null;
   sheet: JobPackSheetKey;
   onSheetChange: (sheet: JobPackSheetKey) => void;
@@ -743,16 +985,124 @@ export function useJobPackSpreadsheetAdapter({
   onOpenEstimate: () => void;
   showNotesColumn: boolean;
   onShowNotesColumnChange: (checked: boolean) => void;
-}): SpreadsheetAdapter<JobPackRow, JobPackCellKey, never, string> | null {
-  return useMemo(() => {
-    if (!detail) return null;
+}): SpreadsheetAdapter<JobPackRow, JobPackCellKey, JobPackEditableCellKey, string> | null {
+  const queryClient = useQueryClient();
+  const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
+  const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
+  const powdercoatQueryOptions = useMemo(
+    () => jobPackPowdercoatingQueryOptions(hostKey, detail?.id ?? '__pending__'),
+    [detail?.id, hostKey],
+  );
+  const powdercoatQuery = useQuery({
+    ...powdercoatQueryOptions,
+    enabled: Boolean(detail?.id),
+  });
 
-    let workbook: ReturnType<typeof buildWorkbook>;
+  const powdercoatData = powdercoatQuery.data ?? {
+    overrides: emptyPowdercoatOverrideState(),
+    options: [],
+  };
+
+  const workbook = useMemo(() => {
+    if (!detail) return null;
     try {
-      workbook = buildWorkbook(detail);
+      return buildWorkbook(detail, powdercoatData.overrides, powdercoatData.options);
     } catch {
       return null;
     }
+  }, [detail, powdercoatData.options, powdercoatData.overrides]);
+
+  const commitPowdercoatEdit = useCallback(
+    async (row: JobPackRow, key: JobPackEditableCellKey, value: string): Promise<boolean> => {
+      if (!detail || !row.powdercoat) return false;
+
+      const cellId = `${row.id}:${key}`;
+      setSavingCells((prev) => ({ ...prev, [cellId]: true }));
+      setConflictCells((prev) => {
+        const next = { ...prev };
+        delete next[cellId];
+        return next;
+      });
+
+      const latest =
+        queryClient.getQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey) ?? powdercoatData;
+
+      let latestWorkbook: ReturnType<typeof buildWorkbook> | null = null;
+      try {
+        latestWorkbook = buildWorkbook(detail, latest.overrides, latest.options);
+      } catch {
+        latestWorkbook = null;
+      }
+
+      const latestRow = latestWorkbook?.powdercoatRows.find((item) => item.storedRow.id === row.id) ?? row.powdercoat;
+      const defaultColour =
+        latestWorkbook?.powdercoatRows.find((item) => item.origin !== 'draft' && item.storedRow.colour)?.storedRow.colour ?? '';
+      const optionMap = buildPowdercoatOptionMap(latest.options);
+      const nextRows = nextPowdercoatRowsForPersist(
+        latestWorkbook?.powdercoatRows ?? [row.powdercoat],
+        latestRow,
+        key,
+        value,
+        defaultColour,
+        optionMap,
+      );
+
+      if (!nextRows) {
+        setSavingCells((prev) => {
+          const next = { ...prev };
+          delete next[cellId];
+          return next;
+        });
+        return false;
+      }
+
+      try {
+        const response = await apiJson<JobPackPowdercoatUpdateResponse>('/api/staff/v1/job-packs/powdercoating', {
+          method: 'POST',
+          body: JSON.stringify({
+            estimateId: detail.id,
+            expectedVersion: latest.overrides.version,
+            rows: nextRows,
+          }),
+        });
+
+        queryClient.setQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey, {
+          overrides: response.overrides,
+          options: latest.options,
+        });
+
+        setConflictCells((prev) => {
+          const next = { ...prev };
+          delete next[cellId];
+          return next;
+        });
+        return true;
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 409) {
+          const currentOverrides = (error.body as any)?.currentOverrides;
+          if (currentOverrides && typeof currentOverrides === 'object') {
+            queryClient.setQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey, {
+              overrides: currentOverrides as JobPackPowdercoatOverrideState,
+              options: latest.options,
+            });
+          }
+          setConflictCells((prev) => ({ ...prev, [cellId]: true }));
+        }
+        return false;
+      } finally {
+        setSavingCells((prev) => {
+          const next = { ...prev };
+          delete next[cellId];
+          return next;
+        });
+      }
+    },
+    [detail, powdercoatData, powdercoatQueryOptions.queryKey, queryClient],
+  );
+
+  return useMemo(() => {
+    if (!detail || !workbook) return null;
+
     const activeSheet = workbook.sheets[sheet] ?? workbook.sheets[DEFAULT_SHEET];
     const visibleColumns =
       !showNotesColumn && activeSheet.notesColumnKey
@@ -791,14 +1141,17 @@ export function useJobPackSpreadsheetAdapter({
       loadingMessage: 'Loading job pack...',
       errorMessage: 'Failed to load the job pack workbook.',
       emptyMessage: activeSheet.emptyMessage,
-      savingCells: {},
-      conflictCells: {},
+      savingCells,
+      conflictCells,
       getRowId: (row) => row.id,
-      isEditableKey: (_key): _key is never => false,
+      isEditableKey: (key): key is JobPackEditableCellKey => key === 'a' || key === 'c' || key === 'd',
       getRowClassName: () => '',
-      getCellClassName: ({ column, active, editing, saving, conflict }) => {
+      getCellClassName: ({ row, column, active, editing, saving, conflict }) => {
         const classes = [spreadsheetStyles.bodyCell];
         if (column.frozen) classes.push(spreadsheetStyles.frozenCell);
+        if (sheet === 'powdercoating-order' && row.powdercoat && (column.key === 'a' || column.key === 'd' || (column.key === 'c' && row.powdercoat.stockLengthOptionsM.length > 1))) {
+          classes.push(spreadsheetStyles.editableCell);
+        }
         if (active) classes.push(spreadsheetStyles.activeCell);
         if (editing) classes.push(spreadsheetStyles.editingCell);
         if (saving) classes.push(spreadsheetStyles.savingCell);
@@ -806,15 +1159,134 @@ export function useJobPackSpreadsheetAdapter({
         return classes.join(' ');
       },
       formatCellValue: (row, key) => row.cells[key] ?? '',
-      renderCellContent: ({ row, text }) => {
+      renderCellContent: ({ row, column, text }) => {
+        if (row.powdercoat?.origin === 'draft') {
+          if (column.key === 'a') return <span className={spreadsheetStyles.muted}>Select profile...</span>;
+          return '';
+        }
         if (row.tone === 'total') return <strong>{text || '-'}</strong>;
         if (row.tone === 'muted') return <span className={spreadsheetStyles.muted}>{text || '-'}</span>;
         return text || '';
       },
-      getEditorValue: () => '',
-      renderEditor: () => null,
-      commitEdit: async () => false,
-      onCellActivated: () => 'noop',
+      getEditorValue: (row, key) => {
+        const powdercoat = row.powdercoat;
+        if (!powdercoat) return '';
+        if (key === 'a') return powdercoat.storedRow.profile;
+        if (key === 'c') return typeof powdercoat.storedRow.stockLengthM === 'number' ? String(powdercoat.storedRow.stockLengthM) : '';
+        if (key === 'd') return String(powdercoat.storedRow.qty);
+        return '';
+      },
+      renderEditor: ({ row, key, value, setValue, commit, cancel, commitToNeighbor, editorRef, onBlur }) => {
+        const powdercoat = row.powdercoat;
+        if (!powdercoat) return null;
+
+        const onKeyDown = async (event: ReactKeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
+          if (event.key === 'Escape') {
+            cancel();
+            return;
+          }
+          if (event.key === 'Tab') {
+            event.preventDefault();
+            await commitToNeighbor(event.shiftKey ? -1 : 1);
+            return;
+          }
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            await commit();
+          }
+        };
+
+        if (key === 'a') {
+          return (
+            <select
+              ref={editorRef}
+              onBlur={onBlur}
+              className={spreadsheetStyles.cellSelect}
+              value={typeof value === 'string' ? value : ''}
+              onChange={(event) => setValue(event.target.value)}
+              onKeyDown={onKeyDown}
+            >
+              <option value="" disabled>
+                Select profile
+              </option>
+              {powdercoatData.options.map((option) => (
+                <option key={option.profile} value={option.profile}>
+                  {option.profile}
+                </option>
+              ))}
+            </select>
+          );
+        }
+
+        if (key === 'c') {
+          return (
+            <select
+              ref={editorRef}
+              onBlur={onBlur}
+              className={spreadsheetStyles.cellSelect}
+              value={typeof value === 'string' ? value : ''}
+              onChange={(event) => setValue(event.target.value)}
+              onKeyDown={onKeyDown}
+            >
+              <option value="" disabled>
+                Select length
+              </option>
+              {powdercoat.stockLengthOptionsM.map((stockLength) => (
+                <option key={stockLength} value={stockLength}>
+                  {formatStockLengthM(stockLength)}
+                </option>
+              ))}
+            </select>
+          );
+        }
+
+        return (
+          <input
+            ref={editorRef}
+            onBlur={onBlur}
+            className={spreadsheetStyles.cellInput}
+            type="number"
+            min={1}
+            step={1}
+            value={typeof value === 'string' ? value : ''}
+            onChange={(event) => setValue(event.target.value)}
+            onKeyDown={onKeyDown}
+          />
+        );
+      },
+      commitEdit: commitPowdercoatEdit,
+      onCellActivated: async ({ trigger, row, key, seed, beginEdit }) => {
+        if (sheet !== 'powdercoating-order' || !row.powdercoat) return 'noop';
+        if (key !== 'a' && key !== 'c' && key !== 'd') return 'noop';
+        if (!powdercoatData.options.length && key === 'a') return 'noop';
+        if (row.powdercoat.origin === 'draft' && key !== 'a') return 'noop';
+        if (key === 'c' && row.powdercoat.stockLengthOptionsM.length <= 1) return 'noop';
+
+        if (trigger === 'click' || trigger === 'enter' || trigger === 'double_click') {
+          beginEdit();
+          return 'handled';
+        }
+
+        if (trigger === 'printable' && seed && key === 'd') {
+          beginEdit(seed);
+          return 'handled';
+        }
+
+        return 'noop';
+      },
     };
-  }, [detail, onBackToList, onOpenEstimate, onSheetChange, onShowNotesColumnChange, sheet, showNotesColumn]);
+  }, [
+    commitPowdercoatEdit,
+    conflictCells,
+    detail,
+    onBackToList,
+    onOpenEstimate,
+    onSheetChange,
+    onShowNotesColumnChange,
+    powdercoatData.options,
+    savingCells,
+    sheet,
+    showNotesColumn,
+    workbook,
+  ]);
 }
