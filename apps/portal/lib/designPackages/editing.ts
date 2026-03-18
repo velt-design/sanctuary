@@ -83,6 +83,15 @@ export function getDesignListEditorValue(row: DesignListRow, key: DesignListEdit
   }
 }
 
+export function isDesignListCellValueUnchanged(
+  row: DesignListRow,
+  key: DesignListEditableCellKey,
+  nextValue: NormalizedDesignListCellValue,
+): boolean {
+  const current = normalizeDesignListCellInput(key, getDesignListEditorValue(row, key));
+  return current.ok ? Object.is(current.value, nextValue) : false;
+}
+
 function rowVersionFromParts(parts: Array<string | null>): string {
   return parts.map((part) => part ?? '').join('|');
 }
