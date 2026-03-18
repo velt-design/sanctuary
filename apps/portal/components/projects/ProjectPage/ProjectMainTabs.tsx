@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import ActivityTab from './tabs/ActivityTab';
 import EmailsTab from './tabs/EmailsTab';
 import EstimatesTab from './tabs/EstimatesTab';
+import JobPacksTab from './tabs/JobPacksTab';
 import PlaceholderTab from './tabs/PlaceholderTab';
 import QuotesTab from './tabs/QuotesTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
@@ -16,10 +16,10 @@ import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 const TABS = [
-  { key: 'activity', label: 'Activity' },
-  { key: 'emails', label: 'Emails' },
   { key: 'estimates', label: 'Estimates' },
   { key: 'quotes', label: 'Quotes' },
+  { key: 'job-packs', label: 'Job Packs' },
+  { key: 'emails', label: 'Emails' },
   { key: 'files', label: 'Files' },
 ] as const;
 
@@ -28,7 +28,7 @@ type ModeKey = 'general' | 'focus';
 type QuoteViewKey = 'edit' | 'preview';
 
 function coerceTab(value: string | undefined): TabKey {
-  return (TABS.find((t) => t.key === value)?.key ?? 'activity') as TabKey;
+  return (TABS.find((t) => t.key === value)?.key ?? 'estimates') as TabKey;
 }
 
 function coerceMode(value: string | undefined): ModeKey {
@@ -74,6 +74,7 @@ export default function ProjectMainTabs({
       else qs.delete('quotePreview');
     }
     if (next.tab && next.tab !== 'quotes') qs.delete('quotePreview');
+    if (next.tab && next.tab !== 'job-packs') qs.delete('sheet');
     const query = qs.toString();
     if (next.tab) setActiveTab(next.tab);
     router.replace(`${pathname}${query ? `?${query}` : ''}`);
@@ -87,6 +88,10 @@ export default function ProjectMainTabs({
     if (tabKey === 'quotes') {
       void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
       void queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
+      return;
+    }
+    if (tabKey === 'job-packs') {
+      void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
     }
   };
 
@@ -182,10 +187,10 @@ export default function ProjectMainTabs({
       </div>
 
       <div className={legacy.sectionBody}>
-        {activeTab === 'activity' ? <ActivityTab activity={snapshot.activity} /> : null}
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
         {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} mode={activeMode} /> : null}
         {activeTab === 'quotes' ? <QuotesTab projectId={snapshot.project.id} /> : null}
+        {activeTab === 'job-packs' ? <JobPacksTab projectId={snapshot.project.id} /> : null}
         {activeTab === 'files' ? (
           <PlaceholderTab title="Files" description="Upload and manage project files once storage is wired up." />
         ) : null}

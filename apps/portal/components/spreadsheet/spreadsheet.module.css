@@ -8,6 +8,11 @@
   overflow: hidden;
 }
 
+.pageEmbedded {
+  gap: 0;
+  padding: 0;
+}
+
 .stack {
   flex: 1;
   min-height: 0;
