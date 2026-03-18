@@ -1,10 +1,24 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { normalizePowdercoatStoredRow } from '@/lib/jobPacks/powdercoating';
 import { estimateExists, isMissingSchemaError, listPowdercoatProfileOptions, loadPowdercoatOverrideState, savePowdercoatOverrideState } from '@/lib/jobPacks/server';
-import type { JobPackPowdercoatUpdateRequest } from '@/lib/jobPacks/types';
+import type { JobPackPowdercoatOption, JobPackPowdercoatOverrideState, JobPackPowdercoatUpdateRequest } from '@/lib/jobPacks/types';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
+
+function emptyOverrideState(): JobPackPowdercoatOverrideState {
+  return { version: null, rows: [] };
+}
+
+function formatSchemaWarning(error: unknown): string {
+  const detail = process.env.NODE_ENV !== 'production' ? ` (${(error as any)?.message ?? 'missing schema'})` : '';
+  return `Powdercoating overrides are unavailable until the latest migrations are applied.${detail}`;
+}
+
+function formatProfileOptionWarning(error: unknown): string {
+  const message = error instanceof Error ? error.message : 'Profile options could not be loaded.';
+  return `Powdercoating profile options could not be loaded. ${message}`;
+}
 
 function parseEstimateUuid(estimateId: string): string | null {
   try {
@@ -28,12 +42,37 @@ export async function GET(req: Request) {
   try {
     if (!(await estimateExists(estimateUuid))) return jsonError('Estimate not found', 404);
 
-    const [overrides, options] = await Promise.all([
-      loadPowdercoatOverrideState(estimateUuid),
-      listPowdercoatProfileOptions(),
-    ]);
+    const warnings: string[] = [];
+    let overrides: JobPackPowdercoatOverrideState = emptyOverrideState();
+    let options: JobPackPowdercoatOption[] = [];
+    let persistenceAvailable = true;
+    let profileOptionsAvailable = true;
 
-    return jsonOk({ overrides, options });
+    try {
+      overrides = await loadPowdercoatOverrideState(estimateUuid);
+    } catch (error) {
+      if (isMissingSchemaError(error)) {
+        persistenceAvailable = false;
+        warnings.push(formatSchemaWarning(error));
+      } else {
+        throw error;
+      }
+    }
+
+    try {
+      options = await listPowdercoatProfileOptions();
+    } catch (error) {
+      profileOptionsAvailable = false;
+      warnings.push(formatProfileOptionWarning(error));
+    }
+
+    return jsonOk({
+      overrides,
+      options,
+      persistenceAvailable,
+      profileOptionsAvailable,
+      warningMessage: warnings.length ? warnings.join(' ') : null,
+    });
   } catch (error) {
     if (isMissingSchemaError(error)) {
       const detail = process.env.NODE_ENV !== 'production' ? ` (${(error as any)?.message ?? 'missing schema'})` : '';

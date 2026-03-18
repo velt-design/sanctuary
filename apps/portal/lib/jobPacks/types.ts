@@ -25,6 +25,9 @@ export type JobPackPowdercoatOption = {
 export type JobPackPowdercoatSheetResponse = {
   overrides: JobPackPowdercoatOverrideState;
   options: JobPackPowdercoatOption[];
+  persistenceAvailable: boolean;
+  profileOptionsAvailable: boolean;
+  warningMessage: string | null;
 };
 
 export type JobPackPowdercoatUpdateRequest = {

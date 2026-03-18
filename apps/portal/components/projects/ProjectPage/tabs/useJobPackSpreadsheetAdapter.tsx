@@ -5,6 +5,7 @@ import type { MaterialsLineV1 } from '@sp/costing';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SpreadsheetAdapter, SpreadsheetColumn, SpreadsheetGroup } from '@/components/spreadsheet/types';
 import spreadsheetStyles from '@/components/spreadsheet/spreadsheet.module.css';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import {
   buildPowdercoatBaseRowId,
@@ -87,6 +88,16 @@ const POWDERCOAT_DRAFT_ROW_ID = '__powdercoating_draft__';
 
 function emptyPowdercoatOverrideState(): JobPackPowdercoatOverrideState {
   return { version: null, rows: [] };
+}
+
+function emptyPowdercoatSheetResponse(): JobPackPowdercoatSheetResponse {
+  return {
+    overrides: emptyPowdercoatOverrideState(),
+    options: [],
+    persistenceAvailable: true,
+    profileOptionsAvailable: true,
+    warningMessage: null,
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -902,6 +913,7 @@ function SheetToolbar({
   showHideNotesToggle,
   showNotesColumn,
   onShowNotesColumnChange,
+  warningMessage,
 }: {
   detail: EstimateDetail;
   sheet: JobPackSheetKey;
@@ -913,6 +925,7 @@ function SheetToolbar({
   showHideNotesToggle: boolean;
   showNotesColumn: boolean;
   onShowNotesColumnChange: (checked: boolean) => void;
+  warningMessage: string | null;
 }) {
   return (
     <div className={spreadsheetStyles.toolbar}>
@@ -959,6 +972,12 @@ function SheetToolbar({
           Open estimate
         </button>
       </div>
+
+      {warningMessage ? (
+        <div className={spreadsheetStyles.toolbarWarning} role="status" aria-live="polite">
+          {warningMessage}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -987,6 +1006,7 @@ export function useJobPackSpreadsheetAdapter({
   onShowNotesColumnChange: (checked: boolean) => void;
 }): SpreadsheetAdapter<JobPackRow, JobPackCellKey, JobPackEditableCellKey, string> | null {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
   const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
   const powdercoatQueryOptions = useMemo(
@@ -998,10 +1018,12 @@ export function useJobPackSpreadsheetAdapter({
     enabled: Boolean(detail?.id),
   });
 
-  const powdercoatData = powdercoatQuery.data ?? {
-    overrides: emptyPowdercoatOverrideState(),
-    options: [],
-  };
+  const powdercoatData = powdercoatQuery.data ?? emptyPowdercoatSheetResponse();
+  const powdercoatWarningMessage = powdercoatQuery.isError
+    ? powdercoatQuery.error instanceof Error
+      ? powdercoatQuery.error.message
+      : 'Powdercoating rows are available, but profile options could not be loaded.'
+    : powdercoatData.warningMessage;
 
   const workbook = useMemo(() => {
     if (!detail) return null;
@@ -1069,6 +1091,9 @@ export function useJobPackSpreadsheetAdapter({
         queryClient.setQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey, {
           overrides: response.overrides,
           options: latest.options,
+          persistenceAvailable: latest.persistenceAvailable,
+          profileOptionsAvailable: latest.profileOptionsAvailable,
+          warningMessage: latest.warningMessage,
         });
 
         setConflictCells((prev) => {
@@ -1084,9 +1109,14 @@ export function useJobPackSpreadsheetAdapter({
             queryClient.setQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey, {
               overrides: currentOverrides as JobPackPowdercoatOverrideState,
               options: latest.options,
+              persistenceAvailable: latest.persistenceAvailable,
+              profileOptionsAvailable: latest.profileOptionsAvailable,
+              warningMessage: latest.warningMessage,
             });
           }
           setConflictCells((prev) => ({ ...prev, [cellId]: true }));
+        } else {
+          toast.error(error instanceof Error ? error.message : 'Failed to save the powdercoating sheet.');
         }
         return false;
       } finally {
@@ -1097,7 +1127,7 @@ export function useJobPackSpreadsheetAdapter({
         });
       }
     },
-    [detail, powdercoatData, powdercoatQueryOptions.queryKey, queryClient],
+    [detail, powdercoatData, powdercoatQueryOptions.queryKey, queryClient, toast],
   );
 
   return useMemo(() => {
@@ -1128,6 +1158,7 @@ export function useJobPackSpreadsheetAdapter({
           showHideNotesToggle={Boolean(activeSheet.notesColumnKey)}
           showNotesColumn={showNotesColumn}
           onShowNotesColumnChange={onShowNotesColumnChange}
+          warningMessage={sheet === 'powdercoating-order' ? powdercoatWarningMessage : null}
         />
       ),
       columns: visibleColumns,
@@ -1284,6 +1315,7 @@ export function useJobPackSpreadsheetAdapter({
     onSheetChange,
     onShowNotesColumnChange,
     powdercoatData.options,
+    powdercoatWarningMessage,
     savingCells,
     sheet,
     showNotesColumn,
