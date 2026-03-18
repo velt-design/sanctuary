@@ -686,8 +686,8 @@ function SheetToolbar({
   onBackToList,
   onOpenEstimate,
   showHideNotesToggle,
-  hideNotesColumn,
-  onHideNotesColumnChange,
+  showNotesColumn,
+  onShowNotesColumnChange,
 }: {
   detail: EstimateDetail;
   sheet: JobPackSheetKey;
@@ -697,8 +697,8 @@ function SheetToolbar({
   onBackToList: () => void;
   onOpenEstimate: () => void;
   showHideNotesToggle: boolean;
-  hideNotesColumn: boolean;
-  onHideNotesColumnChange: (checked: boolean) => void;
+  showNotesColumn: boolean;
+  onShowNotesColumnChange: (checked: boolean) => void;
 }) {
   return (
     <div className={spreadsheetStyles.toolbar}>
@@ -724,10 +724,10 @@ function SheetToolbar({
           <label className={spreadsheetStyles.toolbarToggle}>
             <input
               type="checkbox"
-              checked={hideNotesColumn}
-              onChange={(event) => onHideNotesColumnChange(event.target.checked)}
+              checked={showNotesColumn}
+              onChange={(event) => onShowNotesColumnChange(event.target.checked)}
             />
-            <span>Hide notes column</span>
+            <span>Show notes</span>
           </label>
         ) : null}
       </div>
@@ -759,16 +759,16 @@ export function useJobPackSpreadsheetAdapter({
   onSheetChange,
   onBackToList,
   onOpenEstimate,
-  hideNotesColumn,
-  onHideNotesColumnChange,
+  showNotesColumn,
+  onShowNotesColumnChange,
 }: {
   detail: EstimateDetail | null;
   sheet: JobPackSheetKey;
   onSheetChange: (sheet: JobPackSheetKey) => void;
   onBackToList: () => void;
   onOpenEstimate: () => void;
-  hideNotesColumn: boolean;
-  onHideNotesColumnChange: (checked: boolean) => void;
+  showNotesColumn: boolean;
+  onShowNotesColumnChange: (checked: boolean) => void;
 }): SpreadsheetAdapter<JobPackRow, JobPackCellKey, never, string> | null {
   return useMemo(() => {
     if (!detail) return null;
@@ -781,11 +781,11 @@ export function useJobPackSpreadsheetAdapter({
     }
     const activeSheet = workbook.sheets[sheet] ?? workbook.sheets[DEFAULT_SHEET];
     const visibleColumns =
-      hideNotesColumn && activeSheet.notesColumnKey
+      !showNotesColumn && activeSheet.notesColumnKey
         ? activeSheet.columns.filter((column) => column.key !== activeSheet.notesColumnKey)
         : activeSheet.columns;
     const defaultActiveKey =
-      hideNotesColumn && activeSheet.notesColumnKey === activeSheet.defaultActiveKey
+      !showNotesColumn && activeSheet.notesColumnKey === activeSheet.defaultActiveKey
         ? (visibleColumns[0]?.key ?? activeSheet.defaultActiveKey)
         : activeSheet.defaultActiveKey;
     const allRows = activeSheet.groups.flatMap((group) => group.rows);
@@ -802,8 +802,8 @@ export function useJobPackSpreadsheetAdapter({
           onBackToList={onBackToList}
           onOpenEstimate={onOpenEstimate}
           showHideNotesToggle={Boolean(activeSheet.notesColumnKey)}
-          hideNotesColumn={hideNotesColumn}
-          onHideNotesColumnChange={onHideNotesColumnChange}
+          showNotesColumn={showNotesColumn}
+          onShowNotesColumnChange={onShowNotesColumnChange}
         />
       ),
       columns: visibleColumns,
@@ -842,5 +842,5 @@ export function useJobPackSpreadsheetAdapter({
       commitEdit: async () => false,
       onCellActivated: () => 'noop',
     };
-  }, [detail, hideNotesColumn, onBackToList, onHideNotesColumnChange, onOpenEstimate, onSheetChange, sheet]);
+  }, [detail, onBackToList, onOpenEstimate, onSheetChange, onShowNotesColumnChange, sheet, showNotesColumn]);
 }

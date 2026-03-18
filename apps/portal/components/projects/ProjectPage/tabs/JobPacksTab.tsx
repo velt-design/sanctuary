@@ -40,7 +40,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const [hideNotesColumn, setHideNotesColumn] = useState(false);
+  const [showNotesColumn, setShowNotesColumn] = useState(false);
 
   const selectedEstimateId = useMemo(() => {
     const raw = searchParams.get('estimateId') ?? '';
@@ -116,8 +116,8 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     onSheetChange: handleSheetChange,
     onBackToList: handleBackToList,
     onOpenEstimate: handleOpenEstimate,
-    hideNotesColumn,
-    onHideNotesColumnChange: setHideNotesColumn,
+    showNotesColumn,
+    onShowNotesColumnChange: setShowNotesColumn,
   });
 
   const prefetchDetail = useCallback(

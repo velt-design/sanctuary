@@ -44,7 +44,7 @@
 
 .mastheadTitle {
   margin: 0;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: 0.01em;
@@ -54,12 +54,12 @@
 .mastheadStagePill {
   display: inline-flex;
   align-items: center;
-  padding: 5px 9px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(var(--accentRgb), 0.22);
   background: rgba(var(--accentRgb), 0.08);
   color: rgba(var(--portal-text-rgb), 0.82);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -81,8 +81,8 @@
 }
 
 .mastheadAction {
-  padding: 8px 11px;
-  font-size: 11px;
+  padding: 6px 10px;
+  font-size: 10px;
 }
 
 .mastheadPipeline {
@@ -421,7 +421,7 @@
   }
 
   .mastheadTitle {
-    font-size: 20px;
+    font-size: 17px;
   }
 
   .mastheadActions {
