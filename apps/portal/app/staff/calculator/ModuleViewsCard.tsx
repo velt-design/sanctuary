@@ -20,6 +20,7 @@ type ModuleViewsCardProps = {
   statusDetail?: string;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
+  presentation?: 'full' | 'minimal';
 };
 
 const TAB_ITEMS: Array<{ id: ModuleViewsTab; label: string }> = [
@@ -48,8 +49,11 @@ export default function ModuleViewsCard({
   statusDetail,
   planModel,
   sectionModel,
+  presentation = 'full',
 }: ModuleViewsCardProps) {
+  const isMinimal = presentation === 'minimal';
   const [detailMode, setDetailMode] = useState<ModuleDetailMode>('technical');
+  const effectiveDetailMode: ModuleDetailMode = isMinimal ? 'technical' : detailMode;
   const showPlan = view === 'plan' && Boolean(planModel);
   const showSection = view === 'section' && Boolean(sectionModel);
   const planConsistency = planModel ? checkPlanConsistency(planModel) : null;
@@ -63,12 +67,17 @@ export default function ModuleViewsCard({
   const svgId = useId().replace(/:/g, '_');
 
   return (
-    <section className={`${styles.previewCard} ${styles.moduleViewsCard}`} aria-label="Module views">
+    <section
+      className={`${styles.moduleViewsCard} ${isMinimal ? styles.moduleViewsCardMinimal : styles.previewCard}`}
+      aria-label="Module views"
+    >
       <div className={styles.moduleViewsHeader}>
-        <div className={styles.moduleViewsTitleWrap}>
-          <h2 className={styles.previewCardTitle}>Module views</h2>
-          <div className={styles.moduleViewsSubtitle}>{moduleLabel}</div>
-        </div>
+        {isMinimal ? null : (
+          <div className={styles.moduleViewsTitleWrap}>
+            <h2 className={styles.previewCardTitle}>Module views</h2>
+            <div className={styles.moduleViewsSubtitle}>{moduleLabel}</div>
+          </div>
+        )}
 
         <div className={styles.moduleViewsControls}>
           <div className={styles.moduleViewsTabs} role="tablist" aria-label="View type">
@@ -89,121 +98,137 @@ export default function ModuleViewsCard({
             })}
           </div>
 
-          <div className={styles.moduleViewsDetailToggle} role="tablist" aria-label="Drawing detail">
-            {DETAIL_ITEMS.map((item) => {
-              const active = item.id === detailMode;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  className={active ? `${styles.moduleViewsDetailButton} ${styles.moduleViewsDetailButtonActive}` : styles.moduleViewsDetailButton}
-                  onClick={() => setDetailMode(item.id)}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
+          {isMinimal ? null : (
+            <div className={styles.moduleViewsDetailToggle} role="tablist" aria-label="Drawing detail">
+              {DETAIL_ITEMS.map((item) => {
+                const active = item.id === detailMode;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    className={active ? `${styles.moduleViewsDetailButton} ${styles.moduleViewsDetailButtonActive}` : styles.moduleViewsDetailButton}
+                    onClick={() => setDetailMode(item.id)}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       <div className={styles.moduleViewsStage} aria-live="polite">
         {showPlan && planModel ? (
           <div className={styles.modulePlanFrame}>
-            <div className={styles.modulePlanSourceRow}>
-              <div className={planModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
-                {planModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
-              </div>
-              {planConsistency ? (
-                <div className={planConsistency.level === 'ok' ? styles.modulePlanConsistencyOk : styles.modulePlanConsistencyWarn}>
-                  {planConsistency.level === 'ok' ? 'Geometry OK' : `Check ${planConsistency.details.length}`}
+            {isMinimal ? null : (
+              <div className={styles.modulePlanSourceRow}>
+                <div className={planModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
+                  {planModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
                 </div>
-              ) : null}
-            </div>
-            <PlanSvg model={planModel} detailMode={detailMode} idBase={`${svgId}_plan`} consistency={planConsistency} />
-            <LegendRow
-              detailMode={detailMode}
-              items={
-                planModel.houseConnectionType === 'soffit'
-                  ? ['Frame member', 'Rafters', 'Soffit brackets', 'House side']
-                  : ['Frame member', 'Rafters', 'House side']
-              }
-            />
-            <div className={styles.modulePlanStats}>
-              <span className={styles.modulePlanStat}>{`A: ${formatMetres(planModel.lengthA)} x ${formatMetres(planModel.spanA)}`}</span>
-              {planModel.roofType === 'hip_corner' && planModel.lengthB && planModel.spanB ? (
-                <span className={styles.modulePlanStat}>{`B: ${formatMetres(planModel.lengthB)} x ${formatMetres(planModel.spanB)}`}</span>
-              ) : null}
-              <span className={styles.modulePlanStat}>{`Roof: ${roofTypeLabel(planModel.roofType)}`}</span>
-              <span className={styles.modulePlanStat}>{`Rafters: ${planModel.rafterCountA} @ ${formatMetres(planModel.rafterSpacingA)} c/c`}</span>
-              {planModel.houseConnectionType === 'soffit' ? (
-                <span className={styles.modulePlanStat}>{`Soffit brackets: ${planModel.soffitBracketPositionsA.length}`}</span>
-              ) : null}
-              {planModel.boxPerimeterEnabled ? <span className={styles.modulePlanStat}>Box perimeter enabled</span> : null}
-            </div>
+                {planConsistency ? (
+                  <div className={planConsistency.level === 'ok' ? styles.modulePlanConsistencyOk : styles.modulePlanConsistencyWarn}>
+                    {planConsistency.level === 'ok' ? 'Geometry OK' : `Check ${planConsistency.details.length}`}
+                  </div>
+                ) : null}
+              </div>
+            )}
+            <PlanSvg model={planModel} detailMode={effectiveDetailMode} idBase={`${svgId}_plan`} consistency={planConsistency} />
+            {isMinimal ? null : (
+              <>
+                <LegendRow
+                  detailMode={effectiveDetailMode}
+                  items={
+                    planModel.houseConnectionType === 'soffit'
+                      ? ['Frame member', 'Rafters', 'Soffit brackets', 'House side']
+                      : ['Frame member', 'Rafters', 'House side']
+                  }
+                />
+                <div className={styles.modulePlanStats}>
+                  <span className={styles.modulePlanStat}>{`A: ${formatMetres(planModel.lengthA)} x ${formatMetres(planModel.spanA)}`}</span>
+                  {planModel.roofType === 'hip_corner' && planModel.lengthB && planModel.spanB ? (
+                    <span className={styles.modulePlanStat}>{`B: ${formatMetres(planModel.lengthB)} x ${formatMetres(planModel.spanB)}`}</span>
+                  ) : null}
+                  <span className={styles.modulePlanStat}>{`Roof: ${roofTypeLabel(planModel.roofType)}`}</span>
+                  <span className={styles.modulePlanStat}>{`Rafters: ${planModel.rafterCountA} @ ${formatMetres(planModel.rafterSpacingA)} c/c`}</span>
+                  {planModel.houseConnectionType === 'soffit' ? (
+                    <span className={styles.modulePlanStat}>{`Soffit brackets: ${planModel.soffitBracketPositionsA.length}`}</span>
+                  ) : null}
+                  {planModel.boxPerimeterEnabled ? <span className={styles.modulePlanStat}>Box perimeter enabled</span> : null}
+                </div>
+              </>
+            )}
           </div>
         ) : showSection && sectionModel ? (
           <div className={styles.modulePlanFrame}>
-            <div className={styles.modulePlanSourceRow}>
-              <div className={sectionModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
-                {sectionModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
-              </div>
-              {sectionConsistency ? (
-                <div className={sectionConsistency.level === 'ok' ? styles.modulePlanConsistencyOk : styles.modulePlanConsistencyWarn}>
-                  {sectionConsistency.level === 'ok' ? 'Geometry OK' : `Check ${sectionConsistency.details.length}`}
+            {isMinimal ? null : (
+              <div className={styles.modulePlanSourceRow}>
+                <div className={sectionModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
+                  {sectionModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
                 </div>
-              ) : null}
-            </div>
-            <SectionSvg model={sectionModel} detailMode={detailMode} consistency={sectionConsistency} />
-            <LegendRow
-              detailMode={detailMode}
-              items={
-                sectionModel.sectionKind === 'gable'
-                  ? ['Primary frame', 'Internal roof line', 'Tie beam', 'King strut']
-                  : sectionModel.overhangEnabled && sectionModel.overhangAmountM > 0
-                    ? ['Primary frame', 'Internal roof line', 'Overhang support']
-                    : ['Primary frame', 'Internal roof line']
-              }
-            />
-            <div className={styles.modulePlanStats}>
-              <span className={styles.modulePlanStat}>{`Span: ${formatMetres(sectionModel.spanA)}`}</span>
-              <span className={styles.modulePlanStat}>{`Pitch: ${sectionModel.pitchDeg.toFixed(1)} deg`}</span>
-              <span className={styles.modulePlanStat}>{`House: ${formatMetres(sectionModel.leftEdgeHeightM)}`}</span>
-              <span className={styles.modulePlanStat}>{`Outer: ${formatMetres(sectionOuterDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span>
-              {sectionOverhangDisplayM > 0 ? <span className={styles.modulePlanStat}>{`Support: ${formatMetres(sectionSupportDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span> : null}
-              <span className={styles.modulePlanStat}>{`Post: ${Math.round(sectionModel.postDepthM * 1000)}x${Math.round(sectionModel.postWidthM * 1000)}mm`}</span>
-              <span className={styles.modulePlanStat}>{`Rafter: ${Math.round(sectionModel.rafterDepthM * 1000)}x${Math.round(sectionModel.rafterWidthM * 1000)}mm`}</span>
-              {sectionRafterCutDisplay ? <span className={styles.modulePlanStat}>{sectionRafterCutDisplay}</span> : null}
-              <span className={styles.modulePlanStat}>{`Ledger: ${Math.round(sectionModel.ledgerBeamDepthM * 1000)}x${Math.round(sectionModel.ledgerBeamWidthM * 1000)}mm`}</span>
-              <span className={styles.modulePlanStat}>{`Support beam: ${Math.round(sectionModel.supportBeamDepthM * 1000)}x${Math.round(sectionModel.supportBeamWidthM * 1000)}mm`}</span>
-              <span className={styles.modulePlanStat}>{`Gutter: ${Math.round(sectionModel.gutterDepthM * 1000)}x${Math.round(sectionModel.gutterWidthM * 1000)}mm`}</span>
-              {typeof sectionModel.ridgeHeightM === 'number' ? (
-                <span className={styles.modulePlanStat}>{`Ridge beam: ${Math.round(sectionModel.ridgeBeamDepthM * 1000)}x${Math.round(sectionModel.ridgeBeamWidthM * 1000)}mm`}</span>
-              ) : null}
-              {typeof sectionModel.ridgeHeightM === 'number' ? (
-                <span className={styles.modulePlanStat}>{`Ridge: ${formatMetres(sectionModel.ridgeHeightM)}`}</span>
-              ) : null}
-              {sectionOverhangDisplayM > 0 ? (
-                <span className={styles.modulePlanStat}>{`Overhang: ${formatMetres(sectionOverhangDisplayM)}`}</span>
-              ) : null}
-              {sectionModel.boxPerimeterEnabled && sectionModel.boxRiseM ? (
-                <span className={styles.modulePlanStat}>{`Box fall: ${formatMetres(sectionModel.boxRiseM)}`}</span>
-              ) : null}
-              {sectionModel.roofType === 'hip_corner' ? <span className={styles.modulePlanStat}>Primary wing section (A)</span> : null}
-            </div>
+                {sectionConsistency ? (
+                  <div className={sectionConsistency.level === 'ok' ? styles.modulePlanConsistencyOk : styles.modulePlanConsistencyWarn}>
+                    {sectionConsistency.level === 'ok' ? 'Geometry OK' : `Check ${sectionConsistency.details.length}`}
+                  </div>
+                ) : null}
+              </div>
+            )}
+            <SectionSvg model={sectionModel} detailMode={effectiveDetailMode} consistency={sectionConsistency} />
+            {isMinimal ? null : (
+              <>
+                <LegendRow
+                  detailMode={effectiveDetailMode}
+                  items={
+                    sectionModel.sectionKind === 'gable'
+                      ? ['Primary frame', 'Internal roof line', 'Tie beam', 'King strut']
+                      : sectionModel.overhangEnabled && sectionModel.overhangAmountM > 0
+                        ? ['Primary frame', 'Internal roof line', 'Overhang support']
+                        : ['Primary frame', 'Internal roof line']
+                  }
+                />
+                <div className={styles.modulePlanStats}>
+                  <span className={styles.modulePlanStat}>{`Span: ${formatMetres(sectionModel.spanA)}`}</span>
+                  <span className={styles.modulePlanStat}>{`Pitch: ${sectionModel.pitchDeg.toFixed(1)} deg`}</span>
+                  <span className={styles.modulePlanStat}>{`House: ${formatMetres(sectionModel.leftEdgeHeightM)}`}</span>
+                  <span className={styles.modulePlanStat}>{`Outer: ${formatMetres(sectionOuterDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span>
+                  {sectionOverhangDisplayM > 0 ? <span className={styles.modulePlanStat}>{`Support: ${formatMetres(sectionSupportDisplayM ?? sectionModel.rightEdgeHeightM)}`}</span> : null}
+                  <span className={styles.modulePlanStat}>{`Post: ${Math.round(sectionModel.postDepthM * 1000)}x${Math.round(sectionModel.postWidthM * 1000)}mm`}</span>
+                  <span className={styles.modulePlanStat}>{`Rafter: ${Math.round(sectionModel.rafterDepthM * 1000)}x${Math.round(sectionModel.rafterWidthM * 1000)}mm`}</span>
+                  {sectionRafterCutDisplay ? <span className={styles.modulePlanStat}>{sectionRafterCutDisplay}</span> : null}
+                  <span className={styles.modulePlanStat}>{`Ledger: ${Math.round(sectionModel.ledgerBeamDepthM * 1000)}x${Math.round(sectionModel.ledgerBeamWidthM * 1000)}mm`}</span>
+                  <span className={styles.modulePlanStat}>{`Support beam: ${Math.round(sectionModel.supportBeamDepthM * 1000)}x${Math.round(sectionModel.supportBeamWidthM * 1000)}mm`}</span>
+                  <span className={styles.modulePlanStat}>{`Gutter: ${Math.round(sectionModel.gutterDepthM * 1000)}x${Math.round(sectionModel.gutterWidthM * 1000)}mm`}</span>
+                  {typeof sectionModel.ridgeHeightM === 'number' ? (
+                    <span className={styles.modulePlanStat}>{`Ridge beam: ${Math.round(sectionModel.ridgeBeamDepthM * 1000)}x${Math.round(sectionModel.ridgeBeamWidthM * 1000)}mm`}</span>
+                  ) : null}
+                  {typeof sectionModel.ridgeHeightM === 'number' ? (
+                    <span className={styles.modulePlanStat}>{`Ridge: ${formatMetres(sectionModel.ridgeHeightM)}`}</span>
+                  ) : null}
+                  {sectionOverhangDisplayM > 0 ? (
+                    <span className={styles.modulePlanStat}>{`Overhang: ${formatMetres(sectionOverhangDisplayM)}`}</span>
+                  ) : null}
+                  {sectionModel.boxPerimeterEnabled && sectionModel.boxRiseM ? (
+                    <span className={styles.modulePlanStat}>{`Box fall: ${formatMetres(sectionModel.boxRiseM)}`}</span>
+                  ) : null}
+                  {sectionModel.roofType === 'hip_corner' ? <span className={styles.modulePlanStat}>Primary wing section (A)</span> : null}
+                </div>
+              </>
+            )}
           </div>
         ) : (
           <p className={styles.moduleViewsStateText}>{stateText}</p>
         )}
         {statusDetail ? <p className={styles.moduleViewsStateDetail}>{statusDetail}</p> : null}
-        {activeConsistency ? (
-          <p className={activeConsistency.level === 'ok' ? styles.moduleViewsConsistencyOk : styles.moduleViewsConsistencyWarn}>
-            {activeConsistency.summary}
-          </p>
-        ) : null}
-        {activeConsistency && activeConsistency.level === 'warn' ? (
+        {isMinimal
+          ? null
+          : activeConsistency ? (
+              <p className={activeConsistency.level === 'ok' ? styles.moduleViewsConsistencyOk : styles.moduleViewsConsistencyWarn}>
+                {activeConsistency.summary}
+              </p>
+            ) : null}
+        {isMinimal || !activeConsistency || activeConsistency.level !== 'warn' ? null : (
           <div className={styles.moduleViewsConsistencyList}>
             {activeConsistency.details.slice(0, 4).map((detail, idx) => (
               <p key={`${detail}-${idx}`} className={styles.moduleViewsConsistencyItem}>
@@ -214,13 +239,15 @@ export default function ModuleViewsCard({
               <p className={styles.moduleViewsConsistencyItem}>{`+${activeConsistency.details.length - 4} more`}</p>
             ) : null}
           </div>
-        ) : null}
+        )}
       </div>
 
-      <div className={styles.moduleViewsMeta}>
-        <span>Not to scale</span>
-        <span>{view === 'plan' ? 'Plan schematic' : 'Section schematic'}</span>
-      </div>
+      {isMinimal ? null : (
+        <div className={styles.moduleViewsMeta}>
+          <span>Not to scale</span>
+          <span>{view === 'plan' ? 'Plan schematic' : 'Section schematic'}</span>
+        </div>
+      )}
     </section>
   );
 }

@@ -173,7 +173,7 @@ type PendingRunningJobRowState = {
 };
 
 type RunningJobQueueOutcome =
-  | { kind: 'success'; row: RunningJobRow }
+  | { kind: 'success'; row: RunningJobRow; toast?: string; conflict?: boolean }
   | { kind: 'drop'; row?: RunningJobRow; toast?: string; conflict?: boolean };
 
 function Toolbar({
@@ -265,8 +265,9 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
   const query = useQuery(runningJobsQueryOptions(host));
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
+  const [savingCellCounts, setSavingCellCounts] = useState<Record<string, number>>({});
   const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
+  const pendingRowsRef = useRef(new Map<string, PendingRunningJobRowState>());
 
   useEffect(() => {
     if (!query.error) return;
@@ -303,12 +304,223 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
     }, 4000);
   }, []);
 
+  const savingCells = useMemo<Record<string, boolean>>(
+    () => Object.fromEntries(Object.keys(savingCellCounts).map((id) => [id, true])),
+    [savingCellCounts],
+  );
+
+  const changeSavingCellCount = useCallback((id: string, delta: number) => {
+    setSavingCellCounts((prev) => {
+      const nextCount = Math.max(0, (prev[id] ?? 0) + delta);
+      if (nextCount === (prev[id] ?? 0)) return prev;
+      const next = { ...prev };
+      if (nextCount > 0) next[id] = nextCount;
+      else delete next[id];
+      return next;
+    });
+  }, []);
+
+  const getCachedRunningJobRow = useCallback(
+    (projectId: string): RunningJobRow | null => {
+      const current = queryClient.getQueryData<RunningJobsResponse>(queryKey);
+      if (!current) return null;
+      return flattenRunningJobGroups(current.groups).find((item) => item.projectId === projectId) ?? null;
+    },
+    [queryClient, queryKey],
+  );
+
+  const setDisplayedRunningJobRow = useCallback(
+    (projectId: string, row: RunningJobRow) => {
+      queryClient.setQueryData<RunningJobsResponse>(queryKey, (current) =>
+        current ? patchResponse(current, projectId, () => row) : current,
+      );
+    },
+    [queryClient, queryKey],
+  );
+
+  const applyQueuedRunningJobRow = useCallback(
+    (confirmedRow: RunningJobRow, queue: QueuedRunningJobEdit[]) =>
+      queue.reduce(
+        (currentRow, queuedEdit) => applyOptimisticRunningJobCellValue(currentRow, queuedEdit.key, queuedEdit.value, lookups),
+        confirmedRow,
+      ),
+    [lookups],
+  );
+
+  const syncQueuedRunningJobRow = useCallback(
+    (projectId: string) => {
+      const state = pendingRowsRef.current.get(projectId);
+      if (!state) return;
+      const displayedRow = state.queue.length ? applyQueuedRunningJobRow(state.confirmedRow, state.queue) : state.confirmedRow;
+      setDisplayedRunningJobRow(projectId, displayedRow);
+    },
+    [applyQueuedRunningJobRow, setDisplayedRunningJobRow],
+  );
+
+  const persistQueuedRunningJobEdit = useCallback(
+    async (baseRow: RunningJobRow, queuedEdit: QueuedRunningJobEdit): Promise<RunningJobQueueOutcome> => {
+      let currentRow = baseRow;
+      let conflictRetries = 0;
+      let force = false;
+      let finishEarlyAction: 'pull_forward' | 'keep_schedule' | undefined;
+
+      while (true) {
+        try {
+          const response = await mutateRunningJobCell({
+            projectId: queuedEdit.rowId,
+            rowVersion: currentRow.rowVersion,
+            key: queuedEdit.key,
+            value: queuedEdit.value,
+            force,
+            finishEarlyAction,
+          });
+
+          if ('requires_finish_early' in response) {
+            const action = promptForFinishEarly(response.freed_days);
+            if (!action) return { kind: 'drop', row: currentRow };
+            force = true;
+            finishEarlyAction = action;
+            continue;
+          }
+
+          if ('requires_confirmation' in response) {
+            if (!promptForScheduleImpacts(response.impacts)) return { kind: 'drop', row: currentRow };
+            force = true;
+            continue;
+          }
+
+          return { kind: 'success', row: response.updatedRow };
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 409) {
+            const latestRow = (error.body as any)?.currentRow as RunningJobRow | undefined;
+            if (!latestRow) {
+              return {
+                kind: 'drop',
+                row: currentRow,
+                toast: 'This row changed in another tab. The latest server row has been reloaded.',
+                conflict: true,
+              };
+            }
+
+            if (isRunningJobCellValueUnchanged(latestRow, queuedEdit.key, queuedEdit.value)) {
+              return { kind: 'drop', row: latestRow };
+            }
+
+            const editability = getRunningJobCellEditability(latestRow, queuedEdit.key);
+            if (!editability.editable) {
+              return {
+                kind: 'drop',
+                row: latestRow,
+                toast: editability.reason ?? 'This cell cannot be edited yet.',
+                conflict: true,
+              };
+            }
+
+            if (conflictRetries >= 1) {
+              return {
+                kind: 'drop',
+                row: latestRow,
+                toast: 'This row changed in another tab. The latest server row has been reloaded.',
+                conflict: true,
+              };
+            }
+
+            currentRow = latestRow;
+            conflictRetries += 1;
+            continue;
+          }
+
+          return {
+            kind: 'drop',
+            row: currentRow,
+            toast: error instanceof Error ? error.message : 'Failed to save cell.',
+          };
+        }
+      }
+    },
+    [],
+  );
+
+  const processQueuedRunningJobRow = useCallback(
+    (projectId: string) => {
+      const existing = pendingRowsRef.current.get(projectId);
+      if (!existing || existing.running) return;
+      existing.running = true;
+
+      void (async () => {
+        try {
+          while (true) {
+            const state = pendingRowsRef.current.get(projectId);
+            if (!state || !state.queue.length) break;
+
+            const queuedEdit = state.queue[0];
+            const outcome = await persistQueuedRunningJobEdit(state.confirmedRow, queuedEdit);
+
+            state.queue.shift();
+            changeSavingCellCount(queuedEdit.cellId, -1);
+
+            if (outcome.row) {
+              state.confirmedRow = outcome.row;
+            }
+
+            if (outcome.conflict) {
+              setConflictCells((prev) => setInRecord(prev, queuedEdit.cellId, true));
+              clearConflictLater(queuedEdit.cellId);
+            }
+
+            if (outcome.toast) {
+              toast.error(outcome.toast);
+            }
+
+            if (outcome.kind === 'success') {
+              if (
+                queuedEdit.key === 'estimated_start_date' ||
+                queuedEdit.key === 'job_assigned_to' ||
+                queuedEdit.key === 'job_completed' ||
+                queuedEdit.key === 'install_days'
+              ) {
+                void queryClient.invalidateQueries({ queryKey: qk.schedule.snapshot(host) });
+              }
+              void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) });
+              void queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) });
+            }
+
+            if (state.queue.length) {
+              syncQueuedRunningJobRow(projectId);
+            } else {
+              setDisplayedRunningJobRow(projectId, state.confirmedRow);
+            }
+          }
+        } finally {
+          const state = pendingRowsRef.current.get(projectId);
+          if (state) {
+            state.running = false;
+            if (!state.queue.length) {
+              pendingRowsRef.current.delete(projectId);
+            } else {
+              processQueuedRunningJobRow(projectId);
+            }
+          }
+        }
+      })();
+    },
+    [
+      changeSavingCellCount,
+      clearConflictLater,
+      host,
+      persistQueuedRunningJobEdit,
+      queryClient,
+      setDisplayedRunningJobRow,
+      syncQueuedRunningJobRow,
+      toast,
+    ],
+  );
+
   const persistCell = useCallback(
     async (
       row: RunningJobRow,
       key: RunningJobEditableCellKey,
       value: NormalizedRunningJobCellValue,
-      options?: { force?: boolean; finishEarlyAction?: 'pull_forward' | 'keep_schedule' },
     ): Promise<boolean> => {
       const normalized = normalizeRunningJobCellInput(key, value);
       if (!normalized.ok) {
@@ -316,89 +528,40 @@ export function useRunningJobsSpreadsheetAdapter(): SpreadsheetAdapter<
         return false;
       }
 
-      const editability = getRunningJobCellEditability(row, key);
+      const latestRow = getCachedRunningJobRow(row.projectId) ?? row;
+      const editability = getRunningJobCellEditability(latestRow, key);
       if (!editability.editable) {
         toast.error(editability.reason ?? 'This cell cannot be edited yet.');
         return false;
       }
 
+      if (isRunningJobCellValueUnchanged(latestRow, key, normalized.value)) {
+        return true;
+      }
+
       const id = `${row.projectId}:${key}`;
-      const previous = queryClient.getQueryData<RunningJobsResponse>(queryKey);
-      setSavingCells((prev) => setInRecord(prev, id, true));
       setConflictCells((prev) => setInRecord(prev, id, false));
 
-      if (previous) {
-        queryClient.setQueryData<RunningJobsResponse>(
-          queryKey,
-          patchResponse(previous, row.projectId, (current) => applyOptimisticRunningJobCellValue(current, key, normalized.value, lookups)),
-        );
-      }
-
-      try {
-        const response = await mutateRunningJobCell({
-          projectId: row.projectId,
-          rowVersion: row.rowVersion,
-          key,
-          value: normalized.value,
-          force: options?.force,
-          finishEarlyAction: options?.finishEarlyAction,
+      const existingState = pendingRowsRef.current.get(row.projectId);
+      if (existingState) {
+        if (!existingState.queue.length) {
+          existingState.confirmedRow = latestRow;
+        }
+        existingState.queue.push({ rowId: row.projectId, cellId: id, key, value: normalized.value });
+      } else {
+        pendingRowsRef.current.set(row.projectId, {
+          confirmedRow: latestRow,
+          queue: [{ rowId: row.projectId, cellId: id, key, value: normalized.value }],
+          running: false,
         });
-
-        if ('requires_finish_early' in response) {
-          if (previous) queryClient.setQueryData(queryKey, previous);
-          const action = promptForFinishEarly(response.freed_days);
-          if (!action) return false;
-          return persistCell(row, key, normalized.value, { force: true, finishEarlyAction: action });
-        }
-
-        if ('requires_confirmation' in response) {
-          if (previous) queryClient.setQueryData(queryKey, previous);
-          if (!promptForScheduleImpacts(response.impacts)) return false;
-          return persistCell(row, key, normalized.value, { force: true, finishEarlyAction: options?.finishEarlyAction });
-        }
-
-        queryClient.setQueryData<RunningJobsResponse>(queryKey, (current) =>
-          current
-            ? {
-                ...current,
-                generatedAt: new Date().toISOString(),
-                groups: updateRunningJobRowInGroups(current.groups, response.updatedRow.projectId, () => response.updatedRow),
-              }
-            : current,
-        );
-
-        if (key === 'estimated_start_date' || key === 'job_assigned_to' || key === 'job_completed' || key === 'install_days') {
-          void queryClient.invalidateQueries({ queryKey: qk.schedule.snapshot(host) });
-        }
-        void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, row.projectId) });
-        void queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, row.projectId) });
-        return true;
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 409) {
-          const currentRow = (error.body as any)?.currentRow as RunningJobRow | undefined;
-          if (currentRow && previous) {
-            queryClient.setQueryData<RunningJobsResponse>(queryKey, {
-              ...previous,
-              generatedAt: new Date().toISOString(),
-              groups: updateRunningJobRowInGroups(previous.groups, currentRow.projectId, () => currentRow),
-            });
-          } else if (previous) {
-            queryClient.setQueryData(queryKey, previous);
-          }
-          setConflictCells((prev) => setInRecord(prev, id, true));
-          clearConflictLater(id);
-          toast.error('This row changed in another tab. The latest server row has been reloaded.');
-          return false;
-        }
-
-        if (previous) queryClient.setQueryData(queryKey, previous);
-        toast.error(error instanceof Error ? error.message : 'Failed to save cell.');
-        return false;
-      } finally {
-        setSavingCells((prev) => setInRecord(prev, id, false));
       }
+
+      changeSavingCellCount(id, 1);
+      syncQueuedRunningJobRow(row.projectId);
+      processQueuedRunningJobRow(row.projectId);
+      return true;
     },
-    [clearConflictLater, host, lookups, queryClient, queryKey, toast],
+    [changeSavingCellCount, getCachedRunningJobRow, processQueuedRunningJobRow, syncQueuedRunningJobRow, toast],
   );
 
   const columns = useMemo(

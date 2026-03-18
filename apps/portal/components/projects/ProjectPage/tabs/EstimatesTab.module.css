@@ -392,8 +392,8 @@
 .summaryTopGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
-  gap: 16px;
-  align-items: stretch;
+  gap: 20px;
+  align-items: start;
 }
 
 @media (max-width: 900px) {
@@ -402,18 +402,32 @@
   }
 }
 
+.summaryModuleSelectorRow {
+  display: flex;
+  justify-content: flex-start;
+}
+
 .summaryInfoColumn {
   display: grid;
-  gap: 12px;
+  gap: 0;
   align-content: start;
   min-width: 0;
 }
 
 .summaryDrawingColumn {
   display: grid;
-  gap: 12px;
+  gap: 0;
   align-content: start;
   min-width: 0;
+  padding-left: 20px;
+  border-left: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+@media (max-width: 900px) {
+  .summaryDrawingColumn {
+    padding-left: 0;
+    border-left: none;
+  }
 }
 
 .summarySideColumn {
@@ -459,10 +473,50 @@
   gap: 6px;
 }
 
+.summaryInfoStack {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.summaryInfoGroup {
+  display: grid;
+  gap: 6px;
+}
+
 .summaryDrawingArea {
   display: grid;
-  gap: 8px;
+  gap: 0;
   min-width: 0;
+}
+
+.summaryPrimaryValueLeft,
+.summarySubValueLeft {
+  text-align: left;
+}
+
+.summaryInfoMetricRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+.summaryInfoMetricLabel {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.58);
+}
+
+.summaryInfoMetricValue {
+  font-size: 13px;
+  font-weight: 600;
+  text-align: right;
+  color: rgba(var(--portal-text-rgb), 0.82);
+  font-variant-numeric: tabular-nums;
 }
 
 .summaryInfoStats {
