@@ -30,14 +30,26 @@ const HARBOR_BLUE_TOKENS: PortalThemeTokens = {
   border: '#CED7DD',
 };
 
+const MONOCHROME_TOKENS: PortalThemeTokens = {
+  accent: '#333333',
+  text: '#404040',
+  text_muted: '#666666',
+  text_inverse: '#E6E6E6',
+  bg_page: '#D9D9D9',
+  bg_surface: '#F2F2F2',
+  border: '#D1D1D1',
+};
+
 export const PORTAL_THEME_PRESETS: PortalThemePreset[] = [
-  { id: 'sanctuary-burgundy', label: 'Sanctuary Burgundy', tokens: SANCTUARY_BURGUNDY_TOKENS },
   { id: 'stone-olive', label: 'Stone Olive', tokens: STONE_OLIVE_TOKENS },
+  { id: 'sanctuary-burgundy', label: 'Sanctuary Burgundy', tokens: SANCTUARY_BURGUNDY_TOKENS },
   { id: 'harbor-blue', label: 'Harbor Blue', tokens: HARBOR_BLUE_TOKENS },
+  { id: 'monochrome', label: 'Monochrome', tokens: MONOCHROME_TOKENS },
 ];
 
-export const PORTAL_DEFAULT_THEME_PRESET_ID: PortalThemePresetId = 'sanctuary-burgundy';
-export const PORTAL_DEFAULT_THEME_PRESET: PortalThemePreset = PORTAL_THEME_PRESETS[0];
+export const PORTAL_DEFAULT_THEME_PRESET_ID: PortalThemePresetId = 'stone-olive';
+export const PORTAL_DEFAULT_THEME_PRESET: PortalThemePreset =
+  PORTAL_THEME_PRESETS.find((preset) => preset.id === PORTAL_DEFAULT_THEME_PRESET_ID) ?? PORTAL_THEME_PRESETS[0];
 export const PORTAL_DEFAULT_THEME_TOKENS: PortalThemeTokens = PORTAL_DEFAULT_THEME_PRESET.tokens;
 
 export const PORTAL_DEFAULT_ACCENT_HEX = SANCTUARY_BURGUNDY_TOKENS.accent;

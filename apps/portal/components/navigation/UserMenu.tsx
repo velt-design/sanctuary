@@ -16,7 +16,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { applyPortalThemeToDocument } from '@/lib/theme/client';
 import { PORTAL_THEME_PRESETS, PORTAL_DEFAULT_THEME_PRESET_ID } from '@/lib/theme/presets';
 import type { PortalResolvedTheme, PortalThemeOverrideKey, PortalThemePresetId, PortalThemeTokens } from '@/lib/theme/types';
-import { normalizeHexColor } from '@/lib/theme/utils';
+import { hexToRgbCsv, normalizeHexColor } from '@/lib/theme/utils';
 
 type ThemeSystemPreset = {
   id: PortalThemePresetId;
@@ -70,6 +70,8 @@ const TOKEN_FIELDS: Array<{ key: PortalThemeOverrideKey; label: string }> = [
 ];
 
 const DEFAULT_SYSTEM_PRESETS: ThemeSystemPreset[] = PORTAL_THEME_PRESETS.map((preset) => ({ ...preset, immutable: true }));
+const DEFAULT_THEME_SYSTEM_PRESET: ThemeSystemPreset =
+  DEFAULT_SYSTEM_PRESETS.find((preset) => preset.id === PORTAL_DEFAULT_THEME_PRESET_ID) ?? DEFAULT_SYSTEM_PRESETS[0];
 
 function systemKey(id: string): string {
   return `system:${id}`;
@@ -194,7 +196,7 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
   const [userPresets, setUserPresets] = useState<ThemeUserPreset[]>([]);
   const [selectedPresetKey, setSelectedPresetKey] = useState<string>(systemKey(PORTAL_DEFAULT_THEME_PRESET_ID));
   const [presetName, setPresetName] = useState('');
-  const [draftTokens, setDraftTokens] = useState<PortalThemeTokens>(DEFAULT_SYSTEM_PRESETS[0].tokens);
+  const [draftTokens, setDraftTokens] = useState<PortalThemeTokens>(DEFAULT_THEME_SYSTEM_PRESET.tokens);
 
   const options = useMemo(() => buildThemeOptions(systemPresets, userPresets), [systemPresets, userPresets]);
   const selectedPreset = useMemo(
@@ -240,7 +242,10 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
     if (json.theme) {
       applyPortalThemeToDocument(json.theme);
     } else {
-      applyPortalThemeToDocument({ tokens: nextTokens, accent_rgb_csv: '129, 63, 57' });
+      applyPortalThemeToDocument({
+        tokens: nextTokens,
+        accent_rgb_csv: hexToRgbCsv(nextTokens.accent) || hexToRgbCsv(DEFAULT_THEME_SYSTEM_PRESET.tokens.accent),
+      });
     }
   }, []);
 

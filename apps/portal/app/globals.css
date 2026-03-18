@@ -4,19 +4,19 @@
 
 :root {
   --portal-header-height: 48px;
-  --portal-accent: #813F39;
-  --portal-accent-rgb: 129, 63, 57;
-  --portal-text: #0F0F10;
-  --portal-text-rgb: 15, 15, 16;
-  --portal-text-muted: #666666;
+  --portal-accent: #4F5748;
+  --portal-accent-rgb: 79, 87, 72;
+  --portal-text: #121312;
+  --portal-text-rgb: 18, 19, 18;
+  --portal-text-muted: #5F655E;
   --portal-text-inverse: #FFFFFF;
   --portal-text-inverse-rgb: 255, 255, 255;
-  --portal-bg-page: #ECEDEE;
-  --portal-bg-page-rgb: 236, 237, 238;
-  --portal-bg-surface: #F7F8F9;
-  --portal-bg-surface-rgb: 247, 248, 249;
-  --portal-border: #D6D7D9;
-  --portal-border-rgb: 214, 215, 217;
+  --portal-bg-page: #ECEEEB;
+  --portal-bg-page-rgb: 236, 238, 235;
+  --portal-bg-surface: #F6F7F4;
+  --portal-bg-surface-rgb: 246, 247, 244;
+  --portal-border: #D0D4CC;
+  --portal-border-rgb: 208, 212, 204;
   --accentRed: var(--portal-accent);
   --accentRgb: var(--portal-accent-rgb);
   --fg: var(--portal-text);
