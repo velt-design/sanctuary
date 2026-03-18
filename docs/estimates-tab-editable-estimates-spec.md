@@ -215,7 +215,7 @@ Mobile layout:
 
 ## Technical design
 
-## No schema migration by default
+### No schema migration by default
 
 V1 should use the current schema:
 
@@ -225,7 +225,7 @@ V1 should use the current schema:
 
 No new table or column is required for the primary implementation.
 
-## New edit-mode URL contract
+### New edit-mode URL contract
 
 Use a dedicated calculator query param for in-place editing:
 
@@ -240,7 +240,7 @@ Precedence rule:
 - if `editEstimateId` is present, calculator runs in edit mode
 - if `editEstimateId` is absent and `fromEstimateId` is present, calculator runs in duplicate/new-version mode
 
-## Estimate editability type
+### Estimate editability type
 
 Extend estimate detail with an explicit editability block.
 
@@ -269,7 +269,7 @@ type EstimateDetail = EstimateMeta & {
 };
 ```
 
-## Server-side editability helper
+### Server-side editability helper
 
 Create a shared server-only helper that:
 
@@ -286,9 +286,9 @@ This helper should be used by:
 - `PATCH /api/estimates/[estimateId]`
 - any future estimate update server action
 
-## Estimate detail API changes
+### Estimate detail API changes
 
-### GET /api/estimates/[estimateId]
+#### GET /api/estimates/[estimateId]
 
 Keep the current route and extend the response.
 
@@ -320,7 +320,7 @@ Response shape:
 }
 ```
 
-### PATCH /api/estimates/[estimateId]
+#### PATCH /api/estimates/[estimateId]
 
 Keep backward compatibility for notes-only updates and add estimate-content updates.
 
@@ -378,14 +378,14 @@ The server preserves:
 - created by
 - estimate version number already stored on the estimate
 
-### PATCH error behavior
+#### PATCH error behavior
 
 - `400` invalid payload
 - `404` estimate not found
 - `409` estimate is locked because a related quote has already been sent
 - `409` draft quote acknowledgement required before saving
 
-## Shared persistence helper
+### Shared persistence helper
 
 Extract shared estimate-persistence logic so create and update use the same derivation rules.
 
@@ -402,9 +402,9 @@ This helper should be reusable from:
 - `apps/portal/app/api/projects/[projectId]/estimates/route.ts`
 - `apps/portal/app/api/estimates/[estimateId]/route.ts`
 
-## Calculator behavior
+### Calculator behavior
 
-### Load behavior
+#### Load behavior
 
 In edit mode:
 
@@ -417,7 +417,7 @@ In duplicate mode:
 
 - keep the current `fromEstimateId` behavior unchanged
 
-### Session draft storage
+#### Session draft storage
 
 Edit mode and duplicate mode must not share the same session storage key.
 
@@ -429,7 +429,7 @@ Use a session key that distinguishes:
 
 This prevents an edit draft from overwriting a duplicate draft and vice versa.
 
-### Calculator actions
+#### Calculator actions
 
 In edit mode:
 
@@ -443,7 +443,7 @@ In create mode:
 - keep existing `Generate estimate`
 - keep existing new-version behavior
 
-### Save flow
+#### Save flow
 
 Edit-mode save should:
 
@@ -454,9 +454,9 @@ Edit-mode save should:
 5. if the estimate became locked while the user was editing, return a lock error and do not save
 6. on success, add project activity for estimate update
 
-## Estimates tab behavior
+### Estimates tab behavior
 
-### Selected estimate header
+#### Selected estimate header
 
 Show:
 
@@ -467,7 +467,7 @@ Show:
 - lock message when locked
 - `Open Job Pack`
 
-### Version chips
+#### Version chips
 
 Change:
 
@@ -479,16 +479,16 @@ Keep:
 - selected chip styling
 - `+` create button
 
-### Related quotes section
+#### Related quotes section
 
 Keep the current quote list and actions, but:
 
 - keep `Request Design` between `View all quotes` and `Create quote`
 - use the estimate editability data to control the estimate edit button, not quote actions
 
-## Drawing integration design
+### Drawing integration design
 
-### Data source
+#### Data source
 
 Build drawings from `EstimateDetail.calculatorSnapshot` only.
 
@@ -498,14 +498,14 @@ Do not:
 - fetch new calculator outputs
 - persist any drawing-specific data
 
-### Input normalization
+#### Input normalization
 
 Support both:
 
 - current V2 calculator inputs
 - legacy V1 calculator inputs migrated to V2 before drawing
 
-### Module mapping
+#### Module mapping
 
 Extract the module-selection logic already present in calculator code into a shared helper that:
 
@@ -513,7 +513,7 @@ Extract the module-selection logic already present in calculator code into a sha
 - builds a stable ordered module route list
 - maps each input module to the matching output module result when available
 
-### Rendering approach
+#### Rendering approach
 
 Reuse the existing calculator drawing stack.
 
@@ -529,7 +529,7 @@ Alternative acceptable approach:
 
 - extract the SVG renderers into a smaller shared view component and wrap them with a new `EstimateDrawingCard`
 
-### Empty states
+#### Empty states
 
 If the selected estimate cannot produce a drawing:
 
@@ -540,7 +540,7 @@ Suggested message:
 
 - `No plan or section drawing is available for this estimate.`
 
-## Project activity
+### Project activity
 
 When an estimate is edited successfully, add a project activity event.
 

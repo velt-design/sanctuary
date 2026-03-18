@@ -29,9 +29,11 @@ import type {
   CalculatorPergola,
   InfillLineItem,
 } from '@/lib/types/calculator';
-import { isCalculatorInputsV2, normalizeBlindsState } from '@/lib/types/calculator';
+import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculatorInputsToV2, normalizeBlindsState } from '@/lib/types/calculator';
+import type { EstimateDetail } from '@/lib/estimates/types';
 import type { Project } from '@/lib/types/project';
 import { getContact } from '@/lib/repo/contactsRepo';
+import { ApiError, apiJson } from '@/lib/repo/apiClient';
 import { addProjectActivity, getProject } from '@/lib/repo/projectsRepo';
 import { createEstimate, duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import { createDesignRequest } from '@/lib/repo/designPackagesRepo';
@@ -1455,8 +1457,9 @@ type CalculatorDraftSessionSnapshot = {
   values: CalculatorInputs;
 };
 
-function calculatorDraftSessionKey(projectId: string, fromEstimateId: string): string {
-  return [CALCULATOR_DRAFT_SESSION_PREFIX, projectId || 'none', fromEstimateId || 'none'].join(':');
+function calculatorDraftSessionKey(projectId: string, fromEstimateId: string, editEstimateId: string): string {
+  const modeKey = editEstimateId ? `edit:${editEstimateId}` : fromEstimateId ? `duplicate:${fromEstimateId}` : 'new';
+  return [CALCULATOR_DRAFT_SESSION_PREFIX, projectId || 'none', modeKey].join(':');
 }
 
 function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
@@ -1558,6 +1561,13 @@ function normalizeCalculatorInputsForUi(value: CalculatorInputs): CalculatorInpu
   };
 }
 
+function calculatorInputsFromEstimateDetail(detail: EstimateDetail): CalculatorInputs {
+  const inputs = (detail.calculatorSnapshot as any)?.inputs;
+  if (isCalculatorInputsV2(inputs)) return normalizeCalculatorInputsForUi(inputs);
+  if (isLegacyCalculatorInputsV1(inputs)) return normalizeCalculatorInputsForUi(migrateLegacyCalculatorInputsToV2(inputs));
+  throw new Error('Estimate inputs are not compatible with this calculator version.');
+}
+
 function nextPergola(values: CalculatorInputs): CalculatorPergola {
   const existing = Array.isArray(values.pergolas) ? values.pergolas : [];
   const ids = new Set(existing.map((pergola) => pergola.id));
@@ -1597,7 +1607,12 @@ export default function CalculatorGridClient({
   const toast = useToast();
   const projectId = searchParams.get('projectId') ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
-  const draftSessionKey = useMemo(() => calculatorDraftSessionKey(projectId, fromEstimateId), [projectId, fromEstimateId]);
+  const editEstimateId = searchParams.get('editEstimateId') ?? '';
+  const isEditingEstimate = editEstimateId.trim().length > 0;
+  const draftSessionKey = useMemo(
+    () => calculatorDraftSessionKey(projectId, fromEstimateId, editEstimateId),
+    [editEstimateId, fromEstimateId, projectId],
+  );
   const restoredDraftForKeyRef = useRef(false);
 
   const [values, setValues] = useState<CalculatorInputs>(() => ({
@@ -1772,7 +1787,7 @@ export default function CalculatorGridClient({
   useEffect(() => {
     if (!draftHydrated) return;
 
-    if (!fromEstimateId) {
+    if (!editEstimateId && !fromEstimateId) {
       setDraftNotice(null);
       return;
     }
@@ -1780,6 +1795,33 @@ export default function CalculatorGridClient({
 
     void (async () => {
       try {
+        if (editEstimateId) {
+          const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(editEstimateId)}`, {
+            skipSaveTracking: true,
+          });
+          const estimate = res.estimate;
+          if (!estimate) throw new Error('Estimate not found');
+          if (estimate.editability.isLocked) {
+            const msg = `Estimate ${estimate.versionLabel} is locked and can no longer be edited.`;
+            setDraftNotice(msg);
+            toast.error(msg);
+            if (projectId) {
+              router.replace(
+                `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(editEstimateId)}`,
+              );
+            }
+            return;
+          }
+
+          const draft = calculatorInputsFromEstimateDetail(estimate);
+          setValues(draft);
+          setActiveModuleIndex(0);
+          const msg = `Editing estimate ${estimate.versionLabel}`;
+          setDraftNotice(msg);
+          toast.success(msg);
+          return;
+        }
+
         const draft = await duplicateEstimateToDraft(fromEstimateId);
         const normalizedDraft = normalizeCalculatorInputsForUi({
           ...draft,
@@ -1799,7 +1841,7 @@ export default function CalculatorGridClient({
         toast.error(msg);
       }
     })();
-  }, [draftHydrated, fromEstimateId]);
+  }, [draftHydrated, editEstimateId, fromEstimateId, projectId, router, toast]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -6508,7 +6550,7 @@ export default function CalculatorGridClient({
 	      {confirmOpen ? (
 	        <Modal
 	          open
-	          ariaLabel="Generate estimate confirmation"
+	          ariaLabel={isEditingEstimate ? 'Save estimate confirmation' : 'Generate estimate confirmation'}
 	          onClose={() => {
 	            setConfirmOpen(false);
 	            setGenerateError(null);
@@ -6519,8 +6561,12 @@ export default function CalculatorGridClient({
 	        >
 	          <div className={styles.modalHeader}>
 	            <div>
-	              <h2 className={styles.modalTitle}>Generate estimate</h2>
-	              <p className={styles.modalSubtitle}>This will create an immutable snapshot for this project.</p>
+	              <h2 className={styles.modalTitle}>{isEditingEstimate ? 'Save estimate' : 'Generate estimate'}</h2>
+	              <p className={styles.modalSubtitle}>
+                  {isEditingEstimate
+                    ? 'This will save changes back to this estimate unless it has been locked by a sent quote.'
+                    : 'This will create an immutable snapshot for this project.'}
+                </p>
 	            </div>
 	            <button
 	              type="button"
@@ -6659,38 +6705,42 @@ export default function CalculatorGridClient({
 
               <label className={styles.modalCheckboxRow}>
                 <input type="checkbox" checked={confirmReady} onChange={(e) => setConfirmReady(e.target.checked)} />
-                <span>I confirm this estimate is ready to generate</span>
+                <span>{isEditingEstimate ? 'I confirm this estimate is ready to save' : 'I confirm this estimate is ready to generate'}</span>
               </label>
 
-              <label className={styles.modalCheckboxRow}>
-                <input
-                  type="checkbox"
-                  checked={confirmRequestDesign}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setConfirmRequestDesign(checked);
-                    if (checked) setConfirmRequestDesignPriority(suggestedDesignRequestTier);
-                  }}
-                />
-                <span>Request design package after generating this estimate</span>
-              </label>
+              {!isEditingEstimate ? (
+                <>
+                  <label className={styles.modalCheckboxRow}>
+                    <input
+                      type="checkbox"
+                      checked={confirmRequestDesign}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setConfirmRequestDesign(checked);
+                        if (checked) setConfirmRequestDesignPriority(suggestedDesignRequestTier);
+                      }}
+                    />
+                    <span>Request design package after generating this estimate</span>
+                  </label>
 
-              {confirmRequestDesign ? (
-                <div className={styles.modalField}>
-                  <label htmlFor="calculatorDesignRequestPriority">Priority tier</label>
-                  <select
-                    id="calculatorDesignRequestPriority"
-                    className={styles.modalSelect}
-                    value={confirmRequestDesignPriority}
-                    onChange={(event) => setConfirmRequestDesignPriority(event.target.value as DesignRequestPriorityTier)}
-                  >
-                    {(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'] as const).map((tier) => (
-                      <option key={tier} value={tier}>
-                        {formatDesignRequestTierLabel(tier)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {confirmRequestDesign ? (
+                    <div className={styles.modalField}>
+                      <label htmlFor="calculatorDesignRequestPriority">Priority tier</label>
+                      <select
+                        id="calculatorDesignRequestPriority"
+                        className={styles.modalSelect}
+                        value={confirmRequestDesignPriority}
+                        onChange={(event) => setConfirmRequestDesignPriority(event.target.value as DesignRequestPriorityTier)}
+                      >
+                        {(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'] as const).map((tier) => (
+                          <option key={tier} value={tier}>
+                            {formatDesignRequestTierLabel(tier)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+                </>
               ) : null}
 
               {generateError ? <p className={styles.modalError}>{generateError}</p> : null}
@@ -6725,6 +6775,7 @@ export default function CalculatorGridClient({
                     setGenerateError(msg);
                     toast.error(msg);
                   };
+                  const actionLabel = isEditingEstimate ? 'saving' : 'generating';
 
                   if (!projectId) {
                     fail('Select a project first.');
@@ -6742,11 +6793,11 @@ export default function CalculatorGridClient({
                   setIsGenerating(true);
                   try {
                     if (hasStatusBlockers) {
-                      fail('Resolve blockers in Quote Status before generating.');
+                      fail(`Resolve blockers in Quote Status before ${actionLabel}.`);
                       return;
                     }
                     if (criticalUiWarnings.length > 0) {
-                      fail('Resolve critical warnings before generating.');
+                      fail(`Resolve critical warnings before ${actionLabel}.`);
                       return;
                     }
 
@@ -6769,8 +6820,8 @@ export default function CalculatorGridClient({
                       return;
                     }
 
-                    const estimate = await createEstimate(projectId, {
-                      status: 'draft',
+                    const estimatePayload = {
+                      status: 'draft' as const,
                       inputs: values,
                       derived: derivedSnapshot as any,
                       projectSnapshot: {
@@ -6791,7 +6842,7 @@ export default function CalculatorGridClient({
                         },
                       },
                       outputs: {
-                        cost_snapshot_version: 'v2',
+                        cost_snapshot_version: 'v2' as const,
                         materials: result.materials,
                         install: result.install,
                         overhead: result.overhead,
@@ -6802,11 +6853,66 @@ export default function CalculatorGridClient({
                         shared: result.shared,
                       },
                       configVersions: meta.configVersions,
-                    });
+                    };
+
+                    if (isEditingEstimate) {
+                      const saveEstimate = async (acknowledgeDraftQuoteStaleness: boolean) =>
+                        apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(editEstimateId)}`, {
+                          method: 'PATCH',
+                          body: JSON.stringify({
+                            estimate_update: estimatePayload,
+                            acknowledgeDraftQuoteStaleness,
+                          }),
+                        });
+
+                      let savedEstimate: EstimateDetail;
+                      try {
+                        const saved = await saveEstimate(false);
+                        if (!saved.estimate) throw new Error('Estimate save returned no estimate');
+                        savedEstimate = saved.estimate;
+                      } catch (error) {
+                        if (
+                          error instanceof ApiError &&
+                          error.status === 409 &&
+                          typeof (error.body as any)?.code === 'string' &&
+                          (error.body as any).code === 'ESTIMATE_DRAFT_QUOTES_REQUIRE_ACK'
+                        ) {
+                          const confirmed = window.confirm(
+                            'This estimate already has draft quotes. Saving will update the estimate, but those draft quotes will stay unchanged. Continue?',
+                          );
+                          if (!confirmed) {
+                            setGenerateError('Save cancelled.');
+                            return;
+                          }
+                          const saved = await saveEstimate(true);
+                          if (!saved.estimate) throw new Error('Estimate save returned no estimate');
+                          savedEstimate = saved.estimate;
+                        } else if (
+                          error instanceof ApiError &&
+                          error.status === 409 &&
+                          typeof (error.body as any)?.code === 'string' &&
+                          (error.body as any).code === 'ESTIMATE_LOCKED'
+                        ) {
+                          fail('This estimate is locked because it has been sent with a quote and can no longer be edited.');
+                          return;
+                        } else {
+                          throw error;
+                        }
+                      }
+
+                      setConfirmOpen(false);
+                      toast.success(`Estimate saved (${savedEstimate.versionLabel}).`);
+                      router.push(
+                        `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(savedEstimate.id)}`,
+                      );
+                      return;
+                    }
+
+                    const estimate = await createEstimate(projectId, estimatePayload);
 
                     await addProjectActivity(projectId, {
                       type: 'estimate_generated',
-                      message: `Estimate v${estimate.version ?? '—'} generated (ex-GST: ${formatMoney(result.totals.cost_ex_gst)})`,
+                      message: `Estimate V${estimate.version ?? '—'} generated (ex-GST: ${formatMoney(result.totals.cost_ex_gst)})`,
                       meta: { estimateId: estimate.id },
                     });
 
@@ -6830,8 +6936,8 @@ export default function CalculatorGridClient({
                     setConfirmOpen(false);
                     toast.success(
                       designRequestCreated
-                        ? `Estimate created (v${estimate.version ?? '—'}) and design request created.`
-                        : `Estimate created (v${estimate.version ?? '—'}).`,
+                        ? `Estimate created (V${estimate.version ?? '—'}) and design request created.`
+                        : `Estimate created (V${estimate.version ?? '—'}).`,
                     );
                     if (projectId) {
                       router.push(
@@ -6839,7 +6945,7 @@ export default function CalculatorGridClient({
                       );
                     }
                   } catch (err) {
-                    const msg = err instanceof Error ? err.message : 'Failed to generate estimate';
+                    const msg = err instanceof Error ? err.message : isEditingEstimate ? 'Failed to save estimate' : 'Failed to generate estimate';
                     setGenerateError(msg);
                     toast.error(msg);
                   } finally {
@@ -6847,7 +6953,7 @@ export default function CalculatorGridClient({
                   }
                 }}
               >
-                Generate estimate
+                {isEditingEstimate ? 'Save estimate' : 'Generate estimate'}
               </button>
             </div>
 	        </Modal>

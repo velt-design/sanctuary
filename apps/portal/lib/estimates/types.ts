@@ -20,7 +20,19 @@ export type EstimateMeta = {
   versionLabel: string;
 };
 
+export type EstimateEditability = {
+  isLocked: boolean;
+  lockReason: 'quote_sent' | null;
+  lockedAt: string | null;
+  lockedByQuoteVersionId: string | null;
+  lockedByQuoteRef: string | null;
+  lockedByQuoteVersionNumber: number | null;
+  hasDraftQuotes: boolean;
+  draftQuoteCount: number;
+};
+
 export type EstimateDetail = EstimateMeta & {
   calculatorSnapshot: Record<string, unknown> | null;
   internalNotes?: string | null;
+  editability: EstimateEditability;
 };
