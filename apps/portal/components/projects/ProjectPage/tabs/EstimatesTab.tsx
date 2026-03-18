@@ -647,7 +647,6 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     activeDrawingModule && (activeDrawingModule.planModel || activeDrawingModule.sectionModel) ? 'ready' : 'empty';
   const drawingModuleLabel = moduleLines[drawingModuleIndex] ?? activeDrawingModule?.label ?? 'Module';
   const estimateLockMessage = useMemo(() => formatEstimateLockMessage(selectedDetail), [selectedDetail]);
-  const draftQuoteEditWarning = useMemo(() => formatDraftQuoteEditWarning(selectedDetail), [selectedDetail]);
   const isEstimateLocked = Boolean(selectedDetail?.editability?.isLocked);
 
   useEffect(() => {
@@ -793,6 +792,11 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   }, [calculatorHref, router]);
   const handleEditEstimate = useCallback(() => {
     if (!selectedDetail || selectedDetail.editability.isLocked) return;
+    const draftQuoteWarning = formatDraftQuoteEditWarning(selectedDetail);
+    if (draftQuoteWarning && typeof window !== 'undefined') {
+      const confirmed = window.confirm(`${draftQuoteWarning}\n\nContinue to edit this estimate?`);
+      if (!confirmed) return;
+    }
     router.push(
       `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(selectedDetail.id)}`,
     );
@@ -993,7 +997,6 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                   </div>
                 </div>
                 {estimateLockMessage ? <div className={styles.lockNotice}>{estimateLockMessage}</div> : null}
-                {draftQuoteEditWarning ? <div className={styles.infoNotice}>{draftQuoteEditWarning}</div> : null}
                 {isFocus ? (
                   <div className={styles.summaryPrimary}>
                     <div className={styles.summaryTotalBlock}>
@@ -1041,63 +1044,67 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                   </div>
                 ) : (
                   <div className={`${styles.summaryPrimary} ${styles.summaryPrimaryStacked}`}>
+                    {drawingModules.length > 1 ? (
+                      <div className={styles.summaryModuleSelectorRow}>
+                        <div className={styles.segmentedControl}>
+                          {drawingModules.map((module, index) => (
+                            <button
+                              type="button"
+                              key={module.id}
+                              className={`${styles.segmentedItem} ${index === drawingModuleIndex ? styles.segmentedItemActive : ''}`}
+                              onClick={() => setDrawingModuleIndex(index)}
+                            >
+                              {module.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                     <div className={styles.summaryTopGrid}>
                       <div className={styles.summaryInfoColumn}>
-                        <div className={styles.summarySpecBox}>
-                          <div className={styles.summaryLabel}>Pergola</div>
-                          <div className={styles.summaryModuleList}>
-                            {moduleLines.length ? (
-                              moduleLines.map((line, idx) => (
-                                <div key={`${line}-${idx}`} className={styles.summaryModuleLine}>
-                                  {line}
-                                </div>
-                              ))
-                            ) : (
-                              <div className={`${styles.summaryModuleLine} ${styles.mutedValue}`}>M1 - Details not set</div>
-                            )}
+                        <div className={styles.summaryInfoStack}>
+                          <div className={styles.summaryInfoGroup}>
+                            <div className={styles.summaryLabel}>Pergola</div>
+                            <div className={styles.summaryModuleList}>
+                              {moduleLines.length ? (
+                                moduleLines.map((line, idx) => (
+                                  <div key={`${line}-${idx}`} className={styles.summaryModuleLine}>
+                                    {line}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className={`${styles.summaryModuleLine} ${styles.mutedValue}`}>M1 - Details not set</div>
+                              )}
+                            </div>
+                            {salesPerson ? (
+                              <div className={styles.summarySpecMeta}>
+                                <span className={styles.summaryMetaLabel}>Sales</span>
+                                <span className={`${styles.summaryMetaValue} ${styles.summaryMetaValueTruncate}`} title={salesPerson}>
+                                  {salesPerson}
+                                </span>
+                              </div>
+                            ) : null}
                           </div>
-                          {salesPerson ? (
-                            <div className={styles.summarySpecMeta}>
-                              <span className={styles.summaryMetaLabel}>Sales</span>
-                              <span className={`${styles.summaryMetaValue} ${styles.summaryMetaValueTruncate}`} title={salesPerson}>
-                                {salesPerson}
-                              </span>
+                          <div className={styles.summaryInfoGroup}>
+                            <div className={styles.summaryLabel}>{totalPrimary.label}</div>
+                            <div className={`${styles.summaryPrimaryValue} ${styles.summaryPrimaryValueLeft}`}>
+                              {renderValue(formatMoney(totalPrimary.value))}
+                            </div>
+                            {totalPrimary.secondaryLabel ? (
+                              <div className={`${styles.summarySubValue} ${styles.summarySubValueLeft}`}>
+                                {totalPrimary.secondaryLabel} {renderValue(formatMoney(totalPrimary.secondaryValue ?? null))}
+                              </div>
+                            ) : null}
+                          </div>
+                          {showMargin ? (
+                            <div className={styles.summaryInfoMetricRow}>
+                              <span className={styles.summaryInfoMetricLabel}>Margin</span>
+                              <span className={styles.summaryInfoMetricValue}>{renderValue(formatMargin(summary))}</span>
                             </div>
                           ) : null}
                         </div>
-                        <div className={`${styles.summaryTotalBlock} ${styles.summaryTotalBoxLeft}`}>
-                          <div className={styles.summaryLabel}>{totalPrimary.label}</div>
-                          <div className={styles.summaryPrimaryValue}>{renderValue(formatMoney(totalPrimary.value))}</div>
-                          {totalPrimary.secondaryLabel ? (
-                            <div className={styles.summarySubValue}>
-                              {totalPrimary.secondaryLabel} {renderValue(formatMoney(totalPrimary.secondaryValue ?? null))}
-                            </div>
-                          ) : null}
-                        </div>
-                        {showMargin ? (
-                          <div className={styles.summaryInfoStats}>
-                            <div className={`${styles.summaryStat} ${styles.summaryInfoStatCard}`}>
-                              <div className={styles.summaryLabel}>Margin</div>
-                              <div className={styles.summaryValue}>{renderValue(formatMargin(summary))}</div>
-                            </div>
-                          </div>
-                        ) : null}
                       </div>
                       <div className={styles.summaryDrawingColumn}>
-                        {drawingModules.length > 1 ? (
-                          <div className={styles.segmentedControl}>
-                            {drawingModules.map((module, index) => (
-                              <button
-                                type="button"
-                                key={module.id}
-                                className={`${styles.segmentedItem} ${index === drawingModuleIndex ? styles.segmentedItemActive : ''}`}
-                                onClick={() => setDrawingModuleIndex(index)}
-                              >
-                                {module.label}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
                         <div className={styles.summaryDrawingArea}>
                           {activeDrawingModule ? (
                             <ModuleViewsCard
@@ -1107,6 +1114,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                               status={drawingStatus}
                               planModel={activeDrawingModule.planModel}
                               sectionModel={activeDrawingModule.sectionModel}
+                              presentation="minimal"
                             />
                           ) : (
                             <div className={styles.drawingEmpty}>No plan or section drawing is available for this estimate.</div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import type { SpreadsheetAdapter } from '@/components/spreadsheet/types';
@@ -12,6 +12,7 @@ import {
   applyOptimisticDesignListCellValue,
   getDesignListCellEditability,
   getDesignListEditorValue,
+  isDesignListCellValueUnchanged,
   normalizeDesignListCellInput,
   type NormalizedDesignListCellValue,
 } from '@/lib/designPackages/editing';
@@ -170,6 +171,23 @@ function replaceResponseRow(prev: DesignPackagesResponse, updatedRow: DesignList
   };
 }
 
+type QueuedDesignListEdit = {
+  rowId: string;
+  cellId: string;
+  key: DesignListEditableCellKey;
+  value: NormalizedDesignListCellValue;
+};
+
+type PendingDesignListRowState = {
+  confirmedRow: DesignListRow;
+  queue: QueuedDesignListEdit[];
+  running: boolean;
+};
+
+type DesignListQueueOutcome =
+  | { kind: 'success'; row: DesignListRow; toast?: string; conflict?: boolean }
+  | { kind: 'drop'; row?: DesignListRow; toast?: string; conflict?: boolean };
+
 function Toolbar({
   filters,
   onChange,
@@ -258,8 +276,9 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   const query = useQuery(designPackagesQueryOptions(host));
 
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
+  const [savingCellCounts, setSavingCellCounts] = useState<Record<string, number>>({});
   const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
+  const pendingRowsRef = useRef(new Map<string, PendingDesignListRowState>());
 
   useEffect(() => {
     if (!query.error) return;
@@ -275,6 +294,201 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
 
   const years = useMemo(() => Array.from(new Set(allRows.map((row) => String(yearForDesignListRow(row))))).sort(), [allRows]);
 
+  const clearConflictLater = useCallback((id: string) => {
+    window.setTimeout(() => {
+      setConflictCells((prev) => setInRecord(prev, id, false));
+    }, 4000);
+  }, []);
+
+  const savingCells = useMemo<Record<string, boolean>>(
+    () => Object.fromEntries(Object.keys(savingCellCounts).map((id) => [id, true])),
+    [savingCellCounts],
+  );
+
+  const changeSavingCellCount = useCallback((id: string, delta: number) => {
+    setSavingCellCounts((prev) => {
+      const nextCount = Math.max(0, (prev[id] ?? 0) + delta);
+      if (nextCount === (prev[id] ?? 0)) return prev;
+      const next = { ...prev };
+      if (nextCount > 0) next[id] = nextCount;
+      else delete next[id];
+      return next;
+    });
+  }, []);
+
+  const getCachedDesignListRow = useCallback(
+    (requestId: string): DesignListRow | null => {
+      const current = queryClient.getQueryData<DesignPackagesResponse>(queryKey);
+      if (!current) return null;
+      return current.rows.find((item) => item.requestId === requestId) ?? null;
+    },
+    [queryClient, queryKey],
+  );
+
+  const setDisplayedDesignListRow = useCallback(
+    (requestId: string, row: DesignListRow) => {
+      queryClient.setQueryData<DesignPackagesResponse>(queryKey, (current) =>
+        current ? replaceResponseRow(current, { ...row, requestId }) : current,
+      );
+    },
+    [queryClient, queryKey],
+  );
+
+  const applyQueuedDesignListRow = useCallback(
+    (confirmedRow: DesignListRow, queue: QueuedDesignListEdit[]) =>
+      queue.reduce(
+        (currentRow, queuedEdit) => applyOptimisticDesignListCellValue(currentRow, queuedEdit.key, queuedEdit.value, lookups),
+        confirmedRow,
+      ),
+    [lookups],
+  );
+
+  const syncQueuedDesignListRow = useCallback(
+    (requestId: string) => {
+      const state = pendingRowsRef.current.get(requestId);
+      if (!state) return;
+      const displayedRow = state.queue.length ? applyQueuedDesignListRow(state.confirmedRow, state.queue) : state.confirmedRow;
+      setDisplayedDesignListRow(requestId, displayedRow);
+    },
+    [applyQueuedDesignListRow, setDisplayedDesignListRow],
+  );
+
+  const persistQueuedDesignListEdit = useCallback(
+    async (baseRow: DesignListRow, queuedEdit: QueuedDesignListEdit): Promise<DesignListQueueOutcome> => {
+      let currentRow = baseRow;
+      let conflictRetries = 0;
+
+      while (true) {
+        try {
+          const response = await mutateDesignListCell({
+            requestId: queuedEdit.rowId,
+            rowVersion: currentRow.rowVersion,
+            key: queuedEdit.key,
+            value: queuedEdit.value,
+          });
+
+          return { kind: 'success', row: response.updatedRow };
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 409) {
+            const latestRow = (error.body as any)?.currentRow as DesignListRow | undefined;
+            if (!latestRow) {
+              return {
+                kind: 'drop',
+                row: currentRow,
+                toast: 'This row changed in another tab. The latest server row has been reloaded.',
+                conflict: true,
+              };
+            }
+
+            if (isDesignListCellValueUnchanged(latestRow, queuedEdit.key, queuedEdit.value)) {
+              return { kind: 'drop', row: latestRow };
+            }
+
+            const editability = getDesignListCellEditability(latestRow, queuedEdit.key);
+            if (!editability.editable) {
+              return {
+                kind: 'drop',
+                row: latestRow,
+                toast: editability.reason ?? 'This cell cannot be edited right now.',
+                conflict: true,
+              };
+            }
+
+            if (conflictRetries >= 1) {
+              return {
+                kind: 'drop',
+                row: latestRow,
+                toast: 'This row changed in another tab. The latest server row has been reloaded.',
+                conflict: true,
+              };
+            }
+
+            currentRow = latestRow;
+            conflictRetries += 1;
+            continue;
+          }
+
+          return {
+            kind: 'drop',
+            row: currentRow,
+            toast: error instanceof Error ? error.message : 'Failed to save cell.',
+          };
+        }
+      }
+    },
+    [],
+  );
+
+  const processQueuedDesignListRow = useCallback(
+    (requestId: string) => {
+      const existing = pendingRowsRef.current.get(requestId);
+      if (!existing || existing.running) return;
+      existing.running = true;
+
+      void (async () => {
+        try {
+          while (true) {
+            const state = pendingRowsRef.current.get(requestId);
+            if (!state || !state.queue.length) break;
+
+            const queuedEdit = state.queue[0];
+            const outcome = await persistQueuedDesignListEdit(state.confirmedRow, queuedEdit);
+
+            state.queue.shift();
+            changeSavingCellCount(queuedEdit.cellId, -1);
+
+            if (outcome.row) {
+              state.confirmedRow = outcome.row;
+            }
+
+            if (outcome.conflict) {
+              setConflictCells((prev) => setInRecord(prev, queuedEdit.cellId, true));
+              clearConflictLater(queuedEdit.cellId);
+            }
+
+            if (outcome.toast) {
+              toast.error(outcome.toast);
+            }
+
+            if (outcome.kind === 'success') {
+              const projectId = state.confirmedRow.projectId;
+              void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) });
+              void queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) });
+              void queryClient.invalidateQueries({ queryKey: qk.automation.designTicket(host, projectId) });
+              void queryClient.invalidateQueries({ queryKey: qk.automation.tasks(host, projectId) });
+            }
+
+            if (state.queue.length) {
+              syncQueuedDesignListRow(requestId);
+            } else {
+              setDisplayedDesignListRow(requestId, state.confirmedRow);
+            }
+          }
+        } finally {
+          const state = pendingRowsRef.current.get(requestId);
+          if (state) {
+            state.running = false;
+            if (!state.queue.length) {
+              pendingRowsRef.current.delete(requestId);
+            } else {
+              processQueuedDesignListRow(requestId);
+            }
+          }
+        }
+      })();
+    },
+    [
+      changeSavingCellCount,
+      clearConflictLater,
+      host,
+      persistQueuedDesignListEdit,
+      queryClient,
+      setDisplayedDesignListRow,
+      syncQueuedDesignListRow,
+      toast,
+    ],
+  );
+
   const persistCell = useCallback(
     async (row: DesignListRow, key: DesignListEditableCellKey, value: NormalizedDesignListCellValue): Promise<boolean> => {
       const normalized = normalizeDesignListCellInput(key, value);
@@ -283,74 +497,40 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
         return false;
       }
 
-      const editability = getDesignListCellEditability(row, key);
+      const latestRow = getCachedDesignListRow(row.requestId) ?? row;
+      const editability = getDesignListCellEditability(latestRow, key);
       if (!editability.editable) {
         toast.error(editability.reason ?? 'This cell cannot be edited right now.');
         return false;
       }
 
+      if (isDesignListCellValueUnchanged(latestRow, key, normalized.value)) {
+        return true;
+      }
+
       const id = `${row.requestId}:${key}`;
-      const previous = queryClient.getQueryData<DesignPackagesResponse>(queryKey);
-      setSavingCells((prev) => setInRecord(prev, id, true));
       setConflictCells((prev) => setInRecord(prev, id, false));
 
-      if (previous) {
-        queryClient.setQueryData<DesignPackagesResponse>(
-          queryKey,
-          patchResponse(previous, row.requestId, (current) => applyOptimisticDesignListCellValue(current, key, normalized.value, lookups)),
-        );
-      }
-
-      try {
-        const saveCell = async (targetRowVersion: string) =>
-          mutateDesignListCell({
-            requestId: row.requestId,
-            rowVersion: targetRowVersion,
-            key,
-            value: normalized.value,
-          });
-
-        let response;
-
-        try {
-          response = await saveCell(row.rowVersion);
-        } catch (error) {
-          if (!(error instanceof ApiError) || error.status !== 409) {
-            throw error;
-          }
-
-          const currentRow = (error.body as any)?.currentRow as DesignListRow | undefined;
-          if (!currentRow) throw error;
-
-          queryClient.setQueryData<DesignPackagesResponse>(queryKey, (current) =>
-            current
-              ? patchResponse(current, currentRow.requestId, () =>
-                  applyOptimisticDesignListCellValue(currentRow, key, normalized.value, lookups),
-                )
-              : current,
-          );
-
-          response = await saveCell(currentRow.rowVersion);
+      const existingState = pendingRowsRef.current.get(row.requestId);
+      if (existingState) {
+        if (!existingState.queue.length) {
+          existingState.confirmedRow = latestRow;
         }
-
-        queryClient.setQueryData<DesignPackagesResponse>(queryKey, (current) =>
-          current ? replaceResponseRow(current, response.updatedRow) : current,
-        );
-
-        void queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, row.projectId) });
-        void queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, row.projectId) });
-        void queryClient.invalidateQueries({ queryKey: qk.automation.designTicket(host, row.projectId) });
-        void queryClient.invalidateQueries({ queryKey: qk.automation.tasks(host, row.projectId) });
-        return true;
-      } catch (error) {
-        if (previous) queryClient.setQueryData(queryKey, previous);
-        toast.error(error instanceof Error ? error.message : 'Failed to save cell.');
-        return false;
-      } finally {
-        setSavingCells((prev) => setInRecord(prev, id, false));
+        existingState.queue.push({ rowId: row.requestId, cellId: id, key, value: normalized.value });
+      } else {
+        pendingRowsRef.current.set(row.requestId, {
+          confirmedRow: latestRow,
+          queue: [{ rowId: row.requestId, cellId: id, key, value: normalized.value }],
+          running: false,
+        });
       }
+
+      changeSavingCellCount(id, 1);
+      syncQueuedDesignListRow(row.requestId);
+      processQueuedDesignListRow(row.requestId);
+      return true;
     },
-    [host, lookups, queryClient, queryKey, toast],
+    [changeSavingCellCount, getCachedDesignListRow, processQueuedDesignListRow, syncQueuedDesignListRow, toast],
   );
 
   const columns = useMemo(

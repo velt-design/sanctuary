@@ -2133,6 +2133,14 @@
   --mv-dim: rgba(28, 28, 29, 0.6);
 }
 
+.moduleViewsCardMinimal {
+  margin-top: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
 .moduleViewsHeader {
   display: flex;
   align-items: flex-start;
@@ -2153,6 +2161,11 @@
 .moduleViewsControls {
   display: grid;
   gap: 6px;
+  justify-items: end;
+}
+
+.moduleViewsCardMinimal .moduleViewsControls {
+  width: 100%;
   justify-items: end;
 }
 
@@ -2221,6 +2234,16 @@
   gap: 6px;
 }
 
+.moduleViewsCardMinimal .moduleViewsStage {
+  margin-top: 8px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
 .moduleViewsStateText {
   margin: 0;
   font-size: 13px;
@@ -2278,6 +2301,10 @@
   gap: 8px;
 }
 
+.moduleViewsCardMinimal .modulePlanFrame {
+  gap: 0;
+}
+
 .modulePlanSourceRow {
   justify-self: end;
   display: inline-flex;
@@ -2333,6 +2360,12 @@
   border-radius: 10px;
   background: rgba(var(--portal-bg-surface-rgb), 0.95);
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+}
+
+.moduleViewsCardMinimal .modulePlanSvg {
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .moduleViewsLegend {
