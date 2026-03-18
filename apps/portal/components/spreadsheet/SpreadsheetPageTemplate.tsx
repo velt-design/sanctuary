@@ -13,6 +13,7 @@ import {
 import PageHeader from '../layout/PageHeader';
 import { editingSessionKey, focusEditorForTrigger } from './editorFocus';
 import { useSpreadsheetShell, type SharedSpreadsheetEditingCell } from './useSpreadsheetShell';
+import { useSpreadsheetOptimisticEditing } from './useSpreadsheetOptimisticEditing';
 import type {
   SpreadsheetActiveCell,
   SpreadsheetActivationTrigger,
@@ -47,12 +48,18 @@ function maybeOpenPicker(node: SpreadsheetEditorElement | null, trigger: Spreads
   }
 }
 
-export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEditableKey extends TKey, TEditorValue>({
+export default function SpreadsheetPageTemplate<
+  TRow,
+  TKey extends string,
+  TEditableKey extends TKey,
+  TEditorValue,
+  TOptimisticModel = never,
+>({
   adapter,
   embedded = false,
   zoomDockPlacement = 'sheet',
 }: {
-  adapter: SpreadsheetAdapter<TRow, TKey, TEditableKey, TEditorValue>;
+  adapter: SpreadsheetAdapter<TRow, TKey, TEditableKey, TEditorValue, TOptimisticModel>;
   embedded?: boolean;
   zoomDockPlacement?: 'sheet' | 'viewport';
 }) {
@@ -67,6 +74,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
   });
 
   const [editing, setEditing] = useState<SharedSpreadsheetEditingCell<TEditableKey, TEditorValue> | null>(null);
+  const optimisticEditing = useSpreadsheetOptimisticEditing(adapter);
   const editorRef = useRef<SpreadsheetEditorElement | null>(null);
   const editingCellRef = useRef<HTMLTableCellElement | null>(null);
   const editingTriggerRef = useRef<SpreadsheetActivationTrigger | null>(null);
@@ -79,6 +87,9 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
   const rowsById = useMemo(() => new Map(adapter.allRows.map((row) => [adapter.getRowId(row), row])), [adapter.allRows, adapter.getRowId]);
   const activeEditingSessionKey = editingSessionKey(editing);
   const useViewportZoomDock = zoomDockPlacement === 'viewport';
+  const savingCells = optimisticEditing?.savingCells ?? adapter.savingCells ?? {};
+  const conflictCells = optimisticEditing?.conflictCells ?? adapter.conflictCells ?? {};
+  const commitCellEdit = optimisticEditing?.commitEdit ?? adapter.commitEdit;
 
   useEffect(() => {
     if (!shell.visibleRows.length) {
@@ -150,7 +161,8 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
         return false;
       }
 
-      const ok = await adapter.commitEdit(row, editing.key, editing.value);
+      if (!commitCellEdit) return false;
+      const ok = await commitCellEdit(row, editing.key, editing.value);
       if (ok) {
         editingTriggerRef.current = null;
         setEditing(null);
@@ -158,7 +170,7 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
       }
       return ok;
     },
-    [adapter, editing, rowsById, shell],
+    [commitCellEdit, editing, rowsById, shell],
   );
 
   const moveActiveCell = useCallback(
@@ -184,9 +196,13 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
           if (!adapter.isEditableKey(key)) return;
           beginEdit(row, key, trigger, seeded);
         },
+        commitValue: async (committedValue) => {
+          if (!adapter.isEditableKey(key) || !commitCellEdit) return false;
+          return commitCellEdit(row, key, committedValue);
+        },
       });
     },
-    [adapter, beginEdit],
+    [adapter, beginEdit, commitCellEdit],
   );
 
   const keepEditingWithinCell = useCallback(() => {
@@ -431,8 +447,8 @@ export default function SpreadsheetPageTemplate<TRow, TKey extends string, TEdit
                                   column,
                                   active: Boolean(isActive),
                                   editing: Boolean(isEditing),
-                                  saving: Boolean(adapter.savingCells[cellKey]),
-                                  conflict: Boolean(adapter.conflictCells[cellKey]),
+                                  saving: Boolean(savingCells[cellKey]),
+                                  conflict: Boolean(conflictCells[cellKey]),
                                 })}
                                 style={shell.cellStyle(column, displayColumn.actualIndex)}
                                 onPointerDownCapture={() => {

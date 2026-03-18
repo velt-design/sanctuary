@@ -1,11 +1,10 @@
 'use client';
 
-import { useCallback, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useCallback, useMemo, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { MaterialsLineV1 } from '@sp/costing';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { SpreadsheetAdapter, SpreadsheetColumn, SpreadsheetGroup } from '@/components/spreadsheet/types';
 import spreadsheetStyles from '@/components/spreadsheet/spreadsheet.module.css';
-import { useToast } from '@/components/ui/toast/ToastProvider';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import {
   buildPowdercoatBaseRowId,
@@ -525,6 +524,45 @@ function nextPowdercoatRowsForPersist(
   return [...nextPersistedRows, nextRow];
 }
 
+function getPowdercoatValidationMessage(key: JobPackEditableCellKey): string {
+  switch (key) {
+    case 'a':
+      return 'Profile is required.';
+    case 'c':
+      return 'Stock length must be greater than 0.';
+    case 'd':
+      return 'Qty must be greater than 0.';
+    default:
+      return 'This edit could not be applied.';
+  }
+}
+
+function buildPowdercoatWorkbookFromModel(
+  detail: EstimateDetail,
+  rows: JobPackPowdercoatStoredRow[],
+  options: JobPackPowdercoatOption[],
+) {
+  return buildWorkbook(detail, { version: null, rows }, options);
+}
+
+function applyPowdercoatEditToModel(args: {
+  detail: EstimateDetail;
+  rows: JobPackPowdercoatStoredRow[];
+  options: JobPackPowdercoatOption[];
+  rowId: string;
+  key: JobPackEditableCellKey;
+  value: string;
+}): JobPackPowdercoatStoredRow[] | null {
+  const workbook = buildPowdercoatWorkbookFromModel(args.detail, args.rows, args.options);
+  const editedRow = workbook.powdercoatRows.find((item) => item.storedRow.id === args.rowId) ?? null;
+  if (!editedRow) return null;
+
+  const defaultColour =
+    workbook.powdercoatRows.find((item) => item.origin !== 'draft' && item.storedRow.colour)?.storedRow.colour ?? '';
+  const optionMap = buildPowdercoatOptionMap(args.options);
+  return nextPowdercoatRowsForPersist(workbook.powdercoatRows, editedRow, args.key, args.value, defaultColour, optionMap);
+}
+
 function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookContext): JobPackSheetModel {
   const summaryRows = ensureRows(
     [
@@ -1004,11 +1042,8 @@ export function useJobPackSpreadsheetAdapter({
   onOpenEstimate: () => void;
   showNotesColumn: boolean;
   onShowNotesColumnChange: (checked: boolean) => void;
-}): SpreadsheetAdapter<JobPackRow, JobPackCellKey, JobPackEditableCellKey, string> | null {
+}): SpreadsheetAdapter<JobPackRow, JobPackCellKey, JobPackEditableCellKey, string, JobPackPowdercoatStoredRow[]> | null {
   const queryClient = useQueryClient();
-  const toast = useToast();
-  const [savingCells, setSavingCells] = useState<Record<string, boolean>>({});
-  const [conflictCells, setConflictCells] = useState<Record<string, boolean>>({});
   const powdercoatQueryOptions = useMemo(
     () => jobPackPowdercoatingQueryOptions(hostKey, detail?.id ?? '__pending__'),
     [detail?.id, hostKey],
@@ -1034,100 +1069,30 @@ export function useJobPackSpreadsheetAdapter({
     }
   }, [detail, powdercoatData.options, powdercoatData.overrides]);
 
-  const commitPowdercoatEdit = useCallback(
-    async (row: JobPackRow, key: JobPackEditableCellKey, value: string): Promise<boolean> => {
-      if (!detail || !row.powdercoat) return false;
+  const readPowdercoatResponse = useCallback(
+    () => queryClient.getQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey) ?? powdercoatData,
+    [powdercoatData, powdercoatQueryOptions.queryKey, queryClient],
+  );
 
-      const cellId = `${row.id}:${key}`;
-      setSavingCells((prev) => ({ ...prev, [cellId]: true }));
-      setConflictCells((prev) => {
-        const next = { ...prev };
-        delete next[cellId];
-        return next;
-      });
-
-      const latest =
-        queryClient.getQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey) ?? powdercoatData;
-
-      let latestWorkbook: ReturnType<typeof buildWorkbook> | null = null;
-      try {
-        latestWorkbook = buildWorkbook(detail, latest.overrides, latest.options);
-      } catch {
-        latestWorkbook = null;
-      }
-
-      const latestRow = latestWorkbook?.powdercoatRows.find((item) => item.storedRow.id === row.id) ?? row.powdercoat;
-      const defaultColour =
-        latestWorkbook?.powdercoatRows.find((item) => item.origin !== 'draft' && item.storedRow.colour)?.storedRow.colour ?? '';
-      const optionMap = buildPowdercoatOptionMap(latest.options);
-      const nextRows = nextPowdercoatRowsForPersist(
-        latestWorkbook?.powdercoatRows ?? [row.powdercoat],
-        latestRow,
-        key,
-        value,
-        defaultColour,
-        optionMap,
-      );
-
-      if (!nextRows) {
-        setSavingCells((prev) => {
-          const next = { ...prev };
-          delete next[cellId];
-          return next;
-        });
-        return false;
-      }
-
-      try {
-        const response = await apiJson<JobPackPowdercoatUpdateResponse>('/api/staff/v1/job-packs/powdercoating', {
-          method: 'POST',
-          body: JSON.stringify({
-            estimateId: detail.id,
-            expectedVersion: latest.overrides.version,
-            rows: nextRows,
-          }),
-        });
-
-        queryClient.setQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey, {
-          overrides: response.overrides,
-          options: latest.options,
-          persistenceAvailable: latest.persistenceAvailable,
-          profileOptionsAvailable: latest.profileOptionsAvailable,
-          warningMessage: latest.warningMessage,
-        });
-
-        setConflictCells((prev) => {
-          const next = { ...prev };
-          delete next[cellId];
-          return next;
-        });
-        return true;
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 409) {
-          const currentOverrides = (error.body as any)?.currentOverrides;
-          if (currentOverrides && typeof currentOverrides === 'object') {
-            queryClient.setQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey, {
-              overrides: currentOverrides as JobPackPowdercoatOverrideState,
-              options: latest.options,
-              persistenceAvailable: latest.persistenceAvailable,
-              profileOptionsAvailable: latest.profileOptionsAvailable,
-              warningMessage: latest.warningMessage,
-            });
-          }
-          setConflictCells((prev) => ({ ...prev, [cellId]: true }));
-        } else {
-          toast.error(error instanceof Error ? error.message : 'Failed to save the powdercoating sheet.');
-        }
-        return false;
-      } finally {
-        setSavingCells((prev) => {
-          const next = { ...prev };
-          delete next[cellId];
-          return next;
-        });
-      }
+  const setPowdercoatResponse = useCallback(
+    (next: JobPackPowdercoatSheetResponse) => {
+      queryClient.setQueryData<JobPackPowdercoatSheetResponse>(powdercoatQueryOptions.queryKey, next);
     },
-    [detail, powdercoatData, powdercoatQueryOptions.queryKey, queryClient, toast],
+    [powdercoatQueryOptions.queryKey, queryClient],
+  );
+
+  const setDisplayedPowdercoatRows = useCallback(
+    (rows: JobPackPowdercoatStoredRow[]) => {
+      const latest = readPowdercoatResponse();
+      setPowdercoatResponse({
+        ...latest,
+        overrides: {
+          ...latest.overrides,
+          rows,
+        },
+      });
+    },
+    [readPowdercoatResponse, setPowdercoatResponse],
   );
 
   return useMemo(() => {
@@ -1172,8 +1137,6 @@ export function useJobPackSpreadsheetAdapter({
       loadingMessage: 'Loading job pack...',
       errorMessage: 'Failed to load the job pack workbook.',
       emptyMessage: activeSheet.emptyMessage,
-      savingCells,
-      conflictCells,
       getRowId: (row) => row.id,
       isEditableKey: (key): key is JobPackEditableCellKey => key === 'a' || key === 'c' || key === 'd',
       getRowClassName: () => '',
@@ -1285,7 +1248,102 @@ export function useJobPackSpreadsheetAdapter({
           />
         );
       },
-      commitEdit: commitPowdercoatEdit,
+      optimisticEditing: detail
+        ? {
+            getLatestConfirmedModel: () => readPowdercoatResponse().overrides.rows,
+            displayModel: (_queueKey, model) => {
+              setDisplayedPowdercoatRows(model);
+            },
+            prepareEdit: ({ row, rowId, key, value, displayedModel }) => {
+              if (sheet !== 'powdercoating-order' || !row.powdercoat) {
+                return { kind: 'noop' } as const;
+              }
+
+              const nextRows = applyPowdercoatEditToModel({
+                detail,
+                rows: displayedModel,
+                options: powdercoatData.options,
+                rowId,
+                key,
+                value,
+              });
+
+              if (!nextRows) {
+                return { kind: 'error', message: getPowdercoatValidationMessage(key) } as const;
+              }
+
+              return {
+                kind: 'enqueue',
+                edit: {
+                  applyToModel: (currentRows) =>
+                    applyPowdercoatEditToModel({
+                      detail,
+                      rows: currentRows,
+                      options: powdercoatData.options,
+                      rowId,
+                      key,
+                      value,
+                    }) ?? currentRows,
+                  persist: async (currentRows) => {
+                    const latest = readPowdercoatResponse();
+                    const rowsForSave =
+                      applyPowdercoatEditToModel({
+                        detail,
+                        rows: currentRows,
+                        options: latest.options,
+                        rowId,
+                        key,
+                        value,
+                      }) ?? currentRows;
+
+                    try {
+                      const response = await apiJson<JobPackPowdercoatUpdateResponse>('/api/staff/v1/job-packs/powdercoating', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                          estimateId: detail.id,
+                          expectedVersion: latest.overrides.version,
+                          rows: rowsForSave,
+                        }),
+                      });
+
+                      setPowdercoatResponse({
+                        ...latest,
+                        overrides: response.overrides,
+                      });
+
+                      return {
+                        kind: 'success',
+                        confirmedModel: response.overrides.rows,
+                      } as const;
+                    } catch (error) {
+                      if (error instanceof ApiError && error.status === 409) {
+                        const currentOverrides = (error.body as any)?.currentOverrides;
+                        if (currentOverrides && typeof currentOverrides === 'object') {
+                          setPowdercoatResponse({
+                            ...latest,
+                            overrides: currentOverrides as JobPackPowdercoatOverrideState,
+                          });
+                          return {
+                            kind: 'drop',
+                            confirmedModel: (currentOverrides as JobPackPowdercoatOverrideState).rows,
+                            message: 'This powdercoating row changed in another tab. The latest values have been reloaded.',
+                            conflict: true,
+                          } as const;
+                        }
+                      }
+
+                      return {
+                        kind: 'drop',
+                        confirmedModel: currentRows,
+                        message: error instanceof Error ? error.message : 'Failed to save the powdercoating sheet.',
+                      } as const;
+                    }
+                  },
+                },
+              } as const;
+            },
+          }
+        : undefined,
       onCellActivated: async ({ trigger, row, key, seed, beginEdit }) => {
         if (sheet !== 'powdercoating-order' || !row.powdercoat) return 'noop';
         if (key !== 'a' && key !== 'c' && key !== 'd') return 'noop';
@@ -1307,8 +1365,6 @@ export function useJobPackSpreadsheetAdapter({
       },
     };
   }, [
-    commitPowdercoatEdit,
-    conflictCells,
     detail,
     onBackToList,
     onOpenEstimate,
@@ -1316,9 +1372,11 @@ export function useJobPackSpreadsheetAdapter({
     onShowNotesColumnChange,
     powdercoatData.options,
     powdercoatWarningMessage,
-    savingCells,
     sheet,
     showNotesColumn,
     workbook,
+    readPowdercoatResponse,
+    setDisplayedPowdercoatRows,
+    setPowdercoatResponse,
   ]);
 }
