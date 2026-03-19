@@ -107,7 +107,9 @@ describe('ModuleViewsCard', () => {
 
     expect(markup).toContain('Module views');
     expect(markup).toContain('Plan');
-    expect(markup).toContain('Technical');
+    expect(markup).not.toContain('Technical');
+    expect(markup).not.toContain('Clean');
+    expect(markup).not.toContain('Diag');
     expect(markup).toContain('Geometry OK');
     expect(markup).toContain('Not to scale');
     expect(markup).toContain('aria-label="Module plan view"');
