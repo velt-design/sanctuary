@@ -51,6 +51,8 @@ function formatMoney(value: number | null | undefined): string | null {
   return `$${value.toFixed(2)}`;
 }
 
+const QUOTE_MARGIN_MULTIPLIER = 1.25;
+
 function formatPercent(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return `${value.toFixed(1)}%`;
@@ -830,6 +832,18 @@ export default function EstimatesTab({
     return { label: 'Total', value: null, secondaryLabel: null, secondaryValue: null };
   }, [summary?.total, totals.totalEx, totals.totalInc]);
 
+  const quoteCostToUs = useMemo(() => {
+    if (totals.totalInc !== null) return totals.totalInc;
+    if (typeof summary?.total === 'number' && Number.isFinite(summary.total)) return summary.total;
+    if (totals.totalEx !== null) return totals.totalEx;
+    return null;
+  }, [summary?.total, totals.totalEx, totals.totalInc]);
+  const quoteCostIncludesGst = totals.totalInc !== null || (typeof summary?.total === 'number' && Number.isFinite(summary.total));
+  const quoteSellPrice = useMemo(
+    () => (typeof quoteCostToUs === 'number' && Number.isFinite(quoteCostToUs) ? quoteCostToUs * QUOTE_MARGIN_MULTIPLIER : null),
+    [quoteCostToUs],
+  );
+
   const marginValue = summary?.marginValue ?? null;
   const marginPct = summary?.marginPct ?? null;
   const marginLooksLikeGst = useMemo(() => {
@@ -1192,80 +1206,6 @@ export default function EstimatesTab({
                   </div>
                 ) : null}
                 <div className={styles.focusSummaryLayout}>
-                  <div className={styles.focusSummaryGrid}>
-                    <div className={`${styles.focusSummaryCard} ${styles.focusSummaryTotalCard}`}>
-                      <div className={styles.summaryLabel}>{totalPrimary.label}</div>
-                      <div className={styles.focusSummaryTotalValue}>{renderValue(formatMoney(totalPrimary.value))}</div>
-                      {totalPrimary.secondaryLabel ? (
-                        <div className={styles.focusSummarySubValue}>
-                          {totalPrimary.secondaryLabel} {renderValue(formatMoney(totalPrimary.secondaryValue ?? null))}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {(pergolaSpecs || salesPerson || projectSnapshot.project.contactName) ? (
-                      <div className={`${styles.focusSummaryCard} ${styles.focusSummaryDetailsCard}`}>
-                        {pergolaSpecs ? (
-                          <div className={styles.focusSummaryRow}>
-                            <span className={styles.summaryMetaLabel}>Pergola</span>
-                            <span className={styles.focusSummaryValue}>{pergolaSpecs}</span>
-                          </div>
-                        ) : null}
-                        {salesPerson ? (
-                          <div className={styles.focusSummaryRow}>
-                            <span className={styles.summaryMetaLabel}>Sales</span>
-                            <span className={styles.focusSummaryValue} title={salesPerson}>
-                              {salesPerson}
-                            </span>
-                          </div>
-                        ) : null}
-                        {projectSnapshot.project.contactName ? (
-                          <div className={styles.focusSummaryRow}>
-                            <span className={styles.summaryMetaLabel}>Client</span>
-                            <span className={styles.focusSummaryValue}>{projectSnapshot.project.contactName}</span>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : null}
-
-                    {showGst ? (
-                      <div className={styles.focusMetricCard}>
-                        <div className={styles.summaryLabel}>GST (incl)</div>
-                        <div className={styles.focusMetricValue}>{renderValue(formatMoney(gstAmount))}</div>
-                        {gstPercent !== null ? <div className={styles.focusMetricSubValue}>{renderValue(formatPercent(gstPercent))} of total</div> : null}
-                      </div>
-                    ) : null}
-
-                    {showMargin ? (
-                      <div className={styles.focusMetricCard}>
-                        <div className={styles.summaryLabel}>Margin</div>
-                        <div className={styles.focusMetricValue}>{renderValue(formatMargin(summary))}</div>
-                      </div>
-                    ) : null}
-
-                    {showCost ? (
-                      <div className={styles.focusMetricCard}>
-                        <div className={styles.summaryLabel}>True cost (ex GST)</div>
-                        <div className={styles.focusMetricValue}>{renderValue(formatMoney(costValue))}</div>
-                      </div>
-                    ) : null}
-
-                    <div className={styles.focusMetricCard}>
-                      <div className={styles.summaryLabel}>Deposit</div>
-                      <div className={styles.focusMetricValue}>{renderValue(formatMoney(summary?.deposit ?? null))}</div>
-                    </div>
-
-                    <div className={styles.focusMetricCard}>
-                      <div className={styles.summaryLabel}>Valid until</div>
-                      <div className={styles.focusMetricValue}>{renderValue(formatDateShort(summary?.validityDate ?? null))}</div>
-                    </div>
-
-                    <div className={styles.focusMetricCard}>
-                      <div className={styles.summaryLabel}>Lead time</div>
-                      <div className={styles.focusMetricValue}>{renderValue(summary?.leadTime ?? null)}</div>
-                    </div>
-                  </div>
-
                   <div className={styles.focusDrawingToolbar}>
                     <div className={styles.focusDrawingToolbarCopy}>
                       <div className={styles.focusDrawingEyebrow}>Drawing sheet</div>
@@ -1331,6 +1271,19 @@ export default function EstimatesTab({
                 </div>
                 {quotesLoading ? <p className={legacy.note}>Loading quotes…</p> : null}
                 {quotesError ? <p className={legacy.error}>{quotesError}</p> : null}
+
+                <div className={styles.quotePricingGrid}>
+                  <div className={styles.quotePricingCard}>
+                    <div className={styles.summaryLabel}>{quoteCostIncludesGst ? 'Cost to us (inc GST)' : 'Cost to us'}</div>
+                    <div className={styles.quotePricingValue}>{renderValue(formatMoney(quoteCostToUs))}</div>
+                    <div className={styles.quotePricingSubValue}>Current estimate snapshot</div>
+                  </div>
+                  <div className={styles.quotePricingCard}>
+                    <div className={styles.summaryLabel}>{quoteCostIncludesGst ? 'Price with margin (inc GST)' : 'Price with margin'}</div>
+                    <div className={styles.quotePricingValue}>{renderValue(formatMoney(quoteSellPrice))}</div>
+                    <div className={styles.quotePricingSubValue}>1.25x multiplier - 20% margin</div>
+                  </div>
+                </div>
 
                 {relatedQuotesPreview.length ? (
                   <div className={styles.quoteList}>
