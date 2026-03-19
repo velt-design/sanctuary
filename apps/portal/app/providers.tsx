@@ -5,6 +5,8 @@ import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { createIDBPersister } from '@/lib/react-query/idbPersister';
+import LocalFirstRuntime from '@/components/sync/LocalFirstRuntime';
+import LocalFirstPortalMutations from '@/components/sync/LocalFirstPortalMutations';
 
 const ONE_DAY = 1000 * 60 * 60 * 24;
 
@@ -35,6 +37,8 @@ export function Providers({ children }: { children: ReactNode }) {
         buster,
       }}
     >
+      <LocalFirstRuntime />
+      <LocalFirstPortalMutations />
       {children}
       {process.env.NODE_ENV === 'development' ? <ReactQueryDevtools initialIsOpen={false} /> : null}
     </PersistQueryClientProvider>

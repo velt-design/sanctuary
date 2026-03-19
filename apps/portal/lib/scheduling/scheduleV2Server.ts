@@ -3,6 +3,7 @@ import 'server-only';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { addDaysYmd, diffDaysYmd, isYmd, todayYmd } from '@/lib/scheduling/date';
 import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import { SCHEDULING_READY_PROJECT_STATUS, normalizeSchedulingProjectStatus } from '@/lib/scheduling/readiness';
 import {
   addWorkingDays,
   buildWorkingDayIndex,
@@ -767,6 +768,8 @@ export function buildUnscheduledJobs(input: {
 
   for (const project of input.projects) {
     if (input.scheduledProjectIds.has(project.id)) continue;
+    const projectStatus = normalizeSchedulingProjectStatus(project.pipeline_stage);
+    if (projectStatus !== SCHEDULING_READY_PROJECT_STATUS) continue;
     const list = estimatesByProject.get(project.id) ?? [];
     if (!list.length) continue;
     const latest = getLatestSchedulableEstimate(list);
@@ -779,7 +782,7 @@ export function buildUnscheduledJobs(input: {
       job_id: project.id,
       estimate_id: latest.id,
       project_name: projectName,
-      status: project.pipeline_stage ?? 'NEW',
+      status: projectStatus,
       duration_days: durationDays,
     });
   }

@@ -1,0 +1,619 @@
+import { get, set } from 'idb-keyval';
+import type {
+  LocalFirstConflictState,
+  LocalFirstEnqueueMutationInput,
+  LocalFirstEntityKey,
+  LocalFirstEntityStatus,
+  LocalFirstEntitySyncState,
+  LocalFirstPersistedState,
+  LocalFirstQueueItem,
+  LocalFirstStoreSnapshot,
+  LocalFirstStoreSummary,
+  LocalFirstWriteWorkingCopyInput,
+  LocalFirstWorkingCopy,
+} from './types';
+
+const STORAGE_KEY = 'sanctuary-portal-local-first-v1';
+
+type Listener = () => void;
+
+type LocalFirstStorageAdapter = {
+  get: () => Promise<LocalFirstPersistedState | undefined>;
+  set: (state: LocalFirstPersistedState) => Promise<void>;
+};
+
+const defaultStorageAdapter: LocalFirstStorageAdapter = {
+  async get() {
+    const value = await get<unknown>(STORAGE_KEY);
+    return normalizePersistedState(value);
+  },
+  async set(state) {
+    await set(STORAGE_KEY, state);
+  },
+};
+
+let storageAdapter: LocalFirstStorageAdapter = defaultStorageAdapter;
+let snapshot: LocalFirstStoreSnapshot = { hydrated: false, state: createEmptyLocalFirstState() };
+let hydratePromise: Promise<void> | null = null;
+let mutationChain: Promise<void> = Promise.resolve();
+const listeners = new Set<Listener>();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function cloneState(state: LocalFirstPersistedState): LocalFirstPersistedState {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(state);
+  }
+  return JSON.parse(JSON.stringify(state)) as LocalFirstPersistedState;
+}
+
+function emit() {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
+function persistSnapshot(state: LocalFirstPersistedState) {
+  void storageAdapter.set(state).catch((error) => {
+    console.error('[localFirst] Failed to persist local-first state.', error);
+  });
+}
+
+function isoNow(): string {
+  return new Date().toISOString();
+}
+
+function maxIso(a?: string, b?: string): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return a > b ? a : b;
+}
+
+function ensureEntityStateShape(entityKey: LocalFirstEntityKey, current?: LocalFirstEntitySyncState): LocalFirstEntitySyncState {
+  if (current) return current;
+  return {
+    entityKey,
+    status: 'idle',
+    pendingCount: 0,
+    updatedAt: isoNow(),
+  };
+}
+
+function pendingCountForEntity(state: LocalFirstPersistedState, entityKey: LocalFirstEntityKey): number {
+  return state.queue.filter((item) => item.entityKey === entityKey).length;
+}
+
+function nextEntityStatusForPendingItems(
+  state: LocalFirstPersistedState,
+  entityKey: LocalFirstEntityKey,
+  fallback: LocalFirstEntityStatus,
+): LocalFirstEntityStatus {
+  if (state.conflicts[entityKey]) return 'conflict';
+  const items = state.queue.filter((item) => item.entityKey === entityKey);
+  if (items.some((item) => item.status === 'syncing')) return 'syncing';
+  if (items.length > 0) return fallback;
+  return 'synced';
+}
+
+function updateEntityState(
+  state: LocalFirstPersistedState,
+  entityKey: LocalFirstEntityKey,
+  next: Partial<LocalFirstEntitySyncState> & Pick<LocalFirstEntitySyncState, 'status'>,
+) {
+  const current = ensureEntityStateShape(entityKey, state.entityStates[entityKey]);
+  state.entityStates[entityKey] = {
+    ...current,
+    ...next,
+    entityKey,
+    pendingCount: pendingCountForEntity(state, entityKey),
+    updatedAt: next.updatedAt ?? isoNow(),
+  };
+}
+
+function createQueueId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `lf_${Math.random().toString(36).slice(2)}_${Date.now()}`;
+}
+
+function normalizeWorkingCopy(entry: unknown, entityKey: string): LocalFirstWorkingCopy | undefined {
+  if (!isRecord(entry)) return undefined;
+  const data = 'data' in entry ? entry.data : undefined;
+  const updatedAt = typeof entry.updatedAt === 'string' ? entry.updatedAt : undefined;
+  if (!updatedAt) return undefined;
+  return {
+    entityKey,
+    data,
+    updatedAt,
+    baseUpdatedAt: typeof entry.baseUpdatedAt === 'string' ? entry.baseUpdatedAt : undefined,
+  };
+}
+
+function normalizeQueueItem(entry: unknown): LocalFirstQueueItem | undefined {
+  if (!isRecord(entry)) return undefined;
+  if (
+    typeof entry.id !== 'string' ||
+    typeof entry.entityKey !== 'string' ||
+    typeof entry.mutationKey !== 'string' ||
+    typeof entry.enqueuedAt !== 'string' ||
+    typeof entry.updatedAt !== 'string'
+  ) {
+    return undefined;
+  }
+  const status = entry.status;
+  if (status !== 'queued' && status !== 'syncing' && status !== 'paused_conflict') {
+    return undefined;
+  }
+  return {
+    id: entry.id,
+    entityKey: entry.entityKey,
+    mutationKey: entry.mutationKey,
+    payload: entry.payload,
+    status,
+    enqueuedAt: entry.enqueuedAt,
+    updatedAt: entry.updatedAt,
+    attempts: typeof entry.attempts === 'number' ? entry.attempts : 0,
+    nextRetryAt: typeof entry.nextRetryAt === 'string' ? entry.nextRetryAt : undefined,
+    lastError: typeof entry.lastError === 'string' ? entry.lastError : undefined,
+  };
+}
+
+function isQueueItem(entry: LocalFirstQueueItem | undefined): entry is LocalFirstQueueItem {
+  return Boolean(entry);
+}
+
+function normalizeEntityState(entry: unknown, entityKey: string): LocalFirstEntitySyncState | undefined {
+  if (!isRecord(entry)) return undefined;
+  const status = entry.status;
+  if (
+    status !== 'idle' &&
+    status !== 'queued' &&
+    status !== 'syncing' &&
+    status !== 'synced' &&
+    status !== 'offline' &&
+    status !== 'error' &&
+    status !== 'conflict'
+  ) {
+    return undefined;
+  }
+  return {
+    entityKey,
+    status,
+    pendingCount: typeof entry.pendingCount === 'number' ? entry.pendingCount : 0,
+    updatedAt: typeof entry.updatedAt === 'string' ? entry.updatedAt : isoNow(),
+    lastSyncedAt: typeof entry.lastSyncedAt === 'string' ? entry.lastSyncedAt : undefined,
+    lastError: typeof entry.lastError === 'string' ? entry.lastError : undefined,
+    nextRetryAt: typeof entry.nextRetryAt === 'string' ? entry.nextRetryAt : undefined,
+    conflictId: typeof entry.conflictId === 'string' ? entry.conflictId : undefined,
+  };
+}
+
+function normalizeConflict(entry: unknown, entityKey: string): LocalFirstConflictState | undefined {
+  if (!isRecord(entry)) return undefined;
+  if (typeof entry.id !== 'string' || typeof entry.queueItemId !== 'string' || typeof entry.message !== 'string') {
+    return undefined;
+  }
+  return {
+    id: entry.id,
+    entityKey,
+    queueItemId: entry.queueItemId,
+    message: entry.message,
+    detectedAt: typeof entry.detectedAt === 'string' ? entry.detectedAt : isoNow(),
+    serverSnapshot: entry.serverSnapshot,
+    clientSnapshot: entry.clientSnapshot,
+  };
+}
+
+function normalizePersistedState(value: unknown): LocalFirstPersistedState {
+  if (!isRecord(value)) return createEmptyLocalFirstState();
+
+  const workingCopies: LocalFirstPersistedState['workingCopies'] = {};
+  if (isRecord(value.workingCopies)) {
+    for (const [entityKey, entry] of Object.entries(value.workingCopies)) {
+      const normalized = normalizeWorkingCopy(entry, entityKey);
+      if (normalized) workingCopies[entityKey] = normalized;
+    }
+  }
+
+  const queue = Array.isArray(value.queue) ? value.queue.map(normalizeQueueItem).filter(isQueueItem) : [];
+
+  const entityStates: LocalFirstPersistedState['entityStates'] = {};
+  if (isRecord(value.entityStates)) {
+    for (const [entityKey, entry] of Object.entries(value.entityStates)) {
+      const normalized = normalizeEntityState(entry, entityKey);
+      if (normalized) entityStates[entityKey] = normalized;
+    }
+  }
+
+  const conflicts: LocalFirstPersistedState['conflicts'] = {};
+  if (isRecord(value.conflicts)) {
+    for (const [entityKey, entry] of Object.entries(value.conflicts)) {
+      const normalized = normalizeConflict(entry, entityKey);
+      if (normalized) conflicts[entityKey] = normalized;
+    }
+  }
+
+  return {
+    version: 1,
+    workingCopies,
+    queue,
+    entityStates,
+    conflicts,
+  };
+}
+
+export function createEmptyLocalFirstState(): LocalFirstPersistedState {
+  return {
+    version: 1,
+    workingCopies: {},
+    queue: [],
+    entityStates: {},
+    conflicts: {},
+  };
+}
+
+export function getLocalFirstStoreSnapshot(): LocalFirstStoreSnapshot {
+  return snapshot;
+}
+
+export function subscribeToLocalFirstStore(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export async function ensureLocalFirstStoreReady(): Promise<void> {
+  if (snapshot.hydrated) return;
+  if (!hydratePromise) {
+    hydratePromise = (async () => {
+      const hydratedState = (await storageAdapter.get()) ?? createEmptyLocalFirstState();
+      snapshot = { hydrated: true, state: hydratedState };
+      emit();
+    })().finally(() => {
+      hydratePromise = null;
+    });
+  }
+  await hydratePromise;
+}
+
+async function mutateLocalFirstState<T>(recipe: (draft: LocalFirstPersistedState) => T | Promise<T>): Promise<T> {
+  const operation = mutationChain.then(async () => {
+    await ensureLocalFirstStoreReady();
+    const draft = cloneState(snapshot.state);
+    const result = await recipe(draft);
+    snapshot = { hydrated: true, state: draft };
+    emit();
+    persistSnapshot(draft);
+    return result;
+  });
+
+  mutationChain = operation.then(
+    () => undefined,
+    () => undefined,
+  );
+
+  return operation;
+}
+
+export function summarizeLocalFirstStoreState(state: LocalFirstPersistedState): LocalFirstStoreSummary {
+  let queuedCount = 0;
+  let syncingCount = 0;
+
+  for (const item of state.queue) {
+    if (item.status === 'syncing') syncingCount += 1;
+    else if (item.status === 'queued') queuedCount += 1;
+  }
+
+  let conflictCount = 0;
+  let errorCount = 0;
+  let offlineCount = 0;
+  let lastSyncedAt: string | undefined;
+  let issueMessage: string | undefined;
+  let issueUpdatedAt: string | undefined;
+
+  for (const entityState of Object.values(state.entityStates)) {
+    lastSyncedAt = maxIso(lastSyncedAt, entityState.lastSyncedAt);
+    if (entityState.status === 'conflict') conflictCount += 1;
+    if (entityState.status === 'error') errorCount += 1;
+    if (entityState.status === 'offline') offlineCount += 1;
+
+    if (
+      entityState.lastError &&
+      (entityState.status === 'conflict' || entityState.status === 'error' || entityState.status === 'offline') &&
+      (!issueUpdatedAt || entityState.updatedAt > issueUpdatedAt)
+    ) {
+      issueUpdatedAt = entityState.updatedAt;
+      issueMessage = entityState.lastError;
+    }
+  }
+
+  return {
+    queuedCount,
+    syncingCount,
+    conflictCount,
+    errorCount,
+    offlineCount,
+    entityCount: Object.keys(state.entityStates).length,
+    pendingCount: queuedCount + syncingCount,
+    lastSyncedAt,
+    issueMessage,
+  };
+}
+
+export async function writeLocalFirstWorkingCopy<TData>(
+  input: LocalFirstWriteWorkingCopyInput<TData>,
+): Promise<LocalFirstWorkingCopy<TData>> {
+  const updatedAt = input.updatedAt ?? isoNow();
+  return mutateLocalFirstState((draft) => {
+    const workingCopy: LocalFirstWorkingCopy<TData> = {
+      entityKey: input.entityKey,
+      data: input.data,
+      updatedAt,
+      baseUpdatedAt: input.baseUpdatedAt,
+    };
+    draft.workingCopies[input.entityKey] = workingCopy;
+    return workingCopy;
+  });
+}
+
+export async function clearLocalFirstWorkingCopy(entityKey: LocalFirstEntityKey): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    delete draft.workingCopies[entityKey];
+  });
+}
+
+export async function enqueueLocalFirstMutation<TPayload>(
+  input: LocalFirstEnqueueMutationInput<TPayload>,
+): Promise<LocalFirstQueueItem<TPayload>> {
+  const enqueuedAt = isoNow();
+  return mutateLocalFirstState((draft) => {
+    const item: LocalFirstQueueItem<TPayload> = {
+      id: input.id ?? createQueueId(),
+      entityKey: input.entityKey,
+      mutationKey: input.mutationKey,
+      payload: input.payload,
+      status: 'queued',
+      enqueuedAt,
+      updatedAt: enqueuedAt,
+      attempts: 0,
+    };
+    draft.queue.push(item);
+    updateEntityState(draft, input.entityKey, {
+      status: 'queued',
+      lastError: undefined,
+      nextRetryAt: undefined,
+      conflictId: undefined,
+    });
+    return item;
+  });
+}
+
+export function getNextLocalFirstQueueItemForEntity(
+  entityKey: LocalFirstEntityKey,
+  now: string = isoNow(),
+): LocalFirstQueueItem | null {
+  const items = snapshot.state.queue.filter((item) => item.entityKey === entityKey && item.status === 'queued');
+  const ready = items.find((item) => !item.nextRetryAt || item.nextRetryAt <= now);
+  return ready ?? null;
+}
+
+export function listLocalFirstPendingEntityKeys(): LocalFirstEntityKey[] {
+  return Array.from(new Set(snapshot.state.queue.map((item) => item.entityKey)));
+}
+
+export async function requeueSyncingLocalFirstItems(status: 'queued' | 'offline'): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    const now = isoNow();
+    for (const item of draft.queue) {
+      if (item.status === 'syncing') {
+        item.status = 'queued';
+        item.updatedAt = now;
+      }
+    }
+
+    for (const entityKey of listEntityKeysWithPendingWork(draft)) {
+      updateEntityState(draft, entityKey, {
+        status,
+        lastError: status === 'offline' ? 'Changes are waiting to sync when the connection returns.' : undefined,
+      });
+    }
+  });
+}
+
+function listEntityKeysWithPendingWork(state: LocalFirstPersistedState): LocalFirstEntityKey[] {
+  return Array.from(new Set(state.queue.map((item) => item.entityKey)));
+}
+
+export async function markLocalFirstPendingEntitiesOffline(): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    for (const entityKey of listEntityKeysWithPendingWork(draft)) {
+      updateEntityState(draft, entityKey, {
+        status: 'offline',
+        lastError: 'Changes are waiting to sync when the connection returns.',
+      });
+    }
+  });
+}
+
+export async function markLocalFirstPendingEntitiesQueued(): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    for (const entityKey of listEntityKeysWithPendingWork(draft)) {
+      if (draft.conflicts[entityKey]) {
+        updateEntityState(draft, entityKey, {
+          status: 'conflict',
+          conflictId: draft.conflicts[entityKey]?.id,
+          lastError: draft.conflicts[entityKey]?.message,
+        });
+        continue;
+      }
+
+      const current = draft.entityStates[entityKey];
+      updateEntityState(draft, entityKey, {
+        status: nextEntityStatusForPendingItems(draft, entityKey, 'queued'),
+        lastError: current?.status === 'error' ? current.lastError : undefined,
+        nextRetryAt: current?.nextRetryAt,
+      });
+    }
+  });
+}
+
+export async function markLocalFirstQueueItemSyncing(itemId: string): Promise<LocalFirstQueueItem | null> {
+  return mutateLocalFirstState((draft) => {
+    const item = draft.queue.find((entry) => entry.id === itemId);
+    if (!item) return null;
+
+    item.status = 'syncing';
+    item.attempts += 1;
+    item.updatedAt = isoNow();
+    item.lastError = undefined;
+
+    updateEntityState(draft, item.entityKey, {
+      status: 'syncing',
+      lastError: undefined,
+      nextRetryAt: undefined,
+      conflictId: undefined,
+    });
+
+    return item;
+  });
+}
+
+export async function resolveLocalFirstQueueItemSuccess(
+  itemId: string,
+  options: {
+    lastSyncedAt?: string;
+    confirmedWorkingCopy?: unknown;
+    clearWorkingCopy?: boolean;
+  } = {},
+): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    const index = draft.queue.findIndex((entry) => entry.id === itemId);
+    if (index < 0) return;
+    const item = draft.queue[index];
+    draft.queue.splice(index, 1);
+
+    delete draft.conflicts[item.entityKey];
+
+    if (options.clearWorkingCopy) {
+      delete draft.workingCopies[item.entityKey];
+    } else if (options.confirmedWorkingCopy !== undefined) {
+      draft.workingCopies[item.entityKey] = {
+        entityKey: item.entityKey,
+        data: options.confirmedWorkingCopy,
+        updatedAt: isoNow(),
+      };
+    }
+
+    const pendingCount = pendingCountForEntity(draft, item.entityKey);
+    updateEntityState(draft, item.entityKey, {
+      status: pendingCount > 0 ? nextEntityStatusForPendingItems(draft, item.entityKey, 'queued') : 'synced',
+      lastSyncedAt: options.lastSyncedAt ?? isoNow(),
+      lastError: undefined,
+      nextRetryAt: undefined,
+      conflictId: undefined,
+    });
+  });
+}
+
+export async function resolveLocalFirstQueueItemRetry(
+  itemId: string,
+  options: {
+    message?: string;
+    retryAt?: string;
+    status: 'offline' | 'error';
+  },
+): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    const item = draft.queue.find((entry) => entry.id === itemId);
+    if (!item) return;
+
+    item.status = 'queued';
+    item.updatedAt = isoNow();
+    item.lastError = options.message;
+    item.nextRetryAt = options.retryAt;
+
+    updateEntityState(draft, item.entityKey, {
+      status: options.status,
+      lastError: options.message,
+      nextRetryAt: options.retryAt,
+    });
+  });
+}
+
+export async function resolveLocalFirstQueueItemConflict(
+  itemId: string,
+  options: {
+    message: string;
+    serverSnapshot?: unknown;
+    clientSnapshot?: unknown;
+  },
+): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    const item = draft.queue.find((entry) => entry.id === itemId);
+    if (!item) return;
+
+    item.status = 'paused_conflict';
+    item.updatedAt = isoNow();
+    item.lastError = options.message;
+
+    const conflictId = `conflict:${item.id}`;
+    draft.conflicts[item.entityKey] = {
+      id: conflictId,
+      entityKey: item.entityKey,
+      queueItemId: item.id,
+      message: options.message,
+      detectedAt: isoNow(),
+      serverSnapshot: options.serverSnapshot,
+      clientSnapshot: options.clientSnapshot,
+    };
+
+    updateEntityState(draft, item.entityKey, {
+      status: 'conflict',
+      conflictId,
+      lastError: options.message,
+      nextRetryAt: undefined,
+    });
+  });
+}
+
+export async function clearLocalFirstConflict(entityKey: LocalFirstEntityKey): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    delete draft.conflicts[entityKey];
+    for (const item of draft.queue) {
+      if (item.entityKey === entityKey && item.status === 'paused_conflict') {
+        item.status = 'queued';
+        item.updatedAt = isoNow();
+      }
+    }
+    updateEntityState(draft, entityKey, {
+      status: nextEntityStatusForPendingItems(draft, entityKey, 'queued'),
+      conflictId: undefined,
+      lastError: undefined,
+    });
+  });
+}
+
+export function getLocalFirstEntitySyncState(entityKey: LocalFirstEntityKey): LocalFirstEntitySyncState {
+  return ensureEntityStateShape(entityKey, snapshot.state.entityStates[entityKey]);
+}
+
+export function getLocalFirstConflictState(entityKey: LocalFirstEntityKey): LocalFirstConflictState | null {
+  return snapshot.state.conflicts[entityKey] ?? null;
+}
+
+export function getLocalFirstWorkingCopy<TData>(entityKey: LocalFirstEntityKey): LocalFirstWorkingCopy<TData> | null {
+  return (snapshot.state.workingCopies[entityKey] as LocalFirstWorkingCopy<TData> | undefined) ?? null;
+}
+
+export function __setLocalFirstStorageAdapterForTests(adapter: LocalFirstStorageAdapter | null): void {
+  storageAdapter = adapter ?? defaultStorageAdapter;
+}
+
+export function __resetLocalFirstStoreForTests(): void {
+  snapshot = { hydrated: false, state: createEmptyLocalFirstState() };
+  hydratePromise = null;
+  mutationChain = Promise.resolve();
+  listeners.clear();
+}

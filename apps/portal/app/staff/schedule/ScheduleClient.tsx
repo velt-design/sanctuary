@@ -29,9 +29,10 @@ import {
 } from '@/lib/repo/scheduleV2Repo';
 import { qk } from '@/lib/queries/keys';
 import { scheduleV2SnapshotQueryOptions, type ScheduleV2Snapshot } from '@/lib/queries/schedule';
+import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
 import type { Estimate } from '@/lib/types/estimate';
 import type { Project } from '@/lib/types/project';
-import { nextActionTypeLabel, PROJECT_STATUS_ORDER, normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
+import { nextActionTypeLabel, normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus, SchedulingIssue } from '@/lib/types/scheduling';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import { buildScheduleBars } from '@/lib/scheduling/engine';
@@ -563,6 +564,8 @@ function mapV2UnscheduledJobs(list: ScheduleV2Snapshot['unscheduledJobs'] | null
     const projectId = typeof job?.projectId === 'string' ? job.projectId : '';
     const estimateId = typeof job?.estimateId === 'string' ? job.estimateId : '';
     if (!projectId || !estimateId) continue;
+    const status = normalizeProjectStatus(job?.status ?? 'NEW').status;
+    if (!isSchedulingReadyProjectStatus(status)) continue;
 
     const durationDays =
       typeof job?.durationDays === 'number' && Number.isFinite(job.durationDays) && job.durationDays > 0 ? job.durationDays : 1;
@@ -574,7 +577,7 @@ function mapV2UnscheduledJobs(list: ScheduleV2Snapshot['unscheduledJobs'] | null
       estimateId,
       projectName: (typeof job?.projectName === 'string' ? job.projectName : '').trim() || 'Untitled project',
       descriptor: '',
-      status: normalizeProjectStatus(job?.status ?? 'NEW').status,
+      status,
       durationHours,
       durationLabel: formatDuration(durationHours),
       durationTitle: formatHours(durationHours),
@@ -813,7 +816,7 @@ function optimisticUnassign(
 
   const project = projectsById.get(it.projectId) ?? null;
   const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
-  const status = project?.status ?? 'NEW';
+  const status = normalizeProjectStatus(project?.status ?? 'NEW').status;
 
   const durationDays =
     typeof it.forecastDurationDays === 'number' && it.forecastDurationDays > 0
@@ -821,6 +824,11 @@ function optimisticUnassign(
       : Math.max(1, Math.ceil((it.durationHoursOverride ?? WORK_HOURS_PER_DAY) / WORK_HOURS_PER_DAY));
 
   const durationHours = durationDays * WORK_HOURS_PER_DAY;
+  const nextItems = items.filter((x) => x.id !== scheduleItemId);
+
+  if (!isSchedulingReadyProjectStatus(status)) {
+    return { items: nextItems, unscheduledSeed };
+  }
 
   const back: SchedulableJob = {
     id: makeJobId(it.projectId, it.estimateId),
@@ -828,7 +836,7 @@ function optimisticUnassign(
     estimateId: it.estimateId,
     projectName,
     descriptor: '',
-    status: normalizeProjectStatus(status).status,
+    status,
     durationHours,
     durationLabel: formatDuration(durationHours),
     durationTitle: formatHours(durationHours),
@@ -836,7 +844,7 @@ function optimisticUnassign(
   };
 
   return {
-    items: items.filter((x) => x.id !== scheduleItemId),
+    items: nextItems,
     unscheduledSeed: [...unscheduledSeed, back].sort((a, b) => a.projectName.localeCompare(b.projectName)),
   };
 }
@@ -1425,7 +1433,6 @@ export default function ScheduleClient() {
     return 'board';
   });
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [zoomWeeks, setZoomWeeks] = useState<GanttZoomWeeks>(GANTT_DEFAULT_ZOOM_WEEKS);
   const [ganttDensity, setGanttDensity] = useState<GanttDensity>(() => readGanttDensityPreference());
   const [labelWidthPx, setLabelWidthPx] = useState<number>(() => readGanttLabelWidthPreference());
@@ -2439,6 +2446,7 @@ export default function ScheduleClient() {
       excluded: {
         noEstimates: 0,
         noSchedulableEstimate: 0,
+        notReadyStage: 0,
         alreadyScheduled: 0,
       },
       scheduleItems: {
@@ -2513,6 +2521,10 @@ export default function ScheduleClient() {
 
       const projectName = p.projectName ?? p.name ?? 'Untitled project';
       const status = normalizeProjectStatus(p.status).status;
+      if (!isSchedulingReadyProjectStatus(status)) {
+        debug.excluded.notReadyStage += 1;
+        continue;
+      }
       const nextActionDate = (p as any).nextActionDate ?? (p as any).followUpDate ?? null;
       const nextActionType = (p as any).nextActionType ?? null;
       const nextActionSuffix =
@@ -2615,11 +2627,8 @@ export default function ScheduleClient() {
 
   const unscheduledJobs = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const status = statusFilter;
-    return unscheduledJobsAll
-      .filter((j) => (!q ? true : j.projectName.toLowerCase().includes(q)))
-      .filter((j) => (status === 'all' ? true : j.status === status));
-  }, [query, statusFilter, unscheduledJobsAll]);
+    return unscheduledJobsAll.filter((j) => (!q ? true : j.projectName.toLowerCase().includes(q)));
+  }, [query, unscheduledJobsAll]);
 
   const laneItems = useMemo(() => {
     const map = new Map<string, ScheduleItem[]>();
@@ -4904,15 +4913,7 @@ export default function ScheduleClient() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
-                <select className={styles.input} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-                  <option value="all">All statuses</option>
-                  {PROJECT_STATUS_ORDER.map((status) => (
-                    <option key={status} value={status}>
-                      {projectStatusLabel(status)}
-                    </option>
-                  ))}
-                </select>
-                <p className={styles.hint}>Only projects with at least one active estimate appear here.</p>
+                <p className={styles.hint}>Only deposit-stage projects with at least one active estimate appear here.</p>
               </div>
 
               <UnscheduledDropZone onMount={(node) => (unscheduledBodyRef.current = node)}>
@@ -4926,11 +4927,11 @@ export default function ScheduleClient() {
                   <div>
                     {unscheduledJobsAll.length === 0 ? (
                       <>
-                        <p className={styles.note}>No unscheduled projects with active estimates.</p>
-                        <p className={styles.hint}>Create an estimate to make a project schedulable.</p>
+                        <p className={styles.note}>No unscheduled deposit-stage projects.</p>
+                        <p className={styles.hint}>Projects appear here once they reach Deposit and have an active estimate.</p>
                       </>
                     ) : (
-                      <p className={styles.note}>No projects match this filter.</p>
+                      <p className={styles.note}>No projects match this search.</p>
                     )}
                   </div>
                 )}

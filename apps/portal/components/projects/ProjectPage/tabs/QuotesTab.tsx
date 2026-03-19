@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -11,7 +11,6 @@ import QuotePdfInlinePreview from './QuotePdfInlinePreview';
 import type { EstimateMeta } from '@/lib/estimates/types';
 import type { QuoteLineItem, QuoteStatus, QuoteVersion, QuoteVersionDetail } from '@/lib/quotes/types';
 import {
-  createQuoteFromEstimate,
   deleteDraftQuoteVersion,
   markQuoteAccepted,
   markQuoteDeclined,
@@ -20,28 +19,42 @@ import {
   resendQuote,
   reviseQuote,
   sendQuote,
-  updateDraftQuoteVersion,
 } from '@/lib/quotes/quotesRepo';
 import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
-import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
+import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { qk } from '@/lib/queries/keys';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import {
+  PORTAL_LOCAL_FIRST_MUTATIONS,
+  applyDraftPatchToQuoteDetail,
+  buildEstimateEntityKey,
+  buildOptimisticQuoteDetail,
+  buildQuoteEntityKey,
+  createLocalQuoteId,
+  isLocalQuoteId,
+  type PortalQuoteCreateMutationPayload,
+  type PortalQuoteUpdateMutationPayload,
+  upsertQuoteDetailCache,
+} from '@/lib/localFirst/portalEntities';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
+import { getLocalFirstEntitySyncState, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 
 function formatMoneyFromCents(value: number): string {
-  if (!Number.isFinite(value)) return '—';
+  if (!Number.isFinite(value)) return 'â€”';
   return `$${(value / 100).toFixed(2)}`;
 }
 
 function formatDateShort(value: string | null | undefined): string {
-  if (!value) return '—';
+  if (!value) return 'â€”';
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
   return date.toLocaleDateString();
 }
 
 function formatDateTime(value: string | null | undefined): string {
-  if (!value) return '—';
+  if (!value) return 'â€”';
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
   return date.toLocaleString();
@@ -253,7 +266,9 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
 
   const selectedFromUrl = useMemo(() => {
     const raw = searchParams.get('quoteId') ?? '';
-    return raw.trim() || null;
+    const trimmed = raw.trim();
+    if (!trimmed || isLocalQuoteId(trimmed)) return null;
+    return trimmed;
   }, [searchParams]);
   const pagePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
 
@@ -276,6 +291,8 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   });
   const detailLoading = Boolean(selectedId) && quoteDetailQuery.isPending;
   const detail = quoteDetailQuery.data ?? null;
+  const detailSyncState = useEntitySyncState(detail ? buildQuoteEntityKey(detail.id) : 'quote:detail:__quote-none__');
+  const draftSyncPending = Boolean(detail && detail.status === 'DRAFT' && detailSyncState.pendingCount > 0);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createEstimateId, setCreateEstimateId] = useState('');
@@ -349,8 +366,16 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   }, [quoteDetailQuery.error, selectedId, toast]);
 
   useEffect(() => {
-    setSelectedId(selectedFromUrl);
-  }, [selectedFromUrl]);
+    if (selectedFromUrl) {
+      setSelectedId(selectedFromUrl);
+      return;
+    }
+    setSelectedId((current) => {
+      if (!quotes.length) return null;
+      if (current && quotes.some((quote) => quote.id === current)) return current;
+      return quotes[0]?.id ?? null;
+    });
+  }, [quotes, selectedFromUrl]);
 
   useEffect(() => {
     if (!detail) return;
@@ -477,7 +502,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   }, []);
 
   useEffect(() => {
-    if (!pagePreviewFromUrl || !detail) {
+    if (!pagePreviewFromUrl || !detail || (detail.status === 'DRAFT' && draftSyncPending)) {
       setQuotePdfPreviewLoading(false);
       setQuotePdfPreviewError(null);
       setQuotePdfPreviewData(null);
@@ -541,10 +566,14 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     return () => {
       ac.abort();
     };
-  }, [detail?.id, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, detail]);
+  }, [detail?.id, draftSyncPending, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, detail]);
 
   const openCreateModal = () => {
-    const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
+    const defaultId =
+      estimates.find((estimate) => getLocalFirstEntitySyncState(buildEstimateEntityKey(estimate.id)).pendingCount === 0)?.id ??
+      latestEstimate?.id ??
+      estimates[0]?.id ??
+      '';
     if (!defaultId) {
       toast.error('Create an estimate first.');
       return;
@@ -556,13 +585,42 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const handleCreateQuote = async () => {
     if (!createEstimateId) return;
     try {
-      const created = await createQuoteFromEstimate(projectId, createEstimateId);
-      queryClient.setQueryData(qk.quotes.detail(hostKey, created.id), created);
-      await refreshQuotes({ includeEstimates: true });
+      const estimateSyncState = getLocalFirstEntitySyncState(buildEstimateEntityKey(createEstimateId));
+      if (estimateSyncState.pendingCount > 0) {
+        toast.error('Wait for this estimate to finish syncing before creating a quote.');
+        return;
+      }
+
+      const estimateDetail = await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, createEstimateId));
+      const localQuoteId = createLocalQuoteId();
+      const optimisticDetail = buildOptimisticQuoteDetail({
+        quoteVersionId: localQuoteId,
+        projectId,
+        estimateDetail,
+        existingQuotes: quotes,
+      });
+
+      upsertQuoteDetailCache(queryClient, hostKey, projectId, optimisticDetail, { prepend: true });
+      await writeLocalFirstWorkingCopy({
+        entityKey: buildQuoteEntityKey(localQuoteId),
+        data: optimisticDetail,
+      });
+
+      const mutationPayload: PortalQuoteCreateMutationPayload = {
+        localQuoteId,
+        projectId,
+        estimateId: createEstimateId,
+      };
+      await enqueueAndProcessLocalFirstMutation({
+        entityKey: buildQuoteEntityKey(localQuoteId),
+        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.quoteCreateFromEstimate,
+        payload: mutationPayload,
+      });
+
       setCreateOpen(false);
-      setSelectedId(created.id);
-      updateParams({ quoteId: created.id });
-      toast.success('Draft quote created.');
+      setSelectedId(localQuoteId);
+      updateParams({ quoteId: null });
+      toast.success('Draft quote created locally. Syncing in the background.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create quote';
       toast.error(msg);
@@ -573,6 +631,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!detail) return;
     if (mode === 'send' && draftDirty) {
       toast.error('Save the draft before sending.');
+      return;
+    }
+    if (mode === 'send' && draftSyncPending) {
+      toast.error('Wait for the draft to finish syncing before sending.');
       return;
     }
     const to = detail.contact?.email ?? '';
@@ -589,7 +651,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     sendPreviewRequestRef.current += 1;
     setSendError(null);
     setSendOpen(true);
-  }, [detail, draftDirty, toast]);
+  }, [detail, draftDirty, draftSyncPending, toast]);
 
   const closeSendModal = useCallback(() => {
     setSendDesignPdf(null);
@@ -670,6 +732,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       toast.error('Save the draft before sending.');
       return;
     }
+    if (sendMode === 'send' && draftSyncPending) {
+      toast.error('Wait for the draft to finish syncing before sending.');
+      return;
+    }
     const to = sendTo.split(',').map((v) => v.trim()).filter(Boolean);
     if (!to.length) {
       toast.error('Recipient email is required.');
@@ -748,7 +814,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!detail) return;
     setSavingDraft(true);
     try {
-      const updated = await updateDraftQuoteVersion(detail.id, {
+      const patch = {
         reference: draftReference,
         introText: draftIntro,
         termsText: draftTerms,
@@ -759,8 +825,24 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
           qty: item.qty,
           unitPriceIncGstCents: item.unitPriceIncGstCents,
         })),
+      };
+      const updated = applyDraftPatchToQuoteDetail(detail, patch);
+      upsertQuoteDetailCache(queryClient, hostKey, projectId, updated);
+      await writeLocalFirstWorkingCopy({
+        entityKey: buildQuoteEntityKey(detail.id),
+        data: updated,
       });
-      queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
+
+      const mutationPayload: PortalQuoteUpdateMutationPayload = {
+        quoteVersionId: detail.id,
+        patch,
+      };
+      await enqueueAndProcessLocalFirstMutation({
+        entityKey: buildQuoteEntityKey(detail.id),
+        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.quoteUpdateDraft,
+        payload: mutationPayload,
+      });
+
       setDraftItems(updated.lineItems);
       setUnitInputDrafts({});
       setActiveUnitInputId(null);
@@ -769,8 +851,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       setDraftTerms(updated.termsText ?? '');
       setDraftDepositPercent(formatPercentInput(updated.depositPercent));
       setDraftExpiry(updated.expiresAt ?? '');
-      await refreshQuotes();
-      toast.success('Draft saved.');
+      toast.success('Draft saved locally. Syncing in the background.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save draft';
       toast.error(msg);
@@ -781,6 +862,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
 
   const handleDeleteDraft = async () => {
     if (!detail) return;
+    if (isLocalQuoteId(detail.id) || draftSyncPending) {
+      toast.error('Wait for the draft to finish syncing before deleting.');
+      return;
+    }
     try {
       await deleteDraftQuoteVersion(detail.id);
       queryClient.removeQueries({ queryKey: qk.quotes.detail(hostKey, detail.id) });
@@ -861,7 +946,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   };
 
   if (selectedId && detailLoading) {
-    return <p className={legacy.note}>Loading quote…</p>;
+    return <p className={legacy.note}>Loading quoteâ€¦</p>;
   }
 
   if (selectedId && detail) {
@@ -875,20 +960,34 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
             &lt; Back
           </button>
           <div className={styles.detailActions}>
-            <a className={legacy.buttonSecondary} href={quotePdfUrl(detail.id)}>
-              Download PDF
-            </a>
+            {isLocalQuoteId(detail.id) || draftSyncPending ? (
+              <span className={legacy.note}>PDF available after sync</span>
+            ) : (
+              <a className={legacy.buttonSecondary} href={quotePdfUrl(detail.id)}>
+                Download PDF
+              </a>
+            )}
             {detail.status === 'DRAFT' ? (
               <>
                 <button type="button" className={legacy.button} onClick={() => openSendModal('send')}>
                   Send
                 </button>
-                <button type="button" className={legacy.buttonSecondary} onClick={() => setDeleteConfirmOpen(true)}>
+                <button
+                  type="button"
+                  className={legacy.buttonSecondary}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  disabled={isLocalQuoteId(detail.id) || draftSyncPending}
+                >
                   Delete draft
                 </button>
-                {draftDirty ? (
-                  <button type="button" className={legacy.button} disabled={savingDraft} onClick={handleSaveDraft}>
-                    {savingDraft ? 'Saving…' : 'Save draft'}
+                {draftDirty || draftSyncPending ? (
+                  <button
+                    type="button"
+                    className={legacy.button}
+                    disabled={savingDraft || (draftSyncPending && !draftDirty)}
+                    onClick={handleSaveDraft}
+                  >
+                    {savingDraft || draftSyncPending ? 'Syncing...' : 'Save draft'}
                   </button>
                 ) : null}
               </>
@@ -906,7 +1005,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         </div>
 
         {expired ? (
-          <div className={styles.expiredBanner}>Expired on {detail.expiresAt ?? '—'}</div>
+          <div className={styles.expiredBanner}>Expired on {detail.expiresAt ?? 'â€”'}</div>
         ) : null}
 
         {pagePreviewFromUrl ? (
@@ -917,10 +1016,14 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
             {detail.status === 'DRAFT' && draftDirty ? (
               <div className={styles.metaWarning}>Preview shows the latest saved draft. Save draft to include unsaved edits.</div>
             ) : null}
+            {detail.status === 'DRAFT' && !draftDirty && draftSyncPending ? (
+              <div className={styles.metaWarning}>Preview updates after the draft finishes syncing in the background.</div>
+            ) : null}
             {quotePdfPreviewLoading ? <p className={legacy.note}>Rendering quote preview...</p> : null}
             {quotePdfPreviewError ? (
               <div className={styles.errorText}>
-                {quotePdfPreviewError} <a href={quotePdfUrl(detail.id)}>Download PDF</a>
+                {quotePdfPreviewError}{' '}
+                {isLocalQuoteId(detail.id) || draftSyncPending ? null : <a href={quotePdfUrl(detail.id)}>Download PDF</a>}
               </div>
             ) : null}
             {!quotePdfPreviewLoading && !quotePdfPreviewError && quotePdfPreviewData ? (
@@ -939,8 +1042,8 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
           <div className={styles.metaGrid}>
             <div className={styles.metaBlock}>
               <div className={styles.metaLabel}>Contact</div>
-              <div className={styles.metaValue}>{detail.contact.name || '—'}</div>
-              <div className={styles.metaValueMuted}>{detail.contact.email || '—'}</div>
+              <div className={styles.metaValue}>{detail.contact.name || 'â€”'}</div>
+              <div className={styles.metaValueMuted}>{detail.contact.email || 'â€”'}</div>
               {detail.contact.phone ? <div className={styles.metaValueMuted}>{detail.contact.phone}</div> : null}
             </div>
             <div className={styles.metaBlock}>
@@ -961,7 +1064,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                   placeholder="30 days from send"
                 />
               ) : (
-                <div className={styles.metaValue}>{detail.expiresAt ?? '—'}</div>
+                <div className={styles.metaValue}>{detail.expiresAt ?? 'â€”'}</div>
               )}
             </div>
             <div className={styles.metaBlock}>
@@ -974,7 +1077,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                   placeholder="Optional reference"
                 />
               ) : (
-                <div className={styles.metaValue}>{detail.reference || '—'}</div>
+                <div className={styles.metaValue}>{detail.reference || 'â€”'}</div>
               )}
             </div>
             <div className={styles.metaBlock}>
@@ -1154,15 +1257,15 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
           <div className={styles.totalsGrid}>
             <div className={styles.totalItem}>
               <div className={styles.metaLabel}>Total (inc GST)</div>
-              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalIncGstCents) : '—'}</div>
+              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalIncGstCents) : 'â€”'}</div>
             </div>
             <div className={styles.totalItem}>
               <div className={styles.metaLabel}>Total (ex GST)</div>
-              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalExGstCents) : '—'}</div>
+              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalExGstCents) : 'â€”'}</div>
             </div>
             <div className={styles.totalItem}>
               <div className={styles.metaLabel}>GST</div>
-              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.gstCents) : '—'}</div>
+              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.gstCents) : 'â€”'}</div>
             </div>
           </div>
         </section>
@@ -1177,7 +1280,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
               {detail.status === 'DRAFT' ? (
                 <textarea className={styles.textarea} value={draftIntro} onChange={(e) => setDraftIntro(e.target.value)} rows={5} />
               ) : (
-                <div className={styles.readonlyBlock}>{detail.introText || '—'}</div>
+                <div className={styles.readonlyBlock}>{detail.introText || 'â€”'}</div>
               )}
             </div>
             <div>
@@ -1185,7 +1288,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
               {detail.status === 'DRAFT' ? (
                 <textarea className={styles.textarea} value={draftTerms} onChange={(e) => setDraftTerms(e.target.value)} rows={5} />
               ) : (
-                <div className={styles.readonlyBlock}>{detail.termsText || '—'}</div>
+                <div className={styles.readonlyBlock}>{detail.termsText || 'â€”'}</div>
               )}
             </div>
           </div>
@@ -1227,11 +1330,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                 <tbody>
                   {detail.sendLogs.map((log) => (
                     <tr key={log.id}>
-                      <td>{log.to.join(', ') || '—'}</td>
-                      <td>{log.subject || '—'}</td>
+                      <td>{log.to.join(', ') || 'â€”'}</td>
+                      <td>{log.subject || 'â€”'}</td>
                       <td>{formatDateTime(log.sentAt ?? log.createdAt)}</td>
                       <td>{log.status}</td>
-                      <td>{log.attachments.length ? `${log.attachments.length} file${log.attachments.length === 1 ? '' : 's'}` : '—'}</td>
+                      <td>{log.attachments.length ? `${log.attachments.length} file${log.attachments.length === 1 ? '' : 's'}` : 'â€”'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1330,11 +1433,11 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                   <div className={styles.previewMetaGrid}>
                     <div className={styles.previewMetaItem}>
                       <div className={styles.metaLabel}>To</div>
-                      <div className={styles.previewMetaValue}>{sendTo || '—'}</div>
+                      <div className={styles.previewMetaValue}>{sendTo || 'â€”'}</div>
                     </div>
                     <div className={styles.previewMetaItem}>
                       <div className={styles.metaLabel}>Subject</div>
-                      <div className={styles.previewMetaValue}>{sendSubject || '—'}</div>
+                      <div className={styles.previewMetaValue}>{sendSubject || 'â€”'}</div>
                     </div>
                   </div>
                   <p className={styles.attachmentsHint}>
@@ -1387,7 +1490,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                   Close
                 </button>
               </div>
-              <p className={styles.modalBodyText}>This quote expired on {detail.expiresAt ?? '—'}. How would you like to proceed?</p>
+              <p className={styles.modalBodyText}>This quote expired on {detail.expiresAt ?? 'â€”'}. How would you like to proceed?</p>
               <div className={styles.modalFooter}>
                 <button type="button" className={legacy.buttonSecondary} onClick={() => handleExpiredResend('resend')}>
                   Resend as-is
@@ -1437,7 +1540,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         </button>
       </div>
 
-      {quotesLoading ? <p className={legacy.note}>Loading quotes…</p> : null}
+      {quotesLoading ? <p className={legacy.note}>Loading quotesâ€¦</p> : null}
       {quotesError ? <p className={legacy.error}>{quotesError}</p> : null}
 
       {!quotesLoading && !quotes.length ? (
@@ -1466,27 +1569,31 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
             <tbody>
               {quotes.map((quote) => {
                 const expired = isExpired(quote.expiresAt);
+                const quoteSyncPending = getLocalFirstEntitySyncState(buildQuoteEntityKey(quote.id)).pendingCount > 0;
                 return (
                   <tr
                     key={quote.id}
                     className={styles.rowClickable}
                     onClick={() => {
-                      prefetchQuoteDetail(quote.id);
-                      updateParams({ quoteId: quote.id });
+                      if (!isLocalQuoteId(quote.id)) {
+                        prefetchQuoteDetail(quote.id);
+                      }
+                      setSelectedId(quote.id);
+                      updateParams({ quoteId: isLocalQuoteId(quote.id) ? null : quote.id });
                     }}
                     onMouseEnter={() => prefetchQuoteDetail(quote.id)}
                     onFocus={() => prefetchQuoteDetail(quote.id)}
                   >
-                    <td>{`${quote.quoteRef} • v${quote.versionNumber}`}</td>
+                    <td>{`${quote.quoteRef} â€¢ v${quote.versionNumber}`}</td>
                     <td>{quote.sourceEstimateVersionLabel}</td>
-                    <td>{quote.status === 'DRAFT' ? '—' : formatDateShort(quote.sentAt)}</td>
+                    <td>{quote.status === 'DRAFT' ? 'â€”' : formatDateShort(quote.sentAt)}</td>
                     <td>
                       {quote.expiresAt ? (
                         <span className={expired ? styles.expiredText : undefined}>
                           {quote.expiresAt}{expired ? ' (Expired)' : ''}
                         </span>
                       ) : (
-                        '—'
+                        'â€”'
                       )}
                     </td>
                     <td>
@@ -1494,12 +1601,14 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                     </td>
                     <td>{formatMoneyFromCents(quote.totals.totalIncGstCents)}</td>
                     <td>
-                      {quote.pdfFileId ? (
+                      {isLocalQuoteId(quote.id) || quoteSyncPending ? (
+                        <span className={styles.linkMuted}>Syncing</span>
+                      ) : quote.pdfFileId ? (
                         <a href={quotePdfUrl(quote.id)} onClick={(event) => event.stopPropagation()}>
                           PDF
                         </a>
                       ) : (
-                        '—'
+                        'â€”'
                       )}
                     </td>
                   </tr>

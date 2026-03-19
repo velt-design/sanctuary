@@ -15,6 +15,7 @@ import {
   removeItem,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
+import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
 import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
@@ -52,6 +53,18 @@ export async function POST(req: Request) {
 
   let durationDays = ensureForecastDurationDays(existingJob?.forecast_duration_days ?? null, 1);
   if (!existingJob) {
+    const projectRes = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', jobId).maybeSingle();
+    if (projectRes.error) {
+      if (isMissingSchemaError(projectRes.error)) {
+        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      }
+      return jsonError('Failed to load project', 500);
+    }
+    if (!projectRes.data) return jsonError('Project not found', 404);
+    if (!isSchedulingReadyProjectStatus(projectRes.data.pipeline_stage)) {
+      return jsonError('Only deposit-stage projects can be scheduled.', 409);
+    }
+
     const estimatesRes = await supabaseServer
       .from('estimates')
       .select('id, project_id, status, created_at, version, inputs, outputs')
