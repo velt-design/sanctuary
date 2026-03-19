@@ -76,6 +76,7 @@ export default function SpreadsheetPageTemplate<
   const [editing, setEditing] = useState<SharedSpreadsheetEditingCell<TEditableKey, TEditorValue> | null>(null);
   const optimisticEditing = useSpreadsheetOptimisticEditing(adapter);
   const editorRef = useRef<SpreadsheetEditorElement | null>(null);
+  const editingValueRef = useRef<TEditorValue | undefined>(undefined);
   const editingCellRef = useRef<HTMLTableCellElement | null>(null);
   const editingTriggerRef = useRef<SpreadsheetActivationTrigger | null>(null);
   const pendingPointerCellRef = useRef<PendingPointerCell<TKey> | null>(null);
@@ -95,6 +96,7 @@ export default function SpreadsheetPageTemplate<
     if (!shell.visibleRows.length) {
       pendingPointerCellRef.current = null;
       editingTriggerRef.current = null;
+      editingValueRef.current = undefined;
       setEditing(null);
     }
   }, [shell.visibleRows.length]);
@@ -134,11 +136,13 @@ export default function SpreadsheetPageTemplate<
   const beginEdit = useCallback(
     (row: TRow, key: TEditableKey, trigger: SpreadsheetActivationTrigger, seeded?: TEditorValue) => {
       const rowId = adapter.getRowId(row);
+      const initialValue = seeded !== undefined ? seeded : adapter.getEditorValue(row, key);
       editingTriggerRef.current = trigger;
+      editingValueRef.current = initialValue;
       setEditing({
         rowId,
         key,
-        value: seeded !== undefined ? seeded : adapter.getEditorValue(row, key),
+        value: initialValue,
       });
       shell.setActiveCell({ rowId, key });
     },
@@ -148,6 +152,7 @@ export default function SpreadsheetPageTemplate<
   const cancelEditing = useCallback(() => {
     skipBlurCommitRef.current = true;
     editingTriggerRef.current = null;
+    editingValueRef.current = undefined;
     setEditing(null);
   }, []);
 
@@ -157,14 +162,17 @@ export default function SpreadsheetPageTemplate<
       const row = rowsById.get(editing.rowId);
       if (!row) {
         editingTriggerRef.current = null;
+        editingValueRef.current = undefined;
         setEditing(null);
         return false;
       }
 
       if (!commitCellEdit) return false;
-      const ok = await commitCellEdit(row, editing.key, editing.value);
+      const nextValue = editingValueRef.current !== undefined ? editingValueRef.current : editing.value;
+      const ok = await commitCellEdit(row, editing.key, nextValue);
       if (ok) {
         editingTriggerRef.current = null;
+        editingValueRef.current = undefined;
         setEditing(null);
         if (nextSelection) shell.setActiveCell(nextSelection);
       }
@@ -232,6 +240,14 @@ export default function SpreadsheetPageTemplate<
           pendingPointerCell.rowId === currentEditing.rowId &&
           pendingPointerCell.key === currentEditing.key,
       );
+      const currentEditingRow = currentEditing ? rowsById.get(currentEditing.rowId) ?? null : null;
+      const currentEditingValue =
+        currentEditing && editingValueRef.current !== undefined ? editingValueRef.current : currentEditing?.value;
+      const isUnchangedEdit = Boolean(
+        currentEditing &&
+          currentEditingRow &&
+          Object.is(adapter.getEditorValue(currentEditingRow, currentEditing.key), currentEditingValue),
+      );
 
       if (blurStayedInsideEditingCell || pointerStayedInsideEditingCell) {
         keepEditingWithinCell();
@@ -246,6 +262,17 @@ export default function SpreadsheetPageTemplate<
         : undefined;
 
       pendingPointerCellRef.current = null;
+      if (isUnchangedEdit) {
+        editingTriggerRef.current = null;
+        editingValueRef.current = undefined;
+        setEditing(null);
+        if (nextSelection) {
+          shell.setActiveCell(nextSelection);
+          shell.focusGrid();
+        }
+        return;
+      }
+
       const ok = await commitEditing(nextSelection);
       if (!ok) {
         window.requestAnimationFrame(() => {
@@ -254,15 +281,8 @@ export default function SpreadsheetPageTemplate<
         return;
       }
 
-      if (!pendingPointerCell) return;
-      const targetRow = rowsById.get(pendingPointerCell.rowId);
-      if (!targetRow) {
-        shell.focusGrid();
-        return;
-      }
-
-      const result = await handleCellActivation('click', targetRow, pendingPointerCell.key);
-      if (result === 'noop') {
+      if (nextSelection) {
+        shell.setActiveCell(nextSelection);
         shell.focusGrid();
       }
     },
@@ -477,7 +497,10 @@ export default function SpreadsheetPageTemplate<
                                       row,
                                       key: column.key,
                                       value: editing.value,
-                                      setValue: (value) => setEditing((prev) => (prev ? { ...prev, value } : prev)),
+                                      setValue: (value) => {
+                                        editingValueRef.current = value;
+                                        setEditing((prev) => (prev ? { ...prev, value } : prev));
+                                      },
                                       commit: () => commitEditing(),
                                       cancel: cancelEditing,
                                       commitToNeighbor: async (columnDelta) => {
