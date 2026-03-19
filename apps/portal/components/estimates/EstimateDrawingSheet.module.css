@@ -8,26 +8,16 @@
 }
 
 .sheetPaper {
-  --sheet-border: rgba(23, 31, 25, 0.32);
-  --sheet-border-soft: rgba(23, 31, 25, 0.14);
-  --sheet-text: rgba(23, 31, 25, 0.9);
-  --sheet-muted: rgba(23, 31, 25, 0.62);
-  --sheet-ink: rgba(16, 20, 18, 0.94);
-  --sheet-ink-secondary: rgba(18, 22, 20, 0.64);
-  --sheet-ink-hidden: rgba(18, 22, 20, 0.28);
-  --sheet-ink-dim: rgba(18, 22, 20, 0.42);
   width: 100%;
   max-width: 100%;
   min-width: 0;
   aspect-ratio: 420 / 297;
   display: grid;
   grid-template-rows: minmax(0, 1fr) 100px;
-  border: 1.5px solid var(--sheet-border);
-  background:
-    linear-gradient(180deg, rgba(248, 247, 243, 0.98), rgba(243, 241, 234, 0.98)),
-    repeating-linear-gradient(0deg, rgba(23, 31, 25, 0.018), rgba(23, 31, 25, 0.018) 1px, transparent 1px, transparent 18px);
-  box-shadow: 0 24px 48px rgba(var(--portal-text-rgb), 0.14);
-  color: var(--sheet-text);
+  border: 1.5px solid var(--mv-sheet-border);
+  background: var(--mv-sheet-bg);
+  box-shadow: var(--mv-sheet-shadow);
+  color: var(--mv-sheet-text);
 }
 
 .sheetPaperCompact {
@@ -55,7 +45,7 @@
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--sheet-muted);
+  color: var(--mv-sheet-muted);
 }
 
 .sheetModuleLabel {
@@ -63,35 +53,31 @@
   font-size: 18px;
   font-weight: 600;
   line-height: 1.12;
-  color: var(--sheet-text);
+  color: var(--mv-sheet-text);
 }
 
 .sheetScaleLabel {
   flex: 0 0 auto;
-  border: 1px solid var(--sheet-border-soft);
+  border: 1px solid var(--mv-sheet-border-soft);
   padding: 6px 10px;
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--sheet-muted);
-  background: rgba(255, 255, 255, 0.55);
+  color: var(--mv-sheet-muted);
+  background: var(--mv-sheet-scale-bg);
 }
 
 .drawingViewport {
   min-height: 0;
   display: grid;
   align-items: stretch;
-  border: 1px solid rgba(23, 31, 25, 0.07);
-  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--mv-sheet-viewport-border);
+  background: var(--mv-sheet-viewport-bg);
   padding: 2px 4px 8px;
   overflow: hidden;
 }
 
 .drawingViewport :global(svg) {
-  --mv-line-primary: var(--sheet-ink);
-  --mv-line-secondary: var(--sheet-ink-secondary);
-  --mv-line-hidden: var(--sheet-ink-hidden);
-  --mv-dim: var(--sheet-ink-dim);
   display: block;
   width: 100%;
   height: 100%;
@@ -102,8 +88,8 @@
   top: 14px;
   right: 18px;
   width: 152px;
-  border: 1px solid var(--sheet-border);
-  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--mv-sheet-border);
+  background: var(--mv-sheet-panel-bg);
   padding: 10px 12px;
   display: grid;
   gap: 8px;
@@ -113,7 +99,7 @@
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--sheet-muted);
+  color: var(--mv-sheet-muted);
 }
 
 .legendList {
@@ -127,7 +113,7 @@
   gap: 7px;
   font-size: 10px;
   line-height: 1.2;
-  color: var(--sheet-text);
+  color: var(--mv-sheet-text);
 }
 
 .legendSwatch {
@@ -138,20 +124,20 @@
 }
 
 .legendSwatchPrimary {
-  color: var(--sheet-ink);
+  color: var(--mv-line-primary);
 }
 
 .legendSwatchSecondary {
-  color: var(--sheet-ink-secondary);
+  color: var(--mv-line-secondary);
 }
 
 .legendSwatchDimension {
-  color: var(--sheet-ink-dim);
+  color: var(--mv-dim);
   border-top-style: dashed;
 }
 
 .legendSwatchHidden {
-  color: var(--sheet-ink-hidden);
+  color: var(--mv-line-hidden);
   border-top-style: dashed;
 }
 
@@ -159,7 +145,7 @@
   display: grid;
   grid-template-columns: 0.28fr 0.46fr 0.26fr;
   grid-template-rows: minmax(0, 1fr) auto;
-  border-top: 1.5px solid var(--sheet-border);
+  border-top: 1.5px solid var(--mv-sheet-border);
   min-height: 0;
 }
 
@@ -177,7 +163,7 @@
 .companyBlock {
   grid-column: 1;
   grid-row: 1 / span 2;
-  border-right: 1px solid var(--sheet-border);
+  border-right: 1px solid var(--mv-sheet-border);
   padding: 10px 12px;
   display: grid;
   align-content: start;
@@ -188,19 +174,19 @@
   font-size: 15px;
   font-weight: 700;
   line-height: 1.1;
-  color: var(--sheet-text);
+  color: var(--mv-sheet-text);
 }
 
 .companyLine {
   font-size: 10px;
   line-height: 1.2;
-  color: var(--sheet-muted);
+  color: var(--mv-sheet-muted);
 }
 
 .titleInfoBlock {
   grid-column: 2;
   grid-row: 1;
-  border-right: 1px solid var(--sheet-border);
+  border-right: 1px solid var(--mv-sheet-border);
   display: grid;
   grid-template-rows: 1fr 1fr;
 }
@@ -212,21 +198,21 @@
 }
 
 .titleInfoRow + .titleInfoRow {
-  border-top: 1px solid var(--sheet-border-soft);
+  border-top: 1px solid var(--mv-sheet-border-soft);
 }
 
 .blockLabel {
   font-size: 9px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--sheet-muted);
+  color: var(--mv-sheet-muted);
 }
 
 .blockValue {
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
-  color: var(--sheet-text);
+  color: var(--mv-sheet-text);
 }
 
 .noteBlock {
@@ -246,7 +232,7 @@
 .noteLine {
   font-size: 9.5px;
   line-height: 1.2;
-  color: var(--sheet-text);
+  color: var(--mv-sheet-text);
 }
 
 .metaGrid {
@@ -254,7 +240,7 @@
   grid-row: 2;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  border-top: 1px solid var(--sheet-border);
+  border-top: 1px solid var(--mv-sheet-border);
 }
 
 .metaCell {
@@ -265,14 +251,14 @@
 }
 
 .metaCell + .metaCell {
-  border-left: 1px solid var(--sheet-border);
+  border-left: 1px solid var(--mv-sheet-border);
 }
 
 .metaValue {
   font-size: 12px;
   font-weight: 700;
   line-height: 1.15;
-  color: var(--sheet-text);
+  color: var(--mv-sheet-text);
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;

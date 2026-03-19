@@ -6,6 +6,7 @@ import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/M
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import styles from './EstimateDrawingSheet.module.css';
 
 type LegendTone = 'primary' | 'secondary' | 'dimension' | 'hidden';
@@ -107,6 +108,7 @@ export default function EstimateDrawingSheet({
         <section
           ref={sheetPaperRef}
           className={cx(styles.sheetPaper, isCompactSheet && styles.sheetPaperCompact)}
+          style={moduleDrawingThemeCssVariables('sheet')}
           aria-label={`${viewLabel} A3 drawing sheet`}
         >
           <div className={styles.sheetUpper}>
@@ -125,7 +127,6 @@ export default function EstimateDrawingSheet({
                 status={status}
                 planModel={planModel}
                 sectionModel={sectionModel}
-                detailMode="technical"
                 presentation="sheet"
               />
             </div>
