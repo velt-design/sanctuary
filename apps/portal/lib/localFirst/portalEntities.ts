@@ -3,11 +3,15 @@ import { emptyEstimateEditability } from '../estimates/editability';
 import { buildEstimateSnapshotPayload } from '../estimates/persistence';
 import type { EstimateDetail, EstimateMeta, EstimateSummary } from '../estimates/types';
 import { qk } from '../queries/keys';
+import { patchProjectListItem, patchProjectSnapshot } from '../queries/projectCache';
+import type { ProjectPageSnapshotResponse, ProjectTaskItem } from '../projects/types';
 import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS, applyDepositPercentToTerms } from '../quotes/defaults';
 import { buildQuoteLineItemsFromEstimate } from '../quotes/mapping';
 import type { QuoteLineItem, QuoteVersion, QuoteVersionDetail } from '../quotes/types';
 import { totalsFromLineItems } from '../quotes/utils';
+import type { Contact } from '../types/contact';
 import type { Estimate } from '../types/estimate';
+import type { Project } from '../types/project';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -16,6 +20,10 @@ export const PORTAL_LOCAL_FIRST_MUTATIONS = {
   estimateUpdate: 'portal.estimate.update',
   quoteCreateFromEstimate: 'portal.quote.createFromEstimate',
   quoteUpdateDraft: 'portal.quote.updateDraft',
+  projectDetailsUpdate: 'portal.project.details.update',
+  estimateNotesUpdate: 'portal.estimate.notes.update',
+  projectTaskToggle: 'portal.project.tasks.toggle',
+  contactUpdate: 'portal.contact.update',
 } as const;
 
 export type PortalEstimatePayload = {
@@ -62,6 +70,46 @@ export type PortalQuoteDraftPatch = {
 export type PortalQuoteUpdateMutationPayload = {
   quoteVersionId: string;
   patch: PortalQuoteDraftPatch;
+};
+
+export type PortalProjectDetailsDraft = {
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  projectName: string;
+  siteAddress: string;
+  region: string;
+  quoteRef: string;
+  nextActionDate: string;
+};
+
+export type PortalProjectDetailsMutationPayload = {
+  projectId: string;
+  contactId: string | null;
+  draft: PortalProjectDetailsDraft;
+};
+
+export type PortalEstimateNotesMutationPayload = {
+  estimateId: string;
+  projectId: string;
+  internalNotes: string;
+};
+
+export type PortalProjectTaskToggleMutationPayload = {
+  projectId: string;
+  taskKey: string;
+  completed: boolean;
+};
+
+export type PortalContactDraft = {
+  displayName: string;
+  email: string;
+  phone: string;
+};
+
+export type PortalContactUpdateMutationPayload = {
+  contactId: string;
+  draft: PortalContactDraft;
 };
 
 function makeLocalToken(): string {
@@ -199,12 +247,40 @@ export function buildCalculatorDraftEntityKey(draftSessionKey: string): string {
   return `calculator:draft:${draftSessionKey}`;
 }
 
+export function buildProjectDetailsEntityKey(projectId: string): string {
+  return `project:details:${projectId}`;
+}
+
+export function buildProjectDetailsDraftEntityKey(projectId: string): string {
+  return `project:details:draft:${projectId}`;
+}
+
 export function buildEstimateEntityKey(estimateId: string): string {
   return `estimate:detail:${estimateId}`;
 }
 
+export function buildEstimateNotesDraftEntityKey(estimateId: string): string {
+  return `estimate:notes:draft:${estimateId}`;
+}
+
 export function buildQuoteEntityKey(quoteVersionId: string): string {
   return `quote:detail:${quoteVersionId}`;
+}
+
+export function buildProjectTasksEntityKey(projectId: string): string {
+  return `project:tasks:${projectId}`;
+}
+
+export function buildProjectTasksDraftEntityKey(projectId: string): string {
+  return `project:tasks:draft:${projectId}`;
+}
+
+export function buildContactEntityKey(contactId: string): string {
+  return `contact:detail:${contactId}`;
+}
+
+export function buildContactDraftEntityKey(contactId: string): string {
+  return `contact:detail:draft:${contactId}`;
 }
 
 export function createLocalEstimateId(): string {
@@ -435,5 +511,139 @@ export function replaceQuoteDetailCache(
       return next;
     }
     return [nextVersion, ...next];
+  });
+}
+
+export function normalizeProjectDetailsDraft(draft: PortalProjectDetailsDraft): PortalProjectDetailsDraft {
+  return {
+    contactName: draft.contactName.trim(),
+    contactEmail: draft.contactEmail.trim(),
+    contactPhone: draft.contactPhone.trim(),
+    projectName: draft.projectName.trim(),
+    siteAddress: draft.siteAddress.trim(),
+    region: draft.region.trim(),
+    quoteRef: draft.quoteRef.trim(),
+    nextActionDate: draft.nextActionDate.trim(),
+  };
+}
+
+export function patchProjectDetailsCaches(
+  queryClient: QueryClient,
+  hostKey: string,
+  projectId: string,
+  draft: PortalProjectDetailsDraft,
+  options?: { contactId?: string | null },
+) {
+  const normalized = normalizeProjectDetailsDraft(draft);
+
+  patchProjectSnapshot(queryClient, hostKey, projectId, (currentSnapshot) => {
+    if (!currentSnapshot) return currentSnapshot;
+    return {
+      ...currentSnapshot,
+      generatedAt: new Date().toISOString(),
+      snapshot: {
+        ...currentSnapshot.snapshot,
+        project: {
+          ...currentSnapshot.snapshot.project,
+          name: normalized.projectName || currentSnapshot.snapshot.project.name,
+          contactName: normalized.contactName || undefined,
+          contactEmail: normalized.contactEmail || undefined,
+          contactPhone: normalized.contactPhone || undefined,
+          siteAddress: normalized.siteAddress || undefined,
+          region: normalized.region || undefined,
+          quoteRef: normalized.quoteRef || undefined,
+          nextActionDate: normalized.nextActionDate || undefined,
+        },
+      },
+    };
+  });
+
+  queryClient.setQueryData<Project | null | undefined>(qk.projects.detail(hostKey, projectId), (currentProject) => {
+    if (!currentProject) return currentProject;
+    return {
+      ...currentProject,
+      projectName: normalized.projectName || currentProject.projectName || currentProject.name,
+      name: normalized.projectName || currentProject.projectName || currentProject.name,
+      region: normalized.region || undefined,
+      quoteRef: normalized.quoteRef || undefined,
+      siteAddress: normalized.siteAddress || undefined,
+      address: normalized.siteAddress || undefined,
+      nextActionDate: normalized.nextActionDate || null,
+      followUpDate: normalized.nextActionDate || null,
+      clientName: normalized.contactName || currentProject.clientName,
+      email: normalized.contactEmail || currentProject.email,
+      phone: normalized.contactPhone || currentProject.phone,
+    };
+  });
+
+  patchProjectListItem(queryClient, hostKey, projectId, (currentProject) => ({
+    ...currentProject,
+    projectName: normalized.projectName || currentProject.projectName || currentProject.name,
+    name: normalized.projectName || currentProject.projectName || currentProject.name,
+    region: normalized.region || undefined,
+    quoteRef: normalized.quoteRef || undefined,
+    siteAddress: normalized.siteAddress || undefined,
+    address: normalized.siteAddress || undefined,
+    nextActionDate: normalized.nextActionDate || null,
+    followUpDate: normalized.nextActionDate || null,
+    clientName: normalized.contactName || currentProject.clientName,
+    email: normalized.contactEmail || currentProject.email,
+    phone: normalized.contactPhone || currentProject.phone,
+  }));
+
+  const contactId = options?.contactId ?? null;
+  if (!contactId) return;
+
+  queryClient.setQueryData<Project[] | undefined>(qk.projects.byContact(hostKey, contactId), (currentProjects) => {
+    if (!Array.isArray(currentProjects)) return currentProjects;
+    return currentProjects.map((project) =>
+      project.id === projectId
+        ? {
+            ...project,
+            projectName: normalized.projectName || project.projectName || project.name,
+            name: normalized.projectName || project.projectName || project.name,
+            region: normalized.region || undefined,
+            quoteRef: normalized.quoteRef || undefined,
+            siteAddress: normalized.siteAddress || undefined,
+            address: normalized.siteAddress || undefined,
+            nextActionDate: normalized.nextActionDate || null,
+            followUpDate: normalized.nextActionDate || null,
+            clientName: normalized.contactName || project.clientName,
+          }
+        : project,
+    );
+  });
+}
+
+export function upsertContactCaches(queryClient: QueryClient, hostKey: string, contact: Contact) {
+  queryClient.setQueryData(qk.contacts.detail(hostKey, contact.id), contact);
+  queryClient.setQueryData<Contact[] | undefined>(qk.contacts.list(hostKey), (currentContacts) => {
+    if (!Array.isArray(currentContacts)) return currentContacts;
+    const next = currentContacts.filter((entry) => entry.id !== contact.id);
+    next.push(contact);
+    next.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
+    return next;
+  });
+}
+
+export function patchProjectTasksSnapshot(
+  queryClient: QueryClient,
+  hostKey: string,
+  projectId: string,
+  items: ProjectTaskItem[],
+) {
+  patchProjectSnapshot(queryClient, hostKey, projectId, (currentSnapshot) => {
+    if (!currentSnapshot) return currentSnapshot;
+    return {
+      ...currentSnapshot,
+      generatedAt: new Date().toISOString(),
+      snapshot: {
+        ...currentSnapshot.snapshot,
+        tasks: {
+          ...currentSnapshot.snapshot.tasks,
+          items,
+        },
+      },
+    };
   });
 }

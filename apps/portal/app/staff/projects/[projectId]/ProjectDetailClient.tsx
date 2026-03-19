@@ -33,7 +33,6 @@ import Modal from '@/components/ui/modal/Modal';
 import ConflictModal from '@/components/ui/ConflictModal';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 import {
-  createQuoteFromEstimate,
   deleteQuote,
   duplicateQuoteAsRevision,
   listQuotesByProject,
@@ -177,14 +176,8 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
       toast.error('Create an estimate first.');
       return;
     }
-    setCreateQuoteEstimateId(id);
-    setCreateQuoteNumber('…');
-    void (async () => setCreateQuoteNumber(await suggestNextQuoteNumber()))();
-    setCreateQuoteTotalTouched(false);
-    const est = estimates.find((e) => e.id === id);
-    setCreateQuoteTotalOverride(typeof est?.outputs?.totals?.cost_inc_gst === 'number' ? est.outputs.totals.cost_inc_gst.toFixed(2) : '');
-    setCreateQuoteNotes('');
-    setCreateQuoteOpen(true);
+    toast.success('Opening the local-first quote flow...');
+    router.push(`/staff/projects/${encodeURIComponent(projectId)}?tab=quotes&createFromEstimateId=${encodeURIComponent(id)}`);
   };
 
   useEffect(() => {
@@ -1331,22 +1324,11 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                 run('createQuote', () => {
                   return (async () => {
                     try {
-                      const estimate = selectedQuoteEstimate;
-                      const fallbackTotal = estimate ? estimate.outputs.totals.cost_inc_gst : 0;
-                      const rawOverride = String(createQuoteTotalOverride ?? '').trim();
-                      const totalOverrideParsed = rawOverride ? Number(rawOverride.replace(/[^0-9.\\-]/g, '')) : NaN;
-                      const totalOverride = Number.isFinite(totalOverrideParsed) ? totalOverrideParsed : fallbackTotal;
-
-                      const quote = await createQuoteFromEstimate(projectId, createQuoteEstimateId, {
-                        quoteNumber: createQuoteNumber,
-                        customerTotalOverride: totalOverride,
-                        notes: createQuoteNotes.trim() ? createQuoteNotes.trim() : null,
-                      });
-                      void refreshQuotes();
-                      void refreshProject();
                       setCreateQuoteOpen(false);
-                      toast.success(`${quoteLabel(quote)} created.`);
-                      router.push(`/staff/projects/${encodeURIComponent(projectId)}/quotes/${encodeURIComponent(quote.id)}`);
+                      toast.success('Opening the local-first quote flow…');
+                      router.push(
+                        `/staff/projects/${encodeURIComponent(projectId)}?tab=quotes&createFromEstimateId=${encodeURIComponent(createQuoteEstimateId)}`,
+                      );
                     } catch (err) {
                       const msg = err instanceof Error ? err.message : 'Failed to create quote';
                       setError(msg);
@@ -1659,3 +1641,4 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
     </main>
   );
 }
+

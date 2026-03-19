@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { updateContact } from '@/lib/repo/contactsRepo';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import styles from '../../projects/projects.module.css';
@@ -14,26 +13,71 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactDetailQueryOptions } from '@/lib/queries/contacts';
 import { projectsByContactQueryOptions } from '@/lib/queries/projects';
 import { qk } from '@/lib/queries/keys';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
+import { discardLocalFirstEntityQueue } from '@/lib/localFirst/store';
+import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
+import {
+  PORTAL_LOCAL_FIRST_MUTATIONS,
+  buildContactDraftEntityKey,
+  buildContactEntityKey,
+  upsertContactCaches,
+  type PortalContactDraft,
+  type PortalContactUpdateMutationPayload,
+} from '@/lib/localFirst/portalEntities';
 
-type Draft = {
-  displayName: string;
-  email: string;
-  phone: string;
-};
+const AUTOSAVE_DELAY_MS = 700;
+
+function toDraft(contact: Contact): PortalContactDraft {
+  return {
+    displayName: contact.displayName,
+    email: contact.email,
+    phone: contact.phone,
+  };
+}
+
+function normalizeDraft(draft: PortalContactDraft): PortalContactDraft {
+  return {
+    displayName: draft.displayName.trim(),
+    email: draft.email.trim(),
+    phone: draft.phone.trim(),
+  };
+}
 
 function isValidOptionalEmail(email: string): boolean {
   if (!email.trim()) return true;
   return email.includes('@');
 }
 
+function sameDraft(a: PortalContactDraft, b: PortalContactDraft): boolean {
+  return JSON.stringify(normalizeDraft(a)) === JSON.stringify(normalizeDraft(b));
+}
+
+function syncLabel(status: ReturnType<typeof useEntitySyncState>, dirty: boolean): string | null {
+  if (status.status === 'conflict') return status.lastError ?? 'Needs review';
+  if (status.status === 'offline') return 'Offline. Changes will sync when reconnected.';
+  if (status.status === 'error') return status.lastError ?? 'Sync failed. Retrying…';
+  if (status.pendingCount > 0 || status.status === 'syncing' || status.status === 'queued') return 'Syncing…';
+  if (dirty) return 'Unsaved local edits';
+  if (status.lastSyncedAt) return 'Saved';
+  return null;
+}
+
 export default function ContactDetailClient({ contactId }: { contactId: string }) {
   const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draft, setDraft] = useState<PortalContactDraft>({ displayName: '', email: '', phone: '' });
   const [error, setError] = useState<string | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const lastQueuedRef = useRef('');
+  const draftRef = useRef(draft);
 
   const queryClient = useQueryClient();
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const entityKey = useMemo(() => buildContactEntityKey(contactId), [contactId]);
+  const draftEntityKey = useMemo(() => buildContactDraftEntityKey(contactId), [contactId]);
+  const syncState = useEntitySyncState(entityKey);
+
   const cachedContacts = queryClient.getQueryData<Contact[]>(qk.contacts.list(host));
   const cachedContact = useMemo(
     () => (Array.isArray(cachedContacts) ? cachedContacts.find((c) => c.id === contactId) ?? null : null),
@@ -48,9 +92,15 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
     initialData: cachedContact ?? undefined,
   });
 
-  const { data: projectsData, error: projectsError } = useQuery(projectsByContactQueryOptions(host, contactId));
+  const workingCopy = useLocalWorkingCopy<PortalContactDraft>(draftEntityKey, contact ? toDraft(contact) : { displayName: '', email: '', phone: '' });
+  const serverDraft = useMemo(() => (contact ? normalizeDraft(toDraft(contact)) : { displayName: '', email: '', phone: '' }), [contact]);
 
+  const { data: projectsData, error: projectsError } = useQuery(projectsByContactQueryOptions(host, contactId));
   const projects = projectsData ?? [];
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
     if (!contactError) return;
@@ -65,12 +115,139 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
     toast.error(msg);
   }, [projectsError, toast]);
 
+  useEffect(() => {
+    if (!workingCopy.hydrated) return;
+    if (workingCopy.hasLocalCopy) {
+      setDraft(workingCopy.value);
+      setIsEditing(true);
+      return;
+    }
+    if (!isEditing) {
+      setDraft(serverDraft);
+      lastQueuedRef.current = JSON.stringify(serverDraft);
+    }
+  }, [isEditing, serverDraft, workingCopy.hasLocalCopy, workingCopy.hydrated, workingCopy.value]);
+
+  useEffect(() => {
+    if (!workingCopy.hasLocalCopy) return;
+    if (syncState.pendingCount > 0) return;
+    if (!sameDraft(workingCopy.value, serverDraft)) return;
+    void workingCopy.clearWorkingCopy();
+  }, [serverDraft, syncState.pendingCount, workingCopy]);
+
+  useEffect(() => {
+    if (syncState.status !== 'conflict') return;
+    if (syncState.lastError) setError(syncState.lastError);
+    void discardLocalFirstEntityQueue(entityKey);
+  }, [entityKey, syncState.lastError, syncState.status]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
   const canSave = useMemo(() => {
-    if (!draft) return false;
     if (!draft.displayName.trim()) return false;
     if (!isValidOptionalEmail(draft.email)) return false;
     return true;
   }, [draft]);
+
+  const dirty = useMemo(() => !sameDraft(draft, serverDraft), [draft, serverDraft]);
+
+  const flushDraft = useCallback(async () => {
+    if (!contact) return false;
+    const nextDraft = normalizeDraft(draftRef.current);
+    if (!nextDraft.displayName.trim()) return false;
+    if (!isValidOptionalEmail(nextDraft.email)) return false;
+
+    const serialized = JSON.stringify(nextDraft);
+    if (serialized === JSON.stringify(serverDraft)) {
+      lastQueuedRef.current = serialized;
+      if (workingCopy.hasLocalCopy && syncState.pendingCount === 0) {
+        await workingCopy.clearWorkingCopy();
+      }
+      return true;
+    }
+
+    if (serialized === lastQueuedRef.current && syncState.pendingCount > 0) {
+      return true;
+    }
+
+    lastQueuedRef.current = serialized;
+    setError(null);
+    upsertContactCaches(queryClient, host, {
+      ...contact,
+      displayName: nextDraft.displayName,
+      email: nextDraft.email,
+      phone: nextDraft.phone,
+      updatedAt: new Date().toISOString(),
+    });
+    await workingCopy.setWorkingCopy(nextDraft);
+
+    const mutationPayload: PortalContactUpdateMutationPayload = {
+      contactId,
+      draft: nextDraft,
+    };
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey,
+      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.contactUpdate,
+      payload: mutationPayload,
+    });
+    return true;
+  }, [contact, contactId, entityKey, host, queryClient, serverDraft, syncState.pendingCount, workingCopy]);
+
+  useEffect(() => {
+    if (!isEditing || !workingCopy.hydrated || !dirty || !canSave) return;
+    if (timerRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(timerRef.current);
+    }
+    timerRef.current = window.setTimeout(() => {
+      void flushDraft().catch((err) => {
+        const msg = err instanceof Error ? err.message : 'Failed to update contact';
+        setError(msg);
+      });
+    }, AUTOSAVE_DELAY_MS);
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, [canSave, dirty, flushDraft, isEditing, workingCopy.hydrated]);
+
+  const updateDraftField = useCallback(
+    (field: keyof PortalContactDraft, value: string) => {
+      setError(null);
+      setDraft((prev) => {
+        const next = { ...prev, [field]: value };
+        void workingCopy.setWorkingCopy(next);
+        return next;
+      });
+    },
+    [workingCopy],
+  );
+
+  const handleDone = async () => {
+    if (!canSave) return;
+    try {
+      await flushDraft();
+      setIsEditing(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update contact';
+      setError(msg);
+    }
+  };
+
+  const handleReset = async () => {
+    if (syncState.pendingCount > 0) return;
+    setError(null);
+    setDraft(serverDraft);
+    lastQueuedRef.current = JSON.stringify(serverDraft);
+    await workingCopy.clearWorkingCopy();
+    setIsEditing(false);
+  };
 
   if (typeof contact === 'undefined') {
     return (
@@ -108,6 +285,9 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
     );
   }
 
+  const statusText = syncLabel(syncState, dirty);
+  const displayed = workingCopy.hasLocalCopy ? draft : serverDraft;
+
   return (
     <main className={styles.page}>
       <PageHeader
@@ -131,48 +311,24 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Contact Info</h2>
           <div className={styles.actions}>
+            {statusText ? <span className={styles.note}>{statusText}</span> : null}
             {isEditing ? (
               <>
                 <button
                   type="button"
                   className={styles.button}
                   disabled={!canSave}
-                  onClick={async () => {
-                    if (!draft) return;
-                    setError(null);
-                    try {
-                      const updated = await updateContact(contactId, {
-                        displayName: draft.displayName.trim(),
-                        email: draft.email.trim(),
-                        phone: draft.phone.trim(),
-                      });
-                      queryClient.setQueryData(qk.contacts.detail(host, contactId), updated);
-                      queryClient.setQueryData(qk.contacts.list(host), (prev) => {
-                        if (!Array.isArray(prev)) return prev;
-                        const next = prev.filter((c) => c.id !== updated.id);
-                        next.push(updated);
-                        next.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
-                        return next;
-                      });
-                      setIsEditing(false);
-                      setDraft(null);
-                    } catch (err) {
-                      const msg = err instanceof Error ? err.message : 'Failed to update contact';
-                      setError(msg);
-                    }
-                  }}
+                  onClick={handleDone}
                 >
-                  Save
+                  Done
                 </button>
                 <button
                   type="button"
                   className={styles.buttonSecondary}
-                  onClick={() => {
-                    setIsEditing(false);
-                    setDraft(null);
-                  }}
+                  disabled={syncState.pendingCount > 0}
+                  onClick={() => void handleReset()}
                 >
-                  Cancel
+                  Reset
                 </button>
               </>
             ) : (
@@ -182,7 +338,6 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                 onClick={() => {
                   setError(null);
                   setIsEditing(true);
-                  setDraft({ displayName: contact.displayName, email: contact.email, phone: contact.phone });
                 }}
               >
                 Edit
@@ -200,12 +355,13 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                     {isEditing ? (
                       <input
                         className={styles.inlineInput}
-                        value={draft?.displayName ?? ''}
-                        onChange={(e) => setDraft((prev) => ({ ...(prev ?? { displayName: '', email: '', phone: '' }), displayName: e.target.value }))}
+                        value={draft.displayName}
+                        onChange={(e) => updateDraftField('displayName', e.target.value)}
+                        onBlur={() => void flushDraft().catch(() => undefined)}
                         required
                       />
                     ) : (
-                      contact.displayName
+                      displayed.displayName
                     )}
                   </td>
                 </tr>
@@ -215,13 +371,14 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                     {isEditing ? (
                       <input
                         className={styles.inlineInput}
-                        value={draft?.email ?? ''}
-                        onChange={(e) => setDraft((prev) => ({ ...(prev ?? { displayName: '', email: '', phone: '' }), email: e.target.value }))}
+                        value={draft.email}
+                        onChange={(e) => updateDraftField('email', e.target.value)}
+                        onBlur={() => void flushDraft().catch(() => undefined)}
                       />
                     ) : (
-                      contact.email || '—'
+                      displayed.email || '—'
                     )}
-                    {isEditing && draft && !isValidOptionalEmail(draft.email) ? <p className={styles.error}>Email must include "@".</p> : null}
+                    {isEditing && !isValidOptionalEmail(draft.email) ? <p className={styles.error}>Email must include "@".</p> : null}
                   </td>
                 </tr>
                 <tr>
@@ -230,11 +387,12 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                     {isEditing ? (
                       <input
                         className={styles.inlineInput}
-                        value={draft?.phone ?? ''}
-                        onChange={(e) => setDraft((prev) => ({ ...(prev ?? { displayName: '', email: '', phone: '' }), phone: e.target.value }))}
+                        value={draft.phone}
+                        onChange={(e) => updateDraftField('phone', e.target.value)}
+                        onBlur={() => void flushDraft().catch(() => undefined)}
                       />
                     ) : (
-                      contact.phone || '—'
+                      displayed.phone || '—'
                     )}
                   </td>
                 </tr>

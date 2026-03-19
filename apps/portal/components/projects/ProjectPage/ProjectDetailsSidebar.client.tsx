@@ -1,24 +1,27 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
-import { invalidateProjectReadCaches, patchProjectListItem, patchProjectSnapshot } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
+import { discardLocalFirstEntityQueue } from '@/lib/localFirst/store';
+import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
+import {
+  PORTAL_LOCAL_FIRST_MUTATIONS,
+  buildProjectDetailsDraftEntityKey,
+  buildProjectDetailsEntityKey,
+  normalizeProjectDetailsDraft,
+  patchProjectDetailsCaches,
+  type PortalProjectDetailsDraft,
+  type PortalProjectDetailsMutationPayload,
+} from '@/lib/localFirst/portalEntities';
 
-type Draft = {
-  contactName: string;
-  contactEmail: string;
-  contactPhone: string;
-  projectName: string;
-  siteAddress: string;
-  region: string;
-  quoteRef: string;
-  nextActionDate: string;
-};
+const AUTOSAVE_DELAY_MS = 700;
 
-function toDraft(project: ProjectPageSnapshot['project']): Draft {
+function toDraft(project: ProjectPageSnapshot['project']): PortalProjectDetailsDraft {
   return {
     contactName: project.contactName ?? '',
     contactEmail: project.contactEmail ?? '',
@@ -36,135 +39,190 @@ function isValidYmd(value: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
 }
 
+function sameDraft(a: PortalProjectDetailsDraft, b: PortalProjectDetailsDraft): boolean {
+  return JSON.stringify(normalizeProjectDetailsDraft(a)) === JSON.stringify(normalizeProjectDetailsDraft(b));
+}
+
+function syncLabel(status: ReturnType<typeof useEntitySyncState>, dirty: boolean): string | null {
+  if (status.status === 'conflict') return status.lastError ?? 'Needs review';
+  if (status.status === 'offline') return 'Offline. Changes will sync when reconnected.';
+  if (status.status === 'error') return status.lastError ?? 'Sync failed. Retrying…';
+  if (status.pendingCount > 0 || status.status === 'syncing' || status.status === 'queued') return 'Syncing…';
+  if (dirty) return 'Unsaved local edits';
+  if (status.lastSyncedAt) return 'Saved';
+  return null;
+}
+
 export default function ProjectDetailsSidebarClient({ project }: { project: ProjectPageSnapshot['project'] }) {
   const queryClient = useQueryClient();
   const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [current, setCurrent] = useState<Draft>(() => toDraft(project));
-  const [isSaving, setIsSaving] = useState(false);
+  const [draft, setDraft] = useState<PortalProjectDetailsDraft>(() => toDraft(project));
   const [error, setError] = useState<string | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const lastQueuedRef = useRef('');
+  const draftRef = useRef(draft);
+
+  const entityKey = useMemo(() => buildProjectDetailsEntityKey(project.id), [project.id]);
+  const draftEntityKey = useMemo(() => buildProjectDetailsDraftEntityKey(project.id), [project.id]);
+  const syncState = useEntitySyncState(entityKey);
+  const workingCopy = useLocalWorkingCopy<PortalProjectDetailsDraft>(draftEntityKey, toDraft(project));
+  const serverDraft = useMemo(() => normalizeProjectDetailsDraft(toDraft(project)), [project]);
 
   useEffect(() => {
-    if (!isEditing) {
-      setCurrent(toDraft(project));
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    if (!workingCopy.hydrated) return;
+    if (workingCopy.hasLocalCopy) {
+      setDraft(workingCopy.value);
+      setIsEditing(true);
+      return;
     }
-  }, [isEditing, project]);
+    if (!isEditing) {
+      setDraft(serverDraft);
+      lastQueuedRef.current = JSON.stringify(serverDraft);
+    }
+  }, [isEditing, serverDraft, workingCopy.hasLocalCopy, workingCopy.hydrated, workingCopy.value]);
+
+  useEffect(() => {
+    if (!workingCopy.hasLocalCopy) return;
+    if (syncState.pendingCount > 0) return;
+    if (!sameDraft(workingCopy.value, serverDraft)) return;
+    void workingCopy.clearWorkingCopy();
+  }, [serverDraft, syncState.pendingCount, workingCopy]);
+
+  useEffect(() => {
+    if (syncState.status !== 'conflict') return;
+    if (syncState.lastError) setError(syncState.lastError);
+    void discardLocalFirstEntityQueue(entityKey);
+  }, [entityKey, syncState.lastError, syncState.status]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null && typeof window !== 'undefined') {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
 
   const canSave = useMemo(() => {
-    if (!draft) return false;
     if (!draft.projectName.trim()) return false;
     if (!isValidYmd(draft.nextActionDate)) return false;
     return true;
   }, [draft]);
 
-  const beginEdit = () => {
-    setError(null);
-    setDraft(current);
-    setIsEditing(true);
-  };
+  const dirty = useMemo(() => !sameDraft(draft, serverDraft), [draft, serverDraft]);
 
-  const cancelEdit = () => {
-    setIsEditing(false);
-    setDraft(null);
-    setError(null);
-  };
+  const flushDraft = useCallback(async () => {
+    const nextDraft = normalizeProjectDetailsDraft(draftRef.current);
+    if (!nextDraft.projectName.trim()) return false;
+    if (!isValidYmd(nextDraft.nextActionDate)) return false;
 
-  const save = async () => {
-    if (!draft || !canSave || isSaving) return;
-    setIsSaving(true);
-    setError(null);
-
-    try {
-      const payload = {
-        project: {
-          name: draft.projectName.trim(),
-          siteAddress: draft.siteAddress.trim(),
-          region: draft.region.trim(),
-          quoteRef: draft.quoteRef.trim(),
-          nextActionDate: draft.nextActionDate.trim(),
-        },
-        contact: {
-          name: draft.contactName.trim(),
-          email: draft.contactEmail.trim(),
-          phone: draft.contactPhone.trim(),
-        },
-        contactId: project.contactId ?? null,
-      };
-
-      const res = await fetch(`/api/projects/${encodeURIComponent(project.id)}/details`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const msg = typeof body?.error === 'string' ? body.error : 'Failed to save project details';
-        throw new Error(msg);
+    const serialized = JSON.stringify(nextDraft);
+    if (serialized === JSON.stringify(serverDraft)) {
+      lastQueuedRef.current = serialized;
+      if (workingCopy.hasLocalCopy && syncState.pendingCount === 0) {
+        await workingCopy.clearWorkingCopy();
       }
+      return true;
+    }
 
-      setCurrent(draft);
-      patchProjectSnapshot(queryClient, hostKey, project.id, (currentSnapshot) => {
-        if (!currentSnapshot) return currentSnapshot;
-        return {
-          ...currentSnapshot,
-          generatedAt: new Date().toISOString(),
-          snapshot: {
-            ...currentSnapshot.snapshot,
-            project: {
-              ...currentSnapshot.snapshot.project,
-              name: draft.projectName.trim(),
-              contactName: draft.contactName.trim() || undefined,
-              contactEmail: draft.contactEmail.trim() || undefined,
-              contactPhone: draft.contactPhone.trim() || undefined,
-              siteAddress: draft.siteAddress.trim() || undefined,
-              region: draft.region.trim() || undefined,
-              quoteRef: draft.quoteRef.trim() || undefined,
-              nextActionDate: draft.nextActionDate.trim() || undefined,
-            },
-          },
-        };
+    if (serialized === lastQueuedRef.current && syncState.pendingCount > 0) {
+      return true;
+    }
+
+    lastQueuedRef.current = serialized;
+    setError(null);
+    patchProjectDetailsCaches(queryClient, hostKey, project.id, nextDraft, {
+      contactId: project.contactId ?? null,
+    });
+    await workingCopy.setWorkingCopy(nextDraft);
+
+    const mutationPayload: PortalProjectDetailsMutationPayload = {
+      projectId: project.id,
+      contactId: project.contactId ?? null,
+      draft: nextDraft,
+    };
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey,
+      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.projectDetailsUpdate,
+      payload: mutationPayload,
+    });
+    return true;
+  }, [entityKey, hostKey, project.contactId, project.id, queryClient, serverDraft, syncState.pendingCount, workingCopy]);
+
+  useEffect(() => {
+    if (!isEditing || !workingCopy.hydrated || !dirty || !canSave) return;
+    if (timerRef.current !== null && typeof window !== 'undefined') {
+      window.clearTimeout(timerRef.current);
+    }
+    timerRef.current = window.setTimeout(() => {
+      void flushDraft().catch((err) => {
+        const msg = err instanceof Error ? err.message : 'Failed to save project details';
+        setError(msg);
       });
-      patchProjectListItem(queryClient, hostKey, project.id, (currentProject) => ({
-        ...currentProject,
-        projectName: draft.projectName.trim(),
-        name: draft.projectName.trim(),
-        region: draft.region.trim() || undefined,
-        quoteRef: draft.quoteRef.trim() || undefined,
-        siteAddress: draft.siteAddress.trim() || undefined,
-        address: draft.siteAddress.trim() || undefined,
-        nextActionDate: draft.nextActionDate.trim() || null,
-        followUpDate: draft.nextActionDate.trim() || null,
-        clientName: draft.contactName.trim() || currentProject.clientName,
-      }));
+    }, AUTOSAVE_DELAY_MS);
+    return () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+      }
+    };
+  }, [canSave, dirty, flushDraft, isEditing, workingCopy.hydrated]);
+
+  const updateDraftField = useCallback(
+    (field: keyof PortalProjectDetailsDraft, value: string) => {
+      setError(null);
+      setDraft((prev) => {
+        const next = { ...prev, [field]: value };
+        void workingCopy.setWorkingCopy(next);
+        return next;
+      });
+    },
+    [workingCopy],
+  );
+
+  const handleDone = async () => {
+    if (!canSave) return;
+    try {
+      await flushDraft();
       setIsEditing(false);
-      setDraft(null);
-      void invalidateProjectReadCaches(queryClient, hostKey, project.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save project details';
       setError(msg);
-    } finally {
-      setIsSaving(false);
     }
   };
+
+  const handleReset = async () => {
+    if (syncState.pendingCount > 0) return;
+    setError(null);
+    setDraft(serverDraft);
+    lastQueuedRef.current = JSON.stringify(serverDraft);
+    await workingCopy.clearWorkingCopy();
+    setIsEditing(false);
+  };
+
+  const statusText = syncLabel(syncState, dirty);
+  const displayed = workingCopy.hasLocalCopy ? draft : serverDraft;
 
   return (
     <section className={legacy.section} aria-label="Project details">
       <div className={legacy.sectionHeader}>
         <h2 className={legacy.sectionTitle}>Details</h2>
         <div className={legacy.actions}>
+          {statusText ? <span className={legacy.note}>{statusText}</span> : null}
           {isEditing ? (
             <>
-              <button type="button" className={legacy.button} disabled={!canSave || isSaving} onClick={save}>
-                Save
+              <button type="button" className={legacy.button} disabled={!canSave} onClick={handleDone}>
+                Done
               </button>
-              <button type="button" className={legacy.buttonSecondary} disabled={isSaving} onClick={cancelEdit}>
-                Cancel
+              <button type="button" className={legacy.buttonSecondary} disabled={syncState.pendingCount > 0} onClick={handleReset}>
+                Reset
               </button>
             </>
           ) : (
-            <button type="button" className={legacy.buttonSecondary} onClick={beginEdit}>
+            <button type="button" className={legacy.buttonSecondary} onClick={() => setIsEditing(true)}>
               Edit
             </button>
           )}
@@ -173,14 +231,15 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
       <div className={legacy.sectionBody}>
         {error ? <p className={legacy.error}>{error}</p> : null}
 
-        {isEditing && draft ? (
+        {isEditing ? (
           <div className={legacy.formGrid}>
             <div className={legacy.field}>
               <label htmlFor="contactName">Contact</label>
               <input
                 id="contactName"
                 value={draft.contactName}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, contactName: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('contactName', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
             </div>
             <div className={legacy.field}>
@@ -188,7 +247,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="contactEmail"
                 value={draft.contactEmail}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, contactEmail: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('contactEmail', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
             </div>
             <div className={legacy.field}>
@@ -196,7 +256,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="contactPhone"
                 value={draft.contactPhone}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, contactPhone: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('contactPhone', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
             </div>
             <div className={legacy.field}>
@@ -204,7 +265,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="projectName"
                 value={draft.projectName}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, projectName: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('projectName', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
             </div>
             <div className={legacy.field}>
@@ -212,7 +274,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="siteAddress"
                 value={draft.siteAddress}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, siteAddress: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('siteAddress', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
             </div>
             <div className={legacy.field}>
@@ -220,7 +283,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="region"
                 value={draft.region}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, region: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('region', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
             </div>
             <div className={legacy.field}>
@@ -228,7 +292,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="quoteRef"
                 value={draft.quoteRef}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, quoteRef: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('quoteRef', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
             </div>
             <div className={legacy.field}>
@@ -236,7 +301,8 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
               <input
                 id="nextActionDate"
                 value={draft.nextActionDate}
-                onChange={(e) => setDraft((prev) => (prev ? { ...prev, nextActionDate: e.target.value } : prev))}
+                onChange={(e) => updateDraftField('nextActionDate', e.target.value)}
+                onBlur={() => void flushDraft().catch(() => undefined)}
               />
               {!isValidYmd(draft.nextActionDate) ? <p className={legacy.error}>Invalid date format.</p> : null}
             </div>
@@ -246,35 +312,35 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
             <tbody>
               <tr>
                 <th>Contact</th>
-                <td>{current.contactName || '—'}</td>
+                <td>{displayed.contactName || 'â€”'}</td>
               </tr>
               <tr>
                 <th>Email</th>
-                <td className={`${legacy.muted} ${legacy.cellWrap}`}>{current.contactEmail || '—'}</td>
+                <td className={`${legacy.muted} ${legacy.cellWrap}`}>{displayed.contactEmail || 'â€”'}</td>
               </tr>
               <tr>
                 <th>Phone</th>
-                <td className={legacy.muted}>{current.contactPhone || '—'}</td>
+                <td className={legacy.muted}>{displayed.contactPhone || 'â€”'}</td>
               </tr>
               <tr>
                 <th>Project name</th>
-                <td>{current.projectName || '—'}</td>
+                <td>{displayed.projectName || 'â€”'}</td>
               </tr>
               <tr>
                 <th>Site address</th>
-                <td className={legacy.cellWrap}>{current.siteAddress || '—'}</td>
+                <td className={legacy.cellWrap}>{displayed.siteAddress || 'â€”'}</td>
               </tr>
               <tr>
                 <th>Region</th>
-                <td>{current.region || '—'}</td>
+                <td>{displayed.region || 'â€”'}</td>
               </tr>
               <tr>
                 <th>Quote ref</th>
-                <td>{current.quoteRef || '—'}</td>
+                <td>{displayed.quoteRef || 'â€”'}</td>
               </tr>
               <tr>
                 <th>Next action</th>
-                <td className={legacy.muted}>{current.nextActionDate || '—'}</td>
+                <td className={legacy.muted}>{displayed.nextActionDate || 'â€”'}</td>
               </tr>
             </tbody>
           </table>

@@ -595,6 +595,19 @@ export async function clearLocalFirstConflict(entityKey: LocalFirstEntityKey): P
   });
 }
 
+export async function discardLocalFirstEntityQueue(entityKey: LocalFirstEntityKey): Promise<void> {
+  await mutateLocalFirstState((draft) => {
+    draft.queue = draft.queue.filter((item) => item.entityKey !== entityKey);
+    delete draft.conflicts[entityKey];
+    updateEntityState(draft, entityKey, {
+      status: 'synced',
+      conflictId: undefined,
+      lastError: undefined,
+      nextRetryAt: undefined,
+    });
+  });
+}
+
 export function getLocalFirstEntitySyncState(entityKey: LocalFirstEntityKey): LocalFirstEntitySyncState {
   return ensureEntityStateShape(entityKey, snapshot.state.entityStates[entityKey]);
 }
