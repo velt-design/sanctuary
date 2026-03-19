@@ -7,8 +7,10 @@ import {
   enqueueLocalFirstMutation,
   ensureLocalFirstStoreReady,
   getLocalFirstConflictState,
+  registerLocalFirstIdAlias,
   getLocalFirstStoreSnapshot,
   getLocalFirstWorkingCopy,
+  resolveLocalFirstId,
   resolveLocalFirstQueueItemConflict,
   summarizeLocalFirstStoreState,
   writeLocalFirstWorkingCopy,
@@ -120,5 +122,21 @@ describe('localFirst store', () => {
     expect(getLocalFirstConflictState('contact:1')).toBeNull();
     expect(getLocalFirstStoreSnapshot().state.entityStates['contact:1']?.status).toBe('synced');
     expect(getLocalFirstWorkingCopy<{ displayName: string }>('contact:draft:1')?.data.displayName).toBe('Jordan');
+  });
+
+  it('resolves local id aliases transitively after sync', async () => {
+    await ensureLocalFirstStoreReady();
+
+    await registerLocalFirstIdAlias('local-estimate:1', 'est_1');
+    await registerLocalFirstIdAlias('local-quote:1', 'qv_1');
+    await registerLocalFirstIdAlias('est_1', 'est_1_final');
+
+    expect(resolveLocalFirstId('local-estimate:1')).toBe('est_1_final');
+    expect(resolveLocalFirstId('local-quote:1')).toBe('qv_1');
+    expect(getLocalFirstStoreSnapshot().state.idAliases).toMatchObject({
+      'local-estimate:1': 'est_1_final',
+      'local-quote:1': 'qv_1',
+      est_1: 'est_1_final',
+    });
   });
 });

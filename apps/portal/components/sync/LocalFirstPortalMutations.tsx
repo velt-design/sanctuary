@@ -24,6 +24,7 @@ import {
   upsertEstimateDetailCache,
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
+import { registerLocalFirstIdAlias, resolveLocalFirstId } from '@/lib/localFirst/store';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { QuoteVersionDetail } from '@/lib/quotes/types';
 import type { Contact } from '@/lib/types/contact';
@@ -67,6 +68,7 @@ export default function LocalFirstPortalMutations() {
 
         if (!res.estimate) throw new Error('Estimate not created');
         replaceEstimateDetailCache(queryClient, hostKey, payload.projectId, payload.localEstimateId, res.estimate);
+        await registerLocalFirstIdAlias(payload.localEstimateId, res.estimate.id);
 
         if (payload.createDesignRequest) {
           try {
@@ -147,14 +149,24 @@ export default function LocalFirstPortalMutations() {
       PORTAL_LOCAL_FIRST_MUTATIONS.quoteCreateFromEstimate,
       async (item) => {
         const payload = item.payload as PortalQuoteCreateMutationPayload;
+        const resolvedEstimateId = resolveLocalFirstId(payload.estimateId);
+        if (!resolvedEstimateId || resolvedEstimateId.startsWith('local-estimate:')) {
+          return {
+            kind: 'retry',
+            status: 'queued',
+            retryAt: new Date(Date.now() + 300).toISOString(),
+          } as const;
+        }
+
         const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/projects/${encodeURIComponent(payload.projectId)}/quotes`, {
           method: 'POST',
-          body: JSON.stringify({ estimateVersionId: payload.estimateId }),
+          body: JSON.stringify({ estimateVersionId: resolvedEstimateId }),
           skipSaveTracking: true,
         });
 
         if (!res.quoteVersion) throw new Error('Quote not created');
         replaceQuoteDetailCache(queryClient, hostKey, payload.projectId, payload.localQuoteId, res.quoteVersion);
+        await registerLocalFirstIdAlias(payload.localQuoteId, res.quoteVersion.id);
         void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId, {
           includeQuotes: true,
           includeEstimates: true,

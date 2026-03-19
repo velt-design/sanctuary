@@ -23,6 +23,7 @@ import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
 import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
+import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildEstimateEntityKey,
@@ -556,6 +557,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const [requestDesignOpen, setRequestDesignOpen] = useState(false);
   const [drawingView, setDrawingView] = useState<ModuleViewsTab>('plan');
   const [drawingModuleIndex, setDrawingModuleIndex] = useState(0);
+  const resolvedSelectedId = useResolvedLocalFirstId(selectedId);
 
   const urlEstimateId = useMemo(() => {
     const raw = searchParams?.get('estimateId') ?? '';
@@ -602,6 +604,11 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
       return estimates[0]?.id ?? '';
     });
   }, [estimates, urlEstimateId]);
+
+  useEffect(() => {
+    if (!resolvedSelectedId || resolvedSelectedId === selectedId) return;
+    setSelectedId(resolvedSelectedId);
+  }, [resolvedSelectedId, selectedId]);
 
   const selectedMeta = useMemo(
     () => (selectedId ? estimates.find((e) => e.id === selectedId) ?? null : null),
@@ -895,13 +902,10 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     if (!selectedMeta || quoteBusy) return;
     setQuoteBusy(true);
     try {
-      if (selectedEstimateSyncPending) {
-        toast.error('Wait for this estimate to finish syncing before creating a quote.');
-        return;
-      }
-
       const estimateDetail =
-        selectedDetail ?? (await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, selectedMeta.id)));
+        selectedDetail ??
+        queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, selectedMeta.id)) ??
+        (await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, selectedMeta.id)));
       const localQuoteId = createLocalQuoteId();
       const optimisticDetail = buildOptimisticQuoteDetail({
         quoteVersionId: localQuoteId,
@@ -1122,7 +1126,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                 {estimateLockMessage ? <div className={styles.lockNotice}>{estimateLockMessage}</div> : null}
                 {selectedEstimateSyncPending ? (
                   <div className={styles.lockNotice}>
-                    Estimate is syncing in the background. Edit, duplicate, quote creation, and design request actions unlock once sync completes.
+                    Estimate is syncing in the background. You can create a quote from the local snapshot now, while edit, duplicate, and design request actions unlock once sync completes.
                   </div>
                 ) : null}
                 {isFocus ? (
@@ -1324,7 +1328,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                     type="button"
                     className={legacy.button}
                     onClick={handleCreateQuote}
-                    disabled={quoteBusy || selectedEstimateSyncPending}
+                    disabled={quoteBusy}
                   >
                     {quoteBusy ? 'Creating…' : 'Create quote'}
                   </button>

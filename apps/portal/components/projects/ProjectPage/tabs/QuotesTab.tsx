@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './QuotesTab.module.css';
 import QuotePdfInlinePreview from './QuotePdfInlinePreview';
-import type { EstimateMeta } from '@/lib/estimates/types';
+import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
 import type { QuoteLineItem, QuoteStatus, QuoteVersion, QuoteVersionDetail } from '@/lib/quotes/types';
 import {
   deleteDraftQuoteVersion,
@@ -26,10 +26,10 @@ import { qk } from '@/lib/queries/keys';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   applyDraftPatchToQuoteDetail,
-  buildEstimateEntityKey,
   buildOptimisticQuoteDetail,
   buildQuoteEntityKey,
   createLocalQuoteId,
@@ -256,7 +256,15 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
   return fallback;
 }
 
-export default function QuotesTab({ projectId }: { projectId: string }) {
+export default function QuotesTab({
+  projectId,
+  selectedQuoteId,
+  onSelectedQuoteChange,
+}: {
+  projectId: string;
+  selectedQuoteId?: string | null;
+  onSelectedQuoteChange?: (quoteId: string | null) => void;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -276,8 +284,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   }, [searchParams]);
   const pagePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
   const autoCreateRef = useRef<string | null>(null);
+  const didAutoSelectInitialQuoteRef = useRef(false);
 
-  const [selectedId, setSelectedId] = useState<string | null>(selectedFromUrl);
+  const [selectedId, setSelectedId] = useState<string | null>(selectedQuoteId ?? selectedFromUrl);
+  const resolvedSelectedId = useResolvedLocalFirstId(selectedId);
 
   const quotesQuery = useQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
   const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
@@ -371,16 +381,26 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   }, [quoteDetailQuery.error, selectedId, toast]);
 
   useEffect(() => {
+    let nextSelectedId: string | null | undefined;
+
     if (selectedFromUrl) {
-      setSelectedId(selectedFromUrl);
-      return;
+      didAutoSelectInitialQuoteRef.current = true;
+      nextSelectedId = selectedFromUrl;
+    } else if (!quotes.length) {
+      nextSelectedId = quotesLoading ? undefined : null;
+    } else if (selectedId && quotes.some((quote) => quote.id === selectedId)) {
+      nextSelectedId = undefined;
+    } else if (!didAutoSelectInitialQuoteRef.current) {
+      didAutoSelectInitialQuoteRef.current = true;
+      nextSelectedId = quotes[0]?.id ?? null;
+    } else {
+      nextSelectedId = null;
     }
-    setSelectedId((current) => {
-      if (!quotes.length) return null;
-      if (current && quotes.some((quote) => quote.id === current)) return current;
-      return quotes[0]?.id ?? null;
-    });
-  }, [quotes, selectedFromUrl]);
+
+    if (nextSelectedId === undefined || nextSelectedId === selectedId) return;
+    setSelectedId(nextSelectedId);
+    onSelectedQuoteChange?.(nextSelectedId);
+  }, [onSelectedQuoteChange, quotes, quotesLoading, selectedFromUrl, selectedId]);
 
   useEffect(() => {
     if (!detail) return;
@@ -447,6 +467,23 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     const query = qs.toString();
     router.replace(query ? `?${query}` : '?');
   }, [router, searchParams]);
+
+  const selectQuote = useCallback((quoteId: string | null, opts?: { createFromEstimateId?: string | null }) => {
+    if (quoteId) {
+      didAutoSelectInitialQuoteRef.current = true;
+    }
+    setSelectedId(quoteId);
+    onSelectedQuoteChange?.(quoteId);
+    updateParams({
+      quoteId: quoteId && !isLocalQuoteId(quoteId) ? quoteId : null,
+      createFromEstimateId: opts?.createFromEstimateId,
+    });
+  }, [onSelectedQuoteChange, updateParams]);
+
+  useEffect(() => {
+    if (!selectedId || !resolvedSelectedId || resolvedSelectedId === selectedId) return;
+    selectQuote(resolvedSelectedId, { createFromEstimateId: null });
+  }, [resolvedSelectedId, selectQuote, selectedId]);
 
   const latestEstimate = useMemo(() => {
     if (!estimates.length) return null;
@@ -578,11 +615,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   }, [detail?.id, draftSyncPending, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, detail]);
 
   const openCreateModal = () => {
-    const defaultId =
-      estimates.find((estimate) => getLocalFirstEntitySyncState(buildEstimateEntityKey(estimate.id)).pendingCount === 0)?.id ??
-      latestEstimate?.id ??
-      estimates[0]?.id ??
-      '';
+    const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
     if (!defaultId) {
       toast.error('Create an estimate first.');
       return;
@@ -594,13 +627,9 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
   const createDraftQuoteFromEstimate = useCallback(async (estimateId: string, opts?: { closeModal?: boolean }) => {
     if (!estimateId) return;
     try {
-      const estimateSyncState = getLocalFirstEntitySyncState(buildEstimateEntityKey(estimateId));
-      if (estimateSyncState.pendingCount > 0) {
-        toast.error('Wait for this estimate to finish syncing before creating a quote.');
-        return;
-      }
-
-      const estimateDetail = await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, estimateId));
+      const estimateDetail =
+        queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, estimateId)) ??
+        (await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, estimateId)));
       const localQuoteId = createLocalQuoteId();
       const optimisticDetail = buildOptimisticQuoteDetail({
         quoteVersionId: localQuoteId,
@@ -627,14 +656,13 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       });
 
       if (opts?.closeModal) setCreateOpen(false);
-      setSelectedId(localQuoteId);
-      updateParams({ quoteId: null, createFromEstimateId: null });
+      selectQuote(localQuoteId, { createFromEstimateId: null });
       toast.success('Draft quote created locally. Syncing in the background.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create quote';
       toast.error(msg);
     }
-  }, [hostKey, projectId, queryClient, toast, updateParams]);
+  }, [hostKey, projectId, queryClient, selectQuote, toast]);
 
   const handleCreateQuote = async () => {
     if (!createEstimateId) return;
@@ -818,8 +846,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       const revised = await reviseQuote(detail.id);
       queryClient.setQueryData(qk.quotes.detail(hostKey, revised.id), revised);
       await refreshQuotes({ includeEstimates: true });
-      setSelectedId(revised.id);
-      updateParams({ quoteId: revised.id });
+      selectQuote(revised.id);
       toast.success('Draft revision created.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to revise quote';
@@ -907,8 +934,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       await deleteDraftQuoteVersion(detail.id);
       queryClient.removeQueries({ queryKey: qk.quotes.detail(hostKey, detail.id) });
       setDeleteConfirmOpen(false);
-      setSelectedId(null);
-      updateParams({ quoteId: null });
+      selectQuote(null);
       await refreshQuotes();
       toast.success('Draft deleted.');
     } catch (err) {
@@ -993,7 +1019,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     return (
       <div className={styles.wrapper}>
         <div className={styles.detailHeader}>
-          <button type="button" className={styles.backButton} onClick={() => updateParams({ quoteId: null })}>
+          <button type="button" className={styles.backButton} onClick={() => selectQuote(null)}>
             &lt; Back
           </button>
           <div className={styles.detailActions}>
@@ -1615,8 +1641,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
                       if (!isLocalQuoteId(quote.id)) {
                         prefetchQuoteDetail(quote.id);
                       }
-                      setSelectedId(quote.id);
-                      updateParams({ quoteId: isLocalQuoteId(quote.id) ? null : quote.id });
+                      selectQuote(quote.id);
                     }}
                     onMouseEnter={() => prefetchQuoteDetail(quote.id)}
                     onFocus={() => prefetchQuoteDetail(quote.id)}

@@ -605,6 +605,11 @@ function jobStatusFromScheduleItem(item: ScheduleItem, today: string): 'not_star
   return 'not_started';
 }
 
+function isCompletedScheduleItem(item: ScheduleItem, today: string): boolean {
+  if (item.itemType === 'downtime') return false;
+  return jobStatusFromScheduleItem(item, today) === 'done';
+}
+
 function safeAppIdFromUuid(prefix: 'crew' | 'sch' | 'proj' | 'est', value: string): string {
   try {
     return appIdFromUuid(prefix, value);
@@ -1437,6 +1442,7 @@ export default function ScheduleClient() {
   const [ganttDensity, setGanttDensity] = useState<GanttDensity>(() => readGanttDensityPreference());
   const [labelWidthPx, setLabelWidthPx] = useState<number>(() => readGanttLabelWidthPreference());
   const [showPlanned, setShowPlanned] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
   const [hoveredGanttRowId, setHoveredGanttRowId] = useState<string | null>(null);
   const [collapsedCrews, setCollapsedCrews] = useState<Record<string, boolean>>({});
   const [unscheduledCollapsed, setUnscheduledCollapsed] = useState<boolean>(() => !mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs).length);
@@ -2317,6 +2323,11 @@ export default function ScheduleClient() {
     return scheduleItems.filter((i) => i.itemType === 'downtime' || projectsById.has(i.projectId));
   }, [projectsById, scheduleItems]);
 
+  const visibleScheduleItems = useMemo(() => {
+    if (showCompleted) return scheduleItemsRenderable;
+    return scheduleItemsRenderable.filter((item) => !isCompletedScheduleItem(item, today));
+  }, [scheduleItemsRenderable, showCompleted, today]);
+
   const orphanedScheduleItems = useMemo(() => {
     return scheduleItems.filter((i) => i.itemType !== 'downtime' && !projectsById.has(i.projectId));
   }, [projectsById, scheduleItems]);
@@ -2354,7 +2365,7 @@ export default function ScheduleClient() {
       }
 
       // Scheduled jobs: ensure they have job entries too.
-      for (const item of scheduleItemsRenderable) {
+      for (const item of visibleScheduleItems) {
         const id = item.id;
         if (jobsById.has(id)) continue;
 
@@ -2551,7 +2562,7 @@ export default function ScheduleClient() {
     }
 
     // Scheduled jobs: ensure they have job entries too (even if estimate/project missing).
-    for (const item of scheduleItemsRenderable) {
+    for (const item of visibleScheduleItems) {
       const id = item.id;
       if (jobsById.has(id)) continue;
 
@@ -2613,7 +2624,7 @@ export default function ScheduleClient() {
 
     unscheduledJobs.sort((a, b) => a.projectName.localeCompare(b.projectName));
     return { jobsById, unscheduledJobs, debug, blockingProjectIds };
-  }, [estimatesById, orphanedScheduleItems, projects, projectsById, scheduleItems, scheduleItemsRenderable, scheduleMode, unscheduledJobsSeed]);
+  }, [estimatesById, orphanedScheduleItems, projects, projectsById, scheduleItems, scheduleItemsRenderable, scheduleMode, unscheduledJobsSeed, visibleScheduleItems]);
 
   const unscheduledJobsAll = useMemo(() => {
     return schedulable.unscheduledJobs;
@@ -2633,20 +2644,20 @@ export default function ScheduleClient() {
   const laneItems = useMemo(() => {
     const map = new Map<string, ScheduleItem[]>();
     for (const installer of installers) map.set(installer.id, []);
-    for (const item of scheduleItemsRenderable) {
+    for (const item of visibleScheduleItems) {
       const list = map.get(item.installerId);
       if (list) list.push(item);
       else map.set(item.installerId, [item]);
     }
     for (const list of map.values()) list.sort((a, b) => a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt));
     return map;
-  }, [installers, scheduleItemsRenderable]);
+  }, [installers, visibleScheduleItems]);
 
   const schedule = useMemo(() => {
     if (scheduleMode === 'v2') {
-      const base = buildScheduleBarsFromForecast({ scheduleItems: scheduleItemsRenderable, projectsById, estimatesById });
+      const base = buildScheduleBarsFromForecast({ scheduleItems: visibleScheduleItems, projectsById, estimatesById });
       const scheduleItemByJobId = new Map<string, string>();
-      for (const item of scheduleItemsRenderable) {
+      for (const item of visibleScheduleItems) {
         if (item.scheduledJobId) scheduleItemByJobId.set(item.scheduledJobId, item.id);
       }
       const conflictIssues: SchedulingIssue[] = (scheduleConflicts ?? [])
@@ -2666,11 +2677,11 @@ export default function ScheduleClient() {
     return buildScheduleBars({
       today,
       installers,
-      scheduleItems: scheduleItemsRenderable,
+      scheduleItems: visibleScheduleItems,
       projectsById,
       estimatesById,
     });
-  }, [estimatesById, installers, projectsById, scheduleItemsRenderable, scheduleConflicts, scheduleMode, today]);
+  }, [estimatesById, installers, projectsById, scheduleConflicts, scheduleMode, today, visibleScheduleItems]);
 
   const orphanedIssues = useMemo((): SchedulingIssue[] => {
     return orphanedScheduleItems.map((item) => {
@@ -2796,7 +2807,7 @@ export default function ScheduleClient() {
     const plannedBarsById = new Map<string, { leftPx: number; widthPx: number; startDate: string; endDate: string }>();
 
     if (showPlanned && scheduleMode === 'v2') {
-      for (const item of scheduleItemsRenderable) {
+      for (const item of visibleScheduleItems) {
         if (item.itemType === 'downtime') continue;
         if (!item.plannedStart || !isYmd(item.plannedStart)) continue;
         const plannedDays =
@@ -2966,7 +2977,7 @@ export default function ScheduleClient() {
     schedulable.jobsById,
     schedule.bars,
     scheduleItemById,
-    scheduleItemsRenderable,
+    visibleScheduleItems,
     showPlanned,
     scheduleMode,
     issueLevelByScheduleId,
@@ -5048,6 +5059,15 @@ export default function ScheduleClient() {
                     ) : null}
                   </div>
                   <div className={styles.ganttControlsRight}>
+                    <label className={styles.toggleControl}>
+                      <input
+                        type="checkbox"
+                        className={styles.toggleCheckbox}
+                        checked={showCompleted}
+                        onChange={(e) => setShowCompleted(e.target.checked)}
+                      />
+                      Show completed jobs
+                    </label>
                     <button
                       type="button"
                       className={cx(styles.buttonSecondary, styles.ganttControlButton, styles.ganttJumpButton)}
@@ -5335,22 +5355,33 @@ export default function ScheduleClient() {
               </div>
             ) : (
               <>
-                {scheduleMode === 'v2' ? (
-                  <div className={styles.legendRow} aria-label="Schedule legend">
-                    <span className={styles.legendItem}>
-                      <span className={styles.legendSwatch} />
-                      Forecast
-                    </span>
-                    <span className={styles.legendItem}>
-                      <span className={styles.legendDot} aria-hidden="true" />
-                      Pinned
-                    </span>
-                    <span className={styles.legendItem}>
-                      <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
-                      Conflict
-                    </span>
-                  </div>
-                ) : null}
+                <div className={styles.legendRow} aria-label="Schedule controls">
+                  {scheduleMode === 'v2' ? (
+                    <>
+                      <span className={styles.legendItem}>
+                        <span className={styles.legendSwatch} />
+                        Forecast
+                      </span>
+                      <span className={styles.legendItem}>
+                        <span className={styles.legendDot} aria-hidden="true" />
+                        Pinned
+                      </span>
+                      <span className={styles.legendItem}>
+                        <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
+                        Conflict
+                      </span>
+                    </>
+                  ) : null}
+                  <label className={styles.toggleControl}>
+                    <input
+                      type="checkbox"
+                      className={styles.toggleCheckbox}
+                      checked={showCompleted}
+                      onChange={(e) => setShowCompleted(e.target.checked)}
+                    />
+                    Show completed jobs
+                  </label>
+                </div>
                 <div className={styles.lanes} ref={boardScrollRef}>
                 {installers.filter((i) => i.active).map((installer) => {
                   const items = laneItems.get(installer.id) ?? [];

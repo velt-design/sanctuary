@@ -59,12 +59,23 @@ export default function ProjectMainTabs({
   const activeMode = coerceMode(mode);
   const quotePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
   const quoteView: QuoteViewKey = quotePreviewFromUrl ? 'preview' : 'edit';
-  const hasSelectedQuote = useMemo(() => Boolean((searchParams.get('quoteId') ?? '').trim()), [searchParams]);
+  const quoteIdFromUrl = useMemo(() => {
+    const raw = searchParams.get('quoteId') ?? '';
+    return raw.trim() || null;
+  }, [searchParams]);
+  const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(quoteIdFromUrl);
+  const hasSelectedQuote = Boolean(selectedQuoteId);
   const showLegacyModeToggle = false;
 
   useEffect(() => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
+
+  useEffect(() => {
+    if (quoteIdFromUrl) {
+      setSelectedQuoteId(quoteIdFromUrl);
+    }
+  }, [quoteIdFromUrl]);
 
   const updateParams = (next: Partial<{ tab: TabKey; quotePreview: boolean }>) => {
     const qs = new URLSearchParams(searchParams.toString());
@@ -190,7 +201,13 @@ export default function ProjectMainTabs({
       <div className={legacy.sectionBody}>
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
         {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} mode={activeMode} /> : null}
-        {activeTab === 'quotes' ? <QuotesTab projectId={snapshot.project.id} /> : null}
+        {activeTab === 'quotes' ? (
+          <QuotesTab
+            projectId={snapshot.project.id}
+            selectedQuoteId={selectedQuoteId}
+            onSelectedQuoteChange={setSelectedQuoteId}
+          />
+        ) : null}
         {activeTab === 'job-packs' ? <JobPacksTab projectId={snapshot.project.id} /> : null}
         {activeTab === 'files' ? (
           <PlaceholderTab title="Files" description="Upload and manage project files once storage is wired up." />
