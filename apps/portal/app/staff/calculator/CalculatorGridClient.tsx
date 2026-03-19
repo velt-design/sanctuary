@@ -86,6 +86,7 @@ import {
 } from './infillCompute';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { qk } from '@/lib/queries/keys';
+import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildCalculatorDraftEntityKey,
@@ -1633,10 +1634,12 @@ export default function CalculatorGridClient({
   const projectId = searchParams.get('projectId') ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
   const editEstimateId = searchParams.get('editEstimateId') ?? '';
-  const isEditingEstimate = editEstimateId.trim().length > 0;
+  const [editSessionEstimateId, setEditSessionEstimateId] = useState(() => editEstimateId.trim());
+  const activeEditEstimateId = editSessionEstimateId || editEstimateId.trim();
+  const isEditingEstimate = activeEditEstimateId.length > 0;
   const draftSessionKey = useMemo(
-    () => calculatorDraftSessionKey(projectId, fromEstimateId, editEstimateId),
-    [editEstimateId, fromEstimateId, projectId],
+    () => calculatorDraftSessionKey(projectId, fromEstimateId, activeEditEstimateId),
+    [activeEditEstimateId, fromEstimateId, projectId],
   );
   const draftEntityKey = useMemo(() => buildCalculatorDraftEntityKey(draftSessionKey), [draftSessionKey]);
   const restoredDraftForKeyRef = useRef(false);
@@ -1827,30 +1830,36 @@ export default function CalculatorGridClient({
   }, [projectId]);
 
   useEffect(() => {
+    const nextEditEstimateId = editEstimateId.trim();
+    if (!nextEditEstimateId) return;
+    setEditSessionEstimateId(nextEditEstimateId);
+  }, [editEstimateId]);
+
+  useEffect(() => {
     if (!draftHydrated) return;
 
-    if (!editEstimateId && !fromEstimateId) {
+    if (!activeEditEstimateId && !fromEstimateId) {
       setDraftNotice(null);
       return;
     }
 
     void (async () => {
       try {
-        if (editEstimateId) {
-          const resolvedEditEstimateId = resolveLocalFirstId(editEstimateId);
+        if (activeEditEstimateId) {
+          const resolvedEditEstimateId = resolveLocalFirstId(activeEditEstimateId);
           const cachedEstimate =
-            getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(editEstimateId))?.data ??
-            (resolvedEditEstimateId && resolvedEditEstimateId !== editEstimateId
+            getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(activeEditEstimateId))?.data ??
+            (resolvedEditEstimateId && resolvedEditEstimateId !== activeEditEstimateId
               ? getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(resolvedEditEstimateId))?.data
               : null) ??
-            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, editEstimateId)) ??
-            (resolvedEditEstimateId && resolvedEditEstimateId !== editEstimateId
+            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, activeEditEstimateId)) ??
+            (resolvedEditEstimateId && resolvedEditEstimateId !== activeEditEstimateId
               ? queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, resolvedEditEstimateId))
               : null);
 
           const estimate = cachedEstimate ?? (
             await apiJson<{ estimate: EstimateDetail }>(
-              `/api/estimates/${encodeURIComponent(resolvedEditEstimateId || editEstimateId)}`,
+              `/api/estimates/${encodeURIComponent(resolvedEditEstimateId || activeEditEstimateId)}`,
               {
                 skipSaveTracking: true,
               },
@@ -1865,7 +1874,7 @@ export default function CalculatorGridClient({
             if (projectId) {
               router.replace(
                 `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(
-                  resolvedEditEstimateId || editEstimateId,
+                  resolvedEditEstimateId || activeEditEstimateId,
                 )}`,
               );
             }
@@ -1881,7 +1890,7 @@ export default function CalculatorGridClient({
           setValues(draft);
           setActiveModuleIndex(0);
           const msg =
-            isLocalEstimateId(estimate.id) || (resolvedEditEstimateId ?? editEstimateId).startsWith('local-estimate:')
+            isLocalEstimateId(estimate.id) || (resolvedEditEstimateId ?? activeEditEstimateId).startsWith('local-estimate:')
               ? `Editing estimate ${estimate.versionLabel}. Changes will keep syncing in the background.`
               : `Editing estimate ${estimate.versionLabel}`;
           setDraftNotice(msg);
@@ -1910,7 +1919,7 @@ export default function CalculatorGridClient({
         toast.error(msg);
       }
     })();
-  }, [draftHydrated, editEstimateId, fromEstimateId, hostKey, projectId, queryClient, router, toast]);
+  }, [activeEditEstimateId, draftHydrated, fromEstimateId, hostKey, projectId, queryClient, router, toast]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -6942,16 +6951,28 @@ export default function CalculatorGridClient({
                     };
 
                     const cachedEstimateMetas =
-                      queryClient.getQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId)) ?? [];
+                      queryClient.getQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId)) ??
+                      (await queryClient.fetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId)));
 
                     if (isEditingEstimate) {
-                      const resolvedEditEstimateId = resolveLocalFirstId(editEstimateId);
-                      const canonicalEditEstimateId = resolvedEditEstimateId || editEstimateId;
+                      const resolvedEditEstimateId = resolveLocalFirstId(activeEditEstimateId);
+                      const canonicalEditEstimateId = resolvedEditEstimateId || activeEditEstimateId;
                       const currentEstimate =
                         loadedEstimateDetailRef.current ??
                         queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, canonicalEditEstimateId)) ??
-                        queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, editEstimateId)) ??
+                        queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, activeEditEstimateId)) ??
+                        (
+                          await apiJson<{ estimate: EstimateDetail }>(
+                            `/api/estimates/${encodeURIComponent(canonicalEditEstimateId)}`,
+                            { skipSaveTracking: true },
+                          ).catch(() => ({ estimate: null as EstimateDetail | null }))
+                        ).estimate ??
                         null;
+
+                      if (!currentEstimate) {
+                        fail('This edit session lost its source estimate. Please reopen the estimate and try again.');
+                        return;
+                      }
 
                       if (currentEstimate?.editability.isLocked) {
                         fail('This estimate is locked because it has been sent with a quote and can no longer be edited.');
@@ -6975,7 +6996,7 @@ export default function CalculatorGridClient({
                         estimatePayload,
                         versionLabel:
                           currentEstimate?.versionLabel ??
-                          cachedEstimateMetas.find((estimate) => estimate.id === canonicalEditEstimateId || estimate.id === editEstimateId)
+                          cachedEstimateMetas.find((estimate) => estimate.id === canonicalEditEstimateId || estimate.id === activeEditEstimateId)
                             ?.versionLabel ??
                           'Draft',
                         createdBy: (currentEstimate?.createdBy ?? email) || null,

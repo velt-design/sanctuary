@@ -61,7 +61,6 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     (next: {
       estimateId?: string | null;
       sheet?: JobPackSheetKey | null;
-      mode?: 'focus' | 'general' | null;
       tab?: 'job-packs' | 'estimates' | 'quotes' | 'emails' | 'files';
     }) => {
       const qs = new URLSearchParams(searchParams.toString());
@@ -81,12 +80,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
         qs.delete('sheet');
       }
 
-      if (Object.prototype.hasOwnProperty.call(next, 'mode')) {
-        if (next.mode === 'focus') qs.set('mode', 'focus');
-        else qs.delete('mode');
-      } else if (nextTab !== 'job-packs') {
-        qs.delete('mode');
-      }
+      qs.delete('mode');
 
       const query = qs.toString();
       router.replace(`${pathname}${query ? `?${query}` : ''}`);
@@ -95,7 +89,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
   );
 
   const handleBackToList = useCallback(() => {
-    updateParams({ estimateId: null, sheet: null, mode: 'general' });
+    updateParams({ estimateId: null, sheet: null });
   }, [updateParams]);
 
   const handleSheetChange = useCallback(
@@ -107,7 +101,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
 
   const handleOpenEstimate = useCallback(() => {
     if (!selectedEstimateId) return;
-    updateParams({ tab: 'estimates', estimateId: selectedEstimateId, sheet: null, mode: 'general' });
+    updateParams({ tab: 'estimates', estimateId: selectedEstimateId, sheet: null });
   }, [selectedEstimateId, updateParams]);
 
   const adapter = useJobPackSpreadsheetAdapter({
@@ -196,11 +190,11 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
                   tabIndex={0}
                   onMouseEnter={() => prefetchDetail(estimate.id)}
                   onFocus={() => prefetchDetail(estimate.id)}
-                  onClick={() => updateParams({ estimateId: estimate.id, sheet: 'materials', mode: 'focus' })}
+                  onClick={() => updateParams({ estimateId: estimate.id, sheet: 'materials' })}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' && event.key !== ' ') return;
                     event.preventDefault();
-                    updateParams({ estimateId: estimate.id, sheet: 'materials', mode: 'focus' });
+                    updateParams({ estimateId: estimate.id, sheet: 'materials' });
                   }}
                 >
                   <td>{estimate.versionLabel}</td>

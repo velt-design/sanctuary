@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
 import { ModuleDrawingRenderer } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
@@ -20,6 +23,10 @@ type LegendItem = {
   label: string;
   tone: LegendTone;
 };
+
+function cx(...values: Array<string | false | null | undefined>): string {
+  return values.filter(Boolean).join(' ');
+}
 
 function buildLegendItems(
   view: ModuleViewsTab,
@@ -73,14 +80,35 @@ export default function EstimateDrawingSheet({
   sectionModel,
   meta,
 }: EstimateDrawingSheetProps) {
+  const sheetPaperRef = useRef<HTMLElement | null>(null);
+  const [sheetWidthPx, setSheetWidthPx] = useState(0);
   const viewLabel = view === 'plan' ? 'Plan view' : 'Section view';
   const legendItems = buildLegendItems(view, planModel, sectionModel);
   const noteLines = splitNoteLines(meta.note);
+  const isCompactSheet = sheetWidthPx > 0 && sheetWidthPx < 760;
+
+  useEffect(() => {
+    const node = sheetPaperRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+
+    const measure = () => {
+      setSheetWidthPx(Math.round(node.getBoundingClientRect().width));
+    };
+
+    measure();
+    const observer = new ResizeObserver(() => measure());
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className={styles.sheetShell}>
       <div className={styles.sheetScroller}>
-        <section className={styles.sheetPaper} aria-label={`${viewLabel} A3 drawing sheet`}>
+        <section
+          ref={sheetPaperRef}
+          className={cx(styles.sheetPaper, isCompactSheet && styles.sheetPaperCompact)}
+          aria-label={`${viewLabel} A3 drawing sheet`}
+        >
           <div className={styles.sheetUpper}>
             <div className={styles.sheetHeader}>
               <div>
@@ -92,6 +120,7 @@ export default function EstimateDrawingSheet({
 
             <div className={styles.drawingViewport}>
               <ModuleDrawingRenderer
+                key={`${view}-${isCompactSheet ? 'compact' : 'wide'}`}
                 view={view}
                 status={status}
                 planModel={planModel}
@@ -101,7 +130,7 @@ export default function EstimateDrawingSheet({
               />
             </div>
 
-            <aside className={styles.legendBox} aria-label="Drawing legend">
+            <aside className={cx(styles.legendBox, isCompactSheet && styles.legendBoxCompact)} aria-label="Drawing legend">
               <div className={styles.legendTitle}>Legend</div>
               <div className={styles.legendList}>
                 {legendItems.map((item) => (
@@ -114,7 +143,7 @@ export default function EstimateDrawingSheet({
             </aside>
           </div>
 
-          <footer className={styles.titleBlock}>
+          <footer className={cx(styles.titleBlock, isCompactSheet && styles.titleBlockCompact)}>
             <div className={styles.companyBlock}>
               <div className={styles.companyName}>{PORTAL_COMPANY_PROFILE.name}</div>
               {PORTAL_COMPANY_PROFILE.addressLines.map((line) => (

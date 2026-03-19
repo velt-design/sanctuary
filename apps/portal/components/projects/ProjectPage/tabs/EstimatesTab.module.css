@@ -15,7 +15,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -240,7 +240,7 @@
 
 .detailStack {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .selectedHeader {
@@ -335,7 +335,15 @@
   border-radius: 12px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   background: var(--portal-bg-surface);
-  padding: 12px;
+  padding: 14px;
+}
+
+.drawingCard {
+  padding-top: 12px;
+}
+
+.quoteCard {
+  padding-top: 13px;
 }
 
 .cardHeader {
@@ -391,7 +399,7 @@
 
 .focusSummaryLayout {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .focusSummaryGrid {
@@ -459,13 +467,14 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
+  margin-bottom: 2px;
 }
 
 .focusDrawingToolbarCopy {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .focusDrawingEyebrow {
@@ -476,7 +485,7 @@
 }
 
 .focusDrawingTitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: rgba(var(--portal-text-rgb), 0.88);
 }
@@ -1032,8 +1041,8 @@
 
 .quotePricingGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
   margin-bottom: 12px;
 }
 
@@ -1042,7 +1051,7 @@
   border-radius: 12px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   background: rgba(var(--portal-text-rgb), 0.025);
-  padding: 12px 14px;
+  padding: 14px 16px;
   display: grid;
   gap: 6px;
 }
@@ -1059,6 +1068,12 @@
   color: var(--muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 1280px) {
+  .quotePricingGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .quoteActions {
