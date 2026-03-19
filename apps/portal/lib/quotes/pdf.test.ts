@@ -4,6 +4,20 @@ import { describe, expect, it } from 'vitest';
 import { generateQuotePdfBytesWithLayout } from './pdf';
 import type { QuoteVersionDetail } from './types';
 
+const buildLineItem = (index: number) => ({
+  id: `line-${index}`,
+  description: [
+    `Pergola Module ${index}`,
+    'Size: 6m x 3m',
+    'Roof: Acrylic',
+    'Colour: Black',
+  ].join('\n'),
+  qty: 1,
+  unitPriceIncGstCents: 10000,
+  lineTotalIncGstCents: 10000,
+  sortOrder: index,
+});
+
 const buildQuoteDetail = (overrides: Partial<QuoteVersionDetail> = {}): QuoteVersionDetail => {
   const sentAt = new Date('2026-02-01T00:00:00Z').toISOString();
   return {
@@ -32,16 +46,7 @@ const buildQuoteDetail = (overrides: Partial<QuoteVersionDetail> = {}): QuoteVer
       gstCents: 1304,
     },
     pdfFileId: null,
-    lineItems: [
-      {
-        id: 'line-1',
-        description: 'Pergola Module\nSize: 6m x 3m\nRoof: Acrylic\nColour: Black',
-        qty: 1,
-        unitPriceIncGstCents: 10000,
-        lineTotalIncGstCents: 10000,
-        sortOrder: 1,
-      },
-    ],
+    lineItems: [buildLineItem(1)],
     sendLogs: [],
     contact: {
       name: 'Ada Lovelace',
@@ -94,5 +99,31 @@ describe('quote pdf layout', () => {
     const quote = buildQuoteDetail();
     const { layout } = await generateQuotePdfBytesWithLayout(quote);
     expect(layout.pages[0]?.headerWarehouseAddress?.lines).toEqual(['71G Montgomerie Road', 'Mangere, 2022, Auckland']);
+  });
+
+  it('keeps totals on the first page for single-page quotes', async () => {
+    const quote = buildQuoteDetail();
+    const { layout } = await generateQuotePdfBytesWithLayout(quote);
+
+    expect(layout.pages).toHaveLength(1);
+    expect(layout.pages[0]?.totalsBounds).toBeTruthy();
+  });
+
+  it('moves totals onto the final items page for multi-page quotes', async () => {
+    const quote = buildQuoteDetail({
+      lineItems: Array.from({ length: 20 }, (_, index) => buildLineItem(index + 1)),
+      totals: {
+        totalIncGstCents: 200000,
+        totalExGstCents: 173913,
+        gstCents: 26087,
+      },
+    });
+    const { layout } = await generateQuotePdfBytesWithLayout(quote);
+    const lastPage = layout.pages[layout.pages.length - 1];
+
+    expect(layout.pages.length).toBeGreaterThan(1);
+    expect(layout.pages[0]?.totalsBounds).toBeFalsy();
+    expect(lastPage?.totalsBounds).toBeTruthy();
+    expect(lastPage?.tableBounds).toBeTruthy();
   });
 });

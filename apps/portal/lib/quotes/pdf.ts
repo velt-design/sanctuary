@@ -1083,11 +1083,19 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   const introBottomY = cursorY;
   const itemsTopY = introBottomY - theme.spacing.introToItems;
   const totalsBounds = layoutTotalsBlock(totalsTopY);
-  const itemsBottomLimitY = totalsBounds.ceilingRuleY + GAP_ITEMS_TO_TOTALS_MIN;
+  const closingItemsBottomLimitY = totalsBounds.ceilingRuleY + GAP_ITEMS_TO_TOTALS_MIN;
+  const continuationItemsTopY =
+    PAGE_HEIGHT - MARGIN_TOP - theme.lineHeights.miniHeader - theme.spacing.continuationHeaderGap;
   let itemsStartY = itemsTopY;
 
-  const planItemsLayout = (startY: number, rows: RowLayout[]) => {
-    const availableHeight = startY - itemsBottomLimitY;
+  type PlannedItemsLayout = {
+    tableBounds: TableBounds | null;
+    pageRows: RowLayout[];
+    remainingRows: RowLayout[];
+  };
+
+  const planItemsLayout = (startY: number, rows: RowLayout[], bottomLimitY: number): PlannedItemsLayout => {
+    const availableHeight = startY - bottomLimitY;
     const availableRowsHeight = Math.max(0, availableHeight - tableHeaderHeight);
     let rowsOnPage = fitRowsToHeight(availableRowsHeight, rows);
 
@@ -1096,7 +1104,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     }
 
     let tableBounds = rowsOnPage ? layoutItemsTable({ topY: startY, rows: rows.slice(0, rowsOnPage) }) : null;
-    while (rowsOnPage > 0 && tableBounds && tableBounds.bottomY < itemsBottomLimitY) {
+    while (rowsOnPage > 0 && tableBounds && tableBounds.bottomY < bottomLimitY) {
       rowsOnPage -= 1;
       tableBounds = rowsOnPage ? layoutItemsTable({ topY: startY, rows: rows.slice(0, rowsOnPage) }) : null;
     }
@@ -1107,9 +1115,35 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     return { tableBounds, pageRows, remainingRows };
   };
 
-  let plannedLayout = rowLayouts.length ? planItemsLayout(itemsStartY, rowLayouts) : null;
-  if (plannedLayout?.tableBounds && plannedLayout.remainingRows.length === 0) {
-    const lastItemBottomY = plannedLayout.tableBounds.bottomY;
+  const planDeferredClosingLayout = (startY: number, rows: RowLayout[], nextPageTopY: number): PlannedItemsLayout => {
+    const layoutWithoutClosing = planItemsLayout(startY, rows, MARGIN_BOTTOM);
+    if (layoutWithoutClosing.remainingRows.length > 0) {
+      return layoutWithoutClosing;
+    }
+
+    for (let rowCount = layoutWithoutClosing.pageRows.length - 1; rowCount >= 1; rowCount -= 1) {
+      const remainingRows = rows.slice(rowCount);
+      if (!remainingRows.length) continue;
+      const nextClosingLayout = planItemsLayout(nextPageTopY, remainingRows, closingItemsBottomLimitY);
+      if (nextClosingLayout.pageRows.length > 0 && nextClosingLayout.remainingRows.length === 0) {
+        const currentRows = rows.slice(0, rowCount);
+        const currentLayout = planItemsLayout(startY, currentRows, MARGIN_BOTTOM);
+        if (currentLayout.pageRows.length === currentRows.length) {
+          return {
+            tableBounds: currentLayout.tableBounds,
+            pageRows: currentRows,
+            remainingRows,
+          };
+        }
+      }
+    }
+
+    return layoutWithoutClosing;
+  };
+
+  let singlePageClosingLayout = rowLayouts.length ? planItemsLayout(itemsStartY, rowLayouts, closingItemsBottomLimitY) : null;
+  if (singlePageClosingLayout?.tableBounds && singlePageClosingLayout.remainingRows.length === 0) {
+    const lastItemBottomY = singlePageClosingLayout.tableBounds.bottomY;
     const totalsCeilingY = totalsBounds.ceilingRuleY;
     const currentGap = lastItemBottomY - totalsCeilingY;
 
@@ -1128,30 +1162,34 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
       const maxStartY = introBottomY - INTRO_ITEMS_GAP_MIN;
       const adjustedStartY = clampValue(itemsStartY + deltaY, minStartY, maxStartY);
       if (adjustedStartY !== itemsStartY) {
-        const adjustedLayout = planItemsLayout(adjustedStartY, rowLayouts);
+        const adjustedLayout = planItemsLayout(adjustedStartY, rowLayouts, closingItemsBottomLimitY);
         if (adjustedLayout.remainingRows.length === 0) {
           itemsStartY = adjustedStartY;
-          plannedLayout = adjustedLayout;
+          singlePageClosingLayout = adjustedLayout;
         }
       }
     }
   }
-  let pageOneTableBounds: TableBounds | null = null;
-  const pageOneLayout = currentLayoutPage();
-  if (pageOneLayout) {
-    pageOneLayout.totalsBounds = totalsBounds;
-  }
+  let closingPage = firstPage;
+  let closingPageIndex = 0;
+  let closingTableBounds: TableBounds | null = null;
 
   if (rowLayouts.length) {
-    const effectiveLayout = plannedLayout ?? planItemsLayout(itemsStartY, rowLayouts);
+    const firstPageNeedsClosing = singlePageClosingLayout?.remainingRows.length === 0;
+    const effectiveLayout =
+      firstPageNeedsClosing
+        ? (singlePageClosingLayout ?? planItemsLayout(itemsStartY, rowLayouts, closingItemsBottomLimitY))
+        : planDeferredClosingLayout(itemsStartY, rowLayouts, continuationItemsTopY);
     const { tableBounds, pageRows, remainingRows } = effectiveLayout;
 
     if (pageRows.length && tableBounds) {
       drawItemsTable({ topY: itemsStartY, rows: pageRows, sectionTitle: 'ITEMS', bounds: tableBounds });
-      pageOneTableBounds = tableBounds;
       const layoutPage = currentLayoutPage();
       if (layoutPage) {
         layoutPage.tableBounds = tableBounds;
+      }
+      if (firstPageNeedsClosing) {
+        closingTableBounds = tableBounds;
       }
     }
 
@@ -1164,13 +1202,17 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         drawLeftRail();
 
         const continuationTopY = drawContinuationHeader();
-        const continuationAvailable = Math.max(0, continuationTopY - MARGIN_BOTTOM - tableHeaderHeight);
-        let rowsCount = fitRowsToHeight(continuationAvailable, overflowRows);
-        if (rowsCount === 0) rowsCount = Math.min(1, overflowRows.length);
-        const nextRows = overflowRows.slice(0, rowsCount);
-        overflowRows = overflowRows.slice(rowsCount);
+        const continuationClosingLayout = planItemsLayout(continuationTopY, overflowRows, closingItemsBottomLimitY);
+        const isFinalContinuationPage = continuationClosingLayout.remainingRows.length === 0;
+        const continuationLayout = isFinalContinuationPage
+          ? continuationClosingLayout
+          : planDeferredClosingLayout(continuationTopY, overflowRows, continuationItemsTopY);
+        const { tableBounds: continuationBounds, pageRows: nextRows, remainingRows: nextOverflowRows } = continuationLayout;
+        overflowRows = nextOverflowRows;
+        if (!continuationBounds || !nextRows.length) {
+          break;
+        }
 
-        const continuationBounds = layoutItemsTable({ topY: continuationTopY, rows: nextRows });
         drawItemsTable({
           topY: continuationTopY,
           rows: nextRows,
@@ -1181,22 +1223,31 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         if (layoutPage) {
           layoutPage.tableBounds = continuationBounds;
         }
-        if (debugBounds) {
+        if (isFinalContinuationPage) {
+          closingPage = page;
+          closingPageIndex = pageIndex;
+          closingTableBounds = continuationBounds;
+        } else if (debugBounds) {
           drawDebugOverlay(page, { tableBounds: continuationBounds, totalsBounds: null, font: fontRegular });
         }
       }
     }
   }
 
-  page = firstPage;
-  pageIndex = 0;
+  const closingLayoutPage = ensureLayoutPage(closingPageIndex);
+  if (closingLayoutPage) {
+    closingLayoutPage.totalsBounds = totalsBounds;
+  }
+
+  page = closingPage;
+  pageIndex = closingPageIndex;
   recordRule('totalsCeiling', { x0: tableX0, x1: tableX1, y: totalsBounds.ceilingRuleY });
   drawTotalsBlock(totalsBounds);
   drawTermsBlock(termsTopY);
   drawFooterBlock(MARGIN_BOTTOM);
   if (debugBounds) {
     drawDebugOverlay(page, {
-      tableBounds: pageOneTableBounds,
+      tableBounds: closingTableBounds,
       totalsBounds,
       font: fontRegular,
     });
