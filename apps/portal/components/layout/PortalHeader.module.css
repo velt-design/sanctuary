@@ -110,6 +110,10 @@
   background: rgba(var(--portal-text-rgb), 0.35);
 }
 
+.saveDot[data-status='conflict'] {
+  background: #e76f51;
+}
+
 .saveDot[data-status='error'] {
   background: #c0392b;
 }

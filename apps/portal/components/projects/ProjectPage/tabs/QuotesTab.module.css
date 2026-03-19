@@ -57,6 +57,11 @@
   justify-content: flex-end;
 }
 
+.linkMuted {
+  color: rgba(var(--portal-text-rgb), 0.55);
+  font-size: 12px;
+}
+
 .expiredBanner {
   padding: 10px 12px;
   border-radius: 12px;

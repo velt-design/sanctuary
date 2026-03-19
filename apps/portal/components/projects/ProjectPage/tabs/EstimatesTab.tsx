@@ -10,7 +10,6 @@ import { apiJson } from '@/lib/repo/apiClient';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import type { EstimateDetail, EstimateMeta, EstimateStatus, EstimateSummary } from '@/lib/estimates/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
-import { createQuoteFromEstimate } from '@/lib/quotes/quotesRepo';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
@@ -22,6 +21,20 @@ import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { qk } from '@/lib/queries/keys';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import {
+  PORTAL_LOCAL_FIRST_MUTATIONS,
+  buildEstimateEntityKey,
+  buildOptimisticQuoteDetail,
+  buildQuoteEntityKey,
+  createLocalQuoteId,
+  isLocalEstimateId,
+  isLocalQuoteId,
+  type PortalQuoteCreateMutationPayload,
+  upsertQuoteDetailCache,
+} from '@/lib/localFirst/portalEntities';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
+import { writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 
 function formatMoney(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -593,6 +606,10 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     () => (selectedId ? estimates.find((e) => e.id === selectedId) ?? null : null),
     [estimates, selectedId],
   );
+  const selectedEstimateSyncState = useEntitySyncState(
+    selectedMeta ? buildEstimateEntityKey(selectedMeta.id) : 'estimate:detail:__estimate-none__',
+  );
+  const selectedEstimateSyncPending = Boolean(selectedMeta && selectedEstimateSyncState.pendingCount > 0);
 
   const upsertEstimate = useCallback(
     (detail: EstimateDetail, opts?: { prepend?: boolean }) => {
@@ -799,6 +816,10 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   }, [calculatorHref, router]);
   const handleEditEstimate = useCallback(() => {
     if (!selectedDetail || selectedDetail.editability.isLocked) return;
+    if (isLocalEstimateId(selectedDetail.id) || selectedEstimateSyncPending) {
+      toast.error('Wait for this estimate to finish syncing before editing it in the calculator.');
+      return;
+    }
     const draftQuoteWarning = formatDraftQuoteEditWarning(selectedDetail);
     if (draftQuoteWarning && typeof window !== 'undefined') {
       const confirmed = window.confirm(`${draftQuoteWarning}\n\nContinue to edit this estimate?`);
@@ -807,10 +828,14 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     router.push(
       `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(selectedDetail.id)}`,
     );
-  }, [projectId, router, selectedDetail]);
+  }, [projectId, router, selectedDetail, selectedEstimateSyncPending, toast]);
 
   const handleDuplicate = async () => {
     if (!selectedId || actionBusy) return;
+    if (selectedEstimateSyncPending) {
+      toast.error('Wait for this estimate to finish syncing before duplicating it.');
+      return;
+    }
     setActionBusy(true);
     try {
       const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(selectedId)}/duplicate`, {
@@ -832,14 +857,40 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     if (!selectedMeta || quoteBusy) return;
     setQuoteBusy(true);
     try {
-      const created = await createQuoteFromEstimate(projectId, selectedMeta.id);
-      queryClient.setQueryData(qk.quotes.detail(hostKey, created.id), created);
-      await invalidateProjectReadCaches(queryClient, hostKey, projectId, {
-        includeQuotes: true,
-        includeEstimates: true,
+      if (selectedEstimateSyncPending) {
+        toast.error('Wait for this estimate to finish syncing before creating a quote.');
+        return;
+      }
+
+      const estimateDetail =
+        selectedDetail ?? (await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, selectedMeta.id)));
+      const localQuoteId = createLocalQuoteId();
+      const optimisticDetail = buildOptimisticQuoteDetail({
+        quoteVersionId: localQuoteId,
+        projectId,
+        estimateDetail,
+        existingQuotes: quoteVersions,
       });
-      updateParams({ tab: 'quotes', quoteId: created.id });
-      toast.success('Draft quote created.');
+
+      upsertQuoteDetailCache(queryClient, hostKey, projectId, optimisticDetail, { prepend: true });
+      await writeLocalFirstWorkingCopy({
+        entityKey: buildQuoteEntityKey(localQuoteId),
+        data: optimisticDetail,
+      });
+
+      const mutationPayload: PortalQuoteCreateMutationPayload = {
+        localQuoteId,
+        projectId,
+        estimateId: selectedMeta.id,
+      };
+      await enqueueAndProcessLocalFirstMutation({
+        entityKey: buildQuoteEntityKey(localQuoteId),
+        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.quoteCreateFromEstimate,
+        payload: mutationPayload,
+      });
+
+      updateParams({ tab: 'quotes', quoteId: null });
+      toast.success('Draft quote created locally. Syncing in the background.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create quote';
       toast.error(msg);
@@ -853,7 +904,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   };
 
   const handleOpenQuote = (quoteId: string) => {
-    updateParams({ tab: 'quotes', quoteId });
+    updateParams({ tab: 'quotes', quoteId: isLocalQuoteId(quoteId) ? null : quoteId });
   };
 
   const handleSaveNotes = async () => {
@@ -922,7 +973,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
               type="button"
               className={legacy.buttonSecondary}
               onClick={handleDuplicate}
-              disabled={!selectedId || actionBusy}
+              disabled={!selectedId || actionBusy || selectedEstimateSyncPending}
             >
               Duplicate
             </button>
@@ -992,7 +1043,12 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                   </div>
                   <div className={styles.summaryHeaderActions}>
                     {!isEstimateLocked ? (
-                      <button type="button" className={legacy.buttonSecondary} onClick={handleEditEstimate} disabled={!selectedDetail}>
+                      <button
+                        type="button"
+                        className={legacy.buttonSecondary}
+                        onClick={handleEditEstimate}
+                        disabled={!selectedDetail || selectedEstimateSyncPending}
+                      >
                         Edit estimate
                       </button>
                     ) : null}
@@ -1000,6 +1056,11 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                   </div>
                 </div>
                 {estimateLockMessage ? <div className={styles.lockNotice}>{estimateLockMessage}</div> : null}
+                {selectedEstimateSyncPending ? (
+                  <div className={styles.lockNotice}>
+                    Estimate is syncing in the background. Edit, duplicate, quote creation, and design request actions unlock once sync completes.
+                  </div>
+                ) : null}
                 {isFocus ? (
                   <div className={styles.summaryPrimary}>
                     <div className={styles.summaryTotalBlock}>
@@ -1191,11 +1252,16 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                     type="button"
                     className={legacy.buttonSecondary}
                     onClick={() => setRequestDesignOpen(true)}
-                    disabled={!selectedMeta}
+                    disabled={!selectedMeta || selectedEstimateSyncPending}
                   >
                     Request Design
                   </button>
-                  <button type="button" className={legacy.button} onClick={handleCreateQuote} disabled={quoteBusy}>
+                  <button
+                    type="button"
+                    className={legacy.button}
+                    onClick={handleCreateQuote}
+                    disabled={quoteBusy || selectedEstimateSyncPending}
+                  >
                     {quoteBusy ? 'Creating…' : 'Create quote'}
                   </button>
                 </div>

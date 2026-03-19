@@ -1,7 +1,19 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { deleteDraftQuoteVersion, getQuoteVersionDetail, updateDraftQuoteVersion } from '@/lib/quotes/server';
+import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+
+function quoteLockedResponse(message = 'Quote is locked') {
+  return NextResponse.json({ error: message, code: 'QUOTE_LOCKED' }, { status: 423 });
+}
+
+function quoteErrorResponse(err: unknown, fallback: string) {
+  const message = err instanceof Error ? err.message : fallback;
+  if (message === 'Quote not found') return jsonError(message, 404);
+  if (message === 'Quote is locked' || message === 'Only drafts can be deleted') return quoteLockedResponse(message);
+  return jsonError(message, 500);
+}
 
 export async function GET(_req: Request, ctx: { params: Promise<{ quoteVersionId: string }> }) {
   const session = await requireStaffSession();
@@ -44,8 +56,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ quoteVersionI
     });
     return jsonOk({ quoteVersion: updated });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to update quote';
-    return jsonError(msg, 500);
+    return quoteErrorResponse(err, 'Failed to update quote');
   }
 }
 
@@ -61,7 +72,6 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ quoteVersio
     await deleteDraftQuoteVersion(id);
     return jsonOk({ ok: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Failed to delete quote';
-    return jsonError(msg, 500);
+    return quoteErrorResponse(err, 'Failed to delete quote');
   }
 }

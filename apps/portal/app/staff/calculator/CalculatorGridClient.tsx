@@ -1,6 +1,7 @@
-'use client';
+﻿'use client';
 
 import type { CostInputsV1, CostOutputV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useEffect,
@@ -30,13 +31,12 @@ import type {
   InfillLineItem,
 } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculatorInputsToV2, normalizeBlindsState } from '@/lib/types/calculator';
-import type { EstimateDetail } from '@/lib/estimates/types';
+import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
 import type { Project } from '@/lib/types/project';
 import { getContact } from '@/lib/repo/contactsRepo';
-import { ApiError, apiJson } from '@/lib/repo/apiClient';
-import { addProjectActivity, getProject } from '@/lib/repo/projectsRepo';
-import { createEstimate, duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
-import { createDesignRequest } from '@/lib/repo/designPackagesRepo';
+import { apiJson } from '@/lib/repo/apiClient';
+import { getProject } from '@/lib/repo/projectsRepo';
+import { duplicateEstimateToDraft } from '@/lib/repo/estimatesRepo';
 import type { DesignRequestPriorityTier } from '@/lib/designPackages/types';
 import { getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -84,6 +84,27 @@ import {
   type InfillUiState,
   type InfillWarningItem,
 } from './infillCompute';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { qk } from '@/lib/queries/keys';
+import {
+  PORTAL_LOCAL_FIRST_MUTATIONS,
+  buildCalculatorDraftEntityKey,
+  buildEstimateEntityKey,
+  buildNextEstimateVersionLabel,
+  buildOptimisticEstimateDetail,
+  createLocalEstimateId,
+  type PortalEstimateCreateMutationPayload,
+  type PortalEstimatePayload,
+  type PortalEstimateUpdateMutationPayload,
+  upsertEstimateDetailCache,
+} from '@/lib/localFirst/portalEntities';
+import {
+  clearLocalFirstWorkingCopy,
+  ensureLocalFirstStoreReady,
+  getLocalFirstWorkingCopy,
+  writeLocalFirstWorkingCopy,
+} from '@/lib/localFirst/store';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 
 type FieldSchemaItem = {
   id: string;
@@ -146,12 +167,12 @@ function formatCents(cents?: number): string {
 }
 
 function formatMaybeMoney(n: number | undefined): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
+  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
   return formatMoney(n);
 }
 
 function formatMaybeNumber(n: number | undefined, digits = 2): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
+  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
   return n.toFixed(digits);
 }
 
@@ -371,7 +392,7 @@ function formatInfillShapeSummary(shape: InfillLineItem['shape']): string {
   }
   const low = Number.isFinite(toNumber(shape.heightLowM)) ? Math.max(0, toNumber(shape.heightLowM)) : 0;
   const high = Number.isFinite(toNumber(shape.heightHighM)) ? Math.max(0, toNumber(shape.heightHighM)) : 0;
-  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(low, 2)}m→${formatMaybeNumber(high, 2)}m`;
+  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(low, 2)}mâ†’${formatMaybeNumber(high, 2)}m`;
 }
 
 function estimateRoofRafterSpacing(lengthM: number, derivedRafterCount?: number): { spacingM: number; source: 'derived' | 'fallback' } {
@@ -792,7 +813,7 @@ function labelForIssueField(id: string): string {
     case 'lengthM':
       return 'Roof Length (m)';
     case 'projectionM':
-      return 'Roof Span (Eave‑to‑Eave) (m)';
+      return 'Roof Span (Eaveâ€‘toâ€‘Eave) (m)';
     case 'hipCornerLengthBM':
       return 'Roof Length B (m)';
     case 'hipCornerProjectionBM':
@@ -1603,8 +1624,10 @@ export default function CalculatorGridClient({
   const role = (roleProp ?? (sessionRole ?? 'staff')) === 'admin' ? 'admin' : 'staff';
 
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const projectId = searchParams.get('projectId') ?? '';
   const fromEstimateId = searchParams.get('fromEstimateId') ?? '';
   const editEstimateId = searchParams.get('editEstimateId') ?? '';
@@ -1613,7 +1636,9 @@ export default function CalculatorGridClient({
     () => calculatorDraftSessionKey(projectId, fromEstimateId, editEstimateId),
     [editEstimateId, fromEstimateId, projectId],
   );
+  const draftEntityKey = useMemo(() => buildCalculatorDraftEntityKey(draftSessionKey), [draftSessionKey]);
   const restoredDraftForKeyRef = useRef(false);
+  const loadedEstimateDetailRef = useRef<EstimateDetail | null>(null);
 
   const [values, setValues] = useState<CalculatorInputs>(() => ({
     schemaVersion: 'v2',
@@ -1653,30 +1678,45 @@ export default function CalculatorGridClient({
 
   useEffect(() => {
     restoredDraftForKeyRef.current = false;
+    loadedEstimateDetailRef.current = null;
     setDraftHydrated(false);
 
-    if (typeof window === 'undefined') return;
-
-    try {
-      const raw = window.sessionStorage.getItem(draftSessionKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<CalculatorDraftSessionSnapshot>;
-      if (!isCalculatorInputsV2(parsed.values)) return;
-
-      const normalized = normalizeCalculatorInputsForUi(parsed.values);
-      const parsedIndex = Number.isFinite(Number(parsed.activeModuleIndex)) ? Math.trunc(Number(parsed.activeModuleIndex)) : 0;
-      const safeIndex = Math.max(0, Math.min(normalized.modules.length - 1, parsedIndex));
-
-      setValues(normalized);
-      setActiveModuleIndex(safeIndex);
-      setDraftNotice('Restored unsaved calculator inputs.');
-      restoredDraftForKeyRef.current = true;
-    } catch {
-      window.sessionStorage.removeItem(draftSessionKey);
-    } finally {
+    if (typeof window === 'undefined') {
       setDraftHydrated(true);
+      return;
     }
-  }, [draftSessionKey]);
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        await ensureLocalFirstStoreReady();
+        const persistedDraft = getLocalFirstWorkingCopy<CalculatorDraftSessionSnapshot>(draftEntityKey)?.data ?? null;
+        const raw = persistedDraft ? null : window.sessionStorage.getItem(draftSessionKey);
+        const parsed = persistedDraft ?? (raw ? (JSON.parse(raw) as Partial<CalculatorDraftSessionSnapshot>) : null);
+        if (!parsed || !isCalculatorInputsV2(parsed.values) || cancelled) return;
+
+        const normalized = normalizeCalculatorInputsForUi(parsed.values);
+        const parsedIndex = Number.isFinite(Number(parsed.activeModuleIndex)) ? Math.trunc(Number(parsed.activeModuleIndex)) : 0;
+        const safeIndex = Math.max(0, Math.min(normalized.modules.length - 1, parsedIndex));
+
+        setValues(normalized);
+        setActiveModuleIndex(safeIndex);
+        setDraftNotice('Restored unsaved calculator inputs.');
+        restoredDraftForKeyRef.current = true;
+      } catch {
+        window.sessionStorage.removeItem(draftSessionKey);
+      } finally {
+        if (!cancelled) {
+          setDraftHydrated(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftEntityKey, draftSessionKey]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1791,7 +1831,6 @@ export default function CalculatorGridClient({
       setDraftNotice(null);
       return;
     }
-    if (restoredDraftForKeyRef.current) return;
 
     void (async () => {
       try {
@@ -1801,6 +1840,7 @@ export default function CalculatorGridClient({
           });
           const estimate = res.estimate;
           if (!estimate) throw new Error('Estimate not found');
+          loadedEstimateDetailRef.current = estimate;
           if (estimate.editability.isLocked) {
             const msg = `Estimate ${estimate.versionLabel} is locked and can no longer be edited.`;
             setDraftNotice(msg);
@@ -1813,6 +1853,11 @@ export default function CalculatorGridClient({
             return;
           }
 
+          if (restoredDraftForKeyRef.current) {
+            setDraftNotice(`Restored unsaved edits for ${estimate.versionLabel}`);
+            return;
+          }
+
           const draft = calculatorInputsFromEstimateDetail(estimate);
           setValues(draft);
           setActiveModuleIndex(0);
@@ -1821,6 +1866,8 @@ export default function CalculatorGridClient({
           toast.success(msg);
           return;
         }
+
+        if (restoredDraftForKeyRef.current) return;
 
         const draft = await duplicateEstimateToDraft(fromEstimateId);
         const normalizedDraft = normalizeCalculatorInputsForUi({
@@ -1858,7 +1905,11 @@ export default function CalculatorGridClient({
     } catch {
       void 0;
     }
-  }, [activeModuleIndex, draftHydrated, draftSessionKey, values]);
+    void writeLocalFirstWorkingCopy({
+      entityKey: draftEntityKey,
+      data: snapshot,
+    });
+  }, [activeModuleIndex, draftEntityKey, draftHydrated, draftSessionKey, values]);
 
   useEffect(() => {
     const prevHtml = document.documentElement.style.overflow;
@@ -1959,14 +2010,14 @@ export default function CalculatorGridClient({
 
       const downpipeJoinCount = toNonNegativeInt(module.downpipeJoinCount);
       if (!Number.isFinite(downpipeJoinCount) || downpipeJoinCount < 0 || downpipeJoinCount > 10) {
-        next.downpipeJoinCount = 'Choose 0–10';
+        next.downpipeJoinCount = 'Choose 0â€“10';
       }
 
       const hasOurGutter = computeHasOurGutter(module);
       if (hasOurGutter) {
         const downpipeElbowCount = toNonNegativeInt(module.downpipeElbowCount);
         if (!Number.isFinite(downpipeElbowCount) || downpipeElbowCount < 0 || downpipeElbowCount > 20) {
-          next.downpipeElbowCount = 'Choose 0–20';
+          next.downpipeElbowCount = 'Choose 0â€“20';
         }
       }
 
@@ -3194,15 +3245,15 @@ export default function CalculatorGridClient({
 
   const roofingProcurementSummary = useMemo(() => {
     const lines = moduleResult?.materials?.lines ?? [];
-    if (!Array.isArray(lines) || !lines.length) return '—';
+    if (!Array.isArray(lines) || !lines.length) return 'â€”';
 
     const cedar = lines.find((l: any) => String(l?.id ?? '') === 'roofing-timber_cedar_sarking_wrc_110cover_12mm_lm');
     const cedarPart =
       cedar && typeof cedar.qty === 'number' && Number.isFinite(cedar.qty) ? `Timber: ${formatMaybeNumber(cedar.qty, 2)} lm cedar sarking` : null;
 
-    const sheet = lines.find((l: any) => String(l?.profile ?? '') === 'Plexi sheet 3050×2030');
+    const sheet = lines.find((l: any) => String(l?.profile ?? '') === 'Plexi sheet 3050Ã—2030');
     const sheetPart =
-      sheet && typeof sheet.qty === 'number' && Number.isFinite(sheet.qty) ? `Acrylic: ${Math.round(sheet.qty)} × 3050×2030 sheet(s)` : null;
+      sheet && typeof sheet.qty === 'number' && Number.isFinite(sheet.qty) ? `Acrylic: ${Math.round(sheet.qty)} Ã— 3050Ã—2030 sheet(s)` : null;
 
     const stripGroups = new Map<number, number>();
     for (const l of lines as any[]) {
@@ -3216,13 +3267,13 @@ export default function CalculatorGridClient({
       stripGroups.size > 0
         ? `Acrylic: ${Array.from(stripGroups.entries())
             .sort((a, b) => a[0] - b[0])
-            .map(([len, qty]) => `${Math.round(qty)} × 620mm strip(s) @ ${len}m`)
+            .map(([len, qty]) => `${Math.round(qty)} Ã— 620mm strip(s) @ ${len}m`)
             .join(', ')}`
         : null;
 
     const acrylicPart = sheetPart ?? stripPart;
     const parts = [acrylicPart, cedarPart].filter(Boolean);
-    return parts.length ? (parts as string[]).join(' · ') : '—';
+    return parts.length ? (parts as string[]).join(' Â· ') : 'â€”';
   }, [moduleResult]);
 
   const rafterCountTotal =
@@ -3239,7 +3290,7 @@ export default function CalculatorGridClient({
         ? `Per side: ${rafterCount}${typeof hipRafterCount === 'number' && hipRafterCount > 0 ? ` (+${hipRafterCount} hip)` : ''}`
         : undefined;
 
-  const generateLabel = isGenerating ? 'Generating…' : 'Generate';
+  const generateLabel = isGenerating ? 'Generatingâ€¦' : 'Generate';
 
   const roofTypeForInputs = getRoofTypeForModule(activeModule);
   const roofSpanForInputsM = toNumber(activeModule.projectionM);
@@ -3264,19 +3315,19 @@ export default function CalculatorGridClient({
       ? [
           {
             id: 'perSideSpanM',
-            label: 'Per‑side span (m)',
+            label: 'Perâ€‘side span (m)',
             type: 'readOnly',
             value: formatMaybeNumber(perSideSpanM, 2),
-            helperText: 'Gable: per-side span = roof span ÷ 2',
+            helperText: 'Gable: per-side span = roof span Ã· 2',
           },
           {
             id: 'slopedLengthPerSideM',
             label: 'Sloped length per side (m)',
             type: 'readOnly',
             value: Number.isFinite(slopedDownslopePerSideM)
-              ? `${formatMaybeNumber(slopedDownslopePerSideM, 2)} (at ${pitchForHintsDeg.toFixed(0)}°)`
-              : '—',
-            helperText: 'Sloped length = (roof span ÷ 2) ÷ cos(pitch)',
+              ? `${formatMaybeNumber(slopedDownslopePerSideM, 2)} (at ${pitchForHintsDeg.toFixed(0)}Â°)`
+              : 'â€”',
+            helperText: 'Sloped length = (roof span Ã· 2) Ã· cos(pitch)',
           },
         ]
       : [];
@@ -3313,8 +3364,8 @@ export default function CalculatorGridClient({
         const statusClassName = hasErrors && !isMissingDims ? styles.error : styles.helper;
         const showStatus = Boolean(statusMessage);
         const isPriceable = pricing ? pricing.errors.length === 0 : false;
-        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : '—';
-        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : '—';
+        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : 'â€”';
+        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : 'â€”';
         const domIdBase = `${blindFieldPrefix}-blind-${idx + 1}`;
         return (
           <div key={item.id} className={styles.previewCard} style={{ padding: 12 }}>
@@ -3392,8 +3443,8 @@ export default function CalculatorGridClient({
                 value={item.motorised === 'YES'}
                 onChange={(v) => setBlindItem(item.id, { motorised: v ? 'YES' : 'NONE' })}
               />
-              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={totalExLabel} />
-              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={totalIncLabel} />
+              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (exâ€‘GST)" type="readOnly" value={totalExLabel} />
+              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (incâ€‘GST)" type="readOnly" value={totalIncLabel} />
             </div>
             {showStatus ? <div className={statusClassName}>{statusMessage}</div> : null}
           </div>
@@ -3413,11 +3464,11 @@ export default function CalculatorGridClient({
 
       <div className={styles.previewCard} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Blinds total (ex‑GST)</span>
+          <span>Blinds total (exâ€‘GST)</span>
           <span>{formatCents(blindsTotals?.totalExCents ?? 0)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Blinds total (inc‑GST)</span>
+          <span>Blinds total (incâ€‘GST)</span>
           <span>{formatCents(blindsTotals?.totalIncCents ?? 0)}</span>
         </div>
         <div className={styles.helper}>Totals round to cents; pricing uses banded size lookup.</div>
@@ -3602,7 +3653,7 @@ export default function CalculatorGridClient({
       id: 'contact',
       label: 'Project contact',
       level: project && projectHasContact ? 'ok' : project ? 'block' : 'review',
-      detail: project ? (projectHasContact ? 'OK' : 'Missing contact on project') : '—',
+      detail: project ? (projectHasContact ? 'OK' : 'Missing contact on project') : 'â€”',
       actionLabel: project && !projectHasContact ? 'Open project' : undefined,
       onAction:
         project && !projectHasContact && projectId
@@ -3701,7 +3752,7 @@ export default function CalculatorGridClient({
     const usedSpacingValues = infillsState.items
       .map((item) => infillUiById.get(item.id)?.estimate.maxCentreM)
       .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
-    if (!usedSpacingValues.length) return '—';
+    if (!usedSpacingValues.length) return 'â€”';
     const minSpacing = Math.min(...usedSpacingValues);
     const maxSpacing = Math.max(...usedSpacingValues);
     if (Math.abs(maxSpacing - minSpacing) <= 0.0001) return `${formatMaybeNumber(maxSpacing, 2)}m`;
@@ -4053,7 +4104,7 @@ export default function CalculatorGridClient({
                 disabled={!canMoveUp}
                 aria-label={`Move ${title} up`}
               >
-                ↑
+                â†‘
               </button>
               <button
                 type="button"
@@ -4062,7 +4113,7 @@ export default function CalculatorGridClient({
                 disabled={!canMoveDown}
                 aria-label={`Move ${title} down`}
               >
-                ↓
+                â†“
               </button>
             </div>
           </div>
@@ -4227,16 +4278,16 @@ export default function CalculatorGridClient({
       id: 'engine-status',
       label: 'Cost engine',
       type: 'readOnly',
-      value: isCalculating ? 'Calculating…' : engineError ? 'Error' : result ? 'Ready' : '—',
+      value: isCalculating ? 'Calculatingâ€¦' : engineError ? 'Error' : result ? 'Ready' : 'â€”',
       error: engineError ?? undefined,
-      helperText: engineError ? undefined : 'True cost (ex‑GST)',
+      helperText: engineError ? undefined : 'True cost (exâ€‘GST)',
     },
     {
       id: 'project-context',
       label: 'Project',
       type: 'readOnly',
-      value: project ? project.projectName ?? project.name ?? '—' : projectId ? 'Not found' : 'None',
-      helperText: project ? `Attached: ${project.projectName ?? project.name ?? '—'}` : 'Use Projects in the header to select or create one.',
+      value: project ? project.projectName ?? project.name ?? 'â€”' : projectId ? 'Not found' : 'None',
+      helperText: project ? `Attached: ${project.projectName ?? project.name ?? 'â€”'}` : 'Use Projects in the header to select or create one.',
       error: projectId && !project ? projectError ?? undefined : undefined,
     },
 
@@ -4258,9 +4309,9 @@ export default function CalculatorGridClient({
             id: 'projectName',
             label: 'Project name',
             type: 'readOnly',
-            value: project.projectName ?? project.name ?? '—',
+            value: project.projectName ?? project.name ?? 'â€”',
           } satisfies FieldSchemaItem,
-          { id: 'quoteRef', label: 'Quote ref', type: 'readOnly', value: project.quoteRef ?? '—', helperText: 'Internal reference' } satisfies FieldSchemaItem,
+          { id: 'quoteRef', label: 'Quote ref', type: 'readOnly', value: project.quoteRef ?? 'â€”', helperText: 'Internal reference' } satisfies FieldSchemaItem,
         ]
       : [
           {
@@ -4291,7 +4342,7 @@ export default function CalculatorGridClient({
         setActiveModuleIndex(Math.max(0, Math.min(values.modules.length - 1, idx)));
       },
       options: modulesWithPergola.map((module, idx) => ({
-        label: `${getPergolaLabel(pergolas, module.pergolaId, idx)} · Module ${idx + 1}`,
+        label: `${getPergolaLabel(pergolas, module.pergolaId, idx)} Â· Module ${idx + 1}`,
         value: String(idx),
       })),
       helperText:
@@ -4471,7 +4522,7 @@ export default function CalculatorGridClient({
                   value: activeModule.mixedAcrylicBaysMain,
                   onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysMain', String(v)),
                   error: errors.mixedAcrylicBaysMain,
-                  helperText: `0–${computeBayCountsForModule(activeModule).bayCountMain}`,
+                  helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountMain}`,
                 } satisfies FieldSchemaItem,
               ]
             : computeBayCountsForModule(activeModule).roofType === 'hip_corner'
@@ -4483,7 +4534,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysA,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
                     error: errors.mixedAcrylicBaysA,
-                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
+                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountA}`,
                   } satisfies FieldSchemaItem,
                   {
                     id: 'mixedAcrylicBaysB',
@@ -4492,7 +4543,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysB,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
                     error: errors.mixedAcrylicBaysB,
-                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
+                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountB}`,
                   } satisfies FieldSchemaItem,
                 ]
               : [
@@ -4503,7 +4554,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysA,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
                     error: errors.mixedAcrylicBaysA,
-                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
+                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountA}`,
                   } satisfies FieldSchemaItem,
                   {
                     id: 'mixedAcrylicBaysB',
@@ -4512,7 +4563,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysB,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
                     error: errors.mixedAcrylicBaysB,
-                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
+                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountB}`,
                   } satisfies FieldSchemaItem,
                 ]),
         ]
@@ -4523,7 +4574,7 @@ export default function CalculatorGridClient({
             id: 'timberSystemHeading',
             label: 'TIMBER SYSTEM (ceiling + roof above)',
             type: 'readOnly',
-            value: '—',
+            value: 'â€”',
           } satisfies FieldSchemaItem,
           {
             id: 'timberNoteRafters',
@@ -4646,19 +4697,19 @@ export default function CalculatorGridClient({
     },
     {
       id: 'projectionM',
-      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eave‑to‑Eave) (m)',
+      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eaveâ€‘toâ€‘Eave) (m)',
       type: 'number',
       value: activeModule.projectionM,
       onChange: (v) => setModuleField('projectionM', String(v)),
       error: errors.projectionM,
-      helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
+      helperText: 'Roof Span (Eaveâ€‘toâ€‘Eave): total width across the roof (both sides for gable, single slope for pitched).',
     },
     {
       id: 'roofOrientation',
       label: 'Orientation',
       type: 'custom',
       content: <RoofOrientationDiagram />,
-      helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
+      helperText: 'Length = parallel to ridge. Span = eaveâ€‘toâ€‘eave.',
     } satisfies FieldSchemaItem,
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
@@ -4779,7 +4830,7 @@ export default function CalculatorGridClient({
                   value: activeModule.overhangAmountM,
                   onChange: (v: string | boolean) => setModuleField('overhangAmountM', String(v)),
                   error: errors.overhangAmountM,
-                  helperText: 'Overhang is within the roof footprint (L×W unchanged). It moves the post beam inboard.',
+                  helperText: 'Overhang is within the roof footprint (LÃ—W unchanged). It moves the post beam inboard.',
                 } satisfies FieldSchemaItem,
               ]
             : []),
@@ -4836,7 +4887,7 @@ export default function CalculatorGridClient({
             options: FRONT_BEAM_PROFILE_OPTIONS,
             helperText: integratedGutterBeamUi
               ? 'SP gutter selected = integrated gutter beam'
-              : 'Select a non‑gutter beam to allow a separate gutter',
+              : 'Select a nonâ€‘gutter beam to allow a separate gutter',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -4900,7 +4951,7 @@ export default function CalculatorGridClient({
             type: 'toggle',
             value: activeModule.separateGutterEnabled,
             onChange: (v: string | boolean) => setModuleField('separateGutterEnabled', Boolean(v)),
-            helperText: 'Adds separate 100x100 cut‑down gutter (stock doubled for waste)',
+            helperText: 'Adds separate 100x100 cutâ€‘down gutter (stock doubled for waste)',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -4999,14 +5050,14 @@ export default function CalculatorGridClient({
             id: 'boxPitchDeg',
             label: 'Box pitch (deg)',
             type: 'readOnly',
-            value: typeof derivedBoxPitch === 'number' ? derivedBoxPitch.toFixed(1) : '—',
+            value: typeof derivedBoxPitch === 'number' ? derivedBoxPitch.toFixed(1) : 'â€”',
             helperText: 'Computed from max fall envelope',
           } satisfies FieldSchemaItem,
           {
             id: 'boxRiseMm',
             label: 'Box fall (mm)',
             type: 'readOnly',
-            value: typeof derivedBoxRiseMm === 'number' ? derivedBoxRiseMm.toFixed(0) : '—',
+            value: typeof derivedBoxRiseMm === 'number' ? derivedBoxRiseMm.toFixed(0) : 'â€”',
             helperText:
               typeof derivedBoxMaxFallMm === 'number' ? `Max allowed: ${Math.round(derivedBoxMaxFallMm)}mm` : 'Max allowed: 200mm',
           } satisfies FieldSchemaItem,
@@ -5078,7 +5129,7 @@ export default function CalculatorGridClient({
       label: 'Blinds',
       type: 'custom',
       content: blindsListContent,
-      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} · totals update live`,
+      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} Â· totals update live`,
     },
     {
       id: 'infillsEditor',
@@ -5089,14 +5140,14 @@ export default function CalculatorGridClient({
     },
     {
       id: 'travelExGst',
-      label: 'Travel (ex‑GST)',
+      label: 'Travel (exâ€‘GST)',
       type: 'number',
       value: values.travelExGst,
       onChange: (v) => setJobField('travelExGst', String(v)),
     },
     {
       id: 'extrasAllowanceExGst',
-      label: 'Extras allowance (ex‑GST)',
+      label: 'Extras allowance (exâ€‘GST)',
       type: 'number',
       value: values.extrasAllowanceExGst,
       onChange: (v) => setJobField('extrasAllowanceExGst', String(v)),
@@ -5111,32 +5162,32 @@ export default function CalculatorGridClient({
     },
 
     // === Computed outputs ===
-    { id: 'areaM2', label: 'Area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedArea) },
-    { id: 'roofAreaM2', label: 'Roof area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedRoofArea) },
-    { id: 'acrylicAreaM2', label: 'Acrylic area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedAcrylicArea) },
-    { id: 'timberAreaM2', label: 'Timber area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedTimberArea) },
-    { id: 'acrylicBaysTotal', label: 'Acrylic bays total', type: 'readOnly', value: typeof derivedAcrylicBaysTotal === 'number' ? String(derivedAcrylicBaysTotal) : '—' },
-    { id: 'pitchUsed', label: 'Pitch used (deg)', type: 'readOnly', value: typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—' },
+    { id: 'areaM2', label: 'Area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedArea) },
+    { id: 'roofAreaM2', label: 'Roof area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedRoofArea) },
+    { id: 'acrylicAreaM2', label: 'Acrylic area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedAcrylicArea) },
+    { id: 'timberAreaM2', label: 'Timber area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedTimberArea) },
+    { id: 'acrylicBaysTotal', label: 'Acrylic bays total', type: 'readOnly', value: typeof derivedAcrylicBaysTotal === 'number' ? String(derivedAcrylicBaysTotal) : 'â€”' },
+    { id: 'pitchUsed', label: 'Pitch used (deg)', type: 'readOnly', value: typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : 'â€”' },
     { id: 'slopeLengthM', label: 'Slope length (m)', type: 'readOnly', value: formatMaybeNumber(derivedSlopeLength) },
-    { id: 'roofingProcurement', label: 'Roofing', type: 'readOnly', value: moduleResult ? roofingProcurementSummary : '—' },
+    { id: 'roofingProcurement', label: 'Roofing', type: 'readOnly', value: moduleResult ? roofingProcurementSummary : 'â€”' },
     {
       id: 'rafters',
       label: 'Rafters',
       type: 'readOnly',
-      value: rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—',
+      value: rafterCountTotal && rafterProfile ? `${rafterCountTotal} Ã— ${rafterProfile}` : 'â€”',
       helperText: rafterHelperText,
     },
-    { id: 'brackets', label: 'Brackets', type: 'readOnly', value: typeof bracketCount === 'number' ? String(bracketCount) : '—' },
-    { id: 'crewHours', label: 'Crew hours', type: 'readOnly', value: typeof crewHours === 'number' ? String(crewHours) : '—' },
-    { id: 'materialsEx', label: 'Materials (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
-    { id: 'installEx', label: 'Install payout (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
-    { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
-    { id: 'totalEx', label: 'Total true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
-    { id: 'totalInc', label: 'Total true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
-    { id: 'blindsTotalEx', label: 'Blinds (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
-    { id: 'blindsTotalInc', label: 'Blinds (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
-    { id: 'coreTotalEx', label: 'Total (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
-    { id: 'coreTotalInc', label: 'Total (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
+    { id: 'brackets', label: 'Brackets', type: 'readOnly', value: typeof bracketCount === 'number' ? String(bracketCount) : 'â€”' },
+    { id: 'crewHours', label: 'Crew hours', type: 'readOnly', value: typeof crewHours === 'number' ? String(crewHours) : 'â€”' },
+    { id: 'materialsEx', label: 'Materials (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
+    { id: 'installEx', label: 'Install payout (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
+    { id: 'overheadEx', label: 'Overhead (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
+    { id: 'totalEx', label: 'Total true cost (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
+    { id: 'totalInc', label: 'Total true cost (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
+    { id: 'blindsTotalEx', label: 'Blinds (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
+    { id: 'blindsTotalInc', label: 'Blinds (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
+    { id: 'coreTotalEx', label: 'Total (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
+    { id: 'coreTotalInc', label: 'Total (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
     ...(issuesCount
       ? [
           {
@@ -5153,7 +5204,7 @@ export default function CalculatorGridClient({
       id: 'warnings',
       label: 'Warnings',
       type: 'readOnly',
-      value: result ? String(warningsCount) : '—',
+      value: result ? String(warningsCount) : 'â€”',
       helperText:
         warningsCount && criticalUiWarnings.length
           ? `Critical: ${criticalUiWarnings.length} (blocks estimate)`
@@ -5469,7 +5520,7 @@ export default function CalculatorGridClient({
                 <div>
                   <div className={styles.previewSummaryTitle}>Preview</div>
                   <div className={styles.previewSummarySub}>
-                    {isCalculating ? 'Calculating…' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
+                    {isCalculating ? 'Calculatingâ€¦' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
                   </div>
                 </div>
                 {issuesCount ? (
@@ -5480,8 +5531,8 @@ export default function CalculatorGridClient({
               </div>
 
               <div className={styles.previewStatGrid}>
-                <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
-                <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
+                <PreviewStat label="Total (exâ€‘GST)" value={formatMaybeMoney(coreTotalEx)} />
+                <PreviewStat label="Total (incâ€‘GST)" value={formatMaybeMoney(coreTotalInc)} />
                 <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
                 <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
                 <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
@@ -5502,14 +5553,14 @@ export default function CalculatorGridClient({
 
               <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(var(--portal-text-rgb), 0.02)' }}>
                 <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
-                  Add‑ons (informational)
+                  Addâ€‘ons (informational)
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (ex‑GST)</span>
+                  <span className={styles.previewRowLabel}>Blinds (exâ€‘GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (inc‑GST)</span>
+                  <span className={styles.previewRowLabel}>Blinds (incâ€‘GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
                 </div>
                 <div className={styles.previewRow}>
@@ -5586,7 +5637,7 @@ export default function CalculatorGridClient({
                     </div>
                   ))}
                   <div className={styles.previewRowTotal}>
-                    <span>Total materials (ex‑GST)</span>
+                    <span>Total materials (exâ€‘GST)</span>
                     <span>{formatMaybeMoney(materialsEx)}</span>
                   </div>
                 </div>
@@ -5632,7 +5683,7 @@ export default function CalculatorGridClient({
 
                   {materialsDebugEnabled ? (
                     <>
-                      {materialsDebugLoading ? <p className={styles.previewMuted}>Loading materials trace…</p> : null}
+                      {materialsDebugLoading ? <p className={styles.previewMuted}>Loading materials traceâ€¦</p> : null}
                       {materialsDebugError ? <p className={styles.previewError}>{materialsDebugError}</p> : null}
 
                       {materialsExplainLines.length ? (
@@ -5705,7 +5756,7 @@ export default function CalculatorGridClient({
                       <div className={styles.previewRowMain}>
                         <div className={styles.previewRowLabel}>{action.label}</div>
                         <div className={styles.previewRowMeta}>
-                          {action.category} · {formatMaybeNumber(action.qty, 2)} {action.unit}
+                          {action.category} Â· {formatMaybeNumber(action.qty, 2)} {action.unit}
                         </div>
                       </div>
                       <div className={styles.previewRowValue}>{formatMaybeNumber(action.minutes, 0)} min</div>
@@ -5720,14 +5771,14 @@ export default function CalculatorGridClient({
             <details className={styles.previewDetails}>
               <summary>Structure outputs</summary>
               <div className={styles.previewTable}>
-                <PreviewRow label="Area (m²)" value={formatMaybeNumber(derivedArea)} />
-                <PreviewRow label="Roof area (m²)" value={formatMaybeNumber(derivedRoofArea)} />
-                <PreviewRow label="Acrylic area (m²)" value={formatMaybeNumber(derivedAcrylicArea)} />
-                <PreviewRow label="Timber area (m²)" value={formatMaybeNumber(derivedTimberArea)} />
-                <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—'} />
+                <PreviewRow label="Area (mÂ²)" value={formatMaybeNumber(derivedArea)} />
+                <PreviewRow label="Roof area (mÂ²)" value={formatMaybeNumber(derivedRoofArea)} />
+                <PreviewRow label="Acrylic area (mÂ²)" value={formatMaybeNumber(derivedAcrylicArea)} />
+                <PreviewRow label="Timber area (mÂ²)" value={formatMaybeNumber(derivedTimberArea)} />
+                <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : 'â€”'} />
                 <PreviewRow label="Slope length (m)" value={formatMaybeNumber(derivedSlopeLength)} />
-                <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—'} />
-                <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : '—'} />
+                <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} Ã— ${rafterProfile}` : 'â€”'} />
+                <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : 'â€”'} />
               </div>
             </details>
             </>
@@ -6247,7 +6298,7 @@ export default function CalculatorGridClient({
                                     {`Delta total ${formatSignedMoney(compareSheetDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareSheetDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareSheetDelta?.install_ex)}`}
                                   </div>
                                   <div className={styles.infillDecisionMeta}>
-                                    {`Complexity: panels ~${sheetComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${sheetComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
+                                    {`Complexity: panels ~${sheetComplexityEstimate?.panelCountTotal ?? 'â€”'}, 50x50 ~${sheetComplexityEstimate?.estimatedMullionsTotal ?? 'â€”'}`}
                                   </div>
                                 </div>
                                 <button
@@ -6265,7 +6316,7 @@ export default function CalculatorGridClient({
                                     {`Delta total ${formatSignedMoney(compareStripDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareStripDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareStripDelta?.install_ex)}`}
                                   </div>
                                   <div className={styles.infillDecisionMeta}>
-                                    {`Complexity: panels ~${stripComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${stripComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
+                                    {`Complexity: panels ~${stripComplexityEstimate?.panelCountTotal ?? 'â€”'}, 50x50 ~${stripComplexityEstimate?.estimatedMullionsTotal ?? 'â€”'}`}
                                   </div>
                                 </div>
                                 <button
@@ -6531,7 +6582,7 @@ export default function CalculatorGridClient({
 	                        }}
 	                      >
 	                        <div className={styles.issueMain}>
-	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} · ${issue.label}`}</div>
+	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} Â· ${issue.label}`}</div>
 	                          <div className={styles.issueMessage}>{issue.message}</div>
 	                        </div>
 	                        <span className={styles.issueJump}>Jump</span>
@@ -6599,8 +6650,8 @@ export default function CalculatorGridClient({
                     <div className={styles.modalKey}>Roof length / roof span</div>
                     <div className={styles.modalVal}>
                       {activeModule.pergolaStyle === 'hip_corner'
-                        ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
-                        : `${activeModule.lengthM}m × ${activeModule.projectionM}m`}
+                        ? `A: ${activeModule.lengthM}Ã—${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}Ã—${activeModule.hipCornerProjectionBM}m`
+                        : `${activeModule.lengthM}m Ã— ${activeModule.projectionM}m`}
                     </div>
                   </div>
                   <div>
@@ -6611,10 +6662,10 @@ export default function CalculatorGridClient({
                     <div className={styles.modalKey}>Roof pitch</div>
                     <div className={styles.modalVal}>
                       {typeof derivedPitchUsed === 'number'
-                        ? `${derivedPitchUsed.toFixed(0)}°`
+                        ? `${derivedPitchUsed.toFixed(0)}Â°`
                         : activeModule.roofPitchDeg.trim()
-                          ? `${activeModule.roofPitchDeg}°`
-                          : '—'}
+                          ? `${activeModule.roofPitchDeg}Â°`
+                          : 'â€”'}
                     </div>
                   </div>
                 </div>
@@ -6624,23 +6675,23 @@ export default function CalculatorGridClient({
                 <h3 className={styles.modalSectionTitle}>Outputs</h3>
                 <div className={styles.modalGrid}>
                   <div>
-                    <div className={styles.modalKey}>Materials (ex‑GST)</div>
+                    <div className={styles.modalKey}>Materials (exâ€‘GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(materialsEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Install payout (ex‑GST)</div>
+                    <div className={styles.modalKey}>Install payout (exâ€‘GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(installEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Overhead (ex‑GST)</div>
+                    <div className={styles.modalKey}>Overhead (exâ€‘GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(overheadEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Total (ex‑GST)</div>
+                    <div className={styles.modalKey}>Total (exâ€‘GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(coreTotalEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Blinds (ex‑GST)</div>
+                    <div className={styles.modalKey}>Blinds (exâ€‘GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(addonsTotals.blinds.ex)}</div>
                   </div>
                 </div>
@@ -6807,8 +6858,10 @@ export default function CalculatorGridClient({
                       return;
                     }
 
-                    const meta = await getCostingMeta();
-                    const contact = project.contactId ? await getContact(project.contactId) : null;
+                    const [meta, contact] = await Promise.all([
+                      getCostingMeta(),
+                      project.contactId ? getContact(project.contactId) : Promise.resolve(null),
+                    ]);
                     if (!contact) {
                       fail('Project is missing a contact (open the project and select/create one).');
                       return;
@@ -6820,14 +6873,14 @@ export default function CalculatorGridClient({
                       return;
                     }
 
-                    const estimatePayload = {
+                    const estimatePayload: PortalEstimatePayload = {
                       status: 'draft' as const,
-                      inputs: values,
-                      derived: derivedSnapshot as any,
+                      inputs: values as unknown as Record<string, unknown>,
+                      derived: derivedSnapshot as unknown as Record<string, unknown>,
                       projectSnapshot: {
                         ...project,
                         updatedAt: project.updatedAt ?? project.createdAt,
-                      },
+                      } as unknown as Record<string, unknown>,
                       snapshot: {
                         contact: {
                           displayName: contact.displayName,
@@ -6840,7 +6893,7 @@ export default function CalculatorGridClient({
                           siteAddress: project.siteAddress ?? project.address,
                           quoteRef: project.quoteRef,
                         },
-                      },
+                      } as Record<string, unknown>,
                       outputs: {
                         cost_snapshot_version: 'v2' as const,
                         materials: result.materials,
@@ -6851,98 +6904,129 @@ export default function CalculatorGridClient({
                         pergolas: result.pergolas,
                         siteShared: result.shared,
                         shared: result.shared,
-                      },
-                      configVersions: meta.configVersions,
+                      } as unknown as Record<string, unknown>,
+                      configVersions: meta.configVersions as unknown as Record<string, unknown>,
                     };
 
-                    if (isEditingEstimate) {
-                      const saveEstimate = async (acknowledgeDraftQuoteStaleness: boolean) =>
-                        apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(editEstimateId)}`, {
-                          method: 'PATCH',
-                          body: JSON.stringify({
-                            estimate_update: estimatePayload,
-                            acknowledgeDraftQuoteStaleness,
-                          }),
-                        });
+                    const clearCalculatorDraft = async () => {
+                      if (typeof window !== 'undefined') {
+                        try {
+                          window.sessionStorage.removeItem(draftSessionKey);
+                        } catch {
+                          void 0;
+                        }
+                      }
+                      await clearLocalFirstWorkingCopy(draftEntityKey);
+                    };
 
-                      let savedEstimate: EstimateDetail;
-                      try {
-                        const saved = await saveEstimate(false);
-                        if (!saved.estimate) throw new Error('Estimate save returned no estimate');
-                        savedEstimate = saved.estimate;
-                      } catch (error) {
-                        if (
-                          error instanceof ApiError &&
-                          error.status === 409 &&
-                          typeof (error.body as any)?.code === 'string' &&
-                          (error.body as any).code === 'ESTIMATE_DRAFT_QUOTES_REQUIRE_ACK'
-                        ) {
-                          const confirmed = window.confirm(
-                            'This estimate already has draft quotes. Saving will update the estimate, but those draft quotes will stay unchanged. Continue?',
-                          );
-                          if (!confirmed) {
-                            setGenerateError('Save cancelled.');
-                            return;
-                          }
-                          const saved = await saveEstimate(true);
-                          if (!saved.estimate) throw new Error('Estimate save returned no estimate');
-                          savedEstimate = saved.estimate;
-                        } else if (
-                          error instanceof ApiError &&
-                          error.status === 409 &&
-                          typeof (error.body as any)?.code === 'string' &&
-                          (error.body as any).code === 'ESTIMATE_LOCKED'
-                        ) {
-                          fail('This estimate is locked because it has been sent with a quote and can no longer be edited.');
+                    const cachedEstimateMetas =
+                      queryClient.getQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId)) ?? [];
+
+                    if (isEditingEstimate) {
+                      const currentEstimate =
+                        loadedEstimateDetailRef.current ??
+                        queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, editEstimateId)) ??
+                        null;
+
+                      if (currentEstimate?.editability.isLocked) {
+                        fail('This estimate is locked because it has been sent with a quote and can no longer be edited.');
+                        return;
+                      }
+
+                      let acknowledgeDraftQuoteStaleness = false;
+                      if (currentEstimate?.editability.hasDraftQuotes) {
+                        acknowledgeDraftQuoteStaleness = window.confirm(
+                          'This estimate already has draft quotes. Saving will update the estimate, but those draft quotes will stay unchanged. Continue?',
+                        );
+                        if (!acknowledgeDraftQuoteStaleness) {
+                          setGenerateError('Save cancelled.');
                           return;
-                        } else {
-                          throw error;
                         }
                       }
 
+                      const optimisticEstimateBase = buildOptimisticEstimateDetail({
+                        estimateId: editEstimateId,
+                        projectId,
+                        estimatePayload,
+                        versionLabel:
+                          currentEstimate?.versionLabel ??
+                          cachedEstimateMetas.find((estimate) => estimate.id === editEstimateId)?.versionLabel ??
+                          'Draft',
+                        createdBy: (currentEstimate?.createdBy ?? email) || null,
+                        createdAt: currentEstimate?.createdAt,
+                      });
+                      const optimisticEstimate: EstimateDetail = {
+                        ...optimisticEstimateBase,
+                        internalNotes: currentEstimate?.internalNotes ?? optimisticEstimateBase.internalNotes,
+                        editability: currentEstimate?.editability ?? optimisticEstimateBase.editability,
+                      };
+
+                      upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate);
+                      await writeLocalFirstWorkingCopy({
+                        entityKey: buildEstimateEntityKey(editEstimateId),
+                        data: optimisticEstimate,
+                      });
+
+                      const mutationPayload: PortalEstimateUpdateMutationPayload = {
+                        estimateId: editEstimateId,
+                        estimatePayload,
+                        acknowledgeDraftQuoteStaleness,
+                      };
+                      await enqueueAndProcessLocalFirstMutation({
+                        entityKey: buildEstimateEntityKey(editEstimateId),
+                        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateUpdate,
+                        payload: mutationPayload,
+                      });
+
                       setConfirmOpen(false);
-                      toast.success(`Estimate saved (${savedEstimate.versionLabel}).`);
+                      await clearCalculatorDraft();
+                      toast.success('Estimate saved locally. Syncing in the background.');
                       router.push(
-                        `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(savedEstimate.id)}`,
+                        `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(editEstimateId)}`,
                       );
                       return;
                     }
 
-                    const estimate = await createEstimate(projectId, estimatePayload);
-
-                    await addProjectActivity(projectId, {
-                      type: 'estimate_generated',
-                      message: `Estimate V${estimate.version ?? '—'} generated (ex-GST: ${formatMoney(result.totals.cost_ex_gst)})`,
-                      meta: { estimateId: estimate.id },
+                    const localEstimateId = createLocalEstimateId();
+                    const optimisticEstimate = buildOptimisticEstimateDetail({
+                      estimateId: localEstimateId,
+                      projectId,
+                      estimatePayload,
+                      versionLabel: buildNextEstimateVersionLabel(cachedEstimateMetas),
+                      createdBy: email || null,
+                    });
+                    upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate, { prepend: true });
+                    await writeLocalFirstWorkingCopy({
+                      entityKey: buildEstimateEntityKey(localEstimateId),
+                      data: optimisticEstimate,
                     });
 
-                    let designRequestCreated = false;
-                    if (confirmRequestDesign) {
-                      try {
-                        await createDesignRequest({
-                          projectId,
-                          estimateId: estimate.id,
-                          requestSource: 'calculator_generate',
-                          priorityTier: confirmRequestDesignPriority,
-                        });
-                        designRequestCreated = true;
-                      } catch (requestError) {
-                        const requestMessage =
-                          requestError instanceof Error ? requestError.message : 'Failed to create design request';
-                        toast.error(`Estimate created, but design request failed: ${requestMessage}`);
-                      }
-                    }
+                    const mutationPayload: PortalEstimateCreateMutationPayload = {
+                      localEstimateId,
+                      projectId,
+                      estimatePayload,
+                      createDesignRequest: confirmRequestDesign
+                        ? {
+                            requestSource: 'calculator_generate',
+                            priorityTier: confirmRequestDesignPriority,
+                          }
+                        : null,
+                    };
+                    await enqueueAndProcessLocalFirstMutation({
+                      entityKey: buildEstimateEntityKey(localEstimateId),
+                      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateCreate,
+                      payload: mutationPayload,
+                    });
 
                     setConfirmOpen(false);
+                    await clearCalculatorDraft();
                     toast.success(
-                      designRequestCreated
-                        ? `Estimate created (V${estimate.version ?? '—'}) and design request created.`
-                        : `Estimate created (V${estimate.version ?? '—'}).`,
+                      confirmRequestDesign
+                        ? 'Estimate created locally. Syncing estimate and design request in the background.'
+                        : 'Estimate created locally. Syncing in the background.',
                     );
                     if (projectId) {
-                      router.push(
-                        `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(estimate.id)}`,
-                      );
+                      router.push(`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates`);
                     }
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : isEditingEstimate ? 'Failed to save estimate' : 'Failed to generate estimate';
