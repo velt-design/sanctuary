@@ -93,6 +93,7 @@ import {
   buildNextEstimateVersionLabel,
   buildOptimisticEstimateDetail,
   createLocalEstimateId,
+  isLocalEstimateId,
   type PortalEstimateCreateMutationPayload,
   type PortalEstimatePayload,
   type PortalEstimateUpdateMutationPayload,
@@ -102,6 +103,7 @@ import {
   clearLocalFirstWorkingCopy,
   ensureLocalFirstStoreReady,
   getLocalFirstWorkingCopy,
+  resolveLocalFirstId,
   writeLocalFirstWorkingCopy,
 } from '@/lib/localFirst/store';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
@@ -1835,10 +1837,25 @@ export default function CalculatorGridClient({
     void (async () => {
       try {
         if (editEstimateId) {
-          const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(editEstimateId)}`, {
-            skipSaveTracking: true,
-          });
-          const estimate = res.estimate;
+          const resolvedEditEstimateId = resolveLocalFirstId(editEstimateId);
+          const cachedEstimate =
+            getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(editEstimateId))?.data ??
+            (resolvedEditEstimateId && resolvedEditEstimateId !== editEstimateId
+              ? getLocalFirstWorkingCopy<EstimateDetail>(buildEstimateEntityKey(resolvedEditEstimateId))?.data
+              : null) ??
+            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, editEstimateId)) ??
+            (resolvedEditEstimateId && resolvedEditEstimateId !== editEstimateId
+              ? queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, resolvedEditEstimateId))
+              : null);
+
+          const estimate = cachedEstimate ?? (
+            await apiJson<{ estimate: EstimateDetail }>(
+              `/api/estimates/${encodeURIComponent(resolvedEditEstimateId || editEstimateId)}`,
+              {
+                skipSaveTracking: true,
+              },
+            )
+          ).estimate;
           if (!estimate) throw new Error('Estimate not found');
           loadedEstimateDetailRef.current = estimate;
           if (estimate.editability.isLocked) {
@@ -1847,7 +1864,9 @@ export default function CalculatorGridClient({
             toast.error(msg);
             if (projectId) {
               router.replace(
-                `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(editEstimateId)}`,
+                `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(
+                  resolvedEditEstimateId || editEstimateId,
+                )}`,
               );
             }
             return;
@@ -1861,7 +1880,10 @@ export default function CalculatorGridClient({
           const draft = calculatorInputsFromEstimateDetail(estimate);
           setValues(draft);
           setActiveModuleIndex(0);
-          const msg = `Editing estimate ${estimate.versionLabel}`;
+          const msg =
+            isLocalEstimateId(estimate.id) || (resolvedEditEstimateId ?? editEstimateId).startsWith('local-estimate:')
+              ? `Editing estimate ${estimate.versionLabel}. Changes will keep syncing in the background.`
+              : `Editing estimate ${estimate.versionLabel}`;
           setDraftNotice(msg);
           toast.success(msg);
           return;
@@ -1888,7 +1910,7 @@ export default function CalculatorGridClient({
         toast.error(msg);
       }
     })();
-  }, [draftHydrated, editEstimateId, fromEstimateId, projectId, router, toast]);
+  }, [draftHydrated, editEstimateId, fromEstimateId, hostKey, projectId, queryClient, router, toast]);
 
   useEffect(() => {
     if (!draftHydrated) return;
@@ -6923,8 +6945,11 @@ export default function CalculatorGridClient({
                       queryClient.getQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId)) ?? [];
 
                     if (isEditingEstimate) {
+                      const resolvedEditEstimateId = resolveLocalFirstId(editEstimateId);
+                      const canonicalEditEstimateId = resolvedEditEstimateId || editEstimateId;
                       const currentEstimate =
                         loadedEstimateDetailRef.current ??
+                        queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, canonicalEditEstimateId)) ??
                         queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, editEstimateId)) ??
                         null;
 
@@ -6945,12 +6970,13 @@ export default function CalculatorGridClient({
                       }
 
                       const optimisticEstimateBase = buildOptimisticEstimateDetail({
-                        estimateId: editEstimateId,
+                        estimateId: canonicalEditEstimateId,
                         projectId,
                         estimatePayload,
                         versionLabel:
                           currentEstimate?.versionLabel ??
-                          cachedEstimateMetas.find((estimate) => estimate.id === editEstimateId)?.versionLabel ??
+                          cachedEstimateMetas.find((estimate) => estimate.id === canonicalEditEstimateId || estimate.id === editEstimateId)
+                            ?.versionLabel ??
                           'Draft',
                         createdBy: (currentEstimate?.createdBy ?? email) || null,
                         createdAt: currentEstimate?.createdAt,
@@ -6961,19 +6987,20 @@ export default function CalculatorGridClient({
                         editability: currentEstimate?.editability ?? optimisticEstimateBase.editability,
                       };
 
+                      loadedEstimateDetailRef.current = optimisticEstimate;
                       upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate);
                       await writeLocalFirstWorkingCopy({
-                        entityKey: buildEstimateEntityKey(editEstimateId),
+                        entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
                         data: optimisticEstimate,
                       });
 
                       const mutationPayload: PortalEstimateUpdateMutationPayload = {
-                        estimateId: editEstimateId,
+                        estimateId: canonicalEditEstimateId,
                         estimatePayload,
                         acknowledgeDraftQuoteStaleness,
                       };
                       await enqueueAndProcessLocalFirstMutation({
-                        entityKey: buildEstimateEntityKey(editEstimateId),
+                        entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
                         mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateUpdate,
                         payload: mutationPayload,
                       });
@@ -6982,7 +7009,9 @@ export default function CalculatorGridClient({
                       await clearCalculatorDraft();
                       toast.success('Estimate saved locally. Syncing in the background.');
                       router.push(
-                        `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(editEstimateId)}`,
+                        `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(
+                          canonicalEditEstimateId,
+                        )}`,
                       );
                       return;
                     }

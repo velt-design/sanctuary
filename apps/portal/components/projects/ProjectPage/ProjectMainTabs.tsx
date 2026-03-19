@@ -200,7 +200,7 @@ export default function ProjectMainTabs({
 
       <div className={legacy.sectionBody}>
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
-        {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} mode={activeMode} /> : null}
+        {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} mode={activeMode} projectSnapshot={snapshot} /> : null}
         {activeTab === 'quotes' ? (
           <QuotesTab
             projectId={snapshot.project.id}

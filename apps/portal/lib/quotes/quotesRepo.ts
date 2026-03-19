@@ -173,6 +173,30 @@ export async function previewQuoteEmail(
   };
 }
 
+export async function previewQuotePdf(
+  quoteVersion: QuoteVersionDetail,
+  opts?: { signal?: AbortSignal },
+): Promise<Uint8Array> {
+  const res = await fetch('/api/quotes/preview-pdf', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ quoteVersion }),
+    cache: 'no-store',
+    credentials: 'same-origin',
+    signal: opts?.signal,
+  });
+
+  if (!res.ok) {
+    const body = await parseJsonSafe(res);
+    const msg = typeof (body as any)?.error === 'string' ? String((body as any).error) : `Failed to render quote preview (${res.status})`;
+    throw new ApiError(msg, { status: res.status, body });
+  }
+
+  return new Uint8Array(await res.arrayBuffer());
+}
+
 export async function reviseQuote(quoteVersionId: string): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/revise`, {
     method: 'POST',

@@ -128,4 +128,45 @@ describe('localFirst queue', () => {
       expect(resolveLocalFirstId('local-estimate:1')).toBe('est_1');
     });
   });
+
+  it('retries local quote draft updates until the synced quote id is available', async () => {
+    registerLocalFirstMutationHandler('quote.create', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await registerLocalFirstIdAlias('local-quote:1', 'qv_1');
+      return { kind: 'success' } as const;
+    });
+
+    registerLocalFirstMutationHandler('quote.update', async (item) => {
+      const payload = item.payload as { quoteVersionId: string };
+      const resolvedQuoteId = resolveLocalFirstId(payload.quoteVersionId);
+      if (resolvedQuoteId.startsWith('local-quote:')) {
+        return {
+          kind: 'retry',
+          status: 'queued',
+          retryAt: new Date(Date.now() + 20).toISOString(),
+        } as const;
+      }
+
+      expect(resolvedQuoteId).toBe('qv_1');
+      return { kind: 'success' } as const;
+    });
+
+    await startLocalFirstQueueRuntime();
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey: 'quote:detail:local-quote:1',
+      mutationKey: 'quote.create',
+      payload: { estimateId: 'est_1' },
+    });
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey: 'quote:detail:local-quote:1',
+      mutationKey: 'quote.update',
+      payload: { quoteVersionId: 'local-quote:1', patch: { reference: 'REF' } },
+    });
+
+    await waitUntil(() => {
+      expect(getLocalFirstStoreSnapshot().state.queue).toHaveLength(0);
+      expect(getLocalFirstEntitySyncState('quote:detail:local-quote:1').status).toBe('synced');
+      expect(resolveLocalFirstId('local-quote:1')).toBe('qv_1');
+    });
+  });
 });

@@ -5,10 +5,12 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import ModuleViewsCard, { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import { apiJson } from '@/lib/repo/apiClient';
+import { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
+import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import type { EstimateDetail, EstimateMeta, EstimateStatus, EstimateSummary } from '@/lib/estimates/types';
+import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -21,24 +23,28 @@ import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { qk } from '@/lib/queries/keys';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import { useAliasedEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
 import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
 import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildEstimateEntityKey,
   buildEstimateNotesDraftEntityKey,
+  buildEstimatePayloadFromDetail,
+  buildNextEstimateVersionLabel,
+  buildOptimisticEstimateDetail,
   buildOptimisticQuoteDetail,
   buildQuoteEntityKey,
+  createLocalEstimateId,
   createLocalQuoteId,
-  isLocalEstimateId,
   isLocalQuoteId,
+  type PortalEstimateCreateMutationPayload,
   type PortalEstimateNotesMutationPayload,
   type PortalQuoteCreateMutationPayload,
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
-import { discardLocalFirstEntityQueue, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
+import { discardLocalFirstEntityQueue, listAliasedLocalFirstEntityKeys, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 
 function formatMoney(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -536,7 +542,15 @@ function formatDraftQuoteEditWarning(detail: EstimateDetail | null): string | nu
 
 type ModeKey = 'general' | 'focus';
 
-export default function EstimatesTab({ projectId, mode }: { projectId: string; mode: ModeKey }) {
+export default function EstimatesTab({
+  projectId,
+  mode,
+  projectSnapshot,
+}: {
+  projectId: string;
+  mode: ModeKey;
+  projectSnapshot: ProjectPageSnapshot;
+}) {
   const router = useRouter();
   const toast = useToast();
   const searchParams = useSearchParams();
@@ -621,8 +635,10 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const notesWorkingCopy = useLocalWorkingCopy<string>(notesDraftEntityKey, selectedDetail?.internalNotes ?? '');
   const notesSaveTimerRef = useRef<number | null>(null);
   const notesDraftRef = useRef(notesDraft);
-  const selectedEstimateSyncState = useEntitySyncState(
-    selectedMeta ? buildEstimateEntityKey(selectedMeta.id) : 'estimate:detail:__estimate-none__',
+  const selectedEstimateSyncState = useAliasedEntitySyncState(
+    selectedMeta?.id,
+    buildEstimateEntityKey,
+    'estimate:detail:__estimate-none__',
   );
   const selectedEstimateSyncPending = Boolean(selectedMeta && selectedEstimateSyncState.pendingCount > 0);
 
@@ -671,7 +687,9 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     if (selectedEstimateSyncState.lastError) {
       toast.error(selectedEstimateSyncState.lastError);
     }
-    void discardLocalFirstEntityQueue(buildEstimateEntityKey(selectedId));
+    void Promise.all(
+      listAliasedLocalFirstEntityKeys(selectedId, buildEstimateEntityKey).map((entityKey) => discardLocalFirstEntityQueue(entityKey)),
+    );
   }, [notesWorkingCopy.hasLocalCopy, selectedEstimateSyncState.lastError, selectedEstimateSyncState.status, selectedId, toast]);
 
   useEffect(() => {
@@ -715,6 +733,29 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const drawingStatus: ModuleViewsStatus =
     activeDrawingModule && (activeDrawingModule.planModel || activeDrawingModule.sectionModel) ? 'ready' : 'empty';
   const drawingModuleLabel = moduleLines[drawingModuleIndex] ?? activeDrawingModule?.label ?? 'Module';
+  const drawingSheetMeta = useMemo(
+    () =>
+      buildEstimateDrawingSheetMeta({
+        moduleLabel: drawingModuleLabel,
+        view: drawingView,
+        versionLabel: selectedMeta?.versionLabel ?? selectedDetail?.versionLabel ?? null,
+        estimateDate: selectedDetail?.createdAt ?? selectedMeta?.createdAt ?? null,
+        projectName: projectSnapshot.project.name,
+        siteAddress: projectSnapshot.project.siteAddress ?? null,
+        clientName: projectSnapshot.project.contactName ?? null,
+      }),
+    [
+      drawingModuleLabel,
+      drawingView,
+      projectSnapshot.project.contactName,
+      projectSnapshot.project.name,
+      projectSnapshot.project.siteAddress,
+      selectedDetail?.createdAt,
+      selectedDetail?.versionLabel,
+      selectedMeta?.createdAt,
+      selectedMeta?.versionLabel,
+    ],
+  );
   const estimateLockMessage = useMemo(() => formatEstimateLockMessage(selectedDetail), [selectedDetail]);
   const isEstimateLocked = Boolean(selectedDetail?.editability?.isLocked);
 
@@ -799,11 +840,10 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   }, [gstAmount, gstPercent, marginPct, marginValue]);
 
   const showMargin = (typeof marginValue === 'number' || typeof marginPct === 'number') && !marginLooksLikeGst;
-  const showGst = isFocus && gstAmount !== null;
+  const showGst = gstAmount !== null;
 
   const costValue = summary?.cost ?? null;
   const showCost =
-    isFocus &&
     typeof costValue === 'number' &&
     (totalPrimary.value === null || totalPrimary.label.includes('inc') || Math.abs(costValue - (totalPrimary.value ?? 0)) > 0.02);
 
@@ -861,10 +901,6 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   }, [calculatorHref, router]);
   const handleEditEstimate = useCallback(() => {
     if (!selectedDetail || selectedDetail.editability.isLocked) return;
-    if (isLocalEstimateId(selectedDetail.id) || selectedEstimateSyncPending) {
-      toast.error('Wait for this estimate to finish syncing before editing it in the calculator.');
-      return;
-    }
     const draftQuoteWarning = formatDraftQuoteEditWarning(selectedDetail);
     if (draftQuoteWarning && typeof window !== 'undefined') {
       const confirmed = window.confirm(`${draftQuoteWarning}\n\nContinue to edit this estimate?`);
@@ -873,23 +909,49 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     router.push(
       `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(selectedDetail.id)}`,
     );
-  }, [projectId, router, selectedDetail, selectedEstimateSyncPending, toast]);
+  }, [projectId, router, selectedDetail]);
 
   const handleDuplicate = async () => {
     if (!selectedId || actionBusy) return;
-    if (selectedEstimateSyncPending) {
-      toast.error('Wait for this estimate to finish syncing before duplicating it.');
-      return;
-    }
     setActionBusy(true);
     try {
-      const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(selectedId)}/duplicate`, {
-        method: 'POST',
+      const sourceEstimate =
+        selectedDetail ??
+        queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, selectedId)) ??
+        (await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, selectedId)));
+      const estimatePayload = buildEstimatePayloadFromDetail(sourceEstimate);
+      const localEstimateId = createLocalEstimateId();
+      const optimisticEstimateBase = buildOptimisticEstimateDetail({
+        estimateId: localEstimateId,
+        projectId,
+        estimatePayload,
+        versionLabel: buildNextEstimateVersionLabel(estimates),
+        createdBy: sourceEstimate.createdBy ?? null,
       });
-      if (!res.estimate) throw new Error('Estimate not duplicated');
-      upsertEstimate(res.estimate, { prepend: true });
-      setSelectedId(res.estimate.id);
-      toast.success('Estimate duplicated.');
+      const optimisticEstimate: EstimateDetail = {
+        ...optimisticEstimateBase,
+        internalNotes: sourceEstimate.internalNotes ?? null,
+      };
+
+      upsertEstimate(optimisticEstimate, { prepend: true });
+      await writeLocalFirstWorkingCopy({
+        entityKey: buildEstimateEntityKey(localEstimateId),
+        data: optimisticEstimate,
+      });
+
+      const mutationPayload: PortalEstimateCreateMutationPayload = {
+        localEstimateId,
+        projectId,
+        estimatePayload,
+      };
+      await enqueueAndProcessLocalFirstMutation({
+        entityKey: buildEstimateEntityKey(localEstimateId),
+        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateCreate,
+        payload: mutationPayload,
+      });
+
+      setSelectedId(localEstimateId);
+      toast.success('Estimate duplicated locally. Syncing in the background.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to duplicate estimate';
       toast.error(msg);
@@ -1041,7 +1103,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
               type="button"
               className={legacy.buttonSecondary}
               onClick={handleDuplicate}
-              disabled={!selectedId || actionBusy || selectedEstimateSyncPending}
+              disabled={!selectedId || actionBusy}
             >
               Duplicate
             </button>
@@ -1115,7 +1177,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                         type="button"
                         className={legacy.buttonSecondary}
                         onClick={handleEditEstimate}
-                        disabled={!selectedDetail || selectedEstimateSyncPending}
+                        disabled={!selectedDetail}
                       >
                         Edit estimate
                       </button>
@@ -1126,158 +1188,138 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                 {estimateLockMessage ? <div className={styles.lockNotice}>{estimateLockMessage}</div> : null}
                 {selectedEstimateSyncPending ? (
                   <div className={styles.lockNotice}>
-                    Estimate is syncing in the background. You can create a quote from the local snapshot now, while edit, duplicate, and design request actions unlock once sync completes.
+                    Estimate is syncing in the background. You can keep editing, duplicate, request design, and create a quote from the local snapshot now.
                   </div>
                 ) : null}
-                {isFocus ? (
-                  <div className={styles.summaryPrimary}>
-                    <div className={styles.summaryTotalBlock}>
+                <div className={styles.focusSummaryLayout}>
+                  <div className={styles.focusSummaryGrid}>
+                    <div className={`${styles.focusSummaryCard} ${styles.focusSummaryTotalCard}`}>
                       <div className={styles.summaryLabel}>{totalPrimary.label}</div>
-                      <div className={styles.summaryPrimaryValue}>{renderValue(formatMoney(totalPrimary.value))}</div>
+                      <div className={styles.focusSummaryTotalValue}>{renderValue(formatMoney(totalPrimary.value))}</div>
                       {totalPrimary.secondaryLabel ? (
-                        <div className={styles.summarySubValue}>
+                        <div className={styles.focusSummarySubValue}>
                           {totalPrimary.secondaryLabel} {renderValue(formatMoney(totalPrimary.secondaryValue ?? null))}
                         </div>
                       ) : null}
                     </div>
-                    {(pergolaSpecs || salesPerson) ? (
-                      <div className={styles.summaryMeta}>
+
+                    {(pergolaSpecs || salesPerson || projectSnapshot.project.contactName) ? (
+                      <div className={`${styles.focusSummaryCard} ${styles.focusSummaryDetailsCard}`}>
                         {pergolaSpecs ? (
-                          <div className={styles.summaryMetaRow}>
+                          <div className={styles.focusSummaryRow}>
                             <span className={styles.summaryMetaLabel}>Pergola</span>
-                            <span className={styles.summaryMetaValue}>{pergolaSpecs}</span>
+                            <span className={styles.focusSummaryValue}>{pergolaSpecs}</span>
                           </div>
                         ) : null}
                         {salesPerson ? (
-                          <div className={styles.summaryMetaRow}>
+                          <div className={styles.focusSummaryRow}>
                             <span className={styles.summaryMetaLabel}>Sales</span>
-                            <span className={`${styles.summaryMetaValue} ${styles.summaryMetaValueTruncate}`} title={salesPerson}>
+                            <span className={styles.focusSummaryValue} title={salesPerson}>
                               {salesPerson}
                             </span>
                           </div>
                         ) : null}
-                      </div>
-                    ) : null}
-                    {showGst ? (
-                      <div className={styles.summaryStat}>
-                        <div className={styles.summaryLabel}>GST (incl)</div>
-                        <div className={styles.summaryValue}>{renderValue(formatMoney(gstAmount))}</div>
-                        {gstPercent !== null ? (
-                          <div className={styles.summarySubValue}>{renderValue(formatPercent(gstPercent))} of total</div>
+                        {projectSnapshot.project.contactName ? (
+                          <div className={styles.focusSummaryRow}>
+                            <span className={styles.summaryMetaLabel}>Client</span>
+                            <span className={styles.focusSummaryValue}>{projectSnapshot.project.contactName}</span>
+                          </div>
                         ) : null}
                       </div>
                     ) : null}
-                    {showMargin ? (
-                      <div className={styles.summaryStat}>
-                        <div className={styles.summaryLabel}>Margin</div>
-                        <div className={styles.summaryValue}>{renderValue(formatMargin(summary))}</div>
+
+                    {showGst ? (
+                      <div className={styles.focusMetricCard}>
+                        <div className={styles.summaryLabel}>GST (incl)</div>
+                        <div className={styles.focusMetricValue}>{renderValue(formatMoney(gstAmount))}</div>
+                        {gstPercent !== null ? <div className={styles.focusMetricSubValue}>{renderValue(formatPercent(gstPercent))} of total</div> : null}
                       </div>
                     ) : null}
+
+                    {showMargin ? (
+                      <div className={styles.focusMetricCard}>
+                        <div className={styles.summaryLabel}>Margin</div>
+                        <div className={styles.focusMetricValue}>{renderValue(formatMargin(summary))}</div>
+                      </div>
+                    ) : null}
+
+                    {showCost ? (
+                      <div className={styles.focusMetricCard}>
+                        <div className={styles.summaryLabel}>True cost (ex GST)</div>
+                        <div className={styles.focusMetricValue}>{renderValue(formatMoney(costValue))}</div>
+                      </div>
+                    ) : null}
+
+                    <div className={styles.focusMetricCard}>
+                      <div className={styles.summaryLabel}>Deposit</div>
+                      <div className={styles.focusMetricValue}>{renderValue(formatMoney(summary?.deposit ?? null))}</div>
+                    </div>
+
+                    <div className={styles.focusMetricCard}>
+                      <div className={styles.summaryLabel}>Valid until</div>
+                      <div className={styles.focusMetricValue}>{renderValue(formatDateShort(summary?.validityDate ?? null))}</div>
+                    </div>
+
+                    <div className={styles.focusMetricCard}>
+                      <div className={styles.summaryLabel}>Lead time</div>
+                      <div className={styles.focusMetricValue}>{renderValue(summary?.leadTime ?? null)}</div>
+                    </div>
                   </div>
-                ) : (
-                  <div className={`${styles.summaryPrimary} ${styles.summaryPrimaryStacked}`}>
-                    {drawingModules.length > 1 ? (
-                      <div className={styles.summaryModuleSelectorRow}>
-                        <div className={styles.segmentedControl}>
+
+                  <div className={styles.focusDrawingToolbar}>
+                    <div className={styles.focusDrawingToolbarCopy}>
+                      <div className={styles.focusDrawingEyebrow}>Drawing sheet</div>
+                      <div className={styles.focusDrawingTitle}>{drawingSheetMeta.drawingTitle}</div>
+                    </div>
+
+                    <div className={styles.focusDrawingControls}>
+                      {drawingModules.length > 1 ? (
+                        <div className={styles.segmentedControl} role="tablist" aria-label="Estimate drawing module">
                           {drawingModules.map((module, index) => (
                             <button
                               type="button"
                               key={module.id}
                               className={`${styles.segmentedItem} ${index === drawingModuleIndex ? styles.segmentedItemActive : ''}`}
                               onClick={() => setDrawingModuleIndex(index)}
+                              role="tab"
+                              aria-selected={index === drawingModuleIndex}
                             >
                               {module.label}
                             </button>
                           ))}
                         </div>
-                      </div>
-                    ) : null}
-                    <div className={styles.summaryTopGrid}>
-                      <div className={styles.summaryInfoColumn}>
-                        <div className={styles.summaryInfoStack}>
-                          <div className={styles.summaryInfoGroup}>
-                            <div className={styles.summaryLabel}>Pergola</div>
-                            <div className={styles.summaryModuleList}>
-                              {moduleLines.length ? (
-                                moduleLines.map((line, idx) => (
-                                  <div key={`${line}-${idx}`} className={styles.summaryModuleLine}>
-                                    {line}
-                                  </div>
-                                ))
-                              ) : (
-                                <div className={`${styles.summaryModuleLine} ${styles.mutedValue}`}>M1 - Details not set</div>
-                              )}
-                            </div>
-                            {salesPerson ? (
-                              <div className={styles.summarySpecMeta}>
-                                <span className={styles.summaryMetaLabel}>Sales</span>
-                                <span className={`${styles.summaryMetaValue} ${styles.summaryMetaValueTruncate}`} title={salesPerson}>
-                                  {salesPerson}
-                                </span>
-                              </div>
-                            ) : null}
-                          </div>
-                          <div className={styles.summaryInfoGroup}>
-                            <div className={styles.summaryLabel}>{totalPrimary.label}</div>
-                            <div className={`${styles.summaryPrimaryValue} ${styles.summaryPrimaryValueLeft}`}>
-                              {renderValue(formatMoney(totalPrimary.value))}
-                            </div>
-                            {totalPrimary.secondaryLabel ? (
-                              <div className={`${styles.summarySubValue} ${styles.summarySubValueLeft}`}>
-                                {totalPrimary.secondaryLabel} {renderValue(formatMoney(totalPrimary.secondaryValue ?? null))}
-                              </div>
-                            ) : null}
-                          </div>
-                          {showMargin ? (
-                            <div className={styles.summaryInfoMetricRow}>
-                              <span className={styles.summaryInfoMetricLabel}>Margin</span>
-                              <span className={styles.summaryInfoMetricValue}>{renderValue(formatMargin(summary))}</span>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className={styles.summaryDrawingColumn}>
-                        <div className={styles.summaryDrawingArea}>
-                          {activeDrawingModule ? (
-                            <ModuleViewsCard
-                              moduleLabel={drawingModuleLabel}
-                              view={drawingView}
-                              onViewChange={setDrawingView}
-                              status={drawingStatus}
-                              planModel={activeDrawingModule.planModel}
-                              sectionModel={activeDrawingModule.sectionModel}
-                              presentation="minimal"
-                            />
-                          ) : (
-                            <div className={styles.drawingEmpty}>No plan or section drawing is available for this estimate.</div>
-                          )}
-                        </div>
+                      ) : null}
+
+                      <div className={styles.segmentedControl} role="tablist" aria-label="Estimate drawing view">
+                        {(['plan', 'section'] as const).map((value) => (
+                          <button
+                            type="button"
+                            key={value}
+                            className={`${styles.segmentedItem} ${drawingView === value ? styles.segmentedItemActive : ''}`}
+                            onClick={() => setDrawingView(value)}
+                            role="tab"
+                            aria-selected={drawingView === value}
+                          >
+                            {value === 'plan' ? 'Plan' : 'Section'}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
-                )}
-                {isFocus ? (
-                  <div className={styles.summarySecondary}>
-                    {showCost ? (
-                      <div className={styles.summaryStat}>
-                        <div className={styles.summaryLabel}>True cost (ex GST)</div>
-                        <div className={styles.summaryValue}>{renderValue(formatMoney(costValue))}</div>
-                      </div>
-                    ) : null}
-                    <div className={styles.summaryStat}>
-                      <div className={styles.summaryLabel}>Deposit</div>
-                      <div className={styles.summaryValue}>{renderValue(formatMoney(summary?.deposit ?? null))}</div>
-                    </div>
-                    <div className={styles.summaryStat}>
-                      <div className={styles.summaryLabel}>Valid until</div>
-                      <div className={styles.summaryValue}>{renderValue(formatDateShort(summary?.validityDate ?? null))}</div>
-                    </div>
-                    <div className={styles.summaryStat}>
-                      <div className={styles.summaryLabel}>Lead time</div>
-                      <div className={styles.summaryValue}>{renderValue(summary?.leadTime ?? null)}</div>
-                    </div>
-                  </div>
-                ) : null}
+
+                  {activeDrawingModule ? (
+                    <EstimateDrawingSheet
+                      moduleLabel={drawingModuleLabel}
+                      view={drawingView}
+                      status={drawingStatus}
+                      planModel={activeDrawingModule.planModel}
+                      sectionModel={activeDrawingModule.sectionModel}
+                      meta={drawingSheetMeta}
+                    />
+                  ) : (
+                    <div className={styles.drawingEmpty}>No plan or section drawing is available for this estimate.</div>
+                  )}
+                </div>
               </section>
 
               <section className={styles.card}>
@@ -1320,7 +1362,7 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                     type="button"
                     className={legacy.buttonSecondary}
                     onClick={() => setRequestDesignOpen(true)}
-                    disabled={!selectedMeta || selectedEstimateSyncPending}
+                    disabled={!selectedMeta}
                   >
                     Request Design
                   </button>
@@ -1509,6 +1551,8 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
           estimateId={selectedMeta.id}
           estimateLabel={selectedMeta.versionLabel}
           requestSource="estimates_tab"
+          deferUntilSync={selectedEstimateSyncPending}
+          estimateTotalCents={typeof selectedDetail?.summary?.total === 'number' ? Math.round(selectedDetail.summary.total * 100) : null}
           onCreated={async () => {
             await queryClient.invalidateQueries({ queryKey: qk.designPackages.list(hostKey) });
           }}

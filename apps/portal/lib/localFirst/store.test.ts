@@ -6,6 +6,7 @@ import {
   discardLocalFirstEntityQueue,
   enqueueLocalFirstMutation,
   ensureLocalFirstStoreReady,
+  getAliasedLocalFirstEntitySyncState,
   getLocalFirstConflictState,
   registerLocalFirstIdAlias,
   getLocalFirstStoreSnapshot,
@@ -138,5 +139,20 @@ describe('localFirst store', () => {
       'local-quote:1': 'qv_1',
       est_1: 'est_1_final',
     });
+  });
+
+  it('merges sync state across provisional and resolved entity ids', async () => {
+    await ensureLocalFirstStoreReady();
+
+    await enqueueLocalFirstMutation({
+      entityKey: 'quote:detail:local-quote:1',
+      mutationKey: 'quote.create',
+      payload: { estimateId: 'est_1' },
+    });
+    await registerLocalFirstIdAlias('local-quote:1', 'qv_1');
+
+    const merged = getAliasedLocalFirstEntitySyncState('qv_1', (id) => `quote:detail:${id}`);
+    expect(merged.pendingCount).toBe(1);
+    expect(merged.status).toBe('queued');
   });
 });

@@ -15,6 +15,7 @@ import {
   markQuoteAccepted,
   markQuoteDeclined,
   previewQuoteEmail,
+  previewQuotePdf,
   quotePdfUrl,
   resendQuote,
   reviseQuote,
@@ -25,7 +26,7 @@ import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '
 import { qk } from '@/lib/queries/keys';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import { useAliasedEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
 import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
@@ -39,7 +40,7 @@ import {
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
-import { getLocalFirstEntitySyncState, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
+import { getAliasedLocalFirstEntitySyncState, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 
 function formatMoneyFromCents(value: number): string {
   if (!Number.isFinite(value)) return 'â€”';
@@ -218,6 +219,7 @@ function defaultSubject(quoteRef: string): string {
 
 const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
 const SEND_PREVIEW_DEBOUNCE_MS = 250;
+const QUOTE_PREVIEW_DEBOUNCE_MS = 200;
 
 type SendEditorMode = 'compose' | 'preview';
 
@@ -254,6 +256,28 @@ async function readErrorMessage(res: Response, fallback: string): Promise<string
     // Ignore read errors and use fallback.
   }
   return fallback;
+}
+
+function downloadPdfBytes(bytes: Uint8Array, filename: string): void {
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  const blob = new Blob([copy], { type: 'application/pdf' });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => {
+    URL.revokeObjectURL(objectUrl);
+  }, 0);
+}
+
+function quoteDraftFilename(detail: QuoteVersionDetail): string {
+  const rawBase = `${detail.quoteRef || 'quote'}-v${detail.versionNumber}-draft`;
+  const safeBase = rawBase.replace(/[^a-z0-9._-]+/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return `${safeBase || 'quote-draft'}.pdf`;
 }
 
 export default function QuotesTab({
@@ -306,7 +330,7 @@ export default function QuotesTab({
   });
   const detailLoading = Boolean(selectedId) && quoteDetailQuery.isPending;
   const detail = quoteDetailQuery.data ?? null;
-  const detailSyncState = useEntitySyncState(detail ? buildQuoteEntityKey(detail.id) : 'quote:detail:__quote-none__');
+  const detailSyncState = useAliasedEntitySyncState(detail?.id, buildQuoteEntityKey, 'quote:detail:__quote-none__');
   const draftSyncPending = Boolean(detail && detail.status === 'DRAFT' && detailSyncState.pendingCount > 0);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -347,6 +371,7 @@ export default function QuotesTab({
   const [draftDepositPercent, setDraftDepositPercent] = useState('50');
   const [draftExpiry, setDraftExpiry] = useState('');
   const [savingDraft, setSavingDraft] = useState(false);
+  const [downloadingDraftPdf, setDownloadingDraftPdf] = useState(false);
   const prefetchedQuoteDetailsRef = useRef(new Set<string>());
 
   const refreshQuotes = useCallback(async (opts?: { includeEstimates?: boolean }) => {
@@ -519,27 +544,47 @@ export default function QuotesTab({
     return false;
   }, [detail, effectiveDraftItems, draftReference, draftIntro, draftTerms, draftDepositPercent, draftExpiry]);
 
-  const quotePdfPreviewSrc = useMemo(() => (detail ? quotePdfUrl(detail.id, { inline: true }) : ''), [detail]);
+  const previewDetail = useMemo(() => {
+    if (!detail) return null;
+    if (detail.status !== 'DRAFT') return detail;
+    return applyDraftPatchToQuoteDetail(detail, {
+      reference: draftReference,
+      introText: draftIntro,
+      termsText: draftTerms,
+      depositPercent: parsePercentInput(draftDepositPercent),
+      expiresAt: draftExpiry || null,
+      lineItems: effectiveDraftItems.map((item) => ({
+        description: item.description,
+        qty: item.qty,
+        unitPriceIncGstCents: item.unitPriceIncGstCents,
+      })),
+    });
+  }, [detail, draftDepositPercent, draftExpiry, draftIntro, draftReference, draftTerms, effectiveDraftItems]);
+
+  const quotePdfPreviewSrc = useMemo(
+    () => (previewDetail && previewDetail.status !== 'DRAFT' ? quotePdfUrl(previewDetail.id, { inline: true }) : ''),
+    [previewDetail],
+  );
 
   const quotePdfPreviewKey = useMemo(() => {
-    if (!detail) return '';
-    if (typeof detail.renderHash === 'string' && detail.renderHash.trim()) return detail.renderHash.trim();
-    const lineSignature = detail.lineItems
+    if (!previewDetail) return '';
+    if (typeof previewDetail.renderHash === 'string' && previewDetail.renderHash.trim()) return previewDetail.renderHash.trim();
+    const lineSignature = previewDetail.lineItems
       .map((item) => `${item.description}:${item.qty}:${item.unitPriceIncGstCents}`)
       .join('|');
     return [
-      detail.id,
-      detail.status,
-      detail.sentAt ?? '',
-      detail.expiresAt ?? '',
-      detail.reference ?? '',
-      detail.depositPercent,
-      detail.introText ?? '',
-      detail.termsText ?? '',
-      detail.totals.totalIncGstCents,
+      previewDetail.id,
+      previewDetail.status,
+      previewDetail.sentAt ?? '',
+      previewDetail.expiresAt ?? '',
+      previewDetail.reference ?? '',
+      previewDetail.depositPercent,
+      previewDetail.introText ?? '',
+      previewDetail.termsText ?? '',
+      previewDetail.totals.totalIncGstCents,
       lineSignature,
     ].join('::');
-  }, [detail]);
+  }, [previewDetail]);
 
   useEffect(() => {
     return () => {
@@ -548,7 +593,7 @@ export default function QuotesTab({
   }, []);
 
   useEffect(() => {
-    if (!pagePreviewFromUrl || !detail || (detail.status === 'DRAFT' && draftSyncPending)) {
+    if (!pagePreviewFromUrl || !previewDetail) {
       setQuotePdfPreviewLoading(false);
       setQuotePdfPreviewError(null);
       setQuotePdfPreviewData(null);
@@ -571,17 +616,24 @@ export default function QuotesTab({
 
     const run = async () => {
       try {
-        const res = await fetch(quotePdfPreviewSrc, {
-          method: 'GET',
-          credentials: 'same-origin',
-          signal: ac.signal,
-        });
-        if (!res.ok) {
-          const msg = await readErrorMessage(res, `Failed to load quote preview (${res.status})`);
-          throw new Error(msg);
+        let contentType: string | null = 'application/pdf';
+        let bytes: Uint8Array;
+
+        if (previewDetail.status === 'DRAFT') {
+          bytes = await previewQuotePdf(previewDetail, { signal: ac.signal });
+        } else {
+          const res = await fetch(quotePdfPreviewSrc, {
+            method: 'GET',
+            credentials: 'same-origin',
+            signal: ac.signal,
+          });
+          if (!res.ok) {
+            const msg = await readErrorMessage(res, `Failed to load quote preview (${res.status})`);
+            throw new Error(msg);
+          }
+          contentType = res.headers.get('content-type');
+          bytes = new Uint8Array(await res.arrayBuffer());
         }
-        const contentType = res.headers.get('content-type');
-        const bytes = new Uint8Array(await res.arrayBuffer());
         if (ac.signal.aborted) return;
         const validationError = validateQuotePreviewPdf(contentType, bytes);
         if (validationError) {
@@ -597,7 +649,7 @@ export default function QuotesTab({
       } catch (err) {
         if (ac.signal.aborted) return;
         const msg = err instanceof Error ? err.message : 'Failed to load quote preview';
-        console.error('[quote_preview] failed to fetch preview PDF', { error: err, quoteVersionId: detail.id });
+        console.error('[quote_preview] failed to fetch preview PDF', { error: err, quoteVersionId: previewDetail.id });
         setQuotePdfPreviewError(msg);
         setQuotePdfPreviewData(null);
       } finally {
@@ -607,12 +659,15 @@ export default function QuotesTab({
       }
     };
 
-    void run();
+    const timeout = window.setTimeout(() => {
+      void run();
+    }, previewDetail.status === 'DRAFT' ? QUOTE_PREVIEW_DEBOUNCE_MS : 0);
 
     return () => {
       ac.abort();
+      window.clearTimeout(timeout);
     };
-  }, [detail?.id, draftSyncPending, pagePreviewFromUrl, quotePdfPreviewKey, quotePdfPreviewSrc, detail]);
+  }, [pagePreviewFromUrl, previewDetail, quotePdfPreviewKey, quotePdfPreviewSrc]);
 
   const openCreateModal = () => {
     const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
@@ -924,6 +979,24 @@ export default function QuotesTab({
     }
   };
 
+  const handleDownloadDraftPdf = async () => {
+    if (!detail || detail.status !== 'DRAFT' || !previewDetail || downloadingDraftPdf) return;
+    setDownloadingDraftPdf(true);
+    try {
+      const cachedBytes = quotePdfPreviewCacheRef.current.get(quotePdfPreviewKey);
+      const bytes = cachedBytes ?? (await previewQuotePdf(previewDetail));
+      if (!cachedBytes && quotePdfPreviewKey) {
+        quotePdfPreviewCacheRef.current.set(quotePdfPreviewKey, bytes);
+      }
+      downloadPdfBytes(bytes, quoteDraftFilename(previewDetail));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to download draft PDF';
+      toast.error(msg);
+    } finally {
+      setDownloadingDraftPdf(false);
+    }
+  };
+
   const handleDeleteDraft = async () => {
     if (!detail) return;
     if (isLocalQuoteId(detail.id) || draftSyncPending) {
@@ -1023,8 +1096,15 @@ export default function QuotesTab({
             &lt; Back
           </button>
           <div className={styles.detailActions}>
-            {isLocalQuoteId(detail.id) || draftSyncPending ? (
-              <span className={legacy.note}>PDF available after sync</span>
+            {detail.status === 'DRAFT' ? (
+              <button
+                type="button"
+                className={legacy.buttonSecondary}
+                onClick={handleDownloadDraftPdf}
+                disabled={downloadingDraftPdf}
+              >
+                {downloadingDraftPdf ? 'Preparing PDF...' : 'Download PDF'}
+              </button>
             ) : (
               <a className={legacy.buttonSecondary} href={quotePdfUrl(detail.id)}>
                 Download PDF
@@ -1077,16 +1157,16 @@ export default function QuotesTab({
               <h4 className={styles.cardTitle}>Quote preview</h4>
             </div>
             {detail.status === 'DRAFT' && draftDirty ? (
-              <div className={styles.metaWarning}>Preview shows the latest saved draft. Save draft to include unsaved edits.</div>
+              <div className={styles.metaWarning}>Preview includes your current local draft edits before sync completes.</div>
             ) : null}
             {detail.status === 'DRAFT' && !draftDirty && draftSyncPending ? (
-              <div className={styles.metaWarning}>Preview updates after the draft finishes syncing in the background.</div>
+              <div className={styles.metaWarning}>Preview is rendered from the current local draft while background sync completes.</div>
             ) : null}
             {quotePdfPreviewLoading ? <p className={legacy.note}>Rendering quote preview...</p> : null}
             {quotePdfPreviewError ? (
               <div className={styles.errorText}>
                 {quotePdfPreviewError}{' '}
-                {isLocalQuoteId(detail.id) || draftSyncPending ? null : <a href={quotePdfUrl(detail.id)}>Download PDF</a>}
+                {detail.status === 'DRAFT' || isLocalQuoteId(detail.id) || draftSyncPending ? null : <a href={quotePdfUrl(detail.id)}>Download PDF</a>}
               </div>
             ) : null}
             {!quotePdfPreviewLoading && !quotePdfPreviewError && quotePdfPreviewData ? (
@@ -1632,7 +1712,7 @@ export default function QuotesTab({
             <tbody>
               {quotes.map((quote) => {
                 const expired = isExpired(quote.expiresAt);
-                const quoteSyncPending = getLocalFirstEntitySyncState(buildQuoteEntityKey(quote.id)).pendingCount > 0;
+                const quoteSyncPending = getAliasedLocalFirstEntitySyncState(quote.id, buildQuoteEntityKey).pendingCount > 0;
                 return (
                   <tr
                     key={quote.id}

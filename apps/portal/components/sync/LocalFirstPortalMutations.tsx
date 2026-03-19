@@ -4,11 +4,13 @@ import { useEffect, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiJson, ApiError } from '@/lib/repo/apiClient';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { qk } from '@/lib/queries/keys';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
-import { registerLocalFirstMutationHandler } from '@/lib/localFirst/queue';
+import { enqueueAndProcessLocalFirstMutation, registerLocalFirstMutationHandler } from '@/lib/localFirst/queue';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   type PortalContactUpdateMutationPayload,
+  type PortalDesignRequestCreateMutationPayload,
   type PortalEstimateCreateMutationPayload,
   type PortalEstimateNotesMutationPayload,
   type PortalEstimateUpdateMutationPayload,
@@ -16,9 +18,9 @@ import {
   type PortalProjectTaskToggleMutationPayload,
   type PortalQuoteCreateMutationPayload,
   type PortalQuoteUpdateMutationPayload,
+  buildDesignRequestEntityKey,
   patchProjectDetailsCaches,
   upsertContactCaches,
-  patchProjectTasksSnapshot,
   replaceEstimateDetailCache,
   replaceQuoteDetailCache,
   upsertEstimateDetailCache,
@@ -35,6 +37,10 @@ function isEstimateConflict(error: unknown): error is ApiError {
 
 function isValidationConflict(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 400 || error.status === 403 || error.status === 409 || error.status === 423);
+}
+
+function isDesignRequestTerminalError(error: unknown): error is ApiError {
+  return error instanceof ApiError && (error.status === 400 || error.status === 403 || error.status === 404 || error.status === 409 || error.status === 423 || error.status === 501);
 }
 
 export default function LocalFirstPortalMutations() {
@@ -71,24 +77,17 @@ export default function LocalFirstPortalMutations() {
         await registerLocalFirstIdAlias(payload.localEstimateId, res.estimate.id);
 
         if (payload.createDesignRequest) {
-          try {
-            await apiJson('/api/staff/v1/design-packages/request', {
-              method: 'POST',
-              body: JSON.stringify({
-                projectId: payload.projectId,
-                estimateId: res.estimate.id,
-                requestSource: payload.createDesignRequest.requestSource,
-                priorityTier: payload.createDesignRequest.priorityTier,
-              }),
-              skipSaveTracking: true,
-            });
-          } catch (error) {
-            console.error('[localFirst] design request creation failed after estimate sync', {
-              projectId: payload.projectId,
-              estimateId: res.estimate.id,
-              error,
-            });
-          }
+          const designRequestPayload: PortalDesignRequestCreateMutationPayload = {
+            projectId: payload.projectId,
+            estimateId: res.estimate.id,
+            requestSource: payload.createDesignRequest.requestSource,
+            priorityTier: payload.createDesignRequest.priorityTier,
+          };
+          await enqueueAndProcessLocalFirstMutation({
+            entityKey: buildDesignRequestEntityKey(payload.projectId, res.estimate.id),
+            mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.designRequestCreate,
+            payload: designRequestPayload,
+          });
         }
 
         void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId, {
@@ -107,8 +106,16 @@ export default function LocalFirstPortalMutations() {
       PORTAL_LOCAL_FIRST_MUTATIONS.estimateUpdate,
       async (item) => {
         const payload = item.payload as PortalEstimateUpdateMutationPayload;
+        const resolvedEstimateId = resolveLocalFirstId(payload.estimateId);
+        if (!resolvedEstimateId || resolvedEstimateId.startsWith('local-estimate:')) {
+          return {
+            kind: 'retry',
+            status: 'queued',
+            retryAt: new Date(Date.now() + 300).toISOString(),
+          } as const;
+        }
         try {
-          const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(payload.estimateId)}`, {
+          const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(resolvedEstimateId)}`, {
             method: 'PATCH',
             body: JSON.stringify({
               estimate_update: payload.estimatePayload,
@@ -134,6 +141,50 @@ export default function LocalFirstPortalMutations() {
             typeof (error.body as any)?.code === 'string' &&
             ((error.body as any).code === 'ESTIMATE_LOCKED' || (error.body as any).code === 'ESTIMATE_DRAFT_QUOTES_REQUIRE_ACK')
           ) {
+            return {
+              kind: 'conflict',
+              message: error.message,
+              serverSnapshot: error.body,
+            } as const;
+          }
+          throw error;
+        }
+      },
+    );
+
+    const unregisterDesignRequestCreate = registerLocalFirstMutationHandler(
+      PORTAL_LOCAL_FIRST_MUTATIONS.designRequestCreate,
+      async (item) => {
+        const payload = item.payload as PortalDesignRequestCreateMutationPayload;
+        const resolvedEstimateId = resolveLocalFirstId(payload.estimateId);
+        if (!resolvedEstimateId || resolvedEstimateId.startsWith('local-estimate:')) {
+          return {
+            kind: 'retry',
+            status: 'queued',
+            retryAt: new Date(Date.now() + 300).toISOString(),
+          } as const;
+        }
+
+        try {
+          await apiJson('/api/staff/v1/design-packages/request', {
+            method: 'POST',
+            body: JSON.stringify({
+              projectId: payload.projectId,
+              estimateId: resolvedEstimateId,
+              requestSource: payload.requestSource,
+              priorityTier: payload.priorityTier ?? null,
+              requestNote: payload.requestNote ?? null,
+            }),
+            skipSaveTracking: true,
+          });
+          void queryClient.invalidateQueries({ queryKey: qk.designPackages.list(hostKey) });
+
+          return {
+            kind: 'success',
+            clearWorkingCopy: true,
+          } as const;
+        } catch (error) {
+          if (isDesignRequestTerminalError(error)) {
             return {
               kind: 'conflict',
               message: error.message,
@@ -184,8 +235,16 @@ export default function LocalFirstPortalMutations() {
       PORTAL_LOCAL_FIRST_MUTATIONS.quoteUpdateDraft,
       async (item) => {
         const payload = item.payload as PortalQuoteUpdateMutationPayload;
+        const resolvedQuoteVersionId = resolveLocalFirstId(payload.quoteVersionId);
+        if (!resolvedQuoteVersionId || resolvedQuoteVersionId.startsWith('local-quote:')) {
+          return {
+            kind: 'retry',
+            status: 'queued',
+            retryAt: new Date(Date.now() + 300).toISOString(),
+          } as const;
+        }
         try {
-          const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(payload.quoteVersionId)}`, {
+          const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(resolvedQuoteVersionId)}`, {
             method: 'PATCH',
             body: JSON.stringify(payload.patch),
             skipSaveTracking: true,
@@ -261,8 +320,16 @@ export default function LocalFirstPortalMutations() {
       PORTAL_LOCAL_FIRST_MUTATIONS.estimateNotesUpdate,
       async (item) => {
         const payload = item.payload as PortalEstimateNotesMutationPayload;
+        const resolvedEstimateId = resolveLocalFirstId(payload.estimateId);
+        if (!resolvedEstimateId || resolvedEstimateId.startsWith('local-estimate:')) {
+          return {
+            kind: 'retry',
+            status: 'queued',
+            retryAt: new Date(Date.now() + 300).toISOString(),
+          } as const;
+        }
         try {
-          const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(payload.estimateId)}`, {
+          const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(resolvedEstimateId)}`, {
             method: 'PATCH',
             body: JSON.stringify({ internal_notes: payload.internalNotes }),
             skipSaveTracking: true,
@@ -358,6 +425,7 @@ export default function LocalFirstPortalMutations() {
     return () => {
       unregisterEstimateCreate();
       unregisterEstimateUpdate();
+      unregisterDesignRequestCreate();
       unregisterQuoteCreate();
       unregisterQuoteUpdate();
       unregisterProjectDetailsUpdate();
