@@ -389,6 +389,106 @@
   grid-template-columns: 1fr;
 }
 
+.focusSummaryLayout {
+  display: grid;
+  gap: 16px;
+}
+
+.focusSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.focusSummaryCard,
+.focusMetricCard {
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.025);
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.focusSummaryTotalCard {
+  background: linear-gradient(135deg, rgba(var(--accentRgb), 0.08), rgba(var(--portal-text-rgb), 0.02));
+}
+
+.focusSummaryDetailsCard {
+  gap: 8px;
+}
+
+.focusSummaryRow {
+  display: grid;
+  gap: 4px;
+}
+
+.focusSummaryValue {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(var(--portal-text-rgb), 0.86);
+  word-break: break-word;
+}
+
+.focusSummaryTotalValue {
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(var(--portal-text-rgb), 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+.focusSummarySubValue,
+.focusMetricSubValue {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.focusMetricValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(var(--portal-text-rgb), 0.88);
+  font-variant-numeric: tabular-nums;
+}
+
+.focusDrawingToolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.focusDrawingToolbarCopy {
+  display: grid;
+  gap: 4px;
+}
+
+.focusDrawingEyebrow {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.58);
+}
+
+.focusDrawingTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(var(--portal-text-rgb), 0.88);
+}
+
+.focusDrawingControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .summaryTopGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);

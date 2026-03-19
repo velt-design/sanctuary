@@ -2244,11 +2244,33 @@
   text-align: left;
 }
 
+.moduleViewsStageBare {
+  margin-top: 8px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.moduleViewsStageSheet {
+  height: 100%;
+  align-content: stretch;
+  justify-items: stretch;
+}
+
 .moduleViewsStateText {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
   color: rgba(var(--portal-text-rgb), 0.8);
+}
+
+.moduleViewsStateTextSheet {
+  align-self: center;
+  text-align: center;
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .moduleViewsStateDetail {
@@ -2302,6 +2324,10 @@
 }
 
 .moduleViewsCardMinimal .modulePlanFrame {
+  gap: 0;
+}
+
+.modulePlanFrameBare {
   gap: 0;
 }
 
@@ -2366,6 +2392,16 @@
   border: none;
   border-radius: 0;
   background: transparent;
+}
+
+.modulePlanSvgBare {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.modulePlanSvgSheet {
+  display: block;
 }
 
 .moduleViewsLegend {

@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import type { DesignRequestPriorityTier, DesignRequestSource } from '../designPackages/types';
 import { emptyEstimateEditability } from '../estimates/editability';
 import { buildEstimateSnapshotPayload } from '../estimates/persistence';
 import type { EstimateDetail, EstimateMeta, EstimateSummary } from '../estimates/types';
@@ -18,6 +19,7 @@ type AnyRecord = Record<string, unknown>;
 export const PORTAL_LOCAL_FIRST_MUTATIONS = {
   estimateCreate: 'portal.estimate.create',
   estimateUpdate: 'portal.estimate.update',
+  designRequestCreate: 'portal.designRequest.create',
   quoteCreateFromEstimate: 'portal.quote.createFromEstimate',
   quoteUpdateDraft: 'portal.quote.updateDraft',
   projectDetailsUpdate: 'portal.project.details.update',
@@ -41,8 +43,8 @@ export type PortalEstimateCreateMutationPayload = {
   projectId: string;
   estimatePayload: PortalEstimatePayload;
   createDesignRequest?: {
-    requestSource: 'calculator_generate';
-    priorityTier: string;
+    requestSource: Exclude<DesignRequestSource, 'legacy_backfill'>;
+    priorityTier: DesignRequestPriorityTier | null;
   } | null;
 };
 
@@ -56,6 +58,14 @@ export type PortalQuoteCreateMutationPayload = {
   localQuoteId: string;
   projectId: string;
   estimateId: string;
+};
+
+export type PortalDesignRequestCreateMutationPayload = {
+  projectId: string;
+  estimateId: string;
+  requestSource: Exclude<DesignRequestSource, 'legacy_backfill'>;
+  priorityTier?: DesignRequestPriorityTier | null;
+  requestNote?: string | null;
 };
 
 export type PortalQuoteDraftPatch = {
@@ -259,6 +269,10 @@ export function buildEstimateEntityKey(estimateId: string): string {
   return `estimate:detail:${estimateId}`;
 }
 
+export function buildDesignRequestEntityKey(projectId: string, estimateId: string): string {
+  return `design-request:${projectId}:${estimateId}`;
+}
+
 export function buildEstimateNotesDraftEntityKey(estimateId: string): string {
   return `estimate:notes:draft:${estimateId}`;
 }
@@ -297,6 +311,23 @@ export function isLocalEstimateId(estimateId: string): boolean {
 
 export function isLocalQuoteId(quoteVersionId: string): boolean {
   return quoteVersionId.startsWith('local-quote:');
+}
+
+export function buildEstimatePayloadFromDetail(detail: EstimateDetail): PortalEstimatePayload {
+  const snapshot = asRecord(detail.calculatorSnapshot);
+  const inputs = (asRecord(snapshot?.inputs) ?? {}) as AnyRecord;
+  const outputs = asRecord(snapshot?.outputs) ?? {};
+  const { derived, projectSnapshot, snapshot: estimateSnapshot, configVersions, ...baseOutputs } = outputs;
+
+  return {
+    status: detail.status,
+    inputs,
+    derived: (asRecord(derived) ?? {}) as AnyRecord,
+    projectSnapshot: (asRecord(projectSnapshot) ?? undefined) as AnyRecord | undefined,
+    snapshot: (asRecord(estimateSnapshot) ?? undefined) as AnyRecord | undefined,
+    outputs: baseOutputs as AnyRecord,
+    configVersions: (asRecord(configVersions) ?? undefined) as AnyRecord | undefined,
+  };
 }
 
 export function buildOptimisticEstimateDetail(args: {

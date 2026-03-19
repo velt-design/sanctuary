@@ -5,6 +5,13 @@ import { PipelineModal, PIPELINE_MODAL_ACTION_CLASSES } from '@/components/ui/Pi
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { createDesignRequest, fetchDesignRequestPreview } from '@/lib/repo/designPackagesRepo';
 import type { DesignRequestPreview, DesignRequestPriorityTier, DesignRequestSource } from '@/lib/designPackages/types';
+import { useEnqueueLocalFirstMutation } from '@/lib/localFirst/useEnqueueLocalFirstMutation';
+import {
+  PORTAL_LOCAL_FIRST_MUTATIONS,
+  buildDesignRequestEntityKey,
+  isLocalEstimateId,
+  type PortalDesignRequestCreateMutationPayload,
+} from '@/lib/localFirst/portalEntities';
 import styles from './RequestDesignModal.module.css';
 
 const PRIORITY_TIERS: readonly DesignRequestPriorityTier[] = ['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'];
@@ -27,6 +34,8 @@ type RequestDesignModalProps = {
   estimateId: string;
   estimateLabel: string;
   requestSource: Exclude<DesignRequestSource, 'legacy_backfill'>;
+  deferUntilSync?: boolean;
+  estimateTotalCents?: number | null;
   onCreated?: () => void | Promise<void>;
 };
 
@@ -37,15 +46,19 @@ export default function RequestDesignModal({
   estimateId,
   estimateLabel,
   requestSource,
+  deferUntilSync = false,
+  estimateTotalCents = null,
   onCreated,
 }: RequestDesignModalProps) {
   const toast = useToast();
+  const enqueueLocalFirstMutation = useEnqueueLocalFirstMutation<PortalDesignRequestCreateMutationPayload>();
   const [preview, setPreview] = useState<DesignRequestPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [requestNote, setRequestNote] = useState('');
   const [selectedPriorityTier, setSelectedPriorityTier] = useState<DesignRequestPriorityTier>('UNPRICED');
   const [error, setError] = useState<string | null>(null);
+  const useDeferredCreate = deferUntilSync || isLocalEstimateId(estimateId);
 
   useEffect(() => {
     if (!open) {
@@ -59,9 +72,25 @@ export default function RequestDesignModal({
     }
 
     let cancelled = false;
-    setLoading(true);
     setError(null);
     setPreview(null);
+
+    if (useDeferredCreate) {
+      setLoading(false);
+      setPreview({
+        projectId,
+        estimateId,
+        canSubmit: true,
+        mode: 'initial',
+        nextVersion: 1,
+        priorityTier: 'UNPRICED',
+        priceTotalIncGstCents: estimateTotalCents,
+        activeRequest: null,
+      });
+      return;
+    }
+
+    setLoading(true);
 
     void (async () => {
       try {
@@ -79,7 +108,7 @@ export default function RequestDesignModal({
     return () => {
       cancelled = true;
     };
-  }, [estimateId, open, projectId]);
+  }, [estimateId, estimateTotalCents, open, projectId, useDeferredCreate]);
 
   useEffect(() => {
     if (!preview) return;
@@ -123,15 +152,30 @@ export default function RequestDesignModal({
               setError(null);
               void (async () => {
                 try {
-                  await createDesignRequest({
-                    projectId,
-                    estimateId,
-                    requestSource,
-                    requestNote: requestNote.trim() || null,
-                    priorityTier: selectedPriorityTier,
-                  });
-                  await onCreated?.();
-                  toast.success(preview.mode === 'revision' ? `Design request v${preview.nextVersion} created.` : 'Design request created.');
+                  if (useDeferredCreate) {
+                    await enqueueLocalFirstMutation({
+                      entityKey: buildDesignRequestEntityKey(projectId, estimateId),
+                      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.designRequestCreate,
+                      payload: {
+                        projectId,
+                        estimateId,
+                        requestSource,
+                        requestNote: requestNote.trim() || null,
+                        priorityTier: selectedPriorityTier,
+                      },
+                    });
+                    toast.success('Design request queued locally. It will sync after the estimate finishes syncing.');
+                  } else {
+                    await createDesignRequest({
+                      projectId,
+                      estimateId,
+                      requestSource,
+                      requestNote: requestNote.trim() || null,
+                      priorityTier: selectedPriorityTier,
+                    });
+                    await onCreated?.();
+                    toast.success(preview.mode === 'revision' ? `Design request v${preview.nextVersion} created.` : 'Design request created.');
+                  }
                   onOpenChange(false);
                 } catch (err) {
                   const message = err instanceof Error ? err.message : 'Failed to create design request';
@@ -147,7 +191,13 @@ export default function RequestDesignModal({
           </button>
         </>
       }
-      hint={preview?.canSubmit ? 'The request will be linked to this exact estimate snapshot.' : undefined}
+      hint={
+        preview?.canSubmit
+          ? useDeferredCreate
+            ? 'The request will queue now and attach once the estimate sync finishes.'
+            : 'The request will be linked to this exact estimate snapshot.'
+          : undefined
+      }
     >
       <div className={styles.body}>
         {loading ? <p className={styles.muted}>Loading request preview…</p> : null}
@@ -155,6 +205,11 @@ export default function RequestDesignModal({
 
         {preview ? (
           <div className={styles.grid}>
+            {useDeferredCreate ? (
+              <div className={styles.warning}>
+                This estimate still has local changes. The design request will queue now and the server will validate it after sync completes.
+              </div>
+            ) : null}
             <div className={styles.summaryGrid}>
               <div className={styles.tile}>
                 <div className={styles.tileLabel}>Estimate</div>

@@ -1,0 +1,286 @@
+.sheetShell {
+  display: grid;
+  gap: 10px;
+}
+
+.sheetScroller {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.sheetPaper {
+  --sheet-border: rgba(23, 31, 25, 0.34);
+  --sheet-border-soft: rgba(23, 31, 25, 0.16);
+  --sheet-text: rgba(23, 31, 25, 0.9);
+  --sheet-muted: rgba(23, 31, 25, 0.62);
+  --sheet-ink: rgba(18, 22, 20, 0.88);
+  --sheet-ink-secondary: rgba(18, 22, 20, 0.58);
+  --sheet-ink-hidden: rgba(18, 22, 20, 0.38);
+  --sheet-ink-dim: rgba(18, 22, 20, 0.54);
+  width: 100%;
+  min-width: 880px;
+  aspect-ratio: 420 / 297;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 108px;
+  border: 1.5px solid var(--sheet-border);
+  background:
+    linear-gradient(180deg, rgba(248, 247, 243, 0.98), rgba(243, 241, 234, 0.98)),
+    repeating-linear-gradient(0deg, rgba(23, 31, 25, 0.018), rgba(23, 31, 25, 0.018) 1px, transparent 1px, transparent 18px);
+  box-shadow: 0 24px 48px rgba(var(--portal-text-rgb), 0.14);
+  color: var(--sheet-text);
+}
+
+.sheetUpper {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px 22px 14px;
+  min-height: 0;
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-right: 188px;
+}
+
+.sheetEyebrow {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sheet-muted);
+}
+
+.sheetModuleLabel {
+  margin-top: 6px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--sheet-text);
+}
+
+.sheetScaleLabel {
+  flex: 0 0 auto;
+  border: 1px solid var(--sheet-border-soft);
+  padding: 7px 10px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sheet-muted);
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.drawingViewport {
+  min-height: 0;
+  display: grid;
+  align-items: stretch;
+  border: 1px solid rgba(23, 31, 25, 0.08);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.drawingViewport :global(svg) {
+  --mv-line-primary: var(--sheet-ink);
+  --mv-line-secondary: var(--sheet-ink-secondary);
+  --mv-line-hidden: var(--sheet-ink-hidden);
+  --mv-dim: var(--sheet-ink-dim);
+}
+
+.legendBox {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  width: 168px;
+  border: 1px solid var(--sheet-border);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.legendTitle {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sheet-muted);
+}
+
+.legendList {
+  display: grid;
+  gap: 8px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--sheet-text);
+}
+
+.legendSwatch {
+  width: 24px;
+  height: 0;
+  border-top: 2px solid currentColor;
+  flex: 0 0 auto;
+}
+
+.legendSwatchPrimary {
+  color: var(--sheet-ink);
+}
+
+.legendSwatchSecondary {
+  color: var(--sheet-ink-secondary);
+}
+
+.legendSwatchDimension {
+  color: var(--sheet-ink-dim);
+  border-top-style: dashed;
+}
+
+.legendSwatchHidden {
+  color: var(--sheet-ink-hidden);
+  border-top-style: dashed;
+}
+
+.titleBlock {
+  display: grid;
+  grid-template-columns: 0.28fr 0.46fr 0.26fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  border-top: 1.5px solid var(--sheet-border);
+  min-height: 0;
+}
+
+.companyBlock,
+.titleInfoBlock,
+.noteBlock,
+.metaGrid {
+  min-width: 0;
+}
+
+.companyBlock {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  border-right: 1px solid var(--sheet-border);
+  padding: 12px 14px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+}
+
+.companyName {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--sheet-text);
+}
+
+.companyLine {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--sheet-muted);
+}
+
+.titleInfoBlock {
+  grid-column: 2;
+  grid-row: 1;
+  border-right: 1px solid var(--sheet-border);
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+}
+
+.titleInfoRow {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.titleInfoRow + .titleInfoRow {
+  border-top: 1px solid var(--sheet-border-soft);
+}
+
+.blockLabel {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sheet-muted);
+}
+
+.blockValue {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--sheet-text);
+}
+
+.noteBlock {
+  grid-column: 3;
+  grid-row: 1;
+  padding: 12px 14px;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.noteList {
+  display: grid;
+  gap: 4px;
+}
+
+.noteLine {
+  font-size: 10px;
+  line-height: 1.25;
+  color: var(--sheet-text);
+}
+
+.metaGrid {
+  grid-column: 2 / span 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-top: 1px solid var(--sheet-border);
+}
+
+.metaCell {
+  min-width: 0;
+  padding: 8px 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.metaCell + .metaCell {
+  border-left: 1px solid var(--sheet-border);
+}
+
+.metaValue {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--sheet-text);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .sheetPaper {
+    min-width: 820px;
+  }
+
+  .sheetHeader {
+    padding-right: 0;
+  }
+
+  .legendBox {
+    position: static;
+    width: auto;
+    margin-top: 2px;
+  }
+
+  .sheetUpper {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+}

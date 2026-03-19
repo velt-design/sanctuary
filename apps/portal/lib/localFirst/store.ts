@@ -49,6 +49,20 @@ function cloneState(state: LocalFirstPersistedState): LocalFirstPersistedState {
   return JSON.parse(JSON.stringify(state)) as LocalFirstPersistedState;
 }
 
+function resolveLocalFirstIdInState(state: LocalFirstPersistedState, id: string): string {
+  let current = id;
+  const seen = new Set<string>();
+
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    const next = state.idAliases[current];
+    if (!next || next === current) break;
+    current = next;
+  }
+
+  return current;
+}
+
 function emit() {
   for (const listener of listeners) {
     listener();
@@ -110,6 +124,64 @@ function updateEntityState(
     pendingCount: pendingCountForEntity(state, entityKey),
     updatedAt: next.updatedAt ?? isoNow(),
   };
+}
+
+function latestStateMessage(states: LocalFirstEntitySyncState[]): { lastError?: string; conflictId?: string; nextRetryAt?: string } {
+  const ordered = states
+    .filter((state) => state.lastError || state.conflictId || state.nextRetryAt)
+    .slice()
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const latest = ordered[0];
+  if (!latest) return {};
+  return {
+    lastError: latest.lastError,
+    conflictId: latest.conflictId,
+    nextRetryAt: latest.nextRetryAt,
+  };
+}
+
+function mergeEntityStates(
+  entityKey: LocalFirstEntityKey,
+  states: LocalFirstEntitySyncState[],
+): LocalFirstEntitySyncState {
+  if (!states.length) return ensureEntityStateShape(entityKey);
+
+  const pendingCount = states.reduce((sum, state) => sum + Math.max(0, state.pendingCount), 0);
+  const updatedAt = states.reduce((latest, state) => maxIso(latest, state.updatedAt) ?? state.updatedAt, states[0]?.updatedAt);
+  const lastSyncedAt = states.reduce((latest, state) => maxIso(latest, state.lastSyncedAt), undefined as string | undefined);
+  const { lastError, conflictId, nextRetryAt } = latestStateMessage(states);
+
+  let status: LocalFirstEntityStatus = 'idle';
+  if (states.some((state) => state.status === 'conflict')) status = 'conflict';
+  else if (states.some((state) => state.status === 'syncing')) status = 'syncing';
+  else if (states.some((state) => state.status === 'offline')) status = 'offline';
+  else if (states.some((state) => state.status === 'error')) status = 'error';
+  else if (pendingCount > 0 || states.some((state) => state.status === 'queued')) status = 'queued';
+  else if (states.some((state) => state.status === 'synced')) status = 'synced';
+
+  return {
+    entityKey,
+    status,
+    pendingCount,
+    updatedAt: updatedAt ?? isoNow(),
+    lastSyncedAt,
+    lastError,
+    nextRetryAt,
+    conflictId,
+  };
+}
+
+function collectAliasedIdsForEntity(state: LocalFirstPersistedState, entityId: string): string[] {
+  const canonicalId = resolveLocalFirstIdInState(state, entityId);
+  const ids = new Set<string>([entityId, canonicalId]);
+
+  for (const aliasId of Object.keys(state.idAliases)) {
+    if (resolveLocalFirstIdInState(state, aliasId) === canonicalId) {
+      ids.add(aliasId);
+    }
+  }
+
+  return Array.from(ids);
 }
 
 function createQueueId(): string {
@@ -623,6 +695,33 @@ export function getLocalFirstEntitySyncState(entityKey: LocalFirstEntityKey): Lo
   return ensureEntityStateShape(entityKey, snapshot.state.entityStates[entityKey]);
 }
 
+export function getAliasedLocalFirstEntitySyncState(
+  entityId: string,
+  buildEntityKey: (id: string) => LocalFirstEntityKey,
+  fallbackEntityKey?: LocalFirstEntityKey,
+): LocalFirstEntitySyncState {
+  const primaryEntityKey = fallbackEntityKey ?? buildEntityKey(entityId);
+  if (!entityId) return ensureEntityStateShape(primaryEntityKey);
+
+  const uniqueKeys = listAliasedLocalFirstEntityKeys(entityId, buildEntityKey, primaryEntityKey);
+  const states = uniqueKeys
+    .map((entityKey) => snapshot.state.entityStates[entityKey])
+    .filter((state): state is LocalFirstEntitySyncState => Boolean(state));
+
+  return mergeEntityStates(primaryEntityKey, states);
+}
+
+export function listAliasedLocalFirstEntityKeys(
+  entityId: string,
+  buildEntityKey: (id: string) => LocalFirstEntityKey,
+  fallbackEntityKey?: LocalFirstEntityKey,
+): LocalFirstEntityKey[] {
+  const primaryEntityKey = fallbackEntityKey ?? buildEntityKey(entityId);
+  if (!entityId) return [primaryEntityKey];
+  const aliasedEntityKeys = collectAliasedIdsForEntity(snapshot.state, entityId).map((id) => buildEntityKey(id));
+  return Array.from(new Set([primaryEntityKey, ...aliasedEntityKeys]));
+}
+
 export function getLocalFirstConflictState(entityKey: LocalFirstEntityKey): LocalFirstConflictState | null {
   return snapshot.state.conflicts[entityKey] ?? null;
 }
@@ -632,17 +731,7 @@ export function getLocalFirstWorkingCopy<TData>(entityKey: LocalFirstEntityKey):
 }
 
 export function resolveLocalFirstId(id: string): string {
-  let current = id;
-  const seen = new Set<string>();
-
-  while (current && !seen.has(current)) {
-    seen.add(current);
-    const next = snapshot.state.idAliases[current];
-    if (!next || next === current) break;
-    current = next;
-  }
-
-  return current;
+  return resolveLocalFirstIdInState(snapshot.state, id);
 }
 
 export async function registerLocalFirstIdAlias(fromId: string, toId: string): Promise<void> {
