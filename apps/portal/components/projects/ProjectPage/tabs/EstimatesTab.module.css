@@ -391,7 +391,7 @@
 
 .focusSummaryLayout {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .focusSummaryGrid {
@@ -1028,6 +1028,37 @@
   margin: 0 0 8px;
   font-size: 13px;
   color: rgba(var(--portal-text-rgb), 0.72);
+}
+
+.quotePricingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.quotePricingCard {
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.025);
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.quotePricingValue {
+  font-size: clamp(24px, 2.5vw, 34px);
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(var(--portal-text-rgb), 0.9);
+  font-variant-numeric: tabular-nums;
+}
+
+.quotePricingSubValue {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .quoteActions {

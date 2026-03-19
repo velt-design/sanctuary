@@ -4,8 +4,7 @@
 }
 
 .sheetScroller {
-  overflow-x: auto;
-  padding-bottom: 4px;
+  overflow: visible;
 }
 
 .sheetPaper {
@@ -18,7 +17,8 @@
   --sheet-ink-hidden: rgba(18, 22, 20, 0.38);
   --sheet-ink-dim: rgba(18, 22, 20, 0.54);
   width: 100%;
-  min-width: 880px;
+  max-width: 100%;
+  min-width: 0;
   aspect-ratio: 420 / 297;
   display: grid;
   grid-template-rows: minmax(0, 1fr) 108px;
@@ -79,6 +79,7 @@
   align-items: stretch;
   border: 1px solid rgba(23, 31, 25, 0.08);
   background: rgba(255, 255, 255, 0.42);
+  overflow: hidden;
 }
 
 .drawingViewport :global(svg) {
@@ -266,10 +267,6 @@
 }
 
 @media (max-width: 1100px) {
-  .sheetPaper {
-    min-width: 820px;
-  }
-
   .sheetHeader {
     padding-right: 0;
   }
