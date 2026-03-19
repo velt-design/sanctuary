@@ -9,17 +9,20 @@ import {
 import { installDomGeometryMock, renderIntoDocument, setProjectPageShellWidth } from '../../../../../test/reactHarness';
 
 function ColumnLayoutHarness(): ReactElement {
-  const { containerRef, isDesktopLayout, leftWidthPx, rightWidthPx, shellStyle } = useProjectColumnLayout();
+  const { containerRef, isDesktopLayout, leftCollapsed, leftWidthPx, rightCollapsed, rightWidthPx, shellStyle } =
+    useProjectColumnLayout();
 
   return createElement(
     'div',
     { ref: containerRef, 'data-project-page-shell': 'true', style: shellStyle },
-    createElement('div', {
-      'data-testid': 'state',
-      'data-desktop': isDesktopLayout ? 'true' : 'false',
-      'data-left': leftWidthPx,
-      'data-right': rightWidthPx,
-    }),
+      createElement('div', {
+        'data-testid': 'state',
+        'data-desktop': isDesktopLayout ? 'true' : 'false',
+        'data-left-collapsed': leftCollapsed ? 'true' : 'false',
+        'data-left': leftWidthPx,
+        'data-right-collapsed': rightCollapsed ? 'true' : 'false',
+        'data-right': rightWidthPx,
+      }),
   );
 }
 
@@ -56,7 +59,9 @@ describe('useProjectColumnLayout', () => {
     const state = rendered.container.querySelector('[data-testid="state"]') as HTMLElement;
 
     expect(state.dataset.desktop).toBe('true');
+    expect(state.dataset.leftCollapsed).toBe('false');
     expect(state.dataset.left).toBe('280');
+    expect(state.dataset.rightCollapsed).toBe('false');
     expect(state.dataset.right).toBe('320');
 
     rendered.unmount();
@@ -84,24 +89,29 @@ describe('useProjectColumnLayout', () => {
     rendered.unmount();
   });
 
-  it('restores stored widths after remounting', () => {
+  it('restores stored widths and collapsed rails after remounting', () => {
     window.localStorage.setItem(
       PROJECT_PAGE_LAYOUT_STORAGE_KEY,
       JSON.stringify({
         leftWidthPx: 320,
         rightWidthPx: 360,
+        leftCollapsed: true,
       }),
     );
 
     const firstRender = renderIntoDocument(createElement(ColumnLayoutHarness));
     const firstState = firstRender.container.querySelector('[data-testid="state"]') as HTMLElement;
-    expect(firstState.dataset.left).toBe('320');
+    expect(firstState.dataset.leftCollapsed).toBe('true');
+    expect(firstState.dataset.left).toBe('0');
+    expect(firstState.dataset.rightCollapsed).toBe('false');
     expect(firstState.dataset.right).toBe('360');
     firstRender.unmount();
 
     const secondRender = renderIntoDocument(createElement(ColumnLayoutHarness));
     const secondState = secondRender.container.querySelector('[data-testid="state"]') as HTMLElement;
-    expect(secondState.dataset.left).toBe('320');
+    expect(secondState.dataset.leftCollapsed).toBe('true');
+    expect(secondState.dataset.left).toBe('0');
+    expect(secondState.dataset.rightCollapsed).toBe('false');
     expect(secondState.dataset.right).toBe('360');
 
     secondRender.unmount();
