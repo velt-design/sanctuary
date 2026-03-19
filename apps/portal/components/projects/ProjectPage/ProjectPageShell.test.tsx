@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dispatchPointer, installDomGeometryMock, renderIntoDocument, setProjectPageShellWidth } from '../../../../../test/reactHarness';
+import { dispatchKeyboard, dispatchPointer, installDomGeometryMock, renderIntoDocument, setProjectPageShellWidth } from '../../../../../test/reactHarness';
 import ProjectPageShell from './ProjectPageShell';
 
 vi.mock('./ProjectDetailsSidebar', () => ({
@@ -101,6 +101,77 @@ describe('ProjectPageShell resize handles', () => {
 
     expect(readWidthVar(shell, '--project-page-left-width')).toBe('280px');
     expect(readWidthVar(shell, '--project-page-right-width')).toBe('380px');
+
+    rendered.unmount();
+  });
+
+  it('collapses the left rail after overshooting the minimum and restores its previous width when dragged back open', () => {
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
+    const leftHandle = rendered.container.querySelector('[aria-label="Resize left project rail"]') as HTMLButtonElement;
+
+    dispatchPointer(leftHandle, 'pointerdown', { button: 0, clientX: 500 });
+    dispatchPointer(window, 'pointermove', { clientX: 180 });
+
+    expect(readWidthVar(shell, '--project-page-left-width')).toBe('260px');
+
+    dispatchPointer(window, 'pointerup', { clientX: 180 });
+
+    const expandLeftHandle = rendered.container.querySelector('[aria-label="Expand left project rail"]') as HTMLButtonElement;
+    expect(readWidthVar(shell, '--project-page-left-width')).toBe('0px');
+    expect(readWidthVar(shell, '--project-page-right-width')).toBe('320px');
+    expect(expandLeftHandle.getAttribute('aria-expanded')).toBe('false');
+
+    dispatchPointer(expandLeftHandle, 'pointerdown', { button: 0, clientX: 220 });
+    dispatchPointer(window, 'pointermove', { clientX: 272 });
+    dispatchPointer(window, 'pointerup', { clientX: 272 });
+
+    const resizedLeftHandle = rendered.container.querySelector('[aria-label="Resize left project rail"]') as HTMLButtonElement;
+    expect(readWidthVar(shell, '--project-page-left-width')).toBe('280px');
+    expect(resizedLeftHandle.getAttribute('aria-expanded')).toBe('true');
+
+    rendered.unmount();
+  });
+
+  it('still lets a collapsed rail expand from a click', () => {
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
+    const leftHandle = rendered.container.querySelector('[aria-label="Resize left project rail"]') as HTMLButtonElement;
+
+    dispatchPointer(leftHandle, 'pointerdown', { button: 0, clientX: 500 });
+    dispatchPointer(window, 'pointermove', { clientX: 180 });
+    dispatchPointer(window, 'pointerup', { clientX: 180 });
+
+    const expandLeftHandle = rendered.container.querySelector('[aria-label="Expand left project rail"]') as HTMLButtonElement;
+    dispatchPointer(expandLeftHandle, 'click');
+
+    expect(readWidthVar(shell, '--project-page-left-width')).toBe('280px');
+
+    rendered.unmount();
+  });
+
+  it('toggles the right rail from the keyboard and restores the resized width on expand', () => {
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
+    const rightHandle = rendered.container.querySelector('[aria-label="Resize right project rail"]') as HTMLButtonElement;
+
+    dispatchPointer(rightHandle, 'pointerdown', { button: 0, clientX: 1000 });
+    dispatchPointer(window, 'pointermove', { clientX: 940 });
+    dispatchPointer(window, 'pointerup', { clientX: 940 });
+
+    expect(readWidthVar(shell, '--project-page-right-width')).toBe('380px');
+
+    dispatchKeyboard(rightHandle, 'Enter');
+
+    const expandRightHandle = rendered.container.querySelector('[aria-label="Expand right project rail"]') as HTMLButtonElement;
+    expect(readWidthVar(shell, '--project-page-right-width')).toBe('0px');
+    expect(expandRightHandle.getAttribute('aria-expanded')).toBe('false');
+
+    dispatchKeyboard(expandRightHandle, 'Enter');
+
+    const resizedRightHandle = rendered.container.querySelector('[aria-label="Resize right project rail"]') as HTMLButtonElement;
+    expect(readWidthVar(shell, '--project-page-right-width')).toBe('380px');
+    expect(resizedRightHandle.getAttribute('aria-expanded')).toBe('true');
 
     rendered.unmount();
   });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useState, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import {
   closestCenter,
   DndContext,
@@ -50,9 +50,13 @@ function getRailSlotId(rail: ProjectPanelRail): string {
   return `rail-slot:${rail}`;
 }
 
-function parseRailSlotId(value: string): ProjectPanelRail | null {
-  if (value === getRailSlotId('left')) return 'left';
-  if (value === getRailSlotId('right')) return 'right';
+function getRailHandleSlotId(rail: ProjectPanelRail): string {
+  return `rail-handle-slot:${rail}`;
+}
+
+function parseRailDropId(value: string): ProjectPanelRail | null {
+  if (value === getRailSlotId('left') || value === getRailHandleSlotId('left')) return 'left';
+  if (value === getRailSlotId('right') || value === getRailHandleSlotId('right')) return 'right';
   return null;
 }
 
@@ -161,6 +165,53 @@ function SortableProjectPanel({
   );
 }
 
+function ProjectRailHandle({
+  ariaLabel,
+  collapseArmed,
+  collapsed,
+  dropEnabled,
+  onClick,
+  onKeyDown,
+  onPointerDown,
+  rail,
+  railClassName,
+}: {
+  ariaLabel: string;
+  collapseArmed: boolean;
+  collapsed: boolean;
+  dropEnabled: boolean;
+  onClick: ButtonHTMLAttributes<HTMLButtonElement>['onClick'];
+  onKeyDown: ButtonHTMLAttributes<HTMLButtonElement>['onKeyDown'];
+  onPointerDown: ButtonHTMLAttributes<HTMLButtonElement>['onPointerDown'];
+  rail: ProjectPanelRail;
+  railClassName: string;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: getRailHandleSlotId(rail),
+    disabled: !dropEnabled,
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      className={cx(
+        styles.resizeHandle,
+        railClassName,
+        collapsed && styles.resizeHandleCollapsed,
+        collapseArmed && styles.resizeHandleCollapseArmed,
+        isOver && styles.resizeHandleDropTarget,
+      )}
+      aria-label={ariaLabel}
+      aria-expanded={!collapsed}
+      data-collapsed={collapsed ? 'true' : undefined}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      onPointerDown={onPointerDown}
+    />
+  );
+}
+
 export default function ProjectPageShell({
   snapshot,
   tab,
@@ -168,8 +219,20 @@ export default function ProjectPageShell({
   snapshot: ProjectPageSnapshot;
   tab: string;
 }) {
-  const { containerRef, createKeyDownHandler, createPointerDownHandler, isDesktopLayout, isResizing, shellStyle } =
-    useProjectColumnLayout();
+  const {
+    containerRef,
+    createClickHandler,
+    createKeyDownHandler,
+    createPointerDownHandler,
+    expandRail,
+    isDesktopLayout,
+    isResizing,
+    leftCollapseArmed,
+    leftCollapsed,
+    rightCollapseArmed,
+    rightCollapsed,
+    shellStyle,
+  } = useProjectColumnLayout();
   const { setSlots, slots } = useProjectPanelSlots();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -178,9 +241,14 @@ export default function ProjectPageShell({
   const [activePanelId, setActivePanelId] = useState<ProjectPanelId | null>(null);
   const [overTargetId, setOverTargetId] = useState<string | null>(null);
   const isPanelDragging = activePanelId !== null;
+  const isRailCollapsed = (rail: ProjectPanelRail) =>
+    isDesktopLayout && (rail === 'left' ? leftCollapsed : rightCollapsed);
 
   const handleKeyboardMove = (panelId: ProjectPanelId, direction: 'left' | 'right' | 'up' | 'down') => {
     setSlots((prev) => keyboardMoveProjectPanel(prev, panelId, direction));
+    if ((direction === 'left' || direction === 'right') && isRailCollapsed(direction)) {
+      expandRail(direction);
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -205,12 +273,13 @@ export default function ProjectPageShell({
     clearDragState();
     if (!panelId || !overId) return;
 
-    const targetRail = parseRailSlotId(overId);
+    const targetRail = parseRailDropId(overId);
     if (targetRail) {
       setSlots((prev) => {
         if (prev[targetRail].length >= 2 && findProjectPanelRail(prev, panelId) !== targetRail) return prev;
         return moveProjectPanel(prev, { panelId, rail: targetRail, index: prev[targetRail].length });
       });
+      expandRail(targetRail);
       return;
     }
 
@@ -237,12 +306,26 @@ export default function ProjectPageShell({
 
   const renderRail = (rail: ProjectPanelRail) => {
     const panelIds = slots[rail];
+    const collapsed = isRailCollapsed(rail);
     if (!isDesktopLayout && panelIds.length === 0) return null;
 
     const showDropZone =
+      !collapsed &&
       isDesktopLayout &&
       (panelIds.length === 0 ||
         (isPanelDragging && panelIds.length < 2 && activePanelId !== null && findProjectPanelRail(slots, activePanelId) !== rail));
+
+    if (collapsed) {
+      return (
+        <aside
+          key={rail}
+          className={cx(styles.rail, rail === 'left' ? styles.railLeft : styles.railRight, styles.railCollapsed)}
+          data-collapsed="true"
+          data-panel-count={panelIds.length}
+          data-project-rail={rail}
+        />
+      );
+    }
 
     return (
       <aside
@@ -296,12 +379,21 @@ export default function ProjectPageShell({
         {renderRail('left')}
 
         {isDesktopLayout ? (
-          <button
-            type="button"
-            className={cx(styles.resizeHandle, styles.resizeHandleLeft)}
-            aria-label="Resize left project rail"
+          <ProjectRailHandle
+            ariaLabel={leftCollapsed ? 'Expand left project rail' : 'Resize left project rail'}
+            collapseArmed={leftCollapseArmed}
+            collapsed={leftCollapsed}
+            dropEnabled={
+              leftCollapsed &&
+              isPanelDragging &&
+              (slots.left.length === 0 ||
+                (slots.left.length < 2 && activePanelId !== null && findProjectPanelRail(slots, activePanelId) !== 'left'))
+            }
+            onClick={createClickHandler('left')}
             onKeyDown={createKeyDownHandler('left')}
             onPointerDown={createPointerDownHandler('left')}
+            rail="left"
+            railClassName={styles.resizeHandleLeft}
           />
         ) : null}
 
@@ -310,12 +402,21 @@ export default function ProjectPageShell({
         </section>
 
         {isDesktopLayout ? (
-          <button
-            type="button"
-            className={cx(styles.resizeHandle, styles.resizeHandleRight)}
-            aria-label="Resize right project rail"
+          <ProjectRailHandle
+            ariaLabel={rightCollapsed ? 'Expand right project rail' : 'Resize right project rail'}
+            collapseArmed={rightCollapseArmed}
+            collapsed={rightCollapsed}
+            dropEnabled={
+              rightCollapsed &&
+              isPanelDragging &&
+              (slots.right.length === 0 ||
+                (slots.right.length < 2 && activePanelId !== null && findProjectPanelRail(slots, activePanelId) !== 'right'))
+            }
+            onClick={createClickHandler('right')}
             onKeyDown={createKeyDownHandler('right')}
             onPointerDown={createPointerDownHandler('right')}
+            rail="right"
+            railClassName={styles.resizeHandleRight}
           />
         ) : null}
 
