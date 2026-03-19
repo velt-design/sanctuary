@@ -924,6 +924,7 @@ const RIDGE_BEAM_PROFILE_OPTIONS: FieldOption[] = [
 const BOX_BEAM_PROFILE_OPTIONS: FieldOption[] = [
   DEFAULT_OVERRIDE_OPTION,
   { label: '300x50', value: '300x50' },
+  { label: '250x50', value: '250x50' },
   { label: '200x50', value: '200x50' },
 ];
 const STRUT_PROFILE_OPTIONS: FieldOption[] = [
@@ -3364,6 +3365,7 @@ export default function CalculatorGridClient({
       : [];
 
   const moduleOverrides = activeModule.overrides ?? {};
+  const boxPerimeterBeamProfileUsedUi = normalizeOverrideValue(moduleOverrides.boxPerimeterBeamProfile) ?? '300x50';
   const frontBeamOverride = normalizeOverrideValue(moduleOverrides.frontBeamProfile);
   const frontBeamProfileUsed = frontBeamOverride ?? 'SP Gutter';
   const integratedGutterBeamUi = isGutterBeamProfile(frontBeamProfileUsed);
@@ -4501,7 +4503,7 @@ export default function CalculatorGridClient({
         activeModule.pergolaStyle === 'hip_corner'
           ? 'Not supported for hip corner'
           : activeModule.boxPerimeterEnabled
-            ? 'Box beam = 300x50'
+            ? `Box beam = ${boxPerimeterBeamProfileUsedUi}`
             : 'Off',
     },
     {

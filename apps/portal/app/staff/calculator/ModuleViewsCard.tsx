@@ -164,8 +164,12 @@ export function ModuleDrawingRenderer({
               <LegendRow
                 items={
                   planModel.houseConnectionType === 'soffit'
-                    ? ['Frame member', 'Rafters', 'Soffit brackets', 'House side']
-                    : ['Frame member', 'Rafters', 'House side']
+                    ? hasFullLengthPlanRidge(planModel.roofType)
+                      ? ['Frame member', 'Rafters', 'Ridge beam', 'Soffit brackets', 'House side']
+                      : ['Frame member', 'Rafters', 'Soffit brackets', 'House side']
+                    : hasFullLengthPlanRidge(planModel.roofType)
+                      ? ['Frame member', 'Rafters', 'Ridge beam', 'House side']
+                      : ['Frame member', 'Rafters', 'House side']
                 }
               />
               <div className={styles.modulePlanStats}>
@@ -175,6 +179,9 @@ export function ModuleDrawingRenderer({
                 ) : null}
                 <span className={styles.modulePlanStat}>{`Roof: ${roofTypeLabel(planModel.roofType)}`}</span>
                 <span className={styles.modulePlanStat}>{`Rafters: ${planModel.rafterCountA} @ ${formatMetres(planModel.rafterSpacingA)} c/c`}</span>
+                {hasFullLengthPlanRidge(planModel.roofType) ? (
+                  <span className={styles.modulePlanStat}>{`Ridge beam: ${Math.round(planModel.ridgeBeamDepthM * 1000)}x${Math.round(planModel.ridgeBeamWidthM * 1000)}mm`}</span>
+                ) : null}
                 {planModel.houseConnectionType === 'soffit' ? (
                   <span className={styles.modulePlanStat}>{`Soffit brackets: ${planModel.soffitBracketPositionsA.length}`}</span>
                 ) : null}
@@ -203,7 +210,7 @@ export function ModuleDrawingRenderer({
               <LegendRow
                 items={
                   sectionModel.sectionKind === 'gable'
-                    ? ['Primary frame', 'Internal roof line', 'Tie beam', 'King strut']
+                    ? ['Primary frame', 'Internal roof line', 'Ridge beam', 'Tie beam / king strut']
                     : sectionModel.overhangEnabled && sectionModel.overhangAmountM > 0
                       ? ['Primary frame', 'Internal roof line', 'Overhang support']
                       : ['Primary frame', 'Internal roof line']
@@ -276,6 +283,7 @@ type TickDimensionProps = {
   rotateDeg?: number;
   overrun?: number;
   showTermBars?: boolean;
+  presentation?: ModuleDrawingPresentation;
 };
 
 function formatMetres(value: number): string {
@@ -296,6 +304,14 @@ function roofTypeLabel(roofType: ModulePlanModel['roofType']): string {
   if (roofType === 'gable') return 'Gable';
   if (roofType === 'hip') return 'Hip';
   return 'Pitched';
+}
+
+function hasFullLengthPlanRidge(roofType: ModulePlanModel['roofType']): boolean {
+  return roofType === 'gable' || roofType === 'low_gable';
+}
+
+function memberSizeM(value: number | null | undefined, fallbackM: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallbackM;
 }
 
 function summariseConsistency(issues: string[]): GeometryConsistency {
@@ -322,6 +338,14 @@ function checkPlanConsistency(model: ModulePlanModel): GeometryConsistency {
   if (!(model.spanA > 0)) issues.push('A span must be > 0.');
   if (model.overhangEnabled && model.overhangAmountM >= model.spanA - 1e-6) {
     issues.push(`Overhang ${formatMetres(model.overhangAmountM)} is not less than span ${formatMetres(model.spanA)}.`);
+  }
+
+  if (hasFullLengthPlanRidge(model.roofType)) {
+    const sideFrameWidthM = memberSizeM(model.supportBeamWidthM, 0.05);
+    const ridgeLengthM = model.lengthA - sideFrameWidthM * 2;
+    if (ridgeLengthM <= 0) {
+      issues.push('Ridge beam does not fit between end frame members.');
+    }
   }
 
   if (model.rafterPositionsA.length !== model.rafterCountA) {
@@ -429,27 +453,27 @@ function sectionSupportXFromHouseM(model: ModuleSectionModel): number {
 }
 
 function sectionLedgerBeamDepthM(model: ModuleSectionModel): number {
-  return Math.max(0.03, Number.isFinite(model.ledgerBeamDepthM) ? model.ledgerBeamDepthM : 0.1);
+  return memberSizeM(model.ledgerBeamDepthM, 0.1);
 }
 
 function sectionLedgerBeamWidthM(model: ModuleSectionModel): number {
-  return Math.max(0.02, Number.isFinite(model.ledgerBeamWidthM) ? model.ledgerBeamWidthM : 0.05);
+  return memberSizeM(model.ledgerBeamWidthM, 0.05);
 }
 
 function sectionSupportBeamDepthM(model: ModuleSectionModel): number {
-  return Math.max(0.03, Number.isFinite(model.supportBeamDepthM) ? model.supportBeamDepthM : 0.15);
+  return memberSizeM(model.supportBeamDepthM, 0.15);
 }
 
 function sectionSupportBeamWidthM(model: ModuleSectionModel): number {
-  return Math.max(0.02, Number.isFinite(model.supportBeamWidthM) ? model.supportBeamWidthM : 0.05);
+  return memberSizeM(model.supportBeamWidthM, 0.05);
 }
 
 function sectionRidgeBeamDepthM(model: ModuleSectionModel): number {
-  return Math.max(0.03, Number.isFinite(model.ridgeBeamDepthM) ? model.ridgeBeamDepthM : 0.15);
+  return memberSizeM(model.ridgeBeamDepthM, 0.15);
 }
 
 function sectionRidgeBeamWidthM(model: ModuleSectionModel): number {
-  return Math.max(0.02, Number.isFinite(model.ridgeBeamWidthM) ? model.ridgeBeamWidthM : 0.05);
+  return memberSizeM(model.ridgeBeamWidthM, 0.05);
 }
 
 type MonoDatumResolution = {
@@ -541,7 +565,7 @@ function sectionGableRafterCutLengthsM(model: ModuleSectionModel): { leftM: numb
   if (model.sectionKind !== 'gable' || typeof model.ridgeHeightM !== 'number' || !Number.isFinite(model.ridgeHeightM)) return null;
 
   const ridgeWidthM = sectionRidgeBeamWidthM(model);
-  const eaveWidthM = Math.max(0.02, Number.isFinite(model.gutterWidthM) ? model.gutterWidthM : 0.1);
+  const eaveWidthM = memberSizeM(model.gutterWidthM, 0.1);
   const leftRunM = Math.max(0.01, model.spanA / 2 - eaveWidthM - ridgeWidthM / 2);
   const rightRunM = Math.max(0.01, model.spanA / 2 - eaveWidthM - ridgeWidthM / 2);
   const plumbCutDropM = sectionRafterPlumbCutDropM(model);
@@ -676,7 +700,20 @@ function LegendRow({ items }: { items: string[] }) {
   );
 }
 
-function TickDimension({ x1, y1, x2, y2, label, textX, textY, rotateDeg, overrun = 2.7, showTermBars = false }: TickDimensionProps) {
+function TickDimension({
+  x1,
+  y1,
+  x2,
+  y2,
+  label,
+  textX,
+  textY,
+  rotateDeg,
+  overrun = 2.7,
+  showTermBars = false,
+  presentation = 'card',
+}: TickDimensionProps) {
+  const isSheet = presentation === 'sheet';
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
@@ -684,7 +721,7 @@ function TickDimension({ x1, y1, x2, y2, label, textX, textY, rotateDeg, overrun
   const uy = dy / len;
   const nx = -uy;
   const ny = ux;
-  const tickHalf = 0.92;
+  const tickHalf = isSheet ? 0.82 : 1.02;
   const tx = (ux + nx) * tickHalf;
   const ty = (uy + ny) * tickHalf;
   const isHorizontal = Math.abs(dx) >= Math.abs(dy);
@@ -692,13 +729,13 @@ function TickDimension({ x1, y1, x2, y2, label, textX, textY, rotateDeg, overrun
   const lineStartY = y1 - uy * overrun;
   const lineEndX = x2 + ux * overrun;
   const lineEndY = y2 + uy * overrun;
-  const barHalf = 0.72;
-  const barOffset = 0.55;
+  const barHalf = isSheet ? 0.58 : 0.72;
+  const barOffset = isSheet ? 0.46 : 0.55;
 
   const cx = (x1 + x2) / 2;
   const cy = (y1 + y2) / 2;
-  const labelX = textX ?? (isHorizontal ? cx : cx - 2.8);
-  const labelY = textY ?? (isHorizontal ? cy - 1.8 : cy);
+  const labelX = textX ?? (isHorizontal ? cx : cx - (isSheet ? 3.2 : 2.8));
+  const labelY = textY ?? (isHorizontal ? cy - (isSheet ? 2.4 : 2.1) : cy);
   const labelRotate = rotateDeg ?? (isHorizontal ? undefined : -90);
 
   return (
@@ -753,8 +790,10 @@ function PlanSvg({
   idBase: string;
   presentation?: ModuleDrawingPresentation;
 }) {
+  const isSheet = presentation === 'sheet';
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
+  const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
   const totalW = isHipCorner ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
   const totalH = isHipCorner ? model.spanA + (model.spanB ?? 0) : model.spanA;
 
@@ -774,9 +813,13 @@ function PlanSvg({
   const bH = (model.spanB ?? 0) * scale;
   const splitY = y + aH;
   const bottomY = splitY + bH;
-  const memberW = clamp(model.rafterWidthM * scale, 0.6, 2.8);
-  const gutterW = clamp(model.gutterWidthM * scale, 0.8, 3.8);
-  const rafterW = clamp(model.rafterWidthM * scale, 0.45, 1.9);
+  const topFrameW = memberSizeM(model.ledgerBeamWidthM, 0.05) * scale;
+  const sideFrameW = memberSizeM(model.supportBeamWidthM, 0.05) * scale;
+  const gutterW = memberSizeM(model.gutterWidthM, 0.1) * scale;
+  const rafterW = memberSizeM(model.rafterWidthM, 0.05) * scale;
+  const ridgeBandW = memberSizeM(model.ridgeBeamWidthM, 0.05) * scale;
+  const ridgeBandX = x + sideFrameW;
+  const ridgeBandWidth = Math.max(0, aW - sideFrameW * 2);
 
   const primaryPoints: Point[] = isHipCorner
     ? [
@@ -801,9 +844,10 @@ function PlanSvg({
     x: centerX + (point.x - centerX) * insetScale,
     y: centerY + (point.y - centerY) * insetScale,
   }));
-  const hipInner = isHipCorner ? hipCornerInnerPoints(x, y, aW, bW, splitY, bottomY, memberW) : null;
+  const hipInner = isHipCorner ? hipCornerInnerPoints(x, y, aW, bW, splitY, bottomY, Math.max(sideFrameW, topFrameW, gutterW)) : null;
 
   const gableMidY = y + aH / 2;
+  const ridgeBandY = gableMidY - ridgeBandW / 2;
   const hipRidgeStartX = x + aW * 0.32;
   const hipRidgeEndX = x + aW * 0.68;
   const houseBottomY = y - 2;
@@ -820,18 +864,19 @@ function PlanSvg({
   const fallTop = y + 1;
   const fallBottom = (isHipCorner ? bottomY : y + aH) - 1;
 
-  const dimBaseY = Math.min(86, bottomY + 6.5);
-  const rafterDimY = Math.min(88, dimBaseY + 5.2);
+  const dimBaseY = Math.min(87.6, bottomY + (isSheet ? 8.9 : 7.8));
+  const secondaryDimY = Math.min(88.8, dimBaseY + (isSheet ? 6.0 : 5.4));
+  const rafterDimY = Math.min(89.1, dimBaseY + (isSheet ? 6.9 : 6.1));
 
-  const yTopInner = y + memberW;
+  const yTopInner = y + topFrameW;
   const yBottomInner = y + aH - gutterW;
   const overhangFrameDepth = isHipCorner ? bH : aH;
   const overhangDepth = model.overhangEnabled
-    ? Math.min(Math.max(0.3, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - memberW * 2))
+    ? Math.min(Math.max(0, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - topFrameW - gutterW))
     : 0;
   const overhangY = isHipCorner ? bottomY - overhangDepth : y + aH - overhangDepth;
-  const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - memberW * 2);
-  const overhangX = x + memberW;
+  const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - sideFrameW * 2);
+  const overhangX = x + sideFrameW;
 
   return (
     <svg
@@ -856,10 +901,10 @@ function PlanSvg({
       <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} />
       {!isHipCorner ? (
         <>
-          <rect x={x} y={y} width={aW} height={memberW} className={styles.modulePlanMemberBand} />
+          <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanMemberBand} />
           <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanMemberBand} />
-          <rect x={x} y={y + memberW} width={memberW} height={Math.max(0.2, aH - memberW - gutterW)} className={styles.modulePlanMemberBand} />
-          <rect x={x + aW - memberW} y={y + memberW} width={memberW} height={Math.max(0.2, aH - memberW - gutterW)} className={styles.modulePlanMemberBand} />
+          <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanMemberBand} />
+          <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanMemberBand} />
         </>
       ) : (
         <>
@@ -870,7 +915,9 @@ function PlanSvg({
 
       {model.boxPerimeterEnabled ? <polygon points={toPointsAttr(insetPoints)} className={styles.modulePlanBoxInset} /> : null}
 
-      {isGableLike ? <line x1={x + 7} y1={gableMidY} x2={x + aW - 7} y2={gableMidY} className={styles.modulePlanRidge} /> : null}
+      {hasFullLengthRidge && ridgeBandWidth > 0 ? (
+        <rect x={ridgeBandX} y={ridgeBandY} width={ridgeBandWidth} height={ridgeBandW} className={styles.modulePlanRidgeBand} />
+      ) : null}
 
       {model.roofType === 'hip' ? (
         <>
@@ -894,8 +941,8 @@ function PlanSvg({
       {isHipCorner
         ? rafterXsB.map((rx) => (
             <g key={`rafter_b_${rx.toFixed(3)}`}>
-              <line x1={rx - rafterW / 2} y1={splitY + memberW} x2={rx - rafterW / 2} y2={bottomY - gutterW} className={styles.modulePlanRafter} />
-              <line x1={rx + rafterW / 2} y1={splitY + memberW} x2={rx + rafterW / 2} y2={bottomY - gutterW} className={styles.modulePlanRafter} />
+              <line x1={rx - rafterW / 2} y1={splitY + topFrameW} x2={rx - rafterW / 2} y2={bottomY - gutterW} className={styles.modulePlanRafter} />
+              <line x1={rx + rafterW / 2} y1={splitY + topFrameW} x2={rx + rafterW / 2} y2={bottomY - gutterW} className={styles.modulePlanRafter} />
             </g>
           ))
         : null}
@@ -940,21 +987,28 @@ function PlanSvg({
 
       <line x1={x} y1={isHipCorner ? bottomY : y + aH} x2={x} y2={dimBaseY} className={styles.moduleDimWitness} />
       <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
-      <TickDimension x1={x} y1={dimBaseY} x2={x + aW} y2={dimBaseY} label={formatMetres(model.lengthA)} />
+      <TickDimension x1={x} y1={dimBaseY} x2={x + aW} y2={dimBaseY} label={formatMetres(model.lengthA)} presentation={presentation} />
 
-      <line x1={x} y1={y} x2={x - 6.2} y2={y} className={styles.moduleDimWitness} />
-      <line x1={x} y1={y + aH} x2={x - 6.2} y2={y + aH} className={styles.moduleDimWitness} />
-      <TickDimension x1={x - 6.2} y1={y} x2={x - 6.2} y2={y + aH} label={formatMetres(model.spanA)} />
+      <line x1={x} y1={y} x2={x - 7.4} y2={y} className={styles.moduleDimWitness} />
+      <line x1={x} y1={y + aH} x2={x - 7.4} y2={y + aH} className={styles.moduleDimWitness} />
+      <TickDimension x1={x - 7.4} y1={y} x2={x - 7.4} y2={y + aH} label={formatMetres(model.spanA)} presentation={presentation} />
 
       {isHipCorner && model.lengthB && model.spanB ? (
         <>
-          <line x1={x} y1={bottomY} x2={x} y2={Math.min(88, dimBaseY + 4.8)} className={styles.moduleDimWitness} />
-          <line x1={x + bW} y1={bottomY} x2={x + bW} y2={Math.min(88, dimBaseY + 4.8)} className={styles.moduleDimWitness} />
-          <TickDimension x1={x} y1={Math.min(88, dimBaseY + 4.8)} x2={x + bW} y2={Math.min(88, dimBaseY + 4.8)} label={formatMetres(model.lengthB)} />
+          <line x1={x} y1={bottomY} x2={x} y2={secondaryDimY} className={styles.moduleDimWitness} />
+          <line x1={x + bW} y1={bottomY} x2={x + bW} y2={secondaryDimY} className={styles.moduleDimWitness} />
+          <TickDimension
+            x1={x}
+            y1={secondaryDimY}
+            x2={x + bW}
+            y2={secondaryDimY}
+            label={formatMetres(model.lengthB)}
+            presentation={presentation}
+          />
 
-          <line x1={x + bW} y1={splitY} x2={x + bW + 6.2} y2={splitY} className={styles.moduleDimWitness} />
-          <line x1={x + bW} y1={bottomY} x2={x + bW + 6.2} y2={bottomY} className={styles.moduleDimWitness} />
-          <TickDimension x1={x + bW + 6.2} y1={splitY} x2={x + bW + 6.2} y2={bottomY} label={formatMetres(model.spanB)} />
+          <line x1={x + bW} y1={splitY} x2={x + bW + 7.4} y2={splitY} className={styles.moduleDimWitness} />
+          <line x1={x + bW} y1={bottomY} x2={x + bW + 7.4} y2={bottomY} className={styles.moduleDimWitness} />
+          <TickDimension x1={x + bW + 7.4} y1={splitY} x2={x + bW + 7.4} y2={bottomY} label={formatMetres(model.spanB)} presentation={presentation} />
         </>
       ) : null}
 
@@ -966,7 +1020,15 @@ function PlanSvg({
           <>
             <line x1={d1} y1={isHipCorner ? splitY - gutterW : yBottomInner} x2={d1} y2={rafterDimY} className={styles.moduleDimWitness} />
             <line x1={d2} y1={isHipCorner ? splitY - gutterW : yBottomInner} x2={d2} y2={rafterDimY} className={styles.moduleDimWitness} />
-            <TickDimension x1={d1} y1={rafterDimY} x2={d2} y2={rafterDimY} label={`${formatMetres(model.rafterSpacingA)} c/c`} textY={rafterDimY - 1.3} />
+            <TickDimension
+              x1={d1}
+              y1={rafterDimY}
+              x2={d2}
+              y2={rafterDimY}
+              label={`${formatMetres(model.rafterSpacingA)} c/c`}
+              textY={rafterDimY - (isSheet ? 1.8 : 1.5)}
+              presentation={presentation}
+            />
           </>
         );
       })() : null}
@@ -981,6 +1043,7 @@ function SectionSvg({
   model: ModuleSectionModel;
   presentation?: ModuleDrawingPresentation;
 }) {
+  const isSheet = presentation === 'sheet';
   const overhangM = sectionOverhangM(model);
   const totalSpanM = Math.max(model.spanA, 0.001);
   const supportXFromHouseM = sectionSupportXFromHouseM(model);
@@ -1034,18 +1097,18 @@ function SectionSvg({
   const scaleY = availableHeight / maxHeightM;
   const scale = Math.min(scaleX, scaleY);
 
-  const postW = clamp(model.postWidthM * scale, 1.2, 4.8);
-  const rafterDepth = clamp(model.rafterDepthM * scale, 1.1, 6.4);
-  const gutterWidth = clamp(model.gutterWidthM * scale, 0.9, 4.4);
-  const leftEaveDepth = clamp(leftEaveBeamDepthM * scale, 0.9, 5.4);
-  const leftEaveWidth = clamp(leftEaveBeamWidthM * scale, 0.8, 4.4);
-  const supportCapDepth = clamp(supportBeamDepthM * scale, 0.9, 5.4);
-  const supportCapWidth = clamp(supportBeamWidthM * scale, 0.8, 3.8);
-  const tieBeamDepth = clamp(tieBeamDepthM * scale, 0.9, 5.4);
-  const kingStrutWidth = clamp(tieBeamWidthM * scale, 0.8, 3.8);
-  const rightEaveBeamDepth = clamp(rightEaveBeamDepthM * scale, 0.9, 5.4);
-  const rightEaveBeamWidth = clamp(rightEaveBeamWidthM * scale, 0.8, 3.8);
-  const ridgeBeamWidth = clamp(ridgeBeamWidthM * scale, 0.8, 3.8);
+  const postW = memberSizeM(model.postWidthM, 0.1) * scale;
+  const rafterDepth = memberSizeM(model.rafterDepthM, 0.15) * scale;
+  const gutterWidth = memberSizeM(model.gutterWidthM, 0.1) * scale;
+  const leftEaveDepth = leftEaveBeamDepthM * scale;
+  const leftEaveWidth = leftEaveBeamWidthM * scale;
+  const supportCapDepth = supportBeamDepthM * scale;
+  const supportCapWidth = supportBeamWidthM * scale;
+  const tieBeamDepth = tieBeamDepthM * scale;
+  const kingStrutWidth = tieBeamWidthM * scale;
+  const rightEaveBeamDepth = rightEaveBeamDepthM * scale;
+  const rightEaveBeamWidth = rightEaveBeamWidthM * scale;
+  const ridgeBeamWidth = ridgeBeamWidthM * scale;
 
   const drawWidth = safeSpanM * scale;
   const xLeft = (120 - drawWidth) / 2;
@@ -1083,14 +1146,14 @@ function SectionSvg({
   const gableLeftRafterStartX = ledgerX + leftEaveWidth;
   const gableRightRafterEndX = xRight - rightEaveBeamWidth;
 
-  const leftDimX = Math.max(6, xLeft - 7.4);
-  const rightDimX = Math.min(114, xRight + 8.2);
+  const leftDimX = Math.max(6, xLeft - (isSheet ? 9.8 : 8.6));
+  const rightDimX = Math.min(114, xRight + (isSheet ? 10.6 : 9.4));
   const spanAnchorLeftY = yHouseUnder;
   const spanAnchorSupportY = ySupportUnder;
   const spanAnchorRightY = yOuterGutterUnder;
   const spanDatumY = Math.max(spanAnchorLeftY, spanAnchorSupportY, spanAnchorRightY);
-  const spanDimY = Math.min(88.5, Math.max(yGround + 9.0, spanDatumY + 7.4));
-  const overhangDimY = Math.max(spanAnchorRightY + 3.8, spanDimY - 4.8);
+  const spanDimY = Math.min(89.2, Math.max(yGround + (isSheet ? 10.9 : 10.2), spanDatumY + (isSheet ? 9.4 : 8.4)));
+  const overhangDimY = Math.max(spanAnchorRightY + (isSheet ? 4.9 : 4.2), spanDimY - (isSheet ? 5.8 : 5.2));
 
   const mainRoofNormal = segmentDownNormal(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder);
   const ridgeLeftX = ridgeX - ridgeBeamWidth / 2;
@@ -1118,15 +1181,16 @@ function SectionSvg({
     return { yTop, yUnder };
   })();
 
-  const depthDimUnderX = monoRafterStartX + (monoRafterEndX - monoRafterStartX) * 0.24;
-  const depthDimUnderY = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * 0.24;
+  const depthDimAlongRoof = isSheet ? 0.18 : 0.24;
+  const depthDimUnderX = monoRafterStartX + (monoRafterEndX - monoRafterStartX) * depthDimAlongRoof;
+  const depthDimUnderY = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * depthDimAlongRoof;
   const depthDimTop: Point = {
     x: depthDimUnderX - mainRoofNormal.nx * rafterDepth,
     y: depthDimUnderY - mainRoofNormal.ny * rafterDepth,
   };
   const depthDimBottom: Point = { x: depthDimUnderX, y: depthDimUnderY };
   const roofTopLengthDims = (() => {
-    const offset = 2.7;
+    const offset = isSheet ? 4.0 : 2.7;
     if (model.sectionKind === 'mono' && monoRoofGeom) {
       const topStart = monoRoofGeom.points[3]!;
       const topEnd = monoRoofGeom.points[2]!;
@@ -1192,17 +1256,17 @@ function SectionSvg({
       <rect x={Math.max(8, xLeft - 8)} y={yGround + 1.3} width={Math.min(104, xRight + 8) - Math.max(8, xLeft - 8)} height={8} className={styles.moduleSectionGroundFill} />
       <line x1={Math.max(8, xLeft - 8)} y1={yGround} x2={Math.min(112, xRight + 8)} y2={yGround} className={styles.moduleSectionGround} />
 
-      <rect x={leftPostX} y={yHouseUnder} width={postW} height={yGround - yHouseUnder} className={styles.moduleSectionMember} />
-      <rect x={secondPostX} y={supportPostTopY} width={postW} height={yGround - supportPostTopY} className={styles.moduleSectionMember} />
+      <rect x={leftPostX} y={yHouseUnder} width={postW} height={yGround - yHouseUnder} className={styles.moduleSectionPostPrimary} />
+      <rect x={secondPostX} y={supportPostTopY} width={postW} height={yGround - supportPostTopY} className={styles.moduleSectionPostPrimary} />
       <rect
         x={ledgerX}
         y={ledgerY}
         width={leftEaveWidth}
         height={leftEaveDepth}
-        className={model.sectionKind === 'gable' ? styles.moduleSectionGutter : styles.moduleSectionLedger}
+        className={model.sectionKind === 'gable' ? styles.moduleSectionGutter : styles.moduleSectionPrimaryBeam}
       />
       {model.sectionKind === 'mono' && overhangM > 0 ? (
-        <rect x={xSupport - supportCapWidth / 2} y={supportCapTopY} width={supportCapWidth} height={supportCapDepth} className={styles.moduleSectionOverhangBeam} />
+        <rect x={xSupport - supportCapWidth / 2} y={supportCapTopY} width={supportCapWidth} height={supportCapDepth} className={styles.moduleSectionPrimaryBeam} />
       ) : model.sectionKind === 'gable' ? (
         <rect x={rightEaveX} y={rightEaveY} width={rightEaveBeamWidth} height={rightEaveBeamDepth} className={styles.moduleSectionGutter} />
       ) : null}
@@ -1214,14 +1278,14 @@ function SectionSvg({
             y={tieBeamTopY}
             width={Math.max(0.4, tieBeamRightX - tieBeamLeftX)}
             height={Math.max(0.2, tieBeamBottomY - tieBeamTopY)}
-            className={styles.moduleSectionMember}
+            className={styles.moduleSectionSecondaryMember}
           />
           <rect
             x={ridgeX - kingStrutWidth / 2}
             y={yRidgeUnder}
             width={kingStrutWidth}
             height={Math.max(0.2, kingStrutBottomY - yRidgeUnder)}
-            className={styles.moduleSectionMember}
+            className={styles.moduleSectionSecondaryMember}
           />
         </>
       ) : null}
@@ -1230,21 +1294,21 @@ function SectionSvg({
 
       {model.sectionKind === 'gable' && yRidgeUnder !== null ? (
         <>
-          {gableLeftRoofGeom ? <polygon points={toPointsAttr(gableLeftRoofGeom.points)} className={styles.moduleSectionMember} /> : null}
-          {gableRightRoofGeom ? <polygon points={toPointsAttr(gableRightRoofGeom.points)} className={styles.moduleSectionMember} /> : null}
+          {gableLeftRoofGeom ? <polygon points={toPointsAttr(gableLeftRoofGeom.points)} className={styles.moduleSectionRoofMember} /> : null}
+          {gableRightRoofGeom ? <polygon points={toPointsAttr(gableRightRoofGeom.points)} className={styles.moduleSectionRoofMember} /> : null}
           {yRidgeBeamTop !== null ? (
             <rect
               x={ridgeX - ridgeBeamWidth / 2}
               y={yRidgeBeamTop ?? yRidgeUnder}
               width={ridgeBeamWidth}
               height={Math.max(0.2, yRidgeUnder - (yRidgeBeamTop ?? yRidgeUnder))}
-              className={styles.moduleSectionLedger}
+              className={styles.moduleSectionRidgeBeam}
             />
           ) : null}
         </>
       ) : (
         <>
-          {monoRoofGeom ? <polygon points={toPointsAttr(monoRoofGeom.points)} className={styles.moduleSectionMember} /> : null}
+          {monoRoofGeom ? <polygon points={toPointsAttr(monoRoofGeom.points)} className={styles.moduleSectionRoofMember} /> : null}
         </>
       )}
 
@@ -1254,7 +1318,7 @@ function SectionSvg({
           y1={monoSupportSplice.yTop}
           x2={xSupport}
           y2={monoSupportSplice.yUnder}
-          className={styles.moduleSectionMember}
+          className={styles.moduleSectionConnection}
         />
       ) : null}
 
@@ -1278,7 +1342,8 @@ function SectionSvg({
             x2={roofDim.dimEnd.x}
             y2={roofDim.dimEnd.y}
             label={formatMetres(roofDim.lengthM)}
-            textY={(roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - 1.8}
+            textY={(roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - (isSheet ? 2.5 : 1.8)}
+            presentation={presentation}
           />
         </g>
       ))}
@@ -1312,8 +1377,10 @@ function SectionSvg({
           x2={depthDimBottom.x}
           y2={depthDimBottom.y}
           label={`${Math.round(model.rafterDepthM * 1000)}mm`}
-          textY={depthDimTop.y - 1.6}
+          textX={isSheet ? depthDimTop.x - 1.3 : undefined}
+          textY={depthDimTop.y - (isSheet ? 2.5 : 1.6)}
           overrun={1.1}
+          presentation={presentation}
         />
       ) : null}
 
@@ -1324,21 +1391,21 @@ function SectionSvg({
         <>
           <line x1={xSupport} y1={spanAnchorSupportY} x2={xSupport} y2={overhangDimY} className={styles.moduleDimWitness} />
           <line x1={xRight} y1={spanAnchorRightY} x2={xRight} y2={overhangDimY} className={styles.moduleDimWitness} />
-          <TickDimension x1={xSupport} y1={overhangDimY} x2={xRight} y2={overhangDimY} label={`OH ${formatMetres(overhangM)}`} />
+          <TickDimension x1={xSupport} y1={overhangDimY} x2={xRight} y2={overhangDimY} label={`OH ${formatMetres(overhangM)}`} presentation={presentation} />
         </>
       ) : null}
 
       <line x1={xLeft} y1={spanAnchorLeftY} x2={xLeft} y2={spanDimY} className={styles.moduleDimWitness} />
       <line x1={xRight} y1={spanAnchorRightY} x2={xRight} y2={spanDimY} className={styles.moduleDimWitness} />
-      <TickDimension x1={xLeft} y1={spanDimY} x2={xRight} y2={spanDimY} label={formatMetres(model.spanA)} textY={spanDimY - 1.4} />
+      <TickDimension x1={xLeft} y1={spanDimY} x2={xRight} y2={spanDimY} label={formatMetres(model.spanA)} textY={spanDimY - (isSheet ? 1.8 : 1.4)} presentation={presentation} />
 
       <line x1={xLeft} y1={yGround} x2={leftDimX} y2={yGround} className={styles.moduleDimWitness} />
       <line x1={xLeft} y1={yHouseUnder} x2={leftDimX} y2={yHouseUnder} className={styles.moduleDimWitness} />
-      <TickDimension x1={leftDimX} y1={yGround} x2={leftDimX} y2={yHouseUnder} label={formatMetres(model.leftEdgeHeightM)} />
+      <TickDimension x1={leftDimX} y1={yGround} x2={leftDimX} y2={yHouseUnder} label={formatMetres(model.leftEdgeHeightM)} presentation={presentation} />
 
       <line x1={xRight} y1={yGround} x2={rightDimX} y2={yGround} className={styles.moduleDimWitness} />
       <line x1={xRight} y1={yOuterGutterUnder} x2={rightDimX} y2={yOuterGutterUnder} className={styles.moduleDimWitness} />
-      <TickDimension x1={rightDimX} y1={yGround} x2={rightDimX} y2={yOuterGutterUnder} label={formatMetres(outerGutterUndersideM)} />
+      <TickDimension x1={rightDimX} y1={yGround} x2={rightDimX} y2={yOuterGutterUnder} label={formatMetres(outerGutterUndersideM)} presentation={presentation} />
 
       <text x={(xLeft + xRight) / 2} y={88} textAnchor="middle" className={styles.moduleSectionPitchLabel}>
         {`Pitch ${model.pitchDeg.toFixed(1)} deg`}

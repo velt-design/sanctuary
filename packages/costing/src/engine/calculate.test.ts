@@ -1503,6 +1503,51 @@ describe('calculateCostV1', () => {
     expect(result.totals.notes_and_warnings.some((w) => w.includes('INVALID') && w.includes('Powdercoat'))).toBe(true);
   });
 
+  it('box perimeter 250x50 override uses 250x50 materials and install action', () => {
+    const config = loadCostingConfigV1();
+    const result = calculateCostV1(
+      {
+        length_m: 6,
+        projection_m: 3,
+        post_cut_height_m: 2.4,
+        post_count: 4,
+        pergola_style: 'pitched',
+        box_perimeter_enabled: true,
+        internal_roof_type: 'pitched',
+        fall_distance_mm: 200,
+        roof_material: 'acrylic',
+        extrusion_colour: 'Mill',
+        powdercoat_standard_colour: 'Ironsands',
+        powdercoat_is_custom: false,
+        overrides: {
+          box_perimeter_beam_profile: '250x50',
+        },
+        house_connection_type: 'soffit',
+        post_connection_type: 'deck_bracket',
+        access: 'normal',
+        height: 'single_storey',
+      },
+      config,
+    );
+
+    expect(result.derived.box_perimeter_beam_profile_used).toBe('250x50');
+    const line = result.materials.lines.find((l) => l.profile === '250x50');
+    expect(line).toBeTruthy();
+    if (!line) return;
+    const found = findPowdercoatForBar(config, String(line.id));
+    expect(found?.barItem).toBeTruthy();
+    expect(found?.powderItem).toBeTruthy();
+    if (!found?.barItem || !found.powderItem) return;
+
+    const base = Number((found.barItem as any).cost_ex_gst ?? 0);
+    const powder = Number((found.powderItem as any).cost_ex_gst ?? 0);
+    const expected = roundMoney(base + powder);
+    expect(line.unit_cost_ex_gst).toBeCloseTo(expected, 2);
+    expect(String(line.label).toLowerCase()).toContain('powdercoated');
+    expect(result.install.actions.some((a) => a.id === 'frame.box_perimeter_beam_250_install_m')).toBe(true);
+    expect(result.totals.notes_and_warnings.some((w) => w.includes('INVALID') && w.includes('Powdercoat'))).toBe(false);
+  });
+
   it('infills: no infills keeps infill labour actions disabled', () => {
     const result = calculateCostV1({
       length_m: 6,

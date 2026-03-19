@@ -126,9 +126,12 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('M1 - Gable - 4.6m x 5.1m - Acrylic');
     expect(markup).toContain('Legend');
     expect(markup).toContain('Frame perimeter');
+    expect(markup).toContain('Ridge beam');
     expect(markup).toContain('M1 - Gable - 4.6m x 5.1m - Acrylic - Roof Plan');
     expect(markup).toContain('P-01');
     expect(markup).toContain('Portal preview');
+    expect(markup).toContain('Do not scale off portal preview.');
+    expect(markup).toContain('Verify all dimensions on site.');
   });
 
   it('renders a section sheet with updated sheet code and title', () => {
@@ -154,6 +157,7 @@ describe('EstimateDrawingSheet', () => {
 
     expect(markup).toContain('Section view');
     expect(markup).toContain('M2 - Gable - 6.2m x 3.4m - Acrylic');
+    expect(markup).toContain('Ridge beam');
     expect(markup).toContain('M2 - Gable - 6.2m x 3.4m - Acrylic - Section');
     expect(markup).toContain('S-01');
     expect(markup).toContain('Te Arai');

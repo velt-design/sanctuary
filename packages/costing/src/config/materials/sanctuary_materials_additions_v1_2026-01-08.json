@@ -386,6 +386,24 @@
       "cost_inc_gst": 163.62
     },
     {
+      "id": "powdercoating_box_gutter_100x100x3_6m",
+      "category": "powdercoating",
+      "name": "Powdercoating for Box gutter 100x100x3 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "Box Gutter 100x100x3",
+        "length_m": 6.0
+      },
+      "notes": "Assumption: powdercoating priced same as 100x100 6m until supplier confirms.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "Powdercoating for 100x100 6m"
+      },
+      "cost_ex_gst": 34.8,
+      "cost_inc_gst": 40.02
+    },
+    {
       "id": "bracket_mid_support_rafters",
       "category": "bracket",
       "name": "Mid-support rafter bracket",
@@ -647,6 +665,81 @@
       },
       "cost_ex_gst": 695.6522,
       "cost_inc_gst": 800.0
+    },
+    {
+      "id": "aluminium-extrusion_box_beam_250x50_6m_black",
+      "category": "aluminium_extrusion",
+      "name": "250x50 6m (Black)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0,
+        "colour": "Black"
+      },
+      "notes": "User-specified 250x50 6m extrusion price.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 294.5455,
+      "cost_inc_gst": 324.0
+    },
+    {
+      "id": "aluminium-extrusion_box_beam_250x50_6m_white",
+      "category": "aluminium_extrusion",
+      "name": "250x50 6m (White)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0,
+        "colour": "White"
+      },
+      "notes": "User-specified 250x50 6m extrusion price.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 294.5455,
+      "cost_inc_gst": 324.0
+    },
+    {
+      "id": "aluminium-extrusion_box_beam_250x50_6m_mill",
+      "category": "aluminium_extrusion",
+      "name": "250x50 6m (Mill)",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0,
+        "colour": "Mill"
+      },
+      "notes": "Assumption: use the same user-specified 250x50 6m bar price for Mill until split finish pricing is confirmed.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 294.5455,
+      "cost_inc_gst": 324.0
+    },
+    {
+      "id": "powdercoating_box_beam_250x50_6m",
+      "category": "powdercoating",
+      "name": "Powdercoating for 250x50 6m",
+      "unit": "bar",
+      "attributes": {
+        "profile": "250x50",
+        "length_m": 6.0
+      },
+      "notes": "Assumption: user requested a 250x50 powdercoat rate between 200x50 and 300x50; active pricebook has no 200x50 powdercoat row, so this uses a midpoint placeholder.",
+      "source": {
+        "method": "assumption",
+        "needs_confirmation": true,
+        "based_on": "User request 2026-03-20"
+      },
+      "cost_ex_gst": 48.0818,
+      "cost_inc_gst": 52.89
     }
   ]
 }
