@@ -9,6 +9,6 @@ export default async function EstimateViewerPage({
   redirect(
     `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
       estimateId,
-    )}&sheet=materials&mode=focus`,
+    )}&sheet=materials`,
   );
 }

@@ -14,11 +14,9 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 export default function ProjectSnapshotPageClient({
   projectId,
   tab,
-  mode,
 }: {
   projectId: string;
   tab: string;
-  mode: string;
 }) {
   const queryClient = useQueryClient();
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
@@ -61,7 +59,7 @@ export default function ProjectSnapshotPageClient({
         currentStage={snapshot.pipeline.stage}
         pipeline={<ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} compact />}
       />
-      <ProjectPageShell snapshot={snapshot} tab={tab} mode={mode} />
+      <ProjectPageShell snapshot={snapshot} tab={tab} />
     </main>
   );
 }

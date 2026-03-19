@@ -24,27 +24,18 @@ const TABS = [
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
-type ModeKey = 'general' | 'focus';
 type QuoteViewKey = 'edit' | 'preview';
 
 function coerceTab(value: string | undefined): TabKey {
   return (TABS.find((t) => t.key === value)?.key ?? 'estimates') as TabKey;
 }
 
-function coerceMode(value: string | undefined): ModeKey {
-  return value === 'focus' ? 'focus' : 'general';
-}
-
 export default function ProjectMainTabs({
   snapshot,
   tab,
-  mode,
-  setMode,
 }: {
   snapshot: ProjectPageSnapshot;
   tab: string;
-  mode: ModeKey;
-  setMode: (mode: ModeKey) => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -56,7 +47,6 @@ export default function ProjectMainTabs({
 
   const tabFromUrl = useMemo(() => coerceTab(searchParams.get('tab') ?? tab), [searchParams, tab]);
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl);
-  const activeMode = coerceMode(mode);
   const quotePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
   const quoteView: QuoteViewKey = quotePreviewFromUrl ? 'preview' : 'edit';
   const quoteIdFromUrl = useMemo(() => {
@@ -86,7 +76,7 @@ export default function ProjectMainTabs({
     }
     if (next.tab && next.tab !== 'quotes') qs.delete('quotePreview');
     if (next.tab && next.tab !== 'job-packs') qs.delete('sheet');
-    if (next.tab && next.tab !== 'job-packs') qs.delete('mode');
+    qs.delete('mode');
     const query = qs.toString();
     if (next.tab) setActiveTab(next.tab);
     router.replace(`${pathname}${query ? `?${query}` : ''}`);
@@ -155,25 +145,6 @@ export default function ProjectMainTabs({
         </div>
 
         <div className={legacy.actions}>
-          {showLegacyModeToggle ? (
-            <div className={legacy.tabsPill} role="group" aria-label="Mode toggle">
-              {(['general', 'focus'] as const).map((value) => {
-                const active = activeMode === value;
-                return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setMode(value)}
-                    className={`${legacy.tabButton} ${active ? legacy.tabButtonActive : ''}`}
-                    aria-pressed={active}
-                  >
-                    {value === 'focus' ? 'Focus' : 'General'}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-
           {!showLegacyModeToggle && activeTab === 'quotes' ? (
             <div className={legacy.tabsPill} role="group" aria-label="Quote view">
               {(['edit', 'preview'] as const).map((value) => {
@@ -200,7 +171,7 @@ export default function ProjectMainTabs({
 
       <div className={legacy.sectionBody}>
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
-        {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} mode={activeMode} projectSnapshot={snapshot} /> : null}
+        {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} /> : null}
         {activeTab === 'quotes' ? (
           <QuotesTab
             projectId={snapshot.project.id}

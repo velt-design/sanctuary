@@ -542,22 +542,17 @@ function formatDraftQuoteEditWarning(detail: EstimateDetail | null): string | nu
   return `This estimate has ${editability.draftQuoteCount} draft quotes. Editing it will not update those drafts automatically.`;
 }
 
-type ModeKey = 'general' | 'focus';
-
 export default function EstimatesTab({
   projectId,
-  mode,
   projectSnapshot,
 }: {
   projectId: string;
-  mode: ModeKey;
   projectSnapshot: ProjectPageSnapshot;
 }) {
   const router = useRouter();
   const toast = useToast();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const isFocus = mode === 'focus';
 
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
@@ -673,8 +668,8 @@ export default function EstimatesTab({
     } else {
       setNotesDraft(selectedDetail.internalNotes ?? '');
     }
-    setWarningsOpen(isFocus);
-  }, [isFocus, notesWorkingCopy.hasLocalCopy, notesWorkingCopy.value, selectedDetail?.id]);
+    setWarningsOpen(false);
+  }, [notesWorkingCopy.hasLocalCopy, notesWorkingCopy.value, selectedDetail?.id]);
 
   useEffect(() => {
     if (!notesWorkingCopy.hasLocalCopy) return;
@@ -702,10 +697,6 @@ export default function EstimatesTab({
     };
   }, []);
 
-  useEffect(() => {
-    if (isFocus) setWarningsOpen(true);
-  }, [isFocus]);
-
   const summary = selectedDetail?.summary ?? selectedMeta?.summary;
   const breakdown = useMemo(() => buildBreakdown(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
   const breakdownTotals = useMemo(() => buildBreakdownTotals(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
@@ -715,12 +706,12 @@ export default function EstimatesTab({
       selectedMeta
         ? `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
             selectedMeta.id,
-          )}&sheet=${encodeURIComponent(sheet)}&mode=focus`
+          )}&sheet=${encodeURIComponent(sheet)}`
         : '',
     [projectId, selectedMeta],
   );
   const jobPackUrl = jobPackUrlForSheet('materials');
-  const breakdownCount = isFocus ? focusGroups.length : breakdownTotals.length;
+  const breakdownCount = breakdownTotals.length;
   const pergolaSpecs = useMemo(() => getPergolaSpecs(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
   const moduleLines = useMemo(() => {
     const specs = getModuleSpecs(selectedDetail?.calculatorSnapshot ?? null);
@@ -1103,70 +1094,20 @@ export default function EstimatesTab({
 
   return (
     <div className={styles.wrapper}>
-      {isFocus ? (
-        <div className={styles.header}>
-          <div>
-            <h3 className={styles.title}>Estimates</h3>
-            <p className={styles.subtitle}>Versions and estimate detail snapshots.</p>
-          </div>
-          <div className={legacy.actions}>
-            <Link className={legacy.button} href={calculatorHref}>
-              Create estimate
-            </Link>
-            <button
-              type="button"
-              className={legacy.buttonSecondary}
-              onClick={handleDuplicate}
-              disabled={!selectedId || actionBusy}
-            >
-              Duplicate
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className={styles.generalTopBar}>
-          <EstimateVersionTabs
-            estimates={estimates.map((estimate) => ({
-              id: estimate.id,
-              label: estimate.versionLabel,
-              status: estimate.status,
-            }))}
-            activeEstimateId={selectedId}
-            onSelect={setSelectedId}
-            onCreateEstimate={handleCreateFromTabs}
-          />
-        </div>
-      )}
+      <div className={styles.generalTopBar}>
+        <EstimateVersionTabs
+          estimates={estimates.map((estimate) => ({
+            id: estimate.id,
+            label: estimate.versionLabel,
+            status: estimate.status,
+          }))}
+          activeEstimateId={selectedId}
+          onSelect={setSelectedId}
+          onCreateEstimate={handleCreateFromTabs}
+        />
+      </div>
 
-      <div className={`${styles.mainGrid} ${isFocus ? styles.mainGridFocus : styles.mainGridGeneral}`}>
-        {isFocus ? (
-          <div className={styles.versionsPanel}>
-            <div className={styles.versionsList}>
-              {estimates.map((estimate) => {
-                const isActive = estimate.id === selectedId;
-                return (
-                  <button
-                    type="button"
-                    key={estimate.id}
-                    className={`${styles.versionRow} ${isActive ? styles.versionRowActive : ''}`}
-                    onClick={() => setSelectedId(estimate.id)}
-                  >
-                    <div className={styles.versionRowTop}>
-                      <span className={styles.versionLabel}>{estimate.versionLabel}</span>
-                      <span className={`${legacy.statusPill} ${statusClass(estimate.status)}`}>
-                        {formatStatusLabel(estimate.status)}
-                      </span>
-                    </div>
-                    <div className={styles.versionRowBottom}>
-                      <div className={styles.versionMeta}>{renderValue(formatDateShort(estimate.createdAt))}</div>
-                      <div className={styles.versionTotal}>{renderValue(formatMoney(summaryTotal(estimate.summary)))}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ) : null}
+      <div className={`${styles.mainGrid} ${styles.mainGridGeneral}`}>
 
         <div className={styles.detailPanel}>
           {!selectedMeta ? <p className={legacy.note}>Select an estimate to view details.</p> : null}
@@ -1174,7 +1115,7 @@ export default function EstimatesTab({
 
           {selectedMeta && !detailLoading ? (
             <div className={styles.detailStack}>
-              <section className={styles.card}>
+              <section className={`${styles.card} ${styles.drawingCard}`}>
                 <div className={styles.summaryHeader}>
                   <div>
                     <div className={styles.summaryHeaderTitle}>
@@ -1330,76 +1271,14 @@ export default function EstimatesTab({
                 </div>
               </section>
 
-              <section className={styles.card}>
+              <section className={`${styles.card} ${styles.quoteCard}`}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardHeaderGroup}>
                     <h4 className={styles.cardTitle}>Breakdown</h4>
                     <span className={styles.cardSubTitle}>{breakdownCount ? `${breakdownCount} categories` : 'No data'}</span>
                   </div>
                 </div>
-                {isFocus ? (
-                  focusGroups.length && activeFocusGroup ? (
-                    <>
-                      {focusGroups.length > 1 ? (
-                        <div className={styles.segmentedControl}>
-                          {focusGroups.map((group) => (
-                            <button
-                              type="button"
-                              key={group.key}
-                              className={`${styles.segmentedItem} ${
-                                group.key === activeFocusGroup.key ? styles.segmentedItemActive : ''
-                              }`}
-                              onClick={() => setFocusCategory(group.key)}
-                            >
-                              {group.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-                      <div className={styles.detailTableWrap}>
-                        <table className={`${legacy.table} ${styles.detailTable}`}>
-                          <thead>
-                            <tr>
-                              <th>Item</th>
-                              <th className={styles.detailQty}>Qty</th>
-                              <th className={styles.detailNumeric}>Cost</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {activeFocusGroup.rows.map((row, idx) => {
-                              const qtyText =
-                                typeof row.qty === 'number'
-                                  ? `${row.qty}${row.unit ? ` ${row.unit}` : ''}`
-                                  : null;
-                              return (
-                                <tr key={`${activeFocusGroup.key}-${idx}`}>
-                                  <td>
-                                    <div className={styles.detailItemLabel}>{row.label}</div>
-                                    {row.note ? <div className={styles.detailItemNote}>{row.note}</div> : null}
-                                  </td>
-                                  <td className={styles.detailQty}>{renderValue(qtyText)}</td>
-                                  <td className={styles.detailNumeric}>{renderValue(formatMoney(row.cost ?? null))}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                          <tfoot>
-                            <tr>
-                              <td colSpan={2} className={styles.detailSubtotalLabel}>
-                                {activeFocusGroup.label} subtotal
-                              </td>
-                              <td className={`${styles.detailNumeric} ${styles.detailSubtotalValue}`}>
-                                {renderValue(formatMoney(activeFocusSubtotal))}
-                              </td>
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </div>
-                    </>
-                  ) : (
-                    <p className={legacy.note}>No breakdown data available for this snapshot.</p>
-                  )
-                ) : breakdownTotals.length ? (
+                {breakdownTotals.length ? (
                   <div className={styles.breakdownTotals}>
                     {breakdownTotals.map((category) => {
                       const rowContent = (

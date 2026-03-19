@@ -10,11 +10,6 @@ function parseTab(value: string | string[] | undefined): string {
   return 'estimates';
 }
 
-function parseMode(value: string | string[] | undefined): string {
-  const raw = Array.isArray(value) ? value[0] : value;
-  return raw === 'focus' ? 'focus' : 'general';
-}
-
 type SearchParams = { [key: string]: string | string[] | undefined };
 type PageParams = { projectId: string };
 
@@ -28,7 +23,6 @@ export default async function ProjectDetailPage({
   const { projectId } = await params;
   const resolvedSearchParams = await searchParams;
   const tab = parseTab(resolvedSearchParams?.tab);
-  const mode = parseMode(resolvedSearchParams?.mode);
   if (!projectId.trim()) {
     return (
       <main className={styles.page}>
@@ -45,5 +39,5 @@ export default async function ProjectDetailPage({
     );
   }
 
-  return <ProjectSnapshotPageClient projectId={projectId} tab={tab} mode={mode} />;
+  return <ProjectSnapshotPageClient projectId={projectId} tab={tab} />;
 }
