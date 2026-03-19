@@ -7,6 +7,8 @@ import {
   getLocalFirstConflictState,
   getLocalFirstEntitySyncState,
   getLocalFirstStoreSnapshot,
+  registerLocalFirstIdAlias,
+  resolveLocalFirstId,
 } from './store';
 import type { LocalFirstPersistedState } from './types';
 
@@ -85,6 +87,45 @@ describe('localFirst queue', () => {
     await waitUntil(() => {
       expect(getLocalFirstEntitySyncState('quote:7').status).toBe('conflict');
       expect(getLocalFirstConflictState('quote:7')?.message).toBe('Quote changed on the server.');
+    });
+  });
+
+  it('retries dependent mutations until a local id alias resolves', async () => {
+    registerLocalFirstMutationHandler('estimate.create', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      await registerLocalFirstIdAlias('local-estimate:1', 'est_1');
+      return { kind: 'success' } as const;
+    });
+
+    registerLocalFirstMutationHandler('quote.create', async () => {
+      const resolvedEstimateId = resolveLocalFirstId('local-estimate:1');
+      if (resolvedEstimateId.startsWith('local-estimate:')) {
+        return {
+          kind: 'retry',
+          status: 'queued',
+          retryAt: new Date(Date.now() + 20).toISOString(),
+        } as const;
+      }
+
+      return { kind: 'success' } as const;
+    });
+
+    await startLocalFirstQueueRuntime();
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey: 'estimate:detail:local-estimate:1',
+      mutationKey: 'estimate.create',
+      payload: { total: 3333 },
+    });
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey: 'quote:detail:local-quote:1',
+      mutationKey: 'quote.create',
+      payload: { estimateId: 'local-estimate:1' },
+    });
+
+    await waitUntil(() => {
+      expect(getLocalFirstStoreSnapshot().state.queue).toHaveLength(0);
+      expect(getLocalFirstEntitySyncState('quote:detail:local-quote:1').status).toBe('synced');
+      expect(resolveLocalFirstId('local-estimate:1')).toBe('est_1');
     });
   });
 });

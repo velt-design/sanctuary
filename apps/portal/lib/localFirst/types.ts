@@ -51,6 +51,7 @@ export type LocalFirstPersistedState = {
   queue: LocalFirstQueueItem[];
   entityStates: Record<LocalFirstEntityKey, LocalFirstEntitySyncState>;
   conflicts: Record<LocalFirstEntityKey, LocalFirstConflictState>;
+  idAliases: Record<string, string>;
 };
 
 export type LocalFirstStoreSnapshot = {
@@ -81,7 +82,7 @@ export type LocalFirstMutationRetryResult = {
   kind: 'retry';
   message?: string;
   retryAt?: string;
-  status?: 'offline' | 'error';
+  status?: 'queued' | 'offline' | 'error';
 };
 
 export type LocalFirstMutationConflictResult<TServer = unknown, TClient = unknown> = {

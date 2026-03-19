@@ -236,12 +236,22 @@ function normalizePersistedState(value: unknown): LocalFirstPersistedState {
     }
   }
 
+  const idAliases: LocalFirstPersistedState['idAliases'] = {};
+  if (isRecord(value.idAliases)) {
+    for (const [fromId, toId] of Object.entries(value.idAliases)) {
+      if (typeof toId === 'string' && toId.trim()) {
+        idAliases[fromId] = toId;
+      }
+    }
+  }
+
   return {
     version: 1,
     workingCopies,
     queue,
     entityStates,
     conflicts,
+    idAliases,
   };
 }
 
@@ -252,6 +262,7 @@ export function createEmptyLocalFirstState(): LocalFirstPersistedState {
     queue: [],
     entityStates: {},
     conflicts: {},
+    idAliases: {},
   };
 }
 
@@ -522,7 +533,7 @@ export async function resolveLocalFirstQueueItemRetry(
   options: {
     message?: string;
     retryAt?: string;
-    status: 'offline' | 'error';
+    status: 'queued' | 'offline' | 'error';
   },
 ): Promise<void> {
   await mutateLocalFirstState((draft) => {
@@ -618,6 +629,34 @@ export function getLocalFirstConflictState(entityKey: LocalFirstEntityKey): Loca
 
 export function getLocalFirstWorkingCopy<TData>(entityKey: LocalFirstEntityKey): LocalFirstWorkingCopy<TData> | null {
   return (snapshot.state.workingCopies[entityKey] as LocalFirstWorkingCopy<TData> | undefined) ?? null;
+}
+
+export function resolveLocalFirstId(id: string): string {
+  let current = id;
+  const seen = new Set<string>();
+
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    const next = snapshot.state.idAliases[current];
+    if (!next || next === current) break;
+    current = next;
+  }
+
+  return current;
+}
+
+export async function registerLocalFirstIdAlias(fromId: string, toId: string): Promise<void> {
+  if (!fromId || !toId || fromId === toId) return;
+
+  await mutateLocalFirstState((draft) => {
+    draft.idAliases[fromId] = toId;
+
+    for (const [aliasFrom, aliasTo] of Object.entries(draft.idAliases)) {
+      if (aliasTo === fromId) {
+        draft.idAliases[aliasFrom] = toId;
+      }
+    }
+  });
 }
 
 export function __setLocalFirstStorageAdapterForTests(adapter: LocalFirstStorageAdapter | null): void {
