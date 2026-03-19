@@ -130,6 +130,24 @@ describe('buildModulePlanModel', () => {
     expect(model).not.toBeNull();
     expect(model?.soffitBracketPositionsA).toEqual([]);
   });
+
+  it('maps beam profile dimensions for true-scale gable plan rendering', () => {
+    const module = makeModule({ pergolaStyle: 'gable', lengthM: '6', projectionM: '3' });
+    const result = makeResult({ roofType: 'gable', lengthA: 6, spanA: 3 });
+    (result.derived as any).ledger_profile_used = '120x40';
+    (result.derived as any).front_beam_profile_used = '100x50';
+    (result.derived as any).ridge_beam_profile_used = '150x50';
+
+    const model = buildModulePlanModel(module, result);
+
+    expect(model).not.toBeNull();
+    expect(model?.ledgerBeamDepthM).toBeCloseTo(0.12);
+    expect(model?.ledgerBeamWidthM).toBeCloseTo(0.04);
+    expect(model?.supportBeamDepthM).toBeCloseTo(0.1);
+    expect(model?.supportBeamWidthM).toBeCloseTo(0.05);
+    expect(model?.ridgeBeamDepthM).toBeCloseTo(0.15);
+    expect(model?.ridgeBeamWidthM).toBeCloseTo(0.05);
+  });
 });
 
 describe('buildModuleSectionModel', () => {

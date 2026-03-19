@@ -18,6 +18,10 @@ describe('moduleDrawingThemeCssVariables', () => {
     expect(minimalVars['--mv-stage-border']).toBe('transparent');
     expect(minimalVars['--mv-svg-bg']).toBe('transparent');
     expect(sheetVars['--mv-sheet-border']).toBeTruthy();
-    expect(sheetVars['--mv-line-hidden']).toBe(PREMIUM_MODULE_DRAWING_THEME.color.ghostLine);
+    expect(sheetVars['--mv-line-major-width']).toBe('0.56');
+    expect(sheetVars['--mv-line-minor-width']).toBe('0.24');
+    expect(sheetVars['--mv-text-dimension-size']).toBe('2.22px');
+    expect(sheetVars['--mv-line-hidden']).not.toBe(PREMIUM_MODULE_DRAWING_THEME.color.ghostLine);
+    expect(sheetVars['--mv-sheet-panel-border-soft']).toBeTruthy();
   });
 });

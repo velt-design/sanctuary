@@ -22,7 +22,7 @@ export type BuildEstimateDrawingSheetMetaInput = {
   clientName?: string | null;
 };
 
-export const DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE = 'DO NOT SCALE OFF PORTAL PREVIEW. VERIFY ALL DIMENSIONS ON SITE.';
+export const DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE = 'Do not scale off portal preview. Verify all dimensions on site.';
 
 function trimOrNull(value: string | null | undefined): string | null {
   const trimmed = value?.trim();

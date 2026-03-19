@@ -35,17 +35,21 @@ function buildLegendItems(
   sectionModel?: ModuleSectionModel | null,
 ): LegendItem[] {
   if (view === 'plan') {
-    return [
+    const items: LegendItem[] = [
       { label: 'Frame perimeter', tone: 'primary' },
       { label: 'Rafters', tone: 'secondary' },
-      { label: planModel?.houseConnectionType === 'soffit' ? 'Soffit brackets' : 'House side', tone: 'hidden' },
-      { label: 'Dimensions', tone: 'dimension' },
     ];
+    if (planModel?.roofType === 'gable' || planModel?.roofType === 'low_gable') {
+      items.push({ label: 'Ridge beam', tone: 'primary' });
+    }
+    items.push({ label: planModel?.houseConnectionType === 'soffit' ? 'Soffit brackets' : 'House side', tone: 'hidden' });
+    items.push({ label: 'Dimensions', tone: 'dimension' });
+    return items;
   }
 
   return [
     { label: 'Primary frame', tone: 'primary' },
-    { label: sectionModel?.sectionKind === 'gable' ? 'Tie beam / ridge' : 'Roof line', tone: 'secondary' },
+    { label: sectionModel?.sectionKind === 'gable' ? 'Ridge beam' : 'Roof line', tone: 'secondary' },
     { label: sectionModel?.overhangEnabled ? 'Support / datum' : 'Datum / guide', tone: 'hidden' },
     { label: 'Dimensions', tone: 'dimension' },
   ];
@@ -87,6 +91,12 @@ export default function EstimateDrawingSheet({
   const legendItems = buildLegendItems(view, planModel, sectionModel);
   const noteLines = splitNoteLines(meta.note);
   const isCompactSheet = sheetWidthPx > 0 && sheetWidthPx < 760;
+  const metaItems = [
+    { label: 'Scale', value: meta.scale },
+    { label: 'Date', value: meta.date },
+    { label: 'Client', value: meta.client },
+    { label: 'Issue', value: meta.issue },
+  ];
 
   useEffect(() => {
     const node = sheetPaperRef.current;
@@ -117,7 +127,25 @@ export default function EstimateDrawingSheet({
                 <div className={styles.sheetEyebrow}>{viewLabel}</div>
                 <div className={styles.sheetModuleLabel}>{moduleLabel}</div>
               </div>
-              <div className={styles.sheetScaleLabel}>{`Scale ${meta.scale}`}</div>
+            </div>
+
+            <div className={cx(styles.sheetInfoRail, isCompactSheet && styles.sheetInfoRailCompact)}>
+              <div className={styles.sheetScaleBox} aria-label="Drawing scale">
+                <div className={styles.scaleKicker}>Scale</div>
+                <div className={styles.scaleValue}>{meta.scale}</div>
+              </div>
+
+              <aside className={cx(styles.legendBox, isCompactSheet && styles.legendBoxCompact)} aria-label="Drawing legend">
+                <div className={styles.legendTitle}>Legend</div>
+                <div className={styles.legendList}>
+                  {legendItems.map((item) => (
+                    <div key={item.label} className={styles.legendItem}>
+                      <span className={`${styles.legendSwatch} ${legendToneClassName(item.tone)}`} aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </aside>
             </div>
 
             <div className={styles.drawingViewport}>
@@ -130,78 +158,58 @@ export default function EstimateDrawingSheet({
                 presentation="sheet"
               />
             </div>
-
-            <aside className={cx(styles.legendBox, isCompactSheet && styles.legendBoxCompact)} aria-label="Drawing legend">
-              <div className={styles.legendTitle}>Legend</div>
-              <div className={styles.legendList}>
-                {legendItems.map((item) => (
-                  <div key={item.label} className={styles.legendItem}>
-                    <span className={`${styles.legendSwatch} ${legendToneClassName(item.tone)}`} aria-hidden="true" />
-                    <span>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </aside>
           </div>
 
-          <footer className={cx(styles.titleBlock, isCompactSheet && styles.titleBlockCompact)}>
-            <div className={styles.companyBlock}>
-              <div className={styles.companyName}>{PORTAL_COMPANY_PROFILE.name}</div>
-              {PORTAL_COMPANY_PROFILE.addressLines.map((line) => (
-                <div key={line} className={styles.companyLine}>
-                  {line}
-                </div>
-              ))}
-              <div className={styles.companyLine}>{PORTAL_COMPANY_PROFILE.phone}</div>
-              <div className={styles.companyLine}>{PORTAL_COMPANY_PROFILE.email}</div>
-            </div>
-
-            <div className={styles.titleInfoBlock}>
-              <div className={styles.titleInfoRow}>
-                <span className={styles.blockLabel}>Drawing Title</span>
-                <span className={styles.blockValue}>{meta.drawingTitle}</span>
-              </div>
-              <div className={styles.titleInfoRow}>
-                <span className={styles.blockLabel}>Site Address</span>
-                <span className={styles.blockValue}>{meta.siteAddress}</span>
-              </div>
-            </div>
-
-            <div className={styles.noteBlock}>
-              <div className={styles.blockLabel}>Note</div>
-              <div className={styles.noteList}>
-                {(noteLines.length ? noteLines : [meta.note]).map((line, index) => (
-                  <div key={`${line}-${index}`} className={styles.noteLine}>
+          <footer className={cx(styles.sheetFooter, isCompactSheet && styles.sheetFooterCompact)}>
+            <div className={styles.footerLead}>
+              <div className={styles.companyBlock}>
+                <div className={styles.companyName}>{PORTAL_COMPANY_PROFILE.name}</div>
+                {PORTAL_COMPANY_PROFILE.addressLines.map((line) => (
+                  <div key={line} className={styles.companyLine}>
                     {line}
                   </div>
                 ))}
+                <div className={styles.companyLine}>{PORTAL_COMPANY_PROFILE.phone}</div>
+                <div className={styles.companyLine}>{PORTAL_COMPANY_PROFILE.email}</div>
+              </div>
+
+              <div className={styles.noteBlock}>
+                <div className={styles.blockLabel}>Note</div>
+                <div className={styles.noteList}>
+                  {(noteLines.length ? noteLines : [meta.note]).map((line, index) => (
+                    <div key={`${line}-${index}`} className={styles.noteLine}>
+                      {line}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className={styles.metaGrid}>
-              <div className={styles.metaCell}>
-                <span className={styles.blockLabel}>Sheet</span>
-                <span className={styles.metaValue}>{meta.sheetCode}</span>
+            <div className={styles.infoCluster}>
+              <div className={styles.clusterHeader}>
+                <div className={styles.clusterMetaPair}>
+                  <span className={styles.blockLabel}>Sheet</span>
+                  <span className={styles.clusterMetaValue}>{meta.sheetCode}</span>
+                </div>
+                <div className={styles.clusterMetaPair}>
+                  <span className={styles.blockLabel}>Revision</span>
+                  <span className={styles.clusterMetaValue}>{meta.revision}</span>
+                </div>
               </div>
-              <div className={styles.metaCell}>
-                <span className={styles.blockLabel}>Revision</span>
-                <span className={styles.metaValue}>{meta.revision}</span>
+
+              <div className={styles.titleInfoBlock}>
+                <div className={styles.blockLabel}>Drawing Title</div>
+                <div className={styles.blockValue}>{meta.drawingTitle}</div>
+                <div className={styles.titleSubValue}>{meta.siteAddress}</div>
               </div>
-              <div className={styles.metaCell}>
-                <span className={styles.blockLabel}>Scale</span>
-                <span className={styles.metaValue}>{meta.scale}</span>
-              </div>
-              <div className={styles.metaCell}>
-                <span className={styles.blockLabel}>Date</span>
-                <span className={styles.metaValue}>{meta.date}</span>
-              </div>
-              <div className={styles.metaCell}>
-                <span className={styles.blockLabel}>Client</span>
-                <span className={styles.metaValue}>{meta.client}</span>
-              </div>
-              <div className={styles.metaCell}>
-                <span className={styles.blockLabel}>Issue</span>
-                <span className={styles.metaValue}>{meta.issue}</span>
+
+              <div className={styles.metaGrid}>
+                {metaItems.map((item) => (
+                  <div key={item.label} className={styles.metaCell}>
+                    <span className={styles.blockLabel}>{item.label}</span>
+                    <span className={styles.metaValue}>{item.value}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </footer>

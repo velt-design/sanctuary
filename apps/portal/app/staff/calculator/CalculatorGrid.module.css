@@ -2223,6 +2223,7 @@
   justify-items: center;
   text-align: center;
   gap: 6px;
+  font-family: var(--mv-font-sans);
 }
 
 .moduleViewsCardMinimal .moduleViewsStage {
@@ -2377,6 +2378,7 @@
   border-radius: 14px;
   background: var(--mv-svg-bg);
   border: 1px solid var(--mv-stage-border);
+  font-family: var(--mv-font-sans);
 }
 
 .moduleViewsCardMinimal .modulePlanSvg {
@@ -2409,7 +2411,9 @@
   border-radius: 999px;
   padding: 3px 8px;
   font-size: 10px;
-  letter-spacing: 0.04em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--mv-chip-text);
   background: var(--mv-chip-bg);
 }
@@ -2435,9 +2439,10 @@
 }
 
 .moduleHouseLabel {
-  fill: var(--mv-text-secondary);
+  fill: var(--mv-text-muted);
   font-size: var(--mv-text-label-size);
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
@@ -2449,6 +2454,7 @@
   fill: none;
   stroke: var(--mv-line-primary);
   stroke-linejoin: miter;
+  stroke-miterlimit: 2.5;
   stroke-width: var(--mv-line-major-width);
   vector-effect: non-scaling-stroke;
 }
@@ -2456,6 +2462,8 @@
 .modulePlanMemberBand {
   fill: none;
   stroke: var(--mv-line-primary);
+  stroke-linejoin: miter;
+  stroke-miterlimit: 2.5;
   stroke-width: var(--mv-line-major-width);
   vector-effect: non-scaling-stroke;
 }
@@ -2470,12 +2478,23 @@
 
 .modulePlanRidge {
   stroke: var(--mv-line-primary);
+  stroke-linecap: square;
+  stroke-width: var(--mv-line-major-emphasis-width);
+  vector-effect: non-scaling-stroke;
+}
+
+.modulePlanRidgeBand {
+  fill: var(--mv-panel-fill-soft);
+  stroke: var(--mv-line-primary);
+  stroke-linejoin: miter;
+  stroke-miterlimit: 2.5;
   stroke-width: var(--mv-line-major-emphasis-width);
   vector-effect: non-scaling-stroke;
 }
 
 .modulePlanHipLine {
   stroke: var(--mv-line-secondary);
+  stroke-linecap: square;
   stroke-width: var(--mv-line-minor-width);
   vector-effect: non-scaling-stroke;
 }
@@ -2489,6 +2508,7 @@
 
 .modulePlanRafter {
   stroke: var(--mv-line-secondary);
+  stroke-linecap: square;
   stroke-width: var(--mv-line-minor-width);
   vector-effect: non-scaling-stroke;
 }
@@ -2522,8 +2542,9 @@
 }
 
 .modulePlanAngleText {
-  fill: var(--mv-text-secondary);
+  fill: var(--mv-accent-olive);
   font-size: var(--mv-text-angle-size);
+  font-weight: 500;
 }
 
 .moduleFallLine {
@@ -2537,49 +2558,59 @@
 }
 
 .moduleFallLabel {
-  fill: var(--mv-text-secondary);
+  fill: var(--mv-text-muted);
   font-size: var(--mv-text-label-size);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .moduleDimLine {
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-dimension-width);
   stroke-dasharray: var(--mv-dash-dimension);
+  stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleDimTermBar {
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-dimension-width);
+  stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleDimTick {
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-dimension-width);
+  stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleDimWitness {
-  stroke: var(--mv-line-hidden);
+  stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
+  stroke-linecap: square;
+  opacity: 0.8;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleDimGuide {
-  stroke: var(--mv-text-muted);
+  stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
   stroke-dasharray: var(--mv-dash-guide);
+  opacity: 0.5;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleDimText {
-  fill: var(--mv-text-secondary);
+  fill: var(--mv-dim);
   font-size: var(--mv-text-dimension-size);
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: 0.015em;
   paint-order: stroke fill;
   stroke: var(--mv-canvas);
-  stroke-width: 0.26;
+  stroke-width: 0.18;
   stroke-linejoin: round;
 }
 
@@ -2604,6 +2635,27 @@
   vector-effect: non-scaling-stroke;
 }
 
+.moduleSectionMember,
+.moduleSectionPrimaryBeam,
+.moduleSectionPostPrimary,
+.moduleSectionSecondaryMember,
+.moduleSectionRoofMember {
+  fill: none;
+  stroke-linejoin: miter;
+  stroke-miterlimit: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionPrimaryBeam,
+.moduleSectionLedger,
+.moduleSectionOverhangBeam {
+  fill: none;
+  stroke: var(--mv-line-primary);
+  stroke-linecap: square;
+  stroke-width: var(--mv-line-major-width);
+  vector-effect: non-scaling-stroke;
+}
+
 .moduleSectionMember {
   fill: none;
   stroke: var(--mv-line-primary);
@@ -2611,16 +2663,35 @@
   vector-effect: non-scaling-stroke;
 }
 
-.moduleSectionLedger {
-  fill: none;
+.moduleSectionPostPrimary {
   stroke: var(--mv-line-primary);
-  stroke-width: var(--mv-line-major-width);
+  stroke-width: var(--mv-line-major-emphasis-width);
+}
+
+.moduleSectionSecondaryMember {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-minor-width);
+}
+
+.moduleSectionRoofMember {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-minor-width);
+}
+
+.moduleSectionRidgeBeam {
+  fill: var(--mv-panel-fill-soft);
+  stroke: var(--mv-line-primary);
+  stroke-linejoin: miter;
+  stroke-miterlimit: 2.5;
+  stroke-width: var(--mv-line-major-emphasis-width);
   vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionGutter {
   fill: none;
   stroke: var(--mv-line-secondary);
+  stroke-linejoin: miter;
+  stroke-miterlimit: 2.5;
   stroke-width: var(--mv-line-minor-width);
   vector-effect: non-scaling-stroke;
 }
@@ -2632,7 +2703,14 @@
 .moduleSectionOverhangBeam {
   fill: none;
   stroke: var(--mv-line-primary);
-  stroke-width: var(--mv-line-minor-width);
+  stroke-width: var(--mv-line-major-width);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionConnection {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-guide-width);
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
@@ -2652,19 +2730,24 @@
 }
 
 .moduleSectionAngleLabel {
-  fill: var(--mv-text-secondary);
+  fill: var(--mv-accent-olive);
   font-size: var(--mv-text-angle-size);
+  font-weight: 500;
 }
 
 .moduleSectionPitchLabel {
-  fill: var(--mv-text-primary);
-  font-size: calc(var(--mv-text-label-size) + 0.2px);
-  font-weight: 600;
+  fill: var(--mv-text-secondary);
+  font-size: calc(var(--mv-text-label-size) + 0.12px);
+  font-weight: 500;
+  letter-spacing: 0.06em;
 }
 
 .moduleSectionMetaLabel {
   fill: var(--mv-text-muted);
   font-size: var(--mv-text-meta-size);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .modulePlanStats {

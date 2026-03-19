@@ -155,7 +155,9 @@
     ],
     "box_internal_rafter_profile_default": "80x50",
     "box_perimeter_beam_options": [
-      "300x50"
+      "300x50",
+      "250x50",
+      "200x50"
     ],
     "effective_span_m_by_roof_type": {
       "pitched": "projection_m",

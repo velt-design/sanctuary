@@ -19,8 +19,14 @@ export type ModulePlanModel = {
   spanB: number | null;
   rafterWidthM: number;
   rafterDepthM: number;
+  ledgerBeamWidthM: number;
+  ledgerBeamDepthM: number;
+  supportBeamWidthM: number;
+  supportBeamDepthM: number;
   gutterWidthM: number;
   gutterDepthM: number;
+  ridgeBeamWidthM: number;
+  ridgeBeamDepthM: number;
   rafterMaxSpacingM: number;
   rafterCountA: number;
   rafterSpacingA: number;
@@ -300,8 +306,14 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
     spanB: roofType === 'hip_corner' ? spanB : null,
     rafterWidthM: memberDims.rafterWidthM,
     rafterDepthM: memberDims.rafterDepthM,
+    ledgerBeamWidthM: memberDims.ledgerBeamWidthM,
+    ledgerBeamDepthM: memberDims.ledgerBeamDepthM,
+    supportBeamWidthM: memberDims.supportBeamWidthM,
+    supportBeamDepthM: memberDims.supportBeamDepthM,
     gutterWidthM: memberDims.gutterWidthM,
     gutterDepthM: memberDims.gutterDepthM,
+    ridgeBeamWidthM: memberDims.ridgeBeamWidthM,
+    ridgeBeamDepthM: memberDims.ridgeBeamDepthM,
     rafterMaxSpacingM: RAFTER_MAX_SPACING_M,
     rafterCountA: rafterLayoutA.count,
     rafterSpacingA: rafterLayoutA.spacingM,
@@ -346,8 +358,14 @@ function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | n
     spanB: roofType === 'hip_corner' ? spanB : null,
     rafterWidthM: memberDims.rafterWidthM,
     rafterDepthM: memberDims.rafterDepthM,
+    ledgerBeamWidthM: memberDims.ledgerBeamWidthM,
+    ledgerBeamDepthM: memberDims.ledgerBeamDepthM,
+    supportBeamWidthM: memberDims.supportBeamWidthM,
+    supportBeamDepthM: memberDims.supportBeamDepthM,
     gutterWidthM: memberDims.gutterWidthM,
     gutterDepthM: memberDims.gutterDepthM,
+    ridgeBeamWidthM: memberDims.ridgeBeamWidthM,
+    ridgeBeamDepthM: memberDims.ridgeBeamDepthM,
     rafterMaxSpacingM: RAFTER_MAX_SPACING_M,
     rafterCountA: rafterLayoutA.count,
     rafterSpacingA: rafterLayoutA.spacingM,
