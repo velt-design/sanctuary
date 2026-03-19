@@ -270,7 +270,12 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     if (!trimmed || isLocalQuoteId(trimmed)) return null;
     return trimmed;
   }, [searchParams]);
+  const createFromEstimateId = useMemo(() => {
+    const raw = searchParams.get('createFromEstimateId') ?? '';
+    return raw.trim() || null;
+  }, [searchParams]);
   const pagePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
+  const autoCreateRef = useRef<string | null>(null);
 
   const [selectedId, setSelectedId] = useState<string | null>(selectedFromUrl);
 
@@ -426,7 +431,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     });
   }, []);
 
-  const updateParams = useCallback((next: { quoteId?: string | null }) => {
+  const updateParams = useCallback((next: { quoteId?: string | null; createFromEstimateId?: string | null }) => {
     const qs = new URLSearchParams(searchParams.toString());
     if (Object.prototype.hasOwnProperty.call(next, 'quoteId')) {
       if (!next.quoteId) {
@@ -434,6 +439,10 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         qs.delete('quotePreview');
       }
       else qs.set('quoteId', next.quoteId);
+    }
+    if (Object.prototype.hasOwnProperty.call(next, 'createFromEstimateId')) {
+      if (!next.createFromEstimateId) qs.delete('createFromEstimateId');
+      else qs.set('createFromEstimateId', next.createFromEstimateId);
     }
     const query = qs.toString();
     router.replace(query ? `?${query}` : '?');
@@ -582,16 +591,16 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
     setCreateOpen(true);
   };
 
-  const handleCreateQuote = async () => {
-    if (!createEstimateId) return;
+  const createDraftQuoteFromEstimate = useCallback(async (estimateId: string, opts?: { closeModal?: boolean }) => {
+    if (!estimateId) return;
     try {
-      const estimateSyncState = getLocalFirstEntitySyncState(buildEstimateEntityKey(createEstimateId));
+      const estimateSyncState = getLocalFirstEntitySyncState(buildEstimateEntityKey(estimateId));
       if (estimateSyncState.pendingCount > 0) {
         toast.error('Wait for this estimate to finish syncing before creating a quote.');
         return;
       }
 
-      const estimateDetail = await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, createEstimateId));
+      const estimateDetail = await queryClient.fetchQuery(estimateDetailQueryOptions(hostKey, estimateId));
       const localQuoteId = createLocalQuoteId();
       const optimisticDetail = buildOptimisticQuoteDetail({
         quoteVersionId: localQuoteId,
@@ -609,7 +618,7 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
       const mutationPayload: PortalQuoteCreateMutationPayload = {
         localQuoteId,
         projectId,
-        estimateId: createEstimateId,
+        estimateId,
       };
       await enqueueAndProcessLocalFirstMutation({
         entityKey: buildQuoteEntityKey(localQuoteId),
@@ -617,15 +626,43 @@ export default function QuotesTab({ projectId }: { projectId: string }) {
         payload: mutationPayload,
       });
 
-      setCreateOpen(false);
+      if (opts?.closeModal) setCreateOpen(false);
       setSelectedId(localQuoteId);
-      updateParams({ quoteId: null });
+      updateParams({ quoteId: null, createFromEstimateId: null });
       toast.success('Draft quote created locally. Syncing in the background.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to create quote';
       toast.error(msg);
     }
+  }, [hostKey, projectId, queryClient, toast, updateParams]);
+
+  const handleCreateQuote = async () => {
+    if (!createEstimateId) return;
+    await createDraftQuoteFromEstimate(createEstimateId, { closeModal: true });
   };
+
+  useEffect(() => {
+    if (!createFromEstimateId) {
+      autoCreateRef.current = null;
+      return;
+    }
+    if (estimatesLoading) return;
+    const token = `${projectId}:${createFromEstimateId}`;
+    if (autoCreateRef.current === token) return;
+    autoCreateRef.current = token;
+
+    if (!estimates.some((estimate) => estimate.id === createFromEstimateId)) {
+      toast.error('Estimate not found for quote creation.');
+      updateParams({ createFromEstimateId: null });
+      return;
+    }
+
+    void createDraftQuoteFromEstimate(createFromEstimateId).catch((err) => {
+      const msg = err instanceof Error ? err.message : 'Failed to create quote';
+      toast.error(msg);
+      updateParams({ createFromEstimateId: null });
+    });
+  }, [createDraftQuoteFromEstimate, createFromEstimateId, estimates, estimatesLoading, projectId, toast, updateParams]);
 
   const openSendModal = useCallback((mode: 'send' | 'resend', editorMode: SendEditorMode = 'compose') => {
     if (!detail) return;

@@ -20,8 +20,6 @@ import MoreMenu from '@/components/portal/MoreMenu';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
 import type { CalculatorInputs } from '@/lib/types/calculator';
-import { createQuoteFromEstimate } from '@/lib/repo/quotesRepo';
-import { quoteLabel } from '@/lib/types/quote';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 
 type SectionKey = 'overview' | 'materials' | 'install' | 'overheads' | 'inputs' | 'warnings' | 'outputs';
@@ -881,17 +879,11 @@ export default function EstimateViewerClient({
               disabled={Boolean(busy)}
               onClick={() => {
                 run('createQuote', () => {
-                  return (async () => {
-                    try {
-                      const quote = await createQuoteFromEstimate(projectId, estimateId);
-                      toast.success(`${quoteLabel(quote)} created.`);
-                      setCreateQuoteOpen(false);
-                      router.push(`/staff/projects/${encodeURIComponent(projectId)}/quotes/${encodeURIComponent(quote.id)}`);
-                    } catch (err) {
-                      const msg = err instanceof Error ? err.message : 'Failed to create quote';
-                      toast.error(msg);
-                    }
-                  })();
+                  setCreateQuoteOpen(false);
+                  toast.success('Opening the local-first quote flow…');
+                  router.push(
+                    `/staff/projects/${encodeURIComponent(projectId)}?tab=quotes&createFromEstimateId=${encodeURIComponent(estimateId)}`,
+                  );
                 });
               }}
             >

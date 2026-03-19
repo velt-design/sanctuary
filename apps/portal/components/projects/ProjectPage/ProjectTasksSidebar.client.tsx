@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { PIPELINE_STAGE_LABELS, normalizePipelineStageKey, stageKeyToStatus } from '@/lib/projects/pipelineDefinition';
@@ -12,6 +11,17 @@ import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/Pi
 import legacy from '@/app/staff/projects/projects.module.css';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
+import { discardLocalFirstEntityQueue } from '@/lib/localFirst/store';
+import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
+import {
+  PORTAL_LOCAL_FIRST_MUTATIONS,
+  buildProjectTasksDraftEntityKey,
+  buildProjectTasksEntityKey,
+  patchProjectTasksSnapshot,
+  type PortalProjectTaskToggleMutationPayload,
+} from '@/lib/localFirst/portalEntities';
 
 type TaskItem = ProjectPageSnapshot['tasks']['items'][number];
 
@@ -28,12 +38,14 @@ export default function ProjectTasksSidebarClient({
   projectId: string;
   tasks: ProjectPageSnapshot['tasks'];
 }) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
+  const entityKey = buildProjectTasksEntityKey(projectId);
+  const draftEntityKey = buildProjectTasksDraftEntityKey(projectId);
+  const syncState = useEntitySyncState(entityKey);
+  const workingCopy = useLocalWorkingCopy<TaskItem[]>(draftEntityKey, tasks.items);
   const [view, setView] = useState<'todo' | 'completed'>('todo');
   const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [items, setItems] = useState<TaskItem[]>(tasks.items);
   const [stageModalOpen, setStageModalOpen] = useState(false);
   const [stageModalError, setStageModalError] = useState<string | null>(null);
@@ -49,8 +61,28 @@ export default function ProjectTasksSidebarClient({
   const pendingRefresh = useRef(false);
 
   useEffect(() => {
+    if (workingCopy.hasLocalCopy) {
+      setItems(workingCopy.value);
+      return;
+    }
     setItems(tasks.items);
-  }, [tasks.items]);
+  }, [tasks.items, workingCopy.hasLocalCopy, workingCopy.value]);
+
+  useEffect(() => {
+    if (!workingCopy.hasLocalCopy) return;
+    if (syncState.pendingCount > 0) return;
+    if (JSON.stringify(workingCopy.value) !== JSON.stringify(tasks.items)) return;
+    void workingCopy.clearWorkingCopy();
+  }, [syncState.pendingCount, tasks.items, workingCopy]);
+
+  useEffect(() => {
+    if (syncState.status !== 'conflict') return;
+    if (syncState.lastError) setError(syncState.lastError);
+    setItems(tasks.items);
+    patchProjectTasksSnapshot(queryClient, hostKey, projectId, tasks.items);
+    void workingCopy.clearWorkingCopy();
+    void discardLocalFirstEntityQueue(entityKey);
+  }, [entityKey, hostKey, projectId, queryClient, syncState.lastError, syncState.status, tasks.items, workingCopy]);
 
   const stageKey = normalizePipelineStageKey(tasks.stage) ?? tasks.stage;
   const stageLabel = PIPELINE_STAGE_LABELS[stageKey as keyof typeof PIPELINE_STAGE_LABELS] ?? String(tasks.stage);
@@ -146,7 +178,6 @@ export default function ProjectTasksSidebarClient({
   };
 
   const toggleManualTask = async (taskKey: string, completed: boolean) => {
-    if (isSaving) return;
     const isAutoAdvanceCompletion = completed && AUTO_ADVANCE_MANUAL_TASKS.has(taskKey);
 
     if (isAutoAdvanceCompletion) {
@@ -154,15 +185,15 @@ export default function ProjectTasksSidebarClient({
     } else {
       setStageCompleteIntent(projectId, stageKey);
     }
-    setIsSaving(true);
     setError(null);
     const previous = items;
     const nextItems = items.map((item) =>
       item.key === taskKey ? { ...item, isDone: completed, isManualDone: completed } : item,
     );
     setItems(nextItems);
+    patchProjectTasksSnapshot(queryClient, hostKey, projectId, nextItems);
+    await workingCopy.setWorkingCopy(nextItems);
     const nextOpenCount = nextItems.filter((item) => !isCompleted(item)).length;
-    const shouldDeferRefresh = completed && nextOpenCount === 0 && !isAutoAdvanceCompletion;
     const shouldOpenStageModal = completed && nextOpenCount === 0 && !isAutoAdvanceCompletion && canShowStageModal;
 
     if (shouldOpenStageModal) {
@@ -174,27 +205,22 @@ export default function ProjectTasksSidebarClient({
     }
 
     try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/tasks`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ taskKey, completed }),
+      const mutationPayload: PortalProjectTaskToggleMutationPayload = {
+        projectId,
+        taskKey,
+        completed,
+      };
+      await enqueueAndProcessLocalFirstMutation({
+        entityKey,
+        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.projectTaskToggle,
+        payload: mutationPayload,
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        const msg = typeof body?.error === 'string' ? body.error : 'Failed to update task';
-        throw new Error(msg);
-      }
-
-      if (shouldDeferRefresh) {
-        pendingRefresh.current = true;
-      } else {
-        pendingRefresh.current = false;
-        void invalidateProjectReadCaches(queryClient, hostKey, projectId);
-      }
+      pendingRefresh.current = false;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update task';
       setItems(previous);
+      patchProjectTasksSnapshot(queryClient, hostKey, projectId, previous);
+      await workingCopy.setWorkingCopy(previous);
       if (shouldOpenStageModal) {
         setStageModalOpen(true);
         setStageModalError(msg);
@@ -205,8 +231,6 @@ export default function ProjectTasksSidebarClient({
       setPendingDate('');
       pendingRefresh.current = false;
       setError(msg);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -345,6 +369,12 @@ export default function ProjectTasksSidebarClient({
   const reminderDescription = 'Choose a date/time to keep this stage active.';
   const stageDescription = `No open tasks for ${stageLabel}.`;
   const isTierStep = stageModalStep === 'siteVisitTier';
+  const taskSyncLabel =
+    syncState.status === 'offline'
+      ? 'Offline. Task changes will sync when reconnected.'
+      : syncState.pendingCount > 0 || syncState.status === 'syncing' || syncState.status === 'queued'
+        ? 'Task changes syncing…'
+        : null;
 
   return (
     <>
@@ -375,6 +405,7 @@ export default function ProjectTasksSidebarClient({
         <div className={legacy.sectionBody}>
           <p className={legacy.muted}>Stage: {stageLabel}</p>
           {error ? <p className={legacy.error}>{error}</p> : null}
+          {taskSyncLabel ? <p className={legacy.note}>{taskSyncLabel}</p> : null}
 
           {visibleTasks.length ? (
             <div className={legacy.taskList}>
@@ -410,7 +441,6 @@ export default function ProjectTasksSidebarClient({
                         <input
                           type="checkbox"
                           checked={Boolean(task.isManualDone ?? task.isDone)}
-                          disabled={isSaving}
                           onChange={(event) => {
                             event.stopPropagation();
                             toggleNext();

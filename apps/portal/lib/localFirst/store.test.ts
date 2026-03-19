@@ -3,6 +3,7 @@ import {
   __resetLocalFirstStoreForTests,
   __setLocalFirstStorageAdapterForTests,
   createEmptyLocalFirstState,
+  discardLocalFirstEntityQueue,
   enqueueLocalFirstMutation,
   ensureLocalFirstStoreReady,
   getLocalFirstConflictState,
@@ -93,5 +94,31 @@ describe('localFirst store', () => {
     const summary = summarizeLocalFirstStoreState(getLocalFirstStoreSnapshot().state);
     expect(summary.conflictCount).toBe(1);
     expect(summary.issueMessage).toBe('This estimate changed on another screen.');
+  });
+
+  it('can discard queued and conflicted work for an entity without dropping the draft copy', async () => {
+    await ensureLocalFirstStoreReady();
+
+    await writeLocalFirstWorkingCopy({
+      entityKey: 'contact:draft:1',
+      data: { displayName: 'Jordan' },
+    });
+
+    const item = await enqueueLocalFirstMutation({
+      entityKey: 'contact:1',
+      mutationKey: 'contact.save',
+      payload: { displayName: 'Jordan' },
+    });
+
+    await resolveLocalFirstQueueItemConflict(item.id, {
+      message: 'Contact name is required.',
+    });
+
+    await discardLocalFirstEntityQueue('contact:1');
+
+    expect(getLocalFirstStoreSnapshot().state.queue).toHaveLength(0);
+    expect(getLocalFirstConflictState('contact:1')).toBeNull();
+    expect(getLocalFirstStoreSnapshot().state.entityStates['contact:1']?.status).toBe('synced');
+    expect(getLocalFirstWorkingCopy<{ displayName: string }>('contact:draft:1')?.data.displayName).toBe('Jordan');
   });
 });

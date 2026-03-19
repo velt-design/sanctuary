@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -22,19 +22,22 @@ import { qk } from '@/lib/queries/keys';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
+import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildEstimateEntityKey,
+  buildEstimateNotesDraftEntityKey,
   buildOptimisticQuoteDetail,
   buildQuoteEntityKey,
   createLocalQuoteId,
   isLocalEstimateId,
   isLocalQuoteId,
+  type PortalEstimateNotesMutationPayload,
   type PortalQuoteCreateMutationPayload,
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
-import { writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
+import { discardLocalFirstEntityQueue, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 
 function formatMoney(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -547,8 +550,6 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   const [selectedId, setSelectedId] = useState(() => cachedEstimates[0]?.id ?? '');
   const [actionBusy, setActionBusy] = useState(false);
   const [notesDraft, setNotesDraft] = useState('');
-  const [notesDirty, setNotesDirty] = useState(false);
-  const [notesSavedAt, setNotesSavedAt] = useState<string | null>(null);
   const [warningsOpen, setWarningsOpen] = useState(false);
   const [focusCategory, setFocusCategory] = useState('');
   const [quoteBusy, setQuoteBusy] = useState(false);
@@ -606,6 +607,13 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     () => (selectedId ? estimates.find((e) => e.id === selectedId) ?? null : null),
     [estimates, selectedId],
   );
+  const notesDraftEntityKey = useMemo(
+    () => buildEstimateNotesDraftEntityKey(selectedId || '__estimate-none__'),
+    [selectedId],
+  );
+  const notesWorkingCopy = useLocalWorkingCopy<string>(notesDraftEntityKey, selectedDetail?.internalNotes ?? '');
+  const notesSaveTimerRef = useRef<number | null>(null);
+  const notesDraftRef = useRef(notesDraft);
   const selectedEstimateSyncState = useEntitySyncState(
     selectedMeta ? buildEstimateEntityKey(selectedMeta.id) : 'estimate:detail:__estimate-none__',
   );
@@ -630,12 +638,42 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
   );
 
   useEffect(() => {
+    notesDraftRef.current = notesDraft;
+  }, [notesDraft]);
+
+  useEffect(() => {
     if (!selectedDetail) return;
-    setNotesDraft(selectedDetail.internalNotes ?? '');
-    setNotesDirty(false);
-    setNotesSavedAt(null);
+    if (notesWorkingCopy.hasLocalCopy) {
+      setNotesDraft(notesWorkingCopy.value);
+    } else {
+      setNotesDraft(selectedDetail.internalNotes ?? '');
+    }
     setWarningsOpen(isFocus);
-  }, [isFocus, selectedDetail?.id]);
+  }, [isFocus, notesWorkingCopy.hasLocalCopy, notesWorkingCopy.value, selectedDetail?.id]);
+
+  useEffect(() => {
+    if (!notesWorkingCopy.hasLocalCopy) return;
+    if (selectedEstimateSyncPending) return;
+    if ((notesWorkingCopy.value ?? '') !== (selectedDetail?.internalNotes ?? '')) return;
+    void notesWorkingCopy.clearWorkingCopy();
+  }, [notesWorkingCopy, selectedDetail?.internalNotes, selectedEstimateSyncPending]);
+
+  useEffect(() => {
+    if (!selectedId || !notesWorkingCopy.hasLocalCopy) return;
+    if (selectedEstimateSyncState.status !== 'conflict') return;
+    if (selectedEstimateSyncState.lastError) {
+      toast.error(selectedEstimateSyncState.lastError);
+    }
+    void discardLocalFirstEntityQueue(buildEstimateEntityKey(selectedId));
+  }, [notesWorkingCopy.hasLocalCopy, selectedEstimateSyncState.lastError, selectedEstimateSyncState.status, selectedId, toast]);
+
+  useEffect(() => {
+    return () => {
+      if (notesSaveTimerRef.current !== null) {
+        window.clearTimeout(notesSaveTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isFocus) setWarningsOpen(true);
@@ -907,28 +945,54 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
     updateParams({ tab: 'quotes', quoteId: isLocalQuoteId(quoteId) ? null : quoteId });
   };
 
-  const handleSaveNotes = async () => {
-    if (!selectedId || actionBusy) return;
-    setActionBusy(true);
-    try {
-      const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(selectedId)}`,
-        {
-          method: 'PATCH',
-          body: JSON.stringify({ internal_notes: notesDraft }),
-        },
-      );
-      if (!res.estimate) throw new Error('Notes not saved');
-      upsertEstimate(res.estimate);
-      setNotesDirty(false);
-      setNotesSavedAt(new Date().toISOString());
-      toast.success('Notes saved.');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save notes';
-      toast.error(msg);
-    } finally {
-      setActionBusy(false);
+  const notesDirty = Boolean(selectedDetail) && notesDraft !== (selectedDetail?.internalNotes ?? '');
+
+  const saveNotesDraft = useCallback(async () => {
+    if (!selectedId || !selectedDetail) return;
+    const nextNotes = notesDraftRef.current;
+    if (nextNotes === (selectedDetail.internalNotes ?? '')) {
+      if (notesWorkingCopy.hasLocalCopy && !selectedEstimateSyncPending) {
+        await notesWorkingCopy.clearWorkingCopy();
+      }
+      return;
     }
-  };
+
+    queryClient.setQueryData<EstimateDetail>(qk.estimates.detail(hostKey, selectedId), {
+      ...selectedDetail,
+      internalNotes: nextNotes,
+    });
+    await notesWorkingCopy.setWorkingCopy(nextNotes);
+
+    const mutationPayload: PortalEstimateNotesMutationPayload = {
+      estimateId: selectedId,
+      projectId,
+      internalNotes: nextNotes,
+    };
+    await enqueueAndProcessLocalFirstMutation({
+      entityKey: buildEstimateEntityKey(selectedId),
+      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateNotesUpdate,
+      payload: mutationPayload,
+    });
+  }, [hostKey, notesWorkingCopy, projectId, queryClient, selectedDetail, selectedEstimateSyncPending, selectedId]);
+
+  useEffect(() => {
+    if (!selectedId || !selectedDetail || !notesDirty) return;
+    if (notesSaveTimerRef.current !== null) {
+      window.clearTimeout(notesSaveTimerRef.current);
+    }
+    notesSaveTimerRef.current = window.setTimeout(() => {
+      void saveNotesDraft().catch((err) => {
+        const msg = err instanceof Error ? err.message : 'Failed to save notes';
+        toast.error(msg);
+      });
+    }, 700);
+
+    return () => {
+      if (notesSaveTimerRef.current !== null) {
+        window.clearTimeout(notesSaveTimerRef.current);
+      }
+    };
+  }, [notesDirty, saveNotesDraft, selectedDetail, selectedId, toast]);
 
   const listError =
     estimatesQuery.error instanceof Error
@@ -1411,23 +1475,20 @@ export default function EstimatesTab({ projectId, mode }: { projectId: string; m
                   value={notesDraft}
                   onChange={(e) => {
                     setNotesDraft(e.target.value);
-                    setNotesDirty(true);
-                    setNotesSavedAt(null);
+                    notesDraftRef.current = e.target.value;
+                    void notesWorkingCopy.setWorkingCopy(e.target.value);
                   }}
+                  onBlur={() => void saveNotesDraft().catch(() => undefined)}
                   rows={4}
                   placeholder="Add internal notes for this estimate..."
                 />
                 <div className={styles.cardFooter}>
-                  {notesSavedAt ? <span className={styles.savedHint}>{formatSavedLabel(notesSavedAt)}</span> : null}
-                  {notesDirty ? (
-                    <button
-                      type="button"
-                      className={legacy.buttonSecondary}
-                      onClick={handleSaveNotes}
-                      disabled={actionBusy}
-                    >
-                      Save
-                    </button>
+                  {selectedEstimateSyncPending ? (
+                    <span className={styles.savedHint}>Syncing…</span>
+                  ) : selectedEstimateSyncState.lastSyncedAt ? (
+                    <span className={styles.savedHint}>{formatSavedLabel(selectedEstimateSyncState.lastSyncedAt)}</span>
+                  ) : notesDirty ? (
+                    <span className={styles.savedHint}>Saving soon…</span>
                   ) : null}
                 </div>
               </section>
