@@ -91,7 +91,8 @@
 }
 
 .sheetScaleBox,
-.legendBox {
+.legendBox,
+.sheetMetaBox {
   border: 1px solid var(--mv-sheet-panel-border-soft);
   border-radius: 10px;
   background: var(--mv-sheet-panel-bg-soft);
@@ -138,6 +139,7 @@
 }
 
 .drawingViewport {
+  position: relative;
   min-height: 0;
   display: grid;
   align-items: stretch;
@@ -152,10 +154,63 @@
   height: 100%;
 }
 
+.sheetLayoutDebugOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.sheetLayoutDebugOuter,
+.sheetLayoutDebugFit {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+}
+
+.sheetLayoutDebugOuter {
+  border: 1px solid #e53935;
+}
+
+.sheetLayoutDebugFit {
+  border: 1px dashed #00897b;
+}
+
+.drawingViewport :global(svg [data-debug-crop='outer-plan']),
+.drawingViewport :global(svg [data-debug-crop='outer-section']),
+.drawingViewport :global(svg [data-debug-crop='fit-plan']),
+.drawingViewport :global(svg [data-debug-crop='fit-section']) {
+  display: none;
+}
+
 .legendBox {
   padding: 9px 13px 10px;
   display: grid;
   gap: 6px;
+}
+
+.sheetMetaBox {
+  padding: 9px 13px 10px;
+  display: grid;
+  gap: 7px;
+}
+
+.sheetMetaGrid {
+  display: grid;
+  gap: 6px;
+}
+
+.sheetMetaPair {
+  display: grid;
+  gap: 1px;
+}
+
+.sheetMetaValue {
+  font-size: 7.1pt;
+  font-weight: 500;
+  line-height: 1.16;
+  color: var(--mv-sheet-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .legendTitle {
@@ -189,30 +244,30 @@
 
 .sheetFooter {
   display: grid;
-  grid-template-columns: minmax(0, 0.82fr) minmax(190px, 0.98fr) minmax(408px, 1.2fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 0.84fr) minmax(176px, 0.92fr) minmax(336px, 1.04fr);
+  gap: 12px;
   align-items: end;
-  padding: 11px 26px 9px;
+  padding: 8px 26px 7px;
   border-top: 1px solid var(--mv-sheet-divider);
 }
 
 .companyBlock {
-  max-width: 272px;
+  max-width: 256px;
   display: grid;
   gap: 1px;
   align-self: end;
   align-content: end;
   justify-self: start;
-  padding-bottom: 5px;
+  padding-bottom: 2px;
 }
 
 .companyName {
   font-family: var(--mv-font-display);
-  font-size: 13.18pt;
+  font-size: 12.4pt;
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.012em;
-  padding-bottom: 5px;
+  padding-bottom: 3px;
   color: var(--mv-sheet-text);
 }
 
@@ -234,11 +289,11 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
   column-gap: 6px;
-  row-gap: 2px;
+  row-gap: 1px;
   align-self: end;
   justify-self: end;
-  max-width: 262px;
-  padding-bottom: 4px;
+  max-width: 248px;
+  padding-bottom: 1px;
 }
 
 .blockLabel {
@@ -263,7 +318,7 @@
 .noteCopy {
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 
 .noteLine {
@@ -276,10 +331,10 @@
 
 .infoCluster {
   justify-self: end;
-  width: min(100%, 468px);
-  padding: 10px 14px 11px;
+  width: min(100%, 398px);
+  padding: 8px 12px 8px;
   display: grid;
-  gap: 9px;
+  gap: 7px;
   align-self: end;
   border: 1px solid var(--mv-sheet-divider);
   border-radius: 8px;
@@ -310,13 +365,13 @@
 
 .titleInfoBlock {
   display: grid;
-  gap: 4px;
-  padding-top: 5px;
-  padding-bottom: 5px;
+  gap: 2px;
+  padding-top: 0;
+  padding-bottom: 2px;
 }
 
 .blockValue {
-  font-size: 10.4pt;
+  font-size: 9.7pt;
   font-weight: 600;
   line-height: 1.08;
   letter-spacing: -0.015em;
@@ -324,7 +379,7 @@
 }
 
 .titleSubValue {
-  font-size: 6.8pt;
+  font-size: 6.55pt;
   font-weight: 400;
   line-height: 1.24;
   color: var(--mv-sheet-muted);
@@ -335,9 +390,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, max-content));
   justify-content: start;
-  gap: 10px 24px;
+  gap: 8px 20px;
   align-items: end;
-  padding-top: 8px;
+  padding-top: 6px;
   border-top: 1px solid var(--mv-sheet-divider);
 }
 
@@ -349,7 +404,7 @@
 }
 
 .metaValue {
-  font-size: 6.95pt;
+  font-size: 6.7pt;
   font-weight: 400;
   line-height: 1.16;
   color: var(--mv-sheet-muted);
