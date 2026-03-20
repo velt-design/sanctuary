@@ -125,8 +125,15 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('Plan view');
     expect(markup).toContain('M1 - Gable - 4.6m x 5.1m - Acrylic');
     expect(markup).toContain('Legend');
-    expect(markup).toContain('Frame perimeter');
-    expect(markup).toContain('Ridge beam');
+    expect(markup).toContain('Primary structure');
+    expect(markup).toContain('Roof framing');
+    expect(markup).toContain('Roof field');
+    expect(markup).toContain('data-legend-sample="primary"');
+    expect(markup).toContain('data-legend-sample="secondary"');
+    expect(markup).toContain('data-legend-sample="tertiary"');
+    expect(markup).toContain('data-source-class="modulePlanPerimeter"');
+    expect(markup).toContain('data-source-class="modulePlanMemberEdge"');
+    expect(markup).toContain('data-source-class="modulePlanRafter"');
     expect(markup).toContain('M1 - Gable - 4.6m x 5.1m - Acrylic - Roof Plan');
     expect(markup).toContain('P-01');
     expect(markup).toContain('V1');
@@ -139,7 +146,7 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('Verify all dimensions on site.');
   });
 
-  it('keeps soffit brackets and house side as separate legend items on plan sheets', () => {
+  it('keeps soffit brackets as a dedicated plan legend item using drawing-system samples', () => {
     const drawing = makeDrawingModels({ houseConnectionType: 'soffit' });
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M3 - Gable - 4.6m x 5.1m - Acrylic',
@@ -162,7 +169,7 @@ describe('EstimateDrawingSheet', () => {
     );
 
     expect(markup).toContain('Soffit brackets');
-    expect(markup).toContain('House side');
+    expect(markup).toContain('data-source-class="modulePlanSoffitBracket"');
   });
 
   it('renders a section sheet with updated sheet code and title', () => {
@@ -190,14 +197,17 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('M2 - Gable - 6.2m x 3.4m - Acrylic');
     expect(markup).toContain('Ridge beam');
     expect(markup).toContain('Roof members');
-    expect(markup).toContain('Tie beam / king strut');
+    expect(markup).toContain('Tie beam');
     expect(markup).toContain('Datum / guide');
+    expect(markup).toContain('data-source-class="moduleSectionRidgeBeam"');
+    expect(markup).toContain('data-source-class="moduleSectionTieBeamPrimary"');
+    expect(markup).toContain('data-source-class="moduleSectionConnection"');
     expect(markup).toContain('M2 - Gable - 6.2m x 3.4m - Acrylic - Section');
     expect(markup).toContain('S-01');
     expect(markup).toContain('Te Arai');
   });
 
-  it('does not advertise overhang support on gable section sheets when no support cap is rendered', () => {
+  it('keeps mono-only support conditions out of gable section legends', () => {
     const drawing = makeDrawingModels({ overhangEnabled: true, overhangAmountM: '0.45' });
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M4 - Gable - 4.6m x 5.1m - Acrylic',
@@ -219,6 +229,7 @@ describe('EstimateDrawingSheet', () => {
     );
 
     expect(markup).not.toContain('Overhang support');
+    expect(markup).not.toContain('King strut');
     expect(markup).toContain('Datum / guide');
   });
 });

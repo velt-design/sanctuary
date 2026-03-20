@@ -136,4 +136,13 @@ describe('ModuleViewsCard', () => {
       suggestedScale: { mode: 'fixed', ratio: 50 },
     });
   });
+
+  it('keeps section auto-scale on the largest fitting architectural scale after fit-frame refinements', () => {
+    const drawing = makeDrawingModule();
+
+    expect(getSuggestedModuleDrawingScale({ view: 'section', planModel: drawing.planModel, sectionModel: drawing.sectionModel })).toEqual({
+      mode: 'fixed',
+      ratio: 20,
+    });
+  });
 });
