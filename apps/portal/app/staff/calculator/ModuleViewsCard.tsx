@@ -314,6 +314,73 @@ function memberSizeM(value: number | null | undefined, fallbackM: number): numbe
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallbackM;
 }
 
+type PlanFitBox = {
+  x: number;
+  y: number;
+  scale: number;
+  houseBandHeight: number;
+  houseBandOffset: number;
+  houseInset: number;
+  fallGap: number;
+};
+
+function resolvePlanFitBox(totalW: number, totalH: number, presentation: ModuleDrawingPresentation, isHipCorner: boolean): PlanFitBox {
+  const safeW = Math.max(totalW, 0.1);
+  const safeH = Math.max(totalH, 0.1);
+  if (presentation === 'sheet') {
+    const leftPad = isHipCorner ? 16.4 : 15.8;
+    const rightPad = isHipCorner ? 19.6 : 17.8;
+    const topPad = 14.2;
+    const bottomPad = isHipCorner ? 15.2 : 16.8;
+    const maxW = 120 - leftPad - rightPad;
+    const maxH = 90 - topPad - bottomPad;
+    const scale = Math.min(maxW / safeW, maxH / safeH);
+    const widthPx = safeW * scale;
+    const heightPx = safeH * scale;
+    return {
+      x: leftPad + (maxW - widthPx) / 2,
+      y: topPad + (maxH - heightPx) / 2,
+      scale,
+      houseBandHeight: 6.2,
+      houseBandOffset: 1.4,
+      houseInset: 1.25,
+      fallGap: 5.3,
+    };
+  }
+
+  const maxW = 74;
+  const maxH = 42;
+  const scale = Math.min(maxW / safeW, maxH / safeH);
+  const widthPx = safeW * scale;
+  const heightPx = safeH * scale;
+  return {
+    x: 23 + (maxW - widthPx) / 2,
+    y: 20 + (maxH - heightPx) / 2,
+    scale,
+    houseBandHeight: 8,
+    houseBandOffset: 2,
+    houseInset: 2,
+    fallGap: 8,
+  };
+}
+
+type SectionFitFrame = {
+  left: number;
+  width: number;
+  topMargin: number;
+  groundY: number;
+};
+
+function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
+  if (presentation === 'sheet') {
+    return sectionKind === 'gable'
+      ? { left: 13.4, width: 93.4, topMargin: 9.2, groundY: 76.4 }
+      : { left: 14.2, width: 91.2, topMargin: 10.2, groundY: 75.8 };
+  }
+
+  return { left: 18, width: 84, topMargin: 16, groundY: 72 };
+}
+
 function summariseConsistency(issues: string[]): GeometryConsistency {
   if (issues.length === 0) {
     return {
@@ -724,19 +791,21 @@ function TickDimension({
   const tickHalf = isSheet ? 0.82 : 1.02;
   const tx = (ux + nx) * tickHalf;
   const ty = (uy + ny) * tickHalf;
-  const isHorizontal = Math.abs(dx) >= Math.abs(dy);
   const lineStartX = x1 - ux * overrun;
   const lineStartY = y1 - uy * overrun;
   const lineEndX = x2 + ux * overrun;
   const lineEndY = y2 + uy * overrun;
   const barHalf = isSheet ? 0.58 : 0.72;
   const barOffset = isSheet ? 0.46 : 0.55;
+  const horizontalBias = Math.abs(dx) >= Math.abs(dy) * 1.35;
+  const verticalBias = Math.abs(dy) > Math.abs(dx) * 1.35;
 
   const cx = (x1 + x2) / 2;
   const cy = (y1 + y2) / 2;
-  const labelX = textX ?? (isHorizontal ? cx : cx - (isSheet ? 3.2 : 2.8));
-  const labelY = textY ?? (isHorizontal ? cy - (isSheet ? 2.4 : 2.1) : cy);
-  const labelRotate = rotateDeg ?? (isHorizontal ? undefined : -90);
+  const labelClearance = isSheet ? 2.2 : 1.8;
+  const labelX = textX ?? (verticalBias ? cx - (isSheet ? 3.2 : 2.8) : horizontalBias ? cx : cx - nx * labelClearance);
+  const labelY = textY ?? (verticalBias ? cy : horizontalBias ? cy - (isSheet ? 2.4 : 2.1) : cy - ny * labelClearance);
+  const labelRotate = rotateDeg ?? (verticalBias ? -90 : undefined);
 
   return (
     <g>
@@ -774,11 +843,24 @@ function TickDimension({
   );
 }
 
-function ArrowHead({ x, y, direction }: { x: number; y: number; direction: 'up' | 'down' }) {
+function ArrowHead({ x, y, direction, presentation = 'card' }: { x: number; y: number; direction: 'up' | 'down'; presentation?: ModuleDrawingPresentation }) {
+  const isSheet = presentation === 'sheet';
+  const reach = isSheet ? 1.05 : 1.3;
+  const span = isSheet ? 0.9 : 1.15;
   if (direction === 'up') {
-    return <polygon points={`${x.toFixed(2)},${(y - 1.5).toFixed(2)} ${(x - 1.3).toFixed(2)},${(y + 1.1).toFixed(2)} ${(x + 1.3).toFixed(2)},${(y + 1.1).toFixed(2)}`} className={styles.moduleFallHead} />;
+    return (
+      <g>
+        <line x1={x} y1={y - reach} x2={x - span} y2={y + reach} className={styles.moduleFallHead} />
+        <line x1={x} y1={y - reach} x2={x + span} y2={y + reach} className={styles.moduleFallHead} />
+      </g>
+    );
   }
-  return <polygon points={`${x.toFixed(2)},${(y + 1.5).toFixed(2)} ${(x - 1.3).toFixed(2)},${(y - 1.1).toFixed(2)} ${(x + 1.3).toFixed(2)},${(y - 1.1).toFixed(2)}`} className={styles.moduleFallHead} />;
+  return (
+    <g>
+      <line x1={x} y1={y + reach} x2={x - span} y2={y - reach} className={styles.moduleFallHead} />
+      <line x1={x} y1={y + reach} x2={x + span} y2={y - reach} className={styles.moduleFallHead} />
+    </g>
+  );
 }
 
 function PlanSvg({
@@ -796,16 +878,10 @@ function PlanSvg({
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
   const totalW = isHipCorner ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
   const totalH = isHipCorner ? model.spanA + (model.spanB ?? 0) : model.spanA;
-
-  const maxW = 74;
-  const maxH = 42;
-  const safeW = Math.max(totalW, 0.1);
-  const safeH = Math.max(totalH, 0.1);
-  const scale = Math.min(maxW / safeW, maxH / safeH);
-  const widthPx = safeW * scale;
-  const heightPx = safeH * scale;
-  const x = 23 + (maxW - widthPx) / 2;
-  const y = 20 + (maxH - heightPx) / 2;
+  const layout = resolvePlanFitBox(totalW, totalH, presentation, isHipCorner);
+  const scale = layout.scale;
+  const x = layout.x;
+  const y = layout.y;
 
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
@@ -850,19 +926,19 @@ function PlanSvg({
   const ridgeBandY = gableMidY - ridgeBandW / 2;
   const hipRidgeStartX = x + aW * 0.32;
   const hipRidgeEndX = x + aW * 0.68;
-  const houseBottomY = y - 2;
-  const houseTopY = Math.max(4, houseBottomY - 8);
-  const houseLeftX = Math.max(6, x - 2);
-  const houseRightX = Math.min(114, x + Math.max(aW, bW) + 2);
+  const houseBottomY = y - layout.houseBandOffset;
+  const houseTopY = Math.max(isSheet ? 5.2 : 4, houseBottomY - layout.houseBandHeight);
+  const houseLeftX = Math.max(isSheet ? 8.4 : 6, x - layout.houseInset);
+  const houseRightX = Math.min(114, x + Math.max(aW, bW) + layout.houseInset);
   const hatchId = `${idBase}_house_hatch`;
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.lengthA, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
 
-  const fallX = Math.min(112, x + Math.max(aW, bW) + 8);
-  const fallTop = y + 1;
-  const fallBottom = (isHipCorner ? bottomY : y + aH) - 1;
+  const fallX = Math.min(110.5, x + Math.max(aW, bW) + layout.fallGap);
+  const fallTop = y + (isSheet ? 1.5 : 1);
+  const fallBottom = (isHipCorner ? bottomY : y + aH) - (isSheet ? 1.5 : 1);
 
   const dimBaseY = Math.min(87.6, bottomY + (isSheet ? 8.9 : 7.8));
   const secondaryDimY = Math.min(88.8, dimBaseY + (isSheet ? 6.0 : 5.4));
@@ -894,7 +970,7 @@ function PlanSvg({
       </defs>
 
       <rect x={houseLeftX} y={houseTopY} width={houseRightX - houseLeftX} height={houseBottomY - houseTopY} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} />
-      <text x={houseLeftX + 1.5} y={houseTopY + 3.1} className={styles.moduleHouseLabel}>
+      <text x={houseLeftX + (isSheet ? 1.15 : 1.5)} y={houseTopY + (isSheet ? 2.65 : 3.1)} className={styles.moduleHouseLabel}>
         House side
       </text>
 
@@ -970,16 +1046,21 @@ function PlanSvg({
       <line x1={fallX} y1={fallTop} x2={fallX} y2={fallBottom} className={styles.moduleFallLine} />
       {isGableLike ? (
         <>
-          <ArrowHead x={fallX} y={fallTop} direction="up" />
-          <ArrowHead x={fallX} y={fallBottom} direction="down" />
-          <text x={fallX + 2.3} y={(fallTop + fallBottom) / 2} className={styles.moduleFallLabel}>
+          <ArrowHead x={fallX} y={fallTop} direction="up" presentation={presentation} />
+          <ArrowHead x={fallX} y={fallBottom} direction="down" presentation={presentation} />
+          <text x={fallX + (isSheet ? 1.7 : 2.3)} y={(fallTop + fallBottom) / 2} className={styles.moduleFallLabel}>
             fall both sides
           </text>
         </>
       ) : (
         <>
-          <ArrowHead x={fallX} y={model.slopeDirection === 'toward_house' ? fallTop : fallBottom} direction={model.slopeDirection === 'toward_house' ? 'up' : 'down'} />
-          <text x={fallX + 2.3} y={(fallTop + fallBottom) / 2} className={styles.moduleFallLabel}>
+          <ArrowHead
+            x={fallX}
+            y={model.slopeDirection === 'toward_house' ? fallTop : fallBottom}
+            direction={model.slopeDirection === 'toward_house' ? 'up' : 'down'}
+            presentation={presentation}
+          />
+          <text x={fallX + (isSheet ? 1.7 : 2.3)} y={(fallTop + fallBottom) / 2} className={styles.moduleFallLabel}>
             fall
           </text>
         </>
@@ -1071,9 +1152,10 @@ function SectionSvg({
       : model.rightEdgeHeightM + rightEaveBeamDepthM - rafterPlumbCutDropM;
   const supportBeamTopM = supportUndersideM + supportBeamDepthM;
 
-  const chartWidth = 84;
-  const topMargin = 16;
-  const yGround = 72;
+  const fitFrame = resolveSectionFitFrame(presentation, model.sectionKind);
+  const chartWidth = fitFrame.width;
+  const topMargin = fitFrame.topMargin;
+  const yGround = fitFrame.groundY;
   const safeSpanM = Math.max(totalSpanM, 0.1);
 
   const heights = [
@@ -1111,7 +1193,7 @@ function SectionSvg({
   const ridgeBeamWidth = ridgeBeamWidthM * scale;
 
   const drawWidth = safeSpanM * scale;
-  const xLeft = (120 - drawWidth) / 2;
+  const xLeft = fitFrame.left + (chartWidth - drawWidth) / 2;
   const xRight = xLeft + model.spanA * scale;
   const xSupport = model.sectionKind === 'mono' ? xLeft + supportXFromHouseM * scale : xRight;
   const ridgeX = (xLeft + xRight) / 2;
@@ -1190,7 +1272,7 @@ function SectionSvg({
   };
   const depthDimBottom: Point = { x: depthDimUnderX, y: depthDimUnderY };
   const roofTopLengthDims = (() => {
-    const offset = isSheet ? 4.0 : 2.7;
+    const offset = isSheet ? (model.sectionKind === 'gable' ? 4.8 : 4.2) : 2.7;
     if (model.sectionKind === 'mono' && monoRoofGeom) {
       const topStart = monoRoofGeom.points[3]!;
       const topEnd = monoRoofGeom.points[2]!;
@@ -1342,7 +1424,14 @@ function SectionSvg({
             x2={roofDim.dimEnd.x}
             y2={roofDim.dimEnd.y}
             label={formatMetres(roofDim.lengthM)}
-            textY={(roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - (isSheet ? 2.5 : 1.8)}
+            textX={(() => {
+              const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
+              return (roofDim.dimStart.x + roofDim.dimEnd.x) / 2 - roofNormal.nx * (isSheet ? 1.4 : 1.1);
+            })()}
+            textY={(() => {
+              const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
+              return (roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - roofNormal.ny * (isSheet ? 1.4 : 1.1);
+            })()}
             presentation={presentation}
           />
         </g>

@@ -76,7 +76,7 @@ function makeResult(params: {
   } as unknown as CostOutputV1;
 }
 
-function makeDrawingModels() {
+function makeDrawingModels(overrides: Partial<CalculatorModuleInputs> = {}) {
   const modules = buildEstimateDrawingModules({
     inputs: {
       schemaVersion: 'v2',
@@ -89,7 +89,7 @@ function makeDrawingModels() {
       extrasAllowanceExGst: '0',
       quoteDiscountPct: '0',
       pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
-      modules: [makeModule()],
+      modules: [makeModule(overrides)],
     },
     outputs: {
       pergolas: [{ id: 'pergola-1', modules: [makeResult()] }],
@@ -134,6 +134,32 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('Verify all dimensions on site.');
   });
 
+  it('keeps soffit brackets and house side as separate legend items on plan sheets', () => {
+    const drawing = makeDrawingModels({ houseConnectionType: 'soffit' });
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M3 - Gable - 4.6m x 5.1m - Acrylic',
+      view: 'plan',
+      versionLabel: 'V1',
+      estimateDate: '2026-03-19T03:14:00.000Z',
+      siteAddress: 'Millwater',
+      clientName: 'Chanel',
+    });
+
+    const markup = renderToStaticMarkup(
+      <EstimateDrawingSheet
+        moduleLabel="M3 - Gable - 4.6m x 5.1m - Acrylic"
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).toContain('Soffit brackets');
+    expect(markup).toContain('House side');
+  });
+
   it('renders a section sheet with updated sheet code and title', () => {
     const drawing = makeDrawingModels();
     const meta = buildEstimateDrawingSheetMeta({
@@ -158,8 +184,36 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('Section view');
     expect(markup).toContain('M2 - Gable - 6.2m x 3.4m - Acrylic');
     expect(markup).toContain('Ridge beam');
+    expect(markup).toContain('Roof members');
+    expect(markup).toContain('Tie beam / king strut');
+    expect(markup).toContain('Datum / guide');
     expect(markup).toContain('M2 - Gable - 6.2m x 3.4m - Acrylic - Section');
     expect(markup).toContain('S-01');
     expect(markup).toContain('Te Arai');
+  });
+
+  it('does not advertise overhang support on gable section sheets when no support cap is rendered', () => {
+    const drawing = makeDrawingModels({ overhangEnabled: true, overhangAmountM: '0.45' });
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M4 - Gable - 4.6m x 5.1m - Acrylic',
+      view: 'section',
+      versionLabel: 'V2',
+      estimateDate: '2026-03-20T03:14:00.000Z',
+      siteAddress: 'Millwater',
+    });
+
+    const markup = renderToStaticMarkup(
+      <EstimateDrawingSheet
+        moduleLabel="M4 - Gable - 4.6m x 5.1m - Acrylic"
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).not.toContain('Overhang support');
+    expect(markup).toContain('Datum / guide');
   });
 });

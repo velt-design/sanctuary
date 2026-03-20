@@ -9,7 +9,7 @@ import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import styles from './EstimateDrawingSheet.module.css';
 
-type LegendTone = 'primary' | 'secondary' | 'dimension' | 'hidden';
+type LegendTone = 'primary' | 'secondary' | 'annotation' | 'dimension' | 'hidden';
 
 type EstimateDrawingSheetProps = {
   moduleLabel: string;
@@ -37,28 +37,45 @@ function buildLegendItems(
   if (view === 'plan') {
     const items: LegendItem[] = [
       { label: 'Frame perimeter', tone: 'primary' },
-      { label: 'Rafters', tone: 'secondary' },
     ];
     if (planModel?.roofType === 'gable' || planModel?.roofType === 'low_gable') {
       items.push({ label: 'Ridge beam', tone: 'primary' });
     }
-    items.push({ label: planModel?.houseConnectionType === 'soffit' ? 'Soffit brackets' : 'House side', tone: 'hidden' });
+    items.push({ label: 'Rafters', tone: 'secondary' });
+    if (planModel?.houseConnectionType === 'soffit') {
+      items.push({ label: 'Soffit brackets', tone: 'annotation' });
+    }
+    items.push({ label: 'House side', tone: 'hidden' });
     items.push({ label: 'Dimensions', tone: 'dimension' });
     return items;
   }
 
-  return [
+  const hasOverhangSupport =
+    sectionModel?.sectionKind === 'mono' && Boolean(sectionModel?.overhangEnabled) && (sectionModel?.overhangAmountM ?? 0) > 0;
+  const items: LegendItem[] = [
     { label: 'Primary frame', tone: 'primary' },
-    { label: sectionModel?.sectionKind === 'gable' ? 'Ridge beam' : 'Roof line', tone: 'secondary' },
-    { label: sectionModel?.overhangEnabled ? 'Support / datum' : 'Datum / guide', tone: 'hidden' },
-    { label: 'Dimensions', tone: 'dimension' },
   ];
+  if (sectionModel?.sectionKind === 'gable') {
+    items.push({ label: 'Ridge beam', tone: 'primary' });
+  }
+  items.push({ label: 'Roof members', tone: 'secondary' });
+  if (sectionModel?.sectionKind === 'gable') {
+    items.push({ label: 'Tie beam / king strut', tone: 'secondary' });
+  }
+  if (hasOverhangSupport) {
+    items.push({ label: 'Overhang support', tone: 'primary' });
+  }
+  items.push({ label: 'Datum / guide', tone: 'hidden' });
+  items.push({ label: 'Dimensions', tone: 'dimension' });
+  return items;
 }
 
 function legendToneClassName(tone: LegendTone): string {
   switch (tone) {
     case 'secondary':
       return styles.legendSwatchSecondary;
+    case 'annotation':
+      return styles.legendSwatchAnnotation;
     case 'dimension':
       return styles.legendSwatchDimension;
     case 'hidden':

@@ -2440,9 +2440,9 @@
 
 .moduleHouseLabel {
   fill: var(--mv-text-muted);
-  font-size: var(--mv-text-label-size);
+  font-size: calc(var(--mv-text-label-size) - 0.08px);
   font-weight: 500;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -2507,7 +2507,7 @@
 }
 
 .modulePlanRafter {
-  stroke: var(--mv-line-secondary);
+  stroke: var(--mv-line-rhythm);
   stroke-linecap: square;
   stroke-width: var(--mv-line-minor-width);
   vector-effect: non-scaling-stroke;
@@ -2521,7 +2521,7 @@
 }
 
 .modulePlanSoffitBracket {
-  stroke: var(--mv-accent-olive);
+  stroke: var(--mv-line-annotation);
   stroke-width: var(--mv-line-annotation-width);
   vector-effect: non-scaling-stroke;
 }
@@ -2535,7 +2535,7 @@
 }
 
 .modulePlanInternalAngle {
-  stroke: var(--mv-accent-olive);
+  stroke: var(--mv-line-annotation);
   stroke-width: var(--mv-line-guide-width);
   stroke-dasharray: var(--mv-dash-guide);
   vector-effect: non-scaling-stroke;
@@ -2548,20 +2548,25 @@
 }
 
 .moduleFallLine {
-  stroke: var(--mv-line-secondary);
+  stroke: var(--mv-line-annotation);
   stroke-width: var(--mv-line-annotation-width);
+  stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleFallHead {
-  fill: var(--mv-text-secondary);
+  fill: none;
+  stroke: var(--mv-line-annotation);
+  stroke-width: var(--mv-line-annotation-width);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
 }
 
 .moduleFallLabel {
   fill: var(--mv-text-muted);
-  font-size: var(--mv-text-label-size);
+  font-size: calc(var(--mv-text-label-size) - 0.08px);
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -2591,7 +2596,7 @@
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
   stroke-linecap: square;
-  opacity: 0.8;
+  opacity: 0.74;
   vector-effect: non-scaling-stroke;
 }
 
@@ -2599,7 +2604,7 @@
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
   stroke-dasharray: var(--mv-dash-guide);
-  opacity: 0.5;
+  opacity: 0.44;
   vector-effect: non-scaling-stroke;
 }
 
@@ -2610,7 +2615,7 @@
   letter-spacing: 0.015em;
   paint-order: stroke fill;
   stroke: var(--mv-canvas);
-  stroke-width: 0.18;
+  stroke-width: 0.16;
   stroke-linejoin: round;
 }
 
@@ -2669,12 +2674,12 @@
 }
 
 .moduleSectionSecondaryMember {
-  stroke: var(--mv-line-secondary);
+  stroke: var(--mv-line-rhythm);
   stroke-width: var(--mv-line-minor-width);
 }
 
 .moduleSectionRoofMember {
-  stroke: var(--mv-line-secondary);
+  stroke: var(--mv-line-rhythm);
   stroke-width: var(--mv-line-minor-width);
 }
 
@@ -2709,7 +2714,7 @@
 }
 
 .moduleSectionConnection {
-  stroke: var(--mv-line-secondary);
+  stroke: var(--mv-line-hidden);
   stroke-width: var(--mv-line-guide-width);
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
@@ -2723,7 +2728,7 @@
 }
 
 .moduleSectionBoxRoof {
-  stroke: var(--mv-accent-olive);
+  stroke: var(--mv-line-annotation);
   stroke-width: var(--mv-line-guide-width);
   stroke-dasharray: var(--mv-dash-guide);
   vector-effect: non-scaling-stroke;
