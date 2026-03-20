@@ -45,7 +45,16 @@ type ModuleDrawingRendererProps = {
   presentation?: ModuleDrawingPresentation;
   drawingScale?: EstimateDrawingScale;
   sheetViewportMm?: { widthMm: number; heightMm: number };
+  interactiveFields?: ModuleDrawingInteractiveFieldMap;
+  showDebugOverlays?: boolean;
 };
+
+type ModuleDrawingInteractiveField = {
+  fieldId: string;
+  onActivate: (fieldId: string, target: SVGTextElement) => void;
+};
+
+export type ModuleDrawingInteractiveFieldMap = Partial<Record<string, ModuleDrawingInteractiveField>>;
 
 export type ModuleDrawingScaleState = {
   requestedScale: EstimateDrawingScale;
@@ -154,6 +163,8 @@ export function ModuleDrawingRenderer({
   presentation = 'card',
   drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
   sheetViewportMm,
+  interactiveFields,
+  showDebugOverlays = false,
 }: ModuleDrawingRendererProps) {
   const isCompact = presentation !== 'card';
   const showPlan = view === 'plan' && Boolean(planModel);
@@ -217,6 +228,8 @@ export function ModuleDrawingRenderer({
             sheetViewportMm={sheetViewportMm}
             debugScaleState={sheetScaleState}
             scaleDiagnostics={sheetScaleDiagnostics}
+            interactiveFields={interactiveFields}
+            showDebugOverlays={showDebugOverlays}
           />
           {isCompact ? null : (
             <>
@@ -270,6 +283,8 @@ export function ModuleDrawingRenderer({
             sheetViewportMm={sheetViewportMm}
             debugScaleState={sheetScaleState}
             scaleDiagnostics={sheetScaleDiagnostics}
+            interactiveFields={interactiveFields}
+            showDebugOverlays={showDebugOverlays}
           />
           {isCompact ? null : (
             <>
@@ -350,6 +365,7 @@ type TickDimensionProps = {
   overrun?: number;
   showTermBars?: boolean;
   presentation?: ModuleDrawingPresentation;
+  interactiveField?: ModuleDrawingInteractiveField;
 };
 
 type DimensionPresentationSpec = {
@@ -1441,6 +1457,7 @@ function TickDimension({
   overrun = 2.7,
   showTermBars = false,
   presentation = 'card',
+  interactiveField,
 }: TickDimensionProps) {
   const geometry = resolveTickDimensionGeometry({
     x1,
@@ -1482,8 +1499,20 @@ function TickDimension({
         x={geometry.labelX}
         y={geometry.labelY}
         textAnchor="middle"
-        className={styles.moduleDimText}
+        className={interactiveField ? `${styles.moduleDimText} ${styles.moduleDimTextEditable}` : styles.moduleDimText}
         transform={typeof geometry.labelRotate === 'number' ? `rotate(${geometry.labelRotate} ${geometry.labelX} ${geometry.labelY})` : undefined}
+        data-editable-field-id={interactiveField?.fieldId}
+        tabIndex={interactiveField ? 0 : undefined}
+        onClick={interactiveField ? (event) => interactiveField.onActivate(interactiveField.fieldId, event.currentTarget) : undefined}
+        onKeyDown={
+          interactiveField
+            ? (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                interactiveField.onActivate(interactiveField.fieldId, event.currentTarget as SVGTextElement);
+              }
+            : undefined
+        }
       >
         {label}
       </text>
@@ -2225,6 +2254,8 @@ function PlanSvg({
   sheetViewportMm,
   debugScaleState,
   scaleDiagnostics,
+  interactiveFields,
+  showDebugOverlays = false,
 }: {
   model: ModulePlanModel;
   idBase: string;
@@ -2233,6 +2264,8 @@ function PlanSvg({
   sheetViewportMm?: { widthMm: number; heightMm: number };
   debugScaleState?: ModuleDrawingScaleState | null;
   scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
+  interactiveFields?: ModuleDrawingInteractiveFieldMap;
+  showDebugOverlays?: boolean;
 }) {
   const isSheet = presentation === 'sheet';
   const isHipCorner = model.roofType === 'hip_corner';
@@ -2350,11 +2383,11 @@ function PlanSvg({
         </pattern>
       </defs>
 
-      {outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-plan" /> : null}
+      {showDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-plan" /> : null}
 
-      {fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-plan" /> : null}
+      {showDebugOverlays && fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-plan" /> : null}
 
-      {annotatedBoundsOutline ? (
+      {showDebugOverlays && annotatedBoundsOutline ? (
         <DebugOutline
           rect={{
             x: annotatedBoundsOutline.minX,
@@ -2367,7 +2400,7 @@ function PlanSvg({
         />
       ) : null}
 
-      {debugMetrics && outerFieldOutline ? (
+      {showDebugOverlays && debugMetrics && outerFieldOutline ? (
         <g className={styles.moduleDebugStats} aria-hidden="true">
           <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 1.6} className={styles.moduleDebugStatsText}>
             {`req ${debugMetrics.requestedScaleLabel} -> ${debugMetrics.appliedScaleLabel}`}
@@ -2501,7 +2534,15 @@ function PlanSvg({
 
       <line x1={x} y1={isHipCorner ? bottomY : y + aH} x2={x} y2={dimBaseY} className={styles.moduleDimWitness} />
       <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
-      <TickDimension x1={x} y1={dimBaseY} x2={x + aW} y2={dimBaseY} label={formatMetres(model.lengthA)} presentation={presentation} />
+      <TickDimension
+        x1={x}
+        y1={dimBaseY}
+        x2={x + aW}
+        y2={dimBaseY}
+        label={formatMetres(model.lengthA)}
+        presentation={presentation}
+        interactiveField={interactiveFields?.['plan:lengthA']}
+      />
 
       <line x1={x} y1={y} x2={x - dimensionOffsets.side} y2={y} className={styles.moduleDimWitness} />
       <line x1={x} y1={y + aH} x2={x - dimensionOffsets.side} y2={y + aH} className={styles.moduleDimWitness} />
@@ -2512,6 +2553,7 @@ function PlanSvg({
         y2={y + aH}
         label={formatMetres(model.spanA)}
         presentation={presentation}
+        interactiveField={interactiveFields?.['plan:spanA']}
       />
 
       {isHipCorner && model.lengthB && model.spanB ? (
@@ -2525,6 +2567,7 @@ function PlanSvg({
             y2={secondaryDimY}
             label={formatMetres(model.lengthB)}
             presentation={presentation}
+            interactiveField={interactiveFields?.['plan:lengthB']}
           />
 
           <line x1={x + bW} y1={splitY} x2={x + bW + dimensionOffsets.hipSide} y2={splitY} className={styles.moduleDimWitness} />
@@ -2536,6 +2579,7 @@ function PlanSvg({
             y2={bottomY}
             label={formatMetres(model.spanB)}
             presentation={presentation}
+            interactiveField={interactiveFields?.['plan:spanB']}
           />
         </>
       ) : null}
@@ -2572,6 +2616,8 @@ function SectionSvg({
   sheetViewportMm,
   debugScaleState,
   scaleDiagnostics,
+  interactiveFields,
+  showDebugOverlays = false,
 }: {
   model: ModuleSectionModel;
   presentation?: ModuleDrawingPresentation;
@@ -2579,6 +2625,8 @@ function SectionSvg({
   sheetViewportMm?: { widthMm: number; heightMm: number };
   debugScaleState?: ModuleDrawingScaleState | null;
   scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
+  interactiveFields?: ModuleDrawingInteractiveFieldMap;
+  showDebugOverlays?: boolean;
 }) {
   const isSheet = presentation === 'sheet';
   const sectionSheetLayout = isSheet ? resolveSectionSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
@@ -2708,6 +2756,7 @@ function SectionSvg({
   const pitchLabelY = isSheet ? spanDimY + 6.2 : 88;
   const metaLabelY = isSheet ? pitchLabelY - 3.2 : 84.8;
   const roofLengthLabelGap = isSheet ? 1.6 : 1.2;
+  const pitchInteractiveField = interactiveFields?.['section:pitch'];
 
   const mainRoofNormal = segmentDownNormal(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder);
   const ridgeLeftX = ridgeX - ridgeBeamWidth / 2;
@@ -2807,11 +2856,11 @@ function SectionSvg({
         presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
       }`}
     >
-      {outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-section" /> : null}
+      {showDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-section" /> : null}
 
-      {fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-section" /> : null}
+      {showDebugOverlays && fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-section" /> : null}
 
-      {annotatedBoundsOutline ? (
+      {showDebugOverlays && annotatedBoundsOutline ? (
         <DebugOutline
           rect={{
             x: annotatedBoundsOutline.minX,
@@ -2824,7 +2873,7 @@ function SectionSvg({
         />
       ) : null}
 
-      {debugMetrics && outerFieldOutline ? (
+      {showDebugOverlays && debugMetrics && outerFieldOutline ? (
         <g className={styles.moduleDebugStats} aria-hidden="true">
           <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 1.6} className={styles.moduleDebugStatsText}>
             {`req ${debugMetrics.requestedScaleLabel} -> ${debugMetrics.appliedScaleLabel}`}
@@ -2997,17 +3046,59 @@ function SectionSvg({
 
       <line x1={xLeft} y1={spanAnchorLeftY} x2={xLeft} y2={spanDimY} className={styles.moduleDimWitness} />
       <line x1={xRight} y1={spanAnchorRightY} x2={xRight} y2={spanDimY} className={styles.moduleDimWitness} />
-      <TickDimension x1={xLeft} y1={spanDimY} x2={xRight} y2={spanDimY} label={formatMetres(model.spanA)} textY={spanDimY - (isSheet ? 1.8 : 1.4)} presentation={presentation} />
+      <TickDimension
+        x1={xLeft}
+        y1={spanDimY}
+        x2={xRight}
+        y2={spanDimY}
+        label={formatMetres(model.spanA)}
+        textY={spanDimY - (isSheet ? 1.8 : 1.4)}
+        presentation={presentation}
+        interactiveField={interactiveFields?.['section:spanA']}
+      />
 
       <line x1={xLeft} y1={yGround} x2={leftDimX} y2={yGround} className={styles.moduleDimWitness} />
       <line x1={xLeft} y1={yHouseUnder} x2={leftDimX} y2={yHouseUnder} className={styles.moduleDimWitness} />
-      <TickDimension x1={leftDimX} y1={yGround} x2={leftDimX} y2={yHouseUnder} label={formatMetres(model.leftEdgeHeightM)} presentation={presentation} />
+      <TickDimension
+        x1={leftDimX}
+        y1={yGround}
+        x2={leftDimX}
+        y2={yHouseUnder}
+        label={formatMetres(model.leftEdgeHeightM)}
+        presentation={presentation}
+        interactiveField={interactiveFields?.['section:heightLeft']}
+      />
 
       <line x1={xRight} y1={yGround} x2={rightDimX} y2={yGround} className={styles.moduleDimWitness} />
       <line x1={xRight} y1={yOuterGutterUnder} x2={rightDimX} y2={yOuterGutterUnder} className={styles.moduleDimWitness} />
-      <TickDimension x1={rightDimX} y1={yGround} x2={rightDimX} y2={yOuterGutterUnder} label={formatMetres(outerGutterUndersideM)} presentation={presentation} />
+      <TickDimension
+        x1={rightDimX}
+        y1={yGround}
+        x2={rightDimX}
+        y2={yOuterGutterUnder}
+        label={formatMetres(outerGutterUndersideM)}
+        presentation={presentation}
+        interactiveField={interactiveFields?.['section:heightRight']}
+      />
 
-      <text x={(xLeft + xRight) / 2} y={pitchLabelY} textAnchor="middle" className={styles.moduleSectionPitchLabel}>
+      <text
+        x={(xLeft + xRight) / 2}
+        y={pitchLabelY}
+        textAnchor="middle"
+        className={pitchInteractiveField ? `${styles.moduleSectionPitchLabel} ${styles.moduleDimTextEditable}` : styles.moduleSectionPitchLabel}
+        data-editable-field-id={pitchInteractiveField?.fieldId}
+        tabIndex={pitchInteractiveField ? 0 : undefined}
+        onClick={pitchInteractiveField ? (event) => pitchInteractiveField.onActivate(pitchInteractiveField.fieldId, event.currentTarget) : undefined}
+        onKeyDown={
+          pitchInteractiveField
+            ? (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                pitchInteractiveField.onActivate(pitchInteractiveField.fieldId, event.currentTarget as SVGTextElement);
+              }
+            : undefined
+        }
+      >
         {`Pitch ${model.pitchDeg.toFixed(1)} deg`}
       </text>
 

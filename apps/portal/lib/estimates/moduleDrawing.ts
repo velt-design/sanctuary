@@ -5,6 +5,7 @@ import {
   type ModulePlanModel,
   type ModuleSectionModel,
 } from '../../app/staff/calculator/moduleViews';
+import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from './costingPayload';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculatorInputsToV2 } from '@/lib/types/calculator';
 
@@ -41,11 +42,20 @@ function resolveModuleResults(snapshot: Record<string, unknown> | null): CostOut
   });
 }
 
-export function buildEstimateDrawingModules(snapshot: Record<string, unknown> | null): EstimateDrawingModule[] {
+function hasStalePricingSyncState(snapshot: Record<string, unknown> | null): boolean {
+  if (!snapshot) return false;
+  const rawOutputs = snapshot.outputs ?? (isRecord(snapshot.calculator_snapshot) ? snapshot.calculator_snapshot.outputs : null);
+  return isRecord(rawOutputs) && rawOutputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY] === 'stale';
+}
+
+export function buildEstimateDrawingModules(
+  snapshot: Record<string, unknown> | null,
+  options?: { ignoreModuleResults?: boolean },
+): EstimateDrawingModule[] {
   const inputs = resolveCalculatorInputs(snapshot);
   if (!inputs) return [];
 
-  const results = resolveModuleResults(snapshot);
+  const results = options?.ignoreModuleResults || hasStalePricingSyncState(snapshot) ? [] : resolveModuleResults(snapshot);
   return inputs.modules.map((module, index) => {
     const result = results[index] ?? null;
     return {

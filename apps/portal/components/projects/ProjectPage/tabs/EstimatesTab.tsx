@@ -6,13 +6,34 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import { mapEngineLevel } from '@/app/staff/calculator/warnings';
 import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
-import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import {
+  applyEstimateDrawingFieldEdit,
+  buildEstimateDrawingDraftFromSnapshot,
+  buildEstimateDrawingSheetMetaOverrides,
+  deriveEstimateDrawingEditableFields,
+  estimateDrawingDraftMatchesSnapshot,
+  estimateDrawingDraftTouchesGeometry,
+  mergeEstimateDrawingDraftIntoSnapshot,
+  type EstimateDrawingDraft,
+  type EstimateDrawingField,
+} from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
+import {
+  type EstimateSaveMode,
+  buildEstimatePayloadPreservingCurrentPricing,
+  buildEstimatePayloadFromSiteCosting,
+  buildSiteInputsFromCalculatorInputs,
+  deriveSiteResultWarnings,
+  hasPricingAffectingCalculatorInputChanges,
+} from '@/lib/estimates/costingPayload';
 import type { EstimateDetail, EstimateMeta, EstimateSummary } from '@/lib/estimates/types';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
-import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
+import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, type CalculatorModuleInputs, type LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
+import { calculateSiteCostV1, getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
 import legacy from '@/app/staff/projects/projects.module.css';
@@ -29,6 +50,7 @@ import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstI
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildEstimateEntityKey,
+  buildEstimateDrawingDraftEntityKey,
   buildEstimateNotesDraftEntityKey,
   buildEstimatePayloadFromDetail,
   buildNextEstimateVersionLabel,
@@ -40,6 +62,7 @@ import {
   isLocalQuoteId,
   type PortalEstimateCreateMutationPayload,
   type PortalEstimateNotesMutationPayload,
+  type PortalEstimateUpdateMutationPayload,
   type PortalQuoteCreateMutationPayload,
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
@@ -219,6 +242,30 @@ function getModuleSpecs(snapshot: Record<string, unknown> | null): ModuleSpec[] 
   }
 
   return [];
+}
+
+function getActiveDrawingModuleInput(
+  snapshot: Record<string, unknown> | null,
+  moduleIndex: number,
+): CalculatorModuleInputs | LegacyCalculatorInputsV1 | null {
+  if (!snapshot) return null;
+  const directModules = Array.isArray((snapshot as any).modules) ? (snapshot as any).modules : null;
+  if (directModules && directModules.length) {
+    return (directModules[moduleIndex] as CalculatorModuleInputs | undefined) ?? null;
+  }
+
+  const inputs = (snapshot as any).inputs ?? (snapshot as any).calculator_snapshot?.inputs ?? null;
+  if (!inputs || typeof inputs !== 'object') return null;
+
+  if (isCalculatorInputsV2(inputs)) {
+    return inputs.modules[moduleIndex] ?? null;
+  }
+
+  if (isLegacyCalculatorInputsV1(inputs)) {
+    return moduleIndex === 0 ? inputs : null;
+  }
+
+  return null;
 }
 
 function formatModuleLine(spec: ModuleSpec, index: number): string {
@@ -546,6 +593,7 @@ export default function EstimatesTab({
   const [requestDesignOpen, setRequestDesignOpen] = useState(false);
   const [drawingView, setDrawingView] = useState<ModuleViewsTab>('plan');
   const [drawingModuleIndex, setDrawingModuleIndex] = useState(0);
+  const [drawingSaveMode, setDrawingSaveMode] = useState<EstimateSaveMode | null>(null);
   const resolvedSelectedId = useResolvedLocalFirstId(selectedId);
 
   const urlEstimateId = useMemo(() => {
@@ -610,7 +658,15 @@ export default function EstimatesTab({
     () => buildEstimateNotesDraftEntityKey(selectedId || '__estimate-none__'),
     [selectedId],
   );
+  const drawingDraftEntityKey = useMemo(
+    () => buildEstimateDrawingDraftEntityKey(selectedId || '__estimate-none__'),
+    [selectedId],
+  );
   const notesWorkingCopy = useLocalWorkingCopy<string>(notesDraftEntityKey, selectedDetail?.internalNotes ?? '');
+  const drawingWorkingCopy = useLocalWorkingCopy<EstimateDrawingDraft | null>(
+    drawingDraftEntityKey,
+    buildEstimateDrawingDraftFromSnapshot(selectedDetail?.calculatorSnapshot ?? null),
+  );
   const notesSaveTimerRef = useRef<number | null>(null);
   const notesDraftRef = useRef(notesDraft);
   const selectedEstimateSyncState = useAliasedEntitySyncState(
@@ -619,6 +675,23 @@ export default function EstimatesTab({
     'estimate:detail:__estimate-none__',
   );
   const selectedEstimateSyncPending = Boolean(selectedMeta && selectedEstimateSyncState.pendingCount > 0);
+  const currentDrawingDraft = useMemo(
+    () => buildEstimateDrawingDraftFromSnapshot(selectedDetail?.calculatorSnapshot ?? null),
+    [selectedDetail?.calculatorSnapshot],
+  );
+  const drawingDraft = drawingWorkingCopy.hasLocalCopy ? drawingWorkingCopy.value : currentDrawingDraft;
+  const drawingSaveBusy = drawingSaveMode !== null;
+  const drawingDirty = Boolean(selectedDetail) && !estimateDrawingDraftMatchesSnapshot(drawingDraft, selectedDetail?.calculatorSnapshot ?? null);
+  const drawingGeometryDirty =
+    Boolean(selectedDetail) && estimateDrawingDraftTouchesGeometry(drawingDraft, selectedDetail?.calculatorSnapshot ?? null);
+  const drawingSnapshot = useMemo(
+    () => mergeEstimateDrawingDraftIntoSnapshot(selectedDetail?.calculatorSnapshot ?? null, drawingDraft),
+    [drawingDraft, selectedDetail?.calculatorSnapshot],
+  );
+  const drawingDetail = useMemo(
+    () => (selectedDetail && drawingSnapshot ? { ...selectedDetail, calculatorSnapshot: drawingSnapshot } : selectedDetail),
+    [drawingSnapshot, selectedDetail],
+  );
 
   const upsertEstimate = useCallback(
     (detail: EstimateDetail, opts?: { prepend?: boolean }) => {
@@ -660,6 +733,13 @@ export default function EstimatesTab({
   }, [notesWorkingCopy, selectedDetail?.internalNotes, selectedEstimateSyncPending]);
 
   useEffect(() => {
+    if (!drawingWorkingCopy.hasLocalCopy) return;
+    if (selectedEstimateSyncPending) return;
+    if (!estimateDrawingDraftMatchesSnapshot(drawingWorkingCopy.value, selectedDetail?.calculatorSnapshot ?? null)) return;
+    void drawingWorkingCopy.clearWorkingCopy();
+  }, [drawingWorkingCopy, selectedDetail?.calculatorSnapshot, selectedEstimateSyncPending]);
+
+  useEffect(() => {
     if (!selectedId || !notesWorkingCopy.hasLocalCopy) return;
     if (selectedEstimateSyncState.status !== 'conflict') return;
     if (selectedEstimateSyncState.lastError) {
@@ -671,6 +751,25 @@ export default function EstimatesTab({
   }, [notesWorkingCopy.hasLocalCopy, selectedEstimateSyncState.lastError, selectedEstimateSyncState.status, selectedId, toast]);
 
   useEffect(() => {
+    if (!selectedId || !drawingWorkingCopy.hasLocalCopy) return;
+    if (selectedEstimateSyncState.status !== 'conflict') return;
+    toast.error(selectedEstimateSyncState.lastError || 'This design was locked before your drawing edits could sync.');
+    void Promise.all(
+      listAliasedLocalFirstEntityKeys(selectedId, buildEstimateEntityKey).map((entityKey) => discardLocalFirstEntityQueue(entityKey)),
+    );
+    void drawingWorkingCopy.clearWorkingCopy();
+    void queryClient.invalidateQueries({ queryKey: qk.estimates.detail(hostKey, selectedId) });
+  }, [
+    drawingWorkingCopy,
+    hostKey,
+    queryClient,
+    selectedEstimateSyncState.lastError,
+    selectedEstimateSyncState.status,
+    selectedId,
+    toast,
+  ]);
+
+  useEffect(() => {
     return () => {
       if (notesSaveTimerRef.current !== null) {
         window.clearTimeout(notesSaveTimerRef.current);
@@ -679,8 +778,8 @@ export default function EstimatesTab({
   }, []);
 
   const summary = selectedDetail?.summary ?? selectedMeta?.summary;
-  const breakdown = useMemo(() => buildBreakdown(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
-  const breakdownTotals = useMemo(() => buildBreakdownTotals(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
+  const breakdown = useMemo(() => buildBreakdown(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.calculatorSnapshot]);
+  const breakdownTotals = useMemo(() => buildBreakdownTotals(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.calculatorSnapshot]);
   const focusGroups = useMemo(() => buildFocusGroups(breakdown), [breakdown]);
   const jobPackUrlForSheet = useCallback(
     (sheet: 'materials' | 'labour' | 'overheads') =>
@@ -693,24 +792,38 @@ export default function EstimatesTab({
   );
   const jobPackUrl = jobPackUrlForSheet('materials');
   const breakdownCount = breakdownTotals.length;
-  const pergolaSpecs = useMemo(() => getPergolaSpecs(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.id]);
+  const pergolaSpecs = useMemo(() => getPergolaSpecs(selectedDetail?.calculatorSnapshot ?? null), [selectedDetail?.calculatorSnapshot]);
   const moduleLines = useMemo(() => {
-    const specs = getModuleSpecs(selectedDetail?.calculatorSnapshot ?? null);
+    const specs = getModuleSpecs(drawingDetail?.calculatorSnapshot ?? null);
     return specs.map((spec, idx) => formatModuleLine(spec, idx));
-  }, [selectedDetail?.id]);
+  }, [drawingDetail?.calculatorSnapshot]);
   const drawingModules = useMemo(
-    () => buildEstimateDrawingModules(selectedDetail?.calculatorSnapshot ?? null),
-    [selectedDetail?.id],
+    () => buildEstimateDrawingModules(drawingDetail?.calculatorSnapshot ?? null, { ignoreModuleResults: drawingGeometryDirty }),
+    [drawingDetail?.calculatorSnapshot, drawingGeometryDirty],
   );
   const salesPerson = selectedMeta?.createdBy ?? null;
   const activeDrawingModule = drawingModules[drawingModuleIndex] ?? null;
   const drawingStatus: ModuleViewsStatus =
     activeDrawingModule && (activeDrawingModule.planModel || activeDrawingModule.sectionModel) ? 'ready' : 'empty';
   const drawingModuleLabel = moduleLines[drawingModuleIndex] ?? activeDrawingModule?.label ?? 'Module';
+  const drawingMetaOverrides = useMemo(
+    () =>
+      buildEstimateDrawingSheetMetaOverrides({
+        moduleLabel: drawingModuleLabel,
+        moduleIndex: drawingModuleIndex,
+        draft: drawingDraft,
+      }),
+    [drawingDraft, drawingModuleIndex, drawingModuleLabel],
+  );
   const drawingSheetMeta = useMemo(
     () =>
       buildEstimateDrawingSheetMeta({
         moduleLabel: drawingModuleLabel,
+        moduleTitleOverride: drawingMetaOverrides.moduleTitle,
+        noteOverride: drawingMetaOverrides.note,
+        moduleInfoRows: buildEstimateDrawingModuleInfoRows(
+          getActiveDrawingModuleInput(drawingDetail?.calculatorSnapshot ?? null, drawingModuleIndex),
+        ),
         view: drawingView,
         versionLabel: selectedMeta?.versionLabel ?? selectedDetail?.versionLabel ?? null,
         estimateDate: selectedDetail?.createdAt ?? selectedMeta?.createdAt ?? null,
@@ -720,7 +833,11 @@ export default function EstimatesTab({
       }),
     [
       drawingModuleLabel,
+      drawingMetaOverrides.moduleTitle,
+      drawingMetaOverrides.note,
+      drawingDetail?.calculatorSnapshot,
       drawingView,
+      drawingModuleIndex,
       projectSnapshot.project.contactName,
       projectSnapshot.project.name,
       projectSnapshot.project.siteAddress,
@@ -732,10 +849,33 @@ export default function EstimatesTab({
   );
   const estimateLockMessage = useMemo(() => formatEstimateLockMessage(selectedDetail), [selectedDetail]);
   const isEstimateLocked = Boolean(selectedDetail?.editability?.isLocked);
+  const drawingEditableFields = useMemo(
+    () =>
+      !selectedDetail || isEstimateLocked
+        ? []
+        : deriveEstimateDrawingEditableFields({
+            draft: drawingDraft,
+            moduleIndex: drawingModuleIndex,
+            moduleLabel: drawingModuleLabel,
+            view: drawingView,
+            planModel: activeDrawingModule?.planModel,
+            sectionModel: activeDrawingModule?.sectionModel,
+          }),
+    [
+      activeDrawingModule?.planModel,
+      activeDrawingModule?.sectionModel,
+      drawingDraft,
+      drawingModuleIndex,
+      drawingModuleLabel,
+      drawingView,
+      isEstimateLocked,
+      selectedDetail,
+    ],
+  );
 
   useEffect(() => {
     setDrawingModuleIndex(0);
-  }, [selectedDetail?.id]);
+  }, [selectedDetail?.calculatorSnapshot]);
 
   useEffect(() => {
     if (!drawingModules.length) {
@@ -772,7 +912,7 @@ export default function EstimatesTab({
       totalEx: readNumber(outputs, ['totals', 'cost_ex_gst']) ?? readNumber(snapshot, ['total_true_cost_ex_gst']),
       totalInc: readNumber(outputs, ['totals', 'cost_inc_gst']) ?? readNumber(snapshot, ['total_true_cost_inc_gst']),
     };
-  }, [selectedDetail?.id]);
+  }, [selectedDetail?.calculatorSnapshot]);
 
   const gstAmount = useMemo(() => {
     if (totals.totalInc !== null && totals.totalEx !== null) {
@@ -838,19 +978,19 @@ export default function EstimatesTab({
     if (!snapshot) return [] as string[];
     const outputs = snapshot.outputs ?? {};
     return normalizeNotes(outputs.warnings ?? outputs?.totals?.warnings ?? outputs?.totals?.notes_and_warnings);
-  }, [selectedDetail?.id]);
+  }, [selectedDetail?.calculatorSnapshot]);
 
   const assumptions = useMemo(() => {
     const snapshot: any = selectedDetail?.calculatorSnapshot ?? null;
     if (!snapshot) return [] as string[];
     return normalizeNotes(snapshot.assumptions);
-  }, [selectedDetail?.id]);
+  }, [selectedDetail?.calculatorSnapshot]);
 
   const exclusions = useMemo(() => {
     const snapshot: any = selectedDetail?.calculatorSnapshot ?? null;
     if (!snapshot) return [] as string[];
     return normalizeNotes(snapshot.exclusions);
-  }, [selectedDetail?.id]);
+  }, [selectedDetail?.calculatorSnapshot]);
 
   const warningItems = useMemo(
     () => [
@@ -997,6 +1137,189 @@ export default function EstimatesTab({
     updateParams({ tab: 'quotes', quoteId: isLocalQuoteId(quoteId) ? null : quoteId });
   };
 
+  const discardDrawingDraft = useCallback(async () => {
+    await drawingWorkingCopy.clearWorkingCopy();
+  }, [drawingWorkingCopy]);
+
+  const confirmDiscardDrawingDraft = useCallback(
+    async (message?: string) => {
+      if (!drawingDirty) return true;
+      const shouldDiscard = window.confirm(message ?? 'You have unsaved drawing changes. Discard them and continue?');
+      if (!shouldDiscard) return false;
+      await discardDrawingDraft();
+      return true;
+    },
+    [discardDrawingDraft, drawingDirty],
+  );
+
+  const runWithDrawingDraftGuard = useCallback(
+    async (action: () => void | Promise<void>, message?: string) => {
+      if (drawingSaveBusy) return;
+      const allowed = await confirmDiscardDrawingDraft(message);
+      if (!allowed) return;
+      await action();
+    },
+    [confirmDiscardDrawingDraft, drawingSaveBusy],
+  );
+
+  const commitDrawingField = useCallback(
+    async (field: EstimateDrawingField, nextValue: string) => {
+      if (!drawingDraft) {
+        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
+      }
+      const result = applyEstimateDrawingFieldEdit({
+        draft: drawingDraft,
+        field,
+        nextValue,
+      });
+      if (!result.ok) return result;
+
+      if (estimateDrawingDraftMatchesSnapshot(result.draft, selectedDetail?.calculatorSnapshot ?? null)) {
+        await drawingWorkingCopy.clearWorkingCopy();
+      } else {
+        await drawingWorkingCopy.setWorkingCopy(result.draft);
+      }
+
+      return { ok: true as const };
+    },
+    [drawingDraft, drawingWorkingCopy, selectedDetail?.calculatorSnapshot],
+  );
+
+  const saveDrawingDraft = useCallback(async (saveMode: EstimateSaveMode = 'preserve_current') => {
+    if (!selectedDetail) return;
+    const activeDraft = drawingDraft ?? currentDrawingDraft;
+    if (!activeDraft) return;
+    if (saveMode === 'preserve_current' && !drawingDirty) return;
+    if (selectedDetail.editability.isLocked) {
+      toast.error('This design is locked because it has been sent with a quote and can no longer be edited.');
+      return;
+    }
+
+    if (
+      relatedQuotesSorted.length > 0 &&
+      !window.confirm(
+        'This design already has quote versions. Saving drawing changes will update the design snapshot and may leave existing quote drafts out of date. Continue?',
+      )
+    ) {
+      return;
+    }
+
+    setDrawingSaveMode(saveMode);
+    try {
+      const saveSourceDetail: EstimateDetail =
+        drawingSnapshot && drawingSnapshot !== selectedDetail.calculatorSnapshot
+          ? { ...selectedDetail, calculatorSnapshot: drawingSnapshot }
+          : selectedDetail;
+      const basePayload = buildEstimatePayloadFromDetail(saveSourceDetail);
+      const currentInputs = currentDrawingDraft?.inputs ?? activeDraft.inputs;
+      const pricingChanged = hasPricingAffectingCalculatorInputChanges(currentInputs, activeDraft.inputs);
+      const estimatePayload =
+        saveMode === 'reprice_latest'
+          ? await (async () => {
+              const siteResult = await calculateSiteCostV1(buildSiteInputsFromCalculatorInputs(activeDraft.inputs));
+              const warnings = deriveSiteResultWarnings(siteResult);
+              const criticalWarnings = warnings.filter((warning) => mapEngineLevel(warning.level) === 'critical');
+              const reviewWarnings = warnings.filter((warning) => mapEngineLevel(warning.level) === 'review');
+
+              if (criticalWarnings.length > 0) {
+                toast.error('Resolve critical warnings before repricing this design.');
+                return null;
+              }
+
+              if (
+                reviewWarnings.length > 0 &&
+                !window.confirm(
+                  `Review warnings were returned:\n\n${reviewWarnings.map((warning) => `- ${warning.message}`).join('\n')}\n\nReprice anyway?`,
+                )
+              ) {
+                return null;
+              }
+
+              const meta = await getCostingMeta();
+              return buildEstimatePayloadFromSiteCosting({
+                basePayload,
+                inputs: activeDraft.inputs,
+                siteResult,
+                configVersions: meta.configVersions as Record<string, unknown>,
+                moduleIndex: drawingModuleIndex,
+                warnings,
+              });
+            })()
+          : buildEstimatePayloadPreservingCurrentPricing({
+              basePayload,
+              inputs: activeDraft.inputs,
+              pricingChanged,
+            });
+      if (!estimatePayload) return;
+
+      const optimisticEstimateBase = buildOptimisticEstimateDetail({
+        estimateId: selectedDetail.id,
+        projectId,
+        estimatePayload,
+        versionLabel: selectedDetail.versionLabel,
+        createdBy: selectedDetail.createdBy ?? null,
+        createdAt: selectedDetail.createdAt,
+      });
+      const optimisticEstimate: EstimateDetail = {
+        ...optimisticEstimateBase,
+        internalNotes: selectedDetail.internalNotes ?? optimisticEstimateBase.internalNotes,
+        editability: selectedDetail.editability ?? optimisticEstimateBase.editability,
+        isActiveDraft: selectedDetail.isActiveDraft,
+        hasSentQuote: selectedDetail.hasSentQuote,
+        jobPackEligible: selectedDetail.jobPackEligible,
+        jobPackGeneratedAt: selectedDetail.jobPackGeneratedAt,
+        jobPackQuoteVersionId: selectedDetail.jobPackQuoteVersionId,
+      };
+
+      upsertEstimate(optimisticEstimate);
+      await writeLocalFirstWorkingCopy({
+        entityKey: buildEstimateEntityKey(selectedDetail.id),
+        data: optimisticEstimate,
+      });
+      await drawingWorkingCopy.clearWorkingCopy();
+
+      const mutationPayload: PortalEstimateUpdateMutationPayload = {
+        estimateId: selectedDetail.id,
+        estimatePayload,
+      };
+      await enqueueAndProcessLocalFirstMutation({
+        entityKey: buildEstimateEntityKey(selectedDetail.id),
+        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateUpdate,
+        payload: mutationPayload,
+      });
+
+      toast.success(
+        saveMode === 'reprice_latest'
+          ? 'Estimate repriced locally. Syncing in the background.'
+          : pricingChanged
+            ? 'Drawing changes saved locally. Pricing was preserved. Use Reprice to latest to refresh costs.'
+            : 'Drawing changes saved locally. Syncing in the background.',
+      );
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : saveMode === 'reprice_latest'
+            ? 'Failed to reprice this design'
+            : 'Failed to save drawing changes';
+      toast.error(msg);
+    } finally {
+      setDrawingSaveMode(null);
+    }
+  }, [
+    currentDrawingDraft,
+    drawingDirty,
+    drawingDraft,
+    drawingModuleIndex,
+    drawingSnapshot,
+    drawingWorkingCopy,
+    projectId,
+    relatedQuotesSorted.length,
+    selectedDetail,
+    toast,
+    upsertEstimate,
+  ]);
+
   const notesDirty = Boolean(selectedDetail) && notesDraft !== (selectedDetail?.internalNotes ?? '');
 
   const saveNotesDraft = useCallback(async () => {
@@ -1046,6 +1369,16 @@ export default function EstimatesTab({
     };
   }, [notesDirty, saveNotesDraft, selectedDetail, selectedId, toast]);
 
+  useEffect(() => {
+    if (!drawingDirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [drawingDirty]);
+
   const listError =
     estimatesQuery.error instanceof Error
       ? estimatesQuery.error.message
@@ -1094,8 +1427,19 @@ export default function EstimatesTab({
                           isActiveDraft: estimate.isActiveDraft,
                         }))}
                         activeEstimateId={selectedId}
-                        onSelect={setSelectedId}
-                        onCreateEstimate={handleCreateFromTabs}
+                        onSelect={(nextEstimateId) => {
+                          if (nextEstimateId === selectedId) return;
+                          void runWithDrawingDraftGuard(
+                            () => setSelectedId(nextEstimateId),
+                            'You have unsaved drawing changes. Discard them and switch design versions?',
+                          );
+                        }}
+                        onCreateEstimate={() =>
+                          void runWithDrawingDraftGuard(
+                            handleCreateFromTabs,
+                            'You have unsaved drawing changes. Discard them and open the design editor?',
+                          )
+                        }
                       />
                       <span className={`${legacy.statusPill} ${estimateStateClass(selectedDetail)}`}>
                         {estimateStateLabel(selectedDetail)}
@@ -1106,6 +1450,26 @@ export default function EstimatesTab({
                   </div>
                   <div className={styles.summaryHeaderActions}>
                     <div className={styles.summaryHeaderControls}>
+                      {drawingDirty ? (
+                        <>
+                          <button
+                            type="button"
+                            className={`${legacy.buttonSecondary} ${styles.compactAction}`}
+                            onClick={() => void discardDrawingDraft()}
+                            disabled={drawingSaveBusy}
+                          >
+                            Discard
+                          </button>
+                          <button
+                            type="button"
+                            className={`${legacy.button} ${styles.compactAction}`}
+                            onClick={() => void saveDrawingDraft('preserve_current')}
+                            disabled={drawingSaveBusy}
+                          >
+                            {drawingSaveMode === 'preserve_current' ? 'Saving…' : 'Save changes'}
+                          </button>
+                        </>
+                      ) : null}
                       <div className={styles.segmentedControl} role="tablist" aria-label="Design drawing view">
                         {(['plan', 'section'] as const).map((value) => (
                           <button
@@ -1122,16 +1486,45 @@ export default function EstimatesTab({
                       </div>
                     </div>
                     {!isEstimateLocked ? (
+                      <>
+                        <button
+                          type="button"
+                          className={`${legacy.buttonSecondary} ${styles.compactAction}`}
+                          onClick={() => void saveDrawingDraft('reprice_latest')}
+                          disabled={!selectedDetail || drawingSaveBusy}
+                        >
+                          {drawingSaveMode === 'reprice_latest' ? 'Repricing…' : 'Reprice to latest'}
+                        </button>
+                        <button
+                          type="button"
+                          className={`${legacy.buttonSecondary} ${styles.compactAction}`}
+                          onClick={() =>
+                            void runWithDrawingDraftGuard(
+                              handleEditEstimate,
+                              'You have unsaved drawing changes. Discard them and open the design editor?',
+                            )
+                          }
+                          disabled={!selectedDetail || drawingSaveBusy}
+                        >
+                          Edit design
+                        </button>
+                      </>
+                    ) : null}
+                    {jobPackUrl ? (
                       <button
                         type="button"
                         className={`${legacy.buttonSecondary} ${styles.compactAction}`}
-                        onClick={handleEditEstimate}
-                        disabled={!selectedDetail}
+                        onClick={() =>
+                          void runWithDrawingDraftGuard(
+                            () => router.push(jobPackUrl),
+                            'You have unsaved drawing changes. Discard them and open the job pack?',
+                          )
+                        }
+                        disabled={drawingSaveBusy}
                       >
-                        Edit design
+                        Open Job Pack
                       </button>
                     ) : null}
-                    {jobPackUrl ? <Link className={`${legacy.buttonSecondary} ${styles.compactAction}`} href={jobPackUrl}>Open Job Pack</Link> : null}
                   </div>
                 </div>
                 {selectedEstimateSyncPending ? (
@@ -1167,6 +1560,8 @@ export default function EstimatesTab({
                       planModel={activeDrawingModule.planModel}
                       sectionModel={activeDrawingModule.sectionModel}
                       meta={drawingSheetMeta}
+                      editableFields={drawingEditableFields}
+                      onCommitField={commitDrawingField}
                     />
                   ) : (
                     <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>
@@ -1204,7 +1599,12 @@ export default function EstimatesTab({
                         type="button"
                         key={quote.id}
                         className={styles.quoteRow}
-                        onClick={() => handleOpenQuote(quote.id)}
+                        onClick={() =>
+                          void runWithDrawingDraftGuard(
+                            () => handleOpenQuote(quote.id),
+                            'You have unsaved drawing changes. Discard them and open this quote?',
+                          )
+                        }
                       >
                         <div className={styles.quoteRowLabel}>{`${quote.quoteRef} • V${quote.versionNumber}`}</div>
                         <span className={`${styles.quoteStatusPill} ${quoteStatusClass(quote.status)}`}>
@@ -1219,23 +1619,42 @@ export default function EstimatesTab({
 
                 <div className={styles.quoteActions}>
                   {relatedQuotesPreview.length ? (
-                    <button type="button" className={legacy.buttonSecondary} onClick={handleViewAllQuotes}>
+                    <button
+                      type="button"
+                      className={legacy.buttonSecondary}
+                      onClick={() =>
+                        void runWithDrawingDraftGuard(
+                          handleViewAllQuotes,
+                          'You have unsaved drawing changes. Discard them and open quotes?',
+                        )
+                      }
+                    >
                       View all quotes
                     </button>
                   ) : null}
                   <button
                     type="button"
                     className={legacy.buttonSecondary}
-                    onClick={() => setRequestDesignOpen(true)}
-                    disabled={!selectedMeta}
+                    onClick={() =>
+                      void runWithDrawingDraftGuard(
+                        () => setRequestDesignOpen(true),
+                        'You have unsaved drawing changes. Discard them and request drafting?',
+                      )
+                    }
+                    disabled={!selectedMeta || drawingSaveBusy}
                   >
                     Request Drafting
                   </button>
                   <button
                     type="button"
                     className={legacy.button}
-                    onClick={handleCreateQuote}
-                    disabled={quoteBusy}
+                    onClick={() =>
+                      void runWithDrawingDraftGuard(
+                        handleCreateQuote,
+                        'You have unsaved drawing changes. Discard them and create a quote?',
+                      )
+                    }
+                    disabled={quoteBusy || drawingSaveBusy}
                   >
                     {quoteBusy ? 'Creating…' : 'Create quote'}
                   </button>
@@ -1364,5 +1783,3 @@ export default function EstimatesTab({
     </div>
   );
 }
-
-

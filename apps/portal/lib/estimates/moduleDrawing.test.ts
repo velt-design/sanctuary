@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1, RoofType } from '@sp/costing';
 import type { CalculatorModuleInputs, LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
+import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from './costingPayload';
 import { buildEstimateDrawingModules } from './moduleDrawing';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -167,5 +168,58 @@ describe('buildEstimateDrawingModules', () => {
     expect(modules[0]?.planModel?.dataSource).toBe('input_fallback');
     expect(modules[1]?.label).toBe('M2');
     expect(modules[1]?.sectionModel?.dataSource).toBe('input_fallback');
+  });
+
+  it('can ignore saved module results so draft geometry redraws from inputs', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Draft redraw',
+        quoteRef: 'Q-4000',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [makeModule({ lengthM: '7.2' })],
+      },
+      outputs: {
+        pergolas: [{ id: 'pergola-1', modules: [makeResult({ roofType: 'pitched', lengthA: 6.1, spanA: 3.2 })] }],
+      },
+    } satisfies Record<string, unknown>;
+
+    const modules = buildEstimateDrawingModules(snapshot, { ignoreModuleResults: true });
+
+    expect(modules[0]?.planModel?.dataSource).toBe('input_fallback');
+    expect(modules[0]?.planModel?.lengthA).toBeCloseTo(7.2);
+  });
+
+  it('falls back to input geometry when pricing outputs are marked stale', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Preserved pricing',
+        quoteRef: 'Q-5000',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [makeModule({ lengthM: '8.4' })],
+      },
+      outputs: {
+        [ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY]: 'stale',
+        pergolas: [{ id: 'pergola-1', modules: [makeResult({ roofType: 'pitched', lengthA: 6.1, spanA: 3.2 })] }],
+      },
+    } satisfies Record<string, unknown>;
+
+    const modules = buildEstimateDrawingModules(snapshot);
+
+    expect(modules[0]?.planModel?.dataSource).toBe('input_fallback');
+    expect(modules[0]?.planModel?.lengthA).toBeCloseTo(8.4);
   });
 });
