@@ -1,11 +1,17 @@
 'use client';
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import styles from '../EstimatesTab.module.css';
 
 type EstimateTabItem = {
   id: string;
   label: string;
-  status: string;
 };
 
 const getVersionNumber = (label: string) => {
@@ -29,35 +35,46 @@ export default function EstimateVersionTabs({
   const sorted = [...estimates].sort((a, b) => {
     const aNum = getVersionNumber(a.label);
     const bNum = getVersionNumber(b.label);
-    if (aNum === bNum) return a.label.localeCompare(b.label);
-    return aNum - bNum;
+    if (aNum === bNum) return b.label.localeCompare(a.label);
+    return bNum - aNum;
   });
+  const activeEstimate = sorted.find((estimate) => estimate.id === activeEstimateId) ?? sorted[0] ?? null;
+  const activeLabel = activeEstimate ? `Estimate ${activeEstimate.label}` : 'Select estimate';
 
   return (
-    <div className={styles.versionTabsRow}>
-      <div className={styles.versionTabs} role="tablist" aria-label="Estimate versions">
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className={styles.versionMenuTrigger} aria-label="Select estimate version">
+          <span className={styles.versionMenuTriggerLabel}>{activeLabel}</span>
+          <span className={styles.versionMenuTriggerChevron} aria-hidden="true">
+            v
+          </span>
+        </button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="start" className={styles.versionMenuContent}>
         {sorted.map((estimate) => {
           const isActive = estimate.id === activeEstimateId;
           return (
-            <button
+            <DropdownMenuItem
               key={estimate.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`${styles.versionTab} ${isActive ? styles.versionTabActive : ''}`}
-              onClick={() => onSelect(estimate.id)}
-              tabIndex={isActive ? 0 : -1}
+              className={`${styles.versionMenuItem} ${isActive ? styles.versionMenuItemActive : ''}`}
+              onSelect={() => onSelect(estimate.id)}
             >
-              {estimate.label}
-            </button>
+              <span className={styles.versionMenuItemLabel}>{`Estimate ${estimate.label}`}</span>
+              {isActive ? <span className={styles.versionMenuItemMeta}>Current</span> : null}
+            </DropdownMenuItem>
           );
         })}
         {onCreateEstimate ? (
-          <button type="button" className={styles.addTab} aria-label="Create estimate" onClick={onCreateEstimate}>
-            +
-          </button>
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className={`${styles.versionMenuItem} ${styles.versionMenuCreateItem}`} onSelect={onCreateEstimate}>
+              <span className={styles.versionMenuItemLabel}>New estimate version</span>
+            </DropdownMenuItem>
+          </>
         ) : null}
-      </div>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
