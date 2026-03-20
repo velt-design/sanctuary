@@ -2550,6 +2550,17 @@
   pointer-events: none;
 }
 
+.moduleDebugStats {
+  pointer-events: none;
+}
+
+.moduleDebugStatsText {
+  fill: rgba(71, 85, 105, 0.86);
+  font-size: 1.05px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 .modulePlanFill {
   fill: var(--mv-structure-fill);
 }
