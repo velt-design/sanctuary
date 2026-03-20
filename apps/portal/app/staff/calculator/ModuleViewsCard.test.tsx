@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
-import ModuleViewsCard from './ModuleViewsCard';
+import ModuleViewsCard, { getSuggestedModuleDrawingScale, resolveModuleDrawingScaleState } from './ModuleViewsCard';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -113,5 +113,27 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('Geometry OK');
     expect(markup).toContain('Not to scale');
     expect(markup).toContain('aria-label="Module plan view"');
+  });
+
+  it('suggests the largest architectural plan scale that fits the A3 sheet viewport', () => {
+    const drawing = makeDrawingModule();
+
+    expect(getSuggestedModuleDrawingScale({ view: 'plan', planModel: drawing.planModel, sectionModel: drawing.sectionModel })).toEqual({
+      mode: 'fixed',
+      ratio: 50,
+    });
+
+    expect(
+      resolveModuleDrawingScaleState({
+        view: 'plan',
+        requestedScale: { mode: 'fixed', ratio: 20 },
+        planModel: drawing.planModel,
+        sectionModel: drawing.sectionModel,
+      }),
+    ).toMatchObject({
+      fits: false,
+      appliedScale: { mode: 'fit' },
+      suggestedScale: { mode: 'fixed', ratio: 50 },
+    });
   });
 });

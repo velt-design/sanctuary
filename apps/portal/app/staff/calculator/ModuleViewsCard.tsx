@@ -2,6 +2,19 @@ import { useId } from 'react';
 import styles from './CalculatorGrid.module.css';
 import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
+import {
+  DEFAULT_ESTIMATE_DRAWING_SCALE,
+  getEstimateDrawingScaleOptions,
+  type EstimateDrawingScale,
+  type EstimateDrawingFixedScaleValue,
+} from '@/lib/estimates/drawingSheet';
+import {
+  evaluateDrawingSheetFit,
+  getDrawingSheetViewportMm,
+  getViewBoxUnitsPerMetreAtScale,
+  getViewBoxUnitsPerMm,
+  type DrawingSheetFitResult,
+} from '@/lib/estimates/drawingSheetLayout';
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
@@ -31,6 +44,16 @@ type ModuleDrawingRendererProps = {
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   presentation?: ModuleDrawingPresentation;
+  drawingScale?: EstimateDrawingScale;
+  sheetViewportMm?: { widthMm: number; heightMm: number };
+};
+
+export type ModuleDrawingScaleState = {
+  requestedScale: EstimateDrawingScale;
+  appliedScale: EstimateDrawingScale;
+  fit: DrawingSheetFitResult | null;
+  fits: boolean;
+  suggestedScale: EstimateDrawingScale;
 };
 
 const TAB_ITEMS: Array<{ id: ModuleViewsTab; label: string }> = [
@@ -119,6 +142,8 @@ export function ModuleDrawingRenderer({
   planModel,
   sectionModel,
   presentation = 'card',
+  drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
+  sheetViewportMm,
 }: ModuleDrawingRendererProps) {
   const isCompact = presentation !== 'card';
   const showPlan = view === 'plan' && Boolean(planModel);
@@ -132,6 +157,17 @@ export function ModuleDrawingRenderer({
   const activeConsistency = view === 'plan' ? planConsistency : sectionConsistency;
   const stateText = view === 'section' && status === 'ready' ? 'Section schematic ready.' : STATUS_TEXT[status];
   const svgId = useId().replace(/:/g, '_');
+  const sheetScaleState =
+    presentation === 'sheet'
+      ? resolveModuleDrawingScaleState({
+          view,
+          requestedScale: drawingScale,
+          planModel,
+          sectionModel,
+          viewportMm: sheetViewportMm,
+        })
+      : null;
+  const appliedDrawingScale = sheetScaleState?.appliedScale ?? drawingScale;
 
   return (
     <div
@@ -158,6 +194,8 @@ export function ModuleDrawingRenderer({
             model={planModel}
             idBase={`${svgId}_plan`}
             presentation={presentation}
+            drawingScale={appliedDrawingScale}
+            sheetViewportMm={sheetViewportMm}
           />
           {isCompact ? null : (
             <>
@@ -204,7 +242,7 @@ export function ModuleDrawingRenderer({
               ) : null}
             </div>
           )}
-          <SectionSvg model={sectionModel} presentation={presentation} />
+          <SectionSvg model={sectionModel} presentation={presentation} drawingScale={appliedDrawingScale} sheetViewportMm={sheetViewportMm} />
           {isCompact ? null : (
             <>
               <LegendRow
@@ -324,14 +362,36 @@ type PlanFitBox = {
   fallGap: number;
 };
 
+type PlanSheetFrame = {
+  leftPad: number;
+  rightPad: number;
+  topPad: number;
+  bottomPad: number;
+  houseBandHeight: number;
+  houseBandOffset: number;
+  houseInset: number;
+  fallGap: number;
+};
+
+function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
+  return {
+    leftPad: isHipCorner ? 16.4 : 15.8,
+    rightPad: isHipCorner ? 19.6 : 17.8,
+    topPad: 14.2,
+    bottomPad: isHipCorner ? 15.2 : 16.8,
+    houseBandHeight: 6.2,
+    houseBandOffset: 1.4,
+    houseInset: 1.25,
+    fallGap: 5.3,
+  };
+}
+
 function resolvePlanFitBox(totalW: number, totalH: number, presentation: ModuleDrawingPresentation, isHipCorner: boolean): PlanFitBox {
   const safeW = Math.max(totalW, 0.1);
   const safeH = Math.max(totalH, 0.1);
   if (presentation === 'sheet') {
-    const leftPad = isHipCorner ? 16.4 : 15.8;
-    const rightPad = isHipCorner ? 19.6 : 17.8;
-    const topPad = 14.2;
-    const bottomPad = isHipCorner ? 15.2 : 16.8;
+    const frame = getPlanSheetFrame(isHipCorner);
+    const { leftPad, rightPad, topPad, bottomPad } = frame;
     const maxW = 120 - leftPad - rightPad;
     const maxH = 90 - topPad - bottomPad;
     const scale = Math.min(maxW / safeW, maxH / safeH);
@@ -341,10 +401,10 @@ function resolvePlanFitBox(totalW: number, totalH: number, presentation: ModuleD
       x: leftPad + (maxW - widthPx) / 2,
       y: topPad + (maxH - heightPx) / 2,
       scale,
-      houseBandHeight: 6.2,
-      houseBandOffset: 1.4,
-      houseInset: 1.25,
-      fallGap: 5.3,
+      houseBandHeight: frame.houseBandHeight,
+      houseBandOffset: frame.houseBandOffset,
+      houseInset: frame.houseInset,
+      fallGap: frame.fallGap,
     };
   }
 
@@ -364,6 +424,33 @@ function resolvePlanFitBox(totalW: number, totalH: number, presentation: ModuleD
   };
 }
 
+function resolvePlanFixedScaleBox(
+  totalW: number,
+  totalH: number,
+  isHipCorner: boolean,
+  ratio: EstimateDrawingFixedScaleValue,
+  viewportMm?: { widthMm: number; heightMm: number },
+): PlanFitBox {
+  const frame = getPlanSheetFrame(isHipCorner);
+  const safeW = Math.max(totalW, 0.1);
+  const safeH = Math.max(totalH, 0.1);
+  const maxW = 120 - frame.leftPad - frame.rightPad;
+  const maxH = 90 - frame.topPad - frame.bottomPad;
+  const scale = getViewBoxUnitsPerMetreAtScale(ratio, viewportMm);
+  const widthPx = safeW * scale;
+  const heightPx = safeH * scale;
+
+  return {
+    x: frame.leftPad + (maxW - widthPx) / 2,
+    y: frame.topPad + (maxH - heightPx) / 2,
+    scale,
+    houseBandHeight: frame.houseBandHeight,
+    houseBandOffset: frame.houseBandOffset,
+    houseInset: frame.houseInset,
+    fallGap: frame.fallGap,
+  };
+}
+
 type SectionFitFrame = {
   left: number;
   width: number;
@@ -371,14 +458,181 @@ type SectionFitFrame = {
   groundY: number;
 };
 
+function getSectionSheetFrame(sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
+  return sectionKind === 'gable'
+    ? { left: 13.4, width: 93.4, topMargin: 9.2, groundY: 76.4 }
+    : { left: 14.2, width: 91.2, topMargin: 10.2, groundY: 75.8 };
+}
+
 function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
   if (presentation === 'sheet') {
-    return sectionKind === 'gable'
-      ? { left: 13.4, width: 93.4, topMargin: 9.2, groundY: 76.4 }
-      : { left: 14.2, width: 91.2, topMargin: 10.2, groundY: 75.8 };
+    return getSectionSheetFrame(sectionKind);
   }
 
   return { left: 18, width: 84, topMargin: 16, groundY: 72 };
+}
+
+function viewBoxUnitsToMm(value: number, viewportMm?: { widthMm: number; heightMm: number }): number {
+  return value / getViewBoxUnitsPerMm(viewportMm);
+}
+
+function getPlanRealExtents(model: ModulePlanModel): { widthM: number; heightM: number } {
+  return {
+    widthM: model.roofType === 'hip_corner' ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA,
+    heightM: model.roofType === 'hip_corner' ? model.spanA + (model.spanB ?? 0) : model.spanA,
+  };
+}
+
+function getSectionRealExtents(model: ModuleSectionModel): { widthM: number; heightM: number } {
+  const supportXFromHouseM = sectionSupportXFromHouseM(model);
+  const leftEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : sectionLedgerBeamDepthM(model);
+  const rightEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : sectionSupportBeamDepthM(model);
+  const ridgeBeamDepthM = sectionRidgeBeamDepthM(model);
+  const rafterPlumbCutDropM = sectionRafterPlumbCutDropM(model);
+  const houseLedgerUndersideM = model.leftEdgeHeightM;
+  const houseRafterUndersideM = houseLedgerUndersideM + leftEaveBeamDepthM - rafterPlumbCutDropM;
+  const outerGutterUndersideM = sectionOuterGutterUndersideM(model);
+  const outerRafterUndersideM = outerGutterUndersideM + model.gutterDepthM - rafterPlumbCutDropM;
+  const supportUndersideM = sectionSupportUndersideM(model);
+  const supportBeamTopM = supportUndersideM + sectionSupportBeamDepthM(model);
+  const supportRafterUndersideM =
+    model.sectionKind === 'mono'
+      ? sectionMonoRafterUndersideAtM(model, supportXFromHouseM)
+      : model.rightEdgeHeightM + rightEaveBeamDepthM - rafterPlumbCutDropM;
+
+  const maxHeightM = Math.max(
+    0.1,
+    houseLedgerUndersideM,
+    model.rightEdgeHeightM,
+    supportUndersideM,
+    outerGutterUndersideM,
+    houseRafterUndersideM,
+    supportRafterUndersideM,
+    supportBeamTopM,
+    outerRafterUndersideM,
+    houseRafterUndersideM + model.rafterDepthM,
+    outerRafterUndersideM + model.rafterDepthM,
+    typeof model.ridgeHeightM === 'number' ? model.ridgeHeightM : 0,
+    typeof model.ridgeHeightM === 'number' ? model.ridgeHeightM + ridgeBeamDepthM + model.rafterDepthM : 0,
+  );
+
+  return {
+    widthM: Math.max(model.spanA, 0.001),
+    heightM: maxHeightM,
+  };
+}
+
+function getPlanScaleFit(
+  model: ModulePlanModel,
+  ratio: EstimateDrawingFixedScaleValue,
+  viewportMm?: { widthMm: number; heightMm: number },
+): DrawingSheetFitResult {
+  const extents = getPlanRealExtents(model);
+  const frame = getPlanSheetFrame(model.roofType === 'hip_corner');
+
+  return evaluateDrawingSheetFit({
+    widthM: extents.widthM,
+    heightM: extents.heightM,
+    ratio,
+    viewportMm,
+    marginsMm: {
+      left: viewBoxUnitsToMm(frame.leftPad, viewportMm),
+      right: viewBoxUnitsToMm(frame.rightPad, viewportMm),
+      top: viewBoxUnitsToMm(frame.topPad, viewportMm),
+      bottom: viewBoxUnitsToMm(frame.bottomPad, viewportMm),
+    },
+  });
+}
+
+function getSectionScaleFit(
+  model: ModuleSectionModel,
+  ratio: EstimateDrawingFixedScaleValue,
+  viewportMm?: { widthMm: number; heightMm: number },
+): DrawingSheetFitResult {
+  const extents = getSectionRealExtents(model);
+  const frame = getSectionSheetFrame(model.sectionKind);
+
+  return evaluateDrawingSheetFit({
+    widthM: extents.widthM,
+    heightM: extents.heightM,
+    ratio,
+    viewportMm,
+    marginsMm: {
+      left: viewBoxUnitsToMm(frame.left, viewportMm),
+      right: viewBoxUnitsToMm(120 - frame.left - frame.width, viewportMm),
+      top: viewBoxUnitsToMm(frame.topMargin, viewportMm),
+      bottom: viewBoxUnitsToMm(90 - frame.groundY, viewportMm),
+    },
+  });
+}
+
+export function getSuggestedModuleDrawingScale(input: {
+  view: ModuleViewsTab;
+  planModel?: ModulePlanModel | null;
+  sectionModel?: ModuleSectionModel | null;
+  viewportMm?: { widthMm: number; heightMm: number };
+}): EstimateDrawingScale {
+  const viewportMm = input.viewportMm ?? getDrawingSheetViewportMm();
+
+  for (const option of getEstimateDrawingScaleOptions(input.view)) {
+    if (option.mode !== 'fixed') continue;
+    const fit =
+      input.view === 'plan'
+        ? input.planModel
+          ? getPlanScaleFit(input.planModel, option.ratio, viewportMm)
+          : null
+        : input.sectionModel
+          ? getSectionScaleFit(input.sectionModel, option.ratio, viewportMm)
+          : null;
+
+    if (fit?.fits) return option;
+  }
+
+  return DEFAULT_ESTIMATE_DRAWING_SCALE;
+}
+
+export function resolveModuleDrawingScaleState(input: {
+  view: ModuleViewsTab;
+  requestedScale?: EstimateDrawingScale;
+  planModel?: ModulePlanModel | null;
+  sectionModel?: ModuleSectionModel | null;
+  viewportMm?: { widthMm: number; heightMm: number };
+}): ModuleDrawingScaleState {
+  const requestedScale = input.requestedScale ?? DEFAULT_ESTIMATE_DRAWING_SCALE;
+  const viewportMm = input.viewportMm ?? getDrawingSheetViewportMm();
+  const suggestedScale = getSuggestedModuleDrawingScale({
+    view: input.view,
+    planModel: input.planModel,
+    sectionModel: input.sectionModel,
+    viewportMm,
+  });
+
+  if (requestedScale.mode !== 'fixed') {
+    return {
+      requestedScale,
+      appliedScale: requestedScale,
+      fit: null,
+      fits: true,
+      suggestedScale,
+    };
+  }
+
+  const fit =
+    input.view === 'plan'
+      ? input.planModel
+        ? getPlanScaleFit(input.planModel, requestedScale.ratio, viewportMm)
+        : null
+      : input.sectionModel
+        ? getSectionScaleFit(input.sectionModel, requestedScale.ratio, viewportMm)
+        : null;
+
+  return {
+    requestedScale,
+    appliedScale: fit?.fits ? requestedScale : DEFAULT_ESTIMATE_DRAWING_SCALE,
+    fit,
+    fits: fit?.fits ?? false,
+    suggestedScale,
+  };
 }
 
 function summariseConsistency(issues: string[]): GeometryConsistency {
@@ -867,10 +1121,14 @@ function PlanSvg({
   model,
   idBase,
   presentation = 'card',
+  drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
+  sheetViewportMm,
 }: {
   model: ModulePlanModel;
   idBase: string;
   presentation?: ModuleDrawingPresentation;
+  drawingScale?: EstimateDrawingScale;
+  sheetViewportMm?: { widthMm: number; heightMm: number };
 }) {
   const isSheet = presentation === 'sheet';
   const isHipCorner = model.roofType === 'hip_corner';
@@ -878,7 +1136,10 @@ function PlanSvg({
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
   const totalW = isHipCorner ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
   const totalH = isHipCorner ? model.spanA + (model.spanB ?? 0) : model.spanA;
-  const layout = resolvePlanFitBox(totalW, totalH, presentation, isHipCorner);
+  const layout =
+    isSheet && drawingScale.mode === 'fixed'
+      ? resolvePlanFixedScaleBox(totalW, totalH, isHipCorner, drawingScale.ratio, sheetViewportMm)
+      : resolvePlanFitBox(totalW, totalH, presentation, isHipCorner);
   const scale = layout.scale;
   const x = layout.x;
   const y = layout.y;
@@ -936,9 +1197,11 @@ function PlanSvg({
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
 
-  const fallX = Math.min(110.5, x + Math.max(aW, bW) + layout.fallGap);
+  const fallX = Math.min(isSheet ? 109.2 : 110.5, x + Math.max(aW, bW) + (isSheet ? layout.fallGap - 0.8 : layout.fallGap));
   const fallTop = y + (isSheet ? 1.5 : 1);
   const fallBottom = (isHipCorner ? bottomY : y + aH) - (isSheet ? 1.5 : 1);
+  const fallLabelX = fallX + (isSheet ? 1.28 : 2.3);
+  const fallLabelY = (fallTop + fallBottom) / 2 + (isSheet ? 0.2 : 0);
 
   const dimBaseY = Math.min(87.6, bottomY + (isSheet ? 8.9 : 7.8));
   const secondaryDimY = Math.min(88.8, dimBaseY + (isSheet ? 6.0 : 5.4));
@@ -1048,7 +1311,7 @@ function PlanSvg({
         <>
           <ArrowHead x={fallX} y={fallTop} direction="up" presentation={presentation} />
           <ArrowHead x={fallX} y={fallBottom} direction="down" presentation={presentation} />
-          <text x={fallX + (isSheet ? 1.7 : 2.3)} y={(fallTop + fallBottom) / 2} className={styles.moduleFallLabel}>
+          <text x={fallLabelX} y={fallLabelY} className={styles.moduleFallLabel}>
             fall both sides
           </text>
         </>
@@ -1060,7 +1323,7 @@ function PlanSvg({
             direction={model.slopeDirection === 'toward_house' ? 'up' : 'down'}
             presentation={presentation}
           />
-          <text x={fallX + (isSheet ? 1.7 : 2.3)} y={(fallTop + fallBottom) / 2} className={styles.moduleFallLabel}>
+          <text x={fallLabelX} y={fallLabelY} className={styles.moduleFallLabel}>
             fall
           </text>
         </>
@@ -1120,9 +1383,13 @@ function PlanSvg({
 function SectionSvg({
   model,
   presentation = 'card',
+  drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
+  sheetViewportMm,
 }: {
   model: ModuleSectionModel;
   presentation?: ModuleDrawingPresentation;
+  drawingScale?: EstimateDrawingScale;
+  sheetViewportMm?: { widthMm: number; heightMm: number };
 }) {
   const isSheet = presentation === 'sheet';
   const overhangM = sectionOverhangM(model);
@@ -1175,9 +1442,14 @@ function SectionSvg({
   const maxHeightM = Math.max(0.1, ...(heights.length ? heights : [0.1]));
 
   const availableHeight = Math.max(10, yGround - topMargin);
-  const scaleX = chartWidth / safeSpanM;
-  const scaleY = availableHeight / maxHeightM;
-  const scale = Math.min(scaleX, scaleY);
+  const fixedScale = isSheet && drawingScale.mode === 'fixed' ? getViewBoxUnitsPerMetreAtScale(drawingScale.ratio, sheetViewportMm) : null;
+  const scale =
+    fixedScale ??
+    (() => {
+      const scaleX = chartWidth / safeSpanM;
+      const scaleY = availableHeight / maxHeightM;
+      return Math.min(scaleX, scaleY);
+    })();
 
   const postW = memberSizeM(model.postWidthM, 0.1) * scale;
   const rafterDepth = memberSizeM(model.rafterDepthM, 0.15) * scale;

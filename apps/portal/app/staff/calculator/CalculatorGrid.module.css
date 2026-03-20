@@ -2564,9 +2564,9 @@
 
 .moduleFallLabel {
   fill: var(--mv-text-muted);
-  font-size: calc(var(--mv-text-label-size) - 0.08px);
-  font-weight: 500;
-  letter-spacing: 0.12em;
+  font-size: calc(var(--mv-text-label-size) - 0.14px);
+  font-weight: 400;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
