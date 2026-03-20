@@ -1597,6 +1597,10 @@ type ResolvedSheetLayout = {
   x: number;
   y: number;
   scale: number;
+  houseBandHeight: number;
+  houseBandOffset: number;
+  houseInset: number;
+  fallGap: number;
 };
 
 type SheetDebugMetrics = {
@@ -1836,6 +1840,10 @@ function resolvePlanSheetLayoutForScale(input: {
     x,
     y,
     scale: input.scale,
+    houseBandHeight: frame.houseBandHeight,
+    houseBandOffset: frame.houseBandOffset,
+    houseInset: frame.houseInset,
+    fallGap: frame.fallGap,
   };
 }
 
@@ -2158,6 +2166,10 @@ function resolveSectionSheetLayoutForScale(input: {
     x: xLeft,
     y: yGround,
     scale: input.scale,
+    houseBandHeight: 0,
+    houseBandOffset: 0,
+    houseInset: 0,
+    fallGap: 0,
   };
 }
 
