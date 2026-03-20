@@ -23,6 +23,7 @@ describe('moduleDrawingThemeCssVariables', () => {
     expect(sheetVars['--mv-text-dimension-size']).toBe('2.18px');
     expect(sheetVars['--mv-line-hidden']).not.toBe(PREMIUM_MODULE_DRAWING_THEME.color.ghostLine);
     expect(sheetVars['--mv-sheet-panel-border-soft']).toBeTruthy();
+    expect(sheetVars['--mv-sheet-divider']).toBeTruthy();
     expect(sheetVars['--mv-line-rhythm']).toBeTruthy();
     expect(sheetVars['--mv-line-annotation']).toBeTruthy();
   });
