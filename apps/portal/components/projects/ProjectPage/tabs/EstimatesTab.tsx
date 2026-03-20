@@ -9,7 +9,7 @@ import { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calcula
 import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
 import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
-import type { EstimateDetail, EstimateMeta, EstimateStatus, EstimateSummary } from '@/lib/estimates/types';
+import type { EstimateDetail, EstimateMeta, EstimateSummary } from '@/lib/estimates/types';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
@@ -65,13 +65,6 @@ function formatDateShort(value: string | null | undefined): string | null {
   return date.toLocaleDateString();
 }
 
-function formatDateLong(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
 function formatTime(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -94,22 +87,12 @@ function renderValue(value: string | null | undefined): ReactNode {
   return value;
 }
 
-function formatStatusLabel(status: EstimateStatus): string {
-  switch (status) {
-    case 'archived':
-      return 'Archived';
-    default:
-      return 'Draft';
-  }
+function estimateStateLabel(detail: EstimateDetail | null): string {
+  return detail?.editability?.isLocked ? 'Locked' : 'Draft';
 }
 
-function statusClass(status: EstimateStatus): string {
-  switch (status) {
-    case 'archived':
-      return styles.statusMuted;
-    default:
-      return styles.statusDraft;
-  }
+function estimateStateClass(detail: EstimateDetail | null): string {
+  return detail?.editability?.isLocked ? styles.statusLocked : styles.statusDraft;
 }
 
 function formatMargin(summary?: EstimateSummary): string {
@@ -529,8 +512,7 @@ function formatEstimateLockMessage(detail: EstimateDetail | null): string | null
     : editability.lockedByQuoteVersionNumber
       ? `quote version V${editability.lockedByQuoteVersionNumber}`
       : 'a related quote';
-  const lockedDate = formatDateLong(editability.lockedAt);
-  return lockedDate ? `Locked after ${quoteLabel} was sent on ${lockedDate}.` : `Locked after ${quoteLabel} was sent.`;
+  return `Locked after ${quoteLabel} was sent.`;
 }
 
 function formatDraftQuoteEditWarning(detail: EstimateDetail | null): string | null {
@@ -1094,19 +1076,6 @@ export default function EstimatesTab({
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.generalTopBar}>
-        <EstimateVersionTabs
-          estimates={estimates.map((estimate) => ({
-            id: estimate.id,
-            label: estimate.versionLabel,
-            status: estimate.status,
-          }))}
-          activeEstimateId={selectedId}
-          onSelect={setSelectedId}
-          onCreateEstimate={handleCreateFromTabs}
-        />
-      </div>
-
       <div className={`${styles.mainGrid} ${styles.mainGridGeneral}`}>
 
         <div className={styles.detailPanel}>
@@ -1117,60 +1086,26 @@ export default function EstimatesTab({
             <div className={styles.detailStack}>
               <section className={`${styles.card} ${styles.drawingCard}`}>
                 <div className={styles.summaryHeader}>
-                  <div>
-                    <div className={styles.summaryHeaderTitle}>
-                      <span className={styles.summaryHeaderLabel}>Estimate {selectedMeta.versionLabel}</span>
-                      <span className={`${legacy.statusPill} ${statusClass(selectedMeta.status)}`}>
-                        {formatStatusLabel(selectedMeta.status)}
+                  <div className={styles.summaryHeaderPrimary}>
+                    <div className={styles.summaryHeaderTopRow}>
+                      <EstimateVersionTabs
+                        estimates={estimates.map((estimate) => ({
+                          id: estimate.id,
+                          label: estimate.versionLabel,
+                        }))}
+                        activeEstimateId={selectedId}
+                        onSelect={setSelectedId}
+                        onCreateEstimate={handleCreateFromTabs}
+                      />
+                      <span className={`${legacy.statusPill} ${estimateStateClass(selectedDetail)}`}>
+                        {estimateStateLabel(selectedDetail)}
                       </span>
                     </div>
                     {createdMeta ? <div className={styles.summaryHeaderMeta}>Created {createdMeta}</div> : null}
+                    {estimateLockMessage ? <div className={styles.summaryHeaderLockMeta}>{estimateLockMessage}</div> : null}
                   </div>
                   <div className={styles.summaryHeaderActions}>
-                    {!isEstimateLocked ? (
-                      <button
-                        type="button"
-                        className={legacy.buttonSecondary}
-                        onClick={handleEditEstimate}
-                        disabled={!selectedDetail}
-                      >
-                        Edit estimate
-                      </button>
-                    ) : null}
-                    {jobPackUrl ? <Link className={legacy.buttonSecondary} href={jobPackUrl}>Open Job Pack</Link> : null}
-                  </div>
-                </div>
-                {estimateLockMessage ? <div className={styles.lockNotice}>{estimateLockMessage}</div> : null}
-                {selectedEstimateSyncPending ? (
-                  <div className={styles.lockNotice}>
-                    Estimate is syncing in the background. You can keep editing, duplicate, request design, and create a quote from the local snapshot now.
-                  </div>
-                ) : null}
-                <div className={styles.focusSummaryLayout}>
-                  <div className={styles.focusDrawingToolbar}>
-                    <div className={styles.focusDrawingToolbarCopy}>
-                      <div className={styles.focusDrawingEyebrow}>Drawing sheet</div>
-                      <div className={styles.focusDrawingTitle}>{drawingSheetMeta.drawingTitle}</div>
-                    </div>
-
-                    <div className={styles.focusDrawingControls}>
-                      {drawingModules.length > 1 ? (
-                        <div className={styles.segmentedControl} role="tablist" aria-label="Estimate drawing module">
-                          {drawingModules.map((module, index) => (
-                            <button
-                              type="button"
-                              key={module.id}
-                              className={`${styles.segmentedItem} ${index === drawingModuleIndex ? styles.segmentedItemActive : ''}`}
-                              onClick={() => setDrawingModuleIndex(index)}
-                              role="tab"
-                              aria-selected={index === drawingModuleIndex}
-                            >
-                              {module.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : null}
-
+                    <div className={styles.summaryHeaderControls}>
                       <div className={styles.segmentedControl} role="tablist" aria-label="Estimate drawing view">
                         {(['plan', 'section'] as const).map((value) => (
                           <button
@@ -1186,7 +1121,43 @@ export default function EstimatesTab({
                         ))}
                       </div>
                     </div>
+                    {!isEstimateLocked ? (
+                      <button
+                        type="button"
+                        className={`${legacy.buttonSecondary} ${styles.compactAction}`}
+                        onClick={handleEditEstimate}
+                        disabled={!selectedDetail}
+                      >
+                        Edit estimate
+                      </button>
+                    ) : null}
+                    {jobPackUrl ? <Link className={`${legacy.buttonSecondary} ${styles.compactAction}`} href={jobPackUrl}>Open Job Pack</Link> : null}
                   </div>
+                </div>
+                {selectedEstimateSyncPending ? (
+                  <div className={styles.infoNotice}>
+                    Estimate is syncing in the background. You can keep editing, duplicate, request design, and create a quote from the local snapshot now.
+                  </div>
+                ) : null}
+                <div className={styles.focusSummaryLayout}>
+                  {drawingModules.length > 1 ? (
+                    <div className={styles.focusDrawingControlsRow}>
+                      <div className={styles.segmentedControl} role="tablist" aria-label="Estimate drawing module">
+                        {drawingModules.map((module, index) => (
+                          <button
+                            type="button"
+                            key={module.id}
+                            className={`${styles.segmentedItem} ${index === drawingModuleIndex ? styles.segmentedItemActive : ''}`}
+                            onClick={() => setDrawingModuleIndex(index)}
+                            role="tab"
+                            aria-selected={index === drawingModuleIndex}
+                          >
+                            {module.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {activeDrawingModule ? (
                     <EstimateDrawingSheet
