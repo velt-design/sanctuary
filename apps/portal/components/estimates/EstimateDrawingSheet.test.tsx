@@ -129,7 +129,11 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('Ridge beam');
     expect(markup).toContain('M1 - Gable - 4.6m x 5.1m - Acrylic - Roof Plan');
     expect(markup).toContain('P-01');
+    expect(markup).toContain('V1');
+    expect(markup).toContain('NTS');
+    expect(markup).toContain('Chanel');
     expect(markup).toContain('Portal preview');
+    expect(markup).toContain('Note');
     expect(markup).toContain('Do not scale off portal preview.');
     expect(markup).toContain('Verify all dimensions on site.');
   });
