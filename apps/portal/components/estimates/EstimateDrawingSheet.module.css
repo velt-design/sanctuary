@@ -3,15 +3,27 @@
   gap: 12px;
 }
 
-.sheetScroller {
-  overflow: visible;
+.sheetViewport {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: var(--sheet-preview-height, 792px);
+  overflow: hidden;
+}
+
+.sheetStage {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1120px;
+  height: 792px;
+  transform: translateX(-50%) scale(var(--sheet-preview-scale, 1));
+  transform-origin: top center;
 }
 
 .sheetPaper {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  aspect-ratio: 420 / 297;
+  width: 1120px;
+  height: 792px;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   border: 1px solid var(--mv-sheet-border-soft);
@@ -20,10 +32,6 @@
   color: var(--mv-sheet-text);
   font-family: var(--mv-font-sans);
   overflow: hidden;
-}
-
-.sheetPaperCompact {
-  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .sheetUpper {
@@ -40,12 +48,12 @@
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 10px;
+  gap: 12px;
 }
 
 .sheetHeaderCopy {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 
 .sheetEyebrow {
@@ -67,7 +75,7 @@
 }
 
 .sheetHeaderRule {
-  width: min(100%, 392px);
+  width: min(100%, 378px);
   height: 1px;
   background: var(--mv-sheet-divider);
 }
@@ -80,21 +88,17 @@
   gap: 11px;
 }
 
-.sheetInfoRailCompact {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
 .sheetScaleBox,
 .legendBox {
   border: 1px solid var(--mv-sheet-panel-border-soft);
-  border-radius: 11px;
+  border-radius: 10px;
   background: var(--mv-sheet-panel-bg-soft);
 }
 
 .sheetScaleBox {
-  padding: 11px 14px 12px;
+  padding: 10px 13px 11px;
   display: grid;
-  gap: 4px;
+  gap: 3px;
   background: var(--mv-sheet-scale-bg);
 }
 
@@ -147,13 +151,9 @@
 }
 
 .legendBox {
-  padding: 11px 14px 13px;
+  padding: 10px 13px 11px;
   display: grid;
-  gap: 8px;
-}
-
-.legendBoxCompact {
-  width: auto;
+  gap: 7px;
 }
 
 .legendTitle {
@@ -166,23 +166,23 @@
 
 .legendList {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 7.2pt;
-  line-height: 1.3;
+  gap: 7px;
+  font-size: 7.1pt;
+  line-height: 1.28;
   color: var(--mv-sheet-muted);
 }
 
 .legendSwatch {
   position: relative;
   display: block;
-  width: 24px;
-  height: 8px;
+  width: 23px;
+  height: 7px;
   flex: 0 0 auto;
   color: currentColor;
 }
@@ -202,7 +202,7 @@
 }
 
 .legendSwatchPrimary::before {
-  border-top-width: 1.95px;
+  border-top-width: 2.05px;
 }
 
 .legendSwatchSecondary {
@@ -210,7 +210,7 @@
 }
 
 .legendSwatchSecondary::before {
-  border-top-width: 1.05px;
+  border-top-width: 0.9px;
 }
 
 .legendSwatchAnnotation {
@@ -218,11 +218,15 @@
 }
 
 .legendSwatchAnnotation::before {
-  border-top-width: 0.95px;
+  border-top-width: 0.74px;
 }
 
 .legendSwatchDimension {
   color: var(--mv-dim);
+}
+
+.legendSwatchDimension::before {
+  border-top-width: 0.82px;
 }
 
 .legendSwatchDimension::after {
@@ -231,9 +235,9 @@
   inset: 0;
   background:
     linear-gradient(45deg, transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px), currentColor calc(50% + 0.5px), transparent calc(50% + 0.5px))
-      left center / 7px 7px no-repeat,
+      left center / 6px 6px no-repeat,
     linear-gradient(45deg, transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px), currentColor calc(50% + 0.5px), transparent calc(50% + 0.5px))
-      right center / 7px 7px no-repeat;
+      right center / 6px 6px no-repeat;
 }
 
 .legendSwatchHidden {
@@ -242,29 +246,25 @@
 
 .legendSwatchHidden::before {
   border-top-style: dashed;
+  border-top-width: 0.7px;
 }
 
 .sheetFooter {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(190px, 0.98fr) minmax(408px, 1.2fr);
-  gap: 13px;
+  gap: 12px;
   align-items: end;
-  padding: 8px 26px 10px;
+  padding: 11px 26px 7px;
   border-top: 1px solid var(--mv-sheet-divider);
-}
-
-.sheetFooterCompact {
-  grid-template-columns: 1fr;
-  align-items: start;
 }
 
 .companyBlock {
   max-width: 272px;
   display: grid;
-  gap: 1px;
+  gap: 0;
   align-self: end;
   align-content: end;
-  padding-bottom: 2px;
+  justify-self: start;
 }
 
 .companyName {
@@ -280,55 +280,62 @@
 .companyLine {
   font-size: 6.55pt;
   font-weight: 400;
-  line-height: 1.18;
+  line-height: 1.14;
   color: var(--mv-sheet-muted);
-  opacity: 0.84;
+  opacity: 0.76;
 }
 
 .noteBlock {
   min-width: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 5px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 5px;
+  row-gap: 1px;
   align-self: end;
   justify-self: end;
-  max-width: 252px;
-  padding-bottom: 2px;
+  max-width: 262px;
 }
 
 .blockLabel {
   font-size: 6.55pt;
-  font-weight: 500;
-  letter-spacing: 0.22em;
+  font-weight: 600;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--mv-sheet-muted);
-  opacity: 0.82;
+  opacity: 0.72;
 }
 
 .noteLabel {
   font-size: 6.45pt;
-  font-weight: 500;
-  letter-spacing: 0.2em;
+  font-weight: 600;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--mv-sheet-muted);
-  opacity: 0.82;
+  opacity: 0.72;
   white-space: nowrap;
 }
 
-.noteInline {
-  font-size: 6.75pt;
+.noteCopy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.noteLine {
+  font-size: 6.8pt;
   font-weight: 400;
-  line-height: 1.18;
+  line-height: 1.16;
   color: var(--mv-sheet-muted);
-  opacity: 0.9;
+  opacity: 0.94;
 }
 
 .infoCluster {
   justify-self: end;
   width: min(100%, 468px);
-  padding: 9px 13px 10px;
+  padding: 10px 14px 11px;
   display: grid;
-  gap: 7px;
+  gap: 8px;
   align-self: end;
   border: 1px solid var(--mv-sheet-divider);
   border-radius: 8px;
@@ -339,7 +346,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, max-content));
   justify-content: start;
-  gap: 8px 17px;
+  gap: 9px 18px;
   align-items: end;
 }
 
@@ -350,42 +357,43 @@
 }
 
 .clusterMetaValue {
-  font-size: 7.45pt;
-  font-weight: 600;
-  line-height: 1.04;
+  font-size: 7.35pt;
+  font-weight: 500;
+  line-height: 1.08;
   color: var(--mv-sheet-text);
   font-variant-numeric: tabular-nums;
 }
 
 .titleInfoBlock {
   display: grid;
-  gap: 2px;
-  padding-top: 2px;
-  padding-bottom: 1px;
+  gap: 3px;
+  padding-top: 3px;
+  padding-bottom: 2px;
 }
 
 .blockValue {
-  font-size: 10.25pt;
-  font-weight: 500;
-  line-height: 1.06;
+  font-size: 10.4pt;
+  font-weight: 600;
+  line-height: 1.08;
   letter-spacing: -0.015em;
   color: var(--mv-sheet-text);
 }
 
 .titleSubValue {
-  font-size: 6.9pt;
+  font-size: 6.8pt;
   font-weight: 400;
-  line-height: 1.22;
+  line-height: 1.24;
   color: var(--mv-sheet-muted);
+  opacity: 0.82;
 }
 
 .clusterBottomRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, max-content));
   justify-content: start;
-  gap: 8px 22px;
+  gap: 9px 24px;
   align-items: end;
-  padding-top: 6px;
+  padding-top: 7px;
   border-top: 1px solid var(--mv-sheet-divider);
 }
 
@@ -401,109 +409,26 @@
   font-weight: 400;
   line-height: 1.16;
   color: var(--mv-sheet-muted);
+  opacity: 0.88;
   font-variant-numeric: tabular-nums;
   overflow: visible;
   text-overflow: clip;
   white-space: normal;
 }
 
-@media (max-width: 1100px) {
-  .sheetUpper {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr);
-    row-gap: 12px;
-  }
-
-  .sheetInfoRail {
-    grid-column: 1;
-    grid-row: 2;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .drawingViewport {
-    grid-column: 1;
-    grid-row: 3;
-    padding-top: 10px;
-  }
-
-  .sheetFooter {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .companyBlock {
-    grid-column: 1;
-    align-self: start;
-  }
-
-  .noteBlock {
-    grid-column: 2;
-    align-self: start;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 3px;
-    justify-self: stretch;
-    max-width: none;
-  }
-
-  .infoCluster {
-    grid-column: 1 / -1;
-    justify-self: stretch;
-    width: auto;
-  }
-
-  .clusterTopRow {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
-  .sheetUpper {
-    padding: 18px 18px 14px;
-  }
-
-  .sheetInfoRail {
-    grid-template-columns: 1fr;
-  }
-
-  .sheetModuleLabel {
-    font-size: 18pt;
-  }
-
-  .sheetFooter {
-    padding: 14px 18px 18px;
-    gap: 14px;
-  }
-
-  .companyBlock,
-  .noteBlock {
-    grid-column: auto;
-  }
-
-  .clusterTopRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 12px;
-  }
-
-  .clusterBottomRow {
-    grid-template-columns: 1fr;
-    gap: 6px;
-  }
-
-  .sheetFooter {
-    grid-template-columns: 1fr;
-    padding: 10px 18px 14px;
-  }
-
-  .noteBlock {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 3px;
-    max-width: none;
-  }
-}
-
 @media print {
+  .sheetViewport {
+    height: auto;
+    overflow: visible;
+  }
+
+  .sheetStage {
+    position: static;
+    width: auto;
+    height: auto;
+    transform: none;
+  }
+
   .sheetPaper {
     width: 420mm;
     height: 297mm;

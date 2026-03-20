@@ -379,10 +379,10 @@ function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
     rightPad: isHipCorner ? 19.6 : 17.8,
     topPad: 14.2,
     bottomPad: isHipCorner ? 15.2 : 16.8,
-    houseBandHeight: 6.2,
-    houseBandOffset: 1.4,
-    houseInset: 1.25,
-    fallGap: 5.3,
+    houseBandHeight: 5.5,
+    houseBandOffset: 1.3,
+    houseInset: 1.2,
+    fallGap: 4.9,
   };
 }
 
@@ -1099,8 +1099,8 @@ function TickDimension({
 
 function ArrowHead({ x, y, direction, presentation = 'card' }: { x: number; y: number; direction: 'up' | 'down'; presentation?: ModuleDrawingPresentation }) {
   const isSheet = presentation === 'sheet';
-  const reach = isSheet ? 1.05 : 1.3;
-  const span = isSheet ? 0.9 : 1.15;
+  const reach = isSheet ? 0.96 : 1.3;
+  const span = isSheet ? 0.78 : 1.15;
   if (direction === 'up') {
     return (
       <g>
@@ -1197,11 +1197,11 @@ function PlanSvg({
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
 
-  const fallX = Math.min(isSheet ? 109.2 : 110.5, x + Math.max(aW, bW) + (isSheet ? layout.fallGap - 0.8 : layout.fallGap));
+  const fallX = Math.min(isSheet ? 108.6 : 110.5, x + Math.max(aW, bW) + (isSheet ? layout.fallGap - 0.55 : layout.fallGap));
   const fallTop = y + (isSheet ? 1.5 : 1);
   const fallBottom = (isHipCorner ? bottomY : y + aH) - (isSheet ? 1.5 : 1);
-  const fallLabelX = fallX + (isSheet ? 1.28 : 2.3);
-  const fallLabelY = (fallTop + fallBottom) / 2 + (isSheet ? 0.2 : 0);
+  const fallLabelX = fallX + (isSheet ? 0.98 : 2.3);
+  const fallLabelY = (fallTop + fallBottom) / 2 + (isSheet ? 0.28 : 0);
 
   const dimBaseY = Math.min(87.6, bottomY + (isSheet ? 8.9 : 7.8));
   const secondaryDimY = Math.min(88.8, dimBaseY + (isSheet ? 6.0 : 5.4));
@@ -1233,7 +1233,7 @@ function PlanSvg({
       </defs>
 
       <rect x={houseLeftX} y={houseTopY} width={houseRightX - houseLeftX} height={houseBottomY - houseTopY} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} />
-      <text x={houseLeftX + (isSheet ? 1.15 : 1.5)} y={houseTopY + (isSheet ? 2.65 : 3.1)} className={styles.moduleHouseLabel}>
+      <text x={houseLeftX + (isSheet ? 1.15 : 1.5)} y={houseTopY + (isSheet ? 2.9 : 3.1)} className={styles.moduleHouseLabel}>
         House side
       </text>
 
@@ -1333,9 +1333,16 @@ function PlanSvg({
       <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
       <TickDimension x1={x} y1={dimBaseY} x2={x + aW} y2={dimBaseY} label={formatMetres(model.lengthA)} presentation={presentation} />
 
-      <line x1={x} y1={y} x2={x - 7.4} y2={y} className={styles.moduleDimWitness} />
-      <line x1={x} y1={y + aH} x2={x - 7.4} y2={y + aH} className={styles.moduleDimWitness} />
-      <TickDimension x1={x - 7.4} y1={y} x2={x - 7.4} y2={y + aH} label={formatMetres(model.spanA)} presentation={presentation} />
+      <line x1={x} y1={y} x2={x - (isSheet ? 6.4 : 7.4)} y2={y} className={styles.moduleDimWitness} />
+      <line x1={x} y1={y + aH} x2={x - (isSheet ? 6.4 : 7.4)} y2={y + aH} className={styles.moduleDimWitness} />
+      <TickDimension
+        x1={x - (isSheet ? 6.4 : 7.4)}
+        y1={y}
+        x2={x - (isSheet ? 6.4 : 7.4)}
+        y2={y + aH}
+        label={formatMetres(model.spanA)}
+        presentation={presentation}
+      />
 
       {isHipCorner && model.lengthB && model.spanB ? (
         <>
@@ -1350,9 +1357,16 @@ function PlanSvg({
             presentation={presentation}
           />
 
-          <line x1={x + bW} y1={splitY} x2={x + bW + 7.4} y2={splitY} className={styles.moduleDimWitness} />
-          <line x1={x + bW} y1={bottomY} x2={x + bW + 7.4} y2={bottomY} className={styles.moduleDimWitness} />
-          <TickDimension x1={x + bW + 7.4} y1={splitY} x2={x + bW + 7.4} y2={bottomY} label={formatMetres(model.spanB)} presentation={presentation} />
+          <line x1={x + bW} y1={splitY} x2={x + bW + (isSheet ? 6.8 : 7.4)} y2={splitY} className={styles.moduleDimWitness} />
+          <line x1={x + bW} y1={bottomY} x2={x + bW + (isSheet ? 6.8 : 7.4)} y2={bottomY} className={styles.moduleDimWitness} />
+          <TickDimension
+            x1={x + bW + (isSheet ? 6.8 : 7.4)}
+            y1={splitY}
+            x2={x + bW + (isSheet ? 6.8 : 7.4)}
+            y2={bottomY}
+            label={formatMetres(model.spanB)}
+            presentation={presentation}
+          />
         </>
       ) : null}
 

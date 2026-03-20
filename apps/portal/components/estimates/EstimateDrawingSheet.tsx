@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { getSuggestedModuleDrawingScale, ModuleDrawingRenderer, resolveModuleDrawingScaleState } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
@@ -36,10 +36,10 @@ type LegendItem = {
 type EstimateDrawingSheetScaleState = Record<ModuleViewsTab, EstimateDrawingScale>;
 
 const SHEET_VIEWPORT_MM = getDrawingSheetViewportMm();
-
-function cx(...values: Array<string | false | null | undefined>): string {
-  return values.filter(Boolean).join(' ');
-}
+const SHEET_PREVIEW_ARTBOARD = {
+  widthPx: 1120,
+  heightPx: 792,
+} as const;
 
 function buildScaleState(
   planModel?: ModulePlanModel | null,
@@ -124,13 +124,12 @@ export default function EstimateDrawingSheet({
   sectionModel,
   meta,
 }: EstimateDrawingSheetProps) {
-  const sheetPaperRef = useRef<HTMLElement | null>(null);
-  const [sheetWidthPx, setSheetWidthPx] = useState(0);
+  const sheetViewportRef = useRef<HTMLDivElement | null>(null);
+  const [availableWidthPx, setAvailableWidthPx] = useState(0);
   const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() => buildScaleState(planModel, sectionModel));
   const viewLabel = view === 'plan' ? 'Plan view' : 'Section view';
   const legendItems = buildLegendItems(view, planModel, sectionModel);
   const noteLines = splitNoteLines(meta.note);
-  const isCompactSheet = sheetWidthPx > 0 && sheetWidthPx < 760;
   const scaleOptions = getEstimateDrawingScaleOptions(view).map((option) => ({
     value: estimateDrawingScaleKey(option),
     label: option.mode === 'fit' ? 'Fit / NTS' : formatEstimateDrawingScale(option),
@@ -167,14 +166,20 @@ export default function EstimateDrawingSheet({
     { label: 'Client', value: meta.client },
     { label: 'Issue', value: meta.issue },
   ];
-  const noteText = (noteLines.length ? noteLines : [meta.note]).join(' ');
+  const noteDisplayLines = noteLines.length ? noteLines : [meta.note];
+  const previewScale = availableWidthPx > 0 ? Math.min(availableWidthPx / SHEET_PREVIEW_ARTBOARD.widthPx, 1) : 1;
+  const previewHeightPx = Math.round(SHEET_PREVIEW_ARTBOARD.heightPx * previewScale);
+  const viewportStyle = {
+    '--sheet-preview-scale': `${previewScale}`,
+    '--sheet-preview-height': `${previewHeightPx}px`,
+  } as CSSProperties;
 
   useEffect(() => {
-    const node = sheetPaperRef.current;
+    const node = sheetViewportRef.current;
     if (!node || typeof ResizeObserver === 'undefined') return;
 
     const measure = () => {
-      setSheetWidthPx(Math.round(node.getBoundingClientRect().width));
+      setAvailableWidthPx(Math.round(node.getBoundingClientRect().width));
     };
 
     measure();
@@ -219,108 +224,111 @@ export default function EstimateDrawingSheet({
 
   return (
     <div className={styles.sheetShell}>
-      <div className={styles.sheetScroller}>
-        <section
-          ref={sheetPaperRef}
-          className={cx(styles.sheetPaper, isCompactSheet && styles.sheetPaperCompact)}
-          style={moduleDrawingThemeCssVariables('sheet')}
-          aria-label={`${viewLabel} A3 drawing sheet`}
-        >
-          <div className={styles.sheetUpper}>
-            <div className={styles.sheetHeader}>
-              <div className={styles.sheetHeaderCopy}>
-                <div className={styles.sheetEyebrow}>{viewLabel}</div>
-                <div className={styles.sheetModuleLabel}>{moduleLabel}</div>
+      <div ref={sheetViewportRef} className={styles.sheetViewport} style={viewportStyle}>
+        <div className={styles.sheetStage}>
+          <section className={styles.sheetPaper} style={moduleDrawingThemeCssVariables('sheet')} aria-label={`${viewLabel} A3 drawing sheet`}>
+            <div className={styles.sheetUpper}>
+              <div className={styles.sheetHeader}>
+                <div className={styles.sheetHeaderCopy}>
+                  <div className={styles.sheetEyebrow}>{viewLabel}</div>
+                  <div className={styles.sheetModuleLabel}>{moduleLabel}</div>
+                </div>
+                <div className={styles.sheetHeaderRule} aria-hidden="true" />
               </div>
-              <div className={styles.sheetHeaderRule} aria-hidden="true" />
+
+              <div className={styles.sheetInfoRail}>
+                <label className={styles.sheetScaleBox}>
+                  <span className={styles.scaleKicker}>Scale</span>
+                  <select
+                    className={styles.scaleSelect}
+                    aria-label="Drawing scale"
+                    value={estimateDrawingScaleKey(currentScale)}
+                    onChange={(event) => {
+                      const nextScale = parseEstimateDrawingScaleKey(event.target.value);
+                      setSelectedScales((prev) => ({ ...prev, [view]: nextScale }));
+                    }}
+                  >
+                    {scaleOptions.map((option) => (
+                      <option key={option.value} value={option.value} disabled={option.disabled}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  {scaleWarning ? <span className={styles.scaleWarning}>{scaleWarning}</span> : null}
+                </label>
+
+                <aside className={styles.legendBox} aria-label="Drawing legend">
+                  <div className={styles.legendTitle}>Legend</div>
+                  <div className={styles.legendList}>
+                    {legendItems.map((item) => (
+                      <div key={item.label} className={styles.legendItem}>
+                        <span className={`${styles.legendSwatch} ${legendToneClassName(item.tone)}`} aria-hidden="true" />
+                        <span>{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+              </div>
+
+              <div className={styles.drawingViewport}>
+                <ModuleDrawingRenderer
+                  key={view}
+                  view={view}
+                  status={status}
+                  planModel={planModel}
+                  sectionModel={sectionModel}
+                  presentation="sheet"
+                  drawingScale={currentScale}
+                  sheetViewportMm={SHEET_VIEWPORT_MM}
+                />
+              </div>
             </div>
 
-            <div className={cx(styles.sheetInfoRail, isCompactSheet && styles.sheetInfoRailCompact)}>
-              <label className={styles.sheetScaleBox}>
-                <span className={styles.scaleKicker}>Scale</span>
-                <select
-                  className={styles.scaleSelect}
-                  aria-label="Drawing scale"
-                  value={estimateDrawingScaleKey(currentScale)}
-                  onChange={(event) => {
-                    const nextScale = parseEstimateDrawingScaleKey(event.target.value);
-                    setSelectedScales((prev) => ({ ...prev, [view]: nextScale }));
-                  }}
-                >
-                  {scaleOptions.map((option) => (
-                    <option key={option.value} value={option.value} disabled={option.disabled}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {scaleWarning ? <span className={styles.scaleWarning}>{scaleWarning}</span> : null}
-              </label>
+            <footer className={styles.sheetFooter}>
+              <div className={styles.companyBlock}>
+                <div className={styles.companyName}>{PORTAL_COMPANY_PROFILE.name}</div>
+                <div className={styles.companyLine}>{PORTAL_COMPANY_PROFILE.addressLines.join(', ')}</div>
+                <div className={styles.companyLine}>{`${PORTAL_COMPANY_PROFILE.phone}  |  ${PORTAL_COMPANY_PROFILE.email}`}</div>
+              </div>
 
-              <aside className={cx(styles.legendBox, isCompactSheet && styles.legendBoxCompact)} aria-label="Drawing legend">
-                <div className={styles.legendTitle}>Legend</div>
-                <div className={styles.legendList}>
-                  {legendItems.map((item) => (
-                    <div key={item.label} className={styles.legendItem}>
-                      <span className={`${styles.legendSwatch} ${legendToneClassName(item.tone)}`} aria-hidden="true" />
-                      <span>{item.label}</span>
+              <div className={styles.noteBlock}>
+                <span className={styles.noteLabel}>Note</span>
+                <span className={styles.noteCopy}>
+                  {noteDisplayLines.map((line, index) => (
+                    <span key={`${line}-${index}`} className={styles.noteLine}>
+                      {line}
+                    </span>
+                  ))}
+                </span>
+              </div>
+
+              <div className={styles.infoCluster}>
+                <div className={styles.clusterTopRow}>
+                  {titleMetaItems.map((item) => (
+                    <div key={item.label} className={styles.clusterMetaPair}>
+                      <span className={styles.blockLabel}>{item.label}</span>
+                      <span className={styles.clusterMetaValue}>{item.value}</span>
                     </div>
                   ))}
                 </div>
-              </aside>
-            </div>
 
-            <div className={styles.drawingViewport}>
-              <ModuleDrawingRenderer
-                key={`${view}-${isCompactSheet ? 'compact' : 'wide'}`}
-                view={view}
-                status={status}
-                planModel={planModel}
-                sectionModel={sectionModel}
-                presentation="sheet"
-                drawingScale={currentScale}
-                sheetViewportMm={SHEET_VIEWPORT_MM}
-              />
-            </div>
-          </div>
+                <div className={styles.titleInfoBlock}>
+                  <div className={styles.blockValue}>{meta.drawingTitle}</div>
+                  <div className={styles.titleSubValue}>{meta.siteAddress}</div>
+                </div>
 
-          <footer className={cx(styles.sheetFooter, isCompactSheet && styles.sheetFooterCompact)}>
-            <div className={styles.companyBlock}>
-              <div className={styles.companyName}>{PORTAL_COMPANY_PROFILE.name}</div>
-              <div className={styles.companyLine}>{PORTAL_COMPANY_PROFILE.addressLines.join(', ')}</div>
-              <div className={styles.companyLine}>{`${PORTAL_COMPANY_PROFILE.phone}  |  ${PORTAL_COMPANY_PROFILE.email}`}</div>
-            </div>
-
-            <div className={styles.noteBlock}>
-              <span className={styles.noteLabel}>Note</span>
-              <span className={styles.noteInline}>{noteText}</span>
-            </div>
-
-            <div className={styles.infoCluster}>
-              <div className={styles.clusterTopRow}>
-                {titleMetaItems.map((item) => (
-                  <div key={item.label} className={styles.clusterMetaPair}>
-                    <span className={styles.blockLabel}>{item.label}</span>
-                    <span className={styles.clusterMetaValue}>{item.value}</span>
-                  </div>
-                ))}
+                <div className={styles.clusterBottomRow}>
+                  {footerMetaItems.map((item) => (
+                    <div key={item.label} className={styles.metaCell}>
+                      <span className={styles.blockLabel}>{item.label}</span>
+                      <span className={styles.metaValue}>{item.value}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-
-              <div className={styles.titleInfoBlock}>
-                <div className={styles.blockValue}>{meta.drawingTitle}</div>
-                <div className={styles.titleSubValue}>{meta.siteAddress}</div>
-              </div>
-
-              <div className={styles.clusterBottomRow}>
-                {footerMetaItems.map((item) => (
-                  <div key={item.label} className={styles.metaCell}>
-                    <span className={styles.blockLabel}>{item.label}</span>
-                    <span className={styles.metaValue}>{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </footer>
-        </section>
+            </footer>
+          </section>
+        </div>
       </div>
     </div>
   );
