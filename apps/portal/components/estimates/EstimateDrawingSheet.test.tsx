@@ -134,7 +134,9 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('data-source-class="modulePlanPerimeter"');
     expect(markup).toContain('data-source-class="modulePlanMemberEdge"');
     expect(markup).toContain('data-source-class="modulePlanRafter"');
-    expect(markup).toContain('data-debug-crop="plan"');
+    expect(markup).toContain('data-debug-crop="outer-plan"');
+    expect(markup).toContain('data-debug-crop="fit-plan"');
+    expect(markup).toContain('data-debug-crop="bounds-plan"');
     expect(markup).toContain('Gable - 4.6m x 5.1m - Acrylic - Roof Plan');
     expect(markup).toContain('P-01');
     expect(markup).toContain('V1');
@@ -203,7 +205,9 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('data-source-class="moduleSectionRidgeBeam"');
     expect(markup).toContain('data-source-class="moduleSectionTieBeamPrimary"');
     expect(markup).toContain('data-source-class="moduleSectionConnection"');
-    expect(markup).toContain('data-debug-crop="section"');
+    expect(markup).toContain('data-debug-crop="outer-section"');
+    expect(markup).toContain('data-debug-crop="fit-section"');
+    expect(markup).toContain('data-debug-crop="bounds-section"');
     expect(markup).toContain('Gable - 6.2m x 3.4m - Acrylic - Section');
     expect(markup).toContain('S-01');
     expect(markup).toContain('Te Arai');

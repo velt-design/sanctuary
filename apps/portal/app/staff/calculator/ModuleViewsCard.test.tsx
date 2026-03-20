@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
-import ModuleViewsCard, { getSuggestedModuleDrawingScale, resolveModuleDrawingScaleState } from './ModuleViewsCard';
+import ModuleViewsCard, { ModuleDrawingRenderer, getSuggestedModuleDrawingScale, resolveModuleDrawingScaleState } from './ModuleViewsCard';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -114,6 +114,40 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('Not to scale');
     expect(markup).toContain('aria-label="Module plan view"');
     expect(markup).not.toContain('data-debug-crop=');
+  });
+
+  it('renders outer and fit overlays for plan sheets only', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    expect(markup).toContain('data-debug-crop="outer-plan"');
+    expect(markup).toContain('data-debug-crop="fit-plan"');
+    expect(markup).toContain('data-debug-crop="bounds-plan"');
+  });
+
+  it('renders outer and fit overlays for section sheets only', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    expect(markup).toContain('data-debug-crop="outer-section"');
+    expect(markup).toContain('data-debug-crop="fit-section"');
+    expect(markup).toContain('data-debug-crop="bounds-section"');
   });
 
   it('suggests the largest architectural plan scale that fits the A3 sheet viewport', () => {

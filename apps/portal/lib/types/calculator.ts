@@ -33,6 +33,8 @@ export type InfillAcrylicSourceInput = 'strip_620' | 'sheet_panels';
 export type InfillWidthModeInput = 'match_roof_rafters' | 'target_width';
 export type InfillLocationInput = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
 export type InfillPanelOrientationInput = 'vertical' | 'horizontal' | 'auto';
+export type InfillMonoSlopeModeInput = 'heights' | 'pitch';
+export type InfillMonoSlopeAnchorInput = 'left' | 'right';
 
 export type InfillSupportInput = {
   hasTop: boolean;
@@ -45,7 +47,16 @@ export type InfillSupportInput = {
 
 export type InfillShapeInput =
   | { type: 'rect'; widthM: string; heightM: string; bottomOffsetM?: string }
-  | { type: 'mono_slope'; widthM: string; heightLowM: string; heightHighM: string; bottomOffsetM?: string };
+  | {
+      type: 'mono_slope';
+      widthM: string;
+      heightLowM: string;
+      heightHighM: string;
+      bottomOffsetM?: string;
+      slopeMode?: InfillMonoSlopeModeInput;
+      slopeDeg?: string;
+      slopeAnchor?: InfillMonoSlopeAnchorInput;
+    };
 
 export type InfillLineItem = {
   id: string;

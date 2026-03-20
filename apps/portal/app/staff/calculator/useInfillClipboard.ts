@@ -17,6 +17,9 @@ function cloneShape(shape: InfillLineItem['shape']): InfillLineItem['shape'] {
       heightLowM: shape.heightLowM,
       heightHighM: shape.heightHighM,
       bottomOffsetM: shape.bottomOffsetM ?? '0',
+      slopeMode: shape.slopeMode ?? 'heights',
+      slopeDeg: shape.slopeDeg ?? '',
+      slopeAnchor: shape.slopeAnchor ?? 'left',
     };
   }
   return {
