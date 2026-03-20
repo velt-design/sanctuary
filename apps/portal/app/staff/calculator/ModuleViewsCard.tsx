@@ -55,6 +55,17 @@ export type ModuleDrawingScaleState = {
   suggestedScale: EstimateDrawingScale;
 };
 
+export type ModuleDrawingScaleDiagnostic = {
+  scale: EstimateDrawingScale;
+  fits: boolean;
+  requiredWidthMm: number;
+  requiredHeightMm: number;
+  availableWidthMm: number;
+  availableHeightMm: number;
+  utilizationX: number;
+  utilizationY: number;
+};
+
 const TAB_ITEMS: Array<{ id: ModuleViewsTab; label: string }> = [
   { id: 'plan', label: 'Plan' },
   { id: 'section', label: 'Section' },
@@ -166,6 +177,15 @@ export function ModuleDrawingRenderer({
           viewportMm: sheetViewportMm,
         })
       : null;
+  const sheetScaleDiagnostics =
+    presentation === 'sheet'
+      ? getModuleDrawingScaleDiagnostics({
+          view,
+          planModel,
+          sectionModel,
+          viewportMm: sheetViewportMm,
+        })
+      : [];
   const appliedDrawingScale = sheetScaleState?.appliedScale ?? drawingScale;
 
   return (
@@ -195,6 +215,8 @@ export function ModuleDrawingRenderer({
             presentation={presentation}
             drawingScale={appliedDrawingScale}
             sheetViewportMm={sheetViewportMm}
+            debugScaleState={sheetScaleState}
+            scaleDiagnostics={sheetScaleDiagnostics}
           />
           {isCompact ? null : (
             <>
@@ -241,7 +263,14 @@ export function ModuleDrawingRenderer({
               ) : null}
             </div>
           )}
-          <SectionSvg model={sectionModel} presentation={presentation} drawingScale={appliedDrawingScale} sheetViewportMm={sheetViewportMm} />
+          <SectionSvg
+            model={sectionModel}
+            presentation={presentation}
+            drawingScale={appliedDrawingScale}
+            sheetViewportMm={sheetViewportMm}
+            debugScaleState={sheetScaleState}
+            scaleDiagnostics={sheetScaleDiagnostics}
+          />
           {isCompact ? null : (
             <>
               <LegendRow
@@ -350,6 +379,11 @@ type TickDimensionGeometry = {
   labelRotate?: number;
   termBar1?: { x1: number; y1: number; x2: number; y2: number };
   termBar2?: { x1: number; y1: number; x2: number; y2: number };
+};
+
+type SvgDebugScaleProps = {
+  scaleState?: ModuleDrawingScaleState | null;
+  scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
 };
 
 function formatMetres(value: number): string {
@@ -798,6 +832,45 @@ function getSectionScaleFit(
     fitArea: layout.fitArea,
     viewportMm,
   });
+}
+
+function toScaleDiagnostic(scale: EstimateDrawingScale, fit: DrawingSheetFitResult | null): ModuleDrawingScaleDiagnostic {
+  const availableWidthMm = fit?.availableWidthMm ?? 0;
+  const availableHeightMm = fit?.availableHeightMm ?? 0;
+  const requiredWidthMm = fit?.requiredWidthMm ?? 0;
+  const requiredHeightMm = fit?.requiredHeightMm ?? 0;
+  return {
+    scale,
+    fits: fit?.fits ?? scale.mode === 'fit',
+    requiredWidthMm,
+    requiredHeightMm,
+    availableWidthMm,
+    availableHeightMm,
+    utilizationX: availableWidthMm > 0 ? requiredWidthMm / availableWidthMm : 0,
+    utilizationY: availableHeightMm > 0 ? requiredHeightMm / availableHeightMm : 0,
+  };
+}
+
+export function getModuleDrawingScaleDiagnostics(input: {
+  view: ModuleViewsTab;
+  planModel?: ModulePlanModel | null;
+  sectionModel?: ModuleSectionModel | null;
+  viewportMm?: { widthMm: number; heightMm: number };
+}): ModuleDrawingScaleDiagnostic[] {
+  const viewportMm = input.viewportMm ?? getDrawingSheetViewportMm();
+  return getEstimateDrawingScaleOptions(input.view)
+    .filter((scale): scale is Extract<EstimateDrawingScale, { mode: 'fixed' }> => scale.mode === 'fixed')
+    .map((scale) => {
+      const fit =
+        input.view === 'plan'
+          ? input.planModel
+            ? getPlanScaleFit(input.planModel, scale.ratio, viewportMm)
+            : null
+          : input.sectionModel
+            ? getSectionScaleFit(input.sectionModel, scale.ratio, viewportMm)
+            : null;
+      return toScaleDiagnostic(scale, fit);
+    });
 }
 
 export function getSuggestedModuleDrawingScale(input: {
@@ -1464,7 +1537,11 @@ function formatScaleDebugLabel(scale: EstimateDrawingScale): string {
   return scale.mode === 'fit' ? 'NTS' : `1:${scale.ratio}`;
 }
 
-function buildSheetDebugMetrics(layout: ResolvedSheetLayout, scaleState?: ModuleDrawingScaleState | null): SheetDebugMetrics {
+function buildSheetDebugMetrics(
+  layout: ResolvedSheetLayout,
+  scaleState?: ModuleDrawingScaleState | null,
+  diagnostics: ModuleDrawingScaleDiagnostic[] = [],
+): SheetDebugMetrics {
   const boundsWidth = getBoundsWidth(layout.annotatedBounds);
   const boundsHeight = getBoundsHeight(layout.annotatedBounds);
   return {
@@ -1476,6 +1553,10 @@ function buildSheetDebugMetrics(layout: ResolvedSheetLayout, scaleState?: Module
     fitHeight: layout.fitArea.height,
     utilizationX: boundsWidth / Math.max(layout.fitArea.width, 0.001),
     utilizationY: boundsHeight / Math.max(layout.fitArea.height, 0.001),
+    candidateLines: diagnostics.map((diagnostic) => {
+      const scaleLabel = formatScaleDebugLabel(diagnostic.scale);
+      return `${scaleLabel} ${diagnostic.fits ? 'ok' : 'no'} ${Math.round(diagnostic.utilizationX * 100)}%/${Math.round(diagnostic.utilizationY * 100)}%`;
+    }),
   };
 }
 
@@ -1527,6 +1608,7 @@ type SheetDebugMetrics = {
   fitHeight: number;
   utilizationX: number;
   utilizationY: number;
+  candidateLines: string[];
 };
 
 function measurePlanAnnotatedBounds(input: {
@@ -1770,20 +1852,10 @@ function resolvePlanSheetLayout(input: {
   }
 
   const total = getPlanRealExtents(input.model);
-  let low = 0.05;
-  let high = resolvePlanFitBox(total.widthM, total.heightM, 'sheet', input.model.roofType === 'hip_corner').scale;
-  let best = resolvePlanSheetLayoutForScale({ model: input.model, scale: low });
-  for (let idx = 0; idx < 26; idx += 1) {
-    const mid = (low + high) / 2;
-    const candidate = resolvePlanSheetLayoutForScale({ model: input.model, scale: mid });
-    if (fitsWithinArea(candidate.annotatedBounds, candidate.fitArea)) {
-      best = candidate;
-      low = mid;
-    } else {
-      high = mid;
-    }
-  }
-  return best;
+  return resolveMeasuredFitLayout({
+    initialScale: resolvePlanFitBox(total.widthM, total.heightM, 'sheet', input.model.roofType === 'hip_corner').scale,
+    resolveForScale: (scale) => resolvePlanSheetLayoutForScale({ model: input.model, scale }),
+  });
 }
 
 function measureSectionAnnotatedBounds(input: {
@@ -2103,20 +2175,10 @@ function resolveSectionSheetLayout(input: {
 
   const extents = getSectionRealExtents(input.model);
   const fitFrame = getSectionSheetFrame(input.model.sectionKind);
-  let low = 0.05;
-  let high = Math.min(fitFrame.fitArea.width / Math.max(extents.widthM, 0.1), fitFrame.fitArea.height / Math.max(extents.heightM, 0.1));
-  let best = resolveSectionSheetLayoutForScale({ model: input.model, scale: low });
-  for (let idx = 0; idx < 26; idx += 1) {
-    const mid = (low + high) / 2;
-    const candidate = resolveSectionSheetLayoutForScale({ model: input.model, scale: mid });
-    if (fitsWithinArea(candidate.annotatedBounds, candidate.fitArea)) {
-      best = candidate;
-      low = mid;
-    } else {
-      high = mid;
-    }
-  }
-  return best;
+  return resolveMeasuredFitLayout({
+    initialScale: Math.min(fitFrame.fitArea.width / Math.max(extents.widthM, 0.1), fitFrame.fitArea.height / Math.max(extents.heightM, 0.1)),
+    resolveForScale: (scale) => resolveSectionSheetLayoutForScale({ model: input.model, scale }),
+  });
 }
 
 function PlanSvg({
@@ -2125,12 +2187,16 @@ function PlanSvg({
   presentation = 'card',
   drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
   sheetViewportMm,
+  debugScaleState,
+  scaleDiagnostics,
 }: {
   model: ModulePlanModel;
   idBase: string;
   presentation?: ModuleDrawingPresentation;
   drawingScale?: EstimateDrawingScale;
   sheetViewportMm?: { widthMm: number; heightMm: number };
+  debugScaleState?: ModuleDrawingScaleState | null;
+  scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
 }) {
   const isSheet = presentation === 'sheet';
   const isHipCorner = model.roofType === 'hip_corner';
@@ -2200,6 +2266,7 @@ function PlanSvg({
   const outerFieldOutline = sheetLayout?.outerField ?? null;
   const fitAreaOutline = sheetLayout?.fitArea ?? null;
   const annotatedBoundsOutline = sheetLayout?.annotatedBounds ?? null;
+  const debugMetrics = sheetLayout ? buildSheetDebugMetrics(sheetLayout, debugScaleState, scaleDiagnostics) : null;
   const houseLabelY = houseTopY + houseBandHeight * (isSheet ? 0.62 : 0.58);
   const hatchId = `${idBase}_house_hatch`;
 
@@ -2281,6 +2348,28 @@ function PlanSvg({
           data-debug-crop="bounds-plan"
           aria-hidden="true"
         />
+      ) : null}
+
+      {debugMetrics && outerFieldOutline ? (
+        <g className={styles.moduleDebugStats} aria-hidden="true">
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 1.6} className={styles.moduleDebugStatsText}>
+            {`req ${debugMetrics.requestedScaleLabel} -> ${debugMetrics.appliedScaleLabel}`}
+          </text>
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 3.1} className={styles.moduleDebugStatsText}>
+            {`bounds ${debugMetrics.boundsWidth.toFixed(1)} x ${debugMetrics.boundsHeight.toFixed(1)}`}
+          </text>
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 4.6} className={styles.moduleDebugStatsText}>
+            {`fit ${debugMetrics.fitWidth.toFixed(1)} x ${debugMetrics.fitHeight.toFixed(1)}`}
+          </text>
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 6.1} className={styles.moduleDebugStatsText}>
+            {`util ${Math.round(debugMetrics.utilizationX * 100)}% x  ${Math.round(debugMetrics.utilizationY * 100)}% y`}
+          </text>
+          {debugMetrics.candidateLines.map((line, idx) => (
+            <text key={`plan-debug-scale-${line}`} x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 7.6 + idx * 1.5} className={styles.moduleDebugStatsText}>
+              {line}
+            </text>
+          ))}
+        </g>
       ) : null}
 
       <rect x={houseLeftX} y={houseTopY} width={houseRightX - houseLeftX} height={houseBottomY - houseTopY} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} />
@@ -2464,11 +2553,15 @@ function SectionSvg({
   presentation = 'card',
   drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
   sheetViewportMm,
+  debugScaleState,
+  scaleDiagnostics,
 }: {
   model: ModuleSectionModel;
   presentation?: ModuleDrawingPresentation;
   drawingScale?: EstimateDrawingScale;
   sheetViewportMm?: { widthMm: number; heightMm: number };
+  debugScaleState?: ModuleDrawingScaleState | null;
+  scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
 }) {
   const isSheet = presentation === 'sheet';
   const sectionSheetLayout = isSheet ? resolveSectionSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
@@ -2503,6 +2596,7 @@ function SectionSvg({
   const outerFieldOutline = sectionSheetLayout?.outerField ?? null;
   const fitAreaOutline = sectionSheetLayout?.fitArea ?? null;
   const annotatedBoundsOutline = sectionSheetLayout?.annotatedBounds ?? null;
+  const debugMetrics = sectionSheetLayout ? buildSheetDebugMetrics(sectionSheetLayout, debugScaleState, scaleDiagnostics) : null;
   const chartWidth = Math.max(12, fitFrame.fitArea.width);
   const topMargin = fitFrame.fitArea.y;
   const safeSpanM = Math.max(totalSpanM, 0.1);
@@ -2730,6 +2824,28 @@ function SectionSvg({
           data-debug-crop="bounds-section"
           aria-hidden="true"
         />
+      ) : null}
+
+      {debugMetrics && outerFieldOutline ? (
+        <g className={styles.moduleDebugStats} aria-hidden="true">
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 1.6} className={styles.moduleDebugStatsText}>
+            {`req ${debugMetrics.requestedScaleLabel} -> ${debugMetrics.appliedScaleLabel}`}
+          </text>
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 3.1} className={styles.moduleDebugStatsText}>
+            {`bounds ${debugMetrics.boundsWidth.toFixed(1)} x ${debugMetrics.boundsHeight.toFixed(1)}`}
+          </text>
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 4.6} className={styles.moduleDebugStatsText}>
+            {`fit ${debugMetrics.fitWidth.toFixed(1)} x ${debugMetrics.fitHeight.toFixed(1)}`}
+          </text>
+          <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 6.1} className={styles.moduleDebugStatsText}>
+            {`util ${Math.round(debugMetrics.utilizationX * 100)}% x  ${Math.round(debugMetrics.utilizationY * 100)}% y`}
+          </text>
+          {debugMetrics.candidateLines.map((line, idx) => (
+            <text key={`section-debug-scale-${line}`} x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 7.6 + idx * 1.5} className={styles.moduleDebugStatsText}>
+              {line}
+            </text>
+          ))}
+        </g>
       ) : null}
 
       <rect x={Math.max(8, xLeft - 8)} y={yGround + 1.3} width={Math.min(104, xRight + 8) - Math.max(8, xLeft - 8)} height={8} className={styles.moduleSectionGroundFill} />

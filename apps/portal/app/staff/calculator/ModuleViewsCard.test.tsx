@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
-import ModuleViewsCard, { ModuleDrawingRenderer, getSuggestedModuleDrawingScale, resolveModuleDrawingScaleState } from './ModuleViewsCard';
+import ModuleViewsCard, {
+  ModuleDrawingRenderer,
+  getModuleDrawingScaleDiagnostics,
+  getSuggestedModuleDrawingScale,
+  resolveModuleDrawingScaleState,
+} from './ModuleViewsCard';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -169,6 +174,33 @@ describe('ModuleViewsCard', () => {
       fits: false,
       appliedScale: { mode: 'fit' },
       suggestedScale: { mode: 'fixed', ratio: 50 },
+    });
+  });
+
+  it('reports fixed-scale diagnostics for the current plan and section boundaries', () => {
+    const drawing = makeDrawingModule();
+    const planDiagnostics = getModuleDrawingScaleDiagnostics({
+      view: 'plan',
+      planModel: drawing.planModel,
+      sectionModel: drawing.sectionModel,
+    });
+    const sectionDiagnostics = getModuleDrawingScaleDiagnostics({
+      view: 'section',
+      planModel: drawing.planModel,
+      sectionModel: drawing.sectionModel,
+    });
+
+    expect(planDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 20)).toMatchObject({
+      fits: false,
+    });
+    expect(planDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 50)).toMatchObject({
+      fits: true,
+    });
+    expect(sectionDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 20)).toMatchObject({
+      fits: false,
+    });
+    expect(sectionDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 25)).toMatchObject({
+      fits: true,
     });
   });
 
