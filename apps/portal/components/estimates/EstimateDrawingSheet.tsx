@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { getSuggestedModuleDrawingScale, ModuleDrawingRenderer, resolveModuleDrawingScaleState } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import drawingStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
 import {
   estimateDrawingScaleKey,
@@ -17,7 +18,18 @@ import { getDrawingSheetViewportMm } from '@/lib/estimates/drawingSheetLayout';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import styles from './EstimateDrawingSheet.module.css';
 
-type LegendTone = 'primary' | 'secondary' | 'annotation' | 'dimension' | 'hidden';
+type LegendSourceClass =
+  | 'modulePlanPerimeter'
+  | 'modulePlanMemberEdge'
+  | 'modulePlanRafter'
+  | 'modulePlanSoffitBracket'
+  | 'moduleSectionPrimaryBeam'
+  | 'moduleSectionRoofMember'
+  | 'moduleSectionRidgeBeam'
+  | 'moduleSectionTieBeamPrimary'
+  | 'moduleSectionConnection'
+  | 'moduleDimLine'
+  | 'moduleDimTick';
 
 type EstimateDrawingSheetProps = {
   moduleLabel: string;
@@ -30,7 +42,10 @@ type EstimateDrawingSheetProps = {
 
 type LegendItem = {
   label: string;
-  tone: LegendTone;
+  sample: 'line' | 'dimension';
+  sourceClass: LegendSourceClass;
+  accentClass?: LegendSourceClass;
+  sampleKey: string;
 };
 
 type EstimateDrawingSheetScaleState = Record<ModuleViewsTab, EstimateDrawingScale>;
@@ -58,53 +73,61 @@ function buildLegendItems(
 ): LegendItem[] {
   if (view === 'plan') {
     const items: LegendItem[] = [
-      { label: 'Frame perimeter', tone: 'primary' },
+      { label: 'Primary structure', sample: 'line', sourceClass: 'modulePlanPerimeter', sampleKey: 'primary' },
+      { label: 'Roof framing', sample: 'line', sourceClass: 'modulePlanMemberEdge', sampleKey: 'secondary' },
+      { label: 'Roof field', sample: 'line', sourceClass: 'modulePlanRafter', sampleKey: 'tertiary' },
     ];
-    if (planModel?.roofType === 'gable' || planModel?.roofType === 'low_gable') {
-      items.push({ label: 'Ridge beam', tone: 'primary' });
-    }
-    items.push({ label: 'Rafters', tone: 'secondary' });
     if (planModel?.houseConnectionType === 'soffit') {
-      items.push({ label: 'Soffit brackets', tone: 'annotation' });
+      items.push({ label: 'Soffit brackets', sample: 'line', sourceClass: 'modulePlanSoffitBracket', sampleKey: 'annotation' });
     }
-    items.push({ label: 'House side', tone: 'hidden' });
-    items.push({ label: 'Dimensions', tone: 'dimension' });
+    items.push({ label: 'Dimensions', sample: 'dimension', sourceClass: 'moduleDimLine', accentClass: 'moduleDimTick', sampleKey: 'dimension' });
     return items;
   }
 
-  const hasOverhangSupport =
-    sectionModel?.sectionKind === 'mono' && Boolean(sectionModel?.overhangEnabled) && (sectionModel?.overhangAmountM ?? 0) > 0;
   const items: LegendItem[] = [
-    { label: 'Primary frame', tone: 'primary' },
+    { label: 'Primary structure', sample: 'line', sourceClass: 'moduleSectionPrimaryBeam', sampleKey: 'primary' },
   ];
   if (sectionModel?.sectionKind === 'gable') {
-    items.push({ label: 'Ridge beam', tone: 'primary' });
+    items.push({ label: 'Ridge beam', sample: 'line', sourceClass: 'moduleSectionRidgeBeam', sampleKey: 'ridge' });
+    items.push({ label: 'Tie beam', sample: 'line', sourceClass: 'moduleSectionTieBeamPrimary', sampleKey: 'tie' });
   }
-  items.push({ label: 'Roof members', tone: 'secondary' });
-  if (sectionModel?.sectionKind === 'gable') {
-    items.push({ label: 'Tie beam / king strut', tone: 'secondary' });
-  }
-  if (hasOverhangSupport) {
-    items.push({ label: 'Overhang support', tone: 'primary' });
-  }
-  items.push({ label: 'Datum / guide', tone: 'hidden' });
-  items.push({ label: 'Dimensions', tone: 'dimension' });
+  items.push({ label: 'Roof members', sample: 'line', sourceClass: 'moduleSectionRoofMember', sampleKey: 'secondary' });
+  items.push({ label: 'Datum / guide', sample: 'line', sourceClass: 'moduleSectionConnection', sampleKey: 'guide' });
+  items.push({ label: 'Dimensions', sample: 'dimension', sourceClass: 'moduleDimLine', accentClass: 'moduleDimTick', sampleKey: 'dimension' });
   return items;
 }
 
-function legendToneClassName(tone: LegendTone): string {
-  switch (tone) {
-    case 'secondary':
-      return styles.legendSwatchSecondary;
-    case 'annotation':
-      return styles.legendSwatchAnnotation;
-    case 'dimension':
-      return styles.legendSwatchDimension;
-    case 'hidden':
-      return styles.legendSwatchHidden;
-    default:
-      return styles.legendSwatchPrimary;
+function LegendSample({ item }: { item: LegendItem }) {
+  const className = drawingStyles[item.sourceClass];
+  const accentClassName = item.accentClass ? drawingStyles[item.accentClass] : null;
+
+  if (item.sample === 'dimension') {
+    return (
+      <svg
+        className={styles.legendSwatchSvg}
+        viewBox="0 0 24 8"
+        aria-hidden="true"
+        data-legend-sample={item.sampleKey}
+        data-source-class={item.sourceClass}
+      >
+        <line x1="2" y1="4" x2="22" y2="4" className={className} />
+        <line x1="4" y1="2.45" x2="2.55" y2="5.55" className={accentClassName ?? className} />
+        <line x1="21.45" y1="2.45" x2="20" y2="5.55" className={accentClassName ?? className} />
+      </svg>
+    );
   }
+
+  return (
+    <svg
+      className={styles.legendSwatchSvg}
+      viewBox="0 0 24 8"
+      aria-hidden="true"
+      data-legend-sample={item.sampleKey}
+      data-source-class={item.sourceClass}
+    >
+      <line x1="1" y1="4" x2="23" y2="4" className={className} />
+    </svg>
+  );
 }
 
 function splitNoteLines(note: string): string[] {
@@ -262,7 +285,7 @@ export default function EstimateDrawingSheet({
                   <div className={styles.legendList}>
                     {legendItems.map((item) => (
                       <div key={item.label} className={styles.legendItem}>
-                        <span className={`${styles.legendSwatch} ${legendToneClassName(item.tone)}`} aria-hidden="true" />
+                        <LegendSample item={item} />
                         <span>{item.label}</span>
                       </div>
                     ))}

@@ -179,75 +179,11 @@
   color: var(--mv-sheet-muted);
 }
 
-.legendSwatch {
-  position: relative;
+.legendSwatchSvg {
   display: block;
   width: 23px;
   height: 7px;
   flex: 0 0 auto;
-  color: currentColor;
-}
-
-.legendSwatch::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  border-top: 1.5px solid currentColor;
-  transform: translateY(-50%);
-}
-
-.legendSwatchPrimary {
-  color: var(--mv-line-primary);
-}
-
-.legendSwatchPrimary::before {
-  border-top-width: 2.18px;
-}
-
-.legendSwatchSecondary {
-  color: var(--mv-line-secondary);
-}
-
-.legendSwatchSecondary::before {
-  border-top-width: 0.82px;
-}
-
-.legendSwatchAnnotation {
-  color: var(--mv-line-annotation);
-}
-
-.legendSwatchAnnotation::before {
-  border-top-width: 0.68px;
-}
-
-.legendSwatchDimension {
-  color: var(--mv-dim);
-}
-
-.legendSwatchDimension::before {
-  border-top-width: 0.76px;
-}
-
-.legendSwatchDimension::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(45deg, transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px), currentColor calc(50% + 0.5px), transparent calc(50% + 0.5px))
-      left center / 6px 6px no-repeat,
-    linear-gradient(45deg, transparent calc(50% - 0.5px), currentColor calc(50% - 0.5px), currentColor calc(50% + 0.5px), transparent calc(50% + 0.5px))
-      right center / 6px 6px no-repeat;
-}
-
-.legendSwatchHidden {
-  color: var(--mv-line-hidden);
-}
-
-.legendSwatchHidden::before {
-  border-top-style: dashed;
-  border-top-width: 0.54px;
 }
 
 .sheetFooter {

@@ -324,6 +324,15 @@ type TickDimensionProps = {
   presentation?: ModuleDrawingPresentation;
 };
 
+type DimensionPresentationSpec = {
+  tickHalf: number;
+  barHalf: number;
+  barOffset: number;
+  labelClearance: number;
+  horizontalLabelGap: number;
+  verticalLabelGap: number;
+};
+
 function formatMetres(value: number): string {
   return `${value.toFixed(2)}m`;
 }
@@ -334,6 +343,28 @@ function formatMetresPrecise(value: number, decimals = 3): string {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function getDimensionPresentationSpec(presentation: ModuleDrawingPresentation): DimensionPresentationSpec {
+  if (presentation === 'sheet') {
+    return {
+      tickHalf: 0.74,
+      barHalf: 0.52,
+      barOffset: 0.42,
+      labelClearance: 2.05,
+      horizontalLabelGap: 2.15,
+      verticalLabelGap: 3.05,
+    };
+  }
+
+  return {
+    tickHalf: 0.96,
+    barHalf: 0.68,
+    barOffset: 0.52,
+    labelClearance: 1.82,
+    horizontalLabelGap: 2.05,
+    verticalLabelGap: 2.78,
+  };
 }
 
 function roofTypeLabel(roofType: ModulePlanModel['roofType']): string {
@@ -375,14 +406,14 @@ type PlanSheetFrame = {
 
 function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
   return {
-    leftPad: isHipCorner ? 16.4 : 15.8,
-    rightPad: isHipCorner ? 19.6 : 17.8,
-    topPad: 14.2,
-    bottomPad: isHipCorner ? 15.2 : 16.8,
-    houseBandHeight: 5.0,
-    houseBandOffset: 1.3,
-    houseInset: 1.2,
-    fallGap: 4.9,
+    leftPad: isHipCorner ? 12.8 : 12.2,
+    rightPad: isHipCorner ? 15.8 : 14.1,
+    topPad: 10.8,
+    bottomPad: isHipCorner ? 12.4 : 13.1,
+    houseBandHeight: 4.4,
+    houseBandOffset: 1.05,
+    houseInset: 0.95,
+    fallGap: 4.15,
   };
 }
 
@@ -460,8 +491,8 @@ type SectionFitFrame = {
 
 function getSectionSheetFrame(sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
   return sectionKind === 'gable'
-    ? { left: 13.4, width: 93.4, topMargin: 9.2, groundY: 76.4 }
-    : { left: 14.2, width: 91.2, topMargin: 10.2, groundY: 75.8 };
+    ? { left: 11.6, width: 97.4, topMargin: 7.1, groundY: 78.2 }
+    : { left: 12.1, width: 96.1, topMargin: 8.1, groundY: 77.6 };
 }
 
 function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
@@ -1035,6 +1066,7 @@ function TickDimension({
   presentation = 'card',
 }: TickDimensionProps) {
   const isSheet = presentation === 'sheet';
+  const dimSpec = getDimensionPresentationSpec(presentation);
   const dx = x2 - x1;
   const dy = y2 - y1;
   const len = Math.hypot(dx, dy) || 1;
@@ -1042,23 +1074,22 @@ function TickDimension({
   const uy = dy / len;
   const nx = -uy;
   const ny = ux;
-  const tickHalf = isSheet ? 0.82 : 1.02;
+  const tickHalf = dimSpec.tickHalf;
   const tx = (ux + nx) * tickHalf;
   const ty = (uy + ny) * tickHalf;
   const lineStartX = x1 - ux * overrun;
   const lineStartY = y1 - uy * overrun;
   const lineEndX = x2 + ux * overrun;
   const lineEndY = y2 + uy * overrun;
-  const barHalf = isSheet ? 0.58 : 0.72;
-  const barOffset = isSheet ? 0.46 : 0.55;
+  const barHalf = dimSpec.barHalf;
+  const barOffset = dimSpec.barOffset;
   const horizontalBias = Math.abs(dx) >= Math.abs(dy) * 1.35;
   const verticalBias = Math.abs(dy) > Math.abs(dx) * 1.35;
 
   const cx = (x1 + x2) / 2;
   const cy = (y1 + y2) / 2;
-  const labelClearance = isSheet ? 2.2 : 1.8;
-  const labelX = textX ?? (verticalBias ? cx - (isSheet ? 3.2 : 2.8) : horizontalBias ? cx : cx - nx * labelClearance);
-  const labelY = textY ?? (verticalBias ? cy : horizontalBias ? cy - (isSheet ? 2.4 : 2.1) : cy - ny * labelClearance);
+  const labelX = textX ?? (verticalBias ? cx - dimSpec.verticalLabelGap : horizontalBias ? cx : cx - nx * dimSpec.labelClearance);
+  const labelY = textY ?? (verticalBias ? cy : horizontalBias ? cy - dimSpec.horizontalLabelGap : cy - ny * dimSpec.labelClearance);
   const labelRotate = rotateDeg ?? (verticalBias ? -90 : undefined);
 
   return (
@@ -1153,7 +1184,6 @@ function PlanSvg({
   const topFrameW = memberSizeM(model.ledgerBeamWidthM, 0.05) * scale;
   const sideFrameW = memberSizeM(model.supportBeamWidthM, 0.05) * scale;
   const gutterW = memberSizeM(model.gutterWidthM, 0.1) * scale;
-  const rafterW = memberSizeM(model.rafterWidthM, 0.05) * scale;
   const ridgeBandW = memberSizeM(model.ridgeBeamWidthM, 0.05) * scale;
   const ridgeBandX = x + sideFrameW;
   const ridgeBandWidth = Math.max(0, aW - sideFrameW * 2);
@@ -1202,10 +1232,13 @@ function PlanSvg({
   const fallBottom = (isHipCorner ? bottomY : y + aH) - (isSheet ? 1.5 : 1);
   const fallLabelX = fallX + (isSheet ? 0.62 : 2.3);
   const fallLabelY = (fallTop + fallBottom) / 2 + (isSheet ? 0.18 : 0);
+  const dimensionOffsets = isSheet
+    ? { bottom: 7.8, secondary: 5.4, tertiary: 6.15, side: 5.6, hipSide: 5.9 }
+    : { bottom: 7.1, secondary: 5.1, tertiary: 5.8, side: 7.0, hipSide: 7.2 };
 
-  const dimBaseY = Math.min(87.6, bottomY + (isSheet ? 8.9 : 7.8));
-  const secondaryDimY = Math.min(88.8, dimBaseY + (isSheet ? 6.0 : 5.4));
-  const rafterDimY = Math.min(89.1, dimBaseY + (isSheet ? 6.9 : 6.1));
+  const dimBaseY = Math.min(87.4, bottomY + dimensionOffsets.bottom);
+  const secondaryDimY = Math.min(88.5, dimBaseY + dimensionOffsets.secondary);
+  const rafterDimY = Math.min(88.9, dimBaseY + dimensionOffsets.tertiary);
 
   const yTopInner = y + topFrameW;
   const yBottomInner = y + aH - gutterW;
@@ -1240,15 +1273,20 @@ function PlanSvg({
       <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} />
       {!isHipCorner ? (
         <>
-          <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanMemberBand} />
-          <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanMemberBand} />
-          <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanMemberBand} />
-          <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanMemberBand} />
+          <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanPrimaryZone} />
+          <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanPrimaryZone} />
+          <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+          <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+          <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
+          <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + topFrameW} className={styles.modulePlanMemberEdge} />
+          <line x1={x + sideFrameW} y1={y + aH - gutterW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+          <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+          <line x1={x + aW - sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
         </>
       ) : (
         <>
           <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
-          {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanPerimeter} /> : null}
+          {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanMemberEdge} /> : null}
         </>
       )}
 
@@ -1271,18 +1309,26 @@ function PlanSvg({
       {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
 
       {rafterXsA.map((rx) => (
-        <g key={`rafter_a_${rx.toFixed(3)}`}>
-          <line x1={rx - rafterW / 2} y1={yTopInner} x2={rx - rafterW / 2} y2={isHipCorner ? splitY - gutterW : yBottomInner} className={styles.modulePlanRafter} />
-          <line x1={rx + rafterW / 2} y1={yTopInner} x2={rx + rafterW / 2} y2={isHipCorner ? splitY - gutterW : yBottomInner} className={styles.modulePlanRafter} />
-        </g>
+        <line
+          key={`rafter_a_${rx.toFixed(3)}`}
+          x1={rx}
+          y1={yTopInner}
+          x2={rx}
+          y2={isHipCorner ? splitY - gutterW : yBottomInner}
+          className={styles.modulePlanRafter}
+        />
       ))}
 
       {isHipCorner
         ? rafterXsB.map((rx) => (
-            <g key={`rafter_b_${rx.toFixed(3)}`}>
-              <line x1={rx - rafterW / 2} y1={splitY + topFrameW} x2={rx - rafterW / 2} y2={bottomY - gutterW} className={styles.modulePlanRafter} />
-              <line x1={rx + rafterW / 2} y1={splitY + topFrameW} x2={rx + rafterW / 2} y2={bottomY - gutterW} className={styles.modulePlanRafter} />
-            </g>
+            <line
+              key={`rafter_b_${rx.toFixed(3)}`}
+              x1={rx}
+              y1={splitY + topFrameW}
+              x2={rx}
+              y2={bottomY - gutterW}
+              className={styles.modulePlanRafter}
+            />
           ))
         : null}
 
@@ -1333,12 +1379,12 @@ function PlanSvg({
       <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
       <TickDimension x1={x} y1={dimBaseY} x2={x + aW} y2={dimBaseY} label={formatMetres(model.lengthA)} presentation={presentation} />
 
-      <line x1={x} y1={y} x2={x - (isSheet ? 6.4 : 7.4)} y2={y} className={styles.moduleDimWitness} />
-      <line x1={x} y1={y + aH} x2={x - (isSheet ? 6.4 : 7.4)} y2={y + aH} className={styles.moduleDimWitness} />
+      <line x1={x} y1={y} x2={x - dimensionOffsets.side} y2={y} className={styles.moduleDimWitness} />
+      <line x1={x} y1={y + aH} x2={x - dimensionOffsets.side} y2={y + aH} className={styles.moduleDimWitness} />
       <TickDimension
-        x1={x - (isSheet ? 6.4 : 7.4)}
+        x1={x - dimensionOffsets.side}
         y1={y}
-        x2={x - (isSheet ? 6.4 : 7.4)}
+        x2={x - dimensionOffsets.side}
         y2={y + aH}
         label={formatMetres(model.spanA)}
         presentation={presentation}
@@ -1357,12 +1403,12 @@ function PlanSvg({
             presentation={presentation}
           />
 
-          <line x1={x + bW} y1={splitY} x2={x + bW + (isSheet ? 6.8 : 7.4)} y2={splitY} className={styles.moduleDimWitness} />
-          <line x1={x + bW} y1={bottomY} x2={x + bW + (isSheet ? 6.8 : 7.4)} y2={bottomY} className={styles.moduleDimWitness} />
+          <line x1={x + bW} y1={splitY} x2={x + bW + dimensionOffsets.hipSide} y2={splitY} className={styles.moduleDimWitness} />
+          <line x1={x + bW} y1={bottomY} x2={x + bW + dimensionOffsets.hipSide} y2={bottomY} className={styles.moduleDimWitness} />
           <TickDimension
-            x1={x + bW + (isSheet ? 6.8 : 7.4)}
+            x1={x + bW + dimensionOffsets.hipSide}
             y1={splitY}
-            x2={x + bW + (isSheet ? 6.8 : 7.4)}
+            x2={x + bW + dimensionOffsets.hipSide}
             y2={bottomY}
             label={formatMetres(model.spanB)}
             presentation={presentation}
@@ -1522,6 +1568,7 @@ function SectionSvg({
   const spanDatumY = Math.max(spanAnchorLeftY, spanAnchorSupportY, spanAnchorRightY);
   const spanDimY = Math.min(89.2, Math.max(yGround + (isSheet ? 10.9 : 10.2), spanDatumY + (isSheet ? 9.4 : 8.4)));
   const overhangDimY = Math.max(spanAnchorRightY + (isSheet ? 4.9 : 4.2), spanDimY - (isSheet ? 5.8 : 5.2));
+  const roofLengthLabelGap = isSheet ? 1.6 : 1.2;
 
   const mainRoofNormal = segmentDownNormal(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder);
   const ridgeLeftX = ridgeX - ridgeBeamWidth / 2;
@@ -1631,12 +1678,12 @@ function SectionSvg({
         y={ledgerY}
         width={leftEaveWidth}
         height={leftEaveDepth}
-        className={model.sectionKind === 'gable' ? styles.moduleSectionGutter : styles.moduleSectionPrimaryBeam}
+        className={styles.moduleSectionPrimaryBeam}
       />
       {model.sectionKind === 'mono' && overhangM > 0 ? (
         <rect x={xSupport - supportCapWidth / 2} y={supportCapTopY} width={supportCapWidth} height={supportCapDepth} className={styles.moduleSectionPrimaryBeam} />
       ) : model.sectionKind === 'gable' ? (
-        <rect x={rightEaveX} y={rightEaveY} width={rightEaveBeamWidth} height={rightEaveBeamDepth} className={styles.moduleSectionGutter} />
+        <rect x={rightEaveX} y={rightEaveY} width={rightEaveBeamWidth} height={rightEaveBeamDepth} className={styles.moduleSectionPrimaryBeam} />
       ) : null}
 
       {model.sectionKind === 'gable' && yRidgeUnder !== null ? (
@@ -1646,14 +1693,14 @@ function SectionSvg({
             y={tieBeamTopY}
             width={Math.max(0.4, tieBeamRightX - tieBeamLeftX)}
             height={Math.max(0.2, tieBeamBottomY - tieBeamTopY)}
-            className={styles.moduleSectionSecondaryMember}
+            className={styles.moduleSectionTieBeamPrimary}
           />
           <rect
             x={ridgeX - kingStrutWidth / 2}
             y={yRidgeUnder}
             width={kingStrutWidth}
             height={Math.max(0.2, kingStrutBottomY - yRidgeUnder)}
-            className={styles.moduleSectionSecondaryMember}
+            className={styles.moduleSectionKingStrut}
           />
         </>
       ) : null}
@@ -1713,7 +1760,7 @@ function SectionSvg({
             textX={(() => {
               const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
               return (roofDim.dimStart.x + roofDim.dimEnd.x) / 2 - roofNormal.nx * (isSheet ? 1.4 : 1.1);
-            })()}
+            })() - (segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y).nx * roofLengthLabelGap)}
             textY={(() => {
               const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
               return (roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - roofNormal.ny * (isSheet ? 1.4 : 1.1);

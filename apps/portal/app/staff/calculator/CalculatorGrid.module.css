@@ -2450,21 +2450,29 @@
   fill: var(--mv-structure-fill);
 }
 
+.modulePlanPrimaryZone {
+  fill: var(--mv-panel-fill-soft);
+  opacity: 0.12;
+}
+
 .modulePlanPerimeter {
   fill: none;
   stroke: var(--mv-line-primary);
-  stroke-linejoin: miter;
-  stroke-miterlimit: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-miterlimit: 1.5;
   stroke-width: var(--mv-line-major-width);
   vector-effect: non-scaling-stroke;
 }
 
-.modulePlanMemberBand {
+.modulePlanMemberBand,
+.modulePlanMemberEdge {
   fill: none;
-  stroke: var(--mv-line-primary);
-  stroke-linejoin: miter;
-  stroke-miterlimit: 2.5;
-  stroke-width: var(--mv-line-major-width);
+  stroke: var(--mv-line-secondary);
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-miterlimit: 1.5;
+  stroke-width: var(--mv-line-secondary-width);
   vector-effect: non-scaling-stroke;
 }
 
@@ -2486,8 +2494,9 @@
 .modulePlanRidgeBand {
   fill: var(--mv-panel-fill-soft);
   stroke: var(--mv-line-primary);
-  stroke-linejoin: miter;
-  stroke-miterlimit: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-miterlimit: 1.5;
   stroke-width: var(--mv-line-major-emphasis-width);
   vector-effect: non-scaling-stroke;
 }
@@ -2495,7 +2504,7 @@
 .modulePlanHipLine {
   stroke: var(--mv-line-secondary);
   stroke-linecap: square;
-  stroke-width: var(--mv-line-minor-width);
+  stroke-width: var(--mv-line-secondary-width);
   vector-effect: non-scaling-stroke;
 }
 
@@ -2507,9 +2516,9 @@
 }
 
 .modulePlanRafter {
-  stroke: var(--mv-line-rhythm);
+  stroke: var(--mv-line-tertiary);
   stroke-linecap: square;
-  stroke-width: var(--mv-line-minor-width);
+  stroke-width: var(--mv-line-tertiary-width);
   vector-effect: non-scaling-stroke;
 }
 
@@ -2548,16 +2557,16 @@
 }
 
 .moduleFallLine {
-  stroke: var(--mv-line-annotation);
-  stroke-width: var(--mv-line-annotation-width);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-guide-width);
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleFallHead {
   fill: none;
-  stroke: var(--mv-line-annotation);
-  stroke-width: var(--mv-line-annotation-width);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-guide-width);
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
@@ -2600,7 +2609,7 @@
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
   stroke-linecap: square;
-  opacity: 0.8;
+  opacity: 0.68;
   vector-effect: non-scaling-stroke;
 }
 
@@ -2608,7 +2617,7 @@
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
   stroke-dasharray: var(--mv-dash-guide);
-  opacity: 0.52;
+  opacity: 0.42;
   vector-effect: non-scaling-stroke;
 }
 
@@ -2648,16 +2657,20 @@
 .moduleSectionPrimaryBeam,
 .moduleSectionPostPrimary,
 .moduleSectionSecondaryMember,
-.moduleSectionRoofMember {
+.moduleSectionRoofMember,
+.moduleSectionTieBeamPrimary,
+.moduleSectionKingStrut {
   fill: none;
-  stroke-linejoin: miter;
-  stroke-miterlimit: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-miterlimit: 1.5;
   vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionPrimaryBeam,
 .moduleSectionLedger,
-.moduleSectionOverhangBeam {
+.moduleSectionOverhangBeam,
+.moduleSectionTieBeamPrimary {
   fill: none;
   stroke: var(--mv-line-primary);
   stroke-linecap: square;
@@ -2678,30 +2691,38 @@
 }
 
 .moduleSectionSecondaryMember {
-  stroke: var(--mv-line-rhythm);
-  stroke-width: var(--mv-line-minor-width);
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-secondary-width);
+}
+
+.moduleSectionKingStrut {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-secondary-width);
 }
 
 .moduleSectionRoofMember {
-  stroke: var(--mv-line-rhythm);
-  stroke-width: var(--mv-line-minor-width);
+  fill: var(--mv-structure-fill);
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-secondary-width);
 }
 
 .moduleSectionRidgeBeam {
   fill: var(--mv-panel-fill-soft);
   stroke: var(--mv-line-primary);
-  stroke-linejoin: miter;
-  stroke-miterlimit: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-miterlimit: 1.5;
   stroke-width: var(--mv-line-major-emphasis-width);
   vector-effect: non-scaling-stroke;
 }
 
 .moduleSectionGutter {
   fill: none;
-  stroke: var(--mv-line-secondary);
-  stroke-linejoin: miter;
-  stroke-miterlimit: 2.5;
-  stroke-width: var(--mv-line-minor-width);
+  stroke: var(--mv-line-tertiary);
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  stroke-miterlimit: 1.5;
+  stroke-width: var(--mv-line-tertiary-width);
   vector-effect: non-scaling-stroke;
 }
 
