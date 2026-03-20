@@ -1,11 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { ModuleDrawingRenderer } from '@/app/staff/calculator/ModuleViewsCard';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getSuggestedModuleDrawingScale, ModuleDrawingRenderer, resolveModuleDrawingScaleState } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
-import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import {
+  estimateDrawingScaleKey,
+  formatEstimateDrawingScale,
+  getEstimateDrawingScaleOptions,
+  parseEstimateDrawingScaleKey,
+  type EstimateDrawingScale,
+  type EstimateDrawingSheetMeta,
+} from '@/lib/estimates/drawingSheet';
+import { getDrawingSheetViewportMm } from '@/lib/estimates/drawingSheetLayout';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import styles from './EstimateDrawingSheet.module.css';
 
@@ -25,8 +33,22 @@ type LegendItem = {
   tone: LegendTone;
 };
 
+type EstimateDrawingSheetScaleState = Record<ModuleViewsTab, EstimateDrawingScale>;
+
+const SHEET_VIEWPORT_MM = getDrawingSheetViewportMm();
+
 function cx(...values: Array<string | false | null | undefined>): string {
   return values.filter(Boolean).join(' ');
+}
+
+function buildScaleState(
+  planModel?: ModulePlanModel | null,
+  sectionModel?: ModuleSectionModel | null,
+): EstimateDrawingSheetScaleState {
+  return {
+    plan: getSuggestedModuleDrawingScale({ view: 'plan', planModel, sectionModel, viewportMm: SHEET_VIEWPORT_MM }),
+    section: getSuggestedModuleDrawingScale({ view: 'section', planModel, sectionModel, viewportMm: SHEET_VIEWPORT_MM }),
+  };
 }
 
 function buildLegendItems(
@@ -104,14 +126,41 @@ export default function EstimateDrawingSheet({
 }: EstimateDrawingSheetProps) {
   const sheetPaperRef = useRef<HTMLElement | null>(null);
   const [sheetWidthPx, setSheetWidthPx] = useState(0);
+  const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() => buildScaleState(planModel, sectionModel));
   const viewLabel = view === 'plan' ? 'Plan view' : 'Section view';
   const legendItems = buildLegendItems(view, planModel, sectionModel);
   const noteLines = splitNoteLines(meta.note);
   const isCompactSheet = sheetWidthPx > 0 && sheetWidthPx < 760;
+  const scaleOptions = getEstimateDrawingScaleOptions(view).map((option) => ({
+    value: estimateDrawingScaleKey(option),
+    label: option.mode === 'fit' ? 'Fit / NTS' : formatEstimateDrawingScale(option),
+    disabled:
+      option.mode === 'fixed' &&
+      !resolveModuleDrawingScaleState({
+        view,
+        requestedScale: option,
+        planModel,
+        sectionModel,
+        viewportMm: SHEET_VIEWPORT_MM,
+      }).fits,
+  }));
+  const currentScale = selectedScales[view];
+  const currentScaleState = resolveModuleDrawingScaleState({
+    view,
+    requestedScale: currentScale,
+    planModel,
+    sectionModel,
+    viewportMm: SHEET_VIEWPORT_MM,
+  });
+  const scaleDisplay = formatEstimateDrawingScale(currentScaleState.appliedScale);
+  const scaleWarning =
+    currentScaleState.requestedScale.mode === 'fixed' && !currentScaleState.fits
+      ? `Selected ${formatEstimateDrawingScale(currentScaleState.requestedScale)} exceeds the A3 drawing area. Using ${formatEstimateDrawingScale(currentScaleState.appliedScale)} preview.`
+      : null;
   const titleMetaItems = [
     { label: 'Sheet', value: meta.sheetCode },
     { label: 'Revision', value: meta.revision },
-    { label: 'Scale', value: meta.scale },
+    { label: 'Scale', value: scaleDisplay },
     { label: 'Date', value: meta.date },
   ];
   const footerMetaItems = [
@@ -134,6 +183,40 @@ export default function EstimateDrawingSheet({
     return () => observer.disconnect();
   }, []);
 
+  const scaleResetKey = useMemo(
+    () =>
+      [
+        moduleLabel,
+        planModel?.roofType ?? '-',
+        planModel?.lengthA ?? '-',
+        planModel?.spanA ?? '-',
+        planModel?.lengthB ?? '-',
+        planModel?.spanB ?? '-',
+        sectionModel?.sectionKind ?? '-',
+        sectionModel?.spanA ?? '-',
+        sectionModel?.leftEdgeHeightM ?? '-',
+        sectionModel?.rightEdgeHeightM ?? '-',
+        sectionModel?.ridgeHeightM ?? '-',
+      ].join('|'),
+    [
+      moduleLabel,
+      planModel?.roofType,
+      planModel?.lengthA,
+      planModel?.spanA,
+      planModel?.lengthB,
+      planModel?.spanB,
+      sectionModel?.sectionKind,
+      sectionModel?.spanA,
+      sectionModel?.leftEdgeHeightM,
+      sectionModel?.rightEdgeHeightM,
+      sectionModel?.ridgeHeightM,
+    ],
+  );
+
+  useEffect(() => {
+    setSelectedScales(buildScaleState(planModel, sectionModel));
+  }, [scaleResetKey]);
+
   return (
     <div className={styles.sheetShell}>
       <div className={styles.sheetScroller}>
@@ -153,10 +236,25 @@ export default function EstimateDrawingSheet({
             </div>
 
             <div className={cx(styles.sheetInfoRail, isCompactSheet && styles.sheetInfoRailCompact)}>
-              <div className={styles.sheetScaleBox} aria-label="Drawing scale">
-                <div className={styles.scaleKicker}>Scale</div>
-                <div className={styles.scaleValue}>{meta.scale}</div>
-              </div>
+              <label className={styles.sheetScaleBox}>
+                <span className={styles.scaleKicker}>Scale</span>
+                <select
+                  className={styles.scaleSelect}
+                  aria-label="Drawing scale"
+                  value={estimateDrawingScaleKey(currentScale)}
+                  onChange={(event) => {
+                    const nextScale = parseEstimateDrawingScaleKey(event.target.value);
+                    setSelectedScales((prev) => ({ ...prev, [view]: nextScale }));
+                  }}
+                >
+                  {scaleOptions.map((option) => (
+                    <option key={option.value} value={option.value} disabled={option.disabled}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {scaleWarning ? <span className={styles.scaleWarning}>{scaleWarning}</span> : null}
+              </label>
 
               <aside className={cx(styles.legendBox, isCompactSheet && styles.legendBoxCompact)} aria-label="Drawing legend">
                 <div className={styles.legendTitle}>Legend</div>
@@ -179,6 +277,8 @@ export default function EstimateDrawingSheet({
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="sheet"
+                drawingScale={currentScale}
+                sheetViewportMm={SHEET_VIEWPORT_MM}
               />
             </div>
           </div>

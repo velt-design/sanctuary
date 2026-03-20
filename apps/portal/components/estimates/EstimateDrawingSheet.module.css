@@ -32,26 +32,26 @@
   grid-template-columns: minmax(0, 1fr) 172px;
   grid-template-rows: auto minmax(0, 1fr);
   column-gap: 24px;
-  row-gap: 16px;
-  padding: 24px 26px 14px;
+  row-gap: 15px;
+  padding: 23px 26px 14px;
 }
 
 .sheetHeader {
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 9px;
+  gap: 10px;
 }
 
 .sheetHeaderCopy {
   display: grid;
-  gap: 4px;
+  gap: 5px;
 }
 
 .sheetEyebrow {
-  font-size: 7pt;
+  font-size: 6.85pt;
   font-weight: 500;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--mv-sheet-muted);
 }
@@ -67,7 +67,7 @@
 }
 
 .sheetHeaderRule {
-  width: min(100%, 420px);
+  width: min(100%, 392px);
   height: 1px;
   background: var(--mv-sheet-divider);
 }
@@ -94,7 +94,7 @@
 .sheetScaleBox {
   padding: 11px 14px 12px;
   display: grid;
-  gap: 3px;
+  gap: 4px;
   background: var(--mv-sheet-scale-bg);
 }
 
@@ -106,10 +106,29 @@
   color: var(--mv-sheet-muted);
 }
 
-.scaleValue {
+.scaleSelect {
+  width: 100%;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font: inherit;
   font-size: 8.1pt;
   font-weight: 500;
   color: var(--mv-sheet-text);
+  appearance: none;
+  cursor: pointer;
+}
+
+.scaleSelect:focus {
+  outline: none;
+}
+
+.scaleWarning {
+  font-size: 6.25pt;
+  line-height: 1.22;
+  color: var(--mv-sheet-muted);
+  opacity: 0.92;
 }
 
 .drawingViewport {
@@ -228,7 +247,7 @@
 .sheetFooter {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(190px, 0.98fr) minmax(408px, 1.2fr);
-  gap: 14px;
+  gap: 13px;
   align-items: end;
   padding: 8px 26px 10px;
   border-top: 1px solid var(--mv-sheet-divider);
@@ -250,7 +269,7 @@
 
 .companyName {
   font-family: var(--mv-font-display);
-  font-size: 9.4pt;
+  font-size: 9.15pt;
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.012em;
@@ -259,62 +278,68 @@
 }
 
 .companyLine {
-  font-size: 6.8pt;
+  font-size: 6.55pt;
   font-weight: 400;
-  line-height: 1.24;
+  line-height: 1.18;
   color: var(--mv-sheet-muted);
+  opacity: 0.84;
 }
 
 .noteBlock {
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 7px;
+  gap: 5px;
   align-self: end;
+  justify-self: end;
+  max-width: 252px;
   padding-bottom: 2px;
 }
 
 .blockLabel {
-  font-size: 6.95pt;
+  font-size: 6.55pt;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--mv-sheet-muted);
+  opacity: 0.82;
 }
 
 .noteLabel {
-  font-size: 6.8pt;
+  font-size: 6.45pt;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--mv-sheet-muted);
+  opacity: 0.82;
   white-space: nowrap;
 }
 
 .noteInline {
-  font-size: 6.95pt;
+  font-size: 6.75pt;
   font-weight: 400;
-  line-height: 1.2;
+  line-height: 1.18;
   color: var(--mv-sheet-muted);
+  opacity: 0.9;
 }
 
 .infoCluster {
   justify-self: end;
   width: min(100%, 468px);
-  padding: 8px 12px 9px;
+  padding: 9px 13px 10px;
   display: grid;
-  gap: 6px;
+  gap: 7px;
   align-self: end;
   border: 1px solid var(--mv-sheet-divider);
   border-radius: 8px;
-  background: rgba(244, 244, 239, 0.46);
+  background: rgba(244, 244, 239, 0.42);
 }
 
 .clusterTopRow {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, max-content));
   justify-content: start;
-  gap: 8px 18px;
+  gap: 8px 17px;
   align-items: end;
 }
 
@@ -325,7 +350,7 @@
 }
 
 .clusterMetaValue {
-  font-size: 7.55pt;
+  font-size: 7.45pt;
   font-weight: 600;
   line-height: 1.04;
   color: var(--mv-sheet-text);
@@ -334,22 +359,23 @@
 
 .titleInfoBlock {
   display: grid;
-  gap: 1px;
-  padding-top: 1px;
+  gap: 2px;
+  padding-top: 2px;
+  padding-bottom: 1px;
 }
 
 .blockValue {
-  font-size: 10pt;
+  font-size: 10.25pt;
   font-weight: 500;
-  line-height: 1.03;
+  line-height: 1.06;
   letter-spacing: -0.015em;
   color: var(--mv-sheet-text);
 }
 
 .titleSubValue {
-  font-size: 6.95pt;
+  font-size: 6.9pt;
   font-weight: 400;
-  line-height: 1.18;
+  line-height: 1.22;
   color: var(--mv-sheet-muted);
 }
 
@@ -357,9 +383,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, max-content));
   justify-content: start;
-  gap: 10px 22px;
+  gap: 8px 22px;
   align-items: end;
-  padding-top: 5px;
+  padding-top: 6px;
   border-top: 1px solid var(--mv-sheet-divider);
 }
 
@@ -371,7 +397,7 @@
 }
 
 .metaValue {
-  font-size: 7.05pt;
+  font-size: 6.95pt;
   font-weight: 400;
   line-height: 1.16;
   color: var(--mv-sheet-muted);
@@ -416,6 +442,8 @@
     align-items: flex-start;
     flex-direction: column;
     gap: 3px;
+    justify-self: stretch;
+    max-width: none;
   }
 
   .infoCluster {
@@ -471,5 +499,16 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 3px;
+    max-width: none;
+  }
+}
+
+@media print {
+  .sheetPaper {
+    width: 420mm;
+    height: 297mm;
+    aspect-ratio: auto;
+    box-shadow: none;
+    break-inside: avoid;
   }
 }

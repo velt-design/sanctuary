@@ -1,11 +1,17 @@
 export type EstimateDrawingSheetView = 'plan' | 'section';
 
+export const ESTIMATE_DRAWING_FIXED_SCALE_VALUES = [10, 20, 25, 50, 100] as const;
+
+export type EstimateDrawingFixedScaleValue = (typeof ESTIMATE_DRAWING_FIXED_SCALE_VALUES)[number];
+
+export type EstimateDrawingScale = { mode: 'fit' } | { mode: 'fixed'; ratio: EstimateDrawingFixedScaleValue };
+
 export type EstimateDrawingSheetMeta = {
   drawingTitle: string;
   siteAddress: string;
   sheetCode: string;
   revision: string;
-  scale: string;
+  scale: EstimateDrawingScale;
   date: string;
   client: string;
   issue: string;
@@ -23,6 +29,43 @@ export type BuildEstimateDrawingSheetMetaInput = {
 };
 
 export const DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE = 'Do not scale off portal preview. Verify all dimensions on site.';
+
+export const DEFAULT_ESTIMATE_DRAWING_SCALE: EstimateDrawingScale = { mode: 'fit' };
+
+export function formatEstimateDrawingScale(scale: EstimateDrawingScale): string {
+  return scale.mode === 'fit' ? 'NTS' : `1:${scale.ratio}`;
+}
+
+export function estimateDrawingScaleKey(scale: EstimateDrawingScale): string {
+  return scale.mode === 'fit' ? 'fit' : `1:${scale.ratio}`;
+}
+
+export function parseEstimateDrawingScaleKey(value: string): EstimateDrawingScale {
+  if (value === 'fit') return DEFAULT_ESTIMATE_DRAWING_SCALE;
+  const match = value.match(/^1:(10|20|25|50|100)$/);
+  if (!match) return DEFAULT_ESTIMATE_DRAWING_SCALE;
+  return { mode: 'fixed', ratio: Number(match[1]) as EstimateDrawingFixedScaleValue };
+}
+
+export function getEstimateDrawingScaleOptions(view: EstimateDrawingSheetView): EstimateDrawingScale[] {
+  if (view === 'section') {
+    return [
+      DEFAULT_ESTIMATE_DRAWING_SCALE,
+      { mode: 'fixed', ratio: 10 },
+      { mode: 'fixed', ratio: 20 },
+      { mode: 'fixed', ratio: 25 },
+      { mode: 'fixed', ratio: 50 },
+    ];
+  }
+
+  return [
+    DEFAULT_ESTIMATE_DRAWING_SCALE,
+    { mode: 'fixed', ratio: 20 },
+    { mode: 'fixed', ratio: 25 },
+    { mode: 'fixed', ratio: 50 },
+    { mode: 'fixed', ratio: 100 },
+  ];
+}
 
 function trimOrNull(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -51,7 +94,7 @@ export function buildEstimateDrawingSheetMeta(input: BuildEstimateDrawingSheetMe
     siteAddress: trimOrNull(input.siteAddress) ?? projectName ?? 'Project address not set',
     sheetCode: isPlan ? 'P-01' : 'S-01',
     revision: trimOrNull(input.versionLabel) ?? 'V-',
-    scale: 'NTS',
+    scale: DEFAULT_ESTIMATE_DRAWING_SCALE,
     date: formatSheetDate(input.estimateDate),
     client: trimOrNull(input.clientName) ?? 'Not set',
     issue: 'Portal preview',
