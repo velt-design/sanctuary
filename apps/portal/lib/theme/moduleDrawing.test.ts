@@ -21,10 +21,10 @@ describe('moduleDrawingThemeCssVariables', () => {
     expect(minimalVars['--mv-stage-border']).toBe('transparent');
     expect(minimalVars['--mv-svg-bg']).toBe('transparent');
     expect(sheetVars['--mv-sheet-border']).toBeTruthy();
-    expect(sheetVars['--mv-line-primary']).toBe('rgba(47, 56, 47, 0.84)');
-    expect(sheetVars['--mv-line-major-width']).toBe('0.46');
-    expect(sheetVars['--mv-line-secondary-width']).toBe('0.24');
-    expect(sheetVars['--mv-line-tertiary-width']).toBe('0.15');
+    expect(sheetVars['--mv-line-primary']).toBe('rgba(47, 56, 47, 0.8)');
+    expect(sheetVars['--mv-line-major-width']).toBe('0.37');
+    expect(sheetVars['--mv-line-secondary-width']).toBe('0.26');
+    expect(sheetVars['--mv-line-tertiary-width']).toBe('0.17');
     expect(sheetVars['--mv-line-minor-width']).toBe('0.22');
     expect(sheetVars['--mv-text-dimension-size']).toBe('2.18px');
     expect(sheetVars['--mv-line-hidden']).not.toBe(PREMIUM_MODULE_DRAWING_THEME.color.ghostLine);

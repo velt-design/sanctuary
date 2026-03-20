@@ -2446,6 +2446,14 @@
   text-transform: uppercase;
 }
 
+.moduleDebugCropOutline {
+  fill: none;
+  stroke: #e53935;
+  stroke-width: 0.24;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 .modulePlanFill {
   fill: var(--mv-structure-fill);
 }
@@ -2516,7 +2524,9 @@
 }
 
 .modulePlanRafter {
+  fill: none;
   stroke: var(--mv-line-tertiary);
+  stroke-linejoin: round;
   stroke-linecap: square;
   stroke-width: var(--mv-line-tertiary-width);
   vector-effect: non-scaling-stroke;
@@ -2609,7 +2619,7 @@
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
   stroke-linecap: square;
-  opacity: 0.68;
+  opacity: 0.82;
   vector-effect: non-scaling-stroke;
 }
 
@@ -2617,7 +2627,7 @@
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-guide-width);
   stroke-dasharray: var(--mv-dash-guide);
-  opacity: 0.42;
+  opacity: 0.58;
   vector-effect: non-scaling-stroke;
 }
 

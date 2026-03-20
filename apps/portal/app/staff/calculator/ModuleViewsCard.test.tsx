@@ -113,6 +113,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('Geometry OK');
     expect(markup).toContain('Not to scale');
     expect(markup).toContain('aria-label="Module plan view"');
+    expect(markup).not.toContain('data-debug-crop=');
   });
 
   it('suggests the largest architectural plan scale that fits the A3 sheet viewport', () => {
@@ -142,7 +143,7 @@ describe('ModuleViewsCard', () => {
 
     expect(getSuggestedModuleDrawingScale({ view: 'section', planModel: drawing.planModel, sectionModel: drawing.sectionModel })).toEqual({
       mode: 'fixed',
-      ratio: 20,
+      ratio: 25,
     });
   });
 });

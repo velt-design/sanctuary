@@ -56,6 +56,10 @@ const SHEET_PREVIEW_ARTBOARD = {
   heightPx: 792,
 } as const;
 
+function stripClientFacingModulePrefix(value: string): string {
+  return value.replace(/^\s*M\d+\s*-\s*/i, '').trim();
+}
+
 function buildScaleState(
   planModel?: ModulePlanModel | null,
   sectionModel?: ModuleSectionModel | null,
@@ -151,6 +155,7 @@ export default function EstimateDrawingSheet({
   const [availableWidthPx, setAvailableWidthPx] = useState(0);
   const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() => buildScaleState(planModel, sectionModel));
   const viewLabel = view === 'plan' ? 'Plan view' : 'Section view';
+  const clientFacingModuleLabel = stripClientFacingModulePrefix(moduleLabel);
   const legendItems = buildLegendItems(view, planModel, sectionModel);
   const noteLines = splitNoteLines(meta.note);
   const scaleOptions = getEstimateDrawingScaleOptions(view).map((option) => ({
@@ -190,6 +195,7 @@ export default function EstimateDrawingSheet({
     { label: 'Issue', value: meta.issue },
   ];
   const noteDisplayLines = noteLines.length ? noteLines : [meta.note];
+  const clientFacingDrawingTitle = stripClientFacingModulePrefix(meta.drawingTitle);
   const previewScale = availableWidthPx > 0 ? Math.min(availableWidthPx / SHEET_PREVIEW_ARTBOARD.widthPx, 1) : 1;
   const previewHeightPx = Math.round(SHEET_PREVIEW_ARTBOARD.heightPx * previewScale);
   const viewportStyle = {
@@ -254,7 +260,7 @@ export default function EstimateDrawingSheet({
               <div className={styles.sheetHeader}>
                 <div className={styles.sheetHeaderCopy}>
                   <div className={styles.sheetEyebrow}>{viewLabel}</div>
-                  <div className={styles.sheetModuleLabel}>{moduleLabel}</div>
+                  <div className={styles.sheetModuleLabel}>{clientFacingModuleLabel}</div>
                 </div>
                 <div className={styles.sheetHeaderRule} aria-hidden="true" />
               </div>
@@ -336,7 +342,7 @@ export default function EstimateDrawingSheet({
                 </div>
 
                 <div className={styles.titleInfoBlock}>
-                  <div className={styles.blockValue}>{meta.drawingTitle}</div>
+                  <div className={styles.blockValue}>{clientFacingDrawingTitle}</div>
                   <div className={styles.titleSubValue}>{meta.siteAddress}</div>
                 </div>
 

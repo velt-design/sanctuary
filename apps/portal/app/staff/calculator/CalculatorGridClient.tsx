@@ -4,6 +4,7 @@ import type { CostInputsV1, CostOutputV1, MaterialsExplainV1, RoofType, SiteInpu
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
+  useCallback,
   useEffect,
   useId,
   useMemo,
@@ -3738,6 +3739,259 @@ export default function CalculatorGridClient({
   ];
   const hasStatusBlockers = statusItems.some((item) => item.level === 'block');
 
+  const saveDesign = useCallback(
+    async ({
+      createDesignRequest = null,
+    }: {
+      createDesignRequest?: { priorityTier: DesignRequestPriorityTier } | null;
+    } = {}) => {
+      setGenerateError(null);
+
+      const fail = (msg: string) => {
+        setGenerateError(msg);
+        toast.error(msg);
+      };
+      const actionLabel = 'saving';
+
+      if (!projectId) {
+        fail('Select a project first.');
+        return;
+      }
+      if (!project) {
+        fail('Project not found.');
+        return;
+      }
+      if (!result) {
+        fail('No calculated result yet.');
+        return;
+      }
+
+      setIsGenerating(true);
+      try {
+        if (hasStatusBlockers) {
+          fail(`Resolve blockers in Quote Status before ${actionLabel}.`);
+          return;
+        }
+        if (criticalUiWarnings.length > 0) {
+          fail(`Resolve critical warnings before ${actionLabel}.`);
+          return;
+        }
+
+        const derivedSnapshot = moduleResult?.derived ?? resultModules[0]?.derived;
+        if (!derivedSnapshot) {
+          fail('No derived result available for the active module.');
+          return;
+        }
+
+        const [meta, contact] = await Promise.all([
+          getCostingMeta(),
+          project.contactId ? getContact(project.contactId) : Promise.resolve(null),
+        ]);
+        if (!contact) {
+          fail('Project is missing a contact (open the project and select/create one).');
+          return;
+        }
+
+        const projectNameSnapshot = project.projectName ?? project.name ?? values.projectName;
+        if (!projectNameSnapshot.trim()) {
+          fail('Project name is missing.');
+          return;
+        }
+
+        const estimatePayload: PortalEstimatePayload = {
+          status: 'draft' as const,
+          inputs: values as unknown as Record<string, unknown>,
+          derived: derivedSnapshot as unknown as Record<string, unknown>,
+          projectSnapshot: {
+            ...project,
+            updatedAt: project.updatedAt ?? project.createdAt,
+          } as unknown as Record<string, unknown>,
+          snapshot: {
+            contact: {
+              displayName: contact.displayName,
+              email: contact.email,
+              phone: contact.phone,
+            },
+            project: {
+              projectName: projectNameSnapshot,
+              region: project.region,
+              siteAddress: project.siteAddress ?? project.address,
+              quoteRef: project.quoteRef,
+            },
+          } as Record<string, unknown>,
+          outputs: {
+            cost_snapshot_version: 'v2' as const,
+            materials: result.materials,
+            install: result.install,
+            overhead: result.overhead,
+            totals: result.totals,
+            warnings: engineWarningsRaw,
+            pergolas: result.pergolas,
+            siteShared: result.shared,
+            shared: result.shared,
+          } as unknown as Record<string, unknown>,
+          configVersions: meta.configVersions as unknown as Record<string, unknown>,
+        };
+
+        const clearCalculatorDraft = async () => {
+          if (typeof window !== 'undefined') {
+            try {
+              window.sessionStorage.removeItem(draftSessionKey);
+            } catch {
+              void 0;
+            }
+          }
+          await clearLocalFirstWorkingCopy(draftEntityKey);
+        };
+
+        const cachedEstimateMetas =
+          queryClient.getQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId)) ??
+          (await queryClient.fetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId)));
+        const activeDraftEstimateId =
+          cachedEstimateMetas.find((estimate) => estimate.isActiveDraft)?.id ??
+          activeDraftEstimateMeta?.id ??
+          '';
+        const estimateIdToUpdate = activeEditEstimateId || activeDraftEstimateId;
+
+        if (estimateIdToUpdate) {
+          const resolvedEditEstimateId = resolveLocalFirstId(estimateIdToUpdate);
+          const canonicalEditEstimateId = resolvedEditEstimateId || estimateIdToUpdate;
+          const currentEstimate =
+            loadedEstimateDetailRef.current ??
+            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, canonicalEditEstimateId)) ??
+            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, estimateIdToUpdate)) ??
+            (
+              await apiJson<{ estimate: EstimateDetail }>(
+                `/api/estimates/${encodeURIComponent(canonicalEditEstimateId)}`,
+                { skipSaveTracking: true },
+              ).catch(() => ({ estimate: null as EstimateDetail | null }))
+            ).estimate ??
+            null;
+
+          if (!currentEstimate) {
+            fail('This edit session lost its source design. Please reopen the design and try again.');
+            return;
+          }
+
+          if (currentEstimate.editability.isLocked) {
+            fail('This design is locked because it has been sent with a quote and can no longer be edited.');
+            return;
+          }
+
+          const optimisticEstimateBase = buildOptimisticEstimateDetail({
+            estimateId: canonicalEditEstimateId,
+            projectId,
+            estimatePayload,
+            versionLabel:
+              currentEstimate.versionLabel ??
+              cachedEstimateMetas.find((estimate) => estimate.id === canonicalEditEstimateId || estimate.id === estimateIdToUpdate)
+                ?.versionLabel ??
+              'Draft',
+            createdBy: (currentEstimate.createdBy ?? email) || null,
+            createdAt: currentEstimate.createdAt,
+          });
+          const optimisticEstimate: EstimateDetail = {
+            ...optimisticEstimateBase,
+            internalNotes: currentEstimate.internalNotes ?? optimisticEstimateBase.internalNotes,
+            editability: currentEstimate.editability ?? optimisticEstimateBase.editability,
+          };
+
+          loadedEstimateDetailRef.current = optimisticEstimate;
+          upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate);
+          await writeLocalFirstWorkingCopy({
+            entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
+            data: optimisticEstimate,
+          });
+
+          const mutationPayload: PortalEstimateUpdateMutationPayload = {
+            estimateId: canonicalEditEstimateId,
+            estimatePayload,
+          };
+          await enqueueAndProcessLocalFirstMutation({
+            entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
+            mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateUpdate,
+            payload: mutationPayload,
+          });
+
+          setConfirmOpen(false);
+          await clearCalculatorDraft();
+          toast.success('Design saved locally. Syncing in the background.');
+          router.push(
+            `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(canonicalEditEstimateId)}`,
+          );
+          return;
+        }
+
+        const localEstimateId = createLocalEstimateId();
+        const optimisticEstimate = buildOptimisticEstimateDetail({
+          estimateId: localEstimateId,
+          projectId,
+          estimatePayload,
+          versionLabel: buildNextEstimateVersionLabel(cachedEstimateMetas),
+          createdBy: email || null,
+        });
+        upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate, { prepend: true });
+        await writeLocalFirstWorkingCopy({
+          entityKey: buildEstimateEntityKey(localEstimateId),
+          data: optimisticEstimate,
+        });
+
+        const mutationPayload: PortalEstimateCreateMutationPayload = {
+          localEstimateId,
+          projectId,
+          estimatePayload,
+          createDesignRequest: createDesignRequest
+            ? {
+                requestSource: 'calculator_generate',
+                priorityTier: createDesignRequest.priorityTier,
+              }
+            : null,
+        };
+        await enqueueAndProcessLocalFirstMutation({
+          entityKey: buildEstimateEntityKey(localEstimateId),
+          mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateCreate,
+          payload: mutationPayload,
+        });
+
+        setConfirmOpen(false);
+        await clearCalculatorDraft();
+        toast.success(
+          createDesignRequest
+            ? 'Design saved locally. Syncing design and drafting request in the background.'
+            : 'Design saved locally. Syncing in the background.',
+        );
+        router.push(`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : isEditingDesign ? 'Failed to save design' : 'Failed to save design';
+        setGenerateError(msg);
+        toast.error(msg);
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [
+      activeDraftEstimateMeta?.id,
+      activeEditEstimateId,
+      criticalUiWarnings.length,
+      draftEntityKey,
+      draftSessionKey,
+      email,
+      engineWarningsRaw,
+      hasStatusBlockers,
+      hostKey,
+      isEditingDesign,
+      moduleResult?.derived,
+      project,
+      projectId,
+      queryClient,
+      result,
+      resultModules,
+      router,
+      toast,
+      values,
+    ],
+  );
+
   const marginalInfillDelta = useMemo(() => diffModuleCost(moduleBaseline, infillWithoutCost), [moduleBaseline, infillWithoutCost]);
   const compareSheetDelta = useMemo(() => diffModuleCost(compareSheetCost, moduleBaseline), [compareSheetCost, moduleBaseline]);
   const compareStripDelta = useMemo(() => diffModuleCost(compareStripCost, moduleBaseline), [compareStripCost, moduleBaseline]);
@@ -5301,6 +5555,10 @@ export default function CalculatorGridClient({
         }
         if (!result) {
           setGenerateError('No calculated result yet.');
+          return;
+        }
+        if (uiWarnings.length === 0) {
+          await saveDesign();
           return;
         }
 
@@ -6872,235 +7130,11 @@ export default function CalculatorGridClient({
                   (reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
                   isGenerating
                 }
-                onClick={async () => {
-                  setGenerateError(null);
-
-                  const fail = (msg: string) => {
-                    setGenerateError(msg);
-                    toast.error(msg);
-                  };
-                  const actionLabel = 'saving';
-
-                  if (!projectId) {
-                    fail('Select a project first.');
-                    return;
-                  }
-                  if (!project) {
-                    fail('Project not found.');
-                    return;
-                  }
-                  if (!result) {
-                    fail('No calculated result yet.');
-                    return;
-                  }
-
-                  setIsGenerating(true);
-                  try {
-                    if (hasStatusBlockers) {
-                      fail(`Resolve blockers in Quote Status before ${actionLabel}.`);
-                      return;
-                    }
-                    if (criticalUiWarnings.length > 0) {
-                      fail(`Resolve critical warnings before ${actionLabel}.`);
-                      return;
-                    }
-
-                    const derivedSnapshot = moduleResult?.derived ?? resultModules[0]?.derived;
-                    if (!derivedSnapshot) {
-                      fail('No derived result available for the active module.');
-                      return;
-                    }
-
-                    const [meta, contact] = await Promise.all([
-                      getCostingMeta(),
-                      project.contactId ? getContact(project.contactId) : Promise.resolve(null),
-                    ]);
-                    if (!contact) {
-                      fail('Project is missing a contact (open the project and select/create one).');
-                      return;
-                    }
-
-                    const projectNameSnapshot = project.projectName ?? project.name ?? values.projectName;
-                    if (!projectNameSnapshot.trim()) {
-                      fail('Project name is missing.');
-                      return;
-                    }
-
-                    const estimatePayload: PortalEstimatePayload = {
-                      status: 'draft' as const,
-                      inputs: values as unknown as Record<string, unknown>,
-                      derived: derivedSnapshot as unknown as Record<string, unknown>,
-                      projectSnapshot: {
-                        ...project,
-                        updatedAt: project.updatedAt ?? project.createdAt,
-                      } as unknown as Record<string, unknown>,
-                      snapshot: {
-                        contact: {
-                          displayName: contact.displayName,
-                          email: contact.email,
-                          phone: contact.phone,
-                        },
-                        project: {
-                          projectName: projectNameSnapshot,
-                          region: project.region,
-                          siteAddress: project.siteAddress ?? project.address,
-                          quoteRef: project.quoteRef,
-                        },
-                      } as Record<string, unknown>,
-                      outputs: {
-                        cost_snapshot_version: 'v2' as const,
-                        materials: result.materials,
-                        install: result.install,
-                        overhead: result.overhead,
-                        totals: result.totals,
-                        warnings: engineWarningsRaw,
-                        pergolas: result.pergolas,
-                        siteShared: result.shared,
-                        shared: result.shared,
-                      } as unknown as Record<string, unknown>,
-                      configVersions: meta.configVersions as unknown as Record<string, unknown>,
-                    };
-
-                    const clearCalculatorDraft = async () => {
-                      if (typeof window !== 'undefined') {
-                        try {
-                          window.sessionStorage.removeItem(draftSessionKey);
-                        } catch {
-                          void 0;
-                        }
-                      }
-                      await clearLocalFirstWorkingCopy(draftEntityKey);
-                    };
-
-	                    const cachedEstimateMetas =
-	                      queryClient.getQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId)) ??
-	                      (await queryClient.fetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId)));
-                      const activeDraftEstimateId =
-                        cachedEstimateMetas.find((estimate) => estimate.isActiveDraft)?.id ??
-                        activeDraftEstimateMeta?.id ??
-                        '';
-                      const estimateIdToUpdate = activeEditEstimateId || activeDraftEstimateId;
-
-                      if (estimateIdToUpdate) {
-                        const resolvedEditEstimateId = resolveLocalFirstId(estimateIdToUpdate);
-                        const canonicalEditEstimateId = resolvedEditEstimateId || estimateIdToUpdate;
-                        const currentEstimate =
-                          loadedEstimateDetailRef.current ??
-                          queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, canonicalEditEstimateId)) ??
-                          queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, estimateIdToUpdate)) ??
-                          (
-                            await apiJson<{ estimate: EstimateDetail }>(
-                              `/api/estimates/${encodeURIComponent(canonicalEditEstimateId)}`,
-                              { skipSaveTracking: true },
-                            ).catch(() => ({ estimate: null as EstimateDetail | null }))
-                          ).estimate ??
-                          null;
-
-                        if (!currentEstimate) {
-                          fail('This edit session lost its source design. Please reopen the design and try again.');
-                          return;
-                        }
-
-                        if (currentEstimate.editability.isLocked) {
-                          fail('This design is locked because it has been sent with a quote and can no longer be edited.');
-                          return;
-                        }
-
-                        const optimisticEstimateBase = buildOptimisticEstimateDetail({
-                          estimateId: canonicalEditEstimateId,
-                          projectId,
-                          estimatePayload,
-                          versionLabel:
-                            currentEstimate.versionLabel ??
-                            cachedEstimateMetas.find((estimate) => estimate.id === canonicalEditEstimateId || estimate.id === estimateIdToUpdate)
-                              ?.versionLabel ??
-                            'Draft',
-                          createdBy: (currentEstimate.createdBy ?? email) || null,
-                          createdAt: currentEstimate.createdAt,
-                        });
-                        const optimisticEstimate: EstimateDetail = {
-                          ...optimisticEstimateBase,
-                          internalNotes: currentEstimate.internalNotes ?? optimisticEstimateBase.internalNotes,
-                          editability: currentEstimate.editability ?? optimisticEstimateBase.editability,
-                        };
-
-                        loadedEstimateDetailRef.current = optimisticEstimate;
-                        upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate);
-                        await writeLocalFirstWorkingCopy({
-                          entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
-                          data: optimisticEstimate,
-                        });
-
-                        const mutationPayload: PortalEstimateUpdateMutationPayload = {
-                          estimateId: canonicalEditEstimateId,
-                          estimatePayload,
-                        };
-                        await enqueueAndProcessLocalFirstMutation({
-                          entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
-                          mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateUpdate,
-                          payload: mutationPayload,
-                        });
-
-                        setConfirmOpen(false);
-                        await clearCalculatorDraft();
-                        toast.success('Design saved locally. Syncing in the background.');
-                        router.push(
-                          `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(
-                            canonicalEditEstimateId,
-                          )}`,
-                        );
-                        return;
-                      }
-
-                      const localEstimateId = createLocalEstimateId();
-                      const optimisticEstimate = buildOptimisticEstimateDetail({
-                        estimateId: localEstimateId,
-                        projectId,
-                        estimatePayload,
-                        versionLabel: buildNextEstimateVersionLabel(cachedEstimateMetas),
-                        createdBy: email || null,
-                      });
-                      upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate, { prepend: true });
-                      await writeLocalFirstWorkingCopy({
-                        entityKey: buildEstimateEntityKey(localEstimateId),
-                        data: optimisticEstimate,
-                      });
-
-                    const mutationPayload: PortalEstimateCreateMutationPayload = {
-                      localEstimateId,
-                      projectId,
-                      estimatePayload,
-                      createDesignRequest: confirmRequestDesign
-                        ? {
-                            requestSource: 'calculator_generate',
-                            priorityTier: confirmRequestDesignPriority,
-                          }
-                        : null,
-                    };
-                    await enqueueAndProcessLocalFirstMutation({
-                      entityKey: buildEstimateEntityKey(localEstimateId),
-                      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateCreate,
-                      payload: mutationPayload,
-                    });
-
-                    setConfirmOpen(false);
-                    await clearCalculatorDraft();
-                    toast.success(
-                      confirmRequestDesign
-                        ? 'Design saved locally. Syncing design and drafting request in the background.'
-                        : 'Design saved locally. Syncing in the background.',
-                    );
-                    if (projectId) {
-                      router.push(`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates`);
-                    }
-                  } catch (err) {
-                    const msg = err instanceof Error ? err.message : isEditingDesign ? 'Failed to save design' : 'Failed to save design';
-                    setGenerateError(msg);
-                    toast.error(msg);
-                  } finally {
-                    setIsGenerating(false);
-                  }
-                }}
+                onClick={() =>
+                  void saveDesign({
+                    createDesignRequest: confirmRequestDesign ? { priorityTier: confirmRequestDesignPriority } : null,
+                  })
+                }
               >
                 {isEditingDesign ? 'Save design' : 'Save design'}
               </button>
