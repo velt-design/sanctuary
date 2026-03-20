@@ -9,7 +9,6 @@ import {
   type EstimateDrawingFixedScaleValue,
 } from '@/lib/estimates/drawingSheet';
 import {
-  evaluateDrawingSheetFit,
   getDrawingSheetViewportMm,
   getViewBoxUnitsPerMetreAtScale,
   getViewBoxUnitsPerMm,
@@ -333,6 +332,26 @@ type DimensionPresentationSpec = {
   verticalLabelGap: number;
 };
 
+type TickDimensionGeometry = {
+  lineStartX: number;
+  lineStartY: number;
+  lineEndX: number;
+  lineEndY: number;
+  tick1StartX: number;
+  tick1StartY: number;
+  tick1EndX: number;
+  tick1EndY: number;
+  tick2StartX: number;
+  tick2StartY: number;
+  tick2EndX: number;
+  tick2EndY: number;
+  labelX: number;
+  labelY: number;
+  labelRotate?: number;
+  termBar1?: { x1: number; y1: number; x2: number; y2: number };
+  termBar2?: { x1: number; y1: number; x2: number; y2: number };
+};
+
 function formatMetres(value: number): string {
   return `${value.toFixed(2)}m`;
 }
@@ -393,35 +412,164 @@ type PlanFitBox = {
   fallGap: number;
 };
 
-type SheetCropBox = {
+type SheetRect = {
   x: number;
   y: number;
   width: number;
   height: number;
 };
 
-const SHEET_DRAWING_CROP_BOX: SheetCropBox = {
-  x: 1.6,
-  y: 6.2,
-  width: 100.8,
-  height: 65.4,
+type SheetDrawingField = SheetRect;
+type SheetFitArea = SheetRect;
+type AnnotatedBounds = {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
 };
 
-function getSheetDrawingCropBox(): SheetCropBox {
-  return SHEET_DRAWING_CROP_BOX;
+type BoundsInsets = {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+};
+
+type LayoutOffset = {
+  dx: number;
+  dy: number;
+};
+
+const SHEET_DRAWING_FIELD: SheetDrawingField = {
+  x: 1.8,
+  y: 2.2,
+  width: 116.0,
+  height: 84.6,
+};
+
+function insetRect(rect: SheetRect, insets: BoundsInsets): SheetRect {
+  return {
+    x: rect.x + insets.left,
+    y: rect.y + insets.top,
+    width: Math.max(0.1, rect.width - insets.left - insets.right),
+    height: Math.max(0.1, rect.height - insets.top - insets.bottom),
+  };
 }
 
-function getSheetCropInsets(cropBox: SheetCropBox) {
+function createBounds(minX: number, minY: number, maxX: number, maxY: number): AnnotatedBounds {
+  return { minX, minY, maxX, maxY };
+}
+
+function boundsFromRect(x: number, y: number, width: number, height: number): AnnotatedBounds {
+  return createBounds(
+    Math.min(x, x + width),
+    Math.min(y, y + height),
+    Math.max(x, x + width),
+    Math.max(y, y + height),
+  );
+}
+
+function boundsFromLine(x1: number, y1: number, x2: number, y2: number, pad = 0): AnnotatedBounds {
+  return createBounds(Math.min(x1, x2) - pad, Math.min(y1, y2) - pad, Math.max(x1, x2) + pad, Math.max(y1, y2) + pad);
+}
+
+function boundsFromPoints(points: Point[], pad = 0): AnnotatedBounds {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  return createBounds(Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad);
+}
+
+function unionBounds(bounds: Array<AnnotatedBounds | null | undefined>): AnnotatedBounds {
+  const valid = bounds.filter((entry): entry is AnnotatedBounds => Boolean(entry));
+  if (valid.length === 0) return createBounds(0, 0, 0, 0);
+
+  return createBounds(
+    Math.min(...valid.map((entry) => entry.minX)),
+    Math.min(...valid.map((entry) => entry.minY)),
+    Math.max(...valid.map((entry) => entry.maxX)),
+    Math.max(...valid.map((entry) => entry.maxY)),
+  );
+}
+
+function translateBounds(bounds: AnnotatedBounds, dx: number, dy: number): AnnotatedBounds {
+  return createBounds(bounds.minX + dx, bounds.minY + dy, bounds.maxX + dx, bounds.maxY + dy);
+}
+
+function getBoundsWidth(bounds: AnnotatedBounds): number {
+  return Math.max(0, bounds.maxX - bounds.minX);
+}
+
+function getBoundsHeight(bounds: AnnotatedBounds): number {
+  return Math.max(0, bounds.maxY - bounds.minY);
+}
+
+function resolveBoundsPlacement(bounds: AnnotatedBounds, fitArea: SheetFitArea, verticalBias: number): LayoutOffset {
+  const slackX = Math.max(0, fitArea.width - getBoundsWidth(bounds));
+  const slackY = Math.max(0, fitArea.height - getBoundsHeight(bounds));
   return {
-    left: cropBox.x,
-    right: 120 - cropBox.x - cropBox.width,
-    top: cropBox.y,
-    bottom: 90 - cropBox.y - cropBox.height,
+    dx: fitArea.x - bounds.minX + slackX / 2,
+    dy: fitArea.y - bounds.minY + slackY * verticalBias,
+  };
+}
+
+function fitsWithinArea(bounds: AnnotatedBounds, fitArea: SheetFitArea): boolean {
+  return getBoundsWidth(bounds) <= fitArea.width + 1e-6 && getBoundsHeight(bounds) <= fitArea.height + 1e-6;
+}
+
+function estimateTextBounds(input: {
+  text: string;
+  x: number;
+  y: number;
+  anchor?: 'start' | 'middle' | 'end';
+  fontHeight: number;
+  charWidth: number;
+  paddingX?: number;
+  paddingY?: number;
+  rotateDeg?: number;
+}): AnnotatedBounds {
+  const width = Math.max(input.fontHeight * 0.9, input.text.length * input.charWidth + (input.paddingX ?? 0) * 2);
+  const height = input.fontHeight + (input.paddingY ?? 0) * 2;
+  const anchor = input.anchor ?? 'middle';
+  const baseX = anchor === 'middle' ? input.x - width / 2 : anchor === 'end' ? input.x - width : input.x;
+  const baseY = input.y - height / 2;
+  const rect = boundsFromRect(baseX, baseY, width, height);
+
+  if ((input.rotateDeg ?? 0) % 180 === 0) return rect;
+
+  const corners: Point[] = [
+    { x: rect.minX, y: rect.minY },
+    { x: rect.maxX, y: rect.minY },
+    { x: rect.maxX, y: rect.maxY },
+    { x: rect.minX, y: rect.maxY },
+  ];
+  const rad = ((input.rotateDeg ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  return boundsFromPoints(
+    corners.map((corner) => ({
+      x: input.x + (corner.x - input.x) * cos - (corner.y - input.y) * sin,
+      y: input.y + (corner.x - input.x) * sin + (corner.y - input.y) * cos,
+    })),
+  );
+}
+
+function evaluateAnnotatedSheetFit(input: {
+  bounds: AnnotatedBounds;
+  fitArea: SheetFitArea;
+  viewportMm?: { widthMm: number; heightMm: number };
+}): DrawingSheetFitResult {
+  return {
+    fits: fitsWithinArea(input.bounds, input.fitArea),
+    requiredWidthMm: viewBoxUnitsToMm(getBoundsWidth(input.bounds), input.viewportMm),
+    requiredHeightMm: viewBoxUnitsToMm(getBoundsHeight(input.bounds), input.viewportMm),
+    availableWidthMm: viewBoxUnitsToMm(input.fitArea.width, input.viewportMm),
+    availableHeightMm: viewBoxUnitsToMm(input.fitArea.height, input.viewportMm),
   };
 }
 
 type PlanSheetFrame = {
-  cropBox: SheetCropBox;
+  outerField: SheetDrawingField;
+  fitArea: SheetFitArea;
   annotationPadLeft: number;
   annotationPadRight: number;
   annotationPadTop: number;
@@ -434,12 +582,23 @@ type PlanSheetFrame = {
 };
 
 function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
+  const outerField = SHEET_DRAWING_FIELD;
+  const annotationPadLeft = isHipCorner ? 5.8 : 5.2;
+  const annotationPadRight = isHipCorner ? 6.8 : 6.2;
+  const annotationPadTop = isHipCorner ? 4.8 : 4.2;
+  const annotationPadBottom = isHipCorner ? 13.8 : 12.8;
   return {
-    cropBox: getSheetDrawingCropBox(),
-    annotationPadLeft: isHipCorner ? 5.8 : 5.2,
-    annotationPadRight: isHipCorner ? 6.8 : 6.2,
-    annotationPadTop: isHipCorner ? 4.8 : 4.2,
-    annotationPadBottom: isHipCorner ? 13.8 : 12.8,
+    outerField,
+    fitArea: insetRect(outerField, {
+      left: annotationPadLeft,
+      right: annotationPadRight,
+      top: annotationPadTop,
+      bottom: annotationPadBottom,
+    }),
+    annotationPadLeft,
+    annotationPadRight,
+    annotationPadTop,
+    annotationPadBottom,
     houseBandHeight: 5.3,
     houseBandOffset: 1.15,
     houseInset: 1.7,
@@ -453,17 +612,15 @@ function resolvePlanFitBox(totalW: number, totalH: number, presentation: ModuleD
   const safeH = Math.max(totalH, 0.1);
   if (presentation === 'sheet') {
     const frame = getPlanSheetFrame(isHipCorner);
-    const { left, top } = getSheetCropInsets(frame.cropBox);
-    const { annotationPadLeft, annotationPadRight, annotationPadTop, annotationPadBottom } = frame;
-    const maxW = frame.cropBox.width - annotationPadLeft - annotationPadRight;
-    const maxH = frame.cropBox.height - annotationPadTop - annotationPadBottom;
+    const maxW = frame.fitArea.width;
+    const maxH = frame.fitArea.height;
     const scale = Math.min(maxW / safeW, maxH / safeH);
     const widthPx = safeW * scale;
     const heightPx = safeH * scale;
     const slackY = Math.max(0, maxH - heightPx);
     return {
-      x: left + annotationPadLeft + (maxW - widthPx) / 2,
-      y: top + annotationPadTop + slackY * frame.verticalBias,
+      x: frame.fitArea.x + (maxW - widthPx) / 2,
+      y: frame.fitArea.y + slackY * frame.verticalBias,
       scale,
       houseBandHeight: frame.houseBandHeight,
       houseBandOffset: frame.houseBandOffset,
@@ -498,17 +655,16 @@ function resolvePlanFixedScaleBox(
   const frame = getPlanSheetFrame(isHipCorner);
   const safeW = Math.max(totalW, 0.1);
   const safeH = Math.max(totalH, 0.1);
-  const { left, top } = getSheetCropInsets(frame.cropBox);
-  const maxW = frame.cropBox.width - frame.annotationPadLeft - frame.annotationPadRight;
-  const maxH = frame.cropBox.height - frame.annotationPadTop - frame.annotationPadBottom;
+  const maxW = frame.fitArea.width;
+  const maxH = frame.fitArea.height;
   const scale = getViewBoxUnitsPerMetreAtScale(ratio, viewportMm);
   const widthPx = safeW * scale;
   const heightPx = safeH * scale;
   const slackY = Math.max(0, maxH - heightPx);
 
   return {
-    x: left + frame.annotationPadLeft + (maxW - widthPx) / 2,
-    y: top + frame.annotationPadTop + slackY * frame.verticalBias,
+    x: frame.fitArea.x + (maxW - widthPx) / 2,
+    y: frame.fitArea.y + slackY * frame.verticalBias,
     scale,
     houseBandHeight: frame.houseBandHeight,
     houseBandOffset: frame.houseBandOffset,
@@ -518,7 +674,8 @@ function resolvePlanFixedScaleBox(
 }
 
 type SectionFitFrame = {
-  cropBox: SheetCropBox;
+  outerField: SheetDrawingField;
+  fitArea: SheetFitArea;
   verticalBias: number;
   annotationPadLeft: number;
   annotationPadRight: number;
@@ -527,23 +684,20 @@ type SectionFitFrame = {
 };
 
 function getSectionSheetFrame(sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
-  return sectionKind === 'gable'
-    ? {
-        cropBox: getSheetDrawingCropBox(),
-        verticalBias: 0.2,
-        annotationPadLeft: 8.8,
-        annotationPadRight: 9.2,
-        annotationPadTop: 6.4,
-        annotationPadBottom: 11.2,
-      }
-    : {
-        cropBox: getSheetDrawingCropBox(),
-        verticalBias: 0.2,
-        annotationPadLeft: 8.6,
-        annotationPadRight: 9.0,
-        annotationPadTop: 5.8,
-        annotationPadBottom: 10.8,
-      };
+  const outerField = SHEET_DRAWING_FIELD;
+  const insets =
+    sectionKind === 'gable'
+      ? { left: 8.8, right: 9.2, top: 6.4, bottom: 11.2 }
+      : { left: 8.6, right: 9.0, top: 5.8, bottom: 10.8 };
+  return {
+    outerField,
+    fitArea: insetRect(outerField, insets),
+    verticalBias: 0.2,
+    annotationPadLeft: insets.left,
+    annotationPadRight: insets.right,
+    annotationPadTop: insets.top,
+    annotationPadBottom: insets.bottom,
+  };
 }
 
 function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
@@ -552,7 +706,8 @@ function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, section
   }
 
   return {
-    cropBox: { x: 18, y: 16, width: 84, height: 56 },
+    outerField: { x: 18, y: 16, width: 84, height: 56 },
+    fitArea: { x: 27, y: 22, width: 66, height: 40 },
     verticalBias: 0.3,
     annotationPadLeft: 9,
     annotationPadRight: 9,
@@ -616,20 +771,15 @@ function getPlanScaleFit(
   ratio: EstimateDrawingFixedScaleValue,
   viewportMm?: { widthMm: number; heightMm: number },
 ): DrawingSheetFitResult {
-  const extents = getPlanRealExtents(model);
-  const frame = getPlanSheetFrame(model.roofType === 'hip_corner');
-
-  return evaluateDrawingSheetFit({
-    widthM: extents.widthM,
-    heightM: extents.heightM,
-    ratio,
+  const layout = resolvePlanSheetLayout({
+    model,
+    drawingScale: { mode: 'fixed', ratio },
     viewportMm,
-    marginsMm: {
-      left: viewBoxUnitsToMm(frame.cropBox.x + frame.annotationPadLeft, viewportMm),
-      right: viewBoxUnitsToMm(120 - frame.cropBox.x - frame.cropBox.width + frame.annotationPadRight, viewportMm),
-      top: viewBoxUnitsToMm(frame.cropBox.y + frame.annotationPadTop, viewportMm),
-      bottom: viewBoxUnitsToMm(90 - frame.cropBox.y - frame.cropBox.height + frame.annotationPadBottom, viewportMm),
-    },
+  });
+  return evaluateAnnotatedSheetFit({
+    bounds: layout.annotatedBounds,
+    fitArea: layout.fitArea,
+    viewportMm,
   });
 }
 
@@ -638,20 +788,15 @@ function getSectionScaleFit(
   ratio: EstimateDrawingFixedScaleValue,
   viewportMm?: { widthMm: number; heightMm: number },
 ): DrawingSheetFitResult {
-  const extents = getSectionRealExtents(model);
-  const frame = getSectionSheetFrame(model.sectionKind);
-
-  return evaluateDrawingSheetFit({
-    widthM: extents.widthM,
-    heightM: extents.heightM,
-    ratio,
+  const layout = resolveSectionSheetLayout({
+    model,
+    drawingScale: { mode: 'fixed', ratio },
     viewportMm,
-    marginsMm: {
-      left: viewBoxUnitsToMm(frame.cropBox.x + frame.annotationPadLeft, viewportMm),
-      right: viewBoxUnitsToMm(120 - frame.cropBox.x - frame.cropBox.width + frame.annotationPadRight, viewportMm),
-      top: viewBoxUnitsToMm(frame.cropBox.y + frame.annotationPadTop, viewportMm),
-      bottom: viewBoxUnitsToMm(90 - frame.cropBox.y - frame.cropBox.height + frame.annotationPadBottom, viewportMm),
-    },
+  });
+  return evaluateAnnotatedSheetFit({
+    bounds: layout.annotatedBounds,
+    fitArea: layout.fitArea,
+    viewportMm,
   });
 }
 
@@ -1115,20 +1260,18 @@ function LegendRow({ items }: { items: string[] }) {
   );
 }
 
-function TickDimension({
+function resolveTickDimensionGeometry({
   x1,
   y1,
   x2,
   y2,
-  label,
   textX,
   textY,
   rotateDeg,
   overrun = 2.7,
   showTermBars = false,
   presentation = 'card',
-}: TickDimensionProps) {
-  const isSheet = presentation === 'sheet';
+}: Omit<TickDimensionProps, 'label'>): TickDimensionGeometry {
   const dimSpec = getDimensionPresentationSpec(presentation);
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -1148,47 +1291,137 @@ function TickDimension({
   const barOffset = dimSpec.barOffset;
   const horizontalBias = Math.abs(dx) >= Math.abs(dy) * 1.35;
   const verticalBias = Math.abs(dy) > Math.abs(dx) * 1.35;
-
   const cx = (x1 + x2) / 2;
   const cy = (y1 + y2) / 2;
   const labelX = textX ?? (verticalBias ? cx - dimSpec.verticalLabelGap : horizontalBias ? cx : cx - nx * dimSpec.labelClearance);
   const labelY = textY ?? (verticalBias ? cy : horizontalBias ? cy - dimSpec.horizontalLabelGap : cy - ny * dimSpec.labelClearance);
   const labelRotate = rotateDeg ?? (verticalBias ? -90 : undefined);
 
+  return {
+    lineStartX,
+    lineStartY,
+    lineEndX,
+    lineEndY,
+    tick1StartX: x1 - tx,
+    tick1StartY: y1 - ty,
+    tick1EndX: x1 + tx,
+    tick1EndY: y1 + ty,
+    tick2StartX: x2 - tx,
+    tick2StartY: y2 - ty,
+    tick2EndX: x2 + tx,
+    tick2EndY: y2 + ty,
+    labelX,
+    labelY,
+    labelRotate,
+    termBar1: showTermBars
+      ? {
+          x1: x1 + ux * barOffset - nx * barHalf,
+          y1: y1 + uy * barOffset - ny * barHalf,
+          x2: x1 + ux * barOffset + nx * barHalf,
+          y2: y1 + uy * barOffset + ny * barHalf,
+        }
+      : undefined,
+    termBar2: showTermBars
+      ? {
+          x1: x2 - ux * barOffset - nx * barHalf,
+          y1: y2 - uy * barOffset - ny * barHalf,
+          x2: x2 - ux * barOffset + nx * barHalf,
+          y2: y2 - uy * barOffset + ny * barHalf,
+        }
+      : undefined,
+  };
+}
+
+function TickDimension({
+  x1,
+  y1,
+  x2,
+  y2,
+  label,
+  textX,
+  textY,
+  rotateDeg,
+  overrun = 2.7,
+  showTermBars = false,
+  presentation = 'card',
+}: TickDimensionProps) {
+  const geometry = resolveTickDimensionGeometry({
+    x1,
+    y1,
+    x2,
+    y2,
+    textX,
+    textY,
+    rotateDeg,
+    overrun,
+    showTermBars,
+    presentation,
+  });
+
   return (
     <g>
-      <line x1={lineStartX} y1={lineStartY} x2={lineEndX} y2={lineEndY} className={styles.moduleDimLine} />
-      {showTermBars ? (
+      <line x1={geometry.lineStartX} y1={geometry.lineStartY} x2={geometry.lineEndX} y2={geometry.lineEndY} className={styles.moduleDimLine} />
+      {geometry.termBar1 && geometry.termBar2 ? (
         <>
           <line
-            x1={x1 + ux * barOffset - nx * barHalf}
-            y1={y1 + uy * barOffset - ny * barHalf}
-            x2={x1 + ux * barOffset + nx * barHalf}
-            y2={y1 + uy * barOffset + ny * barHalf}
+            x1={geometry.termBar1.x1}
+            y1={geometry.termBar1.y1}
+            x2={geometry.termBar1.x2}
+            y2={geometry.termBar1.y2}
             className={styles.moduleDimTermBar}
           />
           <line
-            x1={x2 - ux * barOffset - nx * barHalf}
-            y1={y2 - uy * barOffset - ny * barHalf}
-            x2={x2 - ux * barOffset + nx * barHalf}
-            y2={y2 - uy * barOffset + ny * barHalf}
+            x1={geometry.termBar2.x1}
+            y1={geometry.termBar2.y1}
+            x2={geometry.termBar2.x2}
+            y2={geometry.termBar2.y2}
             className={styles.moduleDimTermBar}
           />
         </>
       ) : null}
-      <line x1={x1 - tx} y1={y1 - ty} x2={x1 + tx} y2={y1 + ty} className={styles.moduleDimTick} />
-      <line x1={x2 - tx} y1={y2 - ty} x2={x2 + tx} y2={y2 + ty} className={styles.moduleDimTick} />
+      <line x1={geometry.tick1StartX} y1={geometry.tick1StartY} x2={geometry.tick1EndX} y2={geometry.tick1EndY} className={styles.moduleDimTick} />
+      <line x1={geometry.tick2StartX} y1={geometry.tick2StartY} x2={geometry.tick2EndX} y2={geometry.tick2EndY} className={styles.moduleDimTick} />
       <text
-        x={labelX}
-        y={labelY}
+        x={geometry.labelX}
+        y={geometry.labelY}
         textAnchor="middle"
         className={styles.moduleDimText}
-        transform={typeof labelRotate === 'number' ? `rotate(${labelRotate} ${labelX} ${labelY})` : undefined}
+        transform={typeof geometry.labelRotate === 'number' ? `rotate(${geometry.labelRotate} ${geometry.labelX} ${geometry.labelY})` : undefined}
       >
         {label}
       </text>
     </g>
   );
+}
+
+function estimateTickDimensionBounds(
+  props: TickDimensionProps,
+  options?: {
+    charWidth?: number;
+    fontHeight?: number;
+    paddingX?: number;
+    paddingY?: number;
+  },
+): AnnotatedBounds {
+  const geometry = resolveTickDimensionGeometry(props);
+  return unionBounds([
+    boundsFromLine(geometry.lineStartX, geometry.lineStartY, geometry.lineEndX, geometry.lineEndY, 0.45),
+    boundsFromLine(geometry.tick1StartX, geometry.tick1StartY, geometry.tick1EndX, geometry.tick1EndY, 0.35),
+    boundsFromLine(geometry.tick2StartX, geometry.tick2StartY, geometry.tick2EndX, geometry.tick2EndY, 0.35),
+    geometry.termBar1 ? boundsFromLine(geometry.termBar1.x1, geometry.termBar1.y1, geometry.termBar1.x2, geometry.termBar1.y2, 0.25) : null,
+    geometry.termBar2 ? boundsFromLine(geometry.termBar2.x1, geometry.termBar2.y1, geometry.termBar2.x2, geometry.termBar2.y2, 0.25) : null,
+    estimateTextBounds({
+      text: props.label,
+      x: geometry.labelX,
+      y: geometry.labelY,
+      anchor: 'middle',
+      fontHeight: options?.fontHeight ?? (props.presentation === 'sheet' ? 1.85 : 2.3),
+      charWidth: options?.charWidth ?? (props.presentation === 'sheet' ? 0.62 : 0.78),
+      paddingX: options?.paddingX ?? 0.35,
+      paddingY: options?.paddingY ?? 0.18,
+      rotateDeg: geometry.labelRotate,
+    }),
+  ]);
 }
 
 function ArrowHead({ x, y, direction, presentation = 'card' }: { x: number; y: number; direction: 'up' | 'down'; presentation?: ModuleDrawingPresentation }) {
@@ -1211,6 +1444,681 @@ function ArrowHead({ x, y, direction, presentation = 'card' }: { x: number; y: n
   );
 }
 
+function estimateArrowHeadBounds({
+  x,
+  y,
+  presentation = 'card',
+}: {
+  x: number;
+  y: number;
+  direction: 'up' | 'down';
+  presentation?: ModuleDrawingPresentation;
+}): AnnotatedBounds {
+  const isSheet = presentation === 'sheet';
+  const reach = isSheet ? 0.96 : 1.3;
+  const span = isSheet ? 0.78 : 1.15;
+  return boundsFromRect(x - span - 0.25, y - reach - 0.25, span * 2 + 0.5, reach * 2 + 0.5);
+}
+
+function formatScaleDebugLabel(scale: EstimateDrawingScale): string {
+  return scale.mode === 'fit' ? 'NTS' : `1:${scale.ratio}`;
+}
+
+function buildSheetDebugMetrics(layout: ResolvedSheetLayout, scaleState?: ModuleDrawingScaleState | null): SheetDebugMetrics {
+  const boundsWidth = getBoundsWidth(layout.annotatedBounds);
+  const boundsHeight = getBoundsHeight(layout.annotatedBounds);
+  return {
+    requestedScaleLabel: formatScaleDebugLabel(scaleState?.requestedScale ?? { mode: 'fit' }),
+    appliedScaleLabel: formatScaleDebugLabel(scaleState?.appliedScale ?? { mode: 'fit' }),
+    boundsWidth,
+    boundsHeight,
+    fitWidth: layout.fitArea.width,
+    fitHeight: layout.fitArea.height,
+    utilizationX: boundsWidth / Math.max(layout.fitArea.width, 0.001),
+    utilizationY: boundsHeight / Math.max(layout.fitArea.height, 0.001),
+  };
+}
+
+function resolveMeasuredFitLayout(input: {
+  initialScale: number;
+  resolveForScale: (scale: number) => ResolvedSheetLayout;
+}): ResolvedSheetLayout {
+  let scale = Math.max(0.05, input.initialScale);
+  let layout = input.resolveForScale(scale);
+
+  for (let idx = 0; idx < 8; idx += 1) {
+    const ratio = Math.min(
+      layout.fitArea.width / Math.max(getBoundsWidth(layout.annotatedBounds), 0.001),
+      layout.fitArea.height / Math.max(getBoundsHeight(layout.annotatedBounds), 0.001),
+    );
+    const nextScale = Math.max(0.05, scale * ratio);
+    if (Math.abs(nextScale - scale) <= 0.0005) {
+      scale = nextScale;
+      layout = input.resolveForScale(scale);
+      break;
+    }
+    scale = nextScale;
+    layout = input.resolveForScale(scale);
+  }
+
+  for (let idx = 0; idx < 12 && !fitsWithinArea(layout.annotatedBounds, layout.fitArea); idx += 1) {
+    scale *= 0.995;
+    layout = input.resolveForScale(scale);
+  }
+
+  return layout;
+}
+
+type ResolvedSheetLayout = {
+  outerField: SheetDrawingField;
+  fitArea: SheetFitArea;
+  annotatedBounds: AnnotatedBounds;
+  x: number;
+  y: number;
+  scale: number;
+};
+
+type SheetDebugMetrics = {
+  requestedScaleLabel: string;
+  appliedScaleLabel: string;
+  boundsWidth: number;
+  boundsHeight: number;
+  fitWidth: number;
+  fitHeight: number;
+  utilizationX: number;
+  utilizationY: number;
+};
+
+function measurePlanAnnotatedBounds(input: {
+  model: ModulePlanModel;
+  x: number;
+  y: number;
+  scale: number;
+  presentation?: ModuleDrawingPresentation;
+  frame: PlanSheetFrame;
+}): AnnotatedBounds {
+  const { model, x, y, scale, presentation = 'sheet', frame } = input;
+  const isSheet = presentation === 'sheet';
+  const isHipCorner = model.roofType === 'hip_corner';
+  const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
+  const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
+  const aW = model.lengthA * scale;
+  const aH = model.spanA * scale;
+  const bW = (model.lengthB ?? 0) * scale;
+  const bH = (model.spanB ?? 0) * scale;
+  const splitY = y + aH;
+  const bottomY = splitY + bH;
+  const topFrameW = memberSizeM(model.ledgerBeamWidthM, 0.05) * scale;
+  const sideFrameW = memberSizeM(model.supportBeamWidthM, 0.05) * scale;
+  const gutterW = memberSizeM(model.gutterWidthM, 0.1) * scale;
+  const rafterW = memberSizeM(model.rafterWidthM, 0.05) * scale;
+  const ridgeBandW = memberSizeM(model.ridgeBeamWidthM, 0.05) * scale;
+  const ridgeBandX = x + sideFrameW;
+  const ridgeBandWidth = Math.max(0, aW - sideFrameW * 2);
+  const primaryPoints: Point[] = isHipCorner
+    ? [
+        { x, y },
+        { x: x + aW, y },
+        { x: x + aW, y: splitY },
+        { x: x + bW, y: splitY },
+        { x: x + bW, y: bottomY },
+        { x, y: bottomY },
+      ]
+    : [
+        { x, y },
+        { x: x + aW, y },
+        { x: x + aW, y: y + aH },
+        { x, y: y + aH },
+      ];
+  const centerX = x + (isHipCorner ? Math.max(aW, bW) : aW) / 2;
+  const centerY = y + (isHipCorner ? aH + bH : aH) / 2;
+  const insetPoints = primaryPoints.map((point) => ({
+    x: centerX + (point.x - centerX) * 0.92,
+    y: centerY + (point.y - centerY) * 0.92,
+  }));
+  const hipInner = isHipCorner ? hipCornerInnerPoints(x, y, aW, bW, splitY, bottomY, Math.max(sideFrameW, topFrameW, gutterW)) : null;
+  const gableMidY = y + aH / 2;
+  const ridgeBandY = gableMidY - ridgeBandW / 2;
+  const hipRidgeStartX = x + aW * 0.32;
+  const hipRidgeEndX = x + aW * 0.68;
+  const houseBottomY = y - frame.houseBandOffset;
+  const houseTopY = Math.max(frame.outerField.y + 4.8, houseBottomY - frame.houseBandHeight);
+  const houseLeftX = Math.max(frame.fitArea.x + 1.8, x - frame.houseInset);
+  const houseRightX = Math.min(frame.fitArea.x + frame.fitArea.width - 1.8, x + Math.max(aW, bW) + frame.houseInset);
+  const houseLabelX = clamp((houseLeftX + houseRightX) / 2, houseLeftX + 8.4, houseRightX - 8.4);
+  const houseLabelY = houseTopY + frame.houseBandHeight * (isSheet ? 0.62 : 0.58);
+  const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.lengthA, x, aW);
+  const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
+  const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
+  const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
+  const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
+  const fallX = Math.min(frame.outerField.x + frame.outerField.width - 11, x + Math.max(aW, bW) + frame.fallGap - 0.55);
+  const fallTop = y + 1.5;
+  const fallBottom = (isHipCorner ? bottomY : y + aH) - 1.5;
+  const fallLabelX = fallX + 0.62;
+  const fallLabelY = (fallTop + fallBottom) / 2 + 0.18;
+  const dimensionOffsets = { bottom: 7.8, secondary: 5.4, tertiary: 6.15, side: 5.6, hipSide: 5.9 };
+  const dimBaseY = bottomY + dimensionOffsets.bottom;
+  const secondaryDimY = dimBaseY + dimensionOffsets.secondary;
+  const rafterDimY = dimBaseY + dimensionOffsets.tertiary;
+  const yTopInner = y + topFrameW;
+  const yBottomInner = y + aH - gutterW;
+  const overhangFrameDepth = isHipCorner ? bH : aH;
+  const overhangDepth = model.overhangEnabled
+    ? Math.min(Math.max(0, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - topFrameW - gutterW))
+    : 0;
+  const overhangY = isHipCorner ? bottomY - overhangDepth : y + aH - overhangDepth;
+  const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - sideFrameW * 2);
+  const overhangX = x + sideFrameW;
+  const spacingBounds =
+    rafterXsA.length >= 2
+      ? (() => {
+          const spacingXs = interiorRafterXsA.length >= 2 ? interiorRafterXsA : rafterXsA;
+          const baseIdx = Math.max(0, Math.floor((spacingXs.length - 2) / 2));
+          const d1 = spacingXs[baseIdx]!;
+          const d2 = spacingXs[baseIdx + 1]!;
+          return unionBounds([
+            boundsFromLine(d1, isHipCorner ? splitY - gutterW : yBottomInner, d1, rafterDimY, 0.2),
+            boundsFromLine(d2, isHipCorner ? splitY - gutterW : yBottomInner, d2, rafterDimY, 0.2),
+            estimateTickDimensionBounds({
+              x1: d1,
+              y1: rafterDimY,
+              x2: d2,
+              y2: rafterDimY,
+              label: `${formatMetres(model.rafterSpacingA)} c/c`,
+              textY: rafterDimY - 1.8,
+              presentation,
+            }),
+          ]);
+        })()
+      : null;
+
+  return unionBounds([
+    boundsFromPoints(primaryPoints, 0.35),
+    hipInner ? boundsFromPoints(hipInner, 0.35) : null,
+    model.boxPerimeterEnabled ? boundsFromPoints(insetPoints, 0.35) : null,
+    hasFullLengthRidge && ridgeBandWidth > 0 ? boundsFromRect(ridgeBandX, ridgeBandY, ridgeBandWidth, ridgeBandW) : null,
+    model.roofType === 'hip' ? boundsFromLine(x, y, hipRidgeStartX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(x + aW, y, hipRidgeEndX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(x, y + aH, hipRidgeStartX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(x + aW, y + aH, hipRidgeEndX, gableMidY, 0.3) : null,
+    isHipCorner ? boundsFromLine(x, splitY, x + bW, splitY, 0.25) : null,
+    ...interiorRafterXsA.map((rx) => boundsFromRect(rx - rafterW / 2, yTopInner, rafterW, Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner))),
+    ...interiorRafterXsB.map((rx) =>
+      boundsFromRect(rx - rafterW / 2, splitY + topFrameW, rafterW, Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))),
+    ),
+    model.houseConnectionType === 'soffit' && soffitXs.length > 0 ? boundsFromLine(soffitXs[0]!, y - 1.2, soffitXs[soffitXs.length - 1]!, y - 1.2, 0.25) : null,
+    ...soffitXs.map((sx) => boundsFromLine(sx, y - 2.3, sx, y + 0.1, 0.25)),
+    model.overhangEnabled && overhangDepth > 0 ? boundsFromRect(overhangX, overhangY, overhangWidth, overhangDepth) : null,
+    boundsFromRect(houseLeftX, houseTopY, houseRightX - houseLeftX, houseBottomY - houseTopY),
+    estimateTextBounds({
+      text: 'House side',
+      x: houseLabelX,
+      y: houseLabelY,
+      anchor: 'middle',
+      fontHeight: 1.7,
+      charWidth: 0.62,
+      paddingX: 0.3,
+      paddingY: 0.18,
+    }),
+    boundsFromLine(fallX, fallTop, fallX, fallBottom, 0.25),
+    isGableLike ? estimateArrowHeadBounds({ x: fallX, y: fallTop, direction: 'up', presentation }) : null,
+    isGableLike ? estimateArrowHeadBounds({ x: fallX, y: fallBottom, direction: 'down', presentation }) : null,
+    !isGableLike
+      ? estimateArrowHeadBounds({
+          x: fallX,
+          y: model.slopeDirection === 'toward_house' ? fallTop : fallBottom,
+          direction: model.slopeDirection === 'toward_house' ? 'up' : 'down',
+          presentation,
+        })
+      : null,
+    estimateTextBounds({
+      text: isGableLike ? 'fall both sides' : 'fall',
+      x: fallLabelX,
+      y: fallLabelY,
+      anchor: 'start',
+      fontHeight: 1.8,
+      charWidth: 0.58,
+      paddingX: 0.2,
+      paddingY: 0.18,
+    }),
+    boundsFromLine(x, isHipCorner ? bottomY : y + aH, x, dimBaseY, 0.2),
+    boundsFromLine(x + aW, isHipCorner ? splitY : y + aH, x + aW, dimBaseY, 0.2),
+    estimateTickDimensionBounds({ x1: x, y1: dimBaseY, x2: x + aW, y2: dimBaseY, label: formatMetres(model.lengthA), presentation }),
+    boundsFromLine(x, y, x - dimensionOffsets.side, y, 0.2),
+    boundsFromLine(x, y + aH, x - dimensionOffsets.side, y + aH, 0.2),
+    estimateTickDimensionBounds({
+      x1: x - dimensionOffsets.side,
+      y1: y,
+      x2: x - dimensionOffsets.side,
+      y2: y + aH,
+      label: formatMetres(model.spanA),
+      presentation,
+    }),
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x, bottomY, x, secondaryDimY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x + bW, bottomY, x + bW, secondaryDimY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB
+      ? estimateTickDimensionBounds({ x1: x, y1: secondaryDimY, x2: x + bW, y2: secondaryDimY, label: formatMetres(model.lengthB), presentation })
+      : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x + bW, splitY, x + bW + dimensionOffsets.hipSide, splitY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x + bW, bottomY, x + bW + dimensionOffsets.hipSide, bottomY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB
+      ? estimateTickDimensionBounds({
+          x1: x + bW + dimensionOffsets.hipSide,
+          y1: splitY,
+          x2: x + bW + dimensionOffsets.hipSide,
+          y2: bottomY,
+          label: formatMetres(model.spanB),
+          presentation,
+        })
+      : null,
+    spacingBounds,
+    model.boxPerimeterEnabled ? boundsFromLine(centerX, y + 2.8, centerX, (isHipCorner ? bottomY : y + aH) - 2.8, 0.2) : null,
+    model.boxPerimeterEnabled
+      ? estimateTextBounds({
+          text: 'internal roof angle',
+          x: centerX + 2.5,
+          y: centerY + 0.5,
+          anchor: 'start',
+          fontHeight: 1.55,
+          charWidth: 0.54,
+          paddingX: 0.15,
+          paddingY: 0.15,
+        })
+      : null,
+  ]);
+}
+
+function resolvePlanSheetLayoutForScale(input: {
+  model: ModulePlanModel;
+  scale: number;
+}): ResolvedSheetLayout {
+  const frame = getPlanSheetFrame(input.model.roofType === 'hip_corner');
+  const totalW = input.model.roofType === 'hip_corner' ? Math.max(input.model.lengthA, input.model.lengthB ?? 0) : input.model.lengthA;
+  const totalH = input.model.roofType === 'hip_corner' ? input.model.spanA + (input.model.spanB ?? 0) : input.model.spanA;
+  const initial = resolvePlanFitBox(totalW, totalH, 'sheet', input.model.roofType === 'hip_corner');
+  let x = initial.x;
+  let y = initial.y;
+  let bounds = measurePlanAnnotatedBounds({ model: input.model, x, y, scale: input.scale, frame });
+  for (let idx = 0; idx < 2; idx += 1) {
+    const offset = resolveBoundsPlacement(bounds, frame.fitArea, frame.verticalBias);
+    x += offset.dx;
+    y += offset.dy;
+    bounds = measurePlanAnnotatedBounds({ model: input.model, x, y, scale: input.scale, frame });
+  }
+
+  return {
+    outerField: frame.outerField,
+    fitArea: frame.fitArea,
+    annotatedBounds: bounds,
+    x,
+    y,
+    scale: input.scale,
+  };
+}
+
+function resolvePlanSheetLayout(input: {
+  model: ModulePlanModel;
+  drawingScale: EstimateDrawingScale;
+  viewportMm?: { widthMm: number; heightMm: number };
+}): ResolvedSheetLayout {
+  if (input.drawingScale.mode === 'fixed') {
+    return resolvePlanSheetLayoutForScale({
+      model: input.model,
+      scale: getViewBoxUnitsPerMetreAtScale(input.drawingScale.ratio, input.viewportMm),
+    });
+  }
+
+  const total = getPlanRealExtents(input.model);
+  let low = 0.05;
+  let high = resolvePlanFitBox(total.widthM, total.heightM, 'sheet', input.model.roofType === 'hip_corner').scale;
+  let best = resolvePlanSheetLayoutForScale({ model: input.model, scale: low });
+  for (let idx = 0; idx < 26; idx += 1) {
+    const mid = (low + high) / 2;
+    const candidate = resolvePlanSheetLayoutForScale({ model: input.model, scale: mid });
+    if (fitsWithinArea(candidate.annotatedBounds, candidate.fitArea)) {
+      best = candidate;
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+  return best;
+}
+
+function measureSectionAnnotatedBounds(input: {
+  model: ModuleSectionModel;
+  xLeft: number;
+  yGround: number;
+  scale: number;
+  presentation?: ModuleDrawingPresentation;
+}): AnnotatedBounds {
+  const { model, xLeft, yGround, scale, presentation = 'sheet' } = input;
+  const isSheet = presentation === 'sheet';
+  const overhangM = sectionOverhangM(model);
+  const supportXFromHouseM = sectionSupportXFromHouseM(model);
+  const ledgerBeamDepthM = sectionLedgerBeamDepthM(model);
+  const ledgerBeamWidthM = sectionLedgerBeamWidthM(model);
+  const supportBeamDepthM = sectionSupportBeamDepthM(model);
+  const supportBeamWidthM = sectionSupportBeamWidthM(model);
+  const tieBeamDepthM = sectionSupportBeamDepthM(model);
+  const tieBeamWidthM = sectionSupportBeamWidthM(model);
+  const ridgeBeamDepthM = sectionRidgeBeamDepthM(model);
+  const ridgeBeamWidthM = sectionRidgeBeamWidthM(model);
+  const leftEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : ledgerBeamDepthM;
+  const leftEaveBeamWidthM = model.sectionKind === 'gable' ? model.gutterWidthM : ledgerBeamWidthM;
+  const rightEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : supportBeamDepthM;
+  const rightEaveBeamWidthM = model.sectionKind === 'gable' ? model.gutterWidthM : supportBeamWidthM;
+  const outerGutterUndersideM = sectionOuterGutterUndersideM(model);
+  const supportUndersideM = sectionSupportUndersideM(model);
+  const rafterPlumbCutDropM = sectionRafterPlumbCutDropM(model);
+  const houseLedgerUndersideM = model.leftEdgeHeightM;
+  const houseRafterUndersideM = houseLedgerUndersideM + leftEaveBeamDepthM - rafterPlumbCutDropM;
+  const outerRafterUndersideM = outerGutterUndersideM + model.gutterDepthM - rafterPlumbCutDropM;
+  const supportRafterUndersideM =
+    model.sectionKind === 'mono'
+      ? sectionMonoRafterUndersideAtM(model, supportXFromHouseM)
+      : model.rightEdgeHeightM + rightEaveBeamDepthM - rafterPlumbCutDropM;
+  const supportBeamTopM = supportUndersideM + supportBeamDepthM;
+  const postW = memberSizeM(model.postWidthM, 0.1) * scale;
+  const rafterDepth = memberSizeM(model.rafterDepthM, 0.15) * scale;
+  const gutterWidth = memberSizeM(model.gutterWidthM, 0.1) * scale;
+  const leftEaveDepth = leftEaveBeamDepthM * scale;
+  const leftEaveWidth = leftEaveBeamWidthM * scale;
+  const supportCapDepth = supportBeamDepthM * scale;
+  const supportCapWidth = supportBeamWidthM * scale;
+  const tieBeamDepth = tieBeamDepthM * scale;
+  const kingStrutWidth = tieBeamWidthM * scale;
+  const rightEaveBeamDepth = rightEaveBeamDepthM * scale;
+  const rightEaveBeamWidth = rightEaveBeamWidthM * scale;
+  const ridgeBeamWidth = ridgeBeamWidthM * scale;
+  const xRight = xLeft + model.spanA * scale;
+  const xSupport = model.sectionKind === 'mono' ? xLeft + supportXFromHouseM * scale : xRight;
+  const ridgeX = (xLeft + xRight) / 2;
+  const yForHeight = (heightM: number) => yGround - Math.max(0, heightM) * scale;
+  const yHouseUnder = yForHeight(houseLedgerUndersideM);
+  const ySupportUnder = yForHeight(model.sectionKind === 'mono' ? supportUndersideM : model.rightEdgeHeightM);
+  const yOuterGutterUnder = yForHeight(outerGutterUndersideM);
+  const yHouseRafterUnder = yForHeight(houseRafterUndersideM);
+  const yOuterRafterUnder = yForHeight(outerRafterUndersideM);
+  const yOuterGutterTop = yForHeight(outerGutterUndersideM + model.gutterDepthM);
+  const yRightEaveRafterUnder = yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM - rafterPlumbCutDropM);
+  const ySupportBeamTop = yForHeight(supportBeamTopM);
+  const yRidgeUnder = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM) : null;
+  const yRidgeBeamTop = typeof model.ridgeHeightM === 'number' ? yForHeight(model.ridgeHeightM + ridgeBeamDepthM) : null;
+  const tieBeamTopY = yHouseUnder;
+  const tieBeamBottomY = Math.min(yGround - 0.4, tieBeamTopY + tieBeamDepth);
+  const supportPostTopY = ySupportUnder;
+  const supportCapTopY = ySupportBeamTop;
+  const gutterTopY = yOuterGutterTop;
+  const ledgerX = xLeft;
+  const ledgerY = yForHeight(houseLedgerUndersideM + leftEaveBeamDepthM);
+  const rightEaveX = xRight - rightEaveBeamWidth;
+  const rightEaveY = yForHeight(model.rightEdgeHeightM + rightEaveBeamDepthM);
+  const leftPostX = xLeft;
+  const secondPostX = model.sectionKind === 'mono' ? (overhangM > 0 ? xSupport - postW / 2 : xRight - postW) : xRight - postW;
+  const monoRafterStartX = ledgerX + leftEaveWidth;
+  const monoRafterEndX = xRight - gutterWidth;
+  const gableLeftRafterStartX = ledgerX + leftEaveWidth;
+  const gableRightRafterEndX = xRight - rightEaveBeamWidth;
+  const leftDimX = xLeft - 9.8;
+  const rightDimX = xRight + 10.6;
+  const spanAnchorLeftY = yHouseUnder;
+  const spanAnchorSupportY = ySupportUnder;
+  const spanAnchorRightY = yOuterGutterUnder;
+  const spanDatumY = Math.max(spanAnchorLeftY, spanAnchorSupportY, spanAnchorRightY);
+  const spanDimY = Math.max(yGround + 10.9, spanDatumY + 9.4);
+  const overhangDimY = Math.max(spanAnchorRightY + 4.9, spanDimY - 5.8);
+  const pitchLabelY = spanDimY + 6.2;
+  const metaLabelY = pitchLabelY - 3.2;
+  const roofLengthLabelGap = 1.6;
+  const mainRoofNormal = segmentDownNormal(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder);
+  const ridgeLeftX = ridgeX - ridgeBeamWidth / 2;
+  const ridgeRightX = ridgeX + ridgeBeamWidth / 2;
+  const monoRoofGeom = model.sectionKind === 'mono' ? sectionMemberPolygonPlumbCuts(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder, rafterDepth) : null;
+  const gableLeftRoofGeom = model.sectionKind === 'gable' && yRidgeUnder !== null ? sectionMemberPolygonPlumbCuts(gableLeftRafterStartX, yHouseRafterUnder, ridgeLeftX, yRidgeUnder, rafterDepth) : null;
+  const gableRightRoofGeom = model.sectionKind === 'gable' && yRidgeUnder !== null ? sectionMemberPolygonPlumbCuts(ridgeRightX, yRidgeUnder, gableRightRafterEndX, yRightEaveRafterUnder, rafterDepth) : null;
+  const monoSupportSplice =
+    model.sectionKind === 'mono' && overhangM > 0 && monoRoofGeom && monoRafterEndX - monoRafterStartX > 1e-6
+      ? (() => {
+          const t = clamp((xSupport - monoRafterStartX) / (monoRafterEndX - monoRafterStartX), 0, 1);
+          const yUnder = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * t;
+          const topStart = monoRoofGeom.points[3]!;
+          const topEnd = monoRoofGeom.points[2]!;
+          const yTop = topStart.y + (topEnd.y - topStart.y) * t;
+          return { yTop, yUnder };
+        })()
+      : null;
+  const depthDimAlongRoof = 0.18;
+  const depthDimUnderX = monoRafterStartX + (monoRafterEndX - monoRafterStartX) * depthDimAlongRoof;
+  const depthDimUnderY = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * depthDimAlongRoof;
+  const depthDimTop: Point = {
+    x: depthDimUnderX - mainRoofNormal.nx * rafterDepth,
+    y: depthDimUnderY - mainRoofNormal.ny * rafterDepth,
+  };
+  const depthDimBottom: Point = { x: depthDimUnderX, y: depthDimUnderY };
+  const roofTopLengthDims = (() => {
+    const offset = model.sectionKind === 'gable' ? 4.8 : 4.2;
+    if (model.sectionKind === 'mono' && monoRoofGeom) {
+      const topStart = monoRoofGeom.points[3]!;
+      const topEnd = monoRoofGeom.points[2]!;
+      const dimStart: Point = {
+        x: topStart.x - mainRoofNormal.nx * offset,
+        y: topStart.y - mainRoofNormal.ny * offset,
+      };
+      const dimEnd: Point = {
+        x: topEnd.x - mainRoofNormal.nx * offset,
+        y: topEnd.y - mainRoofNormal.ny * offset,
+      };
+      const lengthM = Math.hypot((topEnd.x - topStart.x) / scale, (topEnd.y - topStart.y) / scale);
+      return [{ topStart, topEnd, dimStart, dimEnd, lengthM }];
+    }
+    if (model.sectionKind === 'gable' && gableLeftRoofGeom && gableRightRoofGeom) {
+      const leftTopStart = gableLeftRoofGeom.points[3]!;
+      const leftTopEnd = gableLeftRoofGeom.points[2]!;
+      const rightTopStart = gableRightRoofGeom.points[3]!;
+      const rightTopEnd = gableRightRoofGeom.points[2]!;
+      const leftNormal = segmentDownNormal(leftTopStart.x, leftTopStart.y, leftTopEnd.x, leftTopEnd.y);
+      const rightNormal = segmentDownNormal(rightTopStart.x, rightTopStart.y, rightTopEnd.x, rightTopEnd.y);
+      const leftDimStart: Point = {
+        x: leftTopStart.x - leftNormal.nx * offset,
+        y: leftTopStart.y - leftNormal.ny * offset,
+      };
+      const leftDimEnd: Point = {
+        x: leftTopEnd.x - leftNormal.nx * offset,
+        y: leftTopEnd.y - leftNormal.ny * offset,
+      };
+      const rightDimStart: Point = {
+        x: rightTopStart.x - rightNormal.nx * offset,
+        y: rightTopStart.y - rightNormal.ny * offset,
+      };
+      const rightDimEnd: Point = {
+        x: rightTopEnd.x - rightNormal.nx * offset,
+        y: rightTopEnd.y - rightNormal.ny * offset,
+      };
+      const leftLengthM = Math.hypot((leftTopEnd.x - leftTopStart.x) / scale, (leftTopEnd.y - leftTopStart.y) / scale);
+      const rightLengthM = Math.hypot((rightTopEnd.x - rightTopStart.x) / scale, (rightTopEnd.y - rightTopStart.y) / scale);
+      return [
+        { topStart: leftTopStart, topEnd: leftTopEnd, dimStart: leftDimStart, dimEnd: leftDimEnd, lengthM: leftLengthM },
+        { topStart: rightTopStart, topEnd: rightTopEnd, dimStart: rightDimStart, dimEnd: rightDimEnd, lengthM: rightLengthM },
+      ];
+    }
+    return [];
+  })();
+
+  return unionBounds([
+    boundsFromRect(Math.max(8, xLeft - 8), yGround + 1.3, Math.min(104, xRight + 8) - Math.max(8, xLeft - 8), 8),
+    boundsFromLine(Math.max(8, xLeft - 8), yGround, Math.min(112, xRight + 8), yGround, 0.25),
+    boundsFromRect(leftPostX, yHouseUnder, postW, yGround - yHouseUnder),
+    boundsFromRect(secondPostX, supportPostTopY, postW, yGround - supportPostTopY),
+    boundsFromRect(ledgerX, ledgerY, leftEaveWidth, leftEaveDepth),
+    model.sectionKind === 'mono' && overhangM > 0 ? boundsFromRect(xSupport - supportCapWidth / 2, supportCapTopY, supportCapWidth, supportCapDepth) : null,
+    model.sectionKind === 'gable' ? boundsFromRect(rightEaveX, rightEaveY, rightEaveBeamWidth, rightEaveBeamDepth) : null,
+    model.sectionKind === 'gable' && yRidgeUnder !== null ? boundsFromRect(xLeft, tieBeamTopY, Math.max(0.4, xRight - xLeft), Math.max(0.2, tieBeamBottomY - tieBeamTopY)) : null,
+    model.sectionKind === 'gable' && yRidgeUnder !== null ? boundsFromRect(ridgeX - kingStrutWidth / 2, yRidgeUnder, kingStrutWidth, Math.max(0.2, tieBeamTopY - yRidgeUnder)) : null,
+    model.sectionKind === 'gable' && yRidgeUnder !== null ? boundsFromLine(ridgeX, yGround, ridgeX, yRidgeUnder, 0.2) : null,
+    monoRoofGeom ? boundsFromPoints(monoRoofGeom.points, 0.35) : null,
+    gableLeftRoofGeom ? boundsFromPoints(gableLeftRoofGeom.points, 0.35) : null,
+    gableRightRoofGeom ? boundsFromPoints(gableRightRoofGeom.points, 0.35) : null,
+    yRidgeBeamTop !== null ? boundsFromRect(ridgeX - ridgeBeamWidth / 2, yRidgeBeamTop, ridgeBeamWidth, Math.max(0.2, yRidgeUnder! - yRidgeBeamTop)) : null,
+    monoSupportSplice ? boundsFromLine(xSupport, monoSupportSplice.yTop, xSupport, monoSupportSplice.yUnder, 0.2) : null,
+    model.sectionKind === 'mono' ? boundsFromRect(xRight - gutterWidth, gutterTopY, gutterWidth, Math.max(0.2, yOuterGutterUnder - gutterTopY)) : null,
+    ...roofTopLengthDims.flatMap((roofDim) => {
+      const roofNormal = segmentDownNormal(roofDim.topStart.x, roofDim.topStart.y, roofDim.topEnd.x, roofDim.topEnd.y);
+      return [
+        boundsFromLine(roofDim.topStart.x, roofDim.topStart.y, roofDim.dimStart.x, roofDim.dimStart.y, 0.2),
+        boundsFromLine(roofDim.topEnd.x, roofDim.topEnd.y, roofDim.dimEnd.x, roofDim.dimEnd.y, 0.2),
+        estimateTickDimensionBounds({
+          x1: roofDim.dimStart.x,
+          y1: roofDim.dimStart.y,
+          x2: roofDim.dimEnd.x,
+          y2: roofDim.dimEnd.y,
+          label: formatMetres(roofDim.lengthM),
+          textX: (roofDim.dimStart.x + roofDim.dimEnd.x) / 2 - roofNormal.nx * (1.4 + roofLengthLabelGap),
+          textY: (roofDim.dimStart.y + roofDim.dimEnd.y) / 2 - roofNormal.ny * 1.4,
+          presentation,
+        }),
+      ];
+    }),
+    model.boxPerimeterEnabled && model.sectionKind === 'gable' && yRidgeUnder !== null
+      ? boundsFromLine(gableLeftRafterStartX + 1.6, yHouseRafterUnder + 1.4, ridgeX, yRidgeUnder + 1.4, 0.2)
+      : null,
+    model.boxPerimeterEnabled && model.sectionKind === 'gable' && yRidgeUnder !== null
+      ? boundsFromLine(ridgeX, yRidgeUnder + 1.4, gableRightRafterEndX - 1.6, yRightEaveRafterUnder + 1.4, 0.2)
+      : null,
+    model.boxPerimeterEnabled && model.sectionKind !== 'gable'
+      ? boundsFromLine(monoRafterStartX + 1.6, yHouseRafterUnder + 1.4, monoRafterEndX - 1.6, yOuterRafterUnder + 1.4, 0.2)
+      : null,
+    model.boxPerimeterEnabled
+      ? estimateTextBounds({
+          text: `Internal roof angle ${model.pitchDeg.toFixed(1)} deg`,
+          x: (xLeft + xRight) / 2,
+          y: Math.min(yGround - 2.5, Math.max(yHouseUnder, ySupportUnder) + 8),
+          anchor: 'middle',
+          fontHeight: 1.75,
+          charWidth: 0.58,
+          paddingX: 0.25,
+          paddingY: 0.18,
+        })
+      : null,
+    model.sectionKind === 'mono'
+      ? estimateTickDimensionBounds({
+          x1: depthDimTop.x,
+          y1: depthDimTop.y,
+          x2: depthDimBottom.x,
+          y2: depthDimBottom.y,
+          label: `${Math.round(model.rafterDepthM * 1000)}mm`,
+          textX: depthDimTop.x - 1.3,
+          textY: depthDimTop.y - 2.5,
+          overrun: 1.1,
+          presentation,
+        })
+      : null,
+    boundsFromLine(leftDimX - 2.4, yHouseUnder, xLeft + 2.4, yHouseUnder, 0.2),
+    boundsFromLine(xRight - 2.4, yOuterGutterUnder, rightDimX + 2.4, yOuterGutterUnder, 0.2),
+    overhangM > 0 ? boundsFromLine(xSupport, spanAnchorSupportY, xSupport, overhangDimY, 0.2) : null,
+    overhangM > 0 ? boundsFromLine(xRight, spanAnchorRightY, xRight, overhangDimY, 0.2) : null,
+    overhangM > 0
+      ? estimateTickDimensionBounds({ x1: xSupport, y1: overhangDimY, x2: xRight, y2: overhangDimY, label: `OH ${formatMetres(overhangM)}`, presentation })
+      : null,
+    boundsFromLine(xLeft, spanAnchorLeftY, xLeft, spanDimY, 0.2),
+    boundsFromLine(xRight, spanAnchorRightY, xRight, spanDimY, 0.2),
+    estimateTickDimensionBounds({
+      x1: xLeft,
+      y1: spanDimY,
+      x2: xRight,
+      y2: spanDimY,
+      label: formatMetres(model.spanA),
+      textY: spanDimY - 1.8,
+      presentation,
+    }),
+    boundsFromLine(xLeft, yGround, leftDimX, yGround, 0.2),
+    boundsFromLine(xLeft, yHouseUnder, leftDimX, yHouseUnder, 0.2),
+    estimateTickDimensionBounds({ x1: leftDimX, y1: yGround, x2: leftDimX, y2: yHouseUnder, label: formatMetres(model.leftEdgeHeightM), presentation }),
+    boundsFromLine(xRight, yGround, rightDimX, yGround, 0.2),
+    boundsFromLine(xRight, yOuterGutterUnder, rightDimX, yOuterGutterUnder, 0.2),
+    estimateTickDimensionBounds({ x1: rightDimX, y1: yGround, x2: rightDimX, y2: yOuterGutterUnder, label: formatMetres(outerGutterUndersideM), presentation }),
+    estimateTextBounds({
+      text: `Pitch ${model.pitchDeg.toFixed(1)} deg`,
+      x: (xLeft + xRight) / 2,
+      y: pitchLabelY,
+      anchor: 'middle',
+      fontHeight: 1.9,
+      charWidth: 0.6,
+      paddingX: 0.25,
+      paddingY: 0.18,
+    }),
+    model.roofType === 'hip_corner'
+      ? estimateTextBounds({
+          text: 'Primary wing section (A)',
+          x: (xLeft + xRight) / 2,
+          y: metaLabelY,
+          anchor: 'middle',
+          fontHeight: 1.75,
+          charWidth: 0.58,
+          paddingX: 0.25,
+          paddingY: 0.18,
+        })
+      : null,
+  ]);
+}
+
+function resolveSectionSheetLayoutForScale(input: {
+  model: ModuleSectionModel;
+  scale: number;
+}): ResolvedSheetLayout {
+  const frame = getSectionSheetFrame(input.model.sectionKind);
+  const extents = getSectionRealExtents(input.model);
+  let xLeft = frame.fitArea.x + (frame.fitArea.width - extents.widthM * input.scale) / 2;
+  let yGround = frame.fitArea.y + extents.heightM * input.scale + Math.max(0, frame.fitArea.height - extents.heightM * input.scale) * frame.verticalBias;
+  let bounds = measureSectionAnnotatedBounds({ model: input.model, xLeft, yGround, scale: input.scale });
+  for (let idx = 0; idx < 2; idx += 1) {
+    const offset = resolveBoundsPlacement(bounds, frame.fitArea, frame.verticalBias);
+    xLeft += offset.dx;
+    yGround += offset.dy;
+    bounds = measureSectionAnnotatedBounds({ model: input.model, xLeft, yGround, scale: input.scale });
+  }
+
+  return {
+    outerField: frame.outerField,
+    fitArea: frame.fitArea,
+    annotatedBounds: bounds,
+    x: xLeft,
+    y: yGround,
+    scale: input.scale,
+  };
+}
+
+function resolveSectionSheetLayout(input: {
+  model: ModuleSectionModel;
+  drawingScale: EstimateDrawingScale;
+  viewportMm?: { widthMm: number; heightMm: number };
+}): ResolvedSheetLayout {
+  if (input.drawingScale.mode === 'fixed') {
+    return resolveSectionSheetLayoutForScale({
+      model: input.model,
+      scale: getViewBoxUnitsPerMetreAtScale(input.drawingScale.ratio, input.viewportMm),
+    });
+  }
+
+  const extents = getSectionRealExtents(input.model);
+  const fitFrame = getSectionSheetFrame(input.model.sectionKind);
+  let low = 0.05;
+  let high = Math.min(fitFrame.fitArea.width / Math.max(extents.widthM, 0.1), fitFrame.fitArea.height / Math.max(extents.heightM, 0.1));
+  let best = resolveSectionSheetLayoutForScale({ model: input.model, scale: low });
+  for (let idx = 0; idx < 26; idx += 1) {
+    const mid = (low + high) / 2;
+    const candidate = resolveSectionSheetLayoutForScale({ model: input.model, scale: mid });
+    if (fitsWithinArea(candidate.annotatedBounds, candidate.fitArea)) {
+      best = candidate;
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+  return best;
+}
+
 function PlanSvg({
   model,
   idBase,
@@ -1231,10 +2139,8 @@ function PlanSvg({
   const planSheetFrame = isSheet ? getPlanSheetFrame(isHipCorner) : null;
   const totalW = isHipCorner ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
   const totalH = isHipCorner ? model.spanA + (model.spanB ?? 0) : model.spanA;
-  const layout =
-    isSheet && drawingScale.mode === 'fixed'
-      ? resolvePlanFixedScaleBox(totalW, totalH, isHipCorner, drawingScale.ratio, sheetViewportMm)
-      : resolvePlanFitBox(totalW, totalH, presentation, isHipCorner);
+  const sheetLayout = isSheet ? resolvePlanSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
+  const layout = sheetLayout ?? resolvePlanFitBox(totalW, totalH, presentation, isHipCorner);
   const scale = layout.scale;
   const x = layout.x;
   const y = layout.y;
@@ -1282,13 +2188,19 @@ function PlanSvg({
   const ridgeBandY = gableMidY - ridgeBandW / 2;
   const hipRidgeStartX = x + aW * 0.32;
   const hipRidgeEndX = x + aW * 0.68;
-  const houseBottomY = y - layout.houseBandOffset;
-  const houseTopY = Math.max(isSheet ? 5.2 : 4, houseBottomY - layout.houseBandHeight);
-  const houseLeftX = Math.max(isSheet ? 8.4 : 6, x - layout.houseInset);
-  const houseRightX = Math.min(114, x + Math.max(aW, bW) + layout.houseInset);
+  const houseBandOffset = isSheet ? (planSheetFrame?.houseBandOffset ?? 1.15) : layout.houseBandOffset;
+  const houseBandHeight = isSheet ? (planSheetFrame?.houseBandHeight ?? 5.3) : layout.houseBandHeight;
+  const houseInset = isSheet ? (planSheetFrame?.houseInset ?? 1.7) : layout.houseInset;
+  const fallGap = isSheet ? (planSheetFrame?.fallGap ?? 5.0) : layout.fallGap;
+  const houseBottomY = y - houseBandOffset;
+  const houseTopY = Math.max(isSheet ? (sheetLayout?.outerField.y ?? 0) + 4.8 : 4, houseBottomY - houseBandHeight);
+  const houseLeftX = Math.max(isSheet ? (sheetLayout?.fitArea.x ?? 0) + 1.8 : 6, x - houseInset);
+  const houseRightX = Math.min(isSheet ? (sheetLayout?.fitArea.x ?? 0) + (sheetLayout?.fitArea.width ?? 114) - 1.8 : 114, x + Math.max(aW, bW) + houseInset);
   const houseLabelX = clamp((houseLeftX + houseRightX) / 2, houseLeftX + 8.4, houseRightX - 8.4);
-  const houseCropOutline = planSheetFrame?.cropBox ?? null;
-  const houseLabelY = houseTopY + layout.houseBandHeight * (isSheet ? 0.62 : 0.58);
+  const outerFieldOutline = sheetLayout?.outerField ?? null;
+  const fitAreaOutline = sheetLayout?.fitArea ?? null;
+  const annotatedBoundsOutline = sheetLayout?.annotatedBounds ?? null;
+  const houseLabelY = houseTopY + houseBandHeight * (isSheet ? 0.62 : 0.58);
   const hatchId = `${idBase}_house_hatch`;
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.lengthA, x, aW);
@@ -1297,7 +2209,7 @@ function PlanSvg({
   const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
 
-  const fallX = Math.min(isSheet ? 108.6 : 110.5, x + Math.max(aW, bW) + (isSheet ? layout.fallGap - 0.55 : layout.fallGap));
+  const fallX = Math.min(isSheet ? 108.6 : 110.5, x + Math.max(aW, bW) + (isSheet ? fallGap - 0.55 : layout.fallGap));
   const fallTop = y + (isSheet ? 1.5 : 1);
   const fallBottom = (isHipCorner ? bottomY : y + aH) - (isSheet ? 1.5 : 1);
   const fallLabelX = fallX + (isSheet ? 0.62 : 2.3);
@@ -1335,14 +2247,38 @@ function PlanSvg({
         </pattern>
       </defs>
 
-      {houseCropOutline ? (
+      {outerFieldOutline ? (
         <rect
-          x={houseCropOutline.x}
-          y={houseCropOutline.y}
-          width={houseCropOutline.width}
-          height={houseCropOutline.height}
+          x={outerFieldOutline.x}
+          y={outerFieldOutline.y}
+          width={outerFieldOutline.width}
+          height={outerFieldOutline.height}
           className={styles.moduleDebugCropOutline}
-          data-debug-crop="plan"
+          data-debug-crop="outer-plan"
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {fitAreaOutline ? (
+        <rect
+          x={fitAreaOutline.x}
+          y={fitAreaOutline.y}
+          width={fitAreaOutline.width}
+          height={fitAreaOutline.height}
+          className={styles.moduleDebugFitOutline}
+          data-debug-crop="fit-plan"
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {annotatedBoundsOutline ? (
+        <rect
+          x={annotatedBoundsOutline.minX}
+          y={annotatedBoundsOutline.minY}
+          width={annotatedBoundsOutline.maxX - annotatedBoundsOutline.minX}
+          height={annotatedBoundsOutline.maxY - annotatedBoundsOutline.minY}
+          className={styles.moduleDebugBoundsOutline}
+          data-debug-crop="bounds-plan"
           aria-hidden="true"
         />
       ) : null}
@@ -1535,6 +2471,7 @@ function SectionSvg({
   sheetViewportMm?: { widthMm: number; heightMm: number };
 }) {
   const isSheet = presentation === 'sheet';
+  const sectionSheetLayout = isSheet ? resolveSectionSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
   const overhangM = sectionOverhangM(model);
   const totalSpanM = Math.max(model.spanA, 0.001);
   const supportXFromHouseM = sectionSupportXFromHouseM(model);
@@ -1563,9 +2500,11 @@ function SectionSvg({
   const supportBeamTopM = supportUndersideM + supportBeamDepthM;
 
   const fitFrame = resolveSectionFitFrame(presentation, model.sectionKind);
-  const sectionCropOutline = isSheet ? fitFrame.cropBox : null;
-  const chartWidth = Math.max(12, fitFrame.cropBox.width - fitFrame.annotationPadLeft - fitFrame.annotationPadRight);
-  const topMargin = fitFrame.cropBox.y;
+  const outerFieldOutline = sectionSheetLayout?.outerField ?? null;
+  const fitAreaOutline = sectionSheetLayout?.fitArea ?? null;
+  const annotatedBoundsOutline = sectionSheetLayout?.annotatedBounds ?? null;
+  const chartWidth = Math.max(12, fitFrame.fitArea.width);
+  const topMargin = fitFrame.fitArea.y;
   const safeSpanM = Math.max(totalSpanM, 0.1);
 
   const heights = [
@@ -1584,12 +2523,10 @@ function SectionSvg({
   ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const maxHeightM = Math.max(0.1, ...(heights.length ? heights : [0.1]));
 
-  const availableHeight = Math.max(
-    10,
-    fitFrame.cropBox.height - fitFrame.annotationPadTop - fitFrame.annotationPadBottom,
-  );
+  const availableHeight = Math.max(10, fitFrame.fitArea.height);
   const fixedScale = isSheet && drawingScale.mode === 'fixed' ? getViewBoxUnitsPerMetreAtScale(drawingScale.ratio, sheetViewportMm) : null;
   const scale =
+    sectionSheetLayout?.scale ??
     fixedScale ??
     (() => {
       const scaleX = chartWidth / safeSpanM;
@@ -1597,8 +2534,8 @@ function SectionSvg({
       return Math.min(scaleX, scaleY);
     })();
   const drawHeight = maxHeightM * scale;
-  const topOffset = topMargin + fitFrame.annotationPadTop + Math.max(0, availableHeight - drawHeight) * fitFrame.verticalBias;
-  const yGround = topOffset + drawHeight;
+  const topOffset = sectionSheetLayout ? sectionSheetLayout.y - drawHeight : topMargin + Math.max(0, availableHeight - drawHeight) * fitFrame.verticalBias;
+  const yGround = sectionSheetLayout?.y ?? topOffset + drawHeight;
 
   const postW = memberSizeM(model.postWidthM, 0.1) * scale;
   const rafterDepth = memberSizeM(model.rafterDepthM, 0.15) * scale;
@@ -1614,7 +2551,7 @@ function SectionSvg({
   const ridgeBeamWidth = ridgeBeamWidthM * scale;
 
   const drawWidth = safeSpanM * scale;
-  const xLeft = fitFrame.cropBox.x + fitFrame.annotationPadLeft + (chartWidth - drawWidth) / 2;
+  const xLeft = sectionSheetLayout?.x ?? (fitFrame.fitArea.x + (chartWidth - drawWidth) / 2);
   const xRight = xLeft + model.spanA * scale;
   const xSupport = model.sectionKind === 'mono' ? xLeft + supportXFromHouseM * scale : xRight;
   const ridgeX = (xLeft + xRight) / 2;
@@ -1657,6 +2594,8 @@ function SectionSvg({
   const spanDatumY = Math.max(spanAnchorLeftY, spanAnchorSupportY, spanAnchorRightY);
   const spanDimY = Math.min(89.2, Math.max(yGround + (isSheet ? 10.9 : 10.2), spanDatumY + (isSheet ? 9.4 : 8.4)));
   const overhangDimY = Math.max(spanAnchorRightY + (isSheet ? 4.9 : 4.2), spanDimY - (isSheet ? 5.8 : 5.2));
+  const pitchLabelY = isSheet ? spanDimY + 6.2 : 88;
+  const metaLabelY = isSheet ? pitchLabelY - 3.2 : 84.8;
   const roofLengthLabelGap = isSheet ? 1.6 : 1.2;
 
   const mainRoofNormal = segmentDownNormal(monoRafterStartX, yHouseRafterUnder, monoRafterEndX, yOuterRafterUnder);
@@ -1757,14 +2696,38 @@ function SectionSvg({
         presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
       }`}
     >
-      {sectionCropOutline ? (
+      {outerFieldOutline ? (
         <rect
-          x={sectionCropOutline.x}
-          y={sectionCropOutline.y}
-          width={sectionCropOutline.width}
-          height={sectionCropOutline.height}
+          x={outerFieldOutline.x}
+          y={outerFieldOutline.y}
+          width={outerFieldOutline.width}
+          height={outerFieldOutline.height}
           className={styles.moduleDebugCropOutline}
-          data-debug-crop="section"
+          data-debug-crop="outer-section"
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {fitAreaOutline ? (
+        <rect
+          x={fitAreaOutline.x}
+          y={fitAreaOutline.y}
+          width={fitAreaOutline.width}
+          height={fitAreaOutline.height}
+          className={styles.moduleDebugFitOutline}
+          data-debug-crop="fit-section"
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {annotatedBoundsOutline ? (
+        <rect
+          x={annotatedBoundsOutline.minX}
+          y={annotatedBoundsOutline.minY}
+          width={annotatedBoundsOutline.maxX - annotatedBoundsOutline.minX}
+          height={annotatedBoundsOutline.maxY - annotatedBoundsOutline.minY}
+          className={styles.moduleDebugBoundsOutline}
+          data-debug-crop="bounds-section"
           aria-hidden="true"
         />
       ) : null}
@@ -1930,12 +2893,12 @@ function SectionSvg({
       <line x1={xRight} y1={yOuterGutterUnder} x2={rightDimX} y2={yOuterGutterUnder} className={styles.moduleDimWitness} />
       <TickDimension x1={rightDimX} y1={yGround} x2={rightDimX} y2={yOuterGutterUnder} label={formatMetres(outerGutterUndersideM)} presentation={presentation} />
 
-      <text x={(xLeft + xRight) / 2} y={88} textAnchor="middle" className={styles.moduleSectionPitchLabel}>
+      <text x={(xLeft + xRight) / 2} y={pitchLabelY} textAnchor="middle" className={styles.moduleSectionPitchLabel}>
         {`Pitch ${model.pitchDeg.toFixed(1)} deg`}
       </text>
 
       {model.roofType === 'hip_corner' ? (
-        <text x={(xLeft + xRight) / 2} y={84.8} textAnchor="middle" className={styles.moduleSectionMetaLabel}>
+        <text x={(xLeft + xRight) / 2} y={metaLabelY} textAnchor="middle" className={styles.moduleSectionMetaLabel}>
           Primary wing section (A)
         </text>
       ) : null}

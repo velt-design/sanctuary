@@ -59,6 +59,7 @@ export default function Modal({
   initialFocusRef,
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const portalRoot = typeof document === 'undefined' ? null : document.body;
 
   const overlayClasses = useMemo(() => {
@@ -68,6 +69,10 @@ export default function Modal({
   const panelClasses = useMemo(() => {
     return panelClassName ?? styles.panel;
   }, [panelClassName]);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,7 +99,7 @@ export default function Modal({
       if (!closeOnEsc) return;
       if (e.key !== 'Escape') return;
       e.preventDefault();
-      onClose();
+      onCloseRef.current();
     };
 
     window.addEventListener('keydown', onKeyDown);
@@ -112,7 +117,7 @@ export default function Modal({
         }
       }
     };
-  }, [closeOnEsc, initialFocusRef, onClose, open]);
+  }, [closeOnEsc, initialFocusRef, open]);
 
   if (!open) return null;
   if (!portalRoot) return null;

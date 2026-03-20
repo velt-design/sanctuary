@@ -1,5 +1,7 @@
 ﻿import type { InfillLineItem } from '@/lib/types/calculator';
 
+import type { InfillMonoSlopeAnchorInput, InfillMonoSlopeModeInput } from '@/lib/types/calculator';
+
 export const RAFTER_SPACING_MM_MAX = 642;
 export const INFILL_SHEET_MAX_RUN_M = 3.05;
 export const INFILL_STRIP_MAX_RUN_M = 6.0;
@@ -17,6 +19,7 @@ export type InfillWarningFieldKey =
   | 'shape-height'
   | 'shape-low'
   | 'shape-high'
+  | 'shape-slope'
   | 'shape-bottom'
   | 'support-top'
   | 'support-bottom'
@@ -96,6 +99,7 @@ export type InfillUiEstimate = {
   sheetAreaTotalM2: number;
   cutListRows: CutListRow[];
   invalidHeightInput: boolean;
+  invalidPitchInput: boolean;
   widthInputInvalid: boolean;
   invalidCustomPositions: boolean;
 };
@@ -108,6 +112,7 @@ export type InfillUiValidation = {
     heightM?: string;
     heightLowM?: string;
     heightHighM?: string;
+    slopeDeg?: string;
     targetPanelWidthM?: string;
     maxPanelWidthM?: string;
     bottomOffsetM?: string;
@@ -147,6 +152,88 @@ function isFrontOrHouseLocation(location: InfillLineItem['location']): boolean {
 function normalizeWidthModeForLocation(item: InfillLineItem): InfillLineItem['widthMode'] {
   if (!isFrontOrHouseLocation(item.location)) return 'target_width';
   return item.widthMode === 'match_roof_rafters' ? 'match_roof_rafters' : 'target_width';
+}
+
+export function normalizeMonoSlopeMode(value: unknown): InfillMonoSlopeModeInput {
+  return value === 'pitch' ? 'pitch' : 'heights';
+}
+
+export function normalizeMonoSlopeAnchor(value: unknown): InfillMonoSlopeAnchorInput {
+  return value === 'right' ? 'right' : 'left';
+}
+
+export type ResolvedMonoSlopeShape = {
+  leftHeightM: number;
+  rightHeightM: number;
+  slopeMode: InfillMonoSlopeModeInput;
+  slopeAnchor: InfillMonoSlopeAnchorInput;
+  slopeDeg: number | null;
+  leftInputValid: boolean;
+  rightInputValid: boolean;
+  anchorInputValid: boolean;
+  pitchValid: boolean;
+};
+
+export function resolveMonoSlopeShape(shape: Extract<InfillLineItem['shape'], { type: 'mono_slope' }>): ResolvedMonoSlopeShape {
+  const widthRaw = toNumber(shape.widthM);
+  const widthValid = Number.isFinite(widthRaw) && widthRaw >= 0;
+  const widthM = widthValid ? Math.max(0, widthRaw) : 0;
+  const leftRaw = toNumber(shape.heightLowM);
+  const rightRaw = toNumber(shape.heightHighM);
+  const leftInputValid = Number.isFinite(leftRaw) && leftRaw >= 0;
+  const rightInputValid = Number.isFinite(rightRaw) && rightRaw >= 0;
+  const leftHeightM = leftInputValid ? Math.max(0, leftRaw) : 0;
+  const rightHeightM = rightInputValid ? Math.max(0, rightRaw) : 0;
+  const slopeMode = normalizeMonoSlopeMode(shape.slopeMode);
+  const slopeAnchor = normalizeMonoSlopeAnchor(shape.slopeAnchor);
+  const slopeRaw = toNumber(shape.slopeDeg ?? '');
+  const pitchValid = Number.isFinite(slopeRaw) && slopeRaw >= 0 && slopeRaw < 90;
+
+  if (slopeMode === 'pitch' && pitchValid && widthValid && widthM > 0) {
+    const riseM = Math.tan((slopeRaw * Math.PI) / 180) * widthM;
+    if (slopeAnchor === 'left') {
+      return {
+        leftHeightM,
+        rightHeightM: Math.max(0, leftHeightM + riseM),
+        slopeMode,
+        slopeAnchor,
+        slopeDeg: slopeRaw,
+        leftInputValid,
+        rightInputValid,
+        anchorInputValid: leftInputValid,
+        pitchValid,
+      };
+    }
+
+    return {
+      leftHeightM: Math.max(0, rightHeightM + riseM),
+      rightHeightM,
+      slopeMode,
+      slopeAnchor,
+      slopeDeg: slopeRaw,
+      leftInputValid,
+      rightInputValid,
+      anchorInputValid: rightInputValid,
+      pitchValid,
+    };
+  }
+
+  let derivedSlopeDeg: number | null = null;
+  if (widthValid && widthM > 0) {
+    derivedSlopeDeg = (Math.atan(Math.abs(rightHeightM - leftHeightM) / widthM) * 180) / Math.PI;
+  }
+
+  return {
+    leftHeightM,
+    rightHeightM,
+    slopeMode,
+    slopeAnchor,
+    slopeDeg: pitchValid ? slopeRaw : derivedSlopeDeg,
+    leftInputValid,
+    rightInputValid,
+    anchorInputValid: slopeAnchor === 'left' ? leftInputValid : rightInputValid,
+    pitchValid,
+  };
 }
 
 export function normalizePanelOrientation(value: unknown): InfillLineItem['panelOrientation'] {
@@ -326,9 +413,10 @@ export function formatInfillShapeSummary(shape: InfillLineItem['shape']): string
     const heightM = Number.isFinite(toNumber(shape.heightM)) ? Math.max(0, toNumber(shape.heightM)) : 0;
     return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(heightM, 2)}m`;
   }
-  const low = Number.isFinite(toNumber(shape.heightLowM)) ? Math.max(0, toNumber(shape.heightLowM)) : 0;
-  const high = Number.isFinite(toNumber(shape.heightHighM)) ? Math.max(0, toNumber(shape.heightHighM)) : 0;
-  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(low, 2)}m->${formatMaybeNumber(high, 2)}m`;
+  const resolved = resolveMonoSlopeShape(shape);
+  const pitchLabel =
+    resolved.slopeMode === 'pitch' && resolved.slopeDeg !== null ? ` @ ${formatMaybeNumber(resolved.slopeDeg, 1)}deg` : '';
+  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(resolved.leftHeightM, 2)}m->${formatMaybeNumber(resolved.rightHeightM, 2)}m${pitchLabel}`;
 }
 
 export function formatMaybeNumber(n: number | undefined, digits = 2): string {
@@ -375,14 +463,14 @@ function makeOrientationEstimate(
     avgHeightM = h;
     maxHeightM = h;
   } else {
-    const lowRaw = toNumber(item.shape.heightLowM);
-    const highRaw = toNumber(item.shape.heightHighM);
-    invalidHeightInput = !Number.isFinite(lowRaw) || !Number.isFinite(highRaw) || lowRaw < 0 || highRaw < 0;
-    const low = Number.isFinite(lowRaw) && lowRaw > 0 ? lowRaw : 0;
-    const high = Number.isFinite(highRaw) && highRaw > 0 ? highRaw : 0;
-    heightAt = (t01: number) => low + (high - low) * clampNumber(t01, 0, 1);
-    avgHeightM = (low + high) / 2;
-    maxHeightM = Math.max(low, high);
+    const resolved = resolveMonoSlopeShape(item.shape);
+    invalidHeightInput =
+      resolved.slopeMode === 'pitch' ? !resolved.anchorInputValid : !resolved.leftInputValid || !resolved.rightInputValid;
+    const left = Math.max(0, resolved.leftHeightM);
+    const right = Math.max(0, resolved.rightHeightM);
+    heightAt = (t01: number) => left + (right - left) * clampNumber(t01, 0, 1);
+    avgHeightM = (left + right) / 2;
+    maxHeightM = Math.max(left, right);
   }
 
   const runSideM = panelOrientationUsed === 'vertical' ? maxHeightM : widthM;
@@ -539,6 +627,9 @@ function makeOrientationEstimate(
     sheetAreaTotalM2,
     cutListRows,
     invalidHeightInput,
+    invalidPitchInput: item.shape.type === 'mono_slope' && normalizeMonoSlopeMode(item.shape.slopeMode) === 'pitch'
+      ? !resolveMonoSlopeShape(item.shape).pitchValid
+      : false,
     widthInputInvalid,
     invalidCustomPositions,
   };
@@ -595,18 +686,25 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
       maxHeight = Math.max(maxHeight, heightRaw);
     }
   } else {
-    const lowRaw = toNumber(item.shape.heightLowM);
-    const highRaw = toNumber(item.shape.heightHighM);
-    if (!Number.isFinite(lowRaw) || lowRaw < 0) {
-      errors.heightLowM = 'Enter a value of at least 0.';
+    const resolved = resolveMonoSlopeShape(item.shape);
+    if (resolved.slopeMode === 'pitch') {
+      if (resolved.slopeAnchor === 'left') {
+        if (!resolved.leftInputValid) errors.heightLowM = 'Enter a value of at least 0.';
+      } else if (!resolved.rightInputValid) {
+        errors.heightHighM = 'Enter a value of at least 0.';
+      }
+      if (!resolved.pitchValid) {
+        errors.slopeDeg = 'Enter a degree value from 0 up to 90.';
+      }
     } else {
-      maxHeight = Math.max(maxHeight, lowRaw);
+      if (!resolved.leftInputValid) {
+        errors.heightLowM = 'Enter a value of at least 0.';
+      }
+      if (!resolved.rightInputValid) {
+        errors.heightHighM = 'Enter a value of at least 0.';
+      }
     }
-    if (!Number.isFinite(highRaw) || highRaw < 0) {
-      errors.heightHighM = 'Enter a value of at least 0.';
-    } else {
-      maxHeight = Math.max(maxHeight, highRaw);
-    }
+    maxHeight = Math.max(maxHeight, resolved.leftHeightM, resolved.rightHeightM);
   }
 
   if (estimate.acrylicSourceUnavailable) {
@@ -670,6 +768,9 @@ export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimat
 
 function getRequiredDraftFields(shape: InfillLineItem['shape']): InfillDraftFieldKey[] {
   if (shape.type === 'rect') return ['widthM', 'heightM'];
+  if (normalizeMonoSlopeMode(shape.slopeMode) === 'pitch') {
+    return ['widthM', normalizeMonoSlopeAnchor(shape.slopeAnchor) === 'left' ? 'heightLowM' : 'heightHighM'];
+  }
   return ['widthM', 'heightLowM', 'heightHighM'];
 }
 
@@ -704,6 +805,7 @@ function warningTargetForDraftField(field: InfillDraftFieldKey): InfillWarningFi
 
 function hasRequiredValidationError(errors: InfillUiValidation['errors'], item: InfillLineItem): boolean {
   const required = getRequiredDraftFields(item.shape);
+  if (item.shape.type === 'mono_slope' && normalizeMonoSlopeMode(item.shape.slopeMode) === 'pitch' && errors.slopeDeg) return true;
   return required.some((field) => {
     const key = draftFieldToErrorKey(field);
     return Boolean(errors[key]);
@@ -760,7 +862,26 @@ export function resolveInfillUiState(item: InfillLineItem, roofRafterSpacingM: n
       id: 'invalid-height-input',
       severity: 'warning',
       message: 'One or more height values are invalid.',
-      target: { section: 'basic', fieldKey: item.shape.type === 'rect' ? 'shape-height' : 'shape-high' },
+      target: {
+        section: 'basic',
+        fieldKey:
+          item.shape.type === 'rect'
+            ? 'shape-height'
+            : normalizeMonoSlopeMode(item.shape.slopeMode) === 'pitch'
+              ? normalizeMonoSlopeAnchor(item.shape.slopeAnchor) === 'left'
+                ? 'shape-low'
+                : 'shape-high'
+              : 'shape-high',
+      },
+    });
+  }
+
+  if (item.shape.type === 'mono_slope' && normalizeMonoSlopeMode(item.shape.slopeMode) === 'pitch' && validation.errors.slopeDeg) {
+    draftWarnings.push({
+      id: 'invalid-slope-input',
+      severity: 'warning',
+      message: 'Slope is incomplete or invalid.',
+      target: { section: 'basic', fieldKey: 'shape-slope' },
     });
   }
 

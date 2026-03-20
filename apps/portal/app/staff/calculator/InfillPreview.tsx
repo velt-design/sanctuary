@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { InfillLineItem } from '@/lib/types/calculator';
 import styles from './CalculatorGrid.module.css';
+import { resolveMonoSlopeShape } from './infillCompute';
 import type { InfillComputeStatus, InfillJoinerLine, InfillResolvedOrientation } from './infillCompute';
 
 type InfillPreviewProps = {
@@ -61,6 +62,9 @@ export default function InfillPreview({
         shape.widthM,
         shape.type === 'rect' ? shape.heightM : shape.heightLowM,
         shape.type === 'rect' ? shape.heightM : shape.heightHighM,
+        shape.type === 'mono_slope' ? shape.slopeMode ?? 'heights' : 'rect',
+        shape.type === 'mono_slope' ? shape.slopeDeg ?? '' : '',
+        shape.type === 'mono_slope' ? shape.slopeAnchor ?? 'left' : '',
         panelCountEach,
         joinerLines.map((line) => `${line.positionM.toFixed(3)}:${line.supported ? 1 : 0}`).join('|'),
       ].join('-'),
@@ -79,17 +83,18 @@ export default function InfillPreview({
   }
 
   const widthM = Math.max(0.1, toM(shape.widthM));
-  const lowM = shape.type === 'rect' ? toM(shape.heightM) : toM(shape.heightLowM);
-  const highM = shape.type === 'rect' ? toM(shape.heightM) : toM(shape.heightHighM);
-  const maxHeightM = Math.max(0.1, lowM, highM);
+  const mono = shape.type === 'mono_slope' ? resolveMonoSlopeShape(shape) : null;
+  const leftM = shape.type === 'rect' ? toM(shape.heightM) : mono?.leftHeightM ?? 0;
+  const rightM = shape.type === 'rect' ? toM(shape.heightM) : mono?.rightHeightM ?? 0;
+  const maxHeightM = Math.max(0.1, leftM, rightM);
 
   const leftX = 10;
   const rightX = 90;
   const bottomY = 84;
   const shapeHeight = 56;
 
-  const leftTopY = bottomY - shapeHeight * clamp01(lowM / maxHeightM);
-  const rightTopY = bottomY - shapeHeight * clamp01(highM / maxHeightM);
+  const leftTopY = bottomY - shapeHeight * clamp01(leftM / maxHeightM);
+  const rightTopY = bottomY - shapeHeight * clamp01(rightM / maxHeightM);
 
   const polygonPoints = `${leftX},${bottomY} ${rightX},${bottomY} ${rightX},${rightTopY} ${leftX},${leftTopY}`;
   const unsupported = new Set(unsupportedJoinerIndicesEach);
@@ -206,10 +211,10 @@ export default function InfillPreview({
         ) : (
           <>
             <text x={6} y={leftTopY - 2} className={styles.infillPreviewLabelMinor}>
-              {`low ${lowM.toFixed(2)}m`}
+              {`left ${leftM.toFixed(2)}m`}
             </text>
             <text x={rightX - 12} y={rightTopY - 2} className={styles.infillPreviewLabelMinor}>
-              {`high ${highM.toFixed(2)}m`}
+              {`right ${rightM.toFixed(2)}m`}
             </text>
           </>
         )}

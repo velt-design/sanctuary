@@ -143,4 +143,46 @@ describe('infill compute draft state', () => {
 
     expect(autoSwitchWarning?.fix).toEqual({ type: 'setPreferredAcrylic', value: 'strip_620' });
   });
+
+  it('derives the opposite mono-slope edge from pitch mode', () => {
+    const infill = makeBaseInfill({
+      shape: {
+        type: 'mono_slope',
+        widthM: '2',
+        heightLowM: '1',
+        heightHighM: '0',
+        bottomOffsetM: '0',
+        slopeMode: 'pitch',
+        slopeDeg: '45',
+        slopeAnchor: 'left',
+      },
+    });
+
+    const state = resolveInfillUiState(infill, 0.9);
+
+    expect(state.status).toBe('valid');
+    expect(state.validation.errors.slopeDeg).toBeUndefined();
+    expect(state.estimate.maxHeightM).toBeCloseTo(3, 6);
+  });
+
+  it('requires slope degrees in mono-slope pitch mode', () => {
+    const infill = makeBaseInfill({
+      shape: {
+        type: 'mono_slope',
+        widthM: '2',
+        heightLowM: '1',
+        heightHighM: '0',
+        bottomOffsetM: '0',
+        slopeMode: 'pitch',
+        slopeDeg: '',
+        slopeAnchor: 'left',
+      },
+    });
+
+    const state = resolveInfillUiState(infill, 0.9);
+
+    expect(state.status).toBe('draft');
+    expect(state.validation.errors.slopeDeg).toBeTruthy();
+    expect(state.warnings.some((warning) => warning.target.fieldKey === 'shape-slope')).toBe(true);
+  });
 });

@@ -76,6 +76,9 @@ import {
   replaceInfillInPayload,
 } from './infillDecision';
 import {
+  normalizeMonoSlopeAnchor,
+  normalizeMonoSlopeMode,
+  resolveMonoSlopeShape,
   resolveInfillUiState,
   resolvePayloadPanelOrientation,
   infillFieldId,
@@ -386,6 +389,10 @@ function locationLabel(value: InfillLineItem['location']): string {
 
 function acrylicSourceLabel(value: InfillLineItem['acrylicSource']): string {
   return value === 'strip_620' ? '620 strips' : 'Sheet panels';
+}
+
+function infillStatusLabel(status: InfillUiState['status']): string {
+  return status === 'draft' ? 'Needs setup' : 'Configured';
 }
 
 function formatInfillShapeSummary(shape: InfillLineItem['shape']): string {
@@ -1081,11 +1088,12 @@ function parseInfillsForPayload(module: CalculatorModuleInputs): CostInputsV1['i
         bottom_offset_m: Number.isFinite(toNumber(raw.shape.bottomOffsetM ?? '')) ? toNumber(raw.shape.bottomOffsetM ?? '') : undefined,
       };
     } else {
+      const resolved = resolveMonoSlopeShape(raw.shape);
       shapeOut = {
         type: 'mono_slope',
         width_m: Number.isFinite(toNumber(raw.shape.widthM)) ? toNumber(raw.shape.widthM) : 0,
-        height_low_m: Number.isFinite(toNumber(raw.shape.heightLowM)) ? toNumber(raw.shape.heightLowM) : 0,
-        height_high_m: Number.isFinite(toNumber(raw.shape.heightHighM)) ? toNumber(raw.shape.heightHighM) : 0,
+        height_low_m: resolved.leftHeightM,
+        height_high_m: resolved.rightHeightM,
         bottom_offset_m: Number.isFinite(toNumber(raw.shape.bottomOffsetM ?? '')) ? toNumber(raw.shape.bottomOffsetM ?? '') : undefined,
       };
     }
@@ -1256,6 +1264,9 @@ function makeDefaultInfillItem(overrides?: Partial<InfillLineItem>): InfillLineI
             heightLowM: overrides.shape.heightLowM ?? '0',
             heightHighM: overrides.shape.heightHighM ?? '1',
             bottomOffsetM: overrides.shape.bottomOffsetM ?? '0',
+            slopeMode: overrides.shape.slopeMode ?? 'heights',
+            slopeDeg: overrides.shape.slopeDeg ?? '',
+            slopeAnchor: overrides.shape.slopeAnchor ?? 'left',
           }
         : {
             type: 'rect',
@@ -1318,6 +1329,9 @@ function buildInfillPreset(module: CalculatorModuleInputs, location: InfillLineI
         heightLowM: formatInputNumber(postCutHeightM),
         heightHighM: formatInputNumber(farHeight),
         bottomOffsetM: '0',
+        slopeMode: 'pitch',
+        slopeDeg: formatInputNumber(pitchDeg, 2),
+        slopeAnchor: 'right',
       },
       support: {
         hasTop: true,
@@ -1371,6 +1385,9 @@ function buildGableEndInfillPair(module: CalculatorModuleInputs): [InfillLineIte
       heightLowM: '0',
       heightHighM: formatInputNumber(peakHeight),
       bottomOffsetM: '0',
+      slopeMode: 'pitch',
+      slopeDeg: formatInputNumber(pitchDeg, 2),
+      slopeAnchor: 'left',
     },
   });
 
@@ -1395,6 +1412,9 @@ function buildGableEndInfillPair(module: CalculatorModuleInputs): [InfillLineIte
       heightLowM: formatInputNumber(peakHeight),
       heightHighM: '0',
       bottomOffsetM: '0',
+      slopeMode: 'pitch',
+      slopeDeg: formatInputNumber(pitchDeg, 2),
+      slopeAnchor: 'right',
     },
   });
 
@@ -2478,6 +2498,26 @@ export default function CalculatorGridClient({
     });
   };
 
+  const syncMonoSlopeShape = (shape: Extract<InfillLineItem['shape'], { type: 'mono_slope' }>): InfillLineItem['shape'] => {
+    const resolved = resolveMonoSlopeShape(shape);
+    return {
+      ...shape,
+      heightLowM: formatInputNumber(resolved.leftHeightM, 3),
+      heightHighM: formatInputNumber(resolved.rightHeightM, 3),
+      slopeMode: normalizeMonoSlopeMode(shape.slopeMode),
+      slopeDeg: shape.slopeDeg ?? '',
+      slopeAnchor: normalizeMonoSlopeAnchor(shape.slopeAnchor),
+    };
+  };
+
+  const updateMonoSlopeShape = (
+    infill: InfillLineItem,
+    updater: (shape: Extract<InfillLineItem['shape'], { type: 'mono_slope' }>) => Extract<InfillLineItem['shape'], { type: 'mono_slope' }>,
+  ) => {
+    if (infill.shape.type !== 'mono_slope') return;
+    setInfillItem(infill.id, { shape: syncMonoSlopeShape(updater(infill.shape)) });
+  };
+
   const getInfillDraftValue = (infill: InfillLineItem, field: InfillDraftFieldKey): string => {
     const override = infillDraftById[infill.id]?.[field];
     if (typeof override === 'string') return override;
@@ -2512,17 +2552,17 @@ export default function CalculatorGridClient({
     }
 
     if (field === 'widthM') {
-      setInfillItem(infill.id, { shape: { ...infill.shape, widthM: raw } });
+      updateMonoSlopeShape(infill, (shape) => ({ ...shape, widthM: raw }));
       clearInfillDraftField(infill.id, field);
       return;
     }
     if (field === 'heightLowM') {
-      setInfillItem(infill.id, { shape: { ...infill.shape, heightLowM: raw } });
+      updateMonoSlopeShape(infill, (shape) => ({ ...shape, heightLowM: raw }));
       clearInfillDraftField(infill.id, field);
       return;
     }
     if (field === 'heightHighM') {
-      setInfillItem(infill.id, { shape: { ...infill.shape, heightHighM: raw } });
+      updateMonoSlopeShape(infill, (shape) => ({ ...shape, heightHighM: raw }));
       clearInfillDraftField(infill.id, field);
     }
   };
@@ -3606,7 +3646,8 @@ export default function CalculatorGridClient({
   const selectedInfillIsDraft = selectedInfillUi?.status === 'draft';
 
   useEffect(() => {
-    if (!infillsOpen || !activeModulePayload || !moduleBaseline || !selectedInfill || !readyToCalculate || isCalculating || engineError) {
+    const selectedInfillId = selectedInfill?.id ?? null;
+    if (!infillsOpen || !activeModulePayload || !moduleBaseline || !selectedInfillId || !readyToCalculate || isCalculating || engineError) {
       setInfillWithoutCost(null);
       setCompareSheetCost(null);
       setCompareStripCost(null);
@@ -3616,7 +3657,7 @@ export default function CalculatorGridClient({
     }
 
     const sourceInfills = activeModulePayload.infills;
-    if (!Array.isArray(sourceInfills) || !sourceInfills.some((entry) => String(entry.id) === selectedInfill.id)) {
+    if (!Array.isArray(sourceInfills) || !sourceInfills.some((entry) => String(entry.id) === selectedInfillId)) {
       setInfillWithoutCost(null);
       setCompareSheetCost(null);
       setCompareStripCost(null);
@@ -3630,13 +3671,13 @@ export default function CalculatorGridClient({
       setInfillDecisionLoading(true);
       setInfillDecisionError(null);
       try {
-        const withoutInfills = removeInfillFromInfills(sourceInfills, selectedInfill.id);
+        const withoutInfills = removeInfillFromInfills(sourceInfills, selectedInfillId);
         const withoutPayload = buildModulePayloadWithInfills(activeModulePayload, withoutInfills);
 
-        const sheetInfills = replaceInfillInPayload(sourceInfills, selectedInfill.id, (entry) =>
+        const sheetInfills = replaceInfillInPayload(sourceInfills, selectedInfillId, (entry) =>
           applyAcrylicVariantToInfillPayload(entry, 'sheet_panels'),
         );
-        const stripInfills = replaceInfillInPayload(sourceInfills, selectedInfill.id, (entry) =>
+        const stripInfills = replaceInfillInPayload(sourceInfills, selectedInfillId, (entry) =>
           applyAcrylicVariantToInfillPayload(entry, 'strip_620'),
         );
 
@@ -3665,7 +3706,7 @@ export default function CalculatorGridClient({
       controller.abort();
       window.clearTimeout(timeoutId);
     };
-  }, [activeModulePayload, engineError, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill]);
+  }, [activeModulePayload, engineError, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill?.id]);
 
   const engineUiWarnings: UiWarning[] = (engineWarningsRaw ?? []).map((warning, index) => ({
     id: `engine-${index}`,
@@ -4049,7 +4090,7 @@ export default function CalculatorGridClient({
   const infillSystemSummary = useMemo(() => {
     const hasSheets = infillsState.items.some((item) => (infillUiById.get(item.id)?.estimate.acrylicSourceUsed ?? 'sheet_panels') === 'sheet_panels');
     const hasStrips = infillsState.items.some((item) => (infillUiById.get(item.id)?.estimate.acrylicSourceUsed ?? 'sheet_panels') === 'strip_620');
-    if (hasSheets && hasStrips) return 'Sheets/Strips mix';
+    if (hasSheets && hasStrips) return 'Mixed systems';
     if (hasStrips) return '620 strips';
     if (hasSheets) return 'Sheet panels';
     return 'Not configured';
@@ -4066,19 +4107,37 @@ export default function CalculatorGridClient({
     return `${formatMaybeNumber(minSpacing, 2)}m to ${formatMaybeNumber(maxSpacing, 2)}m`;
   }, [infillsState.items, infillUiById]);
 
-  const infillsSummaryLine1 = `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} | front x${
-    infillLocationCounts.front
-  } | side x${infillLocationCounts.side} | gable x${infillLocationCounts.gable_end}`;
-  const infillsSummaryLine2 = `${infillSystemSummary} | max bay used ${infillUsedSpacingSummary} | panels ~${
-    infillTotals.panels
-  } | 50x50 ~${infillTotals.mullions}`;
-  const infillsSummaryText = infillsState.items.length
-    ? `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} configured`
-    : 'Not configured';
+  const hasInfills = infillsState.items.length > 0;
+  const infillsSummaryLine1 = `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} added`;
+  const infillsSummaryLine2 = [
+    `Front ${infillLocationCounts.front}`,
+    `Side ${infillLocationCounts.side}`,
+    `Gable ${infillLocationCounts.gable_end}`,
+    infillLocationCounts.house > 0 ? `House ${infillLocationCounts.house}` : null,
+    infillLocationCounts.wall > 0 ? `Wall ${infillLocationCounts.wall}` : null,
+    infillLocationCounts.custom > 0 ? `Custom ${infillLocationCounts.custom}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const infillsSummaryLine3 = hasInfills ? `System: ${infillSystemSummary} · Panels: ${infillTotals.panels} · Frames: ${infillTotals.mullions}` : null;
+  const infillsSummaryText = hasInfills ? infillsSummaryLine1 : 'No infills added yet';
+  const infillSummaryChips = [
+    { key: 'front', label: 'Front', count: infillLocationCounts.front, alwaysShow: true },
+    { key: 'side', label: 'Side', count: infillLocationCounts.side, alwaysShow: true },
+    { key: 'gable', label: 'Gable', count: infillLocationCounts.gable_end, alwaysShow: true },
+    { key: 'house', label: 'House', count: infillLocationCounts.house, alwaysShow: false },
+    { key: 'wall', label: 'Wall', count: infillLocationCounts.wall, alwaysShow: false },
+    { key: 'custom', label: 'Custom', count: infillLocationCounts.custom, alwaysShow: false },
+  ].filter((chip) => !hasInfills || chip.alwaysShow || chip.count > 0);
 
   const selectedInfillDomIdBase = selectedInfill ? `infill-${selectedInfill.id}` : 'infill-none';
   const selectedRectShape = selectedInfill?.shape.type === 'rect' ? selectedInfill.shape : null;
   const selectedMonoShape = selectedInfill?.shape.type === 'mono_slope' ? selectedInfill.shape : null;
+  const selectedMonoResolved = selectedMonoShape ? resolveMonoSlopeShape(selectedMonoShape) : null;
+  const selectedMonoPitchMode = selectedMonoShape ? normalizeMonoSlopeMode(selectedMonoShape.slopeMode) === 'pitch' : false;
+  const selectedMonoAnchorField = selectedMonoResolved?.slopeAnchor === 'right' ? 'heightHighM' : 'heightLowM';
+  const selectedMonoDerivedHeight =
+    selectedMonoResolved?.slopeAnchor === 'right' ? selectedMonoResolved.leftHeightM : selectedMonoResolved?.rightHeightM;
   const selectedComputedWarnings = selectedInfillUi?.warnings ?? [];
   const selectedLastValidEstimate = selectedInfill ? lastValidInfillEstimateRef.current[selectedInfill.id] ?? null : null;
   const computedOrDraftDash = (value: string): string => (selectedInfillIsDraft ? 'Incomplete' : value);
@@ -4314,7 +4373,7 @@ export default function CalculatorGridClient({
     </button>
   );
 
-  const renderInfillPresetMenu = (label: string, compact = false) => (
+  const renderInfillPresetMenu = (label: string, compact = false, openModal = false) => (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button type="button" className={compact ? styles.infillSecondaryButtonCompact : styles.infillSecondaryButton}>
@@ -4323,7 +4382,13 @@ export default function CalculatorGridClient({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" sideOffset={6} className={styles.infillPresetMenu}>
         {infillPresetCards.map((preset) => (
-          <DropdownMenuItem key={preset.key} onSelect={() => addInfillPreset(preset.key)}>
+          <DropdownMenuItem
+            key={preset.key}
+            onSelect={() => {
+              addInfillPreset(preset.key);
+              if (openModal) setInfillsOpen(true);
+            }}
+          >
             {preset.label}
           </DropdownMenuItem>
         ))}
@@ -4333,16 +4398,64 @@ export default function CalculatorGridClient({
 
   const infillsTileContent = (
     <div className={styles.infillTileContent}>
-      <div className={styles.infillTileActions}>
-        <button type="button" className={styles.infillPrimaryButton} onClick={() => setInfillsOpen(true)}>
-          Edit infills
-        </button>
-        {renderAddInfillButton('Add infill', false, true)}
-        {renderInfillPresetMenu('Presets')}
+      <div className={styles.infillTileBody}>
+        <div className={styles.infillTileStatus}>{hasInfills ? infillsSummaryLine1 : 'No infills added yet'}</div>
+        <p className={styles.infillTileDescription}>
+          {hasInfills
+            ? 'Review configured infills, add new ones, or adjust the panel layout for this module.'
+            : 'Add infills to close exposed sides or gable ends for more shelter and weather protection.'}
+        </p>
+        <div className={styles.infillTilePillRow}>
+          {infillSummaryChips.map((chip) => (
+            <span key={chip.key} className={styles.infillChip}>
+              {chip.label} {chip.count}
+            </span>
+          ))}
+        </div>
+        {hasInfills ? (
+          <div className={styles.infillTileMetricRow}>
+            <div className={styles.infillTileMetric}>
+              <span className={styles.infillTileMetricLabel}>System</span>
+              <strong>{infillSystemSummary}</strong>
+            </div>
+            <div className={styles.infillTileMetric}>
+              <span className={styles.infillTileMetricLabel}>Panels</span>
+              <strong>{infillTotals.panels}</strong>
+            </div>
+            <div className={styles.infillTileMetric}>
+              <span className={styles.infillTileMetricLabel}>Frames</span>
+              <strong>{infillTotals.mullions}</strong>
+            </div>
+          </div>
+        ) : null}
       </div>
-      <div className={styles.infillTileSummary}>
-        <div className={styles.infillTileSummaryLine}>{infillsSummaryLine1}</div>
-        <div className={styles.infillTileSummaryLine}>{infillsSummaryLine2}</div>
+      <div className={styles.infillTileActions}>
+        {hasInfills ? (
+          <>
+            <button type="button" className={styles.infillPrimaryButton} onClick={() => setInfillsOpen(true)}>
+              Edit infills
+            </button>
+            {renderAddInfillButton('Add infill', false, true)}
+            {renderInfillPresetMenu('Presets')}
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={styles.infillPrimaryButton}
+              onClick={() => {
+                addInfillPreset('custom');
+                setInfillsOpen(true);
+              }}
+            >
+              Add infill
+            </button>
+            {renderInfillPresetMenu('Use preset', false, true)}
+            <button type="button" className={styles.infillSecondaryButton} onClick={() => setInfillsOpen(true)}>
+              Edit infills
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -4350,16 +4463,21 @@ export default function CalculatorGridClient({
   const infillListRows = (
     <div ref={infillListContainerRef} className={styles.infillListRows}>
       {infillsState.items.map((item, idx) => {
-        const estimate = infillUiById.get(item.id)?.estimate ?? estimateInfillUi(item, roofRafterSpacingEstimate.spacingM);
+        const uiState = infillUiById.get(item.id) ?? null;
+        const estimate = uiState?.estimate ?? estimateInfillUi(item, roofRafterSpacingEstimate.spacingM);
         const title = item.label?.trim() ? item.label.trim() : `Infill ${idx + 1}`;
         const isSelected = selectedInfill?.id === item.id;
         const acrylicChipLabel = acrylicSourceLabel(estimate.acrylicSourceUsed);
         const canMoveUp = idx > 0;
         const canMoveDown = idx < infillsState.items.length - 1;
-        const panelsAndMullionsMeta =
-          estimate.estimatedMullionsTotal > 0
-            ? `Panels ${estimate.panelCountTotal} | 50x50 ${estimate.estimatedMullionsTotal}`
-            : `Panels ${estimate.panelCountTotal}`;
+        const status = uiState?.status ?? 'valid';
+        const statusLabel = infillStatusLabel(status);
+        const statusClassName =
+          status === 'draft'
+            ? `${styles.infillChip} ${styles.infillChipWarning}`
+            : `${styles.infillChip} ${styles.infillChipSuccess}`;
+        const rowDetailLine =
+          estimate.estimatedMullionsTotal > 0 ? `Panels ${estimate.panelCountTotal} | Frames ${estimate.estimatedMullionsTotal}` : `Panels ${estimate.panelCountTotal}`;
         return (
           <div key={item.id} className={`${styles.infillRow} ${isSelected ? styles.infillRowActive : ''}`.trim()}>
             <button
@@ -4394,14 +4512,13 @@ export default function CalculatorGridClient({
                 <span>{title}</span>
                 <div className={styles.infillChipRow}>
                   <span className={styles.infillChip}>{locationLabel(item.location)}</span>
-                  <span className={styles.infillChip}>
-                    {acrylicChipLabel}
-                    {estimate.acrylicSourceAutoSwitched ? ' (used)' : ''}
-                  </span>
+                  <span className={styles.infillChip}>{acrylicChipLabel}</span>
+                  <span className={statusClassName}>{statusLabel}</span>
+                  {estimate.acrylicSourceAutoSwitched ? <span className={`${styles.infillChip} ${styles.infillChipWarning}`}>Auto-switched</span> : null}
                 </div>
               </div>
-              <div className={styles.infillRowMeta}>{`${formatInfillShapeSummary(item.shape)} | Qty ${estimate.qty}`}</div>
-              <div className={styles.infillRowMeta}>{panelsAndMullionsMeta}</div>
+              <div className={styles.infillRowMeta}>{`Span ${formatInfillShapeSummary(item.shape)}${estimate.qty > 1 ? ` | Qty ${estimate.qty}` : ''}`}</div>
+              <div className={styles.infillRowMeta}>{rowDetailLine}</div>
             </button>
             <div className={styles.infillRowControls}>
               <button
@@ -6134,16 +6251,18 @@ export default function CalculatorGridClient({
                     infillListRows
                   ) : (
                     <div className={styles.infillListEmpty}>
-                      <p>No infills configured.</p>
-                      <p>Use "Add infill" above to create your first item.</p>
+                      <strong className={styles.infillListEmptyTitle}>No infills added yet</strong>
+                      <p>Add infills to close exposed sides or gable ends for more shelter and weather protection.</p>
+                      <p>Use the buttons above to add your first infill or start from a preset.</p>
                     </div>
                   )}
                 </div>
 
                 <div className={styles.infillRailFooter}>
-                  <strong>Totals in this module</strong>
+                  <strong>{hasInfills ? 'Module infill summary' : 'Ready to add infills'}</strong>
                   <p>{infillsSummaryLine1}</p>
                   <p>{infillsSummaryLine2}</p>
+                  {infillsSummaryLine3 ? <p>{infillsSummaryLine3}</p> : <p>Add infills to improve shelter and weather protection on exposed sides.</p>}
                 </div>
               </aside>
 
@@ -6347,7 +6466,16 @@ export default function CalculatorGridClient({
                               const low = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightLowM;
                               const high = selectedInfill.shape.type === 'rect' ? selectedInfill.shape.heightM : selectedInfill.shape.heightHighM;
                               setInfillItem(selectedInfill.id, {
-                                shape: { type: 'mono_slope', widthM: shapeWidth, heightLowM: low, heightHighM: high, bottomOffsetM: shapeBottom },
+                                shape: {
+                                  type: 'mono_slope',
+                                  widthM: shapeWidth,
+                                  heightLowM: low,
+                                  heightHighM: high,
+                                  bottomOffsetM: shapeBottom,
+                                  slopeMode: 'heights',
+                                  slopeDeg: '',
+                                  slopeAnchor: 'left',
+                                },
                               });
                             }}
                             options={[
@@ -6400,28 +6528,124 @@ export default function CalculatorGridClient({
                             </div>
                             <div className={styles.span4}>
                               <FieldTile
-                                id={`${selectedInfillDomIdBase}-shape-low`}
-                                label="Height low (m)"
-                                type="number"
-                                value={getInfillDraftValue(selectedInfill, 'heightLowM')}
-                                onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
-                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
-                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
-                                error={selectedInfillValidation.errors.heightLowM}
+                                id={`${selectedInfillDomIdBase}-shape-mode`}
+                                label="Mono-slope input"
+                                type="select"
+                                value={selectedMonoPitchMode ? 'pitch' : 'heights'}
+                                onChange={(v) => {
+                                  const nextMode = normalizeMonoSlopeMode(v);
+                                  updateMonoSlopeShape(selectedInfill, (shape) => {
+                                    const resolved = resolveMonoSlopeShape(shape);
+                                    return {
+                                      ...shape,
+                                      heightLowM: formatInputNumber(resolved.leftHeightM, 3),
+                                      heightHighM: formatInputNumber(resolved.rightHeightM, 3),
+                                      slopeMode: nextMode,
+                                      slopeDeg:
+                                        nextMode === 'pitch'
+                                          ? resolved.slopeDeg !== null
+                                            ? formatInputNumber(resolved.slopeDeg, 2)
+                                            : shape.slopeDeg ?? ''
+                                          : shape.slopeDeg ?? '',
+                                      slopeAnchor: nextMode === 'pitch' ? (resolved.leftHeightM <= resolved.rightHeightM ? 'left' : 'right') : shape.slopeAnchor ?? 'left',
+                                    };
+                                  });
+                                }}
+                                options={[
+                                  { label: 'Heights', value: 'heights' },
+                                  { label: 'Slope (deg)', value: 'pitch' },
+                                ]}
                               />
                             </div>
-                            <div className={styles.span4}>
-                              <FieldTile
-                                id={`${selectedInfillDomIdBase}-shape-high`}
-                                label="Height high (m)"
-                                type="number"
-                                value={getInfillDraftValue(selectedInfill, 'heightHighM')}
-                                onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
-                                onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
-                                onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
-                                error={selectedInfillValidation.errors.heightHighM}
-                              />
-                            </div>
+                            {selectedMonoPitchMode ? (
+                              <>
+                                <div className={styles.span4}>
+                                  <FieldTile
+                                    id={`${selectedInfillDomIdBase}-shape-anchor`}
+                                    label="Lower side"
+                                    type="select"
+                                    value={selectedMonoResolved?.slopeAnchor ?? 'left'}
+                                    onChange={(v) =>
+                                      updateMonoSlopeShape(selectedInfill, (shape) => ({
+                                        ...shape,
+                                        slopeAnchor: normalizeMonoSlopeAnchor(v),
+                                      }))
+                                    }
+                                    options={[
+                                      { label: 'Left edge', value: 'left' },
+                                      { label: 'Right edge', value: 'right' },
+                                    ]}
+                                  />
+                                </div>
+                                <div className={styles.span4}>
+                                  <FieldTile
+                                    id={`${selectedInfillDomIdBase}-${selectedMonoResolved?.slopeAnchor === 'right' ? 'shape-high' : 'shape-low'}`}
+                                    label={selectedMonoResolved?.slopeAnchor === 'right' ? 'Right height (m)' : 'Left height (m)'}
+                                    type="number"
+                                    value={getInfillDraftValue(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey)}
+                                    onChange={(v) => updateRequiredShapeField(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey, String(v))}
+                                    onBlur={(v) => commitRequiredShapeField(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey, String(v))}
+                                    onEnter={(v) => commitRequiredShapeField(selectedInfill, selectedMonoAnchorField as InfillDraftFieldKey, String(v))}
+                                    error={
+                                      selectedMonoResolved?.slopeAnchor === 'right'
+                                        ? selectedInfillValidation.errors.heightHighM
+                                        : selectedInfillValidation.errors.heightLowM
+                                    }
+                                  />
+                                </div>
+                                <div className={styles.span4}>
+                                  <FieldTile
+                                    id={`${selectedInfillDomIdBase}-shape-slope`}
+                                    label="Slope (deg)"
+                                    type="number"
+                                    value={selectedMonoShape.slopeDeg ?? ''}
+                                    onChange={(v) =>
+                                      updateMonoSlopeShape(selectedInfill, (shape) => ({
+                                        ...shape,
+                                        slopeDeg: String(v),
+                                      }))
+                                    }
+                                    error={selectedInfillValidation.errors.slopeDeg}
+                                    helperText="Positive degrees. The opposite edge height is derived from the lower side and width."
+                                  />
+                                </div>
+                                <div className={styles.span4}>
+                                  <FieldTile
+                                    id={`${selectedInfillDomIdBase}-${selectedMonoResolved?.slopeAnchor === 'right' ? 'shape-low' : 'shape-high'}`}
+                                    label={selectedMonoResolved?.slopeAnchor === 'right' ? 'Left height (derived)' : 'Right height (derived)'}
+                                    type="readOnly"
+                                    value={formatMaybeNumber(selectedMonoDerivedHeight, 3)}
+                                  />
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className={styles.span4}>
+                                  <FieldTile
+                                    id={`${selectedInfillDomIdBase}-shape-low`}
+                                    label="Left height (m)"
+                                    type="number"
+                                    value={getInfillDraftValue(selectedInfill, 'heightLowM')}
+                                    onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
+                                    onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
+                                    onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightLowM', String(v))}
+                                    error={selectedInfillValidation.errors.heightLowM}
+                                  />
+                                </div>
+                                <div className={styles.span4}>
+                                  <FieldTile
+                                    id={`${selectedInfillDomIdBase}-shape-high`}
+                                    label="Right height (m)"
+                                    type="number"
+                                    value={getInfillDraftValue(selectedInfill, 'heightHighM')}
+                                    onChange={(v) => updateRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
+                                    onBlur={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
+                                    onEnter={(v) => commitRequiredShapeField(selectedInfill, 'heightHighM', String(v))}
+                                    error={selectedInfillValidation.errors.heightHighM}
+                                  />
+                                </div>
+                              </>
+                            )}
                           </>
                         ) : null}
 
@@ -6786,8 +7010,9 @@ export default function CalculatorGridClient({
                   </>
                 ) : infillsState.items.length === 0 ? (
                   <div className={styles.infillEditorEmpty}>
-                    <p>Start here with an infill preset.</p>
-                    <p>Subdivided side is split into bays at max spacing.</p>
+                    <strong className={styles.infillEditorEmptyTitle}>Choose how you want to start</strong>
+                    <p>Use a preset for the fastest setup, or create a custom infill if this layout is unique.</p>
+                    <div className={styles.infillEditorEmptySectionTitle}>Use a preset</div>
                     <div className={styles.infillPresetCardGrid}>
                       {infillPresetCards.map((preset) => (
                         <button key={preset.key} type="button" className={styles.infillPresetCard} onClick={() => addInfillPreset(preset.key)}>
@@ -6798,11 +7023,14 @@ export default function CalculatorGridClient({
                     <button type="button" className={styles.infillPrimaryButton} onClick={() => addInfillPreset('custom')}>
                       Add custom infill
                     </button>
+                    <p className={styles.infillEditorEmptyNote}>
+                      Presets are the quickest way to begin. You can edit panel layout, supports, and dimensions afterwards.
+                    </p>
                   </div>
                 ) : (
                   <div className={styles.infillEditorEmpty}>
-                    <p>Select an infill.</p>
-                    <p>Pick one from the list or add a new infill.</p>
+                    <strong className={styles.infillEditorEmptyTitle}>Select an infill to edit it</strong>
+                    <p>Pick one from the list, or add a new infill to this module.</p>
                     <div className={styles.infillEditorActions}>
                       {renderInfillPresetMenu('Presets')}
                       <button type="button" className={styles.infillSecondaryButton} onClick={() => addInfillPreset('custom')}>
