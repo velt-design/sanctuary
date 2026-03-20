@@ -115,11 +115,10 @@ export default function LocalFirstPortalMutations() {
           } as const;
         }
         try {
-          const res = await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(resolvedEstimateId)}`, {
+          const res = await apiJson<{ estimate: EstimateDetail; syncedQuoteVersionIds?: string[] }>(`/api/estimates/${encodeURIComponent(resolvedEstimateId)}`, {
             method: 'PATCH',
             body: JSON.stringify({
               estimate_update: payload.estimatePayload,
-              acknowledgeDraftQuoteStaleness: payload.acknowledgeDraftQuoteStaleness,
             }),
             skipSaveTracking: true,
           });
@@ -128,8 +127,11 @@ export default function LocalFirstPortalMutations() {
           upsertEstimateDetailCache(queryClient, hostKey, res.estimate.projectId, res.estimate);
           void invalidateProjectReadCaches(queryClient, hostKey, res.estimate.projectId, {
             includeEstimates: true,
+            includeQuotes: true,
             includeProjectDetail: false,
           });
+          void queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(hostKey, res.estimate.projectId) });
+          void queryClient.invalidateQueries({ queryKey: ['quotes', hostKey] });
 
           return {
             kind: 'success',
@@ -139,7 +141,7 @@ export default function LocalFirstPortalMutations() {
           if (
             isEstimateConflict(error) &&
             typeof (error.body as any)?.code === 'string' &&
-            ((error.body as any).code === 'ESTIMATE_LOCKED' || (error.body as any).code === 'ESTIMATE_DRAFT_QUOTES_REQUIRE_ACK')
+            (error.body as any).code === 'ESTIMATE_LOCKED'
           ) {
             return {
               kind: 'conflict',

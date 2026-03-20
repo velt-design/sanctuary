@@ -2,8 +2,15 @@ import 'server-only';
 
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
 import { supabaseServer } from '@/lib/supabaseClient';
+import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
+import { buildVersionLabelMap } from '@/lib/estimates/server';
 import { normalizePowdercoatProfile, normalizePowdercoatStoredRow } from './powdercoating';
-import type { JobPackPowdercoatOption, JobPackPowdercoatOverrideState, JobPackPowdercoatStoredRow } from './types';
+import type {
+  JobPackGenerationSummary,
+  JobPackPowdercoatOption,
+  JobPackPowdercoatOverrideState,
+  JobPackPowdercoatStoredRow,
+} from './types';
 
 const POWDERCOATING_SHEET_KEY = 'powdercoating-order';
 
@@ -125,4 +132,199 @@ export async function savePowdercoatOverrideState(input: {
         .filter((row: JobPackPowdercoatStoredRow | null): row is JobPackPowdercoatStoredRow => Boolean(row)),
     },
   };
+}
+
+type QuoteVersionForGeneration = {
+  id: string;
+  quote_id: string;
+  version_number: number | null;
+  status: string | null;
+  source_estimate_version_id: string | null;
+  quotes: { project_id: string | null; quote_ref: string | null } | Array<{ project_id: string | null; quote_ref: string | null }> | null;
+};
+
+type JobPackGenerationRow = {
+  id: string;
+  project_id: string;
+  estimate_id: string;
+  quote_version_id: string;
+  created_at: string | null;
+  created_by: string | null;
+};
+
+function isQuoteEligibleForJobPack(status: unknown): status is 'SENT' | 'ACCEPTED' | 'DECLINED' {
+  return status === 'SENT' || status === 'ACCEPTED' || status === 'DECLINED';
+}
+
+function quoteRelation(value: QuoteVersionForGeneration['quotes']): { project_id: string | null; quote_ref: string | null } | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+async function loadEstimateVersionLabel(projectUuid: string, estimateUuid: string): Promise<string> {
+  const estimatesRes = await supabaseServer
+    .from('estimates')
+    .select('id, created_at, outputs, version')
+    .eq('project_id', projectUuid)
+    .order('created_at', { ascending: false });
+  if (estimatesRes.error) throw estimatesRes.error;
+  const labels = buildVersionLabelMap(Array.isArray(estimatesRes.data) ? estimatesRes.data : []);
+  return labels.get(estimateUuid) ?? 'V-';
+}
+
+function mapGenerationRow(params: {
+  generation: JobPackGenerationRow;
+  quoteVersion: QuoteVersionForGeneration;
+  estimateVersionLabel: string;
+}): JobPackGenerationSummary {
+  const quote = quoteRelation(params.quoteVersion.quotes);
+  return {
+    id: appIdFromUuid('jpg', params.generation.id),
+    projectId: appIdFromUuid('proj', params.generation.project_id),
+    estimateId: appIdFromUuid('est', params.generation.estimate_id),
+    estimateVersionLabel: params.estimateVersionLabel,
+    quoteVersionId: appIdFromUuid('qv', params.generation.quote_version_id),
+    quoteRef: quote?.quote_ref ?? '',
+    quoteVersionNumber: Number(params.quoteVersion.version_number ?? 0) || 0,
+    quoteStatus: (isQuoteEligibleForJobPack(params.quoteVersion.status) ? params.quoteVersion.status : 'SENT') as 'SENT' | 'ACCEPTED' | 'DECLINED',
+    createdAt: params.generation.created_at ?? new Date().toISOString(),
+    createdBy: params.generation.created_by ?? null,
+  };
+}
+
+export async function hasGeneratedJobPacksForProject(projectUuid: string): Promise<boolean> {
+  const res = await supabaseServer.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle();
+  if (res.error) {
+    if (isMissingSchemaError(res.error)) return false;
+    throw res.error;
+  }
+  return Boolean(res.data?.id);
+}
+
+export async function loadLatestJobPackGenerationForEstimate(estimateUuid: string): Promise<JobPackGenerationSummary | null> {
+  const res = await supabaseServer
+    .from('job_pack_generations')
+    .select('id, project_id, estimate_id, quote_version_id, created_at, created_by')
+    .eq('estimate_id', estimateUuid)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (res.error) {
+    if (isMissingSchemaError(res.error)) return null;
+    throw res.error;
+  }
+  if (!res.data) return null;
+
+  const generation = res.data as JobPackGenerationRow;
+  const quoteVersionRes = await supabaseServer
+    .from('quote_versions')
+    .select('id, quote_id, version_number, status, source_estimate_version_id, quotes!inner(project_id, quote_ref)')
+    .eq('id', generation.quote_version_id)
+    .maybeSingle();
+  if (quoteVersionRes.error) throw quoteVersionRes.error;
+  if (!quoteVersionRes.data) return null;
+
+  return mapGenerationRow({
+    generation,
+    quoteVersion: quoteVersionRes.data as QuoteVersionForGeneration,
+    estimateVersionLabel: await loadEstimateVersionLabel(generation.project_id, generation.estimate_id),
+  });
+}
+
+export async function listGeneratedJobPacksForProject(projectId: string): Promise<JobPackGenerationSummary[]> {
+  const projectUuid = uuidFromAppId(projectId, 'proj');
+  const res = await supabaseServer
+    .from('job_pack_generations')
+    .select('id, project_id, estimate_id, quote_version_id, created_at, created_by')
+    .eq('project_id', projectUuid)
+    .order('created_at', { ascending: false });
+  if (res.error) throw res.error;
+
+  const rows = (Array.isArray(res.data) ? res.data : []) as JobPackGenerationRow[];
+  if (!rows.length) return [];
+
+  const quoteVersionIds = rows.map((row) => row.quote_version_id);
+  const quoteVersionsRes = await supabaseServer
+    .from('quote_versions')
+    .select('id, quote_id, version_number, status, source_estimate_version_id, quotes!inner(project_id, quote_ref)')
+    .in('id', quoteVersionIds);
+  if (quoteVersionsRes.error) throw quoteVersionsRes.error;
+  const quoteVersions = (Array.isArray(quoteVersionsRes.data) ? quoteVersionsRes.data : []) as QuoteVersionForGeneration[];
+  const quoteVersionsById = new Map(quoteVersions.map((row) => [row.id, row]));
+
+  const estimateLabelsRes = await supabaseServer
+    .from('estimates')
+    .select('id, project_id, created_at, outputs, version')
+    .eq('project_id', projectUuid)
+    .order('created_at', { ascending: false });
+  if (estimateLabelsRes.error) throw estimateLabelsRes.error;
+  const labels = buildVersionLabelMap(Array.isArray(estimateLabelsRes.data) ? estimateLabelsRes.data : []);
+
+  return rows
+    .map((row) => {
+      const quoteVersion = quoteVersionsById.get(row.quote_version_id);
+      if (!quoteVersion) return null;
+      return mapGenerationRow({
+        generation: row,
+        quoteVersion,
+        estimateVersionLabel: labels.get(row.estimate_id) ?? 'V-',
+      });
+    })
+    .filter((row): row is JobPackGenerationSummary => Boolean(row));
+}
+
+export async function generateJobPackForQuoteVersion(input: {
+  projectId: string;
+  quoteVersionId: string;
+  actor: string | null;
+}): Promise<JobPackGenerationSummary> {
+  const projectUuid = uuidFromAppId(input.projectId, 'proj');
+  const quoteVersionUuid = uuidFromAppId(input.quoteVersionId, 'qv');
+
+  const quoteVersionRes = await supabaseServer
+    .from('quote_versions')
+    .select('id, quote_id, version_number, status, source_estimate_version_id, quotes!inner(project_id, quote_ref)')
+    .eq('id', quoteVersionUuid)
+    .maybeSingle();
+  if (quoteVersionRes.error) throw quoteVersionRes.error;
+  if (!quoteVersionRes.data) throw new Error('Quote not found');
+
+  const quoteVersion = quoteVersionRes.data as QuoteVersionForGeneration;
+  const quote = quoteRelation(quoteVersion.quotes);
+  if (!quote?.project_id || quote.project_id !== projectUuid) throw new Error('Quote does not belong to this project');
+  if (!quoteVersion.source_estimate_version_id) throw new Error('Quote source design missing');
+  if (!isQuoteEligibleForJobPack(quoteVersion.status)) {
+    throw new Error('Job packs can only be generated after a quote has been sent.');
+  }
+
+  const existingRes = await supabaseServer
+    .from('job_pack_generations')
+    .select('id, project_id, estimate_id, quote_version_id, created_at, created_by')
+    .eq('quote_version_id', quoteVersionUuid)
+    .maybeSingle();
+  if (existingRes.error && !isMissingSchemaError(existingRes.error)) throw existingRes.error;
+  if (existingRes.data) {
+    return mapGenerationRow({
+      generation: existingRes.data as JobPackGenerationRow,
+      quoteVersion,
+      estimateVersionLabel: await loadEstimateVersionLabel(projectUuid, quoteVersion.source_estimate_version_id),
+    });
+  }
+
+  const insertRes = await supabaseServer
+    .from('job_pack_generations')
+    .insert({
+      project_id: projectUuid,
+      estimate_id: quoteVersion.source_estimate_version_id,
+      quote_version_id: quoteVersionUuid,
+      created_by: input.actor,
+    } as any)
+    .select('id, project_id, estimate_id, quote_version_id, created_at, created_by')
+    .single();
+  if (insertRes.error) throw insertRes.error;
+
+  return mapGenerationRow({
+    generation: insertRes.data as JobPackGenerationRow,
+    quoteVersion,
+    estimateVersionLabel: await loadEstimateVersionLabel(projectUuid, quoteVersion.source_estimate_version_id),
+  });
 }

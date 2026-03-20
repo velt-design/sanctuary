@@ -56,6 +56,7 @@ export type ProjectPageSnapshot = {
     region?: string;
     quoteRef?: string;
     nextActionDate?: string;
+    hasJobPacks?: boolean;
   };
   pipeline: {
     stage: ProjectStage;

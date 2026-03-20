@@ -1,9 +1,11 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
+import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
 import { buildVersionLabelMap, extractVersionNumber, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
+import { syncDraftQuoteVersionsFromEstimate } from '@/lib/quotes/server';
 import { supabaseServer } from '@/lib/supabaseClient';
-import { uuidFromAppId } from '@/lib/supabase/mappers';
+import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -25,26 +27,11 @@ function parseEstimateUpdate(value: unknown): AnyRecord | null {
   return isRecord(value) ? value : null;
 }
 
-function parseBoolean(value: unknown): boolean {
-  return value === true;
-}
-
 function estimateLockedResponse(editability: Awaited<ReturnType<typeof loadEstimateEditability>>) {
   return NextResponse.json(
     {
       error: 'Estimate is locked because it has been sent with a quote and can no longer be edited.',
       code: 'ESTIMATE_LOCKED',
-      editability,
-    },
-    { status: 409 },
-  );
-}
-
-function estimateDraftQuoteAckRequiredResponse(editability: Awaited<ReturnType<typeof loadEstimateEditability>>) {
-  return NextResponse.json(
-    {
-      error: 'Editing this estimate will leave existing draft quotes unchanged. Confirm to continue.',
-      code: 'ESTIMATE_DRAFT_QUOTES_REQUIRE_ACK',
       editability,
     },
     { status: 409 },
@@ -102,8 +89,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estimateId: st
   if (!res.data) return jsonError('Estimate not found', 404);
 
   const label = await resolveVersionLabel(res.data);
-  const editability = await loadEstimateEditability(estimateUuid);
-  const estimate = mapEstimateDetail(res.data, label, editability);
+  const flowMaps = await loadProjectEstimateFlowMaps(String(res.data.project_id ?? ''));
+  const editability = flowMaps.editabilityByEstimateId.get(estimateUuid) ?? (await loadEstimateEditability(estimateUuid));
+  const estimate = mapEstimateDetail(res.data, label, editability, estimateFlowStateFor(flowMaps.flowByEstimateId, estimateUuid));
   return jsonOk({ estimate });
 }
 
@@ -129,9 +117,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
 
   const internalNotes = parseNote(body.internal_notes ?? body.internalNotes);
   const estimateUpdate = parseEstimateUpdate(body.estimate_update ?? body.estimateUpdate);
-  const acknowledgeDraftQuoteStaleness = parseBoolean(
-    body.acknowledge_draft_quote_staleness ?? body.acknowledgeDraftQuoteStaleness,
-  );
   if (body.action) {
     return jsonError('Estimate approvals are no longer supported.', 400);
   }
@@ -146,9 +131,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
   if (estimateUpdate) {
     const editability = await loadEstimateEditability(estimateUuid);
     if (editability.isLocked) return estimateLockedResponse(editability);
-    if (editability.hasDraftQuotes && !acknowledgeDraftQuoteStaleness) {
-      return estimateDraftQuoteAckRequiredResponse(editability);
-    }
 
     if (!isRecord(estimateUpdate.inputs)) {
       return jsonError('estimate_update.inputs must be an object', 400);
@@ -187,8 +169,21 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
   if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update estimate', 500);
 
   const row = updateRes.data ?? res.data;
+  let syncedQuoteVersionIds: string[] = [];
+  if (estimateUpdate) {
+    try {
+      const refreshedDraftQuotes = await syncDraftQuoteVersionsFromEstimate(appIdFromUuid('est', estimateUuid));
+      syncedQuoteVersionIds = refreshedDraftQuotes.map((quote) => quote.id);
+    } catch (error) {
+      console.error('[estimate_update] failed to sync draft quotes from design', {
+        estimateId: estimateUuid,
+        error,
+      });
+    }
+  }
   const label = await resolveVersionLabel(row);
-  const editability = await loadEstimateEditability(estimateUuid);
-  const estimate = mapEstimateDetail(row, label, editability);
-  return jsonOk({ estimate });
+  const flowMaps = await loadProjectEstimateFlowMaps(String(row?.project_id ?? ''));
+  const editability = flowMaps.editabilityByEstimateId.get(estimateUuid) ?? (await loadEstimateEditability(estimateUuid));
+  const estimate = mapEstimateDetail(row, label, editability, estimateFlowStateFor(flowMaps.flowByEstimateId, estimateUuid));
+  return jsonOk({ estimate, syncedQuoteVersionIds });
 }

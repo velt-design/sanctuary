@@ -51,7 +51,6 @@ export type PortalEstimateCreateMutationPayload = {
 export type PortalEstimateUpdateMutationPayload = {
   estimateId: string;
   estimatePayload: PortalEstimatePayload;
-  acknowledgeDraftQuoteStaleness: boolean;
 };
 
 export type PortalQuoteCreateMutationPayload = {
@@ -166,6 +165,11 @@ function estimateMetaFromDetail(detail: EstimateDetail): EstimateMeta {
     summary: detail.summary,
     createdBy: detail.createdBy ?? null,
     versionLabel: detail.versionLabel,
+    isActiveDraft: detail.isActiveDraft,
+    hasSentQuote: detail.hasSentQuote,
+    jobPackEligible: detail.jobPackEligible,
+    jobPackGeneratedAt: detail.jobPackGeneratedAt,
+    jobPackQuoteVersionId: detail.jobPackQuoteVersionId,
   };
 }
 
@@ -359,6 +363,11 @@ export function buildOptimisticEstimateDetail(args: {
     summary: built.summaryJson as EstimateSummary,
     createdBy: args.createdBy ?? null,
     versionLabel: args.versionLabel,
+    isActiveDraft: true,
+    hasSentQuote: false,
+    jobPackEligible: false,
+    jobPackGeneratedAt: null,
+    jobPackQuoteVersionId: null,
     calculatorSnapshot: built.snapshot,
     internalNotes: null,
     editability: emptyEstimateEditability(),

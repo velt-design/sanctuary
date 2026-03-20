@@ -15,19 +15,19 @@ import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimat
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
-const TABS = [
-  { key: 'estimates', label: 'Estimates' },
+const BASE_TABS = [
+  { key: 'estimates', label: 'Designs' },
   { key: 'quotes', label: 'Quotes' },
   { key: 'job-packs', label: 'Job Packs' },
   { key: 'emails', label: 'Emails' },
   { key: 'files', label: 'Files' },
 ] as const;
 
-type TabKey = (typeof TABS)[number]['key'];
+type TabKey = (typeof BASE_TABS)[number]['key'];
 type QuoteViewKey = 'edit' | 'preview';
 
-function coerceTab(value: string | undefined): TabKey {
-  return (TABS.find((t) => t.key === value)?.key ?? 'estimates') as TabKey;
+function coerceTab(value: string | undefined, allowedTabs: readonly { key: TabKey; label: string }[]): TabKey {
+  return (allowedTabs.find((t) => t.key === value)?.key ?? 'estimates') as TabKey;
 }
 
 export default function ProjectMainTabs({
@@ -45,7 +45,11 @@ export default function ProjectMainTabs({
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const projectId = snapshot.project.id;
 
-  const tabFromUrl = useMemo(() => coerceTab(searchParams.get('tab') ?? tab), [searchParams, tab]);
+  const availableTabs = useMemo(
+    () => BASE_TABS.filter((tabItem) => tabItem.key !== 'job-packs' || snapshot.project.hasJobPacks),
+    [snapshot.project.hasJobPacks],
+  );
+  const tabFromUrl = useMemo(() => coerceTab(searchParams.get('tab') ?? tab, availableTabs), [availableTabs, searchParams, tab]);
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl);
   const quotePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
   const quoteView: QuoteViewKey = quotePreviewFromUrl ? 'preview' : 'edit';
@@ -124,7 +128,7 @@ export default function ProjectMainTabs({
       <div className={legacy.sectionHeader}>
         <div className={layout.tabScroller}>
           <div className={legacy.tabsPill} role="tablist" aria-label="Project tabs">
-            {TABS.map((tabItem) => {
+            {availableTabs.map((tabItem) => {
               const isActive = tabItem.key === activeTab;
               return (
                 <button

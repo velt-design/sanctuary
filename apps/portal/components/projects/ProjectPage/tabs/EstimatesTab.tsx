@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -83,7 +83,7 @@ function formatSavedLabel(value: string | null | undefined): string | null {
 }
 
 function renderValue(value: string | null | undefined): ReactNode {
-  if (!value || value === '—') return <span className={styles.mutedValue}>Not set</span>;
+  if (!value || value === 'â€”') return <span className={styles.mutedValue}>Not set</span>;
   return value;
 }
 
@@ -96,17 +96,17 @@ function estimateStateClass(detail: EstimateDetail | null): string {
 }
 
 function formatMargin(summary?: EstimateSummary): string {
-  if (!summary) return '—';
+  if (!summary) return 'â€”';
   const value = summary.marginValue;
   const pct = summary.marginPct;
   if (typeof value === 'number' && Number.isFinite(value) && typeof pct === 'number' && Number.isFinite(pct)) {
     const pctText = formatPercent(pct);
     const valueText = formatMoney(value);
-    if (pctText && valueText) return `${pctText} · ${valueText}`;
+    if (pctText && valueText) return `${pctText} Â· ${valueText}`;
   }
-  if (typeof value === 'number' && Number.isFinite(value)) return formatMoney(value) ?? '—';
-  if (typeof pct === 'number' && Number.isFinite(pct)) return formatPercent(pct) ?? '—';
-  return '—';
+  if (typeof value === 'number' && Number.isFinite(value)) return formatMoney(value) ?? 'â€”';
+  if (typeof pct === 'number' && Number.isFinite(pct)) return formatPercent(pct) ?? 'â€”';
+  return 'â€”';
 }
 
 function summaryTotal(summary?: EstimateSummary): number | null {
@@ -154,7 +154,7 @@ function formatSize(length: unknown, projection: unknown, prefix?: string): stri
   const len = typeof length === 'number' ? length : typeof length === 'string' ? Number.parseFloat(length) : null;
   const proj = typeof projection === 'number' ? projection : typeof projection === 'string' ? Number.parseFloat(projection) : null;
   if (!Number.isFinite(len ?? NaN) || !Number.isFinite(proj ?? NaN)) return '';
-  const label = `${len}m × ${proj}m`;
+  const label = `${len}m Ã— ${proj}m`;
   return prefix ? `${prefix}${label}` : label;
 }
 
@@ -252,7 +252,7 @@ function getPergolaSpecs(snapshot: Record<string, unknown> | null): string | nul
       const base = formatSize(module.lengthM, module.projectionM);
       if (module.pergolaStyle === 'hip_corner') {
         const secondary = formatSize((module as any).hipCornerLengthBM, (module as any).hipCornerProjectionBM, 'B ');
-        size = [base && `A ${base}`, secondary].filter(Boolean).join(' • ') || base || secondary || null;
+        size = [base && `A ${base}`, secondary].filter(Boolean).join(' â€¢ ') || base || secondary || null;
       } else {
         size = base || null;
       }
@@ -264,7 +264,7 @@ function getPergolaSpecs(snapshot: Record<string, unknown> | null): string | nul
   }
 
   const parts = [style, size, modulesCount ? formatModulesCount(modulesCount) : ''].filter(Boolean);
-  return parts.length ? parts.join(' • ') : null;
+  return parts.length ? parts.join(' â€¢ ') : null;
 }
 
 function normalizeNotes(value: unknown): string[] {
@@ -501,6 +501,11 @@ function detailToMeta(detail: EstimateDetail): EstimateMeta {
     summary: detail.summary,
     createdBy: detail.createdBy,
     versionLabel: detail.versionLabel,
+    isActiveDraft: detail.isActiveDraft,
+    hasSentQuote: detail.hasSentQuote,
+    jobPackEligible: detail.jobPackEligible,
+    jobPackGeneratedAt: detail.jobPackGeneratedAt,
+    jobPackQuoteVersionId: detail.jobPackQuoteVersionId,
   };
 }
 
@@ -513,15 +518,6 @@ function formatEstimateLockMessage(detail: EstimateDetail | null): string | null
       ? `quote version V${editability.lockedByQuoteVersionNumber}`
       : 'a related quote';
   return `Locked after ${quoteLabel} was sent.`;
-}
-
-function formatDraftQuoteEditWarning(detail: EstimateDetail | null): string | null {
-  const editability = detail?.editability;
-  if (!editability || editability.isLocked || !editability.hasDraftQuotes) return null;
-  if (editability.draftQuoteCount === 1) {
-    return 'This estimate has 1 draft quote. Editing it will not update that draft automatically.';
-  }
-  return `This estimate has ${editability.draftQuoteCount} draft quotes. Editing it will not update those drafts automatically.`;
 }
 
 export default function EstimatesTab({
@@ -591,8 +587,10 @@ export default function EstimatesTab({
       return;
     }
     setSelectedId((prev) => {
+      const activeDraft = estimates.find((e) => e.isActiveDraft)?.id ?? '';
       const preferred = urlEstimateId && estimates.some((e) => e.id === urlEstimateId) ? urlEstimateId : '';
       if (preferred) return preferred;
+      if (activeDraft) return activeDraft;
       if (prev && estimates.some((e) => e.id === prev)) return prev;
       return estimates[0]?.id ?? '';
     });
@@ -607,6 +605,7 @@ export default function EstimatesTab({
     () => (selectedId ? estimates.find((e) => e.id === selectedId) ?? null : null),
     [estimates, selectedId],
   );
+  const activeDraftMeta = useMemo(() => estimates.find((estimate) => estimate.isActiveDraft) ?? null, [estimates]);
   const notesDraftEntityKey = useMemo(
     () => buildEstimateNotesDraftEntityKey(selectedId || '__estimate-none__'),
     [selectedId],
@@ -685,12 +684,12 @@ export default function EstimatesTab({
   const focusGroups = useMemo(() => buildFocusGroups(breakdown), [breakdown]);
   const jobPackUrlForSheet = useCallback(
     (sheet: 'materials' | 'labour' | 'overheads') =>
-      selectedMeta
+      selectedMeta && (selectedDetail?.jobPackGeneratedAt ?? selectedMeta.jobPackGeneratedAt)
         ? `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
             selectedMeta.id,
           )}&sheet=${encodeURIComponent(sheet)}`
         : '',
-    [projectId, selectedMeta],
+    [projectId, selectedDetail?.jobPackGeneratedAt, selectedMeta],
   );
   const jobPackUrl = jobPackUrlForSheet('materials');
   const breakdownCount = breakdownTotals.length;
@@ -865,7 +864,7 @@ export default function EstimatesTab({
   const createdMeta = selectedMeta
     ? [formatDateShort(selectedMeta.createdAt), formatTime(selectedMeta.createdAt), selectedMeta.createdBy]
         .filter(Boolean)
-        .join(' · ')
+        .join(' Â· ')
     : '';
 
   const relatedQuotes = useMemo(() => {
@@ -883,16 +882,16 @@ export default function EstimatesTab({
   const relatedQuotesPreview = relatedQuotesSorted.slice(0, 3);
 
   const calculatorHref = `/staff/calculator?projectId=${encodeURIComponent(projectId)}`;
+  const designEditorHref = activeDraftMeta
+    ? `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(activeDraftMeta.id)}`
+    : isEstimateLocked && selectedMeta
+      ? `/staff/calculator?projectId=${encodeURIComponent(projectId)}&fromEstimateId=${encodeURIComponent(selectedMeta.id)}`
+      : calculatorHref;
   const handleCreateFromTabs = useCallback(() => {
-    router.push(calculatorHref);
-  }, [calculatorHref, router]);
+    router.push(designEditorHref);
+  }, [designEditorHref, router]);
   const handleEditEstimate = useCallback(() => {
     if (!selectedDetail || selectedDetail.editability.isLocked) return;
-    const draftQuoteWarning = formatDraftQuoteEditWarning(selectedDetail);
-    if (draftQuoteWarning && typeof window !== 'undefined') {
-      const confirmed = window.confirm(`${draftQuoteWarning}\n\nContinue to edit this estimate?`);
-      if (!confirmed) return;
-    }
     router.push(
       `/staff/calculator?projectId=${encodeURIComponent(projectId)}&editEstimateId=${encodeURIComponent(selectedDetail.id)}`,
     );
@@ -938,9 +937,9 @@ export default function EstimatesTab({
       });
 
       setSelectedId(localEstimateId);
-      toast.success('Estimate duplicated locally. Syncing in the background.');
+      toast.success('Design revision created locally. Syncing in the background.');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to duplicate estimate';
+      const msg = err instanceof Error ? err.message : 'Failed to create design revision';
       toast.error(msg);
     } finally {
       setActionBusy(false);
@@ -1055,7 +1054,7 @@ export default function EstimatesTab({
         : null;
 
   if (estimatesQuery.isPending) {
-    return <p className={legacy.note}>Loading estimates…</p>;
+    return <p className={legacy.note}>Loading designsâ€¦</p>;
   }
 
   if (listError) {
@@ -1065,10 +1064,10 @@ export default function EstimatesTab({
   if (!estimates.length) {
     return (
       <div className={styles.emptyState}>
-        <h3 className={styles.emptyTitle}>No estimates yet</h3>
+        <h3 className={styles.emptyTitle}>No designs yet</h3>
         <p className={legacy.note}>Run calculator first if no data is available.</p>
         <Link className={legacy.button} href={calculatorHref}>
-          Create estimate
+          Create design
         </Link>
       </div>
     );
@@ -1079,8 +1078,8 @@ export default function EstimatesTab({
       <div className={`${styles.mainGrid} ${styles.mainGridGeneral}`}>
 
         <div className={styles.detailPanel}>
-          {!selectedMeta ? <p className={legacy.note}>Select an estimate to view details.</p> : null}
-          {selectedMeta && detailLoading ? <p className={legacy.note}>Loading estimate details…</p> : null}
+          {!selectedMeta ? <p className={legacy.note}>Select a design to view details.</p> : null}
+          {selectedMeta && detailLoading ? <p className={legacy.note}>Loading design detailsâ€¦</p> : null}
 
           {selectedMeta && !detailLoading ? (
             <div className={styles.detailStack}>
@@ -1092,6 +1091,7 @@ export default function EstimatesTab({
                         estimates={estimates.map((estimate) => ({
                           id: estimate.id,
                           label: estimate.versionLabel,
+                          isActiveDraft: estimate.isActiveDraft,
                         }))}
                         activeEstimateId={selectedId}
                         onSelect={setSelectedId}
@@ -1106,7 +1106,7 @@ export default function EstimatesTab({
                   </div>
                   <div className={styles.summaryHeaderActions}>
                     <div className={styles.summaryHeaderControls}>
-                      <div className={styles.segmentedControl} role="tablist" aria-label="Estimate drawing view">
+                      <div className={styles.segmentedControl} role="tablist" aria-label="Design drawing view">
                         {(['plan', 'section'] as const).map((value) => (
                           <button
                             type="button"
@@ -1128,7 +1128,7 @@ export default function EstimatesTab({
                         onClick={handleEditEstimate}
                         disabled={!selectedDetail}
                       >
-                        Edit estimate
+                        Edit design
                       </button>
                     ) : null}
                     {jobPackUrl ? <Link className={`${legacy.buttonSecondary} ${styles.compactAction}`} href={jobPackUrl}>Open Job Pack</Link> : null}
@@ -1136,13 +1136,13 @@ export default function EstimatesTab({
                 </div>
                 {selectedEstimateSyncPending ? (
                   <div className={styles.infoNotice}>
-                    Estimate is syncing in the background. You can keep editing, duplicate, request design, and create a quote from the local snapshot now.
+                    Design is syncing in the background. You can keep editing, request drafting, and create a quote from the local snapshot now.
                   </div>
                 ) : null}
                 <div className={styles.focusSummaryLayout}>
                   {drawingModules.length > 1 ? (
                     <div className={styles.focusDrawingControlsRow}>
-                      <div className={styles.segmentedControl} role="tablist" aria-label="Estimate drawing module">
+                      <div className={styles.segmentedControl} role="tablist" aria-label="Design drawing module">
                         {drawingModules.map((module, index) => (
                           <button
                             type="button"
@@ -1169,7 +1169,7 @@ export default function EstimatesTab({
                       meta={drawingSheetMeta}
                     />
                   ) : (
-                    <div className={styles.drawingEmpty}>No plan or section drawing is available for this estimate.</div>
+                    <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>
                   )}
                 </div>
               </section>
@@ -1178,17 +1178,17 @@ export default function EstimatesTab({
                 <div className={styles.cardHeader}>
                   <div className={styles.cardHeaderGroup}>
                     <h4 className={styles.cardTitle}>Quote</h4>
-                    <span className={styles.cardSubTitle}>From this estimate</span>
+                    <span className={styles.cardSubTitle}>From this design</span>
                   </div>
                 </div>
-                {quotesLoading ? <p className={legacy.note}>Loading quotes…</p> : null}
+                {quotesLoading ? <p className={legacy.note}>Loading quotesâ€¦</p> : null}
                 {quotesError ? <p className={legacy.error}>{quotesError}</p> : null}
 
                 <div className={styles.quotePricingGrid}>
                   <div className={styles.quotePricingCard}>
                     <div className={styles.summaryLabel}>{quoteCostIncludesGst ? 'Cost to us (inc GST)' : 'Cost to us'}</div>
                     <div className={styles.quotePricingValue}>{renderValue(formatMoney(quoteCostToUs))}</div>
-                    <div className={styles.quotePricingSubValue}>Current estimate snapshot</div>
+                    <div className={styles.quotePricingSubValue}>Current design snapshot</div>
                   </div>
                   <div className={styles.quotePricingCard}>
                     <div className={styles.summaryLabel}>{quoteCostIncludesGst ? 'Price with margin (inc GST)' : 'Price with margin'}</div>
@@ -1206,7 +1206,7 @@ export default function EstimatesTab({
                         className={styles.quoteRow}
                         onClick={() => handleOpenQuote(quote.id)}
                       >
-                        <div className={styles.quoteRowLabel}>{`${quote.quoteRef} • V${quote.versionNumber}`}</div>
+                        <div className={styles.quoteRowLabel}>{`${quote.quoteRef} â€¢ V${quote.versionNumber}`}</div>
                         <span className={`${styles.quoteStatusPill} ${quoteStatusClass(quote.status)}`}>
                           {quoteStatusLabel(quote.status)}
                         </span>
@@ -1214,7 +1214,7 @@ export default function EstimatesTab({
                     ))}
                   </div>
                 ) : (
-                  <p className={styles.quoteEmpty}>Create a quote from this estimate.</p>
+                  <p className={styles.quoteEmpty}>Create a quote from this design.</p>
                 )}
 
                 <div className={styles.quoteActions}>
@@ -1229,7 +1229,7 @@ export default function EstimatesTab({
                     onClick={() => setRequestDesignOpen(true)}
                     disabled={!selectedMeta}
                   >
-                    Request Design
+                    Request Drafting
                   </button>
                   <button
                     type="button"
@@ -1237,7 +1237,7 @@ export default function EstimatesTab({
                     onClick={handleCreateQuote}
                     disabled={quoteBusy}
                   >
-                    {quoteBusy ? 'Creating…' : 'Create quote'}
+                    {quoteBusy ? 'Creatingâ€¦' : 'Create quote'}
                   </button>
                 </div>
               </section>
@@ -1329,15 +1329,15 @@ export default function EstimatesTab({
                   }}
                   onBlur={() => void saveNotesDraft().catch(() => undefined)}
                   rows={4}
-                  placeholder="Add internal notes for this estimate..."
+                  placeholder="Add internal notes for this design..."
                 />
                 <div className={styles.cardFooter}>
                   {selectedEstimateSyncPending ? (
-                    <span className={styles.savedHint}>Syncing…</span>
+                    <span className={styles.savedHint}>Syncingâ€¦</span>
                   ) : selectedEstimateSyncState.lastSyncedAt ? (
                     <span className={styles.savedHint}>{formatSavedLabel(selectedEstimateSyncState.lastSyncedAt)}</span>
                   ) : notesDirty ? (
-                    <span className={styles.savedHint}>Saving soon…</span>
+                    <span className={styles.savedHint}>Saving soonâ€¦</span>
                   ) : null}
                 </div>
               </section>
@@ -1364,3 +1364,5 @@ export default function EstimatesTab({
     </div>
   );
 }
+
+

@@ -20,6 +20,7 @@ export const qk = {
     detail: (host: string, estimateId: string) => ['estimates', host, 'detail', estimateId] as const,
   },
   jobPacks: {
+    list: (host: string, projectId: string) => ['jobPacks', host, 'list', projectId] as const,
     powdercoating: (host: string, estimateId: string) => ['jobPacks', host, 'powdercoating', estimateId] as const,
   },
   quotes: {

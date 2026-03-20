@@ -1,7 +1,10 @@
-import { isRecord } from '@/lib/supabase/mappers';
 import type { EstimateSummary } from './types';
 
 type AnyRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is AnyRecord {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
 
 function toNumber(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
