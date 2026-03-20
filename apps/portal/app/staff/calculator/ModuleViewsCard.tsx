@@ -393,27 +393,58 @@ type PlanFitBox = {
   fallGap: number;
 };
 
+type SheetCropBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+const SHEET_DRAWING_CROP_BOX: SheetCropBox = {
+  x: 1.6,
+  y: 6.2,
+  width: 100.8,
+  height: 65.4,
+};
+
+function getSheetDrawingCropBox(): SheetCropBox {
+  return SHEET_DRAWING_CROP_BOX;
+}
+
+function getSheetCropInsets(cropBox: SheetCropBox) {
+  return {
+    left: cropBox.x,
+    right: 120 - cropBox.x - cropBox.width,
+    top: cropBox.y,
+    bottom: 90 - cropBox.y - cropBox.height,
+  };
+}
+
 type PlanSheetFrame = {
-  leftPad: number;
-  rightPad: number;
-  topPad: number;
-  bottomPad: number;
+  cropBox: SheetCropBox;
+  annotationPadLeft: number;
+  annotationPadRight: number;
+  annotationPadTop: number;
+  annotationPadBottom: number;
   houseBandHeight: number;
   houseBandOffset: number;
   houseInset: number;
   fallGap: number;
+  verticalBias: number;
 };
 
 function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
   return {
-    leftPad: isHipCorner ? 12.8 : 12.2,
-    rightPad: isHipCorner ? 15.8 : 14.1,
-    topPad: 10.8,
-    bottomPad: isHipCorner ? 12.4 : 13.1,
-    houseBandHeight: 4.4,
-    houseBandOffset: 1.05,
-    houseInset: 0.95,
-    fallGap: 4.15,
+    cropBox: getSheetDrawingCropBox(),
+    annotationPadLeft: isHipCorner ? 5.8 : 5.2,
+    annotationPadRight: isHipCorner ? 6.8 : 6.2,
+    annotationPadTop: isHipCorner ? 4.8 : 4.2,
+    annotationPadBottom: isHipCorner ? 13.8 : 12.8,
+    houseBandHeight: 5.3,
+    houseBandOffset: 1.15,
+    houseInset: 1.7,
+    fallGap: 5.0,
+    verticalBias: 0.02,
   };
 }
 
@@ -422,15 +453,17 @@ function resolvePlanFitBox(totalW: number, totalH: number, presentation: ModuleD
   const safeH = Math.max(totalH, 0.1);
   if (presentation === 'sheet') {
     const frame = getPlanSheetFrame(isHipCorner);
-    const { leftPad, rightPad, topPad, bottomPad } = frame;
-    const maxW = 120 - leftPad - rightPad;
-    const maxH = 90 - topPad - bottomPad;
+    const { left, top } = getSheetCropInsets(frame.cropBox);
+    const { annotationPadLeft, annotationPadRight, annotationPadTop, annotationPadBottom } = frame;
+    const maxW = frame.cropBox.width - annotationPadLeft - annotationPadRight;
+    const maxH = frame.cropBox.height - annotationPadTop - annotationPadBottom;
     const scale = Math.min(maxW / safeW, maxH / safeH);
     const widthPx = safeW * scale;
     const heightPx = safeH * scale;
+    const slackY = Math.max(0, maxH - heightPx);
     return {
-      x: leftPad + (maxW - widthPx) / 2,
-      y: topPad + (maxH - heightPx) / 2,
+      x: left + annotationPadLeft + (maxW - widthPx) / 2,
+      y: top + annotationPadTop + slackY * frame.verticalBias,
       scale,
       houseBandHeight: frame.houseBandHeight,
       houseBandOffset: frame.houseBandOffset,
@@ -465,15 +498,17 @@ function resolvePlanFixedScaleBox(
   const frame = getPlanSheetFrame(isHipCorner);
   const safeW = Math.max(totalW, 0.1);
   const safeH = Math.max(totalH, 0.1);
-  const maxW = 120 - frame.leftPad - frame.rightPad;
-  const maxH = 90 - frame.topPad - frame.bottomPad;
+  const { left, top } = getSheetCropInsets(frame.cropBox);
+  const maxW = frame.cropBox.width - frame.annotationPadLeft - frame.annotationPadRight;
+  const maxH = frame.cropBox.height - frame.annotationPadTop - frame.annotationPadBottom;
   const scale = getViewBoxUnitsPerMetreAtScale(ratio, viewportMm);
   const widthPx = safeW * scale;
   const heightPx = safeH * scale;
+  const slackY = Math.max(0, maxH - heightPx);
 
   return {
-    x: frame.leftPad + (maxW - widthPx) / 2,
-    y: frame.topPad + (maxH - heightPx) / 2,
+    x: left + frame.annotationPadLeft + (maxW - widthPx) / 2,
+    y: top + frame.annotationPadTop + slackY * frame.verticalBias,
     scale,
     houseBandHeight: frame.houseBandHeight,
     houseBandOffset: frame.houseBandOffset,
@@ -483,16 +518,32 @@ function resolvePlanFixedScaleBox(
 }
 
 type SectionFitFrame = {
-  left: number;
-  width: number;
-  topMargin: number;
-  groundY: number;
+  cropBox: SheetCropBox;
+  verticalBias: number;
+  annotationPadLeft: number;
+  annotationPadRight: number;
+  annotationPadTop: number;
+  annotationPadBottom: number;
 };
 
 function getSectionSheetFrame(sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
   return sectionKind === 'gable'
-    ? { left: 11.6, width: 97.4, topMargin: 7.1, groundY: 78.2 }
-    : { left: 12.1, width: 96.1, topMargin: 8.1, groundY: 77.6 };
+    ? {
+        cropBox: getSheetDrawingCropBox(),
+        verticalBias: 0.2,
+        annotationPadLeft: 8.8,
+        annotationPadRight: 9.2,
+        annotationPadTop: 6.4,
+        annotationPadBottom: 11.2,
+      }
+    : {
+        cropBox: getSheetDrawingCropBox(),
+        verticalBias: 0.2,
+        annotationPadLeft: 8.6,
+        annotationPadRight: 9.0,
+        annotationPadTop: 5.8,
+        annotationPadBottom: 10.8,
+      };
 }
 
 function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
@@ -500,7 +551,14 @@ function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, section
     return getSectionSheetFrame(sectionKind);
   }
 
-  return { left: 18, width: 84, topMargin: 16, groundY: 72 };
+  return {
+    cropBox: { x: 18, y: 16, width: 84, height: 56 },
+    verticalBias: 0.3,
+    annotationPadLeft: 9,
+    annotationPadRight: 9,
+    annotationPadTop: 6,
+    annotationPadBottom: 10,
+  };
 }
 
 function viewBoxUnitsToMm(value: number, viewportMm?: { widthMm: number; heightMm: number }): number {
@@ -567,10 +625,10 @@ function getPlanScaleFit(
     ratio,
     viewportMm,
     marginsMm: {
-      left: viewBoxUnitsToMm(frame.leftPad, viewportMm),
-      right: viewBoxUnitsToMm(frame.rightPad, viewportMm),
-      top: viewBoxUnitsToMm(frame.topPad, viewportMm),
-      bottom: viewBoxUnitsToMm(frame.bottomPad, viewportMm),
+      left: viewBoxUnitsToMm(frame.cropBox.x + frame.annotationPadLeft, viewportMm),
+      right: viewBoxUnitsToMm(120 - frame.cropBox.x - frame.cropBox.width + frame.annotationPadRight, viewportMm),
+      top: viewBoxUnitsToMm(frame.cropBox.y + frame.annotationPadTop, viewportMm),
+      bottom: viewBoxUnitsToMm(90 - frame.cropBox.y - frame.cropBox.height + frame.annotationPadBottom, viewportMm),
     },
   });
 }
@@ -589,10 +647,10 @@ function getSectionScaleFit(
     ratio,
     viewportMm,
     marginsMm: {
-      left: viewBoxUnitsToMm(frame.left, viewportMm),
-      right: viewBoxUnitsToMm(120 - frame.left - frame.width, viewportMm),
-      top: viewBoxUnitsToMm(frame.topMargin, viewportMm),
-      bottom: viewBoxUnitsToMm(90 - frame.groundY, viewportMm),
+      left: viewBoxUnitsToMm(frame.cropBox.x + frame.annotationPadLeft, viewportMm),
+      right: viewBoxUnitsToMm(120 - frame.cropBox.x - frame.cropBox.width + frame.annotationPadRight, viewportMm),
+      top: viewBoxUnitsToMm(frame.cropBox.y + frame.annotationPadTop, viewportMm),
+      bottom: viewBoxUnitsToMm(90 - frame.cropBox.y - frame.cropBox.height + frame.annotationPadBottom, viewportMm),
     },
   });
 }
@@ -1039,6 +1097,11 @@ function projectLinearPositions(positionsM: number[] | null, lengthM: number | n
   return positionsM.map((posM) => startX + (Math.max(0, posM) / lengthM) * drawWidth);
 }
 
+function interiorPlanRafterXs(xs: number[]): number[] {
+  if (xs.length <= 2) return [];
+  return xs.slice(1, -1);
+}
+
 function LegendRow({ items }: { items: string[] }) {
   return (
     <div className={styles.moduleViewsLegend} aria-label="Drawing legend">
@@ -1165,6 +1228,7 @@ function PlanSvg({
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
+  const planSheetFrame = isSheet ? getPlanSheetFrame(isHipCorner) : null;
   const totalW = isHipCorner ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
   const totalH = isHipCorner ? model.spanA + (model.spanB ?? 0) : model.spanA;
   const layout =
@@ -1184,6 +1248,7 @@ function PlanSvg({
   const topFrameW = memberSizeM(model.ledgerBeamWidthM, 0.05) * scale;
   const sideFrameW = memberSizeM(model.supportBeamWidthM, 0.05) * scale;
   const gutterW = memberSizeM(model.gutterWidthM, 0.1) * scale;
+  const rafterW = memberSizeM(model.rafterWidthM, 0.05) * scale;
   const ridgeBandW = memberSizeM(model.ridgeBeamWidthM, 0.05) * scale;
   const ridgeBandX = x + sideFrameW;
   const ridgeBandWidth = Math.max(0, aW - sideFrameW * 2);
@@ -1221,10 +1286,15 @@ function PlanSvg({
   const houseTopY = Math.max(isSheet ? 5.2 : 4, houseBottomY - layout.houseBandHeight);
   const houseLeftX = Math.max(isSheet ? 8.4 : 6, x - layout.houseInset);
   const houseRightX = Math.min(114, x + Math.max(aW, bW) + layout.houseInset);
+  const houseLabelX = clamp((houseLeftX + houseRightX) / 2, houseLeftX + 8.4, houseRightX - 8.4);
+  const houseCropOutline = planSheetFrame?.cropBox ?? null;
+  const houseLabelY = houseTopY + layout.houseBandHeight * (isSheet ? 0.62 : 0.58);
   const hatchId = `${idBase}_house_hatch`;
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.lengthA, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
+  const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
+  const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
 
   const fallX = Math.min(isSheet ? 108.6 : 110.5, x + Math.max(aW, bW) + (isSheet ? layout.fallGap - 0.55 : layout.fallGap));
@@ -1265,8 +1335,20 @@ function PlanSvg({
         </pattern>
       </defs>
 
+      {houseCropOutline ? (
+        <rect
+          x={houseCropOutline.x}
+          y={houseCropOutline.y}
+          width={houseCropOutline.width}
+          height={houseCropOutline.height}
+          className={styles.moduleDebugCropOutline}
+          data-debug-crop="plan"
+          aria-hidden="true"
+        />
+      ) : null}
+
       <rect x={houseLeftX} y={houseTopY} width={houseRightX - houseLeftX} height={houseBottomY - houseTopY} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} />
-      <text x={houseLeftX + (isSheet ? 1.15 : 1.5)} y={houseTopY + (isSheet ? 2.9 : 3.1)} className={styles.moduleHouseLabel}>
+      <text x={houseLabelX} y={houseLabelY} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
         House side
       </text>
 
@@ -1308,25 +1390,25 @@ function PlanSvg({
 
       {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
 
-      {rafterXsA.map((rx) => (
-        <line
+      {interiorRafterXsA.map((rx) => (
+        <rect
           key={`rafter_a_${rx.toFixed(3)}`}
-          x1={rx}
-          y1={yTopInner}
-          x2={rx}
-          y2={isHipCorner ? splitY - gutterW : yBottomInner}
+          x={rx - rafterW / 2}
+          y={yTopInner}
+          width={rafterW}
+          height={Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner)}
           className={styles.modulePlanRafter}
         />
       ))}
 
       {isHipCorner
-        ? rafterXsB.map((rx) => (
-            <line
+        ? interiorRafterXsB.map((rx) => (
+            <rect
               key={`rafter_b_${rx.toFixed(3)}`}
-              x1={rx}
-              y1={splitY + topFrameW}
-              x2={rx}
-              y2={bottomY - gutterW}
+              x={rx - rafterW / 2}
+              y={splitY + topFrameW}
+              width={rafterW}
+              height={Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))}
               className={styles.modulePlanRafter}
             />
           ))
@@ -1417,9 +1499,10 @@ function PlanSvg({
       ) : null}
 
       {rafterXsA.length >= 2 ? (() => {
-        const baseIdx = Math.max(0, Math.floor((rafterXsA.length - 2) / 2));
-        const d1 = rafterXsA[baseIdx]!;
-        const d2 = rafterXsA[baseIdx + 1]!;
+        const spacingXs = interiorRafterXsA.length >= 2 ? interiorRafterXsA : rafterXsA;
+        const baseIdx = Math.max(0, Math.floor((spacingXs.length - 2) / 2));
+        const d1 = spacingXs[baseIdx]!;
+        const d2 = spacingXs[baseIdx + 1]!;
         return (
           <>
             <line x1={d1} y1={isHipCorner ? splitY - gutterW : yBottomInner} x2={d1} y2={rafterDimY} className={styles.moduleDimWitness} />
@@ -1480,9 +1563,9 @@ function SectionSvg({
   const supportBeamTopM = supportUndersideM + supportBeamDepthM;
 
   const fitFrame = resolveSectionFitFrame(presentation, model.sectionKind);
-  const chartWidth = fitFrame.width;
-  const topMargin = fitFrame.topMargin;
-  const yGround = fitFrame.groundY;
+  const sectionCropOutline = isSheet ? fitFrame.cropBox : null;
+  const chartWidth = Math.max(12, fitFrame.cropBox.width - fitFrame.annotationPadLeft - fitFrame.annotationPadRight);
+  const topMargin = fitFrame.cropBox.y;
   const safeSpanM = Math.max(totalSpanM, 0.1);
 
   const heights = [
@@ -1501,7 +1584,10 @@ function SectionSvg({
   ].filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   const maxHeightM = Math.max(0.1, ...(heights.length ? heights : [0.1]));
 
-  const availableHeight = Math.max(10, yGround - topMargin);
+  const availableHeight = Math.max(
+    10,
+    fitFrame.cropBox.height - fitFrame.annotationPadTop - fitFrame.annotationPadBottom,
+  );
   const fixedScale = isSheet && drawingScale.mode === 'fixed' ? getViewBoxUnitsPerMetreAtScale(drawingScale.ratio, sheetViewportMm) : null;
   const scale =
     fixedScale ??
@@ -1510,6 +1596,9 @@ function SectionSvg({
       const scaleY = availableHeight / maxHeightM;
       return Math.min(scaleX, scaleY);
     })();
+  const drawHeight = maxHeightM * scale;
+  const topOffset = topMargin + fitFrame.annotationPadTop + Math.max(0, availableHeight - drawHeight) * fitFrame.verticalBias;
+  const yGround = topOffset + drawHeight;
 
   const postW = memberSizeM(model.postWidthM, 0.1) * scale;
   const rafterDepth = memberSizeM(model.rafterDepthM, 0.15) * scale;
@@ -1525,7 +1614,7 @@ function SectionSvg({
   const ridgeBeamWidth = ridgeBeamWidthM * scale;
 
   const drawWidth = safeSpanM * scale;
-  const xLeft = fitFrame.left + (chartWidth - drawWidth) / 2;
+  const xLeft = fitFrame.cropBox.x + fitFrame.annotationPadLeft + (chartWidth - drawWidth) / 2;
   const xRight = xLeft + model.spanA * scale;
   const xSupport = model.sectionKind === 'mono' ? xLeft + supportXFromHouseM * scale : xRight;
   const ridgeX = (xLeft + xRight) / 2;
@@ -1668,6 +1757,18 @@ function SectionSvg({
         presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
       }`}
     >
+      {sectionCropOutline ? (
+        <rect
+          x={sectionCropOutline.x}
+          y={sectionCropOutline.y}
+          width={sectionCropOutline.width}
+          height={sectionCropOutline.height}
+          className={styles.moduleDebugCropOutline}
+          data-debug-crop="section"
+          aria-hidden="true"
+        />
+      ) : null}
+
       <rect x={Math.max(8, xLeft - 8)} y={yGround + 1.3} width={Math.min(104, xRight + 8) - Math.max(8, xLeft - 8)} height={8} className={styles.moduleSectionGroundFill} />
       <line x1={Math.max(8, xLeft - 8)} y1={yGround} x2={Math.min(112, xRight + 8)} y2={yGround} className={styles.moduleSectionGround} />
 

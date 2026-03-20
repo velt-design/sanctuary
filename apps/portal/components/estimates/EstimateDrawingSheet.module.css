@@ -48,7 +48,7 @@
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 14px;
+  gap: 12px;
 }
 
 .sheetHeaderCopy {
@@ -57,20 +57,21 @@
 }
 
 .sheetEyebrow {
-  font-size: 6.85pt;
+  font-size: 5.24pt;
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--mv-sheet-muted);
+  color: var(--mv-sheet-heading);
+  opacity: 0.8;
 }
 
 .sheetModuleLabel {
   font-family: var(--mv-font-display);
-  font-size: 18.6pt;
+  font-size: 14.23pt;
   font-weight: 500;
   line-height: 0.98;
   letter-spacing: -0.02em;
-  color: var(--mv-sheet-text);
+  color: var(--mv-sheet-heading);
   text-wrap: balance;
 }
 
@@ -207,11 +208,11 @@
 
 .companyName {
   font-family: var(--mv-font-display);
-  font-size: 9.15pt;
+  font-size: 13.18pt;
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.012em;
-  padding-bottom: 2px;
+  padding-bottom: 5px;
   color: var(--mv-sheet-text);
 }
 
