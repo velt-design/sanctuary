@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -83,7 +83,7 @@ function formatSavedLabel(value: string | null | undefined): string | null {
 }
 
 function renderValue(value: string | null | undefined): ReactNode {
-  if (!value || value === 'â€”') return <span className={styles.mutedValue}>Not set</span>;
+  if (!value || value === '—') return <span className={styles.mutedValue}>Not set</span>;
   return value;
 }
 
@@ -96,17 +96,17 @@ function estimateStateClass(detail: EstimateDetail | null): string {
 }
 
 function formatMargin(summary?: EstimateSummary): string {
-  if (!summary) return 'â€”';
+  if (!summary) return '—';
   const value = summary.marginValue;
   const pct = summary.marginPct;
   if (typeof value === 'number' && Number.isFinite(value) && typeof pct === 'number' && Number.isFinite(pct)) {
     const pctText = formatPercent(pct);
     const valueText = formatMoney(value);
-    if (pctText && valueText) return `${pctText} Â· ${valueText}`;
+    if (pctText && valueText) return `${pctText} · ${valueText}`;
   }
-  if (typeof value === 'number' && Number.isFinite(value)) return formatMoney(value) ?? 'â€”';
-  if (typeof pct === 'number' && Number.isFinite(pct)) return formatPercent(pct) ?? 'â€”';
-  return 'â€”';
+  if (typeof value === 'number' && Number.isFinite(value)) return formatMoney(value) ?? '—';
+  if (typeof pct === 'number' && Number.isFinite(pct)) return formatPercent(pct) ?? '—';
+  return '—';
 }
 
 function summaryTotal(summary?: EstimateSummary): number | null {
@@ -154,7 +154,7 @@ function formatSize(length: unknown, projection: unknown, prefix?: string): stri
   const len = typeof length === 'number' ? length : typeof length === 'string' ? Number.parseFloat(length) : null;
   const proj = typeof projection === 'number' ? projection : typeof projection === 'string' ? Number.parseFloat(projection) : null;
   if (!Number.isFinite(len ?? NaN) || !Number.isFinite(proj ?? NaN)) return '';
-  const label = `${len}m Ã— ${proj}m`;
+  const label = `${len}m × ${proj}m`;
   return prefix ? `${prefix}${label}` : label;
 }
 
@@ -252,7 +252,7 @@ function getPergolaSpecs(snapshot: Record<string, unknown> | null): string | nul
       const base = formatSize(module.lengthM, module.projectionM);
       if (module.pergolaStyle === 'hip_corner') {
         const secondary = formatSize((module as any).hipCornerLengthBM, (module as any).hipCornerProjectionBM, 'B ');
-        size = [base && `A ${base}`, secondary].filter(Boolean).join(' â€¢ ') || base || secondary || null;
+        size = [base && `A ${base}`, secondary].filter(Boolean).join(' • ') || base || secondary || null;
       } else {
         size = base || null;
       }
@@ -264,7 +264,7 @@ function getPergolaSpecs(snapshot: Record<string, unknown> | null): string | nul
   }
 
   const parts = [style, size, modulesCount ? formatModulesCount(modulesCount) : ''].filter(Boolean);
-  return parts.length ? parts.join(' â€¢ ') : null;
+  return parts.length ? parts.join(' • ') : null;
 }
 
 function normalizeNotes(value: unknown): string[] {
@@ -864,7 +864,7 @@ export default function EstimatesTab({
   const createdMeta = selectedMeta
     ? [formatDateShort(selectedMeta.createdAt), formatTime(selectedMeta.createdAt), selectedMeta.createdBy]
         .filter(Boolean)
-        .join(' Â· ')
+        .join(' · ')
     : '';
 
   const relatedQuotes = useMemo(() => {
@@ -1054,7 +1054,7 @@ export default function EstimatesTab({
         : null;
 
   if (estimatesQuery.isPending) {
-    return <p className={legacy.note}>Loading designsâ€¦</p>;
+    return <p className={legacy.note}>Loading designs…</p>;
   }
 
   if (listError) {
@@ -1079,7 +1079,7 @@ export default function EstimatesTab({
 
         <div className={styles.detailPanel}>
           {!selectedMeta ? <p className={legacy.note}>Select a design to view details.</p> : null}
-          {selectedMeta && detailLoading ? <p className={legacy.note}>Loading design detailsâ€¦</p> : null}
+          {selectedMeta && detailLoading ? <p className={legacy.note}>Loading design details…</p> : null}
 
           {selectedMeta && !detailLoading ? (
             <div className={styles.detailStack}>
@@ -1181,7 +1181,7 @@ export default function EstimatesTab({
                     <span className={styles.cardSubTitle}>From this design</span>
                   </div>
                 </div>
-                {quotesLoading ? <p className={legacy.note}>Loading quotesâ€¦</p> : null}
+                {quotesLoading ? <p className={legacy.note}>Loading quotes…</p> : null}
                 {quotesError ? <p className={legacy.error}>{quotesError}</p> : null}
 
                 <div className={styles.quotePricingGrid}>
@@ -1206,7 +1206,7 @@ export default function EstimatesTab({
                         className={styles.quoteRow}
                         onClick={() => handleOpenQuote(quote.id)}
                       >
-                        <div className={styles.quoteRowLabel}>{`${quote.quoteRef} â€¢ V${quote.versionNumber}`}</div>
+                        <div className={styles.quoteRowLabel}>{`${quote.quoteRef} • V${quote.versionNumber}`}</div>
                         <span className={`${styles.quoteStatusPill} ${quoteStatusClass(quote.status)}`}>
                           {quoteStatusLabel(quote.status)}
                         </span>
@@ -1237,7 +1237,7 @@ export default function EstimatesTab({
                     onClick={handleCreateQuote}
                     disabled={quoteBusy}
                   >
-                    {quoteBusy ? 'Creatingâ€¦' : 'Create quote'}
+                    {quoteBusy ? 'Creating…' : 'Create quote'}
                   </button>
                 </div>
               </section>
@@ -1333,11 +1333,11 @@ export default function EstimatesTab({
                 />
                 <div className={styles.cardFooter}>
                   {selectedEstimateSyncPending ? (
-                    <span className={styles.savedHint}>Syncingâ€¦</span>
+                    <span className={styles.savedHint}>Syncing…</span>
                   ) : selectedEstimateSyncState.lastSyncedAt ? (
                     <span className={styles.savedHint}>{formatSavedLabel(selectedEstimateSyncState.lastSyncedAt)}</span>
                   ) : notesDirty ? (
-                    <span className={styles.savedHint}>Saving soonâ€¦</span>
+                    <span className={styles.savedHint}>Saving soon…</span>
                   ) : null}
                 </div>
               </section>
