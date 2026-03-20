@@ -2570,6 +2570,10 @@
   text-transform: uppercase;
 }
 
+.moduleFallLabelSheet {
+  font-size: calc(var(--mv-text-label-size) - 0.3px);
+}
+
 .moduleDimLine {
   stroke: var(--mv-dim);
   stroke-width: var(--mv-line-dimension-width);
