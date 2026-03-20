@@ -1,0 +1,31 @@
+* text=auto
+
+*.cjs text
+*.css text
+*.html text
+*.js text
+*.json text
+*.jsx text
+*.md text
+*.mjs text
+*.scss text
+*.sql text
+*.svg text
+*.ts text
+*.tsx text
+*.txt text
+*.yaml text
+*.yml text
+
+*.dbf binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.mp4 binary
+*.pdf binary
+*.png binary
+*.shp binary
+*.shx binary
+*.webp binary
+*.zip binary
