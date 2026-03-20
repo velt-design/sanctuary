@@ -48,12 +48,12 @@
   min-width: 0;
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 14px;
 }
 
 .sheetHeaderCopy {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .sheetEyebrow {
@@ -66,7 +66,7 @@
 
 .sheetModuleLabel {
   font-family: var(--mv-font-display);
-  font-size: 19.8pt;
+  font-size: 18.6pt;
   font-weight: 500;
   line-height: 0.98;
   letter-spacing: -0.02em;
@@ -75,9 +75,10 @@
 }
 
 .sheetHeaderRule {
-  width: min(100%, 378px);
+  width: min(100%, 322px);
   height: 1px;
   background: var(--mv-sheet-divider);
+  opacity: 0.82;
 }
 
 .sheetInfoRail {
@@ -96,9 +97,9 @@
 }
 
 .sheetScaleBox {
-  padding: 10px 13px 11px;
+  padding: 9px 13px 10px;
   display: grid;
-  gap: 3px;
+  gap: 2px;
   background: var(--mv-sheet-scale-bg);
 }
 
@@ -151,9 +152,9 @@
 }
 
 .legendBox {
-  padding: 10px 13px 11px;
+  padding: 9px 13px 10px;
   display: grid;
-  gap: 7px;
+  gap: 6px;
 }
 
 .legendTitle {
@@ -166,13 +167,13 @@
 
 .legendList {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   font-size: 7.1pt;
   line-height: 1.28;
   color: var(--mv-sheet-muted);
@@ -202,7 +203,7 @@
 }
 
 .legendSwatchPrimary::before {
-  border-top-width: 2.05px;
+  border-top-width: 2.18px;
 }
 
 .legendSwatchSecondary {
@@ -210,7 +211,7 @@
 }
 
 .legendSwatchSecondary::before {
-  border-top-width: 0.9px;
+  border-top-width: 0.82px;
 }
 
 .legendSwatchAnnotation {
@@ -218,7 +219,7 @@
 }
 
 .legendSwatchAnnotation::before {
-  border-top-width: 0.74px;
+  border-top-width: 0.68px;
 }
 
 .legendSwatchDimension {
@@ -226,7 +227,7 @@
 }
 
 .legendSwatchDimension::before {
-  border-top-width: 0.82px;
+  border-top-width: 0.76px;
 }
 
 .legendSwatchDimension::after {
@@ -246,25 +247,26 @@
 
 .legendSwatchHidden::before {
   border-top-style: dashed;
-  border-top-width: 0.7px;
+  border-top-width: 0.54px;
 }
 
 .sheetFooter {
   display: grid;
   grid-template-columns: minmax(0, 0.82fr) minmax(190px, 0.98fr) minmax(408px, 1.2fr);
-  gap: 12px;
+  gap: 14px;
   align-items: end;
-  padding: 11px 26px 7px;
+  padding: 11px 26px 9px;
   border-top: 1px solid var(--mv-sheet-divider);
 }
 
 .companyBlock {
   max-width: 272px;
   display: grid;
-  gap: 0;
+  gap: 1px;
   align-self: end;
   align-content: end;
   justify-self: start;
+  padding-bottom: 5px;
 }
 
 .companyName {
@@ -273,16 +275,20 @@
   font-weight: 500;
   line-height: 1.02;
   letter-spacing: -0.012em;
-  padding-bottom: 1px;
+  padding-bottom: 2px;
   color: var(--mv-sheet-text);
 }
 
 .companyLine {
-  font-size: 6.55pt;
+  font-size: 6.95pt;
   font-weight: 400;
-  line-height: 1.14;
+  line-height: 1.24;
   color: var(--mv-sheet-muted);
-  opacity: 0.76;
+  opacity: 0.84;
+}
+
+.companyLine + .companyLine {
+  margin-top: 1px;
 }
 
 .noteBlock {
@@ -290,11 +296,12 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
-  column-gap: 5px;
-  row-gap: 1px;
+  column-gap: 6px;
+  row-gap: 2px;
   align-self: end;
   justify-self: end;
   max-width: 262px;
+  padding-bottom: 4px;
 }
 
 .blockLabel {
@@ -303,7 +310,7 @@
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--mv-sheet-muted);
-  opacity: 0.72;
+  opacity: 0.62;
 }
 
 .noteLabel {
@@ -312,22 +319,22 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--mv-sheet-muted);
-  opacity: 0.72;
+  opacity: 0.68;
   white-space: nowrap;
 }
 
 .noteCopy {
   min-width: 0;
   display: grid;
-  gap: 1px;
+  gap: 3px;
 }
 
 .noteLine {
-  font-size: 6.8pt;
+  font-size: 6.95pt;
   font-weight: 400;
-  line-height: 1.16;
+  line-height: 1.24;
   color: var(--mv-sheet-muted);
-  opacity: 0.94;
+  opacity: 0.98;
 }
 
 .infoCluster {
@@ -335,7 +342,7 @@
   width: min(100%, 468px);
   padding: 10px 14px 11px;
   display: grid;
-  gap: 8px;
+  gap: 9px;
   align-self: end;
   border: 1px solid var(--mv-sheet-divider);
   border-radius: 8px;
@@ -346,7 +353,7 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, max-content));
   justify-content: start;
-  gap: 9px 18px;
+  gap: 10px 24px;
   align-items: end;
 }
 
@@ -366,9 +373,9 @@
 
 .titleInfoBlock {
   display: grid;
-  gap: 3px;
-  padding-top: 3px;
-  padding-bottom: 2px;
+  gap: 4px;
+  padding-top: 5px;
+  padding-bottom: 5px;
 }
 
 .blockValue {
@@ -391,9 +398,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, max-content));
   justify-content: start;
-  gap: 9px 24px;
+  gap: 10px 24px;
   align-items: end;
-  padding-top: 7px;
+  padding-top: 8px;
   border-top: 1px solid var(--mv-sheet-divider);
 }
 

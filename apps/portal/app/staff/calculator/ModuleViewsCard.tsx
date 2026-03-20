@@ -379,7 +379,7 @@ function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
     rightPad: isHipCorner ? 19.6 : 17.8,
     topPad: 14.2,
     bottomPad: isHipCorner ? 15.2 : 16.8,
-    houseBandHeight: 5.5,
+    houseBandHeight: 5.0,
     houseBandOffset: 1.3,
     houseInset: 1.2,
     fallGap: 4.9,
@@ -1200,8 +1200,8 @@ function PlanSvg({
   const fallX = Math.min(isSheet ? 108.6 : 110.5, x + Math.max(aW, bW) + (isSheet ? layout.fallGap - 0.55 : layout.fallGap));
   const fallTop = y + (isSheet ? 1.5 : 1);
   const fallBottom = (isHipCorner ? bottomY : y + aH) - (isSheet ? 1.5 : 1);
-  const fallLabelX = fallX + (isSheet ? 0.98 : 2.3);
-  const fallLabelY = (fallTop + fallBottom) / 2 + (isSheet ? 0.28 : 0);
+  const fallLabelX = fallX + (isSheet ? 0.62 : 2.3);
+  const fallLabelY = (fallTop + fallBottom) / 2 + (isSheet ? 0.18 : 0);
 
   const dimBaseY = Math.min(87.6, bottomY + (isSheet ? 8.9 : 7.8));
   const secondaryDimY = Math.min(88.8, dimBaseY + (isSheet ? 6.0 : 5.4));
@@ -1311,7 +1311,7 @@ function PlanSvg({
         <>
           <ArrowHead x={fallX} y={fallTop} direction="up" presentation={presentation} />
           <ArrowHead x={fallX} y={fallBottom} direction="down" presentation={presentation} />
-          <text x={fallLabelX} y={fallLabelY} className={styles.moduleFallLabel}>
+          <text x={fallLabelX} y={fallLabelY} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
             fall both sides
           </text>
         </>
@@ -1323,7 +1323,7 @@ function PlanSvg({
             direction={model.slopeDirection === 'toward_house' ? 'up' : 'down'}
             presentation={presentation}
           />
-          <text x={fallLabelX} y={fallLabelY} className={styles.moduleFallLabel}>
+          <text x={fallLabelX} y={fallLabelY} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
             fall
           </text>
         </>
