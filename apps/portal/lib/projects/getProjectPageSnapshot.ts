@@ -207,7 +207,7 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
     projectRow.followUpDate,
   );
 
-  const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes] = await Promise.all([
+  const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes] = await Promise.all([
     contactUuid
       ? supabaseServer.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -254,6 +254,7 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false })
       .limit(50),
+    supabaseServer.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
   ]);
 
   if (emailRes?.error) {
@@ -279,6 +280,9 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
   }
   if (manualRes?.error) {
     console.error('[project_snapshot] project_task_checks query failed', manualRes.error);
+  }
+  if (jobPackRes?.error) {
+    console.error('[project_snapshot] job_pack_generations query failed', jobPackRes.error);
   }
 
   const contact = contactRes?.data ?? null;
@@ -306,6 +310,7 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
   const hasAcceptedQuote = Array.isArray(acceptedQuoteRes?.data)
     ? acceptedQuoteRes.data.length > 0
     : Boolean(acceptedQuoteRes?.data);
+  const hasJobPacks = Boolean(jobPackRes?.data);
   const hasOpenDepositInvoice = Boolean(openInvoiceRes?.data);
   const openInvoiceId = hasOpenDepositInvoice && typeof (openInvoiceRes?.data as any)?.id === 'string'
     ? String((openInvoiceRes?.data as any).id)
@@ -350,6 +355,7 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
       ...(region ? { region } : null),
       ...(quoteRef ? { quoteRef } : null),
       ...(nextActionDate ? { nextActionDate } : null),
+      ...(hasJobPacks ? { hasJobPacks } : null),
     },
     pipeline: {
       stage: finalStage,

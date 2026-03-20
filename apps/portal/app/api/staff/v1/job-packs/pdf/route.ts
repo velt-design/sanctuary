@@ -3,7 +3,7 @@ import { jsonError, requireStaffSession } from '@/lib/api/staffApi';
 import { emptyEstimateEditability } from '@/lib/estimates/editability';
 import { buildVersionLabelMap, mapEstimateDetail } from '@/lib/estimates/server';
 import { generateJobPackPdf } from '@/lib/jobPacks/pdf';
-import { isMissingSchemaError, listPowdercoatProfileOptions, loadPowdercoatOverrideState } from '@/lib/jobPacks/server';
+import { isMissingSchemaError, listPowdercoatProfileOptions, loadLatestJobPackGenerationForEstimate, loadPowdercoatOverrideState } from '@/lib/jobPacks/server';
 import { JOB_PACK_SHEETS, type JobPackSheetKey, buildWorkbook } from '@/lib/jobPacks/workbook';
 import type { JobPackPowdercoatOverrideState } from '@/lib/jobPacks/types';
 import { supabaseServer } from '@/lib/supabaseClient';
@@ -56,6 +56,9 @@ export async function GET(req: Request) {
   const estimateRes = await supabaseServer.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
   if (estimateRes.error) return jsonError(estimateRes.error.message ?? 'Failed to load estimate', 500);
   if (!estimateRes.data) return jsonError('Estimate not found', 404);
+
+  const generation = await loadLatestJobPackGenerationForEstimate(estimateUuid);
+  if (!generation) return jsonError('Generate a job pack from a sent quote before downloading PDFs.', 409);
 
   const versionLabel = await resolveVersionLabel(estimateRes.data);
   const detail = mapEstimateDetail(estimateRes.data, versionLabel, emptyEstimateEditability());

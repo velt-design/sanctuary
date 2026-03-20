@@ -10,6 +10,14 @@ export type EstimateSummary = {
   leadTime?: string | null;
 };
 
+export type EstimateFlowState = {
+  isActiveDraft: boolean;
+  hasSentQuote: boolean;
+  jobPackEligible: boolean;
+  jobPackGeneratedAt: string | null;
+  jobPackQuoteVersionId: string | null;
+};
+
 export type EstimateMeta = {
   id: string;
   projectId: string;
@@ -18,7 +26,7 @@ export type EstimateMeta = {
   summary: EstimateSummary;
   createdBy?: string | null;
   versionLabel: string;
-};
+} & EstimateFlowState;
 
 export type EstimateEditability = {
   isLocked: boolean;

@@ -40,3 +40,20 @@ export type JobPackPowdercoatUpdateResponse = {
   ok: true;
   overrides: JobPackPowdercoatOverrideState;
 };
+
+export type JobPackGenerationSummary = {
+  id: string;
+  projectId: string;
+  estimateId: string;
+  estimateVersionLabel: string;
+  quoteVersionId: string;
+  quoteRef: string;
+  quoteVersionNumber: number;
+  quoteStatus: 'SENT' | 'ACCEPTED' | 'DECLINED';
+  createdAt: string;
+  createdBy: string | null;
+};
+
+export type JobPackGenerationResponse = {
+  jobPack: JobPackGenerationSummary;
+};

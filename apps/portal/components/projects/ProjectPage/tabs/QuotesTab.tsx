@@ -24,7 +24,9 @@ import {
 import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { qk } from '@/lib/queries/keys';
+import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
+import { generateJobPack } from '@/lib/repo/jobPacksRepo';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { useAliasedEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
 import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
@@ -315,6 +317,7 @@ export default function QuotesTab({
 
   const quotesQuery = useQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
   const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
+  const jobPacksQuery = useQuery(generatedJobPacksByProjectQueryOptions(hostKey, projectId));
 
   const quotes = quotesQuery.data ?? [];
   const quotesLoading = quotesQuery.isPending;
@@ -323,6 +326,7 @@ export default function QuotesTab({
 
   const estimates = estimatesQuery.data ?? [];
   const estimatesLoading = estimatesQuery.isPending;
+  const generatedJobPacks = jobPacksQuery.data ?? [];
 
   const quoteDetailQuery = useQuery({
     ...quoteVersionDetailQueryOptions(hostKey, selectedId || ''),
@@ -359,6 +363,7 @@ export default function QuotesTab({
 
   const [expiredPromptOpen, setExpiredPromptOpen] = useState(false);
   const [pendingResendId, setPendingResendId] = useState<string | null>(null);
+  const [jobPackBusy, setJobPackBusy] = useState(false);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -514,6 +519,10 @@ export default function QuotesTab({
     if (!estimates.length) return null;
     return [...estimates].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0] ?? null;
   }, [estimates]);
+  const preferredQuoteSourceDesign = useMemo(() => {
+    if (!estimates.length) return null;
+    return estimates.find((estimate) => estimate.isActiveDraft) ?? latestEstimate ?? estimates[0] ?? null;
+  }, [estimates, latestEstimate]);
 
   const detailTotals = useMemo(() => {
     if (!detail) return null;
@@ -670,9 +679,9 @@ export default function QuotesTab({
   }, [pagePreviewFromUrl, previewDetail, quotePdfPreviewKey, quotePdfPreviewSrc]);
 
   const openCreateModal = () => {
-    const defaultId = latestEstimate?.id ?? estimates[0]?.id ?? '';
+    const defaultId = preferredQuoteSourceDesign?.id ?? '';
     if (!defaultId) {
-      toast.error('Create an estimate first.');
+      toast.error('Create a design first.');
       return;
     }
     setCreateEstimateId(defaultId);
@@ -735,7 +744,7 @@ export default function QuotesTab({
     autoCreateRef.current = token;
 
     if (!estimates.some((estimate) => estimate.id === createFromEstimateId)) {
-      toast.error('Estimate not found for quote creation.');
+      toast.error('Design not found for quote creation.');
       updateParams({ createFromEstimateId: null });
       return;
     }
@@ -1042,6 +1051,32 @@ export default function QuotesTab({
     }
   };
 
+  const handleGenerateJobPack = async () => {
+    if (!detail || jobPackBusy) return;
+    setJobPackBusy(true);
+    try {
+      const jobPack = await generateJobPack({ projectId, quoteVersionId: detail.id });
+      await Promise.allSettled([
+        queryClient.invalidateQueries({ queryKey: qk.jobPacks.list(hostKey, projectId) }),
+        invalidateProjectReadCaches(queryClient, hostKey, projectId, {
+          includeEstimates: true,
+          includeQuotes: false,
+        }),
+      ]);
+      toast.success('Job pack generated.');
+      router.replace(
+        `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
+          jobPack.estimateId,
+        )}&sheet=materials`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to generate job pack';
+      toast.error(msg);
+    } finally {
+      setJobPackBusy(false);
+    }
+  };
+
   const handleAddRow = () => {
     setDraftItems((prev) => [
       ...prev,
@@ -1088,6 +1123,14 @@ export default function QuotesTab({
   if (selectedId && detail) {
     const expired = isExpired(detail.expiresAt);
     const hasNewerEstimate = latestEstimate && latestEstimate.id !== detail.sourceEstimateVersionId;
+    const generatedJobPack = generatedJobPacks.find((jobPack) => jobPack.quoteVersionId === detail.id) ?? null;
+    const canGenerateJobPack =
+      (detail.status === 'SENT' || detail.status === 'ACCEPTED' || detail.status === 'DECLINED') && !generatedJobPack;
+    const openJobPackHref = generatedJobPack
+      ? `/staff/projects/${encodeURIComponent(projectId)}?tab=job-packs&estimateId=${encodeURIComponent(
+          generatedJobPack.estimateId,
+        )}&sheet=materials`
+      : null;
 
     return (
       <div className={styles.wrapper}>
@@ -1136,6 +1179,16 @@ export default function QuotesTab({
               </>
             ) : (
               <>
+                {openJobPackHref ? (
+                  <Link className={legacy.buttonSecondary} href={openJobPackHref}>
+                    Open Job Pack
+                  </Link>
+                ) : null}
+                {canGenerateJobPack ? (
+                  <button type="button" className={legacy.buttonSecondary} onClick={handleGenerateJobPack} disabled={jobPackBusy}>
+                    {jobPackBusy ? 'Generating job pack...' : 'Generate Job Pack'}
+                  </button>
+                ) : null}
                 <button type="button" className={legacy.buttonSecondary} onClick={handleRevise}>
                   Revise
                 </button>
@@ -1244,11 +1297,11 @@ export default function QuotesTab({
             <div className={styles.metaLabel}>Provenance</div>
             <div className={styles.metaValue}>
               <Link href={`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(detail.sourceEstimateVersionId)}`}>
-                Generated from {detail.sourceEstimateVersionLabel}
+                Built from design {detail.sourceEstimateVersionLabel}
               </Link>
             </div>
             {detail.status === 'DRAFT' && hasNewerEstimate ? (
-              <div className={styles.metaWarning}>A newer estimate ({latestEstimate?.versionLabel}) exists. This quote was generated from {detail.sourceEstimateVersionLabel}.</div>
+              <div className={styles.metaWarning}>A newer design ({latestEstimate?.versionLabel}) exists. This quote was built from design {detail.sourceEstimateVersionLabel}.</div>
             ) : null}
           </div>
         </section>
@@ -1690,7 +1743,7 @@ export default function QuotesTab({
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No quotes yet.</p>
           <button type="button" className={legacy.button} onClick={openCreateModal}>
-            Create quote from estimate
+            Create quote from design
           </button>
         </div>
       ) : null}
@@ -1701,7 +1754,7 @@ export default function QuotesTab({
             <thead>
               <tr>
                 <th>Quote</th>
-                <th>From estimate</th>
+                <th>From design</th>
                 <th>Issue date</th>
                 <th>Expiry</th>
                 <th>Status</th>
@@ -1771,7 +1824,7 @@ export default function QuotesTab({
               </button>
             </div>
             <div className={styles.modalBody}>
-              <label className={styles.metaLabel} htmlFor="estimateSelect">Select estimate version</label>
+              <label className={styles.metaLabel} htmlFor="estimateSelect">Select design version</label>
               <select
                 id="estimateSelect"
                 className={styles.metaInput}
@@ -1781,7 +1834,7 @@ export default function QuotesTab({
               >
                 {estimates.map((estimate) => (
                   <option key={estimate.id} value={estimate.id}>
-                    {estimate.versionLabel}
+                    {estimate.isActiveDraft ? 'Current draft design' : `Design ${estimate.versionLabel}`}
                   </option>
                 ))}
               </select>

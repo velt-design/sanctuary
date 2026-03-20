@@ -116,13 +116,13 @@ export default function RequestDesignModal({
   }, [preview]);
 
   const title = useMemo(() => {
-    if (!preview) return 'Request design';
-    return preview.mode === 'revision' ? `Request Design v${preview.nextVersion}` : 'Request Design';
+    if (!preview) return 'Request drafting';
+    return preview.mode === 'revision' ? `Request Drafting v${preview.nextVersion}` : 'Request Drafting';
   }, [preview]);
 
   const submitLabel = useMemo(() => {
-    if (!preview) return 'Request design';
-    return preview.mode === 'revision' ? `Request design v${preview.nextVersion}` : 'Request design';
+    if (!preview) return 'Request drafting';
+    return preview.mode === 'revision' ? `Request drafting v${preview.nextVersion}` : 'Request drafting';
   }, [preview]);
 
   return (
@@ -130,7 +130,7 @@ export default function RequestDesignModal({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      description={`Create a design request from estimate ${estimateLabel}.`}
+      description={`Create a drafting request from design ${estimateLabel}.`}
       size="md"
       actions={
         <>
@@ -164,7 +164,7 @@ export default function RequestDesignModal({
                         priorityTier: selectedPriorityTier,
                       },
                     });
-                    toast.success('Design request queued locally. It will sync after the estimate finishes syncing.');
+                    toast.success('Drafting request queued locally. It will sync after the design finishes syncing.');
                   } else {
                     await createDesignRequest({
                       projectId,
@@ -174,11 +174,11 @@ export default function RequestDesignModal({
                       priorityTier: selectedPriorityTier,
                     });
                     await onCreated?.();
-                    toast.success(preview.mode === 'revision' ? `Design request v${preview.nextVersion} created.` : 'Design request created.');
+                    toast.success(preview.mode === 'revision' ? `Drafting request v${preview.nextVersion} created.` : 'Drafting request created.');
                   }
                   onOpenChange(false);
                 } catch (err) {
-                  const message = err instanceof Error ? err.message : 'Failed to create design request';
+                  const message = err instanceof Error ? err.message : 'Failed to create drafting request';
                   setError(message);
                   toast.error(message);
                 } finally {
@@ -194,8 +194,8 @@ export default function RequestDesignModal({
       hint={
         preview?.canSubmit
           ? useDeferredCreate
-            ? 'The request will queue now and attach once the estimate sync finishes.'
-            : 'The request will be linked to this exact estimate snapshot.'
+            ? 'The request will queue now and attach once the design sync finishes.'
+            : 'The request will be linked to this exact design snapshot.'
           : undefined
       }
     >
@@ -207,12 +207,12 @@ export default function RequestDesignModal({
           <div className={styles.grid}>
             {useDeferredCreate ? (
               <div className={styles.warning}>
-                This estimate still has local changes. The design request will queue now and the server will validate it after sync completes.
+                This design still has local changes. The drafting request will queue now and the server will validate it after sync completes.
               </div>
             ) : null}
             <div className={styles.summaryGrid}>
               <div className={styles.tile}>
-                <div className={styles.tileLabel}>Estimate</div>
+                <div className={styles.tileLabel}>Design</div>
                 <div className={styles.tileValue}>{estimateLabel}</div>
               </div>
               <div className={styles.tile}>
@@ -224,14 +224,14 @@ export default function RequestDesignModal({
                 <div className={styles.tileValue}>{formatTierLabel(preview.priorityTier)}</div>
               </div>
               <div className={styles.tile}>
-                <div className={styles.tileLabel}>Estimate total</div>
+                <div className={styles.tileLabel}>Design total</div>
                 <div className={styles.tileValue}>{formatMoneyCents(preview.priceTotalIncGstCents)}</div>
               </div>
             </div>
 
             {preview.activeRequest ? (
               <div className={styles.warning}>
-                {`Active design request v${preview.activeRequest.requestVersion} is still ${preview.activeRequest.status.toLowerCase()}. `}
+                {`Active drafting request v${preview.activeRequest.requestVersion} is still ${preview.activeRequest.status.toLowerCase()}. `}
                 Finish or cancel it before creating another revision.
               </div>
             ) : null}
@@ -258,7 +258,7 @@ export default function RequestDesignModal({
                 id="designRequestNote"
                 value={requestNote}
                 onChange={(event) => setRequestNote(event.target.value)}
-                placeholder="Optional note for the design team"
+                placeholder="Optional note for the drafting team"
                 disabled={submitting}
               />
             </div>

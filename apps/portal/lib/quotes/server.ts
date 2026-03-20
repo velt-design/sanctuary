@@ -4,6 +4,7 @@ export {
   listQuoteVersionsForProject,
   getQuoteVersionDetail,
   createQuoteFromEstimate,
+  syncDraftQuoteVersionsFromEstimate,
   updateDraftQuoteVersion,
   deleteDraftQuoteVersion,
   reviseQuoteVersion,

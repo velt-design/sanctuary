@@ -382,7 +382,7 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
   );
 
   return {
-    title: 'Design List',
+    title: 'Drafting Queue',
     toolbar,
     columns,
     allRows,
@@ -392,8 +392,8 @@ export function useDesignListSpreadsheetAdapter(): SpreadsheetAdapter<
     defaultActiveKey: 'quote_name',
     loading: query.isLoading,
     hasError: Boolean(query.error),
-    loadingMessage: 'Loading design list...',
-    errorMessage: 'Could not load design list.',
+    loadingMessage: 'Loading drafting queue...',
+    errorMessage: 'Could not load drafting queue.',
     emptyMessage: 'No matching requests.',
     getRowId: (row) => row.requestId,
     isEditableKey: (key): key is DesignListEditableCellKey => key === 'designer' || key === 'design_ready' || key === 'priority' || key === 'notes',

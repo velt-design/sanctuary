@@ -6,14 +6,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './JobPacksTab.module.css';
-import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
+import { estimateDetailQueryOptions } from '@/lib/queries/projectEstimates';
+import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { coerceJobPackSheet, useJobPackSpreadsheetAdapter, type JobPackSheetKey } from './useJobPackSpreadsheetAdapter';
-
-function formatMoney(value: number | null | undefined): string {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
-  return `$${value.toFixed(2)}`;
-}
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '-';
@@ -49,7 +45,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
 
   const sheet = useMemo(() => coerceJobPackSheet(searchParams.get('sheet')), [searchParams]);
 
-  const estimatesQuery = useQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
+  const jobPacksQuery = useQuery(generatedJobPacksByProjectQueryOptions(hostKey, projectId));
   const selectedDetailQuery = useQuery({
     ...estimateDetailQueryOptions(hostKey, selectedEstimateId ?? ''),
     enabled: Boolean(selectedEstimateId),
@@ -158,52 +154,48 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      {estimatesQuery.isLoading ? <p className={legacy.note}>Loading job packs...</p> : null}
-      {estimatesQuery.isError ? (
-        <p className={legacy.error}>{estimatesQuery.error instanceof Error ? estimatesQuery.error.message : 'Failed to load job packs.'}</p>
+      {jobPacksQuery.isLoading ? <p className={legacy.note}>Loading job packs...</p> : null}
+      {jobPacksQuery.isError ? (
+        <p className={legacy.error}>{jobPacksQuery.error instanceof Error ? jobPacksQuery.error.message : 'Failed to load job packs.'}</p>
       ) : null}
 
-      {!estimatesQuery.isLoading && !estimatesQuery.isError && !(estimatesQuery.data?.length ?? 0) ? (
+      {!jobPacksQuery.isLoading && !jobPacksQuery.isError && !(jobPacksQuery.data?.length ?? 0) ? (
         <div className={styles.emptyState}>
           <p className={styles.emptyTitle}>No job packs yet</p>
-          <p>Create an estimate first, then open its job pack from here.</p>
+          <p>Send a quote, then generate a job pack from that quote to see it here.</p>
         </div>
       ) : null}
 
-      {estimatesQuery.data?.length ? (
+      {jobPacksQuery.data?.length ? (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Version</th>
-                <th>Created</th>
+                <th>Design</th>
+                <th>Quote</th>
+                <th>Generated</th>
                 <th>Status</th>
-                <th>Estimate total</th>
-                <th>True cost</th>
               </tr>
             </thead>
             <tbody>
-              {estimatesQuery.data.map((estimate) => (
+              {jobPacksQuery.data.map((jobPack) => (
                 <tr
-                  key={estimate.id}
+                  key={jobPack.id}
                   className={styles.rowClickable}
                   tabIndex={0}
-                  onMouseEnter={() => prefetchDetail(estimate.id)}
-                  onFocus={() => prefetchDetail(estimate.id)}
-                  onClick={() => updateParams({ estimateId: estimate.id, sheet: 'materials' })}
+                  onMouseEnter={() => prefetchDetail(jobPack.estimateId)}
+                  onFocus={() => prefetchDetail(jobPack.estimateId)}
+                  onClick={() => updateParams({ estimateId: jobPack.estimateId, sheet: 'materials' })}
                   onKeyDown={(event) => {
                     if (event.key !== 'Enter' && event.key !== ' ') return;
                     event.preventDefault();
-                    updateParams({ estimateId: estimate.id, sheet: 'materials' });
+                    updateParams({ estimateId: jobPack.estimateId, sheet: 'materials' });
                   }}
                 >
-                  <td>{estimate.versionLabel}</td>
-                  <td>{formatDate(estimate.createdAt)}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${statusClass(estimate.status)}`}>{statusLabel(estimate.status)}</span>
-                  </td>
-                  <td>{formatMoney(estimate.summary.total ?? null)}</td>
-                  <td>{formatMoney(estimate.summary.cost ?? null)}</td>
+                  <td>{jobPack.estimateVersionLabel}</td>
+                  <td>{`${jobPack.quoteRef} • V${jobPack.quoteVersionNumber}`}</td>
+                  <td>{formatDate(jobPack.createdAt)}</td>
+                  <td><span className={`${styles.statusPill} ${statusClass(jobPack.quoteStatus === 'DECLINED' ? 'archived' : 'draft')}`}>{jobPack.quoteStatus}</span></td>
                 </tr>
               ))}
             </tbody>

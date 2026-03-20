@@ -3,8 +3,9 @@ import 'server-only';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, isRecord } from '@/lib/supabase/mappers';
 import { computeEstimateEditability, emptyEstimateEditability } from './editability';
+import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from './flow';
 import { summarizeCalculatorSnapshot } from './summarize';
-import type { EstimateDetail, EstimateEditability, EstimateMeta, EstimateStatus, EstimateSummary } from './types';
+import type { EstimateDetail, EstimateEditability, EstimateFlowState, EstimateMeta, EstimateStatus, EstimateSummary } from './types';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -82,6 +83,13 @@ export function calculatorSnapshotFromRow(row: any): Record<string, unknown> {
 }
 
 export function mapEstimateMeta(row: any, versionLabel: string): EstimateMeta {
+  const flowState: EstimateFlowState = {
+    isActiveDraft: Boolean(row?.isActiveDraft),
+    hasSentQuote: Boolean(row?.hasSentQuote),
+    jobPackEligible: Boolean(row?.jobPackEligible),
+    jobPackGeneratedAt: typeof row?.jobPackGeneratedAt === 'string' ? row.jobPackGeneratedAt : null,
+    jobPackQuoteVersionId: typeof row?.jobPackQuoteVersionId === 'string' ? row.jobPackQuoteVersionId : null,
+  };
   return {
     id: appIdFromUuid('est', String(row?.id ?? '')),
     projectId: appIdFromUuid('proj', String(row?.project_id ?? '')),
@@ -90,13 +98,20 @@ export function mapEstimateMeta(row: any, versionLabel: string): EstimateMeta {
     summary: summaryFromRow(row),
     createdBy: asString(row?.created_by),
     versionLabel,
+    ...flowState,
   };
 }
 
-export function mapEstimateDetail(row: any, versionLabel: string, editability?: EstimateEditability | null): EstimateDetail {
+export function mapEstimateDetail(
+  row: any,
+  versionLabel: string,
+  editability?: EstimateEditability | null,
+  flowState?: EstimateFlowState | null,
+): EstimateDetail {
   const meta = mapEstimateMeta(row, versionLabel);
   return {
     ...meta,
+    ...(flowState ?? null),
     calculatorSnapshot: calculatorSnapshotFromRow(row),
     internalNotes: asString(row?.internal_notes),
     editability: editability ?? emptyEstimateEditability(),
@@ -127,4 +142,13 @@ export async function loadEstimateEditability(estimateUuid: string): Promise<Est
   }
 
   return computeEstimateEditability({ quoteVersions, sendLogs });
+}
+
+export async function loadEstimateDetailForRow(row: any, versionLabel: string): Promise<EstimateDetail> {
+  const projectUuid = String(row?.project_id ?? '');
+  const estimateUuid = String(row?.id ?? '');
+  const flowMaps = await loadProjectEstimateFlowMaps(projectUuid);
+  const editability = flowMaps.editabilityByEstimateId.get(estimateUuid) ?? emptyEstimateEditability();
+  const flowState = estimateFlowStateFor(flowMaps.flowByEstimateId, estimateUuid);
+  return mapEstimateDetail(row, versionLabel, editability, flowState);
 }

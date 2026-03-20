@@ -328,6 +328,62 @@ function extractEstimateText(estimate: Estimate, keys: string[]): string | null 
   return null;
 }
 
+function buildGeneratedDraftQuotePatchFromEstimate(
+  estimate: Estimate,
+): Parameters<typeof updateDraftQuoteVersion>[1] {
+  const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  const depositPercent = 50;
+  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
+  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+
+  return {
+    introText,
+    termsText: termsSource,
+    depositPercent,
+    lineItems: mapping.items.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+    })),
+  };
+}
+
+export async function syncDraftQuoteVersionsFromEstimate(
+  estimateVersionId: string,
+): Promise<QuoteVersionDetail[]> {
+  const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
+  const estimate = await loadEstimate(estimateUuid);
+  if (!estimate) throw new Error('Estimate not found');
+
+  const draftVersionsRes = await supabaseServer
+    .from('quote_versions')
+    .select('id')
+    .eq('source_estimate_version_id', estimateUuid)
+    .eq('status', 'DRAFT')
+    .order('created_at', { ascending: false });
+
+  if (draftVersionsRes.error) {
+    if (missingTableError(draftVersionsRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(draftVersionsRes.error, 'Failed to load draft quotes'));
+  }
+
+  const draftQuoteVersionIds = (Array.isArray(draftVersionsRes.data) ? draftVersionsRes.data : [])
+    .map((row) => String((row as any)?.id ?? '').trim())
+    .filter(Boolean);
+
+  if (!draftQuoteVersionIds.length) return [];
+
+  const patch = buildGeneratedDraftQuotePatchFromEstimate(estimate);
+  const refreshedQuotes: QuoteVersionDetail[] = [];
+
+  for (const quoteVersionUuid of draftQuoteVersionIds) {
+    const refreshedQuote = await updateDraftQuoteVersion(appIdFromUuid('qv', quoteVersionUuid), patch);
+    refreshedQuotes.push(refreshedQuote);
+  }
+
+  return refreshedQuotes;
+}
+
 export async function listQuoteVersionsForProject(projectId: string): Promise<QuoteVersion[]> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
 

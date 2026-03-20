@@ -12,6 +12,7 @@ import styles from '../EstimatesTab.module.css';
 type EstimateTabItem = {
   id: string;
   label: string;
+  isActiveDraft?: boolean;
 };
 
 const getVersionNumber = (label: string) => {
@@ -39,12 +40,13 @@ export default function EstimateVersionTabs({
     return bNum - aNum;
   });
   const activeEstimate = sorted.find((estimate) => estimate.id === activeEstimateId) ?? sorted[0] ?? null;
-  const activeLabel = activeEstimate ? `Estimate ${activeEstimate.label}` : 'Select estimate';
+  const formatLabel = (estimate: EstimateTabItem) => (estimate.isActiveDraft ? 'Current draft design' : `Design ${estimate.label}`);
+  const activeLabel = activeEstimate ? formatLabel(activeEstimate) : 'Select design';
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <button type="button" className={styles.versionMenuTrigger} aria-label="Select estimate version">
+        <button type="button" className={styles.versionMenuTrigger} aria-label="Select design version">
           <span className={styles.versionMenuTriggerLabel}>{activeLabel}</span>
           <span className={styles.versionMenuTriggerChevron} aria-hidden="true">
             v
@@ -61,7 +63,7 @@ export default function EstimateVersionTabs({
               className={`${styles.versionMenuItem} ${isActive ? styles.versionMenuItemActive : ''}`}
               onSelect={() => onSelect(estimate.id)}
             >
-              <span className={styles.versionMenuItemLabel}>{`Estimate ${estimate.label}`}</span>
+              <span className={styles.versionMenuItemLabel}>{formatLabel(estimate)}</span>
               {isActive ? <span className={styles.versionMenuItemMeta}>Current</span> : null}
             </DropdownMenuItem>
           );
@@ -70,7 +72,7 @@ export default function EstimateVersionTabs({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem className={`${styles.versionMenuItem} ${styles.versionMenuCreateItem}`} onSelect={onCreateEstimate}>
-              <span className={styles.versionMenuItemLabel}>New estimate version</span>
+              <span className={styles.versionMenuItemLabel}>Start new design revision</span>
             </DropdownMenuItem>
           </>
         ) : null}

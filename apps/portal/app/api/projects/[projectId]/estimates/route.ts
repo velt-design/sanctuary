@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
+import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
 import { buildVersionLabelMap, calculatorSnapshotFromRow, extractVersionNumber, mapEstimateDetail, mapEstimateMeta } from '@/lib/estimates/server';
 import { supabaseServer } from '@/lib/supabaseClient';
@@ -50,10 +51,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
 
   const rows = Array.isArray(res.data) ? res.data : [];
   const versionLabels = buildVersionLabelMap(rows);
+  const flowMaps = await loadProjectEstimateFlowMaps(projectUuid, rows as any[]);
 
   const estimates = rows.map((row) => {
     const label = versionLabels.get(String(row?.id ?? '')) ?? 'V-';
-    return mapEstimateMeta(row, label);
+    return mapEstimateMeta({ ...row, ...estimateFlowStateFor(flowMaps.flowByEstimateId, String(row?.id ?? '')) }, label);
   });
 
   return jsonOk({ estimates });
@@ -136,6 +138,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const row = insertRes.data;
   const label = versionLabels.get(String(row?.id ?? '')) ?? `V${nextVersion}`;
-  const estimate = mapEstimateDetail(row, label);
+  const flowMaps = await loadProjectEstimateFlowMaps(projectUuid);
+  const estimate = mapEstimateDetail(
+    row,
+    label,
+    flowMaps.editabilityByEstimateId.get(String(row?.id ?? '')) ?? null,
+    estimateFlowStateFor(flowMaps.flowByEstimateId, String(row?.id ?? '')),
+  );
   return jsonOk({ estimate }, 201);
 }
