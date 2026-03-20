@@ -22,7 +22,14 @@ export function isMissingSchemaError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const code = typeof (error as any).code === 'string' ? (error as any).code.trim() : '';
   const message = typeof (error as any).message === 'string' ? (error as any).message.toLowerCase() : '';
-  return code === 'PGRST204' || code === '42703' || message.includes('does not exist') || message.includes('missing');
+  return (
+    code === 'PGRST204' ||
+    code === 'PGRST205' ||
+    code === '42703' ||
+    message.includes('does not exist') ||
+    message.includes('missing') ||
+    message.includes('could not find the table')
+  );
 }
 
 export async function estimateExists(estimateUuid: string): Promise<boolean> {

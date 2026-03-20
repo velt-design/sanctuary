@@ -2,8 +2,9 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1, RoofType } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import { buildEstimateDrawingDraftFromSnapshot, deriveEstimateDrawingEditableFields } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
-import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import EstimateDrawingSheet from './EstimateDrawingSheet';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -104,6 +105,7 @@ describe('EstimateDrawingSheet', () => {
     const drawing = makeDrawingModels();
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M1 - Gable - 4.6m x 5.1m - Acrylic',
+      moduleInfoRows: buildEstimateDrawingModuleInfoRows(makeModule()),
       view: 'plan',
       versionLabel: 'V1',
       estimateDate: '2026-03-19T03:14:00.000Z',
@@ -134,14 +136,20 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('data-source-class="modulePlanPerimeter"');
     expect(markup).toContain('data-source-class="modulePlanMemberEdge"');
     expect(markup).toContain('data-source-class="modulePlanRafter"');
-    expect(markup).toContain('data-debug-crop="outer-plan"');
-    expect(markup).toContain('data-debug-crop="fit-plan"');
-    expect(markup).toContain('data-debug-crop="bounds-plan"');
     expect(markup).toContain('Sheet info');
+    expect(markup).toContain('Module info');
     expect(markup).toContain('data-sheet-meta="sheet"');
     expect(markup).toContain('data-sheet-meta="revision"');
     expect(markup).toContain('data-sheet-meta="date"');
     expect(markup).not.toContain('data-sheet-meta="scale"');
+    expect(markup).toContain('data-module-meta="style"');
+    expect(markup).toContain('data-module-meta="roof material"');
+    expect(markup).toContain('data-module-meta="colour"');
+    expect(markup).toContain('data-module-meta="house connection"');
+    expect(markup).toContain('data-module-meta="post connection"');
+    expect(markup).toContain('data-module-meta="posts"');
+    expect(markup).toContain('Fascia');
+    expect(markup).toContain('Slab Anchors');
     expect(markup).toContain('Gable - 4.6m x 5.1m - Acrylic - Roof Plan');
     expect(markup).toContain('P-01');
     expect(markup).toContain('V1');
@@ -210,9 +218,6 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('data-source-class="moduleSectionRidgeBeam"');
     expect(markup).toContain('data-source-class="moduleSectionTieBeamPrimary"');
     expect(markup).toContain('data-source-class="moduleSectionConnection"');
-    expect(markup).toContain('data-debug-crop="outer-section"');
-    expect(markup).toContain('data-debug-crop="fit-section"');
-    expect(markup).toContain('data-debug-crop="bounds-section"');
     expect(markup).toContain('Sheet info');
     expect(markup).toContain('data-sheet-meta="sheet"');
     expect(markup).toContain('data-sheet-meta="revision"');
@@ -247,5 +252,127 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).not.toContain('Overhang support');
     expect(markup).not.toContain('King strut');
     expect(markup).toContain('Datum / guide');
+  });
+
+  it('renders conditional module info rows for overhang and hip-corner modules', () => {
+    const drawing = makeDrawingModels({
+      pergolaStyle: 'hip_corner',
+      overhangEnabled: true,
+      overhangAmountM: '0.25',
+      hipCornerLengthBM: '3.2',
+      hipCornerProjectionBM: '2.4',
+    });
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M5 - Hip Corner - Acrylic',
+      moduleInfoRows: buildEstimateDrawingModuleInfoRows(
+        makeModule({
+          pergolaStyle: 'hip_corner',
+          overhangEnabled: true,
+          overhangAmountM: '0.25',
+          hipCornerLengthBM: '3.2',
+          hipCornerProjectionBM: '2.4',
+        }),
+      ),
+      view: 'plan',
+    });
+
+    const markup = renderToStaticMarkup(
+      <EstimateDrawingSheet
+        moduleLabel="M5 - Hip Corner - Acrylic"
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).toContain('data-module-meta="overhang"');
+    expect(markup).toContain('0.25m');
+    expect(markup).toContain('data-module-meta="hip corner b"');
+    expect(markup).toContain('3.2m x 2.4m');
+  });
+
+  it('renders editable field affordances when editable fields are provided', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Millwater',
+        quoteRef: 'Q-1000',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [makeModule()],
+      },
+      outputs: {},
+    } satisfies Record<string, unknown>;
+    const drawing = buildEstimateDrawingModules(snapshot, { ignoreModuleResults: true })[0]!;
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    const editableFields = deriveEstimateDrawingEditableFields({
+      draft,
+      moduleIndex: 0,
+      moduleLabel: 'M1 - Gable - 4.6m x 5.1m - Acrylic',
+      view: 'plan',
+      planModel: drawing.planModel,
+      sectionModel: drawing.sectionModel,
+    });
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Gable - 4.6m x 5.1m - Acrylic',
+      view: 'plan',
+    });
+
+    const markup = renderToStaticMarkup(
+      <EstimateDrawingSheet
+        moduleLabel="M1 - Gable - 4.6m x 5.1m - Acrylic"
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        meta={meta}
+        editableFields={editableFields}
+        onCommitField={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('data-editable-field-id="plan:lengthA"');
+  });
+
+  it('keeps debug overlays hidden by default but can render them when enabled', () => {
+    const drawing = makeDrawingModels();
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Gable - 4.6m x 5.1m - Acrylic',
+      view: 'plan',
+    });
+
+    const hiddenMarkup = renderToStaticMarkup(
+      <EstimateDrawingSheet
+        moduleLabel="M1 - Gable - 4.6m x 5.1m - Acrylic"
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        meta={meta}
+      />,
+    );
+    expect(hiddenMarkup).not.toContain('data-debug-crop="outer-plan"');
+
+    const shownMarkup = renderToStaticMarkup(
+      <EstimateDrawingSheet
+        moduleLabel="M1 - Gable - 4.6m x 5.1m - Acrylic"
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        meta={meta}
+        showDebugOverlays
+      />,
+    );
+    expect(shownMarkup).toContain('data-debug-crop="outer-plan"');
+    expect(shownMarkup).toContain('data-debug-crop="fit-plan"');
+    expect(shownMarkup).toContain('data-debug-crop="bounds-plan"');
   });
 });

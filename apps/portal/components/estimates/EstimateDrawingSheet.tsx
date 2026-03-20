@@ -1,11 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { getSuggestedModuleDrawingScale, ModuleDrawingRenderer, resolveModuleDrawingScaleState } from '@/app/staff/calculator/ModuleViewsCard';
+import {
+  getSuggestedModuleDrawingScale,
+  ModuleDrawingRenderer,
+  resolveModuleDrawingScaleState,
+  type ModuleDrawingInteractiveFieldMap,
+} from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import drawingStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
+import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
 import {
   estimateDrawingScaleKey,
   formatEstimateDrawingScale,
@@ -38,6 +44,12 @@ type EstimateDrawingSheetProps = {
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   meta: EstimateDrawingSheetMeta;
+  editableFields?: EstimateDrawingField[];
+  showDebugOverlays?: boolean;
+  onCommitField?: (
+    field: EstimateDrawingField,
+    nextValue: string,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
 };
 
 type LegendItem = {
@@ -61,6 +73,14 @@ function SheetLayoutDebugOverlay({ view }: { view: ModuleViewsTab }) {
 }
 
 type EstimateDrawingSheetScaleState = Record<ModuleViewsTab, EstimateDrawingScale>;
+
+type ActiveDrawingEditor = {
+  fieldId: string;
+  mode: 'overlay' | 'inline';
+  value: string;
+  error: string | null;
+  rect?: { left: number; top: number; width: number; height: number };
+};
 
 const SHEET_VIEWPORT_MM = getDrawingSheetViewportMm();
 const SHEET_PREVIEW_ARTBOARD = {
@@ -155,6 +175,10 @@ function splitNoteLines(note: string): string[] {
     .filter(Boolean);
 }
 
+function fieldSignature(fields: EstimateDrawingField[]): string {
+  return fields.map((field) => `${field.id}:${field.rawValue}`).join('|');
+}
+
 export default function EstimateDrawingSheet({
   moduleLabel,
   view,
@@ -162,14 +186,24 @@ export default function EstimateDrawingSheet({
   planModel,
   sectionModel,
   meta,
+  editableFields = [],
+  showDebugOverlays = false,
+  onCommitField,
 }: EstimateDrawingSheetProps) {
   const sheetViewportRef = useRef<HTMLDivElement | null>(null);
+  const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const [availableWidthPx, setAvailableWidthPx] = useState(0);
   const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() => buildScaleState(planModel, sectionModel));
+  const [activeEditor, setActiveEditor] = useState<ActiveDrawingEditor | null>(null);
+  const [editorSaving, setEditorSaving] = useState(false);
   const viewLabel = view === 'plan' ? 'Plan view' : 'Section view';
-  const clientFacingModuleLabel = stripClientFacingModulePrefix(moduleLabel);
+  const editableFieldMap = useMemo(() => new Map(editableFields.map((field) => [field.id, field])), [editableFields]);
+  const titleField = editableFieldMap.get('meta:title') ?? null;
+  const noteField = editableFieldMap.get('meta:note') ?? null;
+  const clientFacingModuleLabel = stripClientFacingModulePrefix(meta.moduleTitle);
   const legendItems = buildLegendItems(view, planModel, sectionModel);
   const noteLines = splitNoteLines(meta.note);
+  const moduleInfoRows = meta.moduleInfoRows.filter((row) => row.label.trim() && row.value.trim());
   const scaleOptions = getEstimateDrawingScaleOptions(view).map((option) => ({
     value: estimateDrawingScaleKey(option),
     label: option.mode === 'fit' ? 'Fit / NTS' : formatEstimateDrawingScale(option),
@@ -211,6 +245,37 @@ export default function EstimateDrawingSheet({
   const clientFacingDrawingTitle = stripClientFacingModulePrefix(meta.drawingTitle);
   const previewScale = availableWidthPx > 0 ? Math.min(availableWidthPx / SHEET_PREVIEW_ARTBOARD.widthPx, 1) : 1;
   const previewHeightPx = Math.round(SHEET_PREVIEW_ARTBOARD.heightPx * previewScale);
+  const editableFieldStateKey = useMemo(() => fieldSignature(editableFields), [editableFields]);
+  const activeField = activeEditor ? editableFieldMap.get(activeEditor.fieldId) ?? null : null;
+  const overlayEditor = activeEditor?.mode === 'overlay' && activeEditor.rect ? activeEditor : null;
+  const editableSvgFields = useMemo<ModuleDrawingInteractiveFieldMap>(() => {
+    if (!onCommitField) return {};
+    const next: ModuleDrawingInteractiveFieldMap = {};
+    for (const field of editableFields) {
+      if (!field.svgFieldId) continue;
+      next[field.svgFieldId] = {
+        fieldId: field.id,
+        onActivate: (fieldId, target) => {
+          const viewportRect = sheetViewportRef.current?.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          if (!viewportRect) return;
+          setActiveEditor({
+            fieldId,
+            mode: 'overlay',
+            value: field.rawValue,
+            error: null,
+            rect: {
+              left: targetRect.left - viewportRect.left,
+              top: targetRect.top - viewportRect.top,
+              width: targetRect.width,
+              height: targetRect.height,
+            },
+          });
+        },
+      };
+    }
+    return next;
+  }, [editableFields, onCommitField]);
   const viewportStyle = {
     '--sheet-preview-scale': `${previewScale}`,
     '--sheet-preview-height': `${previewHeightPx}px`,
@@ -264,6 +329,49 @@ export default function EstimateDrawingSheet({
     setSelectedScales(buildScaleState(planModel, sectionModel));
   }, [scaleResetKey]);
 
+  useEffect(() => {
+    setActiveEditor(null);
+    setEditorSaving(false);
+  }, [editableFieldStateKey, moduleLabel, view]);
+
+  const openInlineEditor = (field: EstimateDrawingField) => {
+    if (!onCommitField) return;
+    setActiveEditor({
+      fieldId: field.id,
+      mode: 'inline',
+      value: field.rawValue,
+      error: null,
+    });
+  };
+
+  const submitEditor = async () => {
+    if (!activeEditor || !activeField || !onCommitField || editorSaving) return;
+    setEditorSaving(true);
+    try {
+      const result = await onCommitField(activeField, activeEditor.value);
+      if (!result.ok) {
+        setActiveEditor((current) =>
+          current && current.fieldId === activeField.id
+            ? { ...current, error: result.error ?? 'Unable to apply this change.' }
+            : current,
+        );
+        window.setTimeout(() => editorInputRef.current?.focus(), 0);
+        return;
+      }
+      setActiveEditor(null);
+    } finally {
+      setEditorSaving(false);
+    }
+  };
+
+  const overlayEditorStyle = overlayEditor
+    ? ({
+        left: Math.max(8, (overlayEditor.rect?.left ?? 0) - 8),
+        top: Math.max(8, (overlayEditor.rect?.top ?? 0) - 10),
+        minWidth: Math.max(132, (overlayEditor.rect?.width ?? 0) + 16),
+      } as CSSProperties)
+    : undefined;
+
   return (
     <div className={styles.sheetShell}>
       <div ref={sheetViewportRef} className={styles.sheetViewport} style={viewportStyle}>
@@ -273,7 +381,40 @@ export default function EstimateDrawingSheet({
               <div className={styles.sheetHeader}>
                 <div className={styles.sheetHeaderCopy}>
                   <div className={styles.sheetEyebrow}>{viewLabel}</div>
-                  <div className={styles.sheetModuleLabel}>{clientFacingModuleLabel}</div>
+                  {titleField && onCommitField && activeEditor?.fieldId === titleField.id ? (
+                    <input
+                      ref={(node) => {
+                        editorInputRef.current = node;
+                      }}
+                      className={styles.sheetModuleLabelInput}
+                      value={activeEditor.value}
+                      onChange={(event) =>
+                        setActiveEditor((current) => (current ? { ...current, value: event.target.value, error: null } : current))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          event.preventDefault();
+                          setActiveEditor(null);
+                          return;
+                        }
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          void submitEditor();
+                        }
+                      }}
+                      onBlur={() => void submitEditor()}
+                      autoFocus
+                    />
+                  ) : titleField && onCommitField ? (
+                    <button type="button" className={styles.inlineEditableButton} onClick={() => openInlineEditor(titleField)}>
+                      <span className={styles.sheetModuleLabel}>{clientFacingModuleLabel}</span>
+                    </button>
+                  ) : (
+                    <div className={styles.sheetModuleLabel}>{clientFacingModuleLabel}</div>
+                  )}
+                  {activeEditor && activeEditor.fieldId === titleField?.id && activeEditor.error ? (
+                    <div className={styles.inlineEditorError}>{activeEditor.error}</div>
+                  ) : null}
                 </div>
                 <div className={styles.sheetHeaderRule} aria-hidden="true" />
               </div>
@@ -322,10 +463,24 @@ export default function EstimateDrawingSheet({
                     ))}
                   </div>
                 </aside>
+
+                {moduleInfoRows.length ? (
+                  <aside className={styles.sheetMetaBox} aria-label="Module information">
+                    <div className={styles.legendTitle}>Module info</div>
+                    <div className={styles.sheetMetaGrid}>
+                      {moduleInfoRows.map((item) => (
+                        <div key={item.label} className={styles.sheetMetaPair} data-module-meta={item.label.toLowerCase()}>
+                          <span className={styles.blockLabel}>{item.label}</span>
+                          <span className={styles.sheetMetaValue}>{item.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </aside>
+                ) : null}
               </div>
 
               <div className={styles.drawingViewport}>
-                <SheetLayoutDebugOverlay view={view} />
+                {showDebugOverlays ? <SheetLayoutDebugOverlay view={view} /> : null}
                 <ModuleDrawingRenderer
                   key={view}
                   view={view}
@@ -335,6 +490,8 @@ export default function EstimateDrawingSheet({
                   presentation="sheet"
                   drawingScale={currentScale}
                   sheetViewportMm={SHEET_VIEWPORT_MM}
+                  interactiveFields={editableSvgFields}
+                  showDebugOverlays={showDebugOverlays}
                 />
               </div>
             </div>
@@ -348,13 +505,47 @@ export default function EstimateDrawingSheet({
 
               <div className={styles.noteBlock}>
                 <span className={styles.noteLabel}>Note</span>
-                <span className={styles.noteCopy}>
-                  {noteDisplayLines.map((line, index) => (
-                    <span key={`${line}-${index}`} className={styles.noteLine}>
-                      {line}
+                {noteField && onCommitField && activeEditor?.fieldId === noteField.id ? (
+                  <span className={styles.noteCopy}>
+                    <textarea
+                      ref={(node) => {
+                        editorInputRef.current = node;
+                      }}
+                      className={styles.noteTextarea}
+                      value={activeEditor.value}
+                      onChange={(event) =>
+                        setActiveEditor((current) => (current ? { ...current, value: event.target.value, error: null } : current))
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          event.preventDefault();
+                          setActiveEditor(null);
+                        }
+                      }}
+                      onBlur={() => void submitEditor()}
+                      autoFocus
+                    />
+                    {activeEditor.error ? <span className={styles.inlineEditorError}>{activeEditor.error}</span> : null}
+                  </span>
+                ) : noteField && onCommitField ? (
+                  <button type="button" className={styles.inlineEditableButton} onClick={() => openInlineEditor(noteField)}>
+                    <span className={styles.noteCopy}>
+                      {noteDisplayLines.map((line, index) => (
+                        <span key={`${line}-${index}`} className={styles.noteLine}>
+                          {line}
+                        </span>
+                      ))}
                     </span>
-                  ))}
-                </span>
+                  </button>
+                ) : (
+                  <span className={styles.noteCopy}>
+                    {noteDisplayLines.map((line, index) => (
+                      <span key={`${line}-${index}`} className={styles.noteLine}>
+                        {line}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </div>
 
               <div className={styles.infoCluster}>
@@ -375,6 +566,34 @@ export default function EstimateDrawingSheet({
             </footer>
           </section>
         </div>
+        {overlayEditor && activeField ? (
+          <div className={styles.overlayEditor} style={overlayEditorStyle}>
+            <input
+              ref={(node) => {
+                editorInputRef.current = node;
+              }}
+              className={styles.overlayEditorInput}
+              value={activeEditor?.value ?? ''}
+              onChange={(event) =>
+                setActiveEditor((current) => (current ? { ...current, value: event.target.value, error: null } : current))
+              }
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  setActiveEditor(null);
+                  return;
+                }
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void submitEditor();
+                }
+              }}
+              onBlur={() => void submitEditor()}
+              autoFocus
+            />
+            {activeEditor?.error ? <div className={styles.overlayEditorError}>{activeEditor.error}</div> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

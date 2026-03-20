@@ -2749,6 +2749,18 @@
   stroke-linejoin: round;
 }
 
+.moduleDimTextEditable {
+  cursor: pointer;
+}
+
+.moduleDimTextEditable:hover {
+  opacity: 0.82;
+}
+
+.moduleDimTextEditable:focus {
+  outline: none;
+}
+
 .moduleSectionGroundFill {
   fill: var(--mv-panel-fill-subtle);
 }

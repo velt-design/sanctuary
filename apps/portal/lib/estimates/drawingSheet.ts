@@ -1,3 +1,5 @@
+import type { CalculatorModuleInputs, LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
+
 export type EstimateDrawingSheetView = 'plan' | 'section';
 
 export const ESTIMATE_DRAWING_FIXED_SCALE_VALUES = [10, 20, 25, 50, 100] as const;
@@ -6,7 +8,13 @@ export type EstimateDrawingFixedScaleValue = (typeof ESTIMATE_DRAWING_FIXED_SCAL
 
 export type EstimateDrawingScale = { mode: 'fit' } | { mode: 'fixed'; ratio: EstimateDrawingFixedScaleValue };
 
+export type EstimateDrawingSheetInfoRow = {
+  label: string;
+  value: string;
+};
+
 export type EstimateDrawingSheetMeta = {
+  moduleTitle: string;
   drawingTitle: string;
   siteAddress: string;
   sheetCode: string;
@@ -16,10 +24,14 @@ export type EstimateDrawingSheetMeta = {
   client: string;
   issue: string;
   note: string;
+  moduleInfoRows: EstimateDrawingSheetInfoRow[];
 };
 
 export type BuildEstimateDrawingSheetMetaInput = {
   moduleLabel?: string | null;
+  moduleTitleOverride?: string | null;
+  noteOverride?: string | null;
+  moduleInfoRows?: EstimateDrawingSheetInfoRow[];
   view: EstimateDrawingSheetView;
   versionLabel?: string | null;
   estimateDate?: string | null;
@@ -84,13 +96,94 @@ function formatSheetDate(value: string | null | undefined): string {
   }).format(parsed);
 }
 
+function toTitleCase(value: string): string {
+  return value
+    .replace(/[_-]+/g, ' ')
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, (match) => match.toUpperCase())
+    .trim();
+}
+
+function formatDimensionValue(value: string | null | undefined): string | null {
+  const trimmed = trimOrNull(value);
+  if (!trimmed) return null;
+  const parsed = Number.parseFloat(trimmed);
+  if (!Number.isFinite(parsed)) return trimmed;
+  const rounded = Math.round(parsed * 100) / 100;
+  const display = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  return `${display}m`;
+}
+
+function formatSizeLabel(length: string | null | undefined, projection: string | null | undefined): string | null {
+  const formattedLength = formatDimensionValue(length);
+  const formattedProjection = formatDimensionValue(projection);
+  if (!formattedLength && !formattedProjection) return null;
+  return `${formattedLength ?? '—'} x ${formattedProjection ?? '—'}`;
+}
+
+function formatRoofMaterialLabel(value: string | null | undefined): string | null {
+  const trimmed = trimOrNull(value);
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if ((normalized.includes('acrylic') && normalized.includes('timber')) || normalized.includes('mixed') || normalized.includes('comb')) {
+    return 'Combination';
+  }
+  return toTitleCase(trimmed);
+}
+
+function formatCountValue(value: string | null | undefined): string | null {
+  const trimmed = trimOrNull(value);
+  if (!trimmed) return null;
+  const parsed = Number.parseFloat(trimmed);
+  if (!Number.isFinite(parsed)) return trimmed;
+  return Number.isInteger(parsed) ? String(parsed) : String(Math.round(parsed * 100) / 100);
+}
+
+function formatOverhangValue(module: { overhangEnabled?: boolean; overhangAmountM?: string }): string | null {
+  if (!module.overhangEnabled) return null;
+  return formatDimensionValue(module.overhangAmountM) ?? 'Enabled';
+}
+
+export function buildEstimateDrawingModuleInfoRows(
+  module: CalculatorModuleInputs | LegacyCalculatorInputsV1 | null | undefined,
+): EstimateDrawingSheetInfoRow[] {
+  if (!module) return [];
+
+  const rows: EstimateDrawingSheetInfoRow[] = [
+    { label: 'Style', value: trimOrNull(module.pergolaStyle) ? toTitleCase(module.pergolaStyle) : '—' },
+    { label: 'Roof material', value: formatRoofMaterialLabel(module.roofMaterial) ?? '—' },
+    { label: 'Colour', value: trimOrNull(module.extrusionColour) ?? '—' },
+    { label: 'House connection', value: trimOrNull(module.houseConnectionType) ? toTitleCase(module.houseConnectionType) : '—' },
+    { label: 'Post connection', value: trimOrNull(module.postConnectionType) ? toTitleCase(module.postConnectionType) : '—' },
+    { label: 'Posts', value: formatCountValue(module.postCount) ?? '—' },
+  ];
+
+  if ('overhangEnabled' in module) {
+    const overhangValue = formatOverhangValue(module);
+    if (overhangValue) {
+      rows.push({ label: 'Overhang', value: overhangValue });
+    }
+  }
+
+  if ('hipCornerLengthBM' in module && 'hipCornerProjectionBM' in module && module.pergolaStyle === 'hip_corner') {
+    rows.push({
+      label: 'Hip corner B',
+      value: formatSizeLabel(module.hipCornerLengthBM, module.hipCornerProjectionBM) ?? '—',
+    });
+  }
+
+  return rows;
+}
+
 export function buildEstimateDrawingSheetMeta(input: BuildEstimateDrawingSheetMetaInput): EstimateDrawingSheetMeta {
   const moduleLabel = trimOrNull(input.moduleLabel) ?? 'Module';
+  const moduleTitle = trimOrNull(input.moduleTitleOverride) ?? moduleLabel;
   const isPlan = input.view === 'plan';
   const projectName = trimOrNull(input.projectName);
 
   return {
-    drawingTitle: `${moduleLabel} - ${isPlan ? 'Roof Plan' : 'Section'}`,
+    moduleTitle,
+    drawingTitle: `${moduleTitle} - ${isPlan ? 'Roof Plan' : 'Section'}`,
     siteAddress: trimOrNull(input.siteAddress) ?? projectName ?? 'Project address not set',
     sheetCode: isPlan ? 'P-01' : 'S-01',
     revision: trimOrNull(input.versionLabel) ?? 'V-',
@@ -98,6 +191,7 @@ export function buildEstimateDrawingSheetMeta(input: BuildEstimateDrawingSheetMe
     date: formatSheetDate(input.estimateDate),
     client: trimOrNull(input.clientName) ?? 'Not set',
     issue: 'Portal preview',
-    note: DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE,
+    note: trimOrNull(input.noteOverride) ?? DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE,
+    moduleInfoRows: input.moduleInfoRows ?? [],
   };
 }

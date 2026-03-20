@@ -92,9 +92,19 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 import { qk } from '@/lib/queries/keys';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import {
+  type EstimateSaveMode,
+  buildEstimatePayloadPreservingCurrentPricing,
+  buildEstimatePayloadFromSiteCosting,
+  buildSiteInputsFromCalculatorInputs,
+  deriveSiteResultWarnings,
+  getSiteResultModule,
+  hasPricingAffectingCalculatorInputChanges,
+} from '@/lib/estimates/costingPayload';
+import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
   buildCalculatorDraftEntityKey,
   buildEstimateEntityKey,
+  buildEstimatePayloadFromDetail,
   buildNextEstimateVersionLabel,
   buildOptimisticEstimateDetail,
   createLocalEstimateId,
@@ -2749,164 +2759,7 @@ export default function CalculatorGridClient({
 
   const readyToCalculate = values.modules.length > 0 && !hasModuleErrors;
 
-  const requestPayload = useMemo<SiteInputsV1>(() => {
-    const travel_ex_gst = toNumber(values.travelExGst);
-    const extras_allowance_ex_gst = toNumber(values.extrasAllowanceExGst);
-    const quote_discount_pct = toNumber(values.quoteDiscountPct);
-
-    const moduleInputs: CostInputsV1[] = modulesWithPergola.map((module) => {
-      const length_m = toNumber(module.lengthM);
-      const roof_span_m = toNumber(module.projectionM);
-      const post_cut_height_m = toNumber(module.postCutHeightM);
-      const roof_pitch_deg = module.roofPitchDeg.trim() ? toNumber(module.roofPitchDeg) : NaN;
-      const post_count = toNumber(module.postCount);
-      const downpipe_count = toNumber(module.downpipeCount);
-      const downpipe_join_count = toNumber(module.downpipeJoinCount);
-      const downpipe_elbow_count = toNumber(module.downpipeElbowCount);
-
-      const fall_distance_mm = toNumber(module.fallDistanceMm);
-      const hip_corner_length_b_m = toNumber(module.hipCornerLengthBM);
-      const hip_corner_projection_b_m = toNumber(module.hipCornerProjectionBM);
-
-      const isPile = module.postConnectionType === 'pile_1m' || module.postConnectionType === 'pile_1_5m';
-      const bayCounts = computeBayCountsForModule(module);
-      const overrides = module.overrides ?? {};
-      const flashingsState = normalizeFlashingsStateForUi(module.flashings, module);
-      const flashingDefaults = buildFlashingDefaultsForModule(module);
-      const flashingDefaultOverrides = flashingDefaults.map((item) => ({
-        key: String(item.key),
-        band: 'none' as const,
-      }));
-      const flashingExtras = flashingsState.rows
-        .map((extra) => ({
-          band: normalizeFlashingBand(extra.band),
-          length_m: toNumber(extra.lengthM),
-        }))
-        .filter((extra) => Number.isFinite(extra.length_m) && extra.length_m > 0);
-      const flashings =
-        flashingDefaultOverrides.length || flashingExtras.length
-          ? {
-              ...(flashingDefaultOverrides.length ? { default_overrides: flashingDefaultOverrides } : null),
-              ...(flashingExtras.length ? { extras: flashingExtras } : null),
-            }
-          : undefined;
-
-      return {
-        length_m,
-        roof_span_m,
-        post_cut_height_m,
-        roof_pitch_deg: Number.isFinite(roof_pitch_deg) ? roof_pitch_deg : undefined,
-        post_count,
-
-        pergola_style: module.pergolaStyle,
-        gable_end_frames_mode: module.gableEndFramesMode,
-        box_perimeter_enabled: module.boxPerimeterEnabled,
-        internal_roof_type: module.boxPerimeterEnabled ? undefined : module.internalRoofType,
-        fall_distance_mm: module.boxPerimeterEnabled ? fall_distance_mm : undefined,
-        box_gutter_house_edge: module.boxPerimeterEnabled ? module.boxGutterHouseEdge : undefined,
-        box_gutter_far_edge: module.boxPerimeterEnabled ? module.boxGutterFarEdge : undefined,
-        gable_house_edge_gutter: module.pergolaStyle === 'gable' ? module.gableHouseEdgeGutter : undefined,
-        gable_outer_edge_gutter: module.pergolaStyle === 'gable' ? module.gableOuterEdgeGutter : undefined,
-        downpipe_count: Number.isFinite(downpipe_count) ? downpipe_count : undefined,
-        downpipe_join_count: Number.isFinite(downpipe_join_count) ? downpipe_join_count : undefined,
-        downpipe_elbow_count: Number.isFinite(downpipe_elbow_count) ? downpipe_elbow_count : undefined,
-        separate_gutter_enabled: module.separateGutterEnabled,
-        overhang_enabled: module.overhangEnabled,
-        overhang_amount_m: module.overhangEnabled ? toNumber(module.overhangAmountM) : undefined,
-        overhang_support_beam_profile: module.overhangEnabled ? module.overhangSupportBeamProfile : undefined,
-        inverted_enabled: module.invertedEnabled,
-        inverted_house_gutter: module.invertedEnabled ? module.invertedHouseGutter : undefined,
-        overrides: {
-          ledger_profile: normalizeOverrideValue(overrides.ledgerProfile),
-          rafter_profile: normalizeOverrideValue(overrides.rafterProfile),
-          post_profile: normalizeOverrideValue(overrides.postProfile),
-          front_beam_profile: normalizeOverrideValue(overrides.frontBeamProfile),
-          ridge_beam_profile: normalizeOverrideValue(overrides.ridgeBeamProfile),
-          box_perimeter_beam_profile: normalizeOverrideValue(overrides.boxPerimeterBeamProfile),
-          overhang_support_beam_profile: normalizeOverrideValue(overrides.overhangSupportBeamProfile),
-          tie_beam_profile: normalizeOverrideValue(overrides.tieBeamProfile),
-          strut_profile: normalizeOverrideValue(overrides.strutProfile),
-        },
-
-        roof_material: module.roofMaterial,
-        extrusion_colour: module.extrusionColour,
-        timber_roof_above_type: module.roofMaterial === 'timber' || module.roofMaterial === 'mixed' ? module.timberRoofAboveType : undefined,
-        timber_insulated_panel_thickness_mm:
-          (module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') && module.timberRoofAboveType === 'insulated_panels'
-            ? toNumber(module.timberInsulatedPanelThicknessMm)
-            : undefined,
-        timber_tray_width_mm:
-          (module.roofMaterial === 'timber' || module.roofMaterial === 'mixed') && module.timberRoofAboveType === 'steel_tray'
-            ? toNumber(module.timberTrayWidthMm)
-            : undefined,
-        powdercoat_standard_colour: module.powdercoatStandardColour?.trim() || undefined,
-        powdercoat_is_custom: module.powdercoatIsCustom === true,
-        powdercoat_custom_colour: module.powdercoatCustomColour?.trim() || undefined,
-        mixed_roof:
-          module.roofMaterial === 'mixed'
-            ? {
-                mode: 'acrylic_bays',
-                acrylic_bays_by_plane: ((): Record<string, number> => {
-                  if (bayCounts.roofType === 'pitched') {
-                    return { main: clampInt(toNonNegativeInt(module.mixedAcrylicBaysMain), 0, bayCounts.bayCountMain) };
-                  }
-                  return {
-                    A: clampInt(toNonNegativeInt(module.mixedAcrylicBaysA), 0, bayCounts.bayCountA),
-                    B: clampInt(toNonNegativeInt(module.mixedAcrylicBaysB), 0, bayCounts.bayCountB),
-                  };
-                })(),
-              }
-            : undefined,
-        flashings,
-        hip_corner:
-          module.pergolaStyle === 'hip_corner'
-            ? {
-                length_b_m: Number.isFinite(hip_corner_length_b_m) && hip_corner_length_b_m > 0 ? hip_corner_length_b_m : undefined,
-                projection_b_m:
-                  Number.isFinite(hip_corner_projection_b_m) && hip_corner_projection_b_m > 0 ? hip_corner_projection_b_m : undefined,
-              }
-            : undefined,
-
-        house_connection_type: module.houseConnectionType,
-        post_connection_type: module.postConnectionType,
-        access: values.access,
-        height: values.height,
-        ground: isPile ? module.ground : undefined,
-        infills: parseInfillsForPayload(module),
-
-        travel_ex_gst: 0,
-        extras_allowance_ex_gst: 0,
-        quote_discount_pct: 0,
-      };
-    });
-
-    const groupedPergolas = pergolas.map((pergola) => ({
-      id: pergola.id,
-      label: pergola.label,
-      modules: [] as CostInputsV1[],
-    }));
-    const groupedById = new Map(groupedPergolas.map((pergola) => [pergola.id, pergola]));
-
-    moduleInputs.forEach((moduleInput, idx) => {
-      const sourceModule = modulesWithPergola[idx];
-      const pergolaId =
-        typeof sourceModule?.pergolaId === 'string' && groupedById.has(sourceModule.pergolaId)
-          ? sourceModule.pergolaId
-          : fallbackPergolaId;
-      const bucket = groupedById.get(pergolaId);
-      if (bucket) bucket.modules.push(moduleInput);
-    });
-
-    const payloadPergolas = groupedPergolas.filter((pergola) => pergola.modules.length > 0);
-
-    return {
-      pergolas: payloadPergolas,
-      job_type: values.jobType,
-      travel_ex_gst: Number.isFinite(travel_ex_gst) ? travel_ex_gst : 0,
-      extras_allowance_ex_gst: Number.isFinite(extras_allowance_ex_gst) ? extras_allowance_ex_gst : 0,
-      quote_discount_pct: Number.isFinite(quote_discount_pct) ? quote_discount_pct : 0,
-    };
-  }, [values, modulesWithPergola, pergolas, fallbackPergolaId]);
+  const requestPayload = useMemo<SiteInputsV1>(() => buildSiteInputsFromCalculatorInputs(values), [values]);
 
   const requestPayloadJson = useMemo(() => JSON.stringify(requestPayload), [requestPayload]);
   const activeModulePayload = useMemo<CostInputsV1 | null>(() => {
@@ -3326,9 +3179,7 @@ export default function CalculatorGridClient({
   const blindsTotalInc = blindsTotals ? blindsTotals.totalIncCents / 100 : 0;
   const addonsTotals = buildAddonsTotals(blindsTotalEx, blindsTotalInc);
   const { coreEx: coreTotalEx, coreInc: coreTotalInc } = computeDisplayTotals(totalEx, totalInc, addonsTotals);
-  const engineWarningsRaw =
-    result?.totals.warnings ??
-    (result?.totals.notes_and_warnings ?? []).map((message) => ({ level: 'info' as const, message }));
+  const engineWarningsRaw = useMemo(() => (result ? deriveSiteResultWarnings(result) : []), [result]);
 
   useEffect(() => {
     if (hasOurGutterUi) return;
@@ -3783,16 +3634,19 @@ export default function CalculatorGridClient({
   const saveDesign = useCallback(
     async ({
       createDesignRequest = null,
+      saveMode,
     }: {
       createDesignRequest?: { priorityTier: DesignRequestPriorityTier } | null;
+      saveMode?: EstimateSaveMode;
     } = {}) => {
+      const effectiveSaveMode: EstimateSaveMode = saveMode ?? (isEditingDesign ? 'preserve_current' : 'reprice_latest');
       setGenerateError(null);
 
       const fail = (msg: string) => {
         setGenerateError(msg);
         toast.error(msg);
       };
-      const actionLabel = 'saving';
+      const actionLabel = effectiveSaveMode === 'reprice_latest' ? 'repricing' : 'saving';
 
       if (!projectId) {
         fail('Select a project first.');
@@ -3802,7 +3656,7 @@ export default function CalculatorGridClient({
         fail('Project not found.');
         return;
       }
-      if (!result) {
+      if (effectiveSaveMode === 'reprice_latest' && !result) {
         fail('No calculated result yet.');
         return;
       }
@@ -3813,66 +3667,10 @@ export default function CalculatorGridClient({
           fail(`Resolve blockers in Quote Status before ${actionLabel}.`);
           return;
         }
-        if (criticalUiWarnings.length > 0) {
+        if (effectiveSaveMode === 'reprice_latest' && criticalUiWarnings.length > 0) {
           fail(`Resolve critical warnings before ${actionLabel}.`);
           return;
         }
-
-        const derivedSnapshot = moduleResult?.derived ?? resultModules[0]?.derived;
-        if (!derivedSnapshot) {
-          fail('No derived result available for the active module.');
-          return;
-        }
-
-        const [meta, contact] = await Promise.all([
-          getCostingMeta(),
-          project.contactId ? getContact(project.contactId) : Promise.resolve(null),
-        ]);
-        if (!contact) {
-          fail('Project is missing a contact (open the project and select/create one).');
-          return;
-        }
-
-        const projectNameSnapshot = project.projectName ?? project.name ?? values.projectName;
-        if (!projectNameSnapshot.trim()) {
-          fail('Project name is missing.');
-          return;
-        }
-
-        const estimatePayload: PortalEstimatePayload = {
-          status: 'draft' as const,
-          inputs: values as unknown as Record<string, unknown>,
-          derived: derivedSnapshot as unknown as Record<string, unknown>,
-          projectSnapshot: {
-            ...project,
-            updatedAt: project.updatedAt ?? project.createdAt,
-          } as unknown as Record<string, unknown>,
-          snapshot: {
-            contact: {
-              displayName: contact.displayName,
-              email: contact.email,
-              phone: contact.phone,
-            },
-            project: {
-              projectName: projectNameSnapshot,
-              region: project.region,
-              siteAddress: project.siteAddress ?? project.address,
-              quoteRef: project.quoteRef,
-            },
-          } as Record<string, unknown>,
-          outputs: {
-            cost_snapshot_version: 'v2' as const,
-            materials: result.materials,
-            install: result.install,
-            overhead: result.overhead,
-            totals: result.totals,
-            warnings: engineWarningsRaw,
-            pergolas: result.pergolas,
-            siteShared: result.shared,
-            shared: result.shared,
-          } as unknown as Record<string, unknown>,
-          configVersions: meta.configVersions as unknown as Record<string, unknown>,
-        };
 
         const clearCalculatorDraft = async () => {
           if (typeof window !== 'undefined') {
@@ -3893,22 +3691,23 @@ export default function CalculatorGridClient({
           activeDraftEstimateMeta?.id ??
           '';
         const estimateIdToUpdate = activeEditEstimateId || activeDraftEstimateId;
+        const resolvedEditEstimateId = estimateIdToUpdate ? resolveLocalFirstId(estimateIdToUpdate) : null;
+        const canonicalEditEstimateId = resolvedEditEstimateId || estimateIdToUpdate;
+        const currentEstimate =
+          canonicalEditEstimateId
+            ? loadedEstimateDetailRef.current ??
+              queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, canonicalEditEstimateId)) ??
+              queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, estimateIdToUpdate)) ??
+              (
+                await apiJson<{ estimate: EstimateDetail }>(
+                  `/api/estimates/${encodeURIComponent(canonicalEditEstimateId)}`,
+                  { skipSaveTracking: true },
+                ).catch(() => ({ estimate: null as EstimateDetail | null }))
+              ).estimate ??
+              null
+            : null;
 
         if (estimateIdToUpdate) {
-          const resolvedEditEstimateId = resolveLocalFirstId(estimateIdToUpdate);
-          const canonicalEditEstimateId = resolvedEditEstimateId || estimateIdToUpdate;
-          const currentEstimate =
-            loadedEstimateDetailRef.current ??
-            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, canonicalEditEstimateId)) ??
-            queryClient.getQueryData<EstimateDetail>(qk.estimates.detail(hostKey, estimateIdToUpdate)) ??
-            (
-              await apiJson<{ estimate: EstimateDetail }>(
-                `/api/estimates/${encodeURIComponent(canonicalEditEstimateId)}`,
-                { skipSaveTracking: true },
-              ).catch(() => ({ estimate: null as EstimateDetail | null }))
-            ).estimate ??
-            null;
-
           if (!currentEstimate) {
             fail('This edit session lost its source design. Please reopen the design and try again.');
             return;
@@ -3918,23 +3717,33 @@ export default function CalculatorGridClient({
             fail('This design is locked because it has been sent with a quote and can no longer be edited.');
             return;
           }
+        }
+
+        if (estimateIdToUpdate && effectiveSaveMode === 'preserve_current') {
+          const currentInputs = calculatorInputsFromEstimateDetail(currentEstimate!);
+          const pricingChanged = hasPricingAffectingCalculatorInputChanges(currentInputs, values);
+          const estimatePayload = buildEstimatePayloadPreservingCurrentPricing({
+            basePayload: buildEstimatePayloadFromDetail(currentEstimate!),
+            inputs: values,
+            pricingChanged,
+          });
 
           const optimisticEstimateBase = buildOptimisticEstimateDetail({
             estimateId: canonicalEditEstimateId,
             projectId,
             estimatePayload,
             versionLabel:
-              currentEstimate.versionLabel ??
+              currentEstimate!.versionLabel ??
               cachedEstimateMetas.find((estimate) => estimate.id === canonicalEditEstimateId || estimate.id === estimateIdToUpdate)
                 ?.versionLabel ??
               'Draft',
-            createdBy: (currentEstimate.createdBy ?? email) || null,
-            createdAt: currentEstimate.createdAt,
+            createdBy: (currentEstimate!.createdBy ?? email) || null,
+            createdAt: currentEstimate!.createdAt,
           });
           const optimisticEstimate: EstimateDetail = {
             ...optimisticEstimateBase,
-            internalNotes: currentEstimate.internalNotes ?? optimisticEstimateBase.internalNotes,
-            editability: currentEstimate.editability ?? optimisticEstimateBase.editability,
+            internalNotes: currentEstimate!.internalNotes ?? optimisticEstimateBase.internalNotes,
+            editability: currentEstimate!.editability ?? optimisticEstimateBase.editability,
           };
 
           loadedEstimateDetailRef.current = optimisticEstimate;
@@ -3956,14 +3765,121 @@ export default function CalculatorGridClient({
 
           setConfirmOpen(false);
           await clearCalculatorDraft();
-          toast.success('Design saved locally. Syncing in the background.');
+          toast.success(
+            pricingChanged
+              ? 'Design saved locally. Pricing was preserved. Use Reprice to latest to refresh costs.'
+              : 'Design saved locally. Syncing in the background.',
+          );
           router.push(
             `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(canonicalEditEstimateId)}`,
           );
           return;
         }
 
+        if (!result) {
+          fail('No calculated result yet.');
+          return;
+        }
+
+        const activeResultModule = getSiteResultModule(result, activeModuleIndex) ?? resultModules[0] ?? null;
+        if (!activeResultModule?.derived) {
+          fail('No derived result available for the active module.');
+          return;
+        }
+
+        const [meta, contact] = await Promise.all([
+          getCostingMeta(),
+          project.contactId ? getContact(project.contactId) : Promise.resolve(null),
+        ]);
+        if (!contact) {
+          fail('Project is missing a contact (open the project and select/create one).');
+          return;
+        }
+
+        const projectNameSnapshot = project.projectName ?? project.name ?? values.projectName;
+        if (!projectNameSnapshot.trim()) {
+          fail('Project name is missing.');
+          return;
+        }
+
+        const estimatePayload: PortalEstimatePayload = buildEstimatePayloadFromSiteCosting({
+          basePayload: {
+            status: 'draft',
+            inputs: values as unknown as Record<string, unknown>,
+            derived: activeResultModule.derived as unknown as Record<string, unknown>,
+            projectSnapshot: {
+              ...project,
+              updatedAt: project.updatedAt ?? project.createdAt,
+            } as unknown as Record<string, unknown>,
+            snapshot: {
+              contact: {
+                displayName: contact.displayName,
+                email: contact.email,
+                phone: contact.phone,
+              },
+              project: {
+                projectName: projectNameSnapshot,
+                region: project.region,
+                siteAddress: project.siteAddress ?? project.address,
+                quoteRef: project.quoteRef,
+              },
+            } as Record<string, unknown>,
+            outputs: {},
+            configVersions: meta.configVersions as unknown as Record<string, unknown>,
+          },
+          inputs: values,
+          siteResult: result,
+          configVersions: meta.configVersions as unknown as Record<string, unknown>,
+          moduleIndex: activeModuleIndex,
+          warnings: engineWarningsRaw,
+        });
+
         const localEstimateId = createLocalEstimateId();
+        if (estimateIdToUpdate) {
+          const optimisticEstimateBase = buildOptimisticEstimateDetail({
+            estimateId: canonicalEditEstimateId,
+            projectId,
+            estimatePayload,
+            versionLabel:
+              currentEstimate?.versionLabel ??
+              cachedEstimateMetas.find((estimate) => estimate.id === canonicalEditEstimateId || estimate.id === estimateIdToUpdate)
+                ?.versionLabel ??
+              'Draft',
+            createdBy: (currentEstimate?.createdBy ?? email) || null,
+            createdAt: currentEstimate?.createdAt,
+          });
+          const optimisticEstimate: EstimateDetail = {
+            ...optimisticEstimateBase,
+            internalNotes: currentEstimate?.internalNotes ?? optimisticEstimateBase.internalNotes,
+            editability: currentEstimate?.editability ?? optimisticEstimateBase.editability,
+          };
+
+          loadedEstimateDetailRef.current = optimisticEstimate;
+          upsertEstimateDetailCache(queryClient, hostKey, projectId, optimisticEstimate);
+          await writeLocalFirstWorkingCopy({
+            entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
+            data: optimisticEstimate,
+          });
+
+          const mutationPayload: PortalEstimateUpdateMutationPayload = {
+            estimateId: canonicalEditEstimateId,
+            estimatePayload,
+          };
+          await enqueueAndProcessLocalFirstMutation({
+            entityKey: buildEstimateEntityKey(canonicalEditEstimateId),
+            mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.estimateUpdate,
+            payload: mutationPayload,
+          });
+
+          setConfirmOpen(false);
+          await clearCalculatorDraft();
+          toast.success('Design repriced locally. Syncing in the background.');
+          router.push(
+            `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(canonicalEditEstimateId)}`,
+          );
+          return;
+        }
+
         const optimisticEstimate = buildOptimisticEstimateDetail({
           estimateId: localEstimateId,
           projectId,
@@ -4011,6 +3927,7 @@ export default function CalculatorGridClient({
       }
     },
     [
+      activeModuleIndex,
       activeDraftEstimateMeta?.id,
       activeEditEstimateId,
       criticalUiWarnings.length,
@@ -4021,7 +3938,6 @@ export default function CalculatorGridClient({
       hasStatusBlockers,
       hostKey,
       isEditingDesign,
-      moduleResult?.derived,
       project,
       projectId,
       queryClient,
@@ -5662,19 +5578,19 @@ export default function CalculatorGridClient({
           setGenerateError('Resolve blockers in Quote Status before saving design.');
           return;
         }
-        if (isCalculating) {
+        if (isCalculating && !isEditingDesign) {
           setGenerateError('Please wait for calculation to finish.');
           return;
         }
-        if (engineError) {
+        if (engineError && !isEditingDesign) {
           setGenerateError('Fix cost engine error before saving design.');
           return;
         }
-        if (!result) {
+        if (!result && !isEditingDesign) {
           setGenerateError('No calculated result yet.');
           return;
         }
-        if (uiWarnings.length === 0) {
+        if (uiWarnings.length === 0 && !isEditingDesign) {
           await saveDesign();
           return;
         }
@@ -7154,7 +7070,7 @@ export default function CalculatorGridClient({
 	              <h2 className={styles.modalTitle}>{isEditingDesign ? 'Save design' : 'Save design'}</h2>
 	              <p className={styles.modalSubtitle}>
                   {isEditingDesign
-                    ? 'This will save changes back to this design unless it has been locked by a sent quote.'
+                    ? 'Save design keeps this estimate on its current pricing. Use Reprice to latest to refresh costs under the active costing config.'
                     : 'This will save the current design draft for this project.'}
                 </p>
 	            </div>
@@ -7211,7 +7127,7 @@ export default function CalculatorGridClient({
               </section>
 
               <section className={styles.modalSection} aria-label="Outputs summary">
-                <h3 className={styles.modalSectionTitle}>Outputs</h3>
+                <h3 className={styles.modalSectionTitle}>{isEditingDesign ? 'Latest pricing preview' : 'Outputs'}</h3>
                 <div className={styles.modalGrid}>
                   <div>
                     <div className={styles.modalKey}>Materials (ex‑GST)</div>
@@ -7352,20 +7268,34 @@ export default function CalculatorGridClient({
                 type="button"
                 className={styles.modalButtonPrimary}
                 disabled={
-                  criticalUiWarnings.length > 0 ||
                   hasStatusBlockers ||
                   !confirmReady ||
-                  (reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
                   isGenerating
                 }
-                onClick={() =>
-                  void saveDesign({
-                    createDesignRequest: confirmRequestDesign ? { priorityTier: confirmRequestDesignPriority } : null,
-                  })
-                }
+                onClick={() => void saveDesign({
+                  createDesignRequest: confirmRequestDesign ? { priorityTier: confirmRequestDesignPriority } : null,
+                  saveMode: isEditingDesign ? 'preserve_current' : 'reprice_latest',
+                })}
               >
                 {isEditingDesign ? 'Save design' : 'Save design'}
               </button>
+              {isEditingDesign ? (
+                <button
+                  type="button"
+                  className={styles.modalButtonSecondary}
+                  disabled={
+                    criticalUiWarnings.length > 0 ||
+                    hasStatusBlockers ||
+                    !confirmReady ||
+                    (reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
+                    !result ||
+                    isGenerating
+                  }
+                  onClick={() => void saveDesign({ saveMode: 'reprice_latest' })}
+                >
+                  Reprice to latest
+                </button>
+              ) : null}
             </div>
 	        </Modal>
 	      ) : null}
@@ -7418,4 +7348,3 @@ function PreviewRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

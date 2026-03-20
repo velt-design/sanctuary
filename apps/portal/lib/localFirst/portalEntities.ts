@@ -281,6 +281,10 @@ export function buildEstimateNotesDraftEntityKey(estimateId: string): string {
   return `estimate:notes:draft:${estimateId}`;
 }
 
+export function buildEstimateDrawingDraftEntityKey(estimateId: string): string {
+  return `estimate:drawing:draft:${estimateId}`;
+}
+
 export function buildQuoteEntityKey(quoteVersionId: string): string {
   return `quote:detail:${quoteVersionId}`;
 }
