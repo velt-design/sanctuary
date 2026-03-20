@@ -137,6 +137,11 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('data-debug-crop="outer-plan"');
     expect(markup).toContain('data-debug-crop="fit-plan"');
     expect(markup).toContain('data-debug-crop="bounds-plan"');
+    expect(markup).toContain('Sheet info');
+    expect(markup).toContain('data-sheet-meta="sheet"');
+    expect(markup).toContain('data-sheet-meta="revision"');
+    expect(markup).toContain('data-sheet-meta="date"');
+    expect(markup).not.toContain('data-sheet-meta="scale"');
     expect(markup).toContain('Gable - 4.6m x 5.1m - Acrylic - Roof Plan');
     expect(markup).toContain('P-01');
     expect(markup).toContain('V1');
@@ -208,6 +213,11 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('data-debug-crop="outer-section"');
     expect(markup).toContain('data-debug-crop="fit-section"');
     expect(markup).toContain('data-debug-crop="bounds-section"');
+    expect(markup).toContain('Sheet info');
+    expect(markup).toContain('data-sheet-meta="sheet"');
+    expect(markup).toContain('data-sheet-meta="revision"');
+    expect(markup).toContain('data-sheet-meta="date"');
+    expect(markup).not.toContain('data-sheet-meta="scale"');
     expect(markup).toContain('Gable - 6.2m x 3.4m - Acrylic - Section');
     expect(markup).toContain('S-01');
     expect(markup).toContain('Te Arai');

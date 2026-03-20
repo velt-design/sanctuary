@@ -474,12 +474,45 @@ type LayoutOffset = {
   dy: number;
 };
 
-const SHEET_DRAWING_FIELD: SheetDrawingField = {
-  x: 1.8,
-  y: 2.2,
-  width: 116.0,
-  height: 84.6,
+type DebugOutlineProps = {
+  rect: SheetRect;
+  className: string;
+  marker: string;
 };
+
+function getSheetDrawingField(): SheetDrawingField {
+  // Keep the outer field flush to the top/left/right edges, but reserve the
+  // lower title-block band so the sheet field stops at the top of the block.
+  // The footer metadata has been compacted into the right rail, so the sheet
+  // can reclaim a little more vertical drawing area than before.
+  return {
+    x: 0,
+    y: 0,
+    width: 120,
+    height: 86.0,
+  };
+}
+
+function DebugOutline({ rect, className, marker }: DebugOutlineProps) {
+  const inset = 0.16;
+  const rawX1 = rect.x;
+  const rawY1 = rect.y;
+  const rawX2 = rect.x + rect.width;
+  const rawY2 = rect.y + rect.height;
+  const x1 = rawX1 <= 0 ? rawX1 + inset : rawX1;
+  const y1 = rawY1 <= 0 ? rawY1 + inset : rawY1;
+  const x2 = rawX2 >= 120 ? rawX2 - inset : rawX2;
+  const y2 = rawY2 >= 90 ? rawY2 - inset : rawY2;
+
+  return (
+    <g data-debug-crop={marker} aria-hidden="true">
+      <line x1={x1} y1={y1} x2={x2} y2={y1} className={className} />
+      <line x1={x1} y1={y1} x2={x1} y2={y2} className={className} />
+      <line x1={x2} y1={y1} x2={x2} y2={y2} className={className} />
+      <line x1={x1} y1={y2} x2={x2} y2={y2} className={className} />
+    </g>
+  );
+}
 
 function insetRect(rect: SheetRect, insets: BoundsInsets): SheetRect {
   return {
@@ -616,19 +649,14 @@ type PlanSheetFrame = {
 };
 
 function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
-  const outerField = SHEET_DRAWING_FIELD;
-  const annotationPadLeft = isHipCorner ? 5.8 : 5.2;
-  const annotationPadRight = isHipCorner ? 6.8 : 6.2;
-  const annotationPadTop = isHipCorner ? 4.8 : 4.2;
-  const annotationPadBottom = isHipCorner ? 13.8 : 12.8;
+  const outerField = getSheetDrawingField();
+  const annotationPadLeft = 0;
+  const annotationPadRight = 0;
+  const annotationPadTop = 0;
+  const annotationPadBottom = 0;
   return {
     outerField,
-    fitArea: insetRect(outerField, {
-      left: annotationPadLeft,
-      right: annotationPadRight,
-      top: annotationPadTop,
-      bottom: annotationPadBottom,
-    }),
+    fitArea: outerField,
     annotationPadLeft,
     annotationPadRight,
     annotationPadTop,
@@ -718,19 +746,15 @@ type SectionFitFrame = {
 };
 
 function getSectionSheetFrame(sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
-  const outerField = SHEET_DRAWING_FIELD;
-  const insets =
-    sectionKind === 'gable'
-      ? { left: 8.8, right: 9.2, top: 6.4, bottom: 11.2 }
-      : { left: 8.6, right: 9.0, top: 5.8, bottom: 10.8 };
+  const outerField = getSheetDrawingField();
   return {
     outerField,
-    fitArea: insetRect(outerField, insets),
+    fitArea: outerField,
     verticalBias: 0.2,
-    annotationPadLeft: insets.left,
-    annotationPadRight: insets.right,
-    annotationPadTop: insets.top,
-    annotationPadBottom: insets.bottom,
+    annotationPadLeft: 0,
+    annotationPadRight: 0,
+    annotationPadTop: 0,
+    annotationPadBottom: 0,
   };
 }
 
@@ -2326,39 +2350,20 @@ function PlanSvg({
         </pattern>
       </defs>
 
-      {outerFieldOutline ? (
-        <rect
-          x={outerFieldOutline.x}
-          y={outerFieldOutline.y}
-          width={outerFieldOutline.width}
-          height={outerFieldOutline.height}
-          className={styles.moduleDebugCropOutline}
-          data-debug-crop="outer-plan"
-          aria-hidden="true"
-        />
-      ) : null}
+      {outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-plan" /> : null}
 
-      {fitAreaOutline ? (
-        <rect
-          x={fitAreaOutline.x}
-          y={fitAreaOutline.y}
-          width={fitAreaOutline.width}
-          height={fitAreaOutline.height}
-          className={styles.moduleDebugFitOutline}
-          data-debug-crop="fit-plan"
-          aria-hidden="true"
-        />
-      ) : null}
+      {fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-plan" /> : null}
 
       {annotatedBoundsOutline ? (
-        <rect
-          x={annotatedBoundsOutline.minX}
-          y={annotatedBoundsOutline.minY}
-          width={annotatedBoundsOutline.maxX - annotatedBoundsOutline.minX}
-          height={annotatedBoundsOutline.maxY - annotatedBoundsOutline.minY}
+        <DebugOutline
+          rect={{
+            x: annotatedBoundsOutline.minX,
+            y: annotatedBoundsOutline.minY,
+            width: annotatedBoundsOutline.maxX - annotatedBoundsOutline.minX,
+            height: annotatedBoundsOutline.maxY - annotatedBoundsOutline.minY,
+          }}
           className={styles.moduleDebugBoundsOutline}
-          data-debug-crop="bounds-plan"
-          aria-hidden="true"
+          marker="bounds-plan"
         />
       ) : null}
 
@@ -2802,39 +2807,20 @@ function SectionSvg({
         presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
       }`}
     >
-      {outerFieldOutline ? (
-        <rect
-          x={outerFieldOutline.x}
-          y={outerFieldOutline.y}
-          width={outerFieldOutline.width}
-          height={outerFieldOutline.height}
-          className={styles.moduleDebugCropOutline}
-          data-debug-crop="outer-section"
-          aria-hidden="true"
-        />
-      ) : null}
+      {outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-section" /> : null}
 
-      {fitAreaOutline ? (
-        <rect
-          x={fitAreaOutline.x}
-          y={fitAreaOutline.y}
-          width={fitAreaOutline.width}
-          height={fitAreaOutline.height}
-          className={styles.moduleDebugFitOutline}
-          data-debug-crop="fit-section"
-          aria-hidden="true"
-        />
-      ) : null}
+      {fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-section" /> : null}
 
       {annotatedBoundsOutline ? (
-        <rect
-          x={annotatedBoundsOutline.minX}
-          y={annotatedBoundsOutline.minY}
-          width={annotatedBoundsOutline.maxX - annotatedBoundsOutline.minX}
-          height={annotatedBoundsOutline.maxY - annotatedBoundsOutline.minY}
+        <DebugOutline
+          rect={{
+            x: annotatedBoundsOutline.minX,
+            y: annotatedBoundsOutline.minY,
+            width: annotatedBoundsOutline.maxX - annotatedBoundsOutline.minX,
+            height: annotatedBoundsOutline.maxY - annotatedBoundsOutline.minY,
+          }}
           className={styles.moduleDebugBoundsOutline}
-          data-debug-crop="bounds-section"
-          aria-hidden="true"
+          marker="bounds-section"
         />
       ) : null}
 

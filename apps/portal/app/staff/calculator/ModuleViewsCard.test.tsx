@@ -160,7 +160,7 @@ describe('ModuleViewsCard', () => {
 
     expect(getSuggestedModuleDrawingScale({ view: 'plan', planModel: drawing.planModel, sectionModel: drawing.sectionModel })).toEqual({
       mode: 'fixed',
-      ratio: 50,
+      ratio: 25,
     });
 
     expect(
@@ -173,7 +173,7 @@ describe('ModuleViewsCard', () => {
     ).toMatchObject({
       fits: false,
       appliedScale: { mode: 'fit' },
-      suggestedScale: { mode: 'fixed', ratio: 50 },
+      suggestedScale: { mode: 'fixed', ratio: 25 },
     });
   });
 
@@ -193,11 +193,11 @@ describe('ModuleViewsCard', () => {
     expect(planDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 20)).toMatchObject({
       fits: false,
     });
-    expect(planDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 50)).toMatchObject({
+    expect(planDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 25)).toMatchObject({
       fits: true,
     });
     expect(sectionDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 20)).toMatchObject({
-      fits: false,
+      fits: true,
     });
     expect(sectionDiagnostics.find((item) => item.scale.mode === 'fixed' && item.scale.ratio === 25)).toMatchObject({
       fits: true,
@@ -209,7 +209,7 @@ describe('ModuleViewsCard', () => {
 
     expect(getSuggestedModuleDrawingScale({ view: 'section', planModel: drawing.planModel, sectionModel: drawing.sectionModel })).toEqual({
       mode: 'fixed',
-      ratio: 25,
+      ratio: 20,
     });
   });
 });

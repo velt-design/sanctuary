@@ -48,6 +48,18 @@ type LegendItem = {
   sampleKey: string;
 };
 
+function SheetLayoutDebugOverlay({ view }: { view: ModuleViewsTab }) {
+  const outerMarker = view === 'plan' ? 'outer-plan' : 'outer-section';
+  const fitMarker = view === 'plan' ? 'fit-plan' : 'fit-section';
+
+  return (
+    <div className={styles.sheetLayoutDebugOverlay} aria-hidden="true">
+      <div className={styles.sheetLayoutDebugOuter} data-debug-crop={outerMarker} />
+      <div className={styles.sheetLayoutDebugFit} data-debug-crop={fitMarker} />
+    </div>
+  );
+}
+
 type EstimateDrawingSheetScaleState = Record<ModuleViewsTab, EstimateDrawingScale>;
 
 const SHEET_VIEWPORT_MM = getDrawingSheetViewportMm();
@@ -190,6 +202,7 @@ export default function EstimateDrawingSheet({
     { label: 'Scale', value: scaleDisplay },
     { label: 'Date', value: meta.date },
   ];
+  const railMetaItems = titleMetaItems.filter((item) => item.label !== 'Scale');
   const footerMetaItems = [
     { label: 'Client', value: meta.client },
     { label: 'Issue', value: meta.issue },
@@ -297,9 +310,22 @@ export default function EstimateDrawingSheet({
                     ))}
                   </div>
                 </aside>
+
+                <aside className={styles.sheetMetaBox} aria-label="Sheet metadata">
+                  <div className={styles.legendTitle}>Sheet info</div>
+                  <div className={styles.sheetMetaGrid}>
+                    {railMetaItems.map((item) => (
+                      <div key={item.label} className={styles.sheetMetaPair} data-sheet-meta={item.label.toLowerCase()}>
+                        <span className={styles.blockLabel}>{item.label}</span>
+                        <span className={styles.sheetMetaValue}>{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
               </div>
 
               <div className={styles.drawingViewport}>
+                <SheetLayoutDebugOverlay view={view} />
                 <ModuleDrawingRenderer
                   key={view}
                   view={view}
@@ -332,15 +358,6 @@ export default function EstimateDrawingSheet({
               </div>
 
               <div className={styles.infoCluster}>
-                <div className={styles.clusterTopRow}>
-                  {titleMetaItems.map((item) => (
-                    <div key={item.label} className={styles.clusterMetaPair}>
-                      <span className={styles.blockLabel}>{item.label}</span>
-                      <span className={styles.clusterMetaValue}>{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-
                 <div className={styles.titleInfoBlock}>
                   <div className={styles.blockValue}>{clientFacingDrawingTitle}</div>
                   <div className={styles.titleSubValue}>{meta.siteAddress}</div>
