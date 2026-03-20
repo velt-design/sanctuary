@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
@@ -43,19 +43,19 @@ import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import { getAliasedLocalFirstEntitySyncState, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 
 function formatMoneyFromCents(value: number): string {
-  if (!Number.isFinite(value)) return 'â€”';
+  if (!Number.isFinite(value)) return '—';
   return `$${(value / 100).toFixed(2)}`;
 }
 
 function formatDateShort(value: string | null | undefined): string {
-  if (!value) return 'â€”';
+  if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
   return date.toLocaleDateString();
 }
 
 function formatDateTime(value: string | null | undefined): string {
-  if (!value) return 'â€”';
+  if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
   return date.toLocaleString();
@@ -1082,7 +1082,7 @@ export default function QuotesTab({
   };
 
   if (selectedId && detailLoading) {
-    return <p className={legacy.note}>Loading quoteâ€¦</p>;
+    return <p className={legacy.note}>Loading quote…</p>;
   }
 
   if (selectedId && detail) {
@@ -1148,7 +1148,7 @@ export default function QuotesTab({
         </div>
 
         {expired ? (
-          <div className={styles.expiredBanner}>Expired on {detail.expiresAt ?? 'â€”'}</div>
+          <div className={styles.expiredBanner}>Expired on {detail.expiresAt ?? '—'}</div>
         ) : null}
 
         {pagePreviewFromUrl ? (
@@ -1185,8 +1185,8 @@ export default function QuotesTab({
           <div className={styles.metaGrid}>
             <div className={styles.metaBlock}>
               <div className={styles.metaLabel}>Contact</div>
-              <div className={styles.metaValue}>{detail.contact.name || 'â€”'}</div>
-              <div className={styles.metaValueMuted}>{detail.contact.email || 'â€”'}</div>
+              <div className={styles.metaValue}>{detail.contact.name || '—'}</div>
+              <div className={styles.metaValueMuted}>{detail.contact.email || '—'}</div>
               {detail.contact.phone ? <div className={styles.metaValueMuted}>{detail.contact.phone}</div> : null}
             </div>
             <div className={styles.metaBlock}>
@@ -1207,7 +1207,7 @@ export default function QuotesTab({
                   placeholder="30 days from send"
                 />
               ) : (
-                <div className={styles.metaValue}>{detail.expiresAt ?? 'â€”'}</div>
+                <div className={styles.metaValue}>{detail.expiresAt ?? '—'}</div>
               )}
             </div>
             <div className={styles.metaBlock}>
@@ -1220,7 +1220,7 @@ export default function QuotesTab({
                   placeholder="Optional reference"
                 />
               ) : (
-                <div className={styles.metaValue}>{detail.reference || 'â€”'}</div>
+                <div className={styles.metaValue}>{detail.reference || '—'}</div>
               )}
             </div>
             <div className={styles.metaBlock}>
@@ -1400,15 +1400,15 @@ export default function QuotesTab({
           <div className={styles.totalsGrid}>
             <div className={styles.totalItem}>
               <div className={styles.metaLabel}>Total (inc GST)</div>
-              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalIncGstCents) : 'â€”'}</div>
+              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalIncGstCents) : '—'}</div>
             </div>
             <div className={styles.totalItem}>
               <div className={styles.metaLabel}>Total (ex GST)</div>
-              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalExGstCents) : 'â€”'}</div>
+              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.totalExGstCents) : '—'}</div>
             </div>
             <div className={styles.totalItem}>
               <div className={styles.metaLabel}>GST</div>
-              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.gstCents) : 'â€”'}</div>
+              <div className={styles.totalValue}>{detailTotals ? formatMoneyFromCents(detailTotals.gstCents) : '—'}</div>
             </div>
           </div>
         </section>
@@ -1423,7 +1423,7 @@ export default function QuotesTab({
               {detail.status === 'DRAFT' ? (
                 <textarea className={styles.textarea} value={draftIntro} onChange={(e) => setDraftIntro(e.target.value)} rows={5} />
               ) : (
-                <div className={styles.readonlyBlock}>{detail.introText || 'â€”'}</div>
+                <div className={styles.readonlyBlock}>{detail.introText || '—'}</div>
               )}
             </div>
             <div>
@@ -1431,7 +1431,7 @@ export default function QuotesTab({
               {detail.status === 'DRAFT' ? (
                 <textarea className={styles.textarea} value={draftTerms} onChange={(e) => setDraftTerms(e.target.value)} rows={5} />
               ) : (
-                <div className={styles.readonlyBlock}>{detail.termsText || 'â€”'}</div>
+                <div className={styles.readonlyBlock}>{detail.termsText || '—'}</div>
               )}
             </div>
           </div>
@@ -1473,11 +1473,11 @@ export default function QuotesTab({
                 <tbody>
                   {detail.sendLogs.map((log) => (
                     <tr key={log.id}>
-                      <td>{log.to.join(', ') || 'â€”'}</td>
-                      <td>{log.subject || 'â€”'}</td>
+                      <td>{log.to.join(', ') || '—'}</td>
+                      <td>{log.subject || '—'}</td>
                       <td>{formatDateTime(log.sentAt ?? log.createdAt)}</td>
                       <td>{log.status}</td>
-                      <td>{log.attachments.length ? `${log.attachments.length} file${log.attachments.length === 1 ? '' : 's'}` : 'â€”'}</td>
+                      <td>{log.attachments.length ? `${log.attachments.length} file${log.attachments.length === 1 ? '' : 's'}` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1576,11 +1576,11 @@ export default function QuotesTab({
                   <div className={styles.previewMetaGrid}>
                     <div className={styles.previewMetaItem}>
                       <div className={styles.metaLabel}>To</div>
-                      <div className={styles.previewMetaValue}>{sendTo || 'â€”'}</div>
+                      <div className={styles.previewMetaValue}>{sendTo || '—'}</div>
                     </div>
                     <div className={styles.previewMetaItem}>
                       <div className={styles.metaLabel}>Subject</div>
-                      <div className={styles.previewMetaValue}>{sendSubject || 'â€”'}</div>
+                      <div className={styles.previewMetaValue}>{sendSubject || '—'}</div>
                     </div>
                   </div>
                   <p className={styles.attachmentsHint}>
@@ -1633,7 +1633,7 @@ export default function QuotesTab({
                   Close
                 </button>
               </div>
-              <p className={styles.modalBodyText}>This quote expired on {detail.expiresAt ?? 'â€”'}. How would you like to proceed?</p>
+              <p className={styles.modalBodyText}>This quote expired on {detail.expiresAt ?? '—'}. How would you like to proceed?</p>
               <div className={styles.modalFooter}>
                 <button type="button" className={legacy.buttonSecondary} onClick={() => handleExpiredResend('resend')}>
                   Resend as-is
@@ -1683,7 +1683,7 @@ export default function QuotesTab({
         </button>
       </div>
 
-      {quotesLoading ? <p className={legacy.note}>Loading quotesâ€¦</p> : null}
+      {quotesLoading ? <p className={legacy.note}>Loading quotes…</p> : null}
       {quotesError ? <p className={legacy.error}>{quotesError}</p> : null}
 
       {!quotesLoading && !quotes.length ? (
@@ -1726,16 +1726,16 @@ export default function QuotesTab({
                     onMouseEnter={() => prefetchQuoteDetail(quote.id)}
                     onFocus={() => prefetchQuoteDetail(quote.id)}
                   >
-                    <td>{`${quote.quoteRef} â€¢ v${quote.versionNumber}`}</td>
+                    <td>{`${quote.quoteRef} • v${quote.versionNumber}`}</td>
                     <td>{quote.sourceEstimateVersionLabel}</td>
-                    <td>{quote.status === 'DRAFT' ? 'â€”' : formatDateShort(quote.sentAt)}</td>
+                    <td>{quote.status === 'DRAFT' ? '—' : formatDateShort(quote.sentAt)}</td>
                     <td>
                       {quote.expiresAt ? (
                         <span className={expired ? styles.expiredText : undefined}>
                           {quote.expiresAt}{expired ? ' (Expired)' : ''}
                         </span>
                       ) : (
-                        'â€”'
+                        '—'
                       )}
                     </td>
                     <td>
@@ -1750,7 +1750,7 @@ export default function QuotesTab({
                           PDF
                         </a>
                       ) : (
-                        'â€”'
+                        '—'
                       )}
                     </td>
                   </tr>

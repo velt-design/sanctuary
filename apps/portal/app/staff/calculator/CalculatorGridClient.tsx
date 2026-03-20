@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import type { CostInputsV1, CostOutputV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
 import { useQueryClient } from '@tanstack/react-query';
@@ -170,12 +170,12 @@ function formatCents(cents?: number): string {
 }
 
 function formatMaybeMoney(n: number | undefined): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   return formatMoney(n);
 }
 
 function formatMaybeNumber(n: number | undefined, digits = 2): string {
-  if (typeof n !== 'number' || !Number.isFinite(n)) return 'â€”';
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   return n.toFixed(digits);
 }
 
@@ -395,7 +395,7 @@ function formatInfillShapeSummary(shape: InfillLineItem['shape']): string {
   }
   const low = Number.isFinite(toNumber(shape.heightLowM)) ? Math.max(0, toNumber(shape.heightLowM)) : 0;
   const high = Number.isFinite(toNumber(shape.heightHighM)) ? Math.max(0, toNumber(shape.heightHighM)) : 0;
-  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(low, 2)}mâ†’${formatMaybeNumber(high, 2)}m`;
+  return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(low, 2)}m→${formatMaybeNumber(high, 2)}m`;
 }
 
 function estimateRoofRafterSpacing(lengthM: number, derivedRafterCount?: number): { spacingM: number; source: 'derived' | 'fallback' } {
@@ -816,7 +816,7 @@ function labelForIssueField(id: string): string {
     case 'lengthM':
       return 'Roof Length (m)';
     case 'projectionM':
-      return 'Roof Span (Eaveâ€‘toâ€‘Eave) (m)';
+      return 'Roof Span (Eave‑to‑Eave) (m)';
     case 'hipCornerLengthBM':
       return 'Roof Length B (m)';
     case 'hipCornerProjectionBM':
@@ -2042,14 +2042,14 @@ export default function CalculatorGridClient({
 
       const downpipeJoinCount = toNonNegativeInt(module.downpipeJoinCount);
       if (!Number.isFinite(downpipeJoinCount) || downpipeJoinCount < 0 || downpipeJoinCount > 10) {
-        next.downpipeJoinCount = 'Choose 0â€“10';
+        next.downpipeJoinCount = 'Choose 0–10';
       }
 
       const hasOurGutter = computeHasOurGutter(module);
       if (hasOurGutter) {
         const downpipeElbowCount = toNonNegativeInt(module.downpipeElbowCount);
         if (!Number.isFinite(downpipeElbowCount) || downpipeElbowCount < 0 || downpipeElbowCount > 20) {
-          next.downpipeElbowCount = 'Choose 0â€“20';
+          next.downpipeElbowCount = 'Choose 0–20';
         }
       }
 
@@ -3277,15 +3277,15 @@ export default function CalculatorGridClient({
 
   const roofingProcurementSummary = useMemo(() => {
     const lines = moduleResult?.materials?.lines ?? [];
-    if (!Array.isArray(lines) || !lines.length) return 'â€”';
+    if (!Array.isArray(lines) || !lines.length) return '—';
 
     const cedar = lines.find((l: any) => String(l?.id ?? '') === 'roofing-timber_cedar_sarking_wrc_110cover_12mm_lm');
     const cedarPart =
       cedar && typeof cedar.qty === 'number' && Number.isFinite(cedar.qty) ? `Timber: ${formatMaybeNumber(cedar.qty, 2)} lm cedar sarking` : null;
 
-    const sheet = lines.find((l: any) => String(l?.profile ?? '') === 'Plexi sheet 3050Ã—2030');
+    const sheet = lines.find((l: any) => String(l?.profile ?? '') === 'Plexi sheet 3050×2030');
     const sheetPart =
-      sheet && typeof sheet.qty === 'number' && Number.isFinite(sheet.qty) ? `Acrylic: ${Math.round(sheet.qty)} Ã— 3050Ã—2030 sheet(s)` : null;
+      sheet && typeof sheet.qty === 'number' && Number.isFinite(sheet.qty) ? `Acrylic: ${Math.round(sheet.qty)} × 3050×2030 sheet(s)` : null;
 
     const stripGroups = new Map<number, number>();
     for (const l of lines as any[]) {
@@ -3299,13 +3299,13 @@ export default function CalculatorGridClient({
       stripGroups.size > 0
         ? `Acrylic: ${Array.from(stripGroups.entries())
             .sort((a, b) => a[0] - b[0])
-            .map(([len, qty]) => `${Math.round(qty)} Ã— 620mm strip(s) @ ${len}m`)
+            .map(([len, qty]) => `${Math.round(qty)} × 620mm strip(s) @ ${len}m`)
             .join(', ')}`
         : null;
 
     const acrylicPart = sheetPart ?? stripPart;
     const parts = [acrylicPart, cedarPart].filter(Boolean);
-    return parts.length ? (parts as string[]).join(' Â· ') : 'â€”';
+    return parts.length ? (parts as string[]).join(' · ') : '—';
   }, [moduleResult]);
 
   const rafterCountTotal =
@@ -3322,7 +3322,7 @@ export default function CalculatorGridClient({
         ? `Per side: ${rafterCount}${typeof hipRafterCount === 'number' && hipRafterCount > 0 ? ` (+${hipRafterCount} hip)` : ''}`
         : undefined;
 
-  const generateLabel = isGenerating ? 'Generatingâ€¦' : 'Generate';
+  const generateLabel = isGenerating ? 'Generating…' : 'Generate';
 
   const roofTypeForInputs = getRoofTypeForModule(activeModule);
   const roofSpanForInputsM = toNumber(activeModule.projectionM);
@@ -3347,19 +3347,19 @@ export default function CalculatorGridClient({
       ? [
           {
             id: 'perSideSpanM',
-            label: 'Perâ€‘side span (m)',
+            label: 'Per‑side span (m)',
             type: 'readOnly',
             value: formatMaybeNumber(perSideSpanM, 2),
-            helperText: 'Gable: per-side span = roof span Ã· 2',
+            helperText: 'Gable: per-side span = roof span ÷ 2',
           },
           {
             id: 'slopedLengthPerSideM',
             label: 'Sloped length per side (m)',
             type: 'readOnly',
             value: Number.isFinite(slopedDownslopePerSideM)
-              ? `${formatMaybeNumber(slopedDownslopePerSideM, 2)} (at ${pitchForHintsDeg.toFixed(0)}Â°)`
-              : 'â€”',
-            helperText: 'Sloped length = (roof span Ã· 2) Ã· cos(pitch)',
+              ? `${formatMaybeNumber(slopedDownslopePerSideM, 2)} (at ${pitchForHintsDeg.toFixed(0)}°)`
+              : '—',
+            helperText: 'Sloped length = (roof span ÷ 2) ÷ cos(pitch)',
           },
         ]
       : [];
@@ -3397,8 +3397,8 @@ export default function CalculatorGridClient({
         const statusClassName = hasErrors && !isMissingDims ? styles.error : styles.helper;
         const showStatus = Boolean(statusMessage);
         const isPriceable = pricing ? pricing.errors.length === 0 : false;
-        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : 'â€”';
-        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : 'â€”';
+        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : '—';
+        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : '—';
         const domIdBase = `${blindFieldPrefix}-blind-${idx + 1}`;
         return (
           <div key={item.id} className={styles.previewCard} style={{ padding: 12 }}>
@@ -3476,8 +3476,8 @@ export default function CalculatorGridClient({
                 value={item.motorised === 'YES'}
                 onChange={(v) => setBlindItem(item.id, { motorised: v ? 'YES' : 'NONE' })}
               />
-              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (exâ€‘GST)" type="readOnly" value={totalExLabel} />
-              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (incâ€‘GST)" type="readOnly" value={totalIncLabel} />
+              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={totalExLabel} />
+              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={totalIncLabel} />
             </div>
             {showStatus ? <div className={statusClassName}>{statusMessage}</div> : null}
           </div>
@@ -3497,11 +3497,11 @@ export default function CalculatorGridClient({
 
       <div className={styles.previewCard} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Blinds total (exâ€‘GST)</span>
+          <span>Blinds total (ex‑GST)</span>
           <span>{formatCents(blindsTotals?.totalExCents ?? 0)}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <span>Blinds total (incâ€‘GST)</span>
+          <span>Blinds total (inc‑GST)</span>
           <span>{formatCents(blindsTotals?.totalIncCents ?? 0)}</span>
         </div>
         <div className={styles.helper}>Totals round to cents; pricing uses banded size lookup.</div>
@@ -3686,7 +3686,7 @@ export default function CalculatorGridClient({
       id: 'contact',
       label: 'Project contact',
       level: project && projectHasContact ? 'ok' : project ? 'block' : 'review',
-      detail: project ? (projectHasContact ? 'OK' : 'Missing contact on project') : 'â€”',
+      detail: project ? (projectHasContact ? 'OK' : 'Missing contact on project') : '—',
       actionLabel: project && !projectHasContact ? 'Open project' : undefined,
       onAction:
         project && !projectHasContact && projectId
@@ -3785,7 +3785,7 @@ export default function CalculatorGridClient({
     const usedSpacingValues = infillsState.items
       .map((item) => infillUiById.get(item.id)?.estimate.maxCentreM)
       .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
-    if (!usedSpacingValues.length) return 'â€”';
+    if (!usedSpacingValues.length) return '—';
     const minSpacing = Math.min(...usedSpacingValues);
     const maxSpacing = Math.max(...usedSpacingValues);
     if (Math.abs(maxSpacing - minSpacing) <= 0.0001) return `${formatMaybeNumber(maxSpacing, 2)}m`;
@@ -4137,7 +4137,7 @@ export default function CalculatorGridClient({
                 disabled={!canMoveUp}
                 aria-label={`Move ${title} up`}
               >
-                â†‘
+                ↑
               </button>
               <button
                 type="button"
@@ -4146,7 +4146,7 @@ export default function CalculatorGridClient({
                 disabled={!canMoveDown}
                 aria-label={`Move ${title} down`}
               >
-                â†“
+                ↓
               </button>
             </div>
           </div>
@@ -4311,16 +4311,16 @@ export default function CalculatorGridClient({
       id: 'engine-status',
       label: 'Cost engine',
       type: 'readOnly',
-      value: isCalculating ? 'Calculatingâ€¦' : engineError ? 'Error' : result ? 'Ready' : 'â€”',
+      value: isCalculating ? 'Calculating…' : engineError ? 'Error' : result ? 'Ready' : '—',
       error: engineError ?? undefined,
-      helperText: engineError ? undefined : 'True cost (exâ€‘GST)',
+      helperText: engineError ? undefined : 'True cost (ex‑GST)',
     },
     {
       id: 'project-context',
       label: 'Project',
       type: 'readOnly',
-      value: project ? project.projectName ?? project.name ?? 'â€”' : projectId ? 'Not found' : 'None',
-      helperText: project ? `Attached: ${project.projectName ?? project.name ?? 'â€”'}` : 'Use Projects in the header to select or create one.',
+      value: project ? project.projectName ?? project.name ?? '—' : projectId ? 'Not found' : 'None',
+      helperText: project ? `Attached: ${project.projectName ?? project.name ?? '—'}` : 'Use Projects in the header to select or create one.',
       error: projectId && !project ? projectError ?? undefined : undefined,
     },
 
@@ -4342,9 +4342,9 @@ export default function CalculatorGridClient({
             id: 'projectName',
             label: 'Project name',
             type: 'readOnly',
-            value: project.projectName ?? project.name ?? 'â€”',
+            value: project.projectName ?? project.name ?? '—',
           } satisfies FieldSchemaItem,
-          { id: 'quoteRef', label: 'Quote ref', type: 'readOnly', value: project.quoteRef ?? 'â€”', helperText: 'Internal reference' } satisfies FieldSchemaItem,
+          { id: 'quoteRef', label: 'Quote ref', type: 'readOnly', value: project.quoteRef ?? '—', helperText: 'Internal reference' } satisfies FieldSchemaItem,
         ]
       : [
           {
@@ -4375,7 +4375,7 @@ export default function CalculatorGridClient({
         setActiveModuleIndex(Math.max(0, Math.min(values.modules.length - 1, idx)));
       },
       options: modulesWithPergola.map((module, idx) => ({
-        label: `${getPergolaLabel(pergolas, module.pergolaId, idx)} Â· Module ${idx + 1}`,
+        label: `${getPergolaLabel(pergolas, module.pergolaId, idx)} · Module ${idx + 1}`,
         value: String(idx),
       })),
       helperText:
@@ -4555,7 +4555,7 @@ export default function CalculatorGridClient({
                   value: activeModule.mixedAcrylicBaysMain,
                   onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysMain', String(v)),
                   error: errors.mixedAcrylicBaysMain,
-                  helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountMain}`,
+                  helperText: `0–${computeBayCountsForModule(activeModule).bayCountMain}`,
                 } satisfies FieldSchemaItem,
               ]
             : computeBayCountsForModule(activeModule).roofType === 'hip_corner'
@@ -4567,7 +4567,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysA,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
                     error: errors.mixedAcrylicBaysA,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountA}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
                   } satisfies FieldSchemaItem,
                   {
                     id: 'mixedAcrylicBaysB',
@@ -4576,7 +4576,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysB,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
                     error: errors.mixedAcrylicBaysB,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountB}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
                   } satisfies FieldSchemaItem,
                 ]
               : [
@@ -4587,7 +4587,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysA,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysA', String(v)),
                     error: errors.mixedAcrylicBaysA,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountA}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountA}`,
                   } satisfies FieldSchemaItem,
                   {
                     id: 'mixedAcrylicBaysB',
@@ -4596,7 +4596,7 @@ export default function CalculatorGridClient({
                     value: activeModule.mixedAcrylicBaysB,
                     onChange: (v: string | boolean) => setModuleField('mixedAcrylicBaysB', String(v)),
                     error: errors.mixedAcrylicBaysB,
-                    helperText: `0â€“${computeBayCountsForModule(activeModule).bayCountB}`,
+                    helperText: `0–${computeBayCountsForModule(activeModule).bayCountB}`,
                   } satisfies FieldSchemaItem,
                 ]),
         ]
@@ -4607,7 +4607,7 @@ export default function CalculatorGridClient({
             id: 'timberSystemHeading',
             label: 'TIMBER SYSTEM (ceiling + roof above)',
             type: 'readOnly',
-            value: 'â€”',
+            value: '—',
           } satisfies FieldSchemaItem,
           {
             id: 'timberNoteRafters',
@@ -4730,19 +4730,19 @@ export default function CalculatorGridClient({
     },
     {
       id: 'projectionM',
-      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eaveâ€‘toâ€‘Eave) (m)',
+      label: activeModule.pergolaStyle === 'hip_corner' ? 'Roof Span A (m)' : 'Roof Span (Eave‑to‑Eave) (m)',
       type: 'number',
       value: activeModule.projectionM,
       onChange: (v) => setModuleField('projectionM', String(v)),
       error: errors.projectionM,
-      helperText: 'Roof Span (Eaveâ€‘toâ€‘Eave): total width across the roof (both sides for gable, single slope for pitched).',
+      helperText: 'Roof Span (Eave‑to‑Eave): total width across the roof (both sides for gable, single slope for pitched).',
     },
     {
       id: 'roofOrientation',
       label: 'Orientation',
       type: 'custom',
       content: <RoofOrientationDiagram />,
-      helperText: 'Length = parallel to ridge. Span = eaveâ€‘toâ€‘eave.',
+      helperText: 'Length = parallel to ridge. Span = eave‑to‑eave.',
     } satisfies FieldSchemaItem,
     ...(activeModule.pergolaStyle === 'hip_corner'
       ? [
@@ -4863,7 +4863,7 @@ export default function CalculatorGridClient({
                   value: activeModule.overhangAmountM,
                   onChange: (v: string | boolean) => setModuleField('overhangAmountM', String(v)),
                   error: errors.overhangAmountM,
-                  helperText: 'Overhang is within the roof footprint (LÃ—W unchanged). It moves the post beam inboard.',
+                  helperText: 'Overhang is within the roof footprint (L×W unchanged). It moves the post beam inboard.',
                 } satisfies FieldSchemaItem,
               ]
             : []),
@@ -4920,7 +4920,7 @@ export default function CalculatorGridClient({
             options: FRONT_BEAM_PROFILE_OPTIONS,
             helperText: integratedGutterBeamUi
               ? 'SP gutter selected = integrated gutter beam'
-              : 'Select a nonâ€‘gutter beam to allow a separate gutter',
+              : 'Select a non‑gutter beam to allow a separate gutter',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -4984,7 +4984,7 @@ export default function CalculatorGridClient({
             type: 'toggle',
             value: activeModule.separateGutterEnabled,
             onChange: (v: string | boolean) => setModuleField('separateGutterEnabled', Boolean(v)),
-            helperText: 'Adds separate 100x100 cutâ€‘down gutter (stock doubled for waste)',
+            helperText: 'Adds separate 100x100 cut‑down gutter (stock doubled for waste)',
           } satisfies FieldSchemaItem,
         ]
       : []),
@@ -5083,14 +5083,14 @@ export default function CalculatorGridClient({
             id: 'boxPitchDeg',
             label: 'Box pitch (deg)',
             type: 'readOnly',
-            value: typeof derivedBoxPitch === 'number' ? derivedBoxPitch.toFixed(1) : 'â€”',
+            value: typeof derivedBoxPitch === 'number' ? derivedBoxPitch.toFixed(1) : '—',
             helperText: 'Computed from max fall envelope',
           } satisfies FieldSchemaItem,
           {
             id: 'boxRiseMm',
             label: 'Box fall (mm)',
             type: 'readOnly',
-            value: typeof derivedBoxRiseMm === 'number' ? derivedBoxRiseMm.toFixed(0) : 'â€”',
+            value: typeof derivedBoxRiseMm === 'number' ? derivedBoxRiseMm.toFixed(0) : '—',
             helperText:
               typeof derivedBoxMaxFallMm === 'number' ? `Max allowed: ${Math.round(derivedBoxMaxFallMm)}mm` : 'Max allowed: 200mm',
           } satisfies FieldSchemaItem,
@@ -5162,7 +5162,7 @@ export default function CalculatorGridClient({
       label: 'Blinds',
       type: 'custom',
       content: blindsListContent,
-      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} Â· totals update live`,
+      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} · totals update live`,
     },
     {
       id: 'infillsEditor',
@@ -5173,14 +5173,14 @@ export default function CalculatorGridClient({
     },
     {
       id: 'travelExGst',
-      label: 'Travel (exâ€‘GST)',
+      label: 'Travel (ex‑GST)',
       type: 'number',
       value: values.travelExGst,
       onChange: (v) => setJobField('travelExGst', String(v)),
     },
     {
       id: 'extrasAllowanceExGst',
-      label: 'Extras allowance (exâ€‘GST)',
+      label: 'Extras allowance (ex‑GST)',
       type: 'number',
       value: values.extrasAllowanceExGst,
       onChange: (v) => setJobField('extrasAllowanceExGst', String(v)),
@@ -5195,32 +5195,32 @@ export default function CalculatorGridClient({
     },
 
     // === Computed outputs ===
-    { id: 'areaM2', label: 'Area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedArea) },
-    { id: 'roofAreaM2', label: 'Roof area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedRoofArea) },
-    { id: 'acrylicAreaM2', label: 'Acrylic area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedAcrylicArea) },
-    { id: 'timberAreaM2', label: 'Timber area (mÂ²)', type: 'readOnly', value: formatMaybeNumber(derivedTimberArea) },
-    { id: 'acrylicBaysTotal', label: 'Acrylic bays total', type: 'readOnly', value: typeof derivedAcrylicBaysTotal === 'number' ? String(derivedAcrylicBaysTotal) : 'â€”' },
-    { id: 'pitchUsed', label: 'Pitch used (deg)', type: 'readOnly', value: typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : 'â€”' },
+    { id: 'areaM2', label: 'Area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedArea) },
+    { id: 'roofAreaM2', label: 'Roof area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedRoofArea) },
+    { id: 'acrylicAreaM2', label: 'Acrylic area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedAcrylicArea) },
+    { id: 'timberAreaM2', label: 'Timber area (m²)', type: 'readOnly', value: formatMaybeNumber(derivedTimberArea) },
+    { id: 'acrylicBaysTotal', label: 'Acrylic bays total', type: 'readOnly', value: typeof derivedAcrylicBaysTotal === 'number' ? String(derivedAcrylicBaysTotal) : '—' },
+    { id: 'pitchUsed', label: 'Pitch used (deg)', type: 'readOnly', value: typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—' },
     { id: 'slopeLengthM', label: 'Slope length (m)', type: 'readOnly', value: formatMaybeNumber(derivedSlopeLength) },
-    { id: 'roofingProcurement', label: 'Roofing', type: 'readOnly', value: moduleResult ? roofingProcurementSummary : 'â€”' },
+    { id: 'roofingProcurement', label: 'Roofing', type: 'readOnly', value: moduleResult ? roofingProcurementSummary : '—' },
     {
       id: 'rafters',
       label: 'Rafters',
       type: 'readOnly',
-      value: rafterCountTotal && rafterProfile ? `${rafterCountTotal} Ã— ${rafterProfile}` : 'â€”',
+      value: rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—',
       helperText: rafterHelperText,
     },
-    { id: 'brackets', label: 'Brackets', type: 'readOnly', value: typeof bracketCount === 'number' ? String(bracketCount) : 'â€”' },
-    { id: 'crewHours', label: 'Crew hours', type: 'readOnly', value: typeof crewHours === 'number' ? String(crewHours) : 'â€”' },
-    { id: 'materialsEx', label: 'Materials (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
-    { id: 'installEx', label: 'Install payout (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
-    { id: 'overheadEx', label: 'Overhead (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
-    { id: 'totalEx', label: 'Total true cost (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
-    { id: 'totalInc', label: 'Total true cost (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
-    { id: 'blindsTotalEx', label: 'Blinds (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
-    { id: 'blindsTotalInc', label: 'Blinds (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
-    { id: 'coreTotalEx', label: 'Total (exâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
-    { id: 'coreTotalInc', label: 'Total (incâ€‘GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
+    { id: 'brackets', label: 'Brackets', type: 'readOnly', value: typeof bracketCount === 'number' ? String(bracketCount) : '—' },
+    { id: 'crewHours', label: 'Crew hours', type: 'readOnly', value: typeof crewHours === 'number' ? String(crewHours) : '—' },
+    { id: 'materialsEx', label: 'Materials (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(materialsEx) },
+    { id: 'installEx', label: 'Install payout (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(installEx) },
+    { id: 'overheadEx', label: 'Overhead (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(overheadEx) },
+    { id: 'totalEx', label: 'Total true cost (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(totalEx) },
+    { id: 'totalInc', label: 'Total true cost (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(totalInc) },
+    { id: 'blindsTotalEx', label: 'Blinds (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.ex) },
+    { id: 'blindsTotalInc', label: 'Blinds (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(addonsTotals.blinds.inc) },
+    { id: 'coreTotalEx', label: 'Total (ex‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalEx) },
+    { id: 'coreTotalInc', label: 'Total (inc‑GST)', type: 'readOnly', value: formatMaybeMoney(coreTotalInc) },
     ...(issuesCount
       ? [
           {
@@ -5237,7 +5237,7 @@ export default function CalculatorGridClient({
       id: 'warnings',
       label: 'Warnings',
       type: 'readOnly',
-      value: result ? String(warningsCount) : 'â€”',
+      value: result ? String(warningsCount) : '—',
       helperText:
         warningsCount && criticalUiWarnings.length
           ? `Critical: ${criticalUiWarnings.length} (blocks estimate)`
@@ -5553,7 +5553,7 @@ export default function CalculatorGridClient({
                 <div>
                   <div className={styles.previewSummaryTitle}>Preview</div>
                   <div className={styles.previewSummarySub}>
-                    {isCalculating ? 'Calculatingâ€¦' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
+                    {isCalculating ? 'Calculating…' : engineError ? 'Engine error' : result ? 'Live' : 'Waiting for inputs'}
                   </div>
                 </div>
                 {issuesCount ? (
@@ -5564,8 +5564,8 @@ export default function CalculatorGridClient({
               </div>
 
               <div className={styles.previewStatGrid}>
-                <PreviewStat label="Total (exâ€‘GST)" value={formatMaybeMoney(coreTotalEx)} />
-                <PreviewStat label="Total (incâ€‘GST)" value={formatMaybeMoney(coreTotalInc)} />
+                <PreviewStat label="Total (ex‑GST)" value={formatMaybeMoney(coreTotalEx)} />
+                <PreviewStat label="Total (inc‑GST)" value={formatMaybeMoney(coreTotalInc)} />
                 <PreviewStat label="Materials" value={formatMaybeMoney(materialsEx)} />
                 <PreviewStat label="Install payout" value={formatMaybeMoney(installEx)} />
                 <PreviewStat label="Overhead" value={formatMaybeMoney(overheadEx)} />
@@ -5586,14 +5586,14 @@ export default function CalculatorGridClient({
 
               <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(var(--portal-text-rgb), 0.02)' }}>
                 <div className={styles.previewCardTitle} style={{ marginBottom: 6 }}>
-                  Addâ€‘ons (informational)
+                  Add‑ons (informational)
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (exâ€‘GST)</span>
+                  <span className={styles.previewRowLabel}>Blinds (ex‑GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.ex)}</span>
                 </div>
                 <div className={styles.previewRow}>
-                  <span className={styles.previewRowLabel}>Blinds (incâ€‘GST)</span>
+                  <span className={styles.previewRowLabel}>Blinds (inc‑GST)</span>
                   <span className={styles.previewRowValue}>{formatMaybeMoney(addonsTotals.blinds.inc)}</span>
                 </div>
                 <div className={styles.previewRow}>
@@ -5670,7 +5670,7 @@ export default function CalculatorGridClient({
                     </div>
                   ))}
                   <div className={styles.previewRowTotal}>
-                    <span>Total materials (exâ€‘GST)</span>
+                    <span>Total materials (ex‑GST)</span>
                     <span>{formatMaybeMoney(materialsEx)}</span>
                   </div>
                 </div>
@@ -5716,7 +5716,7 @@ export default function CalculatorGridClient({
 
                   {materialsDebugEnabled ? (
                     <>
-                      {materialsDebugLoading ? <p className={styles.previewMuted}>Loading materials traceâ€¦</p> : null}
+                      {materialsDebugLoading ? <p className={styles.previewMuted}>Loading materials trace…</p> : null}
                       {materialsDebugError ? <p className={styles.previewError}>{materialsDebugError}</p> : null}
 
                       {materialsExplainLines.length ? (
@@ -5789,7 +5789,7 @@ export default function CalculatorGridClient({
                       <div className={styles.previewRowMain}>
                         <div className={styles.previewRowLabel}>{action.label}</div>
                         <div className={styles.previewRowMeta}>
-                          {action.category} Â· {formatMaybeNumber(action.qty, 2)} {action.unit}
+                          {action.category} · {formatMaybeNumber(action.qty, 2)} {action.unit}
                         </div>
                       </div>
                       <div className={styles.previewRowValue}>{formatMaybeNumber(action.minutes, 0)} min</div>
@@ -5804,14 +5804,14 @@ export default function CalculatorGridClient({
             <details className={styles.previewDetails}>
               <summary>Structure outputs</summary>
               <div className={styles.previewTable}>
-                <PreviewRow label="Area (mÂ²)" value={formatMaybeNumber(derivedArea)} />
-                <PreviewRow label="Roof area (mÂ²)" value={formatMaybeNumber(derivedRoofArea)} />
-                <PreviewRow label="Acrylic area (mÂ²)" value={formatMaybeNumber(derivedAcrylicArea)} />
-                <PreviewRow label="Timber area (mÂ²)" value={formatMaybeNumber(derivedTimberArea)} />
-                <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : 'â€”'} />
+                <PreviewRow label="Area (m²)" value={formatMaybeNumber(derivedArea)} />
+                <PreviewRow label="Roof area (m²)" value={formatMaybeNumber(derivedRoofArea)} />
+                <PreviewRow label="Acrylic area (m²)" value={formatMaybeNumber(derivedAcrylicArea)} />
+                <PreviewRow label="Timber area (m²)" value={formatMaybeNumber(derivedTimberArea)} />
+                <PreviewRow label="Pitch used (deg)" value={typeof derivedPitchUsed === 'number' ? derivedPitchUsed.toFixed(0) : '—'} />
                 <PreviewRow label="Slope length (m)" value={formatMaybeNumber(derivedSlopeLength)} />
-                <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} Ã— ${rafterProfile}` : 'â€”'} />
-                <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : 'â€”'} />
+                <PreviewRow label="Rafters" value={rafterCountTotal && rafterProfile ? `${rafterCountTotal} × ${rafterProfile}` : '—'} />
+                <PreviewRow label="Brackets" value={typeof bracketCount === 'number' ? String(bracketCount) : '—'} />
               </div>
             </details>
             </>
@@ -6331,7 +6331,7 @@ export default function CalculatorGridClient({
                                     {`Delta total ${formatSignedMoney(compareSheetDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareSheetDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareSheetDelta?.install_ex)}`}
                                   </div>
                                   <div className={styles.infillDecisionMeta}>
-                                    {`Complexity: panels ~${sheetComplexityEstimate?.panelCountTotal ?? 'â€”'}, 50x50 ~${sheetComplexityEstimate?.estimatedMullionsTotal ?? 'â€”'}`}
+                                    {`Complexity: panels ~${sheetComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${sheetComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
                                   </div>
                                 </div>
                                 <button
@@ -6349,7 +6349,7 @@ export default function CalculatorGridClient({
                                     {`Delta total ${formatSignedMoney(compareStripDelta?.total_ex)} | Delta materials ${formatSignedMoney(compareStripDelta?.materials_ex)} | Delta install ${formatSignedMoney(compareStripDelta?.install_ex)}`}
                                   </div>
                                   <div className={styles.infillDecisionMeta}>
-                                    {`Complexity: panels ~${stripComplexityEstimate?.panelCountTotal ?? 'â€”'}, 50x50 ~${stripComplexityEstimate?.estimatedMullionsTotal ?? 'â€”'}`}
+                                    {`Complexity: panels ~${stripComplexityEstimate?.panelCountTotal ?? '—'}, 50x50 ~${stripComplexityEstimate?.estimatedMullionsTotal ?? '—'}`}
                                   </div>
                                 </div>
                                 <button
@@ -6615,7 +6615,7 @@ export default function CalculatorGridClient({
 	                        }}
 	                      >
 	                        <div className={styles.issueMain}>
-	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} Â· ${issue.label}`}</div>
+	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} · ${issue.label}`}</div>
 	                          <div className={styles.issueMessage}>{issue.message}</div>
 	                        </div>
 	                        <span className={styles.issueJump}>Jump</span>
@@ -6683,8 +6683,8 @@ export default function CalculatorGridClient({
                     <div className={styles.modalKey}>Roof length / roof span</div>
                     <div className={styles.modalVal}>
                       {activeModule.pergolaStyle === 'hip_corner'
-                        ? `A: ${activeModule.lengthM}Ã—${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}Ã—${activeModule.hipCornerProjectionBM}m`
-                        : `${activeModule.lengthM}m Ã— ${activeModule.projectionM}m`}
+                        ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
+                        : `${activeModule.lengthM}m × ${activeModule.projectionM}m`}
                     </div>
                   </div>
                   <div>
@@ -6695,10 +6695,10 @@ export default function CalculatorGridClient({
                     <div className={styles.modalKey}>Roof pitch</div>
                     <div className={styles.modalVal}>
                       {typeof derivedPitchUsed === 'number'
-                        ? `${derivedPitchUsed.toFixed(0)}Â°`
+                        ? `${derivedPitchUsed.toFixed(0)}°`
                         : activeModule.roofPitchDeg.trim()
-                          ? `${activeModule.roofPitchDeg}Â°`
-                          : 'â€”'}
+                          ? `${activeModule.roofPitchDeg}°`
+                          : '—'}
                     </div>
                   </div>
                 </div>
@@ -6708,23 +6708,23 @@ export default function CalculatorGridClient({
                 <h3 className={styles.modalSectionTitle}>Outputs</h3>
                 <div className={styles.modalGrid}>
                   <div>
-                    <div className={styles.modalKey}>Materials (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Materials (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(materialsEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Install payout (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Install payout (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(installEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Overhead (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Overhead (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(overheadEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Total (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Total (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(coreTotalEx)}</div>
                   </div>
                   <div>
-                    <div className={styles.modalKey}>Blinds (exâ€‘GST)</div>
+                    <div className={styles.modalKey}>Blinds (ex‑GST)</div>
                     <div className={styles.modalVal}>{formatMaybeMoney(addonsTotals.blinds.ex)}</div>
                   </div>
                 </div>

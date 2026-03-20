@@ -312,35 +312,35 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
             <tbody>
               <tr>
                 <th>Contact</th>
-                <td>{displayed.contactName || 'â€”'}</td>
+                <td>{displayed.contactName || '—'}</td>
               </tr>
               <tr>
                 <th>Email</th>
-                <td className={`${legacy.muted} ${legacy.cellWrap}`}>{displayed.contactEmail || 'â€”'}</td>
+                <td className={`${legacy.muted} ${legacy.cellWrap}`}>{displayed.contactEmail || '—'}</td>
               </tr>
               <tr>
                 <th>Phone</th>
-                <td className={legacy.muted}>{displayed.contactPhone || 'â€”'}</td>
+                <td className={legacy.muted}>{displayed.contactPhone || '—'}</td>
               </tr>
               <tr>
                 <th>Project name</th>
-                <td>{displayed.projectName || 'â€”'}</td>
+                <td>{displayed.projectName || '—'}</td>
               </tr>
               <tr>
                 <th>Site address</th>
-                <td className={legacy.cellWrap}>{displayed.siteAddress || 'â€”'}</td>
+                <td className={legacy.cellWrap}>{displayed.siteAddress || '—'}</td>
               </tr>
               <tr>
                 <th>Region</th>
-                <td>{displayed.region || 'â€”'}</td>
+                <td>{displayed.region || '—'}</td>
               </tr>
               <tr>
                 <th>Quote ref</th>
-                <td>{displayed.quoteRef || 'â€”'}</td>
+                <td>{displayed.quoteRef || '—'}</td>
               </tr>
               <tr>
                 <th>Next action</th>
-                <td className={legacy.muted}>{displayed.nextActionDate || 'â€”'}</td>
+                <td className={legacy.muted}>{displayed.nextActionDate || '—'}</td>
               </tr>
             </tbody>
           </table>

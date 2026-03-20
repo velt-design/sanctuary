@@ -98,17 +98,16 @@ for (const relPath of getTrackedFiles()) {
 
   for (const rule of RULES) {
     rule.re.lastIndex = 0;
-    const match = rule.re.exec(text);
-    if (!match) continue;
-
-    const pos = lineAndColumnAt(text, match.index);
-    findings.push({
-      file: relPath,
-      line: pos.line,
-      col: pos.col,
-      rule: rule.name,
-      sample: match[0],
-    });
+    for (const match of text.matchAll(rule.re)) {
+      const pos = lineAndColumnAt(text, match.index);
+      findings.push({
+        file: relPath,
+        line: pos.line,
+        col: pos.col,
+        rule: rule.name,
+        sample: match[0],
+      });
+    }
   }
 }
 
