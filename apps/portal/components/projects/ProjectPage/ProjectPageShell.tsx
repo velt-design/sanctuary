@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ButtonHTMLAttributes, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import {
   closestCenter,
   DndContext,
@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import ProjectDetailsSidebar from './ProjectDetailsSidebar';
 import ProjectTasksSidebar from './ProjectTasksSidebar';
+import { ProjectPageDesignRailProvider } from './ProjectPageDesignRailContext';
 import ProjectMainTabs from './ProjectMainTabs';
 import ProjectPanelFrame from './ProjectPanelFrame';
 import { useProjectColumnLayout } from './useProjectColumnLayout';
@@ -240,11 +241,31 @@ export default function ProjectPageShell({
   );
   const [activePanelId, setActivePanelId] = useState<ProjectPanelId | null>(null);
   const [overTargetId, setOverTargetId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState(tab);
+  const [designRailNode, setDesignRailNode] = useState<HTMLDivElement | null>(null);
   const isPanelDragging = activePanelId !== null;
   const isRailCollapsed = (rail: ProjectPanelRail) =>
     isDesktopLayout && (rail === 'left' ? leftCollapsed : rightCollapsed);
+  const isDesignRailOverrideActive = isDesktopLayout && activeTab === 'estimates';
+  const effectiveLeftPanelIds: ProjectPanelId[] = isDesignRailOverrideActive ? ['details', 'tasks'] : slots.left;
+  const effectiveRightPanelIds: ProjectPanelId[] = isDesignRailOverrideActive ? [] : slots.right;
+  const handleDesignRailNode = useCallback((node: HTMLDivElement | null) => {
+    setDesignRailNode((current) => (current === node ? current : node));
+  }, []);
+
+  useEffect(() => {
+    setActiveTab(tab);
+  }, [tab]);
+
+  useEffect(() => {
+    if (!isDesktopLayout) return;
+    if (!isDesignRailOverrideActive) return;
+    if (!rightCollapsed) return;
+    expandRail('right');
+  }, [expandRail, isDesktopLayout, isDesignRailOverrideActive, rightCollapsed]);
 
   const handleKeyboardMove = (panelId: ProjectPanelId, direction: 'left' | 'right' | 'up' | 'down') => {
+    if (isDesignRailOverrideActive) return;
     setSlots((prev) => keyboardMoveProjectPanel(prev, panelId, direction));
     if ((direction === 'left' || direction === 'right') && isRailCollapsed(direction)) {
       expandRail(direction);
@@ -253,6 +274,7 @@ export default function ProjectPageShell({
 
   const handleDragStart = (event: DragStartEvent) => {
     if (!isDesktopLayout) return;
+    if (isDesignRailOverrideActive) return;
     const nextId = String(event.active.id);
     if (!isProjectPanelId(nextId)) return;
     setActivePanelId(nextId);
@@ -305,7 +327,7 @@ export default function ProjectPageShell({
   };
 
   const renderRail = (rail: ProjectPanelRail) => {
-    const panelIds = slots[rail];
+    const panelIds = rail === 'left' ? effectiveLeftPanelIds : effectiveRightPanelIds;
     const collapsed = isRailCollapsed(rail);
     if (!isDesktopLayout && panelIds.length === 0) return null;
 
@@ -327,6 +349,26 @@ export default function ProjectPageShell({
       );
     }
 
+    if (rail === 'right' && isDesignRailOverrideActive) {
+      return (
+        <aside
+          key={rail}
+          className={cx(styles.rail, styles.railRight)}
+          data-panel-count="0"
+          data-project-design-rail-active="true"
+          data-project-rail={rail}
+        >
+          <div className={styles.railStack} data-panel-count="0">
+            <div className={styles.panelSlot} data-project-custom-rail="design-configurator">
+              <ProjectPanelFrame title="Model configurator">
+                <div ref={handleDesignRailNode} className={styles.designRailSlot} data-project-design-rail-slot="true" />
+              </ProjectPanelFrame>
+            </div>
+          </div>
+        </aside>
+      );
+    }
+
     return (
       <aside
         key={rail}
@@ -339,7 +381,7 @@ export default function ProjectPageShell({
             {panelIds.map((panelId) => (
               <SortableProjectPanel
                 key={panelId}
-                dragEnabled={isDesktopLayout}
+                dragEnabled={isDesktopLayout && !isDesignRailOverrideActive}
                 dropTarget={isDesktopLayout && activePanelId !== panelId && overTargetId === panelId}
                 onKeyboardMove={handleKeyboardMove}
                 panelId={panelId}
@@ -357,25 +399,26 @@ export default function ProjectPageShell({
   };
 
   return (
-    <DndContext
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-      onDragStart={handleDragStart}
-      onDragCancel={clearDragState}
-      sensors={sensors}
-    >
-      <div
-        ref={containerRef}
-        className={cx(
-          styles.bodyGrid,
-          isDesktopLayout && styles.bodyGridDesktop,
-          isResizing && styles.bodyGridResizing,
-          isPanelDragging && styles.bodyGridDraggingPanels,
-        )}
-        data-project-page-shell="true"
-        style={shellStyle}
+    <ProjectPageDesignRailProvider value={{ renderInShell: isDesignRailOverrideActive, rightRailNode: designRailNode }}>
+      <DndContext
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDragStart={handleDragStart}
+        onDragCancel={clearDragState}
+        sensors={sensors}
       >
+        <div
+          ref={containerRef}
+          className={cx(
+            styles.bodyGrid,
+            isDesktopLayout && styles.bodyGridDesktop,
+            isResizing && styles.bodyGridResizing,
+            isPanelDragging && styles.bodyGridDraggingPanels,
+          )}
+          data-project-page-shell="true"
+          style={shellStyle}
+        >
         {renderRail('left')}
 
         {isDesktopLayout ? (
@@ -385,6 +428,7 @@ export default function ProjectPageShell({
             collapsed={leftCollapsed}
             dropEnabled={
               leftCollapsed &&
+              !isDesignRailOverrideActive &&
               isPanelDragging &&
               (slots.left.length === 0 ||
                 (slots.left.length < 2 && activePanelId !== null && findProjectPanelRail(slots, activePanelId) !== 'left'))
@@ -398,7 +442,7 @@ export default function ProjectPageShell({
         ) : null}
 
         <section className={styles.center}>
-          <ProjectMainTabs snapshot={snapshot} tab={tab} />
+          <ProjectMainTabs snapshot={snapshot} tab={tab} onActiveTabChange={setActiveTab} />
         </section>
 
         {isDesktopLayout ? (
@@ -408,6 +452,7 @@ export default function ProjectPageShell({
             collapsed={rightCollapsed}
             dropEnabled={
               rightCollapsed &&
+              !isDesignRailOverrideActive &&
               isPanelDragging &&
               (slots.right.length === 0 ||
                 (slots.right.length < 2 && activePanelId !== null && findProjectPanelRail(slots, activePanelId) !== 'right'))
@@ -421,17 +466,18 @@ export default function ProjectPageShell({
         ) : null}
 
         {renderRail('right')}
-      </div>
+        </div>
 
-      <DragOverlay>
-        {activePanelId ? (
-          <div className={styles.panelOverlay}>
-            <ProjectPanelFrame overlay title={PANEL_TITLES[activePanelId]}>
-              <div className={styles.panelOverlayCopy}>Move {PANEL_TITLES[activePanelId].toLowerCase()}</div>
-            </ProjectPanelFrame>
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+        <DragOverlay>
+          {activePanelId ? (
+            <div className={styles.panelOverlay}>
+              <ProjectPanelFrame overlay title={PANEL_TITLES[activePanelId]}>
+                <div className={styles.panelOverlayCopy}>Move {PANEL_TITLES[activePanelId].toLowerCase()}</div>
+              </ProjectPanelFrame>
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </ProjectPageDesignRailProvider>
   );
 }

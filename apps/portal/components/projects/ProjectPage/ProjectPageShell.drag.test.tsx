@@ -68,7 +68,7 @@ describe('ProjectPageShell panel dragging', () => {
   });
 
   it('supports keyboard moves through the drag handle', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const tasksHandle = rendered.container.querySelector('[aria-label="Drag Project tasks"]') as HTMLButtonElement;
 
     dispatchKeyboard(tasksHandle, 'ArrowLeft');
@@ -88,7 +88,7 @@ describe('ProjectPageShell panel dragging', () => {
       }),
     );
 
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const leftRail = rendered.container.querySelector('[data-project-rail="left"]') as HTMLElement;
     const rightRail = rendered.container.querySelector('[data-project-rail="right"]') as HTMLElement;
 
@@ -111,7 +111,7 @@ describe('ProjectPageShell panel dragging', () => {
       }),
     );
 
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const tasksHandle = rendered.container.querySelector('[aria-label="Drag Project tasks"]') as HTMLButtonElement;
     const leftRail = rendered.container.querySelector('[data-project-rail="left"]') as HTMLElement;
 
@@ -127,7 +127,7 @@ describe('ProjectPageShell panel dragging', () => {
   });
 
   it('only lets the drag handle trigger keyboard panel moves', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const tasksContent = rendered.container.querySelector('[data-testid="mock-tasks-panel"]') as HTMLElement;
     const tasksHandle = rendered.container.querySelector('[aria-label="Drag Project tasks"]') as HTMLButtonElement;
 

@@ -1,6 +1,12 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchKeyboard, dispatchPointer, installDomGeometryMock, renderIntoDocument, setProjectPageShellWidth } from '../../../../../test/reactHarness';
 import ProjectPageShell from './ProjectPageShell';
+import { useProjectPageDesignRail } from './ProjectPageDesignRailContext';
+import { PROJECT_PAGE_LAYOUT_STORAGE_KEY } from './useProjectColumnLayout';
+import { PROJECT_PANEL_LAYOUT_STORAGE_KEY } from './useProjectPanelSlots';
+
+let mockActiveTab: string = 'quotes';
+let mockConfiguratorOverride = false;
 
 vi.mock('./ProjectDetailsSidebar', () => ({
   default: () => <section data-testid="mock-details-panel">Details panel</section>,
@@ -11,7 +17,22 @@ vi.mock('./ProjectTasksSidebar', () => ({
 }));
 
 vi.mock('./ProjectMainTabs', () => ({
-  default: () => <section data-testid="mock-center-panel">Center panel</section>,
+  default: (props: any) => {
+    const React = require('react');
+    const ReactDOM = require('react-dom');
+    const { renderInShell, rightRailNode } = useProjectPageDesignRail();
+    React.useEffect(() => {
+      props.onActiveTabChange?.(mockActiveTab);
+    }, [props.onActiveTabChange]);
+    return (
+      <>
+        <section data-testid="mock-center-panel">Center panel</section>
+        {mockConfiguratorOverride && renderInShell && rightRailNode
+          ? ReactDOM.createPortal(<section data-testid="mock-configurator-rail">Configurator rail</section>, rightRailNode)
+          : null}
+      </>
+    );
+  },
 }));
 
 const snapshot = {
@@ -66,6 +87,8 @@ describe('ProjectPageShell resize handles', () => {
   beforeEach(() => {
     window.localStorage.clear();
     setProjectPageShellWidth(1500);
+    mockActiveTab = 'quotes';
+    mockConfiguratorOverride = false;
   });
 
   afterEach(() => {
@@ -73,7 +96,7 @@ describe('ProjectPageShell resize handles', () => {
   });
 
   it('changes only the left rail width when the left handle is dragged', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
     const leftHandle = rendered.container.querySelector('[aria-label="Resize left project rail"]') as HTMLButtonElement;
 
@@ -91,7 +114,7 @@ describe('ProjectPageShell resize handles', () => {
   });
 
   it('changes only the right rail width when the right handle is dragged', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
     const rightHandle = rendered.container.querySelector('[aria-label="Resize right project rail"]') as HTMLButtonElement;
 
@@ -106,7 +129,7 @@ describe('ProjectPageShell resize handles', () => {
   });
 
   it('collapses the left rail after overshooting the minimum and restores its previous width when dragged back open', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
     const leftHandle = rendered.container.querySelector('[aria-label="Resize left project rail"]') as HTMLButtonElement;
 
@@ -134,7 +157,7 @@ describe('ProjectPageShell resize handles', () => {
   });
 
   it('still lets a collapsed rail expand from a click', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
     const leftHandle = rendered.container.querySelector('[aria-label="Resize left project rail"]') as HTMLButtonElement;
 
@@ -151,7 +174,7 @@ describe('ProjectPageShell resize handles', () => {
   });
 
   it('toggles the right rail from the keyboard and restores the resized width on expand', () => {
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
     const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
     const rightHandle = rendered.container.querySelector('[aria-label="Resize right project rail"]') as HTMLButtonElement;
 
@@ -178,10 +201,84 @@ describe('ProjectPageShell resize handles', () => {
 
   it('disables resize handles in the stacked mobile layout', () => {
     setProjectPageShellWidth(1200);
-    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
 
     expect(rendered.container.querySelector('[aria-label="Resize left project rail"]')).toBeNull();
     expect(rendered.container.querySelector('[aria-label="Resize right project rail"]')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('shows the design configurator in the right rail and stacks details/tasks on the left without rewriting stored slots', () => {
+    mockConfiguratorOverride = true;
+    window.localStorage.setItem(
+      PROJECT_PANEL_LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        left: ['details'],
+        right: ['tasks'],
+      }),
+    );
+
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const leftRail = rendered.container.querySelector('[data-project-rail="left"]') as HTMLElement;
+    const rightRail = rendered.container.querySelector('[data-project-rail="right"]') as HTMLElement;
+
+    expect(Array.from(leftRail.querySelectorAll('[data-project-panel]')).map((node) => (node as HTMLElement).dataset.projectPanel)).toEqual([
+      'details',
+      'tasks',
+    ]);
+    expect(rightRail.dataset.projectDesignRailActive).toBe('true');
+    expect(rightRail.querySelector('[data-testid="mock-configurator-rail"]')).not.toBeNull();
+    expect(rightRail.querySelector('[data-project-panel]')).toBeNull();
+    expect(window.localStorage.getItem(PROJECT_PANEL_LAYOUT_STORAGE_KEY)).toBe(JSON.stringify({ left: ['details'], right: ['tasks'] }));
+
+    rendered.unmount();
+  });
+
+  it('auto-expands the right rail when the designs configurator takes over a collapsed rail', () => {
+    mockConfiguratorOverride = true;
+    window.localStorage.setItem(
+      PROJECT_PAGE_LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        leftWidthPx: 280,
+        rightWidthPx: 320,
+        leftCollapsed: false,
+        rightCollapsed: true,
+      }),
+    );
+
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
+
+    expect(readWidthVar(shell, '--project-page-right-width')).toBe('320px');
+    expect(rendered.container.querySelector('[aria-label="Resize right project rail"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-configurator-rail"]')).not.toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('restores the normal saved rails when another tab is active', () => {
+    mockActiveTab = 'quotes';
+    mockConfiguratorOverride = false;
+    window.localStorage.setItem(
+      PROJECT_PANEL_LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        left: ['details'],
+        right: ['tasks'],
+      }),
+    );
+
+    const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="quotes" />);
+    const leftRail = rendered.container.querySelector('[data-project-rail="left"]') as HTMLElement;
+    const rightRail = rendered.container.querySelector('[data-project-rail="right"]') as HTMLElement;
+
+    expect(Array.from(leftRail.querySelectorAll('[data-project-panel]')).map((node) => (node as HTMLElement).dataset.projectPanel)).toEqual([
+      'details',
+    ]);
+    expect(Array.from(rightRail.querySelectorAll('[data-project-panel]')).map((node) => (node as HTMLElement).dataset.projectPanel)).toEqual([
+      'tasks',
+    ]);
+    expect(rendered.container.querySelector('[data-testid="mock-configurator-rail"]')).toBeNull();
 
     rendered.unmount();
   });

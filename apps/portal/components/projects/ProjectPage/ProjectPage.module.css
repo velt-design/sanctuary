@@ -396,6 +396,11 @@
   min-height: 0;
 }
 
+.designRailSlot {
+  min-width: 0;
+  min-height: 0;
+}
+
 .panelFrame {
   width: 100%;
   min-width: 0;
@@ -696,6 +701,17 @@
     position: sticky;
     top: calc(16px + var(--project-page-sticky-masthead-offset, 0px));
     align-self: start;
+  }
+
+  .bodyGridDesktop .rail[data-project-design-rail-active='true'] {
+    max-height: calc(100dvh - var(--portal-header-height, 72px) - var(--project-page-sticky-masthead-offset, 0px) - 32px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  .bodyGridDesktop .rail[data-project-design-rail-active='true'] .railStack {
+    min-height: auto;
   }
 
   .bodyGridDesktop .railStack[data-panel-count='1'] {

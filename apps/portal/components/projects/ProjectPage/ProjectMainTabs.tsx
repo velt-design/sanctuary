@@ -33,9 +33,11 @@ function coerceTab(value: string | undefined, allowedTabs: readonly { key: TabKe
 export default function ProjectMainTabs({
   snapshot,
   tab,
+  onActiveTabChange,
 }: {
   snapshot: ProjectPageSnapshot;
   tab: string;
+  onActiveTabChange?: (tab: TabKey) => void;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -64,6 +66,10 @@ export default function ProjectMainTabs({
   useEffect(() => {
     setActiveTab(tabFromUrl);
   }, [tabFromUrl]);
+
+  useEffect(() => {
+    onActiveTabChange?.(activeTab);
+  }, [activeTab, onActiveTabChange]);
 
   useEffect(() => {
     if (quoteIdFromUrl) {
@@ -175,7 +181,9 @@ export default function ProjectMainTabs({
 
       <div className={legacy.sectionBody}>
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
-        {activeTab === 'estimates' ? <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} /> : null}
+        {activeTab === 'estimates' ? (
+          <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} />
+        ) : null}
         {activeTab === 'quotes' ? (
           <QuotesTab
             projectId={snapshot.project.id}
