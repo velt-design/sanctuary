@@ -301,7 +301,7 @@ describe('drawingEdits', () => {
     expect(supportResult.draft.inputs.modules[0]?.postConnectionType).toBe('pile_1m');
   });
 
-  it('rejects advanced rail options that still belong in the full calculator', () => {
+  it('supports mixed roofs in the portal configurator draft edits', () => {
     const snapshot = makeSnapshot(makeModule({ roofMaterial: 'acrylic' }));
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
 
@@ -311,9 +311,8 @@ describe('drawingEdits', () => {
       edit: { field: 'roofMaterial', value: 'mixed' },
     });
 
-    expect(mixedRoof).toEqual({
-      ok: false,
-      error: 'Choose Acrylic or Timber in the portal rail. Use the full calculator for Mixed roofs.',
-    });
+    expect(mixedRoof.ok).toBe(true);
+    if (!mixedRoof.ok) return;
+    expect(mixedRoof.draft.inputs.modules[0]?.roofMaterial).toBe('mixed');
   });
 });

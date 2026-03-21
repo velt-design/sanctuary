@@ -96,8 +96,8 @@ describe('ConfiguratorRail', () => {
     expect(markup).toContain('Sheet Preview');
     expect(markup).toContain('Switch to model space');
     expect(markup).toContain('Plan length');
-    expect(markup).toContain('6.00m');
-    expect(markup).toContain('Drawing rotation');
+    expect(markup).toContain('>6<');
+    expect(markup).toContain('House footprint');
     expect(markup).not.toContain('inputmode="decimal"');
   });
 
@@ -121,9 +121,8 @@ describe('ConfiguratorRail', () => {
     );
 
     expect(markup).toContain('House connection');
-    expect(markup).toContain('Plan-only house footprint controls live in plan view');
-    expect(markup).not.toContain('House footprint');
+    expect(markup).toContain('House Footprint');
     expect(markup).not.toContain('Attachment side');
-    expect(markup).not.toContain('Rotate -90');
+    expect(markup).not.toContain('Recess width');
   });
 });
