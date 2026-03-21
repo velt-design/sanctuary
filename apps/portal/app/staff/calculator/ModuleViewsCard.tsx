@@ -38,7 +38,7 @@ export type HouseFootprintEditorDragMeta = {
   maxValueM: number;
 };
 
-export type ModuleFootprintEditorSurface = 'card' | 'sheet';
+export type ModuleFootprintEditorSurface = 'card' | 'sheet' | 'model';
 
 export type ModulePlanSheetInteractionProps = {
   isPergolaPopoverOpen?: boolean;
@@ -3291,8 +3291,11 @@ function PlanSvg({
   const canEditFootprint =
     Boolean(footprintEditor?.available) &&
     canEditHouseFootprintPlan(model) &&
-    ((presentation === 'card' && editorSurface === 'card') || (presentation === 'sheet' && editorSurface === 'sheet'));
+    ((presentation === 'card' && editorSurface === 'card') ||
+      (presentation === 'sheet' && editorSurface === 'sheet') ||
+      (presentation === 'model' && editorSurface === 'model'));
   const isSheetFootprintEditor = presentation === 'sheet' && editorSurface === 'sheet' && Boolean(footprintEditor?.available);
+  const isModelFootprintEditor = presentation === 'model' && editorSurface === 'model' && Boolean(footprintEditor?.available);
   const isEditingFootprint = canEditFootprint && Boolean(footprintEditor?.isEditing);
   const houseClipRect = isSheet
     ? (sheetLayout?.outerField ?? getSheetDrawingField())
@@ -3312,7 +3315,7 @@ function PlanSvg({
   const handleSpecs = footprintCanvasLayout?.handles ?? [];
   const resizeEdgeSpecs = footprintCanvasLayout?.resizeEdges ?? [];
   const highlightedValueSpec =
-    editorSurface === 'sheet'
+    editorSurface !== 'card'
       ? resizeEdgeSpecs.find((edge) => edge.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId))
       : handleSpecs.find((handle) => handle.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId));
   const activeEdgeTagPoint = rotatePointQuarterTurns(
@@ -3429,12 +3432,16 @@ function PlanSvg({
     rotationFrame.turns === 0 ? housePolygon : rotatePointsQuarterTurns(housePolygon, rotationFrame.center, rotationFrame.turns);
   const rotatedHouseBounds = showHouseFootprint ? boundsFromPoints(rotatedHousePoints) : null;
   const showHousePopover = isSheetFootprintEditor && Boolean(footprintEditor?.isContextHovered);
-  const showFootprintControls = canEditFootprint && (editorSurface === 'sheet' ? Boolean(footprintEditor?.isEditing) : isEditingFootprint);
+  const showFootprintControls =
+    canEditFootprint && (editorSurface === 'sheet' ? Boolean(footprintEditor?.isEditing) : editorSurface === 'model' ? true : isEditingFootprint);
   const showPergolaPopover = isSheet && Boolean(sheetPlanInteraction?.isPergolaPopoverOpen) && !showHousePopover;
-  const showHouseHoverTarget = isSheetFootprintEditor && showHouseFootprint;
+  const showHouseHoverTarget = (isSheetFootprintEditor || isModelFootprintEditor) && showHouseFootprint;
   const showPergolaHoverTarget = isSheet && Boolean(sheetPlanInteraction?.onPergolaHoverChange) && !isHipCorner;
-  const showHouseHoverState = isSheetFootprintEditor && (Boolean(footprintEditor?.isEditing) || showHousePopover);
-  const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor;
+  const showHouseHoverState =
+    (isSheetFootprintEditor && (Boolean(footprintEditor?.isEditing) || showHousePopover)) ||
+    (isModelFootprintEditor &&
+      (Boolean(footprintEditor?.isContextHovered) || Boolean(footprintEditor?.hoveredHandleId) || Boolean(footprintEditor?.activeHandleId)));
+  const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor && !isModelFootprintEditor;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
   const showModelPrimaryDimensions = !isSheet && !isModel;
   const showModelSecondaryAnnotations = !isSheet && !isModel;
@@ -3803,7 +3810,7 @@ function PlanSvg({
             })
           : null}
 
-        {editorSurface === 'sheet' && canEditFootprint
+        {editorSurface !== 'card' && canEditFootprint
           ? resizeEdgeSpecs.map((edge) => {
               const isActiveEdge = edge.id === footprintEditor?.activeHandleId;
               const isHoveredEdge = edge.id === footprintEditor?.hoveredHandleId;

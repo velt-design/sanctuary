@@ -2,11 +2,14 @@
 
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
+import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { EstimateDrawingField, EstimateDrawingFootprintEdit, EstimateDrawingModuleFieldEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
-import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { DrawingWorkbenchViewportMode, DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
+import ConfiguratorRail from '@/components/drawings/rail/ConfiguratorRail';
 import ViewportModeSwitch from './ViewportModeSwitch';
 import styles from './DrawingWorkbench.module.css';
 
@@ -27,9 +30,14 @@ type DrawingWorkbenchProps = {
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
+  activeModuleInput?: CalculatorModuleInputs | null;
+  planViewModel?: PlanViewModel | null;
+  viewportTransform: DrawingWorkbenchViewportTransform;
+  onViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   meta: EstimateDrawingSheetMeta;
   editableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
+  isEstimateLocked?: boolean;
   onCommitField?: (
     field: EstimateDrawingField,
     nextValue: string,
@@ -37,6 +45,10 @@ type DrawingWorkbenchProps = {
   onCommitFootprintEdit?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitModuleField?: (
+    edit: EstimateDrawingModuleFieldEdit,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onOpenFullCalculator?: () => void;
 };
 
 export default function DrawingWorkbench({
@@ -51,11 +63,18 @@ export default function DrawingWorkbench({
   status,
   planModel,
   sectionModel,
+  activeModuleInput,
+  planViewModel,
+  viewportTransform,
+  onViewportTransformChange,
   meta,
   editableFields,
   showDebugOverlays,
+  isEstimateLocked,
   onCommitField,
   onCommitFootprintEdit,
+  onCommitModuleField,
+  onOpenFullCalculator,
 }: DrawingWorkbenchProps) {
   return (
     <section className={styles.workbench} aria-label="Drawing workbench">
@@ -108,10 +127,17 @@ export default function DrawingWorkbench({
 
       <div className={styles.shell}>
         <aside className={styles.rail}>
-          <div className={styles.railCard}>
-            <h4 className={styles.railTitle}>Configurator</h4>
-            <p className={styles.railText}>This rail is the next landing zone for the shared portal calculator controls. For now, use the toolbar to switch module, viewport mode, and drawing view.</p>
-          </div>
+          <ConfiguratorRail
+            moduleLabel={moduleLabel}
+            moduleInput={activeModuleInput}
+            view={view}
+            editableFields={editableFields}
+            onCommitField={onCommitField}
+            onCommitFootprintEdit={onCommitFootprintEdit}
+            onCommitModuleField={onCommitModuleField}
+            onOpenFullCalculator={onOpenFullCalculator}
+            disabled={isEstimateLocked}
+          />
         </aside>
 
         <div className={styles.viewport}>
@@ -134,6 +160,10 @@ export default function DrawingWorkbench({
               status={status}
               planModel={planModel}
               sectionModel={sectionModel}
+              planViewModel={planViewModel}
+              viewportTransform={viewportTransform}
+              onViewportTransformChange={onViewportTransformChange}
+              onCommitFootprintEdit={onCommitFootprintEdit}
             />
           )}
         </div>

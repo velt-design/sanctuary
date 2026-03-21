@@ -92,6 +92,28 @@ export type EstimateDrawingFootprintEdit =
       value: string;
     };
 
+export type EstimateDrawingModuleFieldEdit =
+  | {
+      field: 'pergolaStyle';
+      value: CalculatorModuleInputs['pergolaStyle'];
+    }
+  | {
+      field: 'roofMaterial';
+      value: CalculatorModuleInputs['roofMaterial'];
+    }
+  | {
+      field: 'houseConnectionType';
+      value: CalculatorModuleInputs['houseConnectionType'];
+    }
+  | {
+      field: 'postConnectionType';
+      value: CalculatorModuleInputs['postConnectionType'];
+    }
+  | {
+      field: 'ground';
+      value: CalculatorModuleInputs['ground'];
+    };
+
 function isRecord(value: unknown): value is AnyRecord {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
@@ -131,6 +153,26 @@ function normalizePitchInput(value: string): string {
   const parsed = Number.parseFloat(value);
   const rounded = Math.round(parsed * 10) / 10;
   return rounded.toFixed(1).replace(/\.?0+$/, '') || '0';
+}
+
+function isPortalPergolaStyle(value: unknown): value is CalculatorModuleInputs['pergolaStyle'] {
+  return value === 'pitched' || value === 'gable' || value === 'hip';
+}
+
+function isPortalRoofMaterial(value: unknown): value is CalculatorModuleInputs['roofMaterial'] {
+  return value === 'acrylic' || value === 'timber';
+}
+
+function isHouseConnectionType(value: unknown): value is CalculatorModuleInputs['houseConnectionType'] {
+  return value === 'soffit' || value === 'fascia' || value === 'facade' || value === 'none';
+}
+
+function isPostConnectionType(value: unknown): value is CalculatorModuleInputs['postConnectionType'] {
+  return value === 'pile_1m' || value === 'pile_1_5m' || value === 'deck_bracket' || value === 'slab_anchors';
+}
+
+function isGroundCondition(value: unknown): value is CalculatorModuleInputs['ground'] {
+  return value === 'easy' || value === 'hard';
 }
 
 function normalizeOverrides(overrides: EstimateDrawingOverrides | null | undefined): EstimateDrawingOverrides {
@@ -464,5 +506,98 @@ export function applyEstimateDrawingFootprintEdit(input: {
       return { ok: true, draft: nextDraft };
     default:
       return { ok: false, error: 'Unsupported footprint edit.' };
+  }
+}
+
+export function applyEstimateDrawingModuleFieldEdit(input: {
+  draft: EstimateDrawingDraft;
+  moduleIndex: number;
+  edit: EstimateDrawingModuleFieldEdit;
+}): EstimateDrawingFieldApplyResult {
+  const nextDraft = cloneValue(input.draft);
+  const module = nextDraft.inputs.modules[input.moduleIndex];
+  if (!module) return { ok: false, error: 'This drawing control no longer maps to a module input.' };
+
+  switch (input.edit.field) {
+    case 'pergolaStyle': {
+      if (!isPortalPergolaStyle(input.edit.value)) {
+        return { ok: false, error: 'Choose a supported pergola style.' };
+      }
+
+      module.pergolaStyle = input.edit.value;
+      if (input.edit.value !== 'pitched') {
+        module.invertedEnabled = false;
+        module.invertedHouseGutter = true;
+        module.separateGutterEnabled = false;
+      }
+      if (input.edit.value === 'gable') {
+        module.gableHouseEdgeGutter = module.houseConnectionType === 'none' ? 'our' : 'house';
+        module.gableOuterEdgeGutter = 'our';
+      }
+      return { ok: true, draft: nextDraft };
+    }
+
+    case 'roofMaterial': {
+      if (!isPortalRoofMaterial(input.edit.value)) {
+        return { ok: false, error: 'Choose Acrylic or Timber in the portal rail. Use the full calculator for Mixed roofs.' };
+      }
+      module.roofMaterial = input.edit.value;
+      return { ok: true, draft: nextDraft };
+    }
+
+    case 'houseConnectionType': {
+      if (!isHouseConnectionType(input.edit.value)) {
+        return { ok: false, error: 'Choose a supported house connection.' };
+      }
+
+      const previous = module.houseConnectionType;
+      const nextHouseConnection = input.edit.value;
+      module.houseConnectionType = nextHouseConnection;
+
+      if (nextHouseConnection === 'none') {
+        module.boxGutterHouseEdge = 'none';
+        module.boxGutterFarEdge = 'none';
+      } else if (previous === 'none') {
+        if (module.boxGutterHouseEdge === 'none') module.boxGutterHouseEdge = 'house';
+        if (module.boxGutterFarEdge === 'none') module.boxGutterFarEdge = 'our';
+      }
+
+      if (module.pergolaStyle === 'gable') {
+        if (nextHouseConnection === 'none') {
+          module.gableHouseEdgeGutter = 'our';
+          module.gableOuterEdgeGutter = 'our';
+        } else if (previous === 'none') {
+          if (module.gableHouseEdgeGutter === 'our') module.gableHouseEdgeGutter = 'house';
+          if (module.gableOuterEdgeGutter === 'our') module.gableOuterEdgeGutter = 'our';
+        }
+
+        const previousDefault = previous !== 'none' ? 'outer_end_only' : 'both_ends';
+        const nextDefault = nextHouseConnection !== 'none' ? 'outer_end_only' : 'both_ends';
+        if (module.gableEndFramesMode === previousDefault) {
+          module.gableEndFramesMode = nextDefault;
+        }
+      }
+
+      return { ok: true, draft: nextDraft };
+    }
+
+    case 'postConnectionType': {
+      if (!isPostConnectionType(input.edit.value)) {
+        return { ok: false, error: 'Choose a supported post connection.' };
+      }
+      module.postConnectionType = input.edit.value;
+      return { ok: true, draft: nextDraft };
+    }
+
+    case 'ground': {
+      if (!isGroundCondition(input.edit.value)) {
+        return { ok: false, error: 'Choose Easy or Hard ground.' };
+      }
+      module.ground = input.edit.value;
+      return { ok: true, draft: nextDraft };
+    }
+
+    default:
+      return { ok: false, error: 'Unsupported drawing control.' };
   }
 }
