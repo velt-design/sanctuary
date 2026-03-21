@@ -121,6 +121,7 @@
 .mainGrid {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .versionsPanel {
@@ -207,6 +208,28 @@
 .detailStack {
   display: grid;
   gap: 14px;
+}
+
+.wrapperWorkspace {
+  height: 100%;
+  min-height: 0;
+}
+
+.mainGridWorkspace {
+  min-height: 0;
+}
+
+.detailPanelWorkspace {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  padding-right: 4px;
+}
+
+.detailStackWorkspace {
+  min-height: min-content;
+  padding-right: 2px;
 }
 
 .selectedHeader {

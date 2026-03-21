@@ -101,6 +101,13 @@ test('drawing workbench model-space smoke', async ({ page }) => {
       return await rightRail.evaluate((node) => getComputedStyle(node as HTMLElement).overflowY);
     })
     .toBe('auto');
+  const centerWorkspace = page.locator('[data-estimates-workspace-scroll="true"]').first();
+  await expect(centerWorkspace).toBeVisible();
+  await expect
+    .poll(async () => {
+      return await centerWorkspace.evaluate((node) => getComputedStyle(node as HTMLElement).overflowY);
+    })
+    .toBe('auto');
 
   const sectionToggleBackground = await page.getByRole('tab', { name: 'Section' }).evaluate((node) => getComputedStyle(node).backgroundColor);
   const configuratorActionBackground = await page.getByRole('button', { name: 'Open full calculator' }).evaluate((node) => getComputedStyle(node).backgroundColor);

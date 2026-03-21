@@ -416,6 +416,7 @@ export default function ProjectPageShell({
             isResizing && styles.bodyGridResizing,
             isPanelDragging && styles.bodyGridDraggingPanels,
           )}
+          data-project-design-workspace={isDesignRailOverrideActive ? 'true' : undefined}
           data-project-page-shell="true"
           style={shellStyle}
         >
