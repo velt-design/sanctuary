@@ -3,6 +3,10 @@
   gap: 12px;
 }
 
+.railCompact {
+  gap: 10px;
+}
+
 .summary,
 .section {
   border: 1px solid rgba(var(--portal-text-rgb), 0.08);
@@ -16,6 +20,10 @@
 .summary {
   display: grid;
   gap: 6px;
+}
+
+.summaryCompact {
+  gap: 4px;
 }
 
 .eyebrow {
@@ -59,6 +67,36 @@
 .actionStack {
   display: grid;
   gap: 10px;
+}
+
+.summaryList {
+  display: grid;
+  gap: 8px;
+}
+
+.summaryRow {
+  display: grid;
+  gap: 2px;
+}
+
+.summaryLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(var(--portal-text-rgb), 0.58);
+}
+
+.summaryValue {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgba(var(--portal-text-rgb), 0.9);
+}
+
+.summaryHint {
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .field {
@@ -120,6 +158,34 @@
 
 .secondaryButton {
   background: rgba(var(--accentRgb), 0.08);
+}
+
+.buttonPrimary {
+  min-height: 38px;
+  border: 1px solid rgba(var(--accentRgb), 0.22);
+  border-radius: 12px;
+  background: rgba(var(--accentRgb), 0.14);
+  color: rgba(var(--portal-text-rgb), 0.94);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.buttonPrimary:hover {
+  border-color: rgba(var(--accentRgb), 0.3);
+  transform: translateY(-1px);
+}
+
+.buttonPrimary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
 }
 
 .buttonRow {
