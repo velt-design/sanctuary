@@ -9,7 +9,7 @@ import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { DrawingWorkbenchViewportMode, DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
-import ConfiguratorRail from '@/components/drawings/rail/ConfiguratorRail';
+import ConfiguratorRail, { type ConfiguratorRailMode } from '@/components/drawings/rail/ConfiguratorRail';
 import ViewportModeSwitch from './ViewportModeSwitch';
 import styles from './DrawingWorkbench.module.css';
 
@@ -76,6 +76,8 @@ export default function DrawingWorkbench({
   onCommitModuleField,
   onOpenFullCalculator,
 }: DrawingWorkbenchProps) {
+  const railMode: ConfiguratorRailMode = viewportMode === 'sheet' ? 'compact' : 'full';
+
   return (
     <section className={styles.workbench} aria-label="Drawing workbench">
       <div className={styles.toolbar}>
@@ -125,17 +127,19 @@ export default function DrawingWorkbench({
         </div>
       </div>
 
-      <div className={styles.shell}>
+      <div className={`${styles.shell} ${viewportMode === 'sheet' ? styles.shellSheet : styles.shellModel}`}>
         <aside className={styles.rail}>
           <ConfiguratorRail
             moduleLabel={moduleLabel}
             moduleInput={activeModuleInput}
             view={view}
+            mode={railMode}
             editableFields={editableFields}
             onCommitField={onCommitField}
             onCommitFootprintEdit={onCommitFootprintEdit}
             onCommitModuleField={onCommitModuleField}
             onOpenFullCalculator={onOpenFullCalculator}
+            onSwitchToModelSpace={viewportMode === 'sheet' ? () => onViewportModeChange('model') : undefined}
             disabled={isEstimateLocked}
           />
         </aside>

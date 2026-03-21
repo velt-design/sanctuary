@@ -1,0 +1,5 @@
+.viewport {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+}

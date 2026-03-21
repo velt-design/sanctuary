@@ -124,9 +124,10 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('Drawing workbench');
-    expect(markup).toContain('Configurator');
+    expect(markup).toContain('Sheet Preview');
+    expect(markup).toContain('Switch to model space');
     expect(markup).toContain('Pergola style');
-    expect(markup).toContain('Roof material');
+    expect(markup).not.toContain('inputmode="decimal"');
     expect(markup).toContain('Sheet View');
     expect(markup).toContain('Model Space');
     expect(markup).not.toContain('next landing zone');
@@ -165,6 +166,7 @@ describe('DrawingWorkbench', () => {
     expect(markup).toContain('aria-label="Plan model space viewport"');
     expect(markup).toContain('Rotate +90');
     expect(markup).toContain('Open full calculator');
+    expect(markup).toContain('Pergola style');
     expect(markup).toContain('Reset view');
     expect(markup).not.toContain('Live configurator surface');
     expect(markup).not.toContain('A3 drawing sheet');

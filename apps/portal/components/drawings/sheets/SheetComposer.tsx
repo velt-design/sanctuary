@@ -2,23 +2,11 @@
 
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
-import SheetComposer, { type SheetComposerDocument } from '@/components/drawings/sheets/SheetComposer';
-import styles from './SheetViewport.module.css';
 
-export default function SheetViewport({
-  moduleLabel,
-  view,
-  status,
-  planModel,
-  sectionModel,
-  meta,
-  editableFields,
-  showDebugOverlays,
-  onCommitField,
-  onCommitFootprintEdit,
-}: {
+export type SheetComposerDocument = {
   moduleLabel: string;
   view: ModuleViewsTab;
   status: ModuleViewsStatus;
@@ -34,23 +22,21 @@ export default function SheetViewport({
   onCommitFootprintEdit?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-}) {
-  const document: SheetComposerDocument = {
-    moduleLabel,
-    view,
-    status,
-    planModel,
-    sectionModel,
-    meta,
-    editableFields,
-    showDebugOverlays,
-    onCommitField,
-    onCommitFootprintEdit,
-  };
+};
 
+export default function SheetComposer({ document }: { document: SheetComposerDocument }) {
   return (
-    <div className={styles.viewport}>
-      <SheetComposer document={document} />
-    </div>
+    <EstimateDrawingSheet
+      moduleLabel={document.moduleLabel}
+      view={document.view}
+      status={document.status}
+      planModel={document.planModel}
+      sectionModel={document.sectionModel}
+      meta={document.meta}
+      editableFields={document.editableFields}
+      showDebugOverlays={document.showDebugOverlays}
+      onCommitField={document.onCommitField}
+      onCommitFootprintEdit={document.onCommitFootprintEdit}
+    />
   );
 }

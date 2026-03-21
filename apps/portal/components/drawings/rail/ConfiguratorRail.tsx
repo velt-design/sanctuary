@@ -5,9 +5,9 @@ import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/staff/calculator/ModuleVie
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
+  normalizeDrawingRotationQuarterTurns,
   normalizeHouseFootprintParams,
   normalizeHouseFootprintPreset,
-  normalizeDrawingRotationQuarterTurns,
   supportsHouseFootprints,
 } from '@/lib/types/calculator';
 import type {
@@ -19,15 +19,19 @@ import styles from './ConfiguratorRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
 
+export type ConfiguratorRailMode = 'full' | 'compact';
+
 type ConfiguratorRailProps = {
   moduleLabel: string;
   moduleInput?: CalculatorModuleInputs | null;
   view: ModuleViewsTab;
+  mode: ConfiguratorRailMode;
   editableFields?: EstimateDrawingField[];
   onCommitField?: (field: EstimateDrawingField, nextValue: string) => Promise<CommitResult> | CommitResult;
   onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
   onCommitModuleField?: (edit: EstimateDrawingModuleFieldEdit) => Promise<CommitResult> | CommitResult;
   onOpenFullCalculator?: () => void;
+  onSwitchToModelSpace?: () => void;
   disabled?: boolean;
 };
 
@@ -35,6 +39,12 @@ type SelectOption = {
   label: string;
   value: string;
   disabled?: boolean;
+};
+
+type SummaryItem = {
+  label: string;
+  value: string;
+  helperText?: string;
 };
 
 type SelectFieldProps = {
@@ -100,6 +110,16 @@ const GROUND_OPTIONS: SelectOption[] = [
 function withCurrentOption(options: SelectOption[], current: string | undefined, fallbackLabel: string): SelectOption[] {
   if (!current || options.some((option) => option.value === current)) return options;
   return [{ label: fallbackLabel, value: current, disabled: true }, ...options];
+}
+
+function labelForOption(options: SelectOption[], value: string | undefined, fallback = '—'): string {
+  if (!value) return fallback;
+  return options.find((option) => option.value === value)?.label ?? fallback;
+}
+
+function formatSummaryValue(value: string | null | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : '—';
 }
 
 async function resolveCommitResult(action: Promise<CommitResult> | CommitResult): Promise<CommitResult> {
@@ -188,15 +208,39 @@ function ConfiguratorNumberField({
   );
 }
 
+function SummarySection({ title, items, hint }: { title: string; items: SummaryItem[]; hint?: string }) {
+  if (!items.length && !hint) return null;
+
+  return (
+    <section className={styles.section}>
+      <h4 className={styles.sectionTitle}>{title}</h4>
+      {items.length ? (
+        <div className={styles.summaryList}>
+          {items.map((item) => (
+            <div key={`${title}-${item.label}`} className={styles.summaryRow}>
+              <span className={styles.summaryLabel}>{item.label}</span>
+              <span className={styles.summaryValue}>{item.value}</span>
+              {item.helperText ? <span className={styles.summaryHint}>{item.helperText}</span> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {hint ? <p className={styles.empty}>{hint}</p> : null}
+    </section>
+  );
+}
+
 export default function ConfiguratorRail({
   moduleLabel,
   moduleInput,
   view,
+  mode,
   editableFields = [],
   onCommitField,
   onCommitFootprintEdit,
   onCommitModuleField,
   onOpenFullCalculator,
+  onSwitchToModelSpace,
   disabled = false,
 }: ConfiguratorRailProps) {
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
@@ -215,6 +259,7 @@ export default function ConfiguratorRail({
     Boolean(onCommitFootprintEdit) &&
     moduleInput?.houseConnectionType !== 'none' &&
     supportsHouseFootprints(moduleInput?.pergolaStyle ?? 'pitched');
+  const showPlanContextControls = view === 'plan' && canEditHouseContext;
 
   const runCommit = useCallback(async (fieldId: string, action: Promise<CommitResult> | CommitResult) => {
     setPendingFieldId(fieldId);
@@ -284,12 +329,109 @@ export default function ConfiguratorRail({
     [moduleInput?.roofMaterial],
   );
 
+  const geometrySummaryItems = useMemo<SummaryItem[]>(
+    () => geometryFields.map((field) => ({ label: field.label, value: field.displayValue })),
+    [geometryFields],
+  );
+  const roofSummaryItems = useMemo<SummaryItem[]>(
+    () => [
+      { label: 'Pergola style', value: labelForOption(PERGOLA_STYLE_OPTIONS, moduleInput?.pergolaStyle) },
+      { label: 'Roof material', value: labelForOption(ROOF_MATERIAL_OPTIONS, moduleInput?.roofMaterial) },
+      ...roofEditableFields.map((field) => ({ label: field.label, value: field.displayValue })),
+    ],
+    [moduleInput?.pergolaStyle, moduleInput?.roofMaterial, roofEditableFields],
+  );
+  const contextSummaryItems = useMemo<SummaryItem[]>(
+    () => {
+      const items: SummaryItem[] = [
+        {
+          label: 'House connection',
+          value: labelForOption(HOUSE_CONNECTION_OPTIONS, moduleInput?.houseConnectionType),
+        },
+      ];
+
+      if (view === 'plan' && moduleInput?.houseConnectionType !== 'none') {
+        items.push(
+          {
+            label: 'Attachment side',
+            value: labelForOption(ATTACHMENT_SIDE_OPTIONS, moduleInput?.attachmentSide ?? 'rear'),
+          },
+          {
+            label: 'House footprint',
+            value: labelForOption(
+              HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => ({ label: option.label, value: option.id ?? 'straight' })),
+              footprintPreset,
+            ),
+          },
+          {
+            label: 'Drawing rotation',
+            value: `${rotationQuarterTurns * 90} deg`,
+          },
+        );
+      }
+
+      return items;
+    },
+    [footprintPreset, moduleInput?.attachmentSide, moduleInput?.houseConnectionType, rotationQuarterTurns, view],
+  );
+  const supportsSummaryItems = useMemo<SummaryItem[]>(
+    () => {
+      const items: SummaryItem[] = [
+        {
+          label: 'Post connection',
+          value: labelForOption(POST_CONNECTION_OPTIONS, moduleInput?.postConnectionType),
+        },
+      ];
+      if (moduleInput?.postConnectionType === 'pile_1m' || moduleInput?.postConnectionType === 'pile_1_5m') {
+        items.push({
+          label: 'Ground',
+          value: labelForOption(GROUND_OPTIONS, moduleInput?.ground),
+        });
+      }
+      return items;
+    },
+    [moduleInput?.ground, moduleInput?.postConnectionType],
+  );
+
+  if (mode === 'compact') {
+    return (
+      <div className={`${styles.rail} ${styles.railCompact}`} aria-label={`Configurator summary for ${moduleLabel}`}>
+        <div className={`${styles.summary} ${styles.summaryCompact}`}>
+          <p className={styles.eyebrow}>Sheet Preview</p>
+          <p className={styles.summaryText}>This rail stays in summary mode while you review the generated sheet.</p>
+        </div>
+
+        <SummarySection title="Geometry" items={geometrySummaryItems} />
+        <SummarySection title="Roof" items={roofSummaryItems} />
+        <SummarySection
+          title="House & Context"
+          items={contextSummaryItems}
+          hint={view === 'section' ? 'Plan-only house footprint controls are available in plan view and model space.' : undefined}
+        />
+        <SummarySection title="Supports" items={supportsSummaryItems} />
+
+        <section className={styles.section}>
+          <h4 className={styles.sectionTitle}>Actions</h4>
+          <div className={styles.actionStack}>
+            {onSwitchToModelSpace ? (
+              <button type="button" className={styles.buttonPrimary} onClick={onSwitchToModelSpace}>
+                Switch to model space
+              </button>
+            ) : null}
+            <button type="button" className={styles.secondaryButton} disabled={!onOpenFullCalculator} onClick={onOpenFullCalculator}>
+              Open full calculator
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.rail}>
+    <div className={`${styles.rail} ${styles.railFull}`} aria-label={`Configurator rail for ${moduleLabel}`}>
       <div className={styles.summary}>
-        <p className={styles.eyebrow}>Configurator</p>
-        <h3 className={styles.title}>{moduleLabel}</h3>
-        <p className={styles.summaryText}>Live draft edits here keep sheet view and model space in sync.</p>
+        <p className={styles.eyebrow}>Model Configurator</p>
+        <p className={styles.summaryText}>This is the edit-first surface. Changes here update the live draft and the sheet preview together.</p>
       </div>
 
       <section className={styles.section}>
@@ -375,7 +517,7 @@ export default function ConfiguratorRail({
             }
           />
 
-          {canEditHouseContext ? (
+          {showPlanContextControls ? (
             <>
               <ConfiguratorSelectField
                 id="attachment-side"
@@ -384,7 +526,7 @@ export default function ConfiguratorRail({
                 options={ATTACHMENT_SIDE_OPTIONS}
                 pending={pendingFieldId === 'attachment-side'}
                 error={fieldErrors['attachment-side']}
-                disabled={!canEditHouseContext}
+                disabled={!showPlanContextControls}
                 onCommit={(value) =>
                   commitFootprintEdit('attachment-side', {
                     type: 'attachment_side',
@@ -400,7 +542,7 @@ export default function ConfiguratorRail({
                 options={HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => ({ label: option.label, value: option.id ?? 'straight' }))}
                 pending={pendingFieldId === 'house-footprint'}
                 error={fieldErrors['house-footprint']}
-                disabled={!canEditHouseContext}
+                disabled={!showPlanContextControls}
                 onCommit={(value) =>
                   commitFootprintEdit('house-footprint', {
                     type: 'preset',
@@ -417,7 +559,7 @@ export default function ConfiguratorRail({
                 <button
                   type="button"
                   className={styles.button}
-                  disabled={!canEditHouseContext || pendingFieldId === 'rotate-minus'}
+                  disabled={!showPlanContextControls || pendingFieldId === 'rotate-minus'}
                   onClick={() => void commitFootprintEdit('rotate-minus', { type: 'rotate', delta: -1 })}
                 >
                   Rotate -90
@@ -425,7 +567,7 @@ export default function ConfiguratorRail({
                 <button
                   type="button"
                   className={styles.button}
-                  disabled={!canEditHouseContext || pendingFieldId === 'rotate-plus'}
+                  disabled={!showPlanContextControls || pendingFieldId === 'rotate-plus'}
                   onClick={() => void commitFootprintEdit('rotate-plus', { type: 'rotate', delta: 1 })}
                 >
                   Rotate +90
@@ -441,7 +583,7 @@ export default function ConfiguratorRail({
                 value={footprintParams.bandDepthM}
                 pending={pendingFieldId === 'house-band-depth'}
                 error={fieldErrors['house-band-depth']}
-                disabled={!canEditHouseContext}
+                disabled={!showPlanContextControls}
                 onCommit={(value) =>
                   commitFootprintEdit('house-band-depth', {
                     type: 'param',
@@ -458,7 +600,7 @@ export default function ConfiguratorRail({
                   value={footprintParams.returnRunM}
                   pending={pendingFieldId === 'house-return-run'}
                   error={fieldErrors['house-return-run']}
-                  disabled={!canEditHouseContext}
+                  disabled={!showPlanContextControls}
                   onCommit={(value) =>
                     commitFootprintEdit('house-return-run', {
                       type: 'param',
@@ -477,7 +619,7 @@ export default function ConfiguratorRail({
                     value={footprintParams.recessWidthM}
                     pending={pendingFieldId === 'house-recess-width'}
                     error={fieldErrors['house-recess-width']}
-                    disabled={!canEditHouseContext}
+                    disabled={!showPlanContextControls}
                     onCommit={(value) =>
                       commitFootprintEdit('house-recess-width', {
                         type: 'param',
@@ -492,7 +634,7 @@ export default function ConfiguratorRail({
                     value={footprintParams.recessDepthM}
                     pending={pendingFieldId === 'house-recess-depth'}
                     error={fieldErrors['house-recess-depth']}
-                    disabled={!canEditHouseContext}
+                    disabled={!showPlanContextControls}
                     onCommit={(value) =>
                       commitFootprintEdit('house-recess-depth', {
                         type: 'param',
@@ -512,7 +654,7 @@ export default function ConfiguratorRail({
                     value={footprintParams.leftLegRunM}
                     pending={pendingFieldId === 'house-left-leg'}
                     error={fieldErrors['house-left-leg']}
-                    disabled={!canEditHouseContext}
+                    disabled={!showPlanContextControls}
                     onCommit={(value) =>
                       commitFootprintEdit('house-left-leg', {
                         type: 'param',
@@ -527,7 +669,7 @@ export default function ConfiguratorRail({
                     value={footprintParams.rightLegRunM}
                     pending={pendingFieldId === 'house-right-leg'}
                     error={fieldErrors['house-right-leg']}
-                    disabled={!canEditHouseContext}
+                    disabled={!showPlanContextControls}
                     onCommit={(value) =>
                       commitFootprintEdit('house-right-leg', {
                         type: 'param',
@@ -546,7 +688,7 @@ export default function ConfiguratorRail({
                   value={footprintParams.sideRunM}
                   pending={pendingFieldId === 'house-side-run'}
                   error={fieldErrors['house-side-run']}
-                  disabled={!canEditHouseContext}
+                  disabled={!showPlanContextControls}
                   onCommit={(value) =>
                     commitFootprintEdit('house-side-run', {
                       type: 'param',
@@ -558,7 +700,11 @@ export default function ConfiguratorRail({
               )}
             </>
           ) : (
-            <p className={styles.empty}>House context controls appear when the module is attached to the house and the style supports footprints.</p>
+            <p className={styles.empty}>
+              {view === 'section'
+                ? 'Plan-only house footprint controls live in plan view. The connection type still flows through to section and sheet output.'
+                : 'House context controls appear when the module is attached to the house and the style supports footprints.'}
+            </p>
           )}
         </div>
       </section>
