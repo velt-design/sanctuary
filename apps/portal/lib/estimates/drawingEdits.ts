@@ -1,10 +1,21 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import {
+  isPrimaryFlashingLengthAutoLinked,
+  normalizeFlashingsStateForUi,
+  roofLengthForPrimaryFlashing,
+  formatFlashingLengthInput,
+} from '@/lib/drawings/flashings';
+import {
   DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE,
   type EstimateDrawingSheetMeta,
 } from './drawingSheet';
-import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type {
+  CalculatorFlashingsState,
+  CalculatorInputs,
+  CalculatorModuleInputs,
+  CalculatorModuleOverrides,
+} from '@/lib/types/calculator';
 import {
   isCalculatorInputsV2,
   isLegacyCalculatorInputsV1,
@@ -112,7 +123,72 @@ export type EstimateDrawingModuleFieldEdit =
   | {
       field: 'ground';
       value: CalculatorModuleInputs['ground'];
+    }
+  | {
+      field: 'moduleValue';
+      key: EditableModuleFieldKey;
+      value: CalculatorModuleInputs[EditableModuleFieldKey];
+    }
+  | {
+      field: 'jobValue';
+      key: EditableJobFieldKey;
+      value: CalculatorInputs[EditableJobFieldKey];
+    }
+  | {
+      field: 'moduleOverride';
+      key: keyof CalculatorModuleOverrides;
+      value: string;
+    }
+  | {
+      field: 'flashings';
+      value: CalculatorFlashingsState;
     };
+
+export type EditableJobFieldKey =
+  | 'access'
+  | 'height'
+  | 'jobType'
+  | 'travelExGst'
+  | 'extrasAllowanceExGst'
+  | 'quoteDiscountPct';
+
+export type EditableModuleFieldKey =
+  | 'pergolaStyle'
+  | 'boxPerimeterEnabled'
+  | 'roofMaterial'
+  | 'mixedAcrylicBaysMain'
+  | 'mixedAcrylicBaysA'
+  | 'mixedAcrylicBaysB'
+  | 'timberRoofAboveType'
+  | 'timberTrayWidthMm'
+  | 'extrusionColour'
+  | 'powdercoatStandardColour'
+  | 'powdercoatIsCustom'
+  | 'powdercoatCustomColour'
+  | 'lengthM'
+  | 'projectionM'
+  | 'hipCornerLengthBM'
+  | 'hipCornerProjectionBM'
+  | 'roofPitchDeg'
+  | 'gableEndFramesMode'
+  | 'gableHouseEdgeGutter'
+  | 'gableOuterEdgeGutter'
+  | 'invertedEnabled'
+  | 'invertedHouseGutter'
+  | 'overhangEnabled'
+  | 'overhangAmountM'
+  | 'overhangSupportBeamProfile'
+  | 'postCutHeightM'
+  | 'postCount'
+  | 'houseConnectionType'
+  | 'postConnectionType'
+  | 'ground'
+  | 'boxGutterHouseEdge'
+  | 'boxGutterFarEdge'
+  | 'downpipeCount'
+  | 'downpipeJoinCount'
+  | 'downpipeElbowCount'
+  | 'separateGutterEnabled';
 
 function isRecord(value: unknown): value is AnyRecord {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -156,11 +232,11 @@ function normalizePitchInput(value: string): string {
 }
 
 function isPortalPergolaStyle(value: unknown): value is CalculatorModuleInputs['pergolaStyle'] {
-  return value === 'pitched' || value === 'gable' || value === 'hip';
+  return value === 'pitched' || value === 'gable' || value === 'hip' || value === 'hip_corner';
 }
 
 function isPortalRoofMaterial(value: unknown): value is CalculatorModuleInputs['roofMaterial'] {
-  return value === 'acrylic' || value === 'timber';
+  return value === 'acrylic' || value === 'timber' || value === 'mixed';
 }
 
 function isHouseConnectionType(value: unknown): value is CalculatorModuleInputs['houseConnectionType'] {
@@ -173,6 +249,267 @@ function isPostConnectionType(value: unknown): value is CalculatorModuleInputs['
 
 function isGroundCondition(value: unknown): value is CalculatorModuleInputs['ground'] {
   return value === 'easy' || value === 'hard';
+}
+
+function isAccessLevel(value: unknown): value is CalculatorInputs['access'] {
+  return value === 'easy' || value === 'normal' || value === 'hard';
+}
+
+function isHeightCategory(value: unknown): value is CalculatorInputs['height'] {
+  return value === 'single_storey' || value === 'two_storey';
+}
+
+function isJobType(value: unknown): value is CalculatorInputs['jobType'] {
+  return value === 'residential' || value === 'commercial';
+}
+
+function isRoofAboveType(value: unknown): value is CalculatorModuleInputs['timberRoofAboveType'] {
+  return value === 'insulated_panels' || value === 'steel_corrugated' || value === 'steel_tray';
+}
+
+function isExtrusionColour(value: unknown): value is CalculatorModuleInputs['extrusionColour'] {
+  return value === 'Black' || value === 'White' || value === 'Mill';
+}
+
+function isGableEndFramesMode(value: unknown): value is CalculatorModuleInputs['gableEndFramesMode'] {
+  return value === 'none' || value === 'outer_end_only' || value === 'both_ends';
+}
+
+function isGableGutter(value: unknown): value is CalculatorModuleInputs['gableHouseEdgeGutter'] {
+  return value === 'house' || value === 'our';
+}
+
+function isBoxGutter(value: unknown): value is CalculatorModuleInputs['boxGutterHouseEdge'] {
+  return value === 'house' || value === 'our' || value === 'none';
+}
+
+function isOverhangSupportBeamProfile(value: unknown): value is CalculatorModuleInputs['overhangSupportBeamProfile'] {
+  return value === '150x50' || value === '200x50' || value === 'RHS 150x50x3';
+}
+
+function normalizeOverrideValue(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function isGutterBeamProfile(profile: string | undefined): boolean {
+  if (!profile) return false;
+  const normalized = profile.toLowerCase().replace(/\s+/g, '');
+  return normalized.includes('spgutter');
+}
+
+function setDraftJobField(nextDraft: EstimateDrawingDraft, key: EditableJobFieldKey, value: CalculatorInputs[EditableJobFieldKey]) {
+  (nextDraft.inputs as unknown as Record<string, unknown>)[key] = value;
+}
+
+function setDraftModuleOverride(
+  module: CalculatorModuleInputs,
+  key: keyof CalculatorModuleOverrides,
+  value: string,
+) {
+  const overrides = { ...(module.overrides ?? {}) };
+  if (value.trim()) overrides[key] = value.trim();
+  else delete overrides[key];
+  module.overrides = overrides;
+
+  if (key === 'frontBeamProfile') {
+    const frontBeamProfileUsed = normalizeOverrideValue(overrides.frontBeamProfile) ?? 'SP Gutter';
+    if (isGutterBeamProfile(frontBeamProfileUsed)) {
+      module.separateGutterEnabled = false;
+    }
+  }
+}
+
+function syncPrimaryFlashingLengthIfNeeded(current: CalculatorModuleInputs, updated: CalculatorModuleInputs) {
+  const flashings = normalizeFlashingsStateForUi(current.flashings, current);
+  const primary = flashings.rows.find((row) => row.kind === 'primary') ?? flashings.rows[0];
+  if (!primary) {
+    updated.flashings = normalizeFlashingsStateForUi(updated.flashings, updated);
+    return;
+  }
+  if (!isPrimaryFlashingLengthAutoLinked(primary.lengthM, current)) return;
+  const nextAutoLength = formatFlashingLengthInput(roofLengthForPrimaryFlashing(updated));
+  updated.flashings = normalizeFlashingsStateForUi(
+    {
+      rows: flashings.rows.map((row) => (row.id === primary.id ? { ...row, lengthM: nextAutoLength } : row)),
+    },
+    updated,
+  );
+}
+
+function setDraftModuleField(
+  current: CalculatorModuleInputs,
+  key: EditableModuleFieldKey | 'pergolaStyle' | 'roofMaterial' | 'houseConnectionType' | 'postConnectionType' | 'ground',
+  value: unknown,
+): EstimateDrawingFieldApplyResult | CalculatorModuleInputs {
+  const updated: CalculatorModuleInputs = { ...current };
+  const updatedRecord = updated as unknown as Record<string, unknown>;
+
+  switch (key) {
+    case 'pergolaStyle':
+      if (!isPortalPergolaStyle(value)) return { ok: false, error: 'Choose a supported pergola style.' };
+      updated.pergolaStyle = value;
+      break;
+    case 'boxPerimeterEnabled':
+      updated.boxPerimeterEnabled = Boolean(value);
+      break;
+    case 'roofMaterial':
+      if (!isPortalRoofMaterial(value)) return { ok: false, error: 'Choose a supported roof material.' };
+      updated.roofMaterial = value;
+      break;
+    case 'mixedAcrylicBaysMain':
+    case 'mixedAcrylicBaysA':
+    case 'mixedAcrylicBaysB':
+    case 'timberTrayWidthMm':
+    case 'powdercoatStandardColour':
+    case 'powdercoatCustomColour':
+    case 'lengthM':
+    case 'projectionM':
+    case 'hipCornerLengthBM':
+    case 'hipCornerProjectionBM':
+    case 'roofPitchDeg':
+    case 'overhangAmountM':
+    case 'postCutHeightM':
+    case 'postCount':
+    case 'downpipeCount':
+    case 'downpipeJoinCount':
+    case 'downpipeElbowCount':
+      updatedRecord[key] = String(value ?? '').trim();
+      break;
+    case 'timberRoofAboveType':
+      if (!isRoofAboveType(value)) return { ok: false, error: 'Choose a supported timber roof-above type.' };
+      updated.timberRoofAboveType = value;
+      break;
+    case 'extrusionColour':
+      if (!isExtrusionColour(value)) return { ok: false, error: 'Choose a supported extrusion colour.' };
+      updated.extrusionColour = value;
+      break;
+    case 'powdercoatIsCustom':
+    case 'invertedEnabled':
+    case 'invertedHouseGutter':
+    case 'overhangEnabled':
+    case 'separateGutterEnabled':
+      updatedRecord[key] = Boolean(value);
+      break;
+    case 'gableEndFramesMode':
+      if (!isGableEndFramesMode(value)) return { ok: false, error: 'Choose a supported gable frame mode.' };
+      updated.gableEndFramesMode = value;
+      break;
+    case 'gableHouseEdgeGutter':
+    case 'gableOuterEdgeGutter':
+      if (!isGableGutter(value)) return { ok: false, error: 'Choose House gutter or Our gutter.' };
+      updatedRecord[key] = value;
+      break;
+    case 'overhangSupportBeamProfile':
+      if (!isOverhangSupportBeamProfile(value)) return { ok: false, error: 'Choose a supported overhang support beam profile.' };
+      updated.overhangSupportBeamProfile = value;
+      break;
+    case 'houseConnectionType':
+      if (!isHouseConnectionType(value)) return { ok: false, error: 'Choose a supported house connection.' };
+      updated.houseConnectionType = value;
+      break;
+    case 'postConnectionType':
+      if (!isPostConnectionType(value)) return { ok: false, error: 'Choose a supported post connection.' };
+      updated.postConnectionType = value;
+      break;
+    case 'ground':
+      if (!isGroundCondition(value)) return { ok: false, error: 'Choose Easy or Hard ground.' };
+      updated.ground = value;
+      break;
+    case 'boxGutterHouseEdge':
+    case 'boxGutterFarEdge':
+      if (!isBoxGutter(value)) return { ok: false, error: 'Choose House gutter, Our gutter, or None.' };
+      updatedRecord[key] = value;
+      break;
+    default:
+      return { ok: false, error: 'Unsupported drawing control.' };
+  }
+
+  const nextHouseConnection = updated.houseConnectionType;
+  const nextBoxEnabled = updated.boxPerimeterEnabled;
+
+  if (key === 'extrusionColour') {
+    if (updated.extrusionColour === 'Mill' && !updated.powdercoatIsCustom && !updated.powdercoatStandardColour) {
+      updated.powdercoatStandardColour = 'Ironsands';
+    }
+  }
+
+  if (key === 'powdercoatIsCustom') {
+    if (!updated.powdercoatIsCustom && updated.extrusionColour === 'Mill' && !updated.powdercoatStandardColour) {
+      updated.powdercoatStandardColour = 'Ironsands';
+    }
+  }
+
+  if (key === 'houseConnectionType') {
+    if (nextHouseConnection === 'none') {
+      updated.boxGutterHouseEdge = 'none';
+      updated.boxGutterFarEdge = 'none';
+    } else if (current.houseConnectionType === 'none') {
+      if (current.boxGutterHouseEdge === 'none') updated.boxGutterHouseEdge = 'house';
+      if (current.boxGutterFarEdge === 'none') updated.boxGutterFarEdge = 'our';
+    }
+
+    if (updated.pergolaStyle === 'gable') {
+      if (nextHouseConnection === 'none') {
+        updated.gableHouseEdgeGutter = 'our';
+        updated.gableOuterEdgeGutter = 'our';
+      } else if (current.houseConnectionType === 'none') {
+        if (current.gableHouseEdgeGutter === 'our') updated.gableHouseEdgeGutter = 'house';
+        if (current.gableOuterEdgeGutter === 'our') updated.gableOuterEdgeGutter = 'our';
+      }
+
+      const prevDefault = current.houseConnectionType !== 'none' ? 'outer_end_only' : 'both_ends';
+      const nextDefault = nextHouseConnection !== 'none' ? 'outer_end_only' : 'both_ends';
+      if (updated.gableEndFramesMode === prevDefault) {
+        updated.gableEndFramesMode = nextDefault;
+      }
+    }
+  }
+
+  if (key === 'boxPerimeterEnabled' && nextBoxEnabled) {
+    if (nextHouseConnection === 'none') {
+      updated.boxGutterHouseEdge = 'none';
+      updated.boxGutterFarEdge = 'none';
+    } else {
+      if (current.boxGutterHouseEdge === 'none') updated.boxGutterHouseEdge = 'house';
+      if (current.boxGutterFarEdge === 'none') updated.boxGutterFarEdge = 'our';
+    }
+    updated.overhangEnabled = false;
+    updated.invertedEnabled = false;
+    updated.invertedHouseGutter = true;
+    updated.separateGutterEnabled = false;
+  }
+
+  if (key === 'pergolaStyle' && updated.pergolaStyle !== 'pitched') {
+    updated.invertedEnabled = false;
+    updated.invertedHouseGutter = true;
+    updated.separateGutterEnabled = false;
+  }
+
+  if (key === 'pergolaStyle' && updated.pergolaStyle === 'gable') {
+    updated.gableHouseEdgeGutter = nextHouseConnection === 'none' ? 'our' : 'house';
+    updated.gableOuterEdgeGutter = 'our';
+  }
+
+  if ((key === 'overhangEnabled' && updated.overhangEnabled) || (key === 'invertedEnabled' && updated.invertedEnabled)) {
+    updated.separateGutterEnabled = false;
+  }
+
+  if (key === 'invertedHouseGutter' && updated.invertedEnabled && updated.invertedHouseGutter) {
+    updated.separateGutterEnabled = false;
+  }
+
+  const frontBeamProfileUsed = normalizeOverrideValue(updated.overrides?.frontBeamProfile) ?? 'SP Gutter';
+  if (isGutterBeamProfile(frontBeamProfileUsed)) {
+    updated.separateGutterEnabled = false;
+  }
+
+  if (key === 'lengthM' || key === 'hipCornerLengthBM' || key === 'pergolaStyle') {
+    syncPrimaryFlashingLengthIfNeeded(current, updated);
+  }
+
+  return updated;
 }
 
 function normalizeOverrides(overrides: EstimateDrawingOverrides | null | undefined): EstimateDrawingOverrides {
@@ -519,83 +856,54 @@ export function applyEstimateDrawingModuleFieldEdit(input: {
   if (!module) return { ok: false, error: 'This drawing control no longer maps to a module input.' };
 
   switch (input.edit.field) {
-    case 'pergolaStyle': {
-      if (!isPortalPergolaStyle(input.edit.value)) {
-        return { ok: false, error: 'Choose a supported pergola style.' };
-      }
-
-      module.pergolaStyle = input.edit.value;
-      if (input.edit.value !== 'pitched') {
-        module.invertedEnabled = false;
-        module.invertedHouseGutter = true;
-        module.separateGutterEnabled = false;
-      }
-      if (input.edit.value === 'gable') {
-        module.gableHouseEdgeGutter = module.houseConnectionType === 'none' ? 'our' : 'house';
-        module.gableOuterEdgeGutter = 'our';
-      }
-      return { ok: true, draft: nextDraft };
-    }
-
-    case 'roofMaterial': {
-      if (!isPortalRoofMaterial(input.edit.value)) {
-        return { ok: false, error: 'Choose Acrylic or Timber in the portal rail. Use the full calculator for Mixed roofs.' };
-      }
-      module.roofMaterial = input.edit.value;
-      return { ok: true, draft: nextDraft };
-    }
-
-    case 'houseConnectionType': {
-      if (!isHouseConnectionType(input.edit.value)) {
-        return { ok: false, error: 'Choose a supported house connection.' };
-      }
-
-      const previous = module.houseConnectionType;
-      const nextHouseConnection = input.edit.value;
-      module.houseConnectionType = nextHouseConnection;
-
-      if (nextHouseConnection === 'none') {
-        module.boxGutterHouseEdge = 'none';
-        module.boxGutterFarEdge = 'none';
-      } else if (previous === 'none') {
-        if (module.boxGutterHouseEdge === 'none') module.boxGutterHouseEdge = 'house';
-        if (module.boxGutterFarEdge === 'none') module.boxGutterFarEdge = 'our';
-      }
-
-      if (module.pergolaStyle === 'gable') {
-        if (nextHouseConnection === 'none') {
-          module.gableHouseEdgeGutter = 'our';
-          module.gableOuterEdgeGutter = 'our';
-        } else if (previous === 'none') {
-          if (module.gableHouseEdgeGutter === 'our') module.gableHouseEdgeGutter = 'house';
-          if (module.gableOuterEdgeGutter === 'our') module.gableOuterEdgeGutter = 'our';
-        }
-
-        const previousDefault = previous !== 'none' ? 'outer_end_only' : 'both_ends';
-        const nextDefault = nextHouseConnection !== 'none' ? 'outer_end_only' : 'both_ends';
-        if (module.gableEndFramesMode === previousDefault) {
-          module.gableEndFramesMode = nextDefault;
-        }
-      }
-
-      return { ok: true, draft: nextDraft };
-    }
-
-    case 'postConnectionType': {
-      if (!isPostConnectionType(input.edit.value)) {
-        return { ok: false, error: 'Choose a supported post connection.' };
-      }
-      module.postConnectionType = input.edit.value;
-      return { ok: true, draft: nextDraft };
-    }
-
+    case 'pergolaStyle':
+    case 'roofMaterial':
+    case 'houseConnectionType':
+    case 'postConnectionType':
     case 'ground': {
-      if (!isGroundCondition(input.edit.value)) {
-        return { ok: false, error: 'Choose Easy or Hard ground.' };
-      }
-      module.ground = input.edit.value;
+      const updated = setDraftModuleField(module, input.edit.field, input.edit.value);
+      if ('ok' in updated) return updated;
+      nextDraft.inputs.modules[input.moduleIndex] = updated;
       return { ok: true, draft: nextDraft };
     }
+
+    case 'moduleValue': {
+      const updated = setDraftModuleField(module, input.edit.key, input.edit.value);
+      if ('ok' in updated) return updated;
+      nextDraft.inputs.modules[input.moduleIndex] = updated;
+      return { ok: true, draft: nextDraft };
+    }
+
+    case 'jobValue': {
+      switch (input.edit.key) {
+        case 'access':
+          if (!isAccessLevel(input.edit.value)) return { ok: false, error: 'Choose a supported access level.' };
+          break;
+        case 'height':
+          if (!isHeightCategory(input.edit.value)) return { ok: false, error: 'Choose a supported height category.' };
+          break;
+        case 'jobType':
+          if (!isJobType(input.edit.value)) return { ok: false, error: 'Choose a supported job type.' };
+          break;
+        case 'travelExGst':
+        case 'extrasAllowanceExGst':
+        case 'quoteDiscountPct':
+          if (!/^-?\d*(?:\.\d*)?$/.test(String(input.edit.value ?? ''))) {
+            return { ok: false, error: 'Enter a numeric value.' };
+          }
+          break;
+      }
+      setDraftJobField(nextDraft, input.edit.key, input.edit.value);
+      return { ok: true, draft: nextDraft };
+    }
+
+    case 'moduleOverride':
+      setDraftModuleOverride(module, input.edit.key, input.edit.value);
+      return { ok: true, draft: nextDraft };
+
+    case 'flashings':
+      module.flashings = normalizeFlashingsStateForUi(input.edit.value, module);
+      return { ok: true, draft: nextDraft };
 
     default:
       return { ok: false, error: 'Unsupported drawing control.' };

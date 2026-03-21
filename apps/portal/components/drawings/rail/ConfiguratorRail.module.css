@@ -54,6 +54,24 @@
   gap: 12px;
 }
 
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sectionBody {
+  display: grid;
+  gap: 12px;
+}
+
 .sectionTitle {
   margin: 0;
   font-size: 13px;
@@ -104,6 +122,17 @@
   gap: 4px;
 }
 
+.toggleField {
+  gap: 6px;
+}
+
+.toggleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .fieldLabel {
   font-size: 11px;
   font-weight: 700;
@@ -114,7 +143,8 @@
 .input,
 .select,
 .button,
-.secondaryButton {
+.secondaryButton,
+.toggleButton {
   min-height: 36px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 12px;
@@ -132,7 +162,8 @@
 }
 
 .button,
-.secondaryButton {
+.secondaryButton,
+.toggleButton {
   padding: 8px 12px;
   cursor: pointer;
   transition:
@@ -142,7 +173,8 @@
 }
 
 .button:hover,
-.secondaryButton:hover {
+.secondaryButton:hover,
+.toggleButton:hover {
   border-color: rgba(var(--portal-text-rgb), 0.18);
   transform: translateY(-1px);
 }
@@ -159,6 +191,16 @@
 .secondaryButton {
   border-color: rgba(var(--portal-text-rgb), 0.1);
   background: rgba(var(--portal-text-rgb), 0.03);
+}
+
+.toggleButton {
+  min-width: 68px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+}
+
+.toggleButtonActive {
+  border-color: rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.08);
 }
 
 .buttonPrimary {
@@ -194,6 +236,143 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.sectionToggleIcon {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: rgba(var(--portal-text-rgb), 0.62);
+}
+
+.flashingsSection {
+  display: grid;
+  gap: 10px;
+}
+
+.flashingsTable {
+  display: grid;
+  gap: 0;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-radius: 14px;
+  background: rgba(var(--portal-text-rgb), 0.02);
+  overflow: hidden;
+}
+
+.flashingsGridHeader,
+.flashingsRow,
+.flashingsRowPrimary {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(96px, 118px) minmax(96px, 118px) minmax(92px, 112px) 34px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.flashingsGridHeader {
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.72);
+}
+
+.flashingsRow,
+.flashingsRowPrimary {
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+.flashingsRowPrimary {
+  background: rgba(var(--portal-text-rgb), 0.04);
+}
+
+.flashingsCellItem {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.flashingsItemBadge {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.flashingsItemMeta,
+.flashingsWarning {
+  font-size: 10px;
+  line-height: 1.35;
+  color: rgba(var(--portal-text-rgb), 0.62);
+}
+
+.flashingsLengthCell {
+  position: relative;
+}
+
+.flashingsLengthCell .input {
+  padding-right: 24px;
+}
+
+.flashingsLengthSuffix {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(var(--portal-text-rgb), 0.55);
+  pointer-events: none;
+}
+
+.flashingsRemoveButton,
+.flashingsRemovePlaceholder {
+  width: 30px;
+  height: 30px;
+  justify-self: center;
+}
+
+.flashingsRemoveButton {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  border-radius: 999px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.74);
+}
+
+.flashingsTotalsCard {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(var(--portal-text-rgb), 0.02);
+  display: grid;
+  gap: 6px;
+}
+
+.flashingsTotalsTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.72);
+}
+
+.flashingsTotalsRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.flashingsTotalsToggle {
+  margin-top: 2px;
+  border: none;
+  background: transparent;
+  color: rgba(var(--portal-text-rgb), 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
 }
 
 .inlineMeta {
