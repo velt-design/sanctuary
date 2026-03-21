@@ -240,12 +240,14 @@ describe('ModuleViewsCard', () => {
     );
 
     expect(markup).toContain('House footprint editor');
+    expect(markup).toContain('aria-label="House footprint preset"');
     expect(markup).toContain('Rotate -90');
-    expect(markup).toContain('Done');
+    expect(markup).toContain('Attached edge');
     expect(markup).toContain('data-footprint-edge="rear"');
     expect(markup).toContain('data-footprint-handle="bandDepth"');
     expect(markup).toContain('data-footprint-handle="recessWidth"');
     expect(markup).toContain('Band depth: 1.80m');
+    expect(markup).not.toContain('House side</text>');
   });
 
   it('keeps the footprint editor affordance out of section views', () => {
@@ -264,6 +266,24 @@ describe('ModuleViewsCard', () => {
 
     expect(markup).not.toContain('Edit footprint');
     expect(markup).not.toContain('House footprint editor');
+  });
+
+  it('switches the header control to Done while editing', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleViewsCard
+        moduleLabel="M1"
+        view="plan"
+        onViewChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        footprintEditor={makeFootprintEditor({ isEditing: true })}
+      />,
+    );
+
+    expect(markup).toContain('>Done<');
+    expect(markup).not.toContain('Editing footprint');
   });
 
   it('suggests the largest architectural plan scale that fits the A3 sheet viewport', () => {

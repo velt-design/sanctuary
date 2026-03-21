@@ -190,7 +190,7 @@ export default function ModuleViewsCard({
               }
               onClick={footprintEditor?.isEditing ? footprintEditor.onDoneEditing : footprintEditor?.onStartEditing}
             >
-              {footprintEditor?.isEditing ? 'Editing footprint' : 'Edit footprint'}
+              {footprintEditor?.isEditing ? 'Done' : 'Edit footprint'}
             </button>
           ) : null}
         </div>
@@ -288,23 +288,21 @@ export function ModuleDrawingRenderer({
             {presentation === 'card' && footprintEditor?.available && footprintEditor.isEditing ? (
               <div className={styles.moduleFootprintToolbar} aria-label="House footprint editor">
                 <div className={styles.moduleFootprintToolbarGroup}>
-                  {HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => {
-                    const active = option.id === planModel.houseFootprintPreset;
-                    return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        className={
-                          active
-                            ? `${styles.moduleFootprintChip} ${styles.moduleFootprintChipActive}`
-                            : styles.moduleFootprintChip
-                        }
-                        onClick={() => footprintEditor.onPresetSelect(option.id)}
-                      >
-                        {option.label}
-                      </button>
-                    );
-                  })}
+                  <label className={styles.moduleFootprintToolbarField}>
+                    <span className={styles.moduleFootprintToolbarFieldLabel}>Preset</span>
+                    <select
+                      aria-label="House footprint preset"
+                      className={styles.moduleFootprintToolbarSelect}
+                      value={planModel.houseFootprintPreset}
+                      onChange={(event) => footprintEditor.onPresetSelect(event.target.value as ModulePlanModel['houseFootprintPreset'])}
+                    >
+                      {HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
                 <div className={styles.moduleFootprintToolbarGroup}>
                   <button type="button" className={styles.moduleFootprintToolbarButton} onClick={() => footprintEditor.onRotate(-1)}>
@@ -312,9 +310,6 @@ export function ModuleDrawingRenderer({
                   </button>
                   <button type="button" className={styles.moduleFootprintToolbarButton} onClick={() => footprintEditor.onRotate(1)}>
                     Rotate +90
-                  </button>
-                  <button type="button" className={styles.moduleFootprintToolbarButton} onClick={footprintEditor.onDoneEditing}>
-                    Done
                   </button>
                 </div>
               </div>
@@ -1634,10 +1629,37 @@ type FootprintHandleSpec = {
   valueM: number;
   point: Point;
   pointRoot: Point;
+  guideFrom: Point;
+  guideTo: Point;
   axisX: number;
   axisY: number;
   deltaMultiplier: number;
 };
+
+function footprintReturnWingWidth(edgeLength: number, scale: number): number {
+  return clamp(edgeLength * 0.26, 0.9 * scale, edgeLength * 0.42);
+}
+
+function footprintWrapWingWidth(edgeLength: number, scale: number): number {
+  return clamp(edgeLength * 0.42, 1.25 * scale, edgeLength * 0.64);
+}
+
+function footprintULegWidth(edgeLength: number, scale: number): number {
+  return clamp(edgeLength * 0.22, 0.82 * scale, edgeLength * 0.32);
+}
+
+function footprintRecessRange(edgeLength: number, recessWidth: number, scale: number, preset: 'recess_left' | 'recess_right'): { start: number; end: number } {
+  const maxStart = Math.max(0.2, edgeLength - recessWidth - 0.2);
+  const margin = clamp(edgeLength * 0.14, 0.75 * scale, Math.max(0.75 * scale, maxStart));
+  const start =
+    preset === 'recess_left'
+      ? clamp(margin, 0.2, maxStart)
+      : clamp(edgeLength - recessWidth - margin, 0.2, maxStart);
+  return {
+    start,
+    end: Math.min(edgeLength - 0.2, start + recessWidth),
+  };
+}
 
 function resolveFootprintHandleSpecs(input: {
   frame: PlanAttachmentFrame;
@@ -1658,8 +1680,13 @@ function resolveFootprintHandleSpecs(input: {
   const leftLegRun = resolved.leftLegRunM * scale;
   const rightLegRun = resolved.rightLegRunM * scale;
   const sideRun = resolved.sideRunM * scale;
-  const midStart = Math.max(0.2, (edgeLength - recessWidth) / 2);
-  const midEnd = Math.min(edgeLength - 0.2, midStart + recessWidth);
+  const returnWingWidth = footprintReturnWingWidth(edgeLength, scale);
+  const wrapWingWidth = footprintWrapWingWidth(edgeLength, scale);
+  const uLegWidth = footprintULegWidth(edgeLength, scale);
+  const recessRange =
+    preset === 'recess_left' || preset === 'recess_right'
+      ? footprintRecessRange(edgeLength, recessWidth, scale, preset)
+      : { start: Math.max(0.2, (edgeLength - recessWidth) / 2), end: Math.min(edgeLength - 0.2, (edgeLength + recessWidth) / 2) };
   const rotatedOutward = rotateVectorQuarterTurns(frame.outward, rotationTurns);
   const rotatedInward = rotateVectorQuarterTurns({ x: -frame.outward.x, y: -frame.outward.y }, rotationTurns);
   const rotatedTangent = rotateVectorQuarterTurns(frame.tangent, rotationTurns);
@@ -1670,6 +1697,8 @@ function resolveFootprintHandleSpecs(input: {
     label: string,
     valueM: number,
     point: Point,
+    guideFrom: Point,
+    guideTo: Point,
     axis: Point,
     deltaMultiplier = 1,
   ) => {
@@ -1678,39 +1707,124 @@ function resolveFootprintHandleSpecs(input: {
       label,
       valueM,
       point,
+      guideFrom,
+      guideTo,
       axisX: axis.x,
       axisY: axis.y,
       deltaMultiplier,
     });
   };
 
-  const bandDepthAlong = preset === 'recess_left' || preset === 'recess_right' ? Math.max(0.5 * scale, midStart / 2) : edgeLength / 2;
-  addSpec('bandDepth', 'Band depth', resolved.bandDepthM, pointOnAttachmentFrame(frame, bandDepthAlong, bandDepth), rotatedOutward);
+  const bandDepthAlong = preset === 'recess_left' || preset === 'recess_right' ? recessRange.start / 2 : edgeLength / 2;
+  const bandDepthPoint = pointOnAttachmentFrame(frame, bandDepthAlong, bandDepth);
+  addSpec(
+    'bandDepth',
+    'Band depth',
+    resolved.bandDepthM,
+    bandDepthPoint,
+    pointOnAttachmentFrame(frame, bandDepthAlong, 0),
+    bandDepthPoint,
+    rotatedOutward,
+  );
 
   if (preset === 'l_left') {
-    addSpec('returnRun', 'Return run', resolved.returnRunM, pointOnAttachmentFrame(frame, 0, bandDepth + returnRun), rotatedOutward);
+    const handlePoint = pointOnAttachmentFrame(frame, returnWingWidth / 2, bandDepth + returnRun);
+    addSpec(
+      'returnRun',
+      'Return run',
+      resolved.returnRunM,
+      handlePoint,
+      pointOnAttachmentFrame(frame, returnWingWidth / 2, bandDepth),
+      handlePoint,
+      rotatedOutward,
+    );
   }
 
   if (preset === 'l_right') {
-    addSpec('returnRun', 'Return run', resolved.returnRunM, pointOnAttachmentFrame(frame, edgeLength, bandDepth + returnRun), rotatedOutward);
+    const handlePoint = pointOnAttachmentFrame(frame, edgeLength - returnWingWidth / 2, bandDepth + returnRun);
+    addSpec(
+      'returnRun',
+      'Return run',
+      resolved.returnRunM,
+      handlePoint,
+      pointOnAttachmentFrame(frame, edgeLength - returnWingWidth / 2, bandDepth),
+      handlePoint,
+      rotatedOutward,
+    );
   }
 
   if (preset === 'recess_left' || preset === 'recess_right') {
-    addSpec('recessWidth', 'Recess width', resolved.recessWidthM, pointOnAttachmentFrame(frame, midEnd, Math.max(0.18 * scale, bandDepth - recessDepth / 2)), rotatedTangent, 2);
-    addSpec('recessDepth', 'Recess depth', resolved.recessDepthM, pointOnAttachmentFrame(frame, edgeLength / 2, Math.max(0.18 * scale, bandDepth - recessDepth)), rotatedInward);
+    const widthY = Math.max(0.18 * scale, bandDepth - recessDepth / 2);
+    const widthHandlePoint = pointOnAttachmentFrame(frame, recessRange.end, widthY);
+    addSpec(
+      'recessWidth',
+      'Recess width',
+      resolved.recessWidthM,
+      widthHandlePoint,
+      pointOnAttachmentFrame(frame, recessRange.start, widthY),
+      widthHandlePoint,
+      rotatedTangent,
+      2,
+    );
+    const depthHandlePoint = pointOnAttachmentFrame(frame, (recessRange.start + recessRange.end) / 2, Math.max(0.18 * scale, bandDepth - recessDepth));
+    addSpec(
+      'recessDepth',
+      'Recess depth',
+      resolved.recessDepthM,
+      depthHandlePoint,
+      pointOnAttachmentFrame(frame, (recessRange.start + recessRange.end) / 2, bandDepth),
+      depthHandlePoint,
+      rotatedInward,
+    );
   }
 
   if (preset === 'u_shape') {
-    addSpec('leftLegRun', 'Left leg run', resolved.leftLegRunM, pointOnAttachmentFrame(frame, 0, bandDepth + leftLegRun), rotatedOutward);
-    addSpec('rightLegRun', 'Right leg run', resolved.rightLegRunM, pointOnAttachmentFrame(frame, edgeLength, bandDepth + rightLegRun), rotatedOutward);
+    const leftHandlePoint = pointOnAttachmentFrame(frame, uLegWidth / 2, bandDepth + leftLegRun);
+    addSpec(
+      'leftLegRun',
+      'Left leg run',
+      resolved.leftLegRunM,
+      leftHandlePoint,
+      pointOnAttachmentFrame(frame, uLegWidth / 2, bandDepth),
+      leftHandlePoint,
+      rotatedOutward,
+    );
+    const rightHandlePoint = pointOnAttachmentFrame(frame, edgeLength - uLegWidth / 2, bandDepth + rightLegRun);
+    addSpec(
+      'rightLegRun',
+      'Right leg run',
+      resolved.rightLegRunM,
+      rightHandlePoint,
+      pointOnAttachmentFrame(frame, edgeLength - uLegWidth / 2, bandDepth),
+      rightHandlePoint,
+      rotatedOutward,
+    );
   }
 
   if (preset === 'wrap_left') {
-    addSpec('sideRun', 'Side run', resolved.sideRunM, pointOnAttachmentFrame(frame, 0, bandDepth + sideRun), rotatedOutward);
+    const handlePoint = pointOnAttachmentFrame(frame, wrapWingWidth / 2, bandDepth + sideRun);
+    addSpec(
+      'sideRun',
+      'Side run',
+      resolved.sideRunM,
+      handlePoint,
+      pointOnAttachmentFrame(frame, wrapWingWidth / 2, bandDepth),
+      handlePoint,
+      rotatedOutward,
+    );
   }
 
   if (preset === 'wrap_right') {
-    addSpec('sideRun', 'Side run', resolved.sideRunM, pointOnAttachmentFrame(frame, edgeLength, bandDepth + sideRun), rotatedOutward);
+    const handlePoint = pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth / 2, bandDepth + sideRun);
+    addSpec(
+      'sideRun',
+      'Side run',
+      resolved.sideRunM,
+      handlePoint,
+      pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth / 2, bandDepth),
+      handlePoint,
+      rotatedOutward,
+    );
   }
 
   return specs.map((spec) => ({
@@ -1747,15 +1861,21 @@ function buildHouseFootprintPolygon(
   const recessWidth = Math.min(edgeLength - 0.4, defaults.recessWidth);
   const recessDepth = Math.min(Math.max(0.25, bandDepth - 0.15), defaults.recessDepth);
   const sideRun = Math.min(edgeLength, defaults.sideRun);
-  const midStart = Math.max(0.2, (edgeLength - recessWidth) / 2);
-  const midEnd = Math.min(edgeLength - 0.2, midStart + recessWidth);
+  const returnWingWidth = footprintReturnWingWidth(edgeLength, scale);
+  const wrapWingWidth = footprintWrapWingWidth(edgeLength, scale);
+  const uLegWidth = footprintULegWidth(edgeLength, scale);
+  const recessRange =
+    preset === 'recess_left' || preset === 'recess_right'
+      ? footprintRecessRange(edgeLength, recessWidth, scale, preset)
+      : { start: Math.max(0.2, (edgeLength - recessWidth) / 2), end: Math.min(edgeLength - 0.2, (edgeLength + recessWidth) / 2) };
 
   if (preset === 'l_left') {
     return [
       pointOnAttachmentFrame(frame, 0, 0),
       pointOnAttachmentFrame(frame, edgeLength, 0),
       pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-      pointOnAttachmentFrame(frame, returnRun, bandDepth),
+      pointOnAttachmentFrame(frame, returnWingWidth, bandDepth),
+      pointOnAttachmentFrame(frame, returnWingWidth, bandDepth + returnRun),
       pointOnAttachmentFrame(frame, 0, bandDepth + returnRun),
     ];
   }
@@ -1765,7 +1885,8 @@ function buildHouseFootprintPolygon(
       pointOnAttachmentFrame(frame, 0, 0),
       pointOnAttachmentFrame(frame, edgeLength, 0),
       pointOnAttachmentFrame(frame, edgeLength, bandDepth + returnRun),
-      pointOnAttachmentFrame(frame, edgeLength - returnRun, bandDepth),
+      pointOnAttachmentFrame(frame, edgeLength - returnWingWidth, bandDepth + returnRun),
+      pointOnAttachmentFrame(frame, edgeLength - returnWingWidth, bandDepth),
       pointOnAttachmentFrame(frame, 0, bandDepth),
     ];
   }
@@ -1775,11 +1896,11 @@ function buildHouseFootprintPolygon(
       pointOnAttachmentFrame(frame, 0, 0),
       pointOnAttachmentFrame(frame, edgeLength, 0),
       pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-      pointOnAttachmentFrame(frame, midEnd, bandDepth),
-      pointOnAttachmentFrame(frame, midEnd, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, midStart, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, midStart, bandDepth),
-      pointOnAttachmentFrame(frame, 0, bandDepth + defaults.returnRun * 0.55),
+      pointOnAttachmentFrame(frame, recessRange.end, bandDepth),
+      pointOnAttachmentFrame(frame, recessRange.end, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, recessRange.start, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, recessRange.start, bandDepth),
+      pointOnAttachmentFrame(frame, 0, bandDepth),
     ];
   }
 
@@ -1787,11 +1908,11 @@ function buildHouseFootprintPolygon(
     return [
       pointOnAttachmentFrame(frame, 0, 0),
       pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth + defaults.returnRun * 0.55),
-      pointOnAttachmentFrame(frame, midEnd, bandDepth),
-      pointOnAttachmentFrame(frame, midEnd, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, midStart, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, midStart, bandDepth),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
+      pointOnAttachmentFrame(frame, recessRange.end, bandDepth),
+      pointOnAttachmentFrame(frame, recessRange.end, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, recessRange.start, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, recessRange.start, bandDepth),
       pointOnAttachmentFrame(frame, 0, bandDepth),
     ];
   }
@@ -1801,8 +1922,10 @@ function buildHouseFootprintPolygon(
       pointOnAttachmentFrame(frame, 0, 0),
       pointOnAttachmentFrame(frame, edgeLength, 0),
       pointOnAttachmentFrame(frame, edgeLength, bandDepth + rightRun),
-      pointOnAttachmentFrame(frame, Math.max(edgeLength - rightRun, edgeLength * 0.72), bandDepth),
-      pointOnAttachmentFrame(frame, Math.min(leftRun, edgeLength * 0.28), bandDepth),
+      pointOnAttachmentFrame(frame, edgeLength - uLegWidth, bandDepth + rightRun),
+      pointOnAttachmentFrame(frame, edgeLength - uLegWidth, bandDepth),
+      pointOnAttachmentFrame(frame, uLegWidth, bandDepth),
+      pointOnAttachmentFrame(frame, uLegWidth, bandDepth + leftRun),
       pointOnAttachmentFrame(frame, 0, bandDepth + leftRun),
     ];
   }
@@ -1812,8 +1935,8 @@ function buildHouseFootprintPolygon(
       pointOnAttachmentFrame(frame, 0, 0),
       pointOnAttachmentFrame(frame, edgeLength, 0),
       pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-      pointOnAttachmentFrame(frame, sideRun, bandDepth),
-      pointOnAttachmentFrame(frame, sideRun, bandDepth + sideRun),
+      pointOnAttachmentFrame(frame, wrapWingWidth, bandDepth),
+      pointOnAttachmentFrame(frame, wrapWingWidth, bandDepth + sideRun),
       pointOnAttachmentFrame(frame, 0, bandDepth + sideRun),
     ];
   }
@@ -1823,8 +1946,8 @@ function buildHouseFootprintPolygon(
       pointOnAttachmentFrame(frame, 0, 0),
       pointOnAttachmentFrame(frame, edgeLength, 0),
       pointOnAttachmentFrame(frame, edgeLength, bandDepth + sideRun),
-      pointOnAttachmentFrame(frame, edgeLength - sideRun, bandDepth + sideRun),
-      pointOnAttachmentFrame(frame, edgeLength - sideRun, bandDepth),
+      pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth, bandDepth + sideRun),
+      pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth, bandDepth),
       pointOnAttachmentFrame(frame, 0, bandDepth),
     ];
   }
@@ -2993,6 +3116,15 @@ function PlanSvg({
   const highlightedHandle = handleSpecs.find(
     (handle) => handle.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId),
   );
+  const activeEdgeTagPoint = rotatePointQuarterTurns(
+    pointOnAttachmentFrame(footprintFrame, footprintFrame.length / 2, -1.9),
+    rotationFrame.center,
+    rotationFrame.turns,
+  );
+  const activeEdgeTagLabel = isEditingFootprint ? 'Attached edge' : null;
+  const activeEdgeTagWidth = activeEdgeTagLabel ? Math.max(13.5, activeEdgeTagLabel.length * 0.54 + 2.2) : 0;
+  const activeEdgeTagX = activeEdgeTagLabel ? clamp(activeEdgeTagPoint.x - activeEdgeTagWidth / 2, 1.5, 118 - activeEdgeTagWidth) : 0;
+  const activeEdgeTagY = activeEdgeTagLabel ? clamp(activeEdgeTagPoint.y, 4.8, 84) : 0;
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.attachmentEdgeLengthM, 0, footprintFrame.length);
   const soffitGuideStart =
     soffitXs.length > 0 ? pointOnAttachmentFrame(footprintFrame, soffitXs[0]!, -1.2) : pointOnAttachmentFrame(footprintFrame, 0, -1.2);
@@ -3096,7 +3228,7 @@ function PlanSvg({
 
       <g transform={planRotationTransform}>
         {showHouseFootprint ? <polygon points={toPointsAttr(housePolygon)} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} /> : null}
-        {showHouseFootprint ? (
+        {showHouseFootprint && !isEditingFootprint ? (
           <text x={houseLabel.x} y={houseLabel.y} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
             House side
           </text>
@@ -3304,25 +3436,25 @@ function PlanSvg({
               const isHoveredEdge = side === footprintEditor?.hoveredAttachmentSide;
               return (
                 <g key={`footprint-edge-${side}`}>
+                  {isActiveEdge || isHoveredEdge ? (
+                    <line
+                      x1={edgeFrame.start.x}
+                      y1={edgeFrame.start.y}
+                      x2={edgeFrame.end.x}
+                      y2={edgeFrame.end.y}
+                      className={
+                        isActiveEdge
+                          ? `${styles.moduleFootprintEdge} ${styles.moduleFootprintEdgeActive}`
+                          : `${styles.moduleFootprintEdge} ${styles.moduleFootprintEdgeHover}`
+                      }
+                    />
+                  ) : null}
                   <line
                     x1={edgeFrame.start.x}
                     y1={edgeFrame.start.y}
                     x2={edgeFrame.end.x}
                     y2={edgeFrame.end.y}
                     data-footprint-edge={side}
-                    className={
-                      isActiveEdge
-                        ? `${styles.moduleFootprintEdge} ${styles.moduleFootprintEdgeActive}`
-                        : isHoveredEdge
-                          ? `${styles.moduleFootprintEdge} ${styles.moduleFootprintEdgeHover}`
-                          : styles.moduleFootprintEdge
-                    }
-                  />
-                  <line
-                    x1={edgeFrame.start.x}
-                    y1={edgeFrame.start.y}
-                    x2={edgeFrame.end.x}
-                    y2={edgeFrame.end.y}
                     className={styles.moduleFootprintEdgeHit}
                     onPointerEnter={() => footprintEditor?.onAttachmentSideHover(side)}
                     onPointerLeave={() => footprintEditor?.onAttachmentSideHover(null)}
@@ -3339,10 +3471,17 @@ function PlanSvg({
               const isHoveredHandle = handle.id === footprintEditor?.hoveredHandleId;
               return (
                 <g key={`footprint-handle-${handle.id}`}>
+                  <line
+                    x1={handle.guideFrom.x}
+                    y1={handle.guideFrom.y}
+                    x2={handle.guideTo.x}
+                    y2={handle.guideTo.y}
+                    className={isActiveHandle ? `${styles.moduleFootprintGuide} ${styles.moduleFootprintGuideActive}` : styles.moduleFootprintGuide}
+                  />
                   <circle
                     cx={handle.point.x}
                     cy={handle.point.y}
-                    r={isActiveHandle ? 1.45 : 1.2}
+                    r={isActiveHandle ? 1.18 : 1.02}
                     data-footprint-handle={handle.id}
                     className={
                       isActiveHandle
@@ -3355,7 +3494,7 @@ function PlanSvg({
                   <circle
                     cx={handle.point.x}
                     cy={handle.point.y}
-                    r={3.2}
+                    r={2.8}
                     className={styles.moduleFootprintHandleHit}
                     onPointerEnter={() => footprintEditor?.onHandleHover(handle.id)}
                     onPointerLeave={() => footprintEditor?.onHandleHover(null)}
@@ -3384,6 +3523,15 @@ function PlanSvg({
             })
           : null}
       </g>
+
+      {activeEdgeTagLabel ? (
+        <g className={styles.moduleFootprintEdgeBadge} aria-hidden="true">
+          <rect x={activeEdgeTagX} y={activeEdgeTagY - 1.65} width={activeEdgeTagWidth} height={3} rx={1.5} className={styles.moduleFootprintEdgeBadgeRect} />
+          <text x={activeEdgeTagX + activeEdgeTagWidth / 2} y={activeEdgeTagY} textAnchor="middle" className={styles.moduleFootprintEdgeBadgeText}>
+            {activeEdgeTagLabel}
+          </text>
+        </g>
+      ) : null}
 
       {isEditingFootprint && highlightedHandle && highlightedHandleLabel ? (
         <g className={styles.moduleFootprintValueBadge} aria-hidden="true">
