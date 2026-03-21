@@ -1625,9 +1625,24 @@ type FootprintHandleSpec = {
   maxValueM: number;
 };
 
+type FootprintResizeEdgeSpec = {
+  id: HouseFootprintHandleId;
+  label: string;
+  valueM: number;
+  start: Point;
+  end: Point;
+  pointRoot: Point;
+  axisX: number;
+  axisY: number;
+  deltaMultiplier: number;
+  minValueM: number;
+  maxValueM: number;
+};
+
 type FootprintCanvasLayout = {
   polygon: Point[];
   handles: FootprintHandleSpec[];
+  resizeEdges: FootprintResizeEdgeSpec[];
   sideTurns: number;
 };
 
@@ -1730,10 +1745,38 @@ function resolveFootprintCanvasLayout(input: {
       axisY: rotateVectorQuarterTurns({ x: handle.axisX, y: handle.axisY }, totalTurns).y,
     };
   });
+  const resizeEdges = localLayout.edges.map((edge): FootprintResizeEdgeSpec => {
+    const start = mapLocalFootprintPointToPlan({
+      point: edge.start,
+      rect,
+      canonicalWidthM: dims.widthM,
+      canonicalDepthM: dims.depthM,
+      scale,
+      sideTurns,
+    });
+    const end = mapLocalFootprintPointToPlan({
+      point: edge.end,
+      rect,
+      canonicalWidthM: dims.widthM,
+      canonicalDepthM: dims.depthM,
+      scale,
+      sideTurns,
+    });
+    const midPoint = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+    return {
+      ...edge,
+      start,
+      end,
+      pointRoot: rotatePointQuarterTurns(midPoint, rotationCenter, rotationTurns),
+      axisX: rotateVectorQuarterTurns({ x: edge.axisX, y: edge.axisY }, totalTurns).x,
+      axisY: rotateVectorQuarterTurns({ x: edge.axisX, y: edge.axisY }, totalTurns).y,
+    };
+  });
 
   return {
     polygon,
     handles,
+    resizeEdges,
     sideTurns,
   };
 }
@@ -2928,9 +2971,11 @@ function PlanSvg({
       }))
     : [];
   const handleSpecs = footprintCanvasLayout?.handles ?? [];
-  const highlightedHandle = handleSpecs.find(
-    (handle) => handle.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId),
-  );
+  const resizeEdgeSpecs = footprintCanvasLayout?.resizeEdges ?? [];
+  const highlightedValueSpec =
+    editorSurface === 'sheet'
+      ? resizeEdgeSpecs.find((edge) => edge.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId))
+      : handleSpecs.find((handle) => handle.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId));
   const activeEdgeTagPoint = rotatePointQuarterTurns(
     pointOnAttachmentFrame(footprintFrame, footprintFrame.length / 2, -1.9),
     rotationFrame.center,
@@ -2985,25 +3030,25 @@ function PlanSvg({
   const overhangY = isHipCorner ? bottomY - overhangDepth : y + aH - overhangDepth;
   const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - sideFrameW * 2);
   const overhangX = x + sideFrameW;
-  const highlightedHandleLabel = highlightedHandle ? `${highlightedHandle.label}: ${formatMetres(highlightedHandle.valueM)}` : null;
+  const highlightedHandleLabel = highlightedValueSpec ? `${highlightedValueSpec.label}: ${formatMetres(highlightedValueSpec.valueM)}` : null;
   const highlightedHandleLabelWidth = highlightedHandleLabel ? Math.max(16, highlightedHandleLabel.length * 0.56 + 2.8) : 0;
   const highlightedHandleLabelX =
-    highlightedHandle && highlightedHandleLabel
-      ? clamp(highlightedHandle.pointRoot.x + 2.8, 1.4, 118 - highlightedHandleLabelWidth)
+    highlightedValueSpec && highlightedHandleLabel
+      ? clamp(highlightedValueSpec.pointRoot.x + 2.8, 1.4, 118 - highlightedHandleLabelWidth)
       : 0;
-  const highlightedHandleLabelY = highlightedHandle ? clamp(highlightedHandle.pointRoot.y - 4.8, 4.5, 84) : 0;
+  const highlightedHandleLabelY = highlightedValueSpec ? clamp(highlightedValueSpec.pointRoot.y - 4.8, 4.5, 84) : 0;
   const rotatedPrimaryPoints =
     rotationFrame.turns === 0 ? primaryPoints : rotatePointsQuarterTurns(primaryPoints, rotationFrame.center, rotationFrame.turns);
   const rotatedPrimaryBounds = boundsFromPoints(rotatedPrimaryPoints);
   const rotatedHousePoints =
     rotationFrame.turns === 0 ? housePolygon : rotatePointsQuarterTurns(housePolygon, rotationFrame.center, rotationFrame.turns);
   const rotatedHouseBounds = showHouseFootprint ? boundsFromPoints(rotatedHousePoints) : null;
-  const showHousePopover = isSheetFootprintEditor && (Boolean(footprintEditor?.isContextHovered) || isEditingFootprint);
-  const showFootprintControls = canEditFootprint && (editorSurface === 'sheet' ? showHousePopover : isEditingFootprint);
+  const showHousePopover = isSheetFootprintEditor && Boolean(footprintEditor?.isContextHovered);
+  const showFootprintControls = canEditFootprint && (editorSurface === 'sheet' ? Boolean(footprintEditor?.isEditing) : isEditingFootprint);
   const showPergolaPopover = isSheet && Boolean(sheetPlanInteraction?.isPergolaPopoverOpen) && !showHousePopover;
   const showHouseHoverTarget = isSheetFootprintEditor && showHouseFootprint;
   const showPergolaHoverTarget = isSheet && Boolean(sheetPlanInteraction?.onPergolaHoverChange) && !isHipCorner;
-  const showHouseHoverState = isSheetFootprintEditor && showHousePopover;
+  const showHouseHoverState = isSheetFootprintEditor && (Boolean(footprintEditor?.isEditing) || showHousePopover);
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
@@ -3353,11 +3398,15 @@ function PlanSvg({
                     data-footprint-edge={side}
                     className={styles.moduleFootprintEdgeHit}
                     onPointerEnter={() => {
-                      footprintEditor?.onContextHoverChange?.(true);
+                      if (editorSurface === 'card') {
+                        footprintEditor?.onContextHoverChange?.(true);
+                      }
                       footprintEditor?.onAttachmentSideHover(side);
                     }}
                     onPointerLeave={() => {
-                      footprintEditor?.onContextHoverChange?.(false);
+                      if (editorSurface === 'card') {
+                        footprintEditor?.onContextHoverChange?.(false);
+                      }
                       footprintEditor?.onAttachmentSideHover(null);
                     }}
                     onClick={() => footprintEditor?.onAttachmentSideSelect(side)}
@@ -3367,7 +3416,62 @@ function PlanSvg({
             })
           : null}
 
-        {showFootprintControls
+        {editorSurface === 'sheet' && canEditFootprint
+          ? resizeEdgeSpecs.map((edge) => {
+              const isActiveEdge = edge.id === footprintEditor?.activeHandleId;
+              const isHoveredEdge = edge.id === footprintEditor?.hoveredHandleId;
+              return (
+                <g key={`footprint-resize-edge-${edge.id}`}>
+                  {isActiveEdge || isHoveredEdge ? (
+                    <line
+                      x1={edge.start.x}
+                      y1={edge.start.y}
+                      x2={edge.end.x}
+                      y2={edge.end.y}
+                      data-footprint-resize-edge={edge.id}
+                      className={
+                        isActiveEdge
+                          ? `${styles.moduleFootprintResizeEdge} ${styles.moduleFootprintResizeEdgeActive}`
+                          : `${styles.moduleFootprintResizeEdge} ${styles.moduleFootprintResizeEdgeHover}`
+                      }
+                    />
+                  ) : null}
+                  <line
+                    x1={edge.start.x}
+                    y1={edge.start.y}
+                    x2={edge.end.x}
+                    y2={edge.end.y}
+                    data-footprint-resize-edge-hit={edge.id}
+                    className={styles.moduleFootprintResizeEdgeHit}
+                    onPointerEnter={() => footprintEditor?.onHandleHover(edge.id)}
+                    onPointerLeave={() => footprintEditor?.onHandleHover(null)}
+                    onPointerDown={(event: ReactPointerEvent<SVGLineElement>) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      footprintEditor?.onHandleDragStart(
+                        {
+                          handleId: edge.id,
+                          axisX: edge.axisX,
+                          axisY: edge.axisY,
+                          scale,
+                          deltaMultiplier: edge.deltaMultiplier,
+                          minValueM: edge.minValueM,
+                          maxValueM: edge.maxValueM,
+                        },
+                        {
+                          pointerId: event.pointerId,
+                          clientX: event.clientX,
+                          clientY: event.clientY,
+                        },
+                      );
+                    }}
+                  />
+                </g>
+              );
+            })
+          : null}
+
+        {editorSurface === 'card' && showFootprintControls
           ? handleSpecs.map((handle) => {
               const isActiveHandle = handle.id === footprintEditor?.activeHandleId;
               const isHoveredHandle = handle.id === footprintEditor?.hoveredHandleId;
@@ -3464,7 +3568,7 @@ function PlanSvg({
         </>
       ) : null}
 
-      {showFootprintControls && highlightedHandle && highlightedHandleLabel ? (
+      {showFootprintControls && highlightedValueSpec && highlightedHandleLabel ? (
         <g className={styles.moduleFootprintValueBadge} aria-hidden="true">
           <rect
             x={highlightedHandleLabelX}

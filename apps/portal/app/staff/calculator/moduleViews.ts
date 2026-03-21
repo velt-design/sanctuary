@@ -124,9 +124,23 @@ export type HouseFootprintHandleLayout = {
   maxValueM: number;
 };
 
+export type HouseFootprintEdgeLayout = {
+  id: HouseFootprintHandleId;
+  label: string;
+  valueM: number;
+  start: HouseFootprintPoint;
+  end: HouseFootprintPoint;
+  axisX: number;
+  axisY: number;
+  deltaMultiplier: number;
+  minValueM: number;
+  maxValueM: number;
+};
+
 export type HouseFootprintLocalLayout = {
   polygon: HouseFootprintPoint[];
   handles: HouseFootprintHandleLayout[];
+  edges: HouseFootprintEdgeLayout[];
   resolved: HouseFootprintResolvedParams;
 };
 
@@ -211,6 +225,7 @@ export function buildHouseFootprintLocalLayout(input: {
   const sideRun = resolved.sideRunM;
   const totalRecessDepth = bandDepth + recessDepth;
   const handles: HouseFootprintHandleLayout[] = [];
+  const edges: HouseFootprintEdgeLayout[] = [];
 
   const addHandle = (
     id: HouseFootprintHandleId,
@@ -232,6 +247,32 @@ export function buildHouseFootprintLocalLayout(input: {
       point: handlePoint,
       guideFrom,
       guideTo,
+      axisX,
+      axisY,
+      deltaMultiplier,
+      minValueM,
+      maxValueM,
+    });
+  };
+
+  const addEdge = (
+    id: HouseFootprintHandleId,
+    label: string,
+    valueM: number,
+    start: HouseFootprintPoint,
+    end: HouseFootprintPoint,
+    axisX: number,
+    axisY: number,
+    minValueM: number,
+    maxValueM: number,
+    deltaMultiplier = 1,
+  ) => {
+    edges.push({
+      id,
+      label,
+      valueM,
+      start,
+      end,
       axisX,
       axisY,
       deltaMultiplier,
@@ -281,6 +322,29 @@ export function buildHouseFootprintLocalLayout(input: {
       0.3,
       bandDepth,
     );
+    addEdge('bandDepth', 'Band depth', bandDepth, point(0, -totalRecessDepth), point(width, -totalRecessDepth), 0, -1, 0.5, 12);
+    addEdge(
+      'recessWidth',
+      'Recess width',
+      recessWidth,
+      point(input.preset === 'recess_left' ? notchEnd : notchStart, 0),
+      point(input.preset === 'recess_left' ? notchEnd : notchStart, -recessDepth),
+      input.preset === 'recess_left' ? 1 : -1,
+      0,
+      0.5,
+      Math.max(0.5, width - 0.5),
+    );
+    addEdge(
+      'recessDepth',
+      'Recess depth',
+      recessDepth,
+      input.preset === 'recess_left' ? point(0, -recessDepth) : point(width - recessWidth, -recessDepth),
+      input.preset === 'recess_left' ? point(recessWidth, -recessDepth) : point(width, -recessDepth),
+      0,
+      -1,
+      0.3,
+      bandDepth,
+    );
 
     if (input.preset === 'recess_left') {
       return {
@@ -293,6 +357,7 @@ export function buildHouseFootprintLocalLayout(input: {
           point(0, -recessDepth),
         ],
         handles,
+        edges,
         resolved,
       };
     }
@@ -307,6 +372,7 @@ export function buildHouseFootprintLocalLayout(input: {
         point(0, 0),
       ],
       handles,
+      edges,
       resolved,
     };
   }
@@ -323,11 +389,13 @@ export function buildHouseFootprintLocalLayout(input: {
     0.5,
     12,
   );
+  addEdge('bandDepth', 'Band depth', bandDepth, point(0, -bandDepth), point(width, -bandDepth), 0, -1, 0.5, 12);
 
   if (input.preset === 'straight') {
     return {
       polygon: [point(0, -bandDepth), point(width, -bandDepth), point(width, 0), point(0, 0)],
       handles,
+      edges,
       resolved,
     };
   }
@@ -345,6 +413,7 @@ export function buildHouseFootprintLocalLayout(input: {
       0.5,
       depth,
     );
+    addEdge('returnRun', 'Return run', returnRun, point(-bandDepth, returnRun), point(-bandDepth, -bandDepth), 0, 1, 0.5, depth);
     return {
       polygon: [
         point(-bandDepth, -bandDepth),
@@ -355,6 +424,7 @@ export function buildHouseFootprintLocalLayout(input: {
         point(-bandDepth, returnRun),
       ],
       handles,
+      edges,
       resolved,
     };
   }
@@ -372,6 +442,7 @@ export function buildHouseFootprintLocalLayout(input: {
       0.5,
       depth,
     );
+    addEdge('returnRun', 'Return run', returnRun, point(width + bandDepth, -bandDepth), point(width + bandDepth, returnRun), 0, 1, 0.5, depth);
     return {
       polygon: [
         point(0, -bandDepth),
@@ -382,6 +453,7 @@ export function buildHouseFootprintLocalLayout(input: {
         point(0, 0),
       ],
       handles,
+      edges,
       resolved,
     };
   }
@@ -411,6 +483,8 @@ export function buildHouseFootprintLocalLayout(input: {
       0.5,
       depth,
     );
+    addEdge('leftLegRun', 'Left leg run', leftLegRun, point(-bandDepth, leftLegRun), point(-bandDepth, -bandDepth), 0, 1, 0.5, depth);
+    addEdge('rightLegRun', 'Right leg run', rightLegRun, point(width + bandDepth, -bandDepth), point(width + bandDepth, rightLegRun), 0, 1, 0.5, depth);
     return {
       polygon: [
         point(-bandDepth, -bandDepth),
@@ -423,6 +497,7 @@ export function buildHouseFootprintLocalLayout(input: {
         point(-bandDepth, leftLegRun),
       ],
       handles,
+      edges,
       resolved,
     };
   }
@@ -440,6 +515,7 @@ export function buildHouseFootprintLocalLayout(input: {
       0.5,
       width,
     );
+    addEdge('sideRun', 'Side run', sideRun, point(sideRun, depth), point(sideRun, depth + bandDepth), 1, 0, 0.5, width);
     return {
       polygon: [
         point(-bandDepth, -bandDepth),
@@ -452,6 +528,7 @@ export function buildHouseFootprintLocalLayout(input: {
         point(-bandDepth, depth + bandDepth),
       ],
       handles,
+      edges,
       resolved,
     };
   }
@@ -469,6 +546,7 @@ export function buildHouseFootprintLocalLayout(input: {
       0.5,
       width,
     );
+    addEdge('sideRun', 'Side run', sideRun, point(width - sideRun, depth + bandDepth), point(width - sideRun, depth), -1, 0, 0.5, width);
     return {
       polygon: [
         point(0, -bandDepth),
@@ -481,6 +559,7 @@ export function buildHouseFootprintLocalLayout(input: {
         point(0, 0),
       ],
       handles,
+      edges,
       resolved,
     };
   }
@@ -488,6 +567,7 @@ export function buildHouseFootprintLocalLayout(input: {
   return {
     polygon: [point(0, -bandDepth), point(width, -bandDepth), point(width, 0), point(0, 0)],
     handles,
+    edges,
     resolved,
   };
 }

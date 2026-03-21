@@ -345,7 +345,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-footprint-handle="rightLegRun"');
   });
 
-  it('renders the sheet house preset popover and direct handles on hover', () => {
+  it('renders the sheet house preset popover without point handles on fill hover', () => {
     const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
     const markup = renderToStaticMarkup(
       <ModuleDrawingRenderer
@@ -360,9 +360,29 @@ describe('ModuleViewsCard', () => {
 
     expect(markup).toContain('data-sheet-plan-popover="house"');
     expect(markup).toContain('House type');
-    expect(markup).toContain('data-footprint-handle="bandDepth"');
+    expect(markup).toContain('data-footprint-resize-edge-hit="bandDepth"');
     expect(markup).toContain('data-sheet-hover-target="house"');
+    expect(markup).not.toContain('data-footprint-handle=');
     expect(markup).not.toContain('Edit house context');
+  });
+
+  it('shows a bold draggable resize edge on sheet edge hover without reopening the house popup', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+        footprintEditor={makeFootprintEditor({ surface: 'sheet', isEditing: true, hoveredHandleId: 'recessDepth' })}
+      />,
+    );
+
+    expect(markup).toContain('data-footprint-resize-edge="recessDepth"');
+    expect(markup).toContain('data-footprint-resize-edge-hit="recessDepth"');
+    expect(markup).not.toContain('data-sheet-plan-popover="house"');
+    expect(markup).not.toContain('data-footprint-handle=');
   });
 
   it('renders the sheet pergola rotate popover separately from the house popover', () => {

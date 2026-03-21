@@ -2627,6 +2627,35 @@
   pointer-events: stroke;
 }
 
+.moduleFootprintResizeEdge {
+  stroke: rgba(47, 56, 47, 0.9);
+  stroke-width: 0.92;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleFootprintResizeEdgeHover {
+  stroke: rgba(47, 56, 47, 0.86);
+  stroke-width: 1.08;
+}
+
+.moduleFootprintResizeEdgeActive {
+  stroke: rgba(47, 56, 47, 0.98);
+  stroke-width: 1.24;
+}
+
+.moduleFootprintResizeEdgeHit {
+  stroke: transparent;
+  stroke-width: 7.5;
+  cursor: grab;
+  pointer-events: stroke;
+}
+
+.moduleFootprintResizeEdgeHit:active {
+  cursor: grabbing;
+}
+
 .moduleFootprintEdgeBadgeRect {
   fill: rgba(255, 255, 255, 0.96);
   stroke: var(--mv-chip-border);
