@@ -120,6 +120,28 @@ function makeFootprintEditor(overrides: Partial<{
   };
 }
 
+function extractDebugRect(markup: string, marker: string): { minX: number; maxX: number; minY: number; maxY: number } {
+  const markerIndex = markup.indexOf(`data-debug-crop="${marker}"`);
+  expect(markerIndex).toBeGreaterThanOrEqual(0);
+  const slice = markup.slice(markerIndex, markup.indexOf('</g>', markerIndex));
+  const lineMatches = [...slice.matchAll(/<line[^>]*x1="([^"]+)"[^>]*y1="([^"]+)"[^>]*x2="([^"]+)"[^>]*y2="([^"]+)"/g)];
+  expect(lineMatches.length).toBeGreaterThan(0);
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (const match of lineMatches) {
+    xs.push(Number.parseFloat(match[1] ?? '0'));
+    xs.push(Number.parseFloat(match[3] ?? '0'));
+    ys.push(Number.parseFloat(match[2] ?? '0'));
+    ys.push(Number.parseFloat(match[4] ?? '0'));
+  }
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minY: Math.min(...ys),
+    maxY: Math.max(...ys),
+  };
+}
+
 describe('ModuleViewsCard', () => {
   it('renders the extracted plan renderer inside the calculator card chrome', () => {
     const drawing = makeDrawingModule();
@@ -177,6 +199,46 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-debug-crop="outer-section"');
     expect(markup).toContain('data-debug-crop="fit-section"');
     expect(markup).toContain('data-debug-crop="bounds-section"');
+  });
+
+  it('centers plan sheet geometry vertically within the viewport', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    const outer = extractDebugRect(markup, 'outer-plan');
+    const bounds = extractDebugRect(markup, 'bounds-plan');
+    const topSlack = bounds.minY - outer.minY;
+    const bottomSlack = outer.maxY - bounds.maxY;
+
+    expect(Math.abs(topSlack - bottomSlack)).toBeLessThanOrEqual(0.75);
+  });
+
+  it('centers section sheet geometry vertically within the viewport', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    const outer = extractDebugRect(markup, 'outer-section');
+    const bounds = extractDebugRect(markup, 'bounds-section');
+    const topSlack = bounds.minY - outer.minY;
+    const bottomSlack = outer.maxY - bounds.maxY;
+
+    expect(Math.abs(topSlack - bottomSlack)).toBeLessThanOrEqual(0.75);
   });
 
   it('hides the house footprint entirely for freestanding modules', () => {

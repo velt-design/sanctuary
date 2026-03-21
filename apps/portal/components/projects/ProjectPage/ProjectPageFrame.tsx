@@ -19,9 +19,17 @@ export default function ProjectPageFrame({
   snapshot: ProjectPageSnapshot;
   tab: string;
 }) {
-  const { containerRef, createHandlePointerDownHandler, displayMode, isDesktopLayout, isResizing, restoreLastOpenMode } =
-    useProjectHeaderLayout();
-  const stageLabel = PIPELINE_STAGE_LABELS[snapshot.pipeline.stage] ?? String(snapshot.pipeline.stage);
+  const {
+    containerRef,
+    createHandleClickHandler,
+    createHandleKeyDownHandler,
+    createHandlePointerDownHandler,
+    displayMode,
+    isDesktopLayout,
+    isResizing,
+  } = useProjectHeaderLayout();
+  const isCollapsed = displayMode === 'collapsed';
+  const handleClassName = cx(styles.mastheadResizeHandle, isCollapsed && styles.mastheadResizeHandleCollapsed);
 
   return (
     <div
@@ -30,21 +38,7 @@ export default function ProjectPageFrame({
       data-project-page-frame="true"
       data-project-masthead-mode={displayMode}
     >
-      {displayMode === 'collapsed' ? (
-        <button
-          type="button"
-          className={styles.mastheadCollapsedStrip}
-          aria-expanded="false"
-          data-project-masthead-collapsed="true"
-          onClick={restoreLastOpenMode}
-        >
-          <span className={styles.mastheadCollapsedMain}>
-            <span className={styles.mastheadCollapsedTitle}>{snapshot.project.name}</span>
-            <span className={styles.mastheadStagePill}>{stageLabel}</span>
-          </span>
-          <span className={styles.mastheadCollapsedChevron} aria-hidden="true" />
-        </button>
-      ) : (
+      {displayMode !== 'collapsed' ? (
         <ProjectHeader
           project={snapshot.project}
           currentStage={snapshot.pipeline.stage}
@@ -55,15 +49,29 @@ export default function ProjectPageFrame({
             ) : undefined
           }
         />
-      )}
+      ) : null}
 
       {isDesktopLayout ? (
-        <div
-          className={styles.mastheadResizeHandle}
-          aria-hidden="true"
-          data-project-masthead-handle="true"
-          onPointerDown={createHandlePointerDownHandler()}
-        />
+        isCollapsed ? (
+          <button
+            type="button"
+            className={handleClassName}
+            aria-expanded="false"
+            aria-label="Expand project header"
+            data-project-masthead-collapsed="true"
+            data-project-masthead-handle="true"
+            onClick={createHandleClickHandler()}
+            onKeyDown={createHandleKeyDownHandler()}
+            onPointerDown={createHandlePointerDownHandler()}
+          />
+        ) : (
+          <div
+            className={handleClassName}
+            aria-hidden="true"
+            data-project-masthead-handle="true"
+            onPointerDown={createHandlePointerDownHandler()}
+          />
+        )
       ) : null}
 
       <div className={cx(styles.pageFrameBody, isDesktopLayout && styles.pageFrameBodyDesktop)}>

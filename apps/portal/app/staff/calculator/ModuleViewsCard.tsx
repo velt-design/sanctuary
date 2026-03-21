@@ -788,7 +788,7 @@ function getPlanSheetFrame(isHipCorner: boolean): PlanSheetFrame {
     houseBandOffset: 1.15,
     houseInset: 1.7,
     fallGap: 5.0,
-    verticalBias: 0.02,
+    verticalBias: 0.5,
   };
 }
 
@@ -873,7 +873,7 @@ function getSectionSheetFrame(sectionKind: ModuleSectionModel['sectionKind']): S
   return {
     outerField,
     fitArea: outerField,
-    verticalBias: 0.2,
+    verticalBias: 0.5,
     annotationPadLeft: 0,
     annotationPadRight: 0,
     annotationPadTop: 0,

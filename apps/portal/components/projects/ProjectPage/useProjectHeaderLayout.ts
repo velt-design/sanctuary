@@ -6,6 +6,8 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type KeyboardEventHandler,
+  type MouseEventHandler,
   type PointerEventHandler,
 } from 'react';
 import { isProjectPageDesktopWidth } from './useProjectColumnLayout';
@@ -24,6 +26,7 @@ type ProjectHeaderLayout = {
 
 type ResizeSession = {
   startClientY: number;
+  maxAbsDeltaPx: number;
   startMode: ProjectHeaderMode;
 };
 
@@ -86,6 +89,7 @@ export function useProjectHeaderLayout() {
   const [isResizing, setIsResizing] = useState(false);
   const [previewMode, setPreviewMode] = useState<ProjectHeaderMode | null>(null);
   const resizeSessionRef = useRef<ResizeSession | null>(null);
+  const suppressClickRef = useRef(false);
   const isDesktopLayout = isProjectPageDesktopWidth(containerWidthPx);
 
   useLayoutEffect(() => {
@@ -139,13 +143,16 @@ export function useProjectHeaderLayout() {
     const handlePointerMove = (event: PointerEvent) => {
       const session = resizeSessionRef.current;
       if (!session) return;
-      setPreviewMode(resolveModeFromDelta(session.startMode, event.clientY - session.startClientY));
+      const deltaY = event.clientY - session.startClientY;
+      session.maxAbsDeltaPx = Math.max(session.maxAbsDeltaPx, Math.abs(deltaY));
+      setPreviewMode(resolveModeFromDelta(session.startMode, deltaY));
     };
 
     const stopResize = (commit: boolean) => {
       const session = resizeSessionRef.current;
       resizeSessionRef.current = null;
       setIsResizing(false);
+      suppressClickRef.current = Boolean(session && session.maxAbsDeltaPx > 3);
       setPreviewMode((currentPreviewMode) => {
         if (commit && session) {
           const nextMode = currentPreviewMode ?? session.startMode;
@@ -179,17 +186,55 @@ export function useProjectHeaderLayout() {
   }, []);
 
   const createHandlePointerDownHandler = useCallback(
-    (): PointerEventHandler<HTMLDivElement> =>
+    (): PointerEventHandler<HTMLElement> =>
       (event) => {
         if (!isDesktopLayout) return;
         if (event.button !== 0) return;
         event.preventDefault();
         resizeSessionRef.current = {
           startClientY: event.clientY,
+          maxAbsDeltaPx: 0,
           startMode: layout.mode,
         };
         setPreviewMode(layout.mode);
         setIsResizing(true);
+      },
+    [isDesktopLayout, layout.mode],
+  );
+
+  const createHandleClickHandler = useCallback(
+    (): MouseEventHandler<HTMLElement> =>
+      (event) => {
+        if (!isDesktopLayout || layout.mode !== 'collapsed') return;
+        if (suppressClickRef.current) {
+          suppressClickRef.current = false;
+          return;
+        }
+        event.preventDefault();
+        setLayout((prev) => {
+          const next = {
+            mode: prev.lastOpenMode,
+            lastOpenMode: prev.lastOpenMode,
+          };
+          return sameLayout(prev, next) ? prev : next;
+        });
+      },
+    [isDesktopLayout, layout.mode],
+  );
+
+  const createHandleKeyDownHandler = useCallback(
+    (): KeyboardEventHandler<HTMLElement> =>
+      (event) => {
+        if (!isDesktopLayout || layout.mode !== 'collapsed') return;
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        setLayout((prev) => {
+          const next = {
+            mode: prev.lastOpenMode,
+            lastOpenMode: prev.lastOpenMode,
+          };
+          return sameLayout(prev, next) ? prev : next;
+        });
       },
     [isDesktopLayout, layout.mode],
   );
@@ -205,6 +250,8 @@ export function useProjectHeaderLayout() {
   }, []);
 
   return {
+    createHandleClickHandler,
+    createHandleKeyDownHandler,
     containerRef: setContainerRef,
     createHandlePointerDownHandler,
     displayMode: isDesktopLayout ? previewMode ?? layout.mode : ('expanded' as const),
