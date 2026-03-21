@@ -1,6 +1,6 @@
 'use client';
 
-import type { CostInputsV1, CostOutputV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
+import type { AttachmentSide, CostInputsV1, CostOutputV1, MaterialsExplainV1, RoofType, SiteInputsV1, SiteOutputV1 } from '@sp/costing';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -69,7 +69,13 @@ import InfillCutList from './InfillCutList';
 import ResolveWarningsPanel from './ResolveWarningsPanel';
 import PriceImpactPanel from './PriceImpactPanel';
 import QuoteStatusCard, { type StatusItem } from './QuoteStatusCard';
-import ModuleViewsCard, { type ModuleViewsStatus, type ModuleViewsTab } from './ModuleViewsCard';
+import ModuleViewsCard, {
+  canEditHouseFootprintPlan,
+  type HouseFootprintEditorDragMeta,
+  type HouseFootprintHandleId,
+  type ModuleViewsStatus,
+  type ModuleViewsTab,
+} from './ModuleViewsCard';
 import { buildModulePlanModel, buildModuleSectionModel } from './moduleViews';
 import { useInfillClipboard } from './useInfillClipboard';
 import { useInfillHotkeys } from './useInfillHotkeys';
@@ -169,6 +175,13 @@ type MaterialsExplainApiResponse = {
   materials_explain: MaterialsExplainV1;
 };
 
+type HouseFootprintDragSession = HouseFootprintEditorDragMeta & {
+  pointerId: number;
+  startSvgX: number;
+  startSvgY: number;
+  startParams: CalculatorHouseFootprintParams;
+};
+
 function toNumber(value: string): number {
   const n = Number.parseFloat(value);
   return Number.isFinite(n) ? n : NaN;
@@ -206,6 +219,29 @@ function formatMaybeMoney(n: number | undefined): string {
 function formatMaybeNumber(n: number | undefined, digits = 2): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '—';
   return n.toFixed(digits);
+}
+
+function formatHouseFootprintParamValue(value: number): string {
+  return value.toFixed(1);
+}
+
+function parseHouseFootprintParamValue(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseFloat(value ?? '');
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function snapHouseFootprintValue(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const point = svg.createSVGPoint();
+  point.x = clientX;
+  point.y = clientY;
+  const transformed = point.matrixTransform(ctm.inverse());
+  return { x: transformed.x, y: transformed.y };
 }
 
 function formatSignedMoney(n: number | undefined): string {
@@ -1734,6 +1770,11 @@ export default function CalculatorGridClient({
   const [isGenerating, setIsGenerating] = useState(false);
   const [uiMode, setUiMode] = useState<UiMode>('basic');
   const [moduleViewsTab, setModuleViewsTab] = useState<ModuleViewsTab>('plan');
+  const [isFootprintEditing, setIsFootprintEditing] = useState(false);
+  const [footprintHoveredAttachmentSide, setFootprintHoveredAttachmentSide] = useState<AttachmentSide | null>(null);
+  const [footprintHoveredHandleId, setFootprintHoveredHandleId] = useState<HouseFootprintHandleId | null>(null);
+  const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<HouseFootprintHandleId | null>(null);
+  const [footprintDragSession, setFootprintDragSession] = useState<HouseFootprintDragSession | null>(null);
   const [draftHydrated, setDraftHydrated] = useState(false);
   const [showAllFlashingBands, setShowAllFlashingBands] = useState(false);
   const [previewRightWidthPx, setPreviewRightWidthPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
@@ -1747,6 +1788,7 @@ export default function CalculatorGridClient({
   const previewSplitStorageReadyRef = useRef(false);
   const flashingLengthInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const primaryFlashingManualOverrideRef = useRef<Record<string, boolean>>({});
+  const footprintCanvasSvgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     restoredDraftForKeyRef.current = false;
@@ -2061,7 +2103,11 @@ export default function CalculatorGridClient({
     });
   }, [modulesWithPergola, fallbackPergolaId]);
   const activeModule = modulesWithPergola[activeModuleIndex] ?? modulesWithPergola[0] ?? makeDefaultModule(fallbackPergolaId);
+  const activeAttachmentSide = normalizeAttachmentSide(activeModule.attachmentSide);
+  const activeDrawingRotationQuarterTurns = normalizeDrawingRotationQuarterTurns(activeModule.drawingRotationQuarterTurns);
+  const activeHouseFootprintPreset = normalizeHouseFootprintPreset(activeModule.houseFootprintPreset);
   const activeHouseFootprintParams = normalizeHouseFootprintParams(activeModule.houseFootprintParams);
+  const canEditHouseFootprintByInputs = activeModule.houseConnectionType !== 'none' && supportsHouseFootprints(activeModule.pergolaStyle);
   const activePergolaId =
     typeof activeModule.pergolaId === 'string' && knownPergolaIds.has(activeModule.pergolaId) ? activeModule.pergolaId : fallbackPergolaId;
 
@@ -2359,6 +2405,160 @@ export default function CalculatorGridClient({
       return { ...prev, modules };
     });
   };
+
+  const handleFootprintSvgMount = useCallback((node: SVGSVGElement | null) => {
+    footprintCanvasSvgRef.current = node;
+  }, []);
+
+  const stopFootprintEditing = useCallback(() => {
+    setIsFootprintEditing(false);
+    setFootprintHoveredAttachmentSide(null);
+    setFootprintHoveredHandleId(null);
+    setFootprintActiveHandleId(null);
+    setFootprintDragSession(null);
+  }, []);
+
+  useEffect(() => {
+    stopFootprintEditing();
+  }, [activeModuleIndex, stopFootprintEditing]);
+
+  const startFootprintEditing = useCallback(() => {
+    if (!canEditHouseFootprintByInputs || moduleViewsTab !== 'plan') return;
+    setIsFootprintEditing(true);
+  }, [canEditHouseFootprintByInputs, moduleViewsTab]);
+
+  const handleFootprintPresetSelect = useCallback(
+    (preset: CalculatorModuleInputs['houseFootprintPreset']) => {
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      setModuleField('houseFootprintPreset', normalizeHouseFootprintPreset(preset) as CalculatorModuleInputs['houseFootprintPreset']);
+    },
+    [setModuleField],
+  );
+
+  const handleFootprintRotate = useCallback(
+    (delta: -1 | 1) => {
+      const nextTurns = normalizeDrawingRotationQuarterTurns(activeDrawingRotationQuarterTurns + delta);
+      setFootprintHoveredAttachmentSide(null);
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      setModuleField('drawingRotationQuarterTurns', nextTurns as CalculatorModuleInputs['drawingRotationQuarterTurns']);
+    },
+    [activeDrawingRotationQuarterTurns, setModuleField],
+  );
+
+  const handleFootprintAttachmentSideSelect = useCallback(
+    (side: AttachmentSide) => {
+      setFootprintHoveredAttachmentSide(side);
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      setModuleField('attachmentSide', side as CalculatorModuleInputs['attachmentSide']);
+    },
+    [setModuleField],
+  );
+
+  const handleFootprintDragStart = useCallback(
+    (meta: HouseFootprintEditorDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!canEditHouseFootprintByInputs || !isFootprintEditing) return;
+      const svg = footprintCanvasSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+      setFootprintActiveHandleId(meta.handleId);
+      setFootprintHoveredHandleId(meta.handleId);
+      setFootprintDragSession({
+        ...meta,
+        pointerId: event.pointerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startParams: normalizeHouseFootprintParams(activeModule.houseFootprintParams),
+      });
+    },
+    [activeModule.houseFootprintParams, canEditHouseFootprintByInputs, isFootprintEditing],
+  );
+
+  useEffect(() => {
+    if (!footprintDragSession) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== footprintDragSession.pointerId) return;
+      const svg = footprintCanvasSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+
+      const deltaSvgX = nextPoint.x - footprintDragSession.startSvgX;
+      const deltaSvgY = nextPoint.y - footprintDragSession.startSvgY;
+      const deltaUnits = deltaSvgX * footprintDragSession.axisX + deltaSvgY * footprintDragSession.axisY;
+      const deltaM = (deltaUnits / Math.max(footprintDragSession.scale, 0.001)) * footprintDragSession.deltaMultiplier;
+      const edgeLengthM = Math.max(0.5, footprintDragSession.attachmentEdgeLengthM);
+      const startBandDepthM = parseHouseFootprintParamValue(footprintDragSession.startParams.bandDepthM, 1.8);
+      const startParams = footprintDragSession.startParams;
+
+      let nextKey: keyof CalculatorHouseFootprintParams = 'bandDepthM';
+      let nextValue = parseHouseFootprintParamValue(startParams.bandDepthM, 1.8) + deltaM;
+
+      switch (footprintDragSession.handleId) {
+        case 'returnRun':
+          nextKey = 'returnRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.returnRunM, 2.4) + deltaM;
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          break;
+        case 'recessWidth':
+          nextKey = 'recessWidthM';
+          nextValue = parseHouseFootprintParamValue(startParams.recessWidthM, 2.4) + deltaM;
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), Math.max(0.5, edgeLengthM - 0.5)));
+          break;
+        case 'recessDepth':
+          nextKey = 'recessDepthM';
+          nextValue = parseHouseFootprintParamValue(startParams.recessDepthM, 1.2) + deltaM;
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.3), Math.max(0.3, startBandDepthM)));
+          break;
+        case 'leftLegRun':
+          nextKey = 'leftLegRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.leftLegRunM, 2.4) + deltaM;
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          break;
+        case 'rightLegRun':
+          nextKey = 'rightLegRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.rightLegRunM, 2.4) + deltaM;
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          break;
+        case 'sideRun':
+          nextKey = 'sideRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.sideRunM, 2.4) + deltaM;
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          break;
+        case 'bandDepth':
+        default:
+          nextKey = 'bandDepthM';
+          nextValue = parseHouseFootprintParamValue(startParams.bandDepthM, 1.8) + deltaM;
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), 12));
+          break;
+      }
+
+      setHouseFootprintParam(nextKey, formatHouseFootprintParamValue(nextValue));
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== footprintDragSession.pointerId) return;
+      setFootprintDragSession(null);
+      setFootprintActiveHandleId(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [footprintDragSession, setHouseFootprintParam]);
 
   const flashingsState = normalizeFlashingsStateForUi(activeModule.flashings, activeModule);
   const primaryFlashingRow =
@@ -3118,6 +3318,7 @@ export default function CalculatorGridClient({
   const activeModuleLabel = `${activeModulePergolaLabel} - Module ${(activeModuleRoute?.localModuleIndex ?? 0) + 1}`;
   const modulePlanModel = useMemo(() => buildModulePlanModel(activeModule, moduleResult), [activeModule, moduleResult]);
   const moduleSectionModel = useMemo(() => buildModuleSectionModel(activeModule, moduleResult), [activeModule, moduleResult]);
+  const canEditActiveHouseFootprint = canEditHouseFootprintPlan(modulePlanModel);
   const activeViewHasModel = moduleViewsTab === 'plan' ? Boolean(modulePlanModel) : Boolean(moduleSectionModel);
   const activeViewSource = moduleViewsTab === 'plan' ? modulePlanModel?.dataSource : moduleSectionModel?.dataSource;
   const moduleViewsStatus: ModuleViewsStatus =
@@ -3138,6 +3339,15 @@ export default function CalculatorGridClient({
             ? `Using derived geometry. Active style: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' (box perimeter)' : ''}`
             : `Using input fallback geometry. Active style: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' (box perimeter)' : ''}`
           : undefined;
+
+  useEffect(() => {
+    if (canEditActiveHouseFootprint && moduleViewsTab === 'plan') return;
+    setIsFootprintEditing(false);
+    setFootprintHoveredAttachmentSide(null);
+    setFootprintHoveredHandleId(null);
+    setFootprintActiveHandleId(null);
+    setFootprintDragSession(null);
+  }, [canEditActiveHouseFootprint, moduleViewsTab]);
 
   useEffect(() => {
     if (!result) return;
@@ -5363,12 +5573,12 @@ export default function CalculatorGridClient({
       ],
     },
     ...(activeModule.houseConnectionType !== 'none' && supportsHouseFootprints(activeModule.pergolaStyle)
-      ? [
+        ? [
           {
             id: 'attachmentSide',
             label: 'Attachment side',
             type: 'select',
-            value: activeModule.attachmentSide,
+            value: activeAttachmentSide,
             onChange: (v) => setModuleField('attachmentSide', v as CalculatorModuleInputs['attachmentSide']),
             options: [
               { label: 'Rear', value: 'rear' },
@@ -5382,7 +5592,7 @@ export default function CalculatorGridClient({
             id: 'drawingRotationQuarterTurns',
             label: 'Drawing rotation',
             type: 'select',
-            value: String(activeModule.drawingRotationQuarterTurns),
+            value: String(activeDrawingRotationQuarterTurns),
             onChange: (v) =>
               setModuleField(
                 'drawingRotationQuarterTurns',
@@ -5400,7 +5610,7 @@ export default function CalculatorGridClient({
             id: 'houseFootprintPreset',
             label: 'House footprint',
             type: 'select',
-            value: activeModule.houseFootprintPreset,
+            value: activeHouseFootprintPreset,
             onChange: (v) => setModuleField('houseFootprintPreset', normalizeHouseFootprintPreset(v) as CalculatorModuleInputs['houseFootprintPreset']),
             options: [
               { label: 'Straight', value: 'straight' },
@@ -5422,7 +5632,7 @@ export default function CalculatorGridClient({
             onChange: (v) => setHouseFootprintParam('bandDepthM', String(v)),
             helperText: 'Depth of the main hatched house band.',
           } satisfies FieldSchemaItem,
-          ...((activeModule.houseFootprintPreset === 'l_left' || activeModule.houseFootprintPreset === 'l_right')
+          ...((activeHouseFootprintPreset === 'l_left' || activeHouseFootprintPreset === 'l_right')
             ? [
                 {
                   id: 'houseFootprintReturnRunM',
@@ -5433,7 +5643,7 @@ export default function CalculatorGridClient({
                 } satisfies FieldSchemaItem,
               ]
             : []),
-          ...((activeModule.houseFootprintPreset === 'recess_left' || activeModule.houseFootprintPreset === 'recess_right')
+          ...((activeHouseFootprintPreset === 'recess_left' || activeHouseFootprintPreset === 'recess_right')
             ? [
                 {
                   id: 'houseFootprintRecessWidthM',
@@ -5451,7 +5661,7 @@ export default function CalculatorGridClient({
                 } satisfies FieldSchemaItem,
               ]
             : []),
-          ...(activeModule.houseFootprintPreset === 'u_shape'
+          ...(activeHouseFootprintPreset === 'u_shape'
             ? [
                 {
                   id: 'houseFootprintLeftLegRunM',
@@ -5469,7 +5679,7 @@ export default function CalculatorGridClient({
                 } satisfies FieldSchemaItem,
               ]
             : []),
-          ...((activeModule.houseFootprintPreset === 'wrap_left' || activeModule.houseFootprintPreset === 'wrap_right')
+          ...((activeHouseFootprintPreset === 'wrap_left' || activeHouseFootprintPreset === 'wrap_right')
             ? [
                 {
                   id: 'houseFootprintSideRunM',
@@ -5852,6 +6062,19 @@ export default function CalculatorGridClient({
 
   const allowanceFields = pickFields(['travelExGst', 'extrasAllowanceExGst', 'quoteDiscountPct']);
 
+  const houseFootprintFields = pickFields([
+    'attachmentSide',
+    'drawingRotationQuarterTurns',
+    'houseFootprintPreset',
+    'houseFootprintBandDepthM',
+    'houseFootprintReturnRunM',
+    'houseFootprintRecessWidthM',
+    'houseFootprintRecessDepthM',
+    'houseFootprintLeftLegRunM',
+    'houseFootprintRightLegRunM',
+    'houseFootprintSideRunM',
+  ]);
+
   const copyMaterialsExplainJson = async () => {
     if (!materialsExplainJson) return;
     try {
@@ -6000,6 +6223,7 @@ export default function CalculatorGridClient({
             {isAdvancedUi ? <FieldGroup title="Overrides" fields={overrideFields} /> : null}
             <FieldGroup title="Add-ons" fields={addonFields} />
             <FieldGroup title="Allowances" fields={allowanceFields} />
+            {isAdvancedUi ? <FieldGroup title="House Footprint" fields={houseFootprintFields} /> : null}
           </div>
 
           <button
@@ -6055,6 +6279,26 @@ export default function CalculatorGridClient({
                 statusDetail={moduleViewsStatusDetail}
                 planModel={modulePlanModel}
                 sectionModel={moduleSectionModel}
+                footprintEditor={
+                  canEditActiveHouseFootprint
+                    ? {
+                        available: true,
+                        isEditing: isFootprintEditing,
+                        hoveredAttachmentSide: footprintHoveredAttachmentSide,
+                        hoveredHandleId: footprintHoveredHandleId,
+                        activeHandleId: footprintActiveHandleId,
+                        onStartEditing: startFootprintEditing,
+                        onDoneEditing: stopFootprintEditing,
+                        onAttachmentSideHover: setFootprintHoveredAttachmentSide,
+                        onAttachmentSideSelect: handleFootprintAttachmentSideSelect,
+                        onHandleHover: setFootprintHoveredHandleId,
+                        onHandleDragStart: handleFootprintDragStart,
+                        onPresetSelect: handleFootprintPresetSelect,
+                        onRotate: handleFootprintRotate,
+                        onSvgMount: handleFootprintSvgMount,
+                      }
+                    : undefined
+                }
               />
 
               <div className={styles.previewCard} style={{ marginTop: 12, padding: 10, background: 'rgba(var(--portal-text-rgb), 0.02)' }}>

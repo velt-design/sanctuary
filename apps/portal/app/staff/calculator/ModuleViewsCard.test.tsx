@@ -5,6 +5,7 @@ import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import ModuleViewsCard, {
   ModuleDrawingRenderer,
+  type HouseFootprintHandleId,
   getModuleDrawingScaleDiagnostics,
   getSuggestedModuleDrawingScale,
   resolveModuleDrawingScaleState,
@@ -96,6 +97,29 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
   })[0]!;
 }
 
+function makeFootprintEditor(overrides: Partial<{
+  isEditing: boolean;
+  hoveredHandleId: HouseFootprintHandleId | null;
+  activeHandleId: HouseFootprintHandleId | null;
+}> = {}) {
+  return {
+    available: true,
+    isEditing: overrides.isEditing ?? false,
+    hoveredAttachmentSide: null,
+    hoveredHandleId: overrides.hoveredHandleId ?? null,
+    activeHandleId: overrides.activeHandleId ?? null,
+    onStartEditing: () => undefined,
+    onDoneEditing: () => undefined,
+    onAttachmentSideHover: () => undefined,
+    onAttachmentSideSelect: () => undefined,
+    onHandleHover: () => undefined,
+    onHandleDragStart: () => undefined,
+    onPresetSelect: () => undefined,
+    onRotate: () => undefined,
+    onSvgMount: () => undefined,
+  };
+}
+
 describe('ModuleViewsCard', () => {
   it('renders the extracted plan renderer inside the calculator card chrome', () => {
     const drawing = makeDrawingModule();
@@ -181,6 +205,65 @@ describe('ModuleViewsCard', () => {
     );
 
     expect(markup).toContain('rotate(90');
+  });
+
+  it('shows the edit-footprint trigger for eligible calculator plan views', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleViewsCard
+        moduleLabel="M1"
+        view="plan"
+        onViewChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        footprintEditor={makeFootprintEditor()}
+      />,
+    );
+
+    expect(markup).toContain('Edit footprint');
+    expect(markup).not.toContain('House footprint editor');
+  });
+
+  it('renders the canvas toolbar and handle overlays while editing the footprint', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
+    const markup = renderToStaticMarkup(
+      <ModuleViewsCard
+        moduleLabel="M1"
+        view="plan"
+        onViewChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        footprintEditor={makeFootprintEditor({ isEditing: true, activeHandleId: 'bandDepth' })}
+      />,
+    );
+
+    expect(markup).toContain('House footprint editor');
+    expect(markup).toContain('Rotate -90');
+    expect(markup).toContain('Done');
+    expect(markup).toContain('data-footprint-edge="rear"');
+    expect(markup).toContain('data-footprint-handle="bandDepth"');
+    expect(markup).toContain('data-footprint-handle="recessWidth"');
+    expect(markup).toContain('Band depth: 1.80m');
+  });
+
+  it('keeps the footprint editor affordance out of section views', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleViewsCard
+        moduleLabel="M1"
+        view="section"
+        onViewChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        footprintEditor={makeFootprintEditor()}
+      />,
+    );
+
+    expect(markup).not.toContain('Edit footprint');
+    expect(markup).not.toContain('House footprint editor');
   });
 
   it('suggests the largest architectural plan scale that fits the A3 sheet viewport', () => {

@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { useId, type PointerEvent as ReactPointerEvent } from 'react';
+import type { AttachmentSide } from '@sp/costing';
 import styles from './CalculatorGrid.module.css';
 import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
@@ -19,10 +20,38 @@ export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
 type ModuleDrawingPresentation = 'card' | 'minimal' | 'sheet';
 
+export type HouseFootprintHandleId = 'bandDepth' | 'returnRun' | 'recessWidth' | 'recessDepth' | 'leftLegRun' | 'rightLegRun' | 'sideRun';
+
+export type HouseFootprintEditorDragMeta = {
+  handleId: HouseFootprintHandleId;
+  axisX: number;
+  axisY: number;
+  scale: number;
+  deltaMultiplier: number;
+  attachmentEdgeLengthM: number;
+};
+
 type GeometryConsistency = {
   level: 'ok' | 'warn';
   summary: string;
   details: string[];
+};
+
+type ModuleFootprintEditorProps = {
+  available: boolean;
+  isEditing: boolean;
+  hoveredAttachmentSide: AttachmentSide | null;
+  hoveredHandleId: HouseFootprintHandleId | null;
+  activeHandleId: HouseFootprintHandleId | null;
+  onStartEditing: () => void;
+  onDoneEditing: () => void;
+  onAttachmentSideHover: (side: AttachmentSide | null) => void;
+  onAttachmentSideSelect: (side: AttachmentSide) => void;
+  onHandleHover: (handleId: HouseFootprintHandleId | null) => void;
+  onHandleDragStart: (meta: HouseFootprintEditorDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => void;
+  onPresetSelect: (preset: ModulePlanModel['houseFootprintPreset']) => void;
+  onRotate: (delta: -1 | 1) => void;
+  onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
 type ModuleViewsCardProps = {
@@ -34,6 +63,7 @@ type ModuleViewsCardProps = {
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   presentation?: 'full' | 'minimal';
+  footprintEditor?: ModuleFootprintEditorProps;
 };
 
 type ModuleDrawingRendererProps = {
@@ -47,6 +77,7 @@ type ModuleDrawingRendererProps = {
   sheetViewportMm?: { widthMm: number; heightMm: number };
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
+  footprintEditor?: ModuleFootprintEditorProps;
 };
 
 type ModuleDrawingInteractiveField = {
@@ -87,6 +118,21 @@ const STATUS_TEXT: Record<ModuleViewsStatus, string> = {
   empty: 'Waiting for valid inputs before geometry is available.',
 };
 
+const HOUSE_FOOTPRINT_PRESET_OPTIONS: Array<{ id: ModulePlanModel['houseFootprintPreset']; label: string }> = [
+  { id: 'straight', label: 'Straight' },
+  { id: 'l_left', label: 'L left' },
+  { id: 'l_right', label: 'L right' },
+  { id: 'recess_left', label: 'Recess left' },
+  { id: 'recess_right', label: 'Recess right' },
+  { id: 'u_shape', label: 'U shape' },
+  { id: 'wrap_left', label: 'Wrap left' },
+  { id: 'wrap_right', label: 'Wrap right' },
+];
+
+export function canEditHouseFootprintPlan(model?: ModulePlanModel | null): boolean {
+  return Boolean(model && model.houseConnectionType !== 'none' && model.supportsHouseFootprints && model.roofType !== 'hip_corner');
+}
+
 export default function ModuleViewsCard({
   moduleLabel,
   view,
@@ -96,9 +142,11 @@ export default function ModuleViewsCard({
   planModel,
   sectionModel,
   presentation = 'full',
+  footprintEditor,
 }: ModuleViewsCardProps) {
   const isMinimal = presentation === 'minimal';
   const drawingSurface: ModuleDrawingPresentation = isMinimal ? 'minimal' : 'card';
+  const canEditFootprint = !isMinimal && view === 'plan' && Boolean(footprintEditor?.available) && canEditHouseFootprintPlan(planModel);
 
   return (
     <section
@@ -132,6 +180,19 @@ export default function ModuleViewsCard({
               );
             })}
           </div>
+          {canEditFootprint ? (
+            <button
+              type="button"
+              className={
+                footprintEditor?.isEditing
+                  ? `${styles.moduleViewsSecondaryButton} ${styles.moduleViewsSecondaryButtonActive}`
+                  : styles.moduleViewsSecondaryButton
+              }
+              onClick={footprintEditor?.isEditing ? footprintEditor.onDoneEditing : footprintEditor?.onStartEditing}
+            >
+              {footprintEditor?.isEditing ? 'Editing footprint' : 'Edit footprint'}
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -142,6 +203,7 @@ export default function ModuleViewsCard({
         planModel={planModel}
         sectionModel={sectionModel}
         presentation={drawingSurface}
+        footprintEditor={canEditFootprint ? footprintEditor : undefined}
       />
 
       {isMinimal ? null : (
@@ -165,6 +227,7 @@ export function ModuleDrawingRenderer({
   sheetViewportMm,
   interactiveFields,
   showDebugOverlays,
+  footprintEditor,
 }: ModuleDrawingRendererProps) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
@@ -221,17 +284,54 @@ export function ModuleDrawingRenderer({
               ) : null}
             </div>
           )}
-          <PlanSvg
-            model={planModel}
-            idBase={`${svgId}_plan`}
-            presentation={presentation}
-            drawingScale={appliedDrawingScale}
-            sheetViewportMm={sheetViewportMm}
-            debugScaleState={sheetScaleState}
-            scaleDiagnostics={sheetScaleDiagnostics}
-            interactiveFields={interactiveFields}
-            showDebugOverlays={effectiveShowDebugOverlays}
-          />
+          <div className={styles.modulePlanCanvas}>
+            {presentation === 'card' && footprintEditor?.available && footprintEditor.isEditing ? (
+              <div className={styles.moduleFootprintToolbar} aria-label="House footprint editor">
+                <div className={styles.moduleFootprintToolbarGroup}>
+                  {HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => {
+                    const active = option.id === planModel.houseFootprintPreset;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={
+                          active
+                            ? `${styles.moduleFootprintChip} ${styles.moduleFootprintChipActive}`
+                            : styles.moduleFootprintChip
+                        }
+                        onClick={() => footprintEditor.onPresetSelect(option.id)}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className={styles.moduleFootprintToolbarGroup}>
+                  <button type="button" className={styles.moduleFootprintToolbarButton} onClick={() => footprintEditor.onRotate(-1)}>
+                    Rotate -90
+                  </button>
+                  <button type="button" className={styles.moduleFootprintToolbarButton} onClick={() => footprintEditor.onRotate(1)}>
+                    Rotate +90
+                  </button>
+                  <button type="button" className={styles.moduleFootprintToolbarButton} onClick={footprintEditor.onDoneEditing}>
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : null}
+            <PlanSvg
+              model={planModel}
+              idBase={`${svgId}_plan`}
+              presentation={presentation}
+              drawingScale={appliedDrawingScale}
+              sheetViewportMm={sheetViewportMm}
+              debugScaleState={sheetScaleState}
+              scaleDiagnostics={sheetScaleDiagnostics}
+              interactiveFields={interactiveFields}
+              showDebugOverlays={effectiveShowDebugOverlays}
+              footprintEditor={presentation === 'card' ? footprintEditor : undefined}
+            />
+          </div>
           {isCompact ? null : (
             <>
               <LegendRow
@@ -1488,6 +1588,137 @@ function pointOnAttachmentFrame(frame: PlanAttachmentFrame, along: number, outwa
   };
 }
 
+function rotateVectorQuarterTurns(vector: Point, turns: number): Point {
+  return rotatePointQuarterTurns(vector, { x: 0, y: 0 }, turns);
+}
+
+function parseFootprintMetres(raw: string | undefined, fallbackM: number): number {
+  const parsed = Number.parseFloat(raw ?? '');
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackM;
+}
+
+function resolveHouseFootprintParamMetres(
+  params: ModulePlanModel['houseFootprintParams'],
+  attachmentEdgeLengthM: number,
+): {
+  bandDepthM: number;
+  returnRunM: number;
+  recessWidthM: number;
+  recessDepthM: number;
+  leftLegRunM: number;
+  rightLegRunM: number;
+  sideRunM: number;
+} {
+  const edgeLengthM = Math.max(0.5, attachmentEdgeLengthM);
+  const bandDepthM = clamp(parseFootprintMetres(params.bandDepthM, 1.8), 0.5, 12);
+  const returnRunM = clamp(parseFootprintMetres(params.returnRunM, 2.4), 0.5, edgeLengthM);
+  const recessWidthM = clamp(parseFootprintMetres(params.recessWidthM, 2.4), 0.5, Math.max(0.5, edgeLengthM - 0.5));
+  const recessDepthM = clamp(parseFootprintMetres(params.recessDepthM, 1.2), 0.3, bandDepthM);
+  const leftLegRunM = clamp(parseFootprintMetres(params.leftLegRunM, 2.4), 0.5, edgeLengthM);
+  const rightLegRunM = clamp(parseFootprintMetres(params.rightLegRunM, 2.4), 0.5, edgeLengthM);
+  const sideRunM = clamp(parseFootprintMetres(params.sideRunM, 2.4), 0.5, edgeLengthM);
+  return {
+    bandDepthM,
+    returnRunM,
+    recessWidthM,
+    recessDepthM,
+    leftLegRunM,
+    rightLegRunM,
+    sideRunM,
+  };
+}
+
+type FootprintHandleSpec = {
+  id: HouseFootprintHandleId;
+  label: string;
+  valueM: number;
+  point: Point;
+  pointRoot: Point;
+  axisX: number;
+  axisY: number;
+  deltaMultiplier: number;
+};
+
+function resolveFootprintHandleSpecs(input: {
+  frame: PlanAttachmentFrame;
+  rotationCenter: Point;
+  rotationTurns: number;
+  scale: number;
+  preset: ModulePlanModel['houseFootprintPreset'];
+  params: ModulePlanModel['houseFootprintParams'];
+  attachmentEdgeLengthM: number;
+}): FootprintHandleSpec[] {
+  const { frame, rotationCenter, rotationTurns, scale, preset, params, attachmentEdgeLengthM } = input;
+  const resolved = resolveHouseFootprintParamMetres(params, attachmentEdgeLengthM);
+  const edgeLength = Math.max(0.1, frame.length);
+  const bandDepth = resolved.bandDepthM * scale;
+  const returnRun = resolved.returnRunM * scale;
+  const recessWidth = resolved.recessWidthM * scale;
+  const recessDepth = resolved.recessDepthM * scale;
+  const leftLegRun = resolved.leftLegRunM * scale;
+  const rightLegRun = resolved.rightLegRunM * scale;
+  const sideRun = resolved.sideRunM * scale;
+  const midStart = Math.max(0.2, (edgeLength - recessWidth) / 2);
+  const midEnd = Math.min(edgeLength - 0.2, midStart + recessWidth);
+  const rotatedOutward = rotateVectorQuarterTurns(frame.outward, rotationTurns);
+  const rotatedInward = rotateVectorQuarterTurns({ x: -frame.outward.x, y: -frame.outward.y }, rotationTurns);
+  const rotatedTangent = rotateVectorQuarterTurns(frame.tangent, rotationTurns);
+  const specs: Array<Omit<FootprintHandleSpec, 'pointRoot'>> = [];
+
+  const addSpec = (
+    id: HouseFootprintHandleId,
+    label: string,
+    valueM: number,
+    point: Point,
+    axis: Point,
+    deltaMultiplier = 1,
+  ) => {
+    specs.push({
+      id,
+      label,
+      valueM,
+      point,
+      axisX: axis.x,
+      axisY: axis.y,
+      deltaMultiplier,
+    });
+  };
+
+  const bandDepthAlong = preset === 'recess_left' || preset === 'recess_right' ? Math.max(0.5 * scale, midStart / 2) : edgeLength / 2;
+  addSpec('bandDepth', 'Band depth', resolved.bandDepthM, pointOnAttachmentFrame(frame, bandDepthAlong, bandDepth), rotatedOutward);
+
+  if (preset === 'l_left') {
+    addSpec('returnRun', 'Return run', resolved.returnRunM, pointOnAttachmentFrame(frame, 0, bandDepth + returnRun), rotatedOutward);
+  }
+
+  if (preset === 'l_right') {
+    addSpec('returnRun', 'Return run', resolved.returnRunM, pointOnAttachmentFrame(frame, edgeLength, bandDepth + returnRun), rotatedOutward);
+  }
+
+  if (preset === 'recess_left' || preset === 'recess_right') {
+    addSpec('recessWidth', 'Recess width', resolved.recessWidthM, pointOnAttachmentFrame(frame, midEnd, Math.max(0.18 * scale, bandDepth - recessDepth / 2)), rotatedTangent, 2);
+    addSpec('recessDepth', 'Recess depth', resolved.recessDepthM, pointOnAttachmentFrame(frame, edgeLength / 2, Math.max(0.18 * scale, bandDepth - recessDepth)), rotatedInward);
+  }
+
+  if (preset === 'u_shape') {
+    addSpec('leftLegRun', 'Left leg run', resolved.leftLegRunM, pointOnAttachmentFrame(frame, 0, bandDepth + leftLegRun), rotatedOutward);
+    addSpec('rightLegRun', 'Right leg run', resolved.rightLegRunM, pointOnAttachmentFrame(frame, edgeLength, bandDepth + rightLegRun), rotatedOutward);
+  }
+
+  if (preset === 'wrap_left') {
+    addSpec('sideRun', 'Side run', resolved.sideRunM, pointOnAttachmentFrame(frame, 0, bandDepth + sideRun), rotatedOutward);
+  }
+
+  if (preset === 'wrap_right') {
+    addSpec('sideRun', 'Side run', resolved.sideRunM, pointOnAttachmentFrame(frame, edgeLength, bandDepth + sideRun), rotatedOutward);
+  }
+
+  return specs.map((spec) => ({
+    ...spec,
+    pointRoot: rotatePointQuarterTurns(spec.point, rotationCenter, rotationTurns),
+  }));
+}
+
 function buildHouseFootprintPolygon(
   frame: PlanAttachmentFrame,
   preset: ModulePlanModel['houseFootprintPreset'],
@@ -1498,20 +1729,15 @@ function buildHouseFootprintPolygon(
   const maxBandDepth = presentation === 'sheet' ? 5.3 : 8;
   const maxReturnRun = presentation === 'sheet' ? 11.2 : 15.2;
   const maxRecessWidth = presentation === 'sheet' ? 14.2 : 18.2;
-  const minBandDepth = Math.max(0.22 * scale, presentation === 'sheet' ? 2.8 : 3.6);
-  const minRun = Math.max(0.34 * scale, presentation === 'sheet' ? 4.2 : 5.8);
-  const parseMetres = (raw: string | undefined, fallbackM: number) => {
-    const parsed = Number.parseFloat(raw ?? '');
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackM;
-  };
+  const resolved = resolveHouseFootprintParamMetres(params, frame.length / Math.max(scale, 0.001));
   const defaults = {
-    bandDepth: clamp(parseMetres(params.bandDepthM, 1.8) * scale, minBandDepth, maxBandDepth),
-    returnRun: clamp(parseMetres(params.returnRunM, 2.4) * scale, minRun, maxReturnRun),
-    recessWidth: clamp(parseMetres(params.recessWidthM, 2.4) * scale, minRun, maxRecessWidth),
-    recessDepth: clamp(parseMetres(params.recessDepthM, 1.2) * scale, minBandDepth * 0.55, maxBandDepth * 0.7),
-    leftLegRun: clamp(parseMetres(params.leftLegRunM, 2.4) * scale, minRun, maxReturnRun),
-    rightLegRun: clamp(parseMetres(params.rightLegRunM, 2.4) * scale, minRun, maxReturnRun),
-    sideRun: clamp(parseMetres(params.sideRunM, 2.4) * scale, minRun, maxReturnRun),
+    bandDepth: clamp(resolved.bandDepthM * scale, 0.5 * scale, maxBandDepth),
+    returnRun: clamp(resolved.returnRunM * scale, 0.5 * scale, maxReturnRun),
+    recessWidth: clamp(resolved.recessWidthM * scale, 0.5 * scale, maxRecessWidth),
+    recessDepth: clamp(resolved.recessDepthM * scale, 0.3 * scale, maxBandDepth * 0.85),
+    leftLegRun: clamp(resolved.leftLegRunM * scale, 0.5 * scale, maxReturnRun),
+    rightLegRun: clamp(resolved.rightLegRunM * scale, 0.5 * scale, maxReturnRun),
+    sideRun: clamp(resolved.sideRunM * scale, 0.5 * scale, maxReturnRun),
   };
   const bandDepth = defaults.bandDepth;
   const edgeLength = Math.max(0.1, frame.length);
@@ -2630,6 +2856,7 @@ function PlanSvg({
   scaleDiagnostics,
   interactiveFields,
   showDebugOverlays,
+  footprintEditor,
 }: {
   model: ModulePlanModel;
   idBase: string;
@@ -2640,6 +2867,7 @@ function PlanSvg({
   scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
+  footprintEditor?: ModuleFootprintEditorProps;
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
@@ -2736,12 +2964,35 @@ function PlanSvg({
   const debugMetrics = sheetLayout ? buildSheetDebugMetrics(sheetLayout, debugScaleState, scaleDiagnostics) : null;
   const houseLabel = footprintLabelPoint(housePolygon);
   const hatchId = `${idBase}_house_hatch`;
+  const canEditFootprint = presentation === 'card' && Boolean(footprintEditor?.available) && canEditHouseFootprintPlan(model);
+  const isEditingFootprint = canEditFootprint && Boolean(footprintEditor?.isEditing);
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
   const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
   const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
   const footprintFrame = attachmentFrameForRect(attachmentSide, { x, y, width: Math.max(aW, bW), height: isHipCorner ? aH + bH : aH });
+  const edgeFrames = !isHipCorner
+    ? (['rear', 'front', 'left', 'right'] as AttachmentSide[]).map((side) => ({
+        side,
+        frame: attachmentFrameForRect(side, { x, y, width: Math.max(aW, bW), height: aH }),
+      }))
+    : [];
+  const handleSpecs =
+    showHouseFootprint && model.supportsHouseFootprints && !isHipCorner
+      ? resolveFootprintHandleSpecs({
+          frame: footprintFrame,
+          rotationCenter: rotationFrame.center,
+          rotationTurns: rotationFrame.turns,
+          scale,
+          preset: model.houseFootprintPreset,
+          params: model.houseFootprintParams,
+          attachmentEdgeLengthM: model.attachmentEdgeLengthM,
+        })
+      : [];
+  const highlightedHandle = handleSpecs.find(
+    (handle) => handle.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId),
+  );
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.attachmentEdgeLengthM, 0, footprintFrame.length);
   const soffitGuideStart =
     soffitXs.length > 0 ? pointOnAttachmentFrame(footprintFrame, soffitXs[0]!, -1.2) : pointOnAttachmentFrame(footprintFrame, 0, -1.2);
@@ -2783,12 +3034,20 @@ function PlanSvg({
   const overhangY = isHipCorner ? bottomY - overhangDepth : y + aH - overhangDepth;
   const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - sideFrameW * 2);
   const overhangX = x + sideFrameW;
+  const highlightedHandleLabel = highlightedHandle ? `${highlightedHandle.label}: ${formatMetres(highlightedHandle.valueM)}` : null;
+  const highlightedHandleLabelWidth = highlightedHandleLabel ? Math.max(16, highlightedHandleLabel.length * 0.56 + 2.8) : 0;
+  const highlightedHandleLabelX =
+    highlightedHandle && highlightedHandleLabel
+      ? clamp(highlightedHandle.pointRoot.x + 2.8, 1.4, 118 - highlightedHandleLabelWidth)
+      : 0;
+  const highlightedHandleLabelY = highlightedHandle ? clamp(highlightedHandle.pointRoot.y - 4.8, 4.5, 84) : 0;
 
   return (
     <svg
       viewBox="0 0 120 90"
       role="img"
       aria-label="Module plan view"
+      ref={footprintEditor?.onSvgMount}
       className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
         presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
       }`}
@@ -3038,7 +3297,109 @@ function PlanSvg({
               );
             })()
           : null}
+
+        {isEditingFootprint
+          ? edgeFrames.map(({ side, frame: edgeFrame }) => {
+              const isActiveEdge = side === attachmentSide;
+              const isHoveredEdge = side === footprintEditor?.hoveredAttachmentSide;
+              return (
+                <g key={`footprint-edge-${side}`}>
+                  <line
+                    x1={edgeFrame.start.x}
+                    y1={edgeFrame.start.y}
+                    x2={edgeFrame.end.x}
+                    y2={edgeFrame.end.y}
+                    data-footprint-edge={side}
+                    className={
+                      isActiveEdge
+                        ? `${styles.moduleFootprintEdge} ${styles.moduleFootprintEdgeActive}`
+                        : isHoveredEdge
+                          ? `${styles.moduleFootprintEdge} ${styles.moduleFootprintEdgeHover}`
+                          : styles.moduleFootprintEdge
+                    }
+                  />
+                  <line
+                    x1={edgeFrame.start.x}
+                    y1={edgeFrame.start.y}
+                    x2={edgeFrame.end.x}
+                    y2={edgeFrame.end.y}
+                    className={styles.moduleFootprintEdgeHit}
+                    onPointerEnter={() => footprintEditor?.onAttachmentSideHover(side)}
+                    onPointerLeave={() => footprintEditor?.onAttachmentSideHover(null)}
+                    onClick={() => footprintEditor?.onAttachmentSideSelect(side)}
+                  />
+                </g>
+              );
+            })
+          : null}
+
+        {isEditingFootprint
+          ? handleSpecs.map((handle) => {
+              const isActiveHandle = handle.id === footprintEditor?.activeHandleId;
+              const isHoveredHandle = handle.id === footprintEditor?.hoveredHandleId;
+              return (
+                <g key={`footprint-handle-${handle.id}`}>
+                  <circle
+                    cx={handle.point.x}
+                    cy={handle.point.y}
+                    r={isActiveHandle ? 1.45 : 1.2}
+                    data-footprint-handle={handle.id}
+                    className={
+                      isActiveHandle
+                        ? `${styles.moduleFootprintHandle} ${styles.moduleFootprintHandleActive}`
+                        : isHoveredHandle
+                          ? `${styles.moduleFootprintHandle} ${styles.moduleFootprintHandleHover}`
+                          : styles.moduleFootprintHandle
+                    }
+                  />
+                  <circle
+                    cx={handle.point.x}
+                    cy={handle.point.y}
+                    r={3.2}
+                    className={styles.moduleFootprintHandleHit}
+                    onPointerEnter={() => footprintEditor?.onHandleHover(handle.id)}
+                    onPointerLeave={() => footprintEditor?.onHandleHover(null)}
+                    onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      footprintEditor?.onHandleDragStart(
+                        {
+                          handleId: handle.id,
+                          axisX: handle.axisX,
+                          axisY: handle.axisY,
+                          scale,
+                          deltaMultiplier: handle.deltaMultiplier,
+                          attachmentEdgeLengthM: model.attachmentEdgeLengthM,
+                        },
+                        {
+                          pointerId: event.pointerId,
+                          clientX: event.clientX,
+                          clientY: event.clientY,
+                        },
+                      );
+                    }}
+                  />
+                </g>
+              );
+            })
+          : null}
       </g>
+
+      {isEditingFootprint && highlightedHandle && highlightedHandleLabel ? (
+        <g className={styles.moduleFootprintValueBadge} aria-hidden="true">
+          <rect
+            x={highlightedHandleLabelX}
+            y={highlightedHandleLabelY - 1.65}
+            width={highlightedHandleLabelWidth}
+            height={3}
+            rx={1.5}
+            className={styles.moduleFootprintValueBadgeRect}
+          />
+          <text x={highlightedHandleLabelX + highlightedHandleLabelWidth / 2} y={highlightedHandleLabelY} textAnchor="middle" className={styles.moduleFootprintValueBadgeText}>
+            {highlightedHandleLabel}
+          </text>
+        </g>
+      ) : null}
     </svg>
   );
 }

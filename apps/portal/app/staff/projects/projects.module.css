@@ -628,9 +628,9 @@
 }
 
 .pipelineButtonDone {
-  --step-bg: rgba(22, 163, 74, 0.12);
-  --step-fg: rgba(12, 74, 22, 0.92);
-  --step-border: rgba(22, 163, 74, 0.28);
+  --step-bg: rgba(var(--accentRgb), 0.1);
+  --step-fg: rgba(var(--portal-text-rgb), 0.88);
+  --step-border: rgba(var(--accentRgb), 0.24);
 }
 
 .pipelineButtonCurrent {
