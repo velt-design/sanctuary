@@ -57,30 +57,6 @@
   text-overflow: ellipsis;
 }
 
-.shell {
-  display: grid;
-  gap: 14px;
-  align-items: start;
-  min-width: 0;
-}
-
-.shellModel {
-  grid-template-columns: minmax(248px, 300px) minmax(0, 1fr);
-}
-
-.shellSheet {
-  grid-template-columns: minmax(190px, 232px) minmax(0, 1fr);
-  gap: 12px;
-}
-
-.rail {
-  min-width: 0;
-  position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 180px);
-  overflow: auto;
-}
-
 .toolbarSelect {
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
   border-radius: 14px;
@@ -122,8 +98,8 @@
 }
 
 .toggleButtonActive {
-  border-color: rgba(var(--accentRgb), 0.28);
-  background: rgba(var(--accentRgb), 0.12);
+  border-color: rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.08);
   color: rgba(var(--portal-text-rgb), 0.94);
 }
 
@@ -132,8 +108,8 @@
 }
 
 @media (max-width: 1120px) {
-  .shell {
-    grid-template-columns: 1fr;
+  .workbench {
+    gap: 12px;
   }
 }
 

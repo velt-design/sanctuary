@@ -378,6 +378,11 @@
   gap: 10px;
 }
 
+.inlineConfiguratorRail {
+  display: grid;
+  gap: 10px;
+}
+
 .focusSummaryGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));

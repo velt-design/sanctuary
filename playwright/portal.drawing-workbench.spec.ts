@@ -62,6 +62,12 @@ async function openDrawingWorkbench(page: Page) {
 }
 
 test('drawing workbench model-space smoke', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+
+  await page.setViewportSize({ width: 1680, height: 1050 });
   await openDrawingWorkbench(page);
 
   const emptyDrawing = page.getByText('No plan or section drawing is available for this design.');
@@ -86,4 +92,24 @@ test('drawing workbench model-space smoke', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Sheet View' }).click();
   await expect(page.getByLabel('Plan view A3 drawing sheet')).toBeVisible();
+
+  const rightRail = page.locator('[data-project-rail="right"][data-project-design-rail-active="true"]').first();
+  await expect(rightRail).toBeVisible();
+  await expect(rightRail.getByText('Model Configurator', { exact: true })).toBeVisible();
+  await expect
+    .poll(async () => {
+      return await rightRail.evaluate((node) => getComputedStyle(node as HTMLElement).overflowY);
+    })
+    .toBe('auto');
+
+  const sectionToggleBackground = await page.getByRole('tab', { name: 'Section' }).evaluate((node) => getComputedStyle(node).backgroundColor);
+  const configuratorActionBackground = await page.getByRole('button', { name: 'Open full calculator' }).evaluate((node) => getComputedStyle(node).backgroundColor);
+  expect(configuratorActionBackground).toBe(sectionToggleBackground);
+
+  await page.getByRole('tab', { name: 'Quotes' }).click();
+  await page.waitForLoadState('networkidle');
+  await expect(page.getByText('Model configurator')).toHaveCount(0);
+  await expect(page.getByLabel('Drawing workbench')).toHaveCount(0);
+
+  expect(pageErrors, `Unexpected runtime errors: ${pageErrors.join(' | ')}`).toEqual([]);
 });

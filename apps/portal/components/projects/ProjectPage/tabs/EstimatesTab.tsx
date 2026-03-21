@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import { mapEngineLevel } from '@/app/staff/calculator/warnings';
+import ConfiguratorRail from '@/components/drawings/rail/ConfiguratorRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import { useProjectPageDesignRail } from '@/components/projects/ProjectPage/ProjectPageDesignRailContext';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import {
   applyEstimateDrawingFootprintEdit,
@@ -585,6 +588,7 @@ export default function EstimatesTab({
   const toast = useToast();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const { renderInShell: renderConfiguratorInShell, rightRailNode } = useProjectPageDesignRail();
 
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
@@ -887,7 +891,6 @@ export default function EstimatesTab({
       selectedDetail,
     ],
   );
-
   useEffect(() => {
     setDrawingWorkbenchUi((current) => ({ ...current, activeModuleIndex: 0 }));
   }, [selectedDetail?.calculatorSnapshot]);
@@ -1240,6 +1243,54 @@ export default function EstimatesTab({
     },
     [drawingDraft, drawingModuleIndex, persistDrawingDraftLocally],
   );
+  const openFullCalculator = useMemo(
+    () =>
+      isEstimateLocked
+        ? undefined
+        : () =>
+            void runWithDrawingDraftGuard(
+              handleEditEstimate,
+              'You have unsaved drawing changes. Discard them and open the design editor?',
+            ),
+    [handleEditEstimate, isEstimateLocked, runWithDrawingDraftGuard],
+  );
+  const configuratorRailNode = useMemo(() => {
+    if (!selectedDetail) {
+      return <div className={styles.drawingEmpty}>Select a design version to configure the drawing.</div>;
+    }
+
+    if (!activeDrawingModule) {
+      return <div className={styles.drawingEmpty}>No plan or section drawing controls are available for this design.</div>;
+    }
+
+    return (
+      <ConfiguratorRail
+        moduleLabel={drawingModuleLabel}
+        moduleInput={activeDrawingModule.drawingModule.input ?? null}
+        view={drawingView}
+        mode="full"
+        editableFields={drawingEditableFields}
+        onCommitField={commitDrawingField}
+        onCommitFootprintEdit={!isEstimateLocked ? commitDrawingFootprintEdit : undefined}
+        onCommitModuleField={!isEstimateLocked ? commitDrawingModuleField : undefined}
+        onOpenFullCalculator={openFullCalculator}
+        disabled={isEstimateLocked}
+      />
+    );
+  }, [
+    activeDrawingModule,
+    commitDrawingField,
+    commitDrawingFootprintEdit,
+    commitDrawingModuleField,
+    drawingEditableFields,
+    drawingModuleLabel,
+    drawingView,
+    isEstimateLocked,
+    openFullCalculator,
+    selectedDetail,
+  ]);
+  const configuratorRailPortal =
+    renderConfiguratorInShell && rightRailNode ? createPortal(configuratorRailNode, rightRailNode) : null;
 
   const saveDrawingDraft = useCallback(async (saveMode: EstimateSaveMode = 'preserve_current') => {
     if (!selectedDetail) return;
@@ -1464,6 +1515,7 @@ export default function EstimatesTab({
 
   return (
     <div className={styles.wrapper}>
+      {configuratorRailPortal}
       <div className={`${styles.mainGrid} ${styles.mainGridGeneral}`}>
 
         <div className={styles.detailPanel}>
@@ -1575,6 +1627,7 @@ export default function EstimatesTab({
                   </div>
                 ) : null}
                 <div className={styles.focusSummaryLayout}>
+                  {!renderConfiguratorInShell ? <div className={styles.inlineConfiguratorRail}>{configuratorRailNode}</div> : null}
                   {activeDrawingModule ? (
                     <DrawingWorkbench
                       moduleLabel={drawingModuleLabel}
@@ -1606,7 +1659,6 @@ export default function EstimatesTab({
                       status={drawingStatus}
                       planModel={activeDrawingModule?.planModel}
                       sectionModel={activeDrawingModule?.sectionModel}
-                      activeModuleInput={activeDrawingModule?.drawingModule.input ?? null}
                       planViewModel={drawingWorkbenchStore.derived.activePlanViewModel}
                       viewportTransform={drawingWorkbenchStore.ui.viewportTransform}
                       onViewportTransformChange={(transform) =>
@@ -1617,19 +1669,8 @@ export default function EstimatesTab({
                       }
                       meta={drawingSheetMeta}
                       editableFields={drawingEditableFields}
-                      isEstimateLocked={isEstimateLocked}
                       onCommitField={commitDrawingField}
-                      onCommitModuleField={!isEstimateLocked ? commitDrawingModuleField : undefined}
                       onCommitFootprintEdit={!isEstimateLocked ? commitDrawingFootprintEdit : undefined}
-                      onOpenFullCalculator={
-                        isEstimateLocked
-                          ? undefined
-                          : () =>
-                              void runWithDrawingDraftGuard(
-                                handleEditEstimate,
-                                'You have unsaved drawing changes. Discard them and open the design editor?',
-                              )
-                      }
                     />
                   ) : (
                     <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>
