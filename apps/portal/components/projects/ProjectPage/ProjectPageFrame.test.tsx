@@ -93,8 +93,11 @@ describe('ProjectPageFrame masthead layout', () => {
   it('defaults to the expanded masthead on desktop', () => {
     const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot as any} tab="estimates" />);
     const frame = rendered.container.querySelector('[data-project-page-frame="true"]') as HTMLElement;
+    const mastheadSlot = rendered.container.querySelector('[data-project-masthead-slot]') as HTMLElement;
 
     expect(frame.dataset.projectMastheadMode).toBe('expanded');
+    expect(frame.dataset.projectMastheadSticky).toBeUndefined();
+    expect(mastheadSlot.dataset.projectMastheadSlotSticky).toBeUndefined();
     expect(rendered.container.querySelector('[data-testid="mock-pipeline"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Projects');
     expect(rendered.container.textContent).toContain('Delete project');
@@ -113,8 +116,11 @@ describe('ProjectPageFrame masthead layout', () => {
 
     const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot as any} tab="estimates" />);
     const frame = rendered.container.querySelector('[data-project-page-frame="true"]') as HTMLElement;
+    const mastheadSlot = rendered.container.querySelector('[data-project-masthead-slot]') as HTMLElement;
 
     expect(frame.dataset.projectMastheadMode).toBe('compact');
+    expect(frame.dataset.projectMastheadSticky).toBe('true');
+    expect(mastheadSlot.dataset.projectMastheadSlotSticky).toBe('true');
     expect(rendered.container.querySelector('[data-testid="mock-pipeline"]')).toBeNull();
     expect(rendered.container.textContent).not.toContain('Projects');
     expect(rendered.container.textContent).not.toContain('Delete project');
@@ -135,9 +141,12 @@ describe('ProjectPageFrame masthead layout', () => {
 
     const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot as any} tab="estimates" />);
     const frame = rendered.container.querySelector('[data-project-page-frame="true"]') as HTMLElement;
+    const mastheadSlot = rendered.container.querySelector('[data-project-masthead-slot]') as HTMLElement;
     const collapsedHandle = rendered.container.querySelector('[data-project-masthead-collapsed="true"]') as HTMLButtonElement;
 
     expect(frame.dataset.projectMastheadMode).toBe('collapsed');
+    expect(frame.dataset.projectMastheadSticky).toBe('true');
+    expect(mastheadSlot.dataset.projectMastheadSlotSticky).toBe('true');
     expect(collapsedHandle.getAttribute('aria-expanded')).toBe('false');
     expect(rendered.container.textContent).not.toContain('Test project');
     expect(rendered.container.textContent?.toLowerCase()).not.toContain('lead');
@@ -230,8 +239,11 @@ describe('ProjectPageFrame masthead layout', () => {
 
     const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot as any} tab="estimates" />);
     const frame = rendered.container.querySelector('[data-project-page-frame="true"]') as HTMLElement;
+    const mastheadSlot = rendered.container.querySelector('[data-project-masthead-slot]') as HTMLElement;
 
     expect(frame.dataset.projectMastheadMode).toBe('expanded');
+    expect(frame.dataset.projectMastheadSticky).toBeUndefined();
+    expect(mastheadSlot.dataset.projectMastheadSlotSticky).toBeUndefined();
     expect(rendered.container.querySelector('[data-project-masthead-handle="true"]')).toBeNull();
     expect(rendered.container.querySelector('[data-project-masthead-collapsed="true"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="mock-pipeline"]')).not.toBeNull();
