@@ -247,7 +247,27 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-footprint-handle="bandDepth"');
     expect(markup).toContain('data-footprint-handle="recessWidth"');
     expect(markup).toContain('Band depth: 1.80m');
+    expect(markup).not.toContain('Attached edge</text>');
     expect(markup).not.toContain('House side</text>');
+    expect(markup).toContain('clipPath');
+  });
+
+  it('renders U-shape handle affordances on both parallel legs', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'u_shape' });
+    const markup = renderToStaticMarkup(
+      <ModuleViewsCard
+        moduleLabel="M1"
+        view="plan"
+        onViewChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        footprintEditor={makeFootprintEditor({ isEditing: true })}
+      />,
+    );
+
+    expect(markup).toContain('data-footprint-handle="leftLegRun"');
+    expect(markup).toContain('data-footprint-handle="rightLegRun"');
   });
 
   it('keeps the footprint editor affordance out of section views', () => {

@@ -1,7 +1,14 @@
 import { useId, type PointerEvent as ReactPointerEvent } from 'react';
 import type { AttachmentSide } from '@sp/costing';
 import styles from './CalculatorGrid.module.css';
-import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
+import {
+  attachmentSideQuarterTurns,
+  buildHouseFootprintLocalLayout,
+  type HouseFootprintHandleId,
+  type HouseFootprintPoint,
+  type ModulePlanModel,
+  type ModuleSectionModel,
+} from './moduleViews';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import {
   DEFAULT_ESTIMATE_DRAWING_SCALE,
@@ -19,8 +26,7 @@ import {
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
 type ModuleDrawingPresentation = 'card' | 'minimal' | 'sheet';
-
-export type HouseFootprintHandleId = 'bandDepth' | 'returnRun' | 'recessWidth' | 'recessDepth' | 'leftLegRun' | 'rightLegRun' | 'sideRun';
+export type { HouseFootprintHandleId } from './moduleViews';
 
 export type HouseFootprintEditorDragMeta = {
   handleId: HouseFootprintHandleId;
@@ -28,7 +34,8 @@ export type HouseFootprintEditorDragMeta = {
   axisY: number;
   scale: number;
   deltaMultiplier: number;
-  attachmentEdgeLengthM: number;
+  minValueM: number;
+  maxValueM: number;
 };
 
 type GeometryConsistency = {
@@ -1587,42 +1594,6 @@ function rotateVectorQuarterTurns(vector: Point, turns: number): Point {
   return rotatePointQuarterTurns(vector, { x: 0, y: 0 }, turns);
 }
 
-function parseFootprintMetres(raw: string | undefined, fallbackM: number): number {
-  const parsed = Number.parseFloat(raw ?? '');
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackM;
-}
-
-function resolveHouseFootprintParamMetres(
-  params: ModulePlanModel['houseFootprintParams'],
-  attachmentEdgeLengthM: number,
-): {
-  bandDepthM: number;
-  returnRunM: number;
-  recessWidthM: number;
-  recessDepthM: number;
-  leftLegRunM: number;
-  rightLegRunM: number;
-  sideRunM: number;
-} {
-  const edgeLengthM = Math.max(0.5, attachmentEdgeLengthM);
-  const bandDepthM = clamp(parseFootprintMetres(params.bandDepthM, 1.8), 0.5, 12);
-  const returnRunM = clamp(parseFootprintMetres(params.returnRunM, 2.4), 0.5, edgeLengthM);
-  const recessWidthM = clamp(parseFootprintMetres(params.recessWidthM, 2.4), 0.5, Math.max(0.5, edgeLengthM - 0.5));
-  const recessDepthM = clamp(parseFootprintMetres(params.recessDepthM, 1.2), 0.3, bandDepthM);
-  const leftLegRunM = clamp(parseFootprintMetres(params.leftLegRunM, 2.4), 0.5, edgeLengthM);
-  const rightLegRunM = clamp(parseFootprintMetres(params.rightLegRunM, 2.4), 0.5, edgeLengthM);
-  const sideRunM = clamp(parseFootprintMetres(params.sideRunM, 2.4), 0.5, edgeLengthM);
-  return {
-    bandDepthM,
-    returnRunM,
-    recessWidthM,
-    recessDepthM,
-    leftLegRunM,
-    rightLegRunM,
-    sideRunM,
-  };
-}
-
 type FootprintHandleSpec = {
   id: HouseFootprintHandleId;
   label: string;
@@ -1634,330 +1605,121 @@ type FootprintHandleSpec = {
   axisX: number;
   axisY: number;
   deltaMultiplier: number;
+  minValueM: number;
+  maxValueM: number;
 };
 
-function footprintReturnWingWidth(edgeLength: number, scale: number): number {
-  return clamp(edgeLength * 0.26, 0.9 * scale, edgeLength * 0.42);
-}
+type FootprintCanvasLayout = {
+  polygon: Point[];
+  handles: FootprintHandleSpec[];
+  sideTurns: number;
+};
 
-function footprintWrapWingWidth(edgeLength: number, scale: number): number {
-  return clamp(edgeLength * 0.42, 1.25 * scale, edgeLength * 0.64);
-}
-
-function footprintULegWidth(edgeLength: number, scale: number): number {
-  return clamp(edgeLength * 0.22, 0.82 * scale, edgeLength * 0.32);
-}
-
-function footprintRecessRange(edgeLength: number, recessWidth: number, scale: number, preset: 'recess_left' | 'recess_right'): { start: number; end: number } {
-  const maxStart = Math.max(0.2, edgeLength - recessWidth - 0.2);
-  const margin = clamp(edgeLength * 0.14, 0.75 * scale, Math.max(0.75 * scale, maxStart));
-  const start =
-    preset === 'recess_left'
-      ? clamp(margin, 0.2, maxStart)
-      : clamp(edgeLength - recessWidth - margin, 0.2, maxStart);
+function actualPergolaCenter(rect: { x: number; y: number; width: number; height: number }): Point {
   return {
-    start,
-    end: Math.min(edgeLength - 0.2, start + recessWidth),
+    x: rect.x + rect.width / 2,
+    y: rect.y + rect.height / 2,
   };
 }
 
-function resolveFootprintHandleSpecs(input: {
-  frame: PlanAttachmentFrame;
+function localFootprintDimensionsM(model: ModulePlanModel, attachmentSide: AttachmentSide): { widthM: number; depthM: number } {
+  if (attachmentSide === 'left' || attachmentSide === 'right') {
+    return {
+      widthM: model.spanA,
+      depthM: model.lengthA,
+    };
+  }
+
+  return {
+    widthM: model.lengthA,
+    depthM: model.spanA,
+  };
+}
+
+function mapLocalFootprintPointToPlan(input: {
+  point: HouseFootprintPoint;
+  rect: { x: number; y: number; width: number; height: number };
+  canonicalWidthM: number;
+  canonicalDepthM: number;
+  scale: number;
+  sideTurns: number;
+}): Point {
+  const center = actualPergolaCenter(input.rect);
+  const canonicalWidth = input.canonicalWidthM * input.scale;
+  const canonicalDepth = input.canonicalDepthM * input.scale;
+  const canonicalPoint = {
+    x: center.x - canonicalWidth / 2 + input.point.x * input.scale,
+    y: center.y - canonicalDepth / 2 + input.point.y * input.scale,
+  };
+  return rotatePointQuarterTurns(canonicalPoint, center, input.sideTurns);
+}
+
+function resolveFootprintCanvasLayout(input: {
+  model: ModulePlanModel;
+  rect: { x: number; y: number; width: number; height: number };
+  scale: number;
   rotationCenter: Point;
   rotationTurns: number;
-  scale: number;
-  preset: ModulePlanModel['houseFootprintPreset'];
-  params: ModulePlanModel['houseFootprintParams'];
-  attachmentEdgeLengthM: number;
-}): FootprintHandleSpec[] {
-  const { frame, rotationCenter, rotationTurns, scale, preset, params, attachmentEdgeLengthM } = input;
-  const resolved = resolveHouseFootprintParamMetres(params, attachmentEdgeLengthM);
-  const edgeLength = Math.max(0.1, frame.length);
-  const bandDepth = resolved.bandDepthM * scale;
-  const returnRun = resolved.returnRunM * scale;
-  const recessWidth = resolved.recessWidthM * scale;
-  const recessDepth = resolved.recessDepthM * scale;
-  const leftLegRun = resolved.leftLegRunM * scale;
-  const rightLegRun = resolved.rightLegRunM * scale;
-  const sideRun = resolved.sideRunM * scale;
-  const returnWingWidth = footprintReturnWingWidth(edgeLength, scale);
-  const wrapWingWidth = footprintWrapWingWidth(edgeLength, scale);
-  const uLegWidth = footprintULegWidth(edgeLength, scale);
-  const recessRange =
-    preset === 'recess_left' || preset === 'recess_right'
-      ? footprintRecessRange(edgeLength, recessWidth, scale, preset)
-      : { start: Math.max(0.2, (edgeLength - recessWidth) / 2), end: Math.min(edgeLength - 0.2, (edgeLength + recessWidth) / 2) };
-  const rotatedOutward = rotateVectorQuarterTurns(frame.outward, rotationTurns);
-  const rotatedInward = rotateVectorQuarterTurns({ x: -frame.outward.x, y: -frame.outward.y }, rotationTurns);
-  const rotatedTangent = rotateVectorQuarterTurns(frame.tangent, rotationTurns);
-  const specs: Array<Omit<FootprintHandleSpec, 'pointRoot'>> = [];
-
-  const addSpec = (
-    id: HouseFootprintHandleId,
-    label: string,
-    valueM: number,
-    point: Point,
-    guideFrom: Point,
-    guideTo: Point,
-    axis: Point,
-    deltaMultiplier = 1,
-  ) => {
-    specs.push({
-      id,
-      label,
-      valueM,
-      point,
-      guideFrom,
-      guideTo,
-      axisX: axis.x,
-      axisY: axis.y,
-      deltaMultiplier,
-    });
-  };
-
-  const bandDepthAlong = preset === 'recess_left' || preset === 'recess_right' ? recessRange.start / 2 : edgeLength / 2;
-  const bandDepthPoint = pointOnAttachmentFrame(frame, bandDepthAlong, bandDepth);
-  addSpec(
-    'bandDepth',
-    'Band depth',
-    resolved.bandDepthM,
-    bandDepthPoint,
-    pointOnAttachmentFrame(frame, bandDepthAlong, 0),
-    bandDepthPoint,
-    rotatedOutward,
+}): FootprintCanvasLayout {
+  const { model, rect, scale, rotationCenter, rotationTurns } = input;
+  const sideTurns = attachmentSideQuarterTurns(model.attachmentSide);
+  const dims = localFootprintDimensionsM(model, model.attachmentSide);
+  const localLayout = buildHouseFootprintLocalLayout({
+    pergolaWidthM: dims.widthM,
+    pergolaDepthM: dims.depthM,
+    preset: model.houseFootprintPreset,
+    params: model.houseFootprintParams,
+  });
+  const totalTurns = sideTurns + rotationTurns;
+  const polygon = localLayout.polygon.map((localPoint) =>
+    mapLocalFootprintPointToPlan({
+      point: localPoint,
+      rect,
+      canonicalWidthM: dims.widthM,
+      canonicalDepthM: dims.depthM,
+      scale,
+      sideTurns,
+    }),
   );
+  const handles = localLayout.handles.map((handle): FootprintHandleSpec => {
+    const point = mapLocalFootprintPointToPlan({
+      point: handle.point,
+      rect,
+      canonicalWidthM: dims.widthM,
+      canonicalDepthM: dims.depthM,
+      scale,
+      sideTurns,
+    });
+    return {
+      ...handle,
+      point,
+      pointRoot: rotatePointQuarterTurns(point, rotationCenter, rotationTurns),
+      guideFrom: mapLocalFootprintPointToPlan({
+        point: handle.guideFrom,
+        rect,
+        canonicalWidthM: dims.widthM,
+        canonicalDepthM: dims.depthM,
+        scale,
+        sideTurns,
+      }),
+      guideTo: mapLocalFootprintPointToPlan({
+        point: handle.guideTo,
+        rect,
+        canonicalWidthM: dims.widthM,
+        canonicalDepthM: dims.depthM,
+        scale,
+        sideTurns,
+      }),
+      axisX: rotateVectorQuarterTurns({ x: handle.axisX, y: handle.axisY }, totalTurns).x,
+      axisY: rotateVectorQuarterTurns({ x: handle.axisX, y: handle.axisY }, totalTurns).y,
+    };
+  });
 
-  if (preset === 'l_left') {
-    const handlePoint = pointOnAttachmentFrame(frame, returnWingWidth / 2, bandDepth + returnRun);
-    addSpec(
-      'returnRun',
-      'Return run',
-      resolved.returnRunM,
-      handlePoint,
-      pointOnAttachmentFrame(frame, returnWingWidth / 2, bandDepth),
-      handlePoint,
-      rotatedOutward,
-    );
-  }
-
-  if (preset === 'l_right') {
-    const handlePoint = pointOnAttachmentFrame(frame, edgeLength - returnWingWidth / 2, bandDepth + returnRun);
-    addSpec(
-      'returnRun',
-      'Return run',
-      resolved.returnRunM,
-      handlePoint,
-      pointOnAttachmentFrame(frame, edgeLength - returnWingWidth / 2, bandDepth),
-      handlePoint,
-      rotatedOutward,
-    );
-  }
-
-  if (preset === 'recess_left' || preset === 'recess_right') {
-    const widthY = Math.max(0.18 * scale, bandDepth - recessDepth / 2);
-    const widthHandlePoint = pointOnAttachmentFrame(frame, recessRange.end, widthY);
-    addSpec(
-      'recessWidth',
-      'Recess width',
-      resolved.recessWidthM,
-      widthHandlePoint,
-      pointOnAttachmentFrame(frame, recessRange.start, widthY),
-      widthHandlePoint,
-      rotatedTangent,
-      2,
-    );
-    const depthHandlePoint = pointOnAttachmentFrame(frame, (recessRange.start + recessRange.end) / 2, Math.max(0.18 * scale, bandDepth - recessDepth));
-    addSpec(
-      'recessDepth',
-      'Recess depth',
-      resolved.recessDepthM,
-      depthHandlePoint,
-      pointOnAttachmentFrame(frame, (recessRange.start + recessRange.end) / 2, bandDepth),
-      depthHandlePoint,
-      rotatedInward,
-    );
-  }
-
-  if (preset === 'u_shape') {
-    const leftHandlePoint = pointOnAttachmentFrame(frame, uLegWidth / 2, bandDepth + leftLegRun);
-    addSpec(
-      'leftLegRun',
-      'Left leg run',
-      resolved.leftLegRunM,
-      leftHandlePoint,
-      pointOnAttachmentFrame(frame, uLegWidth / 2, bandDepth),
-      leftHandlePoint,
-      rotatedOutward,
-    );
-    const rightHandlePoint = pointOnAttachmentFrame(frame, edgeLength - uLegWidth / 2, bandDepth + rightLegRun);
-    addSpec(
-      'rightLegRun',
-      'Right leg run',
-      resolved.rightLegRunM,
-      rightHandlePoint,
-      pointOnAttachmentFrame(frame, edgeLength - uLegWidth / 2, bandDepth),
-      rightHandlePoint,
-      rotatedOutward,
-    );
-  }
-
-  if (preset === 'wrap_left') {
-    const handlePoint = pointOnAttachmentFrame(frame, wrapWingWidth / 2, bandDepth + sideRun);
-    addSpec(
-      'sideRun',
-      'Side run',
-      resolved.sideRunM,
-      handlePoint,
-      pointOnAttachmentFrame(frame, wrapWingWidth / 2, bandDepth),
-      handlePoint,
-      rotatedOutward,
-    );
-  }
-
-  if (preset === 'wrap_right') {
-    const handlePoint = pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth / 2, bandDepth + sideRun);
-    addSpec(
-      'sideRun',
-      'Side run',
-      resolved.sideRunM,
-      handlePoint,
-      pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth / 2, bandDepth),
-      handlePoint,
-      rotatedOutward,
-    );
-  }
-
-  return specs.map((spec) => ({
-    ...spec,
-    pointRoot: rotatePointQuarterTurns(spec.point, rotationCenter, rotationTurns),
-  }));
-}
-
-function buildHouseFootprintPolygon(
-  frame: PlanAttachmentFrame,
-  preset: ModulePlanModel['houseFootprintPreset'],
-  params: ModulePlanModel['houseFootprintParams'],
-  scale: number,
-  presentation: ModuleDrawingPresentation,
-): Point[] {
-  const maxBandDepth = presentation === 'sheet' ? 5.3 : 8;
-  const maxReturnRun = presentation === 'sheet' ? 11.2 : 15.2;
-  const maxRecessWidth = presentation === 'sheet' ? 14.2 : 18.2;
-  const resolved = resolveHouseFootprintParamMetres(params, frame.length / Math.max(scale, 0.001));
-  const defaults = {
-    bandDepth: clamp(resolved.bandDepthM * scale, 0.5 * scale, maxBandDepth),
-    returnRun: clamp(resolved.returnRunM * scale, 0.5 * scale, maxReturnRun),
-    recessWidth: clamp(resolved.recessWidthM * scale, 0.5 * scale, maxRecessWidth),
-    recessDepth: clamp(resolved.recessDepthM * scale, 0.3 * scale, maxBandDepth * 0.85),
-    leftLegRun: clamp(resolved.leftLegRunM * scale, 0.5 * scale, maxReturnRun),
-    rightLegRun: clamp(resolved.rightLegRunM * scale, 0.5 * scale, maxReturnRun),
-    sideRun: clamp(resolved.sideRunM * scale, 0.5 * scale, maxReturnRun),
+  return {
+    polygon,
+    handles,
+    sideTurns,
   };
-  const bandDepth = defaults.bandDepth;
-  const edgeLength = Math.max(0.1, frame.length);
-  const leftRun = Math.min(edgeLength, defaults.leftLegRun);
-  const rightRun = Math.min(edgeLength, defaults.rightLegRun);
-  const returnRun = Math.min(edgeLength, defaults.returnRun);
-  const recessWidth = Math.min(edgeLength - 0.4, defaults.recessWidth);
-  const recessDepth = Math.min(Math.max(0.25, bandDepth - 0.15), defaults.recessDepth);
-  const sideRun = Math.min(edgeLength, defaults.sideRun);
-  const returnWingWidth = footprintReturnWingWidth(edgeLength, scale);
-  const wrapWingWidth = footprintWrapWingWidth(edgeLength, scale);
-  const uLegWidth = footprintULegWidth(edgeLength, scale);
-  const recessRange =
-    preset === 'recess_left' || preset === 'recess_right'
-      ? footprintRecessRange(edgeLength, recessWidth, scale, preset)
-      : { start: Math.max(0.2, (edgeLength - recessWidth) / 2), end: Math.min(edgeLength - 0.2, (edgeLength + recessWidth) / 2) };
-
-  if (preset === 'l_left') {
-    return [
-      pointOnAttachmentFrame(frame, 0, 0),
-      pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-      pointOnAttachmentFrame(frame, returnWingWidth, bandDepth),
-      pointOnAttachmentFrame(frame, returnWingWidth, bandDepth + returnRun),
-      pointOnAttachmentFrame(frame, 0, bandDepth + returnRun),
-    ];
-  }
-
-  if (preset === 'l_right') {
-    return [
-      pointOnAttachmentFrame(frame, 0, 0),
-      pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth + returnRun),
-      pointOnAttachmentFrame(frame, edgeLength - returnWingWidth, bandDepth + returnRun),
-      pointOnAttachmentFrame(frame, edgeLength - returnWingWidth, bandDepth),
-      pointOnAttachmentFrame(frame, 0, bandDepth),
-    ];
-  }
-
-  if (preset === 'recess_left') {
-    return [
-      pointOnAttachmentFrame(frame, 0, 0),
-      pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-      pointOnAttachmentFrame(frame, recessRange.end, bandDepth),
-      pointOnAttachmentFrame(frame, recessRange.end, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, recessRange.start, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, recessRange.start, bandDepth),
-      pointOnAttachmentFrame(frame, 0, bandDepth),
-    ];
-  }
-
-  if (preset === 'recess_right') {
-    return [
-      pointOnAttachmentFrame(frame, 0, 0),
-      pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-      pointOnAttachmentFrame(frame, recessRange.end, bandDepth),
-      pointOnAttachmentFrame(frame, recessRange.end, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, recessRange.start, Math.max(0.2, bandDepth - recessDepth)),
-      pointOnAttachmentFrame(frame, recessRange.start, bandDepth),
-      pointOnAttachmentFrame(frame, 0, bandDepth),
-    ];
-  }
-
-  if (preset === 'u_shape') {
-    return [
-      pointOnAttachmentFrame(frame, 0, 0),
-      pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth + rightRun),
-      pointOnAttachmentFrame(frame, edgeLength - uLegWidth, bandDepth + rightRun),
-      pointOnAttachmentFrame(frame, edgeLength - uLegWidth, bandDepth),
-      pointOnAttachmentFrame(frame, uLegWidth, bandDepth),
-      pointOnAttachmentFrame(frame, uLegWidth, bandDepth + leftRun),
-      pointOnAttachmentFrame(frame, 0, bandDepth + leftRun),
-    ];
-  }
-
-  if (preset === 'wrap_left') {
-    return [
-      pointOnAttachmentFrame(frame, 0, 0),
-      pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-      pointOnAttachmentFrame(frame, wrapWingWidth, bandDepth),
-      pointOnAttachmentFrame(frame, wrapWingWidth, bandDepth + sideRun),
-      pointOnAttachmentFrame(frame, 0, bandDepth + sideRun),
-    ];
-  }
-
-  if (preset === 'wrap_right') {
-    return [
-      pointOnAttachmentFrame(frame, 0, 0),
-      pointOnAttachmentFrame(frame, edgeLength, 0),
-      pointOnAttachmentFrame(frame, edgeLength, bandDepth + sideRun),
-      pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth, bandDepth + sideRun),
-      pointOnAttachmentFrame(frame, edgeLength - wrapWingWidth, bandDepth),
-      pointOnAttachmentFrame(frame, 0, bandDepth),
-    ];
-  }
-
-  return [
-    pointOnAttachmentFrame(frame, 0, 0),
-    pointOnAttachmentFrame(frame, edgeLength, 0),
-    pointOnAttachmentFrame(frame, edgeLength, bandDepth),
-    pointOnAttachmentFrame(frame, 0, bandDepth),
-  ];
 }
 
 function footprintLabelPoint(points: Point[]): Point {
@@ -2366,28 +2128,17 @@ function measurePlanAnnotatedBounds(input: {
   const attachmentSide =
     model.houseConnectionType === 'none' || !model.supportsHouseFootprints || isHipCorner ? 'rear' : model.attachmentSide;
   const showHouseFootprint = model.houseConnectionType !== 'none';
-  const housePolygon = (() => {
-    if (showHouseFootprint && model.supportsHouseFootprints && !isHipCorner) {
-      return buildHouseFootprintPolygon(
-        attachmentFrameForRect(attachmentSide, {
-          x: baseX,
-          y: baseY,
-          width: Math.max(aW, bW),
-          height: isHipCorner ? aH + bH : aH,
-        }),
-        model.houseFootprintPreset,
-        model.houseFootprintParams,
-        scale,
-        presentation,
-      );
-    }
-    const houseBottomY = baseY - frame.houseBandOffset;
-    const houseTopY = Math.max(frame.outerField.y + 4.8, houseBottomY - frame.houseBandHeight);
-    const houseLeftX = Math.max(frame.fitArea.x + 1.8, baseX - frame.houseInset);
-    const houseRightX = Math.min(frame.fitArea.x + frame.fitArea.width - 1.8, baseX + Math.max(aW, bW) + frame.houseInset);
-    return rectToPoints(houseLeftX, houseTopY, houseRightX - houseLeftX, houseBottomY - houseTopY);
-  })();
-  const houseLabel = footprintLabelPoint(housePolygon);
+  const footprintRect = { x: baseX, y: baseY, width: aW, height: aH };
+  const footprintCanvasLayout =
+    showHouseFootprint && model.supportsHouseFootprints && !isHipCorner
+      ? resolveFootprintCanvasLayout({
+          model,
+          rect: footprintRect,
+          scale,
+          rotationCenter: rotationFrame.center,
+          rotationTurns: 0,
+        })
+      : null;
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, baseX, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, baseX, bW);
   const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
@@ -2477,19 +2228,6 @@ function measurePlanAnnotatedBounds(input: {
       : null,
     ...soffitBracketLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
     model.overhangEnabled && overhangDepth > 0 ? boundsFromRect(overhangX, overhangY, overhangWidth, overhangDepth) : null,
-    showHouseFootprint ? boundsFromPoints(housePolygon, 0.25) : null,
-    showHouseFootprint
-      ? estimateTextBounds({
-          text: 'House side',
-          x: houseLabel.x,
-          y: houseLabel.y,
-          anchor: 'middle',
-          fontHeight: 1.7,
-          charWidth: 0.62,
-          paddingX: 0.3,
-          paddingY: 0.18,
-        })
-      : null,
     boundsFromLine(fallStart.x, fallStart.y, fallEnd.x, fallEnd.y, 0.25),
     isGableLike
       ? estimateArrowHeadBounds({
@@ -3062,16 +2800,19 @@ function PlanSvg({
   const houseBandHeight = isSheet ? (planSheetFrame?.houseBandHeight ?? 5.3) : layout.houseBandHeight;
   const houseInset = isSheet ? (planSheetFrame?.houseInset ?? 1.7) : layout.houseInset;
   const fallGap = isSheet ? (planSheetFrame?.fallGap ?? 5.0) : layout.fallGap;
+  const footprintRect = { x, y, width: aW, height: aH };
+  const footprintCanvasLayout =
+    showHouseFootprint && model.supportsHouseFootprints && !isHipCorner
+      ? resolveFootprintCanvasLayout({
+          model: { ...model, attachmentSide },
+          rect: footprintRect,
+          scale,
+          rotationCenter: rotationFrame.center,
+          rotationTurns: rotationFrame.turns,
+        })
+      : null;
   const housePolygon = (() => {
-    if (showHouseFootprint && model.supportsHouseFootprints && !isHipCorner) {
-      return buildHouseFootprintPolygon(
-        attachmentFrameForRect(attachmentSide, { x, y, width: Math.max(aW, bW), height: isHipCorner ? aH + bH : aH }),
-        model.houseFootprintPreset,
-        model.houseFootprintParams,
-        scale,
-        presentation,
-      );
-    }
+    if (footprintCanvasLayout) return footprintCanvasLayout.polygon;
     if (!showHouseFootprint) {
       return rectToPoints(x, y, 0.1, 0.1);
     }
@@ -3087,8 +2828,12 @@ function PlanSvg({
   const debugMetrics = sheetLayout ? buildSheetDebugMetrics(sheetLayout, debugScaleState, scaleDiagnostics) : null;
   const houseLabel = footprintLabelPoint(housePolygon);
   const hatchId = `${idBase}_house_hatch`;
+  const houseClipId = `${idBase}_house_clip`;
   const canEditFootprint = presentation === 'card' && Boolean(footprintEditor?.available) && canEditHouseFootprintPlan(model);
   const isEditingFootprint = canEditFootprint && Boolean(footprintEditor?.isEditing);
+  const houseClipRect = isSheet
+    ? (sheetLayout?.outerField ?? getSheetDrawingField())
+    : { x: 0, y: 0, width: 120, height: 90 };
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
@@ -3101,18 +2846,7 @@ function PlanSvg({
         frame: attachmentFrameForRect(side, { x, y, width: Math.max(aW, bW), height: aH }),
       }))
     : [];
-  const handleSpecs =
-    showHouseFootprint && model.supportsHouseFootprints && !isHipCorner
-      ? resolveFootprintHandleSpecs({
-          frame: footprintFrame,
-          rotationCenter: rotationFrame.center,
-          rotationTurns: rotationFrame.turns,
-          scale,
-          preset: model.houseFootprintPreset,
-          params: model.houseFootprintParams,
-          attachmentEdgeLengthM: model.attachmentEdgeLengthM,
-        })
-      : [];
+  const handleSpecs = footprintCanvasLayout?.handles ?? [];
   const highlightedHandle = handleSpecs.find(
     (handle) => handle.id === (footprintEditor?.activeHandleId ?? footprintEditor?.hoveredHandleId),
   );
@@ -3122,9 +2856,13 @@ function PlanSvg({
     rotationFrame.turns,
   );
   const activeEdgeTagLabel = isEditingFootprint ? 'Attached edge' : null;
-  const activeEdgeTagWidth = activeEdgeTagLabel ? Math.max(13.5, activeEdgeTagLabel.length * 0.54 + 2.2) : 0;
-  const activeEdgeTagX = activeEdgeTagLabel ? clamp(activeEdgeTagPoint.x - activeEdgeTagWidth / 2, 1.5, 118 - activeEdgeTagWidth) : 0;
-  const activeEdgeTagY = activeEdgeTagLabel ? clamp(activeEdgeTagPoint.y, 4.8, 84) : 0;
+  const activeEdgeTagStyle =
+    activeEdgeTagLabel
+      ? {
+          left: `${(clamp(activeEdgeTagPoint.x, 5.5, 114.5) / 120) * 100}%`,
+          top: `${(clamp(activeEdgeTagPoint.y, 5.5, 84) / 90) * 100}%`,
+        }
+      : undefined;
   const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.attachmentEdgeLengthM, 0, footprintFrame.length);
   const soffitGuideStart =
     soffitXs.length > 0 ? pointOnAttachmentFrame(footprintFrame, soffitXs[0]!, -1.2) : pointOnAttachmentFrame(footprintFrame, 0, -1.2);
@@ -3175,19 +2913,23 @@ function PlanSvg({
   const highlightedHandleLabelY = highlightedHandle ? clamp(highlightedHandle.pointRoot.y - 4.8, 4.5, 84) : 0;
 
   return (
-    <svg
-      viewBox="0 0 120 90"
-      role="img"
-      aria-label="Module plan view"
-      ref={footprintEditor?.onSvgMount}
-      className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
-        presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
-      }`}
-    >
+    <>
+      <svg
+        viewBox="0 0 120 90"
+        role="img"
+        aria-label="Module plan view"
+        ref={footprintEditor?.onSvgMount}
+        className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
+          presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
+        }`}
+      >
       <defs>
         <pattern id={hatchId} width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="4" className={styles.moduleHouseHatchLine} />
         </pattern>
+        <clipPath id={houseClipId}>
+          <rect x={houseClipRect.x} y={houseClipRect.y} width={houseClipRect.width} height={houseClipRect.height} />
+        </clipPath>
       </defs>
 
       {effectiveShowDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-plan" /> : null}
@@ -3227,12 +2969,14 @@ function PlanSvg({
       ) : null}
 
       <g transform={planRotationTransform}>
-        {showHouseFootprint ? <polygon points={toPointsAttr(housePolygon)} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} /> : null}
-        {showHouseFootprint && !isEditingFootprint ? (
-          <text x={houseLabel.x} y={houseLabel.y} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
-            House side
-          </text>
-        ) : null}
+        <g clipPath={`url(#${houseClipId})`}>
+          {showHouseFootprint ? <polygon points={toPointsAttr(housePolygon)} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} /> : null}
+          {showHouseFootprint && !isEditingFootprint ? (
+            <text x={houseLabel.x} y={houseLabel.y} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
+              House side
+            </text>
+          ) : null}
+        </g>
         {model.houseConnectionType === 'facade' ? (
           <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
         ) : null}
@@ -3508,7 +3252,8 @@ function PlanSvg({
                           axisY: handle.axisY,
                           scale,
                           deltaMultiplier: handle.deltaMultiplier,
-                          attachmentEdgeLengthM: model.attachmentEdgeLengthM,
+                          minValueM: handle.minValueM,
+                          maxValueM: handle.maxValueM,
                         },
                         {
                           pointerId: event.pointerId,
@@ -3523,15 +3268,6 @@ function PlanSvg({
             })
           : null}
       </g>
-
-      {activeEdgeTagLabel ? (
-        <g className={styles.moduleFootprintEdgeBadge} aria-hidden="true">
-          <rect x={activeEdgeTagX} y={activeEdgeTagY - 1.65} width={activeEdgeTagWidth} height={3} rx={1.5} className={styles.moduleFootprintEdgeBadgeRect} />
-          <text x={activeEdgeTagX + activeEdgeTagWidth / 2} y={activeEdgeTagY} textAnchor="middle" className={styles.moduleFootprintEdgeBadgeText}>
-            {activeEdgeTagLabel}
-          </text>
-        </g>
-      ) : null}
 
       {isEditingFootprint && highlightedHandle && highlightedHandleLabel ? (
         <g className={styles.moduleFootprintValueBadge} aria-hidden="true">
@@ -3548,7 +3284,13 @@ function PlanSvg({
           </text>
         </g>
       ) : null}
-    </svg>
+      </svg>
+      {activeEdgeTagLabel && activeEdgeTagStyle ? (
+        <div className={styles.moduleFootprintEdgeBadgeOverlay} style={activeEdgeTagStyle} aria-hidden="true">
+          <span className={styles.moduleFootprintEdgeBadgePill}>{activeEdgeTagLabel}</span>
+        </div>
+      ) : null}
+    </>
   );
 }
 

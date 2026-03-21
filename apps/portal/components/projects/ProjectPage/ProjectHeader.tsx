@@ -21,10 +21,12 @@ function requiredDeleteConfirmation(projectId: string, stage: string): string {
 export default function ProjectHeader({
   project,
   currentStage,
+  mode = 'expanded',
   pipeline,
 }: {
   project: ProjectPageSnapshot['project'];
   currentStage: ProjectPageSnapshot['pipeline']['stage'];
+  mode?: 'expanded' | 'compact';
   pipeline?: ReactNode;
 }) {
   const router = useRouter();
@@ -40,6 +42,7 @@ export default function ProjectHeader({
   const subtext = [project.contactName, project.region].filter(Boolean).join(' / ');
   const stageLabel = PIPELINE_STAGE_LABELS[currentStage] ?? String(currentStage);
   const requiredText = requiredDeleteConfirmation(project.id, currentStage);
+  const isCompact = mode === 'compact';
 
   const closeDeleteModal = () => {
     if (deleteBusy) return;
@@ -49,37 +52,39 @@ export default function ProjectHeader({
   };
 
   return (
-    <section className={styles.masthead} aria-label="Project summary">
+    <section className={styles.masthead} aria-label="Project summary" data-project-masthead-mode={mode}>
       <div className={styles.mastheadTop}>
         <div className={styles.mastheadIdentity}>
           <div className={styles.mastheadTitleRow}>
             <h1 className={styles.mastheadTitle}>{project.name}</h1>
             <span className={styles.mastheadStagePill}>{stageLabel}</span>
-            {subtext ? <p className={styles.mastheadMeta}>{subtext}</p> : null}
+            {!isCompact && subtext ? <p className={styles.mastheadMeta}>{subtext}</p> : null}
           </div>
         </div>
 
-        <div className={styles.mastheadActions}>
-          <Link href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
-            Projects
-          </Link>
-          {isAdmin ? (
-            <button
-              type="button"
-              className={`${legacy.buttonDanger} ${styles.mastheadAction}`}
-              onClick={() => {
-                setDeleteConfirmText('');
-                setDeleteReason('');
-                setDeleteOpen(true);
-              }}
-            >
-              Delete project
-            </button>
-          ) : null}
-        </div>
+        {!isCompact ? (
+          <div className={styles.mastheadActions}>
+            <Link href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
+              Projects
+            </Link>
+            {isAdmin ? (
+              <button
+                type="button"
+                className={`${legacy.buttonDanger} ${styles.mastheadAction}`}
+                onClick={() => {
+                  setDeleteConfirmText('');
+                  setDeleteReason('');
+                  setDeleteOpen(true);
+                }}
+              >
+                Delete project
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      {pipeline ? <div className={styles.mastheadPipeline}>{pipeline}</div> : null}
+      {!isCompact && pipeline ? <div className={styles.mastheadPipeline}>{pipeline}</div> : null}
 
       {deleteOpen ? (
         <Modal

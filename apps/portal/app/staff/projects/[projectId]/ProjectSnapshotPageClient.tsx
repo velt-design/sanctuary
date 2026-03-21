@@ -3,9 +3,7 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import ProjectHeader from '@/components/projects/ProjectPage/ProjectHeader';
-import ProjectPipelineBar from '@/components/projects/ProjectPage/ProjectPipelineBar';
-import ProjectPageShell from '@/components/projects/ProjectPage/ProjectPageShell';
+import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import { getProjectSnapshotPlaceholderFromList } from '@/lib/queries/projectCache';
 import { projectPageSnapshotQueryOptions } from '@/lib/queries/projects';
@@ -54,12 +52,7 @@ export default function ProjectSnapshotPageClient({
 
   return (
     <main className={styles.page}>
-      <ProjectHeader
-        project={snapshot.project}
-        currentStage={snapshot.pipeline.stage}
-        pipeline={<ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} compact />}
-      />
-      <ProjectPageShell snapshot={snapshot} tab={tab} />
+      <ProjectPageFrame snapshot={snapshot} tab={tab} />
     </main>
   );
 }

@@ -93,6 +93,43 @@ export type ModuleSectionModel = {
   boxRiseM: number | null;
 };
 
+export type HouseFootprintHandleId = 'bandDepth' | 'returnRun' | 'recessWidth' | 'recessDepth' | 'leftLegRun' | 'rightLegRun' | 'sideRun';
+
+export type HouseFootprintPoint = {
+  x: number;
+  y: number;
+};
+
+export type HouseFootprintResolvedParams = {
+  bandDepthM: number;
+  returnRunM: number;
+  recessWidthM: number;
+  recessDepthM: number;
+  leftLegRunM: number;
+  rightLegRunM: number;
+  sideRunM: number;
+};
+
+export type HouseFootprintHandleLayout = {
+  id: HouseFootprintHandleId;
+  label: string;
+  valueM: number;
+  point: HouseFootprintPoint;
+  guideFrom: HouseFootprintPoint;
+  guideTo: HouseFootprintPoint;
+  axisX: number;
+  axisY: number;
+  deltaMultiplier: number;
+  minValueM: number;
+  maxValueM: number;
+};
+
+export type HouseFootprintLocalLayout = {
+  polygon: HouseFootprintPoint[];
+  handles: HouseFootprintHandleLayout[];
+  resolved: HouseFootprintResolvedParams;
+};
+
 function toPositiveNumber(value: unknown): number | null {
   const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
   if (!Number.isFinite(n) || n <= 0) return null;
@@ -103,6 +140,356 @@ function toNonNegativeNumber(value: unknown): number | null {
   const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
   if (!Number.isFinite(n) || n < 0) return null;
   return n;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function parseFootprintMetres(raw: string | undefined, fallbackM: number): number {
+  const parsed = Number.parseFloat(raw ?? '');
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackM;
+}
+
+function point(x: number, y: number): HouseFootprintPoint {
+  return { x, y };
+}
+
+export function attachmentSideQuarterTurns(side: AttachmentSide): 0 | 1 | 2 | 3 {
+  if (side === 'left') return 1;
+  if (side === 'front') return 2;
+  if (side === 'right') return 3;
+  return 0;
+}
+
+export function resolveHouseFootprintParamMetres(input: {
+  params: CalculatorHouseFootprintParams;
+  pergolaWidthM: number;
+  pergolaDepthM: number;
+}): HouseFootprintResolvedParams {
+  const { params } = input;
+  const pergolaWidthM = Math.max(0.5, input.pergolaWidthM);
+  const pergolaDepthM = Math.max(0.5, input.pergolaDepthM);
+  const bandDepthM = clamp(parseFootprintMetres(params.bandDepthM, 1.8), 0.5, 12);
+  const returnRunM = clamp(parseFootprintMetres(params.returnRunM, 2.4), 0.5, pergolaDepthM);
+  const recessWidthM = clamp(parseFootprintMetres(params.recessWidthM, 2.4), 0.5, Math.max(0.5, pergolaWidthM - 0.5));
+  const recessDepthM = clamp(parseFootprintMetres(params.recessDepthM, 1.2), 0.3, bandDepthM);
+  const leftLegRunM = clamp(parseFootprintMetres(params.leftLegRunM, 2.4), 0.5, pergolaDepthM);
+  const rightLegRunM = clamp(parseFootprintMetres(params.rightLegRunM, 2.4), 0.5, pergolaDepthM);
+  const sideRunM = clamp(parseFootprintMetres(params.sideRunM, 2.4), 0.5, pergolaWidthM);
+
+  return {
+    bandDepthM,
+    returnRunM,
+    recessWidthM,
+    recessDepthM,
+    leftLegRunM,
+    rightLegRunM,
+    sideRunM,
+  };
+}
+
+export function buildHouseFootprintLocalLayout(input: {
+  pergolaWidthM: number;
+  pergolaDepthM: number;
+  preset: CalculatorHouseFootprintPreset;
+  params: CalculatorHouseFootprintParams;
+}): HouseFootprintLocalLayout {
+  const width = Math.max(0.5, input.pergolaWidthM);
+  const depth = Math.max(0.5, input.pergolaDepthM);
+  const resolved = resolveHouseFootprintParamMetres({
+    params: input.params,
+    pergolaWidthM: width,
+    pergolaDepthM: depth,
+  });
+  const bandDepth = resolved.bandDepthM;
+  const returnRun = resolved.returnRunM;
+  const recessWidth = resolved.recessWidthM;
+  const recessDepth = resolved.recessDepthM;
+  const leftLegRun = resolved.leftLegRunM;
+  const rightLegRun = resolved.rightLegRunM;
+  const sideRun = resolved.sideRunM;
+  const totalRecessDepth = bandDepth + recessDepth;
+  const handles: HouseFootprintHandleLayout[] = [];
+
+  const addHandle = (
+    id: HouseFootprintHandleId,
+    label: string,
+    valueM: number,
+    handlePoint: HouseFootprintPoint,
+    guideFrom: HouseFootprintPoint,
+    guideTo: HouseFootprintPoint,
+    axisX: number,
+    axisY: number,
+    minValueM: number,
+    maxValueM: number,
+    deltaMultiplier = 1,
+  ) => {
+    handles.push({
+      id,
+      label,
+      valueM,
+      point: handlePoint,
+      guideFrom,
+      guideTo,
+      axisX,
+      axisY,
+      deltaMultiplier,
+      minValueM,
+      maxValueM,
+    });
+  };
+
+  if (input.preset === 'recess_left' || input.preset === 'recess_right') {
+    const notchStart = input.preset === 'recess_left' ? 0 : width - recessWidth;
+    const notchEnd = notchStart + recessWidth;
+    const notchMid = (notchStart + notchEnd) / 2;
+
+    addHandle(
+      'bandDepth',
+      'Band depth',
+      bandDepth,
+      point(width / 2, -totalRecessDepth),
+      point(width / 2, -recessDepth),
+      point(width / 2, -totalRecessDepth),
+      0,
+      -1,
+      0.5,
+      12,
+    );
+    addHandle(
+      'recessWidth',
+      'Recess width',
+      recessWidth,
+      point(input.preset === 'recess_left' ? notchEnd : notchStart, -recessDepth / 2),
+      point(input.preset === 'recess_left' ? notchStart : notchEnd, -recessDepth / 2),
+      point(input.preset === 'recess_left' ? notchEnd : notchStart, -recessDepth / 2),
+      input.preset === 'recess_left' ? 1 : -1,
+      0,
+      0.5,
+      Math.max(0.5, width - 0.5),
+    );
+    addHandle(
+      'recessDepth',
+      'Recess depth',
+      recessDepth,
+      point(notchMid, -recessDepth),
+      point(notchMid, 0),
+      point(notchMid, -recessDepth),
+      0,
+      -1,
+      0.3,
+      bandDepth,
+    );
+
+    if (input.preset === 'recess_left') {
+      return {
+        polygon: [
+          point(0, -totalRecessDepth),
+          point(width, -totalRecessDepth),
+          point(width, 0),
+          point(recessWidth, 0),
+          point(recessWidth, -recessDepth),
+          point(0, -recessDepth),
+        ],
+        handles,
+        resolved,
+      };
+    }
+
+    return {
+      polygon: [
+        point(0, -totalRecessDepth),
+        point(width, -totalRecessDepth),
+        point(width, -recessDepth),
+        point(width - recessWidth, -recessDepth),
+        point(width - recessWidth, 0),
+        point(0, 0),
+      ],
+      handles,
+      resolved,
+    };
+  }
+
+  addHandle(
+    'bandDepth',
+    'Band depth',
+    bandDepth,
+    point(width / 2, -bandDepth),
+    point(width / 2, 0),
+    point(width / 2, -bandDepth),
+    0,
+    -1,
+    0.5,
+    12,
+  );
+
+  if (input.preset === 'straight') {
+    return {
+      polygon: [point(0, -bandDepth), point(width, -bandDepth), point(width, 0), point(0, 0)],
+      handles,
+      resolved,
+    };
+  }
+
+  if (input.preset === 'l_left') {
+    addHandle(
+      'returnRun',
+      'Return run',
+      returnRun,
+      point(-bandDepth / 2, returnRun),
+      point(-bandDepth / 2, 0),
+      point(-bandDepth / 2, returnRun),
+      0,
+      1,
+      0.5,
+      depth,
+    );
+    return {
+      polygon: [
+        point(-bandDepth, -bandDepth),
+        point(width, -bandDepth),
+        point(width, 0),
+        point(0, 0),
+        point(0, returnRun),
+        point(-bandDepth, returnRun),
+      ],
+      handles,
+      resolved,
+    };
+  }
+
+  if (input.preset === 'l_right') {
+    addHandle(
+      'returnRun',
+      'Return run',
+      returnRun,
+      point(width + bandDepth / 2, returnRun),
+      point(width + bandDepth / 2, 0),
+      point(width + bandDepth / 2, returnRun),
+      0,
+      1,
+      0.5,
+      depth,
+    );
+    return {
+      polygon: [
+        point(0, -bandDepth),
+        point(width + bandDepth, -bandDepth),
+        point(width + bandDepth, returnRun),
+        point(width, returnRun),
+        point(width, 0),
+        point(0, 0),
+      ],
+      handles,
+      resolved,
+    };
+  }
+
+  if (input.preset === 'u_shape') {
+    addHandle(
+      'leftLegRun',
+      'Left leg run',
+      leftLegRun,
+      point(-bandDepth / 2, leftLegRun),
+      point(-bandDepth / 2, 0),
+      point(-bandDepth / 2, leftLegRun),
+      0,
+      1,
+      0.5,
+      depth,
+    );
+    addHandle(
+      'rightLegRun',
+      'Right leg run',
+      rightLegRun,
+      point(width + bandDepth / 2, rightLegRun),
+      point(width + bandDepth / 2, 0),
+      point(width + bandDepth / 2, rightLegRun),
+      0,
+      1,
+      0.5,
+      depth,
+    );
+    return {
+      polygon: [
+        point(-bandDepth, -bandDepth),
+        point(width + bandDepth, -bandDepth),
+        point(width + bandDepth, rightLegRun),
+        point(width, rightLegRun),
+        point(width, 0),
+        point(0, 0),
+        point(0, leftLegRun),
+        point(-bandDepth, leftLegRun),
+      ],
+      handles,
+      resolved,
+    };
+  }
+
+  if (input.preset === 'wrap_left') {
+    addHandle(
+      'sideRun',
+      'Side run',
+      sideRun,
+      point(sideRun, depth + bandDepth / 2),
+      point(0, depth + bandDepth / 2),
+      point(sideRun, depth + bandDepth / 2),
+      1,
+      0,
+      0.5,
+      width,
+    );
+    return {
+      polygon: [
+        point(-bandDepth, -bandDepth),
+        point(width, -bandDepth),
+        point(width, 0),
+        point(0, 0),
+        point(0, depth),
+        point(sideRun, depth),
+        point(sideRun, depth + bandDepth),
+        point(-bandDepth, depth + bandDepth),
+      ],
+      handles,
+      resolved,
+    };
+  }
+
+  if (input.preset === 'wrap_right') {
+    addHandle(
+      'sideRun',
+      'Side run',
+      sideRun,
+      point(width - sideRun, depth + bandDepth / 2),
+      point(width, depth + bandDepth / 2),
+      point(width - sideRun, depth + bandDepth / 2),
+      -1,
+      0,
+      0.5,
+      width,
+    );
+    return {
+      polygon: [
+        point(0, -bandDepth),
+        point(width + bandDepth, -bandDepth),
+        point(width + bandDepth, depth + bandDepth),
+        point(width - sideRun, depth + bandDepth),
+        point(width - sideRun, depth),
+        point(width, depth),
+        point(width, 0),
+        point(0, 0),
+      ],
+      handles,
+      resolved,
+    };
+  }
+
+  return {
+    polygon: [point(0, -bandDepth), point(width, -bandDepth), point(width, 0), point(0, 0)],
+    handles,
+    resolved,
+  };
 }
 
 function roofTypeFromModule(module: CalculatorModuleInputs): RoofType {
