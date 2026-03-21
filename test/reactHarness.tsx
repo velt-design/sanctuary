@@ -6,6 +6,48 @@ const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRec
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+function createMemoryStorage(): Storage {
+  const store = new Map<string, string>();
+
+  return {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      return store.has(key) ? store.get(key) ?? null : null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(String(key), String(value));
+    },
+  } as Storage;
+}
+
+function ensureStorage(name: 'localStorage' | 'sessionStorage'): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    void window[name];
+    window[name].getItem('__storage_probe__');
+  } catch {
+    Object.defineProperty(window, name, {
+      configurable: true,
+      value: createMemoryStorage(),
+    });
+  }
+}
+
+ensureStorage('localStorage');
+ensureStorage('sessionStorage');
+
 function rectFor(width: number, height: number): DOMRect {
   return {
     x: 0,
@@ -35,7 +77,7 @@ export function installDomGeometryMock(): () => void {
   Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
     configurable: true,
     value(this: HTMLElement) {
-      if (this.dataset.projectPageShell === 'true') {
+      if (this.dataset.projectPageShell === 'true' || this.dataset.projectPageFrame === 'true') {
         return rectFor(projectPageShellWidthPx, 900);
       }
       const width = Number.parseFloat(this.dataset.testWidth ?? this.style.width ?? '0') || 0;

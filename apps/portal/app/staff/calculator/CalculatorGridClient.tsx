@@ -2494,8 +2494,8 @@ export default function CalculatorGridClient({
       const deltaSvgY = nextPoint.y - footprintDragSession.startSvgY;
       const deltaUnits = deltaSvgX * footprintDragSession.axisX + deltaSvgY * footprintDragSession.axisY;
       const deltaM = (deltaUnits / Math.max(footprintDragSession.scale, 0.001)) * footprintDragSession.deltaMultiplier;
-      const edgeLengthM = Math.max(0.5, footprintDragSession.attachmentEdgeLengthM);
-      const startBandDepthM = parseHouseFootprintParamValue(footprintDragSession.startParams.bandDepthM, 1.8);
+      const minValueM = footprintDragSession.minValueM;
+      const maxValueM = Math.max(minValueM, footprintDragSession.maxValueM);
       const startParams = footprintDragSession.startParams;
 
       let nextKey: keyof CalculatorHouseFootprintParams = 'bandDepthM';
@@ -2505,38 +2505,38 @@ export default function CalculatorGridClient({
         case 'returnRun':
           nextKey = 'returnRunM';
           nextValue = parseHouseFootprintParamValue(startParams.returnRunM, 2.4) + deltaM;
-          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM));
           break;
         case 'recessWidth':
           nextKey = 'recessWidthM';
           nextValue = parseHouseFootprintParamValue(startParams.recessWidthM, 2.4) + deltaM;
-          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), Math.max(0.5, edgeLengthM - 0.5)));
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM));
           break;
         case 'recessDepth':
           nextKey = 'recessDepthM';
           nextValue = parseHouseFootprintParamValue(startParams.recessDepthM, 1.2) + deltaM;
-          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.3), Math.max(0.3, startBandDepthM)));
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM));
           break;
         case 'leftLegRun':
           nextKey = 'leftLegRunM';
           nextValue = parseHouseFootprintParamValue(startParams.leftLegRunM, 2.4) + deltaM;
-          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM));
           break;
         case 'rightLegRun':
           nextKey = 'rightLegRunM';
           nextValue = parseHouseFootprintParamValue(startParams.rightLegRunM, 2.4) + deltaM;
-          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM));
           break;
         case 'sideRun':
           nextKey = 'sideRunM';
           nextValue = parseHouseFootprintParamValue(startParams.sideRunM, 2.4) + deltaM;
-          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), edgeLengthM));
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM));
           break;
         case 'bandDepth':
         default:
           nextKey = 'bandDepthM';
           nextValue = parseHouseFootprintParamValue(startParams.bandDepthM, 1.8) + deltaM;
-          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, 0.5), 12));
+          nextValue = snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM));
           break;
       }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1, RoofType } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import { buildModulePlanModel, buildModuleSectionModel } from './moduleViews';
+import { attachmentSideQuarterTurns, buildHouseFootprintLocalLayout, buildModulePlanModel, buildModuleSectionModel } from './moduleViews';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -47,6 +47,66 @@ function makeResult(params: {
       slope_direction: params.slopeDirection ?? 'away_from_house',
     },
   } as unknown as CostOutputV1;
+}
+
+function makeFootprintParams(overrides: Partial<Record<'bandDepthM' | 'returnRunM' | 'recessWidthM' | 'recessDepthM' | 'leftLegRunM' | 'rightLegRunM' | 'sideRunM', string>> = {}) {
+  return {
+    bandDepthM: '1.8',
+    returnRunM: '2.4',
+    recessWidthM: '2.4',
+    recessDepthM: '1.2',
+    leftLegRunM: '2.4',
+    rightLegRunM: '2.4',
+    sideRunM: '2.4',
+    ...overrides,
+  };
+}
+
+type TestPoint = { x: number; y: number };
+
+function rotatePointQuarterTurns(point: TestPoint, center: TestPoint, turns: number): TestPoint {
+  const normalized = ((turns % 4) + 4) % 4;
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  if (normalized === 1) return { x: center.x + dy, y: center.y - dx };
+  if (normalized === 2) return { x: center.x - dx, y: center.y - dy };
+  if (normalized === 3) return { x: center.x - dy, y: center.y + dx };
+  return point;
+}
+
+function normalizePoints(points: TestPoint[]): string[] {
+  return points
+    .map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`)
+    .sort();
+}
+
+function bounds(points: TestPoint[]) {
+  return {
+    minX: Math.min(...points.map((point) => point.x)),
+    maxX: Math.max(...points.map((point) => point.x)),
+    minY: Math.min(...points.map((point) => point.y)),
+    maxY: Math.max(...points.map((point) => point.y)),
+  };
+}
+
+function transformLocalFootprint(points: TestPoint[], input: { attachmentSide: 'rear' | 'front' | 'left' | 'right'; width: number; depth: number; drawingTurns?: number }) {
+  const { attachmentSide, width, depth, drawingTurns = 0 } = input;
+  const sideTurns = attachmentSideQuarterTurns(attachmentSide);
+  const canonicalWidth = attachmentSide === 'left' || attachmentSide === 'right' ? depth : width;
+  const canonicalDepth = attachmentSide === 'left' || attachmentSide === 'right' ? width : depth;
+  const center = { x: width / 2, y: depth / 2 };
+  const canonicalX = center.x - canonicalWidth / 2;
+  const canonicalY = center.y - canonicalDepth / 2;
+  return points.map((point) =>
+    rotatePointQuarterTurns(
+      {
+        x: canonicalX + point.x,
+        y: canonicalY + point.y,
+      },
+      center,
+      sideTurns + drawingTurns,
+    ),
+  );
 }
 
 describe('buildModulePlanModel', () => {
@@ -181,6 +241,104 @@ describe('buildModulePlanModel', () => {
     expect(model?.supportBeamWidthM).toBeCloseTo(0.05);
     expect(model?.ridgeBeamDepthM).toBeCloseTo(0.15);
     expect(model?.ridgeBeamWidthM).toBeCloseTo(0.05);
+  });
+
+  it('mirrors L presets around the pergola width in local space', () => {
+    const left = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'l_left',
+      params: makeFootprintParams(),
+    });
+    const right = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'l_right',
+      params: makeFootprintParams(),
+    });
+
+    const mirroredLeft = left.polygon.map((point) => ({ x: 6 - point.x, y: point.y }));
+
+    expect(normalizePoints(mirroredLeft)).toEqual(normalizePoints(right.polygon));
+  });
+
+  it('builds recess presets as true front-opening notches aligned to the chosen side', () => {
+    const left = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'recess_left',
+      params: makeFootprintParams(),
+    });
+    const right = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'recess_right',
+      params: makeFootprintParams(),
+    });
+
+    expect(normalizePoints(left.polygon)).toContain('2.400,0.000');
+    expect(normalizePoints(left.polygon)).toContain('2.400,-1.200');
+    expect(normalizePoints(left.polygon)).toContain('0.000,-1.200');
+    expect(normalizePoints(right.polygon)).toContain('3.600,0.000');
+    expect(normalizePoints(right.polygon)).toContain('3.600,-1.200');
+    expect(normalizePoints(right.polygon)).toContain('6.000,-1.200');
+  });
+
+  it('builds wrap presets with a full side leg plus a partial front return on the same side', () => {
+    const left = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'wrap_left',
+      params: makeFootprintParams(),
+    });
+    const right = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'wrap_right',
+      params: makeFootprintParams(),
+    });
+
+    expect(bounds(left.polygon)).toMatchObject({ minX: -1.8, maxX: 6, maxY: 6.8 });
+    expect(bounds(right.polygon)).toMatchObject({ minX: 0, maxX: 7.8, maxY: 6.8 });
+    expect(normalizePoints(left.polygon)).toContain('2.400,6.800');
+    expect(normalizePoints(right.polygon)).toContain('3.600,6.800');
+  });
+
+  it('positions the U preset around the pergola on the correct side for all attachment edges', () => {
+    const u = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'u_shape',
+      params: makeFootprintParams(),
+    });
+    const rearBounds = bounds(transformLocalFootprint(u.polygon, { attachmentSide: 'rear', width: 6, depth: 5 }));
+    const frontBounds = bounds(transformLocalFootprint(u.polygon, { attachmentSide: 'front', width: 6, depth: 5 }));
+    const leftBounds = bounds(transformLocalFootprint(u.polygon, { attachmentSide: 'left', width: 6, depth: 5 }));
+    const rightBounds = bounds(transformLocalFootprint(u.polygon, { attachmentSide: 'right', width: 6, depth: 5 }));
+
+    expect(rearBounds.minY).toBeCloseTo(-1.8);
+    expect(rearBounds.maxY).toBeCloseTo(2.4);
+    expect(frontBounds.minY).toBeCloseTo(2.6);
+    expect(frontBounds.maxY).toBeCloseTo(6.8);
+    expect(leftBounds.minX).toBeCloseTo(-1.8);
+    expect(leftBounds.maxX).toBeCloseTo(2.4);
+    expect(rightBounds.minX).toBeCloseTo(3.6);
+    expect(rightBounds.maxX).toBeCloseTo(7.8);
+  });
+
+  it('treats drawing quarter-turns as presentation-only rotation', () => {
+    const wrap = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'wrap_left',
+      params: makeFootprintParams(),
+    });
+    const base = transformLocalFootprint(wrap.polygon, { attachmentSide: 'rear', width: 6, depth: 5 });
+    const rotated = transformLocalFootprint(wrap.polygon, { attachmentSide: 'rear', width: 6, depth: 5, drawingTurns: 1 }).map((point) =>
+      rotatePointQuarterTurns(point, { x: 3, y: 2.5 }, 3),
+    );
+
+    expect(normalizePoints(rotated)).toEqual(normalizePoints(base));
   });
 });
 
