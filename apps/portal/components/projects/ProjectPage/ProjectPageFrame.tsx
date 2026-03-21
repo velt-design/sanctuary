@@ -29,6 +29,7 @@ export default function ProjectPageFrame({
     isResizing,
   } = useProjectHeaderLayout();
   const isCollapsed = displayMode === 'collapsed';
+  const isStickyMasthead = isDesktopLayout && (displayMode === 'compact' || displayMode === 'collapsed');
   const handleClassName = cx(styles.mastheadResizeHandle, isCollapsed && styles.mastheadResizeHandleCollapsed);
 
   return (
@@ -37,42 +38,49 @@ export default function ProjectPageFrame({
       className={cx(styles.pageFrame, isResizing && styles.pageFrameResizing)}
       data-project-page-frame="true"
       data-project-masthead-mode={displayMode}
+      data-project-masthead-sticky={isStickyMasthead ? 'true' : undefined}
     >
-      {displayMode !== 'collapsed' ? (
-        <ProjectHeader
-          project={snapshot.project}
-          currentStage={snapshot.pipeline.stage}
-          mode={displayMode === 'compact' ? 'compact' : 'expanded'}
-          pipeline={
-            displayMode === 'expanded' ? (
-              <ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} compact />
-            ) : undefined
-          }
-        />
-      ) : null}
+      <div
+        className={cx(styles.pageFrameMastheadSlot, isStickyMasthead && styles.pageFrameMastheadSlotSticky)}
+        data-project-masthead-slot={displayMode}
+        data-project-masthead-slot-sticky={isStickyMasthead ? 'true' : undefined}
+      >
+        {displayMode !== 'collapsed' ? (
+          <ProjectHeader
+            project={snapshot.project}
+            currentStage={snapshot.pipeline.stage}
+            mode={displayMode === 'compact' ? 'compact' : 'expanded'}
+            pipeline={
+              displayMode === 'expanded' ? (
+                <ProjectPipelineBar projectId={snapshot.project.id} stage={snapshot.pipeline.stage} compact />
+              ) : undefined
+            }
+          />
+        ) : null}
 
-      {isDesktopLayout ? (
-        isCollapsed ? (
-          <button
-            type="button"
-            className={handleClassName}
-            aria-expanded="false"
-            aria-label="Expand project header"
-            data-project-masthead-collapsed="true"
-            data-project-masthead-handle="true"
-            onClick={createHandleClickHandler()}
-            onKeyDown={createHandleKeyDownHandler()}
-            onPointerDown={createHandlePointerDownHandler()}
-          />
-        ) : (
-          <div
-            className={handleClassName}
-            aria-hidden="true"
-            data-project-masthead-handle="true"
-            onPointerDown={createHandlePointerDownHandler()}
-          />
-        )
-      ) : null}
+        {isDesktopLayout ? (
+          isCollapsed ? (
+            <button
+              type="button"
+              className={handleClassName}
+              aria-expanded="false"
+              aria-label="Expand project header"
+              data-project-masthead-collapsed="true"
+              data-project-masthead-handle="true"
+              onClick={createHandleClickHandler()}
+              onKeyDown={createHandleKeyDownHandler()}
+              onPointerDown={createHandlePointerDownHandler()}
+            />
+          ) : (
+            <div
+              className={handleClassName}
+              aria-hidden="true"
+              data-project-masthead-handle="true"
+              onPointerDown={createHandlePointerDownHandler()}
+            />
+          )
+        ) : null}
+      </div>
 
       <div className={cx(styles.pageFrameBody, isDesktopLayout && styles.pageFrameBodyDesktop)}>
         <ProjectPageShell snapshot={snapshot} tab={tab} />

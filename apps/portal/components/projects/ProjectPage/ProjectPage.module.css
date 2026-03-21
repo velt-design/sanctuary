@@ -7,6 +7,7 @@
 
   --border: rgba(var(--portal-text-rgb), 0.14);
   --muted: rgba(var(--portal-text-rgb), 0.65);
+  --page-bg: rgba(var(--portal-bg-rgb), 1);
   --bg: rgba(var(--portal-bg-surface-rgb), 0.92);
   --text: var(--portal-text);
 
@@ -18,10 +19,40 @@
   flex-direction: column;
   gap: 0;
   min-width: 0;
+  --project-page-sticky-masthead-offset: 0px;
 }
 
 .pageFrameResizing {
   cursor: row-resize;
+}
+
+.pageFrame[data-project-masthead-mode='compact'] {
+  --project-page-sticky-masthead-offset: 56px;
+}
+
+.pageFrame[data-project-masthead-mode='collapsed'] {
+  --project-page-sticky-masthead-offset: 28px;
+}
+
+.pageFrameMastheadSlot {
+  min-width: 0;
+}
+
+.pageFrameMastheadSlotSticky {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--page-bg);
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+}
+
+.pageFrameMastheadSlotSticky[data-project-masthead-slot='compact'] {
+  box-shadow: 0 1px 0 rgba(var(--portal-text-rgb), 0.08);
+}
+
+.pageFrameMastheadSlotSticky[data-project-masthead-slot='collapsed'] {
+  box-shadow: none;
 }
 
 .pageFrameBody {
@@ -150,6 +181,14 @@
 .mastheadResizeHandleCollapsed {
   height: 18px;
   margin: 2px 0 6px;
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(50% - 38px),
+      rgba(var(--portal-text-rgb), 0.28) calc(50% - 38px),
+      rgba(var(--portal-text-rgb), 0.28) calc(50% + 38px),
+      transparent calc(50% + 38px)
+    );
 }
 
 .mastheadResizeHandleCollapsed::before {
@@ -180,6 +219,19 @@
 .mastheadResizeHandleCollapsed:hover::before,
 .mastheadResizeHandleCollapsed:focus-visible::before {
   background: rgba(var(--accentRgb), 0.08);
+}
+
+.mastheadResizeHandleCollapsed:hover,
+.mastheadResizeHandleCollapsed:focus-visible,
+.pageFrameResizing .mastheadResizeHandleCollapsed {
+  background:
+    linear-gradient(
+      to right,
+      transparent calc(50% - 38px),
+      rgba(var(--accentRgb), 0.58) calc(50% - 38px),
+      rgba(var(--accentRgb), 0.58) calc(50% + 38px),
+      transparent calc(50% + 38px)
+    );
 }
 
 .mastheadResizeHandleCollapsed:hover::after,
@@ -642,7 +694,7 @@
 
   .bodyGridDesktop .rail {
     position: sticky;
-    top: 16px;
+    top: calc(16px + var(--project-page-sticky-masthead-offset, 0px));
     align-self: start;
   }
 
