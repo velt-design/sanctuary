@@ -220,9 +220,11 @@ describe('ProjectPageShell resize handles', () => {
     );
 
     const rendered = renderIntoDocument(<ProjectPageShell snapshot={snapshot as any} tab="estimates" />);
+    const shell = rendered.container.querySelector('[data-project-page-shell="true"]') as HTMLElement;
     const leftRail = rendered.container.querySelector('[data-project-rail="left"]') as HTMLElement;
     const rightRail = rendered.container.querySelector('[data-project-rail="right"]') as HTMLElement;
 
+    expect(shell.dataset.projectDesignWorkspace).toBe('true');
     expect(Array.from(leftRail.querySelectorAll('[data-project-panel]')).map((node) => (node as HTMLElement).dataset.projectPanel)).toEqual([
       'details',
       'tasks',

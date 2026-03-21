@@ -1514,16 +1514,19 @@ export default function EstimatesTab({
   }
 
   return (
-    <div className={styles.wrapper}>
+    <div className={`${styles.wrapper} ${renderConfiguratorInShell ? styles.wrapperWorkspace : ''}`}>
       {configuratorRailPortal}
-      <div className={`${styles.mainGrid} ${styles.mainGridGeneral}`}>
+      <div className={`${styles.mainGrid} ${styles.mainGridGeneral} ${renderConfiguratorInShell ? styles.mainGridWorkspace : ''}`}>
 
-        <div className={styles.detailPanel}>
+        <div
+          className={`${styles.detailPanel} ${renderConfiguratorInShell ? styles.detailPanelWorkspace : ''}`}
+          data-estimates-workspace-scroll={renderConfiguratorInShell ? 'true' : undefined}
+        >
           {!selectedMeta ? <p className={legacy.note}>Select a design to view details.</p> : null}
           {selectedMeta && detailLoading ? <p className={legacy.note}>Loading design details…</p> : null}
 
           {selectedMeta && !detailLoading ? (
-            <div className={styles.detailStack}>
+            <div className={`${styles.detailStack} ${renderConfiguratorInShell ? styles.detailStackWorkspace : ''}`}>
               <section className={`${styles.card} ${styles.drawingCard}`}>
                 <div className={styles.summaryHeader}>
                   <div className={styles.summaryHeaderPrimary}>

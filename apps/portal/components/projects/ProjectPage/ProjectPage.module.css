@@ -19,6 +19,7 @@
   flex-direction: column;
   gap: 0;
   min-width: 0;
+  min-height: 100%;
   --project-page-sticky-masthead-offset: 0px;
 }
 
@@ -62,6 +63,10 @@
 
 .pageFrameBodyDesktop {
   margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .masthead {
@@ -356,12 +361,17 @@
   align-items: stretch;
 }
 
+.bodyGridDesktop[data-project-design-workspace='true'] {
+  min-height: calc(100dvh - var(--portal-header-height, 72px) - var(--project-page-sticky-masthead-offset, 0px) - 32px);
+}
+
 .bodyGridResizing {
   cursor: col-resize;
 }
 
 .center {
   min-width: 0;
+  min-height: 0;
   order: 1;
 }
 
@@ -686,6 +696,7 @@
 
   .bodyGridDesktop .center {
     order: 3;
+    min-height: 0;
   }
 
   .bodyGridDesktop .resizeHandleRight {
@@ -739,8 +750,32 @@
   }
 }
 
+@media (min-width: 1280px) {
+  .bodyGridDesktop[data-project-design-workspace='true'] .tabSectionWorkspace {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100%;
+    min-height: 0;
+  }
+
+  .bodyGridDesktop[data-project-design-workspace='true'] .sectionBodyWorkspace {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+}
+
 .tabScroller {
   overflow-x: auto;
+}
+
+.tabSectionWorkspace {
+  min-height: 0;
+}
+
+.sectionBodyWorkspace {
+  min-height: 0;
 }
 
 .centerSurface {

@@ -130,7 +130,11 @@ export default function ProjectMainTabs({
   }, [hostKey, projectId, queryClient]);
 
   return (
-    <section className={legacy.section} aria-label="Project tabs">
+    <section
+      className={`${legacy.section} ${activeTab === 'estimates' ? layout.tabSectionWorkspace : ''}`}
+      aria-label="Project tabs"
+      data-project-active-tab={activeTab}
+    >
       <div className={legacy.sectionHeader}>
         <div className={layout.tabScroller}>
           <div className={legacy.tabsPill} role="tablist" aria-label="Project tabs">
@@ -179,7 +183,10 @@ export default function ProjectMainTabs({
         </div>
       </div>
 
-      <div className={legacy.sectionBody}>
+      <div
+        className={`${legacy.sectionBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
+        data-project-tab-body={activeTab}
+      >
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
         {activeTab === 'estimates' ? (
           <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} />
