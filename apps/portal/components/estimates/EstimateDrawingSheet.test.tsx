@@ -341,6 +341,31 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('data-editable-field-id="plan:lengthA"');
   });
 
+  it('renders hover targets for editable plan footprints without the old edit-house toolbar UI', () => {
+    const drawing = makeDrawingModels();
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Gable - 4.6m x 5.1m - Acrylic',
+      view: 'plan',
+    });
+
+    const markup = renderToStaticMarkup(
+      <EstimateDrawingSheet
+        moduleLabel="M1 - Gable - 4.6m x 5.1m - Acrylic"
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        meta={meta}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('data-sheet-hover-target="house"');
+    expect(markup).toContain('data-sheet-hover-target="pergola"');
+    expect(markup).not.toContain('Edit house context');
+    expect(markup).not.toContain('data-sheet-plan-popover="house"');
+  });
+
   it('keeps debug overlays hidden by default but can render them when enabled', () => {
     const drawing = makeDrawingModels();
     const meta = buildEstimateDrawingSheetMeta({

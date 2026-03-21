@@ -1,9 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
+  canEditHouseFootprintPlan,
   getSuggestedModuleDrawingScale,
   ModuleDrawingRenderer,
+  type HouseFootprintEditorDragMeta,
+  type ModuleFootprintEditorProps,
   resolveModuleDrawingScaleState,
   type ModuleDrawingInteractiveFieldMap,
 } from '@/app/staff/calculator/ModuleViewsCard';
@@ -11,7 +14,10 @@ import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/M
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import drawingStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
-import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
+import {
+  type EstimateDrawingField,
+  type EstimateDrawingFootprintEdit,
+} from '@/lib/estimates/drawingEdits';
 import {
   estimateDrawingScaleKey,
   formatEstimateDrawingScale,
@@ -21,6 +27,7 @@ import {
   type EstimateDrawingSheetMeta,
 } from '@/lib/estimates/drawingSheet';
 import { getDrawingSheetViewportMm } from '@/lib/estimates/drawingSheetLayout';
+import { normalizeHouseFootprintParams, type CalculatorHouseFootprintParams } from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import styles from './EstimateDrawingSheet.module.css';
 
@@ -49,6 +56,9 @@ type EstimateDrawingSheetProps = {
   onCommitField?: (
     field: EstimateDrawingField,
     nextValue: string,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitFootprintEdit?: (
+    edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
 };
 
@@ -82,11 +92,19 @@ type ActiveDrawingEditor = {
   rect?: { left: number; top: number; width: number; height: number };
 };
 
+type HouseFootprintDragSession = HouseFootprintEditorDragMeta & {
+  pointerId: number;
+  startSvgX: number;
+  startSvgY: number;
+  startParams: CalculatorHouseFootprintParams;
+};
+
 const SHEET_VIEWPORT_MM = getDrawingSheetViewportMm();
 const SHEET_PREVIEW_ARTBOARD = {
   widthPx: 1120,
   heightPx: 792,
 } as const;
+const HOVER_POPOVER_HIDE_DELAY_MS = 120;
 
 function stripClientFacingModulePrefix(value: string): string {
   return value.replace(/^\s*M\d+\s*-\s*/i, '').trim();
@@ -179,6 +197,29 @@ function fieldSignature(fields: EstimateDrawingField[]): string {
   return fields.map((field) => `${field.id}:${field.rawValue}`).join('|');
 }
 
+function formatHouseFootprintParamValue(value: number): string {
+  return value.toFixed(1);
+}
+
+function parseHouseFootprintParamValue(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseFloat(value ?? '');
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function snapHouseFootprintValue(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
+  const ctm = svg.getScreenCTM();
+  if (!ctm) return null;
+  const point = svg.createSVGPoint();
+  point.x = clientX;
+  point.y = clientY;
+  const transformed = point.matrixTransform(ctm.inverse());
+  return { x: transformed.x, y: transformed.y };
+}
+
 export default function EstimateDrawingSheet({
   moduleLabel,
   view,
@@ -189,13 +230,26 @@ export default function EstimateDrawingSheet({
   editableFields = [],
   showDebugOverlays = false,
   onCommitField,
+  onCommitFootprintEdit,
 }: EstimateDrawingSheetProps) {
   const sheetViewportRef = useRef<HTMLDivElement | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const footprintSvgRef = useRef<SVGSVGElement | null>(null);
   const [availableWidthPx, setAvailableWidthPx] = useState(0);
   const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() => buildScaleState(planModel, sectionModel));
   const [activeEditor, setActiveEditor] = useState<ActiveDrawingEditor | null>(null);
   const [editorSaving, setEditorSaving] = useState(false);
+  const [houseTargetHovered, setHouseTargetHovered] = useState(false);
+  const [housePopoverHovered, setHousePopoverHovered] = useState(false);
+  const [pergolaTargetHovered, setPergolaTargetHovered] = useState(false);
+  const [pergolaPopoverHovered, setPergolaPopoverHovered] = useState(false);
+  const [footprintHoveredAttachmentSide, setFootprintHoveredAttachmentSide] = useState<ModuleFootprintEditorProps['hoveredAttachmentSide']>(null);
+  const [footprintHoveredHandleId, setFootprintHoveredHandleId] = useState<ModuleFootprintEditorProps['hoveredHandleId']>(null);
+  const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<ModuleFootprintEditorProps['activeHandleId']>(null);
+  const [footprintDragSession, setFootprintDragSession] = useState<HouseFootprintDragSession | null>(null);
+  const [footprintError, setFootprintError] = useState<string | null>(null);
+  const houseHoverHideTimerRef = useRef<number | null>(null);
+  const pergolaHoverHideTimerRef = useRef<number | null>(null);
   const viewLabel = view === 'plan' ? 'Plan view' : 'Section view';
   const editableFieldMap = useMemo(() => new Map(editableFields.map((field) => [field.id, field])), [editableFields]);
   const titleField = editableFieldMap.get('meta:title') ?? null;
@@ -248,6 +302,10 @@ export default function EstimateDrawingSheet({
   const editableFieldStateKey = useMemo(() => fieldSignature(editableFields), [editableFields]);
   const activeField = activeEditor ? editableFieldMap.get(activeEditor.fieldId) ?? null : null;
   const overlayEditor = activeEditor?.mode === 'overlay' && activeEditor.rect ? activeEditor : null;
+  const canEditFootprint = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(planModel);
+  const canRotatePlan = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && planModel?.roofType !== 'hip_corner';
+  const showHousePopover = canEditFootprint && (houseTargetHovered || housePopoverHovered || footprintDragSession !== null);
+  const showPergolaPopover = canRotatePlan && !showHousePopover && (pergolaTargetHovered || pergolaPopoverHovered);
   const editableSvgFields = useMemo<ModuleDrawingInteractiveFieldMap>(() => {
     if (!onCommitField) return {};
     const next: ModuleDrawingInteractiveFieldMap = {};
@@ -334,6 +392,109 @@ export default function EstimateDrawingSheet({
     setEditorSaving(false);
   }, [editableFieldStateKey, moduleLabel, view]);
 
+  const clearHouseHoverTimer = useCallback(() => {
+    if (houseHoverHideTimerRef.current === null) return;
+    window.clearTimeout(houseHoverHideTimerRef.current);
+    houseHoverHideTimerRef.current = null;
+  }, []);
+
+  const clearPergolaHoverTimer = useCallback(() => {
+    if (pergolaHoverHideTimerRef.current === null) return;
+    window.clearTimeout(pergolaHoverHideTimerRef.current);
+    pergolaHoverHideTimerRef.current = null;
+  }, []);
+
+  const resetFootprintInteractions = useCallback(() => {
+    clearHouseHoverTimer();
+    clearPergolaHoverTimer();
+    setHouseTargetHovered(false);
+    setHousePopoverHovered(false);
+    setPergolaTargetHovered(false);
+    setPergolaPopoverHovered(false);
+    setFootprintHoveredAttachmentSide(null);
+    setFootprintHoveredHandleId(null);
+    setFootprintActiveHandleId(null);
+    setFootprintDragSession(null);
+    setFootprintError(null);
+  }, [clearHouseHoverTimer, clearPergolaHoverTimer]);
+
+  const handleHouseTargetHoverChange = useCallback(
+    (hovered: boolean) => {
+      clearHouseHoverTimer();
+      if (hovered) {
+        setHouseTargetHovered(true);
+        return;
+      }
+      houseHoverHideTimerRef.current = window.setTimeout(() => {
+        setHouseTargetHovered(false);
+        houseHoverHideTimerRef.current = null;
+      }, HOVER_POPOVER_HIDE_DELAY_MS);
+    },
+    [clearHouseHoverTimer],
+  );
+
+  const handleHousePopoverHoverChange = useCallback(
+    (hovered: boolean) => {
+      clearHouseHoverTimer();
+      if (hovered) {
+        setHousePopoverHovered(true);
+        return;
+      }
+      houseHoverHideTimerRef.current = window.setTimeout(() => {
+        setHousePopoverHovered(false);
+        houseHoverHideTimerRef.current = null;
+      }, HOVER_POPOVER_HIDE_DELAY_MS);
+    },
+    [clearHouseHoverTimer],
+  );
+
+  const handlePergolaTargetHoverChange = useCallback(
+    (hovered: boolean) => {
+      clearPergolaHoverTimer();
+      if (hovered) {
+        setPergolaTargetHovered(true);
+        return;
+      }
+      pergolaHoverHideTimerRef.current = window.setTimeout(() => {
+        setPergolaTargetHovered(false);
+        pergolaHoverHideTimerRef.current = null;
+      }, HOVER_POPOVER_HIDE_DELAY_MS);
+    },
+    [clearPergolaHoverTimer],
+  );
+
+  const handlePergolaPopoverHoverChange = useCallback(
+    (hovered: boolean) => {
+      clearPergolaHoverTimer();
+      if (hovered) {
+        setPergolaPopoverHovered(true);
+        return;
+      }
+      pergolaHoverHideTimerRef.current = window.setTimeout(() => {
+        setPergolaPopoverHovered(false);
+        pergolaHoverHideTimerRef.current = null;
+      }, HOVER_POPOVER_HIDE_DELAY_MS);
+    },
+    [clearPergolaHoverTimer],
+  );
+
+  useEffect(() => {
+    resetFootprintInteractions();
+  }, [moduleLabel, resetFootprintInteractions, view]);
+
+  useEffect(() => {
+    if (canEditFootprint || canRotatePlan) return;
+    resetFootprintInteractions();
+  }, [canEditFootprint, canRotatePlan, resetFootprintInteractions]);
+
+  useEffect(
+    () => () => {
+      clearHouseHoverTimer();
+      clearPergolaHoverTimer();
+    },
+    [clearHouseHoverTimer, clearPergolaHoverTimer],
+  );
+
   const openInlineEditor = (field: EstimateDrawingField) => {
     if (!onCommitField) return;
     setActiveEditor({
@@ -363,6 +524,238 @@ export default function EstimateDrawingSheet({
       setEditorSaving(false);
     }
   };
+
+  const commitFootprintEdit = useCallback(
+    async (edit: EstimateDrawingFootprintEdit) => {
+      if (!onCommitFootprintEdit) return false;
+      const result = await onCommitFootprintEdit(edit);
+      if (!result.ok) {
+        setFootprintError(result.error ?? 'Unable to update the house footprint.');
+        return false;
+      }
+      setFootprintError(null);
+      return true;
+    },
+    [onCommitFootprintEdit],
+  );
+
+  const handleFootprintPresetSelect = useCallback(
+    async (preset: ModulePlanModel['houseFootprintPreset']) => {
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      await commitFootprintEdit({ type: 'preset', preset });
+    },
+    [commitFootprintEdit],
+  );
+
+  const handleFootprintRotate = useCallback(
+    async (delta: -1 | 1) => {
+      clearPergolaHoverTimer();
+      setPergolaTargetHovered(true);
+      setPergolaPopoverHovered(false);
+      setFootprintHoveredAttachmentSide(null);
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      await commitFootprintEdit({ type: 'rotate', delta });
+    },
+    [clearPergolaHoverTimer, commitFootprintEdit],
+  );
+
+  const handleFootprintAttachmentSideSelect = useCallback(
+    async (side: NonNullable<ModulePlanModel['attachmentSide']>) => {
+      setFootprintHoveredAttachmentSide(side);
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      await commitFootprintEdit({ type: 'attachment_side', side });
+    },
+    [commitFootprintEdit],
+  );
+
+  const handleFootprintDragStart = useCallback(
+    (meta: HouseFootprintEditorDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!canEditFootprint || !planModel) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+      clearHouseHoverTimer();
+      setHouseTargetHovered(true);
+      setHousePopoverHovered(false);
+      setFootprintActiveHandleId(meta.handleId);
+      setFootprintHoveredHandleId(meta.handleId);
+      setFootprintDragSession({
+        ...meta,
+        pointerId: event.pointerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startParams: normalizeHouseFootprintParams(planModel.houseFootprintParams),
+      });
+    },
+    [canEditFootprint, clearHouseHoverTimer, planModel],
+  );
+
+  useEffect(() => {
+    if (!footprintDragSession || !onCommitFootprintEdit) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== footprintDragSession.pointerId) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+
+      const deltaSvgX = nextPoint.x - footprintDragSession.startSvgX;
+      const deltaSvgY = nextPoint.y - footprintDragSession.startSvgY;
+      const deltaUnits = deltaSvgX * footprintDragSession.axisX + deltaSvgY * footprintDragSession.axisY;
+      const deltaM = (deltaUnits / Math.max(footprintDragSession.scale, 0.001)) * footprintDragSession.deltaMultiplier;
+      const minValueM = footprintDragSession.minValueM;
+      const maxValueM = Math.max(minValueM, footprintDragSession.maxValueM);
+      const startParams = footprintDragSession.startParams;
+
+      let key: keyof CalculatorHouseFootprintParams = 'bandDepthM';
+      let nextValue = parseHouseFootprintParamValue(startParams.bandDepthM, 1.8) + deltaM;
+
+      switch (footprintDragSession.handleId) {
+        case 'returnRun':
+          key = 'returnRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.returnRunM, 2.4) + deltaM;
+          break;
+        case 'recessWidth':
+          key = 'recessWidthM';
+          nextValue = parseHouseFootprintParamValue(startParams.recessWidthM, 2.4) + deltaM;
+          break;
+        case 'recessDepth':
+          key = 'recessDepthM';
+          nextValue = parseHouseFootprintParamValue(startParams.recessDepthM, 1.2) + deltaM;
+          break;
+        case 'leftLegRun':
+          key = 'leftLegRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.leftLegRunM, 2.4) + deltaM;
+          break;
+        case 'rightLegRun':
+          key = 'rightLegRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.rightLegRunM, 2.4) + deltaM;
+          break;
+        case 'sideRun':
+          key = 'sideRunM';
+          nextValue = parseHouseFootprintParamValue(startParams.sideRunM, 2.4) + deltaM;
+          break;
+        case 'bandDepth':
+        default:
+          key = 'bandDepthM';
+          nextValue = parseHouseFootprintParamValue(startParams.bandDepthM, 1.8) + deltaM;
+          break;
+      }
+
+      void commitFootprintEdit({
+        type: 'param',
+        key,
+        value: formatHouseFootprintParamValue(snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM))),
+      });
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== footprintDragSession.pointerId) return;
+      setFootprintDragSession(null);
+      setFootprintActiveHandleId(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [commitFootprintEdit, footprintDragSession, onCommitFootprintEdit]);
+
+  useEffect(() => {
+    if (showHousePopover || footprintDragSession) return;
+    setFootprintHoveredAttachmentSide(null);
+    setFootprintHoveredHandleId(null);
+    setFootprintActiveHandleId(null);
+  }, [footprintDragSession, showHousePopover]);
+
+  useEffect(() => {
+    if (!showHousePopover && !showPergolaPopover && !footprintDragSession) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      if (footprintDragSession) {
+        setFootprintDragSession(null);
+        setFootprintActiveHandleId(null);
+        return;
+      }
+      resetFootprintInteractions();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [footprintDragSession, resetFootprintInteractions, showHousePopover, showPergolaPopover]);
+
+  const footprintEditor = useMemo<ModuleFootprintEditorProps | undefined>(() => {
+    if (!canEditFootprint && !canRotatePlan) return undefined;
+    return {
+      available: canEditFootprint,
+      surface: 'sheet',
+      isEditing: showHousePopover || footprintDragSession !== null,
+      isContextHovered: showHousePopover,
+      hoveredAttachmentSide: footprintHoveredAttachmentSide,
+      hoveredHandleId: footprintHoveredHandleId,
+      activeHandleId: footprintActiveHandleId,
+      onStartEditing: () => {
+        clearHouseHoverTimer();
+        setHouseTargetHovered(true);
+        setFootprintError(null);
+      },
+      onDoneEditing: resetFootprintInteractions,
+      onContextHoverChange: handleHouseTargetHoverChange,
+      onContextPopoverHoverChange: handleHousePopoverHoverChange,
+      onAttachmentSideHover: setFootprintHoveredAttachmentSide,
+      onAttachmentSideSelect: handleFootprintAttachmentSideSelect,
+      onHandleHover: setFootprintHoveredHandleId,
+      onHandleDragStart: handleFootprintDragStart,
+      onPresetSelect: (preset) => void handleFootprintPresetSelect(preset),
+      onRotate: (delta) => void handleFootprintRotate(delta),
+      onSvgMount: (node) => {
+        footprintSvgRef.current = node;
+      },
+    };
+  }, [
+    canEditFootprint,
+    canRotatePlan,
+    clearHouseHoverTimer,
+    footprintActiveHandleId,
+    footprintDragSession,
+    footprintHoveredAttachmentSide,
+    footprintHoveredHandleId,
+    handleFootprintAttachmentSideSelect,
+    handleFootprintDragStart,
+    handleFootprintPresetSelect,
+    handleFootprintRotate,
+    handleHousePopoverHoverChange,
+    handleHouseTargetHoverChange,
+    resetFootprintInteractions,
+    showHousePopover,
+  ]);
+
+  const sheetPlanInteraction = useMemo(
+    () =>
+      canRotatePlan
+        ? {
+            isPergolaPopoverOpen: showPergolaPopover,
+            onPergolaHoverChange: handlePergolaTargetHoverChange,
+            onPergolaPopoverHoverChange: handlePergolaPopoverHoverChange,
+          }
+        : undefined,
+    [canRotatePlan, handlePergolaPopoverHoverChange, handlePergolaTargetHoverChange, showPergolaPopover],
+  );
 
   const overlayEditorStyle = overlayEditor
     ? ({
@@ -492,7 +885,14 @@ export default function EstimateDrawingSheet({
                   sheetViewportMm={SHEET_VIEWPORT_MM}
                   interactiveFields={editableSvgFields}
                   showDebugOverlays={showDebugOverlays}
+                  footprintEditor={footprintEditor}
+                  sheetPlanInteraction={sheetPlanInteraction}
                 />
+                {footprintError ? (
+                  <div className={styles.sheetInteractionError} role="status" aria-live="polite">
+                    {footprintError}
+                  </div>
+                ) : null}
               </div>
             </div>
 

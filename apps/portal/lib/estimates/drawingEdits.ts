@@ -9,6 +9,11 @@ import {
   isCalculatorInputsV2,
   isLegacyCalculatorInputsV1,
   migrateLegacyCalculatorInputsToV2,
+  normalizeAttachmentSide,
+  normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintParams,
+  normalizeHouseFootprintPreset,
+  type CalculatorHouseFootprintParams,
 } from '@/lib/types/calculator';
 
 type AnyRecord = Record<string, unknown>;
@@ -66,6 +71,25 @@ export type EstimateDrawingFieldApplyResult =
   | {
       ok: false;
       error: string;
+    };
+
+export type EstimateDrawingFootprintEdit =
+  | {
+      type: 'preset';
+      preset: CalculatorModuleInputs['houseFootprintPreset'];
+    }
+  | {
+      type: 'rotate';
+      delta: -1 | 1;
+    }
+  | {
+      type: 'attachment_side';
+      side: CalculatorModuleInputs['attachmentSide'];
+    }
+  | {
+      type: 'param';
+      key: keyof CalculatorHouseFootprintParams;
+      value: string;
     };
 
 function isRecord(value: unknown): value is AnyRecord {
@@ -409,4 +433,36 @@ export function applyEstimateDrawingFieldEdit(input: {
 
   module[input.field.target.field] = normalizeLengthInput(input.nextValue);
   return { ok: true, draft: nextDraft };
+}
+
+export function applyEstimateDrawingFootprintEdit(input: {
+  draft: EstimateDrawingDraft;
+  moduleIndex: number;
+  edit: EstimateDrawingFootprintEdit;
+}): EstimateDrawingFieldApplyResult {
+  const nextDraft = cloneValue(input.draft);
+  const module = nextDraft.inputs.modules[input.moduleIndex];
+  if (!module) return { ok: false, error: 'This drawing footprint no longer maps to a module input.' };
+
+  switch (input.edit.type) {
+    case 'preset':
+      module.houseFootprintPreset = normalizeHouseFootprintPreset(input.edit.preset) as CalculatorModuleInputs['houseFootprintPreset'];
+      return { ok: true, draft: nextDraft };
+    case 'rotate':
+      module.drawingRotationQuarterTurns = normalizeDrawingRotationQuarterTurns(
+        normalizeDrawingRotationQuarterTurns(module.drawingRotationQuarterTurns) + input.edit.delta,
+      ) as CalculatorModuleInputs['drawingRotationQuarterTurns'];
+      return { ok: true, draft: nextDraft };
+    case 'attachment_side':
+      module.attachmentSide = normalizeAttachmentSide(input.edit.side) as CalculatorModuleInputs['attachmentSide'];
+      return { ok: true, draft: nextDraft };
+    case 'param':
+      module.houseFootprintParams = {
+        ...normalizeHouseFootprintParams(module.houseFootprintParams),
+        [input.edit.key]: input.edit.value,
+      };
+      return { ok: true, draft: nextDraft };
+    default:
+      return { ok: false, error: 'Unsupported footprint edit.' };
+  }
 }

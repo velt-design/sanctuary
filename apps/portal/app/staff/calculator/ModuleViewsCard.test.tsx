@@ -99,17 +99,23 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
 
 function makeFootprintEditor(overrides: Partial<{
   isEditing: boolean;
+  isContextHovered: boolean;
+  surface: 'card' | 'sheet';
   hoveredHandleId: HouseFootprintHandleId | null;
   activeHandleId: HouseFootprintHandleId | null;
 }> = {}) {
   return {
     available: true,
     isEditing: overrides.isEditing ?? false,
+    isContextHovered: overrides.isContextHovered ?? false,
+    surface: overrides.surface ?? 'card',
     hoveredAttachmentSide: null,
     hoveredHandleId: overrides.hoveredHandleId ?? null,
     activeHandleId: overrides.activeHandleId ?? null,
     onStartEditing: () => undefined,
     onDoneEditing: () => undefined,
+    onContextHoverChange: () => undefined,
+    onContextPopoverHoverChange: () => undefined,
     onAttachmentSideHover: () => undefined,
     onAttachmentSideSelect: () => undefined,
     onHandleHover: () => undefined,
@@ -140,6 +146,13 @@ function extractDebugRect(markup: string, marker: string): { minX: number; maxX:
     minY: Math.min(...ys),
     maxY: Math.max(...ys),
   };
+}
+
+function extractPlanPrimaryDimensionGroup(markup: string, side: 'bottom' | 'left'): string {
+  const marker = `data-plan-primary-dim="${side}"`;
+  const markerIndex = markup.indexOf(marker);
+  expect(markerIndex).toBeGreaterThanOrEqual(0);
+  return markup.slice(markerIndex, markup.indexOf('</g>', markerIndex));
 }
 
 describe('ModuleViewsCard', () => {
@@ -330,6 +343,70 @@ describe('ModuleViewsCard', () => {
 
     expect(markup).toContain('data-footprint-handle="leftLegRun"');
     expect(markup).toContain('data-footprint-handle="rightLegRun"');
+  });
+
+  it('renders the sheet house preset popover and direct handles on hover', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+        footprintEditor={makeFootprintEditor({ surface: 'sheet', isEditing: true, isContextHovered: true, activeHandleId: 'bandDepth' })}
+      />,
+    );
+
+    expect(markup).toContain('data-sheet-plan-popover="house"');
+    expect(markup).toContain('House type');
+    expect(markup).toContain('data-footprint-handle="bandDepth"');
+    expect(markup).toContain('data-sheet-hover-target="house"');
+    expect(markup).not.toContain('Edit house context');
+  });
+
+  it('renders the sheet pergola rotate popover separately from the house popover', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+        footprintEditor={makeFootprintEditor({ surface: 'sheet' })}
+        sheetPlanInteraction={{
+          isPergolaPopoverOpen: true,
+          onPergolaHoverChange: () => undefined,
+          onPergolaPopoverHoverChange: () => undefined,
+        }}
+      />,
+    );
+
+    expect(markup).toContain('data-sheet-plan-popover="pergola"');
+    expect(markup).toContain('Rotate -90');
+    expect(markup).toContain('Rotate +90');
+    expect(markup).toContain('data-sheet-hover-target="pergola"');
+    expect(markup).not.toContain('data-sheet-plan-popover="house"');
+  });
+
+  it('pins and swaps primary plan dimensions on odd quarter-turn sheet rotations', () => {
+    const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1, lengthM: '6', projectionM: '3' });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    const bottomGroup = extractPlanPrimaryDimensionGroup(markup, 'bottom');
+    const leftGroup = extractPlanPrimaryDimensionGroup(markup, 'left');
+
+    expect(bottomGroup).toContain('>3.00m<');
+    expect(leftGroup).toContain('>6.00m<');
   });
 
   it('keeps the footprint editor affordance out of section views', () => {
