@@ -22,7 +22,6 @@ import {
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
-import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import {
   type EstimateSaveMode,
   buildEstimatePayloadPreservingCurrentPricing,
@@ -71,10 +70,9 @@ import {
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import { discardLocalFirstEntityQueue, listAliasedLocalFirstEntityKeys, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
 import {
-  clampDrawingWorkbenchModuleIndex,
   createDrawingWorkbenchUiState,
-  type DrawingWorkbenchViewportMode,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 
 function formatMoney(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -601,9 +599,6 @@ export default function EstimatesTab({
   const [drawingWorkbenchUi, setDrawingWorkbenchUi] = useState(() => createDrawingWorkbenchUiState());
   const [drawingSaveMode, setDrawingSaveMode] = useState<EstimateSaveMode | null>(null);
   const resolvedSelectedId = useResolvedLocalFirstId(selectedId);
-  const drawingView: ModuleViewsTab = drawingWorkbenchUi.activeView;
-  const drawingModuleIndex = drawingWorkbenchUi.activeModuleIndex;
-  const drawingViewportMode = drawingWorkbenchUi.viewportMode;
 
   const urlEstimateId = useMemo(() => {
     const raw = searchParams?.get('estimateId') ?? '';
@@ -806,15 +801,24 @@ export default function EstimatesTab({
     const specs = getModuleSpecs(drawingDetail?.calculatorSnapshot ?? null);
     return specs.map((spec, idx) => formatModuleLine(spec, idx));
   }, [drawingDetail?.calculatorSnapshot]);
-  const drawingModules = useMemo(
-    () => buildEstimateDrawingModules(drawingDetail?.calculatorSnapshot ?? null, { ignoreModuleResults: drawingGeometryDirty }),
-    [drawingDetail?.calculatorSnapshot, drawingGeometryDirty],
+  const drawingWorkbenchStore = useMemo(
+    () =>
+      buildDrawingWorkbenchStore({
+        snapshot: drawingDetail?.calculatorSnapshot ?? null,
+        ui: drawingWorkbenchUi,
+        ignoreModuleResults: drawingGeometryDirty,
+        moduleLabels: moduleLines,
+      }),
+    [drawingDetail?.calculatorSnapshot, drawingGeometryDirty, drawingWorkbenchUi, moduleLines],
   );
   const salesPerson = selectedMeta?.createdBy ?? null;
-  const activeDrawingModule = drawingModules[drawingModuleIndex] ?? null;
-  const drawingStatus: ModuleViewsStatus =
-    activeDrawingModule && (activeDrawingModule.planModel || activeDrawingModule.sectionModel) ? 'ready' : 'empty';
-  const drawingModuleLabel = moduleLines[drawingModuleIndex] ?? activeDrawingModule?.label ?? 'Module';
+  const drawingView: ModuleViewsTab = drawingWorkbenchStore.ui.activeView;
+  const drawingModuleIndex = drawingWorkbenchStore.derived.activeModuleIndex;
+  const drawingViewportMode = drawingWorkbenchStore.ui.viewportMode;
+  const drawingModules = drawingWorkbenchStore.persisted.modules;
+  const activeDrawingModule = drawingWorkbenchStore.derived.activeModule;
+  const drawingStatus: ModuleViewsStatus = drawingWorkbenchStore.derived.status;
+  const drawingModuleLabel = drawingWorkbenchStore.derived.activeModuleLabel;
   const drawingMetaOverrides = useMemo(
     () =>
       buildEstimateDrawingSheetMetaOverrides({
@@ -887,10 +891,12 @@ export default function EstimatesTab({
   }, [selectedDetail?.calculatorSnapshot]);
 
   useEffect(() => {
-    const nextIndex = clampDrawingWorkbenchModuleIndex(drawingModuleIndex, drawingModules.length);
-    if (nextIndex === drawingModuleIndex) return;
-    setDrawingWorkbenchUi((current) => ({ ...current, activeModuleIndex: nextIndex }));
-  }, [drawingModuleIndex, drawingModules]);
+    if (drawingWorkbenchStore.ui.activeModuleIndex === drawingWorkbenchUi.activeModuleIndex) return;
+    setDrawingWorkbenchUi((current) => ({
+      ...current,
+      activeModuleIndex: drawingWorkbenchStore.ui.activeModuleIndex,
+    }));
+  }, [drawingWorkbenchStore.ui.activeModuleIndex, drawingWorkbenchUi.activeModuleIndex]);
 
   useEffect(() => {
     if (!focusGroups.length) {
