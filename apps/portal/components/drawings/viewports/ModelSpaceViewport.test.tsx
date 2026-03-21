@@ -3,9 +3,10 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
-import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import DrawingWorkbench from './DrawingWorkbench';
+import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
+import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import ModelSpaceViewport from './ModelSpaceViewport';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -72,7 +73,7 @@ function makeResult(): CostOutputV1 {
   } as unknown as CostOutputV1;
 }
 
-function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
+function makeDrawingModule() {
   return buildEstimateDrawingModules({
     inputs: {
       schemaVersion: 'v2',
@@ -85,7 +86,7 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
       extrasAllowanceExGst: '0',
       quoteDiscountPct: '0',
       pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
-      modules: [makeModule(overrides)],
+      modules: [makeModule()],
     },
     outputs: {
       pergolas: [{ id: 'pergola-1', modules: [makeResult()] }],
@@ -93,80 +94,53 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
   })[0]!;
 }
 
-describe('DrawingWorkbench', () => {
-  it('renders the new workbench shell with the viewport mode switch', () => {
+describe('ModelSpaceViewport', () => {
+  it('renders plan controls for the live model-space configurator', () => {
     const drawing = makeDrawingModule();
-    const meta = buildEstimateDrawingSheetMeta({
-      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
-      view: 'plan',
+    const assembly = buildAssemblyModel({
+      id: drawing.id,
+      label: 'M1 - Pitched - 6m x 3m',
+      moduleIndex: 0,
+      moduleInput: drawing.input,
+      moduleResult: drawing.result,
+      planModel: drawing.planModel,
+      sectionModel: drawing.sectionModel,
     });
 
     const markup = renderToStaticMarkup(
-      <DrawingWorkbench
-        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
-        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
-        activeModuleIndex={0}
-        onActiveModuleIndexChange={() => undefined}
+      <ModelSpaceViewport
         view="plan"
-        onViewChange={() => undefined}
-        viewportMode="sheet"
-        onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        activeModuleInput={drawing.input}
+        planViewModel={buildPlanViewModel(assembly)}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
-        meta={meta}
         onCommitFootprintEdit={() => ({ ok: true })}
-        onCommitModuleField={() => ({ ok: true })}
       />,
     );
 
-    expect(markup).toContain('Drawing workbench');
-    expect(markup).toContain('Configurator');
-    expect(markup).toContain('Pergola style');
-    expect(markup).toContain('Roof material');
-    expect(markup).toContain('Sheet View');
-    expect(markup).toContain('Model Space');
-    expect(markup).not.toContain('next landing zone');
-    expect(markup).toContain('aria-label="Plan view A3 drawing sheet"');
+    expect(markup).toContain('Live plan viewport');
+    expect(markup).toContain('The configurator rail drives the live draft');
+    expect(markup).toContain('Zoom in');
+    expect(markup).not.toContain('House type');
+    expect(markup).not.toContain('Rotate -90');
   });
 
-  it('renders the model-space viewport without sheet furniture when model mode is active', () => {
+  it('shows a placeholder for section mode until section model space is implemented', () => {
     const drawing = makeDrawingModule();
-    const meta = buildEstimateDrawingSheetMeta({
-      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
-      view: 'plan',
-    });
 
     const markup = renderToStaticMarkup(
-      <DrawingWorkbench
-        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
-        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
-        activeModuleIndex={0}
-        onActiveModuleIndexChange={() => undefined}
-        view="plan"
-        onViewChange={() => undefined}
-        viewportMode="model"
-        onViewportModeChange={() => undefined}
+      <ModelSpaceViewport
+        view="section"
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        activeModuleInput={drawing.input}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
-        meta={meta}
-        onCommitFootprintEdit={() => ({ ok: true })}
-        onCommitModuleField={() => ({ ok: true })}
       />,
     );
 
-    expect(markup).toContain('aria-label="Plan model space viewport"');
-    expect(markup).toContain('Rotate +90');
-    expect(markup).toContain('Open full calculator');
-    expect(markup).toContain('Reset view');
-    expect(markup).not.toContain('Live configurator surface');
-    expect(markup).not.toContain('A3 drawing sheet');
+    expect(markup).toContain('Section model space is staged for a later milestone.');
   });
 });

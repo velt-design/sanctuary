@@ -4,6 +4,7 @@ import {
   ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY,
   applyEstimateDrawingFootprintEdit,
   applyEstimateDrawingFieldEdit,
+  applyEstimateDrawingModuleFieldEdit,
   buildEstimateDrawingDraftFromSnapshot,
   deriveEstimateDrawingEditableFields,
   resolveEstimateDrawingOverridesFromSnapshot,
@@ -265,5 +266,54 @@ describe('drawingEdits', () => {
     expect(paramResult.ok).toBe(true);
     if (!paramResult.ok) return;
     expect(paramResult.draft.inputs.modules[0]?.houseFootprintParams?.bandDepthM).toBe('2.7');
+  });
+
+  it('applies module configurator edits into the drawing draft', () => {
+    const snapshot = makeSnapshot(makeModule({ pergolaStyle: 'gable', houseConnectionType: 'soffit', postConnectionType: 'deck_bracket' }));
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+
+    const styleResult = applyEstimateDrawingModuleFieldEdit({
+      draft,
+      moduleIndex: 0,
+      edit: { field: 'pergolaStyle', value: 'hip' },
+    });
+    expect(styleResult.ok).toBe(true);
+    if (!styleResult.ok) return;
+    expect(styleResult.draft.inputs.modules[0]?.pergolaStyle).toBe('hip');
+
+    const connectionResult = applyEstimateDrawingModuleFieldEdit({
+      draft: styleResult.draft,
+      moduleIndex: 0,
+      edit: { field: 'houseConnectionType', value: 'none' },
+    });
+    expect(connectionResult.ok).toBe(true);
+    if (!connectionResult.ok) return;
+    expect(connectionResult.draft.inputs.modules[0]?.houseConnectionType).toBe('none');
+    expect(connectionResult.draft.inputs.modules[0]?.boxGutterHouseEdge).toBe('none');
+
+    const supportResult = applyEstimateDrawingModuleFieldEdit({
+      draft: connectionResult.draft,
+      moduleIndex: 0,
+      edit: { field: 'postConnectionType', value: 'pile_1m' },
+    });
+    expect(supportResult.ok).toBe(true);
+    if (!supportResult.ok) return;
+    expect(supportResult.draft.inputs.modules[0]?.postConnectionType).toBe('pile_1m');
+  });
+
+  it('rejects advanced rail options that still belong in the full calculator', () => {
+    const snapshot = makeSnapshot(makeModule({ roofMaterial: 'acrylic' }));
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+
+    const mixedRoof = applyEstimateDrawingModuleFieldEdit({
+      draft,
+      moduleIndex: 0,
+      edit: { field: 'roofMaterial', value: 'mixed' },
+    });
+
+    expect(mixedRoof).toEqual({
+      ok: false,
+      error: 'Choose Acrylic or Timber in the portal rail. Use the full calculator for Mixed roofs.',
+    });
   });
 });

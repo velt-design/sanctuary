@@ -12,6 +12,7 @@ import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } fro
 import {
   applyEstimateDrawingFootprintEdit,
   applyEstimateDrawingFieldEdit,
+  applyEstimateDrawingModuleFieldEdit,
   buildEstimateDrawingDraftFromSnapshot,
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
@@ -21,6 +22,7 @@ import {
   type EstimateDrawingDraft,
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
+  type EstimateDrawingModuleFieldEdit,
 } from '@/lib/estimates/drawingEdits';
 import {
   type EstimateSaveMode,
@@ -1221,6 +1223,24 @@ export default function EstimatesTab({
     [drawingDraft, drawingModuleIndex, persistDrawingDraftLocally],
   );
 
+  const commitDrawingModuleField = useCallback(
+    async (edit: EstimateDrawingModuleFieldEdit) => {
+      if (!drawingDraft) {
+        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
+      }
+      const result = applyEstimateDrawingModuleFieldEdit({
+        draft: drawingDraft,
+        moduleIndex: drawingModuleIndex,
+        edit,
+      });
+      if (!result.ok) return result;
+
+      await persistDrawingDraftLocally(result.draft);
+      return { ok: true as const };
+    },
+    [drawingDraft, drawingModuleIndex, persistDrawingDraftLocally],
+  );
+
   const saveDrawingDraft = useCallback(async (saveMode: EstimateSaveMode = 'preserve_current') => {
     if (!selectedDetail) return;
     const activeDraft = drawingDraft ?? currentDrawingDraft;
@@ -1560,7 +1580,7 @@ export default function EstimatesTab({
                       moduleLabel={drawingModuleLabel}
                       modules={drawingModules.map((module, index) => ({
                         id: module.id,
-                        label: moduleLines[index] ?? module.label,
+                        label: module.label,
                       }))}
                       activeModuleIndex={drawingModuleIndex}
                       onActiveModuleIndexChange={(index) =>
@@ -1584,12 +1604,32 @@ export default function EstimatesTab({
                         }))
                       }
                       status={drawingStatus}
-                      planModel={activeDrawingModule.planModel}
-                      sectionModel={activeDrawingModule.sectionModel}
+                      planModel={activeDrawingModule?.planModel}
+                      sectionModel={activeDrawingModule?.sectionModel}
+                      activeModuleInput={activeDrawingModule?.drawingModule.input ?? null}
+                      planViewModel={drawingWorkbenchStore.derived.activePlanViewModel}
+                      viewportTransform={drawingWorkbenchStore.ui.viewportTransform}
+                      onViewportTransformChange={(transform) =>
+                        setDrawingWorkbenchUi((current) => ({
+                          ...current,
+                          viewportTransform: transform,
+                        }))
+                      }
                       meta={drawingSheetMeta}
                       editableFields={drawingEditableFields}
+                      isEstimateLocked={isEstimateLocked}
                       onCommitField={commitDrawingField}
+                      onCommitModuleField={!isEstimateLocked ? commitDrawingModuleField : undefined}
                       onCommitFootprintEdit={!isEstimateLocked ? commitDrawingFootprintEdit : undefined}
+                      onOpenFullCalculator={
+                        isEstimateLocked
+                          ? undefined
+                          : () =>
+                              void runWithDrawingDraftGuard(
+                                handleEditEstimate,
+                                'You have unsaved drawing changes. Discard them and open the design editor?',
+                              )
+                      }
                     />
                   ) : (
                     <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>

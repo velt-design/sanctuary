@@ -1,0 +1,9 @@
+
+> my-site@0.1.0 dev:portal
+> npm --prefix apps/portal run dev
+
+
+> sanctuary-portal@0.1.0 dev
+> next dev -p 3001
+
+[?25h
