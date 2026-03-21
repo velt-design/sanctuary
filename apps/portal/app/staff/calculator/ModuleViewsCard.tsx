@@ -38,20 +38,32 @@ export type HouseFootprintEditorDragMeta = {
   maxValueM: number;
 };
 
+export type ModuleFootprintEditorSurface = 'card' | 'sheet';
+
+export type ModulePlanSheetInteractionProps = {
+  isPergolaPopoverOpen?: boolean;
+  onPergolaHoverChange?: (hovered: boolean) => void;
+  onPergolaPopoverHoverChange?: (hovered: boolean) => void;
+};
+
 type GeometryConsistency = {
   level: 'ok' | 'warn';
   summary: string;
   details: string[];
 };
 
-type ModuleFootprintEditorProps = {
+export type ModuleFootprintEditorProps = {
   available: boolean;
   isEditing: boolean;
+  surface?: ModuleFootprintEditorSurface;
+  isContextHovered?: boolean;
+  onContextPopoverHoverChange?: (hovered: boolean) => void;
   hoveredAttachmentSide: AttachmentSide | null;
   hoveredHandleId: HouseFootprintHandleId | null;
   activeHandleId: HouseFootprintHandleId | null;
   onStartEditing: () => void;
   onDoneEditing: () => void;
+  onContextHoverChange?: (hovered: boolean) => void;
   onAttachmentSideHover: (side: AttachmentSide | null) => void;
   onAttachmentSideSelect: (side: AttachmentSide) => void;
   onHandleHover: (handleId: HouseFootprintHandleId | null) => void;
@@ -85,6 +97,7 @@ type ModuleDrawingRendererProps = {
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
   footprintEditor?: ModuleFootprintEditorProps;
+  sheetPlanInteraction?: ModulePlanSheetInteractionProps;
 };
 
 type ModuleDrawingInteractiveField = {
@@ -125,7 +138,7 @@ const STATUS_TEXT: Record<ModuleViewsStatus, string> = {
   empty: 'Waiting for valid inputs before geometry is available.',
 };
 
-const HOUSE_FOOTPRINT_PRESET_OPTIONS: Array<{ id: ModulePlanModel['houseFootprintPreset']; label: string }> = [
+export const HOUSE_FOOTPRINT_PRESET_OPTIONS: Array<{ id: ModulePlanModel['houseFootprintPreset']; label: string }> = [
   { id: 'straight', label: 'Straight' },
   { id: 'l_left', label: 'L left' },
   { id: 'l_right', label: 'L right' },
@@ -235,6 +248,7 @@ export function ModuleDrawingRenderer({
   interactiveFields,
   showDebugOverlays,
   footprintEditor,
+  sheetPlanInteraction,
 }: ModuleDrawingRendererProps) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
@@ -249,6 +263,7 @@ export function ModuleDrawingRenderer({
   const activeConsistency = view === 'plan' ? planConsistency : sectionConsistency;
   const stateText = view === 'section' && status === 'ready' ? 'Section schematic ready.' : STATUS_TEXT[status];
   const svgId = useId().replace(/:/g, '_');
+  const footprintEditorSurface = footprintEditor?.surface ?? 'card';
   const sheetScaleState =
     presentation === 'sheet'
       ? resolveModuleDrawingScaleState({
@@ -279,8 +294,8 @@ export function ModuleDrawingRenderer({
     >
       {showPlan && planModel ? (
         <div className={`${styles.modulePlanFrame} ${isCompact ? styles.modulePlanFrameBare : ''}`}>
-          {isCompact ? null : (
-            <div className={styles.modulePlanSourceRow}>
+        {isCompact ? null : (
+          <div className={styles.modulePlanSourceRow}>
               <div className={planModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
                 {planModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
               </div>
@@ -292,7 +307,7 @@ export function ModuleDrawingRenderer({
             </div>
           )}
           <div className={styles.modulePlanCanvas}>
-            {presentation === 'card' && footprintEditor?.available && footprintEditor.isEditing ? (
+            {presentation === 'card' && footprintEditorSurface === 'card' && footprintEditor?.available && footprintEditor.isEditing ? (
               <div className={styles.moduleFootprintToolbar} aria-label="House footprint editor">
                 <div className={styles.moduleFootprintToolbarGroup}>
                   <label className={styles.moduleFootprintToolbarField}>
@@ -331,7 +346,8 @@ export function ModuleDrawingRenderer({
               scaleDiagnostics={sheetScaleDiagnostics}
               interactiveFields={interactiveFields}
               showDebugOverlays={effectiveShowDebugOverlays}
-              footprintEditor={presentation === 'card' ? footprintEditor : undefined}
+              footprintEditor={footprintEditor}
+              sheetPlanInteraction={sheetPlanInteraction}
             />
           </div>
           {isCompact ? null : (
@@ -1921,6 +1937,40 @@ function estimateTickDimensionBounds(
   ]);
 }
 
+function estimatePinnedSheetPlanPrimaryDimensionBounds(input: {
+  rotatedPrimaryBounds: AnnotatedBounds;
+  dimensionOffsets: { bottom: number; side: number };
+  bottomLabel: string;
+  leftLabel: string;
+  presentation: ModuleDrawingPresentation;
+}): AnnotatedBounds {
+  const pinnedBottomDimensionY = Math.min(87.4, input.rotatedPrimaryBounds.maxY + input.dimensionOffsets.bottom);
+  const pinnedLeftDimensionX = input.rotatedPrimaryBounds.minX - input.dimensionOffsets.side;
+
+  return unionBounds([
+    boundsFromLine(input.rotatedPrimaryBounds.minX, input.rotatedPrimaryBounds.maxY, input.rotatedPrimaryBounds.minX, pinnedBottomDimensionY, 0.2),
+    boundsFromLine(input.rotatedPrimaryBounds.maxX, input.rotatedPrimaryBounds.maxY, input.rotatedPrimaryBounds.maxX, pinnedBottomDimensionY, 0.2),
+    estimateTickDimensionBounds({
+      x1: input.rotatedPrimaryBounds.minX,
+      y1: pinnedBottomDimensionY,
+      x2: input.rotatedPrimaryBounds.maxX,
+      y2: pinnedBottomDimensionY,
+      label: input.bottomLabel,
+      presentation: input.presentation,
+    }),
+    boundsFromLine(input.rotatedPrimaryBounds.minX, input.rotatedPrimaryBounds.minY, pinnedLeftDimensionX, input.rotatedPrimaryBounds.minY, 0.2),
+    boundsFromLine(input.rotatedPrimaryBounds.minX, input.rotatedPrimaryBounds.maxY, pinnedLeftDimensionX, input.rotatedPrimaryBounds.maxY, 0.2),
+    estimateTickDimensionBounds({
+      x1: pinnedLeftDimensionX,
+      y1: input.rotatedPrimaryBounds.minY,
+      x2: pinnedLeftDimensionX,
+      y2: input.rotatedPrimaryBounds.maxY,
+      label: input.leftLabel,
+      presentation: input.presentation,
+    }),
+  ]);
+}
+
 function ArrowHead({
   x,
   y,
@@ -2177,6 +2227,8 @@ function measurePlanAnnotatedBounds(input: {
   const dimBaseY = bottomY + dimensionOffsets.bottom;
   const secondaryDimY = dimBaseY + dimensionOffsets.secondary;
   const rafterDimY = dimBaseY + dimensionOffsets.tertiary;
+  const showPinnedSheetPrimaryDimensions = presentation === 'sheet' && !isHipCorner;
+  const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
   const yTopInner = baseY + topFrameW;
   const yBottomInner = baseY + aH - gutterW;
   const overhangFrameDepth = isHipCorner ? bH : aH;
@@ -2263,19 +2315,23 @@ function measurePlanAnnotatedBounds(input: {
       paddingX: 0.2,
       paddingY: 0.18,
     }),
-    boundsFromLine(baseX, isHipCorner ? bottomY : baseY + aH, baseX, dimBaseY, 0.2),
-    boundsFromLine(baseX + aW, isHipCorner ? splitY : baseY + aH, baseX + aW, dimBaseY, 0.2),
-    estimateTickDimensionBounds({ x1: baseX, y1: dimBaseY, x2: baseX + aW, y2: dimBaseY, label: formatMetres(model.lengthA), presentation }),
-    boundsFromLine(baseX, baseY, baseX - dimensionOffsets.side, baseY, 0.2),
-    boundsFromLine(baseX, baseY + aH, baseX - dimensionOffsets.side, baseY + aH, 0.2),
-    estimateTickDimensionBounds({
-      x1: baseX - dimensionOffsets.side,
-      y1: baseY,
-      x2: baseX - dimensionOffsets.side,
-      y2: baseY + aH,
-      label: formatMetres(model.spanA),
-      presentation,
-    }),
+    ...(showPinnedSheetPrimaryDimensions
+      ? []
+      : [
+          boundsFromLine(baseX, isHipCorner ? bottomY : baseY + aH, baseX, dimBaseY, 0.2),
+          boundsFromLine(baseX + aW, isHipCorner ? splitY : baseY + aH, baseX + aW, dimBaseY, 0.2),
+          estimateTickDimensionBounds({ x1: baseX, y1: dimBaseY, x2: baseX + aW, y2: dimBaseY, label: formatMetres(model.lengthA), presentation }),
+          boundsFromLine(baseX, baseY, baseX - dimensionOffsets.side, baseY, 0.2),
+          boundsFromLine(baseX, baseY + aH, baseX - dimensionOffsets.side, baseY + aH, 0.2),
+          estimateTickDimensionBounds({
+            x1: baseX - dimensionOffsets.side,
+            y1: baseY,
+            x2: baseX - dimensionOffsets.side,
+            y2: baseY + aH,
+            label: formatMetres(model.spanA),
+            presentation,
+          }),
+        ]),
     isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX, bottomY, baseX, secondaryDimY, 0.2) : null,
     isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX + bW, bottomY, baseX + bW, secondaryDimY, 0.2) : null,
     isHipCorner && model.lengthB && model.spanB
@@ -2316,11 +2372,29 @@ function measurePlanAnnotatedBounds(input: {
       : null,
   ];
 
-  if (rotationFrame.turns === 0) {
-    return unionBounds(localBounds);
+  const rotatedLocalBounds =
+    rotationFrame.turns === 0
+      ? unionBounds(localBounds)
+      : unionBounds(localBounds.map((bounds) => (bounds ? rotateBoundsQuarterTurns(bounds, rotationFrame.center, rotationFrame.turns) : null)));
+
+  if (!showPinnedSheetPrimaryDimensions) {
+    return rotatedLocalBounds;
   }
 
-  return unionBounds(localBounds.map((bounds) => (bounds ? rotateBoundsQuarterTurns(bounds, rotationFrame.center, rotationFrame.turns) : null)));
+  const rotatedPrimaryPoints =
+    rotationFrame.turns === 0 ? primaryPoints : rotatePointsQuarterTurns(primaryPoints, rotationFrame.center, rotationFrame.turns);
+  const rotatedPrimaryBounds = boundsFromPoints(rotatedPrimaryPoints);
+
+  return unionBounds([
+    rotatedLocalBounds,
+    estimatePinnedSheetPlanPrimaryDimensionBounds({
+      rotatedPrimaryBounds,
+      dimensionOffsets,
+      bottomLabel: formatMetres(primaryDimensionSwap ? model.spanA : model.lengthA),
+      leftLabel: formatMetres(primaryDimensionSwap ? model.lengthA : model.spanA),
+      presentation,
+    }),
+  ]);
 }
 
 function resolvePlanSheetLayoutForScale(input: {
@@ -2718,6 +2792,7 @@ function PlanSvg({
   interactiveFields,
   showDebugOverlays,
   footprintEditor,
+  sheetPlanInteraction,
 }: {
   model: ModulePlanModel;
   idBase: string;
@@ -2729,6 +2804,7 @@ function PlanSvg({
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
   footprintEditor?: ModuleFootprintEditorProps;
+  sheetPlanInteraction?: ModulePlanSheetInteractionProps;
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
@@ -2829,7 +2905,12 @@ function PlanSvg({
   const houseLabel = footprintLabelPoint(housePolygon);
   const hatchId = `${idBase}_house_hatch`;
   const houseClipId = `${idBase}_house_clip`;
-  const canEditFootprint = presentation === 'card' && Boolean(footprintEditor?.available) && canEditHouseFootprintPlan(model);
+  const editorSurface = footprintEditor?.surface ?? 'card';
+  const canEditFootprint =
+    Boolean(footprintEditor?.available) &&
+    canEditHouseFootprintPlan(model) &&
+    ((presentation === 'card' && editorSurface === 'card') || (presentation === 'sheet' && editorSurface === 'sheet'));
+  const isSheetFootprintEditor = presentation === 'sheet' && editorSurface === 'sheet' && Boolean(footprintEditor?.available);
   const isEditingFootprint = canEditFootprint && Boolean(footprintEditor?.isEditing);
   const houseClipRect = isSheet
     ? (sheetLayout?.outerField ?? getSheetDrawingField())
@@ -2855,7 +2936,7 @@ function PlanSvg({
     rotationFrame.center,
     rotationFrame.turns,
   );
-  const activeEdgeTagLabel = isEditingFootprint ? 'Attached edge' : null;
+  const activeEdgeTagLabel = editorSurface === 'card' && isEditingFootprint ? 'Attached edge' : null;
   const activeEdgeTagStyle =
     activeEdgeTagLabel
       ? {
@@ -2911,6 +2992,38 @@ function PlanSvg({
       ? clamp(highlightedHandle.pointRoot.x + 2.8, 1.4, 118 - highlightedHandleLabelWidth)
       : 0;
   const highlightedHandleLabelY = highlightedHandle ? clamp(highlightedHandle.pointRoot.y - 4.8, 4.5, 84) : 0;
+  const rotatedPrimaryPoints =
+    rotationFrame.turns === 0 ? primaryPoints : rotatePointsQuarterTurns(primaryPoints, rotationFrame.center, rotationFrame.turns);
+  const rotatedPrimaryBounds = boundsFromPoints(rotatedPrimaryPoints);
+  const rotatedHousePoints =
+    rotationFrame.turns === 0 ? housePolygon : rotatePointsQuarterTurns(housePolygon, rotationFrame.center, rotationFrame.turns);
+  const rotatedHouseBounds = showHouseFootprint ? boundsFromPoints(rotatedHousePoints) : null;
+  const showHousePopover = isSheetFootprintEditor && (Boolean(footprintEditor?.isContextHovered) || isEditingFootprint);
+  const showFootprintControls = canEditFootprint && (editorSurface === 'sheet' ? showHousePopover : isEditingFootprint);
+  const showPergolaPopover = isSheet && Boolean(sheetPlanInteraction?.isPergolaPopoverOpen) && !showHousePopover;
+  const showHouseHoverTarget = isSheetFootprintEditor && showHouseFootprint;
+  const showPergolaHoverTarget = isSheet && Boolean(sheetPlanInteraction?.onPergolaHoverChange) && !isHipCorner;
+  const showHouseHoverState = isSheetFootprintEditor && showHousePopover;
+  const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor;
+  const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
+  const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
+  const bottomDimensionLabel = formatMetres(primaryDimensionSwap ? model.spanA : model.lengthA);
+  const leftDimensionLabel = formatMetres(primaryDimensionSwap ? model.lengthA : model.spanA);
+  const bottomDimensionField = interactiveFields?.[primaryDimensionSwap ? 'plan:spanA' : 'plan:lengthA'];
+  const leftDimensionField = interactiveFields?.[primaryDimensionSwap ? 'plan:lengthA' : 'plan:spanA'];
+  const pinnedBottomDimensionY = Math.min(87.4, rotatedPrimaryBounds.maxY + dimensionOffsets.bottom);
+  const pinnedLeftDimensionX = rotatedPrimaryBounds.minX - dimensionOffsets.side;
+  const housePopoverStyle =
+    rotatedHouseBounds
+      ? {
+          left: `${(clamp((rotatedHouseBounds.minX + rotatedHouseBounds.maxX) / 2, 8, 112) / 120) * 100}%`,
+          top: `${(clamp(rotatedHouseBounds.minY + 1.1, 8, 80) / 90) * 100}%`,
+        }
+      : undefined;
+  const pergolaPopoverStyle = {
+    left: `${(clamp((rotatedPrimaryBounds.minX + rotatedPrimaryBounds.maxX) / 2, 8, 112) / 120) * 100}%`,
+    top: `${(clamp(rotatedPrimaryBounds.minY + 1.1, 8, 80) / 90) * 100}%`,
+  };
 
   return (
     <>
@@ -2921,6 +3034,10 @@ function PlanSvg({
         ref={footprintEditor?.onSvgMount}
         className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
           presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
+        } ${isSheetFootprintEditor ? styles.modulePlanSvgSheetFootprint : ''} ${
+          showHousePopover ? styles.modulePlanSvgSheetFootprintHover : ''
+        } ${showFootprintControls && isSheetFootprintEditor ? styles.modulePlanSvgSheetFootprintEditing : ''} ${
+          showPergolaPopover ? styles.modulePlanSvgSheetPergolaHover : ''
         }`}
       >
       <defs>
@@ -2970,8 +3087,25 @@ function PlanSvg({
 
       <g transform={planRotationTransform}>
         <g clipPath={`url(#${houseClipId})`}>
-          {showHouseFootprint ? <polygon points={toPointsAttr(housePolygon)} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} /> : null}
-          {showHouseFootprint && !isEditingFootprint ? (
+          {showHouseFootprint ? (
+            <polygon
+              points={toPointsAttr(housePolygon)}
+              fill={`url(#${hatchId})`}
+              className={`${styles.moduleHouseHatch} ${isSheetFootprintEditor ? styles.moduleHouseHatchSheetContext : ''} ${
+                showHouseHoverState ? styles.moduleHouseHatchSheetHover : ''
+              } ${showFootprintControls && isSheetFootprintEditor ? styles.moduleHouseHatchSheetEditing : ''}`}
+            />
+          ) : null}
+          {showHouseHoverTarget ? (
+            <polygon
+              points={toPointsAttr(housePolygon)}
+              className={styles.moduleHouseContextHit}
+              data-sheet-hover-target="house"
+              onPointerEnter={() => footprintEditor?.onContextHoverChange?.(true)}
+              onPointerLeave={() => footprintEditor?.onContextHoverChange?.(false)}
+            />
+          ) : null}
+          {showHouseLabel ? (
             <text x={houseLabel.x} y={houseLabel.y} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
               House side
             </text>
@@ -3098,29 +3232,47 @@ function PlanSvg({
           </>
         )}
 
-        <line x1={x} y1={isHipCorner ? bottomY : y + aH} x2={x} y2={dimBaseY} className={styles.moduleDimWitness} />
-        <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
-        <TickDimension
-          x1={x}
-          y1={dimBaseY}
-          x2={x + aW}
-          y2={dimBaseY}
-          label={formatMetres(model.lengthA)}
-          presentation={presentation}
-          interactiveField={interactiveFields?.['plan:lengthA']}
-        />
+        {showPergolaHoverTarget ? (
+          <polygon
+            points={toPointsAttr(primaryPoints)}
+            className={styles.modulePergolaContextHit}
+            data-sheet-hover-target="pergola"
+            onPointerEnter={() => sheetPlanInteraction?.onPergolaHoverChange?.(true)}
+            onPointerLeave={() => sheetPlanInteraction?.onPergolaHoverChange?.(false)}
+          />
+        ) : null}
 
-        <line x1={x} y1={y} x2={x - dimensionOffsets.side} y2={y} className={styles.moduleDimWitness} />
-        <line x1={x} y1={y + aH} x2={x - dimensionOffsets.side} y2={y + aH} className={styles.moduleDimWitness} />
-        <TickDimension
-          x1={x - dimensionOffsets.side}
-          y1={y}
-          x2={x - dimensionOffsets.side}
-          y2={y + aH}
-          label={formatMetres(model.spanA)}
-          presentation={presentation}
-          interactiveField={interactiveFields?.['plan:spanA']}
-        />
+        {showPinnedSheetPrimaryDimensions ? null : (
+          <g data-plan-primary-dim="bottom">
+            <line x1={x} y1={isHipCorner ? bottomY : y + aH} x2={x} y2={dimBaseY} className={styles.moduleDimWitness} />
+            <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
+            <TickDimension
+              x1={x}
+              y1={dimBaseY}
+              x2={x + aW}
+              y2={dimBaseY}
+              label={formatMetres(model.lengthA)}
+              presentation={presentation}
+              interactiveField={interactiveFields?.['plan:lengthA']}
+            />
+          </g>
+        )}
+
+        {showPinnedSheetPrimaryDimensions ? null : (
+          <g data-plan-primary-dim="left">
+            <line x1={x} y1={y} x2={x - dimensionOffsets.side} y2={y} className={styles.moduleDimWitness} />
+            <line x1={x} y1={y + aH} x2={x - dimensionOffsets.side} y2={y + aH} className={styles.moduleDimWitness} />
+            <TickDimension
+              x1={x - dimensionOffsets.side}
+              y1={y}
+              x2={x - dimensionOffsets.side}
+              y2={y + aH}
+              label={formatMetres(model.spanA)}
+              presentation={presentation}
+              interactiveField={interactiveFields?.['plan:spanA']}
+            />
+          </g>
+        )}
 
         {isHipCorner && model.lengthB && model.spanB ? (
           <>
@@ -3174,7 +3326,7 @@ function PlanSvg({
             })()
           : null}
 
-        {isEditingFootprint
+        {showFootprintControls
           ? edgeFrames.map(({ side, frame: edgeFrame }) => {
               const isActiveEdge = side === attachmentSide;
               const isHoveredEdge = side === footprintEditor?.hoveredAttachmentSide;
@@ -3200,8 +3352,14 @@ function PlanSvg({
                     y2={edgeFrame.end.y}
                     data-footprint-edge={side}
                     className={styles.moduleFootprintEdgeHit}
-                    onPointerEnter={() => footprintEditor?.onAttachmentSideHover(side)}
-                    onPointerLeave={() => footprintEditor?.onAttachmentSideHover(null)}
+                    onPointerEnter={() => {
+                      footprintEditor?.onContextHoverChange?.(true);
+                      footprintEditor?.onAttachmentSideHover(side);
+                    }}
+                    onPointerLeave={() => {
+                      footprintEditor?.onContextHoverChange?.(false);
+                      footprintEditor?.onAttachmentSideHover(null);
+                    }}
                     onClick={() => footprintEditor?.onAttachmentSideSelect(side)}
                   />
                 </g>
@@ -3209,7 +3367,7 @@ function PlanSvg({
             })
           : null}
 
-        {isEditingFootprint
+        {showFootprintControls
           ? handleSpecs.map((handle) => {
               const isActiveHandle = handle.id === footprintEditor?.activeHandleId;
               const isHoveredHandle = handle.id === footprintEditor?.hoveredHandleId;
@@ -3240,8 +3398,14 @@ function PlanSvg({
                     cy={handle.point.y}
                     r={2.8}
                     className={styles.moduleFootprintHandleHit}
-                    onPointerEnter={() => footprintEditor?.onHandleHover(handle.id)}
-                    onPointerLeave={() => footprintEditor?.onHandleHover(null)}
+                    onPointerEnter={() => {
+                      footprintEditor?.onContextHoverChange?.(true);
+                      footprintEditor?.onHandleHover(handle.id);
+                    }}
+                    onPointerLeave={() => {
+                      footprintEditor?.onContextHoverChange?.(false);
+                      footprintEditor?.onHandleHover(null);
+                    }}
                     onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
                       event.preventDefault();
                       event.stopPropagation();
@@ -3269,7 +3433,38 @@ function PlanSvg({
           : null}
       </g>
 
-      {isEditingFootprint && highlightedHandle && highlightedHandleLabel ? (
+      {showPinnedSheetPrimaryDimensions ? (
+        <>
+          <g data-plan-primary-dim="bottom">
+            <line x1={rotatedPrimaryBounds.minX} y1={rotatedPrimaryBounds.maxY} x2={rotatedPrimaryBounds.minX} y2={pinnedBottomDimensionY} className={styles.moduleDimWitness} />
+            <line x1={rotatedPrimaryBounds.maxX} y1={rotatedPrimaryBounds.maxY} x2={rotatedPrimaryBounds.maxX} y2={pinnedBottomDimensionY} className={styles.moduleDimWitness} />
+            <TickDimension
+              x1={rotatedPrimaryBounds.minX}
+              y1={pinnedBottomDimensionY}
+              x2={rotatedPrimaryBounds.maxX}
+              y2={pinnedBottomDimensionY}
+              label={bottomDimensionLabel}
+              presentation={presentation}
+              interactiveField={bottomDimensionField}
+            />
+          </g>
+          <g data-plan-primary-dim="left">
+            <line x1={rotatedPrimaryBounds.minX} y1={rotatedPrimaryBounds.minY} x2={pinnedLeftDimensionX} y2={rotatedPrimaryBounds.minY} className={styles.moduleDimWitness} />
+            <line x1={rotatedPrimaryBounds.minX} y1={rotatedPrimaryBounds.maxY} x2={pinnedLeftDimensionX} y2={rotatedPrimaryBounds.maxY} className={styles.moduleDimWitness} />
+            <TickDimension
+              x1={pinnedLeftDimensionX}
+              y1={rotatedPrimaryBounds.minY}
+              x2={pinnedLeftDimensionX}
+              y2={rotatedPrimaryBounds.maxY}
+              label={leftDimensionLabel}
+              presentation={presentation}
+              interactiveField={leftDimensionField}
+            />
+          </g>
+        </>
+      ) : null}
+
+      {showFootprintControls && highlightedHandle && highlightedHandleLabel ? (
         <g className={styles.moduleFootprintValueBadge} aria-hidden="true">
           <rect
             x={highlightedHandleLabelX}
@@ -3285,9 +3480,61 @@ function PlanSvg({
         </g>
       ) : null}
       </svg>
+      {showHousePopover && housePopoverStyle ? (
+        <div className={styles.moduleSheetPlanPopoverOverlay} style={housePopoverStyle}>
+          <div
+            className={styles.moduleSheetPlanPopover}
+            data-sheet-plan-popover="house"
+            onPointerEnter={() => footprintEditor?.onContextPopoverHoverChange?.(true)}
+            onPointerLeave={() => footprintEditor?.onContextPopoverHoverChange?.(false)}
+          >
+            <label className={styles.moduleSheetPlanPopoverField}>
+              <span className={styles.moduleSheetPlanPopoverLabel}>House type</span>
+              <select
+                className={styles.moduleSheetPlanPopoverSelect}
+                aria-label="House footprint preset"
+                value={model.houseFootprintPreset}
+                onChange={(event) => footprintEditor?.onPresetSelect(event.target.value as ModulePlanModel['houseFootprintPreset'])}
+              >
+                {HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </div>
+      ) : null}
+      {showPergolaPopover ? (
+        <div className={styles.moduleSheetPlanPopoverOverlay} style={pergolaPopoverStyle}>
+          <div
+            className={styles.moduleSheetPlanPopover}
+            data-sheet-plan-popover="pergola"
+            onPointerEnter={() => sheetPlanInteraction?.onPergolaPopoverHoverChange?.(true)}
+            onPointerLeave={() => sheetPlanInteraction?.onPergolaPopoverHoverChange?.(false)}
+          >
+            <span className={styles.moduleSheetPlanPopoverLabel}>Rotate</span>
+            <div className={styles.moduleSheetPlanPopoverButtonRow}>
+              <button type="button" className={styles.moduleSheetPlanPopoverButton} onClick={() => footprintEditor?.onRotate(-1)}>
+                Rotate -90
+              </button>
+              <button type="button" className={styles.moduleSheetPlanPopoverButton} onClick={() => footprintEditor?.onRotate(1)}>
+                Rotate +90
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {activeEdgeTagLabel && activeEdgeTagStyle ? (
-        <div className={styles.moduleFootprintEdgeBadgeOverlay} style={activeEdgeTagStyle} aria-hidden="true">
-          <span className={styles.moduleFootprintEdgeBadgePill}>{activeEdgeTagLabel}</span>
+        <div
+          className={`${styles.moduleFootprintEdgeBadgeOverlay} ${isSheetFootprintEditor ? styles.moduleFootprintEdgeBadgeOverlaySheet : ''}`}
+          style={activeEdgeTagStyle}
+          aria-hidden="true"
+        >
+          <span className={`${styles.moduleFootprintEdgeBadgePill} ${isSheetFootprintEditor ? styles.moduleFootprintEdgeBadgePillSheet : ''}`}>
+            {activeEdgeTagLabel}
+          </span>
         </div>
       ) : null}
     </>

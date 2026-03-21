@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
   ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY,
+  applyEstimateDrawingFootprintEdit,
   applyEstimateDrawingFieldEdit,
   buildEstimateDrawingDraftFromSnapshot,
   deriveEstimateDrawingEditableFields,
@@ -223,5 +224,46 @@ describe('drawingEdits', () => {
         [ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY]: cleared.draft.overrides,
       },
     }).noteOverride).toBeUndefined();
+  });
+
+  it('applies live footprint edits into the drawing draft', () => {
+    const snapshot = makeSnapshot(makeModule());
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+
+    const presetResult = applyEstimateDrawingFootprintEdit({
+      draft,
+      moduleIndex: 0,
+      edit: { type: 'preset', preset: 'u_shape' },
+    });
+    expect(presetResult.ok).toBe(true);
+    if (!presetResult.ok) return;
+    expect(presetResult.draft.inputs.modules[0]?.houseFootprintPreset).toBe('u_shape');
+
+    const rotateResult = applyEstimateDrawingFootprintEdit({
+      draft: presetResult.draft,
+      moduleIndex: 0,
+      edit: { type: 'rotate', delta: 1 },
+    });
+    expect(rotateResult.ok).toBe(true);
+    if (!rotateResult.ok) return;
+    expect(rotateResult.draft.inputs.modules[0]?.drawingRotationQuarterTurns).toBe(1);
+
+    const sideResult = applyEstimateDrawingFootprintEdit({
+      draft: rotateResult.draft,
+      moduleIndex: 0,
+      edit: { type: 'attachment_side', side: 'left' },
+    });
+    expect(sideResult.ok).toBe(true);
+    if (!sideResult.ok) return;
+    expect(sideResult.draft.inputs.modules[0]?.attachmentSide).toBe('left');
+
+    const paramResult = applyEstimateDrawingFootprintEdit({
+      draft: sideResult.draft,
+      moduleIndex: 0,
+      edit: { type: 'param', key: 'bandDepthM', value: '2.7' },
+    });
+    expect(paramResult.ok).toBe(true);
+    if (!paramResult.ok) return;
+    expect(paramResult.draft.inputs.modules[0]?.houseFootprintParams?.bandDepthM).toBe('2.7');
   });
 });

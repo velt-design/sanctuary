@@ -2584,6 +2584,22 @@
   display: block;
 }
 
+.modulePlanSvgSheetFootprint {
+  cursor: default;
+}
+
+.modulePlanSvgSheetFootprintHover {
+  cursor: pointer;
+}
+
+.modulePlanSvgSheetFootprintEditing {
+  cursor: default;
+}
+
+.modulePlanSvgSheetPergolaHover {
+  cursor: pointer;
+}
+
 .moduleFootprintEdge {
   stroke: var(--mv-line-primary);
   stroke-width: 0.75;
@@ -2633,6 +2649,10 @@
   pointer-events: none;
 }
 
+.moduleFootprintEdgeBadgeOverlaySheet {
+  z-index: 1;
+}
+
 .moduleFootprintEdgeBadgePill {
   display: inline-flex;
   align-items: center;
@@ -2649,6 +2669,15 @@
   text-transform: uppercase;
   box-shadow: 0 6px 14px rgba(40, 33, 18, 0.08);
   white-space: nowrap;
+}
+
+.moduleFootprintEdgeBadgePillSheet {
+  min-height: 20px;
+  padding: 0 8px;
+  border-color: rgba(127, 137, 124, 0.24);
+  background: rgba(244, 244, 239, 0.94);
+  color: rgba(55, 63, 55, 0.78);
+  box-shadow: 0 4px 10px rgba(47, 56, 47, 0.05);
 }
 
 .moduleFootprintGuide {
@@ -2706,6 +2735,79 @@
   dominant-baseline: middle;
 }
 
+.moduleSheetPlanPopoverOverlay {
+  position: absolute;
+  z-index: 3;
+  transform: translate(-50%, 0);
+  pointer-events: none;
+}
+
+.moduleSheetPlanPopover {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 132px;
+  padding: 8px 10px;
+  border: 1px solid rgba(127, 137, 124, 0.28);
+  border-radius: 13px;
+  background: rgba(244, 244, 239, 0.96);
+  box-shadow: 0 10px 22px rgba(47, 56, 47, 0.08);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+.moduleSheetPlanPopoverField {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.moduleSheetPlanPopoverLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(84, 89, 82, 0.72);
+  white-space: nowrap;
+}
+
+.moduleSheetPlanPopoverSelect,
+.moduleSheetPlanPopoverButton {
+  border: 1px solid rgba(127, 137, 124, 0.3);
+  border-radius: 999px;
+  background: rgba(250, 250, 246, 0.96);
+  color: rgba(47, 56, 47, 0.88);
+  min-height: 28px;
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.moduleSheetPlanPopoverSelect {
+  min-width: 122px;
+  padding-right: 26px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.moduleSheetPlanPopoverButton {
+  cursor: pointer;
+}
+
+.moduleSheetPlanPopoverSelect:hover,
+.moduleSheetPlanPopoverButton:hover {
+  border-color: rgba(111, 121, 108, 0.44);
+  background: rgba(250, 250, 246, 0.99);
+}
+
+.moduleSheetPlanPopoverButtonRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .moduleViewsLegend {
   display: flex;
   flex-wrap: wrap;
@@ -2741,10 +2843,37 @@
   vector-effect: non-scaling-stroke;
 }
 
+.moduleHouseHatchSheetContext {
+  fill: var(--mv-house-fill);
+  stroke: var(--mv-house-stroke);
+}
+
+.moduleHouseHatchSheetHover {
+  fill: rgba(93, 103, 92, 0.058);
+  stroke: rgba(111, 121, 108, 0.34);
+}
+
+.moduleHouseHatchSheetEditing {
+  fill: rgba(93, 103, 92, 0.064);
+  stroke: rgba(84, 89, 82, 0.38);
+}
+
 .moduleHouseHatchLine {
   stroke: var(--mv-house-stroke);
   stroke-width: var(--mv-line-guide-width);
   vector-effect: non-scaling-stroke;
+}
+
+.moduleHouseContextHit {
+  fill: transparent;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.modulePergolaContextHit {
+  fill: transparent;
+  cursor: pointer;
+  pointer-events: all;
 }
 
 .moduleHouseLabel {

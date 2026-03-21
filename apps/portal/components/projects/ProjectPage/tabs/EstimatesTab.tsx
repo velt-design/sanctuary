@@ -10,6 +10,7 @@ import { mapEngineLevel } from '@/app/staff/calculator/warnings';
 import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import {
+  applyEstimateDrawingFootprintEdit,
   applyEstimateDrawingFieldEdit,
   buildEstimateDrawingDraftFromSnapshot,
   buildEstimateDrawingSheetMetaOverrides,
@@ -19,6 +20,7 @@ import {
   mergeEstimateDrawingDraftIntoSnapshot,
   type EstimateDrawingDraft,
   type EstimateDrawingField,
+  type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import {
@@ -1162,6 +1164,17 @@ export default function EstimatesTab({
     [confirmDiscardDrawingDraft, drawingSaveBusy],
   );
 
+  const persistDrawingDraftLocally = useCallback(
+    async (nextDraft: EstimateDrawingDraft) => {
+      if (estimateDrawingDraftMatchesSnapshot(nextDraft, selectedDetail?.calculatorSnapshot ?? null)) {
+        await drawingWorkingCopy.clearWorkingCopy();
+      } else {
+        await drawingWorkingCopy.setWorkingCopy(nextDraft);
+      }
+    },
+    [drawingWorkingCopy, selectedDetail?.calculatorSnapshot],
+  );
+
   const commitDrawingField = useCallback(
     async (field: EstimateDrawingField, nextValue: string) => {
       if (!drawingDraft) {
@@ -1174,15 +1187,29 @@ export default function EstimatesTab({
       });
       if (!result.ok) return result;
 
-      if (estimateDrawingDraftMatchesSnapshot(result.draft, selectedDetail?.calculatorSnapshot ?? null)) {
-        await drawingWorkingCopy.clearWorkingCopy();
-      } else {
-        await drawingWorkingCopy.setWorkingCopy(result.draft);
-      }
+      await persistDrawingDraftLocally(result.draft);
 
       return { ok: true as const };
     },
-    [drawingDraft, drawingWorkingCopy, selectedDetail?.calculatorSnapshot],
+    [drawingDraft, persistDrawingDraftLocally],
+  );
+
+  const commitDrawingFootprintEdit = useCallback(
+    async (edit: EstimateDrawingFootprintEdit) => {
+      if (!drawingDraft) {
+        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
+      }
+      const result = applyEstimateDrawingFootprintEdit({
+        draft: drawingDraft,
+        moduleIndex: drawingModuleIndex,
+        edit,
+      });
+      if (!result.ok) return result;
+
+      await persistDrawingDraftLocally(result.draft);
+      return { ok: true as const };
+    },
+    [drawingDraft, drawingModuleIndex, persistDrawingDraftLocally],
   );
 
   const saveDrawingDraft = useCallback(async (saveMode: EstimateSaveMode = 'preserve_current') => {
@@ -1562,6 +1589,7 @@ export default function EstimatesTab({
                       meta={drawingSheetMeta}
                       editableFields={drawingEditableFields}
                       onCommitField={commitDrawingField}
+                      onCommitFootprintEdit={!isEstimateLocked ? commitDrawingFootprintEdit : undefined}
                     />
                   ) : (
                     <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>
