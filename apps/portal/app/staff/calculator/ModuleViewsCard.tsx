@@ -25,7 +25,7 @@ import {
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
-type ModuleDrawingPresentation = 'card' | 'minimal' | 'sheet';
+type ModuleDrawingPresentation = 'card' | 'minimal' | 'sheet' | 'model';
 export type { HouseFootprintHandleId } from './moduleViews';
 
 export type HouseFootprintEditorDragMeta = {
@@ -252,6 +252,7 @@ export function ModuleDrawingRenderer({
 }: ModuleDrawingRendererProps) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
+  const isModel = presentation === 'model';
   const showPlan = view === 'plan' && Boolean(planModel);
   const showSection = view === 'section' && Boolean(sectionModel);
   const planConsistency = planModel ? checkPlanConsistency(planModel) : null;
@@ -289,11 +290,11 @@ export function ModuleDrawingRenderer({
     <div
       className={`${styles.moduleViewsStage} ${isCompact ? styles.moduleViewsStageBare : ''} ${
         presentation === 'sheet' ? styles.moduleViewsStageSheet : ''
-      }`}
+      } ${isModel ? styles.moduleViewsStageModel : ''}`}
       aria-live="polite"
     >
       {showPlan && planModel ? (
-        <div className={`${styles.modulePlanFrame} ${isCompact ? styles.modulePlanFrameBare : ''}`}>
+        <div className={`${styles.modulePlanFrame} ${isCompact ? styles.modulePlanFrameBare : ''} ${isModel ? styles.modulePlanFrameModel : ''}`}>
         {isCompact ? null : (
           <div className={styles.modulePlanSourceRow}>
               <div className={planModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
@@ -306,7 +307,7 @@ export function ModuleDrawingRenderer({
               ) : null}
             </div>
           )}
-          <div className={styles.modulePlanCanvas}>
+          <div className={`${styles.modulePlanCanvas} ${isModel ? styles.modulePlanCanvasModel : ''}`}>
             {presentation === 'card' && footprintEditorSurface === 'card' && footprintEditor?.available && footprintEditor.isEditing ? (
               <div className={styles.moduleFootprintToolbar} aria-label="House footprint editor">
                 <div className={styles.moduleFootprintToolbarGroup}>
@@ -386,7 +387,7 @@ export function ModuleDrawingRenderer({
           )}
         </div>
       ) : showSection && sectionModel ? (
-        <div className={`${styles.modulePlanFrame} ${isCompact ? styles.modulePlanFrameBare : ''}`}>
+        <div className={`${styles.modulePlanFrame} ${isCompact ? styles.modulePlanFrameBare : ''} ${isModel ? styles.modulePlanFrameModel : ''}`}>
           {isCompact ? null : (
             <div className={styles.modulePlanSourceRow}>
               <div className={sectionModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
@@ -830,6 +831,23 @@ function resolvePlanFitBox(totalW: number, totalH: number, presentation: ModuleD
     };
   }
 
+  if (presentation === 'model') {
+    const maxW = 92;
+    const maxH = 64;
+    const scale = Math.min(maxW / safeW, maxH / safeH);
+    const widthPx = safeW * scale;
+    const heightPx = safeH * scale;
+    return {
+      x: 14 + (maxW - widthPx) / 2,
+      y: 11 + (maxH - heightPx) / 2,
+      scale,
+      houseBandHeight: 10,
+      houseBandOffset: 2.1,
+      houseInset: 2.4,
+      fallGap: 7,
+    };
+  }
+
   const maxW = 74;
   const maxH = 42;
   const scale = Math.min(maxW / safeW, maxH / safeH);
@@ -900,6 +918,18 @@ function getSectionSheetFrame(sectionKind: ModuleSectionModel['sectionKind']): S
 function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, sectionKind: ModuleSectionModel['sectionKind']): SectionFitFrame {
   if (presentation === 'sheet') {
     return getSectionSheetFrame(sectionKind);
+  }
+
+  if (presentation === 'model') {
+    return {
+      outerField: { x: 8, y: 8, width: 104, height: 74 },
+      fitArea: { x: 12, y: 10, width: 96, height: 68 },
+      verticalBias: 0.5,
+      annotationPadLeft: 0,
+      annotationPadRight: 0,
+      annotationPadTop: 0,
+      annotationPadBottom: 0,
+    };
   }
 
   return {
@@ -1610,6 +1640,258 @@ function rotateVectorQuarterTurns(vector: Point, turns: number): Point {
   return rotatePointQuarterTurns(vector, { x: 0, y: 0 }, turns);
 }
 
+type CardinalDirection = 'up' | 'down' | 'left' | 'right';
+
+type PlanFallAnnotationSpec = {
+  lineStart: Point;
+  lineEnd: Point;
+  label: string;
+  labelPoint: Point;
+  arrowHeads: Array<{ point: Point; direction: CardinalDirection }>;
+};
+
+type PlanSpacingAnnotationSpec = {
+  witness1Start: Point;
+  witness1End: Point;
+  witness2Start: Point;
+  witness2End: Point;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  label: string;
+};
+
+type PlanLineTextAnnotationSpec = {
+  lineStart: Point;
+  lineEnd: Point;
+  text: string;
+  textPoint: Point;
+  anchor?: 'start' | 'middle' | 'end';
+};
+
+function cardinalDirectionToVector(direction: CardinalDirection): Point {
+  switch (direction) {
+    case 'up':
+      return { x: 0, y: -1 };
+    case 'down':
+      return { x: 0, y: 1 };
+    case 'left':
+      return { x: -1, y: 0 };
+    case 'right':
+    default:
+      return { x: 1, y: 0 };
+  }
+}
+
+function vectorToCardinalDirection(vector: Point): CardinalDirection {
+  if (Math.abs(vector.x) >= Math.abs(vector.y)) {
+    return vector.x >= 0 ? 'right' : 'left';
+  }
+  return vector.y >= 0 ? 'down' : 'up';
+}
+
+function rotateCardinalDirectionQuarterTurns(direction: CardinalDirection, turns: number): CardinalDirection {
+  return vectorToCardinalDirection(rotateVectorQuarterTurns(cardinalDirectionToVector(direction), turns));
+}
+
+function buildPlanFallAnnotationSpec(input: {
+  model: ModulePlanModel;
+  attachmentSide: AttachmentSide;
+  isHipCorner: boolean;
+  isGableLike: boolean;
+  baseX: number;
+  baseY: number;
+  aW: number;
+  aH: number;
+  bW: number;
+  bH: number;
+  bottomY: number;
+  fallGap: number;
+  rotationCenter: Point;
+  rotationTurns: number;
+  isSheet: boolean;
+}): PlanFallAnnotationSpec {
+  const { attachmentSide } = input;
+  const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
+  const fallAnchor =
+    attachmentSide === 'rear' || attachmentSide === 'front'
+      ? attachmentFrameForRect('right', {
+          x: input.baseX + Math.max(input.aW, input.bW) + input.fallGap - 0.55,
+          y: input.baseY,
+          width: 0,
+          height: input.isHipCorner ? input.aH + input.bH : input.aH,
+        })
+      : attachmentFrameForRect('front', {
+          x: input.baseX,
+          y: input.bottomY + input.fallGap - 0.55,
+          width: input.aW,
+          height: 0,
+        });
+  const fallStart = pointOnAttachmentFrame(fallAnchor, input.isSheet ? 1.5 : 1, 0);
+  const fallEnd = pointOnAttachmentFrame(
+    fallAnchor,
+    Math.max(input.isSheet ? 1.5 : 1, fallAnchor.length - (input.isSheet ? 1.5 : 1)),
+    0,
+  );
+  const fallLabelPoint = pointOnAttachmentFrame(
+    fallAnchor,
+    fallAnchor.length / 2,
+    fallIsHorizontal ? (input.isSheet ? 0.8 : 2.2) : input.isSheet ? 0.62 : 2.3,
+  );
+  const localArrowHeads: Array<{ point: Point; direction: CardinalDirection }> = input.isGableLike
+    ? [
+        {
+          point: fallStart,
+          direction: fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up',
+        },
+        {
+          point: fallEnd,
+          direction: fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down',
+        },
+      ]
+    : [
+        {
+          point: input.model.slopeDirection === 'toward_house' ? fallStart : fallEnd,
+          direction: fallIsHorizontal
+            ? attachmentSide === 'left'
+              ? 'left'
+              : 'right'
+            : input.model.slopeDirection === 'toward_house'
+              ? 'up'
+              : 'down',
+        },
+      ];
+
+  return {
+    lineStart: rotatePointQuarterTurns(fallStart, input.rotationCenter, input.rotationTurns),
+    lineEnd: rotatePointQuarterTurns(fallEnd, input.rotationCenter, input.rotationTurns),
+    label: input.isGableLike ? 'fall both sides' : 'fall',
+    labelPoint: rotatePointQuarterTurns(fallLabelPoint, input.rotationCenter, input.rotationTurns),
+    arrowHeads: localArrowHeads.map((arrowHead) => ({
+      point: rotatePointQuarterTurns(arrowHead.point, input.rotationCenter, input.rotationTurns),
+      direction: rotateCardinalDirectionQuarterTurns(arrowHead.direction, input.rotationTurns),
+    })),
+  };
+}
+
+function estimatePlanFallAnnotationBounds(spec: PlanFallAnnotationSpec, presentation: ModuleDrawingPresentation): AnnotatedBounds {
+  return unionBounds([
+    boundsFromLine(spec.lineStart.x, spec.lineStart.y, spec.lineEnd.x, spec.lineEnd.y, 0.25),
+    ...spec.arrowHeads.map((arrowHead) =>
+      estimateArrowHeadBounds({
+        x: arrowHead.point.x,
+        y: arrowHead.point.y,
+        direction: arrowHead.direction,
+        presentation,
+      }),
+    ),
+    estimateTextBounds({
+      text: spec.label,
+      x: spec.labelPoint.x,
+      y: spec.labelPoint.y,
+      anchor: 'middle',
+      fontHeight: presentation === 'sheet' ? 1.8 : 2.1,
+      charWidth: presentation === 'sheet' ? 0.58 : 0.64,
+      paddingX: 0.2,
+      paddingY: 0.18,
+    }),
+  ]);
+}
+
+function buildPlanRafterSpacingAnnotationSpec(input: {
+  rafterXsA: number[];
+  interiorRafterXsA: number[];
+  splitY: number;
+  gutterW: number;
+  yBottomInner: number;
+  rafterDimY: number;
+  isHipCorner: boolean;
+  rotationCenter: Point;
+  rotationTurns: number;
+  label: string;
+}): PlanSpacingAnnotationSpec | null {
+  if (input.rafterXsA.length < 2) return null;
+
+  const spacingXs = input.interiorRafterXsA.length >= 2 ? input.interiorRafterXsA : input.rafterXsA;
+  const baseIdx = Math.max(0, Math.floor((spacingXs.length - 2) / 2));
+  const d1 = spacingXs[baseIdx]!;
+  const d2 = spacingXs[baseIdx + 1]!;
+  const witnessStartY = input.isHipCorner ? input.splitY - input.gutterW : input.yBottomInner;
+  const witness1Start = rotatePointQuarterTurns({ x: d1, y: witnessStartY }, input.rotationCenter, input.rotationTurns);
+  const witness1End = rotatePointQuarterTurns({ x: d1, y: input.rafterDimY }, input.rotationCenter, input.rotationTurns);
+  const witness2Start = rotatePointQuarterTurns({ x: d2, y: witnessStartY }, input.rotationCenter, input.rotationTurns);
+  const witness2End = rotatePointQuarterTurns({ x: d2, y: input.rafterDimY }, input.rotationCenter, input.rotationTurns);
+  const dimensionStart = rotatePointQuarterTurns({ x: d1, y: input.rafterDimY }, input.rotationCenter, input.rotationTurns);
+  const dimensionEnd = rotatePointQuarterTurns({ x: d2, y: input.rafterDimY }, input.rotationCenter, input.rotationTurns);
+
+  return {
+    witness1Start,
+    witness1End,
+    witness2Start,
+    witness2End,
+    x1: dimensionStart.x,
+    y1: dimensionStart.y,
+    x2: dimensionEnd.x,
+    y2: dimensionEnd.y,
+    label: input.label,
+  };
+}
+
+function estimatePlanSpacingAnnotationBounds(spec: PlanSpacingAnnotationSpec, presentation: ModuleDrawingPresentation): AnnotatedBounds {
+  return unionBounds([
+    boundsFromLine(spec.witness1Start.x, spec.witness1Start.y, spec.witness1End.x, spec.witness1End.y, 0.2),
+    boundsFromLine(spec.witness2Start.x, spec.witness2Start.y, spec.witness2End.x, spec.witness2End.y, 0.2),
+    estimateTickDimensionBounds({
+      x1: spec.x1,
+      y1: spec.y1,
+      x2: spec.x2,
+      y2: spec.y2,
+      label: spec.label,
+      presentation,
+    }),
+  ]);
+}
+
+function buildPlanInternalAngleAnnotationSpec(input: {
+  centerX: number;
+  centerY: number;
+  baseY: number;
+  bottomY: number;
+  aH: number;
+  isHipCorner: boolean;
+  rotationCenter: Point;
+  rotationTurns: number;
+}): PlanLineTextAnnotationSpec {
+  return {
+    lineStart: rotatePointQuarterTurns({ x: input.centerX, y: input.baseY + 2.8 }, input.rotationCenter, input.rotationTurns),
+    lineEnd: rotatePointQuarterTurns(
+      { x: input.centerX, y: (input.isHipCorner ? input.bottomY : input.baseY + input.aH) - 2.8 },
+      input.rotationCenter,
+      input.rotationTurns,
+    ),
+    text: 'internal roof angle',
+    textPoint: rotatePointQuarterTurns({ x: input.centerX + 2.5, y: input.centerY + 0.5 }, input.rotationCenter, input.rotationTurns),
+    anchor: 'start',
+  };
+}
+
+function estimatePlanLineTextAnnotationBounds(spec: PlanLineTextAnnotationSpec): AnnotatedBounds {
+  return unionBounds([
+    boundsFromLine(spec.lineStart.x, spec.lineStart.y, spec.lineEnd.x, spec.lineEnd.y, 0.2),
+    estimateTextBounds({
+      text: spec.text,
+      x: spec.textPoint.x,
+      y: spec.textPoint.y,
+      anchor: spec.anchor ?? 'middle',
+      fontHeight: 1.55,
+      charWidth: 0.54,
+      paddingX: 0.15,
+      paddingY: 0.15,
+    }),
+  ]);
+}
+
 type FootprintHandleSpec = {
   id: HouseFootprintHandleId;
   label: string;
@@ -2272,8 +2554,56 @@ function measurePlanAnnotatedBounds(input: {
   const rafterDimY = dimBaseY + dimensionOffsets.tertiary;
   const showPinnedSheetPrimaryDimensions = presentation === 'sheet' && !isHipCorner;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
+  const sheetFallAnnotationSpec =
+    presentation === 'sheet'
+      ? buildPlanFallAnnotationSpec({
+          model,
+          attachmentSide,
+          isHipCorner,
+          isGableLike,
+          baseX,
+          baseY,
+          aW,
+          aH,
+          bW,
+          bH,
+          bottomY: isHipCorner ? bottomY : baseY + aH,
+          fallGap: frame.fallGap,
+          rotationCenter: rotationFrame.center,
+          rotationTurns: rotationFrame.turns,
+          isSheet: true,
+        })
+      : null;
   const yTopInner = baseY + topFrameW;
   const yBottomInner = baseY + aH - gutterW;
+  const sheetSpacingAnnotationSpec =
+    presentation === 'sheet'
+      ? buildPlanRafterSpacingAnnotationSpec({
+          rafterXsA,
+          interiorRafterXsA,
+          splitY,
+          gutterW,
+          yBottomInner,
+          rafterDimY,
+          isHipCorner,
+          rotationCenter: rotationFrame.center,
+          rotationTurns: rotationFrame.turns,
+          label: `${formatMetres(model.rafterSpacingA)} c/c`,
+        })
+      : null;
+  const sheetInternalAngleAnnotationSpec =
+    presentation === 'sheet' && model.boxPerimeterEnabled
+      ? buildPlanInternalAngleAnnotationSpec({
+          centerX,
+          centerY,
+          baseY,
+          bottomY,
+          aH,
+          isHipCorner,
+          rotationCenter: rotationFrame.center,
+          rotationTurns: rotationFrame.turns,
+        })
+      : null;
   const overhangFrameDepth = isHipCorner ? bH : aH;
   const overhangDepth = model.overhangEnabled
     ? Math.min(Math.max(0, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - topFrameW - gutterW))
@@ -2323,8 +2653,8 @@ function measurePlanAnnotatedBounds(input: {
       : null,
     ...soffitBracketLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
     model.overhangEnabled && overhangDepth > 0 ? boundsFromRect(overhangX, overhangY, overhangWidth, overhangDepth) : null,
-    boundsFromLine(fallStart.x, fallStart.y, fallEnd.x, fallEnd.y, 0.25),
-    isGableLike
+    presentation === 'sheet' ? null : boundsFromLine(fallStart.x, fallStart.y, fallEnd.x, fallEnd.y, 0.25),
+    presentation !== 'sheet' && isGableLike
       ? estimateArrowHeadBounds({
           x: fallStart.x,
           y: fallStart.y,
@@ -2332,7 +2662,7 @@ function measurePlanAnnotatedBounds(input: {
           presentation,
         })
       : null,
-    isGableLike
+    presentation !== 'sheet' && isGableLike
       ? estimateArrowHeadBounds({
           x: fallEnd.x,
           y: fallEnd.y,
@@ -2340,7 +2670,7 @@ function measurePlanAnnotatedBounds(input: {
           presentation,
         })
       : null,
-    !isGableLike
+    presentation !== 'sheet' && !isGableLike
       ? estimateArrowHeadBounds({
           x: model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x,
           y: model.slopeDirection === 'toward_house' ? fallStart.y : fallEnd.y,
@@ -2348,16 +2678,18 @@ function measurePlanAnnotatedBounds(input: {
           presentation,
         })
       : null,
-    estimateTextBounds({
-      text: isGableLike ? 'fall both sides' : 'fall',
-      x: fallLabelPoint.x,
-      y: fallLabelPoint.y,
-      anchor: 'start',
-      fontHeight: 1.8,
-      charWidth: 0.58,
-      paddingX: 0.2,
-      paddingY: 0.18,
-    }),
+    presentation === 'sheet'
+      ? null
+      : estimateTextBounds({
+          text: isGableLike ? 'fall both sides' : 'fall',
+          x: fallLabelPoint.x,
+          y: fallLabelPoint.y,
+          anchor: 'start',
+          fontHeight: 1.8,
+          charWidth: 0.58,
+          paddingX: 0.2,
+          paddingY: 0.18,
+        }),
     ...(showPinnedSheetPrimaryDimensions
       ? []
       : [
@@ -2399,10 +2731,11 @@ function measurePlanAnnotatedBounds(input: {
           presentation,
         })
       : null,
-    spacingBounds,
-    model.boxPerimeterEnabled ? boundsFromLine(centerX, baseY + 2.8, centerX, (isHipCorner ? bottomY : baseY + aH) - 2.8, 0.2) : null,
-    model.boxPerimeterEnabled
-      ? estimateTextBounds({
+    presentation === 'sheet' ? null : spacingBounds,
+    presentation === 'sheet' || !model.boxPerimeterEnabled ? null : boundsFromLine(centerX, baseY + 2.8, centerX, (isHipCorner ? bottomY : baseY + aH) - 2.8, 0.2),
+    presentation === 'sheet' || !model.boxPerimeterEnabled
+      ? null
+      : estimateTextBounds({
           text: 'internal roof angle',
           x: centerX + 2.5,
           y: centerY + 0.5,
@@ -2411,17 +2744,21 @@ function measurePlanAnnotatedBounds(input: {
           charWidth: 0.54,
           paddingX: 0.15,
           paddingY: 0.15,
-        })
-      : null,
+        }),
   ];
 
   const rotatedLocalBounds =
     rotationFrame.turns === 0
       ? unionBounds(localBounds)
       : unionBounds(localBounds.map((bounds) => (bounds ? rotateBoundsQuarterTurns(bounds, rotationFrame.center, rotationFrame.turns) : null)));
+  const sheetAnnotationBounds = unionBounds([
+    sheetFallAnnotationSpec ? estimatePlanFallAnnotationBounds(sheetFallAnnotationSpec, presentation) : null,
+    sheetSpacingAnnotationSpec ? estimatePlanSpacingAnnotationBounds(sheetSpacingAnnotationSpec, presentation) : null,
+    sheetInternalAngleAnnotationSpec ? estimatePlanLineTextAnnotationBounds(sheetInternalAngleAnnotationSpec) : null,
+  ]);
 
   if (!showPinnedSheetPrimaryDimensions) {
-    return rotatedLocalBounds;
+    return unionBounds([rotatedLocalBounds, sheetAnnotationBounds]);
   }
 
   const rotatedPrimaryPoints =
@@ -2430,6 +2767,7 @@ function measurePlanAnnotatedBounds(input: {
 
   return unionBounds([
     rotatedLocalBounds,
+    sheetAnnotationBounds,
     estimatePinnedSheetPlanPrimaryDimensionBounds({
       rotatedPrimaryBounds,
       dimensionOffsets,
@@ -2851,6 +3189,7 @@ function PlanSvg({
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
+  const isModel = presentation === 'model';
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
@@ -3023,6 +3362,52 @@ function PlanSvg({
   const rafterDimY = Math.min(88.9, dimBaseY + dimensionOffsets.tertiary);
   const yTopInner = y + topFrameW;
   const yBottomInner = y + aH - gutterW;
+  const sheetFallAnnotationSpec = isSheet
+    ? buildPlanFallAnnotationSpec({
+        model,
+        attachmentSide,
+        isHipCorner,
+        isGableLike,
+        baseX: x,
+        baseY: y,
+        aW,
+        aH,
+        bW,
+        bH,
+        bottomY: isHipCorner ? bottomY : y + aH,
+        fallGap,
+        rotationCenter: rotationFrame.center,
+        rotationTurns: rotationFrame.turns,
+        isSheet,
+      })
+    : null;
+  const sheetSpacingAnnotationSpec = isSheet
+    ? buildPlanRafterSpacingAnnotationSpec({
+        rafterXsA,
+        interiorRafterXsA,
+        splitY,
+        gutterW,
+        yBottomInner,
+        rafterDimY,
+        isHipCorner,
+        rotationCenter: rotationFrame.center,
+        rotationTurns: rotationFrame.turns,
+        label: `${formatMetres(model.rafterSpacingA)} c/c`,
+      })
+    : null;
+  const sheetInternalAngleAnnotationSpec =
+    isSheet && model.boxPerimeterEnabled
+      ? buildPlanInternalAngleAnnotationSpec({
+          centerX,
+          centerY,
+          baseY: y,
+          bottomY,
+          aH,
+          isHipCorner,
+          rotationCenter: rotationFrame.center,
+          rotationTurns: rotationFrame.turns,
+        })
+      : null;
   const overhangFrameDepth = isHipCorner ? bH : aH;
   const overhangDepth = model.overhangEnabled
     ? Math.min(Math.max(0, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - topFrameW - gutterW))
@@ -3051,6 +3436,8 @@ function PlanSvg({
   const showHouseHoverState = isSheetFootprintEditor && (Boolean(footprintEditor?.isEditing) || showHousePopover);
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
+  const showModelPrimaryDimensions = !isSheet && !isModel;
+  const showModelSecondaryAnnotations = !isSheet && !isModel;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
   const bottomDimensionLabel = formatMetres(primaryDimensionSwap ? model.spanA : model.lengthA);
   const leftDimensionLabel = formatMetres(primaryDimensionSwap ? model.lengthA : model.spanA);
@@ -3245,7 +3632,7 @@ function PlanSvg({
         ) : null}
 
         {model.overhangEnabled && overhangDepth > 0 ? <rect x={overhangX} y={overhangY} width={overhangWidth} height={overhangDepth} className={styles.modulePlanOverhangZone} /> : null}
-        {model.boxPerimeterEnabled ? (
+        {model.boxPerimeterEnabled && showModelSecondaryAnnotations ? (
           <>
             <line x1={centerX} y1={y + 2.8} x2={centerX} y2={(isHipCorner ? bottomY : y + aH) - 2.8} className={styles.modulePlanInternalAngle} />
             <text x={centerX + 2.5} y={centerY + 0.5} className={styles.modulePlanAngleText}>
@@ -3254,8 +3641,8 @@ function PlanSvg({
           </>
         ) : null}
 
-        <line x1={fallStart.x} y1={fallStart.y} x2={fallEnd.x} y2={fallEnd.y} className={styles.moduleFallLine} />
-        {isGableLike ? (
+        {showModelSecondaryAnnotations ? <line x1={fallStart.x} y1={fallStart.y} x2={fallEnd.x} y2={fallEnd.y} className={styles.moduleFallLine} /> : null}
+        {showModelSecondaryAnnotations && isGableLike ? (
           <>
             <ArrowHead x={fallStart.x} y={fallStart.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up'} presentation={presentation} />
             <ArrowHead x={fallEnd.x} y={fallEnd.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down'} presentation={presentation} />
@@ -3263,7 +3650,7 @@ function PlanSvg({
               fall both sides
             </text>
           </>
-        ) : (
+        ) : showModelSecondaryAnnotations ? (
           <>
             <ArrowHead
               x={model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x}
@@ -3275,7 +3662,7 @@ function PlanSvg({
               fall
             </text>
           </>
-        )}
+        ) : null}
 
         {showPergolaHoverTarget ? (
           <polygon
@@ -3287,7 +3674,7 @@ function PlanSvg({
           />
         ) : null}
 
-        {showPinnedSheetPrimaryDimensions ? null : (
+        {showPinnedSheetPrimaryDimensions || !showModelPrimaryDimensions ? null : (
           <g data-plan-primary-dim="bottom">
             <line x1={x} y1={isHipCorner ? bottomY : y + aH} x2={x} y2={dimBaseY} className={styles.moduleDimWitness} />
             <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
@@ -3303,7 +3690,7 @@ function PlanSvg({
           </g>
         )}
 
-        {showPinnedSheetPrimaryDimensions ? null : (
+        {showPinnedSheetPrimaryDimensions || !showModelPrimaryDimensions ? null : (
           <g data-plan-primary-dim="left">
             <line x1={x} y1={y} x2={x - dimensionOffsets.side} y2={y} className={styles.moduleDimWitness} />
             <line x1={x} y1={y + aH} x2={x - dimensionOffsets.side} y2={y + aH} className={styles.moduleDimWitness} />
@@ -3347,7 +3734,7 @@ function PlanSvg({
           </>
         ) : null}
 
-        {rafterXsA.length >= 2
+        {showModelSecondaryAnnotations && rafterXsA.length >= 2
           ? (() => {
               const spacingXs = interiorRafterXsA.length >= 2 ? interiorRafterXsA : rafterXsA;
               const baseIdx = Math.max(0, Math.floor((spacingXs.length - 2) / 2));
@@ -3536,6 +3923,82 @@ function PlanSvg({
             })
           : null}
       </g>
+
+      {sheetInternalAngleAnnotationSpec ? (
+        <g data-plan-angle-annotation="sheet">
+          <line
+            x1={sheetInternalAngleAnnotationSpec.lineStart.x}
+            y1={sheetInternalAngleAnnotationSpec.lineStart.y}
+            x2={sheetInternalAngleAnnotationSpec.lineEnd.x}
+            y2={sheetInternalAngleAnnotationSpec.lineEnd.y}
+            className={styles.modulePlanInternalAngle}
+          />
+          <text
+            x={sheetInternalAngleAnnotationSpec.textPoint.x}
+            y={sheetInternalAngleAnnotationSpec.textPoint.y}
+            textAnchor={sheetInternalAngleAnnotationSpec.anchor}
+            className={styles.modulePlanAngleText}
+          >
+            {sheetInternalAngleAnnotationSpec.text}
+          </text>
+        </g>
+      ) : null}
+
+      {sheetFallAnnotationSpec ? (
+        <g data-plan-fall-annotation="sheet">
+          <line
+            x1={sheetFallAnnotationSpec.lineStart.x}
+            y1={sheetFallAnnotationSpec.lineStart.y}
+            x2={sheetFallAnnotationSpec.lineEnd.x}
+            y2={sheetFallAnnotationSpec.lineEnd.y}
+            className={styles.moduleFallLine}
+          />
+          {sheetFallAnnotationSpec.arrowHeads.map((arrowHead, index) => (
+            <ArrowHead
+              key={`sheet-plan-fall-arrow-${index}`}
+              x={arrowHead.point.x}
+              y={arrowHead.point.y}
+              direction={arrowHead.direction}
+              presentation={presentation}
+            />
+          ))}
+          <text
+            x={sheetFallAnnotationSpec.labelPoint.x}
+            y={sheetFallAnnotationSpec.labelPoint.y}
+            textAnchor="middle"
+            className={`${styles.moduleFallLabel} ${styles.moduleFallLabelSheet}`}
+          >
+            {sheetFallAnnotationSpec.label}
+          </text>
+        </g>
+      ) : null}
+
+      {sheetSpacingAnnotationSpec ? (
+        <g data-plan-rafter-spacing="sheet">
+          <line
+            x1={sheetSpacingAnnotationSpec.witness1Start.x}
+            y1={sheetSpacingAnnotationSpec.witness1Start.y}
+            x2={sheetSpacingAnnotationSpec.witness1End.x}
+            y2={sheetSpacingAnnotationSpec.witness1End.y}
+            className={styles.moduleDimWitness}
+          />
+          <line
+            x1={sheetSpacingAnnotationSpec.witness2Start.x}
+            y1={sheetSpacingAnnotationSpec.witness2Start.y}
+            x2={sheetSpacingAnnotationSpec.witness2End.x}
+            y2={sheetSpacingAnnotationSpec.witness2End.y}
+            className={styles.moduleDimWitness}
+          />
+          <TickDimension
+            x1={sheetSpacingAnnotationSpec.x1}
+            y1={sheetSpacingAnnotationSpec.y1}
+            x2={sheetSpacingAnnotationSpec.x2}
+            y2={sheetSpacingAnnotationSpec.y2}
+            label={sheetSpacingAnnotationSpec.label}
+            presentation={presentation}
+          />
+        </g>
+      ) : null}
 
       {showPinnedSheetPrimaryDimensions ? (
         <>

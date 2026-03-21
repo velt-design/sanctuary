@@ -2364,6 +2364,23 @@
   justify-items: stretch;
 }
 
+.moduleViewsStageModel {
+  margin-top: 0;
+  min-height: 590px;
+  padding: 18px;
+  border-color: var(--mv-stage-border);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top left, rgba(222, 214, 185, 0.16), transparent 32%),
+    var(--mv-stage-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    0 10px 24px rgba(41, 39, 29, 0.05);
+  align-content: stretch;
+  justify-items: stretch;
+  text-align: left;
+}
+
 .moduleViewsStateText {
   margin: 0;
   font-size: 13px;
@@ -2435,8 +2452,17 @@
   gap: 0;
 }
 
+.modulePlanFrameModel {
+  height: 100%;
+  gap: 0;
+}
+
 .modulePlanCanvas {
   position: relative;
+}
+
+.modulePlanCanvasModel {
+  min-height: 100%;
 }
 
 .moduleFootprintToolbar {
