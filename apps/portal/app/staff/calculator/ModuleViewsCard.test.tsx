@@ -155,6 +155,16 @@ function extractPlanPrimaryDimensionGroup(markup: string, side: 'bottom' | 'left
   return markup.slice(markerIndex, markup.indexOf('</g>', markerIndex));
 }
 
+function extractSheetAnnotationSegment(markup: string, marker: string, nextMarkers: string[]): string {
+  const markerIndex = markup.indexOf(marker);
+  expect(markerIndex).toBeGreaterThanOrEqual(0);
+  const nextIndexes = nextMarkers
+    .map((nextMarker) => markup.indexOf(nextMarker, markerIndex + marker.length))
+    .filter((index) => index >= 0);
+  const endIndex = nextIndexes.length > 0 ? Math.min(...nextIndexes) : markup.length;
+  return markup.slice(markerIndex, endIndex);
+}
+
 describe('ModuleViewsCard', () => {
   it('renders the extracted plan renderer inside the calculator card chrome', () => {
     const drawing = makeDrawingModule();
@@ -427,6 +437,35 @@ describe('ModuleViewsCard', () => {
 
     expect(bottomGroup).toContain('>3.00m<');
     expect(leftGroup).toContain('>6.00m<');
+  });
+
+  it('renders fall and spacing annotations in page space for rotated sheet plans', () => {
+    const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    const fallGroup = extractSheetAnnotationSegment(markup, 'data-plan-fall-annotation="sheet"', [
+      'data-plan-rafter-spacing="sheet"',
+      'data-plan-primary-dim="bottom"',
+    ]);
+    const spacingGroup = extractSheetAnnotationSegment(markup, 'data-plan-rafter-spacing="sheet"', ['data-plan-primary-dim="bottom"']);
+
+    expect(markup).toContain('rotate(90');
+    expect(fallGroup).toContain('>fall<');
+    expect(fallGroup).not.toContain('rotate(90');
+    expect(fallGroup).not.toContain('rotate(180');
+    expect(fallGroup).not.toContain('rotate(270');
+    expect(spacingGroup).toContain('c/c');
+    expect(spacingGroup).not.toContain('rotate(90');
+    expect(spacingGroup).not.toContain('rotate(180');
+    expect(spacingGroup).not.toContain('rotate(270');
   });
 
   it('keeps the footprint editor affordance out of section views', () => {

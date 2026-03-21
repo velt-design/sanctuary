@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export type ModuleDrawingSurface = 'card' | 'minimal' | 'sheet';
+export type ModuleDrawingSurface = 'card' | 'minimal' | 'sheet' | 'model';
 
 export const PREMIUM_MODULE_DRAWING_THEME = {
   color: {
@@ -137,6 +137,39 @@ const surfaceVariables: Record<ModuleDrawingSurface, CssVariableMap> = {
     '--mv-stage-bg': 'transparent',
     '--mv-svg-bg': 'transparent',
     '--mv-card-shadow': 'none',
+  },
+  model: {
+    '--mv-stage-border': 'transparent',
+    '--mv-stage-bg': 'transparent',
+    '--mv-svg-bg': 'transparent',
+    '--mv-card-shadow': 'none',
+    '--mv-line-primary': 'rgba(47, 56, 47, 0.94)',
+    '--mv-line-secondary': 'rgba(78, 88, 76, 0.88)',
+    '--mv-line-tertiary': 'rgba(104, 114, 102, 0.74)',
+    '--mv-line-rhythm': 'rgba(104, 114, 102, 0.68)',
+    '--mv-line-annotation': 'rgba(92, 105, 89, 0.72)',
+    '--mv-line-hidden': 'rgba(118, 128, 115, 0.66)',
+    '--mv-dim': 'rgba(92, 105, 89, 0.78)',
+    '--mv-text-secondary': 'rgba(74, 84, 73, 0.84)',
+    '--mv-text-muted': 'rgba(93, 103, 92, 0.74)',
+    '--mv-house-fill': 'rgba(93, 103, 92, 0.09)',
+    '--mv-house-stroke': 'rgba(111, 121, 108, 0.34)',
+    '--mv-structure-fill': 'rgba(47, 56, 47, 0.032)',
+    '--mv-overhang-fill': 'rgba(127, 137, 124, 0.072)',
+    '--mv-line-major-width': '0.44',
+    '--mv-line-major-emphasis-width': '0.48',
+    '--mv-line-secondary-width': '0.26',
+    '--mv-line-tertiary-width': '0.18',
+    '--mv-line-minor-width': '0.24',
+    '--mv-line-roof-width': '0.2',
+    '--mv-line-annotation-width': '0.13',
+    '--mv-line-dimension-width': '0.14',
+    '--mv-line-guide-width': '0.12',
+    '--mv-line-hidden-width': '0.12',
+    '--mv-text-label-size': '2.2px',
+    '--mv-text-angle-size': '2px',
+    '--mv-text-dimension-size': '2.12px',
+    '--mv-text-meta-size': '2px',
   },
   sheet: {
     '--mv-stage-border': 'transparent',

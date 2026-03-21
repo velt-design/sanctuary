@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import { mapEngineLevel } from '@/app/staff/calculator/warnings';
-import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
+import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import {
   applyEstimateDrawingFootprintEdit,
@@ -70,6 +70,11 @@ import {
 } from '@/lib/localFirst/portalEntities';
 import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
 import { discardLocalFirstEntityQueue, listAliasedLocalFirstEntityKeys, writeLocalFirstWorkingCopy } from '@/lib/localFirst/store';
+import {
+  clampDrawingWorkbenchModuleIndex,
+  createDrawingWorkbenchUiState,
+  type DrawingWorkbenchViewportMode,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 
 function formatMoney(value: number | null | undefined): string | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
@@ -593,10 +598,12 @@ export default function EstimatesTab({
   const [focusCategory, setFocusCategory] = useState('');
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [requestDesignOpen, setRequestDesignOpen] = useState(false);
-  const [drawingView, setDrawingView] = useState<ModuleViewsTab>('plan');
-  const [drawingModuleIndex, setDrawingModuleIndex] = useState(0);
+  const [drawingWorkbenchUi, setDrawingWorkbenchUi] = useState(() => createDrawingWorkbenchUiState());
   const [drawingSaveMode, setDrawingSaveMode] = useState<EstimateSaveMode | null>(null);
   const resolvedSelectedId = useResolvedLocalFirstId(selectedId);
+  const drawingView: ModuleViewsTab = drawingWorkbenchUi.activeView;
+  const drawingModuleIndex = drawingWorkbenchUi.activeModuleIndex;
+  const drawingViewportMode = drawingWorkbenchUi.viewportMode;
 
   const urlEstimateId = useMemo(() => {
     const raw = searchParams?.get('estimateId') ?? '';
@@ -876,17 +883,13 @@ export default function EstimatesTab({
   );
 
   useEffect(() => {
-    setDrawingModuleIndex(0);
+    setDrawingWorkbenchUi((current) => ({ ...current, activeModuleIndex: 0 }));
   }, [selectedDetail?.calculatorSnapshot]);
 
   useEffect(() => {
-    if (!drawingModules.length) {
-      setDrawingModuleIndex(0);
-      return;
-    }
-    if (drawingModuleIndex >= drawingModules.length) {
-      setDrawingModuleIndex(0);
-    }
+    const nextIndex = clampDrawingWorkbenchModuleIndex(drawingModuleIndex, drawingModules.length);
+    if (nextIndex === drawingModuleIndex) return;
+    setDrawingWorkbenchUi((current) => ({ ...current, activeModuleIndex: nextIndex }));
   }, [drawingModuleIndex, drawingModules]);
 
   useEffect(() => {
@@ -1497,20 +1500,6 @@ export default function EstimatesTab({
                           </button>
                         </>
                       ) : null}
-                      <div className={styles.segmentedControl} role="tablist" aria-label="Design drawing view">
-                        {(['plan', 'section'] as const).map((value) => (
-                          <button
-                            type="button"
-                            key={value}
-                            className={`${styles.segmentedItem} ${drawingView === value ? styles.segmentedItemActive : ''}`}
-                            onClick={() => setDrawingView(value)}
-                            role="tab"
-                            aria-selected={drawingView === value}
-                          >
-                            {value === 'plan' ? 'Plan' : 'Section'}
-                          </button>
-                        ))}
-                      </div>
                     </div>
                     {!isEstimateLocked ? (
                       <>
@@ -1560,29 +1549,34 @@ export default function EstimatesTab({
                   </div>
                 ) : null}
                 <div className={styles.focusSummaryLayout}>
-                  {drawingModules.length > 1 ? (
-                    <div className={styles.focusDrawingControlsRow}>
-                      <div className={styles.segmentedControl} role="tablist" aria-label="Design drawing module">
-                        {drawingModules.map((module, index) => (
-                          <button
-                            type="button"
-                            key={module.id}
-                            className={`${styles.segmentedItem} ${index === drawingModuleIndex ? styles.segmentedItemActive : ''}`}
-                            onClick={() => setDrawingModuleIndex(index)}
-                            role="tab"
-                            aria-selected={index === drawingModuleIndex}
-                          >
-                            {module.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
                   {activeDrawingModule ? (
-                    <EstimateDrawingSheet
+                    <DrawingWorkbench
                       moduleLabel={drawingModuleLabel}
+                      modules={drawingModules.map((module, index) => ({
+                        id: module.id,
+                        label: moduleLines[index] ?? module.label,
+                      }))}
+                      activeModuleIndex={drawingModuleIndex}
+                      onActiveModuleIndexChange={(index) =>
+                        setDrawingWorkbenchUi((current) => ({
+                          ...current,
+                          activeModuleIndex: index,
+                        }))
+                      }
                       view={drawingView}
+                      onViewChange={(nextView) =>
+                        setDrawingWorkbenchUi((current) => ({
+                          ...current,
+                          activeView: nextView,
+                        }))
+                      }
+                      viewportMode={drawingViewportMode}
+                      onViewportModeChange={(nextMode) =>
+                        setDrawingWorkbenchUi((current) => ({
+                          ...current,
+                          viewportMode: nextMode,
+                        }))
+                      }
                       status={drawingStatus}
                       planModel={activeDrawingModule.planModel}
                       sectionModel={activeDrawingModule.sectionModel}

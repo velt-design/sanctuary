@@ -5,7 +5,7 @@ import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingDraftFromSnapshot, deriveEstimateDrawingEditableFields } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
-import EstimateDrawingSheet from './EstimateDrawingSheet';
+import EstimateDrawingSheet, { resolveSheetPlanInteractionOwner } from './EstimateDrawingSheet';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -101,6 +101,56 @@ function makeDrawingModels(overrides: Partial<CalculatorModuleInputs> = {}) {
 }
 
 describe('EstimateDrawingSheet', () => {
+  it('prioritizes sheet hover ownership so house drag and edges cannot get stuck behind popovers', () => {
+    expect(
+      resolveSheetPlanInteractionOwner({
+        houseFill: true,
+        housePopover: true,
+        houseAttachmentEdge: false,
+        houseResizeEdge: false,
+        houseDrag: false,
+        pergola: true,
+        pergolaPopover: true,
+      }),
+    ).toBe('house_popover');
+
+    expect(
+      resolveSheetPlanInteractionOwner({
+        houseFill: true,
+        housePopover: false,
+        houseAttachmentEdge: false,
+        houseResizeEdge: true,
+        houseDrag: false,
+        pergola: false,
+        pergolaPopover: false,
+      }),
+    ).toBe('house_edge');
+
+    expect(
+      resolveSheetPlanInteractionOwner({
+        houseFill: false,
+        housePopover: false,
+        houseAttachmentEdge: false,
+        houseResizeEdge: true,
+        houseDrag: true,
+        pergola: false,
+        pergolaPopover: false,
+      }),
+    ).toBe('house_drag');
+
+    expect(
+      resolveSheetPlanInteractionOwner({
+        houseFill: false,
+        housePopover: false,
+        houseAttachmentEdge: false,
+        houseResizeEdge: false,
+        houseDrag: false,
+        pergola: true,
+        pergolaPopover: false,
+      }),
+    ).toBe('pergola');
+  });
+
   it('renders a plan sheet with title block metadata and legend', () => {
     const drawing = makeDrawingModels();
     const meta = buildEstimateDrawingSheetMeta({

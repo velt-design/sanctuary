@@ -108,12 +108,50 @@ type SheetPlanInteractionOwner =
   | 'pergola'
   | 'pergola_popover';
 
+type SheetPlanHoverState = {
+  houseFill: boolean;
+  housePopover: boolean;
+  houseAttachmentEdge: boolean;
+  houseResizeEdge: boolean;
+  houseDrag: boolean;
+  pergola: boolean;
+  pergolaPopover: boolean;
+};
+
+type SheetPlanHoverZone = Exclude<keyof SheetPlanHoverState, 'houseDrag'>;
+
 const SHEET_VIEWPORT_MM = getDrawingSheetViewportMm();
 const SHEET_PREVIEW_ARTBOARD = {
   widthPx: 1120,
   heightPx: 792,
 } as const;
 const HOVER_POPOVER_HIDE_DELAY_MS = 120;
+
+function createEmptySheetPlanHoverState(): SheetPlanHoverState {
+  return {
+    houseFill: false,
+    housePopover: false,
+    houseAttachmentEdge: false,
+    houseResizeEdge: false,
+    houseDrag: false,
+    pergola: false,
+    pergolaPopover: false,
+  };
+}
+
+export function resolveSheetPlanInteractionOwner(state: SheetPlanHoverState): SheetPlanInteractionOwner {
+  if (state.houseDrag) return 'house_drag';
+  if (state.houseResizeEdge || state.houseAttachmentEdge) return 'house_edge';
+  if (state.housePopover) return 'house_popover';
+  if (state.houseFill) return 'house_fill';
+  if (state.pergolaPopover) return 'pergola_popover';
+  if (state.pergola) return 'pergola';
+  return 'idle';
+}
+
+function hasActiveSheetPlanHoverZones(state: SheetPlanHoverState): boolean {
+  return state.houseFill || state.housePopover || state.houseAttachmentEdge || state.houseResizeEdge || state.pergola || state.pergolaPopover;
+}
 
 function stripClientFacingModulePrefix(value: string): string {
   return value.replace(/^\s*M\d+\s*-\s*/i, '').trim();
@@ -250,6 +288,7 @@ export default function EstimateDrawingSheet({
   const [editorSaving, setEditorSaving] = useState(false);
   const [interactionOwner, setInteractionOwner] = useState<SheetPlanInteractionOwner>('idle');
   const interactionOwnerRef = useRef<SheetPlanInteractionOwner>('idle');
+  const hoverStateRef = useRef<SheetPlanHoverState>(createEmptySheetPlanHoverState());
   const [footprintHoveredAttachmentSide, setFootprintHoveredAttachmentSide] = useState<ModuleFootprintEditorProps['hoveredAttachmentSide']>(null);
   const [footprintHoveredHandleId, setFootprintHoveredHandleId] = useState<ModuleFootprintEditorProps['hoveredHandleId']>(null);
   const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<ModuleFootprintEditorProps['activeHandleId']>(null);
@@ -415,22 +454,39 @@ export default function EstimateDrawingSheet({
     setInteractionOwner(nextOwner);
   }, []);
 
-  const scheduleInteractionOwnerReset = useCallback(
-    (expectedOwner: SheetPlanInteractionOwner) => {
+  const syncInteractionOwnerFromHoverState = useCallback(() => {
+    const nextOwner = resolveSheetPlanInteractionOwner(hoverStateRef.current);
+    setInteractionOwnerValue(nextOwner);
+    return nextOwner;
+  }, [setInteractionOwnerValue]);
+
+  const scheduleInteractionOwnerSync = useCallback(() => {
+    clearInteractionHideTimer();
+    interactionHideTimerRef.current = window.setTimeout(() => {
+      interactionHideTimerRef.current = null;
+      syncInteractionOwnerFromHoverState();
+    }, HOVER_POPOVER_HIDE_DELAY_MS);
+  }, [clearInteractionHideTimer, syncInteractionOwnerFromHoverState]);
+
+  const updateHoverZone = useCallback(
+    (zone: SheetPlanHoverZone, hovered: boolean) => {
       clearInteractionHideTimer();
-      interactionHideTimerRef.current = window.setTimeout(() => {
-        if (interactionOwnerRef.current === expectedOwner) {
-          interactionOwnerRef.current = 'idle';
-          setInteractionOwner('idle');
-        }
-        interactionHideTimerRef.current = null;
-      }, HOVER_POPOVER_HIDE_DELAY_MS);
+      hoverStateRef.current = {
+        ...hoverStateRef.current,
+        [zone]: hovered,
+      };
+      if (hovered || hoverStateRef.current.houseDrag || hasActiveSheetPlanHoverZones(hoverStateRef.current)) {
+        syncInteractionOwnerFromHoverState();
+        return;
+      }
+      scheduleInteractionOwnerSync();
     },
-    [clearInteractionHideTimer],
+    [clearInteractionHideTimer, scheduleInteractionOwnerSync, syncInteractionOwnerFromHoverState],
   );
 
   const resetFootprintInteractions = useCallback(() => {
     clearInteractionHideTimer();
+    hoverStateRef.current = createEmptySheetPlanHoverState();
     setInteractionOwnerValue('idle');
     setFootprintHoveredAttachmentSide(null);
     setFootprintHoveredHandleId(null);
@@ -442,68 +498,44 @@ export default function EstimateDrawingSheet({
   const handleHouseFillHoverChange = useCallback(
     (hovered: boolean) => {
       if (!canEditFootprint) return;
-      clearInteractionHideTimer();
       if (hovered) {
-        setInteractionOwnerValue('house_fill');
         setFootprintError(null);
-        return;
       }
-      scheduleInteractionOwnerReset('house_fill');
+      updateHoverZone('houseFill', hovered);
     },
-    [canEditFootprint, clearInteractionHideTimer, scheduleInteractionOwnerReset, setInteractionOwnerValue],
+    [canEditFootprint, updateHoverZone],
   );
 
   const handleHousePopoverHoverChange = useCallback(
     (hovered: boolean) => {
       if (!canEditFootprint) return;
-      clearInteractionHideTimer();
-      if (hovered) {
-        setInteractionOwnerValue('house_popover');
-        return;
-      }
-      scheduleInteractionOwnerReset('house_popover');
+      updateHoverZone('housePopover', hovered);
     },
-    [canEditFootprint, clearInteractionHideTimer, scheduleInteractionOwnerReset, setInteractionOwnerValue],
+    [canEditFootprint, updateHoverZone],
   );
 
   const handleHouseResizeEdgeHoverChange = useCallback(
     (handleId: ModuleFootprintEditorProps['hoveredHandleId']) => {
-      clearInteractionHideTimer();
       setFootprintHoveredHandleId(handleId);
-      if (handleId) {
-        setInteractionOwnerValue('house_edge');
-        return;
-      }
-      if (interactionOwnerRef.current === 'house_drag') return;
-      scheduleInteractionOwnerReset('house_edge');
+      updateHoverZone('houseResizeEdge', Boolean(handleId));
     },
-    [clearInteractionHideTimer, scheduleInteractionOwnerReset, setInteractionOwnerValue],
+    [updateHoverZone],
   );
 
   const handlePergolaTargetHoverChange = useCallback(
     (hovered: boolean) => {
       if (!canRotatePlan) return;
-      clearInteractionHideTimer();
-      if (hovered) {
-        setInteractionOwnerValue('pergola');
-        return;
-      }
-      scheduleInteractionOwnerReset('pergola');
+      updateHoverZone('pergola', hovered);
     },
-    [canRotatePlan, clearInteractionHideTimer, scheduleInteractionOwnerReset, setInteractionOwnerValue],
+    [canRotatePlan, updateHoverZone],
   );
 
   const handlePergolaPopoverHoverChange = useCallback(
     (hovered: boolean) => {
       if (!canRotatePlan) return;
-      clearInteractionHideTimer();
-      if (hovered) {
-        setInteractionOwnerValue('pergola_popover');
-        return;
-      }
-      scheduleInteractionOwnerReset('pergola_popover');
+      updateHoverZone('pergolaPopover', hovered);
     },
-    [canRotatePlan, clearInteractionHideTimer, scheduleInteractionOwnerReset, setInteractionOwnerValue],
+    [canRotatePlan, updateHoverZone],
   );
 
   useEffect(() => {
@@ -579,41 +611,39 @@ export default function EstimateDrawingSheet({
   const handleFootprintRotate = useCallback(
     async (delta: -1 | 1) => {
       clearInteractionHideTimer();
-      setInteractionOwnerValue('pergola');
       setFootprintHoveredAttachmentSide(null);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      syncInteractionOwnerFromHoverState();
       await commitFootprintEdit({ type: 'rotate', delta });
     },
-    [clearInteractionHideTimer, commitFootprintEdit, setInteractionOwnerValue],
+    [clearInteractionHideTimer, commitFootprintEdit, syncInteractionOwnerFromHoverState],
   );
 
   const handleFootprintAttachmentSideSelect = useCallback(
     async (side: NonNullable<ModulePlanModel['attachmentSide']>) => {
       clearInteractionHideTimer();
-      setInteractionOwnerValue('house_edge');
+      hoverStateRef.current = {
+        ...hoverStateRef.current,
+        houseAttachmentEdge: true,
+      };
       setFootprintHoveredAttachmentSide(side);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      syncInteractionOwnerFromHoverState();
       await commitFootprintEdit({ type: 'attachment_side', side });
     },
-    [clearInteractionHideTimer, commitFootprintEdit, setInteractionOwnerValue],
+    [clearInteractionHideTimer, commitFootprintEdit, syncInteractionOwnerFromHoverState],
   );
 
   const handleFootprintAttachmentSideHover = useCallback(
     (side: ModuleFootprintEditorProps['hoveredAttachmentSide']) => {
-      clearInteractionHideTimer();
       setFootprintHoveredAttachmentSide(side);
-      if (side) {
-        setInteractionOwnerValue('house_edge');
-        return;
-      }
-      if (interactionOwnerRef.current === 'house_drag') return;
-      scheduleInteractionOwnerReset('house_edge');
+      updateHoverZone('houseAttachmentEdge', Boolean(side));
     },
-    [clearInteractionHideTimer, scheduleInteractionOwnerReset, setInteractionOwnerValue],
+    [updateHoverZone],
   );
 
   const handleFootprintDragStart = useCallback(
@@ -624,7 +654,11 @@ export default function EstimateDrawingSheet({
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
       clearInteractionHideTimer();
-      setInteractionOwnerValue('house_drag');
+      hoverStateRef.current = {
+        ...hoverStateRef.current,
+        houseDrag: true,
+      };
+      syncInteractionOwnerFromHoverState();
       setFootprintActiveHandleId(meta.handleId);
       setFootprintHoveredHandleId(meta.handleId);
       setFootprintDragSession({
@@ -635,7 +669,7 @@ export default function EstimateDrawingSheet({
         startParams: normalizeHouseFootprintParams(planModel.houseFootprintParams),
       });
     },
-    [canEditFootprint, clearInteractionHideTimer, planModel, setInteractionOwnerValue],
+    [canEditFootprint, clearInteractionHideTimer, planModel, syncInteractionOwnerFromHoverState],
   );
 
   useEffect(() => {
@@ -700,10 +734,14 @@ export default function EstimateDrawingSheet({
 
     const handlePointerEnd = (event: PointerEvent) => {
       if (event.pointerId !== footprintDragSession.pointerId) return;
+      hoverStateRef.current = {
+        ...hoverStateRef.current,
+        houseDrag: false,
+      };
       setFootprintDragSession(null);
       setFootprintActiveHandleId(null);
       setFootprintHoveredHandleId(null);
-      setInteractionOwnerValue('idle');
+      syncInteractionOwnerFromHoverState();
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -715,7 +753,7 @@ export default function EstimateDrawingSheet({
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [commitFootprintEdit, footprintDragSession, onCommitFootprintEdit]);
+  }, [commitFootprintEdit, footprintDragSession, onCommitFootprintEdit, syncInteractionOwnerFromHoverState]);
 
   useEffect(() => {
     if (showHouseControls || footprintDragSession) return;
@@ -731,8 +769,13 @@ export default function EstimateDrawingSheet({
       if (event.key !== 'Escape') return;
       event.preventDefault();
       if (footprintDragSession) {
+        hoverStateRef.current = {
+          ...hoverStateRef.current,
+          houseDrag: false,
+        };
         setFootprintDragSession(null);
         setFootprintActiveHandleId(null);
+        syncInteractionOwnerFromHoverState();
         return;
       }
       resetFootprintInteractions();
@@ -740,7 +783,7 @@ export default function EstimateDrawingSheet({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [footprintDragSession, resetFootprintInteractions, showHouseControls, showPergolaPopover]);
+  }, [footprintDragSession, resetFootprintInteractions, showHouseControls, showPergolaPopover, syncInteractionOwnerFromHoverState]);
 
   const footprintEditor = useMemo<ModuleFootprintEditorProps | undefined>(() => {
     if (!canEditFootprint && !canRotatePlan) return undefined;
@@ -754,7 +797,11 @@ export default function EstimateDrawingSheet({
       activeHandleId: footprintActiveHandleId,
       onStartEditing: () => {
         clearInteractionHideTimer();
-        setInteractionOwnerValue('house_fill');
+        hoverStateRef.current = {
+          ...hoverStateRef.current,
+          houseFill: true,
+        };
+        syncInteractionOwnerFromHoverState();
         setFootprintError(null);
       },
       onDoneEditing: resetFootprintInteractions,
@@ -787,9 +834,9 @@ export default function EstimateDrawingSheet({
     handleHouseFillHoverChange,
     handleHouseResizeEdgeHoverChange,
     resetFootprintInteractions,
-    setInteractionOwnerValue,
     showHouseControls,
     showHousePopover,
+    syncInteractionOwnerFromHoverState,
   ]);
 
   const sheetPlanInteraction = useMemo(
