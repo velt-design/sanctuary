@@ -13,6 +13,7 @@ import type {
   CalculatorPergola,
   InfillLineItem,
 } from '@/lib/types/calculator';
+import { DEFAULT_CALCULATOR_ATTACHMENT_SIDE, normalizeAttachmentSide } from '@/lib/types/calculator';
 import type { PortalEstimatePayload } from '@/lib/localFirst/portalEntities';
 
 type AnyRecord = Record<string, unknown>;
@@ -393,6 +394,7 @@ function buildModuleCostInputs(
           }
         : undefined,
     house_connection_type: module.houseConnectionType,
+    attachment_side: module.houseConnectionType === 'none' ? DEFAULT_CALCULATOR_ATTACHMENT_SIDE : normalizeAttachmentSide(module.attachmentSide),
     post_connection_type: module.postConnectionType,
     access,
     height,

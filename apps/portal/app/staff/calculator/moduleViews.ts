@@ -1,5 +1,19 @@
-import type { CostOutputV1, RoofType, SlopeDirection } from '@sp/costing';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { AttachmentSide, CostOutputV1, RoofType, SlopeDirection } from '@sp/costing';
+import {
+  DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
+  DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
+  DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
+  makeDefaultHouseFootprintParams,
+  normalizeAttachmentSide,
+  normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintParams,
+  normalizeHouseFootprintPreset,
+  supportsHouseFootprints,
+  type CalculatorDrawingRotationQuarterTurns,
+  type CalculatorHouseFootprintParams,
+  type CalculatorHouseFootprintPreset,
+  type CalculatorModuleInputs,
+} from '@/lib/types/calculator';
 
 export type ModulePlanDataSource = 'derived' | 'input_fallback';
 export type ModuleSectionDataSource = ModulePlanDataSource;
@@ -10,6 +24,11 @@ export type ModulePlanModel = {
   roofType: RoofType;
   boxPerimeterEnabled: boolean;
   houseConnectionType: CalculatorModuleInputs['houseConnectionType'];
+  attachmentSide: AttachmentSide;
+  drawingRotationQuarterTurns: CalculatorDrawingRotationQuarterTurns;
+  houseFootprintPreset: CalculatorHouseFootprintPreset;
+  houseFootprintParams: CalculatorHouseFootprintParams;
+  supportsHouseFootprints: boolean;
   overhangEnabled: boolean;
   overhangAmountM: number;
   slopeDirection: SlopeDirection;
@@ -31,9 +50,11 @@ export type ModulePlanModel = {
   rafterCountA: number;
   rafterSpacingA: number;
   rafterPositionsA: number[];
+  rafterEdgeLengthM: number;
   rafterCountB: number | null;
   rafterSpacingB: number | null;
   rafterPositionsB: number[] | null;
+  attachmentEdgeLengthM: number;
   soffitBracketOffsetM: number;
   soffitBracketMaxSpacingM: number;
   soffitBracketPositionsA: number[];
@@ -44,6 +65,9 @@ export type ModuleSectionModel = {
   pergolaStyle: CalculatorModuleInputs['pergolaStyle'];
   roofType: RoofType;
   boxPerimeterEnabled: boolean;
+  houseConnectionType: CalculatorModuleInputs['houseConnectionType'];
+  attachmentSide: AttachmentSide;
+  sectionSpanField: 'lengthM' | 'projectionM';
   overhangEnabled: boolean;
   overhangAmountM: number;
   slopeDirection: SlopeDirection;
@@ -111,6 +135,40 @@ function hasValidHipCorner(lengthB: number | null, spanB: number | null): boolea
 
 function isGableLike(roofType: RoofType): boolean {
   return roofType === 'gable' || roofType === 'low_gable' || roofType === 'hip';
+}
+
+function supportsPresetFootprints(module: CalculatorModuleInputs): boolean {
+  return supportsHouseFootprints(module.pergolaStyle);
+}
+
+function attachmentSideFromModule(module: CalculatorModuleInputs): AttachmentSide {
+  if (module.houseConnectionType === 'none') return DEFAULT_CALCULATOR_ATTACHMENT_SIDE;
+  if (!supportsPresetFootprints(module)) return DEFAULT_CALCULATOR_ATTACHMENT_SIDE;
+  return normalizeAttachmentSide((module as Partial<CalculatorModuleInputs>).attachmentSide);
+}
+
+function drawingRotationQuarterTurnsFromModule(module: CalculatorModuleInputs): CalculatorDrawingRotationQuarterTurns {
+  if (!supportsPresetFootprints(module)) return DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS;
+  return normalizeDrawingRotationQuarterTurns((module as Partial<CalculatorModuleInputs>).drawingRotationQuarterTurns);
+}
+
+function houseFootprintPresetFromModule(module: CalculatorModuleInputs): CalculatorHouseFootprintPreset {
+  if (!supportsPresetFootprints(module)) return DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET;
+  return normalizeHouseFootprintPreset((module as Partial<CalculatorModuleInputs>).houseFootprintPreset);
+}
+
+function houseFootprintParamsFromModule(module: CalculatorModuleInputs): CalculatorHouseFootprintParams {
+  if (!supportsPresetFootprints(module)) return makeDefaultHouseFootprintParams();
+  return normalizeHouseFootprintParams((module as Partial<CalculatorModuleInputs>).houseFootprintParams);
+}
+
+function attachmentEdgeLengthForRectangularPlan(lengthA: number, spanA: number, attachmentSide: AttachmentSide): number {
+  return attachmentSide === 'left' || attachmentSide === 'right' ? spanA : lengthA;
+}
+
+function sectionSpanFieldForModule(module: CalculatorModuleInputs, roofType: RoofType, attachmentSide: AttachmentSide): 'lengthM' | 'projectionM' {
+  if (roofType === 'hip_corner' || module.houseConnectionType === 'none') return 'projectionM';
+  return attachmentSide === 'left' || attachmentSide === 'right' ? 'lengthM' : 'projectionM';
 }
 
 const RAFTER_MAX_SPACING_M = 0.642;
@@ -270,6 +328,11 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
   if (!roofType) return null;
   const derived = moduleResult.derived as any;
   const memberDims = resolveMemberProfileDims(module, moduleResult);
+  const supportsFootprints = supportsPresetFootprints(module);
+  const attachmentSide = attachmentSideFromModule(module);
+  const drawingRotationQuarterTurns = drawingRotationQuarterTurnsFromModule(module);
+  const houseFootprintPreset = houseFootprintPresetFromModule(module);
+  const houseFootprintParams = houseFootprintParamsFromModule(module);
 
   const lengthA = toPositiveNumber(derived?.length_m);
   const spanA = toPositiveNumber(derived?.projection_m);
@@ -279,16 +342,21 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
   const spanB = toPositiveNumber(derived?.hip_corner_projection_b_m);
   if (roofType === 'hip_corner' && !hasValidHipCorner(lengthB, spanB)) return null;
 
+  const attachmentEdgeLengthM = roofType === 'hip_corner' ? lengthA : attachmentEdgeLengthForRectangularPlan(lengthA, spanA, attachmentSide);
   const rafterLayoutA = calcRafterLayout(
-    lengthA,
-    roofType === 'hip_corner' ? toPositiveNumber(derived?.hip_corner_rafter_count_a) ?? toPositiveNumber(derived?.rafter_count) ?? undefined : toPositiveNumber(derived?.rafter_count) ?? undefined,
+    roofType === 'hip_corner' ? lengthA : attachmentEdgeLengthM,
+    roofType === 'hip_corner' || attachmentSide === 'rear' || attachmentSide === 'front'
+      ? roofType === 'hip_corner'
+        ? toPositiveNumber(derived?.hip_corner_rafter_count_a) ?? toPositiveNumber(derived?.rafter_count) ?? undefined
+        : toPositiveNumber(derived?.rafter_count) ?? undefined
+      : undefined,
   );
   const rafterLayoutB =
     roofType === 'hip_corner' && lengthB
       ? calcRafterLayout(lengthB, toPositiveNumber(derived?.hip_corner_rafter_count_b) ?? undefined)
       : null;
   const bracketCount = toPositiveNumber(derived?.bracket_count);
-  const soffitBracketPositionsA = calcSoffitBracketPositions(lengthA, module.houseConnectionType === 'soffit', bracketCount ?? undefined);
+  const soffitBracketPositionsA = calcSoffitBracketPositions(attachmentEdgeLengthM, module.houseConnectionType === 'soffit', bracketCount ?? undefined);
   const overhang = resolveOverhangFromDerived(module, derived);
 
   return {
@@ -297,6 +365,11 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
     roofType,
     boxPerimeterEnabled: Boolean(module.boxPerimeterEnabled),
     houseConnectionType: module.houseConnectionType,
+    attachmentSide,
+    drawingRotationQuarterTurns,
+    houseFootprintPreset,
+    houseFootprintParams,
+    supportsHouseFootprints: supportsFootprints,
     overhangEnabled: overhang.enabled,
     overhangAmountM: overhang.amountM,
     slopeDirection: normalizeSlopeDirection(derived?.slope_direction) ?? slopeDirectionFromInputs(module),
@@ -318,9 +391,11 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
     rafterCountA: rafterLayoutA.count,
     rafterSpacingA: rafterLayoutA.spacingM,
     rafterPositionsA: rafterLayoutA.positionsM,
+    rafterEdgeLengthM: roofType === 'hip_corner' ? lengthA : attachmentEdgeLengthM,
     rafterCountB: rafterLayoutB?.count ?? null,
     rafterSpacingB: rafterLayoutB?.spacingM ?? null,
     rafterPositionsB: rafterLayoutB?.positionsM ?? null,
+    attachmentEdgeLengthM,
     soffitBracketOffsetM: SOFFIT_BRACKET_OFFSET_M,
     soffitBracketMaxSpacingM: SOFFIT_BRACKET_MAX_SPACING_M,
     soffitBracketPositionsA,
@@ -330,6 +405,11 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
 function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | null {
   const roofType = roofTypeFromModule(module);
   const memberDims = resolveMemberProfileDims(module, null);
+  const supportsFootprints = supportsPresetFootprints(module);
+  const attachmentSide = attachmentSideFromModule(module);
+  const drawingRotationQuarterTurns = drawingRotationQuarterTurnsFromModule(module);
+  const houseFootprintPreset = houseFootprintPresetFromModule(module);
+  const houseFootprintParams = houseFootprintParamsFromModule(module);
   const lengthA = toPositiveNumber(module.lengthM);
   const spanA = toPositiveNumber(module.projectionM);
   if (!lengthA || !spanA) return null;
@@ -338,9 +418,10 @@ function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | n
   const spanB = toPositiveNumber(module.hipCornerProjectionBM);
   if (roofType === 'hip_corner' && !hasValidHipCorner(lengthB, spanB)) return null;
 
-  const rafterLayoutA = calcRafterLayout(lengthA);
+  const attachmentEdgeLengthM = roofType === 'hip_corner' ? lengthA : attachmentEdgeLengthForRectangularPlan(lengthA, spanA, attachmentSide);
+  const rafterLayoutA = calcRafterLayout(roofType === 'hip_corner' ? lengthA : attachmentEdgeLengthM);
   const rafterLayoutB = roofType === 'hip_corner' && lengthB ? calcRafterLayout(lengthB) : null;
-  const soffitBracketPositionsA = calcSoffitBracketPositions(lengthA, module.houseConnectionType === 'soffit');
+  const soffitBracketPositionsA = calcSoffitBracketPositions(attachmentEdgeLengthM, module.houseConnectionType === 'soffit');
   const overhangAmountM = toNonNegativeNumber(module.overhangAmountM) ?? 0;
 
   return {
@@ -349,6 +430,11 @@ function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | n
     roofType,
     boxPerimeterEnabled: Boolean(module.boxPerimeterEnabled),
     houseConnectionType: module.houseConnectionType,
+    attachmentSide,
+    drawingRotationQuarterTurns,
+    houseFootprintPreset,
+    houseFootprintParams,
+    supportsHouseFootprints: supportsFootprints,
     overhangEnabled: Boolean(module.overhangEnabled),
     overhangAmountM: module.overhangEnabled ? overhangAmountM : 0,
     slopeDirection: slopeDirectionFromInputs(module),
@@ -370,9 +456,11 @@ function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | n
     rafterCountA: rafterLayoutA.count,
     rafterSpacingA: rafterLayoutA.spacingM,
     rafterPositionsA: rafterLayoutA.positionsM,
+    rafterEdgeLengthM: roofType === 'hip_corner' ? lengthA : attachmentEdgeLengthM,
     rafterCountB: rafterLayoutB?.count ?? null,
     rafterSpacingB: rafterLayoutB?.spacingM ?? null,
     rafterPositionsB: rafterLayoutB?.positionsM ?? null,
+    attachmentEdgeLengthM,
     soffitBracketOffsetM: SOFFIT_BRACKET_OFFSET_M,
     soffitBracketMaxSpacingM: SOFFIT_BRACKET_MAX_SPACING_M,
     soffitBracketPositionsA,
@@ -444,8 +532,10 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
   if (!roofType) return null;
   const derived = moduleResult.derived as any;
   const memberDims = resolveMemberProfileDims(module, moduleResult);
+  const attachmentSide = attachmentSideFromModule(module);
+  const sectionSpanField = sectionSpanFieldForModule(module, roofType, attachmentSide);
 
-  const spanA = toPositiveNumber(derived?.projection_m);
+  const spanA = sectionSpanField === 'lengthM' ? toPositiveNumber(derived?.length_m) : toPositiveNumber(derived?.projection_m);
   if (!spanA) return null;
 
   const pitchDeg =
@@ -467,6 +557,9 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
     pergolaStyle: module.pergolaStyle,
     roofType,
     boxPerimeterEnabled: Boolean(module.boxPerimeterEnabled),
+    houseConnectionType: module.houseConnectionType,
+    attachmentSide,
+    sectionSpanField,
     overhangEnabled: overhang.enabled,
     overhangAmountM: overhang.amountM,
     slopeDirection,
@@ -496,7 +589,9 @@ function tryBuildSectionFromDerived(module: CalculatorModuleInputs, moduleResult
 function tryBuildSectionFromInputs(module: CalculatorModuleInputs): ModuleSectionModel | null {
   const roofType = roofTypeFromModule(module);
   const memberDims = resolveMemberProfileDims(module, null);
-  const spanA = toPositiveNumber(module.projectionM);
+  const attachmentSide = attachmentSideFromModule(module);
+  const sectionSpanField = sectionSpanFieldForModule(module, roofType, attachmentSide);
+  const spanA = sectionSpanField === 'lengthM' ? toPositiveNumber(module.lengthM) : toPositiveNumber(module.projectionM);
   if (!spanA) return null;
 
   const pitchDeg = pitchFromInputs(module);
@@ -514,6 +609,9 @@ function tryBuildSectionFromInputs(module: CalculatorModuleInputs): ModuleSectio
     pergolaStyle: module.pergolaStyle,
     roofType,
     boxPerimeterEnabled: Boolean(module.boxPerimeterEnabled),
+    houseConnectionType: module.houseConnectionType,
+    attachmentSide,
+    sectionSpanField,
     overhangEnabled: Boolean(module.overhangEnabled),
     overhangAmountM: module.overhangEnabled ? overhangAmountM : 0,
     slopeDirection,

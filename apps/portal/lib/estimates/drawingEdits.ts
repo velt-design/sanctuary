@@ -293,11 +293,17 @@ export function deriveEstimateDrawingEditableFields(input: {
     {
       id: 'section:spanA',
       label: 'Section span',
-      rawValue: asString(module.projectionM) ?? String(input.sectionModel.spanA),
+      rawValue:
+        (input.sectionModel.sectionSpanField === 'lengthM' ? asString(module.lengthM) : asString(module.projectionM)) ??
+        String(input.sectionModel.spanA),
       displayValue: formatMetres(input.sectionModel.spanA),
       svgFieldId: 'section:spanA',
       editor: 'singleline',
-      target: { type: 'module_input', moduleIndex: input.moduleIndex, field: 'projectionM' },
+      target: {
+        type: 'module_input',
+        moduleIndex: input.moduleIndex,
+        field: input.sectionModel.sectionSpanField === 'lengthM' ? 'lengthM' : 'projectionM',
+      },
     },
     {
       id: 'section:pitch',

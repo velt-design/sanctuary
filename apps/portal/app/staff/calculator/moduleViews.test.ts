@@ -131,6 +131,40 @@ describe('buildModulePlanModel', () => {
     expect(model?.soffitBracketPositionsA).toEqual([]);
   });
 
+  it('backfills attachment-side drawing defaults for legacy-style modules', () => {
+    const model = buildModulePlanModel(makeModule(), null);
+    expect(model).not.toBeNull();
+    expect(model?.attachmentSide).toBe('rear');
+    expect(model?.drawingRotationQuarterTurns).toBe(0);
+    expect(model?.houseFootprintPreset).toBe('straight');
+    expect(model?.houseFootprintParams.bandDepthM).toBe('1.8');
+    expect(model?.supportsHouseFootprints).toBe(true);
+    expect(model?.attachmentEdgeLengthM).toBeCloseTo(6);
+  });
+
+  it('uses the selected attachment side to drive plan brackets and section span', () => {
+    const module = makeModule({
+      attachmentSide: 'left',
+      houseConnectionType: 'soffit',
+      lengthM: '6',
+      projectionM: '3',
+    });
+    const planModel = buildModulePlanModel(module, null);
+    const sectionModel = buildModuleSectionModel(module, null);
+
+    expect(planModel).not.toBeNull();
+    expect(planModel?.attachmentSide).toBe('left');
+    expect(planModel?.attachmentEdgeLengthM).toBeCloseTo(3);
+    expect(planModel?.rafterEdgeLengthM).toBeCloseTo(3);
+    expect(planModel?.soffitBracketPositionsA[0]).toBeCloseTo(0.5, 6);
+    expect(planModel?.soffitBracketPositionsA[planModel!.soffitBracketPositionsA.length - 1]).toBeCloseTo(2.5, 6);
+
+    expect(sectionModel).not.toBeNull();
+    expect(sectionModel?.attachmentSide).toBe('left');
+    expect(sectionModel?.sectionSpanField).toBe('lengthM');
+    expect(sectionModel?.spanA).toBeCloseTo(6);
+  });
+
   it('maps beam profile dimensions for true-scale gable plan rendering', () => {
     const module = makeModule({ pergolaStyle: 'gable', lengthM: '6', projectionM: '3' });
     const result = makeResult({ roofType: 'gable', lengthA: 6, spanA: 3 });

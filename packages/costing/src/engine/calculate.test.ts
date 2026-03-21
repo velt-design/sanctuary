@@ -659,6 +659,35 @@ describe('calculateCostV1', () => {
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.minutes).toBeCloseTo(25, 2);
   });
 
+  it('attachment side switches house-connection drivers from length-driven to span-driven edges', () => {
+    const baseInputs = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+    };
+
+    const rear = calculateCostV1({ ...baseInputs, attachment_side: 'rear' as const });
+    const left = calculateCostV1({ ...baseInputs, attachment_side: 'left' as const });
+
+    expect(rear.derived.attachment_length_m).toBeCloseTo(6, 6);
+    expect(left.derived.attachment_length_m).toBeCloseTo(3, 6);
+    expect(rear.derived.bracket_count).toBe(5);
+    expect(left.derived.bracket_count).toBe(3);
+    expect(rear.derived.stringer_fixing_count).toBe(0);
+    expect(left.derived.stringer_fixing_count).toBe(0);
+    expect(left.install.actions.find((action) => action.id === 'house.install_soffit_bracket')?.minutes).toBeCloseTo(60, 2);
+  });
+
   it('gable acrylic: 6×3 @ 5° stays sheet-mode but can use plan vs strip-yield', () => {
     const base = {
       length_m: 6,

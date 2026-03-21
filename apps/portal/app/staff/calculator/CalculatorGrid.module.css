@@ -2652,6 +2652,21 @@
   vector-effect: non-scaling-stroke;
 }
 
+.modulePlanHouseWall {
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-emphasis-width);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.modulePlanFasciaBand {
+  stroke: var(--mv-accent-olive);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
 .modulePlanOverhangZone {
   fill: var(--mv-overhang-fill);
   stroke: var(--mv-line-hidden);
@@ -2870,6 +2885,28 @@
 .moduleSectionConnection {
   stroke: var(--mv-line-hidden);
   stroke-width: var(--mv-line-guide-width);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionHouseWall {
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-emphasis-width);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionFasciaBand {
+  stroke: var(--mv-accent-olive);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionSoffitBracket {
+  stroke: var(--mv-line-annotation);
+  stroke-width: var(--mv-line-annotation-width);
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
 }
