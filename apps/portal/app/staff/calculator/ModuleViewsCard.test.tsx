@@ -75,7 +75,7 @@ function makeResult(): CostOutputV1 {
   } as unknown as CostOutputV1;
 }
 
-function makeDrawingModule() {
+function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
   return buildEstimateDrawingModules({
     inputs: {
       schemaVersion: 'v2',
@@ -88,7 +88,7 @@ function makeDrawingModule() {
       extrasAllowanceExGst: '0',
       quoteDiscountPct: '0',
       pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
-      modules: [makeModule()],
+      modules: [makeModule(overrides)],
     },
     outputs: {
       pergolas: [{ id: 'pergola-1', modules: [makeResult()] }],
@@ -153,6 +153,34 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-debug-crop="outer-section"');
     expect(markup).toContain('data-debug-crop="fit-section"');
     expect(markup).toContain('data-debug-crop="bounds-section"');
+  });
+
+  it('hides the house footprint entirely for freestanding modules', () => {
+    const drawing = makeDrawingModule({ houseConnectionType: 'none' });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+      />,
+    );
+
+    expect(markup).not.toContain('House side');
+  });
+
+  it('applies quarter-turn rotation as a final plan transform', () => {
+    const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+      />,
+    );
+
+    expect(markup).toContain('rotate(90');
   });
 
   it('suggests the largest architectural plan scale that fits the A3 sheet viewport', () => {

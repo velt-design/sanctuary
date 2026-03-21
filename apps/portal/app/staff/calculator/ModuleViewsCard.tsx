@@ -164,8 +164,9 @@ export function ModuleDrawingRenderer({
   drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
   sheetViewportMm,
   interactiveFields,
-  showDebugOverlays = false,
+  showDebugOverlays,
 }: ModuleDrawingRendererProps) {
+  const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
   const showPlan = view === 'plan' && Boolean(planModel);
   const showSection = view === 'section' && Boolean(sectionModel);
@@ -229,19 +230,23 @@ export function ModuleDrawingRenderer({
             debugScaleState={sheetScaleState}
             scaleDiagnostics={sheetScaleDiagnostics}
             interactiveFields={interactiveFields}
-            showDebugOverlays={showDebugOverlays}
+            showDebugOverlays={effectiveShowDebugOverlays}
           />
           {isCompact ? null : (
             <>
               <LegendRow
                 items={
-                  planModel.houseConnectionType === 'soffit'
+                  planModel.houseConnectionType === 'none'
                     ? hasFullLengthPlanRidge(planModel.roofType)
-                      ? ['Frame member', 'Rafters', 'Ridge beam', 'Soffit brackets', 'House side']
-                      : ['Frame member', 'Rafters', 'Soffit brackets', 'House side']
-                    : hasFullLengthPlanRidge(planModel.roofType)
-                      ? ['Frame member', 'Rafters', 'Ridge beam', 'House side']
-                      : ['Frame member', 'Rafters', 'House side']
+                      ? ['Frame member', 'Rafters', 'Ridge beam']
+                      : ['Frame member', 'Rafters']
+                    : planModel.houseConnectionType === 'soffit'
+                      ? hasFullLengthPlanRidge(planModel.roofType)
+                        ? ['Frame member', 'Rafters', 'Ridge beam', 'Soffit brackets', 'House side']
+                        : ['Frame member', 'Rafters', 'Soffit brackets', 'House side']
+                      : hasFullLengthPlanRidge(planModel.roofType)
+                        ? ['Frame member', 'Rafters', 'Ridge beam', 'House side']
+                        : ['Frame member', 'Rafters', 'House side']
                 }
               />
               <div className={styles.modulePlanStats}>
@@ -284,7 +289,7 @@ export function ModuleDrawingRenderer({
             debugScaleState={sheetScaleState}
             scaleDiagnostics={sheetScaleDiagnostics}
             interactiveFields={interactiveFields}
-            showDebugOverlays={showDebugOverlays}
+            showDebugOverlays={effectiveShowDebugOverlays}
           />
           {isCompact ? null : (
             <>
@@ -795,10 +800,12 @@ function viewBoxUnitsToMm(value: number, viewportMm?: { widthMm: number; heightM
 }
 
 function getPlanRealExtents(model: ModulePlanModel): { widthM: number; heightM: number } {
-  return {
-    widthM: model.roofType === 'hip_corner' ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA,
-    heightM: model.roofType === 'hip_corner' ? model.spanA + (model.spanB ?? 0) : model.spanA,
-  };
+  const widthM = model.roofType === 'hip_corner' ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
+  const heightM = model.roofType === 'hip_corner' ? model.spanA + (model.spanB ?? 0) : model.spanA;
+  if (model.roofType === 'hip_corner' || model.drawingRotationQuarterTurns % 2 === 0) {
+    return { widthM, heightM };
+  }
+  return { widthM: heightM, heightM: widthM };
 }
 
 function getSectionRealExtents(model: ModuleSectionModel): { widthM: number; heightM: number } {
@@ -1022,7 +1029,7 @@ function checkPlanConsistency(model: ModulePlanModel): GeometryConsistency {
   if (model.rafterPositionsA.length >= 2) {
     const start = model.rafterPositionsA[0] ?? 0;
     const end = model.rafterPositionsA[model.rafterPositionsA.length - 1] ?? 0;
-    if (Math.abs(start) > tolM || Math.abs(end - model.lengthA) > tolM) {
+    if (Math.abs(start) > tolM || Math.abs(end - model.rafterEdgeLengthM) > tolM) {
       issues.push('Rafter extents do not align with A length bounds.');
     }
 
@@ -1040,7 +1047,10 @@ function checkPlanConsistency(model: ModulePlanModel): GeometryConsistency {
   if (model.houseConnectionType === 'soffit' && model.soffitBracketPositionsA.length >= 2) {
     const start = model.soffitBracketPositionsA[0] ?? 0;
     const end = model.soffitBracketPositionsA[model.soffitBracketPositionsA.length - 1] ?? 0;
-    if (Math.abs(start - model.soffitBracketOffsetM) > tolM || Math.abs(end - (model.lengthA - model.soffitBracketOffsetM)) > tolM) {
+    if (
+      Math.abs(start - model.soffitBracketOffsetM) > tolM ||
+      Math.abs(end - (model.attachmentEdgeLengthM - model.soffitBracketOffsetM)) > tolM
+    ) {
       issues.push('Soffit bracket start/end offsets do not match configured offset.');
     }
     const bracketSpacings = model.soffitBracketPositionsA.slice(1).map((pos, idx) => pos - (model.soffitBracketPositionsA[idx] ?? 0));
@@ -1360,6 +1370,256 @@ function interiorPlanRafterXs(xs: number[]): number[] {
   return xs.slice(1, -1);
 }
 
+function rotatePointQuarterTurns(point: Point, center: Point, turns: number): Point {
+  const normalized = ((turns % 4) + 4) % 4;
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  if (normalized === 1) return { x: center.x + dy, y: center.y - dx };
+  if (normalized === 2) return { x: center.x - dx, y: center.y - dy };
+  if (normalized === 3) return { x: center.x - dy, y: center.y + dx };
+  return point;
+}
+
+function rotatePointsQuarterTurns(points: Point[], center: Point, turns: number): Point[] {
+  return points.map((point) => rotatePointQuarterTurns(point, center, turns));
+}
+
+function rotateBoundsQuarterTurns(bounds: AnnotatedBounds, center: Point, turns: number): AnnotatedBounds {
+  return boundsFromPoints(
+    rotatePointsQuarterTurns(
+      [
+        { x: bounds.minX, y: bounds.minY },
+        { x: bounds.maxX, y: bounds.minY },
+        { x: bounds.maxX, y: bounds.maxY },
+        { x: bounds.minX, y: bounds.maxY },
+      ],
+      center,
+      turns,
+    ),
+  );
+}
+
+function rectToPoints(x: number, y: number, width: number, height: number): Point[] {
+  return [
+    { x, y },
+    { x: x + width, y },
+    { x: x + width, y: y + height },
+    { x, y: y + height },
+  ];
+}
+
+function resolvePlanRotationFrame(input: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  turns: number;
+}): { baseX: number; baseY: number; center: Point; turns: number } {
+  const turns = ((input.turns % 4) + 4) % 4;
+  if (turns % 2 === 0) {
+    return {
+      baseX: input.x,
+      baseY: input.y,
+      center: { x: input.x + input.width / 2, y: input.y + input.height / 2 },
+      turns,
+    };
+  }
+
+  const delta = (input.width - input.height) / 2;
+  const baseX = input.x - delta;
+  const baseY = input.y + delta;
+  return {
+    baseX,
+    baseY,
+    center: { x: baseX + input.width / 2, y: baseY + input.height / 2 },
+    turns,
+  };
+}
+
+type PlanAttachmentFrame = {
+  start: Point;
+  end: Point;
+  tangent: Point;
+  outward: Point;
+  length: number;
+};
+
+function attachmentFrameForRect(side: ModulePlanModel['attachmentSide'], rect: { x: number; y: number; width: number; height: number }): PlanAttachmentFrame {
+  if (side === 'front') {
+    return {
+      start: { x: rect.x, y: rect.y + rect.height },
+      end: { x: rect.x + rect.width, y: rect.y + rect.height },
+      tangent: { x: 1, y: 0 },
+      outward: { x: 0, y: 1 },
+      length: rect.width,
+    };
+  }
+  if (side === 'left') {
+    return {
+      start: { x: rect.x, y: rect.y },
+      end: { x: rect.x, y: rect.y + rect.height },
+      tangent: { x: 0, y: 1 },
+      outward: { x: -1, y: 0 },
+      length: rect.height,
+    };
+  }
+  if (side === 'right') {
+    return {
+      start: { x: rect.x + rect.width, y: rect.y },
+      end: { x: rect.x + rect.width, y: rect.y + rect.height },
+      tangent: { x: 0, y: 1 },
+      outward: { x: 1, y: 0 },
+      length: rect.height,
+    };
+  }
+  return {
+    start: { x: rect.x, y: rect.y },
+    end: { x: rect.x + rect.width, y: rect.y },
+    tangent: { x: 1, y: 0 },
+    outward: { x: 0, y: -1 },
+    length: rect.width,
+  };
+}
+
+function pointOnAttachmentFrame(frame: PlanAttachmentFrame, along: number, outward: number): Point {
+  return {
+    x: frame.start.x + frame.tangent.x * along + frame.outward.x * outward,
+    y: frame.start.y + frame.tangent.y * along + frame.outward.y * outward,
+  };
+}
+
+function buildHouseFootprintPolygon(
+  frame: PlanAttachmentFrame,
+  preset: ModulePlanModel['houseFootprintPreset'],
+  params: ModulePlanModel['houseFootprintParams'],
+  scale: number,
+  presentation: ModuleDrawingPresentation,
+): Point[] {
+  const maxBandDepth = presentation === 'sheet' ? 5.3 : 8;
+  const maxReturnRun = presentation === 'sheet' ? 11.2 : 15.2;
+  const maxRecessWidth = presentation === 'sheet' ? 14.2 : 18.2;
+  const minBandDepth = Math.max(0.22 * scale, presentation === 'sheet' ? 2.8 : 3.6);
+  const minRun = Math.max(0.34 * scale, presentation === 'sheet' ? 4.2 : 5.8);
+  const parseMetres = (raw: string | undefined, fallbackM: number) => {
+    const parsed = Number.parseFloat(raw ?? '');
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackM;
+  };
+  const defaults = {
+    bandDepth: clamp(parseMetres(params.bandDepthM, 1.8) * scale, minBandDepth, maxBandDepth),
+    returnRun: clamp(parseMetres(params.returnRunM, 2.4) * scale, minRun, maxReturnRun),
+    recessWidth: clamp(parseMetres(params.recessWidthM, 2.4) * scale, minRun, maxRecessWidth),
+    recessDepth: clamp(parseMetres(params.recessDepthM, 1.2) * scale, minBandDepth * 0.55, maxBandDepth * 0.7),
+    leftLegRun: clamp(parseMetres(params.leftLegRunM, 2.4) * scale, minRun, maxReturnRun),
+    rightLegRun: clamp(parseMetres(params.rightLegRunM, 2.4) * scale, minRun, maxReturnRun),
+    sideRun: clamp(parseMetres(params.sideRunM, 2.4) * scale, minRun, maxReturnRun),
+  };
+  const bandDepth = defaults.bandDepth;
+  const edgeLength = Math.max(0.1, frame.length);
+  const leftRun = Math.min(edgeLength, defaults.leftLegRun);
+  const rightRun = Math.min(edgeLength, defaults.rightLegRun);
+  const returnRun = Math.min(edgeLength, defaults.returnRun);
+  const recessWidth = Math.min(edgeLength - 0.4, defaults.recessWidth);
+  const recessDepth = Math.min(Math.max(0.25, bandDepth - 0.15), defaults.recessDepth);
+  const sideRun = Math.min(edgeLength, defaults.sideRun);
+  const midStart = Math.max(0.2, (edgeLength - recessWidth) / 2);
+  const midEnd = Math.min(edgeLength - 0.2, midStart + recessWidth);
+
+  if (preset === 'l_left') {
+    return [
+      pointOnAttachmentFrame(frame, 0, 0),
+      pointOnAttachmentFrame(frame, edgeLength, 0),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
+      pointOnAttachmentFrame(frame, returnRun, bandDepth),
+      pointOnAttachmentFrame(frame, 0, bandDepth + returnRun),
+    ];
+  }
+
+  if (preset === 'l_right') {
+    return [
+      pointOnAttachmentFrame(frame, 0, 0),
+      pointOnAttachmentFrame(frame, edgeLength, 0),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth + returnRun),
+      pointOnAttachmentFrame(frame, edgeLength - returnRun, bandDepth),
+      pointOnAttachmentFrame(frame, 0, bandDepth),
+    ];
+  }
+
+  if (preset === 'recess_left') {
+    return [
+      pointOnAttachmentFrame(frame, 0, 0),
+      pointOnAttachmentFrame(frame, edgeLength, 0),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
+      pointOnAttachmentFrame(frame, midEnd, bandDepth),
+      pointOnAttachmentFrame(frame, midEnd, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, midStart, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, midStart, bandDepth),
+      pointOnAttachmentFrame(frame, 0, bandDepth + defaults.returnRun * 0.55),
+    ];
+  }
+
+  if (preset === 'recess_right') {
+    return [
+      pointOnAttachmentFrame(frame, 0, 0),
+      pointOnAttachmentFrame(frame, edgeLength, 0),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth + defaults.returnRun * 0.55),
+      pointOnAttachmentFrame(frame, midEnd, bandDepth),
+      pointOnAttachmentFrame(frame, midEnd, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, midStart, Math.max(0.2, bandDepth - recessDepth)),
+      pointOnAttachmentFrame(frame, midStart, bandDepth),
+      pointOnAttachmentFrame(frame, 0, bandDepth),
+    ];
+  }
+
+  if (preset === 'u_shape') {
+    return [
+      pointOnAttachmentFrame(frame, 0, 0),
+      pointOnAttachmentFrame(frame, edgeLength, 0),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth + rightRun),
+      pointOnAttachmentFrame(frame, Math.max(edgeLength - rightRun, edgeLength * 0.72), bandDepth),
+      pointOnAttachmentFrame(frame, Math.min(leftRun, edgeLength * 0.28), bandDepth),
+      pointOnAttachmentFrame(frame, 0, bandDepth + leftRun),
+    ];
+  }
+
+  if (preset === 'wrap_left') {
+    return [
+      pointOnAttachmentFrame(frame, 0, 0),
+      pointOnAttachmentFrame(frame, edgeLength, 0),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth),
+      pointOnAttachmentFrame(frame, sideRun, bandDepth),
+      pointOnAttachmentFrame(frame, sideRun, bandDepth + sideRun),
+      pointOnAttachmentFrame(frame, 0, bandDepth + sideRun),
+    ];
+  }
+
+  if (preset === 'wrap_right') {
+    return [
+      pointOnAttachmentFrame(frame, 0, 0),
+      pointOnAttachmentFrame(frame, edgeLength, 0),
+      pointOnAttachmentFrame(frame, edgeLength, bandDepth + sideRun),
+      pointOnAttachmentFrame(frame, edgeLength - sideRun, bandDepth + sideRun),
+      pointOnAttachmentFrame(frame, edgeLength - sideRun, bandDepth),
+      pointOnAttachmentFrame(frame, 0, bandDepth),
+    ];
+  }
+
+  return [
+    pointOnAttachmentFrame(frame, 0, 0),
+    pointOnAttachmentFrame(frame, edgeLength, 0),
+    pointOnAttachmentFrame(frame, edgeLength, bandDepth),
+    pointOnAttachmentFrame(frame, 0, bandDepth),
+  ];
+}
+
+function footprintLabelPoint(points: Point[]): Point {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  return {
+    x: (Math.min(...xs) + Math.max(...xs)) / 2,
+    y: (Math.min(...ys) + Math.max(...ys)) / 2,
+  };
+}
+
 function LegendRow({ items }: { items: string[] }) {
   return (
     <div className={styles.moduleViewsLegend} aria-label="Drawing legend">
@@ -1550,7 +1810,17 @@ function estimateTickDimensionBounds(
   ]);
 }
 
-function ArrowHead({ x, y, direction, presentation = 'card' }: { x: number; y: number; direction: 'up' | 'down'; presentation?: ModuleDrawingPresentation }) {
+function ArrowHead({
+  x,
+  y,
+  direction,
+  presentation = 'card',
+}: {
+  x: number;
+  y: number;
+  direction: 'up' | 'down' | 'left' | 'right';
+  presentation?: ModuleDrawingPresentation;
+}) {
   const isSheet = presentation === 'sheet';
   const reach = isSheet ? 0.96 : 1.3;
   const span = isSheet ? 0.78 : 1.15;
@@ -1559,6 +1829,22 @@ function ArrowHead({ x, y, direction, presentation = 'card' }: { x: number; y: n
       <g>
         <line x1={x} y1={y - reach} x2={x - span} y2={y + reach} className={styles.moduleFallHead} />
         <line x1={x} y1={y - reach} x2={x + span} y2={y + reach} className={styles.moduleFallHead} />
+      </g>
+    );
+  }
+  if (direction === 'left') {
+    return (
+      <g>
+        <line x1={x - reach} y1={y} x2={x + reach} y2={y - span} className={styles.moduleFallHead} />
+        <line x1={x - reach} y1={y} x2={x + reach} y2={y + span} className={styles.moduleFallHead} />
+      </g>
+    );
+  }
+  if (direction === 'right') {
+    return (
+      <g>
+        <line x1={x + reach} y1={y} x2={x - reach} y2={y - span} className={styles.moduleFallHead} />
+        <line x1={x + reach} y1={y} x2={x - reach} y2={y + span} className={styles.moduleFallHead} />
       </g>
     );
   }
@@ -1577,7 +1863,7 @@ function estimateArrowHeadBounds({
 }: {
   x: number;
   y: number;
-  direction: 'up' | 'down';
+  direction: 'up' | 'down' | 'left' | 'right';
   presentation?: ModuleDrawingPresentation;
 }): AnnotatedBounds {
   const isSheet = presentation === 'sheet';
@@ -1677,78 +1963,129 @@ function measurePlanAnnotatedBounds(input: {
   frame: PlanSheetFrame;
 }): AnnotatedBounds {
   const { model, x, y, scale, presentation = 'sheet', frame } = input;
-  const isSheet = presentation === 'sheet';
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
+  const rotationFrame = resolvePlanRotationFrame({
+    x,
+    y,
+    width: model.lengthA * scale,
+    height: model.spanA * scale,
+    turns: isHipCorner ? 0 : model.drawingRotationQuarterTurns,
+  });
+  const baseX = rotationFrame.baseX;
+  const baseY = rotationFrame.baseY;
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
   const bW = (model.lengthB ?? 0) * scale;
   const bH = (model.spanB ?? 0) * scale;
-  const splitY = y + aH;
+  const splitY = baseY + aH;
   const bottomY = splitY + bH;
   const topFrameW = memberSizeM(model.ledgerBeamWidthM, 0.05) * scale;
   const sideFrameW = memberSizeM(model.supportBeamWidthM, 0.05) * scale;
   const gutterW = memberSizeM(model.gutterWidthM, 0.1) * scale;
   const rafterW = memberSizeM(model.rafterWidthM, 0.05) * scale;
   const ridgeBandW = memberSizeM(model.ridgeBeamWidthM, 0.05) * scale;
-  const ridgeBandX = x + sideFrameW;
+  const ridgeBandX = baseX + sideFrameW;
   const ridgeBandWidth = Math.max(0, aW - sideFrameW * 2);
   const primaryPoints: Point[] = isHipCorner
     ? [
-        { x, y },
-        { x: x + aW, y },
-        { x: x + aW, y: splitY },
-        { x: x + bW, y: splitY },
-        { x: x + bW, y: bottomY },
-        { x, y: bottomY },
+        { x: baseX, y: baseY },
+        { x: baseX + aW, y: baseY },
+        { x: baseX + aW, y: splitY },
+        { x: baseX + bW, y: splitY },
+        { x: baseX + bW, y: bottomY },
+        { x: baseX, y: bottomY },
       ]
     : [
-        { x, y },
-        { x: x + aW, y },
-        { x: x + aW, y: y + aH },
-        { x, y: y + aH },
+        { x: baseX, y: baseY },
+        { x: baseX + aW, y: baseY },
+        { x: baseX + aW, y: baseY + aH },
+        { x: baseX, y: baseY + aH },
       ];
-  const centerX = x + (isHipCorner ? Math.max(aW, bW) : aW) / 2;
-  const centerY = y + (isHipCorner ? aH + bH : aH) / 2;
+  const centerX = baseX + (isHipCorner ? Math.max(aW, bW) : aW) / 2;
+  const centerY = baseY + (isHipCorner ? aH + bH : aH) / 2;
   const insetPoints = primaryPoints.map((point) => ({
     x: centerX + (point.x - centerX) * 0.92,
     y: centerY + (point.y - centerY) * 0.92,
   }));
-  const hipInner = isHipCorner ? hipCornerInnerPoints(x, y, aW, bW, splitY, bottomY, Math.max(sideFrameW, topFrameW, gutterW)) : null;
-  const gableMidY = y + aH / 2;
+  const hipInner = isHipCorner ? hipCornerInnerPoints(baseX, baseY, aW, bW, splitY, bottomY, Math.max(sideFrameW, topFrameW, gutterW)) : null;
+  const gableMidY = baseY + aH / 2;
   const ridgeBandY = gableMidY - ridgeBandW / 2;
-  const hipRidgeStartX = x + aW * 0.32;
-  const hipRidgeEndX = x + aW * 0.68;
-  const houseBottomY = y - frame.houseBandOffset;
-  const houseTopY = Math.max(frame.outerField.y + 4.8, houseBottomY - frame.houseBandHeight);
-  const houseLeftX = Math.max(frame.fitArea.x + 1.8, x - frame.houseInset);
-  const houseRightX = Math.min(frame.fitArea.x + frame.fitArea.width - 1.8, x + Math.max(aW, bW) + frame.houseInset);
-  const houseLabelX = clamp((houseLeftX + houseRightX) / 2, houseLeftX + 8.4, houseRightX - 8.4);
-  const houseLabelY = houseTopY + frame.houseBandHeight * (isSheet ? 0.62 : 0.58);
-  const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.lengthA, x, aW);
-  const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
+  const hipRidgeStartX = baseX + aW * 0.32;
+  const hipRidgeEndX = baseX + aW * 0.68;
+  const attachmentSide =
+    model.houseConnectionType === 'none' || !model.supportsHouseFootprints || isHipCorner ? 'rear' : model.attachmentSide;
+  const showHouseFootprint = model.houseConnectionType !== 'none';
+  const housePolygon = (() => {
+    if (showHouseFootprint && model.supportsHouseFootprints && !isHipCorner) {
+      return buildHouseFootprintPolygon(
+        attachmentFrameForRect(attachmentSide, {
+          x: baseX,
+          y: baseY,
+          width: Math.max(aW, bW),
+          height: isHipCorner ? aH + bH : aH,
+        }),
+        model.houseFootprintPreset,
+        model.houseFootprintParams,
+        scale,
+        presentation,
+      );
+    }
+    const houseBottomY = baseY - frame.houseBandOffset;
+    const houseTopY = Math.max(frame.outerField.y + 4.8, houseBottomY - frame.houseBandHeight);
+    const houseLeftX = Math.max(frame.fitArea.x + 1.8, baseX - frame.houseInset);
+    const houseRightX = Math.min(frame.fitArea.x + frame.fitArea.width - 1.8, baseX + Math.max(aW, bW) + frame.houseInset);
+    return rectToPoints(houseLeftX, houseTopY, houseRightX - houseLeftX, houseBottomY - houseTopY);
+  })();
+  const houseLabel = footprintLabelPoint(housePolygon);
+  const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, baseX, aW);
+  const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, baseX, bW);
   const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
   const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
-  const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
-  const fallX = Math.min(frame.outerField.x + frame.outerField.width - 11, x + Math.max(aW, bW) + frame.fallGap - 0.55);
-  const fallTop = y + 1.5;
-  const fallBottom = (isHipCorner ? bottomY : y + aH) - 1.5;
-  const fallLabelX = fallX + 0.62;
-  const fallLabelY = (fallTop + fallBottom) / 2 + 0.18;
+  const footprintFrame = attachmentFrameForRect(attachmentSide, {
+    x: baseX,
+    y: baseY,
+    width: Math.max(aW, bW),
+    height: isHipCorner ? aH + bH : aH,
+  });
+  const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.attachmentEdgeLengthM, 0, footprintFrame.length);
+  const soffitGuideStart =
+    soffitXs.length > 0 ? pointOnAttachmentFrame(footprintFrame, soffitXs[0]!, -1.2) : pointOnAttachmentFrame(footprintFrame, 0, -1.2);
+  const soffitGuideEnd =
+    soffitXs.length > 0
+      ? pointOnAttachmentFrame(footprintFrame, soffitXs[soffitXs.length - 1]!, -1.2)
+      : pointOnAttachmentFrame(footprintFrame, footprintFrame.length, -1.2);
+  const soffitBracketLines = soffitXs.map((sx) => ({
+    start: pointOnAttachmentFrame(footprintFrame, sx, -2.3),
+    end: pointOnAttachmentFrame(footprintFrame, sx, 0.1),
+  }));
+  const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
+  const fallAnchor =
+    attachmentSide === 'rear' || attachmentSide === 'front'
+      ? attachmentFrameForRect('right', {
+          x: baseX + Math.max(aW, bW) + frame.fallGap - 0.55,
+          y: baseY,
+          width: 0,
+          height: isHipCorner ? aH + bH : aH,
+        })
+      : attachmentFrameForRect('front', { x: baseX, y: (isHipCorner ? bottomY : baseY + aH) + frame.fallGap - 0.55, width: aW, height: 0 });
+  const fallStart = pointOnAttachmentFrame(fallAnchor, 1.5, 0);
+  const fallEnd = pointOnAttachmentFrame(fallAnchor, Math.max(1.5, fallAnchor.length - 1.5), 0);
+  const fallLabelPoint = pointOnAttachmentFrame(fallAnchor, fallAnchor.length / 2, fallIsHorizontal ? 2.4 : 0.62);
   const dimensionOffsets = { bottom: 7.8, secondary: 5.4, tertiary: 6.15, side: 5.6, hipSide: 5.9 };
   const dimBaseY = bottomY + dimensionOffsets.bottom;
   const secondaryDimY = dimBaseY + dimensionOffsets.secondary;
   const rafterDimY = dimBaseY + dimensionOffsets.tertiary;
-  const yTopInner = y + topFrameW;
-  const yBottomInner = y + aH - gutterW;
+  const yTopInner = baseY + topFrameW;
+  const yBottomInner = baseY + aH - gutterW;
   const overhangFrameDepth = isHipCorner ? bH : aH;
   const overhangDepth = model.overhangEnabled
     ? Math.min(Math.max(0, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - topFrameW - gutterW))
     : 0;
-  const overhangY = isHipCorner ? bottomY - overhangDepth : y + aH - overhangDepth;
+  const overhangY = isHipCorner ? bottomY - overhangDepth : baseY + aH - overhangDepth;
   const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - sideFrameW * 2);
-  const overhangX = x + sideFrameW;
+  const overhangX = baseX + sideFrameW;
   const spacingBounds =
     rafterXsA.length >= 2
       ? (() => {
@@ -1772,87 +2109,112 @@ function measurePlanAnnotatedBounds(input: {
         })()
       : null;
 
-  return unionBounds([
+  const localBounds = [
     boundsFromPoints(primaryPoints, 0.35),
     hipInner ? boundsFromPoints(hipInner, 0.35) : null,
     model.boxPerimeterEnabled ? boundsFromPoints(insetPoints, 0.35) : null,
     hasFullLengthRidge && ridgeBandWidth > 0 ? boundsFromRect(ridgeBandX, ridgeBandY, ridgeBandWidth, ridgeBandW) : null,
-    model.roofType === 'hip' ? boundsFromLine(x, y, hipRidgeStartX, gableMidY, 0.3) : null,
-    model.roofType === 'hip' ? boundsFromLine(x + aW, y, hipRidgeEndX, gableMidY, 0.3) : null,
-    model.roofType === 'hip' ? boundsFromLine(x, y + aH, hipRidgeStartX, gableMidY, 0.3) : null,
-    model.roofType === 'hip' ? boundsFromLine(x + aW, y + aH, hipRidgeEndX, gableMidY, 0.3) : null,
-    isHipCorner ? boundsFromLine(x, splitY, x + bW, splitY, 0.25) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX, baseY, hipRidgeStartX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX + aW, baseY, hipRidgeEndX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX, baseY + aH, hipRidgeStartX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX + aW, baseY + aH, hipRidgeEndX, gableMidY, 0.3) : null,
+    isHipCorner ? boundsFromLine(baseX, splitY, baseX + bW, splitY, 0.25) : null,
     ...interiorRafterXsA.map((rx) => boundsFromRect(rx - rafterW / 2, yTopInner, rafterW, Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner))),
     ...interiorRafterXsB.map((rx) =>
       boundsFromRect(rx - rafterW / 2, splitY + topFrameW, rafterW, Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))),
     ),
-    model.houseConnectionType === 'soffit' && soffitXs.length > 0 ? boundsFromLine(soffitXs[0]!, y - 1.2, soffitXs[soffitXs.length - 1]!, y - 1.2, 0.25) : null,
-    ...soffitXs.map((sx) => boundsFromLine(sx, y - 2.3, sx, y + 0.1, 0.25)),
+    model.houseConnectionType === 'soffit' && soffitXs.length > 0
+      ? boundsFromLine(soffitGuideStart.x, soffitGuideStart.y, soffitGuideEnd.x, soffitGuideEnd.y, 0.25)
+      : null,
+    ...soffitBracketLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
     model.overhangEnabled && overhangDepth > 0 ? boundsFromRect(overhangX, overhangY, overhangWidth, overhangDepth) : null,
-    boundsFromRect(houseLeftX, houseTopY, houseRightX - houseLeftX, houseBottomY - houseTopY),
-    estimateTextBounds({
-      text: 'House side',
-      x: houseLabelX,
-      y: houseLabelY,
-      anchor: 'middle',
-      fontHeight: 1.7,
-      charWidth: 0.62,
-      paddingX: 0.3,
-      paddingY: 0.18,
-    }),
-    boundsFromLine(fallX, fallTop, fallX, fallBottom, 0.25),
-    isGableLike ? estimateArrowHeadBounds({ x: fallX, y: fallTop, direction: 'up', presentation }) : null,
-    isGableLike ? estimateArrowHeadBounds({ x: fallX, y: fallBottom, direction: 'down', presentation }) : null,
+    showHouseFootprint ? boundsFromPoints(housePolygon, 0.25) : null,
+    showHouseFootprint
+      ? estimateTextBounds({
+          text: 'House side',
+          x: houseLabel.x,
+          y: houseLabel.y,
+          anchor: 'middle',
+          fontHeight: 1.7,
+          charWidth: 0.62,
+          paddingX: 0.3,
+          paddingY: 0.18,
+        })
+      : null,
+    boundsFromLine(fallStart.x, fallStart.y, fallEnd.x, fallEnd.y, 0.25),
+    isGableLike
+      ? estimateArrowHeadBounds({
+          x: fallStart.x,
+          y: fallStart.y,
+          direction: fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up',
+          presentation,
+        })
+      : null,
+    isGableLike
+      ? estimateArrowHeadBounds({
+          x: fallEnd.x,
+          y: fallEnd.y,
+          direction: fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down',
+          presentation,
+        })
+      : null,
     !isGableLike
       ? estimateArrowHeadBounds({
-          x: fallX,
-          y: model.slopeDirection === 'toward_house' ? fallTop : fallBottom,
-          direction: model.slopeDirection === 'toward_house' ? 'up' : 'down',
+          x: model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x,
+          y: model.slopeDirection === 'toward_house' ? fallStart.y : fallEnd.y,
+          direction: fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : model.slopeDirection === 'toward_house' ? 'up' : 'down',
           presentation,
         })
       : null,
     estimateTextBounds({
       text: isGableLike ? 'fall both sides' : 'fall',
-      x: fallLabelX,
-      y: fallLabelY,
+      x: fallLabelPoint.x,
+      y: fallLabelPoint.y,
       anchor: 'start',
       fontHeight: 1.8,
       charWidth: 0.58,
       paddingX: 0.2,
       paddingY: 0.18,
     }),
-    boundsFromLine(x, isHipCorner ? bottomY : y + aH, x, dimBaseY, 0.2),
-    boundsFromLine(x + aW, isHipCorner ? splitY : y + aH, x + aW, dimBaseY, 0.2),
-    estimateTickDimensionBounds({ x1: x, y1: dimBaseY, x2: x + aW, y2: dimBaseY, label: formatMetres(model.lengthA), presentation }),
-    boundsFromLine(x, y, x - dimensionOffsets.side, y, 0.2),
-    boundsFromLine(x, y + aH, x - dimensionOffsets.side, y + aH, 0.2),
+    boundsFromLine(baseX, isHipCorner ? bottomY : baseY + aH, baseX, dimBaseY, 0.2),
+    boundsFromLine(baseX + aW, isHipCorner ? splitY : baseY + aH, baseX + aW, dimBaseY, 0.2),
+    estimateTickDimensionBounds({ x1: baseX, y1: dimBaseY, x2: baseX + aW, y2: dimBaseY, label: formatMetres(model.lengthA), presentation }),
+    boundsFromLine(baseX, baseY, baseX - dimensionOffsets.side, baseY, 0.2),
+    boundsFromLine(baseX, baseY + aH, baseX - dimensionOffsets.side, baseY + aH, 0.2),
     estimateTickDimensionBounds({
-      x1: x - dimensionOffsets.side,
-      y1: y,
-      x2: x - dimensionOffsets.side,
-      y2: y + aH,
+      x1: baseX - dimensionOffsets.side,
+      y1: baseY,
+      x2: baseX - dimensionOffsets.side,
+      y2: baseY + aH,
       label: formatMetres(model.spanA),
       presentation,
     }),
-    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x, bottomY, x, secondaryDimY, 0.2) : null,
-    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x + bW, bottomY, x + bW, secondaryDimY, 0.2) : null,
-    isHipCorner && model.lengthB && model.spanB
-      ? estimateTickDimensionBounds({ x1: x, y1: secondaryDimY, x2: x + bW, y2: secondaryDimY, label: formatMetres(model.lengthB), presentation })
-      : null,
-    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x + bW, splitY, x + bW + dimensionOffsets.hipSide, splitY, 0.2) : null,
-    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(x + bW, bottomY, x + bW + dimensionOffsets.hipSide, bottomY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX, bottomY, baseX, secondaryDimY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX + bW, bottomY, baseX + bW, secondaryDimY, 0.2) : null,
     isHipCorner && model.lengthB && model.spanB
       ? estimateTickDimensionBounds({
-          x1: x + bW + dimensionOffsets.hipSide,
+          x1: baseX,
+          y1: secondaryDimY,
+          x2: baseX + bW,
+          y2: secondaryDimY,
+          label: formatMetres(model.lengthB),
+          presentation,
+        })
+      : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX + bW, splitY, baseX + bW + dimensionOffsets.hipSide, splitY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX + bW, bottomY, baseX + bW + dimensionOffsets.hipSide, bottomY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB
+      ? estimateTickDimensionBounds({
+          x1: baseX + bW + dimensionOffsets.hipSide,
           y1: splitY,
-          x2: x + bW + dimensionOffsets.hipSide,
+          x2: baseX + bW + dimensionOffsets.hipSide,
           y2: bottomY,
           label: formatMetres(model.spanB),
           presentation,
         })
       : null,
     spacingBounds,
-    model.boxPerimeterEnabled ? boundsFromLine(centerX, y + 2.8, centerX, (isHipCorner ? bottomY : y + aH) - 2.8, 0.2) : null,
+    model.boxPerimeterEnabled ? boundsFromLine(centerX, baseY + 2.8, centerX, (isHipCorner ? bottomY : baseY + aH) - 2.8, 0.2) : null,
     model.boxPerimeterEnabled
       ? estimateTextBounds({
           text: 'internal roof angle',
@@ -1865,7 +2227,13 @@ function measurePlanAnnotatedBounds(input: {
           paddingY: 0.15,
         })
       : null,
-  ]);
+  ];
+
+  if (rotationFrame.turns === 0) {
+    return unionBounds(localBounds);
+  }
+
+  return unionBounds(localBounds.map((bounds) => (bounds ? rotateBoundsQuarterTurns(bounds, rotationFrame.center, rotationFrame.turns) : null)));
 }
 
 function resolvePlanSheetLayoutForScale(input: {
@@ -1873,8 +2241,9 @@ function resolvePlanSheetLayoutForScale(input: {
   scale: number;
 }): ResolvedSheetLayout {
   const frame = getPlanSheetFrame(input.model.roofType === 'hip_corner');
-  const totalW = input.model.roofType === 'hip_corner' ? Math.max(input.model.lengthA, input.model.lengthB ?? 0) : input.model.lengthA;
-  const totalH = input.model.roofType === 'hip_corner' ? input.model.spanA + (input.model.spanB ?? 0) : input.model.spanA;
+  const total = getPlanRealExtents(input.model);
+  const totalW = total.widthM;
+  const totalH = total.heightM;
   const initial = resolvePlanFitBox(totalW, totalH, 'sheet', input.model.roofType === 'hip_corner');
   let x = initial.x;
   let y = initial.y;
@@ -2085,6 +2454,11 @@ function measureSectionAnnotatedBounds(input: {
     boundsFromRect(leftPostX, yHouseUnder, postW, yGround - yHouseUnder),
     boundsFromRect(secondPostX, supportPostTopY, postW, yGround - supportPostTopY),
     boundsFromRect(ledgerX, ledgerY, leftEaveWidth, leftEaveDepth),
+    model.houseConnectionType === 'facade' || model.houseConnectionType === 'fascia'
+      ? boundsFromLine(ledgerX - 1.1, yHouseUnder - 2.2, ledgerX - 1.1, yGround, 0.2)
+      : null,
+    model.houseConnectionType === 'fascia' ? boundsFromLine(ledgerX - 1.1, ledgerY - 0.9, ledgerX + leftEaveWidth, ledgerY - 0.9, 0.2) : null,
+    model.houseConnectionType === 'soffit' ? boundsFromLine(ledgerX - 0.25, ledgerY - 1.25, ledgerX + leftEaveWidth, ledgerY - 1.25, 0.2) : null,
     model.sectionKind === 'mono' && overhangM > 0 ? boundsFromRect(xSupport - supportCapWidth / 2, supportCapTopY, supportCapWidth, supportCapDepth) : null,
     model.sectionKind === 'gable' ? boundsFromRect(rightEaveX, rightEaveY, rightEaveBeamWidth, rightEaveBeamDepth) : null,
     model.sectionKind === 'gable' && yRidgeUnder !== null ? boundsFromRect(xLeft, tieBeamTopY, Math.max(0.4, xRight - xLeft), Math.max(0.2, tieBeamBottomY - tieBeamTopY)) : null,
@@ -2255,7 +2629,7 @@ function PlanSvg({
   debugScaleState,
   scaleDiagnostics,
   interactiveFields,
-  showDebugOverlays = false,
+  showDebugOverlays,
 }: {
   model: ModulePlanModel;
   idBase: string;
@@ -2267,18 +2641,27 @@ function PlanSvg({
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
 }) {
+  const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
   const planSheetFrame = isSheet ? getPlanSheetFrame(isHipCorner) : null;
-  const totalW = isHipCorner ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
-  const totalH = isHipCorner ? model.spanA + (model.spanB ?? 0) : model.spanA;
+  const total = getPlanRealExtents(model);
   const sheetLayout = isSheet ? resolvePlanSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
-  const layout = sheetLayout ?? resolvePlanFitBox(totalW, totalH, presentation, isHipCorner);
+  const layout = sheetLayout ?? resolvePlanFitBox(total.widthM, total.heightM, presentation, isHipCorner);
   const scale = layout.scale;
-  const x = layout.x;
-  const y = layout.y;
+  const rotationFrame = resolvePlanRotationFrame({
+    x: layout.x,
+    y: layout.y,
+    width: model.lengthA * scale,
+    height: model.spanA * scale,
+    turns: isHipCorner ? 0 : model.drawingRotationQuarterTurns,
+  });
+  const x = rotationFrame.baseX;
+  const y = rotationFrame.baseY;
+  const planRotationTransform =
+    rotationFrame.turns === 0 ? undefined : `rotate(${rotationFrame.turns * 90} ${rotationFrame.center.x} ${rotationFrame.center.y})`;
 
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
@@ -2312,10 +2695,9 @@ function PlanSvg({
 
   const centerX = x + (isHipCorner ? Math.max(aW, bW) : aW) / 2;
   const centerY = y + (isHipCorner ? aH + bH : aH) / 2;
-  const insetScale = 0.92;
   const insetPoints = primaryPoints.map((point) => ({
-    x: centerX + (point.x - centerX) * insetScale,
-    y: centerY + (point.y - centerY) * insetScale,
+    x: centerX + (point.x - centerX) * 0.92,
+    y: centerY + (point.y - centerY) * 0.92,
   }));
   const hipInner = isHipCorner ? hipCornerInnerPoints(x, y, aW, bW, splitY, bottomY, Math.max(sideFrameW, topFrameW, gutterW)) : null;
 
@@ -2323,33 +2705,68 @@ function PlanSvg({
   const ridgeBandY = gableMidY - ridgeBandW / 2;
   const hipRidgeStartX = x + aW * 0.32;
   const hipRidgeEndX = x + aW * 0.68;
+  const attachmentSide = model.houseConnectionType === 'none' || !model.supportsHouseFootprints || isHipCorner ? 'rear' : model.attachmentSide;
+  const showHouseFootprint = model.houseConnectionType !== 'none';
   const houseBandOffset = isSheet ? (planSheetFrame?.houseBandOffset ?? 1.15) : layout.houseBandOffset;
   const houseBandHeight = isSheet ? (planSheetFrame?.houseBandHeight ?? 5.3) : layout.houseBandHeight;
   const houseInset = isSheet ? (planSheetFrame?.houseInset ?? 1.7) : layout.houseInset;
   const fallGap = isSheet ? (planSheetFrame?.fallGap ?? 5.0) : layout.fallGap;
-  const houseBottomY = y - houseBandOffset;
-  const houseTopY = Math.max(isSheet ? (sheetLayout?.outerField.y ?? 0) + 4.8 : 4, houseBottomY - houseBandHeight);
-  const houseLeftX = Math.max(isSheet ? (sheetLayout?.fitArea.x ?? 0) + 1.8 : 6, x - houseInset);
-  const houseRightX = Math.min(isSheet ? (sheetLayout?.fitArea.x ?? 0) + (sheetLayout?.fitArea.width ?? 114) - 1.8 : 114, x + Math.max(aW, bW) + houseInset);
-  const houseLabelX = clamp((houseLeftX + houseRightX) / 2, houseLeftX + 8.4, houseRightX - 8.4);
+  const housePolygon = (() => {
+    if (showHouseFootprint && model.supportsHouseFootprints && !isHipCorner) {
+      return buildHouseFootprintPolygon(
+        attachmentFrameForRect(attachmentSide, { x, y, width: Math.max(aW, bW), height: isHipCorner ? aH + bH : aH }),
+        model.houseFootprintPreset,
+        model.houseFootprintParams,
+        scale,
+        presentation,
+      );
+    }
+    if (!showHouseFootprint) {
+      return rectToPoints(x, y, 0.1, 0.1);
+    }
+    const houseBottomY = y - houseBandOffset;
+    const houseTopY = Math.max(isSheet ? (sheetLayout?.outerField.y ?? 0) + 4.8 : 4, houseBottomY - houseBandHeight);
+    const houseLeftX = Math.max(isSheet ? (sheetLayout?.fitArea.x ?? 0) + 1.8 : 6, x - houseInset);
+    const houseRightX = Math.min(isSheet ? (sheetLayout?.fitArea.x ?? 0) + (sheetLayout?.fitArea.width ?? 114) - 1.8 : 114, x + Math.max(aW, bW) + houseInset);
+    return rectToPoints(houseLeftX, houseTopY, houseRightX - houseLeftX, houseBottomY - houseTopY);
+  })();
   const outerFieldOutline = sheetLayout?.outerField ?? null;
   const fitAreaOutline = sheetLayout?.fitArea ?? null;
   const annotatedBoundsOutline = sheetLayout?.annotatedBounds ?? null;
   const debugMetrics = sheetLayout ? buildSheetDebugMetrics(sheetLayout, debugScaleState, scaleDiagnostics) : null;
-  const houseLabelY = houseTopY + houseBandHeight * (isSheet ? 0.62 : 0.58);
+  const houseLabel = footprintLabelPoint(housePolygon);
   const hatchId = `${idBase}_house_hatch`;
 
-  const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.lengthA, x, aW);
+  const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
   const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
   const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
-  const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.lengthA, x, aW);
+  const footprintFrame = attachmentFrameForRect(attachmentSide, { x, y, width: Math.max(aW, bW), height: isHipCorner ? aH + bH : aH });
+  const soffitXs = projectLinearPositions(model.soffitBracketPositionsA, model.attachmentEdgeLengthM, 0, footprintFrame.length);
+  const soffitGuideStart =
+    soffitXs.length > 0 ? pointOnAttachmentFrame(footprintFrame, soffitXs[0]!, -1.2) : pointOnAttachmentFrame(footprintFrame, 0, -1.2);
+  const soffitGuideEnd =
+    soffitXs.length > 0
+      ? pointOnAttachmentFrame(footprintFrame, soffitXs[soffitXs.length - 1]!, -1.2)
+      : pointOnAttachmentFrame(footprintFrame, footprintFrame.length, -1.2);
+  const soffitBracketLines = soffitXs.map((sx) => ({
+    start: pointOnAttachmentFrame(footprintFrame, sx, -2.3),
+    end: pointOnAttachmentFrame(footprintFrame, sx, 0.1),
+  }));
 
-  const fallX = Math.min(isSheet ? 108.6 : 110.5, x + Math.max(aW, bW) + (isSheet ? fallGap - 0.55 : layout.fallGap));
-  const fallTop = y + (isSheet ? 1.5 : 1);
-  const fallBottom = (isHipCorner ? bottomY : y + aH) - (isSheet ? 1.5 : 1);
-  const fallLabelX = fallX + (isSheet ? 0.62 : 2.3);
-  const fallLabelY = (fallTop + fallBottom) / 2 + (isSheet ? 0.18 : 0);
+  const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
+  const fallAnchor =
+    attachmentSide === 'rear' || attachmentSide === 'front'
+      ? attachmentFrameForRect('right', {
+          x: x + Math.max(aW, bW) + (isSheet ? fallGap - 0.55 : layout.fallGap),
+          y,
+          width: 0,
+          height: isHipCorner ? aH + bH : aH,
+        })
+      : attachmentFrameForRect('front', { x, y: (isHipCorner ? bottomY : y + aH) + (isSheet ? fallGap - 0.55 : layout.fallGap), width: aW, height: 0 });
+  const fallStart = pointOnAttachmentFrame(fallAnchor, isSheet ? 1.5 : 1, 0);
+  const fallEnd = pointOnAttachmentFrame(fallAnchor, Math.max(isSheet ? 1.5 : 1, fallAnchor.length - (isSheet ? 1.5 : 1)), 0);
+  const fallLabelPoint = pointOnAttachmentFrame(fallAnchor, fallAnchor.length / 2, fallIsHorizontal ? (isSheet ? 0.8 : 2.2) : (isSheet ? 0.62 : 2.3));
   const dimensionOffsets = isSheet
     ? { bottom: 7.8, secondary: 5.4, tertiary: 6.15, side: 5.6, hipSide: 5.9 }
     : { bottom: 7.1, secondary: 5.1, tertiary: 5.8, side: 7.0, hipSide: 7.2 };
@@ -2357,7 +2774,6 @@ function PlanSvg({
   const dimBaseY = Math.min(87.4, bottomY + dimensionOffsets.bottom);
   const secondaryDimY = Math.min(88.5, dimBaseY + dimensionOffsets.secondary);
   const rafterDimY = Math.min(88.9, dimBaseY + dimensionOffsets.tertiary);
-
   const yTopInner = y + topFrameW;
   const yBottomInner = y + aH - gutterW;
   const overhangFrameDepth = isHipCorner ? bH : aH;
@@ -2383,11 +2799,9 @@ function PlanSvg({
         </pattern>
       </defs>
 
-      {showDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-plan" /> : null}
-
-      {showDebugOverlays && fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-plan" /> : null}
-
-      {showDebugOverlays && annotatedBoundsOutline ? (
+      {effectiveShowDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-plan" /> : null}
+      {effectiveShowDebugOverlays && fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-plan" /> : null}
+      {effectiveShowDebugOverlays && annotatedBoundsOutline ? (
         <DebugOutline
           rect={{
             x: annotatedBoundsOutline.minX,
@@ -2399,8 +2813,7 @@ function PlanSvg({
           marker="bounds-plan"
         />
       ) : null}
-
-      {showDebugOverlays && debugMetrics && outerFieldOutline ? (
+      {effectiveShowDebugOverlays && debugMetrics && outerFieldOutline ? (
         <g className={styles.moduleDebugStats} aria-hidden="true">
           <text x={outerFieldOutline.x + 1.2} y={outerFieldOutline.y + 1.6} className={styles.moduleDebugStatsText}>
             {`req ${debugMetrics.requestedScaleLabel} -> ${debugMetrics.appliedScaleLabel}`}
@@ -2422,189 +2835,210 @@ function PlanSvg({
         </g>
       ) : null}
 
-      <rect x={houseLeftX} y={houseTopY} width={houseRightX - houseLeftX} height={houseBottomY - houseTopY} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} />
-      <text x={houseLabelX} y={houseLabelY} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
-        House side
-      </text>
-
-      <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} />
-      {!isHipCorner ? (
-        <>
-          <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanPrimaryZone} />
-          <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanPrimaryZone} />
-          <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
-          <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
-          <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
-          <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + topFrameW} className={styles.modulePlanMemberEdge} />
-          <line x1={x + sideFrameW} y1={y + aH - gutterW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-          <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-          <line x1={x + aW - sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-        </>
-      ) : (
-        <>
-          <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
-          {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanMemberEdge} /> : null}
-        </>
-      )}
-
-      {model.boxPerimeterEnabled ? <polygon points={toPointsAttr(insetPoints)} className={styles.modulePlanBoxInset} /> : null}
-
-      {hasFullLengthRidge && ridgeBandWidth > 0 ? (
-        <rect x={ridgeBandX} y={ridgeBandY} width={ridgeBandWidth} height={ridgeBandW} className={styles.modulePlanRidgeBand} />
-      ) : null}
-
-      {model.roofType === 'hip' ? (
-        <>
-          <line x1={hipRidgeStartX} y1={gableMidY} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanRidge} />
-          <line x1={x} y1={y} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
-          <line x1={x + aW} y1={y} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
-          <line x1={x} y1={y + aH} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
-          <line x1={x + aW} y1={y + aH} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
-        </>
-      ) : null}
-
-      {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
-
-      {interiorRafterXsA.map((rx) => (
-        <rect
-          key={`rafter_a_${rx.toFixed(3)}`}
-          x={rx - rafterW / 2}
-          y={yTopInner}
-          width={rafterW}
-          height={Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner)}
-          className={styles.modulePlanRafter}
-        />
-      ))}
-
-      {isHipCorner
-        ? interiorRafterXsB.map((rx) => (
-            <rect
-              key={`rafter_b_${rx.toFixed(3)}`}
-              x={rx - rafterW / 2}
-              y={splitY + topFrameW}
-              width={rafterW}
-              height={Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))}
-              className={styles.modulePlanRafter}
-            />
-          ))
-        : null}
-
-      {model.houseConnectionType === 'soffit' && soffitXs.length > 0 ? (
-        <>
-          <line x1={soffitXs[0]} y1={y - 1.2} x2={soffitXs[soffitXs.length - 1]} y2={y - 1.2} className={styles.modulePlanSoffitGuide} />
-          {soffitXs.map((sx) => (
-            <line key={`bracket_${sx.toFixed(3)}`} x1={sx} y1={y - 2.3} x2={sx} y2={y + 0.1} className={styles.modulePlanSoffitBracket} />
-          ))}
-        </>
-      ) : null}
-
-      {model.overhangEnabled && overhangDepth > 0 ? <rect x={overhangX} y={overhangY} width={overhangWidth} height={overhangDepth} className={styles.modulePlanOverhangZone} /> : null}
-
-      {model.boxPerimeterEnabled ? (
-        <>
-          <line x1={centerX} y1={y + 2.8} x2={centerX} y2={(isHipCorner ? bottomY : y + aH) - 2.8} className={styles.modulePlanInternalAngle} />
-          <text x={centerX + 2.5} y={centerY + 0.5} className={styles.modulePlanAngleText}>
-            internal roof angle
+      <g transform={planRotationTransform}>
+        {showHouseFootprint ? <polygon points={toPointsAttr(housePolygon)} fill={`url(#${hatchId})`} className={styles.moduleHouseHatch} /> : null}
+        {showHouseFootprint ? (
+          <text x={houseLabel.x} y={houseLabel.y} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
+            House side
           </text>
-        </>
-      ) : null}
-
-      <line x1={fallX} y1={fallTop} x2={fallX} y2={fallBottom} className={styles.moduleFallLine} />
-      {isGableLike ? (
-        <>
-          <ArrowHead x={fallX} y={fallTop} direction="up" presentation={presentation} />
-          <ArrowHead x={fallX} y={fallBottom} direction="down" presentation={presentation} />
-          <text x={fallLabelX} y={fallLabelY} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
-            fall both sides
-          </text>
-        </>
-      ) : (
-        <>
-          <ArrowHead
-            x={fallX}
-            y={model.slopeDirection === 'toward_house' ? fallTop : fallBottom}
-            direction={model.slopeDirection === 'toward_house' ? 'up' : 'down'}
-            presentation={presentation}
-          />
-          <text x={fallLabelX} y={fallLabelY} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
-            fall
-          </text>
-        </>
-      )}
-
-      <line x1={x} y1={isHipCorner ? bottomY : y + aH} x2={x} y2={dimBaseY} className={styles.moduleDimWitness} />
-      <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
-      <TickDimension
-        x1={x}
-        y1={dimBaseY}
-        x2={x + aW}
-        y2={dimBaseY}
-        label={formatMetres(model.lengthA)}
-        presentation={presentation}
-        interactiveField={interactiveFields?.['plan:lengthA']}
-      />
-
-      <line x1={x} y1={y} x2={x - dimensionOffsets.side} y2={y} className={styles.moduleDimWitness} />
-      <line x1={x} y1={y + aH} x2={x - dimensionOffsets.side} y2={y + aH} className={styles.moduleDimWitness} />
-      <TickDimension
-        x1={x - dimensionOffsets.side}
-        y1={y}
-        x2={x - dimensionOffsets.side}
-        y2={y + aH}
-        label={formatMetres(model.spanA)}
-        presentation={presentation}
-        interactiveField={interactiveFields?.['plan:spanA']}
-      />
-
-      {isHipCorner && model.lengthB && model.spanB ? (
-        <>
-          <line x1={x} y1={bottomY} x2={x} y2={secondaryDimY} className={styles.moduleDimWitness} />
-          <line x1={x + bW} y1={bottomY} x2={x + bW} y2={secondaryDimY} className={styles.moduleDimWitness} />
-          <TickDimension
-            x1={x}
-            y1={secondaryDimY}
-            x2={x + bW}
-            y2={secondaryDimY}
-            label={formatMetres(model.lengthB)}
-            presentation={presentation}
-            interactiveField={interactiveFields?.['plan:lengthB']}
-          />
-
-          <line x1={x + bW} y1={splitY} x2={x + bW + dimensionOffsets.hipSide} y2={splitY} className={styles.moduleDimWitness} />
-          <line x1={x + bW} y1={bottomY} x2={x + bW + dimensionOffsets.hipSide} y2={bottomY} className={styles.moduleDimWitness} />
-          <TickDimension
-            x1={x + bW + dimensionOffsets.hipSide}
-            y1={splitY}
-            x2={x + bW + dimensionOffsets.hipSide}
-            y2={bottomY}
-            label={formatMetres(model.spanB)}
-            presentation={presentation}
-            interactiveField={interactiveFields?.['plan:spanB']}
-          />
-        </>
-      ) : null}
-
-      {rafterXsA.length >= 2 ? (() => {
-        const spacingXs = interiorRafterXsA.length >= 2 ? interiorRafterXsA : rafterXsA;
-        const baseIdx = Math.max(0, Math.floor((spacingXs.length - 2) / 2));
-        const d1 = spacingXs[baseIdx]!;
-        const d2 = spacingXs[baseIdx + 1]!;
-        return (
+        ) : null}
+        {model.houseConnectionType === 'facade' ? (
+          <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
+        ) : null}
+        {model.houseConnectionType === 'fascia' ? (
           <>
-            <line x1={d1} y1={isHipCorner ? splitY - gutterW : yBottomInner} x2={d1} y2={rafterDimY} className={styles.moduleDimWitness} />
-            <line x1={d2} y1={isHipCorner ? splitY - gutterW : yBottomInner} x2={d2} y2={rafterDimY} className={styles.moduleDimWitness} />
-            <TickDimension
-              x1={d1}
-              y1={rafterDimY}
-              x2={d2}
-              y2={rafterDimY}
-              label={`${formatMetres(model.rafterSpacingA)} c/c`}
-              textY={rafterDimY - (isSheet ? 1.8 : 1.5)}
-              presentation={presentation}
+            <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
+            <line
+              x1={pointOnAttachmentFrame(footprintFrame, 0, -0.8).x}
+              y1={pointOnAttachmentFrame(footprintFrame, 0, -0.8).y}
+              x2={pointOnAttachmentFrame(footprintFrame, footprintFrame.length, -0.8).x}
+              y2={pointOnAttachmentFrame(footprintFrame, footprintFrame.length, -0.8).y}
+              className={styles.modulePlanFasciaBand}
             />
           </>
-        );
-      })() : null}
+        ) : null}
+
+        <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} />
+        {!isHipCorner ? (
+          <>
+            <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanPrimaryZone} />
+            <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanPrimaryZone} />
+            <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+            <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+            <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
+            <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + topFrameW} className={styles.modulePlanMemberEdge} />
+            <line x1={x + sideFrameW} y1={y + aH - gutterW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+            <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+            <line x1={x + aW - sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+          </>
+        ) : (
+          <>
+            <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
+            {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanMemberEdge} /> : null}
+          </>
+        )}
+
+        {model.boxPerimeterEnabled ? <polygon points={toPointsAttr(insetPoints)} className={styles.modulePlanBoxInset} /> : null}
+        {hasFullLengthRidge && ridgeBandWidth > 0 ? <rect x={ridgeBandX} y={ridgeBandY} width={ridgeBandWidth} height={ridgeBandW} className={styles.modulePlanRidgeBand} /> : null}
+        {model.roofType === 'hip' ? (
+          <>
+            <line x1={hipRidgeStartX} y1={gableMidY} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanRidge} />
+            <line x1={x} y1={y} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
+            <line x1={x + aW} y1={y} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
+            <line x1={x} y1={y + aH} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
+            <line x1={x + aW} y1={y + aH} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
+          </>
+        ) : null}
+        {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
+
+        {interiorRafterXsA.map((rx) => (
+          <rect
+            key={`rafter_a_${rx.toFixed(3)}`}
+            x={rx - rafterW / 2}
+            y={yTopInner}
+            width={rafterW}
+            height={Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner)}
+            className={styles.modulePlanRafter}
+          />
+        ))}
+        {isHipCorner
+          ? interiorRafterXsB.map((rx) => (
+              <rect
+                key={`rafter_b_${rx.toFixed(3)}`}
+                x={rx - rafterW / 2}
+                y={splitY + topFrameW}
+                width={rafterW}
+                height={Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))}
+                className={styles.modulePlanRafter}
+              />
+            ))
+          : null}
+
+        {model.houseConnectionType === 'soffit' && soffitXs.length > 0 ? (
+          <>
+            <line x1={soffitGuideStart.x} y1={soffitGuideStart.y} x2={soffitGuideEnd.x} y2={soffitGuideEnd.y} className={styles.modulePlanSoffitGuide} />
+            {soffitBracketLines.map((line, idx) => (
+              <line
+                key={`bracket_${idx}`}
+                x1={line.start.x}
+                y1={line.start.y}
+                x2={line.end.x}
+                y2={line.end.y}
+                className={styles.modulePlanSoffitBracket}
+              />
+            ))}
+          </>
+        ) : null}
+
+        {model.overhangEnabled && overhangDepth > 0 ? <rect x={overhangX} y={overhangY} width={overhangWidth} height={overhangDepth} className={styles.modulePlanOverhangZone} /> : null}
+        {model.boxPerimeterEnabled ? (
+          <>
+            <line x1={centerX} y1={y + 2.8} x2={centerX} y2={(isHipCorner ? bottomY : y + aH) - 2.8} className={styles.modulePlanInternalAngle} />
+            <text x={centerX + 2.5} y={centerY + 0.5} className={styles.modulePlanAngleText}>
+              internal roof angle
+            </text>
+          </>
+        ) : null}
+
+        <line x1={fallStart.x} y1={fallStart.y} x2={fallEnd.x} y2={fallEnd.y} className={styles.moduleFallLine} />
+        {isGableLike ? (
+          <>
+            <ArrowHead x={fallStart.x} y={fallStart.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up'} presentation={presentation} />
+            <ArrowHead x={fallEnd.x} y={fallEnd.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down'} presentation={presentation} />
+            <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
+              fall both sides
+            </text>
+          </>
+        ) : (
+          <>
+            <ArrowHead
+              x={model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x}
+              y={model.slopeDirection === 'toward_house' ? fallStart.y : fallEnd.y}
+              direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : model.slopeDirection === 'toward_house' ? 'up' : 'down'}
+              presentation={presentation}
+            />
+            <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
+              fall
+            </text>
+          </>
+        )}
+
+        <line x1={x} y1={isHipCorner ? bottomY : y + aH} x2={x} y2={dimBaseY} className={styles.moduleDimWitness} />
+        <line x1={x + aW} y1={isHipCorner ? splitY : y + aH} x2={x + aW} y2={dimBaseY} className={styles.moduleDimWitness} />
+        <TickDimension
+          x1={x}
+          y1={dimBaseY}
+          x2={x + aW}
+          y2={dimBaseY}
+          label={formatMetres(model.lengthA)}
+          presentation={presentation}
+          interactiveField={interactiveFields?.['plan:lengthA']}
+        />
+
+        <line x1={x} y1={y} x2={x - dimensionOffsets.side} y2={y} className={styles.moduleDimWitness} />
+        <line x1={x} y1={y + aH} x2={x - dimensionOffsets.side} y2={y + aH} className={styles.moduleDimWitness} />
+        <TickDimension
+          x1={x - dimensionOffsets.side}
+          y1={y}
+          x2={x - dimensionOffsets.side}
+          y2={y + aH}
+          label={formatMetres(model.spanA)}
+          presentation={presentation}
+          interactiveField={interactiveFields?.['plan:spanA']}
+        />
+
+        {isHipCorner && model.lengthB && model.spanB ? (
+          <>
+            <line x1={x} y1={bottomY} x2={x} y2={secondaryDimY} className={styles.moduleDimWitness} />
+            <line x1={x + bW} y1={bottomY} x2={x + bW} y2={secondaryDimY} className={styles.moduleDimWitness} />
+            <TickDimension
+              x1={x}
+              y1={secondaryDimY}
+              x2={x + bW}
+              y2={secondaryDimY}
+              label={formatMetres(model.lengthB)}
+              presentation={presentation}
+              interactiveField={interactiveFields?.['plan:lengthB']}
+            />
+
+            <line x1={x + bW} y1={splitY} x2={x + bW + dimensionOffsets.hipSide} y2={splitY} className={styles.moduleDimWitness} />
+            <line x1={x + bW} y1={bottomY} x2={x + bW + dimensionOffsets.hipSide} y2={bottomY} className={styles.moduleDimWitness} />
+            <TickDimension
+              x1={x + bW + dimensionOffsets.hipSide}
+              y1={splitY}
+              x2={x + bW + dimensionOffsets.hipSide}
+              y2={bottomY}
+              label={formatMetres(model.spanB)}
+              presentation={presentation}
+              interactiveField={interactiveFields?.['plan:spanB']}
+            />
+          </>
+        ) : null}
+
+        {rafterXsA.length >= 2
+          ? (() => {
+              const spacingXs = interiorRafterXsA.length >= 2 ? interiorRafterXsA : rafterXsA;
+              const baseIdx = Math.max(0, Math.floor((spacingXs.length - 2) / 2));
+              const d1 = spacingXs[baseIdx]!;
+              const d2 = spacingXs[baseIdx + 1]!;
+              return (
+                <>
+                  <line x1={d1} y1={isHipCorner ? splitY - gutterW : yBottomInner} x2={d1} y2={rafterDimY} className={styles.moduleDimWitness} />
+                  <line x1={d2} y1={isHipCorner ? splitY - gutterW : yBottomInner} x2={d2} y2={rafterDimY} className={styles.moduleDimWitness} />
+                  <TickDimension
+                    x1={d1}
+                    y1={rafterDimY}
+                    x2={d2}
+                    y2={rafterDimY}
+                    label={`${formatMetres(model.rafterSpacingA)} c/c`}
+                    textY={rafterDimY - (isSheet ? 1.8 : 1.5)}
+                    presentation={presentation}
+                  />
+                </>
+              );
+            })()
+          : null}
+      </g>
     </svg>
   );
 }
@@ -2907,6 +3341,22 @@ function SectionSvg({
         height={leftEaveDepth}
         className={styles.moduleSectionPrimaryBeam}
       />
+      {model.houseConnectionType === 'facade' ? (
+        <line x1={ledgerX - 1.1} y1={yHouseUnder - 2.2} x2={ledgerX - 1.1} y2={yGround} className={styles.moduleSectionHouseWall} />
+      ) : null}
+      {model.houseConnectionType === 'fascia' ? (
+        <>
+          <line x1={ledgerX - 1.1} y1={yHouseUnder - 2.2} x2={ledgerX - 1.1} y2={yGround} className={styles.moduleSectionHouseWall} />
+          <line x1={ledgerX - 1.1} y1={ledgerY - 0.9} x2={ledgerX + leftEaveWidth} y2={ledgerY - 0.9} className={styles.moduleSectionFasciaBand} />
+        </>
+      ) : null}
+      {model.houseConnectionType === 'soffit' ? (
+        <>
+          <line x1={ledgerX - 0.25} y1={ledgerY - 1.25} x2={ledgerX + leftEaveWidth} y2={ledgerY - 1.25} className={styles.moduleSectionConnection} />
+          <line x1={ledgerX + leftEaveWidth * 0.25} y1={ledgerY - 1.95} x2={ledgerX + leftEaveWidth * 0.25} y2={ledgerY - 0.15} className={styles.moduleSectionSoffitBracket} />
+          <line x1={ledgerX + leftEaveWidth * 0.75} y1={ledgerY - 1.95} x2={ledgerX + leftEaveWidth * 0.75} y2={ledgerY - 0.15} className={styles.moduleSectionSoffitBracket} />
+        </>
+      ) : null}
       {model.sectionKind === 'mono' && overhangM > 0 ? (
         <rect x={xSupport - supportCapWidth / 2} y={supportCapTopY} width={supportCapWidth} height={supportCapDepth} className={styles.moduleSectionPrimaryBeam} />
       ) : model.sectionKind === 'gable' ? (

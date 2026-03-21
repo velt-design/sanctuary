@@ -140,6 +140,8 @@ describe('buildEstimateDrawingModules', () => {
 
     expect(modules).toHaveLength(1);
     expect(modules[0]?.input.pergolaStyle).toBe('pitched');
+    expect(modules[0]?.planModel?.attachmentSide).toBe('rear');
+    expect(modules[0]?.planModel?.houseFootprintPreset).toBe('straight');
     expect(modules[0]?.planModel).not.toBeNull();
     expect(modules[0]?.sectionModel).not.toBeNull();
   });

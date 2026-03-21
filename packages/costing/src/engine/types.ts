@@ -24,6 +24,7 @@ export type GutterAssemblyMode = 'integrated' | 'separate' | 'none';
 export type SlopeDirection = 'away_from_house' | 'toward_house';
 
 export type HouseConnectionType = 'soffit' | 'fascia' | 'facade' | 'none';
+export type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 
 export type PostConnectionType =
   | 'pile_1m'
@@ -171,6 +172,7 @@ export type CostInputsV1 = {
 
   post_count?: number;
   house_connection_type: HouseConnectionType;
+  attachment_side?: AttachmentSide;
   post_connection_type: PostConnectionType;
   access: AccessLevel;
   height: HeightCategory;
@@ -237,6 +239,7 @@ export type InputsNormalizedV1 = {
 
   post_count: number;
   house_connection_type: HouseConnectionType;
+  attachment_side: AttachmentSide;
   post_connection_type: PostConnectionType;
   access: AccessLevel;
   height: HeightCategory;
@@ -335,6 +338,7 @@ export type DerivedV1 = {
   rafter_count: number;
   rafter_clear_len_mm?: number;
   rafter_spacing_mm?: number;
+  attachment_length_m?: number;
   bracket_count: number;
   stringer_fixing_count: number;
   bay_count: number;

@@ -373,6 +373,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const postCountRaw = typeof inputs.post_count === 'number' ? inputs.post_count : Number.parseInt(String(inputs.post_count ?? ''), 10);
   const postCount = Number.isFinite(postCountRaw) && postCountRaw > 0 ? Math.round(postCountRaw) : DEFAULT_POST_COUNT;
+  const attachmentSideRaw = String(inputs.attachment_side ?? 'rear').trim().toLowerCase();
+  const attachmentSide =
+    attachmentSideRaw === 'front' || attachmentSideRaw === 'left' || attachmentSideRaw === 'right'
+      ? attachmentSideRaw
+      : 'rear';
 
   const styleNormalized = normalizePergolaStyle(inputs.pergola_style);
   warnings.push(...styleNormalized.warnings);
@@ -500,7 +505,9 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const rafterCountB = rafterB ? rafterB.rafterCount : 0;
   const bayCountB = roofType === 'hip_corner' ? (rafterB ? rafterB.bayCount : 0) : 0;
 
-  const bracketCountA = inputs.house_connection_type === 'soffit' ? Math.ceil(lengthMmA / BRACKET_SPACING_MM_MAX) + 1 : 0;
+  const attachmentLengthMmA =
+    roofType === 'hip_corner' ? lengthMmA : attachmentSide === 'left' || attachmentSide === 'right' ? Math.round(projectionM * 1000) : lengthMmA;
+  const bracketCountA = inputs.house_connection_type === 'soffit' ? Math.ceil(attachmentLengthMmA / BRACKET_SPACING_MM_MAX) + 1 : 0;
   const bracketCountB =
     roofType === 'hip_corner' && inputs.house_connection_type === 'soffit'
       ? hipCornerLengthBM > 0
@@ -510,7 +517,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const stringerFixingCountA =
     inputs.house_connection_type === 'fascia' || inputs.house_connection_type === 'facade'
-      ? Math.ceil(lengthMmA / STRINGER_FIXING_SPACING_MM) + 1
+      ? Math.ceil(attachmentLengthMmA / STRINGER_FIXING_SPACING_MM) + 1
       : 0;
   const stringerFixingCountB =
     roofType === 'hip_corner' && (inputs.house_connection_type === 'fascia' || inputs.house_connection_type === 'facade')
@@ -1249,6 +1256,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
     post_count: postCount,
     house_connection_type: inputs.house_connection_type,
+    attachment_side: attachmentSide,
     post_connection_type: inputs.post_connection_type,
     access: inputs.access,
     height: inputs.height,
@@ -1374,6 +1382,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
           rafter_spacing_mm: rafterSpacingMm,
         }
       : null),
+    attachment_length_m: roofType === 'hip_corner' ? lengthM : attachmentLengthMmA / 1000,
     bracket_count: bracketCount,
     stringer_fixing_count: stringerFixingCount,
     bay_count: bayCount,

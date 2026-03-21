@@ -1,4 +1,5 @@
 import type {
+  AttachmentSide,
   AccessLevel,
   ExtrusionColour,
   GroundCondition,
@@ -14,6 +15,92 @@ import type {
 export type BlindSystemType = 'ZIPTRAK' | 'OMNI';
 export type BlindFabric = 'MESH' | 'PVC' | 'FINE_MESH' | 'NONE';
 export type BlindMotorised = 'NONE' | 'YES';
+export type CalculatorDrawingRotationQuarterTurns = 0 | 1 | 2 | 3;
+export type CalculatorHouseFootprintPreset =
+  | 'straight'
+  | 'l_left'
+  | 'l_right'
+  | 'recess_left'
+  | 'recess_right'
+  | 'u_shape'
+  | 'wrap_left'
+  | 'wrap_right';
+
+export type CalculatorHouseFootprintParams = {
+  bandDepthM: string;
+  returnRunM: string;
+  recessWidthM: string;
+  recessDepthM: string;
+  leftLegRunM: string;
+  rightLegRunM: string;
+  sideRunM: string;
+};
+
+export const DEFAULT_CALCULATOR_ATTACHMENT_SIDE: AttachmentSide = 'rear';
+export const DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS: CalculatorDrawingRotationQuarterTurns = 0;
+export const DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET: CalculatorHouseFootprintPreset = 'straight';
+
+export function makeDefaultHouseFootprintParams(): CalculatorHouseFootprintParams {
+  return {
+    bandDepthM: '1.8',
+    returnRunM: '2.4',
+    recessWidthM: '2.4',
+    recessDepthM: '1.2',
+    leftLegRunM: '2.4',
+    rightLegRunM: '2.4',
+    sideRunM: '2.4',
+  };
+}
+
+export function normalizeAttachmentSide(value: unknown): AttachmentSide {
+  if (value === 'front' || value === 'left' || value === 'right') return value;
+  return DEFAULT_CALCULATOR_ATTACHMENT_SIDE;
+}
+
+export function normalizeDrawingRotationQuarterTurns(value: unknown): CalculatorDrawingRotationQuarterTurns {
+  const parsed = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS;
+  const normalized = ((Math.round(parsed) % 4) + 4) % 4;
+  return normalized as CalculatorDrawingRotationQuarterTurns;
+}
+
+export function normalizeHouseFootprintPreset(value: unknown): CalculatorHouseFootprintPreset {
+  if (
+    value === 'l_left' ||
+    value === 'l_right' ||
+    value === 'recess_left' ||
+    value === 'recess_right' ||
+    value === 'u_shape' ||
+    value === 'wrap_left' ||
+    value === 'wrap_right'
+  ) {
+    return value;
+  }
+  return DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET;
+}
+
+export function normalizeHouseFootprintParams(value: unknown): CalculatorHouseFootprintParams {
+  const source = value && typeof value === 'object' ? (value as Partial<CalculatorHouseFootprintParams>) : {};
+  const defaults = makeDefaultHouseFootprintParams();
+  const pick = (raw: string | undefined, fallback: string) => {
+    const trimmed = raw?.trim();
+    return trimmed ? trimmed : fallback;
+  };
+
+  return {
+    bandDepthM: pick(source.bandDepthM, defaults.bandDepthM),
+    returnRunM: pick(source.returnRunM, defaults.returnRunM),
+    recessWidthM: pick(source.recessWidthM, defaults.recessWidthM),
+    recessDepthM: pick(source.recessDepthM, defaults.recessDepthM),
+    leftLegRunM: pick(source.leftLegRunM, defaults.leftLegRunM),
+    rightLegRunM: pick(source.rightLegRunM, defaults.rightLegRunM),
+    sideRunM: pick(source.sideRunM, defaults.sideRunM),
+  };
+}
+
+export function supportsHouseFootprints(pergolaStyle: PergolaStyleUi): boolean {
+  return pergolaStyle !== 'hip_corner';
+}
 
 export type BlindLineItem = {
   id: string;
@@ -150,6 +237,10 @@ export type CalculatorModuleInputs = {
 
   postCount: string;
   houseConnectionType: HouseConnectionType;
+  attachmentSide?: AttachmentSide;
+  drawingRotationQuarterTurns?: CalculatorDrawingRotationQuarterTurns;
+  houseFootprintPreset?: CalculatorHouseFootprintPreset;
+  houseFootprintParams?: CalculatorHouseFootprintParams;
   postConnectionType: PostConnectionType;
   ground: GroundCondition;
 
@@ -334,6 +425,10 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         timberTrayWidthMm: '500',
         postCount: legacy.postCount,
         houseConnectionType: legacy.houseConnectionType,
+        attachmentSide: DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
+        drawingRotationQuarterTurns: DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
+        houseFootprintPreset: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
+        houseFootprintParams: makeDefaultHouseFootprintParams(),
         postConnectionType: legacy.postConnectionType,
         ground: legacy.ground,
         lengthM: legacy.lengthM,

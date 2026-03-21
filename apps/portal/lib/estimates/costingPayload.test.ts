@@ -83,6 +83,20 @@ describe('costingPayload', () => {
     expect(payload.pergolas).toHaveLength(1);
     expect(payload.pergolas[0]?.modules[0]?.roof_span_m).toBe(7);
     expect(payload.pergolas[0]?.modules[0]?.post_cut_height_m).toBe(2.7);
+    expect(payload.pergolas[0]?.modules[0]?.attachment_side).toBe('rear');
+  });
+
+  it('normalizes attachment side while defaulting freestanding modules back to rear', () => {
+    const inputs = makeInputs();
+    inputs.modules = [
+      { ...inputs.modules[0]!, attachmentSide: 'left' },
+      { ...inputs.modules[0]!, pergolaId: 'pergola-1', houseConnectionType: 'none', attachmentSide: 'right' },
+    ];
+
+    const payload = buildSiteInputsFromCalculatorInputs(inputs);
+
+    expect(payload.pergolas[0]?.modules[0]?.attachment_side).toBe('left');
+    expect(payload.pergolas[0]?.modules[1]?.attachment_side).toBe('rear');
   });
 
   it('preserves non-cost outputs such as drawing overrides when rebuilding an estimate payload', () => {
