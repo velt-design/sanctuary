@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dispatchPointer, installDomGeometryMock, renderIntoDocument, setProjectPageShellWidth } from '../../../../../test/reactHarness';
+import { dispatchKeyboard, dispatchPointer, installDomGeometryMock, renderIntoDocument, setProjectPageShellWidth } from '../../../../../test/reactHarness';
 import ProjectPageFrame from './ProjectPageFrame';
 import { PROJECT_PAGE_HEADER_LAYOUT_STORAGE_KEY } from './useProjectHeaderLayout';
 
@@ -124,7 +124,7 @@ describe('ProjectPageFrame masthead layout', () => {
     rendered.unmount();
   });
 
-  it('renders a collapsed strip and restores the last open mode from click', () => {
+  it('renders a collapsed handle only and restores the last open mode from click', () => {
     window.localStorage.setItem(
       PROJECT_PAGE_HEADER_LAYOUT_STORAGE_KEY,
       JSON.stringify({
@@ -135,13 +135,15 @@ describe('ProjectPageFrame masthead layout', () => {
 
     const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot as any} tab="estimates" />);
     const frame = rendered.container.querySelector('[data-project-page-frame="true"]') as HTMLElement;
-    const collapsedStrip = rendered.container.querySelector('[data-project-masthead-collapsed="true"]') as HTMLButtonElement;
+    const collapsedHandle = rendered.container.querySelector('[data-project-masthead-collapsed="true"]') as HTMLButtonElement;
 
     expect(frame.dataset.projectMastheadMode).toBe('collapsed');
-    expect(collapsedStrip.getAttribute('aria-expanded')).toBe('false');
+    expect(collapsedHandle.getAttribute('aria-expanded')).toBe('false');
+    expect(rendered.container.textContent).not.toContain('Test project');
+    expect(rendered.container.textContent?.toLowerCase()).not.toContain('lead');
     expect(rendered.container.querySelector('[data-testid="mock-pipeline"]')).toBeNull();
 
-    dispatchPointer(collapsedStrip, 'click');
+    dispatchPointer(collapsedHandle, 'click');
 
     expect(frame.dataset.projectMastheadMode).toBe('compact');
     expect(rendered.container.querySelector('[data-project-masthead-collapsed="true"]')).toBeNull();
@@ -191,6 +193,27 @@ describe('ProjectPageFrame masthead layout', () => {
     dispatchPointer(window, 'pointerup', { clientY: 324 });
     expect(frame.dataset.projectMastheadMode).toBe('expanded');
     expect(rendered.container.querySelector('[data-testid="mock-pipeline"]')).not.toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('restores the last open mode from keyboard when collapsed', () => {
+    window.localStorage.setItem(
+      PROJECT_PAGE_HEADER_LAYOUT_STORAGE_KEY,
+      JSON.stringify({
+        mode: 'collapsed',
+        lastOpenMode: 'compact',
+      }),
+    );
+
+    const rendered = renderIntoDocument(<ProjectPageFrame snapshot={snapshot as any} tab="estimates" />);
+    const frame = rendered.container.querySelector('[data-project-page-frame="true"]') as HTMLElement;
+    const collapsedHandle = rendered.container.querySelector('[data-project-masthead-collapsed="true"]') as HTMLButtonElement;
+
+    dispatchKeyboard(collapsedHandle, 'Enter');
+
+    expect(frame.dataset.projectMastheadMode).toBe('compact');
+    expect(rendered.container.querySelector('[data-project-masthead-collapsed="true"]')).toBeNull();
 
     rendered.unmount();
   });
