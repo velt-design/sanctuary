@@ -78,3 +78,15 @@ export type QuoteVersionDetail = QuoteVersion & {
     quoteRef?: string | null;
   };
 };
+
+export type QuoteAcceptanceInvoice = {
+  id: string;
+  invoiceRef: string;
+  sent: boolean;
+  sendError: string | null;
+};
+
+export type QuoteAcceptResult = {
+  quoteVersion: QuoteVersionDetail;
+  invoice: QuoteAcceptanceInvoice | null;
+};

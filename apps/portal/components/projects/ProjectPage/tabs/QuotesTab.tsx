@@ -1028,10 +1028,22 @@ export default function QuotesTab({
   const handleAccept = async () => {
     if (!detail) return;
     try {
-      const updated = await markQuoteAccepted(detail.id);
+      const result = await markQuoteAccepted(detail.id);
+      const updated = result.quoteVersion;
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
-      await refreshQuotes();
-      toast.success('Quote accepted and deposit invoice triggered.');
+      await Promise.allSettled([
+        refreshQuotes(),
+        queryClient.invalidateQueries({ queryKey: qk.invoices.byProject(hostKey, projectId) }),
+      ]);
+      if (result.invoice?.sent) {
+        toast.success(`Quote accepted and invoice ${result.invoice.invoiceRef} sent.`);
+      } else if (result.invoice) {
+        toast.error(
+          `Quote accepted. Invoice ${result.invoice.invoiceRef} was created but not emailed. ${result.invoice.sendError ?? 'Open the Invoices tab to send it manually.'}`,
+        );
+      } else {
+        toast.success('Quote accepted.');
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to mark accepted';
       toast.error(msg);

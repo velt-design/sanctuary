@@ -1,10 +1,12 @@
 import 'server-only';
 
 import { randomUUID } from 'crypto';
+import { appIdFromUuid, uuidFromAppId } from '../supabase/mappers';
 import { generateAcceptToken } from '../quotes/acceptToken';
 import { sendDepositInvoiceEmail } from '../emails/invoice';
 import { supabaseServer } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
+import type { DepositInvoiceSummary } from './types';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
 const MAX_RETRY_ATTEMPTS = 5;
@@ -44,6 +46,10 @@ export type DepositInvoiceRow = {
   pdf_file_id: string | null;
   sent_at: string | null;
   sent_by: string | null;
+  created_at: string;
+  updated_at: string;
+  voided_at: string | null;
+  void_reason: string | null;
 };
 
 type AcceptedQuoteContext = {
@@ -64,6 +70,28 @@ type AcceptedQuoteContext = {
 type RecipientLists = { to: string[]; cc: string[]; bcc: string[] };
 
 type SendAttemptInfo = { attemptNumber: number; firstAttemptAt: string };
+
+type DepositInvoiceSendLogRow = {
+  deposit_invoice_id: string;
+  to_emails: string[];
+  cc_emails: string[];
+  bcc_emails: string[];
+  status: 'SENT' | 'FAILED';
+  error_message: string | null;
+  created_at: string;
+  sent_at: string | null;
+  next_retry_at: string | null;
+  final_failure: boolean;
+};
+
+type DepositInvoiceDeliveryResult = {
+  delivered: boolean;
+  alreadySent: boolean;
+  retryScheduled: boolean;
+  error: string | null;
+  nextRetryAt: string | null;
+  finalFailure: boolean;
+};
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -291,6 +319,58 @@ function mapInvoiceRow(row: any): DepositInvoiceRow {
     pdf_file_id: typeof row?.pdf_file_id === 'string' ? row.pdf_file_id : null,
     sent_at: typeof row?.sent_at === 'string' ? row.sent_at : null,
     sent_by: typeof row?.sent_by === 'string' ? row.sent_by : null,
+    created_at: typeof row?.created_at === 'string' ? row.created_at : nowIso(),
+    updated_at: typeof row?.updated_at === 'string' ? row.updated_at : nowIso(),
+    voided_at: typeof row?.voided_at === 'string' ? row.voided_at : null,
+    void_reason: typeof row?.void_reason === 'string' ? row.void_reason : null,
+  };
+}
+
+function mapSendLogRow(row: any): DepositInvoiceSendLogRow {
+  return {
+    deposit_invoice_id: String(row?.deposit_invoice_id ?? ''),
+    to_emails: normalizeRecipients(Array.isArray(row?.to_emails) ? row.to_emails : []),
+    cc_emails: normalizeRecipients(Array.isArray(row?.cc_emails) ? row.cc_emails : []),
+    bcc_emails: normalizeRecipients(Array.isArray(row?.bcc_emails) ? row.bcc_emails : []),
+    status: String(row?.status ?? '').toUpperCase() === 'SENT' ? 'SENT' : 'FAILED',
+    error_message: typeof row?.error_message === 'string' ? row.error_message : null,
+    created_at: typeof row?.created_at === 'string' ? row.created_at : nowIso(),
+    sent_at: typeof row?.sent_at === 'string' ? row.sent_at : null,
+    next_retry_at: typeof row?.next_retry_at === 'string' ? row.next_retry_at : null,
+    final_failure: Boolean(row?.final_failure),
+  };
+}
+
+function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInvoiceSendLogRow | null): DepositInvoiceSummary {
+  return {
+    id: appIdFromUuid('inv', invoice.id),
+    projectId: appIdFromUuid('proj', invoice.project_id),
+    quoteId: appIdFromUuid('qt', invoice.quote_id),
+    quoteVersionId: appIdFromUuid('qv', invoice.quote_version_id),
+    quoteRef: invoice.quote_ref,
+    quoteVersionNumber: invoice.quote_version_number,
+    invoiceRef: invoice.invoice_ref,
+    status: invoice.status,
+    issueDate: invoice.issue_date,
+    dueDate: invoice.due_date,
+    reference: invoice.reference,
+    customerName: invoice.customer_name,
+    projectName: invoice.project_name,
+    projectAddress: invoice.project_address,
+    depositPercent: invoice.deposit_percent,
+    totalIncGstCents: invoice.total_inc_gst_cents,
+    totalExGstCents: invoice.total_ex_gst_cents,
+    gstCents: invoice.gst_cents,
+    createdAt: invoice.created_at,
+    sentAt: invoice.sent_at,
+    lastDeliveryStatus: latestAttempt?.status ?? 'NOT_SENT',
+    lastDeliveryError: latestAttempt?.error_message ?? null,
+    lastDeliveryAttemptAt: latestAttempt ? latestAttempt.sent_at ?? latestAttempt.created_at : null,
+    nextRetryAt: latestAttempt?.next_retry_at ?? null,
+    finalFailure: latestAttempt?.final_failure ?? false,
+    recipients: latestAttempt
+      ? normalizeRecipients([...latestAttempt.to_emails, ...latestAttempt.cc_emails, ...latestAttempt.bcc_emails])
+      : [],
   };
 }
 
@@ -697,9 +777,31 @@ function clearRetryTimer(invoiceId: string) {
   timers.delete(invoiceId);
 }
 
-async function deliverInvoiceEmail(invoice: DepositInvoiceRow, recipients: RecipientLists, actor: string | null): Promise<void> {
-  if (invoice.status !== 'OPEN') return;
-  if (await hasSuccessfulSend(invoice.id)) return;
+async function deliverInvoiceEmail(
+  invoice: DepositInvoiceRow,
+  recipients: RecipientLists,
+  actor: string | null,
+): Promise<DepositInvoiceDeliveryResult> {
+  if (invoice.status !== 'OPEN') {
+    return {
+      delivered: false,
+      alreadySent: false,
+      retryScheduled: false,
+      error: null,
+      nextRetryAt: null,
+      finalFailure: false,
+    };
+  }
+  if (await hasSuccessfulSend(invoice.id)) {
+    return {
+      delivered: true,
+      alreadySent: true,
+      retryScheduled: false,
+      error: null,
+      nextRetryAt: null,
+      finalFailure: false,
+    };
+  }
 
   const attempt = await latestSendAttempt(invoice.id);
   const sentAtIso = nowIso();
@@ -778,6 +880,14 @@ async function deliverInvoiceEmail(invoice: DepositInvoiceRow, recipients: Recip
         to: recipients.to,
       },
     });
+    return {
+      delivered: true,
+      alreadySent: false,
+      retryScheduled: false,
+      error: null,
+      nextRetryAt: null,
+      finalFailure: false,
+    };
   } catch (error) {
     const message = errorMessage(error, 'Failed to send deposit invoice email');
     const retry = computeRetry(attempt.attemptNumber, attempt.firstAttemptAt);
@@ -815,10 +925,24 @@ async function deliverInvoiceEmail(invoice: DepositInvoiceRow, recipients: Recip
 
     if (retry.nextRetryAt && !retry.finalFailure) {
       scheduleRetryTimer(invoice.id, retry.nextRetryAt, actor);
-      return;
+      return {
+        delivered: false,
+        alreadySent: false,
+        retryScheduled: true,
+        error: message,
+        nextRetryAt: retry.nextRetryAt,
+        finalFailure: false,
+      };
     }
 
-    throw new Error(message);
+    return {
+      delivered: false,
+      alreadySent: false,
+      retryScheduled: false,
+      error: message,
+      nextRetryAt: null,
+      finalFailure: retry.finalFailure,
+    };
   }
 }
 
@@ -862,14 +986,13 @@ export async function ensureDepositInvoiceForAcceptedQuote(params: {
   await clearInvoicePaidManualCheck(context.projectUuid);
 
   const recipients = await loadRecipients(context.quoteVersionUuid, context.contactEmail);
-
-  try {
-    await deliverInvoiceEmail(invoice, recipients, params.actor);
-    return { invoice, sent: true, sendError: null };
-  } catch (error) {
-    const message = errorMessage(error, 'Failed to send deposit invoice');
-    return { invoice, sent: false, sendError: message };
-  }
+  const delivery = await deliverInvoiceEmail(invoice, recipients, params.actor);
+  if (delivery.delivered) return { invoice, sent: true, sendError: null };
+  return {
+    invoice,
+    sent: false,
+    sendError: delivery.error ?? 'Deposit invoice was created but not sent',
+  };
 }
 
 export async function retryInvoiceDelivery(invoiceUuid: string, actor: string | null): Promise<void> {
@@ -888,6 +1011,73 @@ export async function retryInvoiceDelivery(invoiceUuid: string, actor: string | 
 
   const recipients = await loadRecipients(invoice.quote_version_id, context.contactEmail);
   await deliverInvoiceEmail(invoice, recipients, actor);
+}
+
+export async function listDepositInvoicesForProject(projectId: string): Promise<DepositInvoiceSummary[]> {
+  const projectUuid = uuidFromAppId(projectId, 'proj');
+
+  const [invoiceRes, logRes] = await Promise.all([
+    supabaseServer
+      .from('deposit_invoices')
+      .select('*')
+      .eq('project_id', projectUuid)
+      .order('created_at', { ascending: false }),
+    supabaseServer
+      .from('deposit_invoice_send_logs')
+      .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
+      .eq('project_id', projectUuid)
+      .order('created_at', { ascending: false }),
+  ]);
+
+  if (invoiceRes.error) throw new Error(errorMessage(invoiceRes.error, 'Failed to load invoices'));
+  if (logRes.error && !missingTableError(logRes.error)) {
+    throw new Error(errorMessage(logRes.error, 'Failed to load invoice send logs'));
+  }
+
+  const latestByInvoiceId = new Map<string, DepositInvoiceSendLogRow>();
+  for (const row of Array.isArray(logRes.data) ? logRes.data : []) {
+    const mapped = mapSendLogRow(row);
+    if (!mapped.deposit_invoice_id || latestByInvoiceId.has(mapped.deposit_invoice_id)) continue;
+    latestByInvoiceId.set(mapped.deposit_invoice_id, mapped);
+  }
+
+  return (Array.isArray(invoiceRes.data) ? invoiceRes.data : []).map((row) => {
+    const invoice = mapInvoiceRow(row);
+    return mapInvoiceSummary(invoice, latestByInvoiceId.get(invoice.id) ?? null);
+  });
+}
+
+export async function sendDepositInvoiceNow(invoiceId: string, actor: string | null): Promise<DepositInvoiceSummary> {
+  const invoiceUuid = uuidFromAppId(invoiceId, 'inv');
+  const invoice = await loadInvoiceById(invoiceUuid);
+  if (!invoice) throw new Error('Invoice not found');
+  if (invoice.status !== 'OPEN') throw new Error('Only open invoices can be sent');
+
+  const context = await loadAcceptedQuoteContext(invoice.quote_version_id);
+  if (!context) throw new Error('Accepted quote context not found');
+
+  const recipients = await loadRecipients(invoice.quote_version_id, context.contactEmail);
+  const delivery = await deliverInvoiceEmail(invoice, recipients, actor);
+  if (!delivery.delivered) {
+    throw new Error(delivery.error ?? 'Invoice was created but email delivery did not complete');
+  }
+
+  const refreshed = await loadInvoiceById(invoiceUuid);
+  if (!refreshed) throw new Error('Invoice not found after send');
+
+  const latest = await supabaseServer
+    .from('deposit_invoice_send_logs')
+    .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
+    .eq('deposit_invoice_id', invoiceUuid)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latest.error && !missingTableError(latest.error)) {
+    throw new Error(errorMessage(latest.error, 'Failed to load invoice send status'));
+  }
+
+  return mapInvoiceSummary(refreshed, latest.data ? mapSendLogRow(latest.data) : null);
 }
 
 export async function voidOpenDepositInvoiceForQuote(params: {

@@ -27,6 +27,9 @@ export const qk = {
     versionsByProject: (host: string, projectId: string) => ['quotes', host, 'versionsByProject', projectId] as const,
     detail: (host: string, quoteVersionId: string) => ['quotes', host, 'detail', quoteVersionId] as const,
   },
+  invoices: {
+    byProject: (host: string, projectId: string) => ['invoices', host, 'byProject', projectId] as const,
+  },
   automation: {
     tasks: (host: string, projectId: string) => ['automation', host, 'tasks', projectId] as const,
     designTicket: (host: string, projectId: string) => ['automation', host, 'designTicket', projectId] as const,

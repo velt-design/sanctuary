@@ -5,12 +5,14 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import EmailsTab from './tabs/EmailsTab';
 import EstimatesTab from './tabs/EstimatesTab';
+import InvoicesTab from './tabs/InvoicesTab';
 import JobPacksTab from './tabs/JobPacksTab';
 import PlaceholderTab from './tabs/PlaceholderTab';
 import QuotesTab from './tabs/QuotesTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
+import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -18,6 +20,7 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 const BASE_TABS = [
   { key: 'estimates', label: 'Designs' },
   { key: 'quotes', label: 'Quotes' },
+  { key: 'invoices', label: 'Invoices' },
   { key: 'job-packs', label: 'Job Packs' },
   { key: 'emails', label: 'Emails' },
   { key: 'files', label: 'Files' },
@@ -102,6 +105,10 @@ export default function ProjectMainTabs({
       void queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId));
       return;
     }
+    if (tabKey === 'invoices') {
+      void queryClient.prefetchQuery(depositInvoicesByProjectQueryOptions(hostKey, projectId));
+      return;
+    }
     if (tabKey === 'job-packs') {
       void queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId));
     }
@@ -117,6 +124,7 @@ export default function ProjectMainTabs({
       await Promise.allSettled([
         queryClient.prefetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId)),
         queryClient.prefetchQuery(quoteVersionsByProjectQueryOptions(hostKey, projectId)),
+        queryClient.prefetchQuery(depositInvoicesByProjectQueryOptions(hostKey, projectId)),
       ]);
     };
 
@@ -191,6 +199,7 @@ export default function ProjectMainTabs({
         {activeTab === 'estimates' ? (
           <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} />
         ) : null}
+        {activeTab === 'invoices' ? <InvoicesTab projectId={snapshot.project.id} /> : null}
         {activeTab === 'quotes' ? (
           <QuotesTab
             projectId={snapshot.project.id}

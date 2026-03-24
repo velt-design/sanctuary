@@ -5,7 +5,7 @@ import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { buildVersionLabelMap } from '@/lib/estimates/server';
 import type { Estimate } from '@/lib/types/estimate';
-import type { QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion, QuoteVersionDetail } from './types';
+import type { QuoteAcceptResult, QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion, QuoteVersionDetail } from './types';
 import {
   DEFAULT_QUOTE_INTRO,
   DEFAULT_QUOTE_TERMS,
@@ -1161,7 +1161,7 @@ export async function insertSendLog(params: {
   return String(res.data?.id ?? '');
 }
 
-export async function markQuoteAccepted(quoteVersionId: string, actor: string | null): Promise<QuoteVersionDetail> {
+export async function markQuoteAccepted(quoteVersionId: string, actor: string | null): Promise<QuoteAcceptResult> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
   const versionRes = await supabaseServer
     .from('quote_versions')
@@ -1193,7 +1193,7 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   if (projectUuid) {
     await insertAuditEvent({ projectId: projectUuid, type: 'quote.accepted', payload: { quoteVersionId: quoteVersionUuid } });
   }
-  await ensureDepositInvoiceForAcceptedQuote({ quoteVersionUuid, actor });
+  const invoiceResult = await ensureDepositInvoiceForAcceptedQuote({ quoteVersionUuid, actor });
 
   let updated = await getQuoteVersionDetail(quoteVersionId);
   if (!updated) throw new Error('Failed to load quote');
@@ -1203,7 +1203,15 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   } catch (error) {
     console.error('[quote_artifacts] failed to refresh after accept', { quoteVersionId: updated.id, error });
   }
-  return updated;
+  return {
+    quoteVersion: updated,
+    invoice: {
+      id: appIdFromUuid('inv', invoiceResult.invoice.id),
+      invoiceRef: invoiceResult.invoice.invoice_ref,
+      sent: invoiceResult.sent,
+      sendError: invoiceResult.sendError,
+    },
+  };
 }
 
 export async function markQuoteDeclined(quoteVersionId: string, actor: string | null): Promise<QuoteVersionDetail> {
