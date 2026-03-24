@@ -14,8 +14,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ quoteVersionI
   const actor = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
 
   try {
-    const quoteVersion = await markQuoteAccepted(id, actor);
-    return jsonOk({ quoteVersion });
+    const result = await markQuoteAccepted(id, actor);
+    return jsonOk(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to mark accepted';
     return jsonError(msg, 500);

@@ -1,5 +1,5 @@
 import { ApiError, apiJson } from '@/lib/repo/apiClient';
-import type { QuoteVersion, QuoteVersionDetail } from './types';
+import type { QuoteAcceptResult, QuoteVersion, QuoteVersionDetail } from './types';
 
 type QuoteSendPayload = {
   to: string[];
@@ -205,12 +205,12 @@ export async function reviseQuote(quoteVersionId: string): Promise<QuoteVersionD
   return res.quoteVersion;
 }
 
-export async function markQuoteAccepted(quoteVersionId: string): Promise<QuoteVersionDetail> {
-  const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/accept`, {
+export async function markQuoteAccepted(quoteVersionId: string): Promise<QuoteAcceptResult> {
+  const res = await apiJson<QuoteAcceptResult>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/accept`, {
     method: 'POST',
   });
   if (!res.quoteVersion) throw new Error('Failed to mark accepted');
-  return res.quoteVersion;
+  return res;
 }
 
 export async function markQuoteDeclined(quoteVersionId: string): Promise<QuoteVersionDetail> {
