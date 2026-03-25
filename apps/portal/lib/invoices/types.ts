@@ -31,3 +31,10 @@ export type DepositInvoiceSummary = {
   recipients: string[];
 };
 
+export type QuoteInvoiceCreateResult = {
+  invoice: DepositInvoiceSummary;
+  created: boolean;
+  sent: boolean;
+  alreadySent: boolean;
+  sendError: string | null;
+};

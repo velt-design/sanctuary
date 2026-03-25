@@ -119,6 +119,21 @@ function parseDateOnly(dateOnly: string): Date | null {
   return parsed;
 }
 
+function normalizeDateOnlyInput(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) throw new Error('Due date must be YYYY-MM-DD');
+  if (!parseDateOnly(trimmed)) throw new Error('Due date is invalid');
+  return trimmed;
+}
+
+function normalizeOptionalText(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed || null;
+}
+
 function parsePercent(value: unknown): number {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
   if (!Number.isFinite(n)) return 50;
@@ -481,16 +496,27 @@ async function allocateInvoiceRef(): Promise<string> {
   return invoiceRef;
 }
 
-async function createOpenInvoice(context: AcceptedQuoteContext, actor: string | null): Promise<DepositInvoiceRow> {
+async function createOpenInvoice(
+  context: AcceptedQuoteContext,
+  actor: string | null,
+  overrides?: {
+    depositPercent?: number;
+    dueDate?: string | null;
+    reference?: string | null;
+  },
+): Promise<{ invoice: DepositInvoiceRow; created: boolean }> {
   const existing = await loadOpenInvoiceByQuote(context.quoteUuid);
-  if (existing) return existing;
+  if (existing) return { invoice: existing, created: false };
 
   const invoiceRef = await allocateInvoiceRef();
-  const amount = computeDepositAmounts(context.quoteTotalIncGstCents, context.depositPercent);
+  const depositPercent = overrides?.depositPercent === undefined ? context.depositPercent : parsePercent(overrides.depositPercent);
+  const amount = computeDepositAmounts(context.quoteTotalIncGstCents, depositPercent);
 
   const issueDate = toDateOnly(nowIso());
-  const dueDate = addDaysDateOnly(issueDate, 7);
-  const reference = `Deposit for Quote ${context.quoteRef}${context.projectName ? ` - ${context.projectName}` : ''}`;
+  const dueDate = normalizeDateOnlyInput(overrides?.dueDate) ?? addDaysDateOnly(issueDate, 7);
+  const reference =
+    normalizeOptionalText(overrides?.reference) ??
+    `Deposit for Quote ${context.quoteRef}${context.projectName ? ` - ${context.projectName}` : ''}`;
 
   const insertRes = await supabaseServer
     .from('deposit_invoices')
@@ -522,7 +548,7 @@ async function createOpenInvoice(context: AcceptedQuoteContext, actor: string | 
   if (insertRes.error || !insertRes.data) {
     if (isUniqueViolation(insertRes.error)) {
       const raced = await loadOpenInvoiceByQuote(context.quoteUuid);
-      if (raced) return raced;
+      if (raced) return { invoice: raced, created: false };
     }
     throw new Error(errorMessage(insertRes.error, 'Failed to create deposit invoice'));
   }
@@ -539,7 +565,7 @@ async function createOpenInvoice(context: AcceptedQuoteContext, actor: string | 
     },
   });
 
-  return created;
+  return { invoice: created, created: true };
 }
 
 async function loadRecipients(quoteVersionUuid: string, fallbackEmail: string | null): Promise<RecipientLists> {
@@ -643,6 +669,25 @@ async function latestSendAttempt(invoiceId: string): Promise<SendAttemptInfo> {
     typeof (latest.data as any).first_attempt_at === 'string' ? String((latest.data as any).first_attempt_at) : nowIso();
 
   return { attemptNumber: attempt + 1, firstAttemptAt };
+}
+
+async function loadLatestSendLogForInvoice(invoiceId: string): Promise<DepositInvoiceSendLogRow | null> {
+  const latest = await supabaseServer
+    .from('deposit_invoice_send_logs')
+    .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
+    .eq('deposit_invoice_id', invoiceId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (latest.error || !latest.data) {
+    if (latest.error && !missingTableError(latest.error)) {
+      throw new Error(errorMessage(latest.error, 'Failed to load invoice send status'));
+    }
+    return null;
+  }
+
+  return mapSendLogRow(latest.data);
 }
 
 function computeRetry(attemptNumber: number, firstAttemptAt: string): { nextRetryAt: string | null; finalFailure: boolean } {
@@ -982,7 +1027,7 @@ export async function ensureDepositInvoiceForAcceptedQuote(params: {
   if (!context) throw new Error('Accepted quote context not found');
   if (context.status !== 'ACCEPTED') throw new Error('Quote must be accepted to create a deposit invoice');
 
-  const invoice = await createOpenInvoice(context, params.actor);
+  const { invoice } = await createOpenInvoice(context, params.actor);
   await clearInvoicePaidManualCheck(context.projectUuid);
 
   const recipients = await loadRecipients(context.quoteVersionUuid, context.contactEmail);
@@ -1065,19 +1110,64 @@ export async function sendDepositInvoiceNow(invoiceId: string, actor: string | n
   const refreshed = await loadInvoiceById(invoiceUuid);
   if (!refreshed) throw new Error('Invoice not found after send');
 
-  const latest = await supabaseServer
-    .from('deposit_invoice_send_logs')
-    .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
-    .eq('deposit_invoice_id', invoiceUuid)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  return mapInvoiceSummary(refreshed, await loadLatestSendLogForInvoice(invoiceUuid));
+}
 
-  if (latest.error && !missingTableError(latest.error)) {
-    throw new Error(errorMessage(latest.error, 'Failed to load invoice send status'));
+export async function createDepositInvoiceFromQuote(params: {
+  quoteVersionId: string;
+  actor: string | null;
+  depositPercent?: number;
+  dueDate?: string | null;
+  reference?: string | null;
+  sendNow?: boolean;
+}): Promise<{
+  invoice: DepositInvoiceSummary;
+  created: boolean;
+  sent: boolean;
+  alreadySent: boolean;
+  sendError: string | null;
+}> {
+  const quoteVersionUuid = uuidFromAppId(params.quoteVersionId, 'qv');
+  const context = await loadAcceptedQuoteContext(quoteVersionUuid);
+  if (!context) throw new Error('Quote context not found');
+  if (context.status !== 'SENT' && context.status !== 'ACCEPTED') {
+    throw new Error('Only sent or accepted quotes can create an invoice');
   }
 
-  return mapInvoiceSummary(refreshed, latest.data ? mapSendLogRow(latest.data) : null);
+  const createdInvoice = await createOpenInvoice(context, params.actor, {
+    depositPercent: params.depositPercent,
+    dueDate: params.dueDate,
+    reference: params.reference,
+  });
+
+  if (context.status === 'ACCEPTED') {
+    await clearInvoicePaidManualCheck(context.projectUuid);
+  }
+
+  let sent = false;
+  let alreadySent = false;
+  let sendError: string | null = null;
+
+  if (params.sendNow) {
+    const recipients = await loadRecipients(context.quoteVersionUuid, context.contactEmail);
+    const delivery = await deliverInvoiceEmail(createdInvoice.invoice, recipients, params.actor);
+    sent = delivery.delivered && !delivery.alreadySent;
+    alreadySent = delivery.alreadySent;
+    if (!delivery.delivered) {
+      sendError = delivery.error ?? 'Invoice was created but not sent';
+    }
+  }
+
+  const latest = await loadLatestSendLogForInvoice(createdInvoice.invoice.id);
+  const refreshed = (await loadInvoiceById(createdInvoice.invoice.id)) ?? createdInvoice.invoice;
+
+  return {
+    invoice: mapInvoiceSummary(refreshed, latest),
+    created: createdInvoice.created,
+    sent,
+    alreadySent,
+    sendError,
+  };
 }
 
 export async function voidOpenDepositInvoiceForQuote(params: {

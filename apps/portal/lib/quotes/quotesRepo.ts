@@ -1,4 +1,5 @@
 import { ApiError, apiJson } from '@/lib/repo/apiClient';
+import type { QuoteInvoiceCreateResult } from '@/lib/invoices/types';
 import type { QuoteAcceptResult, QuoteVersion, QuoteVersionDetail } from './types';
 
 type QuoteSendPayload = {
@@ -219,6 +220,23 @@ export async function markQuoteDeclined(quoteVersionId: string): Promise<QuoteVe
   });
   if (!res.quoteVersion) throw new Error('Failed to mark declined');
   return res.quoteVersion;
+}
+
+export async function createQuoteInvoice(
+  quoteVersionId: string,
+  payload: {
+    depositPercent?: number;
+    dueDate?: string | null;
+    reference?: string | null;
+    sendNow?: boolean;
+  },
+): Promise<QuoteInvoiceCreateResult> {
+  const res = await apiJson<QuoteInvoiceCreateResult>(`/api/staff/v1/quotes/${encodeURIComponent(quoteVersionId)}/invoice`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  if (!res.invoice) throw new Error('Failed to create invoice');
+  return res;
 }
 
 export function quotePdfUrl(quoteVersionId: string, opts?: { inline?: boolean }): string {
