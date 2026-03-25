@@ -23,6 +23,7 @@ export type QuoteReadyEmailInput = {
   personal_note_html?: string;
   logo_url?: string;
   reference_id?: string;
+  payment_lines?: string[];
   attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>;
 };
 

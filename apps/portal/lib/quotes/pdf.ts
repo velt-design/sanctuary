@@ -5,6 +5,7 @@ import path from 'node:path';
 import { PDFDocument, rgb, type Color, type PDFImage } from 'pdf-lib';
 import { formatQuoteIntroText, formatQuoteLineDescription, formatQuoteTermsText } from '@sp/quote-format';
 import { BRAND_ACCENT_PDF_RGB } from '@sp/theme';
+import { paymentDetailsLines } from '@/lib/payments/paymentDetails';
 import fontkit from './fontkit';
 import {
   drawDebugOverlay,
@@ -63,6 +64,7 @@ type PdfQuoteViewModel = {
     gst: string;
   };
   terms: string[];
+  paymentDetails: string[];
   footer: string[];
 };
 
@@ -87,6 +89,7 @@ const theme = {
     totalsValue: 10,
     totalsTotal: 12,
     terms: 9.5,
+    payment: 9.5,
     footer: 9,
     client: 12,
     address: 9.5,
@@ -108,6 +111,7 @@ const theme = {
     totalsValue: 12,
     totalsTotal: 14,
     terms: 12,
+    payment: 12,
     footer: 11,
     client: 15,
     address: 12,
@@ -135,6 +139,9 @@ const theme = {
     itemsToTotalsRule: 18,
     ruleToTotalsLabel: 12,
     totalsToTerms: 18,
+    termsToPayment: 18,
+    paymentDividerGap: 10,
+    paymentToFooter: 18,
     termsToFooter: 16,
     totalsRuleGap: 6,
     continuationHeaderGap: 12,
@@ -262,6 +269,7 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
   });
 
   const terms = formatQuoteTermsText(quote.termsText, { sentAt: quote.sentAt });
+  const paymentDetails = paymentDetailsLines('quote');
 
   const footer: string[] = ['sanctuarypergolas.co.nz', 'info@sanctuarypergolas.co.nz'];
 
@@ -288,6 +296,7 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
       gst: formatMoneyFromCents(quote.totals.gstCents),
     },
     terms,
+    paymentDetails,
     footer,
   };
 }
@@ -334,6 +343,7 @@ type QuotePdfLayoutPage = {
   headerWarehouseAddress?: { lines: string[]; xRight: number; y: number };
   tableBounds?: TableBounds | null;
   totalsBounds?: TotalsBounds | null;
+  paymentBlock?: { topY: number; bottomY: number; lineCount: number };
   rules: RuleDrawn[];
 };
 
@@ -447,12 +457,25 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     termsLines.push(...wrapped);
   });
 
+  const paymentLines = vm.paymentDetails;
   const footerLines = vm.footer;
   const footerTopY = footerLines.length
     ? MARGIN_BOTTOM + (footerLines.length - 1) * theme.lineHeights.footer
     : MARGIN_BOTTOM;
 
-  const termsBottomY = footerTopY + theme.spacing.termsToFooter;
+  const paymentBottomY = paymentLines.length
+    ? footerTopY + theme.spacing.paymentToFooter
+    : footerTopY;
+  const paymentTopY = paymentLines.length
+    ? paymentBottomY + theme.lineHeights.payment * Math.max(paymentLines.length - 1, 0)
+    : paymentBottomY;
+  const paymentDividerY = paymentLines.length
+    ? paymentTopY + theme.spacing.paymentDividerGap
+    : paymentTopY;
+
+  const termsBottomY = paymentLines.length
+    ? paymentDividerY + theme.spacing.termsToPayment
+    : footerTopY + theme.spacing.termsToFooter;
   const termsTopY = termsLines.length
     ? termsBottomY + theme.lineHeights.section + theme.spacing.sectionToHeader + theme.lineHeights.terms * Math.max(termsLines.length - 1, 0)
     : termsBottomY;
@@ -860,6 +883,40 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     return y - theme.lineHeights.footer;
   };
 
+  const drawPaymentBlock = () => {
+    if (!paymentLines.length) return null;
+
+    page.drawLine({
+      start: { x: CONTENT_X0, y: paymentDividerY },
+      end: { x: CONTENT_X1, y: paymentDividerY },
+      thickness: 0.5,
+      color: rgb(0.85, 0.85, 0.85),
+    });
+
+    let y = paymentTopY;
+    for (const line of paymentLines) {
+      drawTextSafe(line, {
+        x: CONTENT_X0,
+        y,
+        size: theme.sizes.payment,
+        font: fontRegular,
+        color: theme.colors.textPrimary,
+      });
+      y -= theme.lineHeights.payment;
+    }
+
+    const layoutPage = currentLayoutPage();
+    if (layoutPage) {
+      layoutPage.paymentBlock = {
+        topY: paymentDividerY,
+        bottomY: paymentBottomY,
+        lineCount: paymentLines.length,
+      };
+    }
+
+    return paymentBottomY;
+  };
+
   const drawContinuationHeader = () => {
     let y = PAGE_HEIGHT - MARGIN_TOP;
     drawTextSafe('SANCTUARY PERGOLAS', {
@@ -1244,6 +1301,7 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   recordRule('totalsCeiling', { x0: tableX0, x1: tableX1, y: totalsBounds.ceilingRuleY });
   drawTotalsBlock(totalsBounds);
   drawTermsBlock(termsTopY);
+  drawPaymentBlock();
   drawFooterBlock(MARGIN_BOTTOM);
   if (debugBounds) {
     drawDebugOverlay(page, {

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { paymentDetailsLines } from '../payments/paymentDetails';
 
 export type DepositInvoicePdfData = {
   invoiceRef: string;
@@ -16,7 +17,6 @@ export type DepositInvoicePdfData = {
   totalIncGstCents: number;
   totalExGstCents: number;
   gstCents: number;
-  paymentInstructions?: string | null;
 };
 
 const MONEY = new Intl.NumberFormat('en-NZ', {
@@ -57,9 +57,15 @@ export async function generateDepositInvoicePdfBytes(data: DepositInvoicePdfData
 
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const fontBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const paymentLines = paymentDetailsLines('invoice');
 
   const left = 48;
   const right = 547;
+  const footerY = 54;
+  const paymentBottomY = 96;
+  const paymentLineHeight = 13;
+  const paymentTopY = paymentBottomY + paymentLineHeight * Math.max(paymentLines.length - 1, 0);
+  const paymentDividerY = paymentTopY + 12;
   let y = 790;
 
   const draw = (text: string, opts?: { size?: number; bold?: boolean; x?: number; color?: ReturnType<typeof rgb> }) => {
@@ -133,31 +139,24 @@ export async function generateDepositInvoicePdfBytes(data: DepositInvoicePdfData
   const totalWidth = fontBold.widthOfTextAtSize(totalValue, 12);
   page.drawText(totalValue, { x: right - totalWidth, y, size: 12, font: fontBold, color: rgb(0.12, 0.12, 0.12) });
 
-  y -= 34;
-  draw('Payment instructions', { size: 10, bold: true, color: rgb(0.4, 0.4, 0.4) });
-  y -= 14;
+  page.drawLine({
+    start: { x: left, y: paymentDividerY },
+    end: { x: right, y: paymentDividerY },
+    thickness: 1,
+    color: rgb(0.9, 0.9, 0.9),
+  });
 
-  const instructions = (data.paymentInstructions ?? '').trim() ||
-    'Pay by bank transfer using the invoice number as reference. Reply to info@sanctuarypergolas.co.nz if you need account details.';
-
-  const lines = instructions
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  for (const line of lines) {
-    page.drawText(line, { x: left, y, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
-    y -= 13;
-    if (y < 80) break;
+  let paymentY = paymentTopY;
+  for (const line of paymentLines) {
+    page.drawText(line, { x: left, y: paymentY, size: 10, font, color: rgb(0.2, 0.2, 0.2) });
+    paymentY -= paymentLineHeight;
   }
 
-  y = Math.max(y - 16, 54);
-  page.drawLine({ start: { x: left, y }, end: { x: right, y }, thickness: 1, color: rgb(0.9, 0.9, 0.9) });
-  y -= 14;
-  page.drawText('sanctuarypergolas.co.nz', { x: left, y, size: 9, font, color: rgb(0.45, 0.45, 0.45) });
+  page.drawLine({ start: { x: left, y: 68 }, end: { x: right, y: 68 }, thickness: 1, color: rgb(0.9, 0.9, 0.9) });
+  page.drawText('sanctuarypergolas.co.nz', { x: left, y: footerY, size: 9, font, color: rgb(0.45, 0.45, 0.45) });
   const email = 'info@sanctuarypergolas.co.nz';
   const emailWidth = font.widthOfTextAtSize(email, 9);
-  page.drawText(email, { x: right - emailWidth, y, size: 9, font, color: rgb(0.45, 0.45, 0.45) });
+  page.drawText(email, { x: right - emailWidth, y: footerY, size: 9, font, color: rgb(0.45, 0.45, 0.45) });
 
   return pdf.save();
 }

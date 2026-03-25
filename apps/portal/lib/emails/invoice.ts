@@ -17,6 +17,7 @@ export type DepositInvoiceEmailInput = {
   bank_account_name?: string;
   bank_account_number?: string;
   bank_reference?: string;
+  payment_lines?: string[];
   personal_note_html?: string;
   reference_id?: string;
   attachments?: Array<{ filename: string; content: Buffer; contentType?: string }>;

@@ -1,5 +1,6 @@
 import { createHash } from 'crypto';
 import { renderQuoteReadyEmail, type QuoteReadyEmailInput } from '@/lib/emails/quote';
+import { paymentDetailsLines } from '@/lib/payments/paymentDetails';
 import type { QuoteVersionDetail } from './types';
 
 export type QuotePreviewBasePayload = Pick<
@@ -13,6 +14,7 @@ export type QuotePreviewBasePayload = Pick<
   | 'next_step_text'
   | 'logo_url'
   | 'reference_id'
+  | 'payment_lines'
 > & {
   default_subject: string;
 };
@@ -168,6 +170,7 @@ export function buildQuotePreviewBasePayload(params: {
     next_step_text: 'Use the button above to accept the quote and proceed.',
     logo_url: params.logoUrl,
     reference_id: params.detail.reference ?? params.detail.project.quoteRef ?? undefined,
+    payment_lines: paymentDetailsLines('quote'),
     default_subject: quoteDefaultSubject(quoteNumberValue),
   };
 }
@@ -200,6 +203,7 @@ export async function renderQuotePreviewFromBasePayload(
     personal_note_html: personalNoteHtml(note),
     logo_url: base.logo_url,
     reference_id: base.reference_id,
+    payment_lines: base.payment_lines,
   });
 
   return {

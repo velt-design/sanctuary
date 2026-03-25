@@ -107,6 +107,7 @@ describe('quote pdf layout', () => {
 
     expect(layout.pages).toHaveLength(1);
     expect(layout.pages[0]?.totalsBounds).toBeTruthy();
+    expect(layout.pages[0]?.paymentBlock?.lineCount).toBe(4);
   });
 
   it('moves totals onto the final items page for multi-page quotes', async () => {
@@ -123,7 +124,10 @@ describe('quote pdf layout', () => {
 
     expect(layout.pages.length).toBeGreaterThan(1);
     expect(layout.pages[0]?.totalsBounds).toBeFalsy();
+    expect(layout.pages[0]?.paymentBlock).toBeFalsy();
     expect(lastPage?.totalsBounds).toBeTruthy();
     expect(lastPage?.tableBounds).toBeTruthy();
+    expect(lastPage?.paymentBlock?.lineCount).toBe(4);
+    expect((lastPage?.paymentBlock?.topY ?? 0) < (lastPage?.totalsBounds?.belowTotalRuleY ?? 0)).toBe(true);
   });
 });

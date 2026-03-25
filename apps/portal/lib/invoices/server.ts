@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { appIdFromUuid, uuidFromAppId } from '../supabase/mappers';
 import { generateAcceptToken } from '../quotes/acceptToken';
 import { sendDepositInvoiceEmail } from '../emails/invoice';
+import { paymentDetailsLines, paymentDetailsText } from '../payments/paymentDetails';
 import { supabaseServer } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
 import type { DepositInvoiceSummary } from './types';
@@ -251,41 +252,8 @@ function providerMessageId(response: unknown): string | null {
   return typeof id === 'string' && id.trim() ? id.trim() : null;
 }
 
-function paymentInstructions(invoiceRef: string): string {
-  const accountName = process.env.DEPOSIT_BANK_ACCOUNT_NAME?.trim() || '';
-  const accountNumber = process.env.DEPOSIT_BANK_ACCOUNT_NUMBER?.trim() || '';
-  const referencePrefix = process.env.DEPOSIT_BANK_REFERENCE_PREFIX?.trim() || '';
-
-  const lines: string[] = [];
-  lines.push('Please pay by bank transfer using the invoice number as reference.');
-  if (accountName) lines.push(`Account name: ${accountName}`);
-  if (accountNumber) lines.push(`Account number: ${accountNumber}`);
-  if (referencePrefix) lines.push(`Reference: ${referencePrefix} ${invoiceRef}`.trim());
-  lines.push('Questions? Reply to info@sanctuarypergolas.co.nz');
-  return lines.join('\n');
-}
-
-function bankDetailsFromInstructions(value: string | null | undefined): {
-  accountName?: string;
-  accountNumber?: string;
-  reference?: string;
-} {
-  const lines = String(value ?? '')
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  const findValue = (prefix: string): string | undefined => {
-    const line = lines.find((entry) => entry.toLowerCase().startsWith(prefix));
-    if (!line) return undefined;
-    return line.slice(prefix.length).trim() || undefined;
-  };
-
-  return {
-    accountName: findValue('account name:'),
-    accountNumber: findValue('account number:'),
-    reference: findValue('reference:'),
-  };
+function paymentInstructions(): string {
+  return paymentDetailsText('invoice');
 }
 
 function redactToken(value: string | null): string | null {
@@ -539,7 +507,7 @@ async function createOpenInvoice(
       total_inc_gst_cents: amount.totalIncGstCents,
       total_ex_gst_cents: amount.totalExGstCents,
       gst_cents: amount.gstCents,
-      payment_instructions: paymentInstructions(invoiceRef),
+      payment_instructions: paymentInstructions(),
       created_by: actor,
     } as any)
     .select('*')
@@ -623,7 +591,6 @@ async function ensureInvoicePdf(invoice: DepositInvoiceRow, actor: string | null
     totalIncGstCents: invoice.total_inc_gst_cents,
     totalExGstCents: invoice.total_ex_gst_cents,
     gstCents: invoice.gst_cents,
-    paymentInstructions: invoice.payment_instructions,
   });
 
   const filename = depositInvoicePdfFilename(invoice.invoice_ref);
@@ -864,7 +831,6 @@ async function deliverInvoiceEmail(
   const { token, tokenHash } = generateAcceptToken();
   const link = invoiceLink(invoice.id, token);
   const pdf = await ensureInvoicePdf(invoice, actor);
-  const bank = bankDetailsFromInstructions(invoice.payment_instructions);
   const subject = `Deposit invoice - ${invoice.invoice_ref}`;
 
   try {
@@ -881,9 +847,7 @@ async function deliverInvoiceEmail(
       due_date: formatDateForEmail(invoice.due_date),
       project_address: invoice.project_address ?? undefined,
       invoice_link: link,
-      bank_account_name: bank.accountName,
-      bank_account_number: bank.accountNumber,
-      bank_reference: bank.reference,
+      payment_lines: paymentDetailsLines('invoice'),
       reference_id: invoice.reference ?? undefined,
       attachments: [{ filename: pdf.filename, content: pdf.content, contentType: 'application/pdf' }],
     });
