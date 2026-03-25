@@ -11,6 +11,7 @@ import QuotePdfInlinePreview from './QuotePdfInlinePreview';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';
 import type { QuoteLineItem, QuoteStatus, QuoteVersion, QuoteVersionDetail } from '@/lib/quotes/types';
 import {
+  createQuoteInvoice,
   deleteDraftQuoteVersion,
   markQuoteAccepted,
   markQuoteDeclined,
@@ -205,6 +206,16 @@ function formatPercentInput(value: number): string {
   return Math.max(0, Math.min(100, value)).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
 }
 
+function dateInputDaysFromToday(days: number): string {
+  const next = new Date();
+  next.setHours(0, 0, 0, 0);
+  next.setDate(next.getDate() + days);
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, '0');
+  const day = String(next.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function computeLineTotal(item: QuoteLineItem): number {
   const qty = Number.isFinite(item.qty) ? item.qty : 0;
   const unit = Number.isFinite(item.unitPriceIncGstCents) ? item.unitPriceIncGstCents : 0;
@@ -355,6 +366,13 @@ export default function QuotesTab({
   const sendPreviewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [invoiceDepositPercent, setInvoiceDepositPercent] = useState('50');
+  const [invoiceDueDate, setInvoiceDueDate] = useState(dateInputDaysFromToday(7));
+  const [invoiceReference, setInvoiceReference] = useState('');
+  const [invoiceBusy, setInvoiceBusy] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
 
   const [quotePdfPreviewData, setQuotePdfPreviewData] = useState<Uint8Array | null>(null);
   const quotePdfPreviewCacheRef = useRef(new Map<string, Uint8Array>());
@@ -1025,6 +1043,58 @@ export default function QuotesTab({
     }
   };
 
+  const openInvoiceModal = () => {
+    if (!detail) return;
+    setInvoiceDepositPercent(formatPercentInput(detail.depositPercent));
+    setInvoiceDueDate(dateInputDaysFromToday(7));
+    setInvoiceReference(`Deposit for Quote ${detail.quoteRef}${detail.project.name ? ` - ${detail.project.name}` : ''}`);
+    setInvoiceError(null);
+    setInvoiceOpen(true);
+  };
+
+  const closeInvoiceModal = () => {
+    if (invoiceBusy) return;
+    setInvoiceOpen(false);
+    setInvoiceError(null);
+  };
+
+  const handleCreateInvoice = async (sendNow: boolean) => {
+    if (!detail) return;
+    setInvoiceBusy(true);
+    setInvoiceError(null);
+    try {
+      const result = await createQuoteInvoice(detail.id, {
+        depositPercent: parsePercentInput(invoiceDepositPercent),
+        dueDate: invoiceDueDate,
+        reference: invoiceReference,
+        sendNow,
+      });
+      await queryClient.invalidateQueries({ queryKey: qk.invoices.byProject(hostKey, projectId) });
+      setInvoiceOpen(false);
+      if (result.sendError) {
+        toast.error(
+          `${result.created ? 'Invoice created' : 'Existing invoice found'}. ${result.invoice.invoiceRef} was not emailed. ${result.sendError}`,
+        );
+        return;
+      }
+      if (sendNow) {
+        if (result.alreadySent) {
+          toast.success(`Invoice ${result.invoice.invoiceRef} already existed and was already sent.`);
+        } else {
+          toast.success(`${result.created ? 'Invoice created' : 'Existing invoice reused'} and sent: ${result.invoice.invoiceRef}.`);
+        }
+        return;
+      }
+      toast.success(result.created ? `Invoice ${result.invoice.invoiceRef} created.` : `Invoice ${result.invoice.invoiceRef} already exists.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to create invoice';
+      setInvoiceError(msg);
+      toast.error(msg);
+    } finally {
+      setInvoiceBusy(false);
+    }
+  };
+
   const handleAccept = async () => {
     if (!detail) return;
     try {
@@ -1199,6 +1269,11 @@ export default function QuotesTab({
                 {canGenerateJobPack ? (
                   <button type="button" className={legacy.buttonSecondary} onClick={handleGenerateJobPack} disabled={jobPackBusy}>
                     {jobPackBusy ? 'Generating job pack...' : 'Generate Job Pack'}
+                  </button>
+                ) : null}
+                {(detail.status === 'SENT' || detail.status === 'ACCEPTED') ? (
+                  <button type="button" className={legacy.buttonSecondary} onClick={openInvoiceModal}>
+                    Create invoice
                   </button>
                 ) : null}
                 <button type="button" className={legacy.buttonSecondary} onClick={handleRevise}>
@@ -1554,6 +1629,62 @@ export default function QuotesTab({
         </section>
           </>
         )}
+
+        {invoiceOpen ? (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <h4 className={styles.cardTitle}>Create invoice</h4>
+                <button
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={() => closeInvoiceModal()}
+                >
+                  Close
+                </button>
+              </div>
+              <div className={styles.modalBody}>
+                <p className={styles.modalBodyText}>Create a deposit invoice from this quote now, or create it first and send it later from the Invoices tab.</p>
+                <label className={styles.metaLabel} htmlFor="invoiceDepositPercent">Deposit %</label>
+                <input
+                  id="invoiceDepositPercent"
+                  className={styles.metaInput}
+                  inputMode="decimal"
+                  value={invoiceDepositPercent}
+                  onChange={(e) => setInvoiceDepositPercent(normalizePercentInput(e.target.value))}
+                  onBlur={(e) => setInvoiceDepositPercent(formatPercentInput(parsePercentInput(e.target.value)))}
+                />
+                <label className={styles.metaLabel} htmlFor="invoiceDueDate">Due date</label>
+                <input
+                  id="invoiceDueDate"
+                  className={styles.metaInput}
+                  type="date"
+                  value={invoiceDueDate}
+                  onChange={(e) => setInvoiceDueDate(e.target.value)}
+                />
+                <label className={styles.metaLabel} htmlFor="invoiceReference">Reference</label>
+                <input
+                  id="invoiceReference"
+                  className={styles.metaInput}
+                  value={invoiceReference}
+                  onChange={(e) => setInvoiceReference(e.target.value)}
+                />
+                {invoiceError ? <div className={styles.errorText}>{invoiceError}</div> : null}
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={legacy.buttonSecondary} onClick={() => closeInvoiceModal()} disabled={invoiceBusy}>
+                  Cancel
+                </button>
+                <button type="button" className={legacy.buttonSecondary} onClick={() => void handleCreateInvoice(false)} disabled={invoiceBusy}>
+                  {invoiceBusy ? 'Working...' : 'Create only'}
+                </button>
+                <button type="button" className={legacy.button} onClick={() => void handleCreateInvoice(true)} disabled={invoiceBusy}>
+                  {invoiceBusy ? 'Working...' : 'Create & send'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {sendOpen ? (
           <div className={styles.modalOverlay}>
