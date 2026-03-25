@@ -190,6 +190,13 @@
       <strong>Next step:</strong> {{next_step_text}}
     </div>
     {{/if}}
+    {{#if payment_lines}}
+    <div style="font-size:14px; line-height:1.7; color:#111111; margin-top:14px;">
+      {{#each payment_lines}}
+      <div>{{this}}</div>
+      {{/each}}
+    </div>
+    {{/if}}
     <div style="font-size:14px; line-height:1.6; color:#555555; margin-top:14px;">
       Sanctuary Pergolas{{#if reference_id}} · Ref {{reference_id}}{{/if}}
     </div>

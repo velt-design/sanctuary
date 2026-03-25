@@ -1,0 +1,16 @@
+Quote {{quote_number}} ready - view and accept online.
+
+Hi {{name}},
+
+Your quote is ready{{#if project_address}} for {{project_address}}{{/if}}.
+Quote number: {{quote_number}}
+Total investment (incl. GST): {{quote_total_inc_gst}}
+{{#if quote_valid_until}}Valid until: {{quote_valid_until}}
+{{/if}}{{#if quote_accept_link}}View & accept quote: {{quote_accept_link}}
+{{/if}}
+{{#if payment_lines}}
+{{#each payment_lines}}{{this}}
+{{/each}}
+{{/if}}
+Sanctuary Pergolas{{#if reference_id}} - Ref {{reference_id}}{{/if}}
+

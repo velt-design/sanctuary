@@ -4,7 +4,9 @@ import {
   buildQuoteRenderHash,
   isQuotePreviewBasePayload,
   quoteNumber,
+  renderQuotePreviewFromBasePayload,
 } from './renderArtifacts';
+import { paymentDetailsLines } from '@/lib/payments/paymentDetails';
 import type { QuoteVersionDetail } from './types';
 
 function makeDetail(): QuoteVersionDetail {
@@ -71,7 +73,27 @@ describe('quote render artifacts', () => {
     expect(base.default_subject).toBe(`Quote ready - ${quoteNumber(detail)}`);
     expect(base.quote_total_inc_gst).toBe('$1,150.00');
     expect(base.reference_id).toBe('REF-1');
+    expect(base.payment_lines).toEqual(paymentDetailsLines('quote'));
     expect(isQuotePreviewBasePayload(base)).toBe(true);
+  });
+
+  it('renders payment lines into the quote email preview', async () => {
+    const detail = makeDetail();
+    const base = buildQuotePreviewBasePayload({
+      detail,
+      quoteAcceptUrl: 'https://example.com/quote/qv_123?token=preview',
+      expiresAtLabel: '20 Mar 2026',
+      logoUrl: 'https://example.com/logo.png',
+    });
+
+    const rendered = await renderQuotePreviewFromBasePayload(base, {
+      to: ['taylor@example.com'],
+    });
+
+    for (const line of paymentDetailsLines('quote')) {
+      expect(rendered.html).toContain(line);
+      expect(rendered.text).toContain(line);
+    }
   });
 
   it('changes render hash when the quote content changes', () => {
