@@ -44,6 +44,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './EstimatesTab.module.css';
+import CostingAuditPanel from './_components/CostingAuditPanel';
 import EstimateVersionTabs from './_components/EstimateVersionTabs';
 import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
@@ -602,6 +603,7 @@ export default function EstimatesTab({
   const [focusCategory, setFocusCategory] = useState('');
   const [quoteBusy, setQuoteBusy] = useState(false);
   const [requestDesignOpen, setRequestDesignOpen] = useState(false);
+  const [costingAuditOpen, setCostingAuditOpen] = useState(false);
   const [drawingWorkbenchUi, setDrawingWorkbenchUi] = useState(() => createDrawingWorkbenchUiState());
   const [drawingSaveMode, setDrawingSaveMode] = useState<EstimateSaveMode | null>(null);
   const resolvedSelectedId = useResolvedLocalFirstId(selectedId);
@@ -698,6 +700,7 @@ export default function EstimatesTab({
     () => mergeEstimateDrawingDraftIntoSnapshot(selectedDetail?.calculatorSnapshot ?? null, drawingDraft),
     [drawingDraft, selectedDetail?.calculatorSnapshot],
   );
+  const renderDesignWorkspace = renderConfiguratorInShell && !costingAuditOpen;
   const drawingDetail = useMemo(
     () => (selectedDetail && drawingSnapshot ? { ...selectedDetail, calculatorSnapshot: drawingSnapshot } : selectedDetail),
     [drawingSnapshot, selectedDetail],
@@ -820,6 +823,17 @@ export default function EstimatesTab({
   const salesPerson = selectedMeta?.createdBy ?? null;
   const drawingView: ModuleViewsTab = drawingWorkbenchStore.ui.activeView;
   const drawingModuleIndex = drawingWorkbenchStore.derived.activeModuleIndex;
+  const costingAuditModuleOptions = useMemo(() => {
+    const specs = getModuleSpecs(selectedDetail?.calculatorSnapshot ?? null);
+    if (specs.length) {
+      return specs.map((spec, index) => ({
+        index,
+        label: formatModuleLine(spec, index),
+      }));
+    }
+    return selectedDetail ? [{ index: 0, label: 'M1 - Design' }] : [];
+  }, [selectedDetail, selectedDetail?.calculatorSnapshot]);
+  const costingAuditDefaultModuleIndex = costingAuditModuleOptions.some((option) => option.index === drawingModuleIndex) ? drawingModuleIndex : 0;
   const drawingViewportMode = drawingWorkbenchStore.ui.viewportMode;
   const drawingModules = drawingWorkbenchStore.persisted.modules;
   const activeDrawingModule = drawingWorkbenchStore.derived.activeModule;
@@ -1290,7 +1304,7 @@ export default function EstimatesTab({
     selectedDetail,
   ]);
   const configuratorRailPortal =
-    renderConfiguratorInShell && rightRailNode ? createPortal(configuratorRailNode, rightRailNode) : null;
+    renderDesignWorkspace && rightRailNode ? createPortal(configuratorRailNode, rightRailNode) : null;
 
   const saveDrawingDraft = useCallback(async (saveMode: EstimateSaveMode = 'preserve_current') => {
     if (!selectedDetail) return;
@@ -1514,19 +1528,77 @@ export default function EstimatesTab({
   }
 
   return (
-    <div className={`${styles.wrapper} ${renderConfiguratorInShell ? styles.wrapperWorkspace : ''}`}>
+    <div className={`${styles.wrapper} ${renderDesignWorkspace ? styles.wrapperWorkspace : ''}`}>
       {configuratorRailPortal}
-      <div className={`${styles.mainGrid} ${styles.mainGridGeneral} ${renderConfiguratorInShell ? styles.mainGridWorkspace : ''}`}>
+      <div className={`${styles.mainGrid} ${styles.mainGridGeneral} ${renderDesignWorkspace ? styles.mainGridWorkspace : ''}`}>
 
         <div
-          className={`${styles.detailPanel} ${renderConfiguratorInShell ? styles.detailPanelWorkspace : ''}`}
-          data-estimates-workspace-scroll={renderConfiguratorInShell ? 'true' : undefined}
+          className={`${styles.detailPanel} ${renderDesignWorkspace ? styles.detailPanelWorkspace : ''}`}
+          data-estimates-workspace-scroll={renderDesignWorkspace ? 'true' : undefined}
         >
           {!selectedMeta ? <p className={legacy.note}>Select a design to view details.</p> : null}
           {selectedMeta && detailLoading ? <p className={legacy.note}>Loading design details…</p> : null}
 
           {selectedMeta && !detailLoading ? (
-            <div className={`${styles.detailStack} ${renderConfiguratorInShell ? styles.detailStackWorkspace : ''}`}>
+            <div className={`${styles.detailStack} ${renderDesignWorkspace ? styles.detailStackWorkspace : ''}`}>
+              {costingAuditOpen ? (
+                <section className={`${styles.card} ${styles.drawingCard}`}>
+                  <div className={styles.summaryHeader}>
+                    <div className={styles.summaryHeaderPrimary}>
+                      <div className={styles.summaryHeaderTopRow}>
+                        <EstimateVersionTabs
+                          estimates={estimates.map((estimate) => ({
+                            id: estimate.id,
+                            label: estimate.versionLabel,
+                            isActiveDraft: estimate.isActiveDraft,
+                          }))}
+                          activeEstimateId={selectedId}
+                          onSelect={(nextEstimateId) => {
+                            if (nextEstimateId === selectedId) return;
+                            void runWithDrawingDraftGuard(
+                              () => setSelectedId(nextEstimateId),
+                              'You have unsaved drawing changes. Discard them and switch design versions?',
+                            );
+                          }}
+                          onCreateEstimate={() =>
+                            void runWithDrawingDraftGuard(
+                              handleCreateFromTabs,
+                              'You have unsaved drawing changes. Discard them and open the design editor?',
+                            )
+                          }
+                        />
+                        <span className={`${legacy.statusPill} ${estimateStateClass(selectedDetail)}`}>
+                          {estimateStateLabel(selectedDetail)}
+                        </span>
+                      </div>
+                      {createdMeta ? <div className={styles.summaryHeaderMeta}>Created {createdMeta}</div> : null}
+                      {estimateLockMessage ? <div className={styles.summaryHeaderLockMeta}>{estimateLockMessage}</div> : null}
+                    </div>
+                    <div className={styles.summaryHeaderActions}>
+                      <span className={styles.auditTitlePill}>Costing Audit</span>
+                      <button
+                        type="button"
+                        className={styles.auditCloseButton}
+                        onClick={() => setCostingAuditOpen(false)}
+                        aria-label="Close Costing Audit"
+                      >
+                        X
+                      </button>
+                    </div>
+                  </div>
+                  {selectedDetail ? (
+                    <CostingAuditPanel
+                      detail={selectedDetail}
+                      moduleOptions={costingAuditModuleOptions}
+                      defaultModuleIndex={costingAuditDefaultModuleIndex}
+                      drawingDirty={drawingDirty}
+                    />
+                  ) : (
+                    <div className={styles.drawingEmpty}>No design snapshot is available for this costing audit.</div>
+                  )}
+                </section>
+              ) : (
+                <>
               <section className={`${styles.card} ${styles.drawingCard}`}>
                 <div className={styles.summaryHeader}>
                   <div className={styles.summaryHeaderPrimary}>
@@ -1630,7 +1702,7 @@ export default function EstimatesTab({
                   </div>
                 ) : null}
                 <div className={styles.focusSummaryLayout}>
-                  {!renderConfiguratorInShell ? <div className={styles.inlineConfiguratorRail}>{configuratorRailNode}</div> : null}
+                  {!renderDesignWorkspace ? <div className={styles.inlineConfiguratorRail}>{configuratorRailNode}</div> : null}
                   {activeDrawingModule ? (
                     <DrawingWorkbench
                       moduleLabel={drawingModuleLabel}
@@ -1759,6 +1831,14 @@ export default function EstimatesTab({
                   </button>
                   <button
                     type="button"
+                    className={legacy.buttonSecondary}
+                    onClick={() => setCostingAuditOpen(true)}
+                    disabled={!selectedDetail}
+                  >
+                    Costing Audit
+                  </button>
+                  <button
+                    type="button"
                     className={legacy.button}
                     onClick={() =>
                       void runWithDrawingDraftGuard(
@@ -1872,6 +1952,8 @@ export default function EstimatesTab({
                   ) : null}
                 </div>
               </section>
+                </>
+              )}
             </div>
           ) : null}
         </div>

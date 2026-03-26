@@ -406,6 +406,12 @@ function buildModuleCostInputs(
   };
 }
 
+export function buildModuleCostInputsFromCalculatorInputs(inputs: CalculatorInputs, moduleIndex: number): CostInputsV1 | null {
+  const module = inputs.modules[moduleIndex];
+  if (!module) return null;
+  return buildModuleCostInputs(module, inputs.access, inputs.height);
+}
+
 export function buildSiteInputsFromCalculatorInputs(inputs: CalculatorInputs): SiteInputsV1 {
   const pergolas = normalizePergolas(inputs.pergolas);
   const groupedPergolas = pergolas.map((pergola) => ({

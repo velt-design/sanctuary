@@ -21,9 +21,6 @@ export async function POST(req: Request) {
   const session = await getPortalSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const debugEnabled = process.env.NODE_ENV !== 'production' || process.env.COSTING_DEBUG_ENABLED === '1';
-  if (!debugEnabled) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-
   const { searchParams } = new URL(req.url);
   const detailRaw = searchParams.get('detail');
   const detail: MaterialsExplainOptions['detail'] = detailRaw === 'full' ? 'full' : 'summary';

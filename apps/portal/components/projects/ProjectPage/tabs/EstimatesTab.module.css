@@ -1240,3 +1240,169 @@
   font-size: 16px;
 }
 
+.auditTitlePill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accentRgb), 0.18);
+  background: rgba(var(--accentRgb), 0.08);
+  color: rgba(var(--portal-text-rgb), 0.84);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.auditCloseButton {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.72);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auditCloseButton:hover {
+  background: rgba(var(--portal-text-rgb), 0.06);
+}
+
+.auditPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.auditToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auditTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auditTabButton {
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.025);
+  color: rgba(var(--portal-text-rgb), 0.7);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auditTabButtonActive {
+  border-color: rgba(var(--accentRgb), 0.32);
+  background: rgba(var(--accentRgb), 0.08);
+  color: rgba(var(--portal-text-rgb), 0.88);
+}
+
+.auditModulePicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.auditModulePicker select {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: var(--portal-bg-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.auditTableStack {
+  display: grid;
+  gap: 10px;
+}
+
+.auditMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: rgba(var(--portal-text-rgb), 0.6);
+  font-size: 12px;
+}
+
+.auditTableWrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+.auditTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  background: var(--portal-bg-surface);
+}
+
+.auditTable th,
+.auditTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  text-align: left;
+  vertical-align: top;
+  font-size: 12px;
+}
+
+.auditTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.7);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.auditTable tr:last-child td {
+  border-bottom: none;
+}
+
+.auditNumericCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.auditMonoCell {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 11px;
+}
+
+.auditInlineMessage {
+  margin: 0;
+  color: rgba(var(--portal-text-rgb), 0.6);
+  font-size: 12px;
+}
+
+.auditInlineWarning {
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  background: rgba(234, 179, 8, 0.08);
+  color: rgba(133, 77, 14, 0.95);
+  font-size: 12px;
+}
+
