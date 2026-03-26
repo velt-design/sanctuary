@@ -90,6 +90,34 @@
   color: rgba(var(--portal-text-rgb), 0.7);
 }
 
+.stack {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.subCard {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(var(--portal-text-rgb), 0.02);
+}
+
+.subTitle {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.helperText {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: rgba(var(--portal-text-rgb), 0.7);
+}
+
 .tableWrap {
   margin-top: 12px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.12);
@@ -164,6 +192,15 @@
   font-size: 13px;
 }
 
+.curveInput {
+  width: 112px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.2);
+  font-size: 13px;
+  background: var(--portal-bg-surface);
+}
+
 .overrideBadge {
   font-size: 11px;
   text-transform: uppercase;
@@ -177,5 +214,40 @@
 .saving {
   font-size: 11px;
   color: rgba(var(--portal-text-rgb), 0.6);
+}
+
+.buttonRow {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.primaryButton,
+.secondaryButton {
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 1px solid rgba(var(--accentRgb), 0.35);
+  background: rgba(var(--accentRgb), 0.14);
+  color: inherit;
+}
+
+.secondaryButton {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  color: inherit;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.editButton:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 

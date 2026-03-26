@@ -1309,6 +1309,16 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
       : roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip'
         ? rafterCount * 2
         : rafterCount;
+  const representativeCommonRafterCutLengthM =
+    isGableLike && Number.isFinite(rafterTakeoff.cut_house_side_m) && Number.isFinite(rafterTakeoff.cut_outer_side_m)
+      ? (Math.max(0, Number(rafterTakeoff.cut_house_side_m)) + Math.max(0, Number(rafterTakeoff.cut_outer_side_m))) / 2
+      : Math.max(0, Number(rafterTakeoff.cut_length_m));
+  const hipRafterCutLengthM =
+    roofType === 'hip' ? Math.max(0, ((projectionM / 2) * Math.SQRT2) / effectiveCos + angleCutAllowanceM) : 0;
+  const totalInstalledRafterLengthM = Math.max(
+    0,
+    totalRafterPieces * representativeCommonRafterCutLengthM + hipRafterCount * hipRafterCutLengthM,
+  );
   const joinerRunsTotal = roofType === 'low_gable' || roofType === 'gable' || roofType === 'hip' ? rafterCount * 2 : rafterCount;
   const rafterClearLenMm = isAcrylicRoof ? rafterA.clearLenMm : 0;
   const rafterSpacingMm = isAcrylicRoof && rafterCountA > 1 ? rafterA.clearLenMm / (rafterCountA - 1) : 0;
@@ -1410,6 +1420,11 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
           rafter_far_allowance_m: rafterTakeoff.far_allowance_m,
         }
       : null),
+    ...(roofType === 'hip'
+      ? {
+          hip_rafter_cut_length_m: hipRafterCutLengthM,
+        }
+      : null),
     joiner_piece_length_m: joinerPieceLengthM,
     effective_run_m: effectiveRunM,
     required_downslope_m: requiredDownslopeM,
@@ -1446,6 +1461,7 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
     timber_roofing_screws_insulated_count: timberRoofingScrewsInsulatedCount,
     roof_plane_count: roofPlaneCount,
     total_rafter_pieces: totalRafterPieces,
+    total_installed_rafter_length_m: totalInstalledRafterLengthM,
     joiner_runs_total: joinerRunsTotal,
     flashing_0_200_total_m: flashingTotalsByBand[FLASHING_BAND_0_200],
     flashing_201_300_total_m: flashingTotalsByBand[FLASHING_BAND_201_300],

@@ -108,6 +108,42 @@
       "inputs": [
         "derived.rafter_length_m"
       ]
+    },
+    "rafter_length_loading_curve": {
+      "key": "derived.rafter_length_loading_curve",
+      "recommended_function": "minutes_per_m = linear_interpolate(points, rafter_cut_length_m); total extra minutes = total_installed_rafter_length_m * weighted_average(minutes_per_m across rafter groups).",
+      "points": [
+        {
+          "length_m": 2.0,
+          "minutes_per_m": 0.15
+        },
+        {
+          "length_m": 3.0,
+          "minutes_per_m": 0.35
+        },
+        {
+          "length_m": 4.0,
+          "minutes_per_m": 0.8
+        },
+        {
+          "length_m": 5.0,
+          "minutes_per_m": 1.8
+        },
+        {
+          "length_m": 6.0,
+          "minutes_per_m": 3.2
+        }
+      ],
+      "notes": "Additional rafter labour loading. Very light on short rafters, steep by 6m. Uses cut lengths where available and weights by total installed rafter metres.",
+      "inputs": [
+        "derived.rafter_cut_length_m",
+        "derived.rafter_cut_length_house_side_m",
+        "derived.rafter_cut_length_outer_side_m",
+        "derived.hip_rafter_cut_length_m",
+        "derived.total_installed_rafter_length_m",
+        "derived.total_rafter_pieces",
+        "derived.hip_rafter_count"
+      ]
     }
   },
   "actions": [
@@ -902,7 +938,10 @@
           "80x50": 10,
           "100x50": 12,
           "150x50": 16,
-          "custom": 12
+          "200x50": 20,
+          "250x50": 25,
+          "300x50": 30,
+          "custom": 25
         }
       },
       "applies_to": {
@@ -943,7 +982,10 @@
           "80x50": 9,
           "100x50": 11,
           "150x50": 14,
-          "custom": 11
+          "200x50": 18,
+          "250x50": 22,
+          "300x50": 26,
+          "custom": 22
         }
       },
       "applies_to": {
@@ -1818,7 +1860,10 @@
           "80x50": 10,
           "100x50": 12,
           "150x50": 16,
-          "custom": 12
+          "200x50": 20,
+          "250x50": 25,
+          "300x50": 30,
+          "custom": 25
         }
       },
       "applies_to": {
@@ -1857,7 +1902,10 @@
           "80x50": 10,
           "100x50": 12,
           "150x50": 16,
-          "custom": 12
+          "200x50": 20,
+          "250x50": 25,
+          "300x50": 30,
+          "custom": 25
         }
       },
       "applies_to": {
@@ -1907,6 +1955,40 @@
         "pitch_steep_roof"
       ],
       "notes": "v1 assumption for hip rafter labour; refine later."
+    },
+    {
+      "id": "rafters.rafter_length_loading_m",
+      "category": "Rafters",
+      "label": "Additional rafter labour loading - per installed metre",
+      "unit": "metre",
+      "quantity": {
+        "type": "driver",
+        "key": "derived.total_installed_rafter_length_m"
+      },
+      "base_minutes": 1,
+      "applies_to": {
+        "roof_types": [
+          "pitched",
+          "low_gable",
+          "gable",
+          "hip",
+          "hip_corner"
+        ],
+        "structure_types": [
+          "pitched",
+          "box_perimeter"
+        ]
+      },
+      "apply_multipliers": [
+        "access",
+        "height",
+        "roof_type",
+        "structure_type",
+        "pitch_steep_roof",
+        "rafter_length_loading_curve"
+      ],
+      "notes": "Extra long-rafter labour loading. Quantity is total installed rafter metres; the curve determines the extra minutes per metre based on cut length.",
+      "scope": "module"
     }
   ],
   "changelog": [
@@ -1924,7 +2006,8 @@
       "date": "2026-03-02",
       "changes": [
         "Added infill labour action family driven by derived infill metrics",
-        "Introduced infill setup, joiner install/fix, sheet/strip panel install, support install, and finish/clean actions"
+        "Introduced infill setup, joiner install/fix, sheet/strip panel install, support install, and finish/clean actions",
+        "Added config-driven additional rafter labour loading with a steep length curve"
       ]
     }
   ],

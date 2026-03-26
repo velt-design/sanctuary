@@ -28,6 +28,103 @@ function roundMinutes(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+type CurvePoint = {
+  length_m: number;
+  minutes_per_m: number;
+};
+
+function toCurvePoints(value: unknown): CurvePoint[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const lengthM = Number((entry as any)?.length_m);
+      const minutesPerM = Number((entry as any)?.minutes_per_m);
+      if (!Number.isFinite(lengthM) || !Number.isFinite(minutesPerM)) return null;
+      return {
+        length_m: Math.max(0, lengthM),
+        minutes_per_m: Math.max(0, minutesPerM),
+      };
+    })
+    .filter((entry): entry is CurvePoint => entry !== null)
+    .sort((a, b) => a.length_m - b.length_m);
+}
+
+function interpolateCurveValue(lengthM: number, points: readonly CurvePoint[]): number {
+  if (!Number.isFinite(lengthM) || points.length === 0) return 1;
+  if (points.length === 1) return points[0]?.minutes_per_m ?? 1;
+
+  const clampedLength = Math.max(0, lengthM);
+  if (clampedLength <= points[0]!.length_m) return points[0]!.minutes_per_m;
+  if (clampedLength >= points[points.length - 1]!.length_m) return points[points.length - 1]!.minutes_per_m;
+
+  for (let i = 1; i < points.length; i += 1) {
+    const prev = points[i - 1]!;
+    const next = points[i]!;
+    if (clampedLength > next.length_m) continue;
+
+    const span = next.length_m - prev.length_m;
+    if (span <= 0) return next.minutes_per_m;
+
+    const t = (clampedLength - prev.length_m) / span;
+    return prev.minutes_per_m + (next.minutes_per_m - prev.minutes_per_m) * t;
+  }
+
+  return points[points.length - 1]!.minutes_per_m;
+}
+
+function resolveRafterLengthLoadingRate(
+  inputs: InputsNormalizedV1,
+  derived: Record<string, unknown>,
+  config: CostingConfigV1,
+): number {
+  const reference = (config.installActions.driver_rules_reference as any)?.rafter_length_loading_curve;
+  const points = toCurvePoints(reference?.points);
+  if (points.length === 0) return 1;
+
+  const roofType = String(inputs.roof_type ?? '');
+  const totalPieces = asPositiveNumber((derived as any).total_rafter_pieces);
+  const totalInstalledLengthM = asPositiveNumber((derived as any).total_installed_rafter_length_m);
+  const representativeCutLengthM = asPositiveNumber((derived as any).rafter_cut_length_m ?? (derived as any).cut_rafter_length_m);
+  const hipRafterCount = asPositiveNumber((derived as any).hip_rafter_count);
+  const hipRafterCutLengthM = asPositiveNumber((derived as any).hip_rafter_cut_length_m);
+
+  const groups: Array<{ total_length_m: number; rafter_length_m: number }> = [];
+
+  if (
+    (roofType === 'gable' || roofType === 'low_gable') &&
+    Number.isFinite(Number((derived as any).rafter_cut_length_house_side_m)) &&
+    Number.isFinite(Number((derived as any).rafter_cut_length_outer_side_m)) &&
+    totalPieces > 0
+  ) {
+    const perSidePieces = totalPieces / 2;
+    const houseCutLengthM = asPositiveNumber((derived as any).rafter_cut_length_house_side_m);
+    const outerCutLengthM = asPositiveNumber((derived as any).rafter_cut_length_outer_side_m);
+    if (perSidePieces > 0 && houseCutLengthM > 0) groups.push({ total_length_m: perSidePieces * houseCutLengthM, rafter_length_m: houseCutLengthM });
+    if (perSidePieces > 0 && outerCutLengthM > 0) groups.push({ total_length_m: perSidePieces * outerCutLengthM, rafter_length_m: outerCutLengthM });
+  } else if (totalPieces > 0 && representativeCutLengthM > 0) {
+    groups.push({
+      total_length_m: totalPieces * representativeCutLengthM,
+      rafter_length_m: representativeCutLengthM,
+    });
+  }
+
+  if (roofType === 'hip' && hipRafterCount > 0 && hipRafterCutLengthM > 0) {
+    groups.push({
+      total_length_m: hipRafterCount * hipRafterCutLengthM,
+      rafter_length_m: hipRafterCutLengthM,
+    });
+  }
+
+  const minutesTotal = groups.reduce(
+    (acc, group) => acc + group.total_length_m * interpolateCurveValue(group.rafter_length_m, points),
+    0,
+  );
+  const lengthTotal = groups.reduce((acc, group) => acc + group.total_length_m, 0);
+  const fallbackLengthTotal = totalInstalledLengthM > 0 ? totalInstalledLengthM : lengthTotal;
+  if (fallbackLengthTotal <= 0 || minutesTotal <= 0) return 1;
+  return minutesTotal / fallbackLengthTotal;
+}
+
 function resolveSteepPitchMultiplier(inputs: InputsNormalizedV1, derived: Record<string, unknown>): number {
   const pitchRaw = Number((derived as any).roof_pitch_deg_used ?? inputs.roof_pitch_deg ?? 0);
   if (!Number.isFinite(pitchRaw)) return 1;
@@ -217,6 +314,8 @@ function resolveMultipliers(
           : inputs.projection_m;
       const lengthM = Number.isFinite(derivedLength) && derivedLength > 0 ? derivedLength : fallbackLength;
       next = Math.pow(Math.max(lengthM, 0.1) / Math.max(ref, 0.1), exp);
+    } else if (key === 'rafter_length_loading_curve') {
+      next = resolveRafterLengthLoadingRate(inputs, derived, config);
     } else {
       // Unknown multipliers shouldn't break costing; keep 1.
       next = 1;

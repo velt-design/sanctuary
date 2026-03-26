@@ -358,6 +358,7 @@ export type DerivedV1 = {
   rafter_ridge_half_m?: number;
   rafter_house_allowance_m?: number;
   rafter_far_allowance_m?: number;
+  hip_rafter_cut_length_m?: number;
   joiner_piece_length_m: number;
   cut_rafter_length_m: number;
   angle_cut_allowance_m: number;
@@ -394,6 +395,7 @@ export type DerivedV1 = {
   timber_roofing_screws_insulated_count: number;
   roof_plane_count: number;
   total_rafter_pieces: number;
+  total_installed_rafter_length_m: number;
   joiner_runs_total: number;
   acrylic_joiner_bottom_total_m?: number;
   acrylic_joiner_top_total_m?: number;
