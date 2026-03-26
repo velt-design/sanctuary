@@ -3,6 +3,7 @@ import type { CalculatorInputs } from '@/lib/types/calculator';
 import { ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY } from './drawingEdits';
 import {
   ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY,
+  buildModuleCostInputsFromCalculatorInputs,
   buildEstimatePayloadPreservingCurrentPricing,
   buildEstimatePayloadFromSiteCosting,
   buildSiteInputsFromCalculatorInputs,
@@ -97,6 +98,20 @@ describe('costingPayload', () => {
 
     expect(payload.pergolas[0]?.modules[0]?.attachment_side).toBe('left');
     expect(payload.pergolas[0]?.modules[1]?.attachment_side).toBe('rear');
+  });
+
+  it('builds module costing inputs for a selected calculator module', () => {
+    const inputs = makeInputs();
+    inputs.modules = [
+      { ...inputs.modules[0]!, lengthM: '4.5', projectionM: '3.2' },
+      { ...inputs.modules[0]!, pergolaId: 'pergola-1', lengthM: '6.1', projectionM: '4.4', houseConnectionType: 'none' },
+    ];
+
+    const moduleInputs = buildModuleCostInputsFromCalculatorInputs(inputs, 1);
+
+    expect(moduleInputs?.length_m).toBe(6.1);
+    expect(moduleInputs?.roof_span_m).toBe(4.4);
+    expect(moduleInputs?.attachment_side).toBe('rear');
   });
 
   it('preserves non-cost outputs such as drawing overrides when rebuilding an estimate payload', () => {
