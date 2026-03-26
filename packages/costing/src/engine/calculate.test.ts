@@ -8,6 +8,16 @@ function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+function multipliedFactors(factors: Record<string, number> | undefined): number {
+  return Object.values(factors ?? {}).reduce((acc, value) => acc * (Number.isFinite(value) ? value : 1), 1);
+}
+
+function inferredBaseMinutesPerUnit(action: { qty: number; minutes: number; applied_multipliers: Record<string, number> }): number {
+  const factor = multipliedFactors(action.applied_multipliers);
+  if (!Number.isFinite(action.qty) || action.qty <= 0 || !Number.isFinite(factor) || factor <= 0) return 0;
+  return action.minutes / action.qty / factor;
+}
+
 function findPowdercoatForBar(config: ReturnType<typeof loadCostingConfigV1>, barId: string) {
   const barItem = config.materials.items.find((it) => it.id === barId);
   if (!barItem) return null;
@@ -1575,6 +1585,185 @@ describe('calculateCostV1', () => {
     expect(String(line.label).toLowerCase()).toContain('powdercoated');
     expect(result.install.actions.some((a) => a.id === 'frame.box_perimeter_beam_250_install_m')).toBe(true);
     expect(result.totals.notes_and_warnings.some((w) => w.includes('INVALID') && w.includes('Powdercoat'))).toBe(false);
+  });
+
+  it('rafter override labour tiers apply across pitched, low gable, gable, and hip roofs', () => {
+    const baseInputs = {
+      length_m: 4,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+      ground: 'easy' as const,
+    };
+
+    const actionIdByRoof = {
+      pitched: 'rafters.install_rafter_pitched',
+      low_gable: 'rafters.install_rafter_low_gable',
+      gable: 'rafters.install_rafter_gable',
+      hip: 'rafters.install_rafter_hip',
+    } as const;
+
+    const buildScenario = (roofKind: keyof typeof actionIdByRoof, profile: string) => {
+      if (roofKind === 'low_gable') {
+        return calculateCostV1({
+          ...baseInputs,
+          pergola_style: 'pitched',
+          box_perimeter_enabled: true,
+          internal_roof_type: 'low_gable',
+          fall_distance_mm: 200,
+          overrides: { rafter_profile: profile },
+        });
+      }
+
+      return calculateCostV1({
+        ...baseInputs,
+        pergola_style: roofKind,
+        box_perimeter_enabled: false,
+        overrides: { rafter_profile: profile },
+      });
+    };
+
+    const getRafterAction = (roofKind: keyof typeof actionIdByRoof, profile: string) => {
+      const result = buildScenario(roofKind, profile);
+      const action = result.install.actions.find((candidate) => candidate.id === actionIdByRoof[roofKind]);
+      expect(action).toBeTruthy();
+      if (!action) throw new Error(`Missing rafter action for ${roofKind}/${profile}`);
+      return action;
+    };
+
+    const standardProfiles = [
+      ['100x50', 12],
+      ['200x50', 20],
+      ['250x50', 25],
+      ['300x50', 30],
+      ['custom', 25],
+    ] as const;
+    const lowGableProfiles = [
+      ['100x50', 11],
+      ['200x50', 18],
+      ['250x50', 22],
+      ['300x50', 26],
+      ['custom', 22],
+    ] as const;
+
+    for (const roofKind of ['pitched', 'gable', 'hip'] as const) {
+      for (const [profile, expectedBaseMinutes] of standardProfiles) {
+        const action = getRafterAction(roofKind, profile);
+        expect(inferredBaseMinutesPerUnit(action)).toBeCloseTo(expectedBaseMinutes, 0);
+      }
+    }
+
+    for (const [profile, expectedBaseMinutes] of lowGableProfiles) {
+      const action = getRafterAction('low_gable', profile);
+      expect(inferredBaseMinutesPerUnit(action)).toBeCloseTo(expectedBaseMinutes, 0);
+    }
+
+    const pitched100 = getRafterAction('pitched', '100x50');
+    const pitched200 = getRafterAction('pitched', '200x50');
+    const pitched250 = getRafterAction('pitched', '250x50');
+    const pitched300 = getRafterAction('pitched', '300x50');
+    const pitchedCustom = getRafterAction('pitched', 'custom');
+
+    expect(pitched200.minutes).toBeGreaterThan(pitched100.minutes);
+    expect(pitched250.minutes).toBeGreaterThan(pitched200.minutes);
+    expect(pitchedCustom.minutes).toBeGreaterThan(pitched200.minutes);
+    expect(pitchedCustom.minutes).toBeLessThan(pitched300.minutes);
+
+    const lowGable200 = getRafterAction('low_gable', '200x50');
+    expect(inferredBaseMinutesPerUnit(lowGable200)).toBeLessThan(inferredBaseMinutesPerUnit(pitched200));
+  });
+
+  it('additional rafter length loading ramps steeply from short to long rafters', () => {
+    const baseInputs = {
+      length_m: 6,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      pergola_style: 'pitched' as const,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+      ground: 'easy' as const,
+    };
+
+    const short = calculateCostV1({
+      ...baseInputs,
+      projection_m: 2,
+    });
+    const long = calculateCostV1({
+      ...baseInputs,
+      projection_m: 6,
+    });
+
+    const shortAction = short.install.actions.find((action) => action.id === 'rafters.rafter_length_loading_m');
+    const longAction = long.install.actions.find((action) => action.id === 'rafters.rafter_length_loading_m');
+
+    expect(shortAction).toBeTruthy();
+    expect(longAction).toBeTruthy();
+    if (!shortAction || !longAction) throw new Error('Missing rafter length loading action.');
+
+    expect(shortAction.qty).toBeCloseTo(short.derived.total_installed_rafter_length_m, 6);
+    expect(longAction.qty).toBeCloseTo(long.derived.total_installed_rafter_length_m, 6);
+    expect(shortAction.applied_multipliers.rafter_length_loading_curve).toBeCloseTo(0.15, 2);
+    expect(longAction.applied_multipliers.rafter_length_loading_curve).toBeGreaterThan(2.5);
+    expect(longAction.minutes / Math.max(longAction.qty, 1e-6)).toBeGreaterThan(
+      (shortAction.minutes / Math.max(shortAction.qty, 1e-6)) * 10,
+    );
+  });
+
+  it('additional rafter length loading quantity matches installed metres for gable and hip roofs', () => {
+    const baseInputs = {
+      length_m: 6,
+      projection_m: 6,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+      ground: 'easy' as const,
+    };
+
+    const gable = calculateCostV1({
+      ...baseInputs,
+      pergola_style: 'gable',
+      gable_house_edge_gutter: 'house',
+      gable_outer_edge_gutter: 'our',
+    });
+    const gableAction = gable.install.actions.find((action) => action.id === 'rafters.rafter_length_loading_m');
+    expect(gableAction).toBeTruthy();
+    if (!gableAction) throw new Error('Missing gable rafter length loading action.');
+
+    const gableExpectedQty =
+      Number(gable.derived.total_rafter_pieces ?? 0) *
+      ((Number(gable.derived.rafter_cut_length_house_side_m ?? 0) + Number(gable.derived.rafter_cut_length_outer_side_m ?? 0)) / 2);
+    expect(gable.derived.total_installed_rafter_length_m).toBeCloseTo(gableExpectedQty, 6);
+    expect(gableAction.qty).toBeCloseTo(gableExpectedQty, 6);
+
+    const hip = calculateCostV1({
+      ...baseInputs,
+      pergola_style: 'hip',
+    });
+    const hipAction = hip.install.actions.find((action) => action.id === 'rafters.rafter_length_loading_m');
+    expect(hipAction).toBeTruthy();
+    if (!hipAction) throw new Error('Missing hip rafter length loading action.');
+
+    const hipExpectedQty =
+      Number(hip.derived.total_rafter_pieces ?? 0) * Number(hip.derived.rafter_cut_length_m ?? 0) +
+      Number(hip.derived.hip_rafter_count ?? 0) * Number(hip.derived.hip_rafter_cut_length_m ?? 0);
+    expect(hip.derived.total_installed_rafter_length_m).toBeCloseTo(hipExpectedQty, 6);
+    expect(hipAction.qty).toBeCloseTo(hipExpectedQty, 6);
+    expect(hipAction.qty).toBeGreaterThan(Number(hip.derived.total_rafter_pieces ?? 0) * Number(hip.derived.rafter_cut_length_m ?? 0));
   });
 
   it('infills: no infills keeps infill labour actions disabled', () => {

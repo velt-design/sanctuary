@@ -55,6 +55,7 @@ begin
     'file_artifacts',
     'followup_plans',
     'followup_tasks',
+    'install_driver_curve_overrides',
     'install_action_minutes_overrides',
     'material_cost_overrides',
     'project_task_checks',

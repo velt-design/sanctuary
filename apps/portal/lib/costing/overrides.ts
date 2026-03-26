@@ -3,9 +3,15 @@ import 'server-only';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { loadCostingConfigV1, type CostingConfigV1 } from '@sp/costing';
 
+export type DriverCurvePoint = {
+  length_m: number;
+  minutes_per_m: number;
+};
+
 export type CostingOverrides = {
   materialCostOverrides: Record<string, number>;
   actionMinutesOverrides: Record<string, number>;
+  driverCurveOverrides: Record<string, DriverCurvePoint[]>;
 };
 
 type MaterialOverrideRow = {
@@ -18,6 +24,42 @@ type ActionOverrideRow = {
   base_minutes: number;
 };
 
+type DriverCurveOverrideRow = {
+  curve_key: string;
+  points_json: unknown;
+};
+
+function formatErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === 'string') return err;
+  if (err && typeof err === 'object' && typeof (err as any).message === 'string') return String((err as any).message);
+  return 'Unknown error';
+}
+
+function isMissingRelationError(err: unknown, relationName: string): boolean {
+  const message = formatErrorMessage(err).toLowerCase();
+  return (
+    message.includes('does not exist') &&
+    (message.includes(relationName.toLowerCase()) || message.includes(`public.${relationName.toLowerCase()}`))
+  );
+}
+
+function parseDriverCurvePoints(value: unknown): DriverCurvePoint[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => {
+      const lengthM = Number((entry as any)?.length_m);
+      const minutesPerM = Number((entry as any)?.minutes_per_m);
+      if (!Number.isFinite(lengthM) || !Number.isFinite(minutesPerM)) return null;
+      return {
+        length_m: Math.max(0, Math.round(lengthM * 1000) / 1000),
+        minutes_per_m: Math.max(0, Math.round(minutesPerM * 1000) / 1000),
+      };
+    })
+    .filter((entry): entry is DriverCurvePoint => entry !== null)
+    .sort((a, b) => a.length_m - b.length_m);
+}
+
 export async function fetchCostingOverrides(): Promise<CostingOverrides> {
   const materialRes = await supabaseServer.from('material_cost_overrides').select('material_id, cost_ex_gst_cents');
   if (materialRes.error) {
@@ -27,6 +69,17 @@ export async function fetchCostingOverrides(): Promise<CostingOverrides> {
   const actionRes = await supabaseServer.from('install_action_minutes_overrides').select('action_id, base_minutes');
   if (actionRes.error) {
     throw new Error(`Failed to load action overrides: ${actionRes.error.message}`);
+  }
+
+  const curveRes = await supabaseServer.from('install_driver_curve_overrides').select('curve_key, points_json');
+  if (curveRes.error) {
+    if (isMissingRelationError(curveRes.error, 'install_driver_curve_overrides')) {
+      console.warn(
+        '[costing overrides] Driver curve override table missing; using JSON defaults until the migration is applied.',
+      );
+    } else {
+      throw new Error(`Failed to load driver curve overrides: ${curveRes.error.message}`);
+    }
   }
 
   const materialCostOverrides: Record<string, number> = {};
@@ -45,7 +98,15 @@ export async function fetchCostingOverrides(): Promise<CostingOverrides> {
     actionMinutesOverrides[row.action_id] = minutes;
   }
 
-  return { materialCostOverrides, actionMinutesOverrides };
+  const driverCurveOverrides: Record<string, DriverCurvePoint[]> = {};
+  for (const row of ((curveRes.data ?? []) as DriverCurveOverrideRow[])) {
+    if (!row?.curve_key) continue;
+    const points = parseDriverCurvePoints(row.points_json);
+    if (points.length === 0) continue;
+    driverCurveOverrides[row.curve_key] = points;
+  }
+
+  return { materialCostOverrides, actionMinutesOverrides, driverCurveOverrides };
 }
 
 export async function getCostingConfigWithOverrides(): Promise<{ config: CostingConfigV1; overrides: CostingOverrides }> {
@@ -55,12 +116,13 @@ export async function getCostingConfigWithOverrides(): Promise<{ config: Costing
   try {
     overrides = await fetchCostingOverrides();
   } catch (err) {
-    console.warn('[costing overrides] Falling back to JSON config only.', err);
-    return { config: base, overrides: { materialCostOverrides: {}, actionMinutesOverrides: {} } };
+    console.warn(`[costing overrides] Falling back to JSON config only. ${formatErrorMessage(err)}`);
+    return { config: base, overrides: { materialCostOverrides: {}, actionMinutesOverrides: {}, driverCurveOverrides: {} } };
   }
 
   const materialOverrideIds = new Set(Object.keys(overrides.materialCostOverrides));
   const actionOverrideIds = new Set(Object.keys(overrides.actionMinutesOverrides));
+  const driverCurveOverrideKeys = new Set(Object.keys(overrides.driverCurveOverrides));
 
   const materials = {
     ...base.materials,
@@ -82,6 +144,25 @@ export async function getCostingConfigWithOverrides(): Promise<{ config: Costing
     }) as CostingConfigV1['installActions']['actions'],
   };
 
+  const driverRulesReference = {
+    ...base.installActions.driver_rules_reference,
+  } as Record<string, unknown>;
+
+  for (const curveKey of driverCurveOverrideKeys) {
+    const existing = driverRulesReference[curveKey];
+    const override = overrides.driverCurveOverrides[curveKey];
+    if (!existing || typeof existing !== 'object' || !Array.isArray((existing as any).points) || !override?.length) continue;
+    driverRulesReference[curveKey] = {
+      ...(existing as Record<string, unknown>),
+      points: override.map((point) => ({ ...point })),
+    };
+  }
+
+  const installActionsWithCurveOverrides = {
+    ...installActions,
+    driver_rules_reference: driverRulesReference as CostingConfigV1['installActions']['driver_rules_reference'],
+  };
+
   const unknownMaterials = [...materialOverrideIds].filter((id) => !base.materials.items.some((item) => item.id === id));
   if (unknownMaterials.length) {
     console.warn('[costing overrides] Ignored unknown material overrides:', unknownMaterials.join(', '));
@@ -92,5 +173,13 @@ export async function getCostingConfigWithOverrides(): Promise<{ config: Costing
     console.warn('[costing overrides] Ignored unknown install action overrides:', unknownActions.join(', '));
   }
 
-  return { config: { ...base, materials, installActions }, overrides };
+  const unknownCurves = [...driverCurveOverrideKeys].filter((key) => {
+    const existing = (base.installActions.driver_rules_reference as Record<string, unknown>)[key];
+    return !existing || typeof existing !== 'object' || !Array.isArray((existing as any).points);
+  });
+  if (unknownCurves.length) {
+    console.warn('[costing overrides] Ignored unknown driver curve overrides:', unknownCurves.join(', '));
+  }
+
+  return { config: { ...base, materials, installActions: installActionsWithCurveOverrides }, overrides };
 }

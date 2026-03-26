@@ -6,9 +6,11 @@ import ActionsClient from '../admin/costs/actions/ActionsClient';
 import OverheadsClient from '../admin/costs/overheads/OverheadsClient';
 import styles from './pricebook.module.css';
 import PageHeader from '@/components/layout/PageHeader';
+import type { DriverCurvePoint } from '@/lib/costing/overrides';
 
 type MaterialsItem = Parameters<typeof MaterialsClient>[0]['items'];
 type ActionsItem = Parameters<typeof ActionsClient>[0]['actions'];
+type DriverCurves = Parameters<typeof ActionsClient>[0]['driverCurves'];
 
 type PricebookHubProps = {
   loadedFrom: string;
@@ -17,9 +19,11 @@ type PricebookHubProps = {
   overheadsSourceFile: string;
   materials: MaterialsItem;
   actions: ActionsItem;
+  driverCurves: DriverCurves;
   overheads: unknown;
   materialOverrides: Record<string, number>;
   actionOverrides: Record<string, number>;
+  driverCurveOverrides: Record<string, DriverCurvePoint[]>;
   isAdmin: boolean;
 };
 
@@ -110,7 +114,9 @@ export default function PricebookHub(props: PricebookHubProps) {
           loadedFrom={props.loadedFrom}
           sourceFile={props.actionsSourceFile}
           actions={props.actions}
+          driverCurves={props.driverCurves}
           overrides={props.actionOverrides}
+          driverCurveOverrides={props.driverCurveOverrides}
           isAdmin={props.isAdmin}
           showNav={false}
         />
