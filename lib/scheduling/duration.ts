@@ -3,7 +3,7 @@ import type { SchedulingIssue } from '@/lib/types/scheduling';
 
 export const WORK_HOURS_PER_DAY = 9;
 export const HALF_DAY_HOURS = WORK_HOURS_PER_DAY / 2; // 4.5
-export const FALLBACK_CREW_HOUR_RATE_EX_GST = 110;
+export const FALLBACK_CREW_HOUR_RATE_EX_GST = 75;
 
 function roundTo2(n: number): number {
   if (!Number.isFinite(n)) return 0;

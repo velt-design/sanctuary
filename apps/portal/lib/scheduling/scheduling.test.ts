@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addWorkHours, diffDaysYmd, isWorkday } from './date';
-import { deriveDurationHoursFromEstimate, roundUpToHalfDayHours } from './duration';
+import { deriveDurationHoursFromEstimate, FALLBACK_CREW_HOUR_RATE_EX_GST, roundUpToHalfDayHours } from './duration';
 import { buildScheduleBars } from './engine';
 import type { Estimate } from '@/lib/types/estimate';
 import type { Project } from '@/lib/types/project';
@@ -48,6 +48,13 @@ describe('scheduling.duration', () => {
     const res = deriveDurationHoursFromEstimate(est);
     expect(res.durationHours).toBe(9);
     expect(res.issues.length).toBeGreaterThan(0);
+  });
+
+  it('derives crew hours from install payout using the active fallback rate', () => {
+    const est = makeEstimate({ outputs: { install: { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 750 } } as any } });
+    const res = deriveDurationHoursFromEstimate(est);
+    expect(res.crewHours).toBeCloseTo(10, 2);
+    expect(res.issues.some((issue) => issue.message.includes(`$${FALLBACK_CREW_HOUR_RATE_EX_GST}/h`))).toBe(true);
   });
 });
 
