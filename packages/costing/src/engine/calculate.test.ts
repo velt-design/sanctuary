@@ -646,8 +646,8 @@ describe('calculateCostV1', () => {
     expect(soffit.derived.stringer_fixing_count).toBe(0);
     expect(soffit.materials.lines.some((l) => l.id === 'bracket_3f6d3c53fa' && l.qty === soffit.derived.bracket_count)).toBe(true);
     expect(soffit.materials.lines.some((l) => l.id === 'powdercoating_199231d91b' && l.qty === soffit.derived.bracket_count)).toBe(true);
-    expect(soffit.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(30, 2);
-    expect(soffit.install.actions.find((a) => a.id === 'house.install_soffit_bracket')?.minutes).toBeCloseTo(soffit.derived.bracket_count * 20, 2);
+    expect(soffit.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(36, 2);
+    expect(soffit.install.actions.find((a) => a.id === 'house.install_soffit_bracket')?.minutes).toBeCloseTo(soffit.derived.bracket_count * 24, 2);
 
     const fascia = calculateCostV1({ ...baseInputs, house_connection_type: 'fascia' as const });
     expect(fascia.derived.bracket_count).toBe(0);
@@ -655,18 +655,18 @@ describe('calculateCostV1', () => {
     expect(fascia.install.actions.some((a) => a.id === 'house.install_soffit_bracket')).toBe(false);
     expect(fascia.materials.lines.some((l) => l.id === 'bracket_3f6d3c53fa')).toBe(false);
     expect(fascia.materials.lines.some((l) => l.id === 'powdercoating_199231d91b')).toBe(false);
-    expect(fascia.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(30, 2);
+    expect(fascia.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(36, 2);
     expect(fascia.install.actions.find((a) => a.id === 'house.install_fascia_connection')?.qty).toBe(5);
-    expect(fascia.install.actions.find((a) => a.id === 'house.install_fascia_connection')?.minutes).toBeCloseTo(25, 2);
+    expect(fascia.install.actions.find((a) => a.id === 'house.install_fascia_connection')?.minutes).toBeCloseTo(30, 2);
 
     const facade = calculateCostV1({ ...baseInputs, house_connection_type: 'facade' as const });
     expect(facade.derived.bracket_count).toBe(0);
     expect(facade.derived.stringer_fixing_count).toBe(5);
     expect(facade.install.actions.some((a) => a.id === 'house.install_soffit_bracket')).toBe(false);
     expect(facade.materials.lines.some((l) => l.id === 'anchor.chem_m12_each')).toBe(false);
-    expect(facade.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(30, 2);
+    expect(facade.install.actions.find((a) => a.id === 'house.install_back_stringer_startup')?.minutes).toBeCloseTo(36, 2);
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.qty).toBe(5);
-    expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.minutes).toBeCloseTo(25, 2);
+    expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.minutes).toBeCloseTo(30, 2);
   });
 
   it('attachment side switches house-connection drivers from length-driven to span-driven edges', () => {
@@ -695,7 +695,7 @@ describe('calculateCostV1', () => {
     expect(left.derived.bracket_count).toBe(3);
     expect(rear.derived.stringer_fixing_count).toBe(0);
     expect(left.derived.stringer_fixing_count).toBe(0);
-    expect(left.install.actions.find((action) => action.id === 'house.install_soffit_bracket')?.minutes).toBeCloseTo(60, 2);
+    expect(left.install.actions.find((action) => action.id === 'house.install_soffit_bracket')?.minutes).toBeCloseTo(72, 2);
   });
 
   it('gable acrylic: 6×3 @ 5° stays sheet-mode but can use plan vs strip-yield', () => {
@@ -1638,18 +1638,18 @@ describe('calculateCostV1', () => {
     };
 
     const standardProfiles = [
-      ['100x50', 12],
-      ['200x50', 20],
-      ['250x50', 25],
-      ['300x50', 30],
-      ['custom', 25],
+      ['100x50', 14.4],
+      ['200x50', 24],
+      ['250x50', 30],
+      ['300x50', 36],
+      ['custom', 30],
     ] as const;
     const lowGableProfiles = [
-      ['100x50', 11],
-      ['200x50', 18],
-      ['250x50', 22],
-      ['300x50', 26],
-      ['custom', 22],
+      ['100x50', 13.2],
+      ['200x50', 21.6],
+      ['250x50', 26.4],
+      ['300x50', 31.2],
+      ['custom', 26.4],
     ] as const;
 
     for (const roofKind of ['pitched', 'gable', 'hip'] as const) {
@@ -1712,7 +1712,7 @@ describe('calculateCostV1', () => {
 
     expect(shortAction.qty).toBeCloseTo(short.derived.total_installed_rafter_length_m, 6);
     expect(longAction.qty).toBeCloseTo(long.derived.total_installed_rafter_length_m, 6);
-    expect(shortAction.applied_multipliers.rafter_length_loading_curve).toBeCloseTo(0.15, 2);
+    expect(shortAction.applied_multipliers.rafter_length_loading_curve).toBeCloseTo(0.18, 2);
     expect(longAction.applied_multipliers.rafter_length_loading_curve).toBeGreaterThan(2.5);
     expect(longAction.minutes / Math.max(longAction.qty, 1e-6)).toBeGreaterThan(
       (shortAction.minutes / Math.max(shortAction.qty, 1e-6)) * 10,
@@ -2777,7 +2777,7 @@ describe('install day cycle', () => {
     quote_discount_pct: 0,
   };
 
-  const dayCycleMinutesPerDay = 25 + 25 + 15;
+  const dayCycleMinutesPerDay = 30 + 30 + 18;
 
   it('single-module: site days clamps to 1 and day-cycle qty is 1', () => {
     const cfg = buildTestConfig(300);

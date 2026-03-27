@@ -1,0 +1,26 @@
+{
+  "version": "v1.7",
+  "inputs_schema_version": "v1",
+  "files": {
+    "pricebook_materials": "materials/sanctuary_pricebook_materials_2025-11_exgst_v1.1.json",
+    "materials_additions": "materials/sanctuary_materials_additions_v1_2026-01-08.json",
+    "hardware_placeholders": "hardware/hardware_placeholders_v1.json",
+    "install_actions": "install_actions_v1.7_2026-03-27.json",
+    "bom_strategy": "bom/bom_strategy_v1.json",
+    "overheads": "overheads_v1.1_2026-01-08.json",
+    "costing_rules": "costing_rules_v1.3_2026-01-08.json"
+  },
+  "integration_notes": [
+    "Load pricebook_materials first, then merge materials_additions (add or override by id).",
+    "Hardware placeholders are separate from pricebook materials; include them as a final cost layer after BOM is generated (consumables / fixings).",
+    "Install actions produce labour minutes; multiply by contractor hourly rate ($75/h ex-GST) + any multipliers.",
+    "Roof Span (Eave-to-Eave) is the full house-to-front dimension with no overhang (see costing_rules).",
+    "v1.2 adds roof_types gable + hip and mixed roof support; see costing_rules + install_actions for new derived drivers (ridge_length_m, acrylic_area_m2).",
+    "Multi-pergola: actions now have scope=job|module; overheads_v1.1 contains fixed+variable method for module_count + total_crew_hours.",
+    "v1.3: add roof_pitch_deg input (deg) per module; use rafter_length_m (sloped) in acrylic + rafter labour multipliers; logistics access multiplier applied only to offload + setout.",
+    "v1.4: mob.* actions are job-scoped; mob.offload_materials and mob.site_survey quantity scales with derived.module_count.",
+    "v1.6: infill labour actions now use derived infill drivers (instance count, joiner length/fixings, sheet area, strip panel count, extra supports).",
+    "v1.7: crew rate reset to $75/h ex-GST and base labour minutes scaled by 20% to keep install payout approximately neutral."
+  ],
+  "generated_at": "2026-03-27"
+}
