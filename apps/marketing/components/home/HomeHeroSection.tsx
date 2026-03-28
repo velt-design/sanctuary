@@ -99,7 +99,7 @@ export default function HomeHeroSection({
               placeholder="blur"
               blurDataURL={blurDataUrl}
               sizes="(max-width: 960px) 100vw, 50vw"
-              style={{ objectFit: 'cover' }}
+              style={{ objectFit: 'cover', objectPosition: '50% 0%' }}
             />
             <OverlayCtaButton
               onClick={() => router.push('/contact')}
