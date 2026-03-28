@@ -478,6 +478,7 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
   /* Keep left image at ~50% of hero height */
   .hero-card{ height:calc((100dvh - var(--headerH, var(--navH))) * .5); }
   .hero-info{ margin-top:calc(var(--g) * 2.5) }
+  .hero-right-image--top-desktop{ object-position:center top; }
 }
 
 /* Word-by-word section (namespaced) */

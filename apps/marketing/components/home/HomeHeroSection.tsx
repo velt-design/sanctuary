@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { type MutableRefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { OverlayCtaButton } from '@/components/ui/OverlayCta';
 
@@ -29,59 +29,6 @@ export default function HomeHeroSection({
   contactRef,
 }: HeroSectionProps) {
   const router = useRouter();
-  const leftVideoRef = useRef<HTMLVideoElement | null>(null);
-  const [canHoverLeftVideo, setCanHoverLeftVideo] = useState(false);
-  const [shouldLoadLeftVideo, setShouldLoadLeftVideo] = useState(false);
-  const [isLeftVideoHovering, setIsLeftVideoHovering] = useState(false);
-  const [isLeftVideoReady, setIsLeftVideoReady] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
-    const syncHoverCapability = () => setCanHoverLeftVideo(mediaQuery.matches);
-
-    syncHoverCapability();
-    mediaQuery.addEventListener?.('change', syncHoverCapability);
-    mediaQuery.addListener?.(syncHoverCapability);
-
-    return () => {
-      mediaQuery.removeEventListener?.('change', syncHoverCapability);
-      mediaQuery.removeListener?.(syncHoverCapability);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!shouldLoadLeftVideo) return;
-    const videoEl = leftVideoRef.current;
-    if (!videoEl) return;
-
-    if (isLeftVideoHovering) {
-      const playVideo = () => {
-        void videoEl.play().catch(() => {});
-      };
-
-      if (videoEl.readyState >= 2) {
-        playVideo();
-        return;
-      }
-
-      const handleCanPlay = () => playVideo();
-      videoEl.addEventListener('canplay', handleCanPlay, { once: true });
-      return () => videoEl.removeEventListener('canplay', handleCanPlay);
-    }
-
-    videoEl.pause();
-    videoEl.currentTime = 0;
-  }, [isLeftVideoHovering, shouldLoadLeftVideo]);
-
-  const handleLeftMediaEnter = () => {
-    if (!canHoverLeftVideo) return;
-    setShouldLoadLeftVideo(true);
-    setIsLeftVideoHovering(true);
-  };
-
-  const handleLeftMediaLeave = () => {
-    setIsLeftVideoHovering(false);
-  };
 
   return (
     <section className="container hero" id="top">
@@ -117,38 +64,18 @@ export default function HomeHeroSection({
               </div>
             </div>
           </div>
-          <div
-            className={`hero-card ${revealImages ? 'reveal' : ''}`}
-            onMouseEnter={handleLeftMediaEnter}
-            onMouseLeave={handleLeftMediaLeave}
-          >
+          <div className={`hero-card ${revealImages ? 'reveal' : ''}`}>
             <div className="wipe-inner">
               <Image
-                src="/images/gable-rainforest.jpg"
-                alt="Gable pergola in a rainforest setting"
+                src="/images/dairy-flat-hero.jpg"
+                alt="Dairy Flat pergola at a modern home"
                 fill
                 sizes="(max-width: 960px) 100vw, 50vw"
-                quality={46}
+                quality={75}
                 style={{ objectFit: 'cover' }}
                 placeholder="blur"
                 blurDataURL={blurDataUrl}
-                className={isLeftVideoHovering && isLeftVideoReady ? 'opacity-0 transition-opacity duration-300' : 'opacity-100 transition-opacity duration-300'}
               />
-              {shouldLoadLeftVideo ? (
-                <video
-                  ref={leftVideoRef}
-                  loop
-                  muted
-                  playsInline
-                  preload="none"
-                  aria-label="Gable sanctuary pergola loop video"
-                  onLoadedData={() => setIsLeftVideoReady(true)}
-                  onCanPlay={() => setIsLeftVideoReady(true)}
-                  className={isLeftVideoHovering && isLeftVideoReady ? 'pointer-events-none absolute inset-0 h-full w-full object-cover opacity-100 transition-opacity duration-300' : 'pointer-events-none absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300'}
-                >
-                  <source src="/videos/gable-sanctuary-loop.mp4" type="video/mp4" />
-                </video>
-              ) : null}
               <OverlayCtaButton
                 onClick={() => router.push('/projects')}
                 className="bottom-5 right-5 z-40 md:bottom-8 md:right-8"
@@ -162,12 +89,13 @@ export default function HomeHeroSection({
         <div className={`hero-right ${revealImages ? 'reveal' : ''}`}>
           <div className="wipe-inner">
             <Image
-              src="/images/dairy-flat-hero.jpg"
-              alt="Dairy Flat pergola at a modern home"
+              src="/images/project-warkworth-03.jpg"
+              alt="Architectural pergola at the Warkworth project"
+              className="hero-right-image hero-right-image--top-desktop"
               fill
               priority
               fetchPriority="high"
-              quality={50}
+              quality={75}
               placeholder="blur"
               blurDataURL={blurDataUrl}
               sizes="(max-width: 960px) 100vw, 50vw"
