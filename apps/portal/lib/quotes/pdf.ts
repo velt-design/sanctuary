@@ -19,7 +19,7 @@ import {
   type TableBounds,
   type TotalsBounds,
 } from './pdfLayout';
-import type { QuoteStatus, QuoteVersionDetail } from './types';
+import type { QuoteVersionDetail } from './types';
 import { fromCents } from './utils';
 
 const PAGE_WIDTH = 595.28; // A4
@@ -45,7 +45,6 @@ type PdfQuoteViewModel = {
   header: {
     quoteNumber: string;
     versionNumber: number;
-    status: QuoteStatus;
   };
   client: {
     name?: string;
@@ -287,7 +286,6 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
     header: {
       quoteNumber: quote.quoteRef,
       versionNumber: quote.versionNumber,
-      status: quote.status,
     },
     client,
     warehouseAddressLines: addressLines(WAREHOUSE_ADDRESS),
@@ -590,34 +588,6 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     if (layoutPage) {
       layoutPage.hasLeftRail = true;
     }
-  };
-
-  const drawStatusBadge = (text: string, x: number, y: number) => {
-    const safeText = toText(text) ?? 'DRAFT';
-    const size = theme.sizes.status;
-    const paddingX = 5;
-    const paddingY = 2;
-    const width = measureText(fontMedium, safeText, size) + paddingX * 2;
-    const height = size + paddingY * 2;
-
-    page.drawRectangle({
-      x,
-      y: y - paddingY,
-      width,
-      height,
-      borderWidth: 0.6,
-      borderColor: theme.colors.accent,
-    });
-
-    drawTextSafe(safeText, {
-      x: x + paddingX,
-      y,
-      size,
-      font: fontMedium,
-      color: theme.colors.accent,
-    });
-
-    return y - paddingY;
   };
 
   const itemsHeaderUnderlineOffset = 6;
@@ -1071,9 +1041,8 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   });
 
   leftY -= theme.lineHeights.ref;
-  leftY -= theme.spacing.headerRefToStatus;
-
-  const leftBottomY = drawStatusBadge(vm.header.status, CONTENT_X0, leftY);
+  // Workflow state is useful internally, but not on the customer-facing PDF.
+  const leftBottomY = leftY;
 
   // Header right column
   let rightY = cursorY;
