@@ -18,15 +18,24 @@ export type PortalAccessState =
   | { kind: 'lookup_failed'; user: PortalAuthUser; message?: string };
 
 export type AccessStatusQueryState = 'no-access' | 'lookup-failed';
+export type PortalAuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'no_access' | 'lookup_failed';
+export type PortalAuthInitialState = {
+  status: PortalAuthStatus;
+  user: PortalAuthUser | null;
+  role: PortalRole | null;
+};
+type PortalAccessUserSource = Pick<User, 'id'> & {
+  email?: string | null;
+};
 
-type SupabaseUserLookup = {
+export type PortalAccessLookup = {
   auth: {
-    getUser: () => Promise<{ data?: { user?: Pick<User, 'id' | 'email'> | null } | null; error?: { message?: string } | null }>;
+    getUser: () => Promise<{ data?: { user?: PortalAccessUserSource | null } | null; error?: { message?: string } | null }>;
   };
   from: (table: string) => {
     select: (columns: string) => {
       eq: (column: string, value: string) => {
-        maybeSingle: () => Promise<{ data?: { role?: string | null } | null; error?: { message?: string } | null }>;
+        maybeSingle: () => PromiseLike<{ data?: { role?: string | null } | null; error?: { message?: string } | null }>;
       };
     };
   };
@@ -38,14 +47,14 @@ function toPortalRole(value: unknown): PortalRole | null {
   return null;
 }
 
-export function toPortalAuthUser(user: Pick<User, 'id' | 'email'>): PortalAuthUser {
+export function toPortalAuthUser(user: PortalAccessUserSource): PortalAuthUser {
   return {
     id: String(user.id),
     email: typeof user.email === 'string' ? user.email : null,
   };
 }
 
-export async function resolvePortalAccessState(supabase: SupabaseUserLookup): Promise<PortalAccessState> {
+export async function resolvePortalAccessState(supabase: PortalAccessLookup): Promise<PortalAccessState> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) {
     return { kind: 'unauthenticated' };
@@ -119,4 +128,36 @@ export function buildAccessStatusHref(input: {
   }
 
   return `/access-status?${params.toString()}`;
+}
+
+export function initialPortalAuthStateFromAccess(accessState: PortalAccessState): PortalAuthInitialState {
+  if (accessState.kind === 'authenticated') {
+    return {
+      status: 'authenticated',
+      user: accessState.session.user,
+      role: accessState.session.role,
+    };
+  }
+
+  if (accessState.kind === 'no_access') {
+    return {
+      status: 'no_access',
+      user: accessState.user,
+      role: null,
+    };
+  }
+
+  if (accessState.kind === 'lookup_failed') {
+    return {
+      status: 'lookup_failed',
+      user: accessState.user,
+      role: null,
+    };
+  }
+
+  return {
+    status: 'unauthenticated',
+    user: null,
+    role: null,
+  };
 }

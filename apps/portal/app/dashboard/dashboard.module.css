@@ -514,9 +514,6 @@
 .skeletonLine {
   height: 12px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(var(--portal-text-rgb), 0.06) 0%, rgba(var(--portal-text-rgb), 0.12) 50%, rgba(var(--portal-text-rgb), 0.06) 100%);
-  background-size: 200% 100%;
-  animation: dashShimmer 1.2s ease-in-out infinite;
 }
 
 .skeletonLineShort {
@@ -534,16 +531,4 @@
 .skeletonRow {
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(90deg, rgba(var(--portal-text-rgb), 0.06) 0%, rgba(var(--portal-text-rgb), 0.12) 50%, rgba(var(--portal-text-rgb), 0.06) 100%);
-  background-size: 200% 100%;
-  animation: dashShimmer 1.2s ease-in-out infinite;
-}
-
-@keyframes dashShimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
 }

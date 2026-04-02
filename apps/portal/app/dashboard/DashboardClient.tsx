@@ -14,6 +14,9 @@ import InstallScheduleCard from './_components/InstallScheduleCard';
 import SiteVisitsCard from './_components/SiteVisitsCard';
 import PipelineCountsCard from './_components/PipelineCountsCard';
 import dash from './dashboard.module.css';
+import DashboardLoading from './loading';
+import PageMessagePanel from '@/components/page-state/PageMessagePanel';
+import stateStyles from '@/components/page-state/PageState.module.css';
 
 function parseQueueMode(value: string | null): QueueMode {
   if (value === 'next7' || value === 'alldue') return value;
@@ -26,25 +29,31 @@ export default function DashboardClient() {
   const { data, error, isLoading } = useQuery(dashboardDataQueryOptions(queue));
 
   if (isLoading && !data) {
-    return (
-      <main className={dash.page}>
-        <PageHeader title="Dashboard" />
-        <p style={{ color: 'var(--muted)' }}>Loading dashboard…</p>
-      </main>
-    );
+    return <DashboardLoading />;
   }
 
   if (error && !data) {
     const msg = error instanceof Error ? error.message : 'Failed to load dashboard.';
     return (
-      <main className={dash.page}>
-        <PageHeader title="Dashboard" />
-        <p style={{ color: 'var(--muted)' }}>{msg}</p>
-      </main>
+      <PageMessagePanel
+        title="Dashboard unavailable"
+        description={msg}
+        actions={
+          <button
+            type="button"
+            className={stateStyles.primaryAction}
+            onClick={() => {
+              window.location.reload();
+            }}
+          >
+            Try again
+          </button>
+        }
+      />
     );
   }
 
-  if (!data) return null;
+  if (!data) return <DashboardLoading />;
 
   return (
     <main className={dash.page}>

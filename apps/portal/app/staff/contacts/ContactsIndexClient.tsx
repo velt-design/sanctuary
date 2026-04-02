@@ -10,11 +10,14 @@ import { parseContactsCsv, planContactsImport } from '@/lib/import/contactsCsv';
 import Modal from '@/components/ui/modal/Modal';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import ListPageSkeleton from '@/components/page-state/ListPageSkeleton';
+import PageMessagePanel from '@/components/page-state/PageMessagePanel';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import stateStyles from '@/components/page-state/PageState.module.css';
 
-export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading' }) {
+export default function ContactsIndexClient() {
   const toast = useToast();
   const [query, setQuery] = useState('');
   const importRef = useRef<HTMLInputElement | null>(null);
@@ -27,18 +30,14 @@ export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading
 
   const queryClient = useQueryClient();
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const isLoadingMode = mode === 'loading';
   const { data, error } = useQuery({
     ...contactsListQueryOptions(host),
-    enabled: !isLoadingMode,
-    refetchOnMount: !isLoadingMode,
   });
 
   const contacts = data ?? [];
   const hasLoadedOnce = typeof data !== 'undefined';
 
   useEffect(() => {
-    if (isLoadingMode) return;
     if (!error) return;
     if (contacts.length) {
       toast.error("Couldn't refresh contacts (showing last saved).");
@@ -46,7 +45,7 @@ export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading
     }
     const msg = error instanceof Error ? error.message : 'Failed to load contacts.';
     toast.error(msg);
-  }, [contacts.length, error, isLoadingMode, toast]);
+  }, [contacts.length, error, toast]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -64,6 +63,41 @@ export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading
     if (!importPayload) return null;
     return planContactsImport(importPayload.rows, contacts, { mergeBlanks: importMergeBlanks });
   }, [contacts, importMergeBlanks, importPayload]);
+
+  if (!hasLoadedOnce && !error) {
+    return (
+      <ListPageSkeleton
+        title="Contacts"
+        actionCount={2}
+        filterFieldCount={1}
+        columnCount={5}
+        rowCount={6}
+        filterTitle="Search"
+        listTitle="All Contacts"
+      />
+    );
+  }
+
+  if (error && !contacts.length) {
+    const message = error instanceof Error ? error.message : 'Failed to load contacts.';
+    return (
+      <PageMessagePanel
+        title="Contacts unavailable"
+        description={message}
+        actions={
+          <button
+            type="button"
+            className={stateStyles.primaryAction}
+            onClick={() => {
+              void queryClient.invalidateQueries({ queryKey: contactsListQueryOptions(host).queryKey });
+            }}
+          >
+            Try again
+          </button>
+        }
+      />
+    );
+  }
 
   return (
     <main className={styles.page}>
@@ -140,9 +174,7 @@ export default function ContactsIndexClient({ mode }: { mode?: 'page' | 'loading
             <span className={styles.muted}>{filtered.length} total</span>
           </div>
           <div className={styles.sectionBody}>
-            {!hasLoadedOnce && !error ? (
-              <p className={styles.note}>Loading contacts…</p>
-            ) : filtered.length ? (
+            {filtered.length ? (
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>

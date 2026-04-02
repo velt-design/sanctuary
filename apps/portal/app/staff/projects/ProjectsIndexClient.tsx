@@ -9,6 +9,8 @@ import { normalizeProjectStatus, PROJECT_STATUS_ORDER, nextActionTypeLabel, proj
 import styles from './projects.module.css';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import ListPageSkeleton from '@/components/page-state/ListPageSkeleton';
+import PageMessagePanel from '@/components/page-state/PageMessagePanel';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
@@ -17,6 +19,7 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 import Modal from '@/components/ui/modal/Modal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { deleteProject } from '@/lib/repo/projectsRepo';
+import stateStyles from '@/components/page-state/PageState.module.css';
 
 function toYmd(value: string | null | undefined): string | null {
   const raw = (value ?? '').trim();
@@ -32,7 +35,7 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
   return EXTRA_DELETE_CONFIRM_STAGES.has(normalized) ? `DELETE ${projectId}` : 'DELETE';
 }
 
-export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading' }) {
+export default function ProjectsIndexClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
@@ -51,16 +54,11 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   const queryClient = useQueryClient();
   const prefetchedSnapshotsRef = useRef(new Set<string>());
 
-  const isLoadingMode = mode === 'loading';
-  const { data: projectsData, error: projectsError, refetch: refetchProjects } = useQuery({
+  const { data: projectsData, error: projectsError } = useQuery({
     ...projectsListQueryOptions(host),
-    enabled: !isLoadingMode,
-    refetchOnMount: !isLoadingMode,
   });
   const { data: contactsData, error: contactsError } = useQuery({
     ...contactsListQueryOptions(host),
-    enabled: !isLoadingMode,
-    refetchOnMount: !isLoadingMode,
   });
 
   const projects = projectsData ?? [];
@@ -99,7 +97,6 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   }, [searchParams]);
 
   useEffect(() => {
-    if (isLoadingMode) return;
     if (!projectsError) return;
     if (projects.length) {
       toast.error("Couldn't refresh projects (showing last saved).");
@@ -107,10 +104,9 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
     }
     const msg = projectsError instanceof Error ? projectsError.message : 'Failed to load projects.';
     toast.error(msg);
-  }, [isLoadingMode, projects.length, projectsError, toast]);
+  }, [projects.length, projectsError, toast]);
 
   useEffect(() => {
-    if (isLoadingMode) return;
     if (!contactsError) return;
     if (contacts.length) {
       toast.error("Couldn't refresh contacts (showing last saved).");
@@ -118,7 +114,7 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
     }
     const msg = contactsError instanceof Error ? contactsError.message : 'Failed to load contacts.';
     toast.error(msg);
-  }, [contacts.length, contactsError, isLoadingMode, toast]);
+  }, [contacts.length, contactsError, toast]);
 
   useEffect(() => {
     const t = searchParams.get('toast');
@@ -183,11 +179,11 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   };
 
   useEffect(() => {
-    if (isLoadingMode || !filteredProjects.length) return;
+    if (!filteredProjects.length) return;
     for (const project of filteredProjects.slice(0, 3)) {
       prefetchProjectSnapshot(project.id);
     }
-  }, [filteredProjects, isLoadingMode]);
+  }, [filteredProjects]);
 
   const closeDeleteModal = () => {
     if (isDeleteBusy) return;
@@ -197,6 +193,40 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
   };
 
   const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
+
+  if (!hydrated || (!hasLoadedProjectsOnce && !projectsError)) {
+    return (
+      <ListPageSkeleton
+        title="Projects"
+        actionCount={3}
+        filterFieldCount={3}
+        columnCount={7}
+        rowCount={6}
+        listTitle="All Projects"
+      />
+    );
+  }
+
+  if (projectsError && !projects.length) {
+    const message = projectsError instanceof Error ? projectsError.message : 'Failed to load projects.';
+    return (
+      <PageMessagePanel
+        title="Projects unavailable"
+        description={message}
+        actions={
+          <button
+            type="button"
+            className={stateStyles.primaryAction}
+            onClick={() => {
+              void queryClient.invalidateQueries({ queryKey: projectsListQueryOptions(host).queryKey });
+            }}
+          >
+            Try again
+          </button>
+        }
+      />
+    );
+  }
 
   return (
     <main className={styles.page}>
@@ -275,11 +305,7 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
             </span>
           </div>
           <div className={styles.sectionBody}>
-            {!hydrated ? (
-              <p className={styles.note}>Loading projects…</p>
-            ) : !hasLoadedProjectsOnce && !projectsError ? (
-              <p className={styles.note}>Loading projects…</p>
-            ) : filteredProjects.length ? (
+            {filteredProjects.length ? (
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
@@ -454,7 +480,7 @@ export default function ProjectsIndexClient({ mode }: { mode?: 'page' | 'loading
                     setDeleteTarget(null);
                     setDeleteConfirmText('');
                     setDeleteReason('');
-                    await refetchProjects();
+                    await queryClient.invalidateQueries({ queryKey: projectsListQueryOptions(host).queryKey });
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : 'Failed to delete project';
                     toast.error(msg);
