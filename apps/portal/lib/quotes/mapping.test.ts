@@ -176,7 +176,7 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.coreTotalIncCents).toBe(43125);
   });
 
-  it('uses a combined heading for pergolas with mixed module styles', () => {
+  it('groups shared and module-specific details for mixed pergolas', () => {
     const estimate = makeEstimate({
       inputs: {
         schemaVersion: 'v2',
@@ -189,8 +189,15 @@ describe('buildQuoteLineItemsFromEstimate', () => {
         quoteDiscountPct: '0',
         pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
         modules: [
-          makeModule({ pergolaId: 'pergola-1', pergolaStyle: 'gable' }),
-          makeModule({ pergolaId: 'pergola-1', pergolaStyle: 'perimeter', lengthM: '4.2', projectionM: '2.6' }),
+          makeModule({ pergolaId: 'pergola-1', pergolaStyle: 'gable', roofPitchDeg: '25', postCount: '4' }),
+          makeModule({
+            pergolaId: 'pergola-1',
+            pergolaStyle: 'perimeter',
+            lengthM: '4.2',
+            projectionM: '2.6',
+            roofPitchDeg: '25',
+            postCount: '3',
+          }),
         ],
         blinds: { items: [] },
       },
@@ -208,8 +215,19 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     const result = buildQuoteLineItemsFromEstimate(estimate as any);
 
     expect(result.items).toHaveLength(1);
-    expect(result.items[0]?.description.startsWith('Pergola 1: Gable + Perimeter modules')).toBe(true);
-    expect(result.items[0]?.description).toContain('Style: Gable');
-    expect(result.items[0]?.description).toContain('Style: Perimeter');
+    expect(result.items[0]?.description.startsWith('Pergola 1')).toBe(true);
+    expect(result.items[0]?.description).toContain('Configuration: Gable + Perimeter modules');
+    expect(result.items[0]?.description).toContain('Shared specification');
+    expect(result.items[0]?.description).toContain('Roof: Acrylic');
+    expect(result.items[0]?.description).toContain('Colour: Black');
+    expect(result.items[0]?.description).toContain('Module 1: Gable');
+    expect(result.items[0]?.description).toContain('Module 2: Perimeter');
+    expect(result.items[0]?.description).toContain('Size: 6m x 3m');
+    expect(result.items[0]?.description).toContain('Size: 4.2m x 2.6m');
+    expect(result.items[0]?.description).toContain('Pitch: 25°');
+    expect(result.items[0]?.description).toContain('Posts: 4');
+    expect(result.items[0]?.description).toContain('Posts: 3');
+    expect(result.items[0]?.description?.match(/Roof: Acrylic/g)).toHaveLength(1);
+    expect(result.items[0]?.description?.match(/Colour: Black/g)).toHaveLength(1);
   });
 });

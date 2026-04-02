@@ -1,6 +1,12 @@
 export type QuoteLineDescription = {
   heading: string;
   bullets: string[];
+  entries: QuoteLineDescriptionEntry[];
+};
+
+export type QuoteLineDescriptionEntry = {
+  kind: 'section' | 'bullet';
+  text: string;
 };
 
 export type FormatQuoteTermsOptions = {
@@ -26,9 +32,23 @@ const CONNECTION_VALUE_LABELS: Record<string, string> = {
   deck_bracket: 'Deck brackets',
 };
 
-const PERGOLA_BULLET_PRIORITY = ['size', 'roof', 'colour', 'posts', 'house connection', 'post fixings'] as const;
+const PERGOLA_BULLET_PRIORITY = [
+  'configuration',
+  'style',
+  'size',
+  'pitch',
+  'roof',
+  'colour',
+  'posts',
+  'house connection',
+  'post fixings',
+] as const;
 const PERGOLA_BULLET_INDEX = new Map<string, number>(PERGOLA_BULLET_PRIORITY.map((key, idx) => [key, idx]));
 const DRAFT_TERMS_PATTERN = /this quote is valid for 30 days from the issue date\.?/i;
+const DESCRIPTION_SECTION_PATTERNS: RegExp[] = [
+  /^shared specification$/i,
+  /^module\s+\d+(?:\s*:\s*.+)?$/i,
+];
 
 function isPlaceholder(value: string): boolean {
   return PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(value));
@@ -152,6 +172,28 @@ function sanitizeBulletLine(raw: string): string[] {
   return clean ? [clean] : [];
 }
 
+function isDescriptionSection(raw: string): boolean {
+  const stripped = raw.replace(/^[-•]\s*/, '').trim();
+  if (!stripped) return false;
+  return DESCRIPTION_SECTION_PATTERNS.some((pattern) => pattern.test(stripped));
+}
+
+function sanitizeDescriptionLine(raw: string): QuoteLineDescriptionEntry[] {
+  if (isDescriptionSection(raw)) {
+    const stripped = raw.replace(/^[-•]\s*/, '').trim();
+    const clean = sanitizeText(stripped);
+    return clean ? [{ kind: 'section', text: clean }] : [];
+  }
+
+  return sanitizeBulletLine(raw).map((text) => ({ kind: 'bullet' as const, text }));
+}
+
+function sortPergolaEntries(entries: QuoteLineDescriptionEntry[]): QuoteLineDescriptionEntry[] {
+  if (entries.length <= 1) return entries;
+  if (entries.some((entry) => entry.kind === 'section')) return entries;
+  return sortPergolaBullets(entries.map((entry) => entry.text)).map((text) => ({ kind: 'bullet', text }));
+}
+
 function adjustTermsForDraft(terms: string[], sentAt?: string | null): string[] {
   if (sentAt) return terms;
   return terms.map((line) =>
@@ -168,28 +210,30 @@ export function formatQuoteLineDescription(raw: string, index: number): QuoteLin
   const rawTitle = lines[0] ?? `Item ${index + 1}`;
   const title = sanitizeText(rawTitle) ?? `Item ${index + 1}`;
 
-  const bullets: string[] = [];
+  const entries: QuoteLineDescriptionEntry[] = [];
   lines.slice(1).forEach((line) => {
-    const expanded = sanitizeBulletLine(line);
-    expanded.forEach((bullet) => {
-      const clean = sanitizeText(bullet);
-      if (clean) bullets.push(clean);
+    const expanded = sanitizeDescriptionLine(line);
+    expanded.forEach((entry) => {
+      const clean = sanitizeText(entry.text);
+      if (clean) entries.push({ ...entry, text: clean });
     });
   });
 
   const styleValues: string[] = [];
-  const styleIndexes: number[] = [];
+  const styleIndexes = new Set<number>();
   let locationValue: string | null = null;
   let locationIndex = -1;
 
-  bullets.forEach((bullet, idx) => {
-    const styleMatch = bullet.match(/^Style:\s*(.+)$/i);
+  entries.forEach((entry, idx) => {
+    if (entry.kind !== 'bullet') return;
+
+    const styleMatch = entry.text.match(/^Style:\s*(.+)$/i);
     if (styleMatch) {
       styleValues.push(styleMatch[1].trim());
-      styleIndexes.push(idx);
+      styleIndexes.add(idx);
       return;
     }
-    const locationMatch = bullet.match(/^(Location|Position|Placement):\s*(.+)$/i);
+    const locationMatch = entry.text.match(/^(Location|Position|Placement):\s*(.+)$/i);
     if (locationMatch && locationIndex === -1) {
       locationValue = locationMatch[2].trim();
       locationIndex = idx;
@@ -237,10 +281,11 @@ export function formatQuoteLineDescription(raw: string, index: number): QuoteLin
   }
   if (usedLocation && locationIndex >= 0) drop.add(locationIndex);
 
-  const filteredBullets = bullets.filter((_, idx) => !drop.has(idx));
-  const orderedBullets = isPergola ? sortPergolaBullets(filteredBullets) : filteredBullets;
+  const filteredEntries = entries.filter((_, idx) => !drop.has(idx));
+  const orderedEntries = isPergola ? sortPergolaEntries(filteredEntries) : filteredEntries;
+  const orderedBullets = orderedEntries.filter((entry) => entry.kind === 'bullet').map((entry) => entry.text);
 
-  return { heading, bullets: orderedBullets };
+  return { heading, bullets: orderedBullets, entries: orderedEntries };
 }
 
 export function formatQuoteTermsText(raw: string | null | undefined, options: FormatQuoteTermsOptions = {}): string[] {

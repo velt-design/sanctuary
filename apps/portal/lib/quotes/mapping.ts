@@ -173,10 +173,84 @@ type PricedPergola = {
   pergolaCostEx: number;
 };
 
+type ModuleField = {
+  key: 'roof' | 'colour' | 'houseConnection' | 'postFixings';
+  label: string;
+  value: string | null;
+};
+
 function lineUnitPriceIncFromCostEx(costEx: number): number {
   const sellEx = roundMoney(costEx * 1.25);
   const sellInc = roundMoney(sellEx * (1 + GST_RATE));
   return toCents(sellInc);
+}
+
+function normalizeComparisonValue(value: string | null): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.toLowerCase() : null;
+}
+
+function formatConnectionValue(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (!normalized) return null;
+  if (normalized === 'deck_bracket') return 'Deck brackets';
+  if (normalized === 'soffit') return 'Soffit brackets';
+  return toTitleCase(normalized);
+}
+
+function formatModuleStyle(module: CalculatorModuleInputs): string | null {
+  const raw = typeof module?.pergolaStyle === 'string' ? module.pergolaStyle.trim() : '';
+  return raw ? toTitleCase(raw) : null;
+}
+
+function formatModuleRoof(module: CalculatorModuleInputs): string | null {
+  const raw = typeof module?.roofMaterial === 'string' ? module.roofMaterial.trim() : '';
+  return raw ? toTitleCase(raw) : null;
+}
+
+function formatModuleColour(module: CalculatorModuleInputs): string | null {
+  const base = typeof module?.extrusionColour === 'string' ? module.extrusionColour.trim() : '';
+  if (!base) return null;
+  if (module.powdercoatIsCustom) {
+    const custom = typeof module?.powdercoatCustomColour === 'string' ? module.powdercoatCustomColour.trim() : '';
+    return custom ? `${base} (${custom})` : `${base} (Custom)`;
+  }
+  const standard = typeof module?.powdercoatStandardColour === 'string' ? module.powdercoatStandardColour.trim() : '';
+  return standard ? `${base} (${standard})` : base;
+}
+
+function formatModuleSize(module: CalculatorModuleInputs): string {
+  const length = formatDimension(module.lengthM);
+  const projection = formatDimension(module.projectionM);
+  if (module.pergolaStyle === 'hip_corner') {
+    return `A ${length}m x ${projection}m, B ${formatDimension(module.hipCornerLengthBM)}m x ${formatDimension(module.hipCornerProjectionBM)}m`;
+  }
+  return `${length}m x ${projection}m`;
+}
+
+function formatModulePitch(module: CalculatorModuleInputs): string | null {
+  const raw = typeof module?.roofPitchDeg === 'string' ? module.roofPitchDeg.trim() : '';
+  return raw ? `${raw}°` : null;
+}
+
+function formatModulePosts(module: CalculatorModuleInputs): string | null {
+  const raw = typeof module?.postCount === 'string' ? module.postCount.trim() : String(module?.postCount ?? '').trim();
+  return raw || null;
+}
+
+function buildSharedCandidateFields(module: CalculatorModuleInputs): ModuleField[] {
+  return [
+    { key: 'roof', label: 'Roof', value: formatModuleRoof(module) },
+    { key: 'colour', label: 'Colour', value: formatModuleColour(module) },
+    { key: 'houseConnection', label: 'House connection', value: formatConnectionValue(module.houseConnectionType) },
+    { key: 'postFixings', label: 'Post fixings', value: formatConnectionValue(module.postConnectionType) },
+  ];
+}
+
+function appendFieldLine(lines: string[], label: string, value: string | null) {
+  if (!value) return;
+  lines.push(`- ${label}: ${value}`);
 }
 
 function buildInputPergolaModules(
@@ -221,20 +295,66 @@ function buildPergolaDescription(params: {
   const lines: string[] = [];
   const pergolaLabel = normalizePergolaLabel(params.label, params.fallbackIndex);
   const styles = uniqueModuleStyles(params.modules);
-  if (styles.length > 1) {
-    lines.push(`${pergolaLabel}: ${joinStyleLabels(styles)} modules`);
-  } else {
-    lines.push(pergolaLabel);
-  }
+  lines.push(pergolaLabel);
 
   if (!params.modules.length) {
     lines.push('- Modules: snapshot-only breakdown');
     return lines.join('\n');
   }
 
+  if (params.modules.length === 1) {
+    const module = params.modules[0]!;
+    appendFieldLine(lines, 'Style', formatModuleStyle(module));
+    appendFieldLine(lines, 'Size', formatModuleSize(module));
+    appendFieldLine(lines, 'Roof', formatModuleRoof(module));
+    appendFieldLine(lines, 'Colour', formatModuleColour(module));
+    appendFieldLine(lines, 'Pitch', formatModulePitch(module));
+    appendFieldLine(lines, 'Posts', formatModulePosts(module));
+    appendFieldLine(lines, 'House connection', formatConnectionValue(module.houseConnectionType));
+    appendFieldLine(lines, 'Post fixings', formatConnectionValue(module.postConnectionType));
+    return lines.join('\n');
+  }
+
+  const configurationLabel = styles.length === 1
+    ? `${params.modules.length} ${styles[0]} modules`
+    : `${joinStyleLabels(styles)} modules`;
+  appendFieldLine(lines, 'Configuration', configurationLabel);
+
+  const sharedFieldKeys = new Set<ModuleField['key']>();
+  const sharedFields: Array<{ label: string; value: string }> = [];
+  const sharedFieldMeta: Array<Pick<ModuleField, 'key' | 'label'>> = [
+    { key: 'roof', label: 'Roof' },
+    { key: 'colour', label: 'Colour' },
+    { key: 'houseConnection', label: 'House connection' },
+    { key: 'postFixings', label: 'Post fixings' },
+  ];
+
+  sharedFieldMeta.forEach(({ key, label }) => {
+    const values = params.modules.map((module) => buildSharedCandidateFields(module).find((field) => field.key === key)?.value ?? null);
+    if (values.some((value) => !value)) return;
+    const normalized = values.map((value) => normalizeComparisonValue(value));
+    if (!normalized.length || normalized.some((value) => !value || value !== normalized[0])) return;
+    sharedFieldKeys.add(key);
+    sharedFields.push({ label, value: values[0]! });
+  });
+
+  if (sharedFields.length) {
+    lines.push('');
+    lines.push('Shared specification');
+    sharedFields.forEach((field) => appendFieldLine(lines, field.label, field.value));
+  }
+
   params.modules.forEach((module, moduleIndex) => {
     lines.push('');
-    lines.push(buildModuleDescription(module, moduleIndex));
+    const styleLabel = formatModuleStyle(module);
+    lines.push(styleLabel ? `Module ${moduleIndex + 1}: ${styleLabel}` : `Module ${moduleIndex + 1}`);
+    appendFieldLine(lines, 'Size', formatModuleSize(module));
+    appendFieldLine(lines, 'Pitch', formatModulePitch(module));
+    appendFieldLine(lines, 'Posts', formatModulePosts(module));
+
+    buildSharedCandidateFields(module)
+      .filter((field) => !sharedFieldKeys.has(field.key))
+      .forEach((field) => appendFieldLine(lines, field.label, field.value));
   });
 
   return lines.join('\n');

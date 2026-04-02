@@ -36,20 +36,28 @@ describe('formatQuoteLineDescription', () => {
 
   it('preserves an explicit mixed pergola heading instead of collapsing to the first style', () => {
     const raw = [
-      'Pergola 1: Gable + Perimeter modules',
-      '- Pergola module 1',
-      '- Style: Gable',
+      'Pergola 1',
+      '- Configuration: Gable + Perimeter modules',
+      'Shared specification',
       '- Roof: Acrylic',
-      '- Pergola module 2',
-      '- Style: Perimeter',
-      '- Roof: Acrylic',
+      'Module 1: Gable',
+      '- Size: 6m x 3m',
+      'Module 2: Perimeter',
+      '- Size: 4.2m x 2.6m',
     ].join('\n');
 
     const result = formatQuoteLineDescription(raw, 0);
 
-    expect(result.heading).toBe('Pergola 1: Gable + Perimeter modules:');
-    expect(result.bullets).toContain('Style: Gable');
-    expect(result.bullets).toContain('Style: Perimeter');
+    expect(result.heading).toBe('Pergola 1:');
+    expect(result.entries).toEqual([
+      { kind: 'bullet', text: 'Configuration: Gable + Perimeter modules' },
+      { kind: 'section', text: 'Shared specification' },
+      { kind: 'bullet', text: 'Roof: Acrylic' },
+      { kind: 'section', text: 'Module 1: Gable' },
+      { kind: 'bullet', text: 'Size: 6m × 3m' },
+      { kind: 'section', text: 'Module 2: Perimeter' },
+      { kind: 'bullet', text: 'Size: 4.2m × 2.6m' },
+    ]);
   });
 });
 

@@ -269,15 +269,36 @@
   color: #121519;
 }
 
-.descriptionBullets {
+.descriptionEntries {
   margin: 6px 0 0;
-  padding-left: 18px;
   color: #5c6470;
   line-height: 1.5;
 }
 
-.descriptionBullets li + li {
+.descriptionSection {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #121519;
+}
+
+.descriptionSection:first-child {
+  margin-top: 0;
+}
+
+.descriptionBulletRow {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.descriptionSection + .descriptionBulletRow,
+.descriptionBulletRow + .descriptionBulletRow {
   margin-top: 3px;
+}
+
+.descriptionBulletMark {
+  color: #5c6470;
 }
 
 .numericCell {
@@ -583,7 +604,10 @@
     min-width: 0;
   }
 
-  .descriptionBullets,
+  .descriptionEntries {
+    margin-left: 0;
+  }
+
   .termsList {
     margin-left: 0;
     padding-left: 16px;

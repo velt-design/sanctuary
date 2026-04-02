@@ -209,12 +209,23 @@ function QuoteLineItemsTable({ lineItems }: { lineItems: PublicQuote['lineItems'
                 <tr key={line.id}>
                   <td>
                     <strong className={styles.descriptionHeading}>{description.heading || 'Line item:'}</strong>
-                    {description.bullets.length ? (
-                      <ul className={styles.descriptionBullets}>
-                        {description.bullets.map((bullet, bulletIndex) => (
-                          <li key={`${line.id}:${bulletIndex}`}>{bullet}</li>
+                    {description.entries.length ? (
+                      <div className={styles.descriptionEntries}>
+                        {description.entries.map((entry, entryIndex) => (
+                          entry.kind === 'section' ? (
+                            <div key={`${line.id}:${entryIndex}`} className={styles.descriptionSection}>
+                              {entry.text}
+                            </div>
+                          ) : (
+                            <div key={`${line.id}:${entryIndex}`} className={styles.descriptionBulletRow}>
+                              <span className={styles.descriptionBulletMark} aria-hidden="true">
+                                -
+                              </span>
+                              <span>{entry.text}</span>
+                            </div>
+                          )
                         ))}
-                      </ul>
+                      </div>
                     ) : null}
                   </td>
                   <td className={styles.numericCell}>{formatQty(line.qty)}</td>
@@ -420,4 +431,3 @@ export default async function QuotePage({ params, searchParams }: QuotePageProps
     </QuoteViewerShell>
   );
 }
-
