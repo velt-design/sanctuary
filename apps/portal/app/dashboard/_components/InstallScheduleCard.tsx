@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ScheduleSnapshot } from '@/lib/dashboard/types';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { formatShortDate } from '@/lib/dashboard/format';
 import { projectDetailHref } from '@/lib/dashboard/links';

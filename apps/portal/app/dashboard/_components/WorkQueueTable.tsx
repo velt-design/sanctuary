@@ -3,7 +3,7 @@ import type { WorkQueueItem } from '@/lib/dashboard/types';
 import { humanDueLabel, todayNzYYYYMMDD, formatShortDateTime } from '@/lib/dashboard/format';
 import { dashboardHref, projectDetailHref, projectsHref } from '@/lib/dashboard/links';
 import SetNextActionButton from './SetNextActionButton';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { NEXT_ACTION_TYPE_ORDER, nextActionTypeLabel, PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 

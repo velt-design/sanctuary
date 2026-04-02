@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 
 export default function SpecTextPanel({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -34,4 +34,3 @@ export default function SpecTextPanel({ text }: { text: string }) {
     </section>
   );
 }
-

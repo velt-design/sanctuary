@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Contact } from '@/lib/types/contact';
-import styles from '../../projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import PageHeader from '@/components/layout/PageHeader';

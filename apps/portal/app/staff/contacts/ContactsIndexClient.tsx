@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createContact, updateContact } from '@/lib/repo/contactsRepo';
 import type { Contact } from '@/lib/types/contact';
-import styles from '../projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { parseContactsCsv, planContactsImport } from '@/lib/import/contactsCsv';
 import Modal from '@/components/ui/modal/Modal';

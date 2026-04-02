@@ -1,0 +1,104 @@
+name: Portal Quality
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  portal-quality:
+    name: Portal Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: true
+      PORTAL_TEST_EMAIL: ${{ secrets.PORTAL_TEST_EMAIL }}
+      PORTAL_TEST_PASSWORD: ${{ secrets.PORTAL_TEST_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Portal Vitest suite
+        run: npm run test:portal
+
+      - name: Portal production build
+        run: npm run build:portal
+
+      - name: Portal authenticated smoke suite
+        run: npm run test:portal:smoke
+
+  portal-performance:
+    name: Portal Performance Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    env:
+      CI: true
+      PORTAL_TEST_EMAIL: ${{ secrets.PORTAL_TEST_EMAIL }}
+      PORTAL_TEST_PASSWORD: ${{ secrets.PORTAL_TEST_PASSWORD }}
+      PORTAL_PERF_ARTIFACT: artifacts/portal-route-timings.json
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Capture portal route timings
+        run: npm run test:portal:performance
+
+      - name: Publish timing summary
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const artifactPath = process.env.PORTAL_PERF_ARTIFACT;
+          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+
+          if (!artifactPath || !summaryPath || !fs.existsSync(artifactPath)) {
+            fs.appendFileSync(summaryPath, '## Portal Route Timings\n\nNo timing artifact was generated.\n');
+            process.exit(0);
+          }
+
+          const payload = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+          const routes = Array.isArray(payload.routes) ? payload.routes : [];
+          const lines = [
+            '## Portal Route Timings',
+            '',
+            '| Route | Shell visible | Content visible |',
+            '| --- | ---: | ---: |',
+            ...routes.map((route) => `| ${route.route} | ${route.shellVisibleMs}ms | ${route.contentVisibleMs}ms |`),
+          ];
+
+          fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
+          NODE
+
+      - name: Upload portal timing artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: portal-route-timings
+          path: artifacts/portal-route-timings.json
+          if-no-files-found: warn

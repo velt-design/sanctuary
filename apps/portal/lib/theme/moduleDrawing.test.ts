@@ -21,7 +21,7 @@ describe('moduleDrawingThemeCssVariables', () => {
     expect(minimalVars['--mv-stage-border']).toBe('transparent');
     expect(minimalVars['--mv-svg-bg']).toBe('transparent');
     expect(sheetVars['--mv-sheet-border']).toBeTruthy();
-    expect(sheetVars['--mv-line-primary']).toBe('rgba(47, 56, 47, 0.8)');
+    expect(sheetVars['--mv-line-primary']).toBe('rgba(47, 56, 47, 0.88)');
     expect(sheetVars['--mv-line-major-width']).toBe('0.37');
     expect(sheetVars['--mv-line-secondary-width']).toBe('0.26');
     expect(sheetVars['--mv-line-tertiary-width']).toBe('0.17');

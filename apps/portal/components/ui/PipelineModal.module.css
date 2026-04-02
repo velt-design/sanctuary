@@ -1,5 +1,5 @@
 .body {
-  padding: 24px;
+  padding: var(--portal-space-5);
 }
 
 .header {
@@ -22,28 +22,29 @@
 
 .title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--portal-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgba(var(--portal-text-rgb), 0.98);
 }
 
 .description {
   margin-top: 4px;
-  font-size: 13px;
-  color: rgba(var(--portal-text-rgb), 0.65);
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(var(--portal-text-rgb), 0.66);
 }
 
 .closeButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: rgba(var(--portal-text-rgb), 0.6);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--portal-radius-sm);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  color: rgba(var(--portal-text-rgb), 0.66);
   cursor: pointer;
 }
 
@@ -51,42 +52,42 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: rgba(var(--portal-text-rgb), 0.6);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--portal-radius-sm);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  color: rgba(var(--portal-text-rgb), 0.66);
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .closeButton:hover {
-  background: rgba(var(--portal-text-rgb), 0.06);
+  background: rgba(var(--portal-text-rgb), 0.08);
   color: var(--portal-text);
 }
 
 .backButton:hover {
-  background: rgba(var(--portal-text-rgb), 0.06);
+  background: rgba(var(--portal-text-rgb), 0.08);
   color: var(--portal-text);
 }
 
-.closeButton:focus {
+.closeButton:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--portal-text-rgb), 0.2);
+  box-shadow: var(--portal-focus-ring);
 }
 
-.backButton:focus {
+.backButton:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--portal-text-rgb), 0.2);
+  box-shadow: var(--portal-focus-ring);
 }
 
 .content {
-  margin-top: 16px;
+  margin-top: var(--portal-space-4);
 }
 
 .actions {
-  margin-top: 24px;
+  margin-top: var(--portal-space-5);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -99,11 +100,13 @@
 }
 
 .buttonBase {
-  height: 44px;
+  height: 46px;
   width: 100%;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: var(--portal-radius-md);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
@@ -113,23 +116,23 @@
 }
 
 .buttonPrimary {
-  border: none;
-  background: var(--portal-text);
+  border: 1px solid rgba(var(--portal-accent-rgb), 0.9);
+  background: var(--portal-accent);
   color: var(--portal-text-inverse);
 }
 
 .buttonPrimary:hover:not(:disabled) {
-  background: #1a1a1b;
+  filter: brightness(1.02);
 }
 
-.buttonPrimary:focus {
+.buttonPrimary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--portal-text-rgb), 0.25);
+  box-shadow: var(--portal-focus-ring);
 }
 
 .buttonSecondary {
   border: 1px solid rgba(var(--portal-text-rgb), 0.18);
-  background: var(--portal-bg-surface);
+  background: rgba(var(--portal-text-rgb), 0.03);
   color: var(--portal-text);
 }
 
@@ -137,22 +140,22 @@
   background: rgba(var(--portal-text-rgb), 0.05);
 }
 
-.buttonSecondary:focus {
+.buttonSecondary:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(var(--portal-text-rgb), 0.16);
+  box-shadow: var(--portal-focus-ring);
 }
 
 .buttonDanger {
-  border: none;
-  background: transparent;
-  color: #b91c1c;
+  border: 1px solid rgba(var(--portal-status-danger-rgb), 0.18);
+  background: rgba(var(--portal-status-danger-rgb), 0.08);
+  color: rgb(var(--portal-status-danger-rgb));
 }
 
 .buttonDanger:hover:not(:disabled) {
   background: rgba(185, 28, 28, 0.08);
 }
 
-.buttonDanger:focus {
+.buttonDanger:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.2);
+  box-shadow: 0 0 0 4px rgba(var(--portal-status-danger-rgb), 0.14);
 }

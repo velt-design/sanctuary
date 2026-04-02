@@ -1,7 +1,7 @@
 'use client';
 
 import Modal from '@/components/ui/modal/Modal';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 
 export default function ConflictModal({
   open,
@@ -65,4 +65,3 @@ export default function ConflictModal({
     </Modal>
   );
 }
-

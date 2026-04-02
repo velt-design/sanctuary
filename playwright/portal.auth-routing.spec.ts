@@ -18,6 +18,14 @@ async function delayNetworkResponse(page: Page, pattern: string) {
   return gate;
 }
 
+async function firstHref(page: Page, selector: string): Promise<string | null> {
+  const link = page.locator(selector).first();
+  const count = await link.count();
+  if (!count) return null;
+  await expect(link).toBeVisible({ timeout: 60_000 });
+  return link.getAttribute('href');
+}
+
 test.describe('portal auth routing public flows', () => {
   test.use({
     storageState: { cookies: [], origins: [] },
@@ -132,5 +140,43 @@ test.describe('portal auth routing authenticated flows', () => {
     gate.resolve();
 
     await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });
+  });
+
+  test('renders the schedule shell with the shared page chrome', async ({ page }) => {
+    await page.goto('/staff/schedule');
+
+    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+  });
+
+  test('opens a contact detail page from the list without losing shell chrome', async ({ page }) => {
+    await page.goto('/staff/contacts');
+    await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });
+
+    const href = await firstHref(page, 'a[href^="/staff/contacts/"]');
+    test.skip(!href, 'No contact detail links are available for smoke coverage.');
+
+    await page.goto(href!);
+
+    await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Create Project' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText('Contact ID:')).toBeVisible();
+  });
+
+  test('opens and closes the shared import modal cleanly', async ({ page }) => {
+    await page.goto('/staff/contacts');
+    await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });
+
+    await page.locator('input[type="file"][accept=".csv,text/csv"]').setInputFiles({
+      name: 'contacts.csv',
+      mimeType: 'text/csv',
+      buffer: Buffer.from('Name,Email,Phone\nAlice Example,alice@example.com,555-0100\n'),
+    });
+
+    const dialog = page.getByRole('dialog', { name: 'Import contacts from CSV' });
+    await expect(dialog).toBeVisible({ timeout: 60_000 });
+
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect(dialog).toHaveCount(0);
   });
 });

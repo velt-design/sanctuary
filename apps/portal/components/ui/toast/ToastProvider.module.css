@@ -1,36 +1,37 @@
-﻿.viewport {
+.viewport {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 600;
+  right: 18px;
+  bottom: 18px;
+  z-index: 6000;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   max-width: min(420px, calc(100vw - 32px));
 }
 
 .toast {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
-  padding: 12px 12px;
-  border-radius: 14px;
+  gap: 12px;
+  padding: 14px;
+  border-radius: var(--portal-radius-md);
   border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  background: rgba(var(--portal-bg-surface-rgb), 0.98);
-  box-shadow: 0 18px 50px rgba(var(--portal-text-rgb), 0.18);
+  background: rgba(var(--portal-bg-elevated-rgb), 0.98);
+  box-shadow: var(--portal-shadow-elevated);
   color: rgba(var(--portal-text-rgb), 0.92);
 }
 
 .message {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 600;
 }
 
 .meta {
   margin-top: 2px;
   font-size: 11px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   opacity: 0.7;
 }
@@ -40,10 +41,10 @@
   background: transparent;
   cursor: pointer;
   padding: 6px 8px;
-  border-radius: 10px;
+  border-radius: var(--portal-radius-sm);
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: inherit;
   opacity: 0.8;
@@ -51,22 +52,22 @@
 
 .close:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.16);
+  box-shadow: var(--portal-focus-ring);
 }
 
 .kindSuccess {
-  border-color: rgba(22, 163, 74, 0.28);
-  background: rgba(236, 253, 245, 0.95);
+  border-color: rgba(var(--portal-status-success-rgb), 0.28);
+  background: rgba(236, 253, 245, 0.98);
 }
 
 .kindError {
-  border-color: rgba(185, 28, 28, 0.28);
-  background: rgba(254, 242, 242, 0.95);
+  border-color: rgba(var(--portal-status-danger-rgb), 0.28);
+  background: rgba(254, 242, 242, 0.98);
 }
 
 .kindInfo {
-  border-color: rgba(59, 130, 246, 0.22);
-  background: rgba(239, 246, 255, 0.95);
+  border-color: rgba(var(--portal-status-info-rgb), 0.22);
+  background: rgba(239, 246, 255, 0.98);
 }
 
 .enter {
@@ -83,5 +84,3 @@
     transform: translateY(0);
   }
 }
-
-

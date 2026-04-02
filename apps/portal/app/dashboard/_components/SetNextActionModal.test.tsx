@@ -38,7 +38,7 @@ describe('SetNextActionModal', () => {
       />,
     );
 
-    const saveButton = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent?.includes('Save')) as HTMLButtonElement;
+    const saveButton = Array.from(document.body.querySelectorAll('button')).find((button) => button.textContent?.includes('Save')) as HTMLButtonElement;
 
     await act(async () => {
       saveButton.click();

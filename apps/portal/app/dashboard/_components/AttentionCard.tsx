@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { AttentionItem } from '@/lib/dashboard/types';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
 import { dashboardHref } from '@/lib/dashboard/links';
 

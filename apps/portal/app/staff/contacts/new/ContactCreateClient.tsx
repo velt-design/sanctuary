@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { createContact } from '@/lib/repo/contactsRepo';
-import styles from '../../projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
