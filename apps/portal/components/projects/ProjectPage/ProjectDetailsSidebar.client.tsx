@@ -4,19 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
+import { apiJson } from '@/lib/repo/apiClient';
+import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
-import { enqueueAndProcessLocalFirstMutation } from '@/lib/localFirst/queue';
-import { discardLocalFirstEntityQueue } from '@/lib/localFirst/store';
-import { useEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
-import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
 import {
-  PORTAL_LOCAL_FIRST_MUTATIONS,
-  buildProjectDetailsDraftEntityKey,
-  buildProjectDetailsEntityKey,
   normalizeProjectDetailsDraft,
   patchProjectDetailsCaches,
   type PortalProjectDetailsDraft,
-  type PortalProjectDetailsMutationPayload,
 } from '@/lib/localFirst/portalEntities';
 
 const AUTOSAVE_DELAY_MS = 700;
@@ -43,14 +37,32 @@ function sameDraft(a: PortalProjectDetailsDraft, b: PortalProjectDetailsDraft): 
   return JSON.stringify(normalizeProjectDetailsDraft(a)) === JSON.stringify(normalizeProjectDetailsDraft(b));
 }
 
-function syncLabel(status: ReturnType<typeof useEntitySyncState>, dirty: boolean): string | null {
-  if (status.status === 'conflict') return status.lastError ?? 'Needs review';
-  if (status.status === 'offline') return 'Offline. Changes will sync when reconnected.';
-  if (status.status === 'error') return status.lastError ?? 'Sync failed. Retrying…';
-  if (status.pendingCount > 0 || status.status === 'syncing' || status.status === 'queued') return 'Syncing…';
-  if (dirty) return 'Unsaved local edits';
-  if (status.lastSyncedAt) return 'Saved';
+function saveLabel(args: { dirty: boolean; isSaving: boolean; lastSavedAt: string | null }): string | null {
+  if (args.isSaving) return 'Saving…';
+  if (args.dirty) return 'Unsaved edits';
+  if (args.lastSavedAt) return 'Saved';
   return null;
+}
+
+export function buildProjectDetailsRequest(projectId: string, contactId: string | null, draft: PortalProjectDetailsDraft) {
+  return {
+    path: `/api/projects/${encodeURIComponent(projectId)}/details`,
+    body: JSON.stringify({
+      project: {
+        name: draft.projectName,
+        siteAddress: draft.siteAddress,
+        region: draft.region,
+        quoteRef: draft.quoteRef,
+        nextActionDate: draft.nextActionDate,
+      },
+      contact: {
+        name: draft.contactName,
+        email: draft.contactEmail,
+        phone: draft.contactPhone,
+      },
+      contactId,
+    }),
+  };
 }
 
 export default function ProjectDetailsSidebarClient({ project }: { project: ProjectPageSnapshot['project'] }) {
@@ -58,46 +70,26 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
   const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<PortalProjectDetailsDraft>(() => toDraft(project));
+  const [savedDraft, setSavedDraft] = useState<PortalProjectDetailsDraft>(() => normalizeProjectDetailsDraft(toDraft(project)));
   const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
-  const lastQueuedRef = useRef('');
   const draftRef = useRef(draft);
-
-  const entityKey = useMemo(() => buildProjectDetailsEntityKey(project.id), [project.id]);
-  const draftEntityKey = useMemo(() => buildProjectDetailsDraftEntityKey(project.id), [project.id]);
-  const syncState = useEntitySyncState(entityKey);
-  const workingCopy = useLocalWorkingCopy<PortalProjectDetailsDraft>(draftEntityKey, toDraft(project));
-  const serverDraft = useMemo(() => normalizeProjectDetailsDraft(toDraft(project)), [project]);
+  const inFlightSerializedRef = useRef<string | null>(null);
+  const savePromiseRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     draftRef.current = draft;
   }, [draft]);
 
   useEffect(() => {
-    if (!workingCopy.hydrated) return;
-    if (workingCopy.hasLocalCopy) {
-      setDraft(workingCopy.value);
-      setIsEditing(true);
-      return;
-    }
+    const nextSavedDraft = normalizeProjectDetailsDraft(toDraft(project));
+    setSavedDraft(nextSavedDraft);
     if (!isEditing) {
-      setDraft(serverDraft);
-      lastQueuedRef.current = JSON.stringify(serverDraft);
+      setDraft(nextSavedDraft);
     }
-  }, [isEditing, serverDraft, workingCopy.hasLocalCopy, workingCopy.hydrated, workingCopy.value]);
-
-  useEffect(() => {
-    if (!workingCopy.hasLocalCopy) return;
-    if (syncState.pendingCount > 0) return;
-    if (!sameDraft(workingCopy.value, serverDraft)) return;
-    void workingCopy.clearWorkingCopy();
-  }, [serverDraft, syncState.pendingCount, workingCopy]);
-
-  useEffect(() => {
-    if (syncState.status !== 'conflict') return;
-    if (syncState.lastError) setError(syncState.lastError);
-    void discardLocalFirstEntityQueue(entityKey);
-  }, [entityKey, syncState.lastError, syncState.status]);
+  }, [isEditing, project]);
 
   useEffect(() => {
     return () => {
@@ -113,7 +105,7 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
     return true;
   }, [draft]);
 
-  const dirty = useMemo(() => !sameDraft(draft, serverDraft), [draft, serverDraft]);
+  const dirty = useMemo(() => !sameDraft(draft, savedDraft), [draft, savedDraft]);
 
   const flushDraft = useCallback(async () => {
     const nextDraft = normalizeProjectDetailsDraft(draftRef.current);
@@ -121,90 +113,94 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
     if (!isValidYmd(nextDraft.nextActionDate)) return false;
 
     const serialized = JSON.stringify(nextDraft);
-    if (serialized === JSON.stringify(serverDraft)) {
-      lastQueuedRef.current = serialized;
-      if (workingCopy.hasLocalCopy && syncState.pendingCount === 0) {
-        await workingCopy.clearWorkingCopy();
-      }
+    const savedSerialized = JSON.stringify(savedDraft);
+    if (serialized === savedSerialized) {
       return true;
     }
 
-    if (serialized === lastQueuedRef.current && syncState.pendingCount > 0) {
-      return true;
+    if (inFlightSerializedRef.current === serialized && savePromiseRef.current) {
+      return savePromiseRef.current;
     }
 
-    lastQueuedRef.current = serialized;
-    setError(null);
+    const previousSavedDraft = savedDraft;
+    const request = buildProjectDetailsRequest(project.id, project.contactId ?? null, nextDraft);
     patchProjectDetailsCaches(queryClient, hostKey, project.id, nextDraft, {
       contactId: project.contactId ?? null,
     });
-    await workingCopy.setWorkingCopy(nextDraft);
 
-    const mutationPayload: PortalProjectDetailsMutationPayload = {
-      projectId: project.id,
-      contactId: project.contactId ?? null,
-      draft: nextDraft,
-    };
-    await enqueueAndProcessLocalFirstMutation({
-      entityKey,
-      mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.projectDetailsUpdate,
-      payload: mutationPayload,
-    });
-    return true;
-  }, [entityKey, hostKey, project.contactId, project.id, queryClient, serverDraft, syncState.pendingCount, workingCopy]);
+    setError(null);
+    setIsSaving(true);
+
+    const savePromise = apiJson(request.path, {
+      method: 'PATCH',
+      body: request.body,
+    })
+      .then(async () => {
+        setSavedDraft(nextDraft);
+        setLastSavedAt(new Date().toISOString());
+        await invalidateProjectReadCaches(queryClient, hostKey, project.id);
+        return true;
+      })
+      .catch((err) => {
+        patchProjectDetailsCaches(queryClient, hostKey, project.id, previousSavedDraft, {
+          contactId: project.contactId ?? null,
+        });
+        const msg = err instanceof Error ? err.message : 'Failed to save project details';
+        setError(msg);
+        throw err;
+      })
+      .finally(() => {
+        setIsSaving(false);
+        if (inFlightSerializedRef.current === serialized) {
+          inFlightSerializedRef.current = null;
+          savePromiseRef.current = null;
+        }
+      });
+
+    inFlightSerializedRef.current = serialized;
+    savePromiseRef.current = savePromise;
+    return savePromise;
+  }, [hostKey, project.contactId, project.id, queryClient, savedDraft]);
 
   useEffect(() => {
-    if (!isEditing || !workingCopy.hydrated || !dirty || !canSave) return;
+    if (!isEditing || !dirty || !canSave) return;
     if (timerRef.current !== null && typeof window !== 'undefined') {
       window.clearTimeout(timerRef.current);
     }
     timerRef.current = window.setTimeout(() => {
-      void flushDraft().catch((err) => {
-        const msg = err instanceof Error ? err.message : 'Failed to save project details';
-        setError(msg);
-      });
+      void flushDraft().catch(() => undefined);
     }, AUTOSAVE_DELAY_MS);
     return () => {
       if (timerRef.current !== null) {
         window.clearTimeout(timerRef.current);
       }
     };
-  }, [canSave, dirty, flushDraft, isEditing, workingCopy.hydrated]);
+  }, [canSave, dirty, flushDraft, isEditing]);
 
-  const updateDraftField = useCallback(
-    (field: keyof PortalProjectDetailsDraft, value: string) => {
-      setError(null);
-      setDraft((prev) => {
-        const next = { ...prev, [field]: value };
-        void workingCopy.setWorkingCopy(next);
-        return next;
-      });
-    },
-    [workingCopy],
-  );
+  const updateDraftField = useCallback((field: keyof PortalProjectDetailsDraft, value: string) => {
+    setError(null);
+    setDraft((prev) => ({ ...prev, [field]: value }));
+  }, []);
 
   const handleDone = async () => {
     if (!canSave) return;
     try {
       await flushDraft();
       setIsEditing(false);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save project details';
-      setError(msg);
+    } catch {
+      // Error state is already set in flushDraft.
     }
   };
 
-  const handleReset = async () => {
-    if (syncState.pendingCount > 0) return;
+  const handleReset = () => {
+    if (isSaving) return;
     setError(null);
-    setDraft(serverDraft);
-    lastQueuedRef.current = JSON.stringify(serverDraft);
-    await workingCopy.clearWorkingCopy();
+    setDraft(savedDraft);
     setIsEditing(false);
   };
 
-  const statusText = syncLabel(syncState, dirty);
-  const displayed = workingCopy.hasLocalCopy ? draft : serverDraft;
+  const statusText = saveLabel({ dirty, isSaving, lastSavedAt });
+  const displayed = isEditing ? draft : savedDraft;
 
   return (
     <section className={legacy.section} aria-label="Project details">
@@ -214,10 +210,10 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
           {statusText ? <span className={legacy.note}>{statusText}</span> : null}
           {isEditing ? (
             <>
-              <button type="button" className={legacy.button} disabled={!canSave} onClick={handleDone}>
-                Done
+              <button type="button" className={legacy.button} disabled={!canSave || isSaving} onClick={handleDone}>
+                {isSaving ? 'Saving…' : 'Done'}
               </button>
-              <button type="button" className={legacy.buttonSecondary} disabled={syncState.pendingCount > 0} onClick={handleReset}>
+              <button type="button" className={legacy.buttonSecondary} disabled={isSaving} onClick={handleReset}>
                 Reset
               </button>
             </>

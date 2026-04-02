@@ -77,7 +77,7 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 60_000 });
   });
 
-  test('shows the shared list skeleton for projects while queries are pending', async ({ page }) => {
+  test('shows real projects content immediately even while background queries are pending', async ({ page }) => {
     const gate = deferred();
 
     await page.route('**/rest/v1/projects**', async (route) => {
@@ -95,12 +95,29 @@ test.describe('portal auth routing authenticated flows', () => {
     await page.goto('/staff/projects');
 
     await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
-    await expect(page.locator('main[aria-label="Loading projects"]')).toBeVisible();
-    await expect(page.getByText('Loading projects')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+    await expect(page.locator('main[aria-label="Loading projects"]')).toHaveCount(0);
 
     gate.resolve();
 
     await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible({ timeout: 60_000 });
+  });
+
+  test('shows the project detail frame on first load without waiting on the snapshot api route', async ({ page }) => {
+    const gate = await delayNetworkResponse(page, '**/api/projects/*/snapshot');
+
+    await page.goto('/staff/projects');
+    const firstProjectLink = page.locator('a[href^="/staff/projects/proj_"]').first();
+    await expect(firstProjectLink).toBeVisible({ timeout: 60_000 });
+    const href = await firstProjectLink.getAttribute('href');
+    if (!href) throw new Error('Expected a project link on the projects index.');
+
+    await page.goto(`${href}?tab=quotes`);
+
+    await expect(page.locator('[data-project-page-frame="true"]')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-project-active-tab="quotes"]')).toBeVisible();
+
+    gate.resolve();
   });
 
   test('shows the shared list skeleton for contacts while queries are pending', async ({ page }) => {

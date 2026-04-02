@@ -5,12 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { normalizeProjectStatus, PROJECT_STATUS_ORDER, nextActionTypeLabel, projectStatusLabel } from '@/lib/types/project';
+import { PROJECT_STATUS_ORDER, nextActionTypeLabel, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
-import ListPageSkeleton from '@/components/page-state/ListPageSkeleton';
-import PageMessagePanel from '@/components/page-state/PageMessagePanel';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
@@ -19,14 +17,13 @@ import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserC
 import Modal from '@/components/ui/modal/Modal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { deleteProject } from '@/lib/repo/projectsRepo';
-import stateStyles from '@/components/page-state/PageState.module.css';
-
-function toYmd(value: string | null | undefined): string | null {
-  const raw = (value ?? '').trim();
-  if (!raw) return null;
-  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match ? match[1] : null;
-}
+import {
+  buildContactsById,
+  filterProjectsForIndex,
+  parseProjectsIndexFilters,
+  toYmd,
+  type ProjectsIndexFilters,
+} from './projectIndexFilters';
 
 const EXTRA_DELETE_CONFIRM_STAGES = new Set<Project['status']>(['DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
 
@@ -35,16 +32,25 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
   return EXTRA_DELETE_CONFIRM_STAGES.has(normalized) ? `DELETE ${projectId}` : 'DELETE';
 }
 
-export default function ProjectsIndexClient() {
+export default function ProjectsIndexClient({
+  initialProjects,
+  initialContacts,
+  initialFilters,
+  initialTodayYmd,
+}: {
+  initialProjects: Project[];
+  initialContacts: Contact[];
+  initialFilters: ProjectsIndexFilters;
+  initialTodayYmd: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const toast = useToast();
   const { role } = usePortalSession();
   const isAdmin = role === 'admin';
-  const [hydrated, setHydrated] = useState(false);
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>('all');
-  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>('all');
+  const [query, setQuery] = useState(initialFilters.query);
+  const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(initialFilters.statusFilter);
+  const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFilters.dueFilter);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
@@ -56,44 +62,21 @@ export default function ProjectsIndexClient() {
 
   const { data: projectsData, error: projectsError } = useQuery({
     ...projectsListQueryOptions(host),
+    initialData: initialProjects,
   });
   const { data: contactsData, error: contactsError } = useQuery({
     ...contactsListQueryOptions(host),
+    initialData: initialContacts,
   });
 
   const projects = projectsData ?? [];
   const contacts = contactsData ?? [];
-  const hasLoadedProjectsOnce = typeof projectsData !== 'undefined';
 
   useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    const statusParam = (searchParams.get('status') || '').trim();
-    if (!statusParam) {
-      setStatusFilter('all');
-    } else if (statusParam.toLowerCase() === 'all') {
-      setStatusFilter('all');
-    } else {
-      const normalized = normalizeProjectStatus(statusParam);
-      setStatusFilter(normalized.status ?? 'all');
-    }
-
-    const queryParam = (searchParams.get('q') || '').trim();
-    setQuery(queryParam);
-
-    const dueParam = (searchParams.get('due') || '').trim().toLowerCase();
-    const dueFlag = (searchParams.get('nextActionDue') || '').trim().toLowerCase();
-    if (dueParam === 'overdue' || dueParam === 'today') {
-      setDueFilter(dueParam as 'overdue' | 'today');
-    } else if (['1', 'true', 'yes', 'y'].includes(dueFlag)) {
-      setDueFilter('due');
-    } else if (dueParam === 'due') {
-      setDueFilter('due');
-    } else {
-      setDueFilter('all');
-    }
+    const nextFilters = parseProjectsIndexFilters(searchParams);
+    setStatusFilter(nextFilters.statusFilter);
+    setQuery(nextFilters.query);
+    setDueFilter(nextFilters.dueFilter);
   }, [searchParams]);
 
   useEffect(() => {
@@ -125,51 +108,21 @@ export default function ProjectsIndexClient() {
   }, [router, searchParams, toast]);
 
   const contactsById = useMemo(() => {
-    const map = new Map<string, Contact>();
-    for (const c of contacts) map.set(c.id, c);
-    return map;
+    return buildContactsById(contacts);
   }, [contacts]);
 
-  const todayYmd = useMemo(() => {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }, []);
-
   const filteredProjects = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-
-    return projects.filter((p) => {
-      if (statusFilter !== 'all' && (p.status ?? 'NEW') !== statusFilter) return false;
-
-      const nextAction = toYmd(p.nextActionDate ?? p.followUpDate);
-      if (dueFilter !== 'all') {
-        if (!nextAction) return false;
-        if (dueFilter === 'due' && nextAction > todayYmd) return false;
-        if (dueFilter === 'overdue' && nextAction >= todayYmd) return false;
-        if (dueFilter === 'today' && nextAction !== todayYmd) return false;
-      }
-
-      if (!needle) return true;
-
-      const contact = p.contactId ? contactsById.get(p.contactId) : null;
-      const text = [
-        p.projectName ?? p.name ?? '',
-        p.clientName ?? '',
-        contact?.displayName ?? '',
-        contact?.email ?? '',
-        p.region ?? '',
-        p.siteAddress ?? p.address ?? '',
-        p.quoteRef ?? '',
-      ]
-        .join(' ')
-        .toLowerCase();
-
-      return text.includes(needle);
-    });
-  }, [contactsById, dueFilter, projects, query, statusFilter, todayYmd]);
+    return filterProjectsForIndex(
+      projects,
+      contactsById,
+      {
+        query,
+        statusFilter,
+        dueFilter,
+      },
+      initialTodayYmd,
+    );
+  }, [contactsById, dueFilter, initialTodayYmd, projects, query, statusFilter]);
 
   const prefetchProjectSnapshot = (projectId: string) => {
     const token = `${host}:${projectId}`;
@@ -193,40 +146,6 @@ export default function ProjectsIndexClient() {
   };
 
   const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
-
-  if (!hydrated || (!hasLoadedProjectsOnce && !projectsError)) {
-    return (
-      <ListPageSkeleton
-        title="Projects"
-        actionCount={3}
-        filterFieldCount={3}
-        columnCount={7}
-        rowCount={6}
-        listTitle="All Projects"
-      />
-    );
-  }
-
-  if (projectsError && !projects.length) {
-    const message = projectsError instanceof Error ? projectsError.message : 'Failed to load projects.';
-    return (
-      <PageMessagePanel
-        title="Projects unavailable"
-        description={message}
-        actions={
-          <button
-            type="button"
-            className={stateStyles.primaryAction}
-            onClick={() => {
-              void queryClient.invalidateQueries({ queryKey: projectsListQueryOptions(host).queryKey });
-            }}
-          >
-            Try again
-          </button>
-        }
-      />
-    );
-  }
 
   return (
     <main className={styles.page}>
@@ -322,8 +241,8 @@ export default function ProjectsIndexClient() {
                   <tbody>
                     {filteredProjects.map((p) => {
                       const nextActionDate = toYmd(p.nextActionDate ?? p.followUpDate) ?? '';
-                      const due = nextActionDate ? nextActionDate <= todayYmd : false;
-                      const overdue = nextActionDate ? nextActionDate < todayYmd : false;
+                      const due = nextActionDate ? nextActionDate <= initialTodayYmd : false;
+                      const overdue = nextActionDate ? nextActionDate < initialTodayYmd : false;
                       const lastActivity = p.activity?.[0]?.createdAt ?? p.updatedAt ?? p.createdAt;
                       return (
                         <tr
