@@ -69,8 +69,8 @@ test.describe('portal auth routing authenticated flows', () => {
     await page.goto('/dashboard');
 
     await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible();
-    await expect(page.locator('main[aria-label="Loading dashboard"]')).toBeVisible();
-    await expect(page.getByText('Loading dashboard')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+    await expect(page.locator('main[aria-label="Loading dashboard"]')).toHaveCount(0);
 
     gate.resolve();
 
