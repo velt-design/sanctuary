@@ -362,9 +362,7 @@ export default function QuotesTab({
   const [sendPreviewHtml, setSendPreviewHtml] = useState('');
   const [sendPreviewLoading, setSendPreviewLoading] = useState(false);
   const [sendPreviewError, setSendPreviewError] = useState<string | null>(null);
-  const [sendPreviewHeight, setSendPreviewHeight] = useState(640);
   const sendPreviewRequestRef = useRef(0);
-  const sendPreviewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -814,7 +812,6 @@ export default function QuotesTab({
     setSendPreviewHtml('');
     setSendPreviewError(null);
     setSendPreviewLoading(false);
-    setSendPreviewHeight(640);
     sendPreviewRequestRef.current += 1;
     setSendError(null);
     setSendOpen(true);
@@ -826,23 +823,9 @@ export default function QuotesTab({
     setSendPreviewHtml('');
     setSendPreviewError(null);
     setSendPreviewLoading(false);
-    setSendPreviewHeight(640);
     setSendError(null);
     setSendOpen(false);
     sendPreviewRequestRef.current += 1;
-  }, []);
-
-  const sizeSendPreviewIframe = useCallback(() => {
-    const frame = sendPreviewFrameRef.current;
-    if (!frame) return;
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    const next = Math.max(
-      doc.documentElement?.scrollHeight ?? 0,
-      doc.body?.scrollHeight ?? 0,
-      220,
-    );
-    setSendPreviewHeight((prev) => (Math.abs(prev - next) > 8 ? next : prev));
   }, []);
 
   useEffect(() => {
@@ -870,7 +853,6 @@ export default function QuotesTab({
         );
         if (ac.signal.aborted || requestId !== sendPreviewRequestRef.current) return;
         setSendPreviewHtml(rendered.html);
-        requestAnimationFrame(() => sizeSendPreviewIframe());
       } catch (err) {
         if (ac.signal.aborted || requestId !== sendPreviewRequestRef.current) return;
         const msg = err instanceof Error ? err.message : 'Failed to load preview';
@@ -891,7 +873,7 @@ export default function QuotesTab({
       ac.abort();
       window.clearTimeout(timeout);
     };
-  }, [detail?.id, sendEditorMode, sendMode, sendOpen, sendPersonalNote, sendSubject, sendTo, sizeSendPreviewIframe]);
+  }, [detail?.id, sendEditorMode, sendMode, sendOpen, sendPersonalNote, sendSubject, sendTo]);
 
   const handleSend = async () => {
     if (!detail || sendBusy) return;
@@ -1785,40 +1767,42 @@ export default function QuotesTab({
         ) : null}
 
         {sendOpen ? (
-          <div className={styles.modalOverlay}>
-            <div className={`${styles.modal} ${styles.modalWide}`}>
-              <div className={styles.modalHeader}>
-                <h4 className={styles.cardTitle}>{sendMode === 'send' ? 'Send quote' : 'Resend quote'}</h4>
-                <button
-                  type="button"
-                  className={styles.modalClose}
-                  onClick={() => closeSendModal()}
-                >
-                  Close
-                </button>
-              </div>
-              <div className={styles.modalModeSwitch} role="tablist" aria-label="Email editor mode">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={sendEditorMode === 'compose'}
-                  className={`${styles.modalModeButton} ${sendEditorMode === 'compose' ? styles.modalModeButtonActive : ''}`}
-                  onClick={() => setSendEditorMode('compose')}
-                >
-                  Compose
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={sendEditorMode === 'preview'}
-                  className={`${styles.modalModeButton} ${sendEditorMode === 'preview' ? styles.modalModeButtonActive : ''}`}
-                  onClick={() => setSendEditorMode('preview')}
-                >
-                  Preview
-                </button>
+          <div className={`${styles.modalOverlay} ${styles.sendModalOverlay}`}>
+            <div className={`${styles.modal} ${styles.modalWide} ${styles.sendModal}`}>
+              <div className={styles.sendModalTop}>
+                <div className={styles.modalHeader}>
+                  <h4 className={styles.cardTitle}>{sendMode === 'send' ? 'Send quote' : 'Resend quote'}</h4>
+                  <button
+                    type="button"
+                    className={styles.modalClose}
+                    onClick={() => closeSendModal()}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className={styles.modalModeSwitch} role="tablist" aria-label="Email editor mode">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sendEditorMode === 'compose'}
+                    className={`${styles.modalModeButton} ${sendEditorMode === 'compose' ? styles.modalModeButtonActive : ''}`}
+                    onClick={() => setSendEditorMode('compose')}
+                  >
+                    Compose
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sendEditorMode === 'preview'}
+                    className={`${styles.modalModeButton} ${sendEditorMode === 'preview' ? styles.modalModeButtonActive : ''}`}
+                    onClick={() => setSendEditorMode('preview')}
+                  >
+                    Preview
+                  </button>
+                </div>
               </div>
               {sendEditorMode === 'compose' ? (
-                <div className={styles.modalBody}>
+                <div className={`${styles.modalBody} ${styles.sendModalBody}`}>
                   <label className={styles.metaLabel} htmlFor="sendTo">To</label>
                   <input id="sendTo" className={styles.metaInput} value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
                   <label className={styles.metaLabel} htmlFor="sendSubject">Subject</label>
@@ -1866,7 +1850,7 @@ export default function QuotesTab({
                   {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
                 </div>
               ) : (
-                <div className={styles.modalBody}>
+                <div className={`${styles.modalBody} ${styles.sendModalBody} ${styles.sendPreviewBody}`}>
                   <div className={styles.previewMetaGrid}>
                     <div className={styles.previewMetaItem}>
                       <div className={styles.metaLabel}>To</div>
@@ -1884,25 +1868,18 @@ export default function QuotesTab({
                   {sendPreviewError ? <div className={styles.errorText}>{sendPreviewError}</div> : null}
                   {!sendPreviewLoading && !sendPreviewError && !sendPreviewHtml ? <p className={legacy.note}>No preview available.</p> : null}
                   {!sendPreviewError && sendPreviewHtml ? (
-                    <div className={styles.previewFrameWrap}>
+                    <div className={`${styles.previewFrameWrap} ${styles.sendPreviewPane}`}>
                       <iframe
-                        ref={sendPreviewFrameRef}
                         title="Quote email preview"
+                        className={styles.sendPreviewFrame}
                         sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-                        style={{ width: '100%', height: sendPreviewHeight, border: 0, background: '#fff', display: 'block' }}
                         srcDoc={sendPreviewHtml}
-                        onLoad={() => {
-                          sizeSendPreviewIframe();
-                          setTimeout(sizeSendPreviewIframe, 50);
-                          setTimeout(sizeSendPreviewIframe, 250);
-                        }}
-                        scrolling="no"
                       />
                     </div>
                   ) : null}
                 </div>
               )}
-              <div className={styles.modalFooter}>
+              <div className={`${styles.modalFooter} ${styles.sendModalFooter}`}>
                 <button
                   type="button"
                   className={legacy.buttonSecondary}

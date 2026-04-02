@@ -5,18 +5,14 @@ import { qk } from '@/lib/queries/keys';
 import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const useQueryMock = vi.fn();
-const setQueryData = vi.fn();
-const invalidateQueries = vi.fn();
+const useQueryClientMock = vi.fn();
 
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>();
   return {
     ...actual,
     useQuery: (...args: unknown[]) => useQueryMock(...args),
-    useQueryClient: () => ({
-      setQueryData,
-      invalidateQueries,
-    }),
+    useQueryClient: () => useQueryClientMock(),
   };
 });
 
@@ -48,8 +44,7 @@ const initialData: DashboardData = {
 describe('DashboardClient', () => {
   beforeEach(() => {
     useQueryMock.mockReset();
-    setQueryData.mockReset();
-    invalidateQueries.mockReset();
+    useQueryClientMock.mockReset();
     useQueryMock.mockReturnValue({});
   });
 
@@ -57,7 +52,7 @@ describe('DashboardClient', () => {
     document.body.innerHTML = '';
   });
 
-  it('seeds the dashboard cache and triggers a background revalidation using the existing query options', () => {
+  it('uses the existing dashboard query with initial server data and a single mount refresh', () => {
     const rendered = renderIntoDocument(
       <DashboardClient queueMode="today" initialData={initialData} />,
     );
@@ -66,11 +61,10 @@ describe('DashboardClient', () => {
       expect.objectContaining({
         queryKey: qk.dashboard.data('today'),
         initialData,
-        refetchOnMount: false,
+        refetchOnMount: 'always',
       }),
     );
-    expect(setQueryData).toHaveBeenCalledWith(qk.dashboard.data('today'), initialData);
-    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: qk.dashboard.data('today'), refetchType: 'active' });
+    expect(useQueryClientMock).not.toHaveBeenCalled();
 
     rendered.unmount();
   });

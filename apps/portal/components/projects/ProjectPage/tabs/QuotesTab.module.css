@@ -489,6 +489,67 @@
   box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
 }
 
+.sendModalOverlay {
+  align-items: flex-start;
+  overflow-y: auto;
+}
+
+.sendModal {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
+  overflow: hidden;
+}
+
+.sendModalTop {
+  flex: 0 0 auto;
+  background: inherit;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+.sendModalTop .modalHeader {
+  margin-bottom: 0;
+}
+
+.sendModalTop .modalModeSwitch {
+  margin-bottom: 0;
+  margin-top: 10px;
+}
+
+.sendModalBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-block: 12px 4px;
+}
+
+.sendPreviewBody {
+  align-content: start;
+}
+
+.sendPreviewPane {
+  min-height: 260px;
+  height: clamp(260px, 56dvh, 640px);
+  max-height: 100%;
+}
+
+.sendPreviewFrame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+
+.sendModalFooter {
+  flex: 0 0 auto;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  background: inherit;
+}
+
 .previewMetaGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
