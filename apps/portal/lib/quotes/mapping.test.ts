@@ -175,4 +175,41 @@ describe('buildQuoteLineItemsFromEstimate', () => {
     expect(result.items[0]?.description).toContain('Regenerate estimate');
     expect(result.coreTotalIncCents).toBe(43125);
   });
+
+  it('uses a combined heading for pergolas with mixed module styles', () => {
+    const estimate = makeEstimate({
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Mixed pergola',
+        quoteRef: '',
+        access: 'normal',
+        height: 'single_storey',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [
+          makeModule({ pergolaId: 'pergola-1', pergolaStyle: 'gable' }),
+          makeModule({ pergolaId: 'pergola-1', pergolaStyle: 'perimeter', lengthM: '4.2', projectionM: '2.6' }),
+        ],
+        blinds: { items: [] },
+      },
+      outputs: {
+        materials: { lines: [], totals: { materials_ex_gst: 0 } },
+        install: { actions: [], totals: { crew_minutes: 0, crew_hours: 0, install_ex_gst: 0 } },
+        overhead: { method: 'site_rollup', ops_ex_gst: 0, sales_ex_gst: 0, total_ex_gst: 0 },
+        totals: { cost_ex_gst: 240, cost_inc_gst: 276, warnings: [], notes_and_warnings: [] },
+        warnings: [],
+        cost_snapshot_version: 'v2',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1', totals: { cost_ex_gst: 240 } }],
+      },
+    });
+
+    const result = buildQuoteLineItemsFromEstimate(estimate as any);
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.description.startsWith('Pergola 1: Gable + Perimeter modules')).toBe(true);
+    expect(result.items[0]?.description).toContain('Style: Gable');
+    expect(result.items[0]?.description).toContain('Style: Perimeter');
+  });
 });

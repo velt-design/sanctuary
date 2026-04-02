@@ -31,6 +31,29 @@ function toTitleCase(value: string): string {
     .trim();
 }
 
+function uniqueModuleStyles(modules: CalculatorModuleInputs[]): string[] {
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+
+  modules.forEach((module) => {
+    const raw = typeof module?.pergolaStyle === 'string' ? module.pergolaStyle.trim() : '';
+    if (!raw) return;
+    const normalized = raw.toLowerCase();
+    if (seen.has(normalized)) return;
+    seen.add(normalized);
+    ordered.push(toTitleCase(normalized));
+  });
+
+  return ordered;
+}
+
+function joinStyleLabels(styles: string[]): string {
+  if (!styles.length) return 'Custom';
+  if (styles.length === 1) return styles[0]!;
+  if (styles.length === 2) return `${styles[0]} + ${styles[1]}`;
+  return `${styles.slice(0, -1).join(', ')} + ${styles[styles.length - 1]}`;
+}
+
 function formatDimension(value: string): string {
   const n = toNumber(value);
   if (!Number.isFinite(n)) return '—';
@@ -197,7 +220,12 @@ function buildPergolaDescription(params: {
 }): string {
   const lines: string[] = [];
   const pergolaLabel = normalizePergolaLabel(params.label, params.fallbackIndex);
-  lines.push(pergolaLabel);
+  const styles = uniqueModuleStyles(params.modules);
+  if (styles.length > 1) {
+    lines.push(`${pergolaLabel}: ${joinStyleLabels(styles)} modules`);
+  } else {
+    lines.push(pergolaLabel);
+  }
 
   if (!params.modules.length) {
     lines.push('- Modules: snapshot-only breakdown');

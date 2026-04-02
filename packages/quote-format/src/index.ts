@@ -177,16 +177,16 @@ export function formatQuoteLineDescription(raw: string, index: number): QuoteLin
     });
   });
 
-  let styleValue: string | null = null;
-  let styleIndex = -1;
+  const styleValues: string[] = [];
+  const styleIndexes: number[] = [];
   let locationValue: string | null = null;
   let locationIndex = -1;
 
   bullets.forEach((bullet, idx) => {
     const styleMatch = bullet.match(/^Style:\s*(.+)$/i);
-    if (styleMatch && styleIndex === -1) {
-      styleValue = styleMatch[1].trim();
-      styleIndex = idx;
+    if (styleMatch) {
+      styleValues.push(styleMatch[1].trim());
+      styleIndexes.push(idx);
       return;
     }
     const locationMatch = bullet.match(/^(Location|Position|Placement):\s*(.+)$/i);
@@ -199,9 +199,15 @@ export function formatQuoteLineDescription(raw: string, index: number): QuoteLin
   let heading = title;
   let usedStyle = false;
   let usedLocation = false;
+  const uniqueStyles = Array.from(new Set(styleValues.map((value) => value.toLowerCase()))).map((lower) => {
+    const original = styleValues.find((value) => value.toLowerCase() === lower);
+    return original ?? lower;
+  });
 
   const lowerTitle = title.toLowerCase();
   const isPergola = lowerTitle.includes('pergola');
+  const baseTitle = title.replace(/\bmodule\b/gi, '').replace(/\s+/g, ' ').trim();
+  const titleLooksGenericPergola = baseTitle === '' || /^pergola$/i.test(baseTitle) || /^pergola module$/i.test(title);
   if (lowerTitle.includes('electrical')) {
     heading = 'Electrical and Lighting';
   } else if (lowerTitle.includes('blind')) {
@@ -210,9 +216,8 @@ export function formatQuoteLineDescription(raw: string, index: number): QuoteLin
       usedLocation = true;
     }
   } else if (lowerTitle.includes('pergola')) {
-    const baseTitle = title.replace(/module/gi, '').replace(/\s+/g, ' ').trim();
-    if (styleValue) {
-      const style = formatHeadingValue(styleValue);
+    if (uniqueStyles.length === 1 && (titleLooksGenericPergola || /^pergola module/i.test(title) || /^pergola$/i.test(baseTitle))) {
+      const style = formatHeadingValue(uniqueStyles[0]!);
       if (/pergola/i.test(style)) {
         heading = style;
       } else {
@@ -227,7 +232,9 @@ export function formatQuoteLineDescription(raw: string, index: number): QuoteLin
   heading = ensureTrailingColon(heading);
 
   const drop = new Set<number>();
-  if (usedStyle && styleIndex >= 0) drop.add(styleIndex);
+  if (usedStyle) {
+    styleIndexes.forEach((idx) => drop.add(idx));
+  }
   if (usedLocation && locationIndex >= 0) drop.add(locationIndex);
 
   const filteredBullets = bullets.filter((_, idx) => !drop.has(idx));

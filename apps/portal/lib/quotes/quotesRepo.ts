@@ -114,6 +114,21 @@ export async function updateDraftQuoteVersion(
   return res.quoteVersion;
 }
 
+export async function refreshDraftQuoteFromEstimate(
+  quoteVersionId: string,
+  estimateVersionId: string,
+): Promise<QuoteVersionDetail> {
+  const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
+    `/api/quotes/${encodeURIComponent(quoteVersionId)}/refresh-from-estimate`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ estimateVersionId }),
+    },
+  );
+  if (!res.quoteVersion) throw new Error('Failed to refresh quote');
+  return res.quoteVersion;
+}
+
 export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<void> {
   await apiJson(`/api/quotes/${encodeURIComponent(quoteVersionId)}`, { method: 'DELETE' });
 }

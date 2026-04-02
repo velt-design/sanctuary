@@ -6,6 +6,7 @@ export {
   createQuoteFromEstimate,
   syncDraftQuoteVersionsFromEstimate,
   updateDraftQuoteVersion,
+  refreshDraftQuoteVersionFromEstimate,
   deleteDraftQuoteVersion,
   reviseQuoteVersion,
   generateQuotePdf,

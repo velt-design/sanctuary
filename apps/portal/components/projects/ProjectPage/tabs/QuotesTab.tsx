@@ -18,6 +18,7 @@ import {
   previewQuoteEmail,
   previewQuotePdf,
   quotePdfUrl,
+  refreshDraftQuoteFromEstimate,
   resendQuote,
   reviseQuote,
   sendQuote,
@@ -382,6 +383,8 @@ export default function QuotesTab({
   const [expiredPromptOpen, setExpiredPromptOpen] = useState(false);
   const [pendingResendId, setPendingResendId] = useState<string | null>(null);
   const [jobPackBusy, setJobPackBusy] = useState(false);
+  const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
+  const [refreshBusy, setRefreshBusy] = useState(false);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
@@ -396,6 +399,17 @@ export default function QuotesTab({
   const [savingDraft, setSavingDraft] = useState(false);
   const [downloadingDraftPdf, setDownloadingDraftPdf] = useState(false);
   const prefetchedQuoteDetailsRef = useRef(new Set<string>());
+
+  const resetDraftFormFromDetail = useCallback((quoteDetail: QuoteVersionDetail) => {
+    setDraftItems(quoteDetail.lineItems);
+    setUnitInputDrafts({});
+    setActiveUnitInputId(null);
+    setDraftReference(quoteDetail.reference ?? '');
+    setDraftIntro(quoteDetail.introText ?? '');
+    setDraftTerms(quoteDetail.termsText ?? '');
+    setDraftDepositPercent(formatPercentInput(quoteDetail.depositPercent));
+    setDraftExpiry(quoteDetail.expiresAt ?? '');
+  }, []);
 
   const refreshQuotes = useCallback(async (opts?: { includeEstimates?: boolean }) => {
     await invalidateProjectReadCaches(queryClient, hostKey, projectId, {
@@ -452,15 +466,8 @@ export default function QuotesTab({
 
   useEffect(() => {
     if (!detail) return;
-    setDraftItems(detail.lineItems);
-    setUnitInputDrafts({});
-    setActiveUnitInputId(null);
-    setDraftReference(detail.reference ?? '');
-    setDraftIntro(detail.introText ?? '');
-    setDraftTerms(detail.termsText ?? '');
-    setDraftDepositPercent(formatPercentInput(detail.depositPercent));
-    setDraftExpiry(detail.expiresAt ?? '');
-  }, [detail?.id]);
+    resetDraftFormFromDetail(detail);
+  }, [detail?.id, resetDraftFormFromDetail]);
 
   const getLiveUnitPriceIncGstCents = useCallback(
     (item: QuoteLineItem): number => {
@@ -539,8 +546,21 @@ export default function QuotesTab({
   }, [estimates]);
   const preferredQuoteSourceDesign = useMemo(() => {
     if (!estimates.length) return null;
-    return estimates.find((estimate) => estimate.isActiveDraft) ?? latestEstimate ?? estimates[0] ?? null;
+      return estimates.find((estimate) => estimate.isActiveDraft) ?? latestEstimate ?? estimates[0] ?? null;
   }, [estimates, latestEstimate]);
+  const currentSourceEstimate = useMemo(
+    () => (detail ? estimates.find((estimate) => estimate.id === detail.sourceEstimateVersionId) ?? null : null),
+    [detail, estimates],
+  );
+  const refreshEstimateTarget = useMemo(() => {
+    if (!detail) return preferredQuoteSourceDesign ?? currentSourceEstimate;
+    return preferredQuoteSourceDesign ?? currentSourceEstimate;
+  }, [currentSourceEstimate, detail, preferredQuoteSourceDesign]);
+  const refreshUsesLatestDesign = Boolean(
+    detail &&
+      refreshEstimateTarget &&
+      refreshEstimateTarget.id !== detail.sourceEstimateVersionId,
+  );
 
   const detailTotals = useMemo(() => {
     if (!detail) return null;
@@ -1043,6 +1063,32 @@ export default function QuotesTab({
     }
   };
 
+  const handleRefreshFromEstimate = async () => {
+    if (!detail || detail.status !== 'DRAFT' || !refreshEstimateTarget || refreshBusy) return;
+    if (isLocalQuoteId(detail.id) || draftSyncPending) {
+      toast.error('Wait for the draft to finish syncing before refreshing from design.');
+      return;
+    }
+    setRefreshBusy(true);
+    try {
+      const updated = await refreshDraftQuoteFromEstimate(detail.id, refreshEstimateTarget.id);
+      upsertQuoteDetailCache(queryClient, hostKey, projectId, updated);
+      resetDraftFormFromDetail(updated);
+      setRefreshConfirmOpen(false);
+      await refreshQuotes({ includeEstimates: true });
+      toast.success(
+        refreshUsesLatestDesign
+          ? `Draft refreshed from ${refreshEstimateTarget.versionLabel}.`
+          : 'Draft regenerated from the current design.',
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to refresh quote from design';
+      toast.error(msg);
+    } finally {
+      setRefreshBusy(false);
+    }
+  };
+
   const openInvoiceModal = () => {
     if (!detail) return;
     setInvoiceDepositPercent(formatPercentInput(detail.depositPercent));
@@ -1204,7 +1250,7 @@ export default function QuotesTab({
 
   if (selectedId && detail) {
     const expired = isExpired(detail.expiresAt);
-    const hasNewerEstimate = latestEstimate && latestEstimate.id !== detail.sourceEstimateVersionId;
+    const hasNewerEstimate = refreshUsesLatestDesign;
     const generatedJobPack = generatedJobPacks.find((jobPack) => jobPack.quoteVersionId === detail.id) ?? null;
     const canGenerateJobPack =
       (detail.status === 'SENT' || detail.status === 'ACCEPTED' || detail.status === 'DECLINED') && !generatedJobPack;
@@ -1222,14 +1268,30 @@ export default function QuotesTab({
           </button>
           <div className={styles.detailActions}>
             {detail.status === 'DRAFT' ? (
-              <button
-                type="button"
-                className={legacy.buttonSecondary}
-                onClick={handleDownloadDraftPdf}
-                disabled={downloadingDraftPdf}
-              >
-                {downloadingDraftPdf ? 'Preparing PDF...' : 'Download PDF'}
-              </button>
+              <>
+                {refreshEstimateTarget ? (
+                  <button
+                    type="button"
+                    className={legacy.buttonSecondary}
+                    onClick={() => setRefreshConfirmOpen(true)}
+                    disabled={refreshBusy || isLocalQuoteId(detail.id) || draftSyncPending}
+                  >
+                    {refreshBusy
+                      ? 'Refreshing...'
+                      : refreshUsesLatestDesign
+                        ? `Refresh from latest design (${refreshEstimateTarget.versionLabel})`
+                        : 'Regenerate from current design'}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className={legacy.buttonSecondary}
+                  onClick={handleDownloadDraftPdf}
+                  disabled={downloadingDraftPdf}
+                >
+                  {downloadingDraftPdf ? 'Preparing PDF...' : 'Download PDF'}
+                </button>
+              </>
             ) : (
               <a className={legacy.buttonSecondary} href={quotePdfUrl(detail.id)}>
                 Download PDF
@@ -1387,8 +1449,13 @@ export default function QuotesTab({
                 Built from design {detail.sourceEstimateVersionLabel}
               </Link>
             </div>
+            {detail.status === 'DRAFT' ? (
+              <div className={styles.metaNote}>
+                Draft quotes are independent once created. Design edits do not overwrite quote wording, pricing, deposit, expiry, or reference unless you explicitly refresh from design.
+              </div>
+            ) : null}
             {detail.status === 'DRAFT' && hasNewerEstimate ? (
-              <div className={styles.metaWarning}>A newer design ({latestEstimate?.versionLabel}) exists. This quote was built from design {detail.sourceEstimateVersionLabel}.</div>
+              <div className={styles.metaWarning}>A newer design ({refreshEstimateTarget?.versionLabel}) exists. This quote was built from design {detail.sourceEstimateVersionLabel}.</div>
             ) : null}
           </div>
         </section>
@@ -1629,6 +1696,37 @@ export default function QuotesTab({
         </section>
           </>
         )}
+
+        {refreshConfirmOpen ? (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <h4 className={styles.cardTitle}>
+                  {refreshUsesLatestDesign ? 'Refresh from latest design?' : 'Regenerate from current design?'}
+                </h4>
+                <button type="button" className={styles.modalClose} onClick={() => setRefreshConfirmOpen(false)} disabled={refreshBusy}>
+                  Close
+                </button>
+              </div>
+              <p className={styles.modalBodyText}>
+                {refreshUsesLatestDesign
+                  ? `This will rebuild the draft from ${refreshEstimateTarget?.versionLabel}.`
+                  : 'This will rebuild the draft from the current design snapshot.'}
+              </p>
+              <p className={styles.modalBodyText}>
+                Manual edits to wording, line items, pricing, deposit, expiry, and reference will be replaced or reset.
+              </p>
+              <div className={styles.modalFooter}>
+                <button type="button" className={legacy.buttonSecondary} onClick={() => setRefreshConfirmOpen(false)} disabled={refreshBusy}>
+                  Cancel
+                </button>
+                <button type="button" className={legacy.button} onClick={() => void handleRefreshFromEstimate()} disabled={refreshBusy}>
+                  {refreshBusy ? 'Refreshing...' : refreshUsesLatestDesign ? 'Refresh from design' : 'Regenerate draft'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {invoiceOpen ? (
           <div className={styles.modalOverlay}>

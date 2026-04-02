@@ -3,9 +3,8 @@ import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
 import { buildVersionLabelMap, extractVersionNumber, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
-import { syncDraftQuoteVersionsFromEstimate } from '@/lib/quotes/server';
 import { supabaseServer } from '@/lib/supabaseClient';
-import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
+import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -169,18 +168,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
   if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update estimate', 500);
 
   const row = updateRes.data ?? res.data;
-  let syncedQuoteVersionIds: string[] = [];
-  if (estimateUpdate) {
-    try {
-      const refreshedDraftQuotes = await syncDraftQuoteVersionsFromEstimate(appIdFromUuid('est', estimateUuid));
-      syncedQuoteVersionIds = refreshedDraftQuotes.map((quote) => quote.id);
-    } catch (error) {
-      console.error('[estimate_update] failed to sync draft quotes from design', {
-        estimateId: estimateUuid,
-        error,
-      });
-    }
-  }
+  const syncedQuoteVersionIds: string[] = [];
   const label = await resolveVersionLabel(row);
   const flowMaps = await loadProjectEstimateFlowMaps(String(row?.project_id ?? ''));
   const editability = flowMaps.editabilityByEstimateId.get(estimateUuid) ?? (await loadEstimateEditability(estimateUuid));

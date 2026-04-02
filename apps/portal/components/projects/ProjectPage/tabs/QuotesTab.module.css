@@ -211,6 +211,16 @@
   font-size: 12px;
 }
 
+.metaNote {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.78);
+  font-size: 12px;
+}
+
 .tableWrap {
   border: 1px solid rgba(var(--portal-text-rgb), 0.12);
   border-radius: 12px;

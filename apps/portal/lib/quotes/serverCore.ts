@@ -328,60 +328,63 @@ function extractEstimateText(estimate: Estimate, keys: string[]): string | null 
   return null;
 }
 
-function buildGeneratedDraftQuotePatchFromEstimate(
-  estimate: Estimate,
-): Parameters<typeof updateDraftQuoteVersion>[1] {
-  const mapping = buildQuoteLineItemsFromEstimate(estimate);
-  const depositPercent = 50;
-  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
-  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+export async function syncDraftQuoteVersionsFromEstimate(
+  _estimateVersionId: string,
+): Promise<QuoteVersionDetail[]> {
+  return [];
+}
 
-  return {
-    introText,
-    termsText: termsSource,
-    depositPercent,
-    lineItems: mapping.items.map((item) => ({
+function normalizeDraftLineItems(
+  lineItems: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>,
+): Omit<QuoteLineItem, 'id'>[] {
+  return lineItems.map((item, idx) => {
+    const qty = Number.isFinite(item.qty) ? item.qty : 0;
+    const unitPrice = Number.isFinite(item.unitPriceIncGstCents) ? Math.round(item.unitPriceIncGstCents) : 0;
+    return {
+      description: String(item.description ?? ''),
+      qty,
+      unitPriceIncGstCents: unitPrice,
+      lineTotalIncGstCents: lineTotalCents(qty, unitPrice),
+      sortOrder: idx,
+    };
+  });
+}
+
+function totalsFromNormalizedLineItems(items: Omit<QuoteLineItem, 'id'>[]) {
+  return totalsFromLineItems(
+    items.map((item) => ({
+      id: 'tmp',
       description: item.description,
       qty: item.qty,
       unitPriceIncGstCents: item.unitPriceIncGstCents,
+      lineTotalIncGstCents: item.lineTotalIncGstCents,
+      sortOrder: item.sortOrder,
     })),
-  };
+  );
 }
 
-export async function syncDraftQuoteVersionsFromEstimate(
-  estimateVersionId: string,
-): Promise<QuoteVersionDetail[]> {
-  const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
-  const estimate = await loadEstimate(estimateUuid);
-  if (!estimate) throw new Error('Estimate not found');
-
-  const draftVersionsRes = await supabaseServer
-    .from('quote_versions')
-    .select('id')
-    .eq('source_estimate_version_id', estimateUuid)
-    .eq('status', 'DRAFT')
-    .order('created_at', { ascending: false });
-
-  if (draftVersionsRes.error) {
-    if (missingTableError(draftVersionsRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(draftVersionsRes.error, 'Failed to load draft quotes'));
+async function replaceQuoteLineItems(quoteVersionUuid: string, items: Omit<QuoteLineItem, 'id'>[]): Promise<void> {
+  const deleteRes = await supabaseServer.from('quote_line_items').delete().eq('quote_version_id', quoteVersionUuid);
+  if (deleteRes.error) {
+    if (missingTableError(deleteRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(deleteRes.error, 'Failed to update line items'));
   }
 
-  const draftQuoteVersionIds = (Array.isArray(draftVersionsRes.data) ? draftVersionsRes.data : [])
-    .map((row) => String((row as any)?.id ?? '').trim())
-    .filter(Boolean);
+  if (!items.length) return;
 
-  if (!draftQuoteVersionIds.length) return [];
-
-  const patch = buildGeneratedDraftQuotePatchFromEstimate(estimate);
-  const refreshedQuotes: QuoteVersionDetail[] = [];
-
-  for (const quoteVersionUuid of draftQuoteVersionIds) {
-    const refreshedQuote = await updateDraftQuoteVersion(appIdFromUuid('qv', quoteVersionUuid), patch);
-    refreshedQuotes.push(refreshedQuote);
+  const payload = items.map((item) => ({
+    quote_version_id: quoteVersionUuid,
+    sort_order: item.sortOrder,
+    description: item.description,
+    qty: item.qty,
+    unit_price_inc_gst_cents: item.unitPriceIncGstCents,
+    line_total_inc_gst_cents: item.lineTotalIncGstCents,
+  }));
+  const insertRes = await supabaseServer.from('quote_line_items').insert(payload as any);
+  if (insertRes.error) {
+    if (missingTableError(insertRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(insertRes.error, 'Failed to update line items'));
   }
-
-  return refreshedQuotes;
 }
 
 export async function listQuoteVersionsForProject(projectId: string): Promise<QuoteVersion[]> {
@@ -619,28 +622,8 @@ export async function updateDraftQuoteVersion(
   if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
 
   const lineItems = Array.isArray(patch.lineItems) ? patch.lineItems : [];
-  const normalizedLineItems: Omit<QuoteLineItem, 'id'>[] = lineItems.map((item, idx) => {
-    const qty = Number.isFinite(item.qty) ? item.qty : 0;
-    const unitPrice = Number.isFinite(item.unitPriceIncGstCents) ? Math.round(item.unitPriceIncGstCents) : 0;
-    return {
-      description: String(item.description ?? ''),
-      qty,
-      unitPriceIncGstCents: unitPrice,
-      lineTotalIncGstCents: lineTotalCents(qty, unitPrice),
-      sortOrder: idx,
-    };
-  });
-
-  const totals = totalsFromLineItems(
-    normalizedLineItems.map((item) => ({
-      id: 'tmp',
-      description: item.description,
-      qty: item.qty,
-      unitPriceIncGstCents: item.unitPriceIncGstCents,
-      lineTotalIncGstCents: item.lineTotalIncGstCents,
-      sortOrder: item.sortOrder,
-    })),
-  );
+  const normalizedLineItems = normalizeDraftLineItems(lineItems);
+  const totals = totalsFromNormalizedLineItems(normalizedLineItems);
 
   const existingDepositPercent = normalizeDepositPercent((versionRes.data as any)?.deposit_percent, 50);
   const nextDepositPercent = patch.depositPercent === undefined
@@ -686,27 +669,7 @@ export async function updateDraftQuoteVersion(
     throw new Error(errorMessage(updateRes.error, 'Failed to update quote'));
   }
 
-  const deleteRes = await supabaseServer.from('quote_line_items').delete().eq('quote_version_id', quoteVersionUuid);
-  if (deleteRes.error) {
-    if (missingTableError(deleteRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(deleteRes.error, 'Failed to update line items'));
-  }
-
-  if (normalizedLineItems.length) {
-    const payload = normalizedLineItems.map((item) => ({
-      quote_version_id: quoteVersionUuid,
-      sort_order: item.sortOrder,
-      description: item.description,
-      qty: item.qty,
-      unit_price_inc_gst_cents: item.unitPriceIncGstCents,
-      line_total_inc_gst_cents: item.lineTotalIncGstCents,
-    }));
-    const insertRes = await supabaseServer.from('quote_line_items').insert(payload as any);
-    if (insertRes.error) {
-      if (missingTableError(insertRes.error)) throw schemaMissingError();
-      throw new Error(errorMessage(insertRes.error, 'Failed to update line items'));
-    }
-  }
+  await replaceQuoteLineItems(quoteVersionUuid, normalizedLineItems);
 
   let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
   if (!detail) throw new Error('Failed to load quote');
@@ -715,6 +678,90 @@ export async function updateDraftQuoteVersion(
     detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
   } catch (error) {
     console.error('[quote_artifacts] failed to refresh after draft update', { quoteVersionId: detail.id, error });
+  }
+  return detail;
+}
+
+export async function refreshDraftQuoteVersionFromEstimate(
+  quoteVersionId: string,
+  estimateVersionId: string,
+  actor: string | null,
+): Promise<QuoteVersionDetail> {
+  const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
+  const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
+
+  const versionRes = await supabaseServer
+    .from('quote_versions')
+    .select('id, status, quote_id, quotes!inner(project_id)')
+    .eq('id', quoteVersionUuid)
+    .single();
+  if (versionRes.error) {
+    if (missingTableError(versionRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(versionRes.error, 'Quote not found'));
+  }
+  if (!versionRes.data) throw new Error('Quote not found');
+  if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
+
+  const estimate = await loadEstimate(estimateUuid);
+  if (!estimate) throw new Error('Estimate not found');
+
+  const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  const normalizedLineItems = normalizeDraftLineItems(
+    mapping.items.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+    })),
+  );
+  const totals = totalsFromNormalizedLineItems(normalizedLineItems);
+  const depositPercent = 50;
+  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
+  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+  const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
+
+  const updateRes = await supabaseServer
+    .from('quote_versions')
+    .update({
+      source_estimate_version_id: estimateUuid,
+      reference: null,
+      intro_text: introText,
+      terms_text: termsText,
+      deposit_percent: depositPercent,
+      expires_at: null,
+      total_inc_gst_cents: totals.totalIncGstCents,
+      total_ex_gst_cents: totals.totalExGstCents,
+      gst_cents: totals.gstCents,
+      pdf_file_id: null,
+      render_hash: null,
+      preview_base_payload: null,
+      preview_rendered_at: null,
+    } as any)
+    .eq('id', quoteVersionUuid)
+    .select('id')
+    .single();
+  if (updateRes.error || !updateRes.data) {
+    if (missingTableError(updateRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(updateRes.error, 'Failed to refresh quote'));
+  }
+
+  await replaceQuoteLineItems(quoteVersionUuid, normalizedLineItems);
+
+  const projectUuid = String((versionRes.data as any)?.quotes?.project_id ?? '');
+  if (projectUuid) {
+    await insertAuditEvent({
+      projectId: projectUuid,
+      type: 'quote.refreshed_from_estimate',
+      payload: { quoteVersionId: quoteVersionUuid, estimateVersionId: estimateUuid },
+    });
+  }
+
+  let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
+  if (!detail) throw new Error('Failed to load quote');
+  try {
+    await refreshQuoteArtifactsAfterMutation(detail.id, actor);
+    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after estimate refresh', { quoteVersionId: detail.id, error });
   }
   return detail;
 }

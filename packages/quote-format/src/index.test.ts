@@ -33,6 +33,24 @@ describe('formatQuoteLineDescription', () => {
     expect(result.heading).toBe('Custom Item:');
     expect(result.bullets).toEqual(['Cable Tray: Wall Mount', 'House connection: Soffit brackets']);
   });
+
+  it('preserves an explicit mixed pergola heading instead of collapsing to the first style', () => {
+    const raw = [
+      'Pergola 1: Gable + Perimeter modules',
+      '- Pergola module 1',
+      '- Style: Gable',
+      '- Roof: Acrylic',
+      '- Pergola module 2',
+      '- Style: Perimeter',
+      '- Roof: Acrylic',
+    ].join('\n');
+
+    const result = formatQuoteLineDescription(raw, 0);
+
+    expect(result.heading).toBe('Pergola 1: Gable + Perimeter modules:');
+    expect(result.bullets).toContain('Style: Gable');
+    expect(result.bullets).toContain('Style: Perimeter');
+  });
 });
 
 describe('formatQuoteTermsText', () => {
