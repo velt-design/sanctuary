@@ -1,13 +1,40 @@
-import { describe, expect, it } from 'vitest';
+import { stat } from 'node:fs/promises';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   buildQuotePreviewBasePayload,
   buildQuoteRenderHash,
   isQuotePreviewBasePayload,
+  quoteLogoUrl,
   quoteNumber,
   renderQuotePreviewFromBasePayload,
 } from './renderArtifacts';
 import { paymentDetailsLines } from '@/lib/payments/paymentDetails';
 import type { QuoteVersionDetail } from './types';
+
+const originalPublicSiteUrl = process.env.PUBLIC_SITE_URL;
+const originalNextPublicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+const originalNextPublicMarketingSiteUrl = process.env.NEXT_PUBLIC_MARKETING_SITE_URL;
+
+afterEach(() => {
+  if (originalPublicSiteUrl === undefined) {
+    delete process.env.PUBLIC_SITE_URL;
+  } else {
+    process.env.PUBLIC_SITE_URL = originalPublicSiteUrl;
+  }
+
+  if (originalNextPublicSiteUrl === undefined) {
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+  } else {
+    process.env.NEXT_PUBLIC_SITE_URL = originalNextPublicSiteUrl;
+  }
+
+  if (originalNextPublicMarketingSiteUrl === undefined) {
+    delete process.env.NEXT_PUBLIC_MARKETING_SITE_URL;
+  } else {
+    process.env.NEXT_PUBLIC_MARKETING_SITE_URL = originalNextPublicMarketingSiteUrl;
+  }
+});
 
 function makeDetail(): QuoteVersionDetail {
   return {
@@ -94,6 +121,64 @@ describe('quote render artifacts', () => {
       expect(rendered.html).toContain(line);
       expect(rendered.text).toContain(line);
     }
+  });
+
+  it('builds the quote email logo URL from the public site origin', () => {
+    process.env.PUBLIC_SITE_URL = 'https://sanctuarypergolas.co.nz/';
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.NEXT_PUBLIC_MARKETING_SITE_URL;
+
+    expect(quoteLogoUrl()).toBe('https://sanctuarypergolas.co.nz/images/email-logo.png');
+  });
+
+  it('renders the public email logo URL into the quote email preview', async () => {
+    process.env.PUBLIC_SITE_URL = 'https://sanctuarypergolas.co.nz';
+    delete process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.NEXT_PUBLIC_MARKETING_SITE_URL;
+
+    const detail = makeDetail();
+    const base = buildQuotePreviewBasePayload({
+      detail,
+      quoteAcceptUrl: 'https://example.com/quote/qv_123?token=preview',
+      expiresAtLabel: '20 Mar 2026',
+      logoUrl: quoteLogoUrl(),
+    });
+
+    const rendered = await renderQuotePreviewFromBasePayload(base, {
+      to: ['taylor@example.com'],
+    });
+
+    expect(rendered.html).toContain('https://sanctuarypergolas.co.nz/images/email-logo.png');
+  });
+
+  it('falls back to text branding when no valid public site URL is configured', async () => {
+    delete process.env.PUBLIC_SITE_URL;
+    process.env.NEXT_PUBLIC_SITE_URL = 'not-a-valid-url';
+    delete process.env.NEXT_PUBLIC_MARKETING_SITE_URL;
+
+    const detail = makeDetail();
+    const base = buildQuotePreviewBasePayload({
+      detail,
+      quoteAcceptUrl: 'https://example.com/quote/qv_123?token=preview',
+      expiresAtLabel: '20 Mar 2026',
+      logoUrl: quoteLogoUrl(),
+    });
+
+    const rendered = await renderQuotePreviewFromBasePayload(base, {
+      to: ['taylor@example.com'],
+    });
+
+    expect(quoteLogoUrl()).toBeUndefined();
+    expect(rendered.html).not.toContain('<img');
+    expect(rendered.html).toContain('Sanctuary Pergolas');
+  });
+
+  it('ships a non-empty public email logo asset', async () => {
+    const assetPath = path.resolve(process.cwd(), 'apps', 'marketing', 'public', 'images', 'email-logo.png');
+    const assetStat = await stat(assetPath);
+
+    expect(assetStat.isFile()).toBe(true);
+    expect(assetStat.size).toBeGreaterThan(0);
   });
 
   it('changes render hash when the quote content changes', () => {

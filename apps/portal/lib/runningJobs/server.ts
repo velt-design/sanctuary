@@ -7,6 +7,7 @@ import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { deriveCrewShortCode, deriveRunningJobFields, getLatestRunningJobsEstimate, type RunningJobsEstimateLite } from './derive';
 import { groupRunningJobRows } from './group';
+import { shouldIncludeRunningJob } from './inclusion';
 import {
   parseLegacyBoolean,
   parseLegacyPositiveInt,
@@ -14,8 +15,6 @@ import {
   type LegacyRunningJobDisplayCells,
 } from './legacy';
 import type { RunningJobCellKey, RunningJobRow, RunningJobsResponse, RunningJobStatusValue } from './types';
-
-const INCLUDED_STAGES = new Set(['SENT', 'DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
 
 type ProjectRow = {
   id: string;
@@ -527,7 +526,7 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
     const normalizedStage = normalizeProjectStatus(project.pipeline_stage);
     const stage = firstNonEmpty(typeof project.pipeline_stage === 'string' ? project.pipeline_stage.toUpperCase() : '', normalizedStage.status);
     const scheduledJob = scheduledJobByProjectId.get(project.id) ?? null;
-    if (!INCLUDED_STAGES.has(normalizedStage.status) && !scheduledJob) continue;
+    if (!shouldIncludeRunningJob(project.pipeline_stage, Boolean(scheduledJob))) continue;
 
     const contact = contactFromProject(project);
     const taskKeys = tasksByProjectId.get(project.id) ?? new Set<string>();

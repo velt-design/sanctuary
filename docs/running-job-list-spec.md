@@ -294,7 +294,10 @@ type RunningJobRow = {
 Include rows where:
 
 - `projects.archived_at is null`
-- and (`projects.pipeline_stage in ('SENT','DEPOSIT','SCHEDULED','COMPLETED','PAID')` or a `scheduled_jobs` row exists)
+- and (`projects.pipeline_stage in ('DEPOSIT','SCHEDULED','COMPLETED','PAID')` or a `scheduled_jobs` row exists)
+
+Running jobs start once the deposit has been received.
+If a scheduled job already exists but the project stage is stale, keep the row visible as a safety fallback.
 
 ### Ordering rules
 

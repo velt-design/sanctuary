@@ -100,7 +100,7 @@ export function safeSiteUrl(): string | null {
 export function quoteLogoUrl(): string | undefined {
   const base = safeSiteUrl();
   if (!base) return undefined;
-  return `${base}/images/sp_dark_icon.png`;
+  return `${base}/images/email-logo.png`;
 }
 
 export function previewQuoteAcceptLink(quoteVersionId: string): string {
