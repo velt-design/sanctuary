@@ -13,6 +13,7 @@ import {
   normalizeDepositPercent,
 } from './defaults';
 import { buildQuoteLineItemsFromEstimate } from './mapping';
+import { buildQuoteRefreshPreview, type QuoteRefreshMode, type QuoteRefreshPreview } from './refresh';
 import { lineTotalCents, totalsFromLineItems } from './utils';
 import { generateQuotePdfBytes, quotePdfFilename } from './pdf';
 import {
@@ -686,6 +687,7 @@ export async function refreshDraftQuoteVersionFromEstimate(
   quoteVersionId: string,
   estimateVersionId: string,
   actor: string | null,
+  mode: QuoteRefreshMode = 'full_rebuild',
 ): Promise<QuoteVersionDetail> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
   const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
@@ -702,40 +704,78 @@ export async function refreshDraftQuoteVersionFromEstimate(
   if (!versionRes.data) throw new Error('Quote not found');
   if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
 
+  const currentDetail = await getQuoteVersionDetail(quoteVersionId);
+  if (!currentDetail) throw new Error('Quote not found');
+
   const estimate = await loadEstimate(estimateUuid);
   if (!estimate) throw new Error('Estimate not found');
 
+  const projectUuid = String((versionRes.data as any)?.quotes?.project_id ?? '');
+  const estimateLabels = projectUuid ? await loadEstimateLabels(projectUuid) : new Map<string, string>();
+  const estimateLabelRaw = estimateLabels.get(estimateUuid) ?? currentDetail.sourceEstimateVersionLabel;
+  const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
+
   const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  const generatedDetail: QuoteVersionDetail = {
+    ...currentDetail,
+    sourceEstimateVersionId: estimateVersionId,
+    sourceEstimateVersionLabel: estimateLabel,
+    lineItems: mapping.items.map((item, idx) => ({
+      id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+      lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
+      sortOrder: idx,
+    })),
+    totals: currentDetail.totals,
+  };
+  const depositPercent = 50;
+  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
+  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+  const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
+  generatedDetail.depositPercent = depositPercent;
+  generatedDetail.introText = introText;
+  generatedDetail.termsText = termsText;
+  generatedDetail.reference = null;
+  generatedDetail.expiresAt = null;
+
+  const preview = buildQuoteRefreshPreview({
+    current: currentDetail,
+    generated: generatedDetail,
+    mode,
+  });
   const normalizedLineItems = normalizeDraftLineItems(
-    mapping.items.map((item) => ({
+    preview.proposedQuote.lineItems.map((item) => ({
       description: item.description,
       qty: item.qty,
       unitPriceIncGstCents: item.unitPriceIncGstCents,
     })),
   );
   const totals = totalsFromNormalizedLineItems(normalizedLineItems);
-  const depositPercent = 50;
-  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
-  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
-  const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
+
+  const updatePayload: any = {
+    source_estimate_version_id: estimateUuid,
+    total_inc_gst_cents: totals.totalIncGstCents,
+    total_ex_gst_cents: totals.totalExGstCents,
+    gst_cents: totals.gstCents,
+    pdf_file_id: null,
+    render_hash: null,
+    preview_base_payload: null,
+    preview_rendered_at: null,
+  };
+
+  if (mode === 'full_rebuild') {
+    updatePayload.reference = null;
+    updatePayload.intro_text = introText;
+    updatePayload.terms_text = termsText;
+    updatePayload.deposit_percent = depositPercent;
+    updatePayload.expires_at = null;
+  }
 
   const updateRes = await supabaseServer
     .from('quote_versions')
-    .update({
-      source_estimate_version_id: estimateUuid,
-      reference: null,
-      intro_text: introText,
-      terms_text: termsText,
-      deposit_percent: depositPercent,
-      expires_at: null,
-      total_inc_gst_cents: totals.totalIncGstCents,
-      total_ex_gst_cents: totals.totalExGstCents,
-      gst_cents: totals.gstCents,
-      pdf_file_id: null,
-      render_hash: null,
-      preview_base_payload: null,
-      preview_rendered_at: null,
-    } as any)
+    .update(updatePayload as any)
     .eq('id', quoteVersionUuid)
     .select('id')
     .single();
@@ -746,12 +786,11 @@ export async function refreshDraftQuoteVersionFromEstimate(
 
   await replaceQuoteLineItems(quoteVersionUuid, normalizedLineItems);
 
-  const projectUuid = String((versionRes.data as any)?.quotes?.project_id ?? '');
   if (projectUuid) {
     await insertAuditEvent({
       projectId: projectUuid,
       type: 'quote.refreshed_from_estimate',
-      payload: { quoteVersionId: quoteVersionUuid, estimateVersionId: estimateUuid },
+      payload: { quoteVersionId: quoteVersionUuid, estimateVersionId: estimateUuid, mode },
     });
   }
 
@@ -764,6 +803,68 @@ export async function refreshDraftQuoteVersionFromEstimate(
     console.error('[quote_artifacts] failed to refresh after estimate refresh', { quoteVersionId: detail.id, error });
   }
   return detail;
+}
+
+export async function previewDraftQuoteRefreshFromEstimate(
+  quoteVersionId: string,
+  estimateVersionId: string,
+  mode: QuoteRefreshMode = 'full_rebuild',
+): Promise<QuoteRefreshPreview> {
+  const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
+  const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
+
+  const versionRes = await supabaseServer
+    .from('quote_versions')
+    .select('id, status, quotes!inner(project_id)')
+    .eq('id', quoteVersionUuid)
+    .single();
+  if (versionRes.error) {
+    if (missingTableError(versionRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(versionRes.error, 'Quote not found'));
+  }
+  if (!versionRes.data) throw new Error('Quote not found');
+  if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
+
+  const currentDetail = await getQuoteVersionDetail(quoteVersionId);
+  if (!currentDetail) throw new Error('Quote not found');
+
+  const estimate = await loadEstimate(estimateUuid);
+  if (!estimate) throw new Error('Estimate not found');
+
+  const projectUuid = String((versionRes.data as any)?.quotes?.project_id ?? '');
+  const estimateLabels = projectUuid ? await loadEstimateLabels(projectUuid) : new Map<string, string>();
+  const estimateLabelRaw = estimateLabels.get(estimateUuid) ?? currentDetail.sourceEstimateVersionLabel;
+  const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
+  const mapping = buildQuoteLineItemsFromEstimate(estimate);
+
+  const generatedDetail: QuoteVersionDetail = {
+    ...currentDetail,
+    sourceEstimateVersionId: estimateVersionId,
+    sourceEstimateVersionLabel: estimateLabel,
+    lineItems: mapping.items.map((item, idx) => ({
+      id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+      lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
+      sortOrder: idx,
+    })),
+    totals: currentDetail.totals,
+    reference: null,
+    introText: extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO,
+    termsText: applyDepositPercentToTerms(
+      extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS,
+      50,
+    ),
+    depositPercent: 50,
+    expiresAt: null,
+  };
+
+  return buildQuoteRefreshPreview({
+    current: currentDetail,
+    generated: generatedDetail,
+    mode,
+  });
 }
 
 export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<void> {

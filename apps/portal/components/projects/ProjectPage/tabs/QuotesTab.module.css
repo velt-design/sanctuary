@@ -57,6 +57,50 @@
   justify-content: flex-end;
 }
 
+.moreActionsWrap {
+  position: relative;
+}
+
+.moreActionsMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  background: var(--portal-bg-surface);
+  box-shadow: 0 18px 40px rgba(var(--portal-text-rgb), 0.14);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
+  z-index: 5;
+}
+
+.moreActionsItem,
+.moreActionsItemLink {
+  width: 100%;
+  display: block;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  color: rgba(var(--portal-text-rgb), 0.88);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.moreActionsItem:hover,
+.moreActionsItemLink:hover {
+  background: rgba(var(--portal-text-rgb), 0.05);
+}
+
+.moreActionsDanger {
+  color: rgb(185, 28, 28);
+}
+
 .linkMuted {
   color: rgba(var(--portal-text-rgb), 0.55);
   font-size: 12px;
@@ -296,6 +340,64 @@
   box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
+.lineEditorCell {
+  display: grid;
+  gap: 8px;
+}
+
+.structuredPergolaEditor {
+  display: grid;
+  gap: 10px;
+}
+
+.structuredPergolaToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.structuredPergolaLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.6);
+}
+
+.pergolaSectionCard {
+  display: grid;
+  gap: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.02);
+  padding: 10px;
+}
+
+.pergolaSectionTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(var(--portal-text-rgb), 0.82);
+}
+
+.pergolaFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.pergolaField {
+  display: grid;
+  gap: 4px;
+}
+
+.pergolaModuleList {
+  display: grid;
+  gap: 10px;
+}
+
 .numberInput {
   width: 90px;
   border-radius: 10px;
@@ -452,6 +554,43 @@
 .modalBody {
   display: grid;
   gap: 8px;
+}
+
+.refreshModeList {
+  display: grid;
+  gap: 8px;
+}
+
+.refreshModeOption {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.02);
+  padding: 10px 12px;
+}
+
+.refreshModeDescription {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(var(--portal-text-rgb), 0.7);
+}
+
+.refreshSummaryCard {
+  border-radius: 12px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  background: rgba(var(--portal-text-rgb), 0.02);
+  padding: 10px 12px;
+}
+
+.refreshSummaryList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: rgba(var(--portal-text-rgb), 0.8);
+  font-size: 13px;
 }
 
 .modalModeSwitch {

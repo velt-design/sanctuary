@@ -87,8 +87,8 @@ vi.mock('@/lib/quotes/quotesRepo', () => ({
   deleteDraftQuoteVersion: vi.fn(),
   markQuoteAccepted: vi.fn(),
   markQuoteDeclined: vi.fn(),
-  previewQuoteEmail: vi.fn(),
   previewQuotePdf: vi.fn(),
+  previewDraftQuoteRefreshFromEstimate: vi.fn(),
   quotePdfUrl: (id: string) => `/api/quotes/${id}/pdf`,
   refreshDraftQuoteFromEstimate: vi.fn(),
   resendQuote: vi.fn(),
@@ -143,7 +143,7 @@ const quoteDetail = {
   lineItems: [
     {
       id: 'qli_1',
-      description: 'Pergola 1',
+      description: ['Pergola 1', '- Style: Gable', '- Size: 6m x 3m', '- Roof: Acrylic', '- Posts: 4'].join('\n'),
       qty: 1,
       unitPriceIncGstCents: 10000,
       lineTotalIncGstCents: 10000,
@@ -224,12 +224,14 @@ describe('QuotesTab draft ownership UI', () => {
     });
   });
 
-  it('shows the explicit draft ownership note and refresh action', () => {
+  it('shows the explicit draft ownership note and new primary action', () => {
     const rendered = renderIntoDocument(<QuotesTab projectId="proj_1" selectedQuoteId="qv_1" />);
 
     expect(rendered.container.textContent).toContain('Draft quotes are independent once created.');
-    expect(rendered.container.textContent).toContain('Refresh from latest design (V2)');
+    expect(rendered.container.textContent).toContain('Review & Send');
+    expect(rendered.container.textContent).toContain('More actions');
     expect(rendered.container.textContent).toContain('A newer design (V2) exists.');
+    expect(rendered.container.textContent).toContain('Structured pergola editor');
 
     rendered.unmount();
   });

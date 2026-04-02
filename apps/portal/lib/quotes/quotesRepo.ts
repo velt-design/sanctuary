@@ -1,6 +1,7 @@
 import { ApiError, apiJson } from '@/lib/repo/apiClient';
 import type { QuoteInvoiceCreateResult } from '@/lib/invoices/types';
 import type { QuoteAcceptResult, QuoteVersion, QuoteVersionDetail } from './types';
+import type { QuoteRefreshMode, QuoteRefreshPreview } from './refresh';
 
 type QuoteSendPayload = {
   to: string[];
@@ -117,16 +118,33 @@ export async function updateDraftQuoteVersion(
 export async function refreshDraftQuoteFromEstimate(
   quoteVersionId: string,
   estimateVersionId: string,
+  mode: QuoteRefreshMode = 'full_rebuild',
 ): Promise<QuoteVersionDetail> {
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(
     `/api/quotes/${encodeURIComponent(quoteVersionId)}/refresh-from-estimate`,
     {
       method: 'POST',
-      body: JSON.stringify({ estimateVersionId }),
+      body: JSON.stringify({ estimateVersionId, mode }),
     },
   );
   if (!res.quoteVersion) throw new Error('Failed to refresh quote');
   return res.quoteVersion;
+}
+
+export async function previewDraftQuoteRefreshFromEstimate(
+  quoteVersionId: string,
+  estimateVersionId: string,
+  mode: QuoteRefreshMode,
+): Promise<QuoteRefreshPreview> {
+  const res = await apiJson<{ preview: QuoteRefreshPreview }>(
+    `/api/quotes/${encodeURIComponent(quoteVersionId)}/refresh-from-estimate`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ estimateVersionId, mode, dryRun: true }),
+    },
+  );
+  if (!res.preview) throw new Error('Failed to preview quote refresh');
+  return res.preview;
 }
 
 export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<void> {
