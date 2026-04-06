@@ -7,6 +7,8 @@ type RouteTiming = {
   shellVisibleMs: number;
   contentVisibleMs: number;
   finalUrl: string;
+  interactionLabel?: string;
+  interactionMs?: number;
 };
 
 const timings: RouteTiming[] = [];
@@ -30,6 +32,26 @@ async function measureRoute(page: Page, route: string, ready: () => Promise<Loca
   });
 }
 
+async function measureScheduleBoardInteraction(page: Page) {
+  const toggle = page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ });
+  await expect(toggle).toBeVisible({ timeout: 60_000 });
+
+  const initialExpanded = await toggle.getAttribute('aria-expanded');
+  const startedAt = Date.now();
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-expanded', initialExpanded === 'true' ? 'false' : 'true');
+
+  timings.push({
+    route: '/staff/schedule',
+    shellVisibleMs: 0,
+    contentVisibleMs: 0,
+    finalUrl: page.url(),
+    interactionLabel: 'unscheduled-panel-toggle',
+    interactionMs: Date.now() - startedAt,
+  });
+}
+
 test.describe.configure({ mode: 'serial' });
 
 test('captures portal route timing metrics', async ({ page }) => {
@@ -37,6 +59,7 @@ test('captures portal route timing metrics', async ({ page }) => {
   await measureRoute(page, '/staff/projects', async () => page.getByRole('heading', { name: 'Projects' }));
   await measureRoute(page, '/staff/contacts', async () => page.getByRole('heading', { name: 'Contacts' }));
   await measureRoute(page, '/staff/schedule', async () => page.getByRole('heading', { name: 'Schedule' }));
+  await measureScheduleBoardInteraction(page);
 });
 
 test.afterAll(async () => {

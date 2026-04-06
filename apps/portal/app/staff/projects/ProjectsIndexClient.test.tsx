@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectsIndexClient from './ProjectsIndexClient';
+import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { qk } from '@/lib/queries/keys';
@@ -126,6 +127,7 @@ describe('ProjectsIndexClient', () => {
     );
     expect((rendered.container.querySelector('#projectSearch') as HTMLInputElement | null)?.value).toBe('deck');
     expect(rendered.container.textContent).toContain('Deck Build');
+    expect(rendered.container.textContent).toContain(formatPortalDateTime('2026-04-03T01:00:00.000Z'));
 
     rendered.unmount();
   });

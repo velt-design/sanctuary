@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { buildContactsById, filterProjectsForIndex, parseProjectsIndexFilters } from './projectIndexFilters';
+import { buildContactsById, filterProjectsForIndex, parseProjectsIndexFilters, todayYmd } from './projectIndexFilters';
 
 const contacts: Contact[] = [
   {
@@ -67,5 +67,10 @@ describe('projectIndexFilters', () => {
         '2026-04-03',
       ).map((project) => project.id),
     ).toEqual(['proj_1']);
+  });
+
+  it('computes today in the portal timezone instead of the server machine timezone', () => {
+    expect(todayYmd('2026-04-05T11:59:59.000Z')).toBe('2026-04-05');
+    expect(todayYmd('2026-04-05T12:00:00.000Z')).toBe('2026-04-06');
   });
 });

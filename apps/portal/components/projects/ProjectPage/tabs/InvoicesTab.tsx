@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './InvoicesTab.module.css';
+import { formatPortalDate, formatPortalDateTime } from '@/lib/format/portalDateTime';
 import type { DepositInvoiceDeliveryStatus, DepositInvoiceSummary } from '@/lib/invoices/types';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { qk } from '@/lib/queries/keys';
@@ -17,21 +18,11 @@ function formatMoneyFromCents(value: number): string {
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatPortalDate(value, { fallback: '-' });
 }
 
 function formatDateTime(value: string | null | undefined): string {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleString();
+  return formatPortalDateTime(value, { fallback: '-' });
 }
 
 function invoiceStatusClass(status: DepositInvoiceSummary['status']): string {
@@ -188,4 +179,3 @@ export default function InvoicesTab({ projectId }: { projectId: string }) {
     </div>
   );
 }
-

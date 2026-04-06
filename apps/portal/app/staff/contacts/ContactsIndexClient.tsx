@@ -12,6 +12,7 @@ import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import ListPageSkeleton from '@/components/page-state/ListPageSkeleton';
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';
+import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -192,7 +193,7 @@ export default function ContactsIndexClient() {
                         <td>{c.displayName}</td>
                         <td className={styles.muted}>{c.email || '—'}</td>
                         <td className={styles.muted}>{c.phone || '—'}</td>
-                        <td className={styles.muted}>{new Date(c.createdAt).toLocaleString()}</td>
+                        <td className={styles.muted}>{formatPortalDateTime(c.createdAt)}</td>
                         <td>
                           <Link className={styles.link} href={`/staff/contacts/${encodeURIComponent(c.id)}`}>
                             Open

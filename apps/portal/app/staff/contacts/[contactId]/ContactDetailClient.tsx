@@ -12,6 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactDetailQueryOptions } from '@/lib/queries/contacts';
 import { projectsByContactQueryOptions } from '@/lib/queries/projects';
 import { qk } from '@/lib/queries/keys';
+import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { apiJson } from '@/lib/repo/apiClient';
 import {
   upsertContactCaches,
@@ -381,11 +382,11 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                 </tr>
                 <tr>
                   <th>Created</th>
-                  <td>{new Date(contact.createdAt).toLocaleString()}</td>
+                  <td>{formatPortalDateTime(contact.createdAt)}</td>
                 </tr>
                 <tr>
                   <th>Updated</th>
-                  <td>{new Date(contact.updatedAt).toLocaleString()}</td>
+                  <td>{formatPortalDateTime(contact.updatedAt)}</td>
                 </tr>
               </tbody>
             </table>
@@ -416,7 +417,7 @@ export default function ContactDetailClient({ contactId }: { contactId: string }
                     <tr key={p.id}>
                       <td>{p.projectName ?? p.name ?? '—'}</td>
                       <td className={styles.muted}>{p.region ?? '—'}</td>
-                      <td className={styles.muted}>{new Date(p.createdAt).toLocaleString()}</td>
+                      <td className={styles.muted}>{formatPortalDateTime(p.createdAt)}</td>
                       <td>
                         <Link className={styles.link} href={`/staff/projects/${encodeURIComponent(p.id)}`}>
                           Open

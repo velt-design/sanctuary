@@ -11,6 +11,7 @@ import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from '@/lib/queries/projects';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
@@ -289,7 +290,7 @@ export default function ProjectsIndexClient({
                             ) : null}{' '}
                             {due ? <span className={styles.dueBadge}>{overdue ? 'Overdue' : 'Due today'}</span> : null}
                           </td>
-                          <td className={styles.muted}>{new Date(lastActivity).toLocaleString()}</td>
+                          <td className={styles.muted}>{formatPortalDateTime(lastActivity)}</td>
                           <td>
                             <div className={styles.rowActions}>
                               <Link

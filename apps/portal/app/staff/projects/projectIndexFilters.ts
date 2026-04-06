@@ -1,5 +1,6 @@
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
+import { portalTodayYmd } from '@/lib/format/portalDateTime';
 import { normalizeProjectStatus } from '@/lib/types/project';
 
 export type DueFilter = 'all' | 'due' | 'overdue' | 'today';
@@ -29,11 +30,8 @@ export function toYmd(value: string | null | undefined): string | null {
   return match ? match[1] : null;
 }
 
-export function todayYmd(now = new Date()): string {
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, '0');
-  const d = String(now.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+export function todayYmd(now: Date | string | number = new Date()): string {
+  return portalTodayYmd(now);
 }
 
 export function parseProjectsIndexFilters(searchParams: SearchParamSource): ProjectsIndexFilters {

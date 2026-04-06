@@ -1,11 +1,9 @@
 import type { ProjectActivityItem } from '@/lib/projects/types';
+import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import legacy from '@/app/staff/projects/projects.module.css';
 
 function formatTime(value: string): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleString();
+  return formatPortalDateTime(value);
 }
 
 export default function ActivityTab({ activity }: { activity: ProjectActivityItem[] }) {

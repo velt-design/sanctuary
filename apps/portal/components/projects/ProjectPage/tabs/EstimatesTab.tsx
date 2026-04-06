@@ -44,6 +44,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './EstimatesTab.module.css';
+import { formatPortalDate, formatPortalTime } from '@/lib/format/portalDateTime';
 import CostingAuditPanel from './_components/CostingAuditPanel';
 import EstimateVersionTabs from './_components/EstimateVersionTabs';
 import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
@@ -94,16 +95,12 @@ function formatPercent(value: number | null | undefined): string | null {
 
 function formatDateShort(value: string | null | undefined): string | null {
   if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString();
+  return formatPortalDate(value);
 }
 
 function formatTime(value: string | null | undefined): string | null {
   if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return formatPortalTime(value);
 }
 
 function formatSavedLabel(value: string | null | undefined): string | null {

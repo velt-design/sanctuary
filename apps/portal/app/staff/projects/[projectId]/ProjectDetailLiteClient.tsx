@@ -23,6 +23,7 @@ import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import type { Project as ProjectType } from '@/lib/types/project';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
+import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQueryResource } from '@/lib/react-query/useQueryResource';
 import { auditEventsQueryOptions, designTicketQueryOptions, emailOutboxQueryOptions, followupTasksQueryOptions, projectTasksQueryOptions } from '@/lib/queries/automation';
@@ -802,7 +803,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                               </div>
                             </td>
                             <td>{t.status}</td>
-                            <td className={styles.muted}>{t.dueAt ? new Date(t.dueAt).toLocaleString() : '—'}</td>
+                            <td className={styles.muted}>{formatPortalDateTime(t.dueAt)}</td>
                             <td style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                               <button
                                 type="button"
@@ -876,7 +877,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                 </tr>
                 <tr>
                   <th>Due</th>
-                  <td className={styles.muted}>{ticketData.dueAt ? new Date(ticketData.dueAt).toLocaleString() : '—'}</td>
+                  <td className={styles.muted}>{formatPortalDateTime(ticketData.dueAt)}</td>
                 </tr>
               </tbody>
             </table>
@@ -910,7 +911,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                     const done = f.status === 'DONE';
                     return (
                       <tr key={f.id}>
-                        <td className={styles.muted}>{f.dueAt ? new Date(f.dueAt).toLocaleString() : '—'}</td>
+                        <td className={styles.muted}>{formatPortalDateTime(f.dueAt)}</td>
                         <td>{f.type}</td>
                         <td>{f.status}</td>
                         <td style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1014,7 +1015,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                   <tbody>
                     {auditData.map((ev) => (
                       <tr key={ev.id}>
-                        <td className={styles.muted}>{ev.createdAt ? new Date(ev.createdAt).toLocaleString() : '—'}</td>
+                        <td className={styles.muted}>{formatPortalDateTime(ev.createdAt)}</td>
                         <td>{ev.type}</td>
                         <td className={styles.muted} style={{ fontSize: 12 }}>
                           {ev.idempotencyKey}
@@ -1063,7 +1064,7 @@ export default function ProjectDetailLiteClient({ projectId }: { projectId: stri
                 <tbody>
                   {estimates.map((e) => (
                     <tr key={e.id}>
-                      <td className={styles.muted}>{new Date(e.createdAt).toLocaleString()}</td>
+                      <td className={styles.muted}>{formatPortalDateTime(e.createdAt)}</td>
                       <td>{e.status}</td>
                       <td className={styles.muted}>
                         {typeof (e as any)?.outputs?.totals?.cost_inc_gst === 'number'

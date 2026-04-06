@@ -1,7 +1,8 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from 'react';
 import styles from './schedule.module.css';
 import { listInstallers } from '@/lib/repo/installersRepo';
 import { getProject, listProjects } from '@/lib/repo/projectsRepo';
@@ -41,7 +42,6 @@ import { addDaysYmd, diffDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { recomputeCrewSchedule, type CrewDowntime, type CrewScheduleItem, type ScheduledJob as RecomputeScheduledJob } from '@/lib/scheduling/recompute';
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import Modal from '@/components/ui/modal/Modal';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { newId } from '@/lib/utils/id';
@@ -77,9 +77,26 @@ import {
   snapAxisDayDeltaForPixelDelta,
   todayYmdInTimeZone,
 } from './ganttAxis';
-import SiteVisitsView from './SiteVisitsView';
+import type { ScheduleActionModalsProps, ScheduleModalState } from './ScheduleActionModals';
+import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
 
-type SchedulableJob = {
+const LazySiteVisitsView = dynamic(() => import('./SiteVisitsView'), {
+  ssr: false,
+  loading: () => <p className={styles.note}>Loading site visits…</p>,
+});
+
+const LazyScheduleActionModals = dynamic<ScheduleActionModalsProps>(
+  () => import('./ScheduleActionModals'),
+  {
+    ssr: false,
+  },
+);
+
+const LazyScheduleDiagnosticsPanel = dynamic(() => import('./ScheduleDiagnosticsPanel'), {
+  ssr: false,
+});
+
+export type SchedulableJob = {
   id: string;
   projectId: string;
   estimateId: string;
@@ -90,6 +107,43 @@ type SchedulableJob = {
   durationLabel: string;
   durationTitle: string;
   warnings: string[];
+};
+
+export type ScheduleBoardModel = {
+  schedulable: {
+    jobsById: Map<string, SchedulableJob>;
+    unscheduledJobs: SchedulableJob[];
+    debug: Record<string, any>;
+    blockingProjectIds: Set<string>;
+  };
+  unscheduledJobsAll: SchedulableJob[];
+  unscheduledJobs: SchedulableJob[];
+  laneItems: Map<string, ScheduleItem[]>;
+};
+
+export type ScheduleGanttModel = {
+  rangeStart: string;
+  rangeEnd: string;
+  rangeDays: number;
+  axis: ReturnType<typeof buildGanttAxis>;
+  totalWidth: number;
+  displayToday: string;
+  todayLinePx: number;
+  todayColumnLeftPx: number | null;
+  todayColumnWidthPx: number;
+  weekendBlocks: Array<{ leftPx: number; widthPx: number; date: string }>;
+  holidayBlocks: Array<{ leftPx: number; widthPx: number; date: string; label: string }>;
+  dayBoundaryLines: number[];
+  weekBoundaryLines: number[];
+  rows: GanttRow[];
+};
+
+type ScheduleRuntimeState = {
+  hydrated: boolean;
+  loadError: { message: string; table?: string; code?: string } | null;
+  syncing: boolean;
+  scheduleMode: 'v2' | 'legacy';
+  view: 'board' | 'gantt' | 'site_visits';
 };
 
 type GanttDensity = 'compact' | 'comfortable';
@@ -1345,11 +1399,348 @@ function DowntimeCard({
   );
 }
 
+const EMPTY_SCHEDULE_BOARD_MODEL: ScheduleBoardModel = {
+  schedulable: {
+    jobsById: new Map(),
+    unscheduledJobs: [],
+    debug: {},
+    blockingProjectIds: new Set(),
+  },
+  unscheduledJobsAll: [],
+  unscheduledJobs: [],
+  laneItems: new Map(),
+};
+
+export function buildScheduleBoardModel(input: {
+  estimatesById: Map<string, Estimate>;
+  installers: Installer[];
+  orphanedScheduleItems: ScheduleItem[];
+  projects: Project[];
+  projectsById: Map<string, Project>;
+  query: string;
+  scheduleItems: ScheduleItem[];
+  scheduleItemsRenderable: ScheduleItem[];
+  scheduleMode: 'v2' | 'legacy';
+  today: string;
+  unscheduledJobsSeed: SchedulableJob[];
+  visibleScheduleItems: ScheduleItem[];
+}): ScheduleBoardModel {
+  const {
+    estimatesById,
+    installers,
+    orphanedScheduleItems,
+    projects,
+    projectsById,
+    query,
+    scheduleItems,
+    scheduleItemsRenderable,
+    scheduleMode,
+    today,
+    unscheduledJobsSeed,
+    visibleScheduleItems,
+  } = input;
+
+  const schedulable = (() => {
+    if (scheduleMode === 'v2') {
+      const jobsById = new Map<string, SchedulableJob>();
+      const unscheduledJobs = unscheduledJobsSeed;
+      for (const job of unscheduledJobs) jobsById.set(job.id, job);
+
+      const blockingProjectIds = new Set<string>();
+      for (const item of scheduleItemsRenderable) {
+        if (item.itemType === 'downtime') continue;
+        if (item.projectId) blockingProjectIds.add(item.projectId);
+      }
+
+      for (const item of visibleScheduleItems) {
+        const id = item.id;
+        if (jobsById.has(id)) continue;
+
+        if (item.itemType === 'downtime') {
+          const durationHours =
+            typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
+              ? item.durationHoursOverride
+              : WORK_HOURS_PER_DAY;
+          const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
+          jobsById.set(id, {
+            id,
+            projectId: '',
+            estimateId: '',
+            projectName: reason,
+            descriptor: item.downtimeNote ?? 'Crew unavailable',
+            status: 'DOWNTIME',
+            durationHours,
+            durationLabel: formatDuration(durationHours),
+            durationTitle: formatHours(durationHours),
+            warnings: [],
+          });
+          continue;
+        }
+
+        const project = projectsById.get(item.projectId) ?? null;
+        const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
+        const status = project ? normalizeProjectStatus(project.status).status : '—';
+        const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
+        const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
+        const nextActionSuffix =
+          typeof nextActionDate === 'string' && nextActionDate
+            ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
+            : '';
+        const nextActionLine = nextActionSuffix ? nextActionSuffix.replace(/^ · /, '') : '';
+
+        let durationHours = WORK_HOURS_PER_DAY;
+        if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
+          durationHours = item.durationHoursOverride;
+        } else if (
+          typeof item.forecastDurationDays === 'number' &&
+          Number.isFinite(item.forecastDurationDays) &&
+          item.forecastDurationDays > 0
+        ) {
+          durationHours = item.forecastDurationDays * WORK_HOURS_PER_DAY;
+        }
+
+        jobsById.set(id, {
+          id,
+          projectId: item.projectId,
+          estimateId: item.estimateId,
+          projectName,
+          descriptor: nextActionLine,
+          status,
+          durationHours,
+          durationLabel: formatDuration(durationHours),
+          durationTitle: formatHours(durationHours),
+          warnings: [],
+        });
+      }
+
+      return {
+        jobsById,
+        unscheduledJobs,
+        debug: {
+          totalProjects: projects.length,
+          schedulableProjects: unscheduledJobs.length + blockingProjectIds.size,
+          unscheduledJobs: unscheduledJobs.length,
+          excluded: {
+            noEstimates: 0,
+            noSchedulableEstimate: 0,
+            alreadyScheduled: 0,
+          },
+          scheduleItems: {
+            total: scheduleItems.length,
+            blocking: scheduleItemsRenderable.filter((item) => item.itemType !== 'downtime').length,
+            missingProject: orphanedScheduleItems.length,
+            missingEstimate: 0,
+            estimateNotSchedulable: 0,
+          },
+        },
+        blockingProjectIds,
+      };
+    }
+
+    const jobsById = new Map<string, SchedulableJob>();
+    const unscheduledJobs: SchedulableJob[] = [];
+
+    const debug = {
+      totalProjects: projects.length,
+      schedulableProjects: 0,
+      unscheduledJobs: 0,
+      excluded: {
+        noEstimates: 0,
+        noSchedulableEstimate: 0,
+        notReadyStage: 0,
+        alreadyScheduled: 0,
+      },
+      scheduleItems: {
+        total: scheduleItems.length,
+        blocking: 0,
+        missingProject: 0,
+        missingEstimate: 0,
+        estimateNotSchedulable: 0,
+      },
+    };
+
+    const blockingProjectIds = new Set<string>();
+    for (const item of scheduleItems) {
+      if (item.itemType === 'downtime') continue;
+      const project = projectsById.get(item.projectId) ?? null;
+      if (!project) {
+        debug.scheduleItems.missingProject += 1;
+        continue;
+      }
+
+      const estimate = estimatesById.get(item.estimateId) ?? null;
+      if (!estimate) {
+        debug.scheduleItems.missingEstimate += 1;
+        continue;
+      }
+
+      if (!isSchedulableEstimate(estimate)) {
+        debug.scheduleItems.estimateNotSchedulable += 1;
+        continue;
+      }
+
+      blockingProjectIds.add(item.projectId);
+      debug.scheduleItems.blocking += 1;
+    }
+
+    const estimatesByProjectId = new Map<string, Estimate[]>();
+    for (const estimate of estimatesById.values()) {
+      const list = estimatesByProjectId.get(estimate.projectId) ?? [];
+      list.push(estimate);
+      estimatesByProjectId.set(estimate.projectId, list);
+    }
+
+    for (const project of projects) {
+      const estimates = (estimatesByProjectId.get(project.id) ?? []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      if (!estimates.length) {
+        debug.excluded.noEstimates += 1;
+        continue;
+      }
+
+      const latestEstimate = getLatestSchedulableEstimate(estimates);
+      if (!latestEstimate) {
+        debug.excluded.noSchedulableEstimate += 1;
+        continue;
+      }
+
+      debug.schedulableProjects += 1;
+
+      if (blockingProjectIds.has(project.id)) {
+        debug.excluded.alreadyScheduled += 1;
+        continue;
+      }
+
+      const derived = deriveDurationHoursFromEstimate(latestEstimate);
+      const durationHours = derived.durationHours;
+      const warnings = derived.issues.map((issue) => issue.message);
+
+      const projectName = project.projectName ?? project.name ?? 'Untitled project';
+      const status = normalizeProjectStatus(project.status).status;
+      if (!isSchedulingReadyProjectStatus(status)) {
+        debug.excluded.notReadyStage += 1;
+        continue;
+      }
+      const nextActionDate = (project as any).nextActionDate ?? (project as any).followUpDate ?? null;
+      const nextActionType = (project as any).nextActionType ?? null;
+      const nextActionSuffix =
+        typeof nextActionDate === 'string' && nextActionDate
+          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
+          : '';
+
+      const id = makeJobId(project.id, latestEstimate.id);
+      const job: SchedulableJob = {
+        id,
+        projectId: project.id,
+        estimateId: latestEstimate.id,
+        projectName,
+        descriptor: `${getJobDescriptorFromEstimate(latestEstimate)}${nextActionSuffix}`,
+        status,
+        durationHours,
+        durationLabel: formatDuration(durationHours),
+        durationTitle: formatHours(durationHours),
+        warnings,
+      };
+      jobsById.set(id, job);
+      unscheduledJobs.push(job);
+      debug.unscheduledJobs += 1;
+    }
+
+    for (const item of visibleScheduleItems) {
+      const id = item.id;
+      if (jobsById.has(id)) continue;
+
+      if (item.itemType === 'downtime') {
+        const durationHours =
+          typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
+            ? item.durationHoursOverride
+            : WORK_HOURS_PER_DAY;
+        const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
+        jobsById.set(id, {
+          id,
+          projectId: '',
+          estimateId: '',
+          projectName: reason,
+          descriptor: item.downtimeNote ?? 'Crew unavailable',
+          status: 'DOWNTIME',
+          durationHours,
+          durationLabel: formatDuration(durationHours),
+          durationTitle: formatHours(durationHours),
+          warnings: [],
+        });
+        continue;
+      }
+
+      const project = projectsById.get(item.projectId) ?? null;
+      const estimate = estimatesById.get(item.estimateId) ?? null;
+
+      const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
+      const status = project ? normalizeProjectStatus(project.status).status : '—';
+      const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
+      const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
+      const nextActionSuffix =
+        typeof nextActionDate === 'string' && nextActionDate
+          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
+          : '';
+
+      let durationHours = WORK_HOURS_PER_DAY;
+      const warnings: string[] = [];
+      if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
+        durationHours = item.durationHoursOverride;
+      } else if (estimate) {
+        const derived = deriveDurationHoursFromEstimate(estimate);
+        durationHours = derived.durationHours;
+        warnings.push(...derived.issues.map((issue) => issue.message));
+      } else {
+        warnings.push('Estimate missing; defaulted duration to 1 day.');
+      }
+
+      jobsById.set(id, {
+        id,
+        projectId: item.projectId,
+        estimateId: item.estimateId,
+        projectName,
+        descriptor: `${estimate ? getJobDescriptorFromEstimate(estimate) : '—'}${nextActionSuffix}`,
+        status,
+        durationHours,
+        durationLabel: formatDuration(durationHours),
+        durationTitle: formatHours(durationHours),
+        warnings,
+      });
+    }
+
+    unscheduledJobs.sort((a, b) => a.projectName.localeCompare(b.projectName));
+    return { jobsById, unscheduledJobs, debug, blockingProjectIds };
+  })();
+
+  const unscheduledJobsAll = schedulable.unscheduledJobs;
+  const q = query.trim().toLowerCase();
+  const unscheduledJobs = unscheduledJobsAll.filter((job) => (!q ? true : job.projectName.toLowerCase().includes(q)));
+
+  const laneItems = new Map<string, ScheduleItem[]>();
+  for (const installer of installers) laneItems.set(installer.id, []);
+  for (const item of visibleScheduleItems) {
+    const list = laneItems.get(item.installerId);
+    if (list) list.push(item);
+    else laneItems.set(item.installerId, [item]);
+  }
+  for (const list of laneItems.values()) {
+    list.sort((a, b) => a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt));
+  }
+
+  return {
+    schedulable,
+    unscheduledJobsAll,
+    unscheduledJobs,
+    laneItems,
+  };
+}
+
 export default function ScheduleClient() {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const [isTransitionPending, startUiTransition] = useTransition();
   const ganttScrollRef = useRef<HTMLDivElement | null>(null);
   const boardScrollRef = useRef<HTMLDivElement | null>(null);
   const laneBodyRefs = useRef(new Map<string, HTMLDivElement | null>());
@@ -1448,17 +1839,7 @@ export default function ScheduleClient() {
   const [unscheduledCollapsed, setUnscheduledCollapsed] = useState<boolean>(() => !mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs).length);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
-  const [diagnostics, setDiagnostics] = useState<{
-    host: string | null;
-    crewsOk: boolean;
-    crewsError?: string;
-    itemsOk: boolean;
-    itemsError?: string;
-    projectsOk: boolean;
-    projectsError?: string;
-    estimatesOk: boolean;
-    estimatesError?: string;
-  } | null>(null);
+  const [diagnostics, setDiagnostics] = useState<ScheduleDiagnosticsResult | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [ganttDrag, setGanttDrag] = useState<{
     id: string;
@@ -1471,6 +1852,7 @@ export default function ScheduleClient() {
   const [ganttDragDelta, setGanttDragDelta] = useState(0);
   const [ganttDragPointer, setGanttDragPointer] = useState<{ x: number; y: number } | null>(null);
   const [ganttLabelResize, setGanttLabelResize] = useState<{ startX: number; startWidth: number } | null>(null);
+  const deferredQuery = useDeferredValue(query);
   const ganttDragDeltaRef = useRef(0);
   const ganttDragMovedRef = useRef(false);
   const ganttClickBlockUntilRef = useRef(0);
@@ -1902,8 +2284,22 @@ export default function ScheduleClient() {
   const setScheduleView = (next: 'board' | 'gantt' | 'site_visits') => {
     const qs = new URLSearchParams(searchParams.toString());
     qs.set('view', next === 'site_visits' ? 'site-visits' : next);
-    router.replace(`/staff/schedule?${qs.toString()}`);
-    setView(next);
+    startUiTransition(() => {
+      router.replace(`/staff/schedule?${qs.toString()}`);
+      setView(next);
+    });
+  };
+
+  const handleShowCompletedChange = (next: boolean) => {
+    startUiTransition(() => {
+      setShowCompleted(next);
+    });
+  };
+
+  const handleToggleUnscheduledCollapsed = () => {
+    startUiTransition(() => {
+      setUnscheduledCollapsed((prev) => !prev);
+    });
   };
 
   const scheduleTabs = (
@@ -2352,283 +2748,40 @@ export default function ScheduleClient() {
     return map;
   }, [installers]);
 
-  const schedulable = useMemo(() => {
-    if (scheduleMode === 'v2') {
-      const jobsById = new Map<string, SchedulableJob>();
-      const unscheduledJobs = unscheduledJobsSeed;
-      for (const job of unscheduledJobs) jobsById.set(job.id, job);
+  const boardModel = useMemo(() => {
+    if (view === 'site_visits') return EMPTY_SCHEDULE_BOARD_MODEL;
+    return buildScheduleBoardModel({
+      estimatesById,
+      installers,
+      orphanedScheduleItems,
+      projects,
+      projectsById,
+      query: deferredQuery,
+      scheduleItems,
+      scheduleItemsRenderable,
+      scheduleMode,
+      today,
+      unscheduledJobsSeed,
+      visibleScheduleItems,
+    });
+  }, [
+    deferredQuery,
+    estimatesById,
+    installers,
+    orphanedScheduleItems,
+    projects,
+    projectsById,
+    scheduleItems,
+    scheduleItemsRenderable,
+    scheduleMode,
+    today,
+    unscheduledJobsSeed,
+    view,
+    visibleScheduleItems,
+  ]);
 
-      const blockingProjectIds = new Set<string>();
-      for (const item of scheduleItemsRenderable) {
-        if (item.itemType === 'downtime') continue;
-        if (item.projectId) blockingProjectIds.add(item.projectId);
-      }
-
-      // Scheduled jobs: ensure they have job entries too.
-      for (const item of visibleScheduleItems) {
-        const id = item.id;
-        if (jobsById.has(id)) continue;
-
-        if (item.itemType === 'downtime') {
-          const durationHours =
-            typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-              ? item.durationHoursOverride
-              : WORK_HOURS_PER_DAY;
-          const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-          jobsById.set(id, {
-            id,
-            projectId: '',
-            estimateId: '',
-            projectName: reason,
-            descriptor: item.downtimeNote ?? 'Crew unavailable',
-            status: 'DOWNTIME',
-            durationHours,
-            durationLabel: formatDuration(durationHours),
-            durationTitle: formatHours(durationHours),
-            warnings: [],
-          });
-          continue;
-        }
-
-        const project = projectsById.get(item.projectId) ?? null;
-        const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
-        const status = project ? normalizeProjectStatus(project.status).status : '—';
-        const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
-        const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
-        const nextActionSuffix =
-          typeof nextActionDate === 'string' && nextActionDate
-            ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-            : '';
-        const nextActionLine = nextActionSuffix ? nextActionSuffix.replace(/^ · /, '') : '';
-
-        let durationHours = WORK_HOURS_PER_DAY;
-        if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
-          durationHours = item.durationHoursOverride;
-        } else if (
-          typeof item.forecastDurationDays === 'number' &&
-          Number.isFinite(item.forecastDurationDays) &&
-          item.forecastDurationDays > 0
-        ) {
-          durationHours = item.forecastDurationDays * WORK_HOURS_PER_DAY;
-        }
-
-        jobsById.set(id, {
-          id,
-          projectId: item.projectId,
-          estimateId: item.estimateId,
-          projectName,
-          descriptor: nextActionLine,
-          status,
-          durationHours,
-          durationLabel: formatDuration(durationHours),
-          durationTitle: formatHours(durationHours),
-          warnings: [],
-        });
-      }
-
-      const debug = {
-        totalProjects: projects.length,
-        schedulableProjects: unscheduledJobs.length + blockingProjectIds.size,
-        unscheduledJobs: unscheduledJobs.length,
-        excluded: {
-          noEstimates: 0,
-          noSchedulableEstimate: 0,
-          alreadyScheduled: 0,
-        },
-        scheduleItems: {
-          total: scheduleItems.length,
-          blocking: scheduleItemsRenderable.filter((i) => i.itemType !== 'downtime').length,
-          missingProject: orphanedScheduleItems.length,
-          missingEstimate: 0,
-          estimateNotSchedulable: 0,
-        },
-      };
-
-      return { jobsById, unscheduledJobs, debug, blockingProjectIds };
-    }
-
-    const jobsById = new Map<string, SchedulableJob>();
-    const unscheduledJobs: SchedulableJob[] = [];
-
-    const debug = {
-      totalProjects: projects.length,
-      schedulableProjects: 0,
-      unscheduledJobs: 0,
-      excluded: {
-        noEstimates: 0,
-        noSchedulableEstimate: 0,
-        notReadyStage: 0,
-        alreadyScheduled: 0,
-      },
-      scheduleItems: {
-        total: scheduleItems.length,
-        blocking: 0,
-        missingProject: 0,
-        missingEstimate: 0,
-        estimateNotSchedulable: 0,
-      },
-    };
-
-    const blockingProjectIds = new Set<string>();
-    for (const item of scheduleItems) {
-      if (item.itemType === 'downtime') continue;
-      const project = projectsById.get(item.projectId) ?? null;
-      if (!project) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[schedule] ScheduleItem references missing project', item);
-        }
-        debug.scheduleItems.missingProject += 1;
-        continue;
-      }
-
-      const estimate = estimatesById.get(item.estimateId) ?? null;
-      if (!estimate) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[schedule] ScheduleItem references missing estimate', item);
-        }
-        debug.scheduleItems.missingEstimate += 1;
-        continue;
-      }
-
-      if (!isSchedulableEstimate(estimate)) {
-        debug.scheduleItems.estimateNotSchedulable += 1;
-        continue;
-      }
-
-      blockingProjectIds.add(item.projectId);
-      debug.scheduleItems.blocking += 1;
-    }
-
-    const estimatesByProjectId = new Map<string, Estimate[]>();
-    for (const e of estimatesById.values()) {
-      const list = estimatesByProjectId.get(e.projectId) ?? [];
-      list.push(e);
-      estimatesByProjectId.set(e.projectId, list);
-    }
-
-    for (const p of projects) {
-      const estimates = (estimatesByProjectId.get(p.id) ?? []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      if (!estimates.length) {
-        debug.excluded.noEstimates += 1;
-        continue;
-      }
-
-      const latestEstimate = getLatestSchedulableEstimate(estimates);
-      if (!latestEstimate) {
-        debug.excluded.noSchedulableEstimate += 1;
-        continue;
-      }
-
-      debug.schedulableProjects += 1;
-
-      if (blockingProjectIds.has(p.id)) {
-        debug.excluded.alreadyScheduled += 1;
-        continue;
-      }
-
-      const derived = deriveDurationHoursFromEstimate(latestEstimate);
-      const durationHours = derived.durationHours;
-      const warnings = derived.issues.map((i) => i.message);
-
-      const projectName = p.projectName ?? p.name ?? 'Untitled project';
-      const status = normalizeProjectStatus(p.status).status;
-      if (!isSchedulingReadyProjectStatus(status)) {
-        debug.excluded.notReadyStage += 1;
-        continue;
-      }
-      const nextActionDate = (p as any).nextActionDate ?? (p as any).followUpDate ?? null;
-      const nextActionType = (p as any).nextActionType ?? null;
-      const nextActionSuffix =
-        typeof nextActionDate === 'string' && nextActionDate
-          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-          : '';
-
-      const id = makeJobId(p.id, latestEstimate.id);
-      const job: SchedulableJob = {
-        id,
-        projectId: p.id,
-        estimateId: latestEstimate.id,
-        projectName,
-        descriptor: `${getJobDescriptorFromEstimate(latestEstimate)}${nextActionSuffix}`,
-        status,
-        durationHours,
-        durationLabel: formatDuration(durationHours),
-        durationTitle: formatHours(durationHours),
-        warnings,
-      };
-      jobsById.set(id, job);
-      unscheduledJobs.push(job);
-      debug.unscheduledJobs += 1;
-    }
-
-    // Scheduled jobs: ensure they have job entries too (even if estimate/project missing).
-    for (const item of visibleScheduleItems) {
-      const id = item.id;
-      if (jobsById.has(id)) continue;
-
-      if (item.itemType === 'downtime') {
-        const durationHours = typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0 ? item.durationHoursOverride : WORK_HOURS_PER_DAY;
-        const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-        jobsById.set(id, {
-          id,
-          projectId: '',
-          estimateId: '',
-          projectName: reason,
-          descriptor: item.downtimeNote ?? 'Crew unavailable',
-          status: 'DOWNTIME',
-          durationHours,
-          durationLabel: formatDuration(durationHours),
-          durationTitle: formatHours(durationHours),
-          warnings: [],
-        });
-        continue;
-      }
-
-      const project = projectsById.get(item.projectId) ?? null;
-      const estimate = estimatesById.get(item.estimateId) ?? null;
-
-      const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
-      const status = project ? normalizeProjectStatus(project.status).status : '—';
-      const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
-      const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
-      const nextActionSuffix =
-        typeof nextActionDate === 'string' && nextActionDate
-          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-          : '';
-
-      let durationHours = WORK_HOURS_PER_DAY;
-      const warnings: string[] = [];
-      if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
-        durationHours = item.durationHoursOverride;
-      } else if (estimate) {
-        const derived = deriveDurationHoursFromEstimate(estimate);
-        durationHours = derived.durationHours;
-        warnings.push(...derived.issues.map((i) => i.message));
-      } else {
-        warnings.push('Estimate missing; defaulted duration to 1 day.');
-      }
-
-      jobsById.set(id, {
-        id,
-        projectId: item.projectId,
-        estimateId: item.estimateId,
-        projectName,
-        descriptor: `${estimate ? getJobDescriptorFromEstimate(estimate) : '—'}${nextActionSuffix}`,
-        status,
-        durationHours,
-        durationLabel: formatDuration(durationHours),
-        durationTitle: formatHours(durationHours),
-        warnings,
-      });
-    }
-
-    unscheduledJobs.sort((a, b) => a.projectName.localeCompare(b.projectName));
-    return { jobsById, unscheduledJobs, debug, blockingProjectIds };
-  }, [estimatesById, orphanedScheduleItems, projects, projectsById, scheduleItems, scheduleItemsRenderable, scheduleMode, unscheduledJobsSeed, visibleScheduleItems]);
-
-  const unscheduledJobsAll = useMemo(() => {
-    return schedulable.unscheduledJobs;
-  }, [schedulable.unscheduledJobs]);
+  const schedulable = boardModel.schedulable;
+  const unscheduledJobsAll = boardModel.unscheduledJobsAll;
 
   const unscheduledEmpty = unscheduledJobsAll.length === 0;
 
@@ -2636,22 +2789,8 @@ export default function ScheduleClient() {
     setUnscheduledCollapsed(unscheduledEmpty);
   }, [unscheduledEmpty]);
 
-  const unscheduledJobs = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return unscheduledJobsAll.filter((j) => (!q ? true : j.projectName.toLowerCase().includes(q)));
-  }, [query, unscheduledJobsAll]);
-
-  const laneItems = useMemo(() => {
-    const map = new Map<string, ScheduleItem[]>();
-    for (const installer of installers) map.set(installer.id, []);
-    for (const item of visibleScheduleItems) {
-      const list = map.get(item.installerId);
-      if (list) list.push(item);
-      else map.set(item.installerId, [item]);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt));
-    return map;
-  }, [installers, visibleScheduleItems]);
+  const unscheduledJobs = boardModel.unscheduledJobs;
+  const laneItems = boardModel.laneItems;
 
   const schedule = useMemo(() => {
     if (scheduleMode === 'v2') {
@@ -2736,7 +2875,99 @@ export default function ScheduleClient() {
     return [...fromOrphans, ...fromScheduled, ...fromUnscheduled];
   }, [orphanedIssues, schedule.issues, unscheduledJobsAll]);
 
+  const ganttJobsById = useMemo(() => {
+    if (view !== 'gantt') return new Map<string, SchedulableJob>();
+
+    const jobsById = new Map<string, SchedulableJob>();
+    for (const item of visibleScheduleItems) {
+      if (item.itemType === 'downtime') {
+        const durationHours =
+          typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
+            ? item.durationHoursOverride
+            : WORK_HOURS_PER_DAY;
+        const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
+        jobsById.set(item.id, {
+          id: item.id,
+          projectId: '',
+          estimateId: '',
+          projectName: reason,
+          descriptor: item.downtimeNote ?? 'Crew unavailable',
+          status: 'DOWNTIME',
+          durationHours,
+          durationLabel: formatDuration(durationHours),
+          durationTitle: formatHours(durationHours),
+          warnings: [],
+        });
+        continue;
+      }
+
+      const project = projectsById.get(item.projectId) ?? null;
+      const estimate = estimatesById.get(item.estimateId) ?? null;
+      const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
+      const status = project ? normalizeProjectStatus(project.status).status : '—';
+
+      let durationHours = WORK_HOURS_PER_DAY;
+      const warnings: string[] = [];
+      if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
+        durationHours = item.durationHoursOverride;
+      } else if (
+        typeof item.forecastDurationDays === 'number' &&
+        Number.isFinite(item.forecastDurationDays) &&
+        item.forecastDurationDays > 0
+      ) {
+        durationHours = item.forecastDurationDays * WORK_HOURS_PER_DAY;
+      } else if (estimate) {
+        const derived = deriveDurationHoursFromEstimate(estimate);
+        durationHours = derived.durationHours;
+        warnings.push(...derived.issues.map((issue) => issue.message));
+      }
+
+      jobsById.set(item.id, {
+        id: item.id,
+        projectId: item.projectId,
+        estimateId: item.estimateId,
+        projectName,
+        descriptor: estimate ? getJobDescriptorFromEstimate(estimate) : '—',
+        status,
+        durationHours,
+        durationLabel: formatDuration(durationHours),
+        durationTitle: formatHours(durationHours),
+        warnings,
+      });
+    }
+
+    return jobsById;
+  }, [estimatesById, projectsById, view, visibleScheduleItems]);
+
+  const emptyGantt = useMemo<ScheduleGanttModel>(() => {
+    const rangeStart = startOfWeekMonday(today);
+    const axis = buildGanttAxis({
+      rangeStart,
+      rangeDays: 1,
+      baseDayPx: ganttBaseDayPxForZoomWeeks(zoomWeeks),
+      weekendWeight: GANTT_WEEKEND_WEIGHT,
+    });
+    return {
+      rangeStart,
+      rangeEnd: rangeStart,
+      rangeDays: 1,
+      axis,
+      totalWidth: axis.totalWidth,
+      displayToday: today,
+      todayLinePx: 0,
+      todayColumnLeftPx: null,
+      todayColumnWidthPx: 0,
+      weekendBlocks: [],
+      holidayBlocks: [],
+      dayBoundaryLines: [],
+      weekBoundaryLines: [],
+      rows: [],
+    };
+  }, [today, zoomWeeks]);
+
   const gantt = useMemo(() => {
+    if (view !== 'gantt') return emptyGantt;
+
     const rangeStart = startOfWeekMonday(today);
     const rangeDays = GANTT_TIMELINE_DAYS;
     const rangeEnd = addDaysYmd(rangeStart, rangeDays - 1);
@@ -2872,7 +3103,7 @@ export default function ScheduleClient() {
         const bar = barsById.get(item.id);
         if (!bar) continue;
 
-        const job = schedulable.jobsById.get(item.id);
+        const job = ganttJobsById.get(item.id);
         const scheduleItem = scheduleItemById.get(item.id) ?? null;
         const isDowntime = scheduleItem?.itemType === 'downtime';
         const isPinned = scheduleItem?.mode === 'pinned';
@@ -2974,7 +3205,7 @@ export default function ScheduleClient() {
     installers,
     laneItems,
     zoomWeeks,
-    schedulable.jobsById,
+    ganttJobsById,
     schedule.bars,
     scheduleItemById,
     visibleScheduleItems,
@@ -2984,6 +3215,8 @@ export default function ScheduleClient() {
     ganttDrag,
     ganttDragDelta,
     today,
+    emptyGantt,
+    view,
   ]);
 
   const handleGanttZoomWeeksChange = (next: GanttZoomWeeks) => {
@@ -3641,7 +3874,9 @@ export default function ScheduleClient() {
   };
 
   const toggleCrewCollapsed = (installerId: string) => {
-    setCollapsedCrews((prev) => ({ ...prev, [installerId]: !prev[installerId] }));
+    startUiTransition(() => {
+      setCollapsedCrews((prev) => ({ ...prev, [installerId]: !prev[installerId] }));
+    });
   };
 
   const jumpGanttToToday = () => {
@@ -4609,100 +4844,351 @@ export default function ScheduleClient() {
   }
 
   const overlayJob = activeDragId ? schedulable.jobsById.get(activeDragId) ?? null : null;
+  const handleRunDiagnostics = () => {
+    if (diagnosticsBusy) return;
+    setDiagnosticsBusy(true);
+    void (async () => {
+      try {
+        const res = await runScheduleDiagnostics();
+        setDiagnostics(res);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Diagnostics failed';
+        setDiagnostics({
+          host: supabaseHostFromUrl(supabaseRuntimeUrl()),
+          crewsOk: false,
+          crewsError: msg,
+          itemsOk: false,
+          itemsError: msg,
+          projectsOk: false,
+          projectsError: msg,
+          estimatesOk: false,
+          estimatesError: msg,
+        });
+      } finally {
+        setDiagnosticsBusy(false);
+      }
+    })();
+  };
+
+  const handleSaveQuickEdit = () => {
+    if (!quickEdit) return;
+
+    const item = scheduleItemById.get(quickEdit.id) ?? null;
+    if (!item) {
+      setQuickEdit(null);
+      return;
+    }
+
+    const start = quickEdit.startDateOverride.trim();
+    const daysRaw = quickEdit.durationDays.trim();
+    const days = daysRaw ? Number(daysRaw) : Number.NaN;
+
+    if (scheduleMode === 'v2') {
+      if (item.itemType === 'downtime') {
+        setQuickEdit(null);
+        return;
+      }
+
+      const projectUuid = resolveProjectUuid(item);
+      if (!projectUuid) return;
+
+      const durationDays = Number.isFinite(days) && days > 0 ? Math.max(1, Math.round(days)) : null;
+
+      void (async () => {
+        let ok = true;
+        if (durationDays != null) {
+          ok = await queueSetDurationJob(projectUuid, durationDays, {
+            successToast: 'Duration updated.',
+            errorToast: 'Failed to update duration.',
+          });
+          if (!ok) return;
+        }
+
+        if (start) {
+          ok = await queuePinJob(projectUuid, start, {
+            successToast: 'Job pinned.',
+            errorToast: 'Failed to pin job.',
+          });
+          if (!ok) return;
+        } else if (item.mode === 'pinned') {
+          ok = await queueUnpinJob(projectUuid, {
+            successToast: 'Job unpinned.',
+            errorToast: 'Failed to unpin job.',
+          });
+          if (!ok) return;
+        }
+
+        setQuickEdit(null);
+      })();
+      return;
+    }
+
+    const durationHoursOverride = Number.isFinite(days) && days > 0 ? days * WORK_HOURS_PER_DAY : null;
+    const nextItems = scheduleItems.map((scheduleItem) => {
+      if (scheduleItem.id !== item.id) return scheduleItem;
+      return {
+        ...scheduleItem,
+        startDateOverride: start ? start : undefined,
+        durationHoursOverride: durationHoursOverride ?? undefined,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    void persist(nextItems, { successToast: 'Job updated.' }).then((ok) => {
+      if (ok) setQuickEdit(null);
+    });
+  };
+
+  const handleSaveCommitment = () => {
+    if (!commitmentEdit) return;
+
+    const item = scheduleItemById.get(commitmentEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const durationDays = parsePositiveInt(commitmentEdit.durationDays);
+    if (durationDays === null) {
+      toast.error('Enter a valid duration in whole days.');
+      return;
+    }
+
+    const flexRaw = Number(commitmentEdit.flexDays.trim());
+    if (!Number.isFinite(flexRaw)) {
+      toast.error('Enter a valid flex value.');
+      return;
+    }
+    const flexDays = Math.max(0, Math.trunc(flexRaw));
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    const payload =
+      commitmentEdit.commitmentType === 'week_of'
+        ? {
+            job_id: jobUuid,
+            commitment_type: 'week_of' as const,
+            week_of_date: startOfWeekMonday(commitmentEdit.weekOfDate),
+            duration_days: durationDays,
+            flex_days: flexDays,
+            hard_lock: commitmentEdit.hardLock,
+            today,
+          }
+        : {
+            job_id: jobUuid,
+            commitment_type: 'fixed_date' as const,
+            start_date: snapToWeekdayYmd(commitmentEdit.startDate),
+            duration_days: durationDays,
+            flex_days: flexDays,
+            hard_lock: commitmentEdit.hardLock,
+            today,
+          };
+
+    const runMutation =
+      commitmentEdit.mode === 'lock'
+        ? (force: boolean) => lockJobSchedule({ ...payload, force })
+        : (force: boolean) => rescheduleJob({ ...payload, force });
+
+    const successToast = commitmentEdit.mode === 'lock' ? 'Schedule locked.' : 'Schedule updated.';
+    void runWithCommitConfirmation(runMutation, {
+      successToast,
+      errorToast: 'Failed to save schedule commitment.',
+    }).then((ok) => {
+      if (ok) setCommitmentEdit(null);
+    });
+  };
+
+  const handleSaveDuration = () => {
+    if (!durationEdit) return;
+
+    const item = scheduleItemById.get(durationEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const days = Number(durationEdit.durationDays.trim());
+    if (!Number.isFinite(days) || days <= 0) {
+      toast.error('Enter a valid duration in days.');
+      return;
+    }
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    const durationDays = Math.max(1, Math.round(days));
+    void queueSetDurationJob(jobUuid, durationDays, {
+      successToast: 'Duration updated.',
+      errorToast: 'Failed to update duration.',
+    }).then((ok) => {
+      if (ok) setDurationEdit(null);
+    });
+  };
+
+  const handleSavePin = () => {
+    if (!pinEdit) return;
+
+    const item = scheduleItemById.get(pinEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const start = pinEdit.requestedStart.trim();
+    if (!isYmd(start)) {
+      toast.error('Select a valid start date.');
+      return;
+    }
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    void queuePinJob(jobUuid, start, {
+      successToast: 'Job pinned.',
+      errorToast: 'Failed to pin job.',
+    }).then((ok) => {
+      if (ok) setPinEdit(null);
+    });
+  };
+
+  const handleSaveDaysRemaining = () => {
+    if (!daysRemainingEdit) return;
+
+    const item = scheduleItemById.get(daysRemainingEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const days = Number(daysRemainingEdit.daysRemaining.trim());
+    if (!Number.isFinite(days) || days <= 0) {
+      toast.error('Enter a valid number of days.');
+      return;
+    }
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    const daysRemaining = Math.max(1, Math.round(days));
+    void queueSetDaysRemainingJob(jobUuid, daysRemaining, {
+      successToast: 'Days remaining updated.',
+      errorToast: 'Failed to update days remaining.',
+    }).then((ok) => {
+      if (ok) setDaysRemainingEdit(null);
+    });
+  };
+
+  const handleSaveDowntime = () => {
+    if (!downtimeEdit) return;
+
+    const days = Number(downtimeEdit.durationDays.trim());
+    if (!Number.isFinite(days) || days <= 0) {
+      toast.error('Enter a valid duration in days.');
+      return;
+    }
+
+    const durationDays = Math.max(1, Math.round(days));
+    const reason = downtimeEdit.reason || 'other';
+    const note = downtimeEdit.note.trim();
+
+    if (downtimeEdit.mode === 'create') {
+      const crewUuid = resolveCrewUuid(downtimeEdit.crewId);
+      if (!crewUuid) return;
+
+      void runWithCommitConfirmation(
+        (force) =>
+          createDowntime({
+            crew_id: crewUuid,
+            position: downtimeEdit.position,
+            duration_days: durationDays,
+            reason,
+            note: note || null,
+            force,
+            today,
+          }),
+        { successToast: 'Downtime added.', errorToast: 'Failed to add downtime.' },
+      ).then((ok) => {
+        if (ok) setDowntimeEdit(null);
+      });
+      return;
+    }
+
+    if (!downtimeEdit.downtimeId) {
+      toast.error('Downtime record not found.');
+      return;
+    }
+
+    void runWithCommitConfirmation(
+      (force) =>
+        updateDowntime({
+          downtime_id: downtimeEdit.downtimeId as string,
+          duration_days: durationDays,
+          reason,
+          note: note || null,
+          force,
+          today,
+        }),
+      { successToast: 'Downtime updated.', errorToast: 'Failed to update downtime.' },
+    ).then((ok) => {
+      if (ok) setDowntimeEdit(null);
+    });
+  };
+
+  const handleFinishEarlyKeepSchedule = () => {
+    if (!finishEarlyPrompt) return;
+    void runWithCommitConfirmation(
+      (force) =>
+        markJobDone({
+          job_id: finishEarlyPrompt.jobId,
+          finish_early_action: 'keep_schedule',
+          force,
+          today,
+        }),
+      { successToast: 'Buffer added. Schedule held.', errorToast: 'Failed to keep schedule as-is.' },
+    ).then((ok) => {
+      if (ok) setFinishEarlyPrompt(null);
+    });
+  };
+
+  const handleFinishEarlyPullForward = () => {
+    if (!finishEarlyPrompt) return;
+    void runWithCommitConfirmation(
+      (force) =>
+        markJobDone({
+          job_id: finishEarlyPrompt.jobId,
+          finish_early_action: 'pull_forward',
+          force,
+          today,
+        }),
+      { successToast: 'Schedule pulled forward.', errorToast: 'Failed to pull schedule forward.' },
+    ).then((ok) => {
+      if (ok) setFinishEarlyPrompt(null);
+    });
+  };
+
+  const actionModalState: ScheduleModalState = {
+    quickEdit,
+    commitmentEdit,
+    durationEdit,
+    pinEdit,
+    daysRemainingEdit,
+    downtimeEdit,
+    finishEarlyPrompt,
+  };
+
+  const hasOpenActionModal = Boolean(
+    quickEdit || commitmentEdit || durationEdit || pinEdit || daysRemainingEdit || downtimeEdit || finishEarlyPrompt,
+  );
 
   const diagnosticsPanel = devOnly ? (
-    <div
-      aria-label="Schedule diagnostics"
-      style={{
-        marginTop: 12,
-        border: '1px solid rgba(var(--portal-text-rgb), 0.14)',
-        borderRadius: 14,
-        background: 'rgba(var(--portal-bg-surface-rgb), 0.92)',
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ padding: 12, display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Diagnostics (dev only)</strong>
-          <span className={styles.muted} style={{ fontSize: 12 }}>
-            Checks projects + estimates + schedule tables
-          </span>
-        </div>
-        <button
-          type="button"
-          className={styles.buttonSecondary}
-          aria-expanded={diagnosticsOpen}
-          onClick={() => setDiagnosticsOpen((v) => !v)}
-        >
-          {diagnosticsOpen ? 'Hide' : 'Show'}
-        </button>
-      </div>
-
-      {diagnosticsOpen ? (
-        <div style={{ padding: 12, borderTop: '1px solid rgba(var(--portal-text-rgb), 0.08)' }}>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
-            disabled={diagnosticsBusy}
-            onClick={() => {
-              if (diagnosticsBusy) return;
-              setDiagnosticsBusy(true);
-              void (async () => {
-                try {
-                  const res = await runScheduleDiagnostics();
-                  setDiagnostics(res);
-                } catch (e) {
-                  const msg = e instanceof Error ? e.message : 'Diagnostics failed';
-                  setDiagnostics({
-                    host: supabaseHostFromUrl(supabaseRuntimeUrl()),
-                    crewsOk: false,
-                    crewsError: msg,
-                    itemsOk: false,
-                    itemsError: msg,
-                    projectsOk: false,
-                    projectsError: msg,
-                    estimatesOk: false,
-                    estimatesError: msg,
-                  });
-                } finally {
-                  setDiagnosticsBusy(false);
-                }
-              })();
-            }}
-          >
-            {diagnosticsBusy ? 'Checking…' : 'Run diagnostics'}
-          </button>
-
-          {diagnostics ? (
-            <div className={styles.note} style={{ marginTop: 12 }}>
-              <div>
-                Host: <strong>{diagnostics.host || '—'}</strong>
-              </div>
-              <div>
-                schedule_crews: <strong>{diagnostics.crewsOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.crewsOk && diagnostics.crewsError ? <div className={styles.muted}>{diagnostics.crewsError}</div> : null}
-              </div>
-              <div>
-                schedule_items: <strong>{diagnostics.itemsOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.itemsOk && diagnostics.itemsError ? <div className={styles.muted}>{diagnostics.itemsError}</div> : null}
-              </div>
-              <div>
-                projects: <strong>{diagnostics.projectsOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.projectsOk && diagnostics.projectsError ? <div className={styles.muted}>{diagnostics.projectsError}</div> : null}
-              </div>
-              <div>
-                estimates: <strong>{diagnostics.estimatesOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.estimatesOk && diagnostics.estimatesError ? <div className={styles.muted}>{diagnostics.estimatesError}</div> : null}
-              </div>
-            </div>
-          ) : (
-            <p className={styles.note} style={{ marginTop: 12 }}>
-              Click “Run diagnostics” to test PostgREST access.
-            </p>
-          )}
-        </div>
-      ) : null}
-    </div>
+    <LazyScheduleDiagnosticsPanel
+      open={diagnosticsOpen}
+      busy={diagnosticsBusy}
+      diagnostics={diagnostics}
+      onToggle={() => setDiagnosticsOpen((value) => !value)}
+      onRun={handleRunDiagnostics}
+    />
   ) : null;
 
   if (view === 'site_visits') {
@@ -4717,7 +5203,7 @@ export default function ScheduleClient() {
           }
         />
         <div className={cx(styles.stack, styles.stackLocked)}>
-          <SiteVisitsView />
+          <LazySiteVisitsView />
         </div>
       </main>
     );
@@ -4910,7 +5396,7 @@ export default function ScheduleClient() {
                     className={styles.panelCollapseButton}
                     aria-label={unscheduledCollapsed ? 'Expand unscheduled panel' : 'Collapse unscheduled panel'}
                     aria-expanded={!unscheduledCollapsed}
-                    onClick={() => setUnscheduledCollapsed((prev) => !prev)}
+                    onClick={handleToggleUnscheduledCollapsed}
                   >
                     {unscheduledCollapsed ? '▸' : '◂'}
                   </button>
@@ -5064,7 +5550,7 @@ export default function ScheduleClient() {
                         type="checkbox"
                         className={styles.toggleCheckbox}
                         checked={showCompleted}
-                        onChange={(e) => setShowCompleted(e.target.checked)}
+                        onChange={(e) => handleShowCompletedChange(e.target.checked)}
                       />
                       Show completed jobs
                     </label>
@@ -5372,15 +5858,15 @@ export default function ScheduleClient() {
                       </span>
                     </>
                   ) : null}
-                  <label className={styles.toggleControl}>
-                    <input
-                      type="checkbox"
-                      className={styles.toggleCheckbox}
-                      checked={showCompleted}
-                      onChange={(e) => setShowCompleted(e.target.checked)}
-                    />
-                    Show completed jobs
-                  </label>
+                    <label className={styles.toggleControl}>
+                      <input
+                        type="checkbox"
+                        className={styles.toggleCheckbox}
+                        checked={showCompleted}
+                        onChange={(e) => handleShowCompletedChange(e.target.checked)}
+                      />
+                      Show completed jobs
+                    </label>
                 </div>
                 <div className={styles.lanes} ref={boardScrollRef}>
                 {installers.filter((i) => i.active).map((installer) => {
@@ -5539,827 +6025,34 @@ export default function ScheduleClient() {
         />
       ) : null}
 
-      {quickEdit ? (
-        <Modal
-          open
-          ariaLabel="Quick edit scheduled job"
-          onClose={() => setQuickEdit(null)}
-          maxWidthPx={520}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Quick edit</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setQuickEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Overrides apply to this job only. Changing start/duration recalculates downstream jobs for the crew.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Start date override
-                </label>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={quickEdit.startDateOverride}
-                  onChange={(e) => setQuickEdit((prev) => (prev ? { ...prev, startDateOverride: e.target.value } : prev))}
-                />
-                <p className={styles.hint} style={{ marginTop: 6 }}>
-                  Leave blank to auto-calculate from lane availability.
-                </p>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Duration (days)
-                </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step={scheduleMode === 'v2' ? 1 : 0.5}
-                  min={scheduleMode === 'v2' ? 1 : 0.5}
-                  className={styles.input}
-                  value={quickEdit.durationDays}
-                  onChange={(e) => setQuickEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                />
-                <p className={styles.hint} style={{ marginTop: 6 }}>
-                  1 day = {WORK_HOURS_PER_DAY}h. {scheduleMode === 'v2' ? 'Whole days only.' : 'Use 0.5 increments.'}
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setQuickEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItems.find((i) => i.id === quickEdit.id) ?? null;
-                  if (!item) {
-                    setQuickEdit(null);
-                    return;
-                  }
-
-                  const start = quickEdit.startDateOverride.trim();
-                  const daysRaw = quickEdit.durationDays.trim();
-                  const days = daysRaw ? Number(daysRaw) : NaN;
-                  if (scheduleMode === 'v2') {
-                    if (item.itemType === 'downtime') {
-                      setQuickEdit(null);
-                      return;
-                    }
-                    let projectUuid: string;
-                    try {
-                      projectUuid = uuidFromAppId(item.projectId, 'proj');
-                    } catch {
-                      toast.error('Invalid project ID for quick edit.');
-                      return;
-                    }
-                    const durationDays = Number.isFinite(days) && days > 0 ? Math.max(1, Math.round(days)) : null;
-
-                    void (async () => {
-                      let ok = true;
-                      if (durationDays != null) {
-                        ok = await queueSetDurationJob(
-                          projectUuid,
-                          durationDays,
-                          { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
-                        );
-                        if (!ok) return;
-                      }
-                      if (start) {
-                        ok = await queuePinJob(
-                          projectUuid,
-                          start,
-                          { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
-                        );
-                        if (!ok) return;
-                      } else if (item.mode === 'pinned') {
-                        ok = await queueUnpinJob(
-                          projectUuid,
-                          { successToast: 'Job unpinned.', errorToast: 'Failed to unpin job.' },
-                        );
-                        if (!ok) return;
-                      }
-                      setQuickEdit(null);
-                    })();
-                    return;
-                  }
-
-                  const durationHoursOverride = Number.isFinite(days) && days > 0 ? days * WORK_HOURS_PER_DAY : null;
-
-                  const nextItems = scheduleItems.map((i) => {
-                    if (i.id !== item.id) return i;
-                    return {
-                      ...i,
-                      startDateOverride: start ? start : undefined,
-                      durationHoursOverride: durationHoursOverride ?? undefined,
-                      updatedAt: new Date().toISOString(),
-                    };
-                  });
-
-                  void persist(nextItems, { successToast: 'Job updated.' }).then((ok) => {
-                    if (ok) setQuickEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {commitmentEdit ? (
-        <Modal
-          open
-          ariaLabel={commitmentEdit.mode === 'lock' ? 'Confirm schedule' : 'Reschedule'}
-          onClose={() => setCommitmentEdit(null)}
-          maxWidthPx={560}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-                {commitmentEdit.mode === 'lock' ? 'Confirm schedule' : 'Reschedule'}
-              </h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
-              <div>
-                <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Commitment type</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className={styles.buttonSecondary}
-                    aria-pressed={commitmentEdit.commitmentType === 'week_of'}
-                    onClick={() =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              commitmentType: 'week_of',
-                              flexDays: '4',
-                              hardLock: false,
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    Week-of
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.buttonSecondary}
-                    aria-pressed={commitmentEdit.commitmentType === 'fixed_date'}
-                    onClick={() =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              commitmentType: 'fixed_date',
-                              flexDays: '1',
-                              hardLock: true,
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    Fixed date
-                  </button>
-                </div>
-              </div>
-
-              {commitmentEdit.commitmentType === 'week_of' ? (
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Week-of date
-                  </label>
-                  <input
-                    type="date"
-                    className={styles.input}
-                    value={commitmentEdit.weekOfDate}
-                    onChange={(e) =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              weekOfDate: startOfWeekMonday(e.target.value),
-                            }
-                          : prev,
-                      )
-                    }
-                  />
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
-                    Date is snapped to Monday of the selected week.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Start date
-                  </label>
-                  <input
-                    type="date"
-                    className={styles.input}
-                    value={commitmentEdit.startDate}
-                    onChange={(e) =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              startDate: snapToWeekdayYmd(e.target.value),
-                            }
-                          : prev,
-                      )
-                    }
-                  />
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
-                    Date snaps forward to a weekday; holiday handling is enforced server-side.
-                  </p>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Approx duration (days)
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    step={1}
-                    min={1}
-                    className={styles.input}
-                    value={commitmentEdit.durationDays}
-                    onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Flex days
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    step={1}
-                    min={0}
-                    className={styles.input}
-                    value={commitmentEdit.flexDays}
-                    onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, flexDays: e.target.value } : prev))}
-                  />
-                </div>
-              </div>
-
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={commitmentEdit.hardLock}
-                  onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, hardLock: e.target.checked } : prev))}
-                />
-                Hard lock date (prevents auto movement)
-              </label>
-
-              {(() => {
-                const datePart =
-                  commitmentEdit.commitmentType === 'week_of'
-                    ? isYmd(commitmentEdit.weekOfDate)
-                      ? `Week of ${formatShortDate(startOfWeekMonday(commitmentEdit.weekOfDate))}`
-                      : 'Week of —'
-                    : isYmd(commitmentEdit.startDate)
-                      ? `Starts ${formatShortDate(commitmentEdit.startDate)}`
-                      : 'Starts —';
-                const duration = parsePositiveInt(commitmentEdit.durationDays);
-                const flexRaw = Number(commitmentEdit.flexDays.trim());
-                const flex = Number.isFinite(flexRaw) ? Math.max(0, Math.trunc(flexRaw)) : null;
-                return (
-                  <p className={styles.hint}>
-                    Planned: {datePart} · ~{duration ?? '—'} days · flex {flex ?? '—'} working days
-                  </p>
-                );
-              })()}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                disabled={(() => {
-                  const validDuration = parsePositiveInt(commitmentEdit.durationDays) !== null;
-                  const flexRaw = Number(commitmentEdit.flexDays.trim());
-                  const validFlex = Number.isFinite(flexRaw) && Math.trunc(flexRaw) >= 0;
-                  const validDate = commitmentEdit.commitmentType === 'week_of' ? isYmd(commitmentEdit.weekOfDate) : isYmd(commitmentEdit.startDate);
-                  return !(validDuration && validFlex && validDate);
-                })()}
-                onClick={() => {
-                  const item = scheduleItemById.get(commitmentEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-
-                  const durationDays = parsePositiveInt(commitmentEdit.durationDays);
-                  if (durationDays === null) {
-                    toast.error('Enter a valid duration in whole days.');
-                    return;
-                  }
-
-                  const flexRaw = Number(commitmentEdit.flexDays.trim());
-                  if (!Number.isFinite(flexRaw)) {
-                    toast.error('Enter a valid flex value.');
-                    return;
-                  }
-                  const flexDays = Math.max(0, Math.trunc(flexRaw));
-
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-
-                  const payload =
-                    commitmentEdit.commitmentType === 'week_of'
-                      ? {
-                          job_id: jobUuid,
-                          commitment_type: 'week_of' as const,
-                          week_of_date: startOfWeekMonday(commitmentEdit.weekOfDate),
-                          duration_days: durationDays,
-                          flex_days: flexDays,
-                          hard_lock: commitmentEdit.hardLock,
-                          today,
-                        }
-                      : {
-                          job_id: jobUuid,
-                          commitment_type: 'fixed_date' as const,
-                          start_date: snapToWeekdayYmd(commitmentEdit.startDate),
-                          duration_days: durationDays,
-                          flex_days: flexDays,
-                          hard_lock: commitmentEdit.hardLock,
-                          today,
-                        };
-
-                  const runMutation =
-                    commitmentEdit.mode === 'lock'
-                      ? (force: boolean) => lockJobSchedule({ ...payload, force })
-                      : (force: boolean) => rescheduleJob({ ...payload, force });
-
-                  const successToast = commitmentEdit.mode === 'lock' ? 'Schedule locked.' : 'Schedule updated.';
-                  void runWithCommitConfirmation(runMutation, {
-                    successToast,
-                    errorToast: 'Failed to save schedule commitment.',
-                  }).then((ok) => {
-                    if (ok) setCommitmentEdit(null);
-                  });
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {durationEdit ? (
-        <Modal open ariaLabel="Set job duration" onClose={() => setDurationEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Set duration</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDurationEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Duration is stored as whole working days.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Duration (days)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  step={1}
-                  min={1}
-                  className={styles.input}
-                  value={durationEdit.durationDays}
-                  onChange={(e) => setDurationEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDurationEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItemById.get(durationEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-                  const daysRaw = durationEdit.durationDays.trim();
-                  const days = Number(daysRaw);
-                  if (!Number.isFinite(days) || days <= 0) {
-                    toast.error('Enter a valid duration in days.');
-                    return;
-                  }
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-                  const durationDays = Math.max(1, Math.round(days));
-                  void queueSetDurationJob(
-                    jobUuid,
-                    durationDays,
-                    { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
-                  ).then((ok) => {
-                    if (ok) setDurationEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {pinEdit ? (
-        <Modal open ariaLabel="Pin job" onClose={() => setPinEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Pin job</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setPinEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Pinned starts snap forward to the next working day if needed.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Start date
-                </label>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={pinEdit.requestedStart}
-                  onChange={(e) => setPinEdit((prev) => (prev ? { ...prev, requestedStart: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setPinEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItemById.get(pinEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-                  const start = pinEdit.requestedStart.trim();
-                  if (!isYmd(start)) {
-                    toast.error('Select a valid start date.');
-                    return;
-                  }
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-                  void queuePinJob(
-                    jobUuid,
-                    start,
-                    { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
-                  ).then((ok) => {
-                    if (ok) setPinEdit(null);
-                  });
-                }}
-              >
-                Pin job
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {daysRemainingEdit ? (
-        <Modal open ariaLabel="Set days remaining" onClose={() => setDaysRemainingEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Days remaining</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDaysRemainingEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Updates the forecast duration for this in-progress job.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Days remaining
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  step={1}
-                  min={1}
-                  className={styles.input}
-                  value={daysRemainingEdit.daysRemaining}
-                  onChange={(e) => setDaysRemainingEdit((prev) => (prev ? { ...prev, daysRemaining: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDaysRemainingEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItemById.get(daysRemainingEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-                  const daysRaw = daysRemainingEdit.daysRemaining.trim();
-                  const days = Number(daysRaw);
-                  if (!Number.isFinite(days) || days <= 0) {
-                    toast.error('Enter a valid number of days.');
-                    return;
-                  }
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-                  const daysRemaining = Math.max(1, Math.round(days));
-                  void queueSetDaysRemainingJob(
-                    jobUuid,
-                    daysRemaining,
-                    { successToast: 'Days remaining updated.', errorToast: 'Failed to update days remaining.' },
-                  ).then((ok) => {
-                    if (ok) setDaysRemainingEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {downtimeEdit ? (
-        <Modal
-          open
-          ariaLabel={downtimeEdit.mode === 'create' ? 'Add downtime' : 'Edit downtime'}
-          onClose={() => setDowntimeEdit(null)}
-          maxWidthPx={520}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-                {downtimeEdit.mode === 'create' ? 'Add downtime' : 'Edit downtime'}
-              </h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDowntimeEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Duration (days)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  step={1}
-                  min={1}
-                  className={styles.input}
-                  value={downtimeEdit.durationDays}
-                  onChange={(e) => setDowntimeEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Reason
-                </label>
-                <select
-                  className={styles.input}
-                  value={downtimeEdit.reason}
-                  onChange={(e) => setDowntimeEdit((prev) => (prev ? { ...prev, reason: e.target.value } : prev))}
-                >
-                  <option value="weather">Weather</option>
-                  <option value="materials">Materials</option>
-                  <option value="site">Site</option>
-                  <option value="staff">Staff</option>
-                  <option value="travel">Travel</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Note
-                </label>
-                <textarea
-                  className={styles.input}
-                  rows={3}
-                  value={downtimeEdit.note}
-                  onChange={(e) => setDowntimeEdit((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDowntimeEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const daysRaw = downtimeEdit.durationDays.trim();
-                  const days = Number(daysRaw);
-                  if (!Number.isFinite(days) || days <= 0) {
-                    toast.error('Enter a valid duration in days.');
-                    return;
-                  }
-                  const durationDays = Math.max(1, Math.round(days));
-                  const reason = downtimeEdit.reason || 'other';
-                  const note = downtimeEdit.note.trim();
-
-                  if (downtimeEdit.mode === 'create') {
-                    const crewUuid = resolveCrewUuid(downtimeEdit.crewId);
-                    if (!crewUuid) return;
-                    void runWithCommitConfirmation(
-                      (force) =>
-                        createDowntime({
-                          crew_id: crewUuid,
-                          position: downtimeEdit.position,
-                          duration_days: durationDays,
-                          reason,
-                          note: note || null,
-                          force,
-                          today,
-                        }),
-                      { successToast: 'Downtime added.', errorToast: 'Failed to add downtime.' },
-                    ).then((ok) => {
-                      if (ok) setDowntimeEdit(null);
-                    });
-                    return;
-                  }
-
-                  if (!downtimeEdit.downtimeId) {
-                    toast.error('Downtime record not found.');
-                    return;
-                  }
-
-                  void runWithCommitConfirmation(
-                    (force) =>
-                      updateDowntime({
-                        downtime_id: downtimeEdit.downtimeId as string,
-                        duration_days: durationDays,
-                        reason,
-                        note: note || null,
-                        force,
-                        today,
-                      }),
-                    { successToast: 'Downtime updated.', errorToast: 'Failed to update downtime.' },
-                  ).then((ok) => {
-                    if (ok) setDowntimeEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {finishEarlyPrompt ? (
-        <Modal
-          open
-          ariaLabel="Finish early options"
-          onClose={() => setFinishEarlyPrompt(null)}
-          maxWidthPx={560}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Finished early</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
-                Close
-              </button>
-            </div>
-
-            {(() => {
-              const scheduleItem = scheduleItemById.get(finishEarlyPrompt.scheduleItemId) ?? null;
-              const project = scheduleItem?.projectId ? projectsById.get(scheduleItem.projectId) ?? null : null;
-              const jobName = scheduleItem?.itemType === 'job' ? safeProjectName(project) : 'Job';
-              const endInclusive = finishEarlyPrompt.forecastEndExclusive
-                ? endInclusiveFromExclusive(finishEarlyPrompt.forecastEndExclusive, finishEarlyPrompt.forecastEndExclusive)
-                : null;
-              const forecastLabel = endInclusive ? formatShortDate(endInclusive) : '—';
-              return (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontWeight: 700 }}>{jobName}</div>
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
-                    Finished on {formatShortDate(finishEarlyPrompt.actualFinish)} — {finishEarlyPrompt.freedDays} working day
-                    {finishEarlyPrompt.freedDays === 1 ? '' : 's'} freed (forecast end {forecastLabel}).
-                  </p>
-                </div>
-              );
-            })()}
-
-            {finishEarlyPrompt.impacts?.length ? (
-              <div style={{ marginTop: 12 }}>
-                <div className={styles.hint} style={{ fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Pull forward preview
-                </div>
-                <pre className={styles.note} style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>
-                  {formatCommitImpactList(finishEarlyPrompt.impacts)}
-                </pre>
-              </div>
-            ) : null}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => {
-                  void runWithCommitConfirmation(
-                    (force) =>
-                      markJobDone({
-                        job_id: finishEarlyPrompt.jobId,
-                        finish_early_action: 'keep_schedule',
-                        force,
-                        today,
-                      }),
-                    { successToast: 'Buffer added. Schedule held.', errorToast: 'Failed to keep schedule as-is.' },
-                  ).then((ok) => {
-                    if (ok) setFinishEarlyPrompt(null);
-                  });
-                }}
-              >
-                Keep schedule as-is
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  void runWithCommitConfirmation(
-                    (force) =>
-                      markJobDone({
-                        job_id: finishEarlyPrompt.jobId,
-                        finish_early_action: 'pull_forward',
-                        force,
-                        today,
-                      }),
-                    { successToast: 'Schedule pulled forward.', errorToast: 'Failed to pull schedule forward.' },
-                  ).then((ok) => {
-                    if (ok) setFinishEarlyPrompt(null);
-                  });
-                }}
-              >
-                Pull forward
-              </button>
-            </div>
-          </div>
-        </Modal>
+      {hasOpenActionModal ? (
+        <LazyScheduleActionModals
+          state={actionModalState}
+          scheduleMode={scheduleMode}
+          findScheduleItem={(id) => scheduleItemById.get(id) ?? null}
+          findProjectName={(scheduleItemId) => {
+            const scheduleItem = scheduleItemById.get(scheduleItemId) ?? null;
+            const project = scheduleItem?.projectId ? projectsById.get(scheduleItem.projectId) ?? null : null;
+            return scheduleItem?.itemType === 'job' ? safeProjectName(project) : 'Job';
+          }}
+          formatShortDate={formatShortDate}
+          formatCommitImpactList={formatCommitImpactList}
+          setQuickEdit={setQuickEdit}
+          setCommitmentEdit={setCommitmentEdit}
+          setDurationEdit={setDurationEdit}
+          setPinEdit={setPinEdit}
+          setDaysRemainingEdit={setDaysRemainingEdit}
+          setDowntimeEdit={setDowntimeEdit}
+          setFinishEarlyPrompt={setFinishEarlyPrompt}
+          onSaveQuickEdit={handleSaveQuickEdit}
+          onSaveCommitment={handleSaveCommitment}
+          onSaveDuration={handleSaveDuration}
+          onSavePin={handleSavePin}
+          onSaveDaysRemaining={handleSaveDaysRemaining}
+          onSaveDowntime={handleSaveDowntime}
+          onFinishEarlyKeepSchedule={handleFinishEarlyKeepSchedule}
+          onFinishEarlyPullForward={handleFinishEarlyPullForward}
+        />
       ) : null}
       </div>
     </main>

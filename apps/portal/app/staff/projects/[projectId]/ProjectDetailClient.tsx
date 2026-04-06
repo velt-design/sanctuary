@@ -32,6 +32,7 @@ import { NEXT_ACTION_TYPE_ORDER, nextActionTypeLabel, PROJECT_STATUS_ORDER, proj
 import Modal from '@/components/ui/modal/Modal';
 import ConflictModal from '@/components/ui/ConflictModal';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
+import { formatPortalDate, formatPortalDateTime } from '@/lib/format/portalDateTime';
 import {
   deleteQuote,
   duplicateQuoteAsRevision,
@@ -222,7 +223,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
     } catch (err) {
       if (err instanceof ProjectConflictError) {
         setConflict({
-          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+          details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
           retry: async () => {
             const updated = await setProjectStatus(projectId, next as any, {
               force: true,
@@ -441,7 +442,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                     } catch (err) {
                       if (err instanceof ProjectConflictError) {
                         setConflict({
-                          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                          details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                           retry: async () => {
                             const updated = await setProjectFollowUpDate(projectId, value ? value : null, { force: true });
                             setProject(updated);
@@ -470,7 +471,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                     } catch (err) {
                       if (err instanceof ProjectConflictError) {
                         setConflict({
-                          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                          details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                           retry: async () => {
                             const updated = await updateProjectFields(projectId, { nextActionType: value ? (value as any) : null }, { force: true });
                             setProject(updated);
@@ -508,7 +509,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                       } catch (err) {
                         if (err instanceof ProjectConflictError) {
                           setConflict({
-                            details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                            details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                             retry: async () => {
                               const updated = await setProjectFollowUpDate(projectId, null, { force: true });
                               setProject(updated);
@@ -550,7 +551,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                     } catch (err) {
                       if (err instanceof ProjectConflictError) {
                         setConflict({
-                          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                          details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                           retry: async () => {
                             const updated = await updateProjectFields(projectId, { depositAmountCents: cents }, { force: true });
                             setProject(updated);
@@ -580,7 +581,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                     } catch (err) {
                       if (err instanceof ProjectConflictError) {
                         setConflict({
-                          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                          details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                           retry: async () => {
                             const updated = await updateProjectFields(projectId, { depositPaidDate: value ? value : null }, { force: true });
                             setProject(updated);
@@ -619,7 +620,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                     } catch (err) {
                       if (err instanceof ProjectConflictError) {
                         setConflict({
-                          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                          details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                           retry: async () => {
                             const updated = await updateProjectFields(projectId, { finalPaymentDate: value ? value : null }, { force: true });
                             setProject(updated);
@@ -673,7 +674,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                       } catch (err) {
                         if (err instanceof ProjectConflictError) {
                           setConflict({
-                            details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                            details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                             retry: async () => {
                               const updated = await updateProject(
                                 projectId,
@@ -794,11 +795,11 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                 </tr>
                 <tr>
                   <th>Created</th>
-                  <td>{new Date(project.createdAt).toLocaleString()}</td>
+                  <td>{formatPortalDateTime(project.createdAt)}</td>
                 </tr>
                 <tr>
                   <th>Updated</th>
-                  <td>{project.updatedAt ? new Date(project.updatedAt).toLocaleString() : '—'}</td>
+                  <td>{formatPortalDateTime(project.updatedAt)}</td>
                 </tr>
               </tbody>
             </table>
@@ -870,7 +871,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                     }
                     return (
                       <tr key={e.id}>
-                        <td className={styles.muted}>{new Date(e.createdAt).toLocaleString()}</td>
+                        <td className={styles.muted}>{formatPortalDateTime(e.createdAt)}</td>
                         <td>{e.status}</td>
                         <td>{formatMoney(e.outputs.totals.cost_ex_gst)}</td>
                         <td className={styles.muted}>{summary}</td>
@@ -948,7 +949,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                 <tbody>
                   {quotes.map((q) => (
                     <tr key={q.id}>
-                      <td className={styles.muted}>{new Date(q.createdAt).toLocaleString()}</td>
+                      <td className={styles.muted}>{formatPortalDateTime(q.createdAt)}</td>
                       <td>{q.quoteNumber ?? quoteLabel(q)}</td>
                       <td>
                         <span className={pillClassForQuote(q.status)}>{quoteStatusLabel(q.status)}</span>
@@ -1046,7 +1047,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                       } catch (err) {
                         if (err instanceof ProjectConflictError) {
                           setConflict({
-                            details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                            details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                             retry: async () => {
                               await updateProjectFields(projectId, { notes: notesDraft }, { force: true });
                               const updated = await addProjectActivity(projectId, { type: 'project_updated', message: 'Notes updated' }, { force: true });
@@ -1146,7 +1147,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                     } catch (err) {
                       if (err instanceof ProjectConflictError) {
                         setConflict({
-                          details: `Server updated at ${new Date((err.current as any).updatedAt ?? (err.current as any).createdAt).toLocaleString()}.`,
+                          details: `Server updated at ${formatPortalDateTime((err.current as any).updatedAt ?? (err.current as any).createdAt)}.`,
                           retry: async () => {
                             const updated = await addProjectActivity(projectId, { type: 'note', message: newActivityNote.trim() }, { force: true });
                             setProject(updated);
@@ -1181,7 +1182,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
                 <tbody>
                   {project.activity.map((ev) => (
                     <tr key={ev.id}>
-                      <td className={styles.muted}>{new Date(ev.createdAt).toLocaleString()}</td>
+                      <td className={styles.muted}>{formatPortalDateTime(ev.createdAt)}</td>
                       <td className={styles.muted}>{ev.type}</td>
                       <td>{ev.message}</td>
                     </tr>
@@ -1272,7 +1273,7 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
             >
               {estimates.map((e) => (
                 <option key={e.id} value={e.id}>
-                  {`Estimate v${e.version ?? '—'} · ${e.status} · ${new Date(e.createdAt).toLocaleDateString()}`}
+                  {`Estimate v${e.version ?? '—'} · ${e.status} · ${formatPortalDate(e.createdAt)}`}
                 </option>
               ))}
             </select>
@@ -1641,4 +1642,3 @@ export default function ProjectDetailClient({ projectId, isAdmin }: { projectId:
     </main>
   );
 }
-

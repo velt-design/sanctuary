@@ -149,6 +149,23 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
   });
 
+  test('keeps the schedule board search and panel controls responsive', async ({ page }) => {
+    await page.goto('/staff/schedule');
+
+    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+
+    const search = page.getByPlaceholder('Search projects…');
+    await expect(search).toBeVisible();
+    await search.fill('alpha');
+    await expect(search).toHaveValue('alpha');
+
+    const collapse = page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ });
+    const initialExpanded = await collapse.getAttribute('aria-expanded');
+
+    await collapse.click();
+    await expect(collapse).toHaveAttribute('aria-expanded', initialExpanded === 'true' ? 'false' : 'true');
+  });
+
   test('opens a contact detail page from the list without losing shell chrome', async ({ page }) => {
     await page.goto('/staff/contacts');
     await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });

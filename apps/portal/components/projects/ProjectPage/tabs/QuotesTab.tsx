@@ -37,6 +37,7 @@ import { qk } from '@/lib/queries/keys';
 import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { generateJobPack } from '@/lib/repo/jobPacksRepo';
+import { formatPortalDate, formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { useAliasedEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
 import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
@@ -60,17 +61,11 @@ function formatMoneyFromCents(value: number): string {
 }
 
 function formatDateShort(value: string | null | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString();
+  return formatPortalDate(value);
 }
 
 function formatDateTime(value: string | null | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleString();
+  return formatPortalDateTime(value);
 }
 
 function parseDateLocal(value: string | null | undefined): Date | null {
