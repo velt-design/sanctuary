@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { logPortalServerError, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
@@ -174,7 +175,22 @@ function mapAuditToActivity(row: any): ProjectActivityItem | null {
   };
 }
 
-export async function getProjectPageSnapshot(projectId: string): Promise<ProjectPageSnapshot | null> {
+function logSnapshotError(context: PortalServerLogContext | undefined, message: string, error: unknown, query?: string) {
+  logPortalServerError(
+    context ?? { route: 'project_snapshot', method: 'GET' },
+    {
+      event: 'project_snapshot.query_failed',
+      message,
+      error,
+      extra: query ? { query } : undefined,
+    },
+  );
+}
+
+export async function getProjectPageSnapshot(
+  projectId: string,
+  diagnostics?: PortalServerLogContext,
+): Promise<ProjectPageSnapshot | null> {
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
   if (!projectUuid) return null;
 
@@ -258,31 +274,31 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
   ]);
 
   if (emailRes?.error) {
-    console.error('[project_snapshot] email_outbox query failed', emailRes.error);
+    logSnapshotError(diagnostics, 'email_outbox query failed', emailRes.error, 'email_outbox');
   }
   if (auditRes?.error) {
-    console.error('[project_snapshot] audit_events query failed', auditRes.error);
+    logSnapshotError(diagnostics, 'audit_events query failed', auditRes.error, 'audit_events');
   }
   if (siteVisitRes?.error) {
-    console.error('[project_snapshot] site_visit_events query failed', siteVisitRes.error);
+    logSnapshotError(diagnostics, 'site_visit_events query failed', siteVisitRes.error, 'site_visit_events');
   }
   if (estimateRes?.error) {
-    console.error('[project_snapshot] estimates query failed', estimateRes.error);
+    logSnapshotError(diagnostics, 'estimates query failed', estimateRes.error, 'estimates');
   }
   if (scheduleRes?.error) {
-    console.error('[project_snapshot] schedule_items query failed', scheduleRes.error);
+    logSnapshotError(diagnostics, 'schedule_items query failed', scheduleRes.error, 'schedule_items');
   }
   if (acceptedQuoteRes?.error) {
-    console.error('[project_snapshot] accepted quote query failed', acceptedQuoteRes.error);
+    logSnapshotError(diagnostics, 'accepted quote query failed', acceptedQuoteRes.error, 'quote_versions');
   }
   if (openInvoiceRes?.error) {
-    console.error('[project_snapshot] open deposit invoice query failed', openInvoiceRes.error);
+    logSnapshotError(diagnostics, 'open deposit invoice query failed', openInvoiceRes.error, 'deposit_invoices');
   }
   if (manualRes?.error) {
-    console.error('[project_snapshot] project_task_checks query failed', manualRes.error);
+    logSnapshotError(diagnostics, 'project_task_checks query failed', manualRes.error, 'project_task_checks');
   }
   if (jobPackRes?.error) {
-    console.error('[project_snapshot] job_pack_generations query failed', jobPackRes.error);
+    logSnapshotError(diagnostics, 'job_pack_generations query failed', jobPackRes.error, 'job_pack_generations');
   }
 
   const contact = contactRes?.data ?? null;
@@ -318,7 +334,15 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
 
   if (openInvoiceId) {
     void ensureInvoiceRetryScheduledFromLatestFailure(openInvoiceId, null).catch((error) => {
-      console.error('[project_snapshot] failed to schedule invoice retry', { openInvoiceId, error });
+      logPortalServerError(
+        diagnostics ?? { route: 'project_snapshot', method: 'GET' },
+        {
+          event: 'project_snapshot.invoice_retry_schedule_failed',
+          message: 'failed to schedule invoice retry',
+          error,
+          extra: { openInvoiceId },
+        },
+      );
     });
   }
 

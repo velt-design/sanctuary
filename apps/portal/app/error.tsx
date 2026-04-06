@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';
 import styles from '@/components/page-state/PageState.module.css';
+import { logPortalClientError } from '@/lib/logging/clientLogger';
 
 export default function GlobalError({
   error,
@@ -12,9 +14,15 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const pathname = usePathname();
+
   useEffect(() => {
-    console.error(error);
-  }, [error]);
+    logPortalClientError('portal.global_error', {
+      message: error.message,
+      digest: error.digest ?? null,
+      pathname: pathname ?? null,
+    });
+  }, [error, pathname]);
 
   return (
     <PageMessagePanel

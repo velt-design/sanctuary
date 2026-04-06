@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
 import { formatSupabaseError } from '@/lib/supabase/apiErrors';
 import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
@@ -85,15 +86,16 @@ function mapRow(row: any): any {
 }
 
 export async function GET(req: Request) {
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/site-visits');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   const url = new URL(req.url);
   const fromIso = asIso(url.searchParams.get('from'));
   const toIso = asIso(url.searchParams.get('to'));
   const salesOwnerId = (url.searchParams.get('salesOwnerId') || '').trim() || null;
 
-  if (!fromIso || !toIso) return jsonError('from and to are required (ISO)', 400);
+  if (!fromIso || !toIso) return jsonError('from and to are required (ISO)', 400, diagnostics);
 
   const selectVariants = [
     // Preferred select (avoid schema drift, like missing `projects.region`).
@@ -157,7 +159,13 @@ export async function GET(req: Request) {
 
   if (lastErr) {
     const e = formatSupabaseError('site_visit_events', lastErr);
-    return jsonError(e.message, e.status);
+    logPortalServerError(diagnostics, {
+      status: e.status,
+      message: e.message,
+      error: lastErr,
+      extra: { table: 'site_visit_events' },
+    });
+    return jsonError(e.message, e.status, diagnostics);
   }
 
   const salesPeople = SALES_PEOPLE;
@@ -174,5 +182,5 @@ export async function GET(req: Request) {
     unscheduled: (Array.isArray(unscheduledRes.data) ? unscheduledRes.data : []).filter(isSiteVisitStage).map(mapRow),
     events: (Array.isArray(eventsRes.data) ? eventsRes.data : []).filter(isSiteVisitStage).map(mapRow),
     salesPeople,
-  });
+  }, 200, diagnostics);
 }

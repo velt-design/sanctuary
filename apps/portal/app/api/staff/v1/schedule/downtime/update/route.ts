@@ -1,4 +1,5 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import {
   applyJobForecastUpdates,
@@ -22,11 +23,12 @@ function normalizeReason(value: unknown): string | null {
 }
 
 export async function POST(req: Request) {
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/downtime/update');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = parsed.body ?? {};
 
   const downtimeId = typeof body.downtime_id === 'string' ? body.downtime_id.trim() : '';
@@ -35,17 +37,27 @@ export async function POST(req: Request) {
   const note = typeof body.note === 'string' ? body.note.trim() : null;
   const force = Boolean(body.force);
 
-  if (!downtimeId) return jsonError('downtime_id is required', 400);
+  if (!downtimeId) return jsonError('downtime_id is required', 400, diagnostics);
 
   const downtimeRes = await supabaseServer.from('crew_downtimes').select('*').eq('id', downtimeId).maybeSingle();
   if (downtimeRes.error) {
     if (isMissingSchemaError(downtimeRes.error)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, {
+        status: 501,
+        message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+        error: downtimeRes.error,
+      });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load downtime', 500);
+    logPortalServerError(diagnostics, {
+      status: 500,
+      message: 'Failed to load downtime',
+      error: downtimeRes.error,
+    });
+    return jsonError('Failed to load downtime', 500, diagnostics);
   }
   const downtimeRow = downtimeRes.data;
-  if (!downtimeRow) return jsonError('Downtime not found', 404);
+  if (!downtimeRow) return jsonError('Downtime not found', 404, diagnostics);
 
   const crewId = String(downtimeRow.crew_id);
 
@@ -54,13 +66,23 @@ export async function POST(req: Request) {
     ctx = await loadScheduleContext({ crewId, today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, {
+        status: 501,
+        message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+        error: err,
+      });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load schedule data', 500);
+    logPortalServerError(diagnostics, {
+      status: 500,
+      message: 'Failed to load schedule data',
+      error: err,
+    });
+    return jsonError('Failed to load schedule data', 500, diagnostics);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404);
+  if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
 
   const durationDays = typeof durationRaw === 'number' && Number.isFinite(durationRaw) ? Math.max(1, Math.trunc(durationRaw)) : crewCtx.downtimesById.get(downtimeId)?.durationDays ?? 1;
 
@@ -95,7 +117,7 @@ export async function POST(req: Request) {
   });
 
   if (impacts.length && !force) {
-    return jsonOk({ requires_confirmation: true, impacts });
+    return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
   const update: Record<string, any> = { duration_days: durationDays };
@@ -118,5 +140,5 @@ export async function POST(req: Request) {
     schedule: formatted,
     conflicts: formatted.conflicts,
     next_available_date: formatted.next_available_date,
-  });
+  }, 200, diagnostics);
 }
