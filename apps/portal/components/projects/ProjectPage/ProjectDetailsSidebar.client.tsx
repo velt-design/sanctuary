@@ -78,6 +78,7 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
   const draftRef = useRef(draft);
   const inFlightSerializedRef = useRef<string | null>(null);
   const savePromiseRef = useRef<Promise<boolean> | null>(null);
+  const lastProjectSerializedRef = useRef<string>(JSON.stringify(normalizeProjectDetailsDraft(toDraft(project))));
 
   useEffect(() => {
     draftRef.current = draft;
@@ -85,6 +86,10 @@ export default function ProjectDetailsSidebarClient({ project }: { project: Proj
 
   useEffect(() => {
     const nextSavedDraft = normalizeProjectDetailsDraft(toDraft(project));
+    const serialized = JSON.stringify(nextSavedDraft);
+    if (serialized === lastProjectSerializedRef.current) return;
+
+    lastProjectSerializedRef.current = serialized;
     setSavedDraft(nextSavedDraft);
     if (!isEditing) {
       setDraft(nextSavedDraft);

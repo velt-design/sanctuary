@@ -102,4 +102,44 @@ describe('ProjectDetailsSidebarClient', () => {
 
     rendered.unmount();
   });
+
+  it('keeps the saved site address visible after leaving edit mode', async () => {
+    const rendered = renderIntoDocument(<ProjectDetailsSidebarClient project={project} />);
+
+    click(rendered.container.querySelector('button'));
+    changeValue(rendered.container.querySelector('#siteAddress'), '99 Client Road');
+
+    await act(async () => {
+      vi.advanceTimersByTime(701);
+      await Promise.resolve();
+    });
+
+    const doneButton = Array.from(rendered.container.querySelectorAll('button')).find((node) => node.textContent?.includes('Done'));
+    click(doneButton ?? null);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.textContent).toContain('99 Client Road');
+
+    rendered.unmount();
+  });
+
+  it('refreshes the sidebar when a new project prop arrives', async () => {
+    const rendered = renderIntoDocument(<ProjectDetailsSidebarClient project={project} />);
+
+    rendered.rerender(
+      <ProjectDetailsSidebarClient
+        project={{
+          ...project,
+          siteAddress: '25 Updated Avenue',
+        }}
+      />,
+    );
+
+    expect(rendered.container.textContent).toContain('25 Updated Avenue');
+
+    rendered.unmount();
+  });
 });
