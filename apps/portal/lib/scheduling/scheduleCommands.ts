@@ -2,7 +2,7 @@ import 'server-only';
 
 import { isMissingSchemaError } from '@/lib/scheduling/scheduleV2Server';
 import { logPortalServerError, logPortalServerWarn, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 
 const SCHEMA_NOT_READY_MESSAGE = 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.';
 
@@ -138,7 +138,7 @@ function isMissingScheduleRpcError(error: unknown): boolean {
 }
 
 async function runScheduleRpcCommand<T>(input: RunScheduleRpcCommandInput<T>): Promise<ScheduleCommandResult<T>> {
-  const rpcRes = await supabaseServer.rpc(input.fn, input.args as any);
+  const rpcRes = await supabaseServiceRole.rpc(input.fn, input.args as any);
 
   if (rpcRes.error) {
     if (isMissingScheduleRpcError(rpcRes.error)) {

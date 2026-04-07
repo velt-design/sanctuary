@@ -20,6 +20,7 @@ vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
 
 vi.mock('@/lib/supabaseClient', () => ({
   supabaseServer: { rpc },
+  supabaseServiceRole: { rpc },
 }));
 
 describe('POST /api/staff/v1/schedule/job/client-update/ack', () => {

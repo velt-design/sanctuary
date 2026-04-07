@@ -47,4 +47,26 @@ describe('supabase service-role client', () => {
     expect(() => getSupabaseServiceRole()).toThrow(/SUPABASE_SERVICE_ROLE_KEY is not set/);
     expect(createClient).not.toHaveBeenCalled();
   });
+
+  it('keeps the legacy server client available for untouched callers', async () => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const { getSupabaseServer, supabaseServer, supabase } = await import('./supabaseClient');
+    const client = getSupabaseServer();
+
+    expect(client).toBeTruthy();
+    expect(supabaseServer).toBeTruthy();
+    expect(supabase).toBeTruthy();
+    expect(createClient).toHaveBeenCalledWith(
+      'https://example.supabase.co',
+      'anon-key',
+      expect.objectContaining({
+        auth: expect.objectContaining({
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        }),
+      }),
+    );
+  });
 });

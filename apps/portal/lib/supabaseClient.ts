@@ -30,6 +30,9 @@ export function getSupabaseAnon(): SupabaseClient {
   return cachedAnon;
 }
 
+// Compatibility client for untouched server callers. New code should prefer
+// `supabaseServiceRole` for server-owned operations or `getSupabaseServerAuth()`
+// from `@/lib/supabase/serverClient` for auth-bound access.
 export function getSupabaseServer(): SupabaseClient {
   const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
@@ -83,5 +86,5 @@ export const supabaseServiceRole: SupabaseClient = new Proxy({} as SupabaseClien
   },
 });
 
-// Back-compat: prefer `supabaseServer` in route handlers.
+// Back-compat alias for untouched callers. Do not use in new code.
 export const supabase: SupabaseClient = supabaseServer;

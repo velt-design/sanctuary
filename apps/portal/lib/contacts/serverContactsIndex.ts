@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { appIdFromUuid } from '@/lib/supabase/mappers';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import type { Contact } from '@/lib/types/contact';
 import { nowIso } from '@/lib/utils/time';
 
@@ -28,7 +28,7 @@ function mapContactRow(row: Record<string, unknown>): Contact {
 }
 
 export async function loadContactsIndexData(): Promise<Contact[]> {
-  const contactsRes = await supabaseServer.from('contacts').select('*').order('name', { ascending: true });
+  const contactsRes = await supabaseServiceRole.from('contacts').select('*').order('name', { ascending: true });
   if (contactsRes.error) throw contactsRes.error;
   return sortContacts((Array.isArray(contactsRes.data) ? contactsRes.data : []).map((row) => mapContactRow(row as Record<string, unknown>)));
 }

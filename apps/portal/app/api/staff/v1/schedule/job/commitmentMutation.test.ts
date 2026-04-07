@@ -40,6 +40,7 @@ vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
 
 vi.mock('@/lib/supabaseClient', () => ({
   supabaseServer: { rpc },
+  supabaseServiceRole: { rpc },
 }));
 
 describe('runCommitmentMutation', () => {

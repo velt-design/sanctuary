@@ -5,7 +5,7 @@ import { appIdFromUuid, uuidFromAppId } from '../supabase/mappers';
 import { generateAcceptToken } from '../quotes/acceptToken';
 import { sendDepositInvoiceEmail } from '../emails/invoice';
 import { paymentDetailsLines, paymentDetailsText } from '../payments/paymentDetails';
-import { supabaseServer } from '../supabaseClient';
+import { supabaseServiceRole } from '../supabaseClient';
 import { generateDepositInvoicePdfBytes, depositInvoicePdfFilename } from './pdf';
 import type { DepositInvoiceSummary } from './types';
 
@@ -263,7 +263,7 @@ function redactToken(value: string | null): string | null {
 
 async function insertAuditEvent(params: { projectId: string; type: string; payload?: unknown }) {
   try {
-    await supabaseServer.from('audit_events').insert({
+    await supabaseServiceRole.from('audit_events').insert({
       project_id: params.projectId,
       type: params.type,
       idempotency_key: `${params.type}:${params.projectId}:${randomUUID()}`,
@@ -358,7 +358,7 @@ function mapInvoiceSummary(invoice: DepositInvoiceRow, latestAttempt: DepositInv
 }
 
 async function loadAcceptedQuoteContext(quoteVersionUuid: string): Promise<AcceptedQuoteContext | null> {
-  const versionRes = await supabaseServer
+  const versionRes = await supabaseServiceRole
     .from('quote_versions')
     .select('id, quote_id, status, version_number, deposit_percent, total_inc_gst_cents, customer_name')
     .eq('id', quoteVersionUuid)
@@ -372,7 +372,7 @@ async function loadAcceptedQuoteContext(quoteVersionUuid: string): Promise<Accep
   const quoteUuid = String((versionRes.data as any).quote_id ?? '');
   if (!quoteUuid) return null;
 
-  const quoteRes = await supabaseServer
+  const quoteRes = await supabaseServiceRole
     .from('quotes')
     .select('id, quote_ref, project_id')
     .eq('id', quoteUuid)
@@ -386,7 +386,7 @@ async function loadAcceptedQuoteContext(quoteVersionUuid: string): Promise<Accep
   const projectUuid = String((quoteRes.data as any).project_id ?? '');
   if (!projectUuid) return null;
 
-  const projectRes = await supabaseServer
+  const projectRes = await supabaseServiceRole
     .from('projects')
     .select('id, name, site_address, contacts ( name, email )')
     .eq('id', projectUuid)
@@ -424,7 +424,7 @@ async function loadAcceptedQuoteContext(quoteVersionUuid: string): Promise<Accep
 }
 
 async function loadOpenInvoiceByQuote(quoteUuid: string): Promise<DepositInvoiceRow | null> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('deposit_invoices')
     .select('*')
     .eq('quote_id', quoteUuid)
@@ -444,7 +444,7 @@ async function loadOpenInvoiceByQuote(quoteUuid: string): Promise<DepositInvoice
 }
 
 async function loadInvoiceById(invoiceUuid: string): Promise<DepositInvoiceRow | null> {
-  const res = await supabaseServer.from('deposit_invoices').select('*').eq('id', invoiceUuid).maybeSingle();
+  const res = await supabaseServiceRole.from('deposit_invoices').select('*').eq('id', invoiceUuid).maybeSingle();
   if (res.error || !res.data) {
     if (res.error && !missingTableError(res.error)) {
       throw new Error(errorMessage(res.error, 'Failed to load deposit invoice'));
@@ -455,7 +455,7 @@ async function loadInvoiceById(invoiceUuid: string): Promise<DepositInvoiceRow |
 }
 
 async function allocateInvoiceRef(): Promise<string> {
-  const refRes = await supabaseServer.rpc('next_deposit_invoice_ref');
+  const refRes = await supabaseServiceRole.rpc('next_deposit_invoice_ref');
   if (refRes.error || !refRes.data) {
     throw new Error(errorMessage(refRes.error, 'Failed to allocate invoice reference'));
   }
@@ -486,7 +486,7 @@ async function createOpenInvoice(
     normalizeOptionalText(overrides?.reference) ??
     `Deposit for Quote ${context.quoteRef}${context.projectName ? ` - ${context.projectName}` : ''}`;
 
-  const insertRes = await supabaseServer
+  const insertRes = await supabaseServiceRole
     .from('deposit_invoices')
     .insert({
       project_id: context.projectUuid,
@@ -537,7 +537,7 @@ async function createOpenInvoice(
 }
 
 async function loadRecipients(quoteVersionUuid: string, fallbackEmail: string | null): Promise<RecipientLists> {
-  const logRes = await supabaseServer
+  const logRes = await supabaseServiceRole
     .from('quote_send_logs')
     .select('to_emails, cc_emails, bcc_emails')
     .eq('quote_version_id', quoteVersionUuid)
@@ -560,7 +560,7 @@ async function loadRecipients(quoteVersionUuid: string, fallbackEmail: string | 
 }
 
 async function loadFileContent(fileUuid: string): Promise<{ filename: string; content: Buffer } | null> {
-  const res = await supabaseServer.from('file_artifacts').select('filename, content_base64').eq('id', fileUuid).single();
+  const res = await supabaseServiceRole.from('file_artifacts').select('filename, content_base64').eq('id', fileUuid).single();
   if (res.error) {
     if (missingTableError(res.error)) return null;
     throw new Error(errorMessage(res.error, 'Failed to load invoice PDF'));
@@ -596,7 +596,7 @@ async function ensureInvoicePdf(invoice: DepositInvoiceRow, actor: string | null
   const filename = depositInvoicePdfFilename(invoice.invoice_ref);
   const base64 = Buffer.from(bytes).toString('base64');
 
-  const fileRes = await supabaseServer
+  const fileRes = await supabaseServiceRole
     .from('file_artifacts')
     .insert({
       project_id: invoice.project_id,
@@ -614,14 +614,14 @@ async function ensureInvoicePdf(invoice: DepositInvoiceRow, actor: string | null
   }
 
   const fileUuid = String((fileRes.data as any).id ?? '');
-  const patchRes = await supabaseServer.from('deposit_invoices').update({ pdf_file_id: fileUuid } as any).eq('id', invoice.id);
+  const patchRes = await supabaseServiceRole.from('deposit_invoices').update({ pdf_file_id: fileUuid } as any).eq('id', invoice.id);
   if (patchRes.error) throw new Error(errorMessage(patchRes.error, 'Failed to link invoice PDF'));
 
   return { fileUuid, filename, content: Buffer.from(bytes) };
 }
 
 async function latestSendAttempt(invoiceId: string): Promise<SendAttemptInfo> {
-  const latest = await supabaseServer
+  const latest = await supabaseServiceRole
     .from('deposit_invoice_send_logs')
     .select('attempt_number, first_attempt_at')
     .eq('deposit_invoice_id', invoiceId)
@@ -639,7 +639,7 @@ async function latestSendAttempt(invoiceId: string): Promise<SendAttemptInfo> {
 }
 
 async function loadLatestSendLogForInvoice(invoiceId: string): Promise<DepositInvoiceSendLogRow | null> {
-  const latest = await supabaseServer
+  const latest = await supabaseServiceRole
     .from('deposit_invoice_send_logs')
     .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
     .eq('deposit_invoice_id', invoiceId)
@@ -695,7 +695,7 @@ async function insertSendLog(params: {
   nextRetryAt?: string | null;
   finalFailure?: boolean;
 }) {
-  const res = await supabaseServer.from('deposit_invoice_send_logs').insert({
+  const res = await supabaseServiceRole.from('deposit_invoice_send_logs').insert({
     deposit_invoice_id: params.invoice.id,
     project_id: params.invoice.project_id,
     from_name: 'Sanctuary Pergolas',
@@ -724,7 +724,7 @@ async function insertSendLog(params: {
 }
 
 async function hasSuccessfulSend(invoiceId: string): Promise<boolean> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('deposit_invoice_send_logs')
     .select('id')
     .eq('deposit_invoice_id', invoiceId)
@@ -736,7 +736,7 @@ async function hasSuccessfulSend(invoiceId: string): Promise<boolean> {
 }
 
 async function markInvoiceSent(invoice: DepositInvoiceRow, patch: { actor: string | null; sentAt: string; tokenHash: string; tokenExpiresAt: string }) {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('deposit_invoices')
     .update({
       sent_at: invoice.sent_at ?? patch.sentAt,
@@ -956,7 +956,7 @@ async function deliverInvoiceEmail(
 }
 
 async function clearInvoicePaidManualCheck(projectUuid: string) {
-  const deleteRes = await supabaseServer
+  const deleteRes = await supabaseServiceRole
     .from('project_task_checks')
     .delete()
     .eq('project_id', projectUuid)
@@ -968,12 +968,12 @@ async function clearInvoicePaidManualCheck(projectUuid: string) {
 }
 
 async function moveProjectToSent(projectUuid: string, quoteVersionUuid: string | null, reason: string) {
-  const prevRes = await supabaseServer.from('projects').select('pipeline_stage').eq('id', projectUuid).single();
+  const prevRes = await supabaseServiceRole.from('projects').select('pipeline_stage').eq('id', projectUuid).single();
   if (prevRes.error) throw new Error(errorMessage(prevRes.error, 'Failed to load project stage'));
 
   const fromStage = typeof (prevRes.data as any)?.pipeline_stage === 'string' ? String((prevRes.data as any).pipeline_stage) : null;
 
-  const updateRes = await supabaseServer.from('projects').update({ pipeline_stage: 'SENT' } as any).eq('id', projectUuid);
+  const updateRes = await supabaseServiceRole.from('projects').update({ pipeline_stage: 'SENT' } as any).eq('id', projectUuid);
   if (updateRes.error) throw new Error(errorMessage(updateRes.error, 'Failed to revert project stage'));
 
   await insertAuditEvent({
@@ -1026,12 +1026,12 @@ export async function listDepositInvoicesForProject(projectId: string): Promise<
   const projectUuid = uuidFromAppId(projectId, 'proj');
 
   const [invoiceRes, logRes] = await Promise.all([
-    supabaseServer
+    supabaseServiceRole
       .from('deposit_invoices')
       .select('*')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false }),
-    supabaseServer
+    supabaseServiceRole
       .from('deposit_invoice_send_logs')
       .select('deposit_invoice_id,to_emails,cc_emails,bcc_emails,status,error_message,created_at,sent_at,next_retry_at,final_failure')
       .eq('project_id', projectUuid)
@@ -1144,7 +1144,7 @@ export async function voidOpenDepositInvoiceForQuote(params: {
 
   clearRetryTimer(invoice.id);
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('deposit_invoices')
     .update({
       status: 'VOID',
@@ -1174,7 +1174,7 @@ export async function voidOpenDepositInvoiceForQuote(params: {
 }
 
 export async function ensureInvoiceRetryScheduledFromLatestFailure(invoiceUuid: string, actor: string | null): Promise<void> {
-  const latest = await supabaseServer
+  const latest = await supabaseServiceRole
     .from('deposit_invoice_send_logs')
     .select('next_retry_at, status, final_failure')
     .eq('deposit_invoice_id', invoiceUuid)
@@ -1192,7 +1192,7 @@ export async function ensureInvoiceRetryScheduledFromLatestFailure(invoiceUuid: 
 }
 
 export async function getOpenDepositInvoiceForProject(projectUuid: string): Promise<DepositInvoiceRow | null> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('deposit_invoices')
     .select('*')
     .eq('project_id', projectUuid)
@@ -1234,7 +1234,7 @@ export async function rotateInvoicePortalToken(invoiceUuid: string, actor: strin
     return now.toISOString();
   })();
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('deposit_invoices')
     .update({
       portal_token_hash: tokenHash,

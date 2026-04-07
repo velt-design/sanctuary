@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { appIdFromUuid, isRecord } from '@/lib/supabase/mappers';
 import { computeEstimateEditability, emptyEstimateEditability } from './editability';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from './flow';
@@ -119,7 +119,7 @@ export function mapEstimateDetail(
 }
 
 export async function loadEstimateEditability(estimateUuid: string): Promise<EstimateEditability> {
-  const quoteVersionsRes = await supabaseServer
+  const quoteVersionsRes = await supabaseServiceRole
     .from('quote_versions')
     .select('id, status, sent_at, created_at, version_number, quotes(quote_ref)')
     .eq('source_estimate_version_id', estimateUuid);
@@ -132,7 +132,7 @@ export async function loadEstimateEditability(estimateUuid: string): Promise<Est
 
   let sendLogs: any[] = [];
   if (quoteVersionIds.length) {
-    const sendLogsRes = await supabaseServer
+    const sendLogsRes = await supabaseServiceRole
       .from('quote_send_logs')
       .select('quote_version_id, status, sent_at, created_at')
       .in('quote_version_id', quoteVersionIds);

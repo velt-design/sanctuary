@@ -40,6 +40,9 @@ vi.mock('@/lib/supabaseClient', () => ({
   supabaseServer: {
     rpc,
   },
+  supabaseServiceRole: {
+    rpc,
+  },
 }));
 
 describe('POST /api/staff/v1/schedule/downtime/create', () => {

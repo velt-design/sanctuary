@@ -50,6 +50,9 @@ vi.mock('@/lib/supabaseClient', () => ({
     },
     rpc,
   },
+  supabaseServiceRole: {
+    rpc,
+  },
 }));
 
 describe('POST /api/staff/v1/schedule/job/set-days-remaining', () => {

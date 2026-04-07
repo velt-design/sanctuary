@@ -5,6 +5,9 @@ const logPortalServerError = vi.fn();
 const ensureInvoiceRetryScheduledFromLatestFailure = vi.fn();
 
 vi.mock('@/lib/supabaseClient', () => ({
+  supabaseServiceRole: {
+    from: fromMock,
+  },
   supabaseServer: {
     from: fromMock,
   },

@@ -6,6 +6,9 @@ const logPortalServerError = vi.fn();
 const logPortalServerWarn = vi.fn();
 
 vi.mock('@/lib/supabaseClient', () => ({
+  supabaseServiceRole: {
+    rpc,
+  },
   supabaseServer: {
     rpc,
   },

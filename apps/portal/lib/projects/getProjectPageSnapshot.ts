@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { logPortalServerError, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import {
@@ -193,7 +193,7 @@ export async function getProjectPageSnapshot(
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
   if (!projectUuid) return null;
 
-  const { data: projectRow, error: projectError } = await supabaseServer
+  const { data: projectRow, error: projectError } = await supabaseServiceRole
     .from('projects')
     .select('*')
     .eq('id', projectUuid)
@@ -224,52 +224,52 @@ export async function getProjectPageSnapshot(
 
   const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes] = await Promise.all([
     contactUuid
-      ? supabaseServer.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
+      ? supabaseServiceRole.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    supabaseServer
+    supabaseServiceRole
       .from('site_visit_events')
       .select('id,status,scheduled_start')
       .eq('project_id', projectUuid)
       .maybeSingle(),
-    supabaseServer
+    supabaseServiceRole
       .from('estimates')
       .select('id')
       .eq('project_id', projectUuid)
       .limit(1),
-    supabaseServer
+    supabaseServiceRole
       .from('schedule_items')
       .select('id,start_date')
       .eq('project_id', projectUuid)
       .limit(1),
-    supabaseServer
+    supabaseServiceRole
       .from('quote_versions')
       .select('id, quotes!inner(project_id)')
       .eq('status', 'ACCEPTED')
       .eq('quotes.project_id', projectUuid)
       .limit(1),
-    supabaseServer
+    supabaseServiceRole
       .from('deposit_invoices')
       .select('id')
       .eq('project_id', projectUuid)
       .eq('status', 'OPEN')
       .limit(1)
       .maybeSingle(),
-    supabaseServer
+    supabaseServiceRole
       .from('project_task_checks')
       .select('task_key')
       .eq('project_id', projectUuid),
-    supabaseServer
+    supabaseServiceRole
       .from('email_outbox')
       .select('id,subject,to_email,status,sent_at,created_at,email_type')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false }),
-    supabaseServer
+    supabaseServiceRole
       .from('audit_events')
       .select('id,type,payload,created_at')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false })
       .limit(50),
-    supabaseServer.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
+    supabaseServiceRole.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
   ]);
 
   if (emailRes?.error) {

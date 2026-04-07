@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const fromMock = vi.fn();
 
 vi.mock('@/lib/supabaseClient', () => ({
+  supabaseServiceRole: {
+    from: fromMock,
+  },
   supabaseServer: {
     from: fromMock,
   },
