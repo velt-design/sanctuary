@@ -149,6 +149,27 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
   });
 
+  test('verifies the full schedule schema readiness contract through the authenticated app surface', async ({ page }) => {
+    const readiness = await page.evaluate(async () => {
+      const res = await fetch('/api/staff/v1/schedule/readiness');
+      const text = await res.text();
+      return {
+        status: res.status,
+        requestId: res.headers.get('x-portal-request-id'),
+        bodyText: text,
+      };
+    });
+
+    expect(
+      readiness.status,
+      `Expected /api/staff/v1/schedule/readiness to return 200, got ${readiness.status}.\n${readiness.bodyText}`,
+    ).toBe(200);
+    expect(readiness.requestId).toBeTruthy();
+
+    const body = JSON.parse(readiness.bodyText) as { ok?: boolean };
+    expect(body.ok).toBe(true);
+  });
+
   test('keeps the schedule board search and panel controls responsive', async ({ page }) => {
     await page.goto('/staff/schedule');
 

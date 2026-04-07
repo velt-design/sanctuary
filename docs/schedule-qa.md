@@ -1,5 +1,9 @@
 # Schedule — Manual QA Checklist
 
+## Release Gate
+1. Confirm schedule migrations are applied through `20260407_000005_schedule_v2_update_downtime_rpc_command.sql`.
+2. Confirm `GET /api/staff/v1/schedule/readiness` returns `200` before shipping.
+
 ## Schedule V2 (Board + Gantt)
 1. Assign job to crew: start is a working day; planned baseline set.
 2. Reorder two jobs: downstream dates ripple.
