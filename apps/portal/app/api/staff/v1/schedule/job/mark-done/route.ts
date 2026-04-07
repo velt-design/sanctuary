@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
+import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
 import {
   applyJobForecastUpdates,
@@ -196,7 +197,7 @@ export async function POST(req: Request) {
     }
 
     const existingActualStart = typeof jobRow.actual_start === 'string' && jobRow.actual_start ? jobRow.actual_start : null;
-    await supabaseServer
+    const markDoneRes = await supabaseServer
       .from('scheduled_jobs')
       .update({
         status: 'done',
@@ -204,6 +205,14 @@ export async function POST(req: Request) {
         actual_start: existingActualStart ?? jobRow.forecast_start ?? finish,
       } as any)
       .eq('id', jobRow.id);
+    const markDoneFailure = getSupabaseMutationFailure(markDoneRes, {
+      diagnostics,
+      table: 'scheduled_jobs',
+      operation: 'update',
+      message: 'Failed to mark scheduled job done',
+      extra: { jobId: jobRow.id },
+    });
+    if (markDoneFailure) return jsonError(markDoneFailure.responseMessage, 500, diagnostics);
 
     const insertDowntimeRes = await supabaseServer
       .from('crew_downtimes')
@@ -215,22 +224,24 @@ export async function POST(req: Request) {
       } as any)
       .select('id')
       .single();
-    if (insertDowntimeRes.error) {
-      logPortalServerError(diagnostics, {
-        status: 500,
-        message: 'Failed to create downtime buffer',
-        error: insertDowntimeRes.error,
-      });
-      return jsonError('Failed to create downtime buffer', 500, diagnostics);
-    }
-    const actualDowntimeId = insertDowntimeRes.data?.id ?? null;
-    if (!actualDowntimeId) {
-      logPortalServerError(diagnostics, {
-        status: 500,
-        message: 'Failed to resolve downtime id',
-      });
-      return jsonError('Failed to resolve downtime id', 500, diagnostics);
-    }
+    const insertDowntimeFailure = getSupabaseMutationFailure(insertDowntimeRes, {
+      diagnostics,
+      table: 'crew_downtimes',
+      operation: 'insert',
+      message: 'Failed to create downtime buffer',
+      extra: { crewId },
+    });
+    if (insertDowntimeFailure) return jsonError(insertDowntimeFailure.responseMessage, 500, diagnostics);
+    const downtimeIdFailure = getSupabaseMutationFailure(insertDowntimeRes, {
+      diagnostics,
+      table: 'crew_downtimes',
+      operation: 'insert',
+      message: 'Failed to resolve downtime id',
+      requireField: 'id',
+      extra: { crewId },
+    });
+    if (downtimeIdFailure) return jsonError(downtimeIdFailure.responseMessage, 500, diagnostics);
+    const actualDowntimeId = String(insertDowntimeRes.data!.id);
 
     let newScheduleItemId: string | null = null;
     for (const item of items) {
@@ -245,17 +256,34 @@ export async function POST(req: Request) {
           } as any)
           .select('id')
           .single();
-        if (insertItemRes.error) {
-          logPortalServerError(diagnostics, {
-            status: 500,
-            message: 'Failed to insert downtime schedule item',
-            error: insertItemRes.error,
-          });
-          return jsonError('Failed to insert downtime schedule item', 500, diagnostics);
-        }
-        newScheduleItemId = insertItemRes.data?.id ?? null;
+        const insertItemFailure = getSupabaseMutationFailure(insertItemRes, {
+          diagnostics,
+          table: 'crew_schedule_items',
+          operation: 'insert',
+          message: 'Failed to insert downtime schedule item',
+          extra: { crewId, downtimeId: actualDowntimeId },
+        });
+        if (insertItemFailure) return jsonError(insertItemFailure.responseMessage, 500, diagnostics);
+        const scheduleItemIdFailure = getSupabaseMutationFailure(insertItemRes, {
+          diagnostics,
+          table: 'crew_schedule_items',
+          operation: 'insert',
+          message: 'Failed to resolve downtime schedule item id',
+          requireField: 'id',
+          extra: { crewId, downtimeId: actualDowntimeId },
+        });
+        if (scheduleItemIdFailure) return jsonError(scheduleItemIdFailure.responseMessage, 500, diagnostics);
+        newScheduleItemId = String(insertItemRes.data!.id);
       } else {
-        await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+        const updateRes = await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+        const updateFailure = getSupabaseMutationFailure(updateRes, {
+          diagnostics,
+          table: 'crew_schedule_items',
+          operation: 'update',
+          message: 'Failed to reindex schedule items after finish-early buffer',
+          extra: { itemId: item.id },
+        });
+        if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
       }
     }
 
@@ -299,7 +327,7 @@ export async function POST(req: Request) {
   }
 
   const existingActualStart = typeof jobRow.actual_start === 'string' && jobRow.actual_start ? jobRow.actual_start : null;
-  await supabaseServer
+  const markDoneRes = await supabaseServer
     .from('scheduled_jobs')
     .update({
       status: 'done',
@@ -307,6 +335,14 @@ export async function POST(req: Request) {
       actual_start: existingActualStart ?? jobRow.forecast_start ?? finish,
     } as any)
     .eq('id', jobRow.id);
+  const markDoneFailure = getSupabaseMutationFailure(markDoneRes, {
+    diagnostics,
+    table: 'scheduled_jobs',
+    operation: 'update',
+    message: 'Failed to mark scheduled job done',
+    extra: { jobId: jobRow.id },
+  });
+  if (markDoneFailure) return jsonError(markDoneFailure.responseMessage, 500, diagnostics);
 
   await applyJobForecastUpdates(afterRecompute.job_updates);
 

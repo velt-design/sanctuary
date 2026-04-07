@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
+import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
 import {
   applyJobForecastUpdates,
@@ -115,7 +116,15 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  await supabaseServer.from('scheduled_jobs').update({ days_remaining: daysRemaining } as any).eq('id', jobRow.id);
+  const updateRes = await supabaseServer.from('scheduled_jobs').update({ days_remaining: daysRemaining } as any).eq('id', jobRow.id);
+  const updateFailure = getSupabaseMutationFailure(updateRes, {
+    diagnostics,
+    table: 'scheduled_jobs',
+    operation: 'update',
+    message: 'Failed to update scheduled job',
+    extra: { jobId: jobRow.id },
+  });
+  if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
   await applyJobForecastUpdates(afterRecompute.job_updates);
 
   const formatted = formatCrewScheduleBlocks({

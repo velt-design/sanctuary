@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
+import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
 import {
   applyJobForecastUpdates,
@@ -113,11 +114,36 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  await supabaseServer.from('crew_schedule_items').delete().eq('job_id', jobRow.id);
-  await supabaseServer.from('scheduled_jobs').delete().eq('id', jobRow.id);
+  const deleteItemsRes = await supabaseServer.from('crew_schedule_items').delete().eq('job_id', jobRow.id);
+  const deleteItemsFailure = getSupabaseMutationFailure(deleteItemsRes, {
+    diagnostics,
+    table: 'crew_schedule_items',
+    operation: 'delete',
+    message: 'Failed to unassign scheduled job',
+    extra: { jobId: jobRow.id },
+  });
+  if (deleteItemsFailure) return jsonError(deleteItemsFailure.responseMessage, 500, diagnostics);
+
+  const deleteJobRes = await supabaseServer.from('scheduled_jobs').delete().eq('id', jobRow.id);
+  const deleteJobFailure = getSupabaseMutationFailure(deleteJobRes, {
+    diagnostics,
+    table: 'scheduled_jobs',
+    operation: 'delete',
+    message: 'Failed to unassign scheduled job',
+    extra: { jobId: jobRow.id },
+  });
+  if (deleteJobFailure) return jsonError(deleteJobFailure.responseMessage, 500, diagnostics);
 
   for (const item of items) {
-    await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+    const updateRes = await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+    const updateFailure = getSupabaseMutationFailure(updateRes, {
+      diagnostics,
+      table: 'crew_schedule_items',
+      operation: 'update',
+      message: 'Failed to unassign scheduled job',
+      extra: { itemId: item.id },
+    });
+    if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
   }
 
   await applyJobForecastUpdates(afterRecompute.job_updates);

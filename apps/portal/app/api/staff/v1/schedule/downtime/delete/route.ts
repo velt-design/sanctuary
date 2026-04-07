@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
+import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
 import {
   applyJobForecastUpdates,
@@ -101,11 +102,36 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  await supabaseServer.from('crew_schedule_items').delete().eq('downtime_id', downtimeId);
-  await supabaseServer.from('crew_downtimes').delete().eq('id', downtimeId);
+  const deleteItemsRes = await supabaseServer.from('crew_schedule_items').delete().eq('downtime_id', downtimeId);
+  const deleteItemsFailure = getSupabaseMutationFailure(deleteItemsRes, {
+    diagnostics,
+    table: 'crew_schedule_items',
+    operation: 'delete',
+    message: 'Failed to delete downtime',
+    extra: { downtimeId },
+  });
+  if (deleteItemsFailure) return jsonError(deleteItemsFailure.responseMessage, 500, diagnostics);
+
+  const deleteDowntimeRes = await supabaseServer.from('crew_downtimes').delete().eq('id', downtimeId);
+  const deleteDowntimeFailure = getSupabaseMutationFailure(deleteDowntimeRes, {
+    diagnostics,
+    table: 'crew_downtimes',
+    operation: 'delete',
+    message: 'Failed to delete downtime',
+    extra: { downtimeId },
+  });
+  if (deleteDowntimeFailure) return jsonError(deleteDowntimeFailure.responseMessage, 500, diagnostics);
 
   for (const item of items) {
-    await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+    const updateRes = await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+    const updateFailure = getSupabaseMutationFailure(updateRes, {
+      diagnostics,
+      table: 'crew_schedule_items',
+      operation: 'update',
+      message: 'Failed to delete downtime',
+      extra: { itemId: item.id },
+    });
+    if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
   }
 
   await applyJobForecastUpdates(afterRecompute.job_updates);

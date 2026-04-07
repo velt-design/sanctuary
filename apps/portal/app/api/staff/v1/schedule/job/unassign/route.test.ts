@@ -176,4 +176,42 @@ describe('POST /api/staff/v1/schedule/job/unassign diagnostics', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_ok');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
+
+  it('returns 500 and stops when deleting schedule items fails', async () => {
+    crewScheduleItemsDeleteEq.mockResolvedValue({ data: null, error: { message: 'delete failed' } });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/unassign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_unassign_delete_fail' },
+      }),
+    );
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: 'Failed to unassign scheduled job' });
+    expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_delete_fail');
+    expect(scheduledJobsDeleteEq).not.toHaveBeenCalled();
+    expect(crewScheduleItemsUpdateEq).not.toHaveBeenCalled();
+    expect(applyJobForecastUpdates).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 and stops before forecast updates when reindexing fails', async () => {
+    crewScheduleItemsUpdateEq.mockResolvedValue({ data: null, error: { message: 'reindex failed' } });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/unassign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_unassign_reindex_fail' },
+      }),
+    );
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({ error: 'Failed to unassign scheduled job' });
+    expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_reindex_fail');
+    expect(crewScheduleItemsDeleteEq).toHaveBeenCalledWith('scheduled-job-1');
+    expect(scheduledJobsDeleteEq).toHaveBeenCalledWith('scheduled-job-1');
+    expect(applyJobForecastUpdates).not.toHaveBeenCalled();
+  });
 });

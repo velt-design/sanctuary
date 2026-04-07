@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
+import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
 import {
   applyJobForecastUpdates,
@@ -96,7 +97,15 @@ export async function POST(req: Request) {
   }
 
   for (const item of nextItems) {
-    await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+    const updateRes = await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+    const failure = getSupabaseMutationFailure(updateRes, {
+      diagnostics,
+      table: 'crew_schedule_items',
+      operation: 'update',
+      message: 'Failed to reorder schedule items',
+      extra: { itemId: item.id },
+    });
+    if (failure) return jsonError(failure.responseMessage, 500, diagnostics);
   }
 
   await applyJobForecastUpdates(afterRecompute.job_updates);

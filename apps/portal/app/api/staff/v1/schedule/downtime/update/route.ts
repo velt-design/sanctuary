@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
+import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
 import {
   applyJobForecastUpdates,
@@ -123,7 +124,15 @@ export async function POST(req: Request) {
   const update: Record<string, any> = { duration_days: durationDays };
   if (reason != null) update.reason = reason;
   if (note != null) update.note = note;
-  await supabaseServer.from('crew_downtimes').update(update as any).eq('id', downtimeId);
+  const updateRes = await supabaseServer.from('crew_downtimes').update(update as any).eq('id', downtimeId);
+  const updateFailure = getSupabaseMutationFailure(updateRes, {
+    diagnostics,
+    table: 'crew_downtimes',
+    operation: 'update',
+    message: 'Failed to update downtime',
+    extra: { downtimeId },
+  });
+  if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
 
   await applyJobForecastUpdates(afterRecompute.job_updates);
 
