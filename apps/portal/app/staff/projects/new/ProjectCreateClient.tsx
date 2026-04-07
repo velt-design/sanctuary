@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { listContacts } from '@/lib/repo/contactsRepo';
 import { createProject } from '@/lib/repo/projectsRepo';
 import type { Contact } from '@/lib/types/contact';
@@ -13,6 +14,7 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError } from '@/lib/supabase/repoError';
 import { apiJson } from '@/lib/repo/apiClient';
+import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
 
 type Draft = {
   contactId: string;
@@ -43,6 +45,7 @@ function upsertCreatedContact(list: Contact[], contact: Contact): Contact[] {
 export default function ProjectCreateClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const toast = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [draft, setDraft] = useState<Draft>({
@@ -57,6 +60,7 @@ export default function ProjectCreateClient() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [debugInsert, setDebugInsert] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   useEffect(() => {
     let cancelled = false;
@@ -266,6 +270,7 @@ export default function ProjectCreateClient() {
                                   phone: contactDraft.phone.trim(),
                                 }),
                               });
+                              upsertContactCaches(queryClient, host, res.contact);
                               setContacts((prev) => upsertCreatedContact(prev, res.contact));
                               setDraft((prev) => ({ ...prev, contactId: res.contact.id }));
                               setNewContactOpen(false);

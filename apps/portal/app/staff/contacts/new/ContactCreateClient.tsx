@@ -3,12 +3,15 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { Contact } from '@/lib/types/contact';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
 
 type Draft = {
   displayName: string;
@@ -23,12 +26,15 @@ function isValidOptionalEmail(email: string): boolean {
 
 export default function ContactCreateClient() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState<Draft>({ displayName: '', email: '', phone: '' });
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
   const canSubmit = useMemo(() => {
-    return draft.displayName.trim().length > 0 && isValidOptionalEmail(draft.email);
-  }, [draft.displayName, draft.email]);
+    return !busy && draft.displayName.trim().length > 0 && isValidOptionalEmail(draft.email);
+  }, [busy, draft.displayName, draft.email]);
 
   return (
     <main className={styles.page}>
@@ -51,8 +57,9 @@ export default function ContactCreateClient() {
           <form
             onSubmit={async (e) => {
               e.preventDefault();
-              if (!canSubmit) return;
+              if (busy || !canSubmit) return;
               setError(null);
+              setBusy(true);
               try {
                 const res = await apiJson<{ contact: Contact }>('/api/contacts', {
                   method: 'POST',
@@ -62,10 +69,13 @@ export default function ContactCreateClient() {
                     phone: draft.phone.trim(),
                   }),
                 });
+                upsertContactCaches(queryClient, host, res.contact);
                 router.push(`/staff/contacts/${encodeURIComponent(res.contact.id)}`);
               } catch (err) {
                 const msg = err instanceof Error ? err.message : 'Failed to create contact';
                 setError(msg);
+              } finally {
+                setBusy(false);
               }
             }}
           >
@@ -94,7 +104,7 @@ export default function ContactCreateClient() {
 
             <div className={styles.actions} style={{ justifyContent: 'flex-start', marginTop: 14 }}>
               <button className={styles.button} type="submit" disabled={!canSubmit}>
-                Create Contact
+                {busy ? 'Creating...' : 'Create Contact'}
               </button>
               <Link className={styles.buttonSecondary} href="/staff/contacts">
                 Cancel

@@ -9,6 +9,8 @@ const toastSuccessMock = vi.fn();
 const listContactsMock = vi.fn();
 const createProjectMock = vi.fn();
 const apiJsonMock = vi.fn();
+const upsertContactCachesMock = vi.fn();
+const queryClientMock = {};
 const toastApi = {
   error: (...args: unknown[]) => toastErrorMock(...args),
   success: (...args: unknown[]) => toastSuccessMock(...args),
@@ -36,6 +38,10 @@ vi.mock('@/components/ui/toast/ToastProvider', () => ({
   useToast: () => toastApi,
 }));
 
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => queryClientMock,
+}));
+
 vi.mock('@/lib/repo/contactsRepo', () => ({
   listContacts: (...args: unknown[]) => listContactsMock(...args),
 }));
@@ -48,6 +54,15 @@ vi.mock('@/lib/repo/apiClient', () => ({
   apiJson: (...args: unknown[]) => apiJsonMock(...args),
 }));
 
+vi.mock('@/lib/supabase/browserClient', () => ({
+  supabaseHostFromUrl: () => 'host',
+  supabaseRuntimeUrl: () => 'https://host.supabase.co',
+}));
+
+vi.mock('@/lib/localFirst/portalEntities', () => ({
+  upsertContactCaches: (...args: unknown[]) => upsertContactCachesMock(...args),
+}));
+
 describe('ProjectCreateClient', () => {
   beforeEach(() => {
     pushMock.mockReset();
@@ -56,6 +71,7 @@ describe('ProjectCreateClient', () => {
     listContactsMock.mockReset();
     createProjectMock.mockReset();
     apiJsonMock.mockReset();
+    upsertContactCachesMock.mockReset();
 
     listContactsMock.mockResolvedValue([
       {
@@ -124,6 +140,14 @@ describe('ProjectCreateClient', () => {
           email: 'created@example.com',
           phone: '021',
         }),
+      }),
+    );
+    expect(upsertContactCachesMock).toHaveBeenCalledWith(
+      queryClientMock,
+      'host',
+      expect.objectContaining({
+        id: 'ct_created',
+        displayName: 'Created Contact',
       }),
     );
     expect(listContactsMock).toHaveBeenCalledTimes(callsBeforeCreate);

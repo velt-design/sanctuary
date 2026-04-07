@@ -16,6 +16,37 @@ import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { apiJson } from '@/lib/repo/apiClient';
 import stateStyles from '@/components/page-state/PageState.module.css';
+import { upsertContactCaches } from '@/lib/localFirst/portalEntities';
+
+function upsertCreatedContact(list: Contact[], contact: Contact): Contact[] {
+  const next = list.filter((entry) => entry.id !== contact.id);
+  next.push(contact);
+  next.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
+  return next;
+}
+
+function importDecisionKey(
+  decision: {
+    action: string;
+    row: { sourceRowNumber?: number; displayName?: string; email?: string; phone?: string };
+    match?: { existingId?: string };
+  },
+  index: number,
+) {
+  if (typeof decision.row.sourceRowNumber === 'number' && Number.isFinite(decision.row.sourceRowNumber)) {
+    return `row:${decision.row.sourceRowNumber}`;
+  }
+
+  return [
+    'fallback',
+    index,
+    decision.action,
+    decision.row.displayName ?? '',
+    decision.row.email ?? '',
+    decision.row.phone ?? '',
+    decision.match?.existingId ?? '',
+  ].join(':');
+}
 
 export default function ContactsIndexClient({ initialContacts }: { initialContacts: Contact[] }) {
   const toast = useToast();
@@ -63,6 +94,15 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
     if (!importPayload) return null;
     return planContactsImport(importPayload.rows, contacts, { mergeBlanks: importMergeBlanks });
   }, [contacts, importMergeBlanks, importPayload]);
+
+  const resetImportState = (closeModal: boolean) => {
+    setImportOpen(!closeModal);
+    setImportBusy(false);
+    setImportError(null);
+    setImportMergeBlanks(false);
+    setImportPayload(null);
+    setImportFilename('');
+  };
 
   if (error && !contacts.length) {
     const message = error instanceof Error ? error.message : 'Failed to load contacts.';
@@ -202,8 +242,7 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
           ariaLabel="Import contacts from CSV"
           onClose={() => {
             if (importBusy) return;
-            setImportOpen(false);
-            setImportPayload(null);
+            resetImportState(true);
           }}
           overlayClassName={styles.modalOverlay}
           panelClassName={styles.modal}
@@ -218,8 +257,7 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
               className={styles.modalClose}
               onClick={() => {
                 if (importBusy) return;
-                setImportOpen(false);
-                setImportPayload(null);
+                resetImportState(true);
               }}
             >
               Close
@@ -227,9 +265,14 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
           </div>
 
             <p className={styles.note}>
+              File: <strong>{importFilename || 'CSV upload'}</strong>
+            </p>
+            <p className={styles.note}>
               Header detected on row <strong>{importPayload.headerRowNumber}</strong>. Import creates new contacts and can optionally merge missing fields
               into existing contacts.
             </p>
+
+            {importError ? <p className={styles.error}>{importError}</p> : null}
 
             {importPayload.warnings.length ? (
               <div className={styles.note} style={{ marginTop: 10 }}>
@@ -275,8 +318,8 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
                   </tr>
                 </thead>
                 <tbody>
-                  {importPlan.decisions.slice(0, 200).map((d) => (
-                    <tr key={d.row.sourceRowNumber}>
+                  {importPlan.decisions.slice(0, 200).map((d, index) => (
+                    <tr key={importDecisionKey(d, index)}>
                       <td className={styles.muted}>{d.row.sourceRowNumber}</td>
                       <td>{d.row.displayName || '—'}</td>
                       <td className={styles.muted}>{d.row.email || '—'}</td>
@@ -316,8 +359,7 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
                 className={styles.buttonSecondary}
                 disabled={importBusy}
                 onClick={() => {
-                  setImportOpen(false);
-                  setImportPayload(null);
+                  resetImportState(true);
                 }}
               >
                 Cancel
@@ -332,10 +374,11 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
                   try {
                     let created = 0;
                     let merged = 0;
+                    let workingContacts = contacts.slice();
 
                     for (const d of importPlan.decisions) {
                       if (d.action === 'create') {
-                        await apiJson<{ contact: Contact }>('/api/contacts', {
+                        const res = await apiJson<{ contact: Contact }>('/api/contacts', {
                           method: 'POST',
                           body: JSON.stringify({
                             displayName: d.row.displayName,
@@ -343,28 +386,30 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
                             phone: d.row.phone ?? '',
                           }),
                         });
+                        workingContacts = upsertCreatedContact(workingContacts, res.contact);
+                        upsertContactCaches(queryClient, host, res.contact);
                         created += 1;
                       } else if (d.action === 'merge' && d.match) {
-                        const existing = contacts.find((c) => c.id === d.match!.existingId);
+                        const existing = workingContacts.find((c) => c.id === d.match!.existingId);
                         if (!existing) continue;
                         const patch: Partial<Omit<Contact, 'id' | 'createdAt' | 'updatedAt'>> = {};
                         if (!existing.displayName.trim() && d.row.displayName.trim()) patch.displayName = d.row.displayName;
                         if (!existing.email.trim() && d.row.email.trim()) patch.email = d.row.email;
                         if (!existing.phone.trim() && d.row.phone.trim()) patch.phone = d.row.phone;
                         if (Object.keys(patch).length) {
-                          await apiJson<{ contact: Contact }>(`/api/contacts/${encodeURIComponent(existing.id)}`, {
+                          const res = await apiJson<{ contact: Contact }>(`/api/contacts/${encodeURIComponent(existing.id)}`, {
                             method: 'PATCH',
                             body: JSON.stringify(patch),
                           });
+                          workingContacts = upsertCreatedContact(workingContacts, res.contact);
+                          upsertContactCaches(queryClient, host, res.contact);
                           merged += 1;
                         }
                       }
                     }
 
                     await queryClient.invalidateQueries({ queryKey: contactsListQueryOptions(host).queryKey });
-                    setImportOpen(false);
-                    setImportPayload(null);
-                    setImportFilename('');
+                    resetImportState(true);
                     toast.success(`Imported contacts: ${created} created, ${merged} merged.`);
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : 'Import failed';
