@@ -7,7 +7,6 @@ import EmailsTab from './tabs/EmailsTab';
 import EstimatesTab from './tabs/EstimatesTab';
 import InvoicesTab from './tabs/InvoicesTab';
 import JobPacksTab from './tabs/JobPacksTab';
-import PlaceholderTab from './tabs/PlaceholderTab';
 import QuotesTab from './tabs/QuotesTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
@@ -23,7 +22,6 @@ const BASE_TABS = [
   { key: 'invoices', label: 'Invoices' },
   { key: 'job-packs', label: 'Job Packs' },
   { key: 'emails', label: 'Emails' },
-  { key: 'files', label: 'Files' },
 ] as const;
 
 type TabKey = (typeof BASE_TABS)[number]['key'];
@@ -208,9 +206,6 @@ export default function ProjectMainTabs({
           />
         ) : null}
         {activeTab === 'job-packs' ? <JobPacksTab projectId={snapshot.project.id} /> : null}
-        {activeTab === 'files' ? (
-          <PlaceholderTab title="Files" description="Upload and manage project files once storage is wired up." />
-        ) : null}
       </div>
     </section>
   );

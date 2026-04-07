@@ -62,4 +62,23 @@ describe('ProjectDetailPage', () => {
     expect(markup).toContain('data-tab="quotes"');
     expect(markup).toContain('Deck Build');
   });
+
+  it('coerces removed files tabs back to estimates', async () => {
+    getProjectPageSnapshotMock.mockResolvedValue({
+      project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
+      pipeline: { stage: 'new' },
+      tasks: { stage: 'new', items: [] },
+      activity: [],
+      emails: [],
+    });
+
+    const ui = (await ProjectDetailPage({
+      params: Promise.resolve({ projectId: 'proj_1' }),
+      searchParams: Promise.resolve({ tab: 'files' }),
+    })) as ReactElement;
+    const markup = renderToStaticMarkup(ui);
+
+    expect(markup).toContain('data-project-id="proj_1"');
+    expect(markup).toContain('data-tab="estimates"');
+  });
 });

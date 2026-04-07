@@ -51,7 +51,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     (next: {
       estimateId?: string | null;
       sheet?: JobPackSheetKey | null;
-      tab?: 'job-packs' | 'estimates' | 'quotes' | 'invoices' | 'emails' | 'files';
+      tab?: 'job-packs' | 'estimates' | 'quotes' | 'invoices' | 'emails';
     }) => {
       const qs = new URLSearchParams(searchParams.toString());
       const nextTab = next.tab ?? 'job-packs';

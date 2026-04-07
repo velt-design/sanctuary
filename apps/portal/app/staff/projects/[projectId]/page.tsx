@@ -3,7 +3,7 @@ import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
-const VALID_TABS = new Set(['estimates', 'quotes', 'job-packs', 'emails', 'files']);
+const VALID_TABS = new Set(['estimates', 'quotes', 'job-packs', 'emails']);
 
 function parseTab(value: string | string[] | undefined): string {
   const raw = Array.isArray(value) ? value[0] : value;
