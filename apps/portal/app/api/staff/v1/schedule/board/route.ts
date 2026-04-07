@@ -124,12 +124,27 @@ export async function GET(req: Request) {
   }
 
   let unscheduledJobs: any[] = [];
+  let projectIndex: Array<{ id: string; name: string; pipeline_stage: string | null; follow_up_date: string | null }> = [];
   let scheduledEstimateIds: Record<string, string> = {};
   try {
     const { projects, estimates } = await listProjectsAndEstimates();
     const scheduledProjectIds = new Set(ctx.jobs.map((job) => job.jobId));
     unscheduledJobs = buildUnscheduledJobs({ projects, estimates, scheduledProjectIds });
     scheduledEstimateIds = computeScheduledEstimateIds(estimates, scheduledProjectIds);
+    const relevantProjectIds = new Set<string>(scheduledProjectIds);
+    for (const job of unscheduledJobs) {
+      const jobId = typeof job?.job_id === 'string' ? job.job_id : '';
+      if (jobId) relevantProjectIds.add(jobId);
+    }
+    projectIndex = projects
+      .filter((project) => relevantProjectIds.has(project.id))
+      .map((project) => ({
+        id: project.id,
+        name: project.name,
+        pipeline_stage: project.pipeline_stage,
+        follow_up_date: project.follow_up_date,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   } catch (err) {
     if (isMissingSchemaError(err)) {
       const detail = process.env.NODE_ENV !== 'production' ? ` (${(err as any)?.message ?? 'missing schema'})` : '';
@@ -152,6 +167,7 @@ export async function GET(req: Request) {
     generated_at: new Date().toISOString(),
     crews,
     schedule: schedules,
+    project_index: projectIndex,
     unscheduled_jobs: unscheduledJobs,
     conflicts,
     scheduled_estimate_ids: scheduledEstimateIds,

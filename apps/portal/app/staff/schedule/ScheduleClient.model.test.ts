@@ -101,4 +101,51 @@ describe('buildScheduleBoardModel', () => {
     expect(model.unscheduledJobs).toEqual([]);
     expect(model.laneItems.get('crew_alpha')).toEqual([]);
   });
+
+  it('uses the lightweight project summary to label scheduled V2 items', () => {
+    const model = buildScheduleBoardModel({
+      estimatesById: new Map(),
+      installers,
+      orphanedScheduleItems: [],
+      projects: [
+        {
+          id: 'proj_sched_1',
+          projectName: 'Scheduled Pergola',
+          name: 'Scheduled Pergola',
+          status: 'DEPOSIT',
+          nextActionDate: '2026-04-12',
+          followUpDate: '2026-04-12',
+        },
+      ],
+      projectsById: new Map([
+        [
+          'proj_sched_1',
+          {
+            id: 'proj_sched_1',
+            projectName: 'Scheduled Pergola',
+            name: 'Scheduled Pergola',
+            status: 'DEPOSIT',
+            nextActionDate: '2026-04-12',
+            followUpDate: '2026-04-12',
+          },
+        ],
+      ]),
+      query: '',
+      scheduleItems: visibleScheduleItems,
+      scheduleItemsRenderable: visibleScheduleItems,
+      scheduleMode: 'v2',
+      today: '2026-04-03',
+      unscheduledJobsSeed: [],
+      visibleScheduleItems,
+    });
+
+    const scheduledJob = model.schedulable.jobsById.get('sch_sched_1');
+    expect(scheduledJob).toEqual(
+      expect.objectContaining({
+        projectName: 'Scheduled Pergola',
+        status: 'DEPOSIT',
+        descriptor: 'Next: 2026-04-12',
+      }),
+    );
+  });
 });

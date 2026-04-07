@@ -29,7 +29,7 @@ import {
   updateDowntime,
 } from '@/lib/repo/scheduleV2Repo';
 import { qk } from '@/lib/queries/keys';
-import { scheduleV2SnapshotQueryOptions, type ScheduleV2Snapshot } from '@/lib/queries/schedule';
+import { scheduleV2SnapshotQueryOptions, type ScheduleProjectSummary, type ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
 import type { Estimate } from '@/lib/types/estimate';
 import type { Project } from '@/lib/types/project';
@@ -387,12 +387,31 @@ function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemSt
   return 'TENTATIVE';
 }
 
-function safeProjectName(project: Project | null | undefined): string {
+function safeProjectName(project: ScheduleProjectSummary | null | undefined): string {
   return project?.projectName ?? project?.name ?? 'Untitled project';
 }
 
-function safeProjectStatus(project: Project | null | undefined): string {
+function safeProjectStatus(project: ScheduleProjectSummary | null | undefined): string {
   return project?.status ?? 'NEW';
+}
+
+function toScheduleProjectSummary(project: Project): ScheduleProjectSummary {
+  const name = project.projectName ?? project.name ?? 'Untitled project';
+  const nextActionDate =
+    typeof project.nextActionDate === 'string'
+      ? project.nextActionDate
+      : typeof project.followUpDate === 'string'
+        ? project.followUpDate
+        : null;
+
+  return {
+    id: project.id,
+    projectName: name,
+    name,
+    status: project.status ?? 'NEW',
+    nextActionDate,
+    followUpDate: nextActionDate,
+  };
 }
 
 function endInclusiveFromExclusive(endExclusive: string, fallback: string): string {
@@ -402,7 +421,7 @@ function endInclusiveFromExclusive(endExclusive: string, fallback: string): stri
 
 function buildScheduleBarsFromForecast(input: {
   scheduleItems: ScheduleItem[];
-  projectsById: Map<string, Project>;
+  projectsById: Map<string, ScheduleProjectSummary>;
   estimatesById: Map<string, Estimate>;
 }): { bars: Array<{ scheduleItemId: string; installerId: string; projectId: string; estimateId: string; projectName: string; status: string; startDate: string; endDate: string; durationHours: number }>; issues: SchedulingIssue[] } {
   const bars: Array<{ scheduleItemId: string; installerId: string; projectId: string; estimateId: string; projectName: string; status: string; startDate: string; endDate: string; durationHours: number }> = [];
@@ -868,7 +887,7 @@ function optimisticUnassign(
   items: ScheduleItem[],
   unscheduledSeed: SchedulableJob[],
   scheduleItemId: string,
-  projectsById: Map<string, Project>,
+  projectsById: Map<string, ScheduleProjectSummary>,
 ): { items: ScheduleItem[]; unscheduledSeed: SchedulableJob[] } {
   const it = items.find((i) => i.id === scheduleItemId);
   if (!it || it.itemType === 'downtime') return { items, unscheduledSeed };
@@ -1415,8 +1434,8 @@ export function buildScheduleBoardModel(input: {
   estimatesById: Map<string, Estimate>;
   installers: Installer[];
   orphanedScheduleItems: ScheduleItem[];
-  projects: Project[];
-  projectsById: Map<string, Project>;
+  projects: ScheduleProjectSummary[];
+  projectsById: Map<string, ScheduleProjectSummary>;
   query: string;
   scheduleItems: ScheduleItem[];
   scheduleItemsRenderable: ScheduleItem[];
@@ -1751,7 +1770,7 @@ export default function ScheduleClient() {
   const scheduleConflictsRef = useRef<any[]>([]);
   const nextAvailRef = useRef<Map<string, string>>(new Map());
   const installersRef = useRef<Installer[]>([]);
-  const projectsRef = useRef<Project[]>([]);
+  const projectsRef = useRef<ScheduleProjectSummary[]>([]);
 
   const today = useMemo(() => {
     const ymd = todayYmdInTimeZone(GANTT_TZ);
@@ -1778,7 +1797,7 @@ export default function ScheduleClient() {
   const [loadError, setLoadError] = useState<{ message: string; table?: string; code?: string } | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [installers, setInstallers] = useState<Installer[]>(() => initialV2Snapshot?.installers ?? []);
-  const [projects, setProjects] = useState<Project[]>(() => initialV2Snapshot?.projects ?? []);
+  const [projects, setProjects] = useState<ScheduleProjectSummary[]>(() => initialV2Snapshot?.projects ?? []);
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(() => initialV2Snapshot?.scheduleItems ?? []);
   const [estimatesById, setEstimatesById] = useState<Map<string, Estimate>>(() => new Map());
   const [unscheduledJobsSeed, setUnscheduledJobsSeed] = useState<SchedulableJob[]>(() => mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs));
@@ -2346,9 +2365,7 @@ export default function ScheduleClient() {
       id: string;
       name: string;
       pipeline_stage: string;
-      site_address: string | null;
-      created_at: string | null;
-      updated_at: string | null;
+      follow_up_date?: string | null;
     }>;
   };
 
@@ -2402,8 +2419,8 @@ export default function ScheduleClient() {
     nextAvailRef.current = nextAvail;
 
     setLoadError(null);
-    setInstallers(snapshot.installers);
-    setProjects(snapshot.projects);
+        setInstallers(snapshot.installers);
+        setProjects(snapshot.projects);
     setScheduleItems(nextItems);
     setEstimatesById(new Map());
     setUnscheduledJobsSeed(nextUnscheduled);
@@ -2472,8 +2489,9 @@ export default function ScheduleClient() {
   }): void {
     if (scheduleMode !== 'legacy') return;
     try {
-      const projectsById = new Map<string, Project>();
-      for (const p of input.projects) projectsById.set(p.id, p);
+      const scheduleProjects = input.projects.map(toScheduleProjectSummary);
+      const projectsById = new Map<string, ScheduleProjectSummary>();
+      for (const p of scheduleProjects) projectsById.set(p.id, p);
       const renderable = input.scheduleItems.filter((i) => projectsById.has(i.projectId));
       const build = buildScheduleBars({ today, installers: input.installers, scheduleItems: renderable, projectsById, estimatesById: input.estimatesById });
       const bars = new Map(build.bars.map((b) => [b.scheduleItemId, b]));
@@ -2515,13 +2533,11 @@ export default function ScheduleClient() {
             actual_end_date: typeof i.actualEndDate === 'string' ? i.actualEndDate : null,
           };
         }),
-        projectsIndex: input.projects.map((p) => ({
+        projectsIndex: scheduleProjects.map((p) => ({
           id: uuidFromAppId(p.id, 'proj'),
-          name: p.projectName ?? p.name ?? 'Untitled project',
+          name: p.projectName,
           pipeline_stage: String(p.status ?? 'NEW'),
-          site_address: p.siteAddress ?? p.address ?? null,
-          created_at: p.createdAt ?? null,
-          updated_at: p.updatedAt ?? null,
+          follow_up_date: p.followUpDate ?? null,
         })),
       });
     } catch {
@@ -2545,15 +2561,13 @@ export default function ScheduleClient() {
         sortOrder: c.sort_order,
       }));
 
-      const cachedProjects: Project[] = cachedSnapshot.projectsIndex.map((p) => ({
+      const cachedProjects: ScheduleProjectSummary[] = cachedSnapshot.projectsIndex.map((p) => ({
         id: appIdFromUuid('proj', p.id),
-        createdAt: p.created_at ?? p.updated_at ?? new Date(0).toISOString(),
-        updatedAt: p.updated_at ?? p.created_at ?? undefined,
         projectName: p.name,
         name: p.name,
-        siteAddress: p.site_address ?? undefined,
-        address: p.site_address ?? undefined,
         status: p.pipeline_stage as any,
+        nextActionDate: p.follow_up_date ?? null,
+        followUpDate: p.follow_up_date ?? null,
       }));
 
       const cachedItems: ScheduleItem[] = cachedSnapshot.scheduleItems.map((i) => ({
@@ -2608,6 +2622,8 @@ export default function ScheduleClient() {
         ]);
         if (cancelled) return;
 
+        const scheduleProjects = projects.map(toScheduleProjectSummary);
+
         const estimatesById = new Map<string, Estimate>();
         for (const e of allEstimates) estimatesById.set(e.id, e);
 
@@ -2623,7 +2639,7 @@ export default function ScheduleClient() {
           });
 
         setInstallers(installers);
-        setProjects(projects);
+        setProjects(scheduleProjects);
         setScheduleItems(normalised);
         setEstimatesById(estimatesById);
         setHydrated(true);
@@ -2710,7 +2726,7 @@ export default function ScheduleClient() {
   const devOnly = process.env.NODE_ENV !== 'production';
 
   const projectsById = useMemo(() => {
-    const map = new Map<string, Project>();
+    const map = new Map<string, ScheduleProjectSummary>();
     for (const p of projects) map.set(p.id, p);
     return map;
   }, [projects]);

@@ -58,6 +58,12 @@ export type ScheduleBoardResponse = {
   generated_at: string;
   crews: ScheduleBoardCrew[];
   schedule: Array<{ crew_id: string; items: ScheduleBoardItem[]; conflicts: any[]; next_available_date: string }>;
+  project_index?: Array<{
+    id: string;
+    name: string;
+    pipeline_stage: string | null;
+    follow_up_date: string | null;
+  }>;
   unscheduled_jobs: Array<{ job_id: string; estimate_id: string; project_name: string; status: string; duration_days: number }>;
   conflicts: any[];
   scheduled_estimate_ids?: Record<string, string>;

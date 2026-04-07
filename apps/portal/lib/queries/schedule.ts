@@ -1,15 +1,22 @@
 import { queryOptions } from '@tanstack/react-query';
 import { fetchScheduleBoard } from '@/lib/repo/scheduleV2Repo';
-import { listProjects } from '@/lib/repo/projectsRepo';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { nowIso } from '@/lib/utils/time';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { isYmd } from '@/lib/scheduling/date';
 import type { CompanyClosure, NzHoliday } from '@/lib/scheduling/workingDays';
-import type { Project } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
 import { qk } from './keys';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
+
+export type ScheduleProjectSummary = {
+  id: string;
+  projectName: string;
+  name: string;
+  status: string;
+  nextActionDate: string | null;
+  followUpDate: string | null;
+};
 
 export type ScheduleV2UnscheduledJob = {
   projectId: string;
@@ -22,7 +29,7 @@ export type ScheduleV2UnscheduledJob = {
 export type ScheduleV2Snapshot = {
   generatedAt: string;
   installers: Installer[];
-  projects: Project[];
+  projects: ScheduleProjectSummary[];
   scheduleItems: ScheduleItem[];
   conflicts: any[];
   nextAvailableByInstallerId: Record<string, string>;
@@ -43,7 +50,7 @@ function safeDurationDays(value: unknown): number {
 }
 
 async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapshot> {
-  const [board, projects] = await Promise.all([fetchScheduleBoard({ today }), listProjects()]);
+  const board = await fetchScheduleBoard({ today });
 
   const nextAvailableByInstallerId: Record<string, string> = {};
   const installers: Installer[] = board.crews.map((crew) => {
@@ -62,6 +69,14 @@ async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapsho
 
   const generatedAt = typeof board.generated_at === 'string' && board.generated_at ? board.generated_at : nowIso();
   const scheduledEstimateIds = board.scheduled_estimate_ids ?? {};
+  const projects: ScheduleProjectSummary[] = (Array.isArray(board.project_index) ? board.project_index : []).map((row: any) => ({
+    id: appIdFromUuid('proj', typeof row?.id === 'string' ? row.id : ''),
+    projectName: typeof row?.name === 'string' && row.name.trim() ? row.name.trim() : 'Untitled project',
+    name: typeof row?.name === 'string' && row.name.trim() ? row.name.trim() : 'Untitled project',
+    status: typeof row?.pipeline_stage === 'string' && row.pipeline_stage.trim() ? row.pipeline_stage.trim() : 'NEW',
+    nextActionDate: typeof row?.follow_up_date === 'string' ? row.follow_up_date : null,
+    followUpDate: typeof row?.follow_up_date === 'string' ? row.follow_up_date : null,
+  }));
 
   const scheduleItems: ScheduleItem[] = [];
   for (const lane of board.schedule) {
