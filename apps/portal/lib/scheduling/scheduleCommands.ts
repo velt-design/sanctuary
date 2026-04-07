@@ -112,6 +112,11 @@ export type CreateDowntimeCommandResult = {
   updated_forecasts: number;
 };
 
+export type UpdateDowntimeCommandResult = {
+  updated_downtime: string;
+  updated_forecasts: number;
+};
+
 function jsonbWithoutUndefined(input: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
 }
@@ -247,6 +252,28 @@ export async function commitCreateDowntime(input: {
       p_forecast_updates: input.forecastUpdates,
     },
     failureMessage: 'Failed to create downtime',
+  });
+}
+
+export async function commitUpdateDowntime(input: {
+  diagnostics: PortalServerLogContext;
+  downtimeId: string;
+  patch: {
+    duration_days: number;
+    reason?: string;
+    note?: string;
+  };
+  forecastUpdates: ForecastUpdateInput[];
+}): Promise<ScheduleCommandResult<UpdateDowntimeCommandResult>> {
+  return runScheduleRpcCommand({
+    diagnostics: input.diagnostics,
+    fn: 'schedule_v2_update_downtime',
+    args: {
+      p_downtime_id: input.downtimeId,
+      p_patch: jsonbWithoutUndefined(input.patch),
+      p_forecast_updates: input.forecastUpdates,
+    },
+    failureMessage: 'Failed to update downtime',
   });
 }
 

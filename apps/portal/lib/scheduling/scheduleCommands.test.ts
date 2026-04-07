@@ -148,6 +148,45 @@ describe('scheduleCommands', () => {
     });
   });
 
+  it('passes downtime update payloads through to the RPC', async () => {
+    rpc.mockResolvedValueOnce({
+      data: {
+        updated_downtime: 'dt-1',
+        updated_forecasts: 1,
+      },
+      error: null,
+    });
+
+    const mod = await import('./scheduleCommands');
+    const res = await mod.commitUpdateDowntime({
+      diagnostics: { requestId: 'req-dt-update', route: '/api/staff/v1/schedule/downtime/update', method: 'POST', startedAt: 1 },
+      downtimeId: 'dt-1',
+      patch: {
+        duration_days: 3,
+        reason: 'travel',
+        note: 'Buffer',
+      },
+      forecastUpdates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
+    });
+
+    expect(res).toEqual({
+      ok: true,
+      data: {
+        updated_downtime: 'dt-1',
+        updated_forecasts: 1,
+      },
+    });
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_update_downtime', {
+      p_downtime_id: 'dt-1',
+      p_patch: {
+        duration_days: 3,
+        reason: 'travel',
+        note: 'Buffer',
+      },
+      p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
+    });
+  });
+
   it('passes planned commitment payloads through to the RPC', async () => {
     rpc.mockResolvedValueOnce({ data: { updated_job: 'job-1', history_inserted: true, updated_forecasts: 1 }, error: null });
 
@@ -383,6 +422,24 @@ describe('scheduleCommands', () => {
     });
   });
 
+  it('maps missing downtime update RPC functions to schema-not-ready', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.schedule_v2_update_downtime' } });
+
+    const mod = await import('./scheduleCommands');
+    const res = await mod.commitUpdateDowntime({
+      diagnostics: { requestId: 'req-dt-update-schema', route: '/api/staff/v1/schedule/downtime/update', method: 'POST', startedAt: 1 },
+      downtimeId: 'dt-1',
+      patch: { duration_days: 2 },
+      forecastUpdates: [],
+    });
+
+    expect(res).toEqual({
+      ok: false,
+      status: 501,
+      responseMessage: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+    });
+  });
+
   it('maps generic downtime create failures to a stable route message', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
 
@@ -402,6 +459,24 @@ describe('scheduleCommands', () => {
       ok: false,
       status: 500,
       responseMessage: 'Failed to create downtime',
+    });
+  });
+
+  it('maps generic downtime update failures to a stable route message', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+
+    const mod = await import('./scheduleCommands');
+    const res = await mod.commitUpdateDowntime({
+      diagnostics: { requestId: 'req-dt-update-fail', route: '/api/staff/v1/schedule/downtime/update', method: 'POST', startedAt: 1 },
+      downtimeId: 'dt-1',
+      patch: { duration_days: 2 },
+      forecastUpdates: [],
+    });
+
+    expect(res).toEqual({
+      ok: false,
+      status: 500,
+      responseMessage: 'Failed to update downtime',
     });
   });
 });

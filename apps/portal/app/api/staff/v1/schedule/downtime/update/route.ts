@@ -1,9 +1,8 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
-import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitUpdateDowntime } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -121,20 +120,21 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  const update: Record<string, any> = { duration_days: durationDays };
-  if (reason != null) update.reason = reason;
-  if (note != null) update.note = note;
-  const updateRes = await supabaseServer.from('crew_downtimes').update(update as any).eq('id', downtimeId);
-  const updateFailure = getSupabaseMutationFailure(updateRes, {
-    diagnostics,
-    table: 'crew_downtimes',
-    operation: 'update',
-    message: 'Failed to update downtime',
-    extra: { downtimeId },
-  });
-  if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
+  const patch: {
+    duration_days: number;
+    reason?: string;
+    note?: string;
+  } = { duration_days: durationDays };
+  if (reason != null) patch.reason = reason;
+  if (note != null) patch.note = note;
 
-  await applyJobForecastUpdates(afterRecompute.job_updates);
+  const commitRes = await commitUpdateDowntime({
+    diagnostics,
+    downtimeId,
+    patch,
+    forecastUpdates: afterRecompute.job_updates,
+  });
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
