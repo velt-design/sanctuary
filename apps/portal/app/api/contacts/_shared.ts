@@ -1,5 +1,5 @@
-import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { formatSupportedSchemaMessage } from '@/lib/supabase/schemaGuard';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 
 type AnyRecord = Record<string, unknown>;
@@ -28,40 +28,33 @@ export function mapContact(row: AnyRecord) {
 
 export async function createContactWithRetry(payloadIn: Record<string, any>) {
   const payload = { ...payloadIn };
+  const res = await supabaseServiceRole.from('contacts').insert(payload).select('*').single();
+  if (!res.error && res.data) return res;
 
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const res = await supabaseServer.from('contacts').insert(payload).select('*').single();
-    if (!res.error && res.data) return res;
-
-    const missing = missingColumnFromError(res.error);
-    if (missing && missing in payload) {
-      delete payload[missing];
-      continue;
-    }
-
-    return res;
-  }
-
-  return { data: null, error: { message: 'Supabase insert failed after retries', code: 'CLIENT_RETRY' } };
+  return {
+    data: null,
+    error: res.error
+      ? {
+          ...res.error,
+          message: formatSupportedSchemaMessage('contacts', res.error) ?? res.error.message,
+        }
+      : { message: 'Failed to create contact' },
+  };
 }
 
 export async function updateContactWithRetry(contactUuid: string, payloadIn: Record<string, any>) {
   const payload = { ...payloadIn };
   if (!Object.keys(payload).length) return { data: null, error: null };
+  const res = await supabaseServiceRole.from('contacts').update(payload).eq('id', contactUuid).select('*').single();
+  if (!res.error && res.data) return res;
 
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const res = await supabaseServer.from('contacts').update(payload).eq('id', contactUuid).select('*').single();
-    if (!res.error && res.data) return res;
-
-    const missing = missingColumnFromError(res.error);
-    if (missing && missing in payload) {
-      delete payload[missing];
-      if (!Object.keys(payload).length) return { data: null, error: null };
-      continue;
-    }
-
-    return res;
-  }
-
-  return { data: null, error: { message: 'Supabase update failed after retries', code: 'CLIENT_RETRY' } };
+  return {
+    data: null,
+    error: res.error
+      ? {
+          ...res.error,
+          message: formatSupportedSchemaMessage('contacts', res.error) ?? res.error.message,
+        }
+      : { message: 'Failed to update contact' },
+  };
 }

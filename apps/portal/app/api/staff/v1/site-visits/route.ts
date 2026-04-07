@@ -1,25 +1,13 @@
 import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
+import { formatSupportedSchemaMessage, isSupportedSchemaError } from '@/lib/supabase/schemaGuard';
 import { formatSupabaseError } from '@/lib/supabase/apiErrors';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 
 export const runtime = 'nodejs';
-
-type SupabaseLikeError = { code?: unknown; message?: unknown };
-
-function toStr(value: unknown): string {
-  return typeof value === 'string' ? value : '';
-}
-
-function isMissingColumnError(error: unknown): boolean {
-  const e = error as SupabaseLikeError;
-  const code = toStr(e?.code).trim();
-  const msg = toStr(e?.message).toLowerCase();
-  return code === 'PGRST204' || code === '42703' || msg.includes('does not exist') || msg.includes('missing') || msg.includes('undefined column');
-}
 
 function asIso(value: string | null): string | null {
   if (!value) return null;
@@ -96,69 +84,35 @@ export async function GET(req: Request) {
   const salesOwnerId = (url.searchParams.get('salesOwnerId') || '').trim() || null;
 
   if (!fromIso || !toIso) return jsonError('from and to are required (ISO)', 400, diagnostics);
-
-  const selectVariants = [
-    // Preferred select (avoid schema drift, like missing `projects.region`).
+  const select =
     'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
-      ' projects!inner( id, name, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )',
-    // Full select for DBs that include `projects.region`.
-    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
-      ' projects!inner( id, name, region, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )',
-    // Fallbacks without tier for older schemas.
-    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
-      ' projects!inner( id, name, site_address, pipeline_stage, contact_id, contacts ( id, name, email, phone ) )',
-    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
-      ' projects!inner( id, name, region, site_address, pipeline_stage, contact_id, contacts ( id, name, email, phone ) )',
-    // site_visit_events may still have legacy `assigned_sales_owner` column name.
-    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner, notes, created_at, updated_at,' +
-      ' projects!inner( id, name, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )',
-    'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner, notes, created_at, updated_at,' +
-      ' projects!inner( id, name, site_address, pipeline_stage, contact_id, contacts ( id, name, email, phone ) )',
-  ] as const;
+    ' projects!inner( id, name, region, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )';
 
-  const runWithSelect = async (select: string) => {
-    const hasAssignedSalesOwnerId = select.includes('assigned_sales_owner_id');
-    const unscheduledQuery = supabaseServer
-      .from('site_visit_events')
-      .select(select)
-      .eq('status', 'UNSCHEDULED');
+  const unscheduledQuery = supabaseServiceRole
+    .from('site_visit_events')
+    .select(select)
+    .eq('status', 'UNSCHEDULED');
 
-    const eventsQuery = supabaseServer
-      .from('site_visit_events')
-      .select(select)
-      .in('status', ['TENTATIVE', 'CONFIRMED', 'COMPLETED', 'RESCHEDULED'])
-      .not('scheduled_start', 'is', null)
-      .gte('scheduled_start', fromIso)
-      .lte('scheduled_start', toIso);
+  const eventsQuery = supabaseServiceRole
+    .from('site_visit_events')
+    .select(select)
+    .in('status', ['TENTATIVE', 'CONFIRMED', 'COMPLETED', 'RESCHEDULED'])
+    .not('scheduled_start', 'is', null)
+    .gte('scheduled_start', fromIso)
+    .lte('scheduled_start', toIso);
 
-    if (salesOwnerId) {
-      (unscheduledQuery as any).eq(hasAssignedSalesOwnerId ? 'assigned_sales_owner_id' : 'assigned_sales_owner', salesOwnerId);
-      (eventsQuery as any).eq(hasAssignedSalesOwnerId ? 'assigned_sales_owner_id' : 'assigned_sales_owner', salesOwnerId);
-    }
-
-    const [unscheduledRes, eventsRes] = await Promise.all([unscheduledQuery, eventsQuery]);
-    return { unscheduledRes, eventsRes };
-  };
-
-  let unscheduledRes: any = null;
-  let eventsRes: any = null;
-  let lastErr: any = null;
-
-  for (const select of selectVariants) {
-    const res = await runWithSelect(select);
-    if (!res.unscheduledRes.error && !res.eventsRes.error) {
-      unscheduledRes = res.unscheduledRes;
-      eventsRes = res.eventsRes;
-      lastErr = null;
-      break;
-    }
-    const err = res.unscheduledRes.error || res.eventsRes.error;
-    lastErr = err;
-    if (!isMissingColumnError(err)) break;
+  if (salesOwnerId) {
+    (unscheduledQuery as any).eq('assigned_sales_owner_id', salesOwnerId);
+    (eventsQuery as any).eq('assigned_sales_owner_id', salesOwnerId);
   }
 
+  const [unscheduledRes, eventsRes] = await Promise.all([unscheduledQuery, eventsQuery]);
+  const lastErr = unscheduledRes.error || eventsRes.error;
+
   if (lastErr) {
-    const e = formatSupabaseError('site_visit_events', lastErr);
+    const e = isSupportedSchemaError(lastErr)
+      ? { status: 500, message: formatSupportedSchemaMessage('site_visit_events', lastErr) ?? 'Unsupported database schema for "site_visit_events". Apply the current portal schema.' }
+      : formatSupabaseError('site_visit_events', lastErr);
     logPortalServerError(diagnostics, {
       status: e.status,
       message: e.message,

@@ -12,7 +12,7 @@ vi.mock('@/lib/api/staffApi', async () => {
 });
 
 vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServer: {
+  supabaseServiceRole: {
     from: (...args: unknown[]) => fromMock(...args),
   },
 }));
@@ -66,28 +66,15 @@ describe('POST /api/contacts', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_contacts_create_blank');
   });
 
-  it('retries unknown-column failures and returns the created contact with diagnostics headers', async () => {
+  it('fails explicitly on schema mismatch instead of retrying with columns removed', async () => {
     const insertPayloads: Array<Record<string, unknown>> = [];
-    const singleMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        data: null,
-        error: {
-          code: 'PGRST204',
-          message: "Could not find the 'updated_at' column of 'contacts' in the schema cache",
-        },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          id: '11111111-1111-4111-8111-111111111111',
-          name: 'Alex Mason',
-          email: 'alex@example.com',
-          phone: '021',
-          created_at: '2026-04-07T00:00:00.000Z',
-          updated_at: '2026-04-07T00:00:00.000Z',
-        },
-        error: null,
-      });
+    const singleMock = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: 'PGRST204',
+        message: "Could not find the 'updated_at' column of 'contacts' in the schema cache",
+      },
+    });
     const selectMock = vi.fn(() => ({ single: singleMock }));
     const insertMock = vi.fn((payload: Record<string, unknown>) => {
       insertPayloads.push({ ...payload });
@@ -102,23 +89,16 @@ describe('POST /api/contacts', () => {
     const res = await mod.POST(
       new Request('http://localhost/api/contacts', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-request-id': 'req_contacts_create_ok' },
+        headers: { 'content-type': 'application/json', 'x-request-id': 'req_contacts_create_schema' },
         body: JSON.stringify({ displayName: 'Alex Mason', email: 'alex@example.com', phone: '021' }),
       }),
     );
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({
-      contact: {
-        id: 'ct_11111111-1111-4111-8111-111111111111',
-        displayName: 'Alex Mason',
-        email: 'alex@example.com',
-        phone: '021',
-        createdAt: '2026-04-07T00:00:00.000Z',
-        updatedAt: '2026-04-07T00:00:00.000Z',
-      },
+      error: 'Unsupported database schema for "contacts": missing required column "updated_at". Apply the current portal schema.',
     });
-    expect(insertMock).toHaveBeenCalledTimes(2);
+    expect(insertMock).toHaveBeenCalledTimes(1);
     expect(insertPayloads[0]).toEqual(
       expect.objectContaining({
         name: 'Alex Mason',
@@ -128,16 +108,7 @@ describe('POST /api/contacts', () => {
         updated_at: expect.any(String),
       }),
     );
-    expect(insertPayloads[1]).toEqual(
-      expect.objectContaining({
-        name: 'Alex Mason',
-        email: 'alex@example.com',
-        phone: '021',
-        created_at: expect.any(String),
-      }),
-    );
-    expect(insertPayloads[1]).not.toHaveProperty('updated_at');
-    expect(res.headers.get('x-portal-request-id')).toBe('req_contacts_create_ok');
+    expect(res.headers.get('x-portal-request-id')).toBe('req_contacts_create_schema');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
 });

@@ -12,6 +12,7 @@ function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_AN
   );
 }
 
+// Use this client for auth-bound server reads and writes that should honor user context.
 export async function getSupabaseServerAuth(): Promise<SupabaseClient> {
   const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
   const key = requiredEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');

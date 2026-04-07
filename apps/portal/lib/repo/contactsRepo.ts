@@ -4,6 +4,7 @@ import { nowIso } from '@/lib/utils/time';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
+import { formatSupportedSchemaMessage } from '@/lib/supabase/schemaGuard';
 
 function sortContacts(contacts: Contact[]): Contact[] {
   return contacts
@@ -28,16 +29,6 @@ function toPostgrestError(value: unknown): PostgrestErrorLike | null {
   };
 }
 
-function missingColumnFromError(error: unknown): string | null {
-  const pg = toPostgrestError(error);
-  if (!pg) return null;
-  const code = typeof pg.code === 'string' ? pg.code.trim() : '';
-  if (code !== 'PGRST204') return null;
-  const msg = typeof pg.message === 'string' ? pg.message : '';
-  const match = msg.match(/'([^']+)' column/i);
-  return match ? match[1] : null;
-}
-
 function hostSuffix(): string {
   const host = supabaseHostFromUrl(supabaseRuntimeUrl());
   return host ? ` (host: ${host})` : '';
@@ -51,7 +42,8 @@ function wrapError(table: string, error: unknown): SupabaseRepoError {
   const pg = toPostgrestError(error);
   const code = typeof pg?.code === 'string' && pg.code.trim() ? pg.code.trim() : '';
   const msg = typeof pg?.message === 'string' && pg.message.trim() ? pg.message.trim() : 'Supabase request failed';
-  const message = `Supabase ${code ? `${code}: ` : ''}${msg}${hostSuffix()}`;
+  const schemaMessage = formatSupportedSchemaMessage(table, error);
+  const message = schemaMessage ?? `Supabase ${code ? `${code}: ` : ''}${msg}${hostSuffix()}`;
   return new SupabaseRepoError(message, {
     table,
     supabaseUrl,
@@ -199,21 +191,9 @@ async function insertWithUnknownColumnRetry(
   payloadIn: Record<string, any>,
 ): Promise<{ error: any | null }> {
   const payload = { ...payloadIn };
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const { error } = await supabase.from('contacts').insert(payload).select('id').single();
-    if (!error) return { error: null };
-
-    const missing = missingColumnFromError(error);
-    if (missing && missing in payload) {
-      delete payload[missing];
-      continue;
-    }
-
-    return { error };
-  }
-
-  return { error: { message: 'Supabase insert failed after retries', code: 'CLIENT_RETRY' } };
+  const { error } = await supabase.from('contacts').insert(payload).select('id').single();
+  if (!error) return { error: null };
+  return { error };
 }
 
 async function updateWithUnknownColumnRetry(
@@ -222,19 +202,7 @@ async function updateWithUnknownColumnRetry(
   payloadIn: Record<string, any>,
 ): Promise<{ data: any | null; error: any | null }> {
   const payload = { ...payloadIn };
-
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const { data, error } = await supabase.from('contacts').update(payload).eq('id', uuid).select('*').single();
-    if (!error && data) return { data, error: null };
-
-    const missing = missingColumnFromError(error);
-    if (missing && missing in payload) {
-      delete payload[missing];
-      continue;
-    }
-
-    return { data: null, error };
-  }
-
-  return { data: null, error: { message: 'Supabase update failed after retries', code: 'CLIENT_RETRY' } };
+  const { data, error } = await supabase.from('contacts').update(payload).eq('id', uuid).select('*').single();
+  if (!error && data) return { data, error: null };
+  return { data: null, error };
 }

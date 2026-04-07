@@ -4,6 +4,8 @@ const requireStaffSession = vi.fn();
 const formatSupabaseError = vi.fn();
 const appIdFromUuid = vi.fn();
 const normalizeProjectStatus = vi.fn();
+const fromMock = vi.fn();
+const selectCalls: string[] = [];
 
 let plan: { unscheduledRes: any; eventsRes: any } | null = null;
 
@@ -61,11 +63,15 @@ vi.mock('@/src/config/salesPeople', () => ({
 }));
 
 vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServer: {
+  supabaseServiceRole: {
     from: (table: string) => {
+      fromMock(table);
       if (table !== 'site_visit_events') throw new Error(`Unexpected table ${table}`);
       return {
-        select: () => makeQueryBuilder(),
+        select: (select: string) => {
+          selectCalls.push(select);
+          return makeQueryBuilder();
+        },
       };
     },
   },
@@ -78,6 +84,8 @@ describe('GET /api/staff/v1/site-visits diagnostics', () => {
     formatSupabaseError.mockReset();
     appIdFromUuid.mockReset();
     normalizeProjectStatus.mockReset();
+    fromMock.mockReset();
+    selectCalls.length = 0;
     plan = null;
 
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
@@ -135,6 +143,11 @@ describe('GET /api/staff/v1/site-visits diagnostics', () => {
       unscheduled: [expect.objectContaining({ id: 'sv:sv-1', projectId: 'proj:proj-1' })],
       events: [],
     });
+    expect(fromMock).toHaveBeenCalledTimes(2);
+    expect(selectCalls).toHaveLength(2);
+    expect(selectCalls[0]).toContain('assigned_sales_owner_id');
+    expect(selectCalls[0]).toContain('region');
+    expect(selectCalls[0]).toContain('site_visit_priority_tier');
     expect(res.headers.get('x-portal-request-id')).toBe('req_site_visits_ok');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
@@ -155,6 +168,34 @@ describe('GET /api/staff/v1/site-visits diagnostics', () => {
     expect(res.status).toBe(503);
     await expect(res.json()).resolves.toEqual({ error: 'site visits unavailable' });
     expect(res.headers.get('x-portal-request-id')).toBe('req_site_visits_err');
+    expect(res.headers.get('server-timing')).toContain('total;dur=');
+  });
+
+  it('fails explicitly when the supported site-visits schema is missing', async () => {
+    plan = {
+      unscheduledRes: {
+        data: null,
+        error: {
+          code: 'PGRST204',
+          message: "Could not find the 'site_visit_priority_tier' column of 'projects' in the schema cache",
+        },
+      },
+      eventsRes: { data: null, error: null },
+    };
+
+    const mod = await import('./route');
+    const res = await mod.GET(
+      new Request('http://localhost/api/staff/v1/site-visits?from=2026-04-01&to=2026-04-30', {
+        headers: { 'x-request-id': 'req_site_visits_schema' },
+      }),
+    );
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Unsupported database schema for "site_visit_events": missing required column "site_visit_priority_tier". Apply the current portal schema.',
+    });
+    expect(formatSupabaseError).not.toHaveBeenCalled();
+    expect(res.headers.get('x-portal-request-id')).toBe('req_site_visits_schema');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
 });

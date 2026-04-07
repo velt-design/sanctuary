@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { supabaseServer } from '@/lib/supabaseClient';
+import { isSupportedSchemaError, missingSchemaFieldFromError } from '@/lib/supabase/schemaGuard';
 
 type SupabaseLikeError = { code?: unknown; message?: unknown };
 
@@ -16,10 +17,7 @@ export function isUniqueViolation(error: unknown): boolean {
 }
 
 export function isMissingColumnError(error: unknown): boolean {
-  const e = error as SupabaseLikeError;
-  const code = toStr(e?.code).trim();
-  const msg = toStr(e?.message).toLowerCase();
-  return code === 'PGRST204' || code === '42703' || msg.includes('does not exist') || msg.includes('schema cache');
+  return isSupportedSchemaError(error);
 }
 
 export function isUuidInputSyntaxError(error: unknown): boolean {
@@ -35,23 +33,7 @@ export function salespersonSchemaMismatchMessage(error: unknown): string | null 
 }
 
 export function missingColumnFromError(error: unknown): string | null {
-  const e = error as SupabaseLikeError;
-  const code = toStr(e?.code).trim();
-  const msg = toStr(e?.message);
-
-  if (code === 'PGRST204') {
-    const match = msg.match(/'([^']+)' column/i);
-    return match ? match[1] : null;
-  }
-
-  // Postgres: column ... does not exist
-  const pgMatch = msg.match(/column\s+([a-z0-9_\\.]+)\s+does not exist/i);
-  if (pgMatch) {
-    const dotted = pgMatch[1] || '';
-    return dotted.split('.').at(-1) ?? null;
-  }
-
-  return null;
+  return missingSchemaFieldFromError(error);
 }
 
 export function parseIso(value: unknown): string | null {

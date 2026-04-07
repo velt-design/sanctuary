@@ -12,7 +12,7 @@ vi.mock('@/lib/api/staffApi', async () => {
 });
 
 vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServer: {
+  supabaseServiceRole: {
     from: (...args: unknown[]) => fromMock(...args),
   },
 }));
@@ -135,6 +135,40 @@ describe('PATCH /api/contacts/[contactId]', () => {
       }),
     );
     expect(res.headers.get('x-portal-request-id')).toBe('req_contacts_patch_ok');
+    expect(res.headers.get('server-timing')).toContain('total;dur=');
+  });
+
+  it('fails explicitly on schema mismatch instead of retrying with columns removed', async () => {
+    const singleMock = vi.fn().mockResolvedValue({
+      data: null,
+      error: {
+        code: 'PGRST204',
+        message: "Could not find the 'updated_at' column of 'contacts' in the schema cache",
+      },
+    });
+    const selectMock = vi.fn(() => ({ single: singleMock }));
+    const eqMock = vi.fn(() => ({ select: selectMock }));
+    const updateMock = vi.fn(() => ({ eq: eqMock }));
+    fromMock.mockImplementation((table: string) => {
+      if (table !== 'contacts') throw new Error(`Unexpected table ${table}`);
+      return { update: updateMock };
+    });
+
+    const mod = await import('./route');
+    const res = await mod.PATCH(
+      new Request('http://localhost/api/contacts/ct_11111111-1111-4111-8111-111111111111', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', 'x-request-id': 'req_contacts_patch_schema' },
+        body: JSON.stringify({ email: 'alex@example.com' }),
+      }),
+      { params: Promise.resolve({ contactId: 'ct_11111111-1111-4111-8111-111111111111' }) },
+    );
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Unsupported database schema for "contacts": missing required column "updated_at". Apply the current portal schema.',
+    });
+    expect(res.headers.get('x-portal-request-id')).toBe('req_contacts_patch_schema');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
 });
