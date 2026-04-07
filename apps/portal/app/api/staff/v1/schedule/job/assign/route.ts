@@ -1,7 +1,9 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitAssignJob } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -25,11 +27,12 @@ function tempId(prefix: string): string {
 }
 
 export async function POST(req: Request) {
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/job/assign');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = parsed.body ?? {};
 
   const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : '';
@@ -37,15 +40,17 @@ export async function POST(req: Request) {
   const positionRaw = body.position;
   const force = Boolean(body.force);
 
-  if (!jobId || !crewId) return jsonError('job_id and crew_id are required', 400);
+  if (!jobId || !crewId) return jsonError('job_id and crew_id are required', 400, diagnostics);
 
   let existingJob: any = null;
   const existingRes = await supabaseServer.from('scheduled_jobs').select('id, crew_id, forecast_duration_days').eq('job_id', jobId).maybeSingle();
   if (existingRes.error) {
     if (isMissingSchemaError(existingRes.error)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: existingRes.error });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load scheduled job', 500);
+    logPortalServerError(diagnostics, { status: 500, message: 'Failed to load scheduled job', error: existingRes.error });
+    return jsonError('Failed to load scheduled job', 500, diagnostics);
   }
   existingJob = existingRes.data ?? null;
 
@@ -56,13 +61,15 @@ export async function POST(req: Request) {
     const projectRes = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', jobId).maybeSingle();
     if (projectRes.error) {
       if (isMissingSchemaError(projectRes.error)) {
-        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+        logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: projectRes.error });
+        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
       }
-      return jsonError('Failed to load project', 500);
+      logPortalServerError(diagnostics, { status: 500, message: 'Failed to load project', error: projectRes.error });
+      return jsonError('Failed to load project', 500, diagnostics);
     }
-    if (!projectRes.data) return jsonError('Project not found', 404);
+    if (!projectRes.data) return jsonError('Project not found', 404, diagnostics);
     if (!isSchedulingReadyProjectStatus(projectRes.data.pipeline_stage)) {
-      return jsonError('Only deposit-stage projects can be scheduled.', 409);
+      return jsonError('Only deposit-stage projects can be scheduled.', 409, diagnostics);
     }
 
     const estimatesRes = await supabaseServer
@@ -71,9 +78,11 @@ export async function POST(req: Request) {
       .eq('project_id', jobId);
     if (estimatesRes.error) {
       if (isMissingSchemaError(estimatesRes.error)) {
-        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+        logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: estimatesRes.error });
+        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
       }
-      return jsonError('Failed to load estimates', 500);
+      logPortalServerError(diagnostics, { status: 500, message: 'Failed to load estimates', error: estimatesRes.error });
+      return jsonError('Failed to load estimates', 500, diagnostics);
     }
     const estimates = Array.isArray(estimatesRes.data) ? estimatesRes.data : [];
     const latest = getLatestSchedulableEstimate(estimates as any);
@@ -85,20 +94,25 @@ export async function POST(req: Request) {
     ctx = await loadScheduleContext({ today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: err });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load schedule data', 500);
+    logPortalServerError(diagnostics, { status: 500, message: 'Failed to load schedule data', error: err });
+    return jsonError('Failed to load schedule data', 500, diagnostics);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404);
+  if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
 
   const existingItem = existingJob ? crewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingJob?.id) : null;
-  if (existingItem && !isMove) return jsonError('Job is already scheduled in this crew', 409);
+  if (existingItem && !isMove) return jsonError('Job is already scheduled in this crew', 409, diagnostics);
 
   const jobRecordId = existingJob?.id ?? tempId('temp_job');
+  const existingJobModel = existingJob ? crewCtx.jobs.find((job) => job.id === existingJob.id) ?? ctx.jobs.find((job) => job.id === existingJob.id) ?? null : null;
   const newJob = existingJob
-    ? crewCtx.jobs.find((job) => job.id === existingJob.id) ?? null
+    ? existingJobModel
+      ? { ...existingJobModel, crewId }
+      : null
     : {
         id: jobRecordId,
         jobId,
@@ -115,7 +129,14 @@ export async function POST(req: Request) {
         daysRemaining: null,
       };
 
-  const jobs = newJob && !existingJob ? [...crewCtx.jobs, newJob] : crewCtx.jobs.map((job) => (job.id === newJob?.id ? (newJob as any) : job));
+  const jobs =
+    newJob && !existingJob
+      ? [...crewCtx.jobs, newJob]
+      : newJob
+        ? crewCtx.jobs.some((job) => job.id === newJob.id)
+          ? crewCtx.jobs.map((job) => (job.id === newJob.id ? (newJob as any) : job))
+          : [...crewCtx.jobs, newJob]
+        : crewCtx.jobs;
   const position = typeof positionRaw === 'number' && Number.isFinite(positionRaw) ? Math.trunc(positionRaw) : crewCtx.items.length;
   const newItem = {
     id: tempId('temp_item'),
@@ -146,10 +167,26 @@ export async function POST(req: Request) {
     calendar: ctx.calendar,
   });
 
+  let sourceCrewId: string | null = null;
+  let sourceFormatted: ReturnType<typeof formatCrewScheduleBlocks> | null = null;
+  let sourceItemId: string | null = null;
+  let sourcePositions: Array<{ id: string; position: number }> = [];
+  let sourceForecastUpdates: Array<{ id: string; forecast_start: string | null; forecast_end_exclusive: string | null; forecast_duration_days: number }> = [];
+
   if (isMove && existingJob?.crew_id) {
     const oldCrewId = String(existingJob.crew_id);
+    sourceCrewId = oldCrewId;
     const oldCrewCtx = buildCrewContext(ctx, oldCrewId);
-    if (!oldCrewCtx) return jsonError('Source crew not found', 404);
+    if (!oldCrewCtx) return jsonError('Source crew not found', 404, diagnostics);
+    sourceItemId = oldCrewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingJob.id)?.id ?? null;
+    if (!sourceItemId) {
+      logPortalServerError(diagnostics, {
+        status: 500,
+        message: 'Failed to assign scheduled job',
+        extra: { scheduledJobId: String(existingJob.id), reason: 'missing_source_queue_item' },
+      });
+      return jsonError('Failed to assign scheduled job', 500, diagnostics);
+    }
     const oldItems = removeItem(oldCrewCtx.items, (item) => item.itemType === 'job' && item.jobId === existingJob.id);
     const oldJobs = oldCrewCtx.jobs.filter((job) => job.id !== existingJob.id);
     const oldAfter = recomputeForCrew({
@@ -170,64 +207,61 @@ export async function POST(req: Request) {
       calendar: ctx.calendar,
     });
     impacts = [...impacts, ...oldImpacts];
+    sourcePositions = applyScheduleItemPositions(oldItems);
+    sourceForecastUpdates = oldAfter.job_updates;
+    sourceFormatted = formatCrewScheduleBlocks({
+      crewRow: oldCrewCtx.crewRow,
+      recompute: oldAfter,
+      jobsById: new Map(oldJobs.map((job) => [job.id, job])),
+      downtimesById: oldCrewCtx.downtimesById,
+    });
   }
 
   if (impacts.length && !force) {
-    return jsonOk({ requires_confirmation: true, impacts });
+    return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  let sourceCrewId: string | null = null;
-  let sourceFormatted: ReturnType<typeof formatCrewScheduleBlocks> | null = null;
-
-  let scheduledJobId = existingJob?.id ?? null;
-  if (!existingJob) {
-    const insertRes = await supabaseServer
-      .from('scheduled_jobs')
-      .insert({
-        job_id: jobId,
-        crew_id: crewId,
-        mode: 'floating',
-        forecast_duration_days: durationDays,
-        status: 'not_started',
-      } as any)
-      .select('id')
-      .single();
-    if (insertRes.error) return jsonError('Failed to create scheduled job', 500);
-    scheduledJobId = insertRes.data?.id ?? null;
-  }
-
-  if (!scheduledJobId) return jsonError('Failed to resolve scheduled job id', 500);
-
-  let newScheduleItemId: string | null = null;
-  const finalizedItems = items.map((item) => (item.id === newItem.id ? { ...item, jobId: scheduledJobId } : item));
-
-  for (const item of finalizedItems) {
-    if (item.id === newItem.id) {
-      const insertItemRes = await supabaseServer
-        .from('crew_schedule_items')
-        .insert({
-          crew_id: crewId,
-          item_type: 'job',
-          job_id: scheduledJobId,
-          position: item.position,
-        } as any)
-        .select('id')
-        .single();
-      if (insertItemRes.error) return jsonError('Failed to insert schedule item', 500);
-      newScheduleItemId = insertItemRes.data?.id ?? null;
-    } else {
-      await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-    }
-  }
-
-  const updatedJobs = jobs.map((job) => (job.id === jobRecordId ? { ...job, id: scheduledJobId! } : job));
-  const updatedItems = finalizedItems.map((item) => {
-    if (item.id === newItem.id && newScheduleItemId) {
-      return { ...item, id: newScheduleItemId, jobId: scheduledJobId! };
-    }
-    return item.jobId === jobRecordId ? { ...item, jobId: scheduledJobId! } : item;
+  const commitRes = await commitAssignJob({
+    diagnostics,
+    targetCrewId: crewId,
+    targetInsertPosition: position,
+    targetPositions: applyScheduleItemPositions(items.filter((item) => item.id !== newItem.id)),
+    targetForecastUpdates: afterRecompute.job_updates,
+    ...(existingJob
+      ? { scheduledJobId: String(existingJob.id) }
+      : { jobId, forecastDurationDays: durationDays }),
+    ...(isMove && sourceCrewId && sourceItemId
+      ? {
+          move: {
+            sourceCrewId,
+            sourceJobItemId: sourceItemId,
+            sourcePositions,
+            sourceForecastUpdates,
+          },
+        }
+      : null),
   });
-  let finalRecompute = recomputeForCrew({
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+
+  const scheduledJobId = commitRes.data.scheduled_job_id;
+  const newScheduleItemId = commitRes.data.schedule_item_id;
+
+  const updatedJobs = jobs.map((job) =>
+    job.id === jobRecordId
+      ? {
+          ...job,
+          id: scheduledJobId,
+          crewId,
+        }
+      : job,
+  );
+  const updatedItems = items.map((item) => {
+    if (item.id === newItem.id) {
+      return { ...item, id: newScheduleItemId, jobId: scheduledJobId };
+    }
+    return item.jobId === jobRecordId ? { ...item, jobId: scheduledJobId } : item;
+  });
+  const finalRecompute = recomputeForCrew({
     crewRow: crewCtx.crewRow,
     items: updatedItems,
     jobs: updatedJobs,
@@ -235,46 +269,6 @@ export async function POST(req: Request) {
     calendar: ctx.calendar,
     today: ctx.today,
   });
-
-  await applyJobForecastUpdates(finalRecompute.job_updates);
-
-  if (isMove && existingJob?.crew_id) {
-    const oldCrewId = String(existingJob.crew_id);
-    sourceCrewId = oldCrewId;
-    await supabaseServer.from('scheduled_jobs').update({ crew_id: crewId } as any).eq('id', scheduledJobId);
-    await supabaseServer.from('crew_schedule_items').delete().eq('job_id', scheduledJobId).eq('crew_id', oldCrewId);
-
-    const oldCrewCtx = buildCrewContext(ctx, oldCrewId);
-    if (oldCrewCtx) {
-      const oldItems = removeItem(oldCrewCtx.items, (item) => item.itemType === 'job' && item.jobId === scheduledJobId);
-      for (const item of oldItems) {
-        await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-      }
-      const oldAfter = recomputeForCrew({
-        crewRow: oldCrewCtx.crewRow,
-        items: oldItems,
-        jobs: oldCrewCtx.jobs.filter((job) => job.id !== scheduledJobId),
-        downtimes: oldCrewCtx.downtimes,
-        calendar: ctx.calendar,
-        today: ctx.today,
-      });
-      await applyJobForecastUpdates(oldAfter.job_updates);
-      sourceFormatted = formatCrewScheduleBlocks({
-        crewRow: oldCrewCtx.crewRow,
-        recompute: oldAfter,
-        jobsById: new Map(oldCrewCtx.jobs.filter((job) => job.id !== scheduledJobId).map((job) => [job.id, job])),
-        downtimesById: oldCrewCtx.downtimesById,
-      });
-    }
-    finalRecompute = recomputeForCrew({
-      crewRow: crewCtx.crewRow,
-      items: updatedItems,
-      jobs: updatedJobs.map((job) => (job.id === scheduledJobId ? { ...job, crewId } : job)),
-      downtimes: crewCtx.downtimes,
-      calendar: ctx.calendar,
-      today: ctx.today,
-    });
-  }
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
@@ -295,5 +289,5 @@ export async function POST(req: Request) {
           source_schedule: sourceFormatted,
         }
       : null),
-  });
+  }, 200, diagnostics);
 }

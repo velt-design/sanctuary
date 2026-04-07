@@ -73,6 +73,13 @@ type PlannedCommitmentHistoryInput = {
   changedBy: string | null;
 };
 
+type AssignMoveInput = {
+  sourceCrewId: string;
+  sourceJobItemId: string;
+  sourcePositions: PositionInput[];
+  sourceForecastUpdates: ForecastUpdateInput[];
+};
+
 export type MarkDoneFinishEarlyInput = {
   crewId: string;
   freedDays: number;
@@ -85,6 +92,22 @@ export type MarkDoneCommandResult = {
   updated_job: string;
   created_downtime_id: string | null;
   created_item_id: string | null;
+  updated_items: number;
+  updated_forecasts: number;
+};
+
+export type AssignJobCommandResult = {
+  scheduled_job_id: string;
+  schedule_item_id: string;
+  source_crew_id: string | null;
+  updated_target_items: number;
+  updated_source_items: number;
+  updated_forecasts: number;
+};
+
+export type CreateDowntimeCommandResult = {
+  downtime_id: string;
+  schedule_item_id: string;
   updated_items: number;
   updated_forecasts: number;
 };
@@ -161,6 +184,69 @@ export async function commitScheduleReorder(input: {
       p_forecast_updates: input.forecastUpdates,
     },
     failureMessage: 'Failed to reorder schedule items',
+  });
+}
+
+export async function commitAssignJob(input: {
+  diagnostics: PortalServerLogContext;
+  targetCrewId: string;
+  targetInsertPosition: number;
+  targetPositions: PositionInput[];
+  targetForecastUpdates: ForecastUpdateInput[];
+  scheduledJobId?: string;
+  jobId?: string;
+  forecastDurationDays?: number;
+  move?: AssignMoveInput | null;
+}): Promise<ScheduleCommandResult<AssignJobCommandResult>> {
+  return runScheduleRpcCommand({
+    diagnostics: input.diagnostics,
+    fn: 'schedule_v2_assign_job',
+    args: {
+      p_target_crew_id: input.targetCrewId,
+      p_target_insert_position: input.targetInsertPosition,
+      p_target_positions: input.targetPositions,
+      p_target_forecast_updates: input.targetForecastUpdates,
+      p_assignment: jsonbWithoutUndefined({
+        scheduled_job_id: input.scheduledJobId,
+        job_id: input.jobId,
+        forecast_duration_days: input.forecastDurationDays,
+      }),
+      p_move: input.move
+        ? {
+            source_crew_id: input.move.sourceCrewId,
+            source_job_item_id: input.move.sourceJobItemId,
+            source_positions: input.move.sourcePositions,
+            source_forecast_updates: input.move.sourceForecastUpdates,
+          }
+        : null,
+    },
+    failureMessage: 'Failed to assign scheduled job',
+  });
+}
+
+export async function commitCreateDowntime(input: {
+  diagnostics: PortalServerLogContext;
+  crewId: string;
+  durationDays: number;
+  reason: string;
+  note: string | null;
+  insertPosition: number;
+  positions: PositionInput[];
+  forecastUpdates: ForecastUpdateInput[];
+}): Promise<ScheduleCommandResult<CreateDowntimeCommandResult>> {
+  return runScheduleRpcCommand({
+    diagnostics: input.diagnostics,
+    fn: 'schedule_v2_create_downtime',
+    args: {
+      p_crew_id: input.crewId,
+      p_duration_days: input.durationDays,
+      p_reason: input.reason,
+      p_note: input.note,
+      p_insert_position: input.insertPosition,
+      p_positions: input.positions,
+      p_forecast_updates: input.forecastUpdates,
+    },
+    failureMessage: 'Failed to create downtime',
   });
 }
 
