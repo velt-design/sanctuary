@@ -40,6 +40,7 @@ import { buildScheduleBars } from '@/lib/scheduling/engine';
 import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { addDaysYmd, diffDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { recomputeCrewSchedule, type CrewDowntime, type CrewScheduleItem, type ScheduledJob as RecomputeScheduledJob } from '@/lib/scheduling/recompute';
+import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import PageHeader from '@/components/layout/PageHeader';
@@ -75,7 +76,6 @@ import {
   buildGanttAxis,
   GANTT_WEEKEND_WEIGHT,
   snapAxisDayDeltaForPixelDelta,
-  todayYmdInTimeZone,
 } from './ganttAxis';
 import type { ScheduleActionModalsProps, ScheduleModalState } from './ScheduleActionModals';
 import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
@@ -163,7 +163,7 @@ const GANTT_LABEL_MIN_PX = 220;
 const GANTT_LABEL_DEFAULT_PX = 260;
 const GANTT_LABEL_MAX_PX = 420;
 const GANTT_BAR_LABEL_MIN_PX = 120;
-const GANTT_TZ = 'Pacific/Auckland';
+const GANTT_TZ = SCHEDULE_TIME_ZONE;
 const GANTT_DENSITY_STORAGE_KEY = 'sp.schedule.ganttDensity';
 const GANTT_LABEL_WIDTH_STORAGE_KEY = 'sp.schedule.ganttLabelWidth';
 const USE_SCHEDULE_V2 = true;
@@ -1754,7 +1754,13 @@ export function buildScheduleBoardModel(input: {
   };
 }
 
-export default function ScheduleClient() {
+export default function ScheduleClient({
+  initialScheduleMode = USE_SCHEDULE_V2 ? 'v2' : 'legacy',
+  initialV2Snapshot: initialV2SnapshotProp = null,
+}: {
+  initialScheduleMode?: 'v2' | 'legacy';
+  initialV2Snapshot?: ScheduleV2Snapshot | null;
+}) {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1772,18 +1778,14 @@ export default function ScheduleClient() {
   const installersRef = useRef<Installer[]>([]);
   const projectsRef = useRef<ScheduleProjectSummary[]>([]);
 
-  const today = useMemo(() => {
-    const ymd = todayYmdInTimeZone(GANTT_TZ);
-    if (isYmd(ymd)) return ymd;
-    const utcYmd = todayYmdInTimeZone('UTC');
-    return isYmd(utcYmd) ? utcYmd : '1970-01-01';
-  }, []);
+  const today = useMemo(() => resolveScheduleTodayYmd(), []);
 
   const supabaseHost = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()), []);
   const hostKey = supabaseHost || 'unknown';
 
   const v2SnapshotKey = useMemo(() => qk.schedule.board(hostKey, today), [hostKey, today]);
-  const initialV2Snapshot = USE_SCHEDULE_V2 ? (queryClient.getQueryData<ScheduleV2Snapshot>(v2SnapshotKey) ?? null) : null;
+  const cachedV2Snapshot = USE_SCHEDULE_V2 ? (queryClient.getQueryData<ScheduleV2Snapshot>(v2SnapshotKey) ?? null) : null;
+  const initialV2Snapshot = USE_SCHEDULE_V2 ? initialV2SnapshotProp ?? cachedV2Snapshot : null;
   if (initialV2Snapshot) hydratedFromCacheRef.current = true;
   const v2GeneratedAtRef = useRef<string>(initialV2Snapshot?.generatedAt ?? '');
   const v2MutationBufferRef = useRef<Array<{ run: () => Promise<any>; resolve: (result: any) => void; reject: (error: unknown) => void }>>([]);
@@ -1801,7 +1803,7 @@ export default function ScheduleClient() {
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(() => initialV2Snapshot?.scheduleItems ?? []);
   const [estimatesById, setEstimatesById] = useState<Map<string, Estimate>>(() => new Map());
   const [unscheduledJobsSeed, setUnscheduledJobsSeed] = useState<SchedulableJob[]>(() => mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs));
-  const [scheduleMode, setScheduleMode] = useState<'v2' | 'legacy'>(USE_SCHEDULE_V2 ? 'v2' : 'legacy');
+  const [scheduleMode, setScheduleMode] = useState<'v2' | 'legacy'>(initialScheduleMode);
   const [scheduleConflicts, setScheduleConflicts] = useState<any[]>(() => initialV2Snapshot?.conflicts ?? []);
   const [nextAvailableByInstallerId, setNextAvailableByInstallerId] = useState<Map<string, string>>(
     () => new Map(Object.entries(initialV2Snapshot?.nextAvailableByInstallerId ?? {})),
@@ -2379,6 +2381,7 @@ export default function ScheduleClient() {
   const v2SnapshotQuery = useQuery({
     ...scheduleV2SnapshotQueryOptions(hostKey, today),
     enabled: scheduleMode === 'v2' && view !== 'site_visits',
+    initialData: scheduleMode === 'v2' ? initialV2Snapshot ?? undefined : undefined,
     retry: (failureCount, error) => !(error instanceof ApiError && error.status === 501) && failureCount < 1,
   });
 

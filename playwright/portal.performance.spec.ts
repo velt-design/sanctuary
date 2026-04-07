@@ -116,7 +116,7 @@ test('captures portal route timing metrics', async ({ page }) => {
   await measureRoute(page, '/dashboard', async () => page.getByRole('heading', { name: 'Dashboard' }));
   await measureRoute(page, '/staff/projects', async () => page.getByRole('heading', { name: 'Projects' }));
   await measureRoute(page, '/staff/contacts', async () => page.getByRole('heading', { name: 'Contacts' }));
-  await measureRoute(page, '/staff/schedule', async () => page.getByRole('heading', { name: 'Schedule' }));
+  await measureRoute(page, '/staff/schedule', async () => page.getByRole('button', { name: /Collapse unscheduled panel|Expand unscheduled panel/ }));
   await measureScheduleBoardInteraction(page);
 });
 

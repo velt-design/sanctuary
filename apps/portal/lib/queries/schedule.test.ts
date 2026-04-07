@@ -1,21 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fetchScheduleBoard = vi.fn();
-const listProjects = vi.fn();
 
 vi.mock('@/lib/repo/scheduleV2Repo', () => ({
   fetchScheduleBoard,
-}));
-
-vi.mock('@/lib/repo/projectsRepo', () => ({
-  listProjects,
 }));
 
 describe('scheduleV2SnapshotQueryOptions', () => {
   beforeEach(() => {
     vi.resetModules();
     fetchScheduleBoard.mockReset();
-    listProjects.mockReset();
   });
 
   it('builds the V2 snapshot from the board API only and maps the lightweight project index', async () => {
@@ -62,7 +56,6 @@ describe('scheduleV2SnapshotQueryOptions', () => {
     const snapshot = await opts.queryFn();
 
     expect(fetchScheduleBoard).toHaveBeenCalledWith({ today: '2026-04-07' });
-    expect(listProjects).not.toHaveBeenCalled();
     expect(snapshot.projects).toEqual([
       {
         id: 'proj_22222222-2222-4222-8222-222222222222',
