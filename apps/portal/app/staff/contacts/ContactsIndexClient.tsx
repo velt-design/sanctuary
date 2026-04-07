@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createContact, updateContact } from '@/lib/repo/contactsRepo';
 import type { Contact } from '@/lib/types/contact';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -15,6 +14,7 @@ import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import { apiJson } from '@/lib/repo/apiClient';
 import stateStyles from '@/components/page-state/PageState.module.css';
 
 export default function ContactsIndexClient({ initialContacts }: { initialContacts: Contact[] }) {
@@ -335,10 +335,13 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
 
                     for (const d of importPlan.decisions) {
                       if (d.action === 'create') {
-                        await createContact({
-                          displayName: d.row.displayName,
-                          email: d.row.email ?? '',
-                          phone: d.row.phone ?? '',
+                        await apiJson<{ contact: Contact }>('/api/contacts', {
+                          method: 'POST',
+                          body: JSON.stringify({
+                            displayName: d.row.displayName,
+                            email: d.row.email ?? '',
+                            phone: d.row.phone ?? '',
+                          }),
                         });
                         created += 1;
                       } else if (d.action === 'merge' && d.match) {
@@ -349,13 +352,16 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
                         if (!existing.email.trim() && d.row.email.trim()) patch.email = d.row.email;
                         if (!existing.phone.trim() && d.row.phone.trim()) patch.phone = d.row.phone;
                         if (Object.keys(patch).length) {
-                          await updateContact(existing.id, patch);
+                          await apiJson<{ contact: Contact }>(`/api/contacts/${encodeURIComponent(existing.id)}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify(patch),
+                          });
                           merged += 1;
                         }
                       }
                     }
 
-                    await queryClient.invalidateQueries({ queryKey: ['contacts'] });
+                    await queryClient.invalidateQueries({ queryKey: contactsListQueryOptions(host).queryKey });
                     setImportOpen(false);
                     setImportPayload(null);
                     setImportFilename('');

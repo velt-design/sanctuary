@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { createContact, listContacts } from '@/lib/repo/contactsRepo';
+import { listContacts } from '@/lib/repo/contactsRepo';
 import { createProject } from '@/lib/repo/projectsRepo';
 import type { Contact } from '@/lib/types/contact';
 import styles from '../projects.module.css';
@@ -31,6 +31,13 @@ type ContactDraft = {
 function isValidOptionalEmail(email: string): boolean {
   if (!email.trim()) return true;
   return email.includes('@');
+}
+
+function upsertCreatedContact(list: Contact[], contact: Contact): Contact[] {
+  const next = list.filter((entry) => entry.id !== contact.id);
+  next.push(contact);
+  next.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
+  return next;
 }
 
 export default function ProjectCreateClient() {
@@ -251,13 +258,16 @@ export default function ProjectCreateClient() {
                           setSubmitError(null);
                           return (async () => {
                             try {
-                              const created = await createContact({
-                              displayName: contactDraft.displayName.trim(),
-                              email: contactDraft.email.trim(),
-                              phone: contactDraft.phone.trim(),
+                              const res = await apiJson<{ contact: Contact }>('/api/contacts', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                  displayName: contactDraft.displayName.trim(),
+                                  email: contactDraft.email.trim(),
+                                  phone: contactDraft.phone.trim(),
+                                }),
                               });
-                              setContacts(await listContacts());
-                              setDraft((prev) => ({ ...prev, contactId: created.id }));
+                              setContacts((prev) => upsertCreatedContact(prev, res.contact));
+                              setDraft((prev) => ({ ...prev, contactId: res.contact.id }));
                               setNewContactOpen(false);
                               setContactDraft({ displayName: '', email: '', phone: '' });
                               toast.success('Contact created.');

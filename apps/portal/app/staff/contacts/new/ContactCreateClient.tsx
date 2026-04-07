@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
-import { createContact } from '@/lib/repo/contactsRepo';
+import { apiJson } from '@/lib/repo/apiClient';
+import type { Contact } from '@/lib/types/contact';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import SupabaseEnvStatus from '@/components/diagnostics/SupabaseEnvStatus';
 import PageHeader from '@/components/layout/PageHeader';
@@ -53,12 +54,15 @@ export default function ContactCreateClient() {
               if (!canSubmit) return;
               setError(null);
               try {
-                const contact = await createContact({
-                  displayName: draft.displayName.trim(),
-                  email: draft.email.trim(),
-                  phone: draft.phone.trim(),
+                const res = await apiJson<{ contact: Contact }>('/api/contacts', {
+                  method: 'POST',
+                  body: JSON.stringify({
+                    displayName: draft.displayName.trim(),
+                    email: draft.email.trim(),
+                    phone: draft.phone.trim(),
+                  }),
                 });
-                router.push(`/staff/contacts/${encodeURIComponent(contact.id)}`);
+                router.push(`/staff/contacts/${encodeURIComponent(res.contact.id)}`);
               } catch (err) {
                 const msg = err instanceof Error ? err.message : 'Failed to create contact';
                 setError(msg);
