@@ -44,7 +44,6 @@ jobs:
     name: Portal Performance Report
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    continue-on-error: true
     env:
       CI: true
       PORTAL_TEST_EMAIL: ${{ secrets.PORTAL_TEST_EMAIL }}
@@ -87,9 +86,17 @@ jobs:
           const lines = [
             '## Portal Route Timings',
             '',
-            '| Route | Shell visible | Content visible |',
-            '| --- | ---: | ---: |',
-            ...routes.map((route) => `| ${route.route} | ${route.shellVisibleMs}ms | ${route.contentVisibleMs}ms |`),
+            '| Route | Shell visible | Shell budget | Content visible | Content budget | Interaction | Interaction budget | Pass |',
+            '| --- | ---: | ---: | ---: | ---: | ---: | ---: | :---: |',
+            ...routes.map((route) => {
+              const shellBudget = typeof route.shellVisibleMsMax === 'number' && route.shellVisibleMsMax > 0 ? `${route.shellVisibleMsMax}ms` : '—';
+              const contentBudget =
+                typeof route.contentVisibleMsMax === 'number' && route.contentVisibleMsMax > 0 ? `${route.contentVisibleMsMax}ms` : '—';
+              const interaction = typeof route.interactionMs === 'number' ? `${route.interactionMs}ms` : '—';
+              const interactionBudget = typeof route.interactionMsMax === 'number' ? `${route.interactionMsMax}ms` : '—';
+              const label = route.interactionLabel ? `${route.route} (${route.interactionLabel})` : route.route;
+              return `| ${label} | ${route.shellVisibleMs}ms | ${shellBudget} | ${route.contentVisibleMs}ms | ${contentBudget} | ${interaction} | ${interactionBudget} | ${route.withinBudget ? 'PASS' : 'FAIL'} |`;
+            }),
           ];
 
           fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);

@@ -24,7 +24,7 @@
     "test:marketing": "vitest run apps/marketing",
     "test:portal": "vitest run apps/portal",
     "test:portal:smoke": "playwright test playwright/portal.auth-routing.spec.ts --project=portal-chromium",
-    "test:portal:performance": "playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
+    "test:portal:performance": "npx playwright test playwright/portal.performance.spec.ts --project=portal-chromium",
     "test:watch": "vitest",
     "images:optimize": "node scripts/optimize-images.js",
     "videos:optimize": "node scripts/optimize-videos.mjs",
