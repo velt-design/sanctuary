@@ -4,7 +4,6 @@ import { logPortalServerError, type PortalServerLogContext } from '@/lib/api/rou
 import { supabaseServer } from '@/lib/supabaseClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
-import { ensureInvoiceRetryScheduledFromLatestFailure } from '@/lib/invoices/server';
 import {
   isManualTaskKey,
   normalizePipelineStageKey,
@@ -328,23 +327,6 @@ export async function getProjectPageSnapshot(
     : Boolean(acceptedQuoteRes?.data);
   const hasJobPacks = Boolean(jobPackRes?.data);
   const hasOpenDepositInvoice = Boolean(openInvoiceRes?.data);
-  const openInvoiceId = hasOpenDepositInvoice && typeof (openInvoiceRes?.data as any)?.id === 'string'
-    ? String((openInvoiceRes?.data as any).id)
-    : null;
-
-  if (openInvoiceId) {
-    void ensureInvoiceRetryScheduledFromLatestFailure(openInvoiceId, null).catch((error) => {
-      logPortalServerError(
-        diagnostics ?? { route: 'project_snapshot', method: 'GET' },
-        {
-          event: 'project_snapshot.invoice_retry_schedule_failed',
-          message: 'failed to schedule invoice retry',
-          error,
-          extra: { openInvoiceId },
-        },
-      );
-    });
-  }
 
   const manualCompleted = new Set<TaskKey>();
   for (const row of Array.isArray(manualRes?.data) ? manualRes.data : []) {

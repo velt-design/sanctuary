@@ -30,99 +30,122 @@ describe('scheduleCommands', () => {
     isMissingSchemaError.mockReturnValue(false);
   });
 
-  it('passes unassign payloads through to the RPC', async () => {
-    rpc.mockResolvedValueOnce({ data: { deleted_job: 'job-1' }, error: null });
+  it('passes job patch payloads through to the RPC', async () => {
+    rpc.mockResolvedValueOnce({ data: { updated_job: 'job-1', updated_forecasts: 1 }, error: null });
 
     const mod = await import('./scheduleCommands');
-    const res = await mod.commitScheduleUnassign({
-      diagnostics: { requestId: 'req-1', route: '/api/staff/v1/schedule/job/unassign', method: 'POST', startedAt: 1 },
+    const res = await mod.commitScheduleJobPatch({
+      diagnostics: { requestId: 'req-1', route: '/api/staff/v1/schedule/job/pin', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
-      jobItemId: 'item-1',
-      positions: [{ id: 'item-2', position: 0 }],
-      forecastUpdates: [{ id: 'job-2', forecast_start: '2026-04-10', forecast_end_exclusive: '2026-04-11', forecast_duration_days: 1 }],
+      jobPatch: { mode: 'pinned', forecast_start: '2026-04-15' },
+      forecastUpdates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
+      failureMessage: 'Failed to pin scheduled job',
     });
 
-    expect(res).toEqual({ ok: true, data: { deleted_job: 'job-1' } });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_unassign_job', {
+    expect(res).toEqual({ ok: true, data: { updated_job: 'job-1', updated_forecasts: 1 } });
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_apply_job_patch', {
       p_scheduled_job_id: 'job-1',
-      p_job_item_id: 'item-1',
-      p_positions: [{ id: 'item-2', position: 0 }],
-      p_forecast_updates: [{ id: 'job-2', forecast_start: '2026-04-10', forecast_end_exclusive: '2026-04-11', forecast_duration_days: 1 }],
+      p_job_patch: { mode: 'pinned', forecast_start: '2026-04-15' },
+      p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
     });
   });
 
-  it('passes downtime delete payloads through to the RPC', async () => {
-    rpc.mockResolvedValueOnce({ data: { deleted_downtime: 'dt-1' }, error: null });
+  it('passes planned commitment payloads through to the RPC', async () => {
+    rpc.mockResolvedValueOnce({ data: { updated_job: 'job-1', history_inserted: true, updated_forecasts: 1 }, error: null });
 
     const mod = await import('./scheduleCommands');
-    const res = await mod.commitDeleteDowntime({
-      diagnostics: { requestId: 'req-2', route: '/api/staff/v1/schedule/downtime/delete', method: 'POST', startedAt: 1 },
-      downtimeId: 'dt-1',
-      downtimeItemId: 'item-1',
-      positions: [{ id: 'item-2', position: 0 }],
-      forecastUpdates: [{ id: 'job-2', forecast_start: '2026-04-10', forecast_end_exclusive: '2026-04-11', forecast_duration_days: 1 }],
+    const res = await mod.commitPlannedCommitment({
+      diagnostics: { requestId: 'req-2', route: '/api/staff/v1/schedule/job/lock', method: 'POST', startedAt: 1 },
+      scheduledJobId: 'job-1',
+      jobPatch: {
+        mode: 'pinned',
+        planned_commitment_type: 'fixed_date',
+        planned_week_start: null,
+        planned_start: '2026-04-15',
+        planned_duration_days: 2,
+        planned_flex_days: 1,
+        planned_locked_at: '2026-04-01T00:00:00.000Z',
+        planned_locked_by: 'ops@example.com',
+        client_update_status: 'none',
+        client_update_needed_at: null,
+        client_update_ack_at: null,
+        client_update_ack_by: null,
+        forecast_start: '2026-04-15',
+      },
+      history: {
+        eventType: 'lock',
+        commitmentType: 'fixed_date',
+        plannedWeekStart: null,
+        plannedStart: '2026-04-15',
+        plannedDurationDays: 2,
+        plannedFlexDays: 1,
+        hardLock: true,
+        changedBy: 'ops@example.com',
+      },
+      forecastUpdates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
     });
 
-    expect(res).toEqual({ ok: true, data: { deleted_downtime: 'dt-1' } });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_delete_downtime', {
-      p_downtime_id: 'dt-1',
-      p_downtime_item_id: 'item-1',
-      p_positions: [{ id: 'item-2', position: 0 }],
-      p_forecast_updates: [{ id: 'job-2', forecast_start: '2026-04-10', forecast_end_exclusive: '2026-04-11', forecast_duration_days: 1 }],
+    expect(res).toEqual({ ok: true, data: { updated_job: 'job-1', history_inserted: true, updated_forecasts: 1 } });
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_apply_commitment', {
+      p_scheduled_job_id: 'job-1',
+      p_job_patch: {
+        mode: 'pinned',
+        planned_commitment_type: 'fixed_date',
+        planned_week_start: null,
+        planned_start: '2026-04-15',
+        planned_duration_days: 2,
+        planned_flex_days: 1,
+        planned_locked_at: '2026-04-01T00:00:00.000Z',
+        planned_locked_by: 'ops@example.com',
+        client_update_status: 'none',
+        client_update_needed_at: null,
+        client_update_ack_at: null,
+        client_update_ack_by: null,
+        forecast_start: '2026-04-15',
+      },
+      p_history: {
+        event_type: 'lock',
+        commitment_type: 'fixed_date',
+        planned_week_start: null,
+        planned_start: '2026-04-15',
+        planned_duration_days: 2,
+        planned_flex_days: 1,
+        hard_lock: true,
+        changed_by: 'ops@example.com',
+      },
+      p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
     });
   });
 
-  it('passes keep-schedule mark-done payloads through to the RPC', async () => {
-    rpc.mockResolvedValueOnce({
-      data: { updated_job: 'job-1', created_downtime_id: 'dt-1', created_item_id: 'item-1' },
-      error: null,
-    });
+  it('passes client update ack payloads through to the RPC', async () => {
+    rpc.mockResolvedValueOnce({ data: { updated_job: 'job-1', acknowledged: true }, error: null });
 
     const mod = await import('./scheduleCommands');
-    const res = await mod.commitMarkDone({
-      diagnostics: { requestId: 'req-3', route: '/api/staff/v1/schedule/job/mark-done', method: 'POST', startedAt: 1 },
+    const res = await mod.commitClientUpdateAck({
+      diagnostics: { requestId: 'req-3', route: '/api/staff/v1/schedule/job/client-update/ack', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
-      actualStart: '2026-04-09',
-      actualFinish: '2026-04-10',
-      forecastUpdates: [{ id: 'job-1', forecast_start: '2026-04-09', forecast_end_exclusive: '2026-04-10', forecast_duration_days: 1 }],
-      finishEarly: {
-        crewId: 'crew-1',
-        freedDays: 2,
-        bufferNote: 'Finish early buffer (2 working days).',
-        insertPosition: 1,
-        existingPositions: [{ id: 'item-2', position: 2 }],
-      },
+      ackAt: '2026-04-01T00:00:00.000Z',
+      ackBy: 'ops@example.com',
     });
 
-    expect(res).toEqual({
-      ok: true,
-      data: { updated_job: 'job-1', created_downtime_id: 'dt-1', created_item_id: 'item-1' },
-    });
-    expect(rpc).toHaveBeenCalledWith('schedule_v2_mark_done', {
+    expect(res).toEqual({ ok: true, data: { updated_job: 'job-1', acknowledged: true } });
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_ack_client_update', {
       p_scheduled_job_id: 'job-1',
-      p_actual_start: '2026-04-09',
-      p_actual_finish: '2026-04-10',
-      p_forecast_updates: [{ id: 'job-1', forecast_start: '2026-04-09', forecast_end_exclusive: '2026-04-10', forecast_duration_days: 1 }],
-      p_finish_early: {
-        crew_id: 'crew-1',
-        freed_days: 2,
-        buffer_note: 'Finish early buffer (2 working days).',
-        insert_position: 1,
-        existing_positions: [{ id: 'item-2', position: 2 }],
-      },
+      p_ack_at: '2026-04-01T00:00:00.000Z',
+      p_ack_by: 'ops@example.com',
     });
   });
 
   it('maps missing RPC functions to schema-not-ready', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.schedule_v2_unassign_job' } });
+    rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.schedule_v2_apply_job_patch' } });
 
     const mod = await import('./scheduleCommands');
-    const res = await mod.commitScheduleUnassign({
-      diagnostics: { requestId: 'req-4', route: '/api/staff/v1/schedule/job/unassign', method: 'POST', startedAt: 1 },
+    const res = await mod.commitScheduleJobPatch({
+      diagnostics: { requestId: 'req-4', route: '/api/staff/v1/schedule/job/pin', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
-      jobItemId: 'item-1',
-      positions: [],
+      jobPatch: { mode: 'pinned' },
       forecastUpdates: [],
+      failureMessage: 'Failed to pin scheduled job',
     });
 
     expect(res).toEqual({
@@ -133,68 +156,68 @@ describe('scheduleCommands', () => {
     expect(logPortalServerWarn).toHaveBeenCalledTimes(1);
   });
 
-  it('maps generic unassign RPC failures to a stable route message', async () => {
+  it('maps generic job patch failures to the supplied stable route message', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
 
     const mod = await import('./scheduleCommands');
-    const res = await mod.commitScheduleUnassign({
-      diagnostics: { requestId: 'req-5', route: '/api/staff/v1/schedule/job/unassign', method: 'POST', startedAt: 1 },
+    const res = await mod.commitScheduleJobPatch({
+      diagnostics: { requestId: 'req-5', route: '/api/staff/v1/schedule/job/unpin', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
-      jobItemId: 'item-1',
-      positions: [],
+      jobPatch: { mode: 'floating' },
       forecastUpdates: [],
+      failureMessage: 'Failed to unpin scheduled job',
     });
 
     expect(res).toEqual({
       ok: false,
       status: 500,
-      responseMessage: 'Failed to unassign scheduled job',
-    });
-    expect(logPortalServerError).toHaveBeenCalledTimes(1);
-  });
-
-  it('maps generic downtime delete RPC failures to a stable route message', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
-
-    const mod = await import('./scheduleCommands');
-    const res = await mod.commitDeleteDowntime({
-      diagnostics: { requestId: 'req-6', route: '/api/staff/v1/schedule/downtime/delete', method: 'POST', startedAt: 1 },
-      downtimeId: 'dt-1',
-      downtimeItemId: 'item-1',
-      positions: [],
-      forecastUpdates: [],
-    });
-
-    expect(res).toEqual({
-      ok: false,
-      status: 500,
-      responseMessage: 'Failed to delete downtime',
+      responseMessage: 'Failed to unpin scheduled job',
     });
   });
 
-  it('maps generic keep-schedule mark-done RPC failures to the buffer message', async () => {
+  it('maps generic commitment failures to a stable route message', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
 
     const mod = await import('./scheduleCommands');
-    const res = await mod.commitMarkDone({
-      diagnostics: { requestId: 'req-7', route: '/api/staff/v1/schedule/job/mark-done', method: 'POST', startedAt: 1 },
+    const res = await mod.commitPlannedCommitment({
+      diagnostics: { requestId: 'req-6', route: '/api/staff/v1/schedule/job/lock', method: 'POST', startedAt: 1 },
       scheduledJobId: 'job-1',
-      actualStart: '2026-04-09',
-      actualFinish: '2026-04-10',
-      forecastUpdates: [],
-      finishEarly: {
-        crewId: 'crew-1',
-        freedDays: 2,
-        bufferNote: 'buffer',
-        insertPosition: 1,
-        existingPositions: [{ id: 'item-2', position: 2 }],
+      jobPatch: { mode: 'pinned', planned_commitment_type: 'fixed_date' },
+      history: {
+        eventType: 'lock',
+        commitmentType: 'fixed_date',
+        plannedWeekStart: null,
+        plannedStart: '2026-04-15',
+        plannedDurationDays: 2,
+        plannedFlexDays: 1,
+        hardLock: true,
+        changedBy: 'ops@example.com',
       },
+      forecastUpdates: [],
     });
 
     expect(res).toEqual({
       ok: false,
       status: 500,
-      responseMessage: 'Failed to create finish-early buffer',
+      responseMessage: 'Failed to update planned commitment',
+    });
+  });
+
+  it('maps generic client update ack failures to a stable route message', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+
+    const mod = await import('./scheduleCommands');
+    const res = await mod.commitClientUpdateAck({
+      diagnostics: { requestId: 'req-7', route: '/api/staff/v1/schedule/job/client-update/ack', method: 'POST', startedAt: 1 },
+      scheduledJobId: 'job-1',
+      ackAt: '2026-04-01T00:00:00.000Z',
+      ackBy: 'ops@example.com',
+    });
+
+    expect(res).toEqual({
+      ok: false,
+      status: 500,
+      responseMessage: 'Failed to acknowledge client update',
     });
   });
 });

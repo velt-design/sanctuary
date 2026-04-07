@@ -10,7 +10,6 @@ import { parseContactsCsv, planContactsImport } from '@/lib/import/contactsCsv';
 import Modal from '@/components/ui/modal/Modal';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
-import ListPageSkeleton from '@/components/page-state/ListPageSkeleton';
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,7 +17,7 @@ import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import stateStyles from '@/components/page-state/PageState.module.css';
 
-export default function ContactsIndexClient() {
+export default function ContactsIndexClient({ initialContacts }: { initialContacts: Contact[] }) {
   const toast = useToast();
   const [query, setQuery] = useState('');
   const importRef = useRef<HTMLInputElement | null>(null);
@@ -33,10 +32,10 @@ export default function ContactsIndexClient() {
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const { data, error } = useQuery({
     ...contactsListQueryOptions(host),
+    initialData: initialContacts,
   });
 
   const contacts = data ?? [];
-  const hasLoadedOnce = typeof data !== 'undefined';
 
   useEffect(() => {
     if (!error) return;
@@ -64,20 +63,6 @@ export default function ContactsIndexClient() {
     if (!importPayload) return null;
     return planContactsImport(importPayload.rows, contacts, { mergeBlanks: importMergeBlanks });
   }, [contacts, importMergeBlanks, importPayload]);
-
-  if (!hasLoadedOnce && !error) {
-    return (
-      <ListPageSkeleton
-        title="Contacts"
-        actionCount={2}
-        filterFieldCount={1}
-        columnCount={5}
-        rowCount={6}
-        filterTitle="Search"
-        listTitle="All Contacts"
-      />
-    );
-  }
 
   if (error && !contacts.length) {
     const message = error instanceof Error ? error.message : 'Failed to load contacts.';
