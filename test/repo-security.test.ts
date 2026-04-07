@@ -4,11 +4,11 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const PRIVATE_KEY_PATTERNS = [
-  /BEGIN OPENSSH PRIVATE KEY/,
-  /BEGIN RSA PRIVATE KEY/,
-  /BEGIN EC PRIVATE KEY/,
-  /BEGIN DSA PRIVATE KEY/,
-  /PuTTY-User-Key-File-/,
+  new RegExp(['BEGIN OPENSSH', 'PRIVATE KEY'].join(' ')),
+  new RegExp(['BEGIN RSA', 'PRIVATE KEY'].join(' ')),
+  new RegExp(['BEGIN EC', 'PRIVATE KEY'].join(' ')),
+  new RegExp(['BEGIN DSA', 'PRIVATE KEY'].join(' ')),
+  new RegExp(['PuTTY-User', 'Key-File-'].join('-')),
 ] as const;
 
 const FORBIDDEN_SQL_PATTERNS = [
