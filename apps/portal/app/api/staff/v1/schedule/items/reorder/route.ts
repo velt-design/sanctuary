@@ -1,9 +1,9 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
-import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitScheduleReorder } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -13,7 +13,6 @@ import {
   reorderItems,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
@@ -96,19 +95,13 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  for (const item of nextItems) {
-    const updateRes = await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-    const failure = getSupabaseMutationFailure(updateRes, {
-      diagnostics,
-      table: 'crew_schedule_items',
-      operation: 'update',
-      message: 'Failed to reorder schedule items',
-      extra: { itemId: item.id },
-    });
-    if (failure) return jsonError(failure.responseMessage, 500, diagnostics);
-  }
-
-  await applyJobForecastUpdates(afterRecompute.job_updates);
+  const commitRes = await commitScheduleReorder({
+    diagnostics,
+    crewId,
+    positions: applyScheduleItemPositions(nextItems),
+    forecastUpdates: afterRecompute.job_updates,
+  });
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
