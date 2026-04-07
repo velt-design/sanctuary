@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const requireStaffSession = vi.fn();
 const parseJsonBody = vi.fn();
 
-const applyJobForecastUpdates = vi.fn();
+const applyScheduleItemPositions = vi.fn();
 const buildCrewContext = vi.fn();
 const buildJobMetaMap = vi.fn();
 const computeCommitImpacts = vi.fn();
@@ -15,9 +15,7 @@ const recomputeForCrew = vi.fn();
 
 const scheduledJobsByProjectMaybeSingle = vi.fn();
 const scheduledJobsByIdMaybeSingle = vi.fn();
-const scheduledJobsDeleteEq = vi.fn();
-const crewScheduleItemsDeleteEq = vi.fn();
-const crewScheduleItemsUpdateEq = vi.fn();
+const rpc = vi.fn();
 
 vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
@@ -29,7 +27,7 @@ vi.mock('@/lib/api/staffApi', async () => {
 });
 
 vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -43,69 +41,27 @@ vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
 vi.mock('@/lib/supabaseClient', () => ({
   supabaseServer: {
     from: (table: string) => {
-      if (table === 'scheduled_jobs') {
-        return {
-          select: () => ({
-            eq: (column: string) => {
-              if (column === 'job_id') return { maybeSingle: scheduledJobsByProjectMaybeSingle };
-              if (column === 'id') return { maybeSingle: scheduledJobsByIdMaybeSingle };
-              throw new Error(`Unexpected eq column ${column}`);
-            },
-          }),
-          delete: () => ({
-            eq: (column: string, id: string) => {
-              if (column !== 'id') throw new Error(`Unexpected delete eq column ${column}`);
-              return scheduledJobsDeleteEq(id);
-            },
-          }),
-        };
-      }
-      if (table === 'crew_schedule_items') {
-        return {
-          delete: () => ({
-            eq: (column: string, id: string) => {
-              if (column !== 'job_id') throw new Error(`Unexpected delete eq column ${column}`);
-              return crewScheduleItemsDeleteEq(id);
-            },
-          }),
-          update: (payload: unknown) => ({
-            eq: (column: string, id: string) => {
-              if (column !== 'id') throw new Error(`Unexpected update eq column ${column}`);
-              return crewScheduleItemsUpdateEq(payload, id);
-            },
-          }),
-        };
-      }
-      throw new Error(`Unexpected table ${table}`);
+      if (table !== 'scheduled_jobs') throw new Error(`Unexpected table ${table}`);
+      return {
+        select: () => ({
+          eq: (column: string) => {
+            if (column === 'job_id') return { maybeSingle: scheduledJobsByProjectMaybeSingle };
+            if (column === 'id') return { maybeSingle: scheduledJobsByIdMaybeSingle };
+            throw new Error(`Unexpected eq column ${column}`);
+          },
+        }),
+      };
     },
+    rpc,
   },
 }));
 
-describe('POST /api/staff/v1/schedule/job/unassign diagnostics', () => {
-  const missingSchemaError = new Error('missing schema');
-  const ctx = { today: '2026-04-10', calendar: {} };
-  const jobRow = { id: 'scheduled-job-1', crew_id: 'crew-1' };
-  const crewCtx = {
-    crewRow: { calendar_region: 'Auckland' },
-    items: [{ id: 'item-1' }],
-    jobs: [{ id: 'scheduled-job-1' }, { id: 'scheduled-job-2' }],
-    downtimes: [],
-    recompute: { before: true },
-    downtimesById: new Map(),
-  };
-  const remainingItems = [{ id: 'item-2', position: 0 }];
-  const afterRecompute = { job_updates: [{ id: 'job-update-1' }] };
-  const formatted = {
-    lanes: [{ id: 'crew-1' }],
-    conflicts: [{ code: 'shift' }],
-    next_available_date: '2026-04-14',
-  };
-
+describe('POST /api/staff/v1/schedule/job/unassign', () => {
   beforeEach(() => {
     vi.resetModules();
     requireStaffSession.mockReset();
     parseJsonBody.mockReset();
-    applyJobForecastUpdates.mockReset();
+    applyScheduleItemPositions.mockReset();
     buildCrewContext.mockReset();
     buildJobMetaMap.mockReset();
     computeCommitImpacts.mockReset();
@@ -116,47 +72,39 @@ describe('POST /api/staff/v1/schedule/job/unassign diagnostics', () => {
     recomputeForCrew.mockReset();
     scheduledJobsByProjectMaybeSingle.mockReset();
     scheduledJobsByIdMaybeSingle.mockReset();
-    scheduledJobsDeleteEq.mockReset();
-    crewScheduleItemsDeleteEq.mockReset();
-    crewScheduleItemsUpdateEq.mockReset();
+    rpc.mockReset();
 
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
     parseJsonBody.mockResolvedValue({ ok: true, body: { job_id: 'job-1' } });
-    isMissingSchemaError.mockImplementation((error: unknown) => error === missingSchemaError);
-    scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: jobRow, error: null });
-    loadScheduleContext.mockResolvedValue(ctx);
-    buildCrewContext.mockReturnValue(crewCtx);
-    removeItem.mockReturnValue(remainingItems);
-    recomputeForCrew.mockReturnValue(afterRecompute);
+    isMissingSchemaError.mockReturnValue(false);
+    scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: { id: 'scheduled-job-1', crew_id: 'crew-1' }, error: null });
+    loadScheduleContext.mockResolvedValue({ today: '2026-04-10', calendar: {} });
+    buildCrewContext.mockReturnValue({
+      crewRow: { id: 'crew-1', calendar_region: 'Auckland' },
+      items: [
+        { id: 'item-job-1', itemType: 'job', jobId: 'scheduled-job-1', position: 0 },
+        { id: 'item-job-2', itemType: 'job', jobId: 'scheduled-job-2', position: 1 },
+      ],
+      jobs: [{ id: 'scheduled-job-1' }, { id: 'scheduled-job-2' }],
+      downtimes: [],
+      recompute: { before: true },
+      downtimesById: new Map(),
+    });
+    removeItem.mockReturnValue([{ id: 'item-job-2', itemType: 'job', jobId: 'scheduled-job-2', position: 0 }]);
+    applyScheduleItemPositions.mockReturnValue([{ id: 'item-job-2', position: 0 }]);
+    recomputeForCrew.mockReturnValue({ job_updates: [{ id: 'scheduled-job-2', forecast_start: '2026-04-11', forecast_end_exclusive: '2026-04-12', forecast_duration_days: 1 }] });
     buildJobMetaMap.mockReturnValue(new Map());
     computeCommitImpacts.mockReturnValue([]);
-    formatCrewScheduleBlocks.mockReturnValue(formatted);
-    applyJobForecastUpdates.mockResolvedValue(undefined);
-    scheduledJobsDeleteEq.mockResolvedValue({ data: null, error: null });
-    crewScheduleItemsDeleteEq.mockResolvedValue({ data: null, error: null });
-    crewScheduleItemsUpdateEq.mockResolvedValue({ data: null, error: null });
-  });
-
-  it('adds diagnostics headers on missing-schema failures', async () => {
-    scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: null, error: missingSchemaError });
-
-    const mod = await import('./route');
-    const res = await mod.POST(
-      new Request('http://localhost/api/staff/v1/schedule/job/unassign', {
-        method: 'POST',
-        headers: { 'x-request-id': 'req_unassign_err' },
-      }),
-    );
-
-    expect(res.status).toBe(501);
-    await expect(res.json()).resolves.toEqual({
-      error: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+    formatCrewScheduleBlocks.mockReturnValue({
+      crew_id: 'crew-1',
+      items: [{ id: 'item-job-2' }],
+      conflicts: [],
+      next_available_date: '2026-04-14',
     });
-    expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_err');
-    expect(res.headers.get('server-timing')).toContain('total;dur=');
+    rpc.mockResolvedValue({ data: { deleted_job: 'scheduled-job-1' }, error: null });
   });
 
-  it('adds diagnostics headers on success', async () => {
+  it('commits unassign through one RPC call on success', async () => {
     const mod = await import('./route');
     const res = await mod.POST(
       new Request('http://localhost/api/staff/v1/schedule/job/unassign', {
@@ -165,53 +113,88 @@ describe('POST /api/staff/v1/schedule/job/unassign diagnostics', () => {
       }),
     );
 
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_unassign_job', {
+      p_scheduled_job_id: 'scheduled-job-1',
+      p_job_item_id: 'item-job-1',
+      p_positions: [{ id: 'item-job-2', position: 0 }],
+      p_forecast_updates: [
+        { id: 'scheduled-job-2', forecast_start: '2026-04-11', forecast_end_exclusive: '2026-04-12', forecast_duration_days: 1 },
+      ],
+    });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,
       crew_id: 'crew-1',
-      schedule: formatted,
-      conflicts: formatted.conflicts,
-      next_available_date: formatted.next_available_date,
+      schedule: {
+        crew_id: 'crew-1',
+        items: [{ id: 'item-job-2' }],
+        conflicts: [],
+        next_available_date: '2026-04-14',
+      },
+      conflicts: [],
+      next_available_date: '2026-04-14',
     });
     expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_ok');
-    expect(res.headers.get('server-timing')).toContain('total;dur=');
   });
 
-  it('returns 500 and stops when deleting schedule items fails', async () => {
-    crewScheduleItemsDeleteEq.mockResolvedValue({ data: null, error: { message: 'delete failed' } });
+  it('returns ok without any RPC call when the job is already absent', async () => {
+    scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    scheduledJobsByIdMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/unassign', { method: 'POST' }));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('returns confirmation before any RPC call', async () => {
+    computeCommitImpacts.mockReturnValue([{ job_id: 'job-2' }]);
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/unassign', { method: 'POST' }));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({
+      requires_confirmation: true,
+      impacts: [{ job_id: 'job-2' }],
+    });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('returns 501 when the command function is missing', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.schedule_v2_unassign_job' } });
 
     const mod = await import('./route');
     const res = await mod.POST(
       new Request('http://localhost/api/staff/v1/schedule/job/unassign', {
         method: 'POST',
-        headers: { 'x-request-id': 'req_unassign_delete_fail' },
+        headers: { 'x-request-id': 'req_unassign_schema' },
       }),
     );
 
-    expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toEqual({ error: 'Failed to unassign scheduled job' });
-    expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_delete_fail');
-    expect(scheduledJobsDeleteEq).not.toHaveBeenCalled();
-    expect(crewScheduleItemsUpdateEq).not.toHaveBeenCalled();
-    expect(applyJobForecastUpdates).not.toHaveBeenCalled();
+    expect(res.status).toBe(501);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+    });
+    expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_schema');
   });
 
-  it('returns 500 and stops before forecast updates when reindexing fails', async () => {
-    crewScheduleItemsUpdateEq.mockResolvedValue({ data: null, error: { message: 'reindex failed' } });
+  it('returns 500 on a generic RPC failure', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'rpc failed' } });
 
     const mod = await import('./route');
     const res = await mod.POST(
       new Request('http://localhost/api/staff/v1/schedule/job/unassign', {
         method: 'POST',
-        headers: { 'x-request-id': 'req_unassign_reindex_fail' },
+        headers: { 'x-request-id': 'req_unassign_fail' },
       }),
     );
 
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: 'Failed to unassign scheduled job' });
-    expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_reindex_fail');
-    expect(crewScheduleItemsDeleteEq).toHaveBeenCalledWith('scheduled-job-1');
-    expect(scheduledJobsDeleteEq).toHaveBeenCalledWith('scheduled-job-1');
-    expect(applyJobForecastUpdates).not.toHaveBeenCalled();
+    expect(res.headers.get('x-portal-request-id')).toBe('req_unassign_fail');
   });
 });

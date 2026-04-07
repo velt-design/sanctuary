@@ -1,9 +1,9 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
-import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitScheduleUnassign } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -88,6 +88,7 @@ export async function POST(req: Request) {
   const crewCtx = buildCrewContext(ctx, crewId);
   if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
 
+  const removedItem = crewCtx.items.find((item) => item.itemType === 'job' && item.jobId === jobRow.id) ?? null;
   const items = removeItem(crewCtx.items, (item) => item.itemType === 'job' && item.jobId === jobRow.id);
   const jobs = crewCtx.jobs.filter((job) => job.id !== jobRow.id);
 
@@ -114,39 +115,23 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  const deleteItemsRes = await supabaseServer.from('crew_schedule_items').delete().eq('job_id', jobRow.id);
-  const deleteItemsFailure = getSupabaseMutationFailure(deleteItemsRes, {
-    diagnostics,
-    table: 'crew_schedule_items',
-    operation: 'delete',
-    message: 'Failed to unassign scheduled job',
-    extra: { jobId: jobRow.id },
-  });
-  if (deleteItemsFailure) return jsonError(deleteItemsFailure.responseMessage, 500, diagnostics);
-
-  const deleteJobRes = await supabaseServer.from('scheduled_jobs').delete().eq('id', jobRow.id);
-  const deleteJobFailure = getSupabaseMutationFailure(deleteJobRes, {
-    diagnostics,
-    table: 'scheduled_jobs',
-    operation: 'delete',
-    message: 'Failed to unassign scheduled job',
-    extra: { jobId: jobRow.id },
-  });
-  if (deleteJobFailure) return jsonError(deleteJobFailure.responseMessage, 500, diagnostics);
-
-  for (const item of items) {
-    const updateRes = await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-    const updateFailure = getSupabaseMutationFailure(updateRes, {
-      diagnostics,
-      table: 'crew_schedule_items',
-      operation: 'update',
+  if (!removedItem) {
+    logPortalServerError(diagnostics, {
+      status: 500,
       message: 'Failed to unassign scheduled job',
-      extra: { itemId: item.id },
+      extra: { scheduledJobId: String(jobRow.id), reason: 'missing_queue_item' },
     });
-    if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
+    return jsonError('Failed to unassign scheduled job', 500, diagnostics);
   }
 
-  await applyJobForecastUpdates(afterRecompute.job_updates);
+  const commitRes = await commitScheduleUnassign({
+    diagnostics,
+    scheduledJobId: String(jobRow.id),
+    jobItemId: removedItem.id,
+    positions: applyScheduleItemPositions(items),
+    forecastUpdates: afterRecompute.job_updates,
+  });
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,

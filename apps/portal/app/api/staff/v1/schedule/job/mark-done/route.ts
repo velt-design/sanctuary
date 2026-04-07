@@ -1,9 +1,9 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
-import { getSupabaseMutationFailure } from '@/lib/api/supabaseMutation';
 import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
+import { commitMarkDone, type MarkDoneCommandResult } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -97,6 +97,8 @@ export async function POST(req: Request) {
 
   const region = crewCtx.crewRow.calendar_region || 'Auckland';
   const finish = snapToday(ctx.today, region, ctx.calendar);
+  const currentJob = crewCtx.jobs.find((job) => job.id === jobRow.id) ?? null;
+  const actualStart = currentJob ? ensureActualStart(currentJob, finish) : finish;
 
   const forecastStart = typeof jobRow.forecast_start === 'string' && isYmd(jobRow.forecast_start) ? jobRow.forecast_start : null;
   const forecastDuration = typeof jobRow.forecast_duration_days === 'number' && Number.isFinite(jobRow.forecast_duration_days) ? Math.max(1, Math.trunc(jobRow.forecast_duration_days)) : 1;
@@ -117,7 +119,7 @@ export async function POST(req: Request) {
       ? {
           ...job,
           status: 'done' as const,
-          actualStart: ensureActualStart(job, finish),
+          actualStart,
           actualFinish: finish,
         }
       : job,
@@ -196,99 +198,35 @@ export async function POST(req: Request) {
       return jsonOk({ requires_confirmation: true, impacts: bufferImpacts }, 200, diagnostics);
     }
 
-    const existingActualStart = typeof jobRow.actual_start === 'string' && jobRow.actual_start ? jobRow.actual_start : null;
-    const markDoneRes = await supabaseServer
-      .from('scheduled_jobs')
-      .update({
-        status: 'done',
-        actual_finish: finish,
-        actual_start: existingActualStart ?? jobRow.forecast_start ?? finish,
-      } as any)
-      .eq('id', jobRow.id);
-    const markDoneFailure = getSupabaseMutationFailure(markDoneRes, {
+    const commitRes = await commitMarkDone({
       diagnostics,
-      table: 'scheduled_jobs',
-      operation: 'update',
-      message: 'Failed to mark scheduled job done',
-      extra: { jobId: jobRow.id },
+      scheduledJobId: String(jobRow.id),
+      actualStart,
+      actualFinish: finish,
+      forecastUpdates: bufferRecompute.job_updates,
+      finishEarly: {
+        crewId,
+        freedDays,
+        bufferNote,
+        insertPosition: jobItem.position + 1,
+        existingPositions: applyScheduleItemPositions(items.filter((item) => item.id !== tempItemId)),
+      },
     });
-    if (markDoneFailure) return jsonError(markDoneFailure.responseMessage, 500, diagnostics);
-
-    const insertDowntimeRes = await supabaseServer
-      .from('crew_downtimes')
-      .insert({
-        crew_id: crewId,
-        duration_days: freedDays,
-        reason: 'other',
-        note: bufferNote,
-      } as any)
-      .select('id')
-      .single();
-    const insertDowntimeFailure = getSupabaseMutationFailure(insertDowntimeRes, {
-      diagnostics,
-      table: 'crew_downtimes',
-      operation: 'insert',
-      message: 'Failed to create downtime buffer',
-      extra: { crewId },
-    });
-    if (insertDowntimeFailure) return jsonError(insertDowntimeFailure.responseMessage, 500, diagnostics);
-    const downtimeIdFailure = getSupabaseMutationFailure(insertDowntimeRes, {
-      diagnostics,
-      table: 'crew_downtimes',
-      operation: 'insert',
-      message: 'Failed to resolve downtime id',
-      requireField: 'id',
-      extra: { crewId },
-    });
-    if (downtimeIdFailure) return jsonError(downtimeIdFailure.responseMessage, 500, diagnostics);
-    const actualDowntimeId = String(insertDowntimeRes.data!.id);
-
-    let newScheduleItemId: string | null = null;
-    for (const item of items) {
-      if (item.id === tempItemId) {
-        const insertItemRes = await supabaseServer
-          .from('crew_schedule_items')
-          .insert({
-            crew_id: crewId,
-            item_type: 'downtime',
-            downtime_id: actualDowntimeId,
-            position: item.position,
-          } as any)
-          .select('id')
-          .single();
-        const insertItemFailure = getSupabaseMutationFailure(insertItemRes, {
-          diagnostics,
-          table: 'crew_schedule_items',
-          operation: 'insert',
-          message: 'Failed to insert downtime schedule item',
-          extra: { crewId, downtimeId: actualDowntimeId },
-        });
-        if (insertItemFailure) return jsonError(insertItemFailure.responseMessage, 500, diagnostics);
-        const scheduleItemIdFailure = getSupabaseMutationFailure(insertItemRes, {
-          diagnostics,
-          table: 'crew_schedule_items',
-          operation: 'insert',
-          message: 'Failed to resolve downtime schedule item id',
-          requireField: 'id',
-          extra: { crewId, downtimeId: actualDowntimeId },
-        });
-        if (scheduleItemIdFailure) return jsonError(scheduleItemIdFailure.responseMessage, 500, diagnostics);
-        newScheduleItemId = String(insertItemRes.data!.id);
-      } else {
-        const updateRes = await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-        const updateFailure = getSupabaseMutationFailure(updateRes, {
-          diagnostics,
-          table: 'crew_schedule_items',
-          operation: 'update',
-          message: 'Failed to reindex schedule items after finish-early buffer',
-          extra: { itemId: item.id },
-        });
-        if (updateFailure) return jsonError(updateFailure.responseMessage, 500, diagnostics);
-      }
+    if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+    const commandData = commitRes.data as MarkDoneCommandResult;
+    const actualDowntimeId = commandData.created_downtime_id;
+    const newScheduleItemId = commandData.created_item_id;
+    if (!actualDowntimeId || !newScheduleItemId) {
+      logPortalServerError(diagnostics, {
+        status: 500,
+        message: 'Failed to create finish-early buffer',
+        extra: { scheduledJobId: String(jobRow.id), reason: 'missing_created_ids' },
+      });
+      return jsonError('Failed to create finish-early buffer', 500, diagnostics);
     }
 
     const updatedItems = items.map((item) => {
-      if (item.id === tempItemId && newScheduleItemId) {
+      if (item.id === tempItemId) {
         return { ...item, id: newScheduleItemId, downtimeId: actualDowntimeId };
       }
       return item.downtimeId === tempDowntimeId ? { ...item, downtimeId: actualDowntimeId } : item;
@@ -303,8 +241,6 @@ export async function POST(req: Request) {
       calendar: ctx.calendar,
       today: ctx.today,
     });
-
-    await applyJobForecastUpdates(finalRecompute.job_updates);
 
     const formatted = formatCrewScheduleBlocks({
       crewRow: crewCtx.crewRow,
@@ -326,25 +262,14 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  const existingActualStart = typeof jobRow.actual_start === 'string' && jobRow.actual_start ? jobRow.actual_start : null;
-  const markDoneRes = await supabaseServer
-    .from('scheduled_jobs')
-    .update({
-      status: 'done',
-      actual_finish: finish,
-      actual_start: existingActualStart ?? jobRow.forecast_start ?? finish,
-    } as any)
-    .eq('id', jobRow.id);
-  const markDoneFailure = getSupabaseMutationFailure(markDoneRes, {
+  const commitRes = await commitMarkDone({
     diagnostics,
-    table: 'scheduled_jobs',
-    operation: 'update',
-    message: 'Failed to mark scheduled job done',
-    extra: { jobId: jobRow.id },
+    scheduledJobId: String(jobRow.id),
+    actualStart,
+    actualFinish: finish,
+    forecastUpdates: afterRecompute.job_updates,
   });
-  if (markDoneFailure) return jsonError(markDoneFailure.responseMessage, 500, diagnostics);
-
-  await applyJobForecastUpdates(afterRecompute.job_updates);
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
