@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireStaffSession = vi.fn();
+const requireStaffContext = vi.fn();
 const formatSupabaseError = vi.fn();
 const appIdFromUuid = vi.fn();
 const normalizeProjectStatus = vi.fn();
@@ -42,7 +42,7 @@ vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
   return {
     ...actual,
-    requireStaffSession,
+    requireStaffContext,
   };
 });
 
@@ -62,25 +62,10 @@ vi.mock('@/src/config/salesPeople', () => ({
   SALES_PEOPLE: [{ id: 'bruce', label: 'Bruce' }],
 }));
 
-vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServiceRole: {
-    from: (table: string) => {
-      fromMock(table);
-      if (table !== 'site_visit_events') throw new Error(`Unexpected table ${table}`);
-      return {
-        select: (select: string) => {
-          selectCalls.push(select);
-          return makeQueryBuilder();
-        },
-      };
-    },
-  },
-}));
-
 describe('GET /api/staff/v1/site-visits diagnostics', () => {
   beforeEach(() => {
     vi.resetModules();
-    requireStaffSession.mockReset();
+    requireStaffContext.mockReset();
     formatSupabaseError.mockReset();
     appIdFromUuid.mockReset();
     normalizeProjectStatus.mockReset();
@@ -88,7 +73,22 @@ describe('GET /api/staff/v1/site-visits diagnostics', () => {
     selectCalls.length = 0;
     plan = null;
 
-    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      supabase: {
+        from: (table: string) => {
+          fromMock(table);
+          if (table !== 'site_visit_events') throw new Error(`Unexpected table ${table}`);
+          return {
+            select: (select: string) => {
+              selectCalls.push(select);
+              return makeQueryBuilder();
+            },
+          };
+        },
+      },
+    });
     formatSupabaseError.mockReturnValue({ status: 503, message: 'site visits unavailable' });
     appIdFromUuid.mockImplementation((prefix: string, uuid: string) => `${prefix}:${uuid}`);
     normalizeProjectStatus.mockImplementation((value: string | null | undefined) => ({

@@ -1,13 +1,13 @@
-import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 
 export const runtime = 'nodejs';
 
 export async function POST() {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
-  const listRes = await supabaseServer.from('site_visit_events').select('id, projects ( id )');
+  const listRes = await supabase.from('site_visit_events').select('id, projects ( id )');
   if (listRes.error) return jsonError('Failed to scan site_visit_events', 500);
 
   const rows = Array.isArray(listRes.data) ? listRes.data : [];
@@ -18,7 +18,7 @@ export async function POST() {
 
   if (!orphanIds.length) return jsonOk({ removed: 0 });
 
-  const delRes = await supabaseServer.from('site_visit_events').delete().in('id', orphanIds).select('id');
+  const delRes = await supabase.from('site_visit_events').delete().in('id', orphanIds).select('id');
   if (delRes.error) return jsonError('Failed to delete orphaned site visits', 500);
 
   const removed = Array.isArray(delRes.data) ? delRes.data.length : orphanIds.length;

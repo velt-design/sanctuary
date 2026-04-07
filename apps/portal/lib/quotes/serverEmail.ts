@@ -3,7 +3,7 @@ import 'server-only';
 import { sendTransactionalEmail } from '@/lib/emails/sendTransactionalEmail';
 import { generateAcceptToken } from '@/lib/quotes/acceptToken';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import type { QuoteVersionDetail } from './types';
 import {
   addDays,
@@ -163,7 +163,7 @@ async function loadPreviewBaseForMode(
   mode: QuoteEmailMode,
 ): Promise<{ base: QuotePreviewBasePayload; cacheHit: boolean }> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('quote_versions')
     .select('status, preview_base_payload')
     .eq('id', quoteVersionUuid)
@@ -276,7 +276,7 @@ async function updateQuoteSendState(params: {
   }
   if (typeof params.acceptedAt === 'string' || params.acceptedAt === null) patch.accepted_at = params.acceptedAt;
 
-  const res = await supabaseServer.from('quote_versions').update(patch as any).eq('id', params.quoteVersionUuid);
+  const res = await supabaseServiceRole.from('quote_versions').update(patch as any).eq('id', params.quoteVersionUuid);
   if (res.error) {
     throw new Error(res.error.message ?? 'Failed to update quote');
   }

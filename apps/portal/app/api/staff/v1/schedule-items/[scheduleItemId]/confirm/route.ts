@@ -1,5 +1,4 @@
-import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { isYmd, todayYmd } from '@/lib/scheduling/date';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
@@ -19,8 +18,9 @@ function isMissingColumnError(error: unknown): boolean {
 }
 
 export async function POST(_req: Request, ctx: { params: Promise<{ scheduleItemId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let itemUuid: string;
   try {
@@ -32,9 +32,9 @@ export async function POST(_req: Request, ctx: { params: Promise<{ scheduleItemI
 
   const today = todayYmd();
   const now = new Date().toISOString();
-  const confirmedBy = (session.user?.email || '').trim() || null;
+  const confirmedBy = (auth.session.user?.email || '').trim() || null;
 
-  const select = await supabaseServer
+  const select = await supabase
     .from('schedule_items')
     .select('id, project_id, crew_id, start_date, end_date, status, actual_start_date')
     .eq('id', itemUuid)
@@ -55,7 +55,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ scheduleItemI
 
   const nextStatus = status === 'COMPLETED' ? 'COMPLETED' : started ? 'IN_PROGRESS' : 'CONFIRMED';
 
-  const update = await supabaseServer
+  const update = await supabase
     .from('schedule_items')
     .update({ status: nextStatus, confirmed_at: now, confirmed_by: confirmedBy, locked: true } as any)
     .eq('id', itemUuid);
@@ -69,7 +69,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ scheduleItemI
 
   const eventKey = `${itemUuid}:SCHEDULE_CONFIRMED:${start ?? ''}:${end ?? ''}`;
   try {
-    await supabaseServer
+    await supabase
       .from('schedule_events')
       .insert(
         {

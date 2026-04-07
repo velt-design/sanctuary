@@ -1,5 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isYmd, todayYmd } from '@/lib/scheduling/date';
 
 export const runtime = 'nodejs';
@@ -18,17 +17,18 @@ function isMissingColumnError(error: unknown): boolean {
 }
 
 export async function POST(req: Request) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
   const body = parsed.body ?? {};
 
   const today = typeof body.today === 'string' && isYmd(body.today) ? body.today : todayYmd();
-  const createdBy = (session.user?.email || '').trim() || null;
+  const createdBy = (auth.session.user?.email || '').trim() || null;
 
-  const list = await supabaseServer
+  const list = await supabase
     .from('schedule_items')
     .select('id, project_id, start_date, status, actual_start_date');
 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     const start = typeof (r as any).start_date === 'string' ? (r as any).start_date : null;
     if (!id || !start) continue;
 
-    const patch = await supabaseServer
+    const patch = await supabase
       .from('schedule_items')
       .update({ status: 'IN_PROGRESS', actual_start_date: start, locked: true } as any)
       .eq('id', id)
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
 
     const eventKey = `${id}:SCHEDULE_STARTED:${start}`;
     try {
-      await supabaseServer
+      await supabase
         .from('schedule_events')
         .insert(
           {

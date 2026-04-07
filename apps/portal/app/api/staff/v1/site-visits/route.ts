@@ -1,8 +1,7 @@
-import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
 import { formatSupportedSchemaMessage, isSupportedSchemaError } from '@/lib/supabase/schemaGuard';
 import { formatSupabaseError } from '@/lib/supabase/apiErrors';
-import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -75,8 +74,9 @@ function mapRow(row: any): any {
 
 export async function GET(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/site-visits');
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401, diagnostics);
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const url = new URL(req.url);
   const fromIso = asIso(url.searchParams.get('from'));
@@ -88,12 +88,12 @@ export async function GET(req: Request) {
     'id, project_id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, customer_notified, last_notified_at, cancel_reason, created_at, updated_at,' +
     ' projects!inner( id, name, region, site_address, pipeline_stage, site_visit_priority_tier, contact_id, contacts ( id, name, email, phone ) )';
 
-  const unscheduledQuery = supabaseServiceRole
+  const unscheduledQuery = supabase
     .from('site_visit_events')
     .select(select)
     .eq('status', 'UNSCHEDULED');
 
-  const eventsQuery = supabaseServiceRole
+  const eventsQuery = supabase
     .from('site_visit_events')
     .select(select)
     .in('status', ['TENTATIVE', 'CONFIRMED', 'COMPLETED', 'RESCHEDULED'])

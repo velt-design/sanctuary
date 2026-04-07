@@ -334,10 +334,8 @@ create table if not exists public.email_outbox (
 create index if not exists email_outbox_by_project_status on public.email_outbox(project_id, status);
 create index if not exists email_outbox_by_created_at on public.email_outbox(created_at desc);
 
--- DEV GRANTS (keep dev simple; tighten later)
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on all tables in schema public to anon, authenticated;
-alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated;
+-- Access control is managed by the forward migrations under `supabase/migrations/`.
+-- Do not grant blanket anon/authenticated table access from this legacy snapshot.
 
 -- Force schema reload
 select pg_notify('pgrst', 'reload schema');

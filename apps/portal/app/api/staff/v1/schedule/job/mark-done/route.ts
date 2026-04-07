@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { commitMarkDone, type MarkDoneCommandResult } from '@/lib/scheduling/scheduleCommands';
@@ -16,14 +16,14 @@ import {
   snapToday,
 } from '@/lib/scheduling/scheduleV2Server';
 import { addWorkingDays, workingDaysBetween } from '@/lib/scheduling/workingDays';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/job/mark-done');
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401, diagnostics);
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     return jsonError('finish_early_action must be pull_forward or keep_schedule', 400, diagnostics);
   }
 
-  const byProjectRes = await supabaseServer.from('scheduled_jobs').select('*').eq('job_id', jobId).maybeSingle();
+  const byProjectRes = await supabase.from('scheduled_jobs').select('*').eq('job_id', jobId).maybeSingle();
   if (byProjectRes.error) {
     if (isMissingSchemaError(byProjectRes.error)) {
       logPortalServerWarn(diagnostics, {
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   }
   let jobRow = byProjectRes.data;
   if (!jobRow) {
-    const byIdRes = await supabaseServer.from('scheduled_jobs').select('*').eq('id', jobId).maybeSingle();
+    const byIdRes = await supabase.from('scheduled_jobs').select('*').eq('id', jobId).maybeSingle();
     if (byIdRes.error) {
       logPortalServerError(diagnostics, {
         status: 500,

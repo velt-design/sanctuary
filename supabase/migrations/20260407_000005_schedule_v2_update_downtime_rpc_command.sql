@@ -96,6 +96,6 @@ begin
 end;
 $$;
 
-grant execute on function public.schedule_v2_update_downtime(uuid, jsonb, jsonb) to anon, authenticated;
+grant execute on function public.schedule_v2_update_downtime(uuid, jsonb, jsonb) to authenticated, service_role;
 
 notify pgrst, 'reload schema';

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { supabaseServer } from '@/lib/supabaseClient';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { isSupportedSchemaError, missingSchemaFieldFromError } from '@/lib/supabase/schemaGuard';
 
 type SupabaseLikeError = { code?: unknown; message?: unknown };
@@ -57,7 +57,8 @@ export async function loadProjectAndContact(projectUuid: string): Promise<{
   contactName: string;
   contactEmail: string | null;
 }> {
-  const projectRes = await supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const projectRes = await supabase
     .from('projects')
     .select('id, name, contact_id, contacts ( id, name, email )')
     .eq('id', projectUuid)
@@ -78,7 +79,8 @@ export async function loadProjectAndContact(projectUuid: string): Promise<{
 }
 
 export async function loadEmailTemplateSubject(templateId: string): Promise<string | null> {
-  const res = await supabaseServer.from('email_templates').select('id, subject').eq('id', templateId).single();
+  const supabase = await getSupabaseServerAuth();
+  const res = await supabase.from('email_templates').select('id, subject').eq('id', templateId).single();
   if (res.error || !res.data) return null;
   return typeof (res.data as any)?.subject === 'string' ? ((res.data as any).subject as string) : null;
 }

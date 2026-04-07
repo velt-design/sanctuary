@@ -1,5 +1,6 @@
 'use server';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
+import { getPortalSession } from '@/lib/auth';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 type SupabaseLikeError = { code?: unknown; message?: unknown };
@@ -22,13 +23,14 @@ function missingColumnFromError(error: unknown): string | null {
 }
 
 async function updateWithFallback(projectUuid: string, payloadIn: Record<string, any>) {
+  const supabase = await getSupabaseServerAuth();
   let payload = { ...payloadIn };
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
     if (!Object.keys(payload).length) {
       throw new Error('No supported next-action fields found in the projects table.');
     }
-    const { error } = await supabaseServer.from('projects').update(payload).eq('id', projectUuid);
+    const { error } = await supabase.from('projects').update(payload).eq('id', projectUuid);
     if (!error) return;
 
     if (!isMissingColumnError(error)) throw error;
@@ -75,6 +77,11 @@ export async function setNextAction(input: {
   dueDate: string; // YYYY-MM-DD
   note?: string;
 }) {
+  const session = await getPortalSession();
+  if (!session) {
+    throw new Error('Unauthorized');
+  }
+
   const projectUuid = uuidFromAppId(input.projectId, 'proj');
   const dueDate = input.dueDate.trim();
   const actionLabel = input.actionLabel.trim();
@@ -90,9 +97,10 @@ export async function setNextAction(input: {
   });
 
   if (input.note && input.note.trim()) {
+    const supabase = await getSupabaseServerAuth();
     try {
       const now = new Date().toISOString();
-      await supabaseServer.from('audit_events').insert({
+      await supabase.from('audit_events').insert({
         project_id: projectUuid,
         type: 'dashboard.next_action_note',
         idempotency_key: `next_action_note:${projectUuid}:${Date.now()}`,

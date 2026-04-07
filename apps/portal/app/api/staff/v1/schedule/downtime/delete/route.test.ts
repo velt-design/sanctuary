@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireStaffSession = vi.fn();
+const requireStaffContext = vi.fn();
 const parseJsonBody = vi.fn();
 
 const applyScheduleItemPositions = vi.fn();
@@ -21,7 +21,7 @@ vi.mock('@/lib/api/staffApi', async () => {
   return {
     ...actual,
     parseJsonBody,
-    requireStaffSession,
+    requireStaffContext,
   };
 });
 
@@ -38,20 +38,6 @@ vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
 }));
 
 vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServer: {
-    from: (table: string) => {
-      if (table !== 'crew_downtimes') throw new Error(`Unexpected table ${table}`);
-      return {
-        select: () => ({
-          eq: (column: string) => {
-            if (column !== 'id') throw new Error(`Unexpected select eq column ${column}`);
-            return { maybeSingle: downtimeMaybeSingle };
-          },
-        }),
-      };
-    },
-    rpc,
-  },
   supabaseServiceRole: {
     rpc,
   },
@@ -60,7 +46,7 @@ vi.mock('@/lib/supabaseClient', () => ({
 describe('POST /api/staff/v1/schedule/downtime/delete', () => {
   beforeEach(() => {
     vi.resetModules();
-    requireStaffSession.mockReset();
+    requireStaffContext.mockReset();
     parseJsonBody.mockReset();
     applyScheduleItemPositions.mockReset();
     buildCrewContext.mockReset();
@@ -74,7 +60,23 @@ describe('POST /api/staff/v1/schedule/downtime/delete', () => {
     downtimeMaybeSingle.mockReset();
     rpc.mockReset();
 
-    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      supabase: {
+        from: (table: string) => {
+          if (table !== 'crew_downtimes') throw new Error(`Unexpected table ${table}`);
+          return {
+            select: () => ({
+              eq: (column: string) => {
+                if (column !== 'id') throw new Error(`Unexpected select eq column ${column}`);
+                return { maybeSingle: downtimeMaybeSingle };
+              },
+            }),
+          };
+        },
+      },
+    });
     parseJsonBody.mockResolvedValue({ ok: true, body: { downtime_id: 'dt-1' } });
     isMissingSchemaError.mockReturnValue(false);
     downtimeMaybeSingle.mockResolvedValue({ data: { id: 'dt-1', crew_id: 'crew-1' }, error: null });

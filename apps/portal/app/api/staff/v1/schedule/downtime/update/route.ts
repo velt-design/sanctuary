@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitUpdateDowntime } from '@/lib/scheduling/scheduleCommands';
@@ -11,7 +11,6 @@ import {
   loadScheduleContext,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
@@ -24,8 +23,9 @@ function normalizeReason(value: unknown): string | null {
 
 export async function POST(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/downtime/update');
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401, diagnostics);
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
 
   if (!downtimeId) return jsonError('downtime_id is required', 400, diagnostics);
 
-  const downtimeRes = await supabaseServer.from('crew_downtimes').select('*').eq('id', downtimeId).maybeSingle();
+  const downtimeRes = await supabase.from('crew_downtimes').select('*').eq('id', downtimeId).maybeSingle();
   if (downtimeRes.error) {
     if (isMissingSchemaError(downtimeRes.error)) {
       logPortalServerWarn(diagnostics, {

@@ -71,6 +71,20 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible();
   });
 
+  test('enforces the admin-only pricebook boundary for the authenticated portal session', async ({ page }) => {
+    await page.goto('/pricebook');
+    await page.waitForURL((url) => url.pathname === '/pricebook' || url.pathname === '/staff/calculator', { timeout: 30_000 });
+
+    const pathname = new URL(page.url()).pathname;
+    if (pathname === '/pricebook') {
+      await expect(page.getByRole('tab', { name: 'Materials' })).toBeVisible();
+      return;
+    }
+
+    expect(pathname).toBe('/staff/calculator');
+    await expect(page.getByRole('heading', { name: 'Calculator' })).toBeVisible();
+  });
+
   test('keeps the shell visible while the dashboard data is loading', async ({ page }) => {
     const gate = await delayNetworkResponse(page, '**/api/dashboard**');
 

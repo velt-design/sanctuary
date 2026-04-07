@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireStaffSession = vi.fn();
+const requireStaffContext = vi.fn();
 const parseJsonBody = vi.fn();
 
 const applyScheduleItemPositions = vi.fn();
@@ -27,7 +27,7 @@ vi.mock('@/lib/api/staffApi', async () => {
   return {
     ...actual,
     parseJsonBody,
-    requireStaffSession,
+    requireStaffContext,
   };
 });
 
@@ -48,42 +48,6 @@ vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
 }));
 
 vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServer: {
-    from: (table: string) => {
-      if (table === 'scheduled_jobs') {
-        return {
-          select: () => ({
-            eq: (column: string, value: string) => {
-              if (column !== 'job_id') throw new Error(`Unexpected scheduled_jobs column ${column}`);
-              return { maybeSingle: () => scheduledJobsByProjectMaybeSingle(value) };
-            },
-          }),
-        };
-      }
-      if (table === 'projects') {
-        return {
-          select: () => ({
-            eq: (column: string, value: string) => {
-              if (column !== 'id') throw new Error(`Unexpected projects column ${column}`);
-              return { maybeSingle: () => projectsMaybeSingle(value) };
-            },
-          }),
-        };
-      }
-      if (table === 'estimates') {
-        return {
-          select: () => ({
-            eq: (column: string, value: string) => {
-              if (column !== 'project_id') throw new Error(`Unexpected estimates column ${column}`);
-              return estimatesEq(value);
-            },
-          }),
-        };
-      }
-      throw new Error(`Unexpected table ${table}`);
-    },
-    rpc,
-  },
   supabaseServiceRole: {
     rpc,
   },
@@ -92,7 +56,7 @@ vi.mock('@/lib/supabaseClient', () => ({
 describe('POST /api/staff/v1/schedule/job/assign', () => {
   beforeEach(() => {
     vi.resetModules();
-    requireStaffSession.mockReset();
+    requireStaffContext.mockReset();
     parseJsonBody.mockReset();
     applyScheduleItemPositions.mockReset();
     buildCrewContext.mockReset();
@@ -112,7 +76,45 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     estimatesEq.mockReset();
     rpc.mockReset();
 
-    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      supabase: {
+        from: (table: string) => {
+          if (table === 'scheduled_jobs') {
+            return {
+              select: () => ({
+                eq: (column: string, value: string) => {
+                  if (column !== 'job_id') throw new Error(`Unexpected scheduled_jobs column ${column}`);
+                  return { maybeSingle: () => scheduledJobsByProjectMaybeSingle(value) };
+                },
+              }),
+            };
+          }
+          if (table === 'projects') {
+            return {
+              select: () => ({
+                eq: (column: string, value: string) => {
+                  if (column !== 'id') throw new Error(`Unexpected projects column ${column}`);
+                  return { maybeSingle: () => projectsMaybeSingle(value) };
+                },
+              }),
+            };
+          }
+          if (table === 'estimates') {
+            return {
+              select: () => ({
+                eq: (column: string, value: string) => {
+                  if (column !== 'project_id') throw new Error(`Unexpected estimates column ${column}`);
+                  return estimatesEq(value);
+                },
+              }),
+            };
+          }
+          throw new Error(`Unexpected table ${table}`);
+        },
+      },
+    });
     parseJsonBody.mockResolvedValue({ ok: true, body: { job_id: 'project-1', crew_id: 'crew-new', position: 1 } });
     isMissingSchemaError.mockReturnValue(false);
     ensureForecastDurationDays.mockImplementation((value: number | null | undefined, fallback: number) =>
@@ -172,7 +174,13 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
   });
 
   it('returns 401 when staff auth is missing', async () => {
-    requireStaffSession.mockResolvedValueOnce(null);
+    requireStaffContext.mockResolvedValueOnce({
+      ok: false,
+      response: new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' },
+      }),
+    });
 
     const mod = await import('./route');
     const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/job/assign', { method: 'POST' }));

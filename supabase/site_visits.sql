@@ -197,8 +197,7 @@ values
   ('EMAIL_SITE_VISIT_CANCELLED', 'Site visit cancelled', '<p>Hi {{contactName}},</p><p>Your site visit for {{projectName}} has been cancelled.</p>', 'Hi {{contactName}}, Your site visit for {{projectName}} has been cancelled.', '["contactName","projectName"]'::jsonb)
 on conflict (id) do nothing;
 
--- Dev grants (match other portal schema files).
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on table public.site_visit_events to anon, authenticated;
+-- Access control is managed by the forward migrations under `supabase/migrations/`.
+-- Do not grant blanket anon/authenticated table access from this legacy snapshot.
 
 select pg_notify('pgrst', 'reload schema');

@@ -1,7 +1,6 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, missingColumnFromError, parseIso } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -17,7 +16,7 @@ async function loadEventRow(projectUuid: string, eventUuid: string | null): Prom
   let lastErr: any | null = null;
   for (const select of selects) {
     for (const orderByUpdatedAt of [true, false] as const) {
-      const q = supabaseServer.from('site_visit_events').select(select).eq('project_id', projectUuid);
+      const q = supabase.from('site_visit_events').select(select).eq('project_id', projectUuid);
       if (eventUuid) q.eq('id', eventUuid);
 
       const res = orderByUpdatedAt ? await (q as any).order('updated_at', { ascending: false }).limit(1) : await (q as any).limit(1);
@@ -41,7 +40,7 @@ async function loadEventRow(projectUuid: string, eventUuid: string | null): Prom
 async function safeUpdate(projectUuid: string, eventUuid: string, patchIn: Record<string, any>): Promise<void> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const res = await supabaseServer.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
+    const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
     if (!res.error) return;
     if (isMissingColumnError(res.error)) {
       const missing = missingColumnFromError(res.error);
@@ -58,8 +57,9 @@ async function safeUpdate(projectUuid: string, eventUuid: string, patchIn: Recor
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {

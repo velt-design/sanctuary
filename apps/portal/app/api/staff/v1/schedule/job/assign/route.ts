@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitAssignJob } from '@/lib/scheduling/scheduleCommands';
@@ -18,7 +18,6 @@ import {
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
 import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
@@ -28,8 +27,9 @@ function tempId(prefix: string): string {
 
 export async function POST(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/job/assign');
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401, diagnostics);
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   if (!jobId || !crewId) return jsonError('job_id and crew_id are required', 400, diagnostics);
 
   let existingJob: any = null;
-  const existingRes = await supabaseServer.from('scheduled_jobs').select('id, crew_id, forecast_duration_days').eq('job_id', jobId).maybeSingle();
+  const existingRes = await supabase.from('scheduled_jobs').select('id, crew_id, forecast_duration_days').eq('job_id', jobId).maybeSingle();
   if (existingRes.error) {
     if (isMissingSchemaError(existingRes.error)) {
       logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: existingRes.error });
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
   let durationDays = ensureForecastDurationDays(existingJob?.forecast_duration_days ?? null, 1);
   if (!existingJob) {
-    const projectRes = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', jobId).maybeSingle();
+    const projectRes = await supabase.from('projects').select('id, pipeline_stage').eq('id', jobId).maybeSingle();
     if (projectRes.error) {
       if (isMissingSchemaError(projectRes.error)) {
         logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: projectRes.error });
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
       return jsonError('Only deposit-stage projects can be scheduled.', 409, diagnostics);
     }
 
-    const estimatesRes = await supabaseServer
+    const estimatesRes = await supabase
       .from('estimates')
       .select('id, project_id, status, created_at, version, inputs, outputs')
       .eq('project_id', jobId);

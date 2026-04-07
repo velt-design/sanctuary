@@ -1,5 +1,6 @@
 import { formatSupportedSchemaMessage } from '@/lib/supabase/schemaGuard';
-import { supabaseServiceRole } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 
 type AnyRecord = Record<string, unknown>;
@@ -26,9 +27,10 @@ export function mapContact(row: AnyRecord) {
   };
 }
 
-export async function createContactWithRetry(payloadIn: Record<string, any>) {
+export async function createContactWithRetry(payloadIn: Record<string, any>, supabase?: SupabaseClient) {
+  const client = supabase ?? (await getSupabaseServerAuth());
   const payload = { ...payloadIn };
-  const res = await supabaseServiceRole.from('contacts').insert(payload).select('*').single();
+  const res = await client.from('contacts').insert(payload).select('*').single();
   if (!res.error && res.data) return res;
 
   return {
@@ -42,10 +44,11 @@ export async function createContactWithRetry(payloadIn: Record<string, any>) {
   };
 }
 
-export async function updateContactWithRetry(contactUuid: string, payloadIn: Record<string, any>) {
+export async function updateContactWithRetry(contactUuid: string, payloadIn: Record<string, any>, supabase?: SupabaseClient) {
+  const client = supabase ?? (await getSupabaseServerAuth());
   const payload = { ...payloadIn };
   if (!Object.keys(payload).length) return { data: null, error: null };
-  const res = await supabaseServiceRole.from('contacts').update(payload).eq('id', contactUuid).select('*').single();
+  const res = await client.from('contacts').update(payload).eq('id', contactUuid).select('*').single();
   if (!res.error && res.data) return res;
 
   return {

@@ -8,10 +8,14 @@ create table if not exists public.project_task_checks (
 
 create index if not exists idx_project_task_checks_task_key on public.project_task_checks(task_key);
 
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on table public.project_task_checks to anon, authenticated;
+grant select, insert, update, delete on table public.project_task_checks to authenticated;
 
--- Recommended for production: enable RLS and use `SUPABASE_SERVICE_ROLE_KEY` in server-side API routes.
--- alter table public.project_task_checks enable row level security;
+alter table public.project_task_checks enable row level security;
+
+drop policy if exists portal_access_all on public.project_task_checks;
+create policy portal_access_all on public.project_task_checks
+  for all
+  using (public.has_portal_access())
+  with check (public.has_portal_access());
 
 select pg_notify('pgrst', 'reload schema');

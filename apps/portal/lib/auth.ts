@@ -3,7 +3,15 @@ import 'server-only';
 import type { User } from '@supabase/supabase-js';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import type { PortalRole } from '@/lib/authTypes';
-import { resolvePortalAccessState, type PortalAccessLookup, type PortalAccessState } from '@/lib/portalAccess';
+import {
+  buildAccessStatusHref,
+  buildLoginHref,
+  resolvePortalAccessState,
+  toAccessStatusQueryState,
+  type PortalAccessLookup,
+  type PortalAccessState,
+} from '@/lib/portalAccess';
+import { redirect } from 'next/navigation';
 
 export type PortalSession = {
   user: User;
@@ -27,4 +35,49 @@ export async function getPortalSession(): Promise<PortalSession | null> {
     user: userData.user,
     role: accessState.session.role,
   };
+}
+
+function redirectForAccessState(accessState: PortalAccessState, callbackUrl: string): never {
+  if (accessState.kind === 'unauthenticated') {
+    redirect(buildLoginHref(callbackUrl));
+  }
+
+  if (accessState.kind === 'no_access' || accessState.kind === 'lookup_failed') {
+    redirect(
+      buildAccessStatusHref({
+        state: toAccessStatusQueryState(accessState.kind),
+        callbackUrl,
+      }),
+    );
+  }
+
+  throw new Error('Expected authenticated portal access state before redirect handling.');
+}
+
+export async function requirePortalSessionPageAccess(callbackUrl: string): Promise<PortalSession> {
+  const accessState = await getPortalAccessState();
+  if (accessState.kind !== 'authenticated') {
+    redirectForAccessState(accessState, callbackUrl);
+  }
+
+  const supabase = await getSupabaseServerAuth();
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData?.user) {
+    redirect(buildLoginHref(callbackUrl));
+  }
+
+  return {
+    user: userData.user,
+    role: accessState.session.role,
+  };
+}
+
+export async function requireStaffPageAccess(callbackUrl: string): Promise<PortalSession> {
+  return requirePortalSessionPageAccess(callbackUrl);
+}
+
+export async function requireAdminPageAccess(callbackUrl: string, fallbackHref = '/staff/calculator'): Promise<PortalSession> {
+  const session = await requirePortalSessionPageAccess(callbackUrl);
+  if (session.role !== 'admin') redirect(fallbackHref);
+  return session;
 }

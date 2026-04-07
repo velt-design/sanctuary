@@ -1,7 +1,8 @@
 import 'server-only';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { buildVersionLabelMap } from '@/lib/estimates/server';
 import { normalizePowdercoatProfile, normalizePowdercoatStoredRow } from './powdercoating';
@@ -18,6 +19,10 @@ function emptyState(): JobPackPowdercoatOverrideState {
   return { version: null, rows: [] };
 }
 
+async function resolveSupabaseClient(supabase?: SupabaseClient): Promise<SupabaseClient> {
+  return supabase ?? (await getSupabaseServerAuth());
+}
+
 export function isMissingSchemaError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
   const code = typeof (error as any).code === 'string' ? (error as any).code.trim() : '';
@@ -32,14 +37,16 @@ export function isMissingSchemaError(error: unknown): boolean {
   );
 }
 
-export async function estimateExists(estimateUuid: string): Promise<boolean> {
-  const res = await supabaseServer.from('estimates').select('id').eq('id', estimateUuid).maybeSingle();
+export async function estimateExists(estimateUuid: string, supabase?: SupabaseClient): Promise<boolean> {
+  const client = await resolveSupabaseClient(supabase);
+  const res = await client.from('estimates').select('id').eq('id', estimateUuid).maybeSingle();
   if (res.error) throw res.error;
   return Boolean(res.data?.id);
 }
 
-export async function loadPowdercoatOverrideState(estimateUuid: string): Promise<JobPackPowdercoatOverrideState> {
-  const res = await supabaseServer
+export async function loadPowdercoatOverrideState(estimateUuid: string, supabase?: SupabaseClient): Promise<JobPackPowdercoatOverrideState> {
+  const client = await resolveSupabaseClient(supabase);
+  const res = await client
     .from('job_pack_sheet_overrides')
     .select('payload_json, updated_at')
     .eq('estimate_id', estimateUuid)
@@ -64,7 +71,8 @@ export async function loadPowdercoatOverrideState(estimateUuid: string): Promise
 }
 
 export async function listPowdercoatProfileOptions(): Promise<JobPackPowdercoatOption[]> {
-  const { config } = await getCostingConfigWithOverrides();
+  const supabase = await resolveSupabaseClient();
+  const { config } = await getCostingConfigWithOverrides(supabase);
   const grouped = new Map<string, { profile: string; stockLengthsM: Set<number> }>();
 
   for (const item of config.materials.items) {
@@ -94,13 +102,14 @@ export async function savePowdercoatOverrideState(input: {
   rows: JobPackPowdercoatStoredRow[];
   updatedBy: string | null;
 }): Promise<{ ok: true; overrides: JobPackPowdercoatOverrideState } | { ok: false; current: JobPackPowdercoatOverrideState }> {
-  const current = await loadPowdercoatOverrideState(input.estimateUuid);
+  const client = await resolveSupabaseClient();
+  const current = await loadPowdercoatOverrideState(input.estimateUuid, client);
   if ((current.version ?? null) !== (input.expectedVersion ?? null)) {
     return { ok: false, current };
   }
 
   if (!input.rows.length) {
-    const deleteRes = await supabaseServer
+    const deleteRes = await client
       .from('job_pack_sheet_overrides')
       .delete()
       .eq('estimate_id', input.estimateUuid)
@@ -109,7 +118,7 @@ export async function savePowdercoatOverrideState(input: {
     return { ok: true, overrides: emptyState() };
   }
 
-  const upsertRes = await supabaseServer
+  const upsertRes = await client
     .from('job_pack_sheet_overrides')
     .upsert(
       {
@@ -168,7 +177,8 @@ function quoteRelation(value: QuoteVersionForGeneration['quotes']): { project_id
 }
 
 async function loadEstimateVersionLabel(projectUuid: string, estimateUuid: string): Promise<string> {
-  const estimatesRes = await supabaseServer
+  const client = await resolveSupabaseClient();
+  const estimatesRes = await client
     .from('estimates')
     .select('id, created_at, outputs, version')
     .eq('project_id', projectUuid)
@@ -199,7 +209,8 @@ function mapGenerationRow(params: {
 }
 
 export async function hasGeneratedJobPacksForProject(projectUuid: string): Promise<boolean> {
-  const res = await supabaseServer.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle();
+  const client = await resolveSupabaseClient();
+  const res = await client.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle();
   if (res.error) {
     if (isMissingSchemaError(res.error)) return false;
     throw res.error;
@@ -208,7 +219,8 @@ export async function hasGeneratedJobPacksForProject(projectUuid: string): Promi
 }
 
 export async function loadLatestJobPackGenerationForEstimate(estimateUuid: string): Promise<JobPackGenerationSummary | null> {
-  const res = await supabaseServer
+  const client = await resolveSupabaseClient();
+  const res = await client
     .from('job_pack_generations')
     .select('id, project_id, estimate_id, quote_version_id, created_at, created_by')
     .eq('estimate_id', estimateUuid)
@@ -222,7 +234,7 @@ export async function loadLatestJobPackGenerationForEstimate(estimateUuid: strin
   if (!res.data) return null;
 
   const generation = res.data as JobPackGenerationRow;
-  const quoteVersionRes = await supabaseServer
+  const quoteVersionRes = await client
     .from('quote_versions')
     .select('id, quote_id, version_number, status, source_estimate_version_id, quotes!inner(project_id, quote_ref)')
     .eq('id', generation.quote_version_id)
@@ -238,8 +250,9 @@ export async function loadLatestJobPackGenerationForEstimate(estimateUuid: strin
 }
 
 export async function listGeneratedJobPacksForProject(projectId: string): Promise<JobPackGenerationSummary[]> {
+  const client = await resolveSupabaseClient();
   const projectUuid = uuidFromAppId(projectId, 'proj');
-  const res = await supabaseServer
+  const res = await client
     .from('job_pack_generations')
     .select('id, project_id, estimate_id, quote_version_id, created_at, created_by')
     .eq('project_id', projectUuid)
@@ -250,7 +263,7 @@ export async function listGeneratedJobPacksForProject(projectId: string): Promis
   if (!rows.length) return [];
 
   const quoteVersionIds = rows.map((row) => row.quote_version_id);
-  const quoteVersionsRes = await supabaseServer
+  const quoteVersionsRes = await client
     .from('quote_versions')
     .select('id, quote_id, version_number, status, source_estimate_version_id, quotes!inner(project_id, quote_ref)')
     .in('id', quoteVersionIds);
@@ -258,7 +271,7 @@ export async function listGeneratedJobPacksForProject(projectId: string): Promis
   const quoteVersions = (Array.isArray(quoteVersionsRes.data) ? quoteVersionsRes.data : []) as QuoteVersionForGeneration[];
   const quoteVersionsById = new Map(quoteVersions.map((row) => [row.id, row]));
 
-  const estimateLabelsRes = await supabaseServer
+  const estimateLabelsRes = await client
     .from('estimates')
     .select('id, project_id, created_at, outputs, version')
     .eq('project_id', projectUuid)
@@ -284,10 +297,11 @@ export async function generateJobPackForQuoteVersion(input: {
   quoteVersionId: string;
   actor: string | null;
 }): Promise<JobPackGenerationSummary> {
+  const client = await resolveSupabaseClient();
   const projectUuid = uuidFromAppId(input.projectId, 'proj');
   const quoteVersionUuid = uuidFromAppId(input.quoteVersionId, 'qv');
 
-  const quoteVersionRes = await supabaseServer
+  const quoteVersionRes = await client
     .from('quote_versions')
     .select('id, quote_id, version_number, status, source_estimate_version_id, quotes!inner(project_id, quote_ref)')
     .eq('id', quoteVersionUuid)
@@ -303,7 +317,7 @@ export async function generateJobPackForQuoteVersion(input: {
     throw new Error('Job packs can only be generated after a quote has been sent.');
   }
 
-  const existingRes = await supabaseServer
+  const existingRes = await client
     .from('job_pack_generations')
     .select('id, project_id, estimate_id, quote_version_id, created_at, created_by')
     .eq('quote_version_id', quoteVersionUuid)
@@ -317,7 +331,7 @@ export async function generateJobPackForQuoteVersion(input: {
     });
   }
 
-  const insertRes = await supabaseServer
+  const insertRes = await client
     .from('job_pack_generations')
     .insert({
       project_id: projectUuid,

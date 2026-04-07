@@ -86,10 +86,7 @@ create index if not exists schedule_events_by_project on public.schedule_events(
 create index if not exists schedule_events_by_type on public.schedule_events(type);
 create index if not exists schedule_events_by_created_at on public.schedule_events(created_at desc);
 
--- Dev grants (match other portal schema files; tighten later).
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on table public.schedule_items to anon, authenticated;
-grant select, insert, update, delete on table public.schedule_events to anon, authenticated;
+-- Access control is managed by the forward migrations under `supabase/migrations/`.
+-- Do not grant blanket anon/authenticated table access from this legacy snapshot.
 
 select pg_notify('pgrst', 'reload schema');
-

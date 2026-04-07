@@ -1,15 +1,15 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { getTaskDefinition } from '@/lib/projects/pipelineDefinition';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
 export async function GET(_req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -19,7 +19,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid projectId', 400);
   }
 
-  const res = await supabaseServer.from('project_task_checks').select('task_key').eq('project_id', projectUuid);
+  const res = await supabase.from('project_task_checks').select('task_key').eq('project_id', projectUuid);
   if (res.error) return jsonError(res.error.message ?? 'Failed to load tasks', 500);
 
   const completed = new Set<string>();
@@ -33,8 +33,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -57,17 +58,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const definition = getTaskDefinition(taskKey);
   if (!definition) return jsonError('Invalid taskKey', 400);
   if (definition.kind !== 'manual') return jsonError('Action tasks cannot be manually completed', 400);
-  if (definition.key === 'invoice_paid' && session.role !== 'admin') {
+  if (definition.key === 'invoice_paid' && auth.session.role !== 'admin') {
     return jsonError('Only admins can complete this task', 403);
   }
 
   if (definition.key === 'invoice_paid' && completed) {
-    const prev = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+    const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
     if (prev.error || !prev.data) return jsonError('Project not found', 404);
     const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
     if (fromStage !== 'SENT') return jsonError('Invalid stage transition (expected SENT)', 409);
 
-    const openInvoiceRes = await supabaseServer
+    const openInvoiceRes = await supabase
       .from('deposit_invoices')
       .select('id')
       .eq('project_id', projectUuid)
@@ -80,7 +81,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   if (completed) {
-    const upsertRes = await supabaseServer.from('project_task_checks').upsert(
+    const upsertRes = await supabase.from('project_task_checks').upsert(
       {
         project_id: projectUuid,
         task_key: definition.key,
@@ -91,7 +92,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     );
     if (upsertRes.error) return jsonError(upsertRes.error.message ?? 'Failed to update task', 500);
   } else {
-    const delRes = await supabaseServer
+    const delRes = await supabase
       .from('project_task_checks')
       .delete()
       .eq('project_id', projectUuid)
@@ -99,7 +100,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     if (delRes.error) return jsonError(delRes.error.message ?? 'Failed to update task', 500);
 
     if (definition.key === 'order_materials') {
-      const dependentRes = await supabaseServer
+      const dependentRes = await supabase
         .from('project_task_checks')
         .delete()
         .eq('project_id', projectUuid)
@@ -109,12 +110,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   if (definition.key === 'invoice_paid' && completed) {
-    const prev = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+    const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
     if (prev.error || !prev.data) return jsonError('Project not found', 404);
     const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
 
     if (fromStage === 'SENT') {
-      const updateRes = await supabaseServer
+      const updateRes = await supabase
         .from('projects')
         .update({ pipeline_stage: 'DEPOSIT' } as any)
         .eq('id', projectUuid)
@@ -139,12 +140,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   if (definition.key === 'confirm_schedule' && completed) {
-    const prev = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+    const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
     if (prev.error || !prev.data) return jsonError('Project not found', 404);
     const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
 
     if (fromStage === 'DEPOSIT') {
-      const updateRes = await supabaseServer
+      const updateRes = await supabase
         .from('projects')
         .update({ pipeline_stage: 'SCHEDULED' } as any)
         .eq('id', projectUuid)
@@ -175,7 +176,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     };
     let payload = { ...projectPatch };
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      const updateRes = await supabaseServer.from('projects').update(payload).eq('id', projectUuid);
+      const updateRes = await supabase.from('projects').update(payload).eq('id', projectUuid);
       if (!updateRes.error) break;
       const missing = missingColumnFromError(updateRes.error);
       if (missing && missing in payload) {

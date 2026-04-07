@@ -169,6 +169,15 @@ describe('portal proxy', () => {
     expect(response.headers.get('location')).toBe('https://example.com/staff/calculator');
   });
 
+  it('redirects non-admin users away from pricebook routes', async () => {
+    setAuthenticated('staff');
+
+    const response = await proxy(new NextRequest('https://example.com/pricebook#materials'));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe('https://example.com/staff/calculator#materials');
+  });
+
   it('canonicalizes /staff/login to /login before auth handling', async () => {
     const response = await proxy(new NextRequest('https://example.com/staff/login?callbackUrl=%2Fstaff%2Fprojects'));
 

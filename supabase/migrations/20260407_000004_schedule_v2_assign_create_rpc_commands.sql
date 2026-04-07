@@ -436,7 +436,7 @@ begin
 end;
 $$;
 
-grant execute on function public.schedule_v2_assign_job(uuid, integer, jsonb, jsonb, jsonb, jsonb) to anon, authenticated;
-grant execute on function public.schedule_v2_create_downtime(uuid, integer, text, text, integer, jsonb, jsonb) to anon, authenticated;
+grant execute on function public.schedule_v2_assign_job(uuid, integer, jsonb, jsonb, jsonb, jsonb) to authenticated, service_role;
+grant execute on function public.schedule_v2_create_downtime(uuid, integer, text, text, integer, jsonb, jsonb) to authenticated, service_role;
 
 notify pgrst, 'reload schema';

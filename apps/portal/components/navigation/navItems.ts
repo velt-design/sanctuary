@@ -54,7 +54,7 @@ export const NAV_ITEMS = [
     label: 'Pricebook',
     href: '/pricebook',
     Icon: BookOpen,
-    adminOnly: false,
+    adminOnly: true,
     children: [
       { key: 'pricebook-materials', label: 'Materials', href: '/pricebook#materials' },
       { key: 'pricebook-actions', label: 'Actions', href: '/pricebook#actions' },

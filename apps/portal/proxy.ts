@@ -46,6 +46,10 @@ function isPortalProtectedPath(path: string): boolean {
   );
 }
 
+function isPricebookPath(path: string): boolean {
+  return path === '/pricebook' || path.startsWith('/pricebook/');
+}
+
 function normalizePortalRoute(path: string): NormalizedRoute {
   if (path === '/staff/login' || path.startsWith('/staff/login/')) {
     const stripped = path.replace(/^\/staff\/login/, '');
@@ -169,6 +173,7 @@ export async function proxy(req: NextRequest) {
   const isLoginPath = normalizedPath === '/login' || normalizedPath.startsWith('/login/');
   const isAccessStatusPath = normalizedPath === '/access-status' || normalizedPath.startsWith('/access-status/');
   const isAdminPath = normalizedPath === '/admin' || normalizedPath.startsWith('/admin/');
+  const isPricebookProtectedPath = isPricebookPath(normalizedPath);
   const requiresAccessCheck = isLoginPath || isAccessStatusPath || isPortalProtectedPath(normalizedPath);
 
   if (!requiresAccessCheck) {
@@ -230,7 +235,7 @@ export async function proxy(req: NextRequest) {
     );
   }
 
-  if (isAdminPath && accessState.session.role !== 'admin') {
+  if ((isAdminPath || isPricebookProtectedPath) && accessState.session.role !== 'admin') {
     return proxySupabase.apply(NextResponse.redirect(withPathname(req, '/staff/calculator')));
   }
 

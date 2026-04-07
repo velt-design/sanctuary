@@ -1,7 +1,8 @@
 import 'server-only';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
-import { supabaseServiceRole } from '@/lib/supabaseClient';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
@@ -80,17 +81,18 @@ function mapProjectRow(row: Record<string, unknown>): Project {
   };
 }
 
-export async function loadProjectsIndexData(): Promise<{
+export async function loadProjectsIndexData(supabase?: SupabaseClient): Promise<{
   projects: Project[];
   contacts: Contact[];
 }> {
-  let projectsRes = await supabaseServiceRole.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
+  const client = supabase ?? (await getSupabaseServerAuth());
+  let projectsRes = await client.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
   if (projectsRes.error && missingColumnFromError(projectsRes.error) === 'archived_at') {
-    projectsRes = await supabaseServiceRole.from('projects').select('*').order('created_at', { ascending: false });
+    projectsRes = await client.from('projects').select('*').order('created_at', { ascending: false });
   }
   if (projectsRes.error) throw projectsRes.error;
 
-  const contactsRes = await supabaseServiceRole.from('contacts').select('*').order('name', { ascending: true });
+  const contactsRes = await client.from('contacts').select('*').order('name', { ascending: true });
   if (contactsRes.error) throw contactsRes.error;
 
   return {

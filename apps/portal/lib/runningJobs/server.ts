@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { createHash } from 'node:crypto';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -176,7 +176,8 @@ function isMissingSchemaError(error: unknown): boolean {
 }
 
 async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ projects: ProjectRow[]; crews: RunningJobsResponse['lookups']['crews'] }> {
-  const projectsQuery = supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const projectsQuery = supabase
     .from('projects')
     .select(
       [
@@ -200,7 +201,7 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
 
   const [projectsRes, crewsRes] = await Promise.all([
     projectsQuery,
-    supabaseServer.from('schedule_crews').select('id, name, short_code, color, sort_order, is_active').order('sort_order', { ascending: true }),
+    supabase.from('schedule_crews').select('id, name, short_code, color, sort_order, is_active').order('sort_order', { ascending: true }),
   ]);
 
   if (projectsRes.error) throw projectsRes.error;
@@ -231,7 +232,8 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
 }
 
 async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
-  const activeBatchRes = await supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const activeBatchRes = await supabase
     .from('running_job_legacy_import_batches')
     .select('id')
     .eq('is_active', true)
@@ -246,7 +248,7 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
   const activeBatch = activeBatchRes.data as LegacyImportBatchRow | null;
   if (!activeBatch?.id) return [];
 
-  const rowsRes = await supabaseServer
+  const rowsRes = await supabase
     .from('running_job_legacy_rows')
     .select('id, batch_id, source_row_number, display_cells, group_year, sort_date, matched_project_id, match_method')
     .eq('batch_id', activeBatch.id)
@@ -360,6 +362,7 @@ async function loadLegacyRunningJobRows(): Promise<RunningJobRow[]> {
 
 async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Promise<RunningJobsResponse> {
   const generatedAt = new Date().toISOString();
+  const supabase = await getSupabaseServerAuth();
   const { projects, crews } = await loadProjectsAndCrews(projectIdsFilter);
   const projectIds = projects.map((project) => project.id).filter(Boolean);
 
@@ -378,11 +381,11 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
   }
 
   const [siteVisitsRes, scheduledJobsRes, tasksRes, metaRes, estimatesRes, quotesRes] = await Promise.all([
-    supabaseServer
+    supabase
       .from('site_visit_events')
       .select('id, project_id, status, assigned_sales_owner_id, updated_at')
       .in('project_id', projectIds),
-    supabaseServer
+    supabase
       .from('scheduled_jobs')
       .select(
         [
@@ -400,13 +403,13 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
         ].join(','),
       )
       .in('job_id', projectIds),
-    supabaseServer.from('project_task_checks').select('project_id, task_key').in('project_id', projectIds),
-    supabaseServer.from('project_running_job_meta').select('project_id, lights_status, notes, updated_at').in('project_id', projectIds),
-    supabaseServer
+    supabase.from('project_task_checks').select('project_id, task_key').in('project_id', projectIds),
+    supabase.from('project_running_job_meta').select('project_id, lights_status, notes, updated_at').in('project_id', projectIds),
+    supabase
       .from('estimates')
       .select('id, project_id, status, created_at, version, inputs, outputs')
       .in('project_id', projectIds),
-    supabaseServer.from('quotes').select('id, project_id').in('project_id', projectIds),
+    supabase.from('quotes').select('id, project_id').in('project_id', projectIds),
   ]);
 
   if (siteVisitsRes.error) throw siteVisitsRes.error;
@@ -423,7 +426,7 @@ async function loadLiveRunningJobsByProjectIds(projectIdsFilter?: string[]): Pro
 
   const quoteIds = quoteRows.map((row) => row.id).filter(Boolean);
   const quoteVersionsRes = quoteIds.length
-    ? await supabaseServer.from('quote_versions').select('id, quote_id, version_number, created_at, customer_name').in('quote_id', quoteIds)
+    ? await supabase.from('quote_versions').select('id, quote_id, version_number, created_at, customer_name').in('quote_id', quoteIds)
     : { data: [], error: null };
 
   if (quoteVersionsRes.error) throw quoteVersionsRes.error;

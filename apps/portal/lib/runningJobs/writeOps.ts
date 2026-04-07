@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { POST as confirmScheduleActionRoute } from '@/app/api/staff/v1/projects/[projectId]/action/confirm_schedule/route';
 import { POST as markCompletedActionRoute } from '@/app/api/staff/v1/projects/[projectId]/action/mark_completed/route';
 import { POST as markDepositReceivedActionRoute } from '@/app/api/staff/v1/projects/[projectId]/action/mark_deposit_received/route';
@@ -10,7 +11,6 @@ import { POST as markScheduleJobInProgressRoute } from '@/app/api/staff/v1/sched
 import { POST as pinScheduleJobRoute } from '@/app/api/staff/v1/schedule/job/pin/route';
 import { POST as setScheduleDurationRoute } from '@/app/api/staff/v1/schedule/job/set-duration/route';
 import { isMissingColumnError, missingColumnFromError, salespersonSchemaMismatchMessage } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { getRunningJobCellEditability, type NormalizedRunningJobCellValue } from './editing';
@@ -65,6 +65,7 @@ async function refreshRow(projectUuid: string): Promise<RunningJobRow> {
 
 async function updateContactField(contactId: string | null, patch: { name?: string; phone?: string }) {
   if (!contactId) throw new Error('This project does not have a linked contact.');
+  const supabase = await getSupabaseServerAuth();
   const contactUuid = uuidFromAppId(contactId, 'ct');
   const payload: Record<string, unknown> = {
     ...(typeof patch.name === 'string' ? { name: patch.name.trim() || null } : null),
@@ -72,24 +73,27 @@ async function updateContactField(contactId: string | null, patch: { name?: stri
     updated_at: new Date().toISOString(),
   };
 
-  const res = await supabaseServer.from('contacts').update(payload as any).eq('id', contactUuid).select('id').maybeSingle();
+  const res = await supabase.from('contacts').update(payload as any).eq('id', contactUuid).select('id').maybeSingle();
   if (res.error) throw new Error(res.error.message ?? 'Failed to update contact.');
 }
 
 async function updateProjectField(projectUuid: string, patch: Record<string, unknown>) {
-  const res = await supabaseServer.from('projects').update(patch as any).eq('id', projectUuid).select('id').maybeSingle();
+  const supabase = await getSupabaseServerAuth();
+  const res = await supabase.from('projects').update(patch as any).eq('id', projectUuid).select('id').maybeSingle();
   if (res.error) throw new Error(res.error.message ?? 'Failed to update project.');
 }
 
 async function upsertRunningJobMeta(projectUuid: string, patch: Record<string, unknown>) {
+  const supabase = await getSupabaseServerAuth();
   const payload = { project_id: projectUuid, ...patch };
-  const res = await supabaseServer.from('project_running_job_meta').upsert(payload as any, { onConflict: 'project_id' }).select('project_id').maybeSingle();
+  const res = await supabase.from('project_running_job_meta').upsert(payload as any, { onConflict: 'project_id' }).select('project_id').maybeSingle();
   if (res.error) throw new Error(res.error.message ?? 'Failed to update running-job metadata.');
 }
 
 async function setTaskComplete(projectUuid: string, taskKey: string, completed: boolean) {
+  const supabase = await getSupabaseServerAuth();
   if (completed) {
-    const res = await supabaseServer.from('project_task_checks').upsert(
+    const res = await supabase.from('project_task_checks').upsert(
       {
         project_id: projectUuid,
         task_key: taskKey,
@@ -102,17 +106,18 @@ async function setTaskComplete(projectUuid: string, taskKey: string, completed: 
     return;
   }
 
-  const delRes = await supabaseServer.from('project_task_checks').delete().eq('project_id', projectUuid).eq('task_key', taskKey);
+  const delRes = await supabase.from('project_task_checks').delete().eq('project_id', projectUuid).eq('task_key', taskKey);
   if (delRes.error) throw new Error(delRes.error.message ?? 'Failed to update task state.');
 
   if (taskKey === 'order_materials') {
-    const dependentRes = await supabaseServer.from('project_task_checks').delete().eq('project_id', projectUuid).eq('task_key', 'job_complete');
+    const dependentRes = await supabase.from('project_task_checks').delete().eq('project_id', projectUuid).eq('task_key', 'job_complete');
     if (dependentRes.error) throw new Error(dependentRes.error.message ?? 'Failed to clear dependent task.');
   }
 }
 
 async function updateSiteVisitRep(projectUuid: string, salespersonId: string | null) {
-  const existingRes = await supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const existingRes = await supabase
     .from('site_visit_events')
     .select('id')
     .eq('project_id', projectUuid)
@@ -129,7 +134,7 @@ async function updateSiteVisitRep(projectUuid: string, salespersonId: string | n
   if (existingRes.data?.id) {
     const updatePayload = { ...patch };
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      const updateRes = await supabaseServer.from('site_visit_events').update(updatePayload as any).eq('id', existingRes.data.id);
+      const updateRes = await supabase.from('site_visit_events').update(updatePayload as any).eq('id', existingRes.data.id);
       if (!updateRes.error) return;
       if (isMissingColumnError(updateRes.error)) {
         const missing = missingColumnFromError(updateRes.error);
@@ -153,7 +158,7 @@ async function updateSiteVisitRep(projectUuid: string, salespersonId: string | n
     ...patch,
   };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const insertRes = await supabaseServer.from('site_visit_events').insert(insertPayload as any);
+    const insertRes = await supabase.from('site_visit_events').insert(insertPayload as any);
     if (!insertRes.error) return;
     if (isMissingColumnError(insertRes.error)) {
       const missing = missingColumnFromError(insertRes.error);
@@ -172,7 +177,8 @@ async function updateSiteVisitRep(projectUuid: string, salespersonId: string | n
 }
 
 async function ensureCrewExists(crewId: string) {
-  const crewRes = await supabaseServer.from('schedule_crews').select('id').eq('id', crewId).maybeSingle();
+  const supabase = await getSupabaseServerAuth();
+  const crewRes = await supabase.from('schedule_crews').select('id').eq('id', crewId).maybeSingle();
   if (crewRes.error) throw new Error(crewRes.error.message ?? 'Failed to load crew.');
   if (!crewRes.data) throw new Error('Crew not found.');
 }

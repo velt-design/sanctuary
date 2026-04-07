@@ -1,6 +1,5 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, missingColumnFromError, salespersonSchemaMismatchMessage } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -8,7 +7,7 @@ export const runtime = 'nodejs';
 async function safeUpdate(eventUuid: string, projectUuid: string, patchIn: Record<string, any>): Promise<{ ok: boolean; error?: any }> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const res = await supabaseServer.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
+    const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
     if (!res.error) return { ok: true };
     if (isMissingColumnError(res.error)) {
       const missing = missingColumnFromError(res.error);
@@ -29,8 +28,9 @@ async function safeUpdate(eventUuid: string, projectUuid: string, patchIn: Recor
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -54,7 +54,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid siteVisitEventId', 400);
   }
 
-  const prev = await supabaseServer.from('site_visit_events').select('id').eq('project_id', projectUuid).eq('id', eventUuid).limit(1);
+  const prev = await supabase.from('site_visit_events').select('id').eq('project_id', projectUuid).eq('id', eventUuid).limit(1);
   if (prev.error) return jsonError('Failed to load site visit', 500);
   const rows = Array.isArray(prev.data) ? prev.data : [];
   if (!rows.length) return jsonError('Site visit not found', 404);

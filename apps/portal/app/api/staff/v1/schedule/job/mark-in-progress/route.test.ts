@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireStaffSession = vi.fn();
+const requireStaffContext = vi.fn();
 const parseJsonBody = vi.fn();
 const buildCrewContext = vi.fn();
 const buildJobMetaMap = vi.fn();
@@ -17,7 +17,7 @@ const rpc = vi.fn();
 
 vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
-  return { ...actual, parseJsonBody, requireStaffSession };
+  return { ...actual, parseJsonBody, requireStaffContext };
 });
 
 vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
@@ -33,21 +33,6 @@ vi.mock('@/lib/scheduling/scheduleV2Server', () => ({
 }));
 
 vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServer: {
-    from: (table: string) => {
-      if (table !== 'scheduled_jobs') throw new Error(`Unexpected table ${table}`);
-      return {
-        select: () => ({
-          eq: (column: string) => {
-            if (column === 'job_id') return { maybeSingle: scheduledJobsByProjectMaybeSingle };
-            if (column === 'id') return { maybeSingle: scheduledJobsByIdMaybeSingle };
-            throw new Error(`Unexpected eq column ${column}`);
-          },
-        }),
-      };
-    },
-    rpc,
-  },
   supabaseServiceRole: {
     rpc,
   },
@@ -56,7 +41,7 @@ vi.mock('@/lib/supabaseClient', () => ({
 describe('POST /api/staff/v1/schedule/job/mark-in-progress', () => {
   beforeEach(() => {
     vi.resetModules();
-    requireStaffSession.mockReset();
+    requireStaffContext.mockReset();
     parseJsonBody.mockReset();
     buildCrewContext.mockReset();
     buildJobMetaMap.mockReset();
@@ -71,7 +56,24 @@ describe('POST /api/staff/v1/schedule/job/mark-in-progress', () => {
     scheduledJobsByIdMaybeSingle.mockReset();
     rpc.mockReset();
 
-    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      supabase: {
+        from: (table: string) => {
+          if (table !== 'scheduled_jobs') throw new Error(`Unexpected table ${table}`);
+          return {
+            select: () => ({
+              eq: (column: string) => {
+                if (column === 'job_id') return { maybeSingle: scheduledJobsByProjectMaybeSingle };
+                if (column === 'id') return { maybeSingle: scheduledJobsByIdMaybeSingle };
+                throw new Error(`Unexpected eq column ${column}`);
+              },
+            }),
+          };
+        },
+      },
+    });
     parseJsonBody.mockResolvedValue({ ok: true, body: { job_id: 'job-1' } });
     isMissingSchemaError.mockReturnValue(false);
     scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: { id: 'scheduled-job-1', crew_id: 'crew-1', actual_start: null }, error: null });

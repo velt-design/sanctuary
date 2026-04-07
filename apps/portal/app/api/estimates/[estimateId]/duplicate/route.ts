@@ -1,8 +1,7 @@
-import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { summarizeCalculatorSnapshot } from '@/lib/estimates/summarize';
 import { buildVersionLabelMap, calculatorSnapshotFromRow, mapEstimateDetail } from '@/lib/estimates/server';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 
@@ -63,7 +62,7 @@ async function insertEstimateWithRetry(payload: Record<string, any>) {
   const working: Record<string, any> = { ...payload };
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const res = await supabaseServer.from('estimates').insert(working).select('*').single();
+    const res = await supabase.from('estimates').insert(working).select('*').single();
     if (!res.error && res.data) return res;
 
     const missing = missingColumnFromError(res.error);
@@ -79,8 +78,9 @@ async function insertEstimateWithRetry(payload: Record<string, any>) {
 }
 
 export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let estimateUuid: string;
   try {
@@ -90,7 +90,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
     return jsonError('Invalid estimateId', 400);
   }
 
-  const res = await supabaseServer.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
+  const res = await supabase.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
   if (res.error) return jsonError(res.error.message ?? 'Failed to load estimate', 500);
   if (!res.data) return jsonError('Estimate not found', 404);
 
@@ -98,7 +98,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
   const projectUuid = String(source?.project_id ?? '');
   if (!projectUuid) return jsonError('Estimate project missing', 500);
 
-  const existing = await supabaseServer
+  const existing = await supabase
     .from('estimates')
     .select('id, outputs, created_at')
     .eq('project_id', projectUuid)
@@ -129,7 +129,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
   const summary = isRecord(source?.summary_json) ? (source.summary_json as Record<string, unknown>) : summarizeCalculatorSnapshot(snapshot);
   const legacySummary = computeLegacySummary({ ...snapshot, outputs: outputsWithVersion });
 
-  const createdBy = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
+  const createdBy = typeof auth.session.user?.email === 'string' ? auth.session.user.email.trim() : null;
 
   const payload: Record<string, any> = {
     project_id: projectUuid,

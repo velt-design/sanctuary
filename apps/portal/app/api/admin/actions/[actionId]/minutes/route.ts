@@ -1,5 +1,4 @@
-import { requireAdminSession, parseJsonBody, jsonError, jsonOk } from '@/lib/api/adminApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { requireAdminContext, parseJsonBody, jsonError, jsonOk } from '@/lib/api/adminApi';
 
 export const runtime = 'nodejs';
 
@@ -8,8 +7,9 @@ type Ctx = { params: Params | Promise<Params> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
   const { actionId } = await Promise.resolve(params);
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return parsed.response;
@@ -25,7 +25,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   const updatedBy = auth.session.user?.email ?? null;
 
-  const res = await supabaseServer
+  const res = await supabase
     .from('install_action_minutes_overrides')
     .upsert(
       {

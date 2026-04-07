@@ -298,8 +298,8 @@ begin
 end;
 $$;
 
-grant execute on function public.schedule_v2_apply_job_patch(uuid, jsonb, jsonb) to anon, authenticated;
-grant execute on function public.schedule_v2_apply_commitment(uuid, jsonb, jsonb, jsonb) to anon, authenticated;
-grant execute on function public.schedule_v2_ack_client_update(uuid, timestamptz, text) to anon, authenticated;
+grant execute on function public.schedule_v2_apply_job_patch(uuid, jsonb, jsonb) to authenticated, service_role;
+grant execute on function public.schedule_v2_apply_commitment(uuid, jsonb, jsonb, jsonb) to authenticated, service_role;
+grant execute on function public.schedule_v2_ack_client_update(uuid, timestamptz, text) to authenticated, service_role;
 
 notify pgrst, 'reload schema';

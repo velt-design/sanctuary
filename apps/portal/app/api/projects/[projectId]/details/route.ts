@@ -1,6 +1,5 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -41,7 +40,7 @@ async function updateWithUnknownColumnRetry(
   if (!Object.keys(payload).length) return { data: null, error: null };
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
-    const res = await supabaseServer.from(table).update(payload as any).match(match).select('*').single();
+    const res = await supabase.from(table).update(payload as any).match(match).select('*').single();
     if (!res.error && res.data) return { data: res.data, error: null };
 
     const missing = missingColumnFromError(res.error);
@@ -58,8 +57,9 @@ async function updateWithUnknownColumnRetry(
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -78,7 +78,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
     body && typeof body.contact === 'object' && body.contact !== null && !Array.isArray(body.contact) ? body.contact : {};
   const contactIdRaw = typeof body?.contactId === 'string' ? body.contactId : null;
 
-  const projectRes = await supabaseServer.from('projects').select('id, contact_id').eq('id', projectUuid).maybeSingle();
+  const projectRes = await supabase.from('projects').select('id, contact_id').eq('id', projectUuid).maybeSingle();
   if (projectRes.error || !projectRes.data) return jsonError('Project not found', 404);
   const projectRow: any = projectRes.data;
 

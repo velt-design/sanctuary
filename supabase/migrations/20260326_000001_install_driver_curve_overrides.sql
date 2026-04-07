@@ -15,7 +15,7 @@ begin
   end if;
 end $$;
 
-grant select, insert, update, delete on table public.install_driver_curve_overrides to anon, authenticated;
+grant select, insert, update, delete on table public.install_driver_curve_overrides to authenticated;
 
 alter table public.install_driver_curve_overrides enable row level security;
 

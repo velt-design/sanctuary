@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitScheduleJobPatch } from '@/lib/scheduling/scheduleCommands';
@@ -12,14 +12,14 @@ import {
   loadScheduleContext,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/job/set-duration');
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401, diagnostics);
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
   const durationDays = ensureForecastDurationDays(durationRaw, 1);
 
-  const byProjectRes = await supabaseServer.from('scheduled_jobs').select('*').eq('job_id', jobId).maybeSingle();
+  const byProjectRes = await supabase.from('scheduled_jobs').select('*').eq('job_id', jobId).maybeSingle();
   if (byProjectRes.error) {
     if (isMissingSchemaError(byProjectRes.error)) {
       logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: byProjectRes.error });
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
   }
   let jobRow = byProjectRes.data;
   if (!jobRow) {
-    const byIdRes = await supabaseServer.from('scheduled_jobs').select('*').eq('id', jobId).maybeSingle();
+    const byIdRes = await supabase.from('scheduled_jobs').select('*').eq('id', jobId).maybeSingle();
     if (byIdRes.error) {
       if (isMissingSchemaError(byIdRes.error)) {
         logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: byIdRes.error });

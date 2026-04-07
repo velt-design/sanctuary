@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireStaffSession = vi.fn();
+const requireStaffContext = vi.fn();
 const parseJsonBody = vi.fn();
 const loadProjectEstimateFlowMaps = vi.fn();
 const loadEstimateEditability = vi.fn();
@@ -17,7 +17,7 @@ vi.mock('@/lib/api/staffApi', () => ({
   jsonError: (error: string, status: number) => new Response(JSON.stringify({ error }), { status, headers: { 'content-type': 'application/json' } }),
   jsonOk: (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }),
   parseJsonBody,
-  requireStaffSession,
+  requireStaffContext,
 }));
 
 vi.mock('@/lib/api/siteVisitsServer', () => ({
@@ -44,43 +44,10 @@ vi.mock('@/lib/supabase/mappers', () => ({
   uuidFromAppId: (_id: string) => 'estimate-uuid',
 }));
 
-vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServer: {
-    from: (table: string) => {
-      if (table !== 'estimates') throw new Error(`Unexpected table ${table}`);
-      return {
-        select: () => ({
-          eq: (column: string) => {
-            if (column === 'id') {
-              return {
-                maybeSingle: estimateMaybeSingle,
-              };
-            }
-            if (column === 'project_id') {
-              return {
-                order: estimateOrder,
-              };
-            }
-            throw new Error(`Unexpected eq column ${column}`);
-          },
-          order: estimateOrder,
-        }),
-        update: () => ({
-          eq: () => ({
-            select: () => ({
-              single: estimateUpdateSingle,
-            }),
-          }),
-        }),
-      };
-    },
-  },
-}));
-
 describe('PATCH /api/estimates/[estimateId]', () => {
   beforeEach(() => {
     vi.resetModules();
-    requireStaffSession.mockReset();
+    requireStaffContext.mockReset();
     parseJsonBody.mockReset();
     loadProjectEstimateFlowMaps.mockReset();
     loadEstimateEditability.mockReset();
@@ -91,10 +58,44 @@ describe('PATCH /api/estimates/[estimateId]', () => {
     estimateMaybeSingle.mockReset();
     estimateUpdateSingle.mockReset();
     estimateOrder.mockReset();
+
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      supabase: {
+        from: (table: string) => {
+          if (table !== 'estimates') throw new Error(`Unexpected table ${table}`);
+          return {
+            select: () => ({
+              eq: (column: string) => {
+                if (column === 'id') {
+                  return {
+                    maybeSingle: estimateMaybeSingle,
+                  };
+                }
+                if (column === 'project_id') {
+                  return {
+                    order: estimateOrder,
+                  };
+                }
+                throw new Error(`Unexpected eq column ${column}`);
+              },
+              order: estimateOrder,
+            }),
+            update: () => ({
+              eq: () => ({
+                select: () => ({
+                  single: estimateUpdateSingle,
+                }),
+              }),
+            }),
+          };
+        },
+      },
+    });
   });
 
   it('keeps syncedQuoteVersionIds empty after an estimate update', async () => {
-    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' } });
     parseJsonBody.mockResolvedValue({
       ok: true,
       body: {

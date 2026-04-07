@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { supabaseServer } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { loadCostingConfigV1, type CostingConfigV1 } from '@sp/costing';
 
 export type DriverCurvePoint = {
@@ -60,18 +61,19 @@ function parseDriverCurvePoints(value: unknown): DriverCurvePoint[] {
     .sort((a, b) => a.length_m - b.length_m);
 }
 
-export async function fetchCostingOverrides(): Promise<CostingOverrides> {
-  const materialRes = await supabaseServer.from('material_cost_overrides').select('material_id, cost_ex_gst_cents');
+export async function fetchCostingOverrides(supabase?: SupabaseClient): Promise<CostingOverrides> {
+  const client = supabase ?? (await getSupabaseServerAuth());
+  const materialRes = await client.from('material_cost_overrides').select('material_id, cost_ex_gst_cents');
   if (materialRes.error) {
     throw new Error(`Failed to load material overrides: ${materialRes.error.message}`);
   }
 
-  const actionRes = await supabaseServer.from('install_action_minutes_overrides').select('action_id, base_minutes');
+  const actionRes = await client.from('install_action_minutes_overrides').select('action_id, base_minutes');
   if (actionRes.error) {
     throw new Error(`Failed to load action overrides: ${actionRes.error.message}`);
   }
 
-  const curveRes = await supabaseServer.from('install_driver_curve_overrides').select('curve_key, points_json');
+  const curveRes = await client.from('install_driver_curve_overrides').select('curve_key, points_json');
   if (curveRes.error) {
     if (isMissingRelationError(curveRes.error, 'install_driver_curve_overrides')) {
       console.warn(
@@ -109,12 +111,14 @@ export async function fetchCostingOverrides(): Promise<CostingOverrides> {
   return { materialCostOverrides, actionMinutesOverrides, driverCurveOverrides };
 }
 
-export async function getCostingConfigWithOverrides(): Promise<{ config: CostingConfigV1; overrides: CostingOverrides }> {
+export async function getCostingConfigWithOverrides(
+  supabase?: SupabaseClient,
+): Promise<{ config: CostingConfigV1; overrides: CostingOverrides }> {
   const base = loadCostingConfigV1();
 
   let overrides: CostingOverrides;
   try {
-    overrides = await fetchCostingOverrides();
+    overrides = await fetchCostingOverrides(supabase);
   } catch (err) {
     console.warn(`[costing overrides] Falling back to JSON config only. ${formatErrorMessage(err)}`);
     return { config: base, overrides: { materialCostOverrides: {}, actionMinutesOverrides: {}, driverCurveOverrides: {} } };

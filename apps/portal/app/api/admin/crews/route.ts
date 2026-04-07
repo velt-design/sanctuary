@@ -1,16 +1,16 @@
-import { jsonError, jsonOk, parseJsonBody, requireAdminSession } from '@/lib/api/adminApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, parseJsonBody, requireAdminContext } from '@/lib/api/adminApi';
 import { listCrewsWithCounts, sanitizeHexColor, isYmd } from './_shared';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   try {
-    const crews = await listCrewsWithCounts();
+    const crews = await listCrewsWithCounts(supabase);
     return jsonOk({ ok: true, crews });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to load crews';
@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
 
   const parsed = await parseJsonBody(req);
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const baseDateRaw = typeof body.base_available_date === 'string' ? body.base_available_date.trim() : '';
   if (baseDateRaw && !isYmd(baseDateRaw)) return jsonError('base_available_date must be YYYY-MM-DD', 400);
 
-  const lastSortRes = await supabaseServer
+  const lastSortRes = await supabase
     .from('schedule_crews')
     .select('sort_order')
     .order('sort_order', { ascending: false })
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       ? Math.trunc(lastSortRes.data.sort_order) + 1
       : 1;
 
-  const insertRes = await supabaseServer
+  const insertRes = await supabase
     .from('schedule_crews')
     .insert({
       name,

@@ -29,16 +29,8 @@ alter table public.contacts add column if not exists data jsonb not null default
 alter table public.projects add column if not exists version int not null default 1;
 alter table public.projects add column if not exists data jsonb not null default '{}'::jsonb;
 
--- Permissions for the anon/authenticated roles (so the portal can use the anon key).
--- SECURITY NOTE: This makes these tables accessible to anyone with your anon key unless you enable RLS.
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on public.contacts to anon, authenticated;
-grant select, insert, update, delete on public.projects to anon, authenticated;
-grant references on public.contacts to anon, authenticated;
-
--- Recommended for production: enable RLS and use `SUPABASE_SERVICE_ROLE_KEY` in server-side API routes.
--- alter table public.contacts enable row level security;
--- alter table public.projects enable row level security;
+-- Access control is managed by the forward migrations under `supabase/migrations/`.
+-- Do not grant blanket anon/authenticated table access from this legacy snapshot.
 
 -- Prompt PostgREST to refresh its schema cache after DDL changes.
 notify pgrst, 'reload schema';

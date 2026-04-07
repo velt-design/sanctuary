@@ -1,9 +1,9 @@
-import { requireAdminSession, parseJsonBody, jsonError, jsonOk } from '@/lib/api/adminApi';
-import { getSupabaseServer } from '@/lib/supabaseClient';
+import { requireAdminContext, parseJsonBody, jsonError, jsonOk } from '@/lib/api/adminApi';
+import { getSupabaseServiceRole } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
-async function findAuthUserIdByEmail(supabase: ReturnType<typeof getSupabaseServer>, email: string): Promise<string | null> {
+async function findAuthUserIdByEmail(supabase: ReturnType<typeof getSupabaseServiceRole>, email: string): Promise<string | null> {
   const needle = email.trim().toLowerCase();
   if (!needle) return null;
 
@@ -26,11 +26,11 @@ function getAdminClient() {
   if (!serviceKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set.');
   }
-  return getSupabaseServer();
+  return getSupabaseServiceRole();
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
 
   const parsed = await parseJsonBody(req);

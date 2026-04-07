@@ -459,8 +459,8 @@ begin
 end;
 $$;
 
-grant execute on function public.schedule_v2_unassign_job(uuid, uuid, jsonb, jsonb) to anon, authenticated;
-grant execute on function public.schedule_v2_delete_downtime(uuid, uuid, jsonb, jsonb) to anon, authenticated;
-grant execute on function public.schedule_v2_mark_done(uuid, date, date, jsonb, jsonb) to anon, authenticated;
+grant execute on function public.schedule_v2_unassign_job(uuid, uuid, jsonb, jsonb) to authenticated, service_role;
+grant execute on function public.schedule_v2_delete_downtime(uuid, uuid, jsonb, jsonb) to authenticated, service_role;
+grant execute on function public.schedule_v2_mark_done(uuid, date, date, jsonb, jsonb) to authenticated, service_role;
 
 notify pgrst, 'reload schema';
