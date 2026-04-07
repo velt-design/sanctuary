@@ -2486,15 +2486,14 @@ export default function ScheduleClient({
 
   function tryWriteScheduleSnapshotToCache(input: {
     installers: Installer[];
-    projects: Project[];
+    projects: ScheduleProjectSummary[];
     scheduleItems: ScheduleItem[];
     estimatesById: Map<string, Estimate>;
   }): void {
     if (scheduleMode !== 'legacy') return;
     try {
-      const scheduleProjects = input.projects.map(toScheduleProjectSummary);
       const projectsById = new Map<string, ScheduleProjectSummary>();
-      for (const p of scheduleProjects) projectsById.set(p.id, p);
+      for (const p of input.projects) projectsById.set(p.id, p);
       const renderable = input.scheduleItems.filter((i) => projectsById.has(i.projectId));
       const build = buildScheduleBars({ today, installers: input.installers, scheduleItems: renderable, projectsById, estimatesById: input.estimatesById });
       const bars = new Map(build.bars.map((b) => [b.scheduleItemId, b]));
@@ -2536,7 +2535,7 @@ export default function ScheduleClient({
             actual_end_date: typeof i.actualEndDate === 'string' ? i.actualEndDate : null,
           };
         }),
-        projectsIndex: scheduleProjects.map((p) => ({
+        projectsIndex: input.projects.map((p) => ({
           id: uuidFromAppId(p.id, 'proj'),
           name: p.projectName,
           pipeline_stage: String(p.status ?? 'NEW'),
@@ -2646,7 +2645,7 @@ export default function ScheduleClient({
         setScheduleItems(normalised);
         setEstimatesById(estimatesById);
         setHydrated(true);
-        tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: normalised, estimatesById });
+        tryWriteScheduleSnapshotToCache({ installers, projects: scheduleProjects, scheduleItems: normalised, estimatesById });
         setSyncing(false);
 
         // Background: mark any jobs whose planned start is <= today as started (IN_PROGRESS).
@@ -2668,7 +2667,7 @@ export default function ScheduleClient({
             });
 
           setScheduleItems(normalizedRefreshed);
-          tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: normalizedRefreshed, estimatesById });
+          tryWriteScheduleSnapshotToCache({ installers, projects: scheduleProjects, scheduleItems: normalizedRefreshed, estimatesById });
         })();
       } catch (err) {
         if (cancelled) return;
