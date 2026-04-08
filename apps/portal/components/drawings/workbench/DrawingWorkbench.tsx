@@ -3,11 +3,13 @@
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { DrawingWorkbenchViewportMode, DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
+import Geometry3DViewport from '@/components/drawings/viewports/Geometry3DViewport';
 import ViewportModeSwitch from './ViewportModeSwitch';
 import styles from './DrawingWorkbench.module.css';
 
@@ -25,10 +27,12 @@ type DrawingWorkbenchProps = {
   onViewChange: (view: ModuleViewsTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
+  availableViewportModes?: DrawingWorkbenchViewportMode[];
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
+  geometryPreview?: GeometryPreviewState | null;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   meta: EstimateDrawingSheetMeta;
@@ -57,10 +61,12 @@ export default function DrawingWorkbench({
   onViewChange,
   viewportMode,
   onViewportModeChange,
+  availableViewportModes,
   status,
   planModel,
   sectionModel,
   planViewModel,
+  geometryPreview,
   viewportTransform,
   onViewportTransformChange,
   meta,
@@ -99,7 +105,11 @@ export default function DrawingWorkbench({
         </div>
 
         <div className={styles.toolbarGroup}>
-          <ViewportModeSwitch value={viewportMode} onChange={onViewportModeChange} />
+          <ViewportModeSwitch
+            value={viewportMode}
+            onChange={onViewportModeChange}
+            availableModes={availableViewportModes}
+          />
           <div className={styles.toggleGroup} role="tablist" aria-label="Drawing view">
             {VIEW_OPTIONS.map((option) => {
               const active = option.id === view;
@@ -134,7 +144,7 @@ export default function DrawingWorkbench({
             onCommitField={onCommitField}
             onCommitFootprintEdit={onCommitFootprintEdit}
           />
-        ) : (
+        ) : viewportMode === 'model' ? (
           <ModelSpaceViewport
             view={view}
             status={status}
@@ -147,6 +157,8 @@ export default function DrawingWorkbench({
             onCommitField={onCommitModelField}
             onCommitFootprintEdit={onCommitFootprintEdit}
           />
+        ) : (
+          <Geometry3DViewport geometryPreview={geometryPreview} />
         )}
       </div>
     </section>

@@ -1,6 +1,6 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 
-export type DrawingWorkbenchViewportMode = 'sheet' | 'model';
+export type DrawingWorkbenchViewportMode = 'sheet' | 'model' | 'geometry3d';
 
 export type DrawingWorkbenchSelectionState = {
   kind: 'none' | 'module' | 'geometry';

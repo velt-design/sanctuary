@@ -1,8 +1,16 @@
 import { act } from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DesignWorkbenchFixtureClient from './DesignWorkbenchFixtureClient';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
+
+vi.mock('@react-three/fiber', () => ({
+  Canvas: ({ children }: { children?: unknown }) => <div data-testid="geometry-3d-canvas">{children as any}</div>,
+}));
+
+vi.mock('@react-three/drei', () => ({
+  OrbitControls: () => null,
+}));
 
 function clickButtonByText(container: HTMLElement, label: string) {
   const button = Array.from(container.querySelectorAll('button')).find((node) => node.textContent?.includes(label));
@@ -36,7 +44,19 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Drawing Workbench');
     expect(rendered.container.textContent).toContain('Sheet View');
     expect(rendered.container.textContent).toContain('Model Space');
+    expect(rendered.container.textContent).toContain('3D View');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
+
+    clickButtonByText(rendered.container, '3D View');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.textContent).toContain('Snapshot Validated');
+    expect(rendered.container.textContent).toContain('Inspection');
+    expect(rendered.container.textContent).toContain('Section cut');
+    expect(rendered.container.textContent).toContain('Datum axes');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Model Space');
     await act(async () => {

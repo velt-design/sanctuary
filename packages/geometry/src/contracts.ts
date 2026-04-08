@@ -372,23 +372,68 @@ export type GeometryValidationReport = {
   fixtureComparisons: GeometryFixtureComparison[];
 };
 
-export type ViewerSceneObjectType = 'member' | 'roofPlane' | 'reference' | 'annotation';
+export type ViewerSceneMemberRenderMode = 'prism' | 'line_fallback';
+export type ViewerSceneReferenceLineKind = 'attachment_edge' | 'fascia' | 'roof_edge';
+export type ViewerSceneReferencePlaneKind = 'house_wall';
 
-export type ViewerSceneObject = {
+export type ViewerSceneMemberPrismObject = {
   id: string;
-  type: ViewerSceneObjectType;
-  sourceId?: string;
+  type: 'member_prism';
+  sourceId: string;
+  role: AssemblyMemberRole;
+  centerline: Line3;
+  profile: AssemblyMemberProfile;
+  localFrame: DatumFrame3;
+  lengthMm: number;
+  renderMode: ViewerSceneMemberRenderMode;
   metadata?: GeometryMetadata;
+};
+
+export type ViewerSceneRoofPlaneObject = {
+  id: string;
+  type: 'roof_plane';
+  sourceId: string;
+  boundary: Polygon3;
+  plane: Plane3;
+  fallVector: Vector3;
+  metadata?: GeometryMetadata;
+};
+
+export type ViewerSceneReferenceLineObject = {
+  id: string;
+  type: 'reference_line';
+  sourceId?: string;
+  kind: ViewerSceneReferenceLineKind;
+  line: Line3;
+  metadata?: GeometryMetadata;
+};
+
+export type ViewerSceneReferencePlaneObject = {
+  id: string;
+  type: 'reference_plane';
+  sourceId?: string;
+  kind: ViewerSceneReferencePlaneKind;
+  boundary: Polygon3;
+  plane: Plane3;
+  metadata?: GeometryMetadata;
+};
+
+export type ViewerSceneObject =
+  | ViewerSceneMemberPrismObject
+  | ViewerSceneRoofPlaneObject
+  | ViewerSceneReferenceLineObject
+  | ViewerSceneReferencePlaneObject;
+
+export type ViewerSceneLayer = {
+  id: string;
+  label: string;
+  visibleByDefault: boolean;
+  objects: ViewerSceneObject[];
 };
 
 /**
  * Hidden 3D viewer scene model derived directly from Assembly3D.
  */
 export type ViewerSceneModel = {
-  layers: Array<{
-    id: string;
-    label: string;
-    visibleByDefault: boolean;
-    objects: ViewerSceneObject[];
-  }>;
+  layers: ViewerSceneLayer[];
 };

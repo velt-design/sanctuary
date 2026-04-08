@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import DesignWorkbenchEstimateClient from './DesignWorkbenchEstimateClient';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildEstimateDrawingDraftEntityKey } from '@/lib/localFirst/portalEntities';
@@ -15,6 +15,14 @@ import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEd
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { LocalFirstPersistedState } from '@/lib/localFirst/types';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
+
+vi.mock('@react-three/fiber', () => ({
+  Canvas: ({ children }: { children?: unknown }) => <div data-testid="geometry-3d-canvas">{children as any}</div>,
+}));
+
+vi.mock('@react-three/drei', () => ({
+  OrbitControls: () => null,
+}));
 
 function clickButtonByText(container: HTMLElement, label: string) {
   const button = Array.from(container.querySelectorAll('button')).find((node) => node.textContent?.includes(label));
@@ -191,8 +199,18 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('House / Context');
     expect(rendered.container.textContent).toContain('Sheet View');
     expect(rendered.container.textContent).toContain('Model Space');
+    expect(rendered.container.textContent).toContain('3D View');
     expect(rendered.container.textContent).not.toContain('Flashings');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
+
+    clickButtonByText(rendered.container, '3D View');
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).toContain('Snapshot Validated');
+    expect(rendered.container.textContent).toContain('Inspection');
+    expect(rendered.container.textContent).toContain('Section cut');
+    expect(rendered.container.textContent).toContain('Datum axes');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
@@ -314,6 +332,39 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(getLocalFirstWorkingCopy(entityKey)).toBeNull();
+    rendered.unmount();
+  });
+
+  it('shows the best-effort 3D preview warning when local geometry edits exist', async () => {
+    const estimate = buildEstimateDetail({ fixtureSlug: 'box-standard' });
+    const baseDraft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
+    if (!baseDraft) throw new Error('Expected drawing draft');
+
+    const draft = structuredClone(baseDraft);
+    draft.inputs.modules[0]!.lengthM = '5.9';
+
+    await ensureLocalFirstStoreReady();
+    await writeLocalFirstWorkingCopy({
+      entityKey: buildEstimateDrawingDraftEntityKey(estimate.id),
+      data: draft,
+    });
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).toContain('3D Preview Uses Last Solved Structure');
+
+    clickButtonByText(rendered.container, '3D View');
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).toContain('Best-Effort Draft Preview');
+    expect(rendered.container.textContent).toContain('Inspection');
+    expect(rendered.container.textContent).toContain('Section cut');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
+
     rendered.unmount();
   });
 

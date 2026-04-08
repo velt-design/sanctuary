@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
@@ -44,6 +45,17 @@ export default function DesignWorkbenchFixtureClient({
       }),
     [activeModule?.drawingModule.input, fixture.estimate.createdAt, fixture.estimate.versionLabel, projectName, siteAddress, store.derived.activeModuleLabel, store.ui.activeView],
   );
+  const geometryPreview = useMemo(
+    () =>
+      buildWorkbenchGeometryPreview({
+        projectId: `fixture-${fixture.slug}`,
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+        snapshot: fixture.snapshot,
+        moduleIndex: store.derived.activeModuleIndex,
+      }),
+    [fixture.estimate.id, fixture.request.id, fixture.slug, fixture.snapshot, store.derived.activeModuleIndex],
+  );
 
   if (!activeModule) {
     return <p>Fixture data did not produce any drawing modules.</p>;
@@ -71,6 +83,7 @@ export default function DesignWorkbenchFixtureClient({
         }))
       }
       viewportMode={store.ui.viewportMode}
+      availableViewportModes={['sheet', 'model', 'geometry3d']}
       onViewportModeChange={(viewportMode) =>
         setUi((current) => ({
           ...current,
@@ -81,6 +94,7 @@ export default function DesignWorkbenchFixtureClient({
       planModel={store.derived.activePlanModel}
       sectionModel={store.derived.activeSectionModel}
       planViewModel={store.derived.activePlanViewModel}
+      geometryPreview={geometryPreview}
       viewportTransform={store.ui.viewportTransform}
       onViewportTransformChange={(viewportTransform) =>
         setUi((current) => ({

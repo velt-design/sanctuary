@@ -1,0 +1,161 @@
+.viewport {
+  display: grid;
+  grid-template-columns: 18rem minmax(0, 1fr);
+  gap: 1rem;
+  min-height: 38rem;
+  height: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.panel,
+.state {
+  border: 1px solid rgba(27, 31, 35, 0.12);
+  border-radius: 1rem;
+  background: #fbfaf6;
+  padding: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #66615a;
+}
+
+.heading,
+.stateTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #2d302f;
+}
+
+.meta,
+.stateText,
+.stateMeta {
+  margin: 0.45rem 0 0;
+  color: #55524f;
+  line-height: 1.5;
+}
+
+.layerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.sectionBlock {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sectionBlock + .sectionBlock {
+  margin-top: 0.95rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid rgba(27, 31, 35, 0.08);
+}
+
+.layerItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.94rem;
+  color: #2d302f;
+}
+
+.sliderField {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.sliderLabel {
+  font-size: 0.86rem;
+  color: #55524f;
+}
+
+.sliderField input[type='range'] {
+  width: 100%;
+}
+
+.sectionMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.inspectorList {
+  margin: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.inspectorRow {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.inspectorRow dt {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #66615a;
+}
+
+.inspectorRow dd {
+  margin: 0;
+  color: #2d302f;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.canvasShell {
+  position: relative;
+  min-height: 38rem;
+  border: 1px solid rgba(27, 31, 35, 0.12);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f8f5ef 0%, #f0ede6 100%);
+}
+
+.canvasToolbar {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  z-index: 2;
+}
+
+.resetButton {
+  border: 1px solid rgba(27, 31, 35, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  color: #2d302f;
+  cursor: pointer;
+}
+
+.resetButton:hover {
+  background: #fff;
+}
+
+.canvasShell :global(canvas) {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 38rem;
+}
+
+@media (max-width: 1100px) {
+  .viewport {
+    grid-template-columns: 1fr;
+  }
+}

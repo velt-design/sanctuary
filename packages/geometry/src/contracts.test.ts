@@ -369,13 +369,19 @@ const monoAssembly: Assembly3D = {
 const viewerScene: ViewerSceneModel = {
   layers: [
     {
-      id: 'structure',
-      label: 'Structure',
+      id: 'beams',
+      label: 'Beams',
       visibleByDefault: true,
       objects: monoAssembly.members.map((member) => ({
         id: member.id,
-        type: 'member',
+        type: 'member_prism' as const,
         sourceId: member.id,
+        role: member.role,
+        centerline: member.centerline,
+        profile: member.profile,
+        localFrame: member.localFrame,
+        lengthMm: 6000,
+        renderMode: 'prism' as const,
       })),
     },
   ],
@@ -470,6 +476,7 @@ describe('@sp/geometry contracts', () => {
     expect(typeof geometryModule.normalizeGeometryConfig).toBe('function');
     expect(typeof geometryModule.solveAssembly3D).toBe('function');
     expect(typeof geometryModule.validateGeometrySolve).toBe('function');
+    expect(typeof geometryModule.buildViewerSceneModel).toBe('function');
   });
 
   it('supports mono, gable, and box V1 configs using the new 3D-first geometry contract', () => {
@@ -486,7 +493,7 @@ describe('@sp/geometry contracts', () => {
     expect(monoAssembly.members.map((member) => member.role)).toContain('ledger');
     expect(monoAssembly.roofPlanes[0]?.fallVector.y).toBe(1);
     expect(monoAssembly.quantityHooks).toContainEqual({ key: 'posts', quantity: 2, unit: 'count' });
-    expect(viewerScene.layers[0]?.objects[0]?.type).toBe('member');
+    expect(viewerScene.layers[0]?.objects[0]?.type).toBe('member_prism');
   });
 
   it('keeps the canonical package runtime free of portal and surface concerns', () => {

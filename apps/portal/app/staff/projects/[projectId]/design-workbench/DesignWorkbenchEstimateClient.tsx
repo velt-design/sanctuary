@@ -6,6 +6,7 @@ import SanctuaryWorkbenchRail, {
   type SanctuaryPergolaFamily,
 } from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
 import { buildEstimateDrawingDraftEntityKey } from '@/lib/localFirst/portalEntities';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
@@ -135,6 +136,17 @@ export default function DesignWorkbenchEstimateClient({
       store.ui.activeView,
       supportsSanctuaryEditing,
     ],
+  );
+  const geometryPreview = useMemo(
+    () =>
+      buildWorkbenchGeometryPreview({
+        projectId: estimate.projectId,
+        estimateId: estimate.id,
+        snapshot: estimate.calculatorSnapshot,
+        draft: drawingDraft,
+        moduleIndex: store.derived.activeModuleIndex,
+      }),
+    [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, store.derived.activeModuleIndex],
   );
 
   const persistDrawingDraftLocally = useCallback(
@@ -292,6 +304,15 @@ export default function DesignWorkbenchEstimateClient({
             </p>
           </section>
         ) : null}
+
+        {geometryPreview.kind === 'ready' && geometryPreview.previewMode === 'best_effort_draft' ? (
+          <section className={styles.notice}>
+            <p className={styles.noticeTitle}>3D Preview Uses Last Solved Structure</p>
+            <p className={styles.noticeText}>
+              The 3D view is reflecting current draft inputs with the last solved structural values from this estimate. Use it as a verification preview, not final validated geometry.
+            </p>
+          </section>
+        ) : null}
       </div>
 
       <div className={styles.main}>
@@ -316,6 +337,7 @@ export default function DesignWorkbenchEstimateClient({
             }))
           }
           viewportMode={store.ui.viewportMode}
+          availableViewportModes={['sheet', 'model', 'geometry3d']}
           onViewportModeChange={(viewportMode) =>
             setUi((current) => ({
               ...current,
@@ -326,6 +348,7 @@ export default function DesignWorkbenchEstimateClient({
           planModel={store.derived.activePlanModel}
           sectionModel={store.derived.activeSectionModel}
           planViewModel={store.derived.activePlanViewModel}
+          geometryPreview={geometryPreview}
           viewportTransform={store.ui.viewportTransform}
           onViewportTransformChange={(viewportTransform) =>
             setUi((current) => ({
