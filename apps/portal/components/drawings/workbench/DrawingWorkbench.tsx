@@ -33,8 +33,13 @@ type DrawingWorkbenchProps = {
   onViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   meta: EstimateDrawingSheetMeta;
   editableFields?: EstimateDrawingField[];
+  modelEditableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
   onCommitField?: (
+    field: EstimateDrawingField,
+    nextValue: string,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitModelField?: (
     field: EstimateDrawingField,
     nextValue: string,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
@@ -60,8 +65,10 @@ export default function DrawingWorkbench({
   onViewportTransformChange,
   meta,
   editableFields,
+  modelEditableFields,
   showDebugOverlays,
   onCommitField,
+  onCommitModelField,
   onCommitFootprintEdit,
 }: DrawingWorkbenchProps) {
   return (
@@ -136,6 +143,8 @@ export default function DrawingWorkbench({
             planViewModel={planViewModel}
             viewportTransform={viewportTransform}
             onViewportTransformChange={onViewportTransformChange}
+            editableFields={modelEditableFields}
+            onCommitField={onCommitModelField}
             onCommitFootprintEdit={onCommitFootprintEdit}
           />
         )}

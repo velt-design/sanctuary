@@ -18,7 +18,7 @@ This document does not replace the lower-level architecture specs, but it is the
 - what is already locked by the repo direction
 - what V1 should build now
 - how the workbench should enter the real project and estimate workflow
-- how delivery should be phased
+- how delivery should now be sequenced around geometry truth
 
 This document owns:
 
@@ -26,58 +26,64 @@ This document owns:
 - V1 scope and non-goals
 - route strategy and rollout posture
 - workflow entry and canonical ownership
+- the geometry-first implementation baseline
 
 The lower-level docs remain authoritative for implementation detail in their areas:
 
 - `docs/drawing-workbench-spec.md` for workbench architecture
-- `docs/drawing-workbench-execution-board.md` for implementation sequencing
+- `docs/drawing-workbench-execution-board.md` for lower-level historical sequencing context
 - `docs/design-packages-spec.md` for estimate-backed design-request workflow
 - `docs/portal-local-first-spec.md` for portal sync and authority rules
 
-If a lower-level doc is interpreted in a way that conflicts with this document on V1 product scope or rollout posture, this document wins until it is explicitly revised.
+If a lower-level doc is interpreted in a way that conflicts with this document on V1 product scope, rollout posture, or geometry-source-of-truth policy, this document wins until it is explicitly revised.
 
 ## Blunt Product Definition
 
-We are not building a standalone website configurator first.
+We are not building a prettier SVG drafting surface first.
 
-We are building a shared parametric geometry workbench for Sanctuary Pergolas that:
+We are building a shared parametric geometry workbench for Sanctuary Pergolas whose primary job is to produce trustworthy structural 3D geometry from estimate-backed design inputs. That geometry then drives:
 
-- starts from an estimate-backed design request
-- edits in `Model Space`
-- previews in `Sheet View`
-- uses one shared configuration and geometry pipeline
-- saves as a local-first draft with server-authoritative convergence
-- eventually powers internal ops, onsite sales, and marketing through different skins
+- the hidden internal 3D verification viewer
+- derived 2D plan, section, and elevation outputs
+- quantity hooks
+- later ops, sales, and marketing skins
 
-The internal portal workbench ships first.
+The internal portal workbench ships first, but its real long-term value is not the current route or rail shell. Its value is one shared geometry kernel that becomes the runtime source of truth.
 
 ## Locked Direction
 
-These decisions are already established by the repo and should not be re-litigated during V1.
+These decisions are already established by the repo or are now explicitly frozen by this spec and should not be re-litigated during V1.
 
-### 1. One shared geometry pipeline
+### 1. Geometry Truth First
 
-The same underlying configuration and geometry must power:
+- The current SVG plan and sheet surfaces are presentation layers, not geometry truth.
+- `Assembly3D` is the long-term canonical model.
+- 2D drawing outputs must be derived from 3D assembly, not treated as the upstream source of geometry.
 
+### 2. One shared geometry pipeline
+
+The same underlying geometry must power:
+
+- hidden 3D verification
 - `Model Space`
 - `Sheet View`
 - later sales and marketing skins
 
 Do not fork viewport geometry and sheet geometry into separate systems.
 
-### 2. `Model Space` is the editor
+### 3. `Model Space` is the editor
 
 - Direct manipulation belongs in `Model Space`.
 - The rail and viewport edit the same underlying configuration state.
-- `Sheet View` is not the main editing engine.
+- The hidden 3D viewer is a validation surface, not the primary editing surface.
 
-### 3. `Sheet View` is document-first
+### 4. `Sheet View` is document-first
 
 - `Sheet View` is for review, composition, and printable output.
-- It can support light interaction where low-risk.
 - It should not become the long-term editing surface.
+- It is downstream of geometry truth.
 
-### 4. The rail is a curated subset
+### 5. The rail is a curated subset
 
 The rail covers the common editing path only:
 
@@ -89,34 +95,38 @@ The rail covers the common editing path only:
 
 Do not clone the full calculator into the rail.
 
-### 5. Edits remain live draft edits
+### 6. Edits remain live draft edits
 
 Workbench edits are live draft edits, not a staged apply flow.
 
-### 6. Delivery order is fixed
+### 7. Output delivery order is fixed
 
-Ship in this order:
+Output delivery still ships in this order:
 
 1. `Plan`
 2. `Section`
 3. `Elevation`
 4. `Details`
 
-### 7. The first generated detail family is fixed
+This is output order, not implementation order. Implementation order is now geometry-first.
+
+### 8. The first generated detail family is fixed
 
 The first detail proof-of-concept is:
 
 - house connection / soffit attachment
 
-### 8. Design work is estimate-backed
+### 9. Design work is estimate-backed
 
 Design requests must be explicit and tied to a real `estimate_id`.
 
 - initial request is estimate-backed
 - revisions are new estimate-backed requests
-- canonical source is `design_package_requests`
+- canonical workflow source is `design_package_requests`
 
-### 9. The portal is local-first for routine edits
+Design requests remain workflow records. They do not replace the estimate-backed geometry/config state that drives the editor.
+
+### 10. The portal is local-first for routine edits
 
 - browser-owned working copies and queued edits should make routine work feel instant
 - server-owned records remain authoritative for persisted business truth
@@ -128,7 +138,7 @@ These are recommended V1 directions that are now adopted for this build. They we
 
 ### 1. Ship a dedicated internal workbench route first
 
-Use a real portal route such as:
+Use a real portal route:
 
 - `/staff/projects/[projectId]/design-workbench`
 
@@ -143,7 +153,7 @@ This route should be:
 - feature-flag gated
 - hidden until the production-readiness review passes
 - available by direct URL only for approved internal testers during the hidden-route phase
-- connected to real `project`, `estimate`, and `design_package_request` records
+- connected to real `project`, `estimate`, and optional `design_package_request` records
 - capable of loading fixture/demo data inside the real route for fast iteration
 
 Do not add this route to normal sidebar navigation or expose it as a default project-page action before production readiness.
@@ -155,7 +165,8 @@ During the hidden-route phase, the project page should not become the editor and
 After the production-readiness review passes, the project page may show:
 
 - open workbench action
-- active design request status
+- active design status
+- optional design request status
 - linked estimate/version
 - last updated
 - optional preview thumbnail or sheet snapshot
@@ -177,33 +188,38 @@ Defer:
 - unusual multi-module edge cases
 - bespoke architectural connection exceptions
 
-### 4. Add a portable geometry kernel
+### 4. Make `packages/geometry` the runtime kernel
 
-Recommended shared package:
+Required shared package:
 
 - `packages/geometry/`
 
-The portal should use it first, then sales and marketing can reuse it later.
+This package is not just a type home. It is the intended runtime source of truth for normalized geometry config, `Assembly3D`, validation, and viewer-scene derivation. The portal uses it first. Sales and marketing can reuse it later.
 
 ## Product Goal
 
-Reduce design-package turnaround time for standard pergolas by replacing a large portion of the Rhino to plan to quote-preparation path with a deterministic shared geometry system that can drive:
+Reduce design-package turnaround time for standard pergolas by replacing a large portion of the Rhino to plan to quote-preparation path with a deterministic structural 3D geometry system that can drive:
 
-- live configuration
-- plan output
-- sheet preview
-- quantity extraction
-- later section, elevation, and detail outputs
+- normalized configuration
+- validated `Assembly3D`
+- hidden 3D verification
+- derived 2D plan output
+- later derived section, elevation, and detail outputs
+- quantity extraction from the same geometry truth
 
 ## Success Definition
 
 For standard pergolas, staff should be able to:
 
-- start from an estimate-backed design request
-- configure a pergola in a live editing surface
-- generate a usable plan view and sheet preview from the same state
+- open the hidden workbench against an estimate-backed active design
+- derive a normalized `GeometryConfig` from estimate/calculator state
+- generate a trustworthy `Assembly3D` for `mono`, `gable`, and `box`
+- inspect that assembly in a hidden internal 3D verification viewer
+- derive a usable plan view and sheet preview from the same 3D assembly
 - persist the design as part of the estimate draft flow
 - reuse the same geometry for quantities and future drawing outputs
+
+V1 is not successful if plan SVG looks better but 3D assembly truth is still uncertain.
 
 ## Non-goals
 
@@ -211,6 +227,8 @@ Do not use V1 to:
 
 - build a freeform modelling system
 - replace Rhino for irregular edge-case jobs
+- claim full CAD or BREP solids
+- stop at centerlines-only geometry with no structural member semantics
 - chase photoreal rendering
 - make `Sheet View` the main editing surface
 - fork into separate configurator and sheet geometry stacks
@@ -224,8 +242,8 @@ Do not use V1 to:
 Needs:
 
 - faster standard-job design creation
-- live editing
-- reliable plan output
+- trustworthy geometry, not just faster drafting
+- reliable plan output derived from real geometry
 - estimate-backed revision handling
 - geometry reuse for quote preparation
 
@@ -248,52 +266,60 @@ Needs:
 
 ## Core Principles
 
-### 1. One shared geometry pipeline
+### 1. Geometry Truth First
 
-Configuration, assembly, plan, sheet, and later detail generation all derive from the same source state.
+`GeometryConfig -> Assembly3D -> validation -> hidden 3D verification viewer -> derived 2D outputs` is the core pipeline.
 
-### 2. `Model Space` is the editing surface
+Current SVG surfaces remain valid presentation layers, but they are not the geometry authority.
 
-Direct manipulation belongs there. `Sheet View` is review and composition.
+### 2. One shared geometry pipeline
 
-### 3. Estimate-backed workflow
+Configuration, 3D assembly, validation, plan, sheet, and later detail generation all derive from the same source state.
+
+### 3. `Model Space` is the editing surface
+
+Direct manipulation belongs there. The hidden 3D viewer validates geometry. `Sheet View` is review and composition.
+
+### 4. Estimate-backed workflow
 
 All new design work starts from an estimate-backed request, and revisions remain tied to estimate snapshots.
 
-### 4. Portal-first drafts, server-authoritative records
+### 5. Portal-first drafts, server-authoritative records
 
 Fast editing is local-first. Persisted estimate rows, design workflow state, quote artifacts, stage changes, auth, and other final business records remain server-owned.
 
-### 5. Durable write before heavy artifact generation
+### 6. Durable write before heavy artifact generation
 
 Persist the business entity first. Generate heavy outputs in the background after that.
 
-### 6. Plan first
+### 7. Output order remains plan-first, implementation order becomes geometry-first
 
-Plan output is the first useful production surface and the first quality bar.
+Plan remains the first production output. But implementation now moves through 3D geometry, validation, and verification before broader 2D/editor polish.
 
 ## Product Scope
 
 ### V1 in scope
 
-- workbench shell
-- shared workbench state
-- parametric assembly model for common pergola families
-- plan `Model Space`
-- plan `Sheet View`
-- annotation engine for plan
-- estimate-backed save flow
-- design-request integration
-- basic quantity extraction hooks
+- hidden internal workbench route
+- normalized `GeometryConfig`
+- runtime `Assembly3D` kernel in `packages/geometry`
+- deterministic solvers for `mono`, `gable`, and `box`
+- geometry validation and fixture QA
+- hidden 3D verification viewer for internal validation
+- derived plan `Model Space` and derived plan `Sheet View`
+- estimate-backed draft persistence
+- geometry-derived quantity hooks
 
 ### V1 out of scope
 
-- section production output
-- elevation production output
+- production section output
+- production elevation output
 - generated detail output
-- the sales skin
-- the marketing skin
-- high-fidelity visualization
+- public or broad internal 3D viewer exposure
+- sales skin
+- marketing skin
+- photoreal or presentation-grade rendering
+- full CAD solids or fabrication-grade solid modelling
 - broad exposure outside the hidden staff route before production readiness
 
 ## Route And Rollout Strategy
@@ -326,11 +352,11 @@ Later, after the hidden-route period ends, the project page becomes the orchestr
 
 - status
 - linked estimate
-- active request
+- active request metadata
 - last updated
 - preview
 
-The workbench remains the editor.
+The workbench remains the editor and geometry QA host.
 
 ## Core Workflow
 
@@ -347,17 +373,20 @@ A selected estimate can be used to create a design request.
 ### Core flow
 
 1. User creates or selects an estimate.
-2. User requests design.
-3. System creates or selects the active `design_package_request`.
+2. User may request design for workflow tracking.
+3. System may create or update the relevant `design_package_request`.
 4. Workbench opens against:
    - `project_id`
    - `estimate_id`
-   - active request version
-5. User edits pergola and context in `Model Space` and the rail.
-6. Draft is saved locally immediately and queued for sync.
-7. Plan `Sheet View` is generated from the same source state.
-8. Quantity hooks are derived from geometry and can feed costing and quote preparation.
-9. Heavy artifacts are generated after durable save, not before preview or open.
+   - current estimate drawing draft state, or the estimate snapshot when no draft exists yet
+   - optional linked design request metadata when relevant
+5. Estimate and calculator inputs are normalized into `GeometryConfig`.
+6. `GeometryConfig` generates `Assembly3D`.
+7. Validation and hidden 3D verification confirm geometry correctness.
+8. Plan `Model Space` and `Sheet View` are derived from the same assembly.
+9. Quantity hooks are derived from the same geometry truth.
+10. Draft is saved locally immediately and queued for sync.
+11. Heavy artifacts are generated after durable save, not before preview or open.
 
 ## Canonical Ownership
 
@@ -401,103 +430,154 @@ Immutable pricing and design anchor used to start design work and revisions.
 
 ### `DrawingDraft`
 
-Recommended persistence layer above current estimate drawing draft helpers. This is not a new workflow record. It is persisted editable geometry and config state associated with the estimate and request.
+Recommended persistence layer above current estimate drawing draft helpers. This is not a new workflow record. It is persisted editable geometry/config state associated with the estimate and optional request context.
+
+### Coordinate system
+
+Lock the runtime coordinate system as:
+
+- `X` = pergola length
+- `Y` = projection away from the attachment edge
+- `Z` = height
+
+All 3D member coordinates, datums, roof planes, and derived 2D projections must follow this convention.
 
 ### `GeometryConfig`
 
-Recommended editable source of truth for the workbench.
+Normalized runtime geometry input. It is derived from estimate/calculator state and persisted draft state. It is not a view model and must contain no SVG or sheet concerns.
 
 ```ts
 type GeometryConfig = {
   projectId: string
   estimateId: string
-  designRequestId: string
+  designRequestId?: string | null
 
-  pergolaType: "mono" | "gable" | "box"
+  family: "mono" | "gable" | "box"
 
-  widthMm: number
-  projectionMm: number
-  roofPitchDeg?: number
+  datum: {
+    origin: Point3
+    xAxis: Vector3
+    yAxis: Vector3
+    zAxis: Vector3
+    attachmentEdgeStart: Point3
+    attachmentEdgeEnd: Point3
+  }
+
+  dimensions: {
+    lengthMm: number
+    projectionMm: number
+    roofPitchDeg: number
+  }
 
   roof: {
     material: "acrylic" | "insulated" | "timber" | "louvre"
-    mode?: string
+    mode?: string | null
+    fallDirection: "positiveY" | "negativeY" | "dual"
+    boxPerimeterEnabled: boolean
   }
 
   connection: {
     type: "fascia" | "soffit" | "wall" | "freestanding"
-    attachmentSide?: "left" | "right" | "rear" | "front"
+    attachmentSide: "left" | "right" | "rear" | "front"
   }
 
   supports: {
     postMode: "standard" | "custom"
-    postPositions?: Array<{ x: number; y: number }>
+    postPositions?: Array<Point3>
+    postCount?: number
+    postCutHeightMm?: number
+    footingType?: "slab" | "pier" | "pile"
+    groundLevelMm?: number | null
   }
 
   houseContext: {
-    wallLine?: Line2
-    fasciaLine?: Line2
-    soffitDepthMm?: number
-    roofEdgeLine?: Line2
-    footprint?: Polygon2
-  }
-
-  viewState: {
-    activeView: "plan"
-    viewportMode: "model" | "sheet"
+    wallLine?: Line3 | null
+    fasciaLine?: Line3 | null
+    roofEdgeLine?: Line3 | null
+    soffitDepthMm?: number | null
+    footprint?: Polygon3 | null
   }
 }
 ```
 
-## Architecture
+### `AssemblyMember3D`
 
-Keep the existing architecture intact:
-
-1. configuration state
-2. assembly model
-3. view builders
-4. annotation engine
-5. presentation surfaces
-
-### 1. Configuration state
-
-Shared by the rail and active viewport. It contains:
-
-- persisted draft values
-- temporary UI state such as hover, drag, selection, zoom, and popovers
-
-### 2. Assembly model
-
-Canonical semantic representation of the pergola and house context, not final SVG.
-
-It should include:
-
-- outline
-- roof form
-- attachment edge
-- house context
-- posts
-- beams
-- rafters
-- gutters
-- support conditions
-- fall vector
-- connection semantics for later details
-
-Recommended output shape:
+The atomic structural output of the kernel.
 
 ```ts
-type AssemblyModel = {
-  outline: Polygon2
-  roofForm: RoofForm
-  attachmentEdge: EdgeRef | null
-  houseContext: HouseContextModel
-  posts: PostMember[]
-  beams: BeamMember[]
-  rafters: RafterMember[]
-  gutters: GutterMember[]
-  supports: SupportCondition[]
-  fall: FallModel
+type AssemblyMember3D = {
+  id: string
+  role:
+    | "post"
+    | "beam"
+    | "ledger"
+    | "ridge"
+    | "rafter"
+    | "gutter"
+    | "brace"
+  centerline: Line3
+  profile: {
+    shape: "rectangular" | "c-channel" | "custom"
+    widthMm: number
+    depthMm: number
+  }
+  localFrame: {
+    origin: Point3
+    xAxis: Vector3
+    yAxis: Vector3
+    zAxis: Vector3
+  }
+  metadata?: Record<string, string | number | boolean | null>
+}
+```
+
+### `RoofPlane3D`
+
+```ts
+type RoofPlane3D = {
+  id: string
+  boundary: Polygon3
+  plane: Plane3
+  fallVector: Vector3
+  metadata?: Record<string, string | number | boolean | null>
+}
+```
+
+### `HouseReferenceGeometry`
+
+```ts
+type HouseReferenceGeometry = {
+  wallPlane?: Plane3 | null
+  fasciaLine?: Line3 | null
+  roofEdgeLine?: Line3 | null
+  soffitDepthMm?: number | null
+  footprint?: Polygon3 | null
+}
+```
+
+### `Assembly3D`
+
+Canonical structural 3D output of the workbench. This is the only geometry truth.
+
+```ts
+type Assembly3D = {
+  family: "mono" | "gable" | "box"
+  datum: GeometryConfig["datum"]
+  outline: Polygon3
+  attachmentEdge: Line3 | null
+  house: HouseReferenceGeometry
+  members: AssemblyMember3D[]
+  roofPlanes: RoofPlane3D[]
+  supportConditions: Array<{
+    type: string
+    memberId: string
+    metadata?: Record<string, string | number | boolean | null>
+  }>
+  quantityHooks: Array<{
+    key: string
+    quantity: number
+    unit: string
+  }>
   semantics: {
     connectionType: string
     roofType: string
@@ -506,36 +586,170 @@ type AssemblyModel = {
 }
 ```
 
-### 3. View builders
+### `GeometryValidationReport`
 
-Pure derivation from assembly model to view-specific output.
+Required validation output for internal QA.
+
+```ts
+type GeometryValidationReport = {
+  status: "pass" | "fail" | "unsupported"
+  invariants: Array<{
+    key: string
+    status: "pass" | "fail"
+    message: string
+  }>
+  unsupportedReasons: string[]
+  fixtureComparisons: Array<{
+    fixtureId: string
+    status: "match" | "drift"
+    message: string
+  }>
+}
+```
+
+### `ViewerSceneModel`
+
+3D viewer-facing scene structure derived from `Assembly3D`.
+
+```ts
+type ViewerSceneModel = {
+  layers: Array<{
+    id: string
+    label: string
+    visibleByDefault: boolean
+    objects: Array<{
+      id: string
+      type: "member" | "roofPlane" | "reference" | "annotation"
+      sourceId?: string
+      metadata?: Record<string, string | number | boolean | null>
+    }>
+  }>
+}
+```
+
+### Derived view models
+
+These are downstream projections. They are never geometry truth.
+
+```ts
+type PlanViewModel = { /* derived from Assembly3D */ }
+type SectionViewModel = { /* derived from Assembly3D */ }
+type ElevationViewModel = { /* derived from Assembly3D */ }
+```
+
+## Architecture
+
+The canonical runtime pipeline is now:
+
+1. estimate and calculator inputs
+2. normalized `GeometryConfig`
+3. `Assembly3D`
+4. `GeometryValidationReport`
+5. `ViewerSceneModel`
+6. derived 2D view models
+7. annotation engine
+8. presentation surfaces
+
+### 1. Estimate and calculator inputs
+
+These remain the upstream business and pricing inputs. They are not the geometry kernel themselves.
+
+### 2. Normalized `GeometryConfig`
+
+This is the first geometry-owned runtime contract.
+
+It must:
+
+- normalize estimate/calculator state
+- lock datums and units
+- encode house connection and support conditions explicitly
+- remain free of view, SVG, and sheet concerns
+
+### 3. `Assembly3D`
+
+This is the canonical geometry model.
+
+It must:
+
+- hold world-space member coordinates
+- hold member profiles and local frames
+- hold roof planes and fall semantics
+- hold house reference geometry
+- remain future-safe for detail generation and quantity extraction
+
+Current `planModel` and `sectionModel` structures are temporary legacy intermediates and must not remain the long-term source of geometry truth.
+
+### 4. `GeometryValidationReport`
+
+Validation is a first-class stage, not an afterthought.
+
+It must cover:
+
+- invariants
+- unsupported-case rejection
+- fixture comparisons
+- solver drift detection
+
+### 5. `ViewerSceneModel`
+
+The hidden 3D viewer consumes a scene model derived directly from `Assembly3D`.
+
+This viewer is a required internal validation surface. It is not optional polish.
+
+### 6. Derived 2D view builders
+
+2D builders are pure derivations from `Assembly3D`.
 
 Required builders:
 
 - `buildPlanViewModel`
-- `buildSectionViewModel`
-- `buildElevationViewModel`
+- later `buildSectionViewModel`
+- later `buildElevationViewModel`
 - later `buildDetailViewModel`
 
-V1 only needs `buildPlanViewModel`, but the assembly model should stay future-safe for the others.
+V1 only requires plan production output, but the geometry model must remain correct and future-safe for the later builders.
 
-### 4. Annotation engine
+### 7. Annotation engine
 
-Separate placement step that resolves annotation intents into readable annotations with viewport-aware rules.
+Annotation remains a separate placement layer over derived 2D output.
 
-This is where upside-down text, `FALL`, and `c/c` issues are solved structurally rather than cosmetically.
+It should solve:
 
-### 5. Presentation surfaces
+- upside-down text
+- `FALL`
+- framing spacing labels
+- geometry-anchored versus page-anchored placement
 
-Required surfaces:
+But it must not become a substitute for real geometry.
 
+### 8. Presentation surfaces
+
+Required surfaces remain:
+
+- hidden internal 3D verification viewer
 - `DrawingWorkbench`
 - `ModelSpaceViewport`
 - `SheetViewport`
 - `SheetComposer`
 - renderers such as `PlanRenderer`, then later section and elevation renderers
 
+These are presentation surfaces. They are not geometry truth.
+
 ## UI Surface Spec
+
+### Hidden 3D verification viewer
+
+This is a required V1 internal validation surface.
+
+It should:
+
+- render directly from `Assembly3D`
+- remain hidden and internal
+- support orbit, pan, zoom, and fit
+- support layer toggles for members, roof planes, and house context
+- support enough inspection tooling to confirm geometry correctness
+
+It is not the primary user-facing editing surface.
 
 ### `Model Space`
 
@@ -549,13 +763,15 @@ Primary editing surface. It should support:
 
 Recommended V1 interactions:
 
-- drag the house attachment line
-- drag width and projection handles
 - switch pergola type
 - change roof or material mode
-- add or move posts in constrained ways
+- width and projection edits
+- attachment-side edits
+- constrained house/context editing
 - rotate or fit view
 - select members for contextual controls
+
+Further `Model Space` polish is frozen unless it directly supports the new geometry kernel.
 
 ### `Sheet View`
 
@@ -566,6 +782,8 @@ Document-first preview surface. It should support:
 - note and metadata area
 - scale-aware composition
 - lower-interaction review behavior
+
+`Sheet View` remains downstream of geometry truth and is not a substitute for 3D verification.
 
 ### Rail
 
@@ -583,9 +801,11 @@ Do not put these in the rail:
 - sheet layout logic
 - rare advanced calculator-only fields
 
+Do not broaden the rail further until geometry review gates are passed.
+
 ## Annotation Rules
 
-These rules are locked and should carry through implementation:
+These rules are locked and apply only to derived 2D outputs:
 
 - text must never render upside down
 - page-anchored and geometry-anchored annotations must be explicitly declared
@@ -609,7 +829,7 @@ The workbench should sit on top of the portal local-first model rather than inve
 
 ### Recommended persistence behavior
 
-- local working copy keyed by `designRequestId` or `estimateId`
+- local working copy keyed by `estimateId`, with optional request metadata
 - queued mutation payloads for config and drawing edits
 - server-side durable draft save
 - background artifact generation after durable save
@@ -632,16 +852,22 @@ The workbench should sit on top of the portal local-first model rather than inve
 
 ### V1 required outputs
 
-- live `Model Space` plan view
-- `Sheet View` plan preview
+- normalized `GeometryConfig`
+- validated `Assembly3D`
+- `GeometryValidationReport`
+- hidden internal 3D verification viewer
+- derived plan `Model Space` output
+- derived plan `Sheet View` preview
 - persisted drawing draft
 - geometry-derived quantity hooks
 - estimate-backed design revision traceability
 
+Plan and sheet output are not production-trustworthy until the 3D validation and viewer gates are passed.
+
 ### V2 outputs
 
-- section view
-- elevation view
+- derived section view
+- derived elevation view
 - first generated detail family: house connection / soffit attachment
 
 ### V3 outputs
@@ -684,29 +910,29 @@ Near-term extraction seeds already identified by the repo:
 
 ## Brief Phase Outline
 
-This document sets product direction only. For ticket-level sequencing and review gates, use `docs/sanctuary-geometry-workbench-execution-plan.md` and `docs/drawing-workbench-execution-board.md`.
+This document sets product direction only. For task sequencing and review gates, use `docs/sanctuary-geometry-workbench-execution-plan.md`.
 
-The intended delivery shape is:
+The implementation order is now geometry-first:
 
-1. Hidden route and real workflow entry:
-   - establish `/staff/projects/[projectId]/design-workbench`
-   - keep it behind staff auth and feature flag
-   - attach it to real `project`, `estimate`, and `design_package_request` records
-2. Shared geometry kernel:
-   - create the reusable parametric core for `mono`, `gable`, and `box`
-   - keep it UI-agnostic and future-safe for later views
-3. `Model Space` and rail:
-   - make `Model Space` the real editing surface
-   - keep the rail constrained to common edits
-4. Plan pipeline and `Sheet View`:
-   - generate plan output for both surfaces from one shared pipeline
-   - fix annotation behavior structurally, not cosmetically
-5. Persistence and workflow integration:
-   - add local-first draft persistence with server-authoritative convergence
-   - integrate back into project and estimate workflow without turning the project page into the editor
-6. Production readiness review:
-   - keep the route hidden until standard jobs can be completed reliably
-   - then decide whether to widen access
+1. `G0` reset and freeze:
+   - rewrite the plan around geometry truth
+   - freeze non-geometry polish unless it supports validation
+2. `G1` geometry contract and datum definition:
+   - lock normalized config, datums, member semantics, and 3D output contracts
+3. `G2` 3D primitives and normalization:
+   - build the reusable geometry runtime base in `packages/geometry`
+4. `G3` to `G5` family solvers:
+   - solve `mono`, then `gable`, then `box`
+5. `G6` validation and fixture QA:
+   - prove geometry correctness against representative standard jobs
+6. `G7` and `G8` hidden 3D verification:
+   - render and inspect `Assembly3D` directly in the hidden route
+7. `G9` derive plan from 3D:
+   - rebuild plan output as a projection from `Assembly3D`
+8. `G10` reconnect editing to trusted geometry:
+   - bind rail and `Model Space` editing back onto the new geometry kernel
+
+Output delivery still remains plan first, then section, elevation, and details. But no broad return to plan/sheet/editor polish happens until the geometry and viewer review gates are passed.
 
 ## Technical Constraints
 
@@ -720,7 +946,16 @@ Do not build one geometry system for the viewport and another for sheets.
 
 ### No fake lab model
 
-Do not build a dead-end lab disconnected from real entities. Use real `project`, `estimate`, and `design_package_request` records from the start, with fixture mode only as a convenience.
+Do not build a dead-end lab disconnected from real entities. Use real `project`, `estimate`, and optional `design_package_request` records from the start, with fixture mode only as a convenience.
+
+### Geometry-first freeze rules
+
+While the geometry-first plan is active:
+
+- no more milestone credit is given for SVG/editor interaction work unless it depends on the new geometry kernel
+- `apps/portal/lib/drawings/assembly/buildAssemblyModel()` is not treated as sufficient geometry completion
+- sheet annotation and rail breadth do not expand ahead of `Assembly3D` correctness
+- the hidden route remains the host for geometry QA, fixtures, and later 3D verification
 
 ## Hardening Note
 
@@ -734,14 +969,16 @@ The workbench can move forward while hardening continues, but it should not beco
 
 V1 is done when:
 
-- a staff user can open a real project-linked design request in a dedicated workbench route
-- edit a standard pergola in `Model Space`
-- use a constrained rail for common edits
-- generate a usable plan sheet preview from the same geometry state
-- save without blocking on heavy artifact work
-- reopen and recover draft state
-- flow back to the project page cleanly
-- replace Rhino and manual plan work for a meaningful share of standard jobs
+- a staff user can open a real project-linked active design in the hidden workbench route
+- the system generates a trustworthy `Assembly3D` for supported `mono`, `gable`, and `box` jobs
+- the hidden 3D verification viewer is good enough to catch geometry mistakes before broader rollout
+- plan output is genuinely derived from that 3D assembly
+- quantities come from the same geometry truth
+- draft state can be saved and recovered without blocking on heavy artifact work
+- unsupported cases fail clearly instead of degrading silently
+- the workbench replaces Rhino and manual plan work for a meaningful share of standard jobs
+
+V1 is not done merely because the SVG plan workflow feels more polished.
 
 ## Final Intent
 
@@ -749,10 +986,11 @@ This workbench is the shared geometry and drawing engine for Sanctuary.
 
 It should:
 
-- start from estimate-backed design requests
-- edit in `Model Space`
-- review in `Sheet View`
-- run on one shared geometry pipeline
+- open on estimate-backed active designs while preserving estimate-backed design-request workflow records
+- normalize geometry inputs from estimate and calculator state
+- generate validated structural 3D geometry as the single source of truth
+- verify that geometry in a hidden internal 3D viewer
+- derive `Model Space` and `Sheet View` outputs from the same assembly
 - preserve local-first editing with server-authoritative convergence
 - become the internal production tool first
 - later support sales and marketing through different skins on the same core

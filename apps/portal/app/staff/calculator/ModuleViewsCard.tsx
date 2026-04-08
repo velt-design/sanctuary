@@ -46,6 +46,30 @@ export type ModulePlanSheetInteractionProps = {
   onPergolaPopoverHoverChange?: (hovered: boolean) => void;
 };
 
+export type ModulePlanResizeFieldId = 'plan:lengthA' | 'plan:spanA';
+
+export type ModulePlanResizeDragMeta = {
+  fieldId: ModulePlanResizeFieldId;
+  axisX: number;
+  axisY: number;
+  scale: number;
+  deltaMultiplier: number;
+  minValueM: number;
+  maxValueM: number;
+};
+
+export type ModulePlanInteractionProps = {
+  available: boolean;
+  hoveredResizeFieldId: ModulePlanResizeFieldId | null;
+  activeResizeFieldId: ModulePlanResizeFieldId | null;
+  onResizeFieldHover: (fieldId: ModulePlanResizeFieldId | null) => void;
+  onResizeFieldDragStart: (
+    meta: ModulePlanResizeDragMeta,
+    event: { pointerId: number; clientX: number; clientY: number },
+  ) => void;
+  onSvgMount?: (node: SVGSVGElement | null) => void;
+};
+
 type GeometryConsistency = {
   level: 'ok' | 'warn';
   summary: string;
@@ -97,12 +121,13 @@ type ModuleDrawingRendererProps = {
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
   footprintEditor?: ModuleFootprintEditorProps;
+  planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
 };
 
 type ModuleDrawingInteractiveField = {
   fieldId: string;
-  onActivate: (fieldId: string, target: SVGTextElement) => void;
+  onActivate?: (fieldId: string, target: SVGTextElement) => void;
 };
 
 export type ModuleDrawingInteractiveFieldMap = Partial<Record<string, ModuleDrawingInteractiveField>>;
@@ -248,6 +273,7 @@ export function ModuleDrawingRenderer({
   interactiveFields,
   showDebugOverlays,
   footprintEditor,
+  planInteraction,
   sheetPlanInteraction,
 }: ModuleDrawingRendererProps) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
@@ -348,6 +374,7 @@ export function ModuleDrawingRenderer({
               interactiveFields={interactiveFields}
               showDebugOverlays={effectiveShowDebugOverlays}
               footprintEditor={footprintEditor}
+              planInteraction={planInteraction}
               sheetPlanInteraction={sheetPlanInteraction}
             />
           </div>
@@ -2214,14 +2241,14 @@ function TickDimension({
         className={interactiveField ? `${styles.moduleDimText} ${styles.moduleDimTextEditable}` : styles.moduleDimText}
         transform={typeof geometry.labelRotate === 'number' ? `rotate(${geometry.labelRotate} ${geometry.labelX} ${geometry.labelY})` : undefined}
         data-editable-field-id={interactiveField?.fieldId}
-        tabIndex={interactiveField ? 0 : undefined}
-        onClick={interactiveField ? (event) => interactiveField.onActivate(interactiveField.fieldId, event.currentTarget) : undefined}
+        tabIndex={interactiveField?.onActivate ? 0 : undefined}
+        onClick={interactiveField?.onActivate ? (event) => interactiveField.onActivate?.(interactiveField.fieldId, event.currentTarget) : undefined}
         onKeyDown={
-          interactiveField
+          interactiveField?.onActivate
             ? (event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 event.preventDefault();
-                interactiveField.onActivate(interactiveField.fieldId, event.currentTarget as SVGTextElement);
+                interactiveField.onActivate?.(interactiveField.fieldId, event.currentTarget as SVGTextElement);
               }
             : undefined
         }
@@ -3173,6 +3200,7 @@ function PlanSvg({
   interactiveFields,
   showDebugOverlays,
   footprintEditor,
+  planInteraction,
   sheetPlanInteraction,
 }: {
   model: ModulePlanModel;
@@ -3185,6 +3213,7 @@ function PlanSvg({
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
   footprintEditor?: ModuleFootprintEditorProps;
+  planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
@@ -3443,8 +3472,9 @@ function PlanSvg({
       (Boolean(footprintEditor?.isContextHovered) || Boolean(footprintEditor?.hoveredHandleId) || Boolean(footprintEditor?.activeHandleId)));
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor && !isModelFootprintEditor;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
-  const showModelPrimaryDimensions = !isSheet && !isModel;
+  const showModelPrimaryDimensions = !isSheet;
   const showModelSecondaryAnnotations = !isSheet && !isModel;
+  const showPlanResizeHandles = isModel && Boolean(planInteraction?.available) && !isHipCorner;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
   const bottomDimensionLabel = formatMetres(primaryDimensionSwap ? model.spanA : model.lengthA);
   const leftDimensionLabel = formatMetres(primaryDimensionSwap ? model.lengthA : model.spanA);
@@ -3463,6 +3493,42 @@ function PlanSvg({
     left: `${(clamp((rotatedPrimaryBounds.minX + rotatedPrimaryBounds.maxX) / 2, 8, 112) / 120) * 100}%`,
     top: `${(clamp(rotatedPrimaryBounds.minY + 1.1, 8, 80) / 90) * 100}%`,
   };
+  const rawPlanResizeHandles = showPlanResizeHandles
+    ? [
+        {
+          fieldId: 'plan:lengthA' as const,
+          start: { x: x + aW * 0.28, y: y + aH + 2.2 },
+          end: { x: x + aW * 0.72, y: y + aH + 2.2 },
+          guideFrom: { x: centerX, y: y + aH },
+          guideTo: { x: centerX, y: y + aH + 2.2 },
+          minValueM: 0.001,
+          maxValueM: Number.POSITIVE_INFINITY,
+        },
+        {
+          fieldId: 'plan:spanA' as const,
+          start: { x: x - 2.2, y: y + aH * 0.28 },
+          end: { x: x - 2.2, y: y + aH * 0.72 },
+          guideFrom: { x, y: centerY },
+          guideTo: { x: x - 2.2, y: centerY },
+          minValueM: 0.001,
+          maxValueM: Number.POSITIVE_INFINITY,
+        },
+      ]
+    : [];
+  const planResizeHandles = rawPlanResizeHandles.map((handle) => {
+    const rootStart = rotatePointQuarterTurns(handle.start, rotationFrame.center, rotationFrame.turns);
+    const rootEnd = rotatePointQuarterTurns(handle.end, rotationFrame.center, rotationFrame.turns);
+    const axisDx = rootEnd.x - rootStart.x;
+    const axisDy = rootEnd.y - rootStart.y;
+    const axisLength = Math.max(0.001, Math.hypot(axisDx, axisDy));
+    return {
+      ...handle,
+      rootStart,
+      rootEnd,
+      axisX: axisDx / axisLength,
+      axisY: axisDy / axisLength,
+    };
+  });
 
   return (
     <>
@@ -3470,7 +3536,10 @@ function PlanSvg({
         viewBox="0 0 120 90"
         role="img"
         aria-label="Module plan view"
-        ref={footprintEditor?.onSvgMount}
+        ref={(node) => {
+          footprintEditor?.onSvgMount?.(node);
+          planInteraction?.onSvgMount?.(node);
+        }}
         className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
           presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
         } ${isSheetFootprintEditor ? styles.modulePlanSvgSheetFootprint : ''} ${
@@ -3680,6 +3749,66 @@ function PlanSvg({
             onPointerLeave={() => sheetPlanInteraction?.onPergolaHoverChange?.(false)}
           />
         ) : null}
+
+        {planResizeHandles.map((handle) => {
+          const isActiveHandle = handle.fieldId === planInteraction?.activeResizeFieldId;
+          const isHoveredHandle = handle.fieldId === planInteraction?.hoveredResizeFieldId;
+          return (
+            <g key={`plan-resize-${handle.fieldId}`}>
+              <line
+                x1={handle.guideFrom.x}
+                y1={handle.guideFrom.y}
+                x2={handle.guideTo.x}
+                y2={handle.guideTo.y}
+                className={isActiveHandle ? `${styles.moduleFootprintGuide} ${styles.moduleFootprintGuideActive}` : styles.moduleFootprintGuide}
+              />
+              <line
+                x1={handle.start.x}
+                y1={handle.start.y}
+                x2={handle.end.x}
+                y2={handle.end.y}
+                data-plan-resize-handle={handle.fieldId}
+                className={
+                  isActiveHandle
+                    ? `${styles.moduleFootprintResizeEdge} ${styles.moduleFootprintResizeEdgeActive}`
+                    : isHoveredHandle
+                      ? `${styles.moduleFootprintResizeEdge} ${styles.moduleFootprintResizeEdgeHover}`
+                      : styles.moduleFootprintResizeEdge
+                }
+              />
+              <line
+                x1={handle.start.x}
+                y1={handle.start.y}
+                x2={handle.end.x}
+                y2={handle.end.y}
+                data-plan-resize-handle-hit={handle.fieldId}
+                className={styles.moduleFootprintResizeEdgeHit}
+                onPointerEnter={() => planInteraction?.onResizeFieldHover(handle.fieldId)}
+                onPointerLeave={() => planInteraction?.onResizeFieldHover(null)}
+                onPointerDown={(event: ReactPointerEvent<SVGLineElement>) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  planInteraction?.onResizeFieldDragStart(
+                    {
+                      fieldId: handle.fieldId,
+                      axisX: handle.axisX,
+                      axisY: handle.axisY,
+                      scale,
+                      deltaMultiplier: 1,
+                      minValueM: handle.minValueM,
+                      maxValueM: handle.maxValueM,
+                    },
+                    {
+                      pointerId: event.pointerId,
+                      clientX: event.clientX,
+                      clientY: event.clientY,
+                    },
+                  );
+                }}
+              />
+            </g>
+          );
+        })}
 
         {showPinnedSheetPrimaryDimensions || !showModelPrimaryDimensions ? null : (
           <g data-plan-primary-dim="bottom">
@@ -4609,14 +4738,14 @@ function SectionSvg({
         textAnchor="middle"
         className={pitchInteractiveField ? `${styles.moduleSectionPitchLabel} ${styles.moduleDimTextEditable}` : styles.moduleSectionPitchLabel}
         data-editable-field-id={pitchInteractiveField?.fieldId}
-        tabIndex={pitchInteractiveField ? 0 : undefined}
-        onClick={pitchInteractiveField ? (event) => pitchInteractiveField.onActivate(pitchInteractiveField.fieldId, event.currentTarget) : undefined}
+        tabIndex={pitchInteractiveField?.onActivate ? 0 : undefined}
+        onClick={pitchInteractiveField?.onActivate ? (event) => pitchInteractiveField.onActivate?.(pitchInteractiveField.fieldId, event.currentTarget) : undefined}
         onKeyDown={
-          pitchInteractiveField
+          pitchInteractiveField?.onActivate
             ? (event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 event.preventDefault();
-                pitchInteractiveField.onActivate(pitchInteractiveField.fieldId, event.currentTarget as SVGTextElement);
+                pitchInteractiveField.onActivate?.(pitchInteractiveField.fieldId, event.currentTarget as SVGTextElement);
               }
             : undefined
         }

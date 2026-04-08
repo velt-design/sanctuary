@@ -439,6 +439,46 @@ describe('ModuleViewsCard', () => {
     expect(leftGroup).toContain('>6.00m<');
   });
 
+  it('renders model-space resize handles only on the model presentation', () => {
+    const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
+    const modelMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        interactiveFields={{
+          'plan:lengthA': { fieldId: 'plan:lengthA' },
+          'plan:spanA': { fieldId: 'plan:spanA' },
+        }}
+        planInteraction={{
+          available: true,
+          hoveredResizeFieldId: null,
+          activeResizeFieldId: null,
+          onResizeFieldHover: () => undefined,
+          onResizeFieldDragStart: () => undefined,
+          onSvgMount: () => undefined,
+        }}
+      />,
+    );
+    const sheetMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    expect(modelMarkup).toContain('data-plan-resize-handle-hit="plan:lengthA"');
+    expect(modelMarkup).toContain('data-plan-resize-handle-hit="plan:spanA"');
+    expect(modelMarkup).toContain('data-editable-field-id="plan:lengthA"');
+    expect(modelMarkup).toContain('data-editable-field-id="plan:spanA"');
+    expect(sheetMarkup).not.toContain('data-plan-resize-handle-hit=');
+  });
+
   it('renders fall and spacing annotations in page space for rotated sheet plans', () => {
     const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
     const markup = renderToStaticMarkup(

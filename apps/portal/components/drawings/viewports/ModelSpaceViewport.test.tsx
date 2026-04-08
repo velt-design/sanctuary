@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
@@ -94,6 +95,29 @@ function makeDrawingModule() {
   })[0]!;
 }
 
+function makePlanEditableFields(): EstimateDrawingField[] {
+  return [
+    {
+      id: 'plan:lengthA',
+      label: 'Plan length',
+      rawValue: '6',
+      displayValue: '6.00m',
+      svgFieldId: 'plan:lengthA',
+      editor: 'singleline',
+      target: { type: 'module_input', moduleIndex: 0, field: 'lengthM' },
+    },
+    {
+      id: 'plan:spanA',
+      label: 'Plan span',
+      rawValue: '3',
+      displayValue: '3.00m',
+      svgFieldId: 'plan:spanA',
+      editor: 'singleline',
+      target: { type: 'module_input', moduleIndex: 0, field: 'projectionM' },
+    },
+  ];
+}
+
 describe('ModelSpaceViewport', () => {
   it('renders plan controls for the live model-space configurator', () => {
     const drawing = makeDrawingModule();
@@ -116,13 +140,20 @@ describe('ModelSpaceViewport', () => {
         planViewModel={buildPlanViewModel(assembly)}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
         onCommitFootprintEdit={() => ({ ok: true })}
       />,
     );
 
     expect(markup).toContain('Live plan viewport');
-    expect(markup).toContain('The configurator rail drives the live draft');
+    expect(markup).toContain('Drag the primary resize handles or use the Sanctuary rail');
     expect(markup).toContain('Zoom in');
+    expect(markup).toContain('data-plan-resize-handle-hit="plan:lengthA"');
+    expect(markup).toContain('data-plan-resize-handle-hit="plan:spanA"');
+    expect(markup).toContain('data-editable-field-id="plan:lengthA"');
+    expect(markup).toContain('data-editable-field-id="plan:spanA"');
+    expect(markup).toContain('data-footprint-edge="rear"');
     expect(markup).not.toContain('House type');
     expect(markup).not.toContain('Rotate -90');
   });
@@ -142,5 +173,6 @@ describe('ModelSpaceViewport', () => {
     );
 
     expect(markup).toContain('Section model space is staged for a later milestone.');
+    expect(markup).not.toContain('data-plan-resize-handle-hit=');
   });
 });

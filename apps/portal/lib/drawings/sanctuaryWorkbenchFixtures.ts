@@ -1,0 +1,222 @@
+import 'server-only';
+
+import type { CostOutputV1, RoofType } from '@sp/costing';
+import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { SanctuaryGeometryWorkbenchFixture } from './sanctuaryWorkbenchFixtures.types';
+
+function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
+  const base: Partial<CalculatorModuleInputs> = {
+    pergolaId: 'pergola-1',
+    pergolaStyle: 'pitched',
+    roofMaterial: 'acrylic',
+    extrusionColour: 'White',
+    boxPerimeterEnabled: false,
+    internalRoofType: 'pitched',
+    fallDistanceMm: '0',
+    roofPitchDeg: '5',
+    gableEndFramesMode: 'outer_end_only',
+    gableHouseEdgeGutter: 'house',
+    gableOuterEdgeGutter: 'our',
+    boxGutterHouseEdge: 'house',
+    boxGutterFarEdge: 'our',
+    downpipeCount: '0',
+    downpipeJoinCount: '0',
+    downpipeElbowCount: '0',
+    separateGutterEnabled: false,
+    overhangEnabled: false,
+    overhangAmountM: '0',
+    overhangSupportBeamProfile: '150x50',
+    invertedEnabled: false,
+    invertedHouseGutter: false,
+    mixedSkylightStripCount: '0',
+    mixedSkylightStripWidthM: '0',
+    mixedAcrylicBaysMain: '0',
+    mixedAcrylicBaysA: '0',
+    mixedAcrylicBaysB: '0',
+    timberRoofAboveType: 'insulated_panels',
+    timberInsulatedPanelThicknessMm: '50',
+    timberTrayWidthMm: '500',
+    postCount: '4',
+    houseConnectionType: 'soffit',
+    attachmentSide: 'rear',
+    houseFootprintPreset: 'straight',
+    postConnectionType: 'slab_anchors',
+    ground: 'easy',
+    lengthM: '6',
+    projectionM: '3',
+    hipCornerLengthBM: '0',
+    hipCornerProjectionBM: '0',
+    postCutHeightM: '2.4',
+    timberRoofAllowanceExGst: '0',
+    flashings: { rows: [] },
+    overrides: {},
+    infills: { items: [] },
+  };
+
+  return { ...base, ...overrides } as CalculatorModuleInputs;
+}
+
+function makeResult(params: {
+  roofType?: RoofType;
+  lengthA?: number;
+  spanA?: number;
+  slopeDirection?: 'away_from_house' | 'toward_house' | null;
+  roofPitchDegUsed?: number;
+  heightHouseSideM?: number;
+  heightOuterSideM?: number;
+}): CostOutputV1 {
+  return {
+    inputs_normalized: {
+      roof_type: params.roofType ?? 'pitched',
+    },
+    derived: {
+      length_m: params.lengthA ?? 6,
+      projection_m: params.spanA ?? 3,
+      slope_direction: params.slopeDirection ?? 'away_from_house',
+      roof_pitch_deg_used: params.roofPitchDegUsed ?? 5,
+      height_house_side_m: params.heightHouseSideM ?? 2.4,
+      height_outer_side_m: params.heightOuterSideM ?? 2.1,
+    },
+  } as unknown as CostOutputV1;
+}
+
+function makeSnapshot(module: CalculatorModuleInputs, result: CostOutputV1, label: string): Record<string, unknown> {
+  return {
+    inputs: {
+      schemaVersion: 'v2',
+      projectName: 'Sanctuary Fixture Project',
+      quoteRef: 'Q-FIXTURE',
+      access: 'normal',
+      height: 'single_storey',
+      jobType: 'residential',
+      travelExGst: '0',
+      extrasAllowanceExGst: '0',
+      quoteDiscountPct: '0',
+      pergolas: [{ id: 'pergola-1', label }],
+      modules: [module],
+    },
+    outputs: {
+      pergolas: [{ id: 'pergola-1', modules: [result] }],
+    },
+  } satisfies Record<string, unknown>;
+}
+
+const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
+  {
+    slug: 'mono-standard',
+    label: 'Mono Standard',
+    snapshot: makeSnapshot(
+      makeModule({
+        pergolaStyle: 'pitched',
+        roofMaterial: 'acrylic',
+        lengthM: '6',
+        projectionM: '3',
+        roofPitchDeg: '5',
+      }),
+      makeResult({
+        roofType: 'pitched',
+        lengthA: 6,
+        spanA: 3,
+        roofPitchDegUsed: 5,
+        heightHouseSideM: 2.4,
+        heightOuterSideM: 2.1,
+      }),
+      'Mono Standard',
+    ),
+    moduleLabels: ['M1 - Mono Standard - 6m x 3m - Acrylic'],
+    estimate: {
+      id: 'est_00000000-0000-4000-8000-000000000101',
+      versionLabel: 'V-FIX-M1',
+      status: 'draft',
+      createdAt: '2026-04-08T00:00:00.000Z',
+    },
+    request: {
+      id: 'dpr_00000000-0000-4000-8000-000000000101',
+      requestVersion: 1,
+      status: 'OPEN',
+      priorityTier: 'TIER_3',
+    },
+  },
+  {
+    slug: 'gable-standard',
+    label: 'Gable Standard',
+    snapshot: makeSnapshot(
+      makeModule({
+        pergolaStyle: 'gable',
+        roofMaterial: 'insulated',
+        lengthM: '6.5',
+        projectionM: '4',
+        roofPitchDeg: '25',
+        postCutHeightM: '2.7',
+      }),
+      makeResult({
+        roofType: 'gable',
+        lengthA: 6.5,
+        spanA: 4,
+        roofPitchDegUsed: 25,
+        heightHouseSideM: 2.7,
+        heightOuterSideM: 2.7,
+      }),
+      'Gable Standard',
+    ),
+    moduleLabels: ['M1 - Gable Standard - 6.5m x 4m - Insulated'],
+    estimate: {
+      id: 'est_00000000-0000-4000-8000-000000000102',
+      versionLabel: 'V-FIX-G1',
+      status: 'draft',
+      createdAt: '2026-04-08T00:00:00.000Z',
+    },
+    request: {
+      id: 'dpr_00000000-0000-4000-8000-000000000102',
+      requestVersion: 1,
+      status: 'OPEN',
+      priorityTier: 'TIER_2',
+    },
+  },
+  {
+    slug: 'box-standard',
+    label: 'Box Standard',
+    snapshot: makeSnapshot(
+      makeModule({
+        pergolaStyle: 'pitched',
+        boxPerimeterEnabled: true,
+        internalRoofType: 'flat',
+        roofMaterial: 'timber',
+        lengthM: '5.5',
+        projectionM: '3.5',
+        roofPitchDeg: '3',
+        fallDistanceMm: '40',
+      }),
+      makeResult({
+        roofType: 'pitched',
+        lengthA: 5.5,
+        spanA: 3.5,
+        roofPitchDegUsed: 3,
+        heightHouseSideM: 2.5,
+        heightOuterSideM: 2.35,
+      }),
+      'Box Standard',
+    ),
+    moduleLabels: ['M1 - Box Standard - 5.5m x 3.5m - Timber'],
+    estimate: {
+      id: 'est_00000000-0000-4000-8000-000000000103',
+      versionLabel: 'V-FIX-B1',
+      status: 'draft',
+      createdAt: '2026-04-08T00:00:00.000Z',
+    },
+    request: {
+      id: 'dpr_00000000-0000-4000-8000-000000000103',
+      requestVersion: 1,
+      status: 'OPEN',
+      priorityTier: 'TIER_3',
+    },
+  },
+];
+
+export function listSanctuaryGeometryWorkbenchFixtures(): SanctuaryGeometryWorkbenchFixture[] {
+  return FIXTURES.slice();
+}
+
+export function getSanctuaryGeometryWorkbenchFixture(slug: string): SanctuaryGeometryWorkbenchFixture | null {
+  return FIXTURES.find((fixture) => fixture.slug === slug) ?? null;
+}

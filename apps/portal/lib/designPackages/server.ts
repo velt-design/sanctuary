@@ -493,6 +493,15 @@ export async function loadDesignPackages(): Promise<DesignPackagesResponse> {
   };
 }
 
+export async function loadProjectDesignPackageRows(projectId: string): Promise<DesignListRow[]> {
+  const projectUuid = uuidFromAppId(projectId, 'proj');
+  const requests = await loadRawDesignRequestsForProjects([projectUuid]);
+  const hydrated = await hydrateDesignListRows(requests);
+  return hydrated.rows
+    .slice()
+    .sort((left, right) => right.requestVersion - left.requestVersion || right.updatedAt.localeCompare(left.updatedAt));
+}
+
 export async function loadDesignPackageRow(requestUuid: string): Promise<DesignListRow | null> {
   const request = await loadRawDesignRequestById(requestUuid);
   if (!request) return null;

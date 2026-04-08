@@ -1,0 +1,46 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.sidebar,
+.main {
+  display: grid;
+  gap: 12px;
+}
+
+.notice,
+.emptyState {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
+    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.04), transparent 50%);
+  padding: 14px;
+}
+
+.noticeTitle,
+.emptyTitle {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.84);
+}
+
+.noticeText,
+.emptyText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+@media (max-width: 1180px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}

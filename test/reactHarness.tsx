@@ -140,7 +140,7 @@ export function dispatchKeyboard(target: EventTarget, key: string): void {
   });
 }
 
-export function dispatchPointer(target: EventTarget, type: string, init: MouseEventInit = {}): void {
+export function dispatchPointer(target: EventTarget, type: string, init: MouseEventInit & { pointerId?: number } = {}): void {
   const EventCtor = window.PointerEvent ?? MouseEvent;
   act(() => {
     target.dispatchEvent(

@@ -4,6 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } fr
 import type { AttachmentSide } from '@sp/costing';
 import {
   ModuleDrawingRenderer,
+  type ModuleDrawingInteractiveFieldMap,
+  type ModulePlanInteractionProps,
+  type ModulePlanResizeDragMeta,
+  type ModulePlanResizeFieldId,
   canEditHouseFootprintPlan,
   type HouseFootprintEditorDragMeta,
   type ModuleFootprintEditorProps,
@@ -13,7 +17,7 @@ import {
 import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
+import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import { normalizeHouseFootprintParams, type CalculatorHouseFootprintParams } from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import styles from './ModelSpaceViewport.module.css';
@@ -23,6 +27,14 @@ type FootprintDragSession = HouseFootprintEditorDragMeta & {
   startSvgX: number;
   startSvgY: number;
   startParams: CalculatorHouseFootprintParams;
+};
+
+type PlanFieldDragSession = ModulePlanResizeDragMeta & {
+  pointerId: number;
+  startSvgX: number;
+  startSvgY: number;
+  startValueM: number;
+  field: EstimateDrawingField;
 };
 
 const MIN_MODEL_ZOOM = 1;
@@ -43,6 +55,10 @@ function parseHouseFootprintParamValue(value: string | undefined, fallback: numb
 
 function snapHouseFootprintValue(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function formatDrawingFieldValue(value: number): string {
+  return value.toFixed(3).replace(/\.?0+$/, '') || '0';
 }
 
 function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
@@ -69,6 +85,8 @@ export default function ModelSpaceViewport({
   planViewModel,
   viewportTransform,
   onViewportTransformChange,
+  editableFields,
+  onCommitField,
   onCommitFootprintEdit,
 }: {
   view: ModuleViewsTab;
@@ -78,6 +96,11 @@ export default function ModelSpaceViewport({
   planViewModel?: PlanViewModel | null;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange?: (next: DrawingWorkbenchViewportTransform) => void;
+  editableFields?: EstimateDrawingField[];
+  onCommitField?: (
+    field: EstimateDrawingField,
+    nextValue: string,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onCommitFootprintEdit?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
@@ -86,16 +109,44 @@ export default function ModelSpaceViewport({
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
   const syncingScrollRef = useRef(false);
   const [footprintError, setFootprintError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [footprintHoveredAttachmentSide, setFootprintHoveredAttachmentSide] = useState<AttachmentSide | null>(null);
   const [footprintHoveredHandleId, setFootprintHoveredHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintContextHovered, setFootprintContextHovered] = useState(false);
   const [footprintDragSession, setFootprintDragSession] = useState<FootprintDragSession | null>(null);
+  const [planHoveredResizeFieldId, setPlanHoveredResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
+  const [planActiveResizeFieldId, setPlanActiveResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
+  const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldDragSession | null>(null);
 
   const zoom = clampZoom(viewportTransform.zoom);
+  const editableFieldMap = useMemo(() => {
+    const next = new Map<string, EstimateDrawingField>();
+    for (const field of editableFields ?? []) {
+      if (!field.svgFieldId) continue;
+      next.set(field.svgFieldId, field);
+    }
+    return next;
+  }, [editableFields]);
+  const modelInteractiveFields = useMemo<ModuleDrawingInteractiveFieldMap>(() => {
+    const next: ModuleDrawingInteractiveFieldMap = {};
+    for (const field of editableFieldMap.values()) {
+      if (!field.svgFieldId) continue;
+      next[field.svgFieldId] = {
+        fieldId: field.id,
+      };
+    }
+    return next;
+  }, [editableFieldMap]);
   const canEditFootprint = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(planModel);
   const canRotatePlan = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && planModel?.roofType !== 'hip_corner';
+  const canEditPlanDimensions =
+    view === 'plan' &&
+    Boolean(planModel) &&
+    Boolean(onCommitField) &&
+    (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
   const showPlanViewport = view === 'plan' && Boolean(planModel);
+  const interactionError = fieldError ?? footprintError;
 
   const commitFootprintEdit = useCallback(
     async (edit: EstimateDrawingFootprintEdit) => {
@@ -104,9 +155,23 @@ export default function ModelSpaceViewport({
       }
       const result = await resolveCommitResult(onCommitFootprintEdit(edit));
       setFootprintError(result.ok ? null : result.error ?? 'Unable to update the drawing draft.');
+      if (result.ok) setFieldError(null);
       return result;
     },
     [onCommitFootprintEdit],
+  );
+
+  const commitFieldEdit = useCallback(
+    async (field: EstimateDrawingField, nextValue: string) => {
+      if (!onCommitField) {
+        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
+      }
+      const result = await resolveCommitResult(onCommitField(field, nextValue));
+      setFieldError(result.ok ? null : result.error ?? 'Unable to update the drawing draft.');
+      if (result.ok) setFootprintError(null);
+      return result;
+    },
+    [onCommitField],
   );
 
   const updateViewportTransform = useCallback(
@@ -130,6 +195,7 @@ export default function ModelSpaceViewport({
 
   const handleResetView = useCallback(() => {
     setFootprintError(null);
+    setFieldError(null);
     updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
   }, [updateViewportTransform]);
 
@@ -169,6 +235,7 @@ export default function ModelSpaceViewport({
 
   const handleFootprintPresetSelect = useCallback(
     async (preset: NonNullable<ModulePlanModel['houseFootprintPreset']>) => {
+      setFieldError(null);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
@@ -180,6 +247,7 @@ export default function ModelSpaceViewport({
 
   const handleFootprintRotate = useCallback(
     async (delta: -1 | 1) => {
+      setFieldError(null);
       setFootprintHoveredAttachmentSide(null);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
@@ -192,6 +260,7 @@ export default function ModelSpaceViewport({
 
   const handleFootprintAttachmentSideSelect = useCallback(
     async (side: AttachmentSide) => {
+      setFieldError(null);
       setFootprintHoveredAttachmentSide(side);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
@@ -209,6 +278,7 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
+      setFieldError(null);
       setFootprintError(null);
       setFootprintContextHovered(true);
       setFootprintActiveHandleId(meta.handleId);
@@ -222,6 +292,35 @@ export default function ModelSpaceViewport({
       });
     },
     [canEditFootprint, planModel],
+  );
+
+  const handlePlanFieldDragStart = useCallback(
+    (meta: ModulePlanResizeDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!canEditPlanDimensions || !planModel) return;
+      const field = editableFieldMap.get(meta.fieldId);
+      if (!field) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+
+      const fallbackValue = meta.fieldId === 'plan:lengthA' ? planModel.lengthA : planModel.spanA;
+      const startValueM = Number.parseFloat(field.rawValue);
+
+      setFootprintError(null);
+      setFieldError(null);
+      setPlanActiveResizeFieldId(meta.fieldId);
+      setPlanHoveredResizeFieldId(meta.fieldId);
+      setPlanFieldDragSession({
+        ...meta,
+        pointerId: event.pointerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startValueM: Number.isFinite(startValueM) ? startValueM : fallbackValue,
+        field,
+      });
+    },
+    [canEditPlanDimensions, editableFieldMap, planModel],
   );
 
   useEffect(() => {
@@ -304,12 +403,55 @@ export default function ModelSpaceViewport({
   }, [commitFootprintEdit, footprintDragSession, onCommitFootprintEdit]);
 
   useEffect(() => {
+    if (!planFieldDragSession || !onCommitField) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== planFieldDragSession.pointerId) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+
+      const deltaSvgX = nextPoint.x - planFieldDragSession.startSvgX;
+      const deltaSvgY = nextPoint.y - planFieldDragSession.startSvgY;
+      const deltaUnits = deltaSvgX * planFieldDragSession.axisX + deltaSvgY * planFieldDragSession.axisY;
+      const deltaM = (deltaUnits / Math.max(planFieldDragSession.scale, 0.001)) * planFieldDragSession.deltaMultiplier;
+      const unclampedValueM = planFieldDragSession.startValueM + deltaM;
+      const nextValueM = Number.isFinite(planFieldDragSession.maxValueM)
+        ? Math.min(Math.max(unclampedValueM, planFieldDragSession.minValueM), planFieldDragSession.maxValueM)
+        : Math.max(unclampedValueM, planFieldDragSession.minValueM);
+
+      void commitFieldEdit(planFieldDragSession.field, formatDrawingFieldValue(nextValueM));
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== planFieldDragSession.pointerId) return;
+      setPlanFieldDragSession(null);
+      setPlanActiveResizeFieldId(null);
+      setPlanHoveredResizeFieldId(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [commitFieldEdit, onCommitField, planFieldDragSession]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       setFootprintDragSession(null);
       setFootprintActiveHandleId(null);
       setFootprintHoveredHandleId(null);
       setFootprintContextHovered(false);
+      setPlanFieldDragSession(null);
+      setPlanActiveResizeFieldId(null);
+      setPlanHoveredResizeFieldId(null);
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -353,6 +495,20 @@ export default function ModelSpaceViewport({
     handleFootprintRotate,
   ]);
 
+  const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
+    if (!canEditPlanDimensions) return undefined;
+    return {
+      available: true,
+      hoveredResizeFieldId: planHoveredResizeFieldId,
+      activeResizeFieldId: planActiveResizeFieldId,
+      onResizeFieldHover: (fieldId) => setPlanHoveredResizeFieldId(fieldId),
+      onResizeFieldDragStart: handlePlanFieldDragStart,
+      onSvgMount: (node) => {
+        footprintSvgRef.current = node;
+      },
+    };
+  }, [canEditPlanDimensions, handlePlanFieldDragStart, planActiveResizeFieldId, planHoveredResizeFieldId]);
+
   const scaleFrameStyle = useMemo(
     () => ({
       width: `${zoom * 100}%`,
@@ -374,8 +530,8 @@ export default function ModelSpaceViewport({
             <p className={styles.subtitle}>
               {showPlanViewport
                 ? planStats
-                  ? `${planStats}. The configurator rail drives the live draft while this viewport stays focused on the geometry.`
-                  : 'The configurator rail drives the live draft while this viewport stays focused on the geometry.'
+                  ? `${planStats}. Drag the primary resize handles or use the Sanctuary rail to adjust the live draft.`
+                  : 'Drag the primary resize handles or use the Sanctuary rail to adjust the live draft.'
                 : 'Section model-space editing lands in a later milestone. Use Sheet View for the generated section for now.'}
             </p>
           </div>
@@ -395,7 +551,7 @@ export default function ModelSpaceViewport({
         </div>
       </div>
 
-      {footprintError ? <p className={styles.error}>{footprintError}</p> : null}
+      {interactionError ? <p className={styles.error}>{interactionError}</p> : null}
 
       <div ref={scrollerRef} className={styles.scroller} onScroll={handleScroll} onWheel={handleWheel}>
         <div className={styles.scaleFrame} style={scaleFrameStyle}>
@@ -407,7 +563,9 @@ export default function ModelSpaceViewport({
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="model"
+                interactiveFields={modelInteractiveFields}
                 footprintEditor={footprintEditor}
+                planInteraction={planInteraction}
               />
             ) : (
               <div className={styles.placeholder}>
