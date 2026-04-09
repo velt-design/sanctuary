@@ -1,10 +1,16 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, isUniqueViolation, loadEmailTemplateSubject, loadProjectAndContact, makeIdempotencyKey, missingColumnFromError } from '@/lib/api/siteVisitsServer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
-async function safeUpdate(eventUuid: string, projectUuid: string, patchIn: Record<string, any>): Promise<{ ok: boolean; error?: any }> {
+async function safeUpdate(
+  supabase: SupabaseClient,
+  eventUuid: string,
+  projectUuid: string,
+  patchIn: Record<string, any>,
+): Promise<{ ok: boolean; error?: any }> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
@@ -55,7 +61,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const reason = typeof body.reason === 'string' ? body.reason.trim() : '';
   const notifyCustomer = Boolean(body.notifyCustomer);
 
-  const updateRes = await safeUpdate(eventUuid, projectUuid, { status: 'CANCELLED', cancel_reason: reason || null });
+  const updateRes = await safeUpdate(supabase, eventUuid, projectUuid, { status: 'CANCELLED', cancel_reason: reason || null });
   if (!updateRes.ok) return jsonError('Failed to cancel site visit', 500);
 
   if (notifyCustomer) {
@@ -88,7 +94,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         .then(async (r) => {
           if (!r.error) return;
           if (!isMissingColumnError(r.error)) return;
-          await safeUpdate(eventUuid, projectUuid, { customer_notified: true, last_notified_at: new Date().toISOString() });
+          await safeUpdate(supabase, eventUuid, projectUuid, { customer_notified: true, last_notified_at: new Date().toISOString() });
         });
     }
   }

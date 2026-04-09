@@ -201,7 +201,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
     snapshot: makeSnapshot(
       makeModule({
         pergolaStyle: 'gable',
-        roofMaterial: 'insulated',
+        roofMaterial: 'mixed',
         lengthM: '6.5',
         projectionM: '4',
         roofPitchDeg: '25',
@@ -243,7 +243,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       makeModule({
         pergolaStyle: 'pitched',
         boxPerimeterEnabled: true,
-        internalRoofType: 'flat',
+        internalRoofType: 'pitched',
         roofMaterial: 'timber',
         lengthM: '5.5',
         projectionM: '3.5',

@@ -1,11 +1,16 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, missingColumnFromError, parseIso } from '@/lib/api/siteVisitsServer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
-async function loadEventRow(projectUuid: string, eventUuid: string | null): Promise<{ data: any | null; error: any | null }> {
+async function loadEventRow(
+  supabase: SupabaseClient,
+  projectUuid: string,
+  eventUuid: string | null,
+): Promise<{ data: any | null; error: any | null }> {
   const selects = [
     'id, status, scheduled_start, scheduled_end, assigned_sales_owner_id, notes, updated_at',
     'id, status, scheduled_start, scheduled_end, notes, updated_at',
@@ -37,7 +42,7 @@ async function loadEventRow(projectUuid: string, eventUuid: string | null): Prom
   return { data: null, error: lastErr };
 }
 
-async function safeUpdate(projectUuid: string, eventUuid: string, patchIn: Record<string, any>): Promise<void> {
+async function safeUpdate(supabase: SupabaseClient, projectUuid: string, eventUuid: string, patchIn: Record<string, any>): Promise<void> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
@@ -83,7 +88,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     }
   }
 
-  const rowRes = await loadEventRow(projectUuid, eventUuid);
+  const rowRes = await loadEventRow(supabase, projectUuid, eventUuid);
   if (rowRes.error || !rowRes.data) return jsonError('Site visit not found', 404);
 
   const start = parseIso((rowRes.data as any).scheduled_start);
@@ -105,7 +110,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     },
   });
 
-  await safeUpdate(projectUuid, String((rowRes.data as any).id ?? ''), {
+  await safeUpdate(supabase, projectUuid, String((rowRes.data as any).id ?? ''), {
     status: 'CONFIRMED',
     customer_notified: true,
     last_notified_at: new Date().toISOString(),

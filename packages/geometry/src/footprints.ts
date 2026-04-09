@@ -54,7 +54,7 @@ function normalizePreset(value: HouseFootprintPreset | null | undefined): HouseF
 }
 
 function normalizeParams(value: HouseFootprintParams | null | undefined): HouseFootprintParams {
-  const source = value ?? {};
+  const source: Partial<HouseFootprintParams> = value ?? {};
   const defaults = makeDefaultHouseFootprintParams();
   const pick = (raw: string | undefined, fallback: string) => {
     const trimmed = raw?.trim();

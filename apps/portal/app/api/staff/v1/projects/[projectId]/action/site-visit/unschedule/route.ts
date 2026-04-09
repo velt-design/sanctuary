@@ -1,10 +1,16 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, missingColumnFromError, salespersonSchemaMismatchMessage } from '@/lib/api/siteVisitsServer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
-async function safeUpdate(eventUuid: string, projectUuid: string, patchIn: Record<string, any>): Promise<{ ok: boolean; error?: any }> {
+async function safeUpdate(
+  supabase: SupabaseClient,
+  eventUuid: string,
+  projectUuid: string,
+  patchIn: Record<string, any>,
+): Promise<{ ok: boolean; error?: any }> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
@@ -59,7 +65,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const rows = Array.isArray(prev.data) ? prev.data : [];
   if (!rows.length) return jsonError('Site visit not found', 404);
 
-  const updateRes = await safeUpdate(eventUuid, projectUuid, {
+  const updateRes = await safeUpdate(supabase, eventUuid, projectUuid, {
     status: 'UNSCHEDULED',
     scheduled_start: null,
     scheduled_end: null,

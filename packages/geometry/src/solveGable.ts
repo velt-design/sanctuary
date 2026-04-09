@@ -22,11 +22,13 @@ import {
 } from './math3d';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
+type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
+
 function ok(value: Assembly3D): SolveAssembly3DResult {
   return { ok: true, value };
 }
 
-function fail(code: SolveAssembly3DErrorCode, error: string): SolveAssembly3DResult {
+function fail(code: SolveAssembly3DErrorCode, error: string): SolveAssembly3DFailure {
   return { ok: false, code, error };
 }
 
@@ -141,7 +143,7 @@ type GableStructuralInput = {
   outerEaveGutterMode: 'house' | 'our';
 };
 
-function resolveGableStructuralInput(config: GeometryConfig): GableStructuralInput | SolveAssembly3DResult {
+function resolveGableStructuralInput(config: GeometryConfig): GableStructuralInput | SolveAssembly3DFailure {
   if (config.roof.overhangMm > 0) {
     return fail('unsupported_variant', 'Gable solver does not yet support overhang geometry.');
   }
@@ -480,13 +482,15 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
           index: index + 1,
         },
       });
-      supportConditions.push({
-        type: 'post_connection',
-        memberId,
-        metadata: {
-          postConnectionType: config.supports.postConnectionType,
-        },
-      });
+      if (config.supports.postConnectionType) {
+        supportConditions.push({
+          type: 'post_connection',
+          memberId,
+          metadata: {
+            postConnectionType: config.supports.postConnectionType,
+          },
+        });
+      }
       if (config.supports.groundCondition) {
         supportConditions.push({
           type: 'ground',

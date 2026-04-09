@@ -1,6 +1,7 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, loadProjectAndContact, missingColumnFromError, parseIso, salespersonSchemaMismatchMessage } from '@/lib/api/siteVisitsServer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -20,7 +21,11 @@ function isOnConflictConstraintMissing(error: unknown): boolean {
   return code === '42P10' || (msg.includes('on conflict') && msg.includes('no unique'));
 }
 
-async function manualUpsertByProjectId(projectUuid: string, payloadIn: Record<string, any>): Promise<{ id: string | null; error: any | null }> {
+async function manualUpsertByProjectId(
+  supabase: SupabaseClient,
+  projectUuid: string,
+  payloadIn: Record<string, any>,
+): Promise<{ id: string | null; error: any | null }> {
   const payload = { ...payloadIn };
   const patch: any = { ...payload };
   delete patch.project_id;
@@ -82,7 +87,11 @@ async function manualUpsertByProjectId(projectUuid: string, payloadIn: Record<st
   return { id: null, error: { message: 'Insert failed after retries', code: 'CLIENT_RETRY' } };
 }
 
-async function upsertSiteVisitEventByProjectWithRetry(projectUuid: string, payloadIn: Record<string, any>): Promise<{ id: string | null; error: any | null }> {
+async function upsertSiteVisitEventByProjectWithRetry(
+  supabase: SupabaseClient,
+  projectUuid: string,
+  payloadIn: Record<string, any>,
+): Promise<{ id: string | null; error: any | null }> {
   const payload = { ...payloadIn };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
@@ -95,7 +104,7 @@ async function upsertSiteVisitEventByProjectWithRetry(projectUuid: string, paylo
     if (!res.error) return { id: typeof (res.data as any)?.id === 'string' ? (res.data as any).id : null, error: null };
 
     if (isOnConflictConstraintMissing(res.error)) {
-      return manualUpsertByProjectId(projectUuid, payload);
+      return manualUpsertByProjectId(supabase, projectUuid, payload);
     }
 
     if (isMissingColumnError(res.error)) {
@@ -165,7 +174,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       ...(notes ? { notes } : null),
     };
 
-    const upsertRes = await upsertSiteVisitEventByProjectWithRetry(projectUuid, payload);
+    const upsertRes = await upsertSiteVisitEventByProjectWithRetry(supabase, projectUuid, payload);
     if (upsertRes.error) {
       const schemaMsg = salespersonSchemaMismatchMessage(upsertRes.error);
       if (schemaMsg) return jsonError(schemaMsg, 500);
@@ -185,7 +194,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   });
 
   // Ensure assigned salesperson + notes are persisted even if the automation schema is behind.
-  await upsertSiteVisitEventByProjectWithRetry(projectUuid, {
+  await upsertSiteVisitEventByProjectWithRetry(supabase, projectUuid, {
     project_id: projectUuid,
     status: 'CONFIRMED',
     scheduled_start: start,

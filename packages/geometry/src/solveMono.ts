@@ -16,11 +16,13 @@ import type {
 import { crossProduct, lineDirection, lineLength, magnitude, normalizeVector, planeFromOriginAxes, scaleVector } from './math3d';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
+type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
+
 function ok(value: Assembly3D): SolveAssembly3DResult {
   return { ok: true, value };
 }
 
-function fail(code: SolveAssembly3DErrorCode, error: string): SolveAssembly3DResult {
+function fail(code: SolveAssembly3DErrorCode, error: string): SolveAssembly3DFailure {
   return { ok: false, code, error };
 }
 
@@ -152,7 +154,7 @@ const MONO_ACRYLIC_JOINER_PROFILE: AssemblyMemberProfile = {
   depthMm: 25,
 };
 
-function resolveMonoStructuralInput(config: GeometryConfig): MonoStructuralInput | SolveAssembly3DResult {
+function resolveMonoStructuralInput(config: GeometryConfig): MonoStructuralInput | SolveAssembly3DFailure {
   const referenceUndersideMm = config.structural.heights.referenceUndersideMm ?? config.structural.heights.houseUndersideMm;
   if (referenceUndersideMm === null || referenceUndersideMm === undefined) {
     return fail('insufficient_input', 'Mono solver requires a reference underside height.');
@@ -525,13 +527,15 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
           index: index + 1,
         },
       });
-      supportConditions.push({
-        type: 'post_connection',
-        memberId,
-        metadata: {
-          postConnectionType: config.supports.postConnectionType,
-        },
-      });
+      if (config.supports.postConnectionType) {
+        supportConditions.push({
+          type: 'post_connection',
+          memberId,
+          metadata: {
+            postConnectionType: config.supports.postConnectionType,
+          },
+        });
+      }
       if (config.supports.groundCondition) {
         supportConditions.push({
           type: 'ground',

@@ -2,6 +2,7 @@ import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { summarizeCalculatorSnapshot } from '@/lib/estimates/summarize';
 import { buildVersionLabelMap, calculatorSnapshotFromRow, mapEstimateDetail } from '@/lib/estimates/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 
@@ -58,7 +59,7 @@ function computeLegacySummary(snapshot: Record<string, unknown>): LegacySummaryF
   };
 }
 
-async function insertEstimateWithRetry(payload: Record<string, any>) {
+async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record<string, any>) {
   const working: Record<string, any> = { ...payload };
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -145,7 +146,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
     ...legacySummary,
   };
 
-  const insertRes = await insertEstimateWithRetry(payload);
+  const insertRes = await insertEstimateWithRetry(supabase, payload);
   if (insertRes.error || !insertRes.data) {
     return jsonError(insertRes.error?.message ?? 'Failed to duplicate estimate', 500);
   }

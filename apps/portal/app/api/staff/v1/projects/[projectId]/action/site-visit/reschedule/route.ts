@@ -9,12 +9,13 @@ import {
   parseIso,
   salespersonSchemaMismatchMessage,
 } from '@/lib/api/siteVisitsServer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 
 export const runtime = 'nodejs';
 
-async function loadEventRow(projectUuid: string, eventUuid: string): Promise<{ data: any | null; error: any | null }> {
+async function loadEventRow(supabase: SupabaseClient, projectUuid: string, eventUuid: string): Promise<{ data: any | null; error: any | null }> {
   const selects = ['id, status, scheduled_start, notes, updated_at', 'id, status, scheduled_start, updated_at', 'id, status, scheduled_start'] as const;
 
   let lastErr: any | null = null;
@@ -37,7 +38,12 @@ async function loadEventRow(projectUuid: string, eventUuid: string): Promise<{ d
   return { data: null, error: lastErr };
 }
 
-async function safeUpdate(eventUuid: string, projectUuid: string, patchIn: Record<string, any>): Promise<{ ok: boolean; error?: any }> {
+async function safeUpdate(
+  supabase: SupabaseClient,
+  eventUuid: string,
+  projectUuid: string,
+  patchIn: Record<string, any>,
+): Promise<{ ok: boolean; error?: any }> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
@@ -97,12 +103,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const notifyCustomer = Boolean(body.notifyCustomer);
 
-  const prevRes = await loadEventRow(projectUuid, eventUuid);
+  const prevRes = await loadEventRow(supabase, projectUuid, eventUuid);
   if (prevRes.error || !prevRes.data) return jsonError('Site visit not found', 404);
 
   const prevStatus = String((prevRes.data as any).status ?? '').toUpperCase();
 
-  const updateRes = await safeUpdate(eventUuid, projectUuid, {
+  const updateRes = await safeUpdate(supabase, eventUuid, projectUuid, {
     scheduled_start: start,
     scheduled_end: end,
     status: prevStatus === 'CONFIRMED' ? 'RESCHEDULED' : prevStatus,
@@ -144,7 +150,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         .then(async (r) => {
           if (!r.error) return;
           if (!isMissingColumnError(r.error)) return;
-          await safeUpdate(eventUuid, projectUuid, { customer_notified: true, last_notified_at: new Date().toISOString() });
+          await safeUpdate(supabase, eventUuid, projectUuid, { customer_notified: true, last_notified_at: new Date().toISOString() });
         });
     }
   }

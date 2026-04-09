@@ -6,6 +6,7 @@ import { generateJobPackPdf } from '@/lib/jobPacks/pdf';
 import { isMissingSchemaError, listPowdercoatProfileOptions, loadLatestJobPackGenerationForEstimate, loadPowdercoatOverrideState } from '@/lib/jobPacks/server';
 import { JOB_PACK_SHEETS, type JobPackSheetKey, buildWorkbook } from '@/lib/jobPacks/workbook';
 import type { JobPackPowdercoatOverrideState } from '@/lib/jobPacks/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -20,7 +21,7 @@ function parseSheet(value: string | null): JobPackSheetKey | null {
   return match ? match.key : null;
 }
 
-async function resolveVersionLabel(row: any): Promise<string> {
+async function resolveVersionLabel(supabase: SupabaseClient, row: any): Promise<string> {
   if (!row?.project_id) return 'V-';
   const res = await supabase
     .from('estimates')
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
   const generation = await loadLatestJobPackGenerationForEstimate(estimateUuid);
   if (!generation) return jsonError('Generate a job pack from a sent quote before downloading PDFs.', 409);
 
-  const versionLabel = await resolveVersionLabel(estimateRes.data);
+  const versionLabel = await resolveVersionLabel(supabase, estimateRes.data);
   const detail = mapEstimateDetail(estimateRes.data, versionLabel, emptyEstimateEditability());
 
   let overrides: JobPackPowdercoatOverrideState = { version: null, rows: [] };

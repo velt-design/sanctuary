@@ -1,5 +1,6 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -32,6 +33,7 @@ function readDateField(obj: AnyRecord, keys: string[]): { has: boolean; value: s
 }
 
 async function updateWithUnknownColumnRetry(
+  supabase: SupabaseClient,
   table: string,
   match: Record<string, any>,
   payloadIn: Record<string, any>,
@@ -141,7 +143,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
   const nowIso = new Date().toISOString();
   if (Object.keys(projectPatch).length) projectPatch.updated_at = nowIso;
 
-  const { data: updatedProject, error: projectError } = await updateWithUnknownColumnRetry('projects', { id: projectUuid }, projectPatch);
+  const { data: updatedProject, error: projectError } = await updateWithUnknownColumnRetry(supabase, 'projects', { id: projectUuid }, projectPatch);
   if (projectError) return jsonError(projectError.message ?? 'Failed to update project details', 500);
 
   let updatedContact: any = null;
@@ -152,7 +154,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
     if (contactPhoneField.has) contactPatch.phone = contactPhoneField.value || null;
     if (Object.keys(contactPatch).length) contactPatch.updated_at = nowIso;
 
-    const contactRes = await updateWithUnknownColumnRetry('contacts', { id: contactUuid }, contactPatch);
+    const contactRes = await updateWithUnknownColumnRetry(supabase, 'contacts', { id: contactUuid }, contactPatch);
     if (contactRes.error) return jsonError(contactRes.error.message ?? 'Failed to update contact', 500);
     updatedContact = contactRes.data;
   }

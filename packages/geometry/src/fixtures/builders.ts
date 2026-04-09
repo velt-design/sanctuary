@@ -1,5 +1,26 @@
 import type { GeometryConfig } from '../contracts';
 
+type GeometryConfigOverrides = Omit<
+  Partial<GeometryConfig>,
+  'datum' | 'dimensions' | 'roof' | 'roofCovering' | 'gable' | 'box' | 'connection' | 'supports' | 'structural' | 'houseContext'
+> & {
+  datum?: Partial<GeometryConfig['datum']>;
+  dimensions?: Partial<GeometryConfig['dimensions']>;
+  roof?: Partial<GeometryConfig['roof']>;
+  roofCovering?: Partial<GeometryConfig['roofCovering']>;
+  gable?: Partial<GeometryConfig['gable']>;
+  box?: Partial<GeometryConfig['box']>;
+  connection?: Partial<GeometryConfig['connection']>;
+  supports?: Partial<GeometryConfig['supports']>;
+  structural?: {
+    heights?: Partial<GeometryConfig['structural']['heights']>;
+    profiles?: Partial<GeometryConfig['structural']['profiles']>;
+    framing?: Partial<GeometryConfig['structural']['framing']>;
+    drainage?: Partial<GeometryConfig['structural']['drainage']>;
+  };
+  houseContext?: Partial<GeometryConfig['houseContext']>;
+};
+
 function buildMonoRoofCovering(
   input: {
     dimensions: GeometryConfig['dimensions'];
@@ -65,7 +86,7 @@ function buildMonoRoofCovering(
   };
 }
 
-export function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig {
+export function makeMonoConfig(overrides: GeometryConfigOverrides = {}): GeometryConfig {
   const base: GeometryConfig = {
     projectId: 'proj_mono',
     estimateId: 'est_mono',
@@ -204,13 +225,18 @@ export function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): Geometr
   };
 }
 
-export function makeGableConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig {
+export function makeGableConfig(overrides: GeometryConfigOverrides = {}): GeometryConfig {
   const base = makeMonoConfig({
     projectId: 'proj_gable',
     estimateId: 'est_gable',
     designRequestId: 'dpr_gable',
     family: 'gable',
     datum: {
+      origin: { x: 0, y: 0, z: 0 },
+      xAxis: { x: 1, y: 0, z: 0 },
+      yAxis: { x: 0, y: 1, z: 0 },
+      zAxis: { x: 0, y: 0, z: 1 },
+      attachmentEdgeStart: { x: 0, y: 0, z: 0 },
       attachmentEdgeEnd: { x: 6500, y: 0, z: 0 },
     },
     dimensions: {
@@ -311,13 +337,18 @@ export function makeGableConfig(overrides: Partial<GeometryConfig> = {}): Geomet
   };
 }
 
-export function makeBoxConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig {
+export function makeBoxConfig(overrides: GeometryConfigOverrides = {}): GeometryConfig {
   const base = makeMonoConfig({
     projectId: 'proj_box',
     estimateId: 'est_box',
     designRequestId: 'dpr_box',
     family: 'box',
     datum: {
+      origin: { x: 0, y: 0, z: 0 },
+      xAxis: { x: 1, y: 0, z: 0 },
+      yAxis: { x: 0, y: 1, z: 0 },
+      zAxis: { x: 0, y: 0, z: 1 },
+      attachmentEdgeStart: { x: 0, y: 0, z: 0 },
       attachmentEdgeEnd: { x: 5500, y: 0, z: 0 },
     },
     dimensions: {

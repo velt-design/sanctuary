@@ -310,8 +310,8 @@ export default async function DesignWorkbenchPage({
       className={styles.page}
       data-project-id={normalizedProjectId}
       data-workbench-context={context.kind}
-      data-estimate-id={'estimate' in context && context.estimate ? context.estimate.id : undefined}
-      data-request-id={'request' in context && context.request ? context.request.id : undefined}
+      data-estimate-id={context.providedEstimateId ?? undefined}
+      data-request-id={context.providedRequestId ?? undefined}
     >
       <section className={styles.surface}>
         <div className={styles.surfaceInner}>

@@ -23,11 +23,13 @@ import {
 } from './math3d';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
+type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
+
 function ok(value: Assembly3D): SolveAssembly3DResult {
   return { ok: true, value };
 }
 
-function fail(code: SolveAssembly3DErrorCode, error: string): SolveAssembly3DResult {
+function fail(code: SolveAssembly3DErrorCode, error: string): SolveAssembly3DFailure {
   return { ok: false, code, error };
 }
 
@@ -145,7 +147,7 @@ type BoxStructuralInput = {
   farEdgeGutterMode: BoxGutterMode;
 };
 
-function resolveBoxStructuralInput(config: GeometryConfig): BoxStructuralInput | SolveAssembly3DResult {
+function resolveBoxStructuralInput(config: GeometryConfig): BoxStructuralInput | SolveAssembly3DFailure {
   if (config.connection.type === 'freestanding') {
     return fail('unsupported_variant', 'Box solver currently supports attached box-perimeter layouts only.');
   }
@@ -451,13 +453,15 @@ export function solveBoxAssembly3D(config: GeometryConfig): SolveAssembly3DResul
         index: index + 1,
       },
     });
-    supportConditions.push({
-      type: 'post_connection',
-      memberId,
-      metadata: {
-        postConnectionType: config.supports.postConnectionType,
-      },
-    });
+    if (config.supports.postConnectionType) {
+      supportConditions.push({
+        type: 'post_connection',
+        memberId,
+        metadata: {
+          postConnectionType: config.supports.postConnectionType,
+        },
+      });
+    }
     if (config.supports.groundCondition) {
       supportConditions.push({
         type: 'ground',

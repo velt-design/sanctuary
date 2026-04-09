@@ -10,6 +10,8 @@ import {
   type CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 
+type RawGeometryDerived = NonNullable<RawGeometryModuleInput['derived']>;
+
 function resolveRoofMode(module: CalculatorModuleInputs): string | null {
   if (module.boxPerimeterEnabled) {
     return 'box_perimeter';
@@ -55,7 +57,7 @@ function resolveDerivedRoofPitchDeg(module: CalculatorModuleInputs, result: Cost
   return result?.derived.roof_pitch_deg_used ?? null;
 }
 
-function resolveDerivedSlopeDirection(result: CostOutputV1 | null): RawGeometryModuleInput['derived']['slopeDirection'] {
+function resolveDerivedSlopeDirection(result: CostOutputV1 | null): RawGeometryDerived['slopeDirection'] {
   const slopeDirection = result?.derived.slope_direction;
   if (slopeDirection === 'toward_house' || slopeDirection === 'away_from_house') {
     return slopeDirection;
@@ -96,7 +98,7 @@ function resolveStructuralProfiles(module: CalculatorModuleInputs, result: CostO
     post: derived?.post_profile_used ?? module.overrides?.postProfile ?? null,
     rafter: normalized?.rafter_profile ?? derived?.rafter_profile_auto ?? module.overrides?.rafterProfile ?? null,
     ledger: derived?.ledger_profile_used ?? module.overrides?.ledgerProfile ?? null,
-    supportBeam: derived?.support_beam_profile_used ?? derived?.front_beam_profile_used ?? module.overrides?.supportBeamProfile ?? module.overrides?.frontBeamProfile ?? null,
+    supportBeam: derived?.support_beam_profile_used ?? derived?.front_beam_profile_used ?? module.overrides?.frontBeamProfile ?? null,
     gutter: normalized?.gutter_type ?? derived?.front_beam_profile_used ?? module.overrides?.frontBeamProfile ?? null,
     ridge: derived?.ridge_beam_profile_used ?? module.overrides?.ridgeBeamProfile ?? null,
     boxPerimeter: derived?.box_perimeter_beam_profile_used ?? module.overrides?.boxPerimeterBeamProfile ?? null,
