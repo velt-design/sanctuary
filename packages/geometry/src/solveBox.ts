@@ -59,20 +59,36 @@ function frameFromAxes(origin: Point3, xAxis: Vector3, yAxis: Vector3): DatumFra
   };
 }
 
+function frameFromXAxisZAxis(origin: Point3, xAxis: Vector3, zAxis: Vector3): DatumFrame3 {
+  const normalizedX = normalizeVector(xAxis);
+  const normalizedZ = normalizeVector(zAxis);
+  const normalizedY = normalizeVector(crossProduct(normalizedZ, normalizedX));
+  return {
+    origin,
+    xAxis: normalizedX,
+    yAxis: normalizedY,
+    zAxis: normalizeVector(crossProduct(normalizedX, normalizedY)),
+  };
+}
+
 function frameForVerticalMember(origin: Point3): DatumFrame3 {
   return frameFromAxes(origin, { x: 0, y: 0, z: 1 }, { x: 1, y: 0, z: 0 });
 }
 
 function frameForHorizontalX(origin: Point3): DatumFrame3 {
-  return frameFromAxes(origin, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+  return frameFromXAxisZAxis(origin, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
 }
 
 function frameForHorizontalY(origin: Point3): DatumFrame3 {
-  return frameFromAxes(origin, { x: 0, y: 1, z: 0 }, { x: 0, y: 0, z: 1 });
+  return frameFromXAxisZAxis(origin, { x: 0, y: 1, z: 0 }, { x: 0, y: 0, z: 1 });
+}
+
+function frameForSlopedHorizontalMember(memberLine: Line3): DatumFrame3 {
+  return frameFromXAxisZAxis(memberLine.start, lineDirection(memberLine), { x: 0, y: 0, z: 1 });
 }
 
 function frameForRafter(memberLine: Line3, roofNormal: Vector3): DatumFrame3 {
-  return frameFromAxes(memberLine.start, lineDirection(memberLine), roofNormal);
+  return frameFromXAxisZAxis(memberLine.start, lineDirection(memberLine), roofNormal);
 }
 
 function equalSpacingPositions(lengthMm: number, count: number): number[] {
@@ -389,7 +405,7 @@ export function solveBoxAssembly3D(config: GeometryConfig): SolveAssembly3DResul
       role: 'beam',
       centerline: memberLine,
       profile: input.boxPerimeterProfile,
-      localFrame: frameForHorizontalY(memberLine.start),
+      localFrame: frameForSlopedHorizontalMember(memberLine),
       metadata: {
         beamRole: 'box_perimeter',
       },
@@ -502,6 +518,7 @@ export function solveBoxAssembly3D(config: GeometryConfig): SolveAssembly3DResul
     house: buildHouseReferenceGeometry({ config, attachmentEdge }),
     members,
     roofPlanes,
+    roofCladdingPanels: [],
     supportConditions,
     quantityHooks,
     semantics: {

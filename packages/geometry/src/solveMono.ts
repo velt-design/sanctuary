@@ -9,10 +9,11 @@ import type {
   Line3,
   Plane3,
   Point3,
+  RoofCladdingPanel3D,
   RoofPlane3D,
   Vector3,
 } from './contracts';
-import { crossProduct, lineDirection, magnitude, normalizeVector, planeFromOriginAxes, scaleVector } from './math3d';
+import { crossProduct, lineDirection, lineLength, magnitude, normalizeVector, planeFromOriginAxes, scaleVector } from './math3d';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
 function ok(value: Assembly3D): SolveAssembly3DResult {
@@ -51,16 +52,32 @@ function frameFromAxes(origin: Point3, xAxis: Vector3, yAxis: Vector3): DatumFra
   };
 }
 
+function frameFromXAxisZAxis(origin: Point3, xAxis: Vector3, zAxis: Vector3): DatumFrame3 {
+  const normalizedX = normalizeVector(xAxis);
+  const normalizedZ = normalizeVector(zAxis);
+  const normalizedY = normalizeVector(crossProduct(normalizedZ, normalizedX));
+  return {
+    origin,
+    xAxis: normalizedX,
+    yAxis: normalizedY,
+    zAxis: normalizeVector(crossProduct(normalizedX, normalizedY)),
+  };
+}
+
 function frameForVerticalMember(origin: Point3): DatumFrame3 {
   return frameFromAxes(origin, { x: 0, y: 0, z: 1 }, { x: 1, y: 0, z: 0 });
 }
 
 function frameForHorizontalX(origin: Point3): DatumFrame3 {
-  return frameFromAxes(origin, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+  return frameFromXAxisZAxis(origin, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
 }
 
 function frameForRafter(memberLine: Line3, roofNormal: Vector3): DatumFrame3 {
-  return frameFromAxes(memberLine.start, lineDirection(memberLine), roofNormal);
+  return frameFromXAxisZAxis(memberLine.start, lineDirection(memberLine), roofNormal);
+}
+
+function frameForJoiner(memberLine: Line3, roofNormal: Vector3): DatumFrame3 {
+  return frameFromXAxisZAxis(memberLine.start, lineDirection(memberLine), roofNormal);
 }
 
 function equalSpacingPositions(lengthMm: number, count: number): number[] {
@@ -119,6 +136,22 @@ type MonoStructuralInput = {
   rafterCount: number;
 };
 
+type MonoAcrylicCoveringInput = {
+  effectiveRunMm: number;
+  acrylicRequiredDownslopeMm: number;
+  joinerPieceLengthMm: number;
+  joinerRunsTotal: number;
+  houseAllowanceMm: number;
+  farAllowanceMm: number;
+  acrylicAreaMm2: number;
+};
+
+const MONO_ACRYLIC_JOINER_PROFILE: AssemblyMemberProfile = {
+  shape: 'rectangular',
+  widthMm: 60,
+  depthMm: 25,
+};
+
 function resolveMonoStructuralInput(config: GeometryConfig): MonoStructuralInput | SolveAssembly3DResult {
   const referenceUndersideMm = config.structural.heights.referenceUndersideMm ?? config.structural.heights.houseUndersideMm;
   if (referenceUndersideMm === null || referenceUndersideMm === undefined) {
@@ -173,6 +206,44 @@ function resolveMonoStructuralInput(config: GeometryConfig): MonoStructuralInput
     rafterProfile,
     postProfile,
     rafterCount,
+  };
+}
+
+function resolveMonoAcrylicCoveringInput(config: GeometryConfig): MonoAcrylicCoveringInput | null {
+  if (config.roof.material !== 'acrylic' || config.roofCovering.kind !== 'acrylic') {
+    return null;
+  }
+
+  const {
+    effectiveRunMm,
+    acrylicRequiredDownslopeMm,
+    joinerPieceLengthMm,
+    joinerRunsTotal,
+    houseAllowanceMm,
+    farAllowanceMm,
+    acrylicAreaMm2,
+  } = config.roofCovering;
+
+  if (
+    effectiveRunMm === null ||
+    acrylicRequiredDownslopeMm === null ||
+    joinerPieceLengthMm === null ||
+    joinerRunsTotal === null ||
+    houseAllowanceMm === null ||
+    farAllowanceMm === null ||
+    acrylicAreaMm2 === null
+  ) {
+    return null;
+  }
+
+  return {
+    effectiveRunMm,
+    acrylicRequiredDownslopeMm,
+    joinerPieceLengthMm,
+    joinerRunsTotal,
+    houseAllowanceMm,
+    farAllowanceMm,
+    acrylicAreaMm2,
   };
 }
 
@@ -246,9 +317,94 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
         y: endBearingY - startBearingY,
         z: outerGutterTopMm - houseBeamTopMm,
       });
+  const rafterXPositions = equalSpacingPositions(lengthMm, input.rafterCount);
+
+  const monoAcrylicCovering = resolveMonoAcrylicCoveringInput(config);
+  const roofCladdingPanels: RoofCladdingPanel3D[] = [];
+  const joiners: AssemblyMember3D[] = [];
+  if (monoAcrylicCovering) {
+    const joinerOffset = scaleVector(roofNormal, MONO_ACRYLIC_JOINER_PROFILE.depthMm / 2);
+    const coverHousePoint = addPointVector(
+      point(0, startBearingY, houseBeamTopMm),
+      scaleVector(fallVector, -monoAcrylicCovering.houseAllowanceMm),
+    );
+    const coverFarPoint = addPointVector(
+      point(0, endBearingY, outerGutterTopMm),
+      scaleVector(fallVector, monoAcrylicCovering.farAllowanceMm),
+    );
+    const coveringLine = line(coverHousePoint, coverFarPoint);
+    const coveringDirection = lineDirection(coveringLine);
+    const coveringMidpoint = point(
+      (coverHousePoint.x + coverFarPoint.x) / 2,
+      (coverHousePoint.y + coverFarPoint.y) / 2,
+      (coverHousePoint.z + coverFarPoint.z) / 2,
+    );
+    const coveringLineLengthMm = lengthMm > 0 ? monoAcrylicCovering.acrylicAreaMm2 / lengthMm : lineLength(coveringLine);
+    const coverStartPoint = addPointVector(coveringMidpoint, scaleVector(coveringDirection, -coveringLineLengthMm / 2));
+    const coverEndPoint = addPointVector(coveringMidpoint, scaleVector(coveringDirection, coveringLineLengthMm / 2));
+    const structuralJoinerStart = point(0, startBearingY, houseBeamTopMm);
+    const structuralJoinerEnd = point(0, endBearingY, outerGutterTopMm);
+    const structuralJoinerLine = line(structuralJoinerStart, structuralJoinerEnd);
+    const structuralJoinerDirection = lineDirection(structuralJoinerLine);
+    const joinerHalfExtraMm = (monoAcrylicCovering.joinerPieceLengthMm - lineLength(structuralJoinerLine)) / 2;
+    for (let index = 0; index < rafterXPositions.length; index += 1) {
+      const x = rafterXPositions[index]!;
+      const joinerStartOnPlane = addPointVector(
+        point(x, structuralJoinerStart.y, structuralJoinerStart.z),
+        scaleVector(structuralJoinerDirection, -joinerHalfExtraMm),
+      );
+      const joinerEndOnPlane = addPointVector(
+        point(x, structuralJoinerEnd.y, structuralJoinerEnd.z),
+        scaleVector(structuralJoinerDirection, joinerHalfExtraMm),
+      );
+      const memberLine = line(
+        addPointVector(joinerStartOnPlane, joinerOffset),
+        addPointVector(joinerEndOnPlane, joinerOffset),
+      );
+      joiners.push({
+        id: `joiner-${index + 1}`,
+        role: 'joiner',
+        centerline: memberLine,
+        profile: MONO_ACRYLIC_JOINER_PROFILE,
+        localFrame: frameForJoiner(memberLine, roofNormal),
+        metadata: {
+          index: index + 1,
+          runLengthMm: Math.round(lineLength(memberLine)),
+          targetRunLengthMm: Math.round(monoAcrylicCovering.joinerPieceLengthMm),
+        },
+      });
+    }
+
+    for (let index = 0; index < rafterXPositions.length - 1; index += 1) {
+      const leftX = rafterXPositions[index]!;
+      const rightX = rafterXPositions[index + 1]!;
+      if (rightX <= leftX) {
+        continue;
+      }
+
+      const panelAreaMm2 = Math.round((rightX - leftX) * coveringLineLengthMm);
+      const boundary = [
+        point(leftX, coverStartPoint.y, coverStartPoint.z),
+        point(rightX, coverStartPoint.y, coverStartPoint.z),
+        point(rightX, coverEndPoint.y, coverEndPoint.z),
+        point(leftX, coverEndPoint.y, coverEndPoint.z),
+      ];
+      roofCladdingPanels.push({
+        id: `acrylic-panel-${index + 1}`,
+        material: 'acrylic',
+        boundary,
+        plane: roofPlane,
+        metadata: {
+          index: index + 1,
+          areaMm2: panelAreaMm2,
+          bayWidthMm: Math.round(rightX - leftX),
+          downslopeLengthMm: Math.round(coveringLineLengthMm),
+        },
+      });
+    }
+  }
 
   const rafterCenterOffset = scaleVector(roofNormal, -input.rafterProfile.depthMm / 2);
-  const rafterXPositions = equalSpacingPositions(lengthMm, input.rafterCount);
   const rafters: AssemblyMember3D[] = rafterXPositions.map((x, index) => {
     const memberLine = line(
       addPointVector(point(x, startBearingY, houseBeamTopMm), rafterCenterOffset),
@@ -399,6 +555,7 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
     generatePosts('outer-post', projectionMm, outerBeamCenterlineZ, totalPostCount);
   }
 
+  members.push(...joiners);
   members.push(...rafters);
 
   const roofPlanes: RoofPlane3D[] = [
@@ -459,12 +616,20 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
     house: buildHouseReferenceGeometry({ config, attachmentEdge }),
     members,
     roofPlanes,
+    roofCladdingPanels,
     supportConditions,
     quantityHooks,
     semantics: {
       connectionType: config.connection.type,
       roofType: 'mono',
-      structuralZones: config.connection.type === 'freestanding' ? ['roof_field', 'support_line_reference', 'support_line_outer'] : ['roof_field', 'support_line_outer'],
+      structuralZones:
+        config.connection.type === 'freestanding'
+          ? roofCladdingPanels.length > 0
+            ? ['roof_field', 'roof_covering', 'support_line_reference', 'support_line_outer']
+            : ['roof_field', 'support_line_reference', 'support_line_outer']
+          : roofCladdingPanels.length > 0
+            ? ['roof_field', 'roof_covering', 'support_line_outer']
+            : ['roof_field', 'support_line_outer'],
     },
   });
 }

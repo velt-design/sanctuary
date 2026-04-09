@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { solveAssembly3D, validateGeometrySolve } from '@sp/geometry';
 import { getGeometryFixtureCase, listGeometryFixtureCases } from './fixtures';
+import { makeMonoConfig } from './fixtures/builders';
 
 function requireFixture(id: string) {
   const fixture = getGeometryFixtureCase(id);
@@ -101,6 +102,55 @@ describe('validateGeometrySolve', () => {
     expect(report.invariants).toContainEqual(
       expect.objectContaining({
         key: 'posts.vertical',
+        status: 'fail',
+      }),
+    );
+  });
+
+  it('fails the dedicated mono acrylic covering invariant when covering drivers are missing but the structural solve still succeeds', () => {
+    const solveResult = solveAssembly3D(
+      makeMonoConfig({
+        roofCovering: {
+          kind: 'acrylic',
+          effectiveRunMm: null,
+          acrylicRequiredDownslopeMm: null,
+          joinerPieceLengthMm: null,
+          joinerRunsTotal: null,
+          houseAllowanceMm: null,
+          farAllowanceMm: null,
+          acrylicAreaMm2: null,
+        },
+      }),
+    );
+
+    expect(solveResult.ok).toBe(true);
+    if (!solveResult.ok) {
+      return;
+    }
+
+    expect(solveResult.value.roofCladdingPanels).toHaveLength(0);
+    expect(solveResult.value.members.filter((member) => member.role === 'joiner')).toHaveLength(0);
+
+    const report = validateGeometrySolve({
+      config: makeMonoConfig({
+        roofCovering: {
+          kind: 'acrylic',
+          effectiveRunMm: null,
+          acrylicRequiredDownslopeMm: null,
+          joinerPieceLengthMm: null,
+          joinerRunsTotal: null,
+          houseAllowanceMm: null,
+          farAllowanceMm: null,
+          acrylicAreaMm2: null,
+        },
+      }),
+      solveResult,
+    });
+
+    expect(report.status).toBe('fail');
+    expect(report.invariants).toContainEqual(
+      expect.objectContaining({
+        key: 'mono_acrylic.covering_inputs',
         status: 'fail',
       }),
     );

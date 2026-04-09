@@ -29,6 +29,16 @@ const monoConfig: GeometryConfig = {
     boxPerimeterEnabled: false,
     overhangMm: 0,
   },
+  roofCovering: {
+    kind: 'acrylic',
+    effectiveRunMm: 2850,
+    acrylicRequiredDownslopeMm: 2908,
+    joinerPieceLengthMm: 2908,
+    joinerRunsTotal: 11,
+    houseAllowanceMm: 25,
+    farAllowanceMm: 25,
+    acrylicAreaMm2: 17448000,
+  },
   gable: {
     ridgePositionMm: null,
     endFramesMode: null,
@@ -118,6 +128,16 @@ const gableConfig: GeometryConfig = {
     boxPerimeterEnabled: false,
     overhangMm: 0,
   },
+  roofCovering: {
+    kind: null,
+    effectiveRunMm: null,
+    acrylicRequiredDownslopeMm: null,
+    joinerPieceLengthMm: null,
+    joinerRunsTotal: null,
+    houseAllowanceMm: null,
+    farAllowanceMm: null,
+    acrylicAreaMm2: null,
+  },
   gable: {
     ridgePositionMm: 2000,
     endFramesMode: 'none',
@@ -204,6 +224,16 @@ const boxConfig: GeometryConfig = {
     fallDirection: 'positiveY',
     boxPerimeterEnabled: true,
     overhangMm: 0,
+  },
+  roofCovering: {
+    kind: null,
+    effectiveRunMm: null,
+    acrylicRequiredDownslopeMm: null,
+    joinerPieceLengthMm: null,
+    joinerRunsTotal: null,
+    houseAllowanceMm: null,
+    farAllowanceMm: null,
+    acrylicAreaMm2: null,
   },
   gable: {
     ridgePositionMm: null,
@@ -477,6 +507,8 @@ describe('@sp/geometry contracts', () => {
     expect(typeof geometryModule.solveAssembly3D).toBe('function');
     expect(typeof geometryModule.validateGeometrySolve).toBe('function');
     expect(typeof geometryModule.buildViewerSceneModel).toBe('function');
+    expect(typeof geometryModule.buildPlanViewModel).toBe('function');
+    expect(typeof geometryModule.buildSectionViewModel).toBe('function');
   });
 
   it('supports mono, gable, and box V1 configs using the new 3D-first geometry contract', () => {

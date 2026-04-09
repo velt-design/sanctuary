@@ -56,6 +56,8 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Inspection');
     expect(rendered.container.textContent).toContain('Section cut');
     expect(rendered.container.textContent).toContain('Datum axes');
+    expect(rendered.container.textContent).toContain('Measurement');
+    expect(rendered.container.textContent).toContain('Enable measurement');
     expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Model Space');

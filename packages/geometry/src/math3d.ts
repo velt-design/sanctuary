@@ -75,6 +75,19 @@ export function planeFromPoints(origin: Point3, pointOnX: Point3, pointOnY: Poin
   return planeFromOriginAxes(origin, xAxis, yAxis);
 }
 
+export function polygonArea(polygon: Polygon3): number {
+  if (polygon.length < 3) return 0;
+
+  const origin = polygon[0]!;
+  let area = 0;
+  for (let index = 1; index < polygon.length - 1; index += 1) {
+    const a = subtractPoints(polygon[index]!, origin);
+    const b = subtractPoints(polygon[index + 1]!, origin);
+    area += magnitude(crossProduct(a, b)) / 2;
+  }
+  return area;
+}
+
 export function makeDatumFrame(origin: Point3, xAxis: Vector3, yAxis: Vector3, zAxis: Vector3): DatumFrame3 {
   return { origin, xAxis, yAxis, zAxis };
 }

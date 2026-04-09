@@ -1,20 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import SanctuaryWorkbenchRail, {
-  isSanctuarySupportedModuleInput,
-  type SanctuaryPergolaFamily,
-} from '@/components/drawings/rail/SanctuaryWorkbenchRail';
+import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import {
+  applyGeometryEditIntent,
+  buildGeometryEditState,
+  translateEstimateDrawingFieldToGeometryIntent,
+  translateFootprintEditToGeometryIntent,
+  type GeometryEditIntent,
+} from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
 import { buildEstimateDrawingDraftEntityKey } from '@/lib/localFirst/portalEntities';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
-  applyEstimateDrawingFieldEdit,
-  applyEstimateDrawingFootprintEdit,
-  applyEstimateDrawingModuleFieldEdit,
   buildEstimateDrawingDraftFromSnapshot,
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
@@ -23,7 +24,6 @@ import {
   type EstimateDrawingDraft,
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
-  type EstimateDrawingModuleFieldEdit,
 } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
@@ -77,8 +77,16 @@ export default function DesignWorkbenchEstimateClient({
 
   const activeModule = store.derived.activeModule;
   const activeModuleInput = activeModule?.drawingModule.input ?? null;
-  const supportsSanctuaryEditing = isSanctuarySupportedModuleInput(activeModuleInput);
   const isLocked = estimate.editability.isLocked;
+  const geometryEditState = useMemo(() => {
+    const result = buildGeometryEditState({
+      snapshot: estimate.calculatorSnapshot,
+      draft: drawingDraft,
+      moduleIndex: store.derived.activeModuleIndex,
+    });
+    return result.ok ? result.value : null;
+  }, [drawingDraft, estimate.calculatorSnapshot, store.derived.activeModuleIndex]);
+  const supportsSanctuaryEditing = Boolean(geometryEditState);
   const drawingMetaOverrides = useMemo(
     () =>
       buildEstimateDrawingSheetMetaOverrides({
@@ -166,17 +174,23 @@ export default function DesignWorkbenchEstimateClient({
         return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
       }
 
-      const result = applyEstimateDrawingFootprintEdit({
+      const intent = translateFootprintEditToGeometryIntent(edit);
+      if (!intent) {
+        return { ok: false, error: 'This footprint edit is not supported in the geometry-backed workbench yet.' };
+      }
+
+      const result = applyGeometryEditIntent({
+        snapshot: estimate.calculatorSnapshot,
         draft: drawingDraft,
         moduleIndex: store.derived.activeModuleIndex,
-        edit,
+        intent,
       });
 
-      if (!result.ok) return result;
+      if (!result.ok) return { ok: false, error: result.message };
       await persistDrawingDraftLocally(result.draft);
       return { ok: true };
     },
-    [drawingDraft, persistDrawingDraftLocally, store.derived.activeModuleIndex],
+    [drawingDraft, estimate.calculatorSnapshot, persistDrawingDraftLocally, store.derived.activeModuleIndex],
   );
 
   const commitDrawingField = useCallback(
@@ -185,82 +199,50 @@ export default function DesignWorkbenchEstimateClient({
         return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
       }
 
-      const result = applyEstimateDrawingFieldEdit({
-        draft: drawingDraft,
-        field,
-        nextValue,
-      });
-
-      if (!result.ok) return result;
-      await persistDrawingDraftLocally(result.draft);
-      return { ok: true };
-    },
-    [drawingDraft, persistDrawingDraftLocally],
-  );
-
-  const commitDrawingModuleField = useCallback(
-    async (edit: EstimateDrawingModuleFieldEdit): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
+      const intent = translateEstimateDrawingFieldToGeometryIntent(field, nextValue);
+      if (!intent) {
+        return { ok: false, error: 'This drawing field is not supported in the geometry-backed workbench yet.' };
       }
 
-      const result = applyEstimateDrawingModuleFieldEdit({
+      const result = applyGeometryEditIntent({
+        snapshot: estimate.calculatorSnapshot,
         draft: drawingDraft,
         moduleIndex: store.derived.activeModuleIndex,
-        edit,
+        intent,
       });
 
-      if (!result.ok) return result;
+      if (!result.ok) return { ok: false, error: result.message };
       await persistDrawingDraftLocally(result.draft);
       return { ok: true };
     },
-    [drawingDraft, persistDrawingDraftLocally, store.derived.activeModuleIndex],
+    [drawingDraft, estimate.calculatorSnapshot, persistDrawingDraftLocally, store.derived.activeModuleIndex],
   );
 
-  const commitPergolaFamily = useCallback(
-    async (family: SanctuaryPergolaFamily): Promise<CommitResult> => {
+  const commitGeometryIntent = useCallback(
+    async (intent: GeometryEditIntent): Promise<CommitResult> => {
       if (!drawingDraft) {
         return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
       }
 
-      const edits: EstimateDrawingModuleFieldEdit[] =
-        family === 'gable'
-          ? [
-              { field: 'pergolaStyle', value: 'gable' },
-              { field: 'moduleValue', key: 'boxPerimeterEnabled', value: false },
-            ]
-          : family === 'box'
-            ? [
-                { field: 'pergolaStyle', value: 'pitched' },
-                { field: 'moduleValue', key: 'boxPerimeterEnabled', value: true },
-              ]
-            : [
-                { field: 'pergolaStyle', value: 'pitched' },
-                { field: 'moduleValue', key: 'boxPerimeterEnabled', value: false },
-              ];
+      const result = applyGeometryEditIntent({
+        snapshot: estimate.calculatorSnapshot,
+        draft: drawingDraft,
+        moduleIndex: store.derived.activeModuleIndex,
+        intent,
+      });
 
-      let nextDraft = drawingDraft;
-
-      for (const edit of edits) {
-        const result = applyEstimateDrawingModuleFieldEdit({
-          draft: nextDraft,
-          moduleIndex: store.derived.activeModuleIndex,
-          edit,
-        });
-
-        if (!result.ok) return result;
-        nextDraft = result.draft;
+      if (!result.ok) {
+        return {
+          ok: false,
+          error: result.message,
+        };
       }
-
-      await persistDrawingDraftLocally(nextDraft);
+      await persistDrawingDraftLocally(result.draft);
       return { ok: true };
     },
-    [drawingDraft, persistDrawingDraftLocally, store.derived.activeModuleIndex],
+    [drawingDraft, estimate.calculatorSnapshot, persistDrawingDraftLocally, store.derived.activeModuleIndex],
   );
 
-  const railFootprintCommit = !isLocked && supportsSanctuaryEditing ? commitDrawingFootprintEdit : undefined;
-  const railModuleCommit = !isLocked && supportsSanctuaryEditing ? commitDrawingModuleField : undefined;
-  const railFamilyCommit = !isLocked && supportsSanctuaryEditing ? commitPergolaFamily : undefined;
   const workbenchFieldCommit = !isLocked && supportsSanctuaryEditing ? commitDrawingField : undefined;
   const workbenchFootprintCommit =
     !isLocked && supportsSanctuaryEditing && store.ui.viewportMode === 'model' ? commitDrawingFootprintEdit : undefined;
@@ -280,12 +262,10 @@ export default function DesignWorkbenchEstimateClient({
         {supportsSanctuaryEditing && activeModuleInput ? (
           <SanctuaryWorkbenchRail
             moduleLabel={store.derived.activeModuleLabel}
-            moduleInput={activeModuleInput}
+            geometryState={geometryEditState}
             view={store.ui.activeView}
             disabled={isLocked}
-            onCommitFamily={railFamilyCommit}
-            onCommitFootprintEdit={railFootprintCommit}
-            onCommitModuleField={railModuleCommit}
+            onCommitGeometryEdit={!isLocked ? commitGeometryIntent : undefined}
           />
         ) : (
           <section className={styles.notice}>
@@ -305,11 +285,11 @@ export default function DesignWorkbenchEstimateClient({
           </section>
         ) : null}
 
-        {geometryPreview.kind === 'ready' && geometryPreview.previewMode === 'best_effort_draft' ? (
+        {geometryPreview.kind === 'ready' && geometryPreview.previewMode === 'draft_local_resolved' ? (
           <section className={styles.notice}>
-            <p className={styles.noticeTitle}>3D Preview Uses Last Solved Structure</p>
+            <p className={styles.noticeTitle}>3D Preview Resolved Locally</p>
             <p className={styles.noticeText}>
-              The 3D view is reflecting current draft inputs with the last solved structural values from this estimate. Use it as a verification preview, not final validated geometry.
+              The 3D view is using the current unsaved draft inputs and a fresh local module solve for geometry verification. It is authoritative for draft geometry, but it still reflects unsaved work.
             </p>
           </section>
         ) : null}

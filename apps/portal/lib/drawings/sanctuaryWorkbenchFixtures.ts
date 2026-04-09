@@ -74,6 +74,13 @@ function makeResult(params: {
   gutterType?: string;
   rafterCount?: number;
   rafterSpacingMm?: number;
+  effectiveRunM?: number;
+  acrylicRequiredDownslopeM?: number;
+  joinerPieceLengthM?: number;
+  joinerRunsTotal?: number;
+  rafterHouseAllowanceM?: number;
+  rafterFarAllowanceM?: number;
+  acrylicAreaM2?: number;
   boxEffectiveRunM?: number;
   boxRiseMm?: number;
   boxMaxFallMm?: number;
@@ -101,6 +108,13 @@ function makeResult(params: {
       box_perimeter_beam_profile_used: params.boxPerimeterBeamProfileUsed ?? '50x300',
       rafter_count: params.rafterCount ?? 11,
       rafter_spacing_mm: params.rafterSpacingMm ?? 600,
+      effective_run_m: params.effectiveRunM ?? null,
+      acrylic_required_downslope_m: params.acrylicRequiredDownslopeM ?? null,
+      joiner_piece_length_m: params.joinerPieceLengthM ?? null,
+      joiner_runs_total: params.joinerRunsTotal ?? null,
+      rafter_house_allowance_m: params.rafterHouseAllowanceM ?? null,
+      rafter_far_allowance_m: params.rafterFarAllowanceM ?? null,
+      acrylic_area_m2: params.acrylicAreaM2 ?? null,
       gutter_assembly_mode: 'integrated',
       integrated_gutter_beam: true,
       has_our_gutter: true,
@@ -157,6 +171,13 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
         gutterType: 'SP Gutter',
         rafterCount: 11,
         rafterSpacingMm: 600,
+        effectiveRunM: 2.85,
+        acrylicRequiredDownslopeM: 2.88088653699854,
+        joinerPieceLengthM: 2.88088653699854,
+        joinerRunsTotal: 11,
+        rafterHouseAllowanceM: 0.05,
+        rafterFarAllowanceM: 0.1,
+        acrylicAreaM2: 18.06875707578025,
       }),
       'Mono Standard',
     ),

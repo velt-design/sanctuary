@@ -31,7 +31,9 @@ describe('buildViewerSceneModel', () => {
         'posts',
         'beams',
         'rafters',
+        'joiners',
         'gutters',
+        'roof_cladding',
         'roof_planes',
         'attachment_edge',
       ]);
@@ -66,6 +68,40 @@ describe('buildViewerSceneModel', () => {
     expect(ridge.centerline.start.x).toBe(0);
     expect(ridge.profile.depthMm).toBeGreaterThan(0);
     expect(ridge.localFrame.origin.y).toBe(2000);
+    expect(ridge.localFrame.yAxis).toEqual({ x: 0, y: 1, z: 0 });
+    expect(ridge.localFrame.zAxis).toEqual({ x: 0, y: 0, z: 1 });
+  });
+
+  it('preserves corrected beam and rafter local-frame orientation for the viewer', () => {
+    const fixture = requireSupportedFixture('mono_attached_soffit_away_standard');
+    const solveResult = solveAssembly3D(fixture.config);
+    if (!solveResult.ok) {
+      throw new Error(solveResult.error);
+    }
+
+    const scene = buildViewerSceneModel(solveResult.value);
+    const outerBeam = scene.layers
+      .flatMap((layer) => layer.objects)
+      .find((object) => object.type === 'member_prism' && object.id === 'outer-beam');
+    const rafter = scene.layers
+      .flatMap((layer) => layer.objects)
+      .find((object) => object.type === 'member_prism' && object.id === 'rafter-1');
+
+    if (!outerBeam || outerBeam.type !== 'member_prism') {
+      throw new Error('Expected outer beam member prism.');
+    }
+    if (!rafter || rafter.type !== 'member_prism') {
+      throw new Error('Expected mono rafter member prism.');
+    }
+
+    expect(outerBeam.localFrame.yAxis).toEqual({ x: 0, y: 1, z: 0 });
+    expect(outerBeam.localFrame.zAxis).toEqual({ x: 0, y: 0, z: 1 });
+    expect(rafter.localFrame.yAxis.x).toBeCloseTo(-1, 6);
+    expect(rafter.localFrame.yAxis.y).toBeCloseTo(0, 6);
+    expect(rafter.localFrame.yAxis.z).toBeCloseTo(0, 6);
+    expect(rafter.localFrame.zAxis.x).toBeCloseTo(0, 6);
+    expect(rafter.localFrame.zAxis.y).toBeCloseTo(0.074529, 6);
+    expect(rafter.localFrame.zAxis.z).toBeCloseTo(0.997219, 6);
   });
 
   it('preserves roof-plane geometry fields for rendered roof-plane objects', () => {
@@ -93,6 +129,38 @@ describe('buildViewerSceneModel', () => {
     expect(roofPlane.boundary).toHaveLength(4);
     expect(roofPlane.plane.origin.y).toBe(150);
     expect(roofPlane.fallVector.y).toBeGreaterThan(0);
+  });
+
+  it('projects mono acrylic roof cladding panels into their own visible layer and hides structural roof planes by default', () => {
+    const fixture = requireSupportedFixture('mono_attached_soffit_away_standard');
+    const solveResult = solveAssembly3D(fixture.config);
+    if (!solveResult.ok) {
+      throw new Error(solveResult.error);
+    }
+
+    const scene = buildViewerSceneModel(solveResult.value);
+    const claddingLayer = scene.layers.find((layer) => layer.id === 'roof_cladding');
+    const roofPlaneLayer = scene.layers.find((layer) => layer.id === 'roof_planes');
+    const panel = claddingLayer?.objects.find((object) => object.type === 'roof_cladding_panel' && object.id === 'acrylic-panel-1');
+
+    expect(claddingLayer?.visibleByDefault).toBe(true);
+    expect(roofPlaneLayer?.visibleByDefault).toBe(false);
+    expect(panel).toMatchObject({
+      id: 'acrylic-panel-1',
+      type: 'roof_cladding_panel',
+      sourceId: 'acrylic-panel-1',
+      material: 'acrylic',
+    });
+
+    if (!panel || panel.type !== 'roof_cladding_panel') {
+      throw new Error('Expected mono acrylic cladding panel object.');
+    }
+
+    expect(panel.boundary).toHaveLength(4);
+    expect(panel.metadata).toMatchObject({
+      index: 1,
+      areaMm2: expect.any(Number),
+    });
   });
 
   it('falls back to line render metadata for unsupported profile shapes', () => {

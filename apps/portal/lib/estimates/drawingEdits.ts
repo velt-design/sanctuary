@@ -236,7 +236,7 @@ function isPortalPergolaStyle(value: unknown): value is CalculatorModuleInputs['
 }
 
 function isPortalRoofMaterial(value: unknown): value is CalculatorModuleInputs['roofMaterial'] {
-  return value === 'acrylic' || value === 'timber' || value === 'mixed';
+  return value === 'acrylic' || value === 'timber' || value === 'mixed' || value === 'insulated' || value === 'louvre';
 }
 
 function isHouseConnectionType(value: unknown): value is CalculatorModuleInputs['houseConnectionType'] {

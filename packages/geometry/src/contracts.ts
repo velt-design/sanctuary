@@ -29,6 +29,23 @@ export type Line3 = {
 
 export type Polygon3 = Point3[];
 
+export type Point2 = {
+  x: number;
+  y: number;
+};
+
+export type Vector2 = {
+  x: number;
+  y: number;
+};
+
+export type Line2 = {
+  start: Point2;
+  end: Point2;
+};
+
+export type Polygon2 = Point2[];
+
 /**
  * Plane basis vectors live in world space. The normal is not view-relative.
  */
@@ -62,8 +79,9 @@ export type FootingType = 'slab' | 'pier' | 'pile';
 export type RoofFallDirection = 'positiveY' | 'negativeY' | 'dual';
 export type GutterAssemblyMode = 'integrated' | 'separate' | 'none';
 export type SupportConditionType = 'house_connection' | 'post_connection' | 'ground' | 'bracing' | 'custom';
-export type AssemblyMemberRole = 'post' | 'beam' | 'ledger' | 'ridge' | 'rafter' | 'gutter' | 'brace';
+export type AssemblyMemberRole = 'post' | 'beam' | 'ledger' | 'ridge' | 'rafter' | 'gutter' | 'brace' | 'joiner';
 export type ProfileShape = 'rectangular' | 'c-channel' | 'custom';
+export type RoofCladdingMaterial = 'acrylic';
 export type HouseFootprintPreset =
   | 'straight'
   | 'l_left'
@@ -102,7 +120,13 @@ export type BoxGutterMode = RawBoxGutterMode;
 
 export type AssemblyMemberProfile = {
   shape: ProfileShape;
+  /**
+   * Profile width axis. This is the minor section axis and maps to localFrame.yAxis.
+   */
   widthMm: number;
+  /**
+   * Profile depth axis. This is the major section axis and maps to localFrame.zAxis.
+   */
   depthMm: number;
 };
 
@@ -187,6 +211,13 @@ export type RawGeometryModuleInput = {
     projectionM?: number | null;
     roofPitchDeg?: number | null;
     slopeDirection?: RawSlopeDirection | null;
+    effectiveRunM?: number | null;
+    acrylicRequiredDownslopeM?: number | null;
+    joinerPieceLengthM?: number | null;
+    joinerRunsTotal?: number | null;
+    rafterHouseAllowanceM?: number | null;
+    rafterFarAllowanceM?: number | null;
+    acrylicAreaM2?: number | null;
     boxEffectiveRunM?: number | null;
     boxRiseMm?: number | null;
     boxMaxFallMm?: number | null;
@@ -222,6 +253,16 @@ export type GeometryConfig = {
     fallDirection: RoofFallDirection;
     boxPerimeterEnabled: boolean;
     overhangMm: number;
+  };
+  roofCovering: {
+    kind: RoofCladdingMaterial | null;
+    effectiveRunMm: number | null;
+    acrylicRequiredDownslopeMm: number | null;
+    joinerPieceLengthMm: number | null;
+    joinerRunsTotal: number | null;
+    houseAllowanceMm: number | null;
+    farAllowanceMm: number | null;
+    acrylicAreaMm2: number | null;
   };
   gable: {
     ridgePositionMm: number | null;
@@ -289,6 +330,10 @@ export type GeometryConfig = {
 
 /**
  * Structural member in world space. Heights and orientation must never be view-relative.
+ * localFrame axes are locked as:
+ * - xAxis = member run axis
+ * - yAxis = profile width axis
+ * - zAxis = profile depth axis
  */
 export type AssemblyMember3D = {
   id: string;
@@ -307,6 +352,14 @@ export type RoofPlane3D = {
   boundary: Polygon3;
   plane: Plane3;
   fallVector: Vector3;
+  metadata?: GeometryMetadata;
+};
+
+export type RoofCladdingPanel3D = {
+  id: string;
+  material: RoofCladdingMaterial;
+  boundary: Polygon3;
+  plane: Plane3;
   metadata?: GeometryMetadata;
 };
 
@@ -344,12 +397,158 @@ export type Assembly3D = {
   house: HouseReferenceGeometry;
   members: AssemblyMember3D[];
   roofPlanes: RoofPlane3D[];
+  roofCladdingPanels: RoofCladdingPanel3D[];
   supportConditions: AssemblySupportCondition[];
   quantityHooks: QuantityHook[];
   semantics: {
     connectionType: ConnectionType;
     roofType: PergolaFamily;
     structuralZones: string[];
+  };
+};
+
+export type GeometryPlanMember2D = {
+  id: string;
+  role: AssemblyMemberRole;
+  centerline: Line2;
+  profile: AssemblyMemberProfile;
+  lengthMm: number;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometryPlanSurface2D = {
+  id: string;
+  kind: 'roof_plane' | 'roof_cladding' | 'house_footprint';
+  boundary: Polygon2;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometryPlanRafterSpacingAnchor = {
+  line: Line2;
+  positionsMm: number[];
+};
+
+export type GeometryPlanViewModel = {
+  family: PergolaFamily;
+  connectionType: ConnectionType;
+  roofForm: {
+    mono: boolean;
+    gable: boolean;
+    box: boolean;
+  };
+  outline: Polygon2;
+  attachmentEdge: Line2 | null;
+  house: {
+    footprint: Polygon2 | null;
+    fasciaLine: Line2 | null;
+    roofEdgeLine: Line2 | null;
+    wallReferenceLine: Line2 | null;
+  };
+  members: {
+    posts: GeometryPlanMember2D[];
+    beams: GeometryPlanMember2D[];
+    ledgers: GeometryPlanMember2D[];
+    rafters: GeometryPlanMember2D[];
+    gutters: GeometryPlanMember2D[];
+    ridge: GeometryPlanMember2D[];
+    joiners: GeometryPlanMember2D[];
+  };
+  surfaces: {
+    roofPlanes: GeometryPlanSurface2D[];
+    roofCladding: GeometryPlanSurface2D[];
+  };
+  anchors: {
+    primarySize: {
+      length: Line2 | null;
+      projection: Line2 | null;
+    };
+    fall: {
+      point: Point2;
+      direction: Vector2;
+      dual: boolean;
+    } | null;
+    rafterSpacing: GeometryPlanRafterSpacingAnchor | null;
+    ridgeLine: Line2 | null;
+    attachmentSide: {
+      line: Line2;
+    } | null;
+  };
+  extents: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    lengthMm: number;
+    projectionMm: number;
+  };
+};
+
+export type GeometrySectionMember2D = {
+  id: string;
+  role: AssemblyMemberRole;
+  projection: Line2;
+  profile: AssemblyMemberProfile;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometrySectionLine2D = {
+  id: string;
+  kind: 'roof_plane' | 'roof_cladding' | 'baseline' | 'house_reference';
+  line: Line2;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometrySectionViewModel = {
+  family: PergolaFamily;
+  connectionType: ConnectionType;
+  sectionKind: 'mono' | 'gable';
+  roofForm: {
+    mono: boolean;
+    gable: boolean;
+    box: boolean;
+  };
+  sliceXMm: number;
+  baseline: Line2;
+  house: {
+    referenceLine: Line2 | null;
+  };
+  members: {
+    posts: GeometrySectionMember2D[];
+    ledgers: GeometrySectionMember2D[];
+    supportBeams: GeometrySectionMember2D[];
+    gutters: GeometrySectionMember2D[];
+    rafters: GeometrySectionMember2D[];
+    ridge: GeometrySectionMember2D[];
+    joiners: GeometrySectionMember2D[];
+  };
+  surfaces: {
+    roofPlanes: GeometrySectionLine2D[];
+    roofCladding: GeometrySectionLine2D[];
+  };
+  anchors: {
+    span: Line2;
+    leftEdgeHeight: { point: Point2; valueMm: number } | null;
+    rightEdgeHeight: { point: Point2; valueMm: number } | null;
+    ridgeHeight: { point: Point2; valueMm: number } | null;
+    pitch: {
+      point: Point2;
+      degrees: number;
+      fallDirection: RoofFallDirection;
+    } | null;
+  };
+  metrics: {
+    spanMm: number;
+    leftEdgeHeightMm: number | null;
+    rightEdgeHeightMm: number | null;
+    ridgeHeightMm: number | null;
+    pitchDeg: number | null;
+    boxRiseMm: number | null;
+  };
+  extents: {
+    minProjectionMm: number;
+    maxProjectionMm: number;
+    minHeightMm: number;
+    maxHeightMm: number;
   };
 };
 
@@ -399,6 +598,16 @@ export type ViewerSceneRoofPlaneObject = {
   metadata?: GeometryMetadata;
 };
 
+export type ViewerSceneRoofCladdingPanelObject = {
+  id: string;
+  type: 'roof_cladding_panel';
+  sourceId: string;
+  material: RoofCladdingMaterial;
+  boundary: Polygon3;
+  plane: Plane3;
+  metadata?: GeometryMetadata;
+};
+
 export type ViewerSceneReferenceLineObject = {
   id: string;
   type: 'reference_line';
@@ -421,6 +630,7 @@ export type ViewerSceneReferencePlaneObject = {
 export type ViewerSceneObject =
   | ViewerSceneMemberPrismObject
   | ViewerSceneRoofPlaneObject
+  | ViewerSceneRoofCladdingPanelObject
   | ViewerSceneReferenceLineObject
   | ViewerSceneReferencePlaneObject;
 

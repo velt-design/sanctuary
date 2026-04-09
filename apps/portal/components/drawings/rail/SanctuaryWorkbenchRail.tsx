@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { HOUSE_FOOTPRINT_PRESET_OPTIONS, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
   normalizeDrawingRotationQuarterTurns,
   normalizeHouseFootprintParams,
   normalizeHouseFootprintPreset,
-  supportsHouseFootprints,
 } from '@/lib/types/calculator';
-import type { EstimateDrawingFootprintEdit, EstimateDrawingModuleFieldEdit } from '@/lib/estimates/drawingEdits';
+import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { GeometryEditIntent, GeometryEditState, SanctuaryPergolaFamily } from '@/lib/drawings/geometry/geometryEditAdapter';
 import styles from './ConfiguratorRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
@@ -52,16 +51,12 @@ type RailFieldDefinition =
       onCommit: (value: boolean) => Promise<unknown> | void;
     };
 
-export type SanctuaryPergolaFamily = 'mono' | 'gable' | 'box';
-
 type SanctuaryWorkbenchRailProps = {
   moduleLabel: string;
-  moduleInput?: CalculatorModuleInputs | null;
+  geometryState?: GeometryEditState | null;
   view: ModuleViewsTab;
   disabled?: boolean;
-  onCommitFamily?: (family: SanctuaryPergolaFamily) => Promise<CommitResult> | CommitResult;
-  onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
-  onCommitModuleField?: (edit: EstimateDrawingModuleFieldEdit) => Promise<CommitResult> | CommitResult;
+  onCommitGeometryEdit?: (intent: GeometryEditIntent) => Promise<CommitResult> | CommitResult;
 };
 
 const FAMILY_OPTIONS: SelectOption[] = [
@@ -71,6 +66,8 @@ const FAMILY_OPTIONS: SelectOption[] = [
 ];
 const ROOF_MATERIAL_OPTIONS: SelectOption[] = [
   { label: 'Acrylic', value: 'acrylic' },
+  { label: 'Insulated', value: 'insulated' },
+  { label: 'Louvre', value: 'louvre' },
   { label: 'Timber', value: 'timber' },
   { label: 'Mixed', value: 'mixed' },
 ];
@@ -214,54 +211,28 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function resolveHouseConnectionValue(moduleInput: CalculatorModuleInputs): string {
-  if (moduleInput.houseConnectionType === 'facade') return 'wall';
-  if (moduleInput.houseConnectionType === 'none') return 'freestanding';
-  return moduleInput.houseConnectionType;
-}
-
-function toHouseConnectionType(value: string): CalculatorModuleInputs['houseConnectionType'] {
-  if (value === 'wall') return 'facade';
-  if (value === 'freestanding') return 'none';
-  return value as CalculatorModuleInputs['houseConnectionType'];
-}
-
-export function resolveSanctuaryPergolaFamily(moduleInput?: CalculatorModuleInputs | null): SanctuaryPergolaFamily | null {
-  if (!moduleInput) return null;
-  if (moduleInput.pergolaStyle === 'gable') return 'gable';
-  if (moduleInput.pergolaStyle === 'pitched') return moduleInput.boxPerimeterEnabled ? 'box' : 'mono';
-  return null;
-}
-
-export function isSanctuarySupportedModuleInput(moduleInput?: CalculatorModuleInputs | null): boolean {
-  return resolveSanctuaryPergolaFamily(moduleInput) !== null;
-}
-
 export default function SanctuaryWorkbenchRail({
   moduleLabel,
-  moduleInput,
+  geometryState,
   view,
   disabled = false,
-  onCommitFamily,
-  onCommitFootprintEdit,
-  onCommitModuleField,
+  onCommitGeometryEdit,
 }: SanctuaryWorkbenchRailProps) {
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const family = resolveSanctuaryPergolaFamily(moduleInput);
-  const footprintPreset = moduleInput ? normalizeHouseFootprintPreset(moduleInput.houseFootprintPreset) : 'straight';
-  const footprintParams = moduleInput ? normalizeHouseFootprintParams(moduleInput.houseFootprintParams) : normalizeHouseFootprintParams(undefined);
-  const drawingRotation = moduleInput ? String(normalizeDrawingRotationQuarterTurns(moduleInput.drawingRotationQuarterTurns)) : '0';
-  const boxToggleDisabled = disabled || !moduleInput || family === 'gable' || !onCommitModuleField;
+  const family = geometryState?.family ?? null;
+  const footprintPreset = geometryState ? normalizeHouseFootprintPreset(geometryState.houseContext.footprintPreset) : 'straight';
+  const footprintParams = geometryState ? normalizeHouseFootprintParams(geometryState.houseContext.footprintParams) : normalizeHouseFootprintParams(undefined);
+  const drawingRotation = geometryState ? String(normalizeDrawingRotationQuarterTurns(geometryState.houseContext.drawingRotationQuarterTurns)) : '0';
+  const boxToggleDisabled = disabled || !geometryState || family === 'gable' || !onCommitGeometryEdit;
   const canEditHouseContext =
     !disabled &&
-    Boolean(moduleInput) &&
-    Boolean(onCommitFootprintEdit) &&
-    moduleInput.houseConnectionType !== 'none' &&
-    supportsHouseFootprints(moduleInput.pergolaStyle);
+    Boolean(geometryState) &&
+    Boolean(onCommitGeometryEdit) &&
+    Boolean(geometryState?.houseContext.canEditFootprint);
   const showGround =
-    moduleInput?.postConnectionType === 'pile_1m' || moduleInput?.postConnectionType === 'pile_1_5m';
+    geometryState?.supports.postConnectionType === 'pile_1m' || geometryState?.supports.postConnectionType === 'pile_1_5m';
 
   const runCommit = useCallback(async (fieldId: string, action: Promise<CommitResult> | CommitResult) => {
     setPendingFieldId(fieldId);
@@ -276,34 +247,14 @@ export default function SanctuaryWorkbenchRail({
     return result;
   }, []);
 
-  const commitFamily = useCallback(
-    async (nextFamily: SanctuaryPergolaFamily) => {
-      if (!onCommitFamily) {
-        return { ok: false, error: 'Pergola family controls are not available right now.' } satisfies CommitResult;
-      }
-      return await runCommit('pergola-family', onCommitFamily(nextFamily));
-    },
-    [onCommitFamily, runCommit],
-  );
-
-  const commitModuleField = useCallback(
-    async (fieldId: string, edit: EstimateDrawingModuleFieldEdit) => {
-      if (!onCommitModuleField) {
+  const commitGeometryEdit = useCallback(
+    async (fieldId: string, intent: GeometryEditIntent) => {
+      if (!onCommitGeometryEdit) {
         return { ok: false, error: 'Sanctuary controls are not available right now.' } satisfies CommitResult;
       }
-      return await runCommit(fieldId, onCommitModuleField(edit));
+      return await runCommit(fieldId, onCommitGeometryEdit(intent));
     },
-    [onCommitModuleField, runCommit],
-  );
-
-  const commitFootprintEdit = useCallback(
-    async (fieldId: string, edit: EstimateDrawingFootprintEdit) => {
-      if (!onCommitFootprintEdit) {
-        return { ok: false, error: 'House/context controls are not available right now.' } satisfies CommitResult;
-      }
-      return await runCommit(fieldId, onCommitFootprintEdit(edit));
-    },
-    [onCommitFootprintEdit, runCommit],
+    [onCommitGeometryEdit, runCommit],
   );
 
   const commitRotation = useCallback(
@@ -317,18 +268,18 @@ export default function SanctuaryWorkbenchRail({
       while (current !== target) {
         const forward = (target - current + 4) % 4;
         const delta: -1 | 1 = forward <= 2 ? 1 : -1;
-        const result = await commitFootprintEdit('drawing-rotation', { type: 'rotate', delta });
+        const result = await commitGeometryEdit('drawing-rotation', { type: 'drawing_rotation', delta });
         if (!result.ok) return result;
         current = (current + delta + 4) % 4;
       }
 
       return { ok: true } satisfies CommitResult;
     },
-    [commitFootprintEdit, drawingRotation],
+    [commitGeometryEdit, drawingRotation],
   );
 
   const geometryFields = useMemo(() => {
-    if (!moduleInput || !family) return [];
+    if (!geometryState || !family) return [];
     return [
       {
         id: 'pergola-family',
@@ -339,37 +290,40 @@ export default function SanctuaryWorkbenchRail({
         helperText: view === 'section' ? 'Family changes still update the shared draft from Section review.' : 'Switch between Sanctuary V1 families without leaving the workbench.',
         pending: pendingFieldId === 'pergola-family',
         error: fieldErrors['pergola-family'],
-        disabled: disabled || !onCommitFamily,
-        onCommit: (value: string) => commitFamily(value as SanctuaryPergolaFamily),
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) =>
+          commitGeometryEdit('pergola-family', {
+            type: 'family',
+            value: value as SanctuaryPergolaFamily,
+          }),
       },
       {
         id: 'box-perimeter-enabled',
         kind: 'toggle',
         label: 'Box perimeter',
-        value: Boolean(moduleInput.boxPerimeterEnabled),
+        value: geometryState.roof.boxPerimeterEnabled,
         helperText: family === 'gable' ? 'Box perimeter is only available for mono/box layouts.' : 'Keep this on for box-family layouts.',
         pending: pendingFieldId === 'box-perimeter-enabled',
         error: fieldErrors['box-perimeter-enabled'],
         disabled: boxToggleDisabled,
         onCommit: (value: boolean) =>
-          commitModuleField('box-perimeter-enabled', {
-            field: 'moduleValue',
-            key: 'boxPerimeterEnabled',
-            value,
+          commitGeometryEdit('box-perimeter-enabled', {
+            type: 'family',
+            value: value ? 'box' : 'mono',
           }),
       },
       {
         id: 'lengthM',
         kind: 'number',
         label: 'Roof length (m)',
-        value: moduleInput.lengthM,
+        value: geometryState.dimensions.lengthM,
         pending: pendingFieldId === 'lengthM',
         error: fieldErrors.lengthM,
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('lengthM', {
-            field: 'moduleValue',
-            key: 'lengthM',
+          commitGeometryEdit('lengthM', {
+            type: 'dimension',
+            field: 'lengthM',
             value,
           }),
       },
@@ -377,35 +331,35 @@ export default function SanctuaryWorkbenchRail({
         id: 'projectionM',
         kind: 'number',
         label: 'Roof span (m)',
-        value: moduleInput.projectionM,
+        value: geometryState.dimensions.projectionM,
         pending: pendingFieldId === 'projectionM',
         error: fieldErrors.projectionM,
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('projectionM', {
-            field: 'moduleValue',
-            key: 'projectionM',
+          commitGeometryEdit('projectionM', {
+            type: 'dimension',
+            field: 'projectionM',
             value,
           }),
       },
     ] satisfies RailFieldDefinition[];
-  }, [boxToggleDisabled, commitFamily, commitModuleField, disabled, family, fieldErrors, moduleInput, onCommitFamily, onCommitModuleField, pendingFieldId, view]);
+  }, [boxToggleDisabled, commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId, view]);
 
   const roofFields = useMemo(() => {
-    if (!moduleInput) return [];
+    if (!geometryState) return [];
     return [
       {
         id: 'roof-material',
         kind: 'select',
         label: 'Roof material',
-        value: moduleInput.roofMaterial,
+        value: geometryState.roof.material,
         options: ROOF_MATERIAL_OPTIONS,
         pending: pendingFieldId === 'roof-material',
         error: fieldErrors['roof-material'],
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('roof-material', {
-            field: 'roofMaterial',
+          commitGeometryEdit('roof-material', {
+            type: 'roof_material',
             value: value as CalculatorModuleInputs['roofMaterial'],
           }),
       },
@@ -413,54 +367,53 @@ export default function SanctuaryWorkbenchRail({
         id: 'roof-pitch',
         kind: 'number',
         label: 'Roof pitch (deg)',
-        value: moduleInput.roofPitchDeg,
-        helperText: moduleInput.boxPerimeterEnabled ? 'Auto-computed for box perimeter.' : 'Blank uses the module default pitch.',
+        value: geometryState.roof.pitchDeg,
+        helperText: geometryState.roof.boxPerimeterEnabled ? 'Auto-computed for box perimeter.' : 'Blank uses the module default pitch.',
         pending: pendingFieldId === 'roof-pitch',
         error: fieldErrors['roof-pitch'],
-        disabled: disabled || !onCommitModuleField || Boolean(moduleInput.boxPerimeterEnabled),
+        disabled: disabled || !onCommitGeometryEdit || Boolean(geometryState.roof.boxPerimeterEnabled),
         onCommit: (value: string) =>
-          commitModuleField('roof-pitch', {
-            field: 'moduleValue',
-            key: 'roofPitchDeg',
+          commitGeometryEdit('roof-pitch', {
+            type: 'roof_pitch',
             value,
           }),
       },
     ] satisfies RailFieldDefinition[];
-  }, [commitModuleField, disabled, fieldErrors, moduleInput, onCommitModuleField, pendingFieldId]);
+  }, [commitGeometryEdit, disabled, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
 
   const houseFields = useMemo(() => {
-    if (!moduleInput) return [];
+    if (!geometryState) return [];
 
     const footprintFields: RailFieldDefinition[] = [
       {
         id: 'house-connection',
         kind: 'select',
         label: 'House connection',
-        value: resolveHouseConnectionValue(moduleInput),
+        value: geometryState.connection.type,
         options: HOUSE_CONNECTION_OPTIONS,
         pending: pendingFieldId === 'house-connection',
         error: fieldErrors['house-connection'],
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('house-connection', {
-            field: 'houseConnectionType',
-            value: toHouseConnectionType(value),
+          commitGeometryEdit('house-connection', {
+            type: 'house_connection',
+            value: value as GeometryEditState['connection']['type'],
           }),
       },
       {
         id: 'attachment-side',
         kind: 'select',
         label: 'Attachment side',
-        value: moduleInput.attachmentSide ?? 'rear',
+        value: geometryState.connection.attachmentSide ?? 'rear',
         options: ATTACHMENT_SIDE_OPTIONS,
         helperText: canEditHouseContext ? undefined : 'Available when the pergola is attached to the house.',
         pending: pendingFieldId === 'attachment-side',
         error: fieldErrors['attachment-side'],
         disabled: !canEditHouseContext,
         onCommit: (value: string) =>
-          commitFootprintEdit('attachment-side', {
+          commitGeometryEdit('attachment-side', {
             type: 'attachment_side',
-            side: value as CalculatorModuleInputs['attachmentSide'],
+            value: value as CalculatorModuleInputs['attachmentSide'],
           }),
       },
       {
@@ -474,9 +427,9 @@ export default function SanctuaryWorkbenchRail({
         error: fieldErrors['house-footprint-preset'],
         disabled: !canEditHouseContext,
         onCommit: (value: string) =>
-          commitFootprintEdit('house-footprint-preset', {
-            type: 'preset',
-            preset: value as CalculatorModuleInputs['houseFootprintPreset'],
+          commitGeometryEdit('house-footprint-preset', {
+            type: 'footprint_preset',
+            value: value as CalculatorModuleInputs['houseFootprintPreset'],
           }),
       },
       {
@@ -500,8 +453,8 @@ export default function SanctuaryWorkbenchRail({
         error: fieldErrors['house-footprint-band-depth'],
         disabled: !canEditHouseContext,
         onCommit: (value: string) =>
-          commitFootprintEdit('house-footprint-band-depth', {
-            type: 'param',
+          commitGeometryEdit('house-footprint-band-depth', {
+            type: 'footprint_param',
             key: 'bandDepthM',
             value,
           }),
@@ -518,8 +471,8 @@ export default function SanctuaryWorkbenchRail({
         error: fieldErrors['house-footprint-return-run'],
         disabled: !canEditHouseContext,
         onCommit: (value: string) =>
-          commitFootprintEdit('house-footprint-return-run', {
-            type: 'param',
+          commitGeometryEdit('house-footprint-return-run', {
+            type: 'footprint_param',
             key: 'returnRunM',
             value,
           }),
@@ -537,8 +490,8 @@ export default function SanctuaryWorkbenchRail({
           error: fieldErrors['house-footprint-recess-width'],
           disabled: !canEditHouseContext,
           onCommit: (value: string) =>
-            commitFootprintEdit('house-footprint-recess-width', {
-              type: 'param',
+            commitGeometryEdit('house-footprint-recess-width', {
+              type: 'footprint_param',
               key: 'recessWidthM',
               value,
             }),
@@ -552,8 +505,8 @@ export default function SanctuaryWorkbenchRail({
           error: fieldErrors['house-footprint-recess-depth'],
           disabled: !canEditHouseContext,
           onCommit: (value: string) =>
-            commitFootprintEdit('house-footprint-recess-depth', {
-              type: 'param',
+            commitGeometryEdit('house-footprint-recess-depth', {
+              type: 'footprint_param',
               key: 'recessDepthM',
               value,
             }),
@@ -572,8 +525,8 @@ export default function SanctuaryWorkbenchRail({
           error: fieldErrors['house-footprint-left-leg'],
           disabled: !canEditHouseContext,
           onCommit: (value: string) =>
-            commitFootprintEdit('house-footprint-left-leg', {
-              type: 'param',
+            commitGeometryEdit('house-footprint-left-leg', {
+              type: 'footprint_param',
               key: 'leftLegRunM',
               value,
             }),
@@ -587,8 +540,8 @@ export default function SanctuaryWorkbenchRail({
           error: fieldErrors['house-footprint-right-leg'],
           disabled: !canEditHouseContext,
           onCommit: (value: string) =>
-            commitFootprintEdit('house-footprint-right-leg', {
-              type: 'param',
+            commitGeometryEdit('house-footprint-right-leg', {
+              type: 'footprint_param',
               key: 'rightLegRunM',
               value,
             }),
@@ -606,8 +559,8 @@ export default function SanctuaryWorkbenchRail({
         error: fieldErrors['house-footprint-side-run'],
         disabled: !canEditHouseContext,
         onCommit: (value: string) =>
-          commitFootprintEdit('house-footprint-side-run', {
-            type: 'param',
+          commitGeometryEdit('house-footprint-side-run', {
+            type: 'footprint_param',
             key: 'sideRunM',
             value,
           }),
@@ -615,23 +568,23 @@ export default function SanctuaryWorkbenchRail({
     }
 
     return footprintFields;
-  }, [canEditHouseContext, commitFootprintEdit, commitModuleField, commitRotation, disabled, drawingRotation, fieldErrors, footprintParams, footprintPreset, moduleInput, onCommitModuleField, pendingFieldId]);
+  }, [canEditHouseContext, commitGeometryEdit, commitRotation, disabled, drawingRotation, fieldErrors, footprintParams, footprintPreset, geometryState, onCommitGeometryEdit, pendingFieldId]);
 
   const supportFields = useMemo(() => {
-    if (!moduleInput) return [];
+    if (!geometryState) return [];
     const fields: RailFieldDefinition[] = [
       {
         id: 'post-connection',
         kind: 'select',
         label: 'Post connection',
-        value: moduleInput.postConnectionType,
+        value: geometryState.supports.postConnectionType,
         options: POST_CONNECTION_OPTIONS,
         pending: pendingFieldId === 'post-connection',
         error: fieldErrors['post-connection'],
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('post-connection', {
-            field: 'postConnectionType',
+          commitGeometryEdit('post-connection', {
+            type: 'post_connection',
             value: value as CalculatorModuleInputs['postConnectionType'],
           }),
       },
@@ -642,14 +595,14 @@ export default function SanctuaryWorkbenchRail({
         id: 'ground-condition',
         kind: 'select',
         label: 'Ground',
-        value: moduleInput.ground,
+        value: geometryState.supports.ground,
         options: GROUND_OPTIONS,
         pending: pendingFieldId === 'ground-condition',
         error: fieldErrors['ground-condition'],
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('ground-condition', {
-            field: 'ground',
+          commitGeometryEdit('ground-condition', {
+            type: 'ground',
             value: value as CalculatorModuleInputs['ground'],
           }),
       });
@@ -660,14 +613,13 @@ export default function SanctuaryWorkbenchRail({
         id: 'post-count',
         kind: 'number',
         label: 'Post count',
-        value: moduleInput.postCount,
+        value: geometryState.supports.postCount,
         pending: pendingFieldId === 'post-count',
         error: fieldErrors['post-count'],
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('post-count', {
-            field: 'moduleValue',
-            key: 'postCount',
+          commitGeometryEdit('post-count', {
+            type: 'post_count',
             value,
           }),
       },
@@ -675,24 +627,23 @@ export default function SanctuaryWorkbenchRail({
         id: 'post-cut-height',
         kind: 'number',
         label: 'Base height (m)',
-        value: moduleInput.postCutHeightM,
+        value: geometryState.supports.postCutHeightM,
         helperText: 'Clear height to the underside of the ledger/base line.',
         pending: pendingFieldId === 'post-cut-height',
         error: fieldErrors['post-cut-height'],
-        disabled: disabled || !onCommitModuleField,
+        disabled: disabled || !onCommitGeometryEdit,
         onCommit: (value: string) =>
-          commitModuleField('post-cut-height', {
-            field: 'moduleValue',
-            key: 'postCutHeightM',
+          commitGeometryEdit('post-cut-height', {
+            type: 'post_cut_height',
             value,
           }),
       },
     );
 
     return fields;
-  }, [commitModuleField, disabled, fieldErrors, moduleInput, onCommitModuleField, pendingFieldId, showGround]);
+  }, [commitGeometryEdit, disabled, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId, showGround]);
 
-  if (!moduleInput || !family) {
+  if (!geometryState || !family) {
     return (
       <section className={styles.summary}>
         <p className={styles.eyebrow}>Sanctuary Controls</p>

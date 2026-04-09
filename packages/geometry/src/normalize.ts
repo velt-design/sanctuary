@@ -257,6 +257,11 @@ function resolveOptionalMetresToMillimetres(value: string | number | null | unde
   return parsed === null ? null : metresToMillimetres(parsed);
 }
 
+function resolveOptionalSquareMetresToSquareMillimetres(value: number | null | undefined): number | null {
+  const parsed = parseNonNegativeNumber(value);
+  return parsed === null ? null : Math.round(parsed * 1_000_000);
+}
+
 function resolveFootprintPreset(value: HouseFootprintPreset | null | undefined): HouseFootprintPreset {
   if (
     value === 'l_left' ||
@@ -319,6 +324,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const boxEffectiveRunMm = resolveOptionalMetresToMillimetres(input.derived?.boxEffectiveRunM);
   const boxRiseMm = resolveOptionalMillimetres(input.derived?.boxRiseMm);
   const boxMaxFallMm = resolveOptionalMillimetres(input.derived?.boxMaxFallMm);
+  const roofCoveringKind = family === 'mono' && roof.material === 'acrylic' ? 'acrylic' : null;
 
   if (
     family === 'gable' &&
@@ -357,6 +363,22 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       fallDirection,
       boxPerimeterEnabled: input.boxPerimeterEnabled,
       overhangMm: overhang.value,
+    },
+    roofCovering: {
+      kind: roofCoveringKind,
+      effectiveRunMm: roofCoveringKind === 'acrylic' ? resolveOptionalMetresToMillimetres(input.derived?.effectiveRunM) : null,
+      acrylicRequiredDownslopeMm:
+        roofCoveringKind === 'acrylic' ? resolveOptionalMetresToMillimetres(input.derived?.acrylicRequiredDownslopeM) : null,
+      joinerPieceLengthMm:
+        roofCoveringKind === 'acrylic' ? resolveOptionalMetresToMillimetres(input.derived?.joinerPieceLengthM) : null,
+      joinerRunsTotal:
+        roofCoveringKind === 'acrylic' ? parseNonNegativeInteger(input.derived?.joinerRunsTotal) : null,
+      houseAllowanceMm:
+        roofCoveringKind === 'acrylic' ? resolveOptionalMetresToMillimetres(input.derived?.rafterHouseAllowanceM) : null,
+      farAllowanceMm:
+        roofCoveringKind === 'acrylic' ? resolveOptionalMetresToMillimetres(input.derived?.rafterFarAllowanceM) : null,
+      acrylicAreaMm2:
+        roofCoveringKind === 'acrylic' ? resolveOptionalSquareMetresToSquareMillimetres(input.derived?.acrylicAreaM2) : null,
     },
     gable: {
       ridgePositionMm: family === 'gable' ? projection.value / 2 : null,

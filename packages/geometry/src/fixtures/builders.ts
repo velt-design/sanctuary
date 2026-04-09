@@ -1,5 +1,70 @@
 import type { GeometryConfig } from '../contracts';
 
+function buildMonoRoofCovering(
+  input: {
+    dimensions: GeometryConfig['dimensions'];
+    roof: GeometryConfig['roof'];
+    connection: GeometryConfig['connection'];
+    structural: GeometryConfig['structural'];
+  },
+  overrides: Partial<GeometryConfig['roofCovering']> = {},
+): GeometryConfig['roofCovering'] {
+  const referenceProfile =
+    input.connection.type === 'freestanding'
+      ? (input.structural.profiles.supportBeam ?? input.structural.profiles.ledger)
+      : (input.structural.profiles.ledger ?? input.structural.profiles.supportBeam);
+  const supportBeamProfile = input.structural.profiles.supportBeam;
+  const gutterProfile = input.structural.profiles.gutter;
+  const supportBeamWidthMm = supportBeamProfile?.widthMm ?? 50;
+  const referenceWidthMm = referenceProfile?.widthMm ?? 50;
+  const gutterWidthMm = gutterProfile?.widthMm ?? 100;
+  const referenceDepthMm = referenceProfile?.depthMm ?? 100;
+  const gutterDepthMm = gutterProfile?.depthMm ?? 150;
+  const houseAllowanceMm =
+    overrides.houseAllowanceMm ??
+    (input.roof.fallDirection === 'negativeY' ? gutterWidthMm : referenceWidthMm);
+  const farAllowanceMm =
+    overrides.farAllowanceMm ??
+    (input.roof.fallDirection === 'negativeY'
+      ? supportBeamWidthMm
+      : input.structural.drainage.integratedGutterBeam
+        ? gutterWidthMm
+        : input.structural.drainage.gutterAssemblyMode === 'separate'
+          ? supportBeamWidthMm + gutterWidthMm
+          : supportBeamWidthMm);
+  const houseUndersideMm = input.structural.heights.referenceUndersideMm ?? input.structural.heights.houseUndersideMm ?? 2400;
+  const outerUndersideMm = input.structural.heights.outerUndersideMm ?? 2137;
+  const startBearingY = referenceWidthMm;
+  const endBearingY = Math.max(input.dimensions.projectionMm - gutterWidthMm, startBearingY);
+  const houseTopMm = houseUndersideMm + referenceDepthMm;
+  const outerTopMm = outerUndersideMm + gutterDepthMm;
+  const fallRunMm = endBearingY - startBearingY;
+  const fallRiseMm = outerTopMm - houseTopMm;
+  const fallLengthMm = Math.sqrt(fallRunMm * fallRunMm + fallRiseMm * fallRiseMm);
+  const fallDirectionSign = input.roof.fallDirection === 'negativeY' ? -1 : 1;
+  const normalizedFallY = fallLengthMm > 0 ? (fallDirectionSign * fallRunMm) / fallLengthMm : 0;
+  const normalizedFallZ = fallLengthMm > 0 ? ((input.roof.fallDirection === 'negativeY' ? houseTopMm - outerTopMm : outerTopMm - houseTopMm) / fallLengthMm) : 0;
+  const coverHouseY = startBearingY - normalizedFallY * houseAllowanceMm;
+  const coverHouseZ = houseTopMm - normalizedFallZ * houseAllowanceMm;
+  const coverFarY = endBearingY + normalizedFallY * farAllowanceMm;
+  const coverFarZ = outerTopMm + normalizedFallZ * farAllowanceMm;
+  const effectiveRunMm = overrides.effectiveRunMm ?? Math.max(input.dimensions.projectionMm - houseAllowanceMm - farAllowanceMm, 0);
+  const panelDownslopeMm = Math.round(Math.sqrt((coverFarY - coverHouseY) ** 2 + (coverFarZ - coverHouseZ) ** 2));
+  const structuralDownslopeMm = Math.round(Math.sqrt((endBearingY - startBearingY) ** 2 + (outerTopMm - houseTopMm) ** 2));
+  const joinerRunsTotal = overrides.joinerRunsTotal ?? input.structural.framing.rafterCount ?? 11;
+  const acrylicRequiredDownslopeMm = overrides.acrylicRequiredDownslopeMm ?? structuralDownslopeMm + 20;
+  return {
+    kind: 'acrylic',
+    effectiveRunMm,
+    acrylicRequiredDownslopeMm,
+    joinerPieceLengthMm: overrides.joinerPieceLengthMm ?? acrylicRequiredDownslopeMm,
+    joinerRunsTotal,
+    houseAllowanceMm,
+    farAllowanceMm,
+    acrylicAreaMm2: overrides.acrylicAreaMm2 ?? input.dimensions.lengthMm * panelDownslopeMm,
+  };
+}
+
 export function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig {
   const base: GeometryConfig = {
     projectId: 'proj_mono',
@@ -25,6 +90,16 @@ export function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): Geometr
       fallDirection: 'positiveY',
       boxPerimeterEnabled: false,
       overhangMm: 0,
+    },
+    roofCovering: {
+      kind: 'acrylic',
+      effectiveRunMm: null,
+      acrylicRequiredDownslopeMm: null,
+      joinerPieceLengthMm: null,
+      joinerRunsTotal: null,
+      houseAllowanceMm: null,
+      farAllowanceMm: null,
+      acrylicAreaMm2: null,
     },
     gable: {
       ridgePositionMm: null,
@@ -90,7 +165,7 @@ export function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): Geometr
     },
   };
 
-  return {
+  const mergedBase = {
     ...base,
     ...overrides,
     datum: { ...base.datum, ...overrides.datum },
@@ -107,6 +182,25 @@ export function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): Geometr
       drainage: { ...base.structural.drainage, ...overrides.structural?.drainage },
     },
     houseContext: { ...base.houseContext, ...overrides.houseContext },
+  };
+
+  return {
+    ...mergedBase,
+    roofCovering:
+      mergedBase.roof.material === 'acrylic'
+        ? {
+            ...buildMonoRoofCovering(
+              {
+                dimensions: mergedBase.dimensions,
+                roof: mergedBase.roof,
+                connection: mergedBase.connection,
+                structural: mergedBase.structural,
+              },
+              overrides.roofCovering,
+            ),
+            ...overrides.roofCovering,
+          }
+        : { ...base.roofCovering, ...overrides.roofCovering },
   };
 }
 
@@ -130,6 +224,16 @@ export function makeGableConfig(overrides: Partial<GeometryConfig> = {}): Geomet
       fallDirection: 'dual',
       boxPerimeterEnabled: false,
       overhangMm: 0,
+    },
+    roofCovering: {
+      kind: null,
+      effectiveRunMm: null,
+      acrylicRequiredDownslopeMm: null,
+      joinerPieceLengthMm: null,
+      joinerRunsTotal: null,
+      houseAllowanceMm: null,
+      farAllowanceMm: null,
+      acrylicAreaMm2: null,
     },
     gable: {
       ridgePositionMm: 2000,
@@ -192,6 +296,7 @@ export function makeGableConfig(overrides: Partial<GeometryConfig> = {}): Geomet
     datum: { ...base.datum, ...overrides.datum },
     dimensions: { ...base.dimensions, ...overrides.dimensions },
     roof: { ...base.roof, ...overrides.roof },
+    roofCovering: { ...base.roofCovering, ...overrides.roofCovering },
     gable: { ...base.gable, ...overrides.gable },
     box: { ...base.box, ...overrides.box },
     connection: { ...base.connection, ...overrides.connection },
@@ -226,6 +331,16 @@ export function makeBoxConfig(overrides: Partial<GeometryConfig> = {}): Geometry
       fallDirection: 'positiveY',
       boxPerimeterEnabled: true,
       overhangMm: 0,
+    },
+    roofCovering: {
+      kind: null,
+      effectiveRunMm: null,
+      acrylicRequiredDownslopeMm: null,
+      joinerPieceLengthMm: null,
+      joinerRunsTotal: null,
+      houseAllowanceMm: null,
+      farAllowanceMm: null,
+      acrylicAreaMm2: null,
     },
     gable: {
       ridgePositionMm: null,
@@ -297,6 +412,7 @@ export function makeBoxConfig(overrides: Partial<GeometryConfig> = {}): Geometry
     datum: { ...base.datum, ...overrides.datum },
     dimensions: { ...base.dimensions, ...overrides.dimensions },
     roof: { ...base.roof, ...overrides.roof },
+    roofCovering: { ...base.roofCovering, ...overrides.roofCovering },
     gable: { ...base.gable, ...overrides.gable },
     box: { ...base.box, ...overrides.box },
     connection: { ...base.connection, ...overrides.connection },

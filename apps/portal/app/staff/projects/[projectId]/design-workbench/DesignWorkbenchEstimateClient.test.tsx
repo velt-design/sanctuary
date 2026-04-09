@@ -210,6 +210,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Inspection');
     expect(rendered.container.textContent).toContain('Section cut');
     expect(rendered.container.textContent).toContain('Datum axes');
+    expect(rendered.container.textContent).toContain('Measurement');
+    expect(rendered.container.textContent).toContain('Enable measurement');
     expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Model Space');
@@ -335,13 +337,13 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('shows the best-effort 3D preview warning when local geometry edits exist', async () => {
-    const estimate = buildEstimateDetail({ fixtureSlug: 'box-standard' });
+  it('shows the locally resolved 3D preview warning when local geometry edits exist', async () => {
+    const estimate = buildEstimateDetail({ fixtureSlug: 'mono-standard' });
     const baseDraft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
     if (!baseDraft) throw new Error('Expected drawing draft');
 
     const draft = structuredClone(baseDraft);
-    draft.inputs.modules[0]!.lengthM = '5.9';
+    draft.inputs.modules[0]!.lengthM = '6.4';
 
     await ensureLocalFirstStoreReady();
     await writeLocalFirstWorkingCopy({
@@ -355,12 +357,12 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('3D Preview Uses Last Solved Structure');
+    expect(rendered.container.textContent).toContain('3D Preview Resolved Locally');
 
     clickButtonByText(rendered.container, '3D View');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Best-Effort Draft Preview');
+    expect(rendered.container.textContent).toContain('Draft Resolved Locally');
     expect(rendered.container.textContent).toContain('Inspection');
     expect(rendered.container.textContent).toContain('Section cut');
     expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();

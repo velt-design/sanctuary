@@ -12,6 +12,7 @@ import type {
   ViewerSceneObject,
   ViewerSceneReferenceLineObject,
   ViewerSceneReferencePlaneObject,
+  ViewerSceneRoofCladdingPanelObject,
   ViewerSceneRoofPlaneObject,
 } from './contracts';
 import { lineLength, magnitude, normalizeVector } from './math3d';
@@ -47,6 +48,11 @@ function maxAssemblyHeight(assembly: Assembly3D): number {
   }
   for (const roofPlane of assembly.roofPlanes) {
     for (const point of roofPlane.boundary) {
+      zValues.push(point.z);
+    }
+  }
+  for (const panel of assembly.roofCladdingPanels ?? []) {
+    for (const point of panel.boundary) {
       zValues.push(point.z);
     }
   }
@@ -133,6 +139,18 @@ function buildRoofPlaneObject(roofPlane: Assembly3D['roofPlanes'][number]): View
   };
 }
 
+function buildRoofCladdingPanelObject(panel: Assembly3D['roofCladdingPanels'][number]): ViewerSceneRoofCladdingPanelObject {
+  return {
+    id: panel.id,
+    type: 'roof_cladding_panel',
+    sourceId: panel.id,
+    material: panel.material,
+    boundary: panel.boundary,
+    plane: panel.plane,
+    metadata: sortMetadata(panel.metadata),
+  };
+}
+
 function buildReferenceLineObject(id: string, kind: ViewerSceneReferenceLineObject['kind'], line: Line3): ViewerSceneReferenceLineObject {
   return {
     id,
@@ -161,7 +179,9 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
     .filter((member) => member.role === 'beam' || member.role === 'ledger' || member.role === 'ridge' || member.role === 'brace')
     .map(buildMemberObject);
   const rafterObjects = assembly.members.filter((member) => member.role === 'rafter').map(buildMemberObject);
+  const joinerObjects = assembly.members.filter((member) => member.role === 'joiner').map(buildMemberObject);
   const gutterObjects = assembly.members.filter((member) => member.role === 'gutter').map(buildMemberObject);
+  const roofCladdingObjects = (assembly.roofCladdingPanels ?? []).map(buildRoofCladdingPanelObject);
   const roofPlaneObjects = assembly.roofPlanes.map(buildRoofPlaneObject);
   const attachmentObjects = assembly.attachmentEdge
     ? [buildReferenceLineObject('attachment-edge', 'attachment_edge', assembly.attachmentEdge)]
@@ -191,8 +211,15 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
     { id: 'posts', label: 'Posts', visibleByDefault: true, objects: sortObjects(postObjects) },
     { id: 'beams', label: 'Beams', visibleByDefault: true, objects: sortObjects(beamObjects) },
     { id: 'rafters', label: 'Rafters', visibleByDefault: true, objects: sortObjects(rafterObjects) },
+    { id: 'joiners', label: 'Joiners', visibleByDefault: true, objects: sortObjects(joinerObjects) },
     { id: 'gutters', label: 'Gutters', visibleByDefault: true, objects: sortObjects(gutterObjects) },
-    { id: 'roof_planes', label: 'Roof Planes', visibleByDefault: true, objects: sortObjects(roofPlaneObjects) },
+    { id: 'roof_cladding', label: 'Roof Cladding', visibleByDefault: true, objects: sortObjects(roofCladdingObjects) },
+    {
+      id: 'roof_planes',
+      label: 'Roof Planes',
+      visibleByDefault: (assembly.roofCladdingPanels?.length ?? 0) === 0,
+      objects: sortObjects(roofPlaneObjects),
+    },
     { id: 'attachment_edge', label: 'Attachment Edge', visibleByDefault: true, objects: sortObjects(attachmentObjects) },
   ];
 }

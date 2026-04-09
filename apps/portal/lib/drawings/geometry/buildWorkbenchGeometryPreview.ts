@@ -16,13 +16,15 @@ import {
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
+import { solveActiveGeometryModuleResult } from './solveActiveGeometryModuleResult';
 
-export type GeometryPreviewMode = 'snapshot_validated' | 'best_effort_draft';
+export type GeometryPreviewMode = 'snapshot_validated' | 'draft_local_resolved';
 
 export type GeometryPreviewState =
   | {
       kind: 'ready';
       previewMode: GeometryPreviewMode;
+      resultSource: 'snapshot' | 'local_resolve';
       config: GeometryConfig;
       assembly: Assembly3D;
       validation: GeometryValidationReport;
@@ -44,7 +46,7 @@ function resolvePreviewMode(
   snapshot: Record<string, unknown> | null,
   draft: EstimateDrawingDraft | null | undefined,
 ): GeometryPreviewMode {
-  return estimateDrawingDraftTouchesGeometry(draft, snapshot) ? 'best_effort_draft' : 'snapshot_validated';
+  return estimateDrawingDraftTouchesGeometry(draft, snapshot) ? 'draft_local_resolved' : 'snapshot_validated';
 }
 
 export function buildWorkbenchGeometryPreview(input: {
@@ -74,14 +76,31 @@ export function buildWorkbenchGeometryPreview(input: {
     };
   }
 
-  const moduleResult = getModuleCostOutputFromSnapshot(input.snapshot, input.moduleIndex);
+  const moduleResult =
+    previewMode === 'draft_local_resolved'
+      ? solveActiveGeometryModuleResult({
+          calculatorInputs,
+          moduleIndex: input.moduleIndex,
+        })
+      : {
+          ok: true as const,
+          moduleResult: getModuleCostOutputFromSnapshot(input.snapshot, input.moduleIndex),
+        };
+
+  if (!moduleResult.ok) {
+    return {
+      kind: 'error',
+      message: moduleResult.message,
+    };
+  }
+
   const rawInput = buildRawGeometryModuleInput({
     projectId: input.projectId,
     estimateId: input.estimateId,
     designRequestId: input.designRequestId ?? null,
     moduleId: `module-${input.moduleIndex + 1}`,
     module,
-    result: moduleResult,
+    result: moduleResult.moduleResult,
   });
 
   const normalized = normalizeGeometryConfig(rawInput);
@@ -120,6 +139,7 @@ export function buildWorkbenchGeometryPreview(input: {
   return {
     kind: 'ready',
     previewMode,
+    resultSource: previewMode === 'draft_local_resolved' ? 'local_resolve' : 'snapshot',
     config: normalized.value,
     assembly: solveResult.value,
     validation,

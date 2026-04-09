@@ -237,6 +237,39 @@ export function canonicalizeAssembly3D(assembly: Assembly3D): CanonicalAssembly3
         },
         metadata: canonicalizeMetadata(roofPlane.metadata),
       })),
+    roofCladdingPanels: [...(assembly.roofCladdingPanels ?? [])]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((panel) => ({
+        ...panel,
+        boundary: panel.boundary.map((point) => ({
+          x: roundMillimetre(point.x),
+          y: roundMillimetre(point.y),
+          z: roundMillimetre(point.z),
+        })),
+        plane: {
+          origin: {
+            x: roundMillimetre(panel.plane.origin.x),
+            y: roundMillimetre(panel.plane.origin.y),
+            z: roundMillimetre(panel.plane.origin.z),
+          },
+          xAxis: {
+            x: roundUnit(panel.plane.xAxis.x),
+            y: roundUnit(panel.plane.xAxis.y),
+            z: roundUnit(panel.plane.xAxis.z),
+          },
+          yAxis: {
+            x: roundUnit(panel.plane.yAxis.x),
+            y: roundUnit(panel.plane.yAxis.y),
+            z: roundUnit(panel.plane.yAxis.z),
+          },
+          normal: {
+            x: roundUnit(panel.plane.normal.x),
+            y: roundUnit(panel.plane.normal.y),
+            z: roundUnit(panel.plane.normal.z),
+          },
+        },
+        metadata: canonicalizeMetadata(panel.metadata),
+      })),
     supportConditions: [...assembly.supportConditions]
       .sort((a, b) => `${a.memberId}:${a.type}`.localeCompare(`${b.memberId}:${b.type}`))
       .map((condition: AssemblySupportCondition) => ({
@@ -262,6 +295,7 @@ function arrayComparisonKey(path: string, value: unknown): string | null {
   if (!value || typeof value !== 'object') return null;
   if (path === 'members' && 'id' in value && typeof value.id === 'string') return value.id;
   if (path === 'roofPlanes' && 'id' in value && typeof value.id === 'string') return value.id;
+  if (path === 'roofCladdingPanels' && 'id' in value && typeof value.id === 'string') return value.id;
   if (path === 'quantityHooks' && 'key' in value && typeof value.key === 'string') return value.key;
   if (
     path === 'supportConditions' &&

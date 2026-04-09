@@ -38,15 +38,16 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
     expect(preview.previewMode).toBe('snapshot_validated');
+    expect(preview.resultSource).toBe('snapshot');
     expect(preview.config.family).toBe('mono');
     expect(preview.validation.status).toBe('pass');
     expect(preview.scene.layers.map((layer) => layer.id)).toContain('roof_planes');
   });
 
-  it('returns ready + best_effort_draft when local geometry edits are present', () => {
-    const fixture = requireFixture('box-standard');
+  it('returns ready + draft_local_resolved when local geometry edits are present', () => {
+    const fixture = requireFixture('mono-standard');
     const draft = makeDraft(fixture.snapshot, (current) => {
-      current.inputs.modules[0]!.lengthM = '5.9';
+      current.inputs.modules[0]!.lengthM = '6.4';
     });
 
     const preview = buildWorkbenchGeometryPreview({
@@ -60,9 +61,46 @@ describe('buildWorkbenchGeometryPreview', () => {
 
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
-    expect(preview.previewMode).toBe('best_effort_draft');
-    expect(preview.config.dimensions.lengthMm).toBe(5500);
+    expect(preview.previewMode).toBe('draft_local_resolved');
+    expect(preview.resultSource).toBe('local_resolve');
+    expect(preview.config.dimensions.lengthMm).toBe(6400);
     expect(preview.validation.status).toBe('pass');
+    expect(preview.assembly.outline[1]?.x).toBe(6400);
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'ledger.length_mm')?.quantity).toBe(6400);
+  });
+
+  it('re-solves draft pitch changes locally instead of reusing stale snapshot geometry', () => {
+    const fixture = requireFixture('mono-standard');
+    const baseline = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 0,
+    });
+    if (baseline.kind !== 'ready') {
+      throw new Error('Expected baseline geometry preview');
+    }
+
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.inputs.modules[0]!.roofPitchDeg = '10';
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.previewMode).toBe('draft_local_resolved');
+    expect(preview.resultSource).toBe('local_resolve');
+    expect(preview.config.dimensions.roofPitchDeg).toBe(10);
+    expect(preview.assembly.roofPlanes[0]?.boundary[2]?.z).not.toBe(baseline.assembly.roofPlanes[0]?.boundary[2]?.z);
   });
 
   it('surfaces unsupported family geometry instead of crashing', () => {
@@ -90,6 +128,26 @@ describe('buildWorkbenchGeometryPreview', () => {
 
     expect(preview.kind).toBe('unsupported');
     if (preview.kind !== 'unsupported') return;
+    expect(preview.message).toContain('not supported by Sanctuary geometry V1');
+  });
+
+  it('surfaces unsupported draft geometry instead of falling back to stale snapshot outputs', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.inputs.modules[0]!.pergolaStyle = 'hip';
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('unsupported');
+    if (preview.kind !== 'unsupported') return;
+    expect(preview.previewMode).toBe('draft_local_resolved');
     expect(preview.message).toContain('not supported by Sanctuary geometry V1');
   });
 
@@ -134,6 +192,7 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
     expect(preview.previewMode).toBe('snapshot_validated');
+    expect(preview.resultSource).toBe('snapshot');
     expect(preview.config.family).toBe('gable');
     expect(preview.scene.layers.find((layer) => layer.id === 'beams')?.objects.some((object) => object.id === 'ridge')).toBe(true);
   });

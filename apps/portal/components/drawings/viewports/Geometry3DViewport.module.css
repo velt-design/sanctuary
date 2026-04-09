@@ -90,6 +90,19 @@
   gap: 0.75rem;
 }
 
+.buttonRow,
+.anchorSwitchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.measurementList {
+  margin: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+
 .inspectorList {
   margin: 0;
   display: grid;
@@ -131,6 +144,17 @@
   top: 0.9rem;
   right: 0.9rem;
   z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  max-width: min(100% - 1.8rem, 30rem);
+}
+
+.toolbarGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .resetButton {
@@ -143,8 +167,27 @@
   cursor: pointer;
 }
 
+.resetButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .resetButton:hover {
   background: #fff;
+}
+
+.activeToolbarButton {
+  border: 1px solid rgba(41, 92, 157, 0.24);
+  border-radius: 999px;
+  background: rgba(70, 115, 181, 0.14);
+  padding: 0.45rem 0.8rem;
+  font: inherit;
+  color: #2d302f;
+  cursor: pointer;
+}
+
+.activeToolbarButton:hover {
+  background: rgba(70, 115, 181, 0.18);
 }
 
 .canvasShell :global(canvas) {

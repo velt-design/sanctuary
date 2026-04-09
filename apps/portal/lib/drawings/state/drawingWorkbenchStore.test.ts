@@ -57,14 +57,34 @@ function makeResult(params: { lengthA?: number; spanA?: number } = {}): CostOutp
   return {
     inputs_normalized: {
       roof_type: 'pitched',
+      gutter_type: 'SP Gutter',
     },
     derived: {
       length_m: params.lengthA ?? 6,
       projection_m: params.spanA ?? 3,
       slope_direction: 'away_from_house',
       roof_pitch_deg_used: 5,
-      height_house_side_m: 2.4,
-      height_outer_side_m: 2.1,
+      post_cut_height_house_side_m: 2.4,
+      post_cut_height_outer_side_m: 2.1,
+      post_profile_used: '90x90',
+      rafter_profile_auto: '50x150',
+      ledger_profile_used: '50x100',
+      support_beam_profile_used: '50x150',
+      front_beam_profile_used: '50x150',
+      rafter_count: 11,
+      rafter_spacing_mm: 600,
+      gutter_assembly_mode: 'integrated',
+      integrated_gutter_beam: true,
+      has_our_gutter: true,
+      overhang_enabled: false,
+      overhang_amount_m: 0,
+      effective_run_m: 2.85,
+      acrylic_required_downslope_m: 2.88088653699854,
+      joiner_piece_length_m: 2.88088653699854,
+      joiner_runs_total: 11,
+      rafter_house_allowance_m: 0.05,
+      rafter_far_allowance_m: 0.1,
+      acrylic_area_m2: 18.06875707578025,
     },
   } as unknown as CostOutputV1;
 }
@@ -106,7 +126,47 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.ui.viewportTransform.zoom).toBe(6);
     expect(store.derived.activeModuleLabel).toBe('M2 - Pitched - 4.5m x 2.5m');
     expect(store.derived.activeAssemblyModel?.roof.footprint.lengthA).toBeCloseTo(4.5);
+    expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(4.5);
+    expect(store.derived.activePlanModel?.attachmentEdgeLengthM).toBeCloseTo(4.5);
+    expect(store.derived.activeSectionModel?.spanA).toBeCloseTo(2.5);
+    expect(store.derived.activeSectionModel?.leftEdgeHeightM).toBeCloseTo(2.4);
+    expect(store.derived.activeSectionModel?.rightEdgeHeightM).toBeCloseTo(2.1);
     expect(store.derived.activePlanViewModel?.annotations.suppressDocumentAnnotationsInModelSpace).toBe(true);
     expect(store.derived.status).toBe('ready');
+  });
+
+  it('returns empty plan state instead of falling back to legacy plan geometry when geometry solving is unsupported', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Test Project',
+        quoteRef: 'Q-1001',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [makeModule({ pergolaStyle: 'hip' })],
+      },
+      outputs: {
+        pergolas: [{ id: 'pergola-1', modules: [makeResult()] }],
+      },
+    } satisfies Record<string, unknown>;
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot,
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'plan',
+      }),
+    });
+
+    expect(store.persisted.modules[0]?.drawingModule.planModel).not.toBeNull();
+    expect(store.persisted.modules[0]?.drawingModule.sectionModel).not.toBeNull();
+    expect(store.derived.activePlanModel).toBeNull();
+    expect(store.derived.activePlanViewModel).toBeNull();
+    expect(store.derived.activeSectionModel).toBeNull();
+    expect(store.derived.status).toBe('empty');
   });
 });

@@ -1,5 +1,5 @@
 import type { Assembly3D, GeometryConfig, GeometryValidationInvariant, QuantityHook } from '../contracts';
-import { dotProduct, lineLength, magnitude, subtractPoints } from '../math3d';
+import { dotProduct, lineLength, magnitude, normalizeVector, polygonArea, subtractPoints } from '../math3d';
 
 const MM_TOLERANCE = 1;
 
@@ -190,6 +190,21 @@ function validateMembers(assembly: Assembly3D): GeometryValidationInvariant[] {
   const nonNegativeHeights = assembly.members.every(
     (member) => member.centerline.start.z >= -MM_TOLERANCE && member.centerline.end.z >= -MM_TOLERANCE,
   );
+  const frameConsistent = assembly.members.every((member) => {
+    const memberDirection = normalizeVector(subtractPoints(member.centerline.end, member.centerline.start));
+    const xAxis = normalizeVector(member.localFrame.xAxis);
+    const yAxis = normalizeVector(member.localFrame.yAxis);
+    const zAxis = normalizeVector(member.localFrame.zAxis);
+    return (
+      Math.abs(dotProduct(memberDirection, xAxis)) >= 0.999 &&
+      approxEqual(magnitude(xAxis), 1, 0.001) &&
+      approxEqual(magnitude(yAxis), 1, 0.001) &&
+      approxEqual(magnitude(zAxis), 1, 0.001) &&
+      Math.abs(dotProduct(xAxis, yAxis)) <= 0.001 &&
+      Math.abs(dotProduct(xAxis, zAxis)) <= 0.001 &&
+      Math.abs(dotProduct(yAxis, zAxis)) <= 0.001
+    );
+  });
   const verticalPosts = posts.every(
     (member) =>
       approxEqual(member.centerline.start.x, member.centerline.end.x) &&
@@ -203,6 +218,9 @@ function validateMembers(assembly: Assembly3D): GeometryValidationInvariant[] {
     nonNegativeHeights
       ? pass('members.heights.nonnegative', 'All member endpoints are on or above ground level.')
       : fail('members.heights.nonnegative', 'Assembly contains member endpoints below ground level.'),
+    frameConsistent
+      ? pass('member_frames.consistency', 'All member frames are orthonormal and aligned to member runs.')
+      : fail('member_frames.consistency', 'Assembly contains a member frame that is not aligned to its centerline or is not orthonormal.'),
     verticalPosts
       ? pass('posts.vertical', 'All posts are vertical.')
       : fail('posts.vertical', 'Assembly contains non-vertical posts.'),
@@ -290,6 +308,103 @@ function validateMono(config: GeometryConfig, assembly: Assembly3D): GeometryVal
     layoutOk
       ? pass('mono.member_layout', 'Mono support layout matches the supported standard form.')
       : fail('mono.member_layout', 'Mono support layout does not match the supported standard form.'),
+  ];
+}
+
+function hasMonoAcrylicCoveringInputs(config: GeometryConfig): boolean {
+  return (
+    config.roof.material === 'acrylic' &&
+    config.roofCovering.kind === 'acrylic' &&
+    config.roofCovering.effectiveRunMm !== null &&
+    config.roofCovering.acrylicRequiredDownslopeMm !== null &&
+    config.roofCovering.joinerPieceLengthMm !== null &&
+    config.roofCovering.joinerRunsTotal !== null &&
+    config.roofCovering.houseAllowanceMm !== null &&
+    config.roofCovering.farAllowanceMm !== null &&
+    config.roofCovering.acrylicAreaMm2 !== null
+  );
+}
+
+function validateMonoAcrylic(config: GeometryConfig, assembly: Assembly3D): GeometryValidationInvariant[] {
+  if (config.roof.material !== 'acrylic') {
+    return [];
+  }
+
+  const coveringInputsReady = hasMonoAcrylicCoveringInputs(config);
+  if (!coveringInputsReady) {
+    return [
+      fail(
+        'mono_acrylic.covering_inputs',
+        'Mono acrylic roof-pack geometry requires costing-derived covering inputs.',
+      ),
+      pass('mono_acrylic.joiner_count', 'Joiner count skipped because covering inputs are missing.'),
+      pass('mono_acrylic.panel_count', 'Panel count skipped because covering inputs are missing.'),
+      pass('mono_acrylic.joiner_length', 'Joiner length skipped because covering inputs are missing.'),
+      pass('mono_acrylic.panel_area', 'Panel area skipped because covering inputs are missing.'),
+      pass('mono_acrylic.covering_alignment', 'Covering alignment skipped because covering inputs are missing.'),
+    ];
+  }
+
+  const joiners = assembly.members.filter((member) => member.role === 'joiner');
+  const panels = assembly.roofCladdingPanels;
+  const roofPlane = assembly.roofPlanes.find((candidate) => candidate.id === 'mono-roof') ?? assembly.roofPlanes[0];
+  const expectedJoinerCount = config.roofCovering.joinerRunsTotal ?? 0;
+  const expectedPanelCount = Math.max((config.structural.framing.rafterCount ?? 0) - 1, 0);
+  const expectedJoinerLengthMm = config.roofCovering.joinerPieceLengthMm ?? 0;
+  const expectedPanelAreaMm2 = config.roofCovering.acrylicAreaMm2 ?? 0;
+
+  const joinerCountOk =
+    joiners.length === expectedJoinerCount &&
+    joiners.length === (config.structural.framing.rafterCount ?? Number.NaN);
+  const panelCountOk = panels.length === expectedPanelCount;
+  const joinerLengthOk = joiners.every((joiner) => approxEqual(lineLength(joiner.centerline), expectedJoinerLengthMm, 3));
+  const panelAreaOk = approxEqual(
+    Math.round(panels.reduce((sum, panel) => sum + polygonArea(panel.boundary), 0)),
+    Math.round(expectedPanelAreaMm2),
+    10_000,
+  );
+
+  const roofNormal = roofPlane ? normalizeVector(roofPlane.plane.normal) : { x: 0, y: 0, z: 0 };
+  const roofFall = roofPlane ? normalizeVector(roofPlane.fallVector) : { x: 0, y: 0, z: 0 };
+  const panelAlignmentOk =
+    Boolean(roofPlane) &&
+    panels.every((panel) =>
+      panel.boundary.every(
+        (point) =>
+          Math.abs(dotProduct(subtractPoints(point, roofPlane!.plane.origin), roofPlane!.plane.normal)) <= MM_TOLERANCE,
+      ),
+    );
+  const joinerAlignmentOk =
+    Boolean(roofPlane) &&
+    joiners.every((joiner) => {
+      const planeOffset = joiner.profile.depthMm / 2;
+      const startOffset = dotProduct(subtractPoints(joiner.centerline.start, roofPlane!.plane.origin), roofNormal);
+      const endOffset = dotProduct(subtractPoints(joiner.centerline.end, roofPlane!.plane.origin), roofNormal);
+      const joinerDirection = normalizeVector(subtractPoints(joiner.centerline.end, joiner.centerline.start));
+      return (
+        approxEqual(startOffset, planeOffset, 3) &&
+        approxEqual(endOffset, planeOffset, 3) &&
+        Math.abs(dotProduct(joinerDirection, roofFall)) >= 0.999
+      );
+    });
+
+  return [
+    pass('mono_acrylic.covering_inputs', 'Mono acrylic covering inputs are present.'),
+    joinerCountOk
+      ? pass('mono_acrylic.joiner_count', 'Mono acrylic joiner count matches the covering and framing inputs.')
+      : fail('mono_acrylic.joiner_count', 'Mono acrylic joiner count does not match the covering and framing inputs.'),
+    panelCountOk
+      ? pass('mono_acrylic.panel_count', 'Mono acrylic panel count matches the framed bay count.')
+      : fail('mono_acrylic.panel_count', 'Mono acrylic panel count does not match the framed bay count.'),
+    joinerLengthOk
+      ? pass('mono_acrylic.joiner_length', 'Mono acrylic joiner run lengths match the costing-derived cut length.')
+      : fail('mono_acrylic.joiner_length', 'Mono acrylic joiner run lengths do not match the costing-derived cut length.'),
+    panelAreaOk
+      ? pass('mono_acrylic.panel_area', 'Mono acrylic panel area matches the costing-derived acrylic area.')
+      : fail('mono_acrylic.panel_area', 'Mono acrylic panel area does not match the costing-derived acrylic area.'),
+    panelAlignmentOk && joinerAlignmentOk
+      ? pass('mono_acrylic.covering_alignment', 'Mono acrylic panels and joiners align with the structural mono roof plane.')
+      : fail('mono_acrylic.covering_alignment', 'Mono acrylic panels and joiners do not align with the structural mono roof plane.'),
   ];
 }
 
@@ -382,6 +497,7 @@ export function runGeometryInvariants(config: GeometryConfig, assembly: Assembly
 
   if (assembly.family === 'mono') {
     invariants.push(...validateMono(config, assembly));
+    invariants.push(...validateMonoAcrylic(config, assembly));
   } else if (assembly.family === 'gable') {
     invariants.push(...validateGable(config, assembly));
   } else if (assembly.family === 'box') {

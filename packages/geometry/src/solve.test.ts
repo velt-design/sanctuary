@@ -1,6 +1,71 @@
 import { describe, expect, it } from 'vitest';
 import { solveAssembly3D, type GeometryConfig } from '@sp/geometry';
 
+function buildMonoRoofCovering(
+  input: {
+    dimensions: GeometryConfig['dimensions'];
+    roof: GeometryConfig['roof'];
+    connection: GeometryConfig['connection'];
+    structural: GeometryConfig['structural'];
+  },
+  overrides: Partial<GeometryConfig['roofCovering']> = {},
+): GeometryConfig['roofCovering'] {
+  const referenceProfile =
+    input.connection.type === 'freestanding'
+      ? (input.structural.profiles.supportBeam ?? input.structural.profiles.ledger)
+      : (input.structural.profiles.ledger ?? input.structural.profiles.supportBeam);
+  const supportBeamProfile = input.structural.profiles.supportBeam;
+  const gutterProfile = input.structural.profiles.gutter;
+  const supportBeamWidthMm = supportBeamProfile?.widthMm ?? 50;
+  const referenceWidthMm = referenceProfile?.widthMm ?? 50;
+  const gutterWidthMm = gutterProfile?.widthMm ?? 100;
+  const referenceDepthMm = referenceProfile?.depthMm ?? 100;
+  const gutterDepthMm = gutterProfile?.depthMm ?? 150;
+  const houseAllowanceMm =
+    overrides.houseAllowanceMm ??
+    (input.roof.fallDirection === 'negativeY' ? gutterWidthMm : referenceWidthMm);
+  const farAllowanceMm =
+    overrides.farAllowanceMm ??
+    (input.roof.fallDirection === 'negativeY'
+      ? supportBeamWidthMm
+      : input.structural.drainage.integratedGutterBeam
+        ? gutterWidthMm
+        : input.structural.drainage.gutterAssemblyMode === 'separate'
+          ? supportBeamWidthMm + gutterWidthMm
+          : supportBeamWidthMm);
+  const houseUndersideMm = input.structural.heights.referenceUndersideMm ?? input.structural.heights.houseUndersideMm ?? 2400;
+  const outerUndersideMm = input.structural.heights.outerUndersideMm ?? 2137;
+  const startBearingY = referenceWidthMm;
+  const endBearingY = Math.max(input.dimensions.projectionMm - gutterWidthMm, startBearingY);
+  const houseTopMm = houseUndersideMm + referenceDepthMm;
+  const outerTopMm = outerUndersideMm + gutterDepthMm;
+  const fallRunMm = endBearingY - startBearingY;
+  const fallRiseMm = outerTopMm - houseTopMm;
+  const fallLengthMm = Math.sqrt(fallRunMm * fallRunMm + fallRiseMm * fallRiseMm);
+  const fallDirectionSign = input.roof.fallDirection === 'negativeY' ? -1 : 1;
+  const normalizedFallY = fallLengthMm > 0 ? (fallDirectionSign * fallRunMm) / fallLengthMm : 0;
+  const normalizedFallZ = fallLengthMm > 0 ? ((input.roof.fallDirection === 'negativeY' ? houseTopMm - outerTopMm : outerTopMm - houseTopMm) / fallLengthMm) : 0;
+  const coverHouseY = startBearingY - normalizedFallY * houseAllowanceMm;
+  const coverHouseZ = houseTopMm - normalizedFallZ * houseAllowanceMm;
+  const coverFarY = endBearingY + normalizedFallY * farAllowanceMm;
+  const coverFarZ = outerTopMm + normalizedFallZ * farAllowanceMm;
+  const effectiveRunMm = overrides.effectiveRunMm ?? Math.max(input.dimensions.projectionMm - houseAllowanceMm - farAllowanceMm, 0);
+  const panelDownslopeMm = Math.round(Math.sqrt((coverFarY - coverHouseY) ** 2 + (coverFarZ - coverHouseZ) ** 2));
+  const structuralDownslopeMm = Math.round(Math.sqrt((endBearingY - startBearingY) ** 2 + (outerTopMm - houseTopMm) ** 2));
+  const joinerRunsTotal = overrides.joinerRunsTotal ?? input.structural.framing.rafterCount ?? 11;
+  const acrylicRequiredDownslopeMm = overrides.acrylicRequiredDownslopeMm ?? structuralDownslopeMm + 20;
+  return {
+    kind: 'acrylic',
+    effectiveRunMm,
+    acrylicRequiredDownslopeMm,
+    joinerPieceLengthMm: overrides.joinerPieceLengthMm ?? acrylicRequiredDownslopeMm,
+    joinerRunsTotal,
+    houseAllowanceMm,
+    farAllowanceMm,
+    acrylicAreaMm2: overrides.acrylicAreaMm2 ?? input.dimensions.lengthMm * panelDownslopeMm,
+  };
+}
+
 function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig {
   const base: GeometryConfig = {
     projectId: 'proj_mono',
@@ -26,6 +91,16 @@ function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig
       fallDirection: 'positiveY',
       boxPerimeterEnabled: false,
       overhangMm: 0,
+    },
+    roofCovering: {
+      kind: 'acrylic',
+      effectiveRunMm: null,
+      acrylicRequiredDownslopeMm: null,
+      joinerPieceLengthMm: null,
+      joinerRunsTotal: null,
+      houseAllowanceMm: null,
+      farAllowanceMm: null,
+      acrylicAreaMm2: null,
     },
     gable: {
       ridgePositionMm: null,
@@ -91,7 +166,7 @@ function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig
     },
   };
 
-  return {
+  const mergedBase = {
     ...base,
     ...overrides,
     datum: { ...base.datum, ...overrides.datum },
@@ -108,6 +183,25 @@ function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig
       drainage: { ...base.structural.drainage, ...overrides.structural?.drainage },
     },
     houseContext: { ...base.houseContext, ...overrides.houseContext },
+  };
+
+  return {
+    ...mergedBase,
+    roofCovering:
+      mergedBase.roof.material === 'acrylic'
+        ? {
+            ...buildMonoRoofCovering(
+              {
+                dimensions: mergedBase.dimensions,
+                roof: mergedBase.roof,
+                connection: mergedBase.connection,
+                structural: mergedBase.structural,
+              },
+              overrides.roofCovering,
+            ),
+            ...overrides.roofCovering,
+          }
+        : { ...base.roofCovering, ...overrides.roofCovering },
   };
 }
 
@@ -131,6 +225,16 @@ function makeGableConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfi
       fallDirection: 'dual',
       boxPerimeterEnabled: false,
       overhangMm: 0,
+    },
+    roofCovering: {
+      kind: null,
+      effectiveRunMm: null,
+      acrylicRequiredDownslopeMm: null,
+      joinerPieceLengthMm: null,
+      joinerRunsTotal: null,
+      houseAllowanceMm: null,
+      farAllowanceMm: null,
+      acrylicAreaMm2: null,
     },
     gable: {
       ridgePositionMm: 2000,
@@ -192,6 +296,7 @@ function makeGableConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfi
     datum: { ...base.datum, ...overrides.datum },
     dimensions: { ...base.dimensions, ...overrides.dimensions },
     roof: { ...base.roof, ...overrides.roof },
+    roofCovering: { ...base.roofCovering, ...overrides.roofCovering },
     gable: { ...base.gable, ...overrides.gable },
     box: { ...base.box, ...overrides.box },
     connection: { ...base.connection, ...overrides.connection },
@@ -226,6 +331,16 @@ function makeBoxConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig 
       fallDirection: 'positiveY',
       boxPerimeterEnabled: true,
       overhangMm: 0,
+    },
+    roofCovering: {
+      kind: null,
+      effectiveRunMm: null,
+      acrylicRequiredDownslopeMm: null,
+      joinerPieceLengthMm: null,
+      joinerRunsTotal: null,
+      houseAllowanceMm: null,
+      farAllowanceMm: null,
+      acrylicAreaMm2: null,
     },
     gable: {
       ridgePositionMm: null,
@@ -297,6 +412,7 @@ function makeBoxConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig 
     datum: { ...base.datum, ...overrides.datum },
     dimensions: { ...base.dimensions, ...overrides.dimensions },
     roof: { ...base.roof, ...overrides.roof },
+    roofCovering: { ...base.roofCovering, ...overrides.roofCovering },
     gable: { ...base.gable, ...overrides.gable },
     box: { ...base.box, ...overrides.box },
     connection: { ...base.connection, ...overrides.connection },
@@ -414,6 +530,54 @@ describe('solveAssembly3D', () => {
     expect(roofPlane?.boundary[2]?.z).toBe(2287);
   });
 
+  it('keeps mono rafters on edge and horizontal members with vertical depth axes', () => {
+    const result = solveAssembly3D(makeMonoConfig());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const rafter = result.value.members.find((member) => member.id === 'rafter-1');
+    const ledger = result.value.members.find((member) => member.id === 'ledger');
+    const outerBeam = result.value.members.find((member) => member.id === 'outer-beam');
+    const joiner = result.value.members.find((member) => member.id === 'joiner-1');
+
+    expect(rafter?.localFrame.yAxis.x).toBeCloseTo(-1, 6);
+    expect(rafter?.localFrame.yAxis.y).toBeCloseTo(0, 6);
+    expect(rafter?.localFrame.yAxis.z).toBeCloseTo(0, 6);
+    expect(rafter?.localFrame.zAxis.x).toBeCloseTo(0, 6);
+    expect(rafter?.localFrame.zAxis.y).toBeCloseTo(0.074529, 6);
+    expect(rafter?.localFrame.zAxis.z).toBeCloseTo(0.997219, 6);
+
+    expect(ledger?.localFrame.yAxis).toEqual({
+      x: 0,
+      y: 1,
+      z: 0,
+    });
+    expect(ledger?.localFrame.zAxis).toEqual({
+      x: 0,
+      y: 0,
+      z: 1,
+    });
+
+    expect(outerBeam?.localFrame.yAxis).toEqual({
+      x: 0,
+      y: 1,
+      z: 0,
+    });
+    expect(outerBeam?.localFrame.zAxis).toEqual({
+      x: 0,
+      y: 0,
+      z: 1,
+    });
+
+    expect(joiner?.localFrame.yAxis.x).toBeCloseTo(-1, 6);
+    expect(joiner?.localFrame.yAxis.y).toBeCloseTo(0, 6);
+    expect(joiner?.localFrame.yAxis.z).toBeCloseTo(0, 6);
+    expect(joiner?.localFrame.zAxis.x).toBeCloseTo(0, 6);
+    expect(joiner?.localFrame.zAxis.y).toBeCloseTo(0.074529, 6);
+    expect(joiner?.localFrame.zAxis.z).toBeCloseTo(0.997219, 6);
+  });
+
   it('keeps post layout deterministic for 2, 3, and 4 attached posts', () => {
     const twoPosts = solveAssembly3D(makeMonoConfig({ supports: { postCount: 2 } }));
     const threePosts = solveAssembly3D(makeMonoConfig({ supports: { postCount: 3 } }));
@@ -501,6 +665,54 @@ describe('solveAssembly3D', () => {
     expect(result.value.roofPlanes[1]?.fallVector.y).toBeGreaterThan(0);
   });
 
+  it('keeps gable rafters on edge and eave members with vertical depth axes', () => {
+    const result = solveAssembly3D(makeGableConfig());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const houseRafter = result.value.members.find((member) => member.id === 'house-rafter-1');
+    const outerRafter = result.value.members.find((member) => member.id === 'outer-rafter-1');
+    const ridge = result.value.members.find((member) => member.id === 'ridge');
+    const outerGutter = result.value.members.find((member) => member.id === 'outer-gutter');
+
+    expect(houseRafter?.localFrame.yAxis.x).toBeCloseTo(-1, 6);
+    expect(houseRafter?.localFrame.yAxis.y).toBeCloseTo(0, 6);
+    expect(houseRafter?.localFrame.yAxis.z).toBeCloseTo(0, 6);
+    expect(houseRafter?.localFrame.zAxis.x).toBeCloseTo(0, 6);
+    expect(houseRafter?.localFrame.zAxis.y).toBeCloseTo(-0.431458, 6);
+    expect(houseRafter?.localFrame.zAxis.z).toBeCloseTo(0.902133, 6);
+
+    expect(outerRafter?.localFrame.yAxis.x).toBeCloseTo(-1, 6);
+    expect(outerRafter?.localFrame.yAxis.y).toBeCloseTo(0, 6);
+    expect(outerRafter?.localFrame.yAxis.z).toBeCloseTo(0, 6);
+    expect(outerRafter?.localFrame.zAxis.x).toBeCloseTo(0, 6);
+    expect(outerRafter?.localFrame.zAxis.y).toBeCloseTo(0.440631, 6);
+    expect(outerRafter?.localFrame.zAxis.z).toBeCloseTo(0.897689, 6);
+
+    expect(ridge?.localFrame.yAxis).toEqual({
+      x: 0,
+      y: 1,
+      z: 0,
+    });
+    expect(ridge?.localFrame.zAxis).toEqual({
+      x: 0,
+      y: 0,
+      z: 1,
+    });
+
+    expect(outerGutter?.localFrame.yAxis).toEqual({
+      x: 0,
+      y: 1,
+      z: 0,
+    });
+    expect(outerGutter?.localFrame.zAxis).toEqual({
+      x: 0,
+      y: 0,
+      z: 1,
+    });
+  });
+
   it('keeps gable post layout deterministic for 2, 3, and 4 standard support positions', () => {
     const twoPosts = solveAssembly3D(makeGableConfig({ supports: { postCount: 2 } }));
     const threePosts = solveAssembly3D(makeGableConfig({ supports: { postCount: 3 } }));
@@ -580,6 +792,56 @@ describe('solveAssembly3D', () => {
     expect(roofPlane?.fallVector.y).toBeGreaterThan(0);
     expect(roofPlane?.fallVector.z).toBeLessThan(0);
     expect(Math.round((roofPlane?.boundary[0]?.z ?? 0) - (roofPlane?.boundary[2]?.z ?? 0))).toBe(173);
+  });
+
+  it('keeps box rafters on edge and perimeter members with vertical depth axes', () => {
+    const result = solveAssembly3D(makeBoxConfig());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const rafter = result.value.members.find((member) => member.id === 'box-rafter-1');
+    const ledger = result.value.members.find((member) => member.id === 'ledger');
+    const sideBeam = result.value.members.find((member) => member.id === 'left-box-beam');
+    const outerBeam = result.value.members.find((member) => member.id === 'outer-box-beam');
+
+    expect(rafter?.localFrame.yAxis.x).toBeCloseTo(-1, 6);
+    expect(rafter?.localFrame.yAxis.y).toBeCloseTo(0, 6);
+    expect(rafter?.localFrame.yAxis.z).toBeCloseTo(0, 6);
+    expect(rafter?.localFrame.zAxis.x).toBeCloseTo(0, 6);
+    expect(rafter?.localFrame.zAxis.y).toBeCloseTo(0.052352, 6);
+    expect(rafter?.localFrame.zAxis.z).toBeCloseTo(0.998629, 6);
+
+    expect(ledger?.localFrame.yAxis).toEqual({
+      x: 0,
+      y: 1,
+      z: 0,
+    });
+    expect(ledger?.localFrame.zAxis).toEqual({
+      x: 0,
+      y: 0,
+      z: 1,
+    });
+
+    expect(sideBeam?.localFrame.yAxis).toEqual({
+      x: -1,
+      y: 0,
+      z: 0,
+    });
+    expect(sideBeam?.localFrame.zAxis.x).toBeCloseTo(0, 6);
+    expect(sideBeam?.localFrame.zAxis.y).toBeCloseTo(0.052352, 6);
+    expect(sideBeam?.localFrame.zAxis.z).toBeCloseTo(0.998629, 6);
+
+    expect(outerBeam?.localFrame.yAxis).toEqual({
+      x: 0,
+      y: 1,
+      z: 0,
+    });
+    expect(outerBeam?.localFrame.zAxis).toEqual({
+      x: 0,
+      y: 0,
+      z: 1,
+    });
   });
 
   it('keeps box post layout deterministic for 2, 3, and 4 standard support positions', () => {

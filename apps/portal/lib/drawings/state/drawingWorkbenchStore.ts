@@ -1,7 +1,16 @@
 import type { ModuleViewsStatus } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import {
+  buildPlanViewModel as buildGeometryPlanViewModel,
+  buildSectionViewModel as buildGeometrySectionViewModel,
+  normalizeGeometryConfig,
+  solveAssembly3D,
+} from '@sp/geometry';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
+import { buildRawGeometryModuleInput } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
+import { buildLegacyModulePlanModelFromGeometry } from '@/lib/drawings/views/plan/buildLegacyModulePlanModelFromGeometry';
+import { buildLegacyModuleSectionModelFromGeometry } from '@/lib/drawings/views/section/buildLegacyModuleSectionModelFromGeometry';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
@@ -36,6 +45,52 @@ export type DrawingWorkbenchStore = {
   };
 };
 
+function buildGeometryDerivedModels(input: {
+  drawingModule: EstimateDrawingModule;
+}): {
+  planModel: ModulePlanModel | null;
+  sectionModel: ModuleSectionModel | null;
+} {
+  const rawInput = buildRawGeometryModuleInput({
+    projectId: 'hidden-workbench-project',
+    estimateId: 'hidden-workbench-estimate',
+    designRequestId: null,
+    moduleId: input.drawingModule.id,
+    module: input.drawingModule.input,
+    result: input.drawingModule.result,
+  });
+  const normalized = normalizeGeometryConfig(rawInput);
+  if (!normalized.ok) {
+    return {
+      planModel: null,
+      sectionModel: null,
+    };
+  }
+
+  const solved = solveAssembly3D(normalized.value);
+  if (!solved.ok) {
+    return {
+      planModel: null,
+      sectionModel: null,
+    };
+  }
+
+  const geometryPlan = buildGeometryPlanViewModel(solved.value);
+  const geometrySection = buildGeometrySectionViewModel(solved.value);
+  return {
+    planModel: buildLegacyModulePlanModelFromGeometry({
+      geometryPlan,
+      module: input.drawingModule.input,
+      fallbackMetadata: input.drawingModule.planModel,
+    }),
+    sectionModel: buildLegacyModuleSectionModelFromGeometry({
+      geometrySection,
+      module: input.drawingModule.input,
+      fallbackMetadata: input.drawingModule.sectionModel,
+    }),
+  };
+}
+
 export function buildDrawingWorkbenchStore(input: {
   snapshot: Record<string, unknown> | null;
   ui: DrawingWorkbenchUiState;
@@ -48,14 +103,17 @@ export function buildDrawingWorkbenchStore(input: {
   const ui = normalizeDrawingWorkbenchUiState(input.ui, drawingModules.length);
   const modules = drawingModules.map((drawingModule, index) => {
     const label = input.moduleLabels?.[index] ?? drawingModule.label;
+    const geometryModels = buildGeometryDerivedModels({
+      drawingModule,
+    });
     const assemblyModel = buildAssemblyModel({
       id: drawingModule.id,
       label,
       moduleIndex: index,
       moduleInput: drawingModule.input,
       moduleResult: drawingModule.result,
-      planModel: drawingModule.planModel,
-      sectionModel: drawingModule.sectionModel,
+      planModel: geometryModels.planModel,
+      sectionModel: geometryModels.sectionModel,
     });
 
     return {
@@ -63,9 +121,14 @@ export function buildDrawingWorkbenchStore(input: {
       label,
       drawingModule,
       assemblyModel,
-      planViewModel: buildPlanViewModel(assemblyModel),
-      planModel: drawingModule.planModel,
-      sectionModel: drawingModule.sectionModel,
+      planViewModel: buildPlanViewModel({
+        moduleId: drawingModule.id,
+        moduleLabel: label,
+        planModel: geometryModels.planModel,
+        canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
+      }),
+      planModel: geometryModels.planModel,
+      sectionModel: geometryModels.sectionModel,
     };
   });
 
@@ -87,7 +150,14 @@ export function buildDrawingWorkbenchStore(input: {
       activePlanModel: activeModule?.planModel ?? null,
       activeSectionModel: activeModule?.sectionModel ?? null,
       activeModuleLabel: activeModule?.label ?? 'Module',
-      status: activeModule && (activeModule.planModel || activeModule.sectionModel) ? 'ready' : 'empty',
+      status:
+        ui.activeView === 'section'
+          ? activeModule?.sectionModel
+            ? 'ready'
+            : 'empty'
+          : activeModule?.planModel
+            ? 'ready'
+            : 'empty',
     },
   };
 }

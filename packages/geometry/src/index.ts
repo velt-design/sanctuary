@@ -9,3 +9,5 @@ export type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.ty
 export { validateGeometrySolve } from './validate';
 export type { ValidateGeometrySolveInput } from './validate';
 export { buildViewerSceneModel } from './viewer';
+export { buildPlanViewModel } from './plan';
+export { buildSectionViewModel } from './section';
