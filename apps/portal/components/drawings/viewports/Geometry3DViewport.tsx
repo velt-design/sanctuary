@@ -855,6 +855,7 @@ export default function Geometry3DViewport({
 }: {
   geometryPreview?: GeometryPreviewState | null;
 }) {
+  const [panelOpen, setPanelOpen] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<Record<string, boolean>>({});
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const [sectionCut, setSectionCut] = useState<SectionCutState>({ enabled: false, positionMm: 0 });
@@ -1120,6 +1121,7 @@ export default function Geometry3DViewport({
 
   useEffect(() => {
     if (!scene) {
+      setPanelOpen(false);
       setLayerVisibility({});
       setSelectedObjectId(null);
       setSectionCut({ enabled: false, positionMm: 0 });
@@ -1145,6 +1147,7 @@ export default function Geometry3DViewport({
       );
       return;
     }
+    setPanelOpen(false);
     setLayerVisibility(Object.fromEntries(scene.layers.map((layer) => [layer.id, layer.visibleByDefault])));
     setSelectedObjectId(null);
     setSectionCut({ enabled: false, positionMm: Math.round(lengthMm / 2) });
@@ -1251,15 +1254,75 @@ export default function Geometry3DViewport({
 
   return (
     <section className={styles.viewport} aria-label="3D geometry verification viewport">
-      <aside className={styles.sidebar}>
-        <div className={styles.panel}>
+      <div className={styles.canvasShell} onClick={() => setSelectedObjectId(null)}>
+        <div
+          className={styles.canvasToolbar}
+          onClick={(event) => event.stopPropagation()}
+          onDoubleClick={(event) => event.stopPropagation()}
+        >
+          <div className={styles.toolbarGroup}>
+            <button
+              type="button"
+              className={panelOpen ? styles.activeToolbarButton : styles.resetButton}
+              onClick={() => setPanelOpen((current) => !current)}
+            >
+              Workspace panel
+            </button>
+          </div>
+          <div className={styles.toolbarSpacer} />
+          <div className={styles.toolbarGroup}>
+            <button type="button" className={styles.resetButton} onClick={fitScene}>
+              Fit to scene
+            </button>
+            <button
+              type="button"
+              className={styles.resetButton}
+              onClick={() => focusSelection(selectedObject)}
+              disabled={!selectedObject}
+            >
+              Focus selection
+            </button>
+          </div>
+          <div className={styles.toolbarGroup}>
+            {cameraState.viewPreset === 'custom' ? (
+              <span className={styles.activeToolbarButton}>Custom</span>
+            ) : null}
+            {(['iso', 'front', 'right', 'top'] as const).map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                className={cameraState.viewPreset === preset ? styles.activeToolbarButton : styles.resetButton}
+                onClick={() => setViewPreset(preset)}
+              >
+                {formatCameraPreset(preset)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {panelOpen ? (
+          <aside
+            className={styles.workspacePanel}
+            data-testid="workspace-panel"
+            onClick={(event) => event.stopPropagation()}
+            onDoubleClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.workspacePanelContent}>
+              <div className={styles.workspacePanelHeader}>
+                <p className={styles.workspacePanelTitle}>Workspace Panel</p>
+                <button type="button" className={styles.resetButton} onClick={() => setPanelOpen(false)}>
+                  Close
+                </button>
+              </div>
+
+              <div className={styles.panel}>
           <p className={styles.eyebrow}>3D Verification</p>
           <h3 className={styles.heading}>{previewModeLabel(geometryPreview.previewMode)}</h3>
           <p className={styles.meta}>Kernel validation: {geometryPreview.validation.status}</p>
           <p className={styles.meta}>Family: {geometryPreview.config.family}</p>
         </div>
 
-        <div className={styles.panel}>
+              <div className={styles.panel}>
           <p className={styles.eyebrow}>Layers</p>
           <div className={styles.layerList}>
             {geometryPreview.scene.layers.map((layer) => (
@@ -1280,7 +1343,7 @@ export default function Geometry3DViewport({
           </div>
         </div>
 
-        <div className={styles.panel} data-testid="inspection-panel">
+              <div className={styles.panel} data-testid="inspection-panel">
           <p className={styles.eyebrow}>Inspection</p>
           <div className={styles.sectionBlock}>
             <label className={styles.layerItem}>
@@ -1469,7 +1532,7 @@ export default function Geometry3DViewport({
           </div>
         </div>
 
-        <div className={styles.panel}>
+              <div className={styles.panel}>
           <p className={styles.eyebrow}>Inspector</p>
           {measurement.enabled && selectedObjectSupportsAnchorSwitch ? (
             <div className={styles.anchorSwitchRow}>
@@ -1548,43 +1611,10 @@ export default function Geometry3DViewport({
             ))}
           </dl>
         </div>
-      </aside>
+            </div>
+          </aside>
+        ) : null}
 
-      <div className={styles.canvasShell} onClick={() => setSelectedObjectId(null)}>
-        <div
-          className={styles.canvasToolbar}
-          onClick={(event) => event.stopPropagation()}
-          onDoubleClick={(event) => event.stopPropagation()}
-        >
-          <div className={styles.toolbarGroup}>
-            <button type="button" className={styles.resetButton} onClick={fitScene}>
-              Fit to scene
-            </button>
-            <button
-              type="button"
-              className={styles.resetButton}
-              onClick={() => focusSelection(selectedObject)}
-              disabled={!selectedObject}
-            >
-              Focus selection
-            </button>
-          </div>
-          <div className={styles.toolbarGroup}>
-            {cameraState.viewPreset === 'custom' ? (
-              <span className={styles.activeToolbarButton}>Custom</span>
-            ) : null}
-            {(['iso', 'front', 'right', 'top'] as const).map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className={cameraState.viewPreset === preset ? styles.activeToolbarButton : styles.resetButton}
-                onClick={() => setViewPreset(preset)}
-              >
-                {formatCameraPreset(preset)}
-              </button>
-            ))}
-          </div>
-        </div>
         <Canvas
           camera={initialCamera}
           data-testid="geometry-3d-canvas"

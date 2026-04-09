@@ -1,4 +1,8 @@
-import type { CalculatorHouseFootprintParams, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type {
+  CalculatorHouseFootprintParams,
+  CalculatorModuleInputs,
+  CalculatorModuleOverrides,
+} from '@/lib/types/calculator';
 import {
   normalizeDrawingRotationQuarterTurns,
   normalizeHouseFootprintParams,
@@ -53,7 +57,27 @@ export type GeometryEditState = {
     postCount: string;
     postCutHeightM: string;
   };
+  overrides: {
+    ledgerProfile: string;
+    rafterProfile: string;
+    postProfile: string;
+    frontBeamProfile: string;
+    ridgeBeamProfile: string;
+    boxPerimeterBeamProfile: string;
+    tieBeamProfile: string;
+    strutProfile: string;
+  };
 };
+
+type GeometryEditableOverrideKey =
+  | 'ledgerProfile'
+  | 'rafterProfile'
+  | 'postProfile'
+  | 'frontBeamProfile'
+  | 'ridgeBeamProfile'
+  | 'boxPerimeterBeamProfile'
+  | 'tieBeamProfile'
+  | 'strutProfile';
 
 export type GeometryEditIntent =
   | { type: 'family'; value: SanctuaryPergolaFamily }
@@ -68,7 +92,8 @@ export type GeometryEditIntent =
   | { type: 'post_connection'; value: CalculatorModuleInputs['postConnectionType'] }
   | { type: 'ground'; value: CalculatorModuleInputs['ground'] }
   | { type: 'post_count'; value: string }
-  | { type: 'post_cut_height'; value: string };
+  | { type: 'post_cut_height'; value: string }
+  | { type: 'override'; key: GeometryEditableOverrideKey; value: string };
 
 export type GeometryEditStateResult =
   | {
@@ -130,6 +155,14 @@ function toModuleHouseConnectionType(value: GeometryEditConnectionType): Calcula
 function mapRoofMaterial(config: GeometryConfig): CalculatorModuleInputs['roofMaterial'] {
   if (config.roof.mode === 'mixed') return 'mixed';
   return config.roof.material as CalculatorModuleInputs['roofMaterial'];
+}
+
+function formatOverrideValue(
+  overrides: CalculatorModuleOverrides | null | undefined,
+  key: GeometryEditableOverrideKey,
+): string {
+  const value = overrides?.[key];
+  return typeof value === 'string' ? value : '';
 }
 
 function resolveModuleForGeometryState(input: {
@@ -244,6 +277,16 @@ export function buildGeometryEditState(input: {
           (normalized.value.supports.groundCondition as CalculatorModuleInputs['ground']) ?? resolved.module.ground,
         postCount: String(normalized.value.supports.postCount ?? resolved.module.postCount ?? ''),
         postCutHeightM: formatMetres(normalized.value.supports.postCutHeightMm) || String(resolved.module.postCutHeightM ?? ''),
+      },
+      overrides: {
+        ledgerProfile: formatOverrideValue(resolved.module.overrides, 'ledgerProfile'),
+        rafterProfile: formatOverrideValue(resolved.module.overrides, 'rafterProfile'),
+        postProfile: formatOverrideValue(resolved.module.overrides, 'postProfile'),
+        frontBeamProfile: formatOverrideValue(resolved.module.overrides, 'frontBeamProfile'),
+        ridgeBeamProfile: formatOverrideValue(resolved.module.overrides, 'ridgeBeamProfile'),
+        boxPerimeterBeamProfile: formatOverrideValue(resolved.module.overrides, 'boxPerimeterBeamProfile'),
+        tieBeamProfile: formatOverrideValue(resolved.module.overrides, 'tieBeamProfile'),
+        strutProfile: formatOverrideValue(resolved.module.overrides, 'strutProfile'),
       },
     },
   };
@@ -432,6 +475,12 @@ export function applyGeometryEditIntent(input: {
       });
     case 'post_cut_height':
       return applyFieldEdit(input.draft, input.moduleIndex, 'postCutHeightM', input.intent.value);
+    case 'override':
+      return applyModuleEdit(input.draft, input.moduleIndex, {
+        field: 'moduleOverride',
+        key: input.intent.key,
+        value: input.intent.value,
+      });
     default:
       return {
         ok: false,

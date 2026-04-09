@@ -29,6 +29,7 @@ describe('geometryEditAdapter', () => {
     expect(result.value.dimensions.projectionM).toBe('3');
     expect(result.value.connection.type).toBe('soffit');
     expect(result.value.supports.postCount).toBe('4');
+    expect(result.value.overrides.frontBeamProfile).toBe('');
   });
 
   it('applies family switch edits through the geometry adapter and updates underlying draft fields', () => {
@@ -131,5 +132,35 @@ describe('geometryEditAdapter', () => {
     };
 
     expect(translateEstimateDrawingFieldToGeometryIntent(unsupportedField, 'Updated')).toBeNull();
+  });
+
+  it('applies override edits through the geometry adapter and persists them into the draft', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const result = applyGeometryEditIntent({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'override',
+        key: 'ledgerProfile',
+        value: '100x50',
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.draft.inputs.modules[0]?.overrides?.ledgerProfile).toBe('100x50');
+
+    const nextState = buildGeometryEditState({
+      snapshot,
+      draft: result.draft,
+      moduleIndex: 0,
+    });
+    expect(nextState.ok).toBe(true);
+    if (!nextState.ok) return;
+    expect(nextState.value.overrides.ledgerProfile).toBe('100x50');
   });
 });

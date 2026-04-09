@@ -325,8 +325,16 @@ describe('Geometry3DViewport', () => {
       await Promise.resolve();
     });
 
-    expect(rendered.container.textContent).toContain('3D Verification');
+    expect(rendered.container.textContent).not.toContain('3D Verification');
+    expect(rendered.container.querySelector('[data-testid="workspace-panel"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-acrylic-panel-1"]')).not.toBeNull();
+
+    clickButtonByText(rendered.container, 'Workspace panel');
+    expect(rendered.container.querySelector('[data-testid="workspace-panel"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Snapshot Validated');
+    expect(rendered.container.textContent).toContain('3D Verification');
     expect(rendered.container.textContent).toContain('Inspection');
     expect(rendered.container.textContent).toContain('Section cut');
     expect(rendered.container.textContent).toContain('Datum axes');
@@ -338,9 +346,6 @@ describe('Geometry3DViewport', () => {
     expect(rendered.container.textContent).toContain('Scene');
     expect(rendered.container.textContent).toContain('View');
     expect(rendered.container.textContent).toContain('Iso');
-    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="scene-object-acrylic-panel-1"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Front');
     expect(rendered.container.textContent).toContain('Front');

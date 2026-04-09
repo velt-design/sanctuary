@@ -103,6 +103,19 @@ const FOOTPRINT_OPTIONS: SelectOption[] = HOUSE_FOOTPRINT_PRESET_OPTIONS.map((op
   label: option.label,
   value: option.id,
 }));
+const DEFAULT_OVERRIDE_OPTION: SelectOption = { label: 'Auto', value: '' };
+const RAFTER_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }];
+const LEDGER_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }];
+const POST_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x100', value: '150x100' }, { label: '100x100', value: '100x100' }, { label: '150x150', value: '150x150' }];
+const FRONT_BEAM_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: 'SP Gutter', value: 'SP Gutter' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }, { label: '300x50', value: '300x50' }, { label: 'Steel RHS 150x50x3', value: 'RHS 150x50x3' }];
+const RIDGE_BEAM_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }, { label: 'Steel RHS 150x50x3', value: 'RHS 150x50x3' }];
+const BOX_BEAM_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '300x50', value: '300x50' }, { label: '250x50', value: '250x50' }, { label: '200x50', value: '200x50' }];
+const STRUT_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '50x50', value: '50x50' }, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }];
+
+function withCurrentOption(options: SelectOption[], value: string, fallbackLabel: string): SelectOption[] {
+  if (!value || options.some((option) => option.value === value)) return options;
+  return [{ label: `${fallbackLabel}: ${value}`, value }, ...options];
+}
 
 function renderField(field: RailFieldDefinition) {
   if (field.kind === 'toggle') {
@@ -643,6 +656,111 @@ export default function SanctuaryWorkbenchRail({
     return fields;
   }, [commitGeometryEdit, disabled, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId, showGround]);
 
+  const overrideFields = useMemo(() => {
+    if (!geometryState) return [];
+
+    const fields: RailFieldDefinition[] = [
+      {
+        id: 'ledger-profile-override',
+        kind: 'select',
+        label: 'Ledger override',
+        value: geometryState.overrides.ledgerProfile,
+        options: withCurrentOption(LEDGER_PROFILE_OPTIONS, geometryState.overrides.ledgerProfile, 'Current override'),
+        pending: pendingFieldId === 'ledger-profile-override',
+        error: fieldErrors['ledger-profile-override'],
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) => commitGeometryEdit('ledger-profile-override', { type: 'override', key: 'ledgerProfile', value }),
+      },
+      {
+        id: 'rafter-profile-override',
+        kind: 'select',
+        label: 'Rafter override',
+        value: geometryState.overrides.rafterProfile,
+        options: withCurrentOption(RAFTER_PROFILE_OPTIONS, geometryState.overrides.rafterProfile, 'Current override'),
+        pending: pendingFieldId === 'rafter-profile-override',
+        error: fieldErrors['rafter-profile-override'],
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) => commitGeometryEdit('rafter-profile-override', { type: 'override', key: 'rafterProfile', value }),
+      },
+      {
+        id: 'post-profile-override',
+        kind: 'select',
+        label: 'Post override',
+        value: geometryState.overrides.postProfile,
+        options: withCurrentOption(POST_PROFILE_OPTIONS, geometryState.overrides.postProfile, 'Current override'),
+        pending: pendingFieldId === 'post-profile-override',
+        error: fieldErrors['post-profile-override'],
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) => commitGeometryEdit('post-profile-override', { type: 'override', key: 'postProfile', value }),
+      },
+      {
+        id: 'front-beam-profile-override',
+        kind: 'select',
+        label: 'Front beam override',
+        value: geometryState.overrides.frontBeamProfile,
+        options: withCurrentOption(FRONT_BEAM_PROFILE_OPTIONS, geometryState.overrides.frontBeamProfile, 'Current override'),
+        pending: pendingFieldId === 'front-beam-profile-override',
+        error: fieldErrors['front-beam-profile-override'],
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) => commitGeometryEdit('front-beam-profile-override', { type: 'override', key: 'frontBeamProfile', value }),
+      },
+      {
+        id: 'ridge-beam-profile-override',
+        kind: 'select',
+        label: 'Ridge beam override',
+        value: geometryState.overrides.ridgeBeamProfile,
+        options: withCurrentOption(RIDGE_BEAM_PROFILE_OPTIONS, geometryState.overrides.ridgeBeamProfile, 'Current override'),
+        pending: pendingFieldId === 'ridge-beam-profile-override',
+        error: fieldErrors['ridge-beam-profile-override'],
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) => commitGeometryEdit('ridge-beam-profile-override', { type: 'override', key: 'ridgeBeamProfile', value }),
+      },
+    ];
+
+    if (geometryState.roof.boxPerimeterEnabled) {
+      fields.push({
+        id: 'box-perimeter-beam-profile-override',
+        kind: 'select',
+        label: 'Box perimeter beam override',
+        value: geometryState.overrides.boxPerimeterBeamProfile,
+        options: withCurrentOption(BOX_BEAM_PROFILE_OPTIONS, geometryState.overrides.boxPerimeterBeamProfile, 'Current override'),
+        pending: pendingFieldId === 'box-perimeter-beam-profile-override',
+        error: fieldErrors['box-perimeter-beam-profile-override'],
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) => commitGeometryEdit('box-perimeter-beam-profile-override', { type: 'override', key: 'boxPerimeterBeamProfile', value }),
+      });
+    }
+
+    if (family === 'gable') {
+      fields.push(
+        {
+          id: 'tie-beam-profile-override',
+          kind: 'select',
+          label: 'Tie beam override',
+          value: geometryState.overrides.tieBeamProfile,
+          options: withCurrentOption(FRONT_BEAM_PROFILE_OPTIONS, geometryState.overrides.tieBeamProfile, 'Current override'),
+          pending: pendingFieldId === 'tie-beam-profile-override',
+          error: fieldErrors['tie-beam-profile-override'],
+          disabled: disabled || !onCommitGeometryEdit,
+          onCommit: (value: string) => commitGeometryEdit('tie-beam-profile-override', { type: 'override', key: 'tieBeamProfile', value }),
+        },
+        {
+          id: 'strut-profile-override',
+          kind: 'select',
+          label: 'King-post strut override',
+          value: geometryState.overrides.strutProfile,
+          options: withCurrentOption(STRUT_PROFILE_OPTIONS, geometryState.overrides.strutProfile, 'Current override'),
+          pending: pendingFieldId === 'strut-profile-override',
+          error: fieldErrors['strut-profile-override'],
+          disabled: disabled || !onCommitGeometryEdit,
+          onCommit: (value: string) => commitGeometryEdit('strut-profile-override', { type: 'override', key: 'strutProfile', value }),
+        },
+      );
+    }
+
+    return fields;
+  }, [commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
+
   if (!geometryState || !family) {
     return (
       <section className={styles.summary}>
@@ -668,6 +786,7 @@ export default function SanctuaryWorkbenchRail({
       <Section title="Roof">{roofFields.map(renderField)}</Section>
       <Section title="House / Context">{houseFields.map(renderField)}</Section>
       <Section title="Supports">{supportFields.map(renderField)}</Section>
+      <Section title="Overrides">{overrideFields.map(renderField)}</Section>
     </aside>
   );
 }

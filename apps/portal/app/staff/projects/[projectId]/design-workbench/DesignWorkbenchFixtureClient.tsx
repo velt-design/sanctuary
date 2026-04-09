@@ -7,6 +7,7 @@ import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenc
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
+import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type DesignWorkbenchFixtureClientProps = {
   fixture: SanctuaryGeometryWorkbenchFixture;
@@ -62,47 +63,64 @@ export default function DesignWorkbenchFixtureClient({
   }
 
   return (
-    <DrawingWorkbench
-      moduleLabel={store.derived.activeModuleLabel}
-      modules={store.persisted.modules.map((module) => ({
-        id: module.id,
-        label: module.label,
-      }))}
-      activeModuleIndex={store.derived.activeModuleIndex}
-      onActiveModuleIndexChange={(index) =>
-        setUi((current) => ({
-          ...current,
-          activeModuleIndex: index,
-        }))
-      }
-      view={store.ui.activeView}
-      onViewChange={(view) =>
-        setUi((current) => ({
-          ...current,
-          activeView: view,
-        }))
-      }
-      viewportMode={store.ui.viewportMode}
-      availableViewportModes={['sheet', 'model', 'geometry3d']}
-      onViewportModeChange={(viewportMode) =>
-        setUi((current) => ({
-          ...current,
-          viewportMode,
-        }))
-      }
-      status={store.derived.status}
-      planModel={store.derived.activePlanModel}
-      sectionModel={store.derived.activeSectionModel}
-      planViewModel={store.derived.activePlanViewModel}
-      geometryPreview={geometryPreview}
-      viewportTransform={store.ui.viewportTransform}
-      onViewportTransformChange={(viewportTransform) =>
-        setUi((current) => ({
-          ...current,
-          viewportTransform,
-        }))
-      }
-      meta={meta}
-    />
+    <div className={styles.shell}>
+      <aside className={styles.configuratorColumn}>
+        <div className={styles.configuratorScroll}>
+          <section className={styles.notice}>
+            <p className={styles.noticeTitle}>Fixture Preview</p>
+            <p className={styles.noticeText}>
+              This hidden route is rendering a baked fixture snapshot. The workspace stays interactive for plan, section, and 3D review, but configurator editing is not part of fixture mode.
+            </p>
+          </section>
+        </div>
+      </aside>
+
+      <div className={styles.workspaceColumn}>
+        <div className={styles.workspaceSurface}>
+          <DrawingWorkbench
+            moduleLabel={store.derived.activeModuleLabel}
+            modules={store.persisted.modules.map((module) => ({
+              id: module.id,
+              label: module.label,
+            }))}
+            activeModuleIndex={store.derived.activeModuleIndex}
+            onActiveModuleIndexChange={(index) =>
+              setUi((current) => ({
+                ...current,
+                activeModuleIndex: index,
+              }))
+            }
+            view={store.ui.activeView}
+            onViewChange={(view) =>
+              setUi((current) => ({
+                ...current,
+                activeView: view,
+              }))
+            }
+            viewportMode={store.ui.viewportMode}
+            availableViewportModes={['sheet', 'model', 'geometry3d']}
+            onViewportModeChange={(viewportMode) =>
+              setUi((current) => ({
+                ...current,
+                viewportMode,
+              }))
+            }
+            status={store.derived.status}
+            planModel={store.derived.activePlanModel}
+            sectionModel={store.derived.activeSectionModel}
+            planViewModel={store.derived.activePlanViewModel}
+            geometryPreview={geometryPreview}
+            viewportTransform={store.ui.viewportTransform}
+            onViewportTransformChange={(viewportTransform) =>
+              setUi((current) => ({
+                ...current,
+                viewportTransform,
+              }))
+            }
+            meta={meta}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

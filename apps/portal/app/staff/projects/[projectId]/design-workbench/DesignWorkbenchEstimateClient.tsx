@@ -257,8 +257,9 @@ export default function DesignWorkbenchEstimateClient({
   }
 
   return (
-    <div className={styles.workspace}>
-      <div className={styles.sidebar}>
+    <div className={styles.shell}>
+      <aside className={styles.configuratorColumn}>
+        <div className={styles.configuratorScroll}>
         {supportsSanctuaryEditing && activeModuleInput ? (
           <SanctuaryWorkbenchRail
             moduleLabel={store.derived.activeModuleLabel}
@@ -293,9 +294,11 @@ export default function DesignWorkbenchEstimateClient({
             </p>
           </section>
         ) : null}
-      </div>
+        </div>
+      </aside>
 
-      <div className={styles.main}>
+      <div className={styles.workspaceColumn}>
+        <div className={styles.workspaceSurface}>
         <DrawingWorkbench
           moduleLabel={store.derived.activeModuleLabel}
           modules={store.persisted.modules.map((module) => ({
@@ -341,6 +344,7 @@ export default function DesignWorkbenchEstimateClient({
           onCommitModelField={workbenchFieldCommit}
           onCommitFootprintEdit={workbenchFootprintCommit}
         />
+        </div>
       </div>
     </div>
   );

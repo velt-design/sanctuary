@@ -197,6 +197,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Sanctuary Controls');
     expect(rendered.container.textContent).toContain('Geometry');
     expect(rendered.container.textContent).toContain('House / Context');
+    expect(rendered.container.textContent).toContain('Overrides');
+    expect(rendered.container.textContent).toContain('Ledger override');
     expect(rendered.container.textContent).toContain('Sheet View');
     expect(rendered.container.textContent).toContain('Model Space');
     expect(rendered.container.textContent).toContain('3D View');
@@ -206,6 +208,9 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, '3D View');
     await flushAsyncWork();
 
+    expect(rendered.container.textContent).toContain('Workspace panel');
+    expect(rendered.container.textContent).not.toContain('Inspection');
+    clickButtonByText(rendered.container, 'Workspace panel');
     expect(rendered.container.textContent).toContain('Snapshot Validated');
     expect(rendered.container.textContent).toContain('Inspection');
     expect(rendered.container.textContent).toContain('Section cut');
@@ -362,6 +367,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, '3D View');
     await flushAsyncWork();
 
+    clickButtonByText(rendered.container, 'Workspace panel');
     expect(rendered.container.textContent).toContain('Draft Resolved Locally');
     expect(rendered.container.textContent).toContain('Inspection');
     expect(rendered.container.textContent).toContain('Section cut');
@@ -383,6 +389,22 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[0]?.houseFootprintPreset).toBe('u_shape');
+    rendered.unmount();
+  });
+
+  it('writes override edits into the local working copy', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Ledger override', '100x50');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[0]?.overrides?.ledgerProfile).toBe('100x50');
     rendered.unmount();
   });
 

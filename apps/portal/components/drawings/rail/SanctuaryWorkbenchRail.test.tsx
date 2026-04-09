@@ -40,6 +40,16 @@ function makeGeometryState(overrides: Partial<GeometryEditState> = {}): Geometry
       postCount: '2',
       postCutHeightM: '2.5',
     },
+    overrides: {
+      ledgerProfile: '',
+      rafterProfile: '',
+      postProfile: '',
+      frontBeamProfile: '',
+      ridgeBeamProfile: '',
+      boxPerimeterBeamProfile: '',
+      tieBeamProfile: '',
+      strutProfile: '',
+    },
   };
 
   return {
@@ -80,9 +90,12 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('Roof material');
     expect(markup).toContain('House connection');
     expect(markup).toContain('Post count');
+    expect(markup).toContain('Overrides');
+    expect(markup).toContain('Ledger override');
+    expect(markup).toContain('Rafter override');
+    expect(markup).toContain('Post override');
     expect(markup).not.toContain('Flashings');
     expect(markup).not.toContain('Allowances');
-    expect(markup).not.toContain('Override');
     expect(markup).not.toContain('Travel');
     expect(markup).not.toContain('Powdercoat');
     expect(markup).not.toContain('Open full calculator');
@@ -113,6 +126,29 @@ describe('SanctuaryWorkbenchRail', () => {
 
     expect(markup).toContain('Ground');
     expect(markup).toContain('aria-label="Roof pitch (deg)"');
+    expect(markup).toContain('Box perimeter beam override');
     expect(markup).toContain('disabled=""');
+  });
+
+  it('shows gable-only overrides when the family is gable', () => {
+    const markup = renderToStaticMarkup(
+      <SanctuaryWorkbenchRail
+        moduleLabel="M2 - Gable"
+        geometryState={makeGeometryState({
+          family: 'gable',
+          roof: {
+            material: 'acrylic',
+            pitchDeg: '25',
+            boxPerimeterEnabled: false,
+          },
+        })}
+        view="plan"
+        onCommitGeometryEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('Tie beam override');
+    expect(markup).toContain('King-post strut override');
+    expect(markup).not.toContain('Box perimeter beam override');
   });
 });
