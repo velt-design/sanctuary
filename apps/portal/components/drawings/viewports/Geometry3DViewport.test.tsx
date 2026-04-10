@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import type { Point3, ViewerSceneModel, ViewerSceneObject } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
+import { applyGeometryEditIntent } from '@/lib/drawings/geometry/geometryEditAdapter';
 import Geometry3DViewport from './Geometry3DViewport';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
@@ -329,6 +331,7 @@ describe('Geometry3DViewport', () => {
     expect(rendered.container.querySelector('[data-testid="workspace-panel"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-beam"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="scene-object-acrylic-panel-1"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Workspace panel');
@@ -340,6 +343,7 @@ describe('Geometry3DViewport', () => {
     expect(rendered.container.textContent).toContain('Datum axes');
     expect(rendered.container.textContent).toContain('Roof fall vectors');
     expect(rendered.container.textContent).toContain('Selected member axes');
+    expect(rendered.container.textContent).toContain('Support Beams');
     expect(rendered.container.textContent).toContain('Measurement');
     expect(rendered.container.textContent).toContain('Enable measurement');
     expect(rendered.container.textContent).toContain('Focus');
@@ -433,7 +437,21 @@ describe('Geometry3DViewport', () => {
 
     expect(rendered.container.textContent).toContain('outer-gutter');
     expect(rendered.container.textContent).toContain('Profile');
+    expect(rendered.container.textContent).toContain('Profile key');
+    expect(rendered.container.textContent).toContain('sp_gutter');
+    expect(rendered.container.textContent).toContain('Render');
+    expect(rendered.container.textContent).toContain('outline extrusion');
+    expect(rendered.container.textContent).toContain('Outline');
+    expect(rendered.container.textContent).toContain('Yes (12 points)');
     expect(rendered.container.textContent).toContain('Local X Axis');
+    expect(rendered.container.textContent).toContain('endCapWidthMm: 100');
+    expect(rendered.container.textContent).toContain('endCapDepthMm: 150');
+
+    clickSceneObject(rendered.container, 'joiner-1');
+    expect(rendered.container.textContent).toContain('joiner-1');
+    expect(rendered.container.textContent).toContain('sp_joiners');
+    expect(rendered.container.textContent).toContain('outline extrusion');
+    expect(rendered.container.textContent).toContain('Yes (20 points)');
 
     toggleCheckboxByText(rendered.container, 'Selected member axes', true);
     expect(rendered.container.querySelector('[data-testid="selected-member-axis-x"]')).not.toBeNull();
@@ -453,6 +471,10 @@ describe('Geometry3DViewport', () => {
     expect(rendered.container.textContent).toContain('acrylic');
     expect(rendered.container.textContent).toContain('Boundary');
     expect(rendered.container.textContent).toContain('4 points');
+    expect(rendered.container.textContent).toContain('Thickness');
+    expect(rendered.container.textContent).toContain('6 mm');
+    expect(rendered.container.textContent).toContain('Gutter embed');
+    expect(rendered.container.textContent).toContain('15 mm');
     expect(rendered.container.textContent).toContain('Panel area');
     expect(rendered.container.textContent).toContain(`${gutterToPanelMeasurement.distance3d} mm`);
     expect(rendered.container.textContent).toContain(`${gutterToPanelMeasurement.distancePlan} mm`);
@@ -478,6 +500,8 @@ describe('Geometry3DViewport', () => {
 
     toggleCheckboxByText(rendered.container, 'Gutters', false);
     expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).toBeNull();
+    toggleCheckboxByText(rendered.container, 'Support Beams', true);
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-beam"]')).not.toBeNull();
 
     const canvasNode = rendered.container.querySelector('[data-testid="geometry-3d-canvas"]');
     const beforeFitDirection = normalizedDirection(cameraPosition(rendered.container), controlsTarget(rendered.container));
@@ -524,6 +548,66 @@ describe('Geometry3DViewport', () => {
     expect(rendered.container.textContent).not.toContain('Inspection');
     expect(rendered.container.textContent).not.toContain('Focus selection');
     expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('renders real gable acrylic slabs and joiners instead of the roof-plane fallback', async () => {
+    const fixture = requireFixture('gable-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft?.inputs.modules[0]) {
+      throw new Error('Expected draft geometry module.');
+    }
+    const acrylic = applyGeometryEditIntent({
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'roof_material',
+        value: 'acrylic',
+      },
+    });
+    expect(acrylic.ok).toBe(true);
+    if (!acrylic.ok) {
+      return;
+    }
+
+    const geometryPreview = buildWorkbenchGeometryPreview({
+      projectId: fixture.estimate.projectId,
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: acrylic.draft,
+      moduleIndex: 0,
+    });
+
+    expect(geometryPreview.kind).toBe('ready');
+    if (geometryPreview.kind !== 'ready') {
+      return;
+    }
+
+    const rendered = renderIntoDocument(<Geometry3DViewport geometryPreview={geometryPreview} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('[data-testid="scene-object-house-joiner-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-joiner-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-house-acrylic-panel-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-acrylic-panel-1"]')).not.toBeNull();
+
+    clickSceneObject(rendered.container, 'house-joiner-1');
+    expect(rendered.container.textContent).toContain('house-joiner-1');
+    expect(rendered.container.textContent).toContain('sp_joiners');
+    expect(rendered.container.textContent).toContain('outline extrusion');
+
+    clickSceneObject(rendered.container, 'outer-acrylic-panel-1');
+    expect(rendered.container.textContent).toContain('outer-acrylic-panel-1');
+    expect(rendered.container.textContent).toContain('Thickness');
+    expect(rendered.container.textContent).toContain('6 mm');
+    expect(rendered.container.textContent).toContain('Gutter embed');
+    expect(rendered.container.textContent).toContain('15 mm');
 
     rendered.unmount();
   });

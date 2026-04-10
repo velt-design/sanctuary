@@ -190,10 +190,14 @@ describe('DesignWorkbenchEstimateClient', () => {
     const estimate = buildEstimateDetail();
 
     const rendered = renderIntoDocument(
-      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+      <DesignWorkbenchEstimateClient
+        estimate={estimate}
+        projectName="Deck Build"
+        siteAddress="1 Test Street"
+        backHref="/staff/projects/proj_1"
+      />,
     );
 
-    expect(rendered.container.textContent).toContain('Drawing Workbench');
     expect(rendered.container.textContent).toContain('Sanctuary Controls');
     expect(rendered.container.textContent).toContain('Geometry');
     expect(rendered.container.textContent).toContain('House / Context');
@@ -202,6 +206,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Sheet View');
     expect(rendered.container.textContent).toContain('Model Space');
     expect(rendered.container.textContent).toContain('3D View');
+    expect(rendered.container.textContent).toContain('Back to Project');
     expect(rendered.container.textContent).not.toContain('Flashings');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 

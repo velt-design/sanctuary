@@ -69,6 +69,7 @@ const LAYER_COLORS: Record<string, string> = {
   house: '#b0b4b9',
   posts: '#7b6347',
   beams: '#4f5965',
+  support_beams: '#7a838e',
   rafters: '#96979b',
   joiners: '#8d7b56',
   gutters: '#437da8',
@@ -144,6 +145,95 @@ function buildPolygonGeometry(points: Point3[]): THREE.BufferGeometry {
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
   geometry.computeVertexNormals();
   return geometry;
+}
+
+function buildPolygonSlabGeometry(
+  points: Point3[],
+  plane: ViewerSceneRoofCladdingPanelObject['plane'],
+  thicknessMm: number,
+): THREE.BufferGeometry {
+  if (points.length < 3) {
+    return new THREE.BufferGeometry();
+  }
+
+  const xAxis = new THREE.Vector3(plane.xAxis.x, plane.xAxis.y, plane.xAxis.z).normalize();
+  const yAxis = new THREE.Vector3(plane.yAxis.x, plane.yAxis.y, plane.yAxis.z).normalize();
+  const normal = new THREE.Vector3(plane.normal.x, plane.normal.y, plane.normal.z).normalize();
+  const origin = new THREE.Vector3(plane.origin.x, plane.origin.y, plane.origin.z);
+  const outline = points.map((point) => {
+    const delta = new THREE.Vector3(point.x, point.y, point.z).sub(origin);
+    return new THREE.Vector2(delta.dot(xAxis), delta.dot(yAxis));
+  });
+  const shape = new THREE.Shape(outline);
+  const depth = Math.max(thicknessMm, 1);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    steps: 1,
+    bevelEnabled: false,
+  });
+  const position = geometry.getAttribute('position');
+  for (let index = 0; index < position.count; index += 1) {
+    const localX = position.getX(index);
+    const localY = position.getY(index);
+    const localZ = position.getZ(index) - depth / 2;
+    const world = origin
+      .clone()
+      .add(xAxis.clone().multiplyScalar(localX))
+      .add(yAxis.clone().multiplyScalar(localY))
+      .add(normal.clone().multiplyScalar(localZ));
+    position.setXYZ(index, world.x, world.y, world.z);
+  }
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function buildProfileExtrusionGeometry(
+  profile: ViewerSceneMemberPrismObject['profile'],
+  lengthMm: number,
+  options?: { includeVoids?: boolean },
+): THREE.BufferGeometry {
+  const outline = profile.sectionOutline ?? [];
+  if (outline.length < 3) {
+    return new THREE.BoxGeometry(Math.max(lengthMm, 1), profile.widthMm, profile.depthMm);
+  }
+
+  const shape = new THREE.Shape(outline.map((point) => new THREE.Vector2(point.x, point.y)));
+  if (options?.includeVoids ?? true) {
+    for (const voidBoundary of profile.sectionVoids ?? []) {
+      if (voidBoundary.length < 3) continue;
+      shape.holes.push(new THREE.Path(voidBoundary.map((point) => new THREE.Vector2(point.x, point.y))));
+    }
+  }
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: Math.max(lengthMm, 1),
+    steps: 1,
+    bevelEnabled: false,
+  });
+  const position = geometry.getAttribute('position');
+  for (let index = 0; index < position.count; index += 1) {
+    const y = position.getX(index);
+    const z = position.getY(index);
+    const x = position.getZ(index) - Math.max(lengthMm, 1) / 2;
+    position.setXYZ(index, x, y, z);
+  }
+  position.needsUpdate = true;
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function buildRectangularCapGeometry(lengthMm: number, widthMm: number, depthMm: number): THREE.BufferGeometry {
+  return new THREE.BoxGeometry(Math.max(lengthMm, 1), Math.max(widthMm, 1), Math.max(depthMm, 1));
+}
+
+function numericMetadataValue(metadata: ViewerSceneObject['metadata'], key: string): number | null {
+  const value = metadata?.[key];
+  return typeof value === 'number' ? value : null;
 }
 
 function buildClosedLineGeometry(points: Point3[]): THREE.BufferGeometry {
@@ -387,6 +477,10 @@ function objectSummary(object: ViewerSceneObject | null): Array<{ label: string;
       { label: 'Role', value: object.role },
       { label: 'Length', value: `${object.lengthMm} mm` },
       { label: 'Profile', value: `${object.profile.widthMm} x ${object.profile.depthMm} mm` },
+      { label: 'Profile key', value: object.profile.profileKey ?? 'None' },
+      { label: 'Shape', value: object.profile.shape },
+      { label: 'Render', value: object.renderMode.replace(/_/g, ' ') },
+      { label: 'Outline', value: object.profile.sectionOutline?.length ? `Yes (${object.profile.sectionOutline.length} points)` : 'No' },
       { label: 'Start', value: formatPoint(object.centerline.start) },
       { label: 'End', value: formatPoint(object.centerline.end) },
       { label: 'Local X Axis', value: formatVector(object.localFrame.xAxis) },
@@ -414,6 +508,11 @@ function objectSummary(object: ViewerSceneObject | null): Array<{ label: string;
       { label: 'Type', value: 'roof cladding panel' },
       { label: 'Material', value: object.material },
       { label: 'Boundary', value: `${object.boundary.length} points` },
+      { label: 'Thickness', value: `${Math.round(object.thicknessMm)} mm` },
+      {
+        label: 'Gutter embed',
+        value: `${Math.round(Number(object.metadata?.gutterEmbedMm ?? 0))} mm`,
+      },
       {
         label: 'Panel area',
         value: `${Math.round(Number(object.metadata?.areaMm2 ?? 0)).toLocaleString()} mm²`,
@@ -492,24 +591,152 @@ function MemberObject({
     object.localFrame.zAxis.y,
     object.localFrame.zAxis.z,
   ]);
+  const handleSelect = useCallback(
+    (event: { stopPropagation: () => void }) => {
+      event.stopPropagation();
+      onSelect(object.id);
+    },
+    [object.id, onSelect],
+  );
+  const handleFocus = useCallback(
+    (event: { stopPropagation: () => void }) => {
+      event.stopPropagation();
+      onFocus(object.id);
+    },
+    [object.id, onFocus],
+  );
   const lineGeometry = useMemo(() => buildLineGeometry(linePoints(object.centerline)), [object.centerline]);
+  const outlineComposite = useMemo(() => {
+    if (object.renderMode !== 'outline_extrusion') {
+      return null;
+    }
+
+    const bodyInsetStartMm = numericMetadataValue(object.metadata, 'bodyInsetStartMm');
+    const bodyInsetEndMm = numericMetadataValue(object.metadata, 'bodyInsetEndMm');
+    const endCapStartMm = numericMetadataValue(object.metadata, 'endCapStartMm');
+    const endCapEndMm = numericMetadataValue(object.metadata, 'endCapEndMm');
+    const endCapWidthMm = numericMetadataValue(object.metadata, 'endCapWidthMm');
+    const endCapDepthMm = numericMetadataValue(object.metadata, 'endCapDepthMm');
+    if (
+      bodyInsetStartMm === null ||
+      bodyInsetEndMm === null ||
+      endCapStartMm === null ||
+      endCapEndMm === null ||
+      bodyInsetStartMm < 0 ||
+      bodyInsetEndMm < 0 ||
+      endCapStartMm <= 0 ||
+      endCapEndMm <= 0
+    ) {
+      return null;
+    }
+
+    const fullLengthMm = Math.max(object.lengthMm, 1);
+    const bodyLengthMm = fullLengthMm - bodyInsetStartMm - bodyInsetEndMm;
+    if (bodyLengthMm <= 0) {
+      return null;
+    }
+
+    return {
+      bodyLengthMm,
+      bodyOffsetX: (bodyInsetStartMm - bodyInsetEndMm) / 2,
+      startCapLengthMm: endCapStartMm,
+      startCapOffsetX: -fullLengthMm / 2 + endCapStartMm / 2,
+      endCapLengthMm: endCapEndMm,
+      endCapOffsetX: fullLengthMm / 2 - endCapEndMm / 2,
+      rectangularCap:
+        endCapWidthMm !== null && endCapDepthMm !== null && endCapWidthMm > 0 && endCapDepthMm > 0
+          ? {
+              widthMm: endCapWidthMm,
+              depthMm: endCapDepthMm,
+            }
+          : null,
+    };
+  }, [object.lengthMm, object.metadata, object.renderMode]);
+  const extrusionGeometry = useMemo(
+    () => buildProfileExtrusionGeometry(object.profile, object.lengthMm),
+    [object.lengthMm, object.profile],
+  );
+  const insetExtrusionGeometry = useMemo(
+    () => (outlineComposite ? buildProfileExtrusionGeometry(object.profile, outlineComposite.bodyLengthMm) : null),
+    [object.profile, outlineComposite],
+  );
+  const startCapGeometry = useMemo(
+    () => {
+      if (!outlineComposite) return null;
+      return outlineComposite.rectangularCap
+        ? buildRectangularCapGeometry(
+            outlineComposite.startCapLengthMm,
+            outlineComposite.rectangularCap.widthMm,
+            outlineComposite.rectangularCap.depthMm,
+          )
+        : buildProfileExtrusionGeometry(object.profile, outlineComposite.startCapLengthMm, { includeVoids: false });
+    },
+    [object.profile, outlineComposite],
+  );
+  const endCapGeometry = useMemo(
+    () => {
+      if (!outlineComposite) return null;
+      return outlineComposite.rectangularCap
+        ? buildRectangularCapGeometry(
+            outlineComposite.endCapLengthMm,
+            outlineComposite.rectangularCap.widthMm,
+            outlineComposite.rectangularCap.depthMm,
+          )
+        : buildProfileExtrusionGeometry(object.profile, outlineComposite.endCapLengthMm, { includeVoids: false });
+    },
+    [object.profile, outlineComposite],
+  );
 
   if (object.renderMode === 'line_fallback') {
     return (
       <line
         data-testid={`scene-object-${object.id}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onSelect(object.id);
-        }}
-        onDoubleClick={(event) => {
-          event.stopPropagation();
-          onFocus(object.id);
-        }}
+        onClick={handleSelect}
+        onDoubleClick={handleFocus}
       >
         <primitive attach="geometry" object={lineGeometry} />
         <lineBasicMaterial color={color} clippingPlanes={clippingPlanes} />
       </line>
+    );
+  }
+
+  if (object.renderMode === 'outline_extrusion' && outlineComposite && insetExtrusionGeometry && startCapGeometry && endCapGeometry) {
+    return (
+      <group
+        data-testid={`scene-object-${object.id}`}
+        matrixAutoUpdate={false}
+        matrix={matrix}
+        onClick={handleSelect}
+        onDoubleClick={handleFocus}
+      >
+        <mesh position={[outlineComposite.bodyOffsetX, 0, 0]}>
+          <primitive attach="geometry" object={insetExtrusionGeometry} />
+          <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
+        </mesh>
+        <mesh position={[outlineComposite.startCapOffsetX, 0, 0]}>
+          <primitive attach="geometry" object={startCapGeometry} />
+          <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
+        </mesh>
+        <mesh position={[outlineComposite.endCapOffsetX, 0, 0]}>
+          <primitive attach="geometry" object={endCapGeometry} />
+          <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (object.renderMode === 'outline_extrusion') {
+    return (
+      <mesh
+        data-testid={`scene-object-${object.id}`}
+        matrixAutoUpdate={false}
+        matrix={matrix}
+        onClick={handleSelect}
+        onDoubleClick={handleFocus}
+      >
+        <primitive attach="geometry" object={extrusionGeometry} />
+        <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
+      </mesh>
     );
   }
 
@@ -518,14 +745,8 @@ function MemberObject({
       data-testid={`scene-object-${object.id}`}
       matrixAutoUpdate={false}
       matrix={matrix}
-      onClick={(event) => {
-        event.stopPropagation();
-        onSelect(object.id);
-      }}
-      onDoubleClick={(event) => {
-        event.stopPropagation();
-        onFocus(object.id);
-      }}
+      onClick={handleSelect}
+      onDoubleClick={handleFocus}
     >
       <boxGeometry args={[Math.max(object.lengthMm, 1), object.profile.widthMm, object.profile.depthMm]} />
       <meshStandardMaterial color={color} clippingPlanes={clippingPlanes} />
@@ -578,7 +799,10 @@ function RoofCladdingPanelObject({
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
 }) {
-  const geometry = useMemo(() => buildPolygonGeometry(object.boundary), [object.boundary]);
+  const geometry = useMemo(
+    () => buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm),
+    [object.boundary, object.plane, object.thicknessMm],
+  );
   return (
     <mesh
       data-testid={`scene-object-${object.id}`}

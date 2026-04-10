@@ -121,7 +121,7 @@ describe('DrawingWorkbench', () => {
       />,
     );
 
-    expect(markup).toContain('Drawing workbench');
+    expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('Sheet View');
     expect(markup).toContain('Model Space');
     expect(markup).not.toContain('3D View');
@@ -129,6 +129,7 @@ describe('DrawingWorkbench', () => {
     expect(markup).toContain('aria-label="Plan view A3 drawing sheet"');
     expect(markup).not.toContain('Sheet Preview');
     expect(markup).not.toContain('Pergola style');
+    expect(markup).not.toContain('Drawing Workbench</');
   });
 
   it('renders the model-space viewport without sheet furniture when model mode is active', () => {

@@ -33,6 +33,7 @@ type DesignWorkbenchEstimateClientProps = {
   estimate: EstimateDetail;
   projectName: string;
   siteAddress?: string | null;
+  backHref?: string;
 };
 
 type CommitResult = { ok: boolean; error?: string };
@@ -41,6 +42,7 @@ export default function DesignWorkbenchEstimateClient({
   estimate,
   projectName,
   siteAddress,
+  backHref,
 }: DesignWorkbenchEstimateClientProps) {
   const [ui, setUi] = useState(() => createDrawingWorkbenchUiState());
   const baseDraft = useMemo(() => buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot), [estimate.calculatorSnapshot]);
@@ -77,6 +79,10 @@ export default function DesignWorkbenchEstimateClient({
 
   const activeModule = store.derived.activeModule;
   const activeModuleInput = activeModule?.drawingModule.input ?? null;
+  const modules = store.persisted.modules.map((module) => ({
+    id: module.id,
+    label: module.label,
+  }));
   const isLocked = estimate.editability.isLocked;
   const geometryEditState = useMemo(() => {
     const result = buildGeometryEditState({
@@ -260,6 +266,29 @@ export default function DesignWorkbenchEstimateClient({
     <div className={styles.shell}>
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
+        {modules.length > 1 ? (
+          <section className={styles.moduleSection}>
+            <p className={styles.moduleSectionTitle}>Module</p>
+            <select
+              className={styles.moduleSelect}
+              aria-label="Drawing module"
+              value={String(store.derived.activeModuleIndex)}
+              onChange={(event) =>
+                setUi((current) => ({
+                  ...current,
+                  activeModuleIndex: Number(event.target.value),
+                }))
+              }
+            >
+              {modules.map((module, index) => (
+                <option key={module.id} value={String(index)}>
+                  {module.label}
+                </option>
+              ))}
+            </select>
+          </section>
+        ) : null}
+
         {supportsSanctuaryEditing && activeModuleInput ? (
           <SanctuaryWorkbenchRail
             moduleLabel={store.derived.activeModuleLabel}
@@ -301,10 +330,7 @@ export default function DesignWorkbenchEstimateClient({
         <div className={styles.workspaceSurface}>
         <DrawingWorkbench
           moduleLabel={store.derived.activeModuleLabel}
-          modules={store.persisted.modules.map((module) => ({
-            id: module.id,
-            label: module.label,
-          }))}
+          modules={modules}
           activeModuleIndex={store.derived.activeModuleIndex}
           onActiveModuleIndexChange={(index) =>
             setUi((current) => ({
@@ -340,6 +366,7 @@ export default function DesignWorkbenchEstimateClient({
             }))
           }
           meta={meta}
+          backHref={backHref}
           modelEditableFields={drawingEditableFields}
           onCommitModelField={workbenchFieldCommit}
           onCommitFootprintEdit={workbenchFootprintCommit}

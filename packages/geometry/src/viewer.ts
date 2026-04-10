@@ -105,7 +105,11 @@ function buildHouseWallBoundary(assembly: Assembly3D, plane: Plane3): Polygon3 {
 }
 
 function buildMemberObject(assembly: Assembly3D['members'][number]): ViewerSceneMemberPrismObject {
-  const renderMode = assembly.profile.shape === 'rectangular' ? 'prism' : 'line_fallback';
+  const renderMode = assembly.profile.shape === 'rectangular'
+    ? 'prism'
+    : (assembly.profile.sectionOutline?.length ?? 0) >= 3
+      ? 'outline_extrusion'
+      : 'line_fallback';
   return {
     id: assembly.id,
     type: 'member_prism',
@@ -123,7 +127,10 @@ function buildMemberObject(assembly: Assembly3D['members'][number]): ViewerScene
             profileShapeFallback: true,
             unsupportedProfileShape: assembly.profile.shape,
           })
-        : sortMetadata(assembly.metadata),
+        : sortMetadata({
+            ...assembly.metadata,
+            renderedFromOutline: renderMode === 'outline_extrusion' || undefined,
+          }),
   };
 }
 
@@ -146,6 +153,7 @@ function buildRoofCladdingPanelObject(panel: Assembly3D['roofCladdingPanels'][nu
     sourceId: panel.id,
     material: panel.material,
     boundary: panel.boundary,
+    thicknessMm: panel.thicknessMm,
     plane: panel.plane,
     metadata: sortMetadata(panel.metadata),
   };
@@ -172,12 +180,45 @@ function buildReferencePlaneObject(id: string, kind: ViewerSceneReferencePlaneOb
   };
 }
 
+function hiddenSupportBeamIdsForIntegratedSpGutters(assembly: Assembly3D): Set<string> {
+  const hiddenIds = new Set<string>();
+  const outerGutter = assembly.members.find(
+    (member) => member.id === 'outer-gutter' && member.role === 'gutter' && member.profile.profileKey === 'sp_gutter',
+  );
+  if (outerGutter) {
+    hiddenIds.add('outer-beam');
+  }
+
+  const houseGutter = assembly.members.find(
+    (member) => member.id === 'house-gutter' && member.role === 'gutter' && member.profile.profileKey === 'sp_gutter',
+  );
+  if (houseGutter) {
+    hiddenIds.add('house-beam');
+  }
+
+  return hiddenIds;
+}
+
 function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
   const houseObjects: ViewerSceneObject[] = [];
   const postObjects = assembly.members.filter((member) => member.role === 'post').map(buildMemberObject);
+  const hiddenSupportBeamIds = hiddenSupportBeamIdsForIntegratedSpGutters(assembly);
   const beamObjects = assembly.members
-    .filter((member) => member.role === 'beam' || member.role === 'ledger' || member.role === 'ridge' || member.role === 'brace')
+    .filter((member) => {
+      if (!(member.role === 'beam' || member.role === 'ledger' || member.role === 'ridge' || member.role === 'brace')) {
+        return false;
+      }
+      if (member.role === 'beam' && hiddenSupportBeamIds.has(member.id)) {
+        return false;
+      }
+      return true;
+    })
     .map(buildMemberObject);
+  const supportBeamObjects = hiddenSupportBeamIds.size > 0
+    ? assembly.members
+        .filter((member) => member.role === 'beam' && hiddenSupportBeamIds.has(member.id))
+        .map(buildMemberObject)
+    : [];
   const rafterObjects = assembly.members.filter((member) => member.role === 'rafter').map(buildMemberObject);
   const joinerObjects = assembly.members.filter((member) => member.role === 'joiner').map(buildMemberObject);
   const gutterObjects = assembly.members.filter((member) => member.role === 'gutter').map(buildMemberObject);
@@ -206,10 +247,22 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
     houseObjects.push(buildReferenceLineObject('house-roof-edge-line', 'roof_edge', assembly.house.roofEdgeLine));
   }
 
-  return [
+  const layers: ViewerSceneLayer[] = [
     { id: 'house', label: 'House', visibleByDefault: true, objects: sortObjects(houseObjects) },
     { id: 'posts', label: 'Posts', visibleByDefault: true, objects: sortObjects(postObjects) },
     { id: 'beams', label: 'Beams', visibleByDefault: true, objects: sortObjects(beamObjects) },
+  ];
+
+  if (supportBeamObjects.length > 0) {
+    layers.push({
+      id: 'support_beams',
+      label: 'Support Beams',
+      visibleByDefault: false,
+      objects: sortObjects(supportBeamObjects),
+    });
+  }
+
+  layers.push(
     { id: 'rafters', label: 'Rafters', visibleByDefault: true, objects: sortObjects(rafterObjects) },
     { id: 'joiners', label: 'Joiners', visibleByDefault: true, objects: sortObjects(joinerObjects) },
     { id: 'gutters', label: 'Gutters', visibleByDefault: true, objects: sortObjects(gutterObjects) },
@@ -221,7 +274,9 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
       objects: sortObjects(roofPlaneObjects),
     },
     { id: 'attachment_edge', label: 'Attachment Edge', visibleByDefault: true, objects: sortObjects(attachmentObjects) },
-  ];
+  );
+
+  return layers;
 }
 
 export function buildViewerSceneModel(assembly: Assembly3D): ViewerSceneModel {

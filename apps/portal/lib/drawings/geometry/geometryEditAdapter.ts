@@ -57,6 +57,11 @@ export type GeometryEditState = {
     postCount: string;
     postCutHeightM: string;
   };
+  gable: {
+    endFramesMode: CalculatorModuleInputs['gableEndFramesMode'];
+    houseEaveGutterMode: CalculatorModuleInputs['gableHouseEdgeGutter'];
+    outerEaveGutterMode: CalculatorModuleInputs['gableOuterEdgeGutter'];
+  } | null;
   overrides: {
     ledgerProfile: string;
     rafterProfile: string;
@@ -155,6 +160,20 @@ function toModuleHouseConnectionType(value: GeometryEditConnectionType): Calcula
 function mapRoofMaterial(config: GeometryConfig): CalculatorModuleInputs['roofMaterial'] {
   if (config.roof.mode === 'mixed') return 'mixed';
   return config.roof.material as CalculatorModuleInputs['roofMaterial'];
+}
+
+function resolveSupportedGableHouseEdgeGutter(
+  houseConnectionType: CalculatorModuleInputs['houseConnectionType'] | null | undefined,
+): CalculatorModuleInputs['gableHouseEdgeGutter'] {
+  return houseConnectionType === 'none' ? 'our' : 'house';
+}
+
+function resolveSupportedGableRidgeOverride(
+  overrides: CalculatorModuleOverrides | null | undefined,
+): string {
+  return typeof overrides?.ridgeBeamProfile === 'string' && overrides.ridgeBeamProfile.trim()
+    ? overrides.ridgeBeamProfile
+    : '150x50';
 }
 
 function formatOverrideValue(
@@ -278,6 +297,20 @@ export function buildGeometryEditState(input: {
         postCount: String(normalized.value.supports.postCount ?? resolved.module.postCount ?? ''),
         postCutHeightM: formatMetres(normalized.value.supports.postCutHeightMm) || String(resolved.module.postCutHeightM ?? ''),
       },
+      gable:
+        normalized.value.family === 'gable'
+          ? {
+              endFramesMode:
+                (normalized.value.gable.endFramesMode as CalculatorModuleInputs['gableEndFramesMode']) ??
+                resolved.module.gableEndFramesMode,
+              houseEaveGutterMode:
+                (normalized.value.gable.houseEaveGutterMode as CalculatorModuleInputs['gableHouseEdgeGutter']) ??
+                resolved.module.gableHouseEdgeGutter,
+              outerEaveGutterMode:
+                (normalized.value.gable.outerEaveGutterMode as CalculatorModuleInputs['gableOuterEdgeGutter']) ??
+                resolved.module.gableOuterEdgeGutter,
+            }
+          : null,
       overrides: {
         ledgerProfile: formatOverrideValue(resolved.module.overrides, 'ledgerProfile'),
         rafterProfile: formatOverrideValue(resolved.module.overrides, 'rafterProfile'),
@@ -380,15 +413,26 @@ function applyFootprintEdit(
 }
 
 function applyFamilyEdit(
+  snapshot: Record<string, unknown> | null,
   draft: EstimateDrawingDraft,
   moduleIndex: number,
   family: SanctuaryPergolaFamily,
 ): GeometryEditApplyResult {
+  const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(snapshot, draft);
+  const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
+  const currentModule = calculatorInputs?.modules[moduleIndex] ?? draft.inputs.modules[moduleIndex];
+  const gableHouseEdgeGutter = resolveSupportedGableHouseEdgeGutter(currentModule?.houseConnectionType);
+  const gableRidgeBeamProfile = resolveSupportedGableRidgeOverride(currentModule?.overrides);
+
   const edits =
     family === 'gable'
       ? [
           { field: 'pergolaStyle', value: 'gable' },
           { field: 'moduleValue', key: 'boxPerimeterEnabled', value: false },
+          { field: 'moduleValue', key: 'gableEndFramesMode', value: 'none' },
+          { field: 'moduleValue', key: 'gableHouseEdgeGutter', value: gableHouseEdgeGutter },
+          { field: 'moduleValue', key: 'gableOuterEdgeGutter', value: 'our' },
+          { field: 'moduleOverride', key: 'ridgeBeamProfile', value: gableRidgeBeamProfile },
         ]
       : family === 'box'
         ? [
@@ -421,21 +465,93 @@ export function applyGeometryEditIntent(input: {
 }): GeometryEditApplyResult {
   switch (input.intent.type) {
     case 'family':
-      return applyFamilyEdit(input.draft, input.moduleIndex, input.intent.value);
+      return applyFamilyEdit(input.snapshot, input.draft, input.moduleIndex, input.intent.value);
     case 'dimension':
       return applyFieldEdit(input.draft, input.moduleIndex, input.intent.field, input.intent.value);
-    case 'roof_material':
-      return applyModuleEdit(input.draft, input.moduleIndex, {
+    case 'roof_material': {
+      const roofMaterialResult = applyModuleEdit(input.draft, input.moduleIndex, {
         field: 'roofMaterial',
         value: input.intent.value,
       });
+      if (!roofMaterialResult.ok) {
+        return roofMaterialResult;
+      }
+
+      const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, roofMaterialResult.draft);
+      const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
+      const currentModule = calculatorInputs?.modules[input.moduleIndex] ?? roofMaterialResult.draft.inputs.modules[input.moduleIndex];
+      if (currentModule?.pergolaStyle !== 'gable') {
+        return roofMaterialResult;
+      }
+
+      let nextDraft = roofMaterialResult.draft;
+      const gableHouseEdgeGutter = resolveSupportedGableHouseEdgeGutter(currentModule.houseConnectionType);
+      const gableRidgeBeamProfile = resolveSupportedGableRidgeOverride(currentModule.overrides);
+      for (const edit of [
+        { field: 'moduleValue', key: 'gableEndFramesMode', value: 'none' as const },
+        { field: 'moduleValue', key: 'gableHouseEdgeGutter', value: gableHouseEdgeGutter },
+        { field: 'moduleValue', key: 'gableOuterEdgeGutter', value: 'our' as const },
+        { field: 'moduleOverride', key: 'ridgeBeamProfile', value: gableRidgeBeamProfile },
+      ]) {
+        const result = applyModuleEdit(
+          nextDraft,
+          input.moduleIndex,
+          edit as Parameters<typeof applyEstimateDrawingModuleFieldEdit>[0]['edit'],
+        );
+        if (!result.ok) {
+          return result;
+        }
+        nextDraft = result.draft;
+      }
+
+      return {
+        ok: true,
+        draft: nextDraft,
+      };
+    }
     case 'roof_pitch':
       return applyFieldEdit(input.draft, input.moduleIndex, 'roofPitchDeg', input.intent.value);
-    case 'house_connection':
-      return applyModuleEdit(input.draft, input.moduleIndex, {
+    case 'house_connection': {
+      const connectionResult = applyModuleEdit(input.draft, input.moduleIndex, {
         field: 'houseConnectionType',
         value: toModuleHouseConnectionType(input.intent.value),
       });
+      if (!connectionResult.ok) {
+        return connectionResult;
+      }
+
+      const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, connectionResult.draft);
+      const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
+      const currentModule = calculatorInputs?.modules[input.moduleIndex] ?? connectionResult.draft.inputs.modules[input.moduleIndex];
+      if (currentModule?.pergolaStyle !== 'gable') {
+        return connectionResult;
+      }
+
+      let nextDraft = connectionResult.draft;
+      const gableHouseEdgeGutter = resolveSupportedGableHouseEdgeGutter(currentModule.houseConnectionType);
+      const gableRidgeBeamProfile = resolveSupportedGableRidgeOverride(currentModule.overrides);
+      for (const edit of [
+        { field: 'moduleValue', key: 'gableEndFramesMode', value: 'none' as const },
+        { field: 'moduleValue', key: 'gableHouseEdgeGutter', value: gableHouseEdgeGutter },
+        { field: 'moduleValue', key: 'gableOuterEdgeGutter', value: 'our' as const },
+        { field: 'moduleOverride', key: 'ridgeBeamProfile', value: gableRidgeBeamProfile },
+      ]) {
+        const result = applyModuleEdit(
+          nextDraft,
+          input.moduleIndex,
+          edit as Parameters<typeof applyEstimateDrawingModuleFieldEdit>[0]['edit'],
+        );
+        if (!result.ok) {
+          return result;
+        }
+        nextDraft = result.draft;
+      }
+
+      return {
+        ok: true,
+        draft: nextDraft,
+      };
+    }
     case 'attachment_side':
       return applyFootprintEdit(input.draft, input.moduleIndex, {
         type: 'attachment_side',

@@ -1,4 +1,5 @@
 import type { GeometryConfig } from '../contracts';
+import { parseAssemblyMemberProfile } from '../profiles';
 
 type GeometryConfigOverrides = Omit<
   Partial<GeometryConfig>,
@@ -87,6 +88,10 @@ function buildMonoRoofCovering(
 }
 
 export function makeMonoConfig(overrides: GeometryConfigOverrides = {}): GeometryConfig {
+  const spGutterProfile = parseAssemblyMemberProfile('SP Gutter');
+  if (!spGutterProfile) {
+    throw new Error('Expected SP Gutter profile definition.');
+  }
   const base: GeometryConfig = {
     projectId: 'proj_mono',
     estimateId: 'est_mono',
@@ -162,7 +167,7 @@ export function makeMonoConfig(overrides: GeometryConfigOverrides = {}): Geometr
         rafter: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
         ledger: { shape: 'rectangular', widthMm: 50, depthMm: 100 },
         supportBeam: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
-        gutter: { shape: 'rectangular', widthMm: 100, depthMm: 150 },
+        gutter: spGutterProfile,
         ridge: null,
         boxPerimeter: null,
       },
@@ -226,6 +231,10 @@ export function makeMonoConfig(overrides: GeometryConfigOverrides = {}): Geometr
 }
 
 export function makeGableConfig(overrides: GeometryConfigOverrides = {}): GeometryConfig {
+  const spGutterProfile = parseAssemblyMemberProfile('SP Gutter');
+  if (!spGutterProfile) {
+    throw new Error('Expected SP Gutter profile definition.');
+  }
   const base = makeMonoConfig({
     projectId: 'proj_gable',
     estimateId: 'est_gable',
@@ -292,7 +301,7 @@ export function makeGableConfig(overrides: GeometryConfigOverrides = {}): Geomet
         rafter: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
         ledger: { shape: 'rectangular', widthMm: 50, depthMm: 100 },
         supportBeam: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
-        gutter: { shape: 'rectangular', widthMm: 100, depthMm: 150 },
+        gutter: spGutterProfile,
         ridge: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
         boxPerimeter: null,
       },

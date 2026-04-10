@@ -8,6 +8,7 @@ import type {
   Line3,
   Plane3,
   Point3,
+  RoofCladdingPanel3D,
   RoofPlane3D,
   Vector3,
 } from './contracts';
@@ -18,8 +19,10 @@ import {
   magnitude,
   normalizeVector,
   planeFromOriginAxes,
+  polygonArea,
   scaleVector,
 } from './math3d';
+import { parseAssemblyMemberProfile, resolveAssemblyMemberProfileAnchors } from './profiles';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
 type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
@@ -84,6 +87,10 @@ function frameForRafter(memberLine: Line3, roofNormal: Vector3): DatumFrame3 {
   return frameFromXAxisZAxis(memberLine.start, lineDirection(memberLine), roofNormal);
 }
 
+function frameForJoiner(memberLine: Line3, roofNormal: Vector3): DatumFrame3 {
+  return frameFromXAxisZAxis(memberLine.start, lineDirection(memberLine), roofNormal);
+}
+
 function equalSpacingPositions(lengthMm: number, count: number): number[] {
   if (count < 2) return [0, lengthMm];
   const spacingMm = lengthMm / Math.max(1, count - 1);
@@ -95,6 +102,137 @@ function requireProfile(profile: AssemblyMemberProfile | null): AssemblyMemberPr
     return profile;
   }
   return null;
+}
+
+function clonePolygon(points: { x: number; y: number }[] | null | undefined) {
+  if (!points) return null;
+  return points.map((point) => ({ x: point.x, y: point.y }));
+}
+
+function mirrorProfileAcrossLocalY(profile: AssemblyMemberProfile): AssemblyMemberProfile {
+  const anchors = resolveAssemblyMemberProfileAnchors(profile);
+  return {
+    ...profile,
+    sectionOutline: clonePolygon(profile.sectionOutline)?.map((point) => ({ x: -point.x, y: point.y })) ?? null,
+    sectionVoids:
+      profile.sectionVoids?.map((voidBoundary) => voidBoundary.map((point) => ({ x: -point.x, y: point.y }))) ?? null,
+    anchors: {
+      undersideZ: anchors.undersideZ,
+      topsideZ: anchors.topsideZ,
+      backFaceY: -anchors.backFaceY,
+      frontFaceY: -anchors.frontFaceY,
+      roofBearingFaceY: -anchors.roofBearingFaceY,
+      roofBearingFaceZ: anchors.roofBearingFaceZ,
+    },
+  };
+}
+
+function profileFaceY(profile: AssemblyMemberProfile, face: 'backFaceY' | 'frontFaceY' | 'roofBearingFaceY'): number {
+  return resolveAssemblyMemberProfileAnchors(profile)[face];
+}
+
+function profileFaceZ(profile: AssemblyMemberProfile, face: 'undersideZ' | 'topsideZ' | 'roofBearingFaceZ'): number {
+  return resolveAssemblyMemberProfileAnchors(profile)[face];
+}
+
+const GABLE_GUTTER_BODY_INSET_MM = 3;
+const GABLE_GUTTER_END_CAP_MM = 3;
+const GABLE_GUTTER_END_CAP_WIDTH_MM = 100;
+const GABLE_GUTTER_END_CAP_DEPTH_MM = 150;
+const GABLE_ACRYLIC_PANEL_THICKNESS_MM = 6;
+const GABLE_ACRYLIC_GUTTER_EMBED_MM = 15;
+
+type GableAcrylicRoofHalfInput = {
+  slope: 'house' | 'outer';
+  roofPlane: Plane3;
+  roofNormal: Vector3;
+  eavePointOnRoofPlane: Point3;
+  ridgePointOnRoofPlane: Point3;
+  eaveExtensionMm: number;
+  eaveTermination: 'gutter' | 'house_allowance';
+  joinerProfile: AssemblyMemberProfile;
+  rafterXPositions: number[];
+  roofFallVector: Vector3;
+  ridgeHalfMm: number;
+};
+
+type GableAcrylicRoofHalfOutput = {
+  joiners: AssemblyMember3D[];
+  panels: RoofCladdingPanel3D[];
+};
+
+function buildGableAcrylicRoofHalf(input: GableAcrylicRoofHalfInput): GableAcrylicRoofHalfOutput {
+  const runVector = lineDirection(line(input.eavePointOnRoofPlane, input.ridgePointOnRoofPlane));
+  const panelMidPlaneOffsetMm = input.joinerProfile.depthMm / 2;
+  const joinerOffset = scaleVector(input.roofNormal, panelMidPlaneOffsetMm);
+  const panelMidPlaneOrigin = addPointVector(input.roofPlane.origin, joinerOffset);
+  const coverEavePointOnRoofPlane = addPointVector(
+    input.eavePointOnRoofPlane,
+    scaleVector(runVector, -input.eaveExtensionMm),
+  );
+  const coverRidgePointOnRoofPlane = input.ridgePointOnRoofPlane;
+  const coverEavePoint = addPointVector(coverEavePointOnRoofPlane, joinerOffset);
+  const coverRidgePoint = addPointVector(coverRidgePointOnRoofPlane, joinerOffset);
+  const coveringLineLengthMm = lineLength(line(coverEavePoint, coverRidgePoint));
+
+  const joiners: AssemblyMember3D[] = input.rafterXPositions.map((x, index) => {
+    const memberLine = line(
+      point(x, coverEavePoint.y, coverEavePoint.z),
+      point(x, coverRidgePoint.y, coverRidgePoint.z),
+    );
+    return {
+      id: `${input.slope}-joiner-${index + 1}`,
+      role: 'joiner',
+      centerline: memberLine,
+      profile: input.joinerProfile,
+      localFrame: frameForJoiner(memberLine, input.roofNormal),
+      metadata: {
+        index: index + 1,
+        slope: input.slope,
+        runLengthMm: Math.round(lineLength(memberLine)),
+        targetRunLengthMm: Math.round(coveringLineLengthMm),
+      },
+    };
+  });
+
+  const panels: RoofCladdingPanel3D[] = [];
+  for (let index = 0; index < input.rafterXPositions.length - 1; index += 1) {
+    const leftX = input.rafterXPositions[index]!;
+    const rightX = input.rafterXPositions[index + 1]!;
+    if (rightX <= leftX) {
+      continue;
+    }
+
+    const boundary = [
+      point(leftX, coverEavePoint.y, coverEavePoint.z),
+      point(rightX, coverEavePoint.y, coverEavePoint.z),
+      point(rightX, coverRidgePoint.y, coverRidgePoint.z),
+      point(leftX, coverRidgePoint.y, coverRidgePoint.z),
+    ];
+    const panelGeometryAreaMm2 = Math.round(polygonArea(boundary));
+    panels.push({
+      id: `${input.slope}-acrylic-panel-${index + 1}`,
+      material: 'acrylic',
+      boundary,
+      thicknessMm: GABLE_ACRYLIC_PANEL_THICKNESS_MM,
+      plane: planeFromOriginAxes(panelMidPlaneOrigin, input.roofPlane.xAxis, input.roofPlane.yAxis),
+      metadata: {
+        index: index + 1,
+        slope: input.slope,
+        areaMm2: panelGeometryAreaMm2,
+        bayWidthMm: Math.round(rightX - leftX),
+        downslopeLengthMm: Math.round(coveringLineLengthMm),
+        gutterEmbedMm: input.eaveTermination === 'gutter' ? Math.round(input.eaveExtensionMm) : 0,
+        houseAllowanceMm: input.eaveTermination === 'house_allowance' ? Math.round(input.eaveExtensionMm) : 0,
+        panelMidPlaneOffsetMm: Math.round(panelMidPlaneOffsetMm),
+        ridgeHalfMm: Math.round(input.ridgeHalfMm),
+        eaveTermination: input.eaveTermination,
+        roofFallVectorY: Math.round(input.roofFallVector.y * 1_000) / 1_000,
+      },
+    });
+  }
+
+  return { joiners, panels };
 }
 
 function buildHouseReferenceGeometry(input: {
@@ -263,31 +401,98 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
     point(0, projectionMm, 0),
   ];
 
-  const houseSupportCenterlineZ = input.eaveUndersideMm + input.referenceBeamProfile.depthMm / 2;
-  const outerSupportCenterlineZ = input.eaveUndersideMm + input.supportBeamProfile.depthMm / 2;
-  const houseGutterCenterlineZ = input.eaveUndersideMm + input.gutterProfile.depthMm / 2;
-  const outerGutterCenterlineZ = input.eaveUndersideMm + input.gutterProfile.depthMm / 2;
-  const ridgeCenterlineZ =
-    Math.max(
-      input.eaveUndersideMm + input.referenceBeamProfile.depthMm,
-      input.eaveUndersideMm + input.supportBeamProfile.depthMm,
-      input.houseEaveGutterMode === 'our' ? input.eaveUndersideMm + input.gutterProfile.depthMm : 0,
-      input.outerEaveGutterMode === 'our' ? input.eaveUndersideMm + input.gutterProfile.depthMm : 0,
-    ) +
-    Math.tan((config.dimensions.roofPitchDeg * Math.PI) / 180) * ridgeY -
-    input.ridgeProfile.depthMm / 2;
+  const houseGutterProfile =
+    input.houseEaveGutterMode === 'our' ? mirrorProfileAcrossLocalY(input.gutterProfile) : input.gutterProfile;
+  const outerGutterProfile = input.gutterProfile;
+  const pitchTan = Math.tan((config.dimensions.roofPitchDeg * Math.PI) / 180);
+  const referenceBeamBackFaceY = profileFaceY(input.referenceBeamProfile, 'backFaceY');
+  const referenceBeamFrontFaceY = profileFaceY(input.referenceBeamProfile, 'frontFaceY');
+  const referenceBeamRoofBearingFaceY = profileFaceY(input.referenceBeamProfile, 'roofBearingFaceY');
+  const referenceBeamUndersideZ = profileFaceZ(input.referenceBeamProfile, 'undersideZ');
+  const referenceBeamTopsideZ = profileFaceZ(input.referenceBeamProfile, 'topsideZ');
+  const referenceBeamRoofBearingFaceZ = profileFaceZ(input.referenceBeamProfile, 'roofBearingFaceZ');
+  const supportBeamFrontFaceY = profileFaceY(input.supportBeamProfile, 'frontFaceY');
+  const supportBeamRoofBearingFaceY = profileFaceY(input.supportBeamProfile, 'roofBearingFaceY');
+  const supportBeamUndersideZ = profileFaceZ(input.supportBeamProfile, 'undersideZ');
+  const supportBeamTopsideZ = profileFaceZ(input.supportBeamProfile, 'topsideZ');
+  const supportBeamRoofBearingFaceZ = profileFaceZ(input.supportBeamProfile, 'roofBearingFaceZ');
+  const houseGutterBackFaceY = profileFaceY(houseGutterProfile, 'backFaceY');
+  const houseGutterFrontFaceY = profileFaceY(houseGutterProfile, 'frontFaceY');
+  const houseGutterUndersideZ = profileFaceZ(houseGutterProfile, 'undersideZ');
+  const houseGutterTopsideZ = profileFaceZ(houseGutterProfile, 'topsideZ');
+  const houseGutterRoofBearingFaceY = profileFaceY(houseGutterProfile, 'roofBearingFaceY');
+  const houseGutterRoofBearingFaceZ = profileFaceZ(houseGutterProfile, 'roofBearingFaceZ');
+  const outerGutterBackFaceY = profileFaceY(outerGutterProfile, 'backFaceY');
+  const outerGutterFrontFaceY = profileFaceY(outerGutterProfile, 'frontFaceY');
+  const outerGutterUndersideZ = profileFaceZ(outerGutterProfile, 'undersideZ');
+  const outerGutterTopsideZ = profileFaceZ(outerGutterProfile, 'topsideZ');
+  const outerGutterRoofBearingFaceY = profileFaceY(outerGutterProfile, 'roofBearingFaceY');
+  const outerGutterRoofBearingFaceZ = profileFaceZ(outerGutterProfile, 'roofBearingFaceZ');
 
-  const houseEaveTopMm = Math.max(
-    input.eaveUndersideMm + input.referenceBeamProfile.depthMm,
-    input.houseEaveGutterMode === 'our' ? input.eaveUndersideMm + input.gutterProfile.depthMm : 0,
-    ridgeCenterlineZ + input.ridgeProfile.depthMm / 2 - Math.tan((config.dimensions.roofPitchDeg * Math.PI) / 180) * ridgeY,
+  const totalPostCount = config.supports.postCount;
+  if (totalPostCount === null || totalPostCount === undefined || totalPostCount < 2) {
+    return fail('insufficient_input', 'Gable solver requires a standard post count.');
+  }
+  if (config.connection.type === 'freestanding' && (totalPostCount < 4 || totalPostCount % 2 !== 0)) {
+    return fail('insufficient_input', 'Freestanding gable standard layout requires an even post count of at least 4.');
+  }
+
+  const housePostCount = config.connection.type === 'freestanding' ? totalPostCount / 2 : 0;
+  const outerPostCount = config.connection.type === 'freestanding' ? totalPostCount / 2 : totalPostCount;
+  const housePostXPositions = config.connection.type === 'freestanding' ? equalSpacingPositions(lengthMm, housePostCount) : [];
+  const outerPostXPositions = equalSpacingPositions(lengthMm, outerPostCount);
+  const postHalfWidthMm = input.postProfile.widthMm / 2;
+  const housePostLeftOutsideFaceX = (housePostXPositions[0] ?? 0) - postHalfWidthMm;
+  const housePostRightOutsideFaceX = (housePostXPositions[housePostXPositions.length - 1] ?? lengthMm) + postHalfWidthMm;
+  const outerPostLeftOutsideFaceX = (outerPostXPositions[0] ?? 0) - postHalfWidthMm;
+  const outerPostRightOutsideFaceX = (outerPostXPositions[outerPostXPositions.length - 1] ?? lengthMm) + postHalfWidthMm;
+
+  const houseGutterCenterlineY = input.houseEaveGutterMode === 'our' ? -houseGutterFrontFaceY : 0;
+  const outerGutterCenterlineY = projectionMm - outerGutterFrontFaceY;
+  const houseSupportCenterlineY =
+    config.connection.type === 'freestanding'
+      ? houseGutterCenterlineY + houseGutterBackFaceY - referenceBeamFrontFaceY
+      : -referenceBeamBackFaceY;
+  const outerSupportCenterlineY = outerGutterCenterlineY + outerGutterBackFaceY - supportBeamFrontFaceY;
+
+  const houseSupportCenterlineZ = input.eaveUndersideMm - referenceBeamUndersideZ;
+  const outerSupportCenterlineZ = input.eaveUndersideMm - supportBeamUndersideZ;
+  const houseGutterCenterlineZ = input.eaveUndersideMm - houseGutterUndersideZ;
+  const outerGutterCenterlineZ = input.eaveUndersideMm - outerGutterUndersideZ;
+
+  const houseStructuralTopMm = Math.max(
+    houseSupportCenterlineZ + referenceBeamTopsideZ,
+    input.houseEaveGutterMode === 'our' ? houseGutterCenterlineZ + houseGutterTopsideZ : 0,
   );
-  const outerEaveTopMm = Math.max(
-    input.eaveUndersideMm + input.supportBeamProfile.depthMm,
-    input.outerEaveGutterMode === 'our' ? input.eaveUndersideMm + input.gutterProfile.depthMm : 0,
-    ridgeCenterlineZ + input.ridgeProfile.depthMm / 2 - Math.tan((config.dimensions.roofPitchDeg * Math.PI) / 180) * (projectionMm - ridgeY),
+  const outerStructuralTopMm = Math.max(
+    outerSupportCenterlineZ + supportBeamTopsideZ,
+    input.outerEaveGutterMode === 'our' ? outerGutterCenterlineZ + outerGutterTopsideZ : 0,
   );
-  const ridgeTopMm = ridgeCenterlineZ + input.ridgeProfile.depthMm / 2;
+  const houseBearingY =
+    input.houseEaveGutterMode === 'our'
+      ? houseGutterCenterlineY + houseGutterRoofBearingFaceY
+      : houseSupportCenterlineY + referenceBeamRoofBearingFaceY;
+  const outerBearingY =
+    input.outerEaveGutterMode === 'our'
+      ? outerGutterCenterlineY + outerGutterRoofBearingFaceY
+      : outerSupportCenterlineY + supportBeamRoofBearingFaceY;
+  const houseBearingTopMm =
+    input.houseEaveGutterMode === 'our'
+      ? houseGutterCenterlineZ + houseGutterRoofBearingFaceZ
+      : houseSupportCenterlineZ + referenceBeamRoofBearingFaceZ;
+  const outerBearingTopMm =
+    input.outerEaveGutterMode === 'our'
+      ? outerGutterCenterlineZ + outerGutterRoofBearingFaceZ
+      : outerSupportCenterlineZ + supportBeamRoofBearingFaceZ;
+
+  const ridgeTopMm = Math.max(
+    houseBearingTopMm + pitchTan * (ridgeY - houseBearingY),
+    outerBearingTopMm + pitchTan * (outerBearingY - ridgeY),
+  );
+  const ridgeCenterlineZ = ridgeTopMm - input.ridgeProfile.depthMm / 2;
+
+  const houseEaveTopMm = Math.max(houseStructuralTopMm, ridgeTopMm - pitchTan * ridgeY);
+  const outerEaveTopMm = Math.max(outerStructuralTopMm, ridgeTopMm - pitchTan * (projectionMm - ridgeY));
 
   const houseRoofPlane = planeFromOriginAxes(
     point(0, 0, houseEaveTopMm),
@@ -306,19 +511,26 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
     return fail('insufficient_input', 'Gable solver could not resolve roof normals.');
   }
 
-  const houseBearingY = input.houseEaveGutterMode === 'our' ? input.gutterProfile.widthMm : input.referenceBeamProfile.widthMm;
-  const outerBearingY = projectionMm - (input.outerEaveGutterMode === 'our' ? input.gutterProfile.widthMm : input.supportBeamProfile.widthMm);
   if (houseBearingY >= ridgeY || outerBearingY <= ridgeY) {
     return fail('insufficient_input', 'Gable solver requires positive rafter bearing length between the eaves and ridge.');
   }
 
+  const houseBearingZ = houseEaveTopMm + ((ridgeTopMm - houseEaveTopMm) * houseBearingY) / ridgeY;
+  const outerBearingZ =
+    ridgeTopMm + ((outerEaveTopMm - ridgeTopMm) * (outerBearingY - ridgeY)) / (projectionMm - ridgeY);
+  const ridgeHalfMm = input.ridgeProfile.widthMm / 2;
+  const houseRidgeBearingY = ridgeY - ridgeHalfMm;
+  const outerRidgeBearingY = ridgeY + ridgeHalfMm;
+  const houseRidgeBearingZ = houseEaveTopMm + ((ridgeTopMm - houseEaveTopMm) * houseRidgeBearingY) / ridgeY;
+  const outerRidgeBearingZ =
+    ridgeTopMm + ((outerEaveTopMm - ridgeTopMm) * (outerRidgeBearingY - ridgeY)) / (projectionMm - ridgeY);
   const houseRafterCenterOffset = scaleVector(houseRoofNormal, -input.rafterProfile.depthMm / 2);
   const outerRafterCenterOffset = scaleVector(outerRoofNormal, -input.rafterProfile.depthMm / 2);
   const rafterXPositions = equalSpacingPositions(lengthMm, input.rafterCount);
 
   const houseRafters: AssemblyMember3D[] = rafterXPositions.map((x, index) => {
     const memberLine = line(
-      addPointVector(point(x, houseBearingY, houseEaveTopMm), houseRafterCenterOffset),
+      addPointVector(point(x, houseBearingY, houseBearingZ), houseRafterCenterOffset),
       addPointVector(point(x, ridgeY, ridgeTopMm), houseRafterCenterOffset),
     );
     return {
@@ -337,7 +549,7 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
   const outerRafters: AssemblyMember3D[] = rafterXPositions.map((x, index) => {
     const memberLine = line(
       addPointVector(point(x, ridgeY, ridgeTopMm), outerRafterCenterOffset),
-      addPointVector(point(x, outerBearingY, outerEaveTopMm), outerRafterCenterOffset),
+      addPointVector(point(x, outerBearingY, outerBearingZ), outerRafterCenterOffset),
     );
     return {
       id: `outer-rafter-${index + 1}`,
@@ -384,8 +596,8 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
     });
   } else {
     const houseBeamLine = line(
-      point(0, 0, houseSupportCenterlineZ),
-      point(lengthMm, 0, houseSupportCenterlineZ),
+      point(0, houseSupportCenterlineY, houseSupportCenterlineZ),
+      point(lengthMm, houseSupportCenterlineY, houseSupportCenterlineZ),
     );
     members.push({
       id: 'house-beam',
@@ -399,26 +611,32 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
     });
 
     const houseGutterLine = line(
-      point(0, 0, houseGutterCenterlineZ),
-      point(lengthMm, 0, houseGutterCenterlineZ),
+      point(housePostLeftOutsideFaceX, houseGutterCenterlineY, houseGutterCenterlineZ),
+      point(housePostRightOutsideFaceX, houseGutterCenterlineY, houseGutterCenterlineZ),
     );
     members.push({
       id: 'house-gutter',
       role: 'gutter',
       centerline: houseGutterLine,
-      profile: input.gutterProfile,
+      profile: houseGutterProfile,
       localFrame: frameForHorizontalX(houseGutterLine.start),
       metadata: {
         position: 'house-eave',
         gutterType: config.structural.drainage.gutterType,
         hasOurGutter: config.structural.drainage.hasOurGutter,
+        bodyInsetStartMm: GABLE_GUTTER_BODY_INSET_MM,
+        bodyInsetEndMm: GABLE_GUTTER_BODY_INSET_MM,
+        endCapStartMm: GABLE_GUTTER_END_CAP_MM,
+        endCapEndMm: GABLE_GUTTER_END_CAP_MM,
+        endCapWidthMm: GABLE_GUTTER_END_CAP_WIDTH_MM,
+        endCapDepthMm: GABLE_GUTTER_END_CAP_DEPTH_MM,
       },
     });
   }
 
   const outerBeamLine = line(
-    point(0, projectionMm, outerSupportCenterlineZ),
-    point(lengthMm, projectionMm, outerSupportCenterlineZ),
+    point(0, outerSupportCenterlineY, outerSupportCenterlineZ),
+    point(lengthMm, outerSupportCenterlineY, outerSupportCenterlineZ),
   );
   members.push({
     id: 'outer-beam',
@@ -432,19 +650,25 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
   });
 
   const outerGutterLine = line(
-    point(0, projectionMm, outerGutterCenterlineZ),
-    point(lengthMm, projectionMm, outerGutterCenterlineZ),
+    point(outerPostLeftOutsideFaceX, outerGutterCenterlineY, outerGutterCenterlineZ),
+    point(outerPostRightOutsideFaceX, outerGutterCenterlineY, outerGutterCenterlineZ),
   );
   members.push({
     id: 'outer-gutter',
     role: 'gutter',
     centerline: outerGutterLine,
-    profile: input.gutterProfile,
+    profile: outerGutterProfile,
     localFrame: frameForHorizontalX(outerGutterLine.start),
     metadata: {
       position: 'outer-eave',
       gutterType: config.structural.drainage.gutterType,
       hasOurGutter: config.structural.drainage.hasOurGutter,
+      bodyInsetStartMm: GABLE_GUTTER_BODY_INSET_MM,
+      bodyInsetEndMm: GABLE_GUTTER_BODY_INSET_MM,
+      endCapStartMm: GABLE_GUTTER_END_CAP_MM,
+      endCapEndMm: GABLE_GUTTER_END_CAP_MM,
+      endCapWidthMm: GABLE_GUTTER_END_CAP_WIDTH_MM,
+      endCapDepthMm: GABLE_GUTTER_END_CAP_DEPTH_MM,
     },
   });
 
@@ -459,11 +683,6 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
     profile: input.ridgeProfile,
     localFrame: frameForHorizontalX(ridgeLine.start),
   });
-
-  const totalPostCount = config.supports.postCount;
-  if (totalPostCount === null || totalPostCount === undefined || totalPostCount < 2) {
-    return fail('insufficient_input', 'Gable solver requires a standard post count.');
-  }
 
   const generatePosts = (prefix: string, y: number, topZ: number, count: number) => {
     const xPositions = equalSpacingPositions(lengthMm, count);
@@ -504,17 +723,12 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
   };
 
   if (config.connection.type === 'freestanding') {
-    if (totalPostCount < 4 || totalPostCount % 2 !== 0) {
-      return fail('insufficient_input', 'Freestanding gable standard layout requires an even post count of at least 4.');
-    }
     const postsPerLine = totalPostCount / 2;
-    generatePosts('house-post', 0, houseSupportCenterlineZ, postsPerLine);
-    generatePosts('outer-post', projectionMm, outerSupportCenterlineZ, postsPerLine);
+    generatePosts('house-post', houseGutterCenterlineY, input.eaveUndersideMm, postsPerLine);
+    generatePosts('outer-post', outerGutterCenterlineY, input.eaveUndersideMm, postsPerLine);
   } else {
-    generatePosts('outer-post', projectionMm, outerSupportCenterlineZ, totalPostCount);
+    generatePosts('outer-post', outerGutterCenterlineY, input.eaveUndersideMm, totalPostCount);
   }
-
-  members.push(...houseRafters, ...outerRafters);
 
   const roofPlanes: RoofPlane3D[] = [
     {
@@ -549,6 +763,49 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
     },
   ];
 
+  const roofCladdingPanels: RoofCladdingPanel3D[] = [];
+  const joiners: AssemblyMember3D[] = [];
+  if (config.roof.material === 'acrylic') {
+    const gableAcrylicJoinerProfile = parseAssemblyMemberProfile('sp_joiners');
+    if (!gableAcrylicJoinerProfile) {
+      return fail('insufficient_input', 'Gable acrylic solver requires the SP joiners profile.');
+    }
+
+    const attachedHouseAllowanceMm = config.roofCovering.houseAllowanceMm ?? input.referenceBeamProfile.widthMm;
+    const houseRoofPack = buildGableAcrylicRoofHalf({
+      slope: 'house',
+      roofPlane: houseRoofPlane,
+      roofNormal: houseRoofNormal,
+      eavePointOnRoofPlane: point(0, houseBearingY, houseBearingZ),
+      ridgePointOnRoofPlane: point(0, houseRidgeBearingY, houseRidgeBearingZ),
+      eaveExtensionMm:
+        input.houseEaveGutterMode === 'our' ? GABLE_ACRYLIC_GUTTER_EMBED_MM : attachedHouseAllowanceMm,
+      eaveTermination: input.houseEaveGutterMode === 'our' ? 'gutter' : 'house_allowance',
+      joinerProfile: gableAcrylicJoinerProfile,
+      rafterXPositions,
+      roofFallVector: roofPlanes[0]!.fallVector,
+      ridgeHalfMm,
+    });
+    const outerRoofPack = buildGableAcrylicRoofHalf({
+      slope: 'outer',
+      roofPlane: outerRoofPlane,
+      roofNormal: outerRoofNormal,
+      eavePointOnRoofPlane: point(0, outerBearingY, outerBearingZ),
+      ridgePointOnRoofPlane: point(0, outerRidgeBearingY, outerRidgeBearingZ),
+      eaveExtensionMm: GABLE_ACRYLIC_GUTTER_EMBED_MM,
+      eaveTermination: 'gutter',
+      joinerProfile: gableAcrylicJoinerProfile,
+      rafterXPositions,
+      roofFallVector: roofPlanes[1]!.fallVector,
+      ridgeHalfMm,
+    });
+
+    joiners.push(...houseRoofPack.joiners, ...outerRoofPack.joiners);
+    roofCladdingPanels.push(...houseRoofPack.panels, ...outerRoofPack.panels);
+  }
+
+  members.push(...joiners, ...houseRafters, ...outerRafters);
+
   const postMembers = members.filter((member) => member.role === 'post');
   const rafterMembers = members.filter((member) => member.role === 'rafter');
   const quantityHooks: Assembly3D['quantityHooks'] = [
@@ -573,7 +830,7 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
   if (config.connection.type === 'freestanding') {
     quantityHooks.push({
       key: 'house_gutter.length_mm',
-      quantity: lengthMm,
+      quantity: Math.round(lineLength(members.find((member) => member.id === 'house-gutter')!.centerline)),
       unit: 'mm',
     });
   }
@@ -586,7 +843,7 @@ export function solveGableAssembly3D(config: GeometryConfig): SolveAssembly3DRes
     house: buildHouseReferenceGeometry({ config, attachmentEdge }),
     members,
     roofPlanes,
-    roofCladdingPanels: [],
+    roofCladdingPanels,
     supportConditions,
     quantityHooks,
     semantics: {

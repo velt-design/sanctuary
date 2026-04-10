@@ -3,14 +3,7 @@ import { notFound } from 'next/navigation';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import DesignWorkbenchEstimateClient from './DesignWorkbenchEstimateClient';
 import DesignWorkbenchFixtureClient from './DesignWorkbenchFixtureClient';
-import {
-  loadDesignWorkbenchRouteContext,
-  type DesignWorkbenchRouteContext,
-  type DesignWorkbenchRouteEstimateSummary,
-  type DesignWorkbenchRouteRequestSummary,
-  type WorkbenchEstimateWarning,
-  type WorkbenchRequestWarning,
-} from '@/lib/drawings/loadDesignWorkbenchRouteContext';
+import { loadDesignWorkbenchRouteContext } from '@/lib/drawings/loadDesignWorkbenchRouteContext';
 import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { isSanctuaryGeometryWorkbenchEnabled, isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
@@ -43,16 +36,6 @@ function resolveQueryParam(value: string | string[] | undefined): string | null 
   return trimmed || null;
 }
 
-function formatEstimateSelectionSource(source: DesignWorkbenchRouteEstimateSummary['selectionSource']): string {
-  if (source === 'query') return 'Query param';
-  if (source === 'active_draft') return 'Active draft default';
-  return 'Most recent default';
-}
-
-function formatRequestSelectionSource(source: DesignWorkbenchRouteRequestSummary['selectionSource']): string {
-  return source === 'query' ? 'Query param' : 'Active request';
-}
-
 function formatLabel(value: string): string {
   return value
     .toLowerCase()
@@ -61,91 +44,26 @@ function formatLabel(value: string): string {
     .join(' ');
 }
 
-function formatEstimateSummary(estimate: DesignWorkbenchRouteEstimateSummary): string {
-  const parts = [`${estimate.versionLabel} (${estimate.id})`, formatLabel(estimate.status)];
-  if (estimate.isActiveDraft) parts.push('active draft');
-  return parts.join(' · ');
-}
-
-function formatRequestSummary(request: DesignWorkbenchRouteRequestSummary): string {
-  const parts = [`Request v${request.requestVersion} (${request.id})`, formatLabel(request.status), formatLabel(request.priorityTier)];
-  if (request.estimateVersionLabel) parts.push(`linked ${request.estimateVersionLabel}`);
-  return parts.join(' · ');
-}
-
-function estimateWarningMessage(warning: WorkbenchEstimateWarning): string {
-  return `The supplied estimateId (${warning.providedEstimateId}) is not available for this project. Showing the default estimate instead.`;
-}
-
-function requestWarningMessage(warning: WorkbenchRequestWarning, selectedEstimateId: string): string {
-  if (warning.reason === 'request_not_found') {
-    return `The supplied requestId (${warning.providedRequestId}) is not available for this project. Showing the selected estimate without design-request metadata.`;
-  }
-
-  const requestEstimateText = warning.requestEstimateId ? `linked to estimate ${warning.requestEstimateId}` : 'not linked to the selected estimate';
-  return `The supplied requestId (${warning.providedRequestId}) is ${requestEstimateText}. Showing estimate ${selectedEstimateId} and ignoring the request context.`;
-}
-
-function renderContextLines(context: Exclude<DesignWorkbenchRouteContext, { kind: 'project_unavailable' }>): string[] {
-  const lines = [
-    'This hidden internal route opens the Sanctuary Geometry Workbench against the selected estimate context.',
-    `Route state: ${formatLabel(context.kind)}`,
-  ];
-
-  if ('estimate' in context && context.estimate) {
-    lines.push(`Estimate selection: ${formatEstimateSelectionSource(context.estimate.selectionSource)}`);
-    lines.push(`Estimate: ${formatEstimateSummary(context.estimate)}`);
-  }
-
-  if ('request' in context && context.request) {
-    lines.push(`Design request selection: ${formatRequestSelectionSource(context.request.selectionSource)}`);
-    lines.push(`Design request: ${formatRequestSummary(context.request)}`);
-  } else if (context.kind !== 'no_estimate') {
-    lines.push('Design request context: none linked to the selected estimate');
-  }
-
-  if (context.kind === 'no_estimate') {
-    lines.push('No usable estimate exists for this project yet. Create or generate an estimate before opening the workbench.');
-  }
-
-  if (context.kind === 'ready' && context.estimateWarning) {
-    lines.push(estimateWarningMessage(context.estimateWarning));
-  }
-
-  if (context.kind === 'ready' && context.requestWarning) {
-    lines.push(requestWarningMessage(context.requestWarning, context.estimate.id));
-  }
-
-  if (context.kind === 'no_estimate' && context.providedEstimateId) {
-    lines.push(`Supplied estimateId: ${context.providedEstimateId}`);
-  }
-
-  if (context.kind === 'no_estimate' && context.providedRequestId) {
-    lines.push(`Supplied requestId: ${context.providedRequestId}`);
-  }
-
-  return lines;
-}
-
-function renderFixtureLines(fixture: SanctuaryGeometryWorkbenchFixture): string[] {
-  return [
-    'This hidden internal route is mounting a baked Sanctuary Geometry Workbench fixture for QA.',
-    'Route state: Fixture Ready',
-    `Fixture: ${fixture.label} (${fixture.slug})`,
-    'Fixture source: baked calculator snapshot data',
-    `Fixture estimate: ${fixture.estimate.versionLabel} (${fixture.estimate.id}) · ${formatLabel(fixture.estimate.status)}`,
-    `Fixture design request: Request v${fixture.request.requestVersion} (${fixture.request.id}) · ${formatLabel(fixture.request.status)} · ${formatLabel(
-      fixture.request.priorityTier,
-    )}`,
-  ];
-}
-
 function renderInvalidFixtureLines(fixtureSlug: string): string[] {
   return [
     'This hidden internal route can mount baked Sanctuary Geometry Workbench fixtures for QA.',
     'Route state: Invalid Fixture',
     `Unknown fixture slug: ${fixtureSlug}`,
   ];
+}
+
+function renderNoEstimateLines(context: {
+  providedEstimateId: string | null;
+  providedRequestId: string | null;
+}): string[] {
+  const lines = ['No usable estimate exists for this project yet. Create or generate an estimate before opening the workbench.'];
+  if (context.providedEstimateId) {
+    lines.push(`Supplied estimateId: ${context.providedEstimateId}`);
+  }
+  if (context.providedRequestId) {
+    lines.push(`Supplied requestId: ${context.providedRequestId}`);
+  }
+  return lines;
 }
 
 export default async function DesignWorkbenchPage({
@@ -170,6 +88,7 @@ export default async function DesignWorkbenchPage({
   const estimateId = resolveQueryParam(resolvedSearchParams?.estimateId);
   const requestId = resolveQueryParam(resolvedSearchParams?.requestId);
   const fixtureSlug = resolveQueryParam(resolvedSearchParams?.fixture);
+  const backHref = `/staff/projects/${encodeURIComponent(normalizedProjectId)}`;
 
   if (fixtureSlug && !isSanctuaryGeometryWorkbenchFixturesEnabled()) {
     notFound();
@@ -182,12 +101,6 @@ export default async function DesignWorkbenchPage({
     }
 
     const fixture = getSanctuaryGeometryWorkbenchFixture(fixtureSlug);
-    const sharedHeader = (
-      <>
-        <h1 className={styles.title}>Design Workbench</h1>
-        <p className={styles.subtitle}>{snapshot.project.name}</p>
-      </>
-    );
 
     if (!fixture) {
       return (
@@ -199,13 +112,14 @@ export default async function DesignWorkbenchPage({
         >
           <section className={styles.surface}>
             <div className={styles.surfaceInner}>
-              {sharedHeader}
+              <h1 className={styles.title}>Design Workbench</h1>
+              <p className={styles.subtitle}>{snapshot.project.name}</p>
               {renderInvalidFixtureLines(fixtureSlug).map((line) => (
                 <p key={line} className={styles.subtitle}>
                   {line}
                 </p>
               ))}
-              <Link href={`/staff/projects/${encodeURIComponent(normalizedProjectId)}`} className={styles.backLink}>
+              <Link href={backHref} className={styles.backLink}>
                 Back to Project
               </Link>
             </div>
@@ -223,23 +137,11 @@ export default async function DesignWorkbenchPage({
       >
         <section className={styles.surface}>
           <div className={styles.surfaceInner}>
-            {sharedHeader}
-            {renderFixtureLines(fixture).map((line) => (
-              <p key={line} className={styles.subtitle}>
-                {line}
-              </p>
-            ))}
-            <Link href={`/staff/projects/${encodeURIComponent(normalizedProjectId)}`} className={styles.backLink}>
-              Back to Project
-            </Link>
-          </div>
-        </section>
-        <section className={styles.surface}>
-          <div className={styles.surfaceInner}>
             <DesignWorkbenchFixtureClient
               fixture={fixture}
               projectName={snapshot.project.name}
               siteAddress={snapshot.project.siteAddress ?? null}
+              backHref={backHref}
             />
           </div>
         </section>
@@ -280,24 +182,11 @@ export default async function DesignWorkbenchPage({
       >
         <section className={styles.surface}>
           <div className={styles.surfaceInner}>
-            <h1 className={styles.title}>Design Workbench</h1>
-            <p className={styles.subtitle}>{context.project.name}</p>
-            {renderContextLines(context).map((line) => (
-              <p key={line} className={styles.subtitle}>
-                {line}
-              </p>
-            ))}
-            <Link href={`/staff/projects/${encodeURIComponent(normalizedProjectId)}`} className={styles.backLink}>
-              Back to Project
-            </Link>
-          </div>
-        </section>
-        <section className={styles.surface}>
-          <div className={styles.surfaceInner}>
             <DesignWorkbenchEstimateClient
               estimate={estimateDetail}
               projectName={context.project.name}
               siteAddress={context.project.siteAddress}
+              backHref={backHref}
             />
           </div>
         </section>
@@ -317,12 +206,15 @@ export default async function DesignWorkbenchPage({
         <div className={styles.surfaceInner}>
           <h1 className={styles.title}>Design Workbench</h1>
           <p className={styles.subtitle}>{context.project.name}</p>
-          {renderContextLines(context).map((line) => (
+          {renderNoEstimateLines({
+            providedEstimateId: context.providedEstimateId,
+            providedRequestId: context.providedRequestId,
+          }).map((line) => (
             <p key={line} className={styles.subtitle}>
               {line}
             </p>
           ))}
-          <Link href={`/staff/projects/${encodeURIComponent(normalizedProjectId)}`} className={styles.backLink}>
+          <Link href={backHref} className={styles.backLink}>
             Back to Project
           </Link>
         </div>

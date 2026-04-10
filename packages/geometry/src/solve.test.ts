@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { solveAssembly3D, type GeometryConfig } from '@sp/geometry';
+import { dotProduct, lineLength, normalizeVector, subtractPoints } from './math3d';
+import { parseAssemblyMemberProfile } from './profiles';
 
 function buildMonoRoofCovering(
   input: {
@@ -67,6 +69,10 @@ function buildMonoRoofCovering(
 }
 
 function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig {
+  const spGutterProfile = parseAssemblyMemberProfile('SP Gutter');
+  if (!spGutterProfile) {
+    throw new Error('Expected SP Gutter profile definition.');
+  }
   const base: GeometryConfig = {
     projectId: 'proj_mono',
     estimateId: 'est_mono',
@@ -142,7 +148,7 @@ function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig
         rafter: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
         ledger: { shape: 'rectangular', widthMm: 50, depthMm: 100 },
         supportBeam: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
-        gutter: { shape: 'rectangular', widthMm: 100, depthMm: 150 },
+        gutter: spGutterProfile,
         ridge: null,
         boxPerimeter: null,
       },
@@ -206,6 +212,10 @@ function makeMonoConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig
 }
 
 function makeGableConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfig {
+  const spGutterProfile = parseAssemblyMemberProfile('SP Gutter');
+  if (!spGutterProfile) {
+    throw new Error('Expected SP Gutter profile definition.');
+  }
   const base = makeMonoConfig({
     projectId: 'proj_gable',
     estimateId: 'est_gable',
@@ -267,7 +277,7 @@ function makeGableConfig(overrides: Partial<GeometryConfig> = {}): GeometryConfi
         rafter: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
         ledger: { shape: 'rectangular', widthMm: 50, depthMm: 100 },
         supportBeam: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
-        gutter: { shape: 'rectangular', widthMm: 100, depthMm: 150 },
+        gutter: spGutterProfile,
         ridge: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
       },
       framing: {
@@ -447,6 +457,7 @@ describe('solveAssembly3D', () => {
       expect.arrayContaining([
         { key: 'posts.count', quantity: 2, unit: 'count' },
         { key: 'support_beam.length_mm', quantity: 6000, unit: 'mm' },
+        { key: 'gutter.length_mm', quantity: 6090, unit: 'mm' },
         { key: 'ledger.length_mm', quantity: 6000, unit: 'mm' },
       ]),
     );
@@ -522,12 +533,78 @@ describe('solveAssembly3D', () => {
 
     const ledger = result.value.members.find((member) => member.id === 'ledger');
     const outerBeam = result.value.members.find((member) => member.id === 'outer-beam');
+    const outerGutter = result.value.members.find((member) => member.id === 'outer-gutter');
+    const outerPost = result.value.members.find((member) => member.id === 'outer-post-1');
+    const finalOuterPost = result.value.members.find((member) => member.id === 'outer-post-2');
     const roofPlane = result.value.roofPlanes[0];
 
+    expect(ledger?.centerline.start.y).toBe(25);
     expect(ledger?.centerline.start.z).toBe(2450);
+    expect(outerBeam?.centerline.start.y).toBe(2875);
     expect(outerBeam?.centerline.start.z).toBe(2212);
+    expect(outerBeam?.centerline.start.x).toBe(0);
+    expect(outerBeam?.centerline.end.x).toBe(6000);
+    expect(outerGutter?.centerline.start.y).toBe(2950);
+    expect(outerGutter?.centerline.start.z).toBeCloseTo(2212.284312, 6);
+    expect(outerGutter?.centerline.start.x).toBe(-45);
+    expect(outerGutter?.centerline.end.x).toBe(6045);
+    expect(outerPost?.centerline.start.y).toBe(2950);
+    expect(outerPost?.centerline.start.x).toBe(0);
+    expect(outerPost?.centerline.end.z).toBe(2137);
+    expect(finalOuterPost?.centerline.start.x).toBe(6000);
     expect(roofPlane?.boundary[0]?.z).toBe(2500);
-    expect(roofPlane?.boundary[2]?.z).toBe(2287);
+    expect(roofPlane?.boundary[2]?.y).toBeCloseTo(2925.996797, 6);
+    expect(roofPlane?.boundary[2]?.z).toBeCloseTo(2285.294198, 6);
+  });
+
+  it('positions the mono outer beam behind the gutter while keeping the gutter centerline over the posts', () => {
+    const result = solveAssembly3D(makeMonoConfig());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const outerBeam = result.value.members.find((member) => member.id === 'outer-beam');
+    const outerGutter = result.value.members.find((member) => member.id === 'outer-gutter');
+    const outerPost = result.value.members.find((member) => member.id === 'outer-post-1');
+
+    if (!outerBeam || !outerGutter || !outerPost) {
+      throw new Error('Expected mono outer beam, gutter, and post.');
+    }
+
+    expect(outerBeam.centerline.start.y).toBeLessThan(outerGutter.centerline.start.y);
+    expect(outerBeam.centerline.start.y).not.toBe(outerGutter.centerline.start.y);
+    expect(outerPost.centerline.start.y).toBe(outerGutter.centerline.start.y);
+    expect(outerPost.centerline.start.y).not.toBe(outerBeam.centerline.start.y);
+    expect(outerGutter.centerline.start.x).toBe(outerPost.centerline.start.x - outerPost.profile.widthMm / 2);
+    expect(outerGutter.centerline.end.x).toBe(6045);
+    expect(outerGutter.centerline.end.x - outerGutter.centerline.start.x).toBe(6090);
+    expect(outerPost.centerline.end.z).toBe(2137);
+    expect(outerGutter.centerline.start.z - outerPost.centerline.end.z).toBeCloseTo(75.284312, 6);
+    expect(outerGutter.profile.profileKey).toBe('sp_gutter');
+    expect(outerGutter.profile.sectionOutline?.length).toBeGreaterThanOrEqual(3);
+    expect(outerGutter.metadata).toMatchObject({
+      bodyInsetStartMm: 3,
+      bodyInsetEndMm: 3,
+      endCapStartMm: 3,
+      endCapEndMm: 3,
+      endCapWidthMm: 100,
+      endCapDepthMm: 150,
+    });
+  });
+
+  it('uses explicit SP gutter install anchors instead of generic half-width defaults', () => {
+    const gutterProfile = parseAssemblyMemberProfile('SP Gutter');
+
+    expect(gutterProfile?.profileKey).toBe('sp_gutter');
+    expect(gutterProfile?.sectionOutline?.length).toBeGreaterThanOrEqual(3);
+    expect(gutterProfile?.anchors).toEqual({
+      undersideZ: -75.284312,
+      topsideZ: 75.284312,
+      backFaceY: -50,
+      frontFaceY: 50,
+      roofBearingFaceY: -24.003203,
+      roofBearingFaceZ: 73.009886,
+    });
   });
 
   it('keeps mono rafters on edge and horizontal members with vertical depth axes', () => {
@@ -545,8 +622,8 @@ describe('solveAssembly3D', () => {
     expect(rafter?.localFrame.yAxis.y).toBeCloseTo(0, 6);
     expect(rafter?.localFrame.yAxis.z).toBeCloseTo(0, 6);
     expect(rafter?.localFrame.zAxis.x).toBeCloseTo(0, 6);
-    expect(rafter?.localFrame.zAxis.y).toBeCloseTo(0.074529, 6);
-    expect(rafter?.localFrame.zAxis.z).toBeCloseTo(0.997219, 6);
+    expect(rafter?.localFrame.zAxis.y).toBeCloseTo(0.074447, 5);
+    expect(rafter?.localFrame.zAxis.z).toBeCloseTo(0.997225, 5);
 
     expect(ledger?.localFrame.yAxis).toEqual({
       x: 0,
@@ -574,8 +651,114 @@ describe('solveAssembly3D', () => {
     expect(joiner?.localFrame.yAxis.y).toBeCloseTo(0, 6);
     expect(joiner?.localFrame.yAxis.z).toBeCloseTo(0, 6);
     expect(joiner?.localFrame.zAxis.x).toBeCloseTo(0, 6);
-    expect(joiner?.localFrame.zAxis.y).toBeCloseTo(0.074529, 6);
-    expect(joiner?.localFrame.zAxis.z).toBeCloseTo(0.997219, 6);
+    expect(joiner?.localFrame.zAxis.y).toBeCloseTo(0.074447, 5);
+    expect(joiner?.localFrame.zAxis.z).toBeCloseTo(0.997225, 5);
+    expect(joiner?.profile.profileKey).toBe('sp_joiners');
+    expect(joiner?.profile.shape).toBe('custom');
+    expect(joiner?.profile.widthMm).toBe(50);
+    expect(joiner?.profile.depthMm).toBe(16);
+    expect(joiner?.profile.sectionOutline).toHaveLength(20);
+  });
+
+  it('solves mono acrylic panels as 6 mm slabs centered on the joiner plane with 15 mm gutter embed', () => {
+    const result = solveAssembly3D(makeMonoConfig());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const roofPlane = result.value.roofPlanes.find((member) => member.id === 'mono-roof');
+    const joiner = result.value.members.find((member) => member.id === 'joiner-1');
+    const panel = result.value.roofCladdingPanels.find((member) => member.id === 'acrylic-panel-1');
+
+    if (!roofPlane || !joiner || !panel) {
+      throw new Error('Expected mono roof plane, joiner, and acrylic panel.');
+    }
+
+    const roofNormal = normalizeVector(roofPlane.plane.normal);
+    const roofFall = normalizeVector(roofPlane.fallVector);
+    const panelPlaneOffset = dotProduct(subtractPoints(panel.plane.origin, roofPlane.plane.origin), roofNormal);
+    const structuralFarPointOnPanelPlane = {
+      x: roofPlane.boundary[3]!.x + roofNormal.x * (joiner.profile.depthMm / 2),
+      y: roofPlane.boundary[3]!.y + roofNormal.y * (joiner.profile.depthMm / 2),
+      z: roofPlane.boundary[3]!.z + roofNormal.z * (joiner.profile.depthMm / 2),
+    };
+    const farEmbedMm = dotProduct(subtractPoints(panel.boundary[3]!, structuralFarPointOnPanelPlane), roofFall);
+
+    expect(panel.thicknessMm).toBe(6);
+    expect(panel.material).toBe('acrylic');
+    expect(panelPlaneOffset).toBeCloseTo(joiner.profile.depthMm / 2, 6);
+    expect(farEmbedMm).toBeCloseTo(15, 6);
+    expect(lineLength({ start: panel.boundary[0]!, end: panel.boundary[3]! })).toBeCloseTo(
+      Number(panel.metadata?.downslopeLengthMm ?? 0),
+      1,
+    );
+    expect(panel.metadata).toMatchObject({
+      gutterEmbedMm: 15,
+      panelMidPlaneOffsetMm: joiner.profile.depthMm / 2,
+    });
+  });
+
+  it('keeps mono acrylic house allowance and gutter embed correct when the roof falls back toward the house', () => {
+    const result = solveAssembly3D(
+      makeMonoConfig({
+        connection: {
+          type: 'fascia',
+          attachmentSide: 'rear',
+        },
+        roof: {
+          fallDirection: 'negativeY',
+        },
+        structural: {
+          heights: {
+            houseUndersideMm: 2137,
+            outerUndersideMm: 2400,
+            referenceUndersideMm: 2137,
+          },
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const roofPlane = result.value.roofPlanes.find((member) => member.id === 'mono-roof');
+    const joiner = result.value.members.find((member) => member.id === 'joiner-1');
+    const panel = result.value.roofCladdingPanels.find((member) => member.id === 'acrylic-panel-1');
+
+    if (!roofPlane || !joiner || !panel) {
+      throw new Error('Expected fascia-toward mono roof plane, joiner, and acrylic panel.');
+    }
+
+    const roofNormal = normalizeVector(roofPlane.plane.normal);
+    const roofRun = normalizeVector({
+      x: roofPlane.boundary[3]!.x - roofPlane.boundary[0]!.x,
+      y: roofPlane.boundary[3]!.y - roofPlane.boundary[0]!.y,
+      z: roofPlane.boundary[3]!.z - roofPlane.boundary[0]!.z,
+    });
+    const structuralHousePointOnPanelPlane = {
+      x: roofPlane.boundary[0]!.x + roofNormal.x * (joiner.profile.depthMm / 2),
+      y: roofPlane.boundary[0]!.y + roofNormal.y * (joiner.profile.depthMm / 2),
+      z: roofPlane.boundary[0]!.z + roofNormal.z * (joiner.profile.depthMm / 2),
+    };
+    const structuralFarPointOnPanelPlane = {
+      x: roofPlane.boundary[3]!.x + roofNormal.x * (joiner.profile.depthMm / 2),
+      y: roofPlane.boundary[3]!.y + roofNormal.y * (joiner.profile.depthMm / 2),
+      z: roofPlane.boundary[3]!.z + roofNormal.z * (joiner.profile.depthMm / 2),
+    };
+    const houseAllowanceMm = dotProduct(
+      subtractPoints(structuralHousePointOnPanelPlane, panel.boundary[0]!),
+      roofRun,
+    );
+    const farEmbedMm = dotProduct(subtractPoints(panel.boundary[3]!, structuralFarPointOnPanelPlane), roofRun);
+
+    expect(panel.thicknessMm).toBe(6);
+    expect(houseAllowanceMm).toBeCloseTo(100, 6);
+    expect(farEmbedMm).toBeCloseTo(15, 6);
+    expect(panel.metadata).toMatchObject({
+      gutterEmbedMm: 15,
+      houseAllowanceMm: 100,
+      panelMidPlaneOffsetMm: joiner.profile.depthMm / 2,
+    });
   });
 
   it('keeps post layout deterministic for 2, 3, and 4 attached posts', () => {
@@ -603,16 +786,27 @@ describe('solveAssembly3D', () => {
       start: { x: 0, y: 0, z: 2700 },
       end: { x: 6500, y: 0, z: 2700 },
     });
+    expect(result.value.members.some((member) => member.id === 'house-gutter')).toBe(false);
+    expect(result.value.members.some((member) => member.id === 'house-beam')).toBe(false);
     expect(result.value.roofPlanes).toHaveLength(2);
     expect(result.value.members.filter((member) => member.role === 'ridge')).toHaveLength(1);
     expect(result.value.members.filter((member) => member.role === 'post')).toHaveLength(3);
     expect(result.value.members.filter((member) => member.role === 'rafter')).toHaveLength(24);
+    const outerGutter = result.value.members.find((member) => member.id === 'outer-gutter');
+    const outerBeam = result.value.members.find((member) => member.id === 'outer-beam');
+    const outerPosts = result.value.members.filter((member) => member.id.startsWith('outer-post'));
+    expect(outerGutter?.profile.profileKey).toBe('sp_gutter');
+    expect(outerGutter?.centerline.start.x).toBe(-45);
+    expect(outerGutter?.centerline.end.x).toBe(6545);
+    expect(outerGutter?.centerline.start.y).toBe(3950);
+    expect(outerPosts.every((member) => member.centerline.start.y === outerGutter?.centerline.start.y)).toBe(true);
+    expect(outerBeam?.centerline.start.y).toBeLessThan(outerGutter?.centerline.start.y ?? 0);
     expect(result.value.quantityHooks).toEqual(
       expect.arrayContaining([
         { key: 'ridge.length_mm', quantity: 6500, unit: 'mm' },
         { key: 'house_eave_support.length_mm', quantity: 6500, unit: 'mm' },
         { key: 'outer_eave_support.length_mm', quantity: 6500, unit: 'mm' },
-        { key: 'outer_gutter.length_mm', quantity: 6500, unit: 'mm' },
+        { key: 'outer_gutter.length_mm', quantity: 6590, unit: 'mm' },
       ]),
     );
   });
@@ -644,12 +838,139 @@ describe('solveAssembly3D', () => {
     expect(result.value.members.filter((member) => member.role === 'beam')).toHaveLength(2);
     expect(result.value.members.filter((member) => member.role === 'gutter')).toHaveLength(2);
     expect(result.value.members.filter((member) => member.role === 'post')).toHaveLength(4);
+    const houseGutter = result.value.members.find((member) => member.id === 'house-gutter');
+    const houseBeam = result.value.members.find((member) => member.id === 'house-beam');
+    const outerGutter = result.value.members.find((member) => member.id === 'outer-gutter');
+    const outerBeam = result.value.members.find((member) => member.id === 'outer-beam');
+    const housePosts = result.value.members.filter((member) => member.id.startsWith('house-post'));
+    const outerPosts = result.value.members.filter((member) => member.id.startsWith('outer-post'));
+    expect(houseGutter?.profile.profileKey).toBe('sp_gutter');
+    expect(outerGutter?.profile.profileKey).toBe('sp_gutter');
+    expect(houseGutter?.centerline.start.x).toBe(-45);
+    expect(houseGutter?.centerline.end.x).toBe(6545);
+    expect(outerGutter?.centerline.start.x).toBe(-45);
+    expect(outerGutter?.centerline.end.x).toBe(6545);
+    expect(housePosts.every((member) => member.centerline.start.y === houseGutter?.centerline.start.y)).toBe(true);
+    expect(outerPosts.every((member) => member.centerline.start.y === outerGutter?.centerline.start.y)).toBe(true);
+    expect((houseBeam?.centerline.start.y ?? 0) > (houseGutter?.centerline.start.y ?? 0)).toBe(true);
+    expect((outerBeam?.centerline.start.y ?? 0) < (outerGutter?.centerline.start.y ?? 0)).toBe(true);
     expect(result.value.quantityHooks).toEqual(
       expect.arrayContaining([
-        { key: 'house_gutter.length_mm', quantity: 6500, unit: 'mm' },
+        { key: 'house_gutter.length_mm', quantity: 6590, unit: 'mm' },
+        { key: 'outer_gutter.length_mm', quantity: 6590, unit: 'mm' },
         { key: 'posts.count', quantity: 4, unit: 'count' },
       ]),
     );
+  });
+
+  it('builds a real attached gable acrylic roof-pack on both roof halves', () => {
+    const result = solveAssembly3D(
+      makeGableConfig({
+        roof: {
+          material: 'acrylic',
+        },
+        roofCovering: {
+          kind: 'acrylic',
+          houseAllowanceMm: 50,
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const houseJoiners = result.value.members.filter(
+      (member) => member.role === 'joiner' && member.metadata?.slope === 'house',
+    );
+    const outerJoiners = result.value.members.filter(
+      (member) => member.role === 'joiner' && member.metadata?.slope === 'outer',
+    );
+    const housePanels = result.value.roofCladdingPanels.filter((panel) => panel.metadata?.slope === 'house');
+    const outerPanels = result.value.roofCladdingPanels.filter((panel) => panel.metadata?.slope === 'outer');
+    const houseRoof = result.value.roofPlanes.find((plane) => plane.id === 'gable-house-roof');
+    const outerRoof = result.value.roofPlanes.find((plane) => plane.id === 'gable-outer-roof');
+    const firstHousePanel = housePanels[0];
+    const firstOuterPanel = outerPanels[0];
+    const firstHouseJoiner = houseJoiners[0];
+    const firstOuterJoiner = outerJoiners[0];
+
+    expect(houseJoiners).toHaveLength(12);
+    expect(outerJoiners).toHaveLength(12);
+    expect(housePanels).toHaveLength(11);
+    expect(outerPanels).toHaveLength(11);
+    expect(firstHouseJoiner?.id).toBe('house-joiner-1');
+    expect(firstOuterJoiner?.id).toBe('outer-joiner-1');
+    expect(firstHouseJoiner?.profile.profileKey).toBe('sp_joiners');
+    expect(firstOuterJoiner?.profile.profileKey).toBe('sp_joiners');
+    expect(firstHousePanel?.id).toBe('house-acrylic-panel-1');
+    expect(firstOuterPanel?.id).toBe('outer-acrylic-panel-1');
+    expect(firstHousePanel?.thicknessMm).toBe(6);
+    expect(firstOuterPanel?.thicknessMm).toBe(6);
+    expect(firstHousePanel?.metadata).toMatchObject({
+      slope: 'house',
+      gutterEmbedMm: 0,
+      houseAllowanceMm: 50,
+      ridgeHalfMm: 25,
+    });
+    expect(firstOuterPanel?.metadata).toMatchObject({
+      slope: 'outer',
+      gutterEmbedMm: 15,
+      houseAllowanceMm: 0,
+      ridgeHalfMm: 25,
+    });
+    expect(firstHousePanel?.boundary[2]?.y).toBeLessThan(2000);
+    expect(firstOuterPanel?.boundary[2]?.y).toBeGreaterThan(2000);
+    expect(firstHouseJoiner?.centerline.end.y).toBe(firstHousePanel?.boundary[2]?.y);
+    expect(firstOuterJoiner?.centerline.end.y).toBe(firstOuterPanel?.boundary[2]?.y);
+    expect(firstHousePanel?.plane.origin.z).not.toBe(houseRoof?.plane.origin.z);
+    expect(firstOuterPanel?.plane.origin.z).not.toBe(outerRoof?.plane.origin.z);
+  });
+
+  it('builds a freestanding gable acrylic roof-pack with gutter embed on both eaves', () => {
+    const result = solveAssembly3D(
+      makeGableConfig({
+        roof: {
+          material: 'acrylic',
+        },
+        roofCovering: {
+          kind: 'acrylic',
+        },
+        connection: {
+          type: 'freestanding',
+          attachmentSide: 'rear',
+        },
+        gable: {
+          ridgePositionMm: 2000,
+          endFramesMode: 'none',
+          houseEaveGutterMode: 'our',
+          outerEaveGutterMode: 'our',
+        },
+        supports: {
+          postCount: 4,
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const housePanels = result.value.roofCladdingPanels.filter((panel) => panel.metadata?.slope === 'house');
+    const outerPanels = result.value.roofCladdingPanels.filter((panel) => panel.metadata?.slope === 'outer');
+    const housePanel = housePanels[0];
+    const outerPanel = outerPanels[0];
+
+    expect(housePanels).toHaveLength(11);
+    expect(outerPanels).toHaveLength(11);
+    expect(housePanel?.metadata).toMatchObject({
+      gutterEmbedMm: 15,
+      houseAllowanceMm: 0,
+    });
+    expect(outerPanel?.metadata).toMatchObject({
+      gutterEmbedMm: 15,
+      houseAllowanceMm: 0,
+    });
+    expect(housePanel?.boundary[0]?.y).toBeLessThan(housePanel?.boundary[2]?.y ?? Number.NaN);
+    expect(outerPanel?.boundary[0]?.y).toBeGreaterThan(outerPanel?.boundary[2]?.y ?? Number.NaN);
   });
 
   it('derives gable ridge height and opposing fall directions from pitch and half-span geometry', () => {
@@ -660,7 +981,7 @@ describe('solveAssembly3D', () => {
 
     const ridge = result.value.members.find((member) => member.id === 'ridge');
     expect(ridge?.centerline.start.y).toBe(2000);
-    expect(Math.round(ridge?.centerline.start.z ?? 0)).toBe(3708);
+    expect(Math.round(ridge?.centerline.start.z ?? 0)).toBe(3671);
     expect(result.value.roofPlanes[0]?.fallVector.y).toBeLessThan(0);
     expect(result.value.roofPlanes[1]?.fallVector.y).toBeGreaterThan(0);
   });
@@ -680,15 +1001,15 @@ describe('solveAssembly3D', () => {
     expect(houseRafter?.localFrame.yAxis.y).toBeCloseTo(0, 6);
     expect(houseRafter?.localFrame.yAxis.z).toBeCloseTo(0, 6);
     expect(houseRafter?.localFrame.zAxis.x).toBeCloseTo(0, 6);
-    expect(houseRafter?.localFrame.zAxis.y).toBeCloseTo(-0.431458, 6);
-    expect(houseRafter?.localFrame.zAxis.z).toBeCloseTo(0.902133, 6);
+    expect(houseRafter?.localFrame.zAxis.y).toBeCloseTo(-0.422618, 6);
+    expect(houseRafter?.localFrame.zAxis.z).toBeCloseTo(0.906308, 6);
 
     expect(outerRafter?.localFrame.yAxis.x).toBeCloseTo(-1, 6);
     expect(outerRafter?.localFrame.yAxis.y).toBeCloseTo(0, 6);
     expect(outerRafter?.localFrame.yAxis.z).toBeCloseTo(0, 6);
     expect(outerRafter?.localFrame.zAxis.x).toBeCloseTo(0, 6);
-    expect(outerRafter?.localFrame.zAxis.y).toBeCloseTo(0.440631, 6);
-    expect(outerRafter?.localFrame.zAxis.z).toBeCloseTo(0.897689, 6);
+    expect(outerRafter?.localFrame.zAxis.y).toBeCloseTo(0.408783, 6);
+    expect(outerRafter?.localFrame.zAxis.z).toBeCloseTo(0.912632, 6);
 
     expect(ridge?.localFrame.yAxis).toEqual({
       x: 0,

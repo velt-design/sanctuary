@@ -38,6 +38,13 @@ function canonicalizeMetadata(metadata: GeometryMetadata | undefined): GeometryM
   return next;
 }
 
+function canonicalizePolygon2(points: Array<{ x: number; y: number }> | null | undefined) {
+  return points?.map((point) => ({
+    x: roundMillimetre(point.x),
+    y: roundMillimetre(point.y),
+  })) ?? null;
+}
+
 export function canonicalizeAssembly3D(assembly: Assembly3D): CanonicalAssembly3D {
   return {
     family: assembly.family,
@@ -174,6 +181,27 @@ export function canonicalizeAssembly3D(assembly: Assembly3D): CanonicalAssembly3
           shape: member.profile.shape,
           widthMm: roundMillimetre(member.profile.widthMm),
           depthMm: roundMillimetre(member.profile.depthMm),
+          ...(member.profile.profileKey ? { profileKey: member.profile.profileKey } : {}),
+          ...(member.profile.sectionOutline?.length
+            ? { sectionOutline: canonicalizePolygon2(member.profile.sectionOutline) }
+            : {}),
+          ...(member.profile.sectionVoids?.length
+            ? {
+                sectionVoids: member.profile.sectionVoids.map((voidBoundary) => canonicalizePolygon2(voidBoundary) ?? []),
+              }
+            : {}),
+          ...(member.profile.anchors
+            ? {
+                anchors: {
+                  undersideZ: roundMillimetre(member.profile.anchors.undersideZ),
+                  topsideZ: roundMillimetre(member.profile.anchors.topsideZ),
+                  backFaceY: roundMillimetre(member.profile.anchors.backFaceY),
+                  frontFaceY: roundMillimetre(member.profile.anchors.frontFaceY),
+                  roofBearingFaceY: roundMillimetre(member.profile.anchors.roofBearingFaceY),
+                  roofBearingFaceZ: roundMillimetre(member.profile.anchors.roofBearingFaceZ),
+                },
+              }
+            : {}),
         },
         localFrame: {
           origin: {
@@ -241,6 +269,7 @@ export function canonicalizeAssembly3D(assembly: Assembly3D): CanonicalAssembly3
       .sort((a, b) => a.id.localeCompare(b.id))
       .map((panel) => ({
         ...panel,
+        thicknessMm: roundMillimetre(panel.thicknessMm),
         boundary: panel.boundary.map((point) => ({
           x: roundMillimetre(point.x),
           y: roundMillimetre(point.y),

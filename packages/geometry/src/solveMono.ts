@@ -13,7 +13,8 @@ import type {
   RoofPlane3D,
   Vector3,
 } from './contracts';
-import { crossProduct, lineDirection, lineLength, magnitude, normalizeVector, planeFromOriginAxes, scaleVector } from './math3d';
+import { crossProduct, lineDirection, lineLength, magnitude, normalizeVector, planeFromOriginAxes, polygonArea, scaleVector } from './math3d';
+import { parseAssemblyMemberProfile, resolveAssemblyMemberProfileAnchors } from './profiles';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
 type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
@@ -95,6 +96,14 @@ function requireProfile(profile: AssemblyMemberProfile | null, label: string): A
   return null;
 }
 
+function profileFaceY(profile: AssemblyMemberProfile, face: 'backFaceY' | 'frontFaceY' | 'roofBearingFaceY'): number {
+  return resolveAssemblyMemberProfileAnchors(profile)[face];
+}
+
+function profileFaceZ(profile: AssemblyMemberProfile, face: 'undersideZ' | 'topsideZ' | 'roofBearingFaceZ'): number {
+  return resolveAssemblyMemberProfileAnchors(profile)[face];
+}
+
 function buildHouseReferenceGeometry(input: {
   config: GeometryConfig;
   attachmentEdge: Line3 | null;
@@ -148,11 +157,12 @@ type MonoAcrylicCoveringInput = {
   acrylicAreaMm2: number;
 };
 
-const MONO_ACRYLIC_JOINER_PROFILE: AssemblyMemberProfile = {
-  shape: 'rectangular',
-  widthMm: 60,
-  depthMm: 25,
-};
+const MONO_GUTTER_BODY_INSET_MM = 3;
+const MONO_GUTTER_END_CAP_MM = 3;
+const MONO_GUTTER_END_CAP_WIDTH_MM = 100;
+const MONO_GUTTER_END_CAP_DEPTH_MM = 150;
+const MONO_ACRYLIC_PANEL_THICKNESS_MM = 6;
+const MONO_ACRYLIC_GUTTER_EMBED_MM = 15;
 
 function resolveMonoStructuralInput(config: GeometryConfig): MonoStructuralInput | SolveAssembly3DFailure {
   const referenceUndersideMm = config.structural.heights.referenceUndersideMm ?? config.structural.heights.houseUndersideMm;
@@ -266,8 +276,29 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
   }
 
   const input = structural as MonoStructuralInput;
+  const totalPostCount = config.supports.postCount;
+  if (totalPostCount === null || totalPostCount === undefined || totalPostCount < 2) {
+    return fail('insufficient_input', 'Mono solver requires a standard post count.');
+  }
+  if (config.connection.type === 'freestanding' && (totalPostCount < 4 || totalPostCount % 2 !== 0)) {
+    return fail('insufficient_input', 'Freestanding mono standard layout requires an even post count of at least 4.');
+  }
+
   const lengthMm = config.dimensions.lengthMm;
   const projectionMm = config.dimensions.projectionMm;
+  const referenceBeamBackFaceY = profileFaceY(input.referenceBeamProfile, 'backFaceY');
+  const referenceBeamRoofBearingFaceY = profileFaceY(input.referenceBeamProfile, 'roofBearingFaceY');
+  const referenceBeamUndersideZ = profileFaceZ(input.referenceBeamProfile, 'undersideZ');
+  const referenceBeamRoofBearingFaceZ = profileFaceZ(input.referenceBeamProfile, 'roofBearingFaceZ');
+  const supportBeamFrontFaceY = profileFaceY(input.supportBeamProfile, 'frontFaceY');
+  const supportBeamUndersideZ = profileFaceZ(input.supportBeamProfile, 'undersideZ');
+  const gutterBackFaceY = profileFaceY(input.gutterProfile, 'backFaceY');
+  const gutterFrontFaceY = profileFaceY(input.gutterProfile, 'frontFaceY');
+  const gutterUndersideZ = profileFaceZ(input.gutterProfile, 'undersideZ');
+  const gutterRoofBearingFaceY = profileFaceY(input.gutterProfile, 'roofBearingFaceY');
+  const gutterRoofBearingFaceZ = profileFaceZ(input.gutterProfile, 'roofBearingFaceZ');
+  const rafterTopsideZ = profileFaceZ(input.rafterProfile, 'topsideZ');
+
   const outline = [
     point(0, 0, 0),
     point(lengthMm, 0, 0),
@@ -277,14 +308,22 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
 
   const referenceBeamLength = lengthMm;
   const outerBeamLength = lengthMm;
-  const houseBeamTopMm = input.referenceUndersideMm + input.referenceBeamProfile.depthMm;
-  const outerGutterTopMm = input.outerUndersideMm + input.gutterProfile.depthMm;
-  const houseBeamCenterlineZ = input.referenceUndersideMm + input.referenceBeamProfile.depthMm / 2;
-  const outerBeamCenterlineZ = input.outerUndersideMm + input.supportBeamProfile.depthMm / 2;
-  const outerGutterCenterlineZ = input.outerUndersideMm + input.gutterProfile.depthMm / 2;
+  const referenceBeamCenterlineY = -referenceBeamBackFaceY;
+  const houseBeamCenterlineZ = input.referenceUndersideMm - referenceBeamUndersideZ;
+  const outerGutterCenterlineY = projectionMm - gutterFrontFaceY;
+  const outerGutterCenterlineZ = input.outerUndersideMm - gutterUndersideZ;
+  const outerBeamCenterlineY = outerGutterCenterlineY + gutterBackFaceY - supportBeamFrontFaceY;
+  const outerBeamCenterlineZ = input.outerUndersideMm - supportBeamUndersideZ;
+  const outerPostCount = config.connection.type === 'freestanding' ? totalPostCount / 2 : totalPostCount;
+  const outerPostXPositions = equalSpacingPositions(lengthMm, outerPostCount);
+  const outerPostHalfWidthMm = input.postProfile.widthMm / 2;
+  const outerPostLeftOutsideFaceX = (outerPostXPositions[0] ?? 0) - outerPostHalfWidthMm;
+  const outerPostRightOutsideFaceX = (outerPostXPositions[outerPostXPositions.length - 1] ?? lengthMm) + outerPostHalfWidthMm;
+  const houseBeamTopMm = houseBeamCenterlineZ + referenceBeamRoofBearingFaceZ;
+  const outerGutterTopMm = outerGutterCenterlineZ + gutterRoofBearingFaceZ;
 
-  const startBearingY = input.referenceBeamProfile.widthMm;
-  const endBearingY = projectionMm - input.gutterProfile.widthMm;
+  const startBearingY = referenceBeamCenterlineY + referenceBeamRoofBearingFaceY;
+  const endBearingY = outerGutterCenterlineY + gutterRoofBearingFaceY;
   if (endBearingY <= startBearingY) {
     return fail('insufficient_input', 'Mono solver requires positive rafter bearing length between the reference beam and gutter.');
   }
@@ -307,6 +346,7 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
     point(lengthMm, endBearingY, outerGutterTopMm),
     point(0, endBearingY, outerGutterTopMm),
   ];
+  const roofRunVector = lineDirection(line(roofTopStart, roofTopEnd));
 
   const fallVector = config.roof.fallDirection === 'negativeY'
     ? normalizeVector({
@@ -325,25 +365,24 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
   const roofCladdingPanels: RoofCladdingPanel3D[] = [];
   const joiners: AssemblyMember3D[] = [];
   if (monoAcrylicCovering) {
-    const joinerOffset = scaleVector(roofNormal, MONO_ACRYLIC_JOINER_PROFILE.depthMm / 2);
-    const coverHousePoint = addPointVector(
+    const monoAcrylicJoinerProfile = parseAssemblyMemberProfile('sp_joiners');
+    if (!monoAcrylicJoinerProfile) {
+      return fail('insufficient_input', 'Mono solver requires the SP joiners profile.');
+    }
+    const panelMidPlaneOffsetMm = monoAcrylicJoinerProfile.depthMm / 2;
+    const joinerOffset = scaleVector(roofNormal, panelMidPlaneOffsetMm);
+    const panelMidPlaneOrigin = addPointVector(roofPlane.origin, joinerOffset);
+    const coverHousePointOnRoofPlane = addPointVector(
       point(0, startBearingY, houseBeamTopMm),
-      scaleVector(fallVector, -monoAcrylicCovering.houseAllowanceMm),
+      scaleVector(roofRunVector, -monoAcrylicCovering.houseAllowanceMm),
     );
-    const coverFarPoint = addPointVector(
+    const coverFarPointOnRoofPlane = addPointVector(
       point(0, endBearingY, outerGutterTopMm),
-      scaleVector(fallVector, monoAcrylicCovering.farAllowanceMm),
+      scaleVector(roofRunVector, MONO_ACRYLIC_GUTTER_EMBED_MM),
     );
-    const coveringLine = line(coverHousePoint, coverFarPoint);
-    const coveringDirection = lineDirection(coveringLine);
-    const coveringMidpoint = point(
-      (coverHousePoint.x + coverFarPoint.x) / 2,
-      (coverHousePoint.y + coverFarPoint.y) / 2,
-      (coverHousePoint.z + coverFarPoint.z) / 2,
-    );
-    const coveringLineLengthMm = lengthMm > 0 ? monoAcrylicCovering.acrylicAreaMm2 / lengthMm : lineLength(coveringLine);
-    const coverStartPoint = addPointVector(coveringMidpoint, scaleVector(coveringDirection, -coveringLineLengthMm / 2));
-    const coverEndPoint = addPointVector(coveringMidpoint, scaleVector(coveringDirection, coveringLineLengthMm / 2));
+    const coverStartPoint = addPointVector(coverHousePointOnRoofPlane, joinerOffset);
+    const coverEndPoint = addPointVector(coverFarPointOnRoofPlane, joinerOffset);
+    const coveringLineLengthMm = lineLength(line(coverStartPoint, coverEndPoint));
     const structuralJoinerStart = point(0, startBearingY, houseBeamTopMm);
     const structuralJoinerEnd = point(0, endBearingY, outerGutterTopMm);
     const structuralJoinerLine = line(structuralJoinerStart, structuralJoinerEnd);
@@ -367,7 +406,7 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
         id: `joiner-${index + 1}`,
         role: 'joiner',
         centerline: memberLine,
-        profile: MONO_ACRYLIC_JOINER_PROFILE,
+        profile: monoAcrylicJoinerProfile,
         localFrame: frameForJoiner(memberLine, roofNormal),
         metadata: {
           index: index + 1,
@@ -384,29 +423,33 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
         continue;
       }
 
-      const panelAreaMm2 = Math.round((rightX - leftX) * coveringLineLengthMm);
       const boundary = [
         point(leftX, coverStartPoint.y, coverStartPoint.z),
         point(rightX, coverStartPoint.y, coverStartPoint.z),
         point(rightX, coverEndPoint.y, coverEndPoint.z),
         point(leftX, coverEndPoint.y, coverEndPoint.z),
       ];
+      const panelGeometryAreaMm2 = Math.round(polygonArea(boundary));
       roofCladdingPanels.push({
         id: `acrylic-panel-${index + 1}`,
         material: 'acrylic',
         boundary,
-        plane: roofPlane,
+        thicknessMm: MONO_ACRYLIC_PANEL_THICKNESS_MM,
+        plane: planeFromOriginAxes(panelMidPlaneOrigin, roofPlane.xAxis, roofPlane.yAxis),
         metadata: {
           index: index + 1,
-          areaMm2: panelAreaMm2,
+          areaMm2: panelGeometryAreaMm2,
           bayWidthMm: Math.round(rightX - leftX),
           downslopeLengthMm: Math.round(coveringLineLengthMm),
+          gutterEmbedMm: MONO_ACRYLIC_GUTTER_EMBED_MM,
+          houseAllowanceMm: Math.round(monoAcrylicCovering.houseAllowanceMm),
+          panelMidPlaneOffsetMm: Math.round(panelMidPlaneOffsetMm),
         },
       });
     }
   }
 
-  const rafterCenterOffset = scaleVector(roofNormal, -input.rafterProfile.depthMm / 2);
+  const rafterCenterOffset = scaleVector(roofNormal, -rafterTopsideZ);
   const rafters: AssemblyMember3D[] = rafterXPositions.map((x, index) => {
     const memberLine = line(
       addPointVector(point(x, startBearingY, houseBeamTopMm), rafterCenterOffset),
@@ -437,8 +480,8 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
 
   if (config.connection.type !== 'freestanding') {
     const ledgerLine = line(
-      point(0, 0, houseBeamCenterlineZ),
-      point(referenceBeamLength, 0, houseBeamCenterlineZ),
+      point(0, referenceBeamCenterlineY, houseBeamCenterlineZ),
+      point(referenceBeamLength, referenceBeamCenterlineY, houseBeamCenterlineZ),
     );
     members.push({
       id: 'ledger',
@@ -459,8 +502,8 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
     });
   } else {
     const houseBeamLine = line(
-      point(0, 0, houseBeamCenterlineZ),
-      point(referenceBeamLength, 0, houseBeamCenterlineZ),
+      point(0, referenceBeamCenterlineY, houseBeamCenterlineZ),
+      point(referenceBeamLength, referenceBeamCenterlineY, houseBeamCenterlineZ),
     );
     members.push({
       id: 'house-beam',
@@ -475,8 +518,8 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
   }
 
   const outerBeamLine = line(
-    point(0, projectionMm, outerBeamCenterlineZ),
-    point(outerBeamLength, projectionMm, outerBeamCenterlineZ),
+    point(0, outerBeamCenterlineY, outerBeamCenterlineZ),
+    point(outerBeamLength, outerBeamCenterlineY, outerBeamCenterlineZ),
   );
   members.push({
     id: 'outer-beam',
@@ -490,8 +533,8 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
   });
 
   const gutterLine = line(
-    point(0, projectionMm, outerGutterCenterlineZ),
-    point(lengthMm, projectionMm, outerGutterCenterlineZ),
+    point(outerPostLeftOutsideFaceX, outerGutterCenterlineY, outerGutterCenterlineZ),
+    point(outerPostRightOutsideFaceX, outerGutterCenterlineY, outerGutterCenterlineZ),
   );
   members.push({
     id: 'outer-gutter',
@@ -502,16 +545,16 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
     metadata: {
       gutterType: config.structural.drainage.gutterType,
       hasOurGutter: config.structural.drainage.hasOurGutter,
+      bodyInsetStartMm: MONO_GUTTER_BODY_INSET_MM,
+      bodyInsetEndMm: MONO_GUTTER_BODY_INSET_MM,
+      endCapStartMm: MONO_GUTTER_END_CAP_MM,
+      endCapEndMm: MONO_GUTTER_END_CAP_MM,
+      endCapWidthMm: MONO_GUTTER_END_CAP_WIDTH_MM,
+      endCapDepthMm: MONO_GUTTER_END_CAP_DEPTH_MM,
     },
   });
 
-  const totalPostCount = config.supports.postCount;
-  if (totalPostCount === null || totalPostCount === undefined || totalPostCount < 2) {
-    return fail('insufficient_input', 'Mono solver requires a standard post count.');
-  }
-
-  const generatePosts = (prefix: string, y: number, topZ: number, count: number) => {
-    const xPositions = equalSpacingPositions(lengthMm, count);
+  const generatePosts = (prefix: string, y: number, topZ: number, xPositions: number[]) => {
     for (let index = 0; index < xPositions.length; index += 1) {
       const x = xPositions[index]!;
       const memberLine = line(point(x, y, 0), point(x, y, topZ));
@@ -549,14 +592,12 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
   };
 
   if (config.connection.type === 'freestanding') {
-    if (totalPostCount < 4 || totalPostCount % 2 !== 0) {
-      return fail('insufficient_input', 'Freestanding mono standard layout requires an even post count of at least 4.');
-    }
     const postsPerLine = totalPostCount / 2;
-    generatePosts('house-post', 0, houseBeamCenterlineZ, postsPerLine);
-    generatePosts('outer-post', projectionMm, outerBeamCenterlineZ, postsPerLine);
+    const housePostXPositions = equalSpacingPositions(lengthMm, postsPerLine);
+    generatePosts('house-post', referenceBeamCenterlineY, input.referenceUndersideMm, housePostXPositions);
+    generatePosts('outer-post', outerGutterCenterlineY, input.outerUndersideMm, outerPostXPositions);
   } else {
-    generatePosts('outer-post', projectionMm, outerBeamCenterlineZ, totalPostCount);
+    generatePosts('outer-post', outerGutterCenterlineY, input.outerUndersideMm, outerPostXPositions);
   }
 
   members.push(...joiners);

@@ -53,6 +53,66 @@ describe('geometryEditAdapter', () => {
     expect(result.draft.inputs.modules[0]?.boxPerimeterEnabled).toBe(true);
   });
 
+  it('coerces attached family switches onto the supported gable baseline', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const result = applyGeometryEditIntent({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'family',
+        value: 'gable',
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.draft.inputs.modules[0]?.pergolaStyle).toBe('gable');
+    expect(result.draft.inputs.modules[0]?.boxPerimeterEnabled).toBe(false);
+    expect(result.draft.inputs.modules[0]?.gableEndFramesMode).toBe('none');
+    expect(result.draft.inputs.modules[0]?.gableHouseEdgeGutter).toBe('house');
+    expect(result.draft.inputs.modules[0]?.gableOuterEdgeGutter).toBe('our');
+    expect(result.draft.inputs.modules[0]?.overrides?.ridgeBeamProfile).toBe('150x50');
+  });
+
+  it('coerces freestanding family switches onto the supported gable baseline', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const freestandingResult = applyGeometryEditIntent({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'house_connection',
+        value: 'freestanding',
+      },
+    });
+
+    expect(freestandingResult.ok).toBe(true);
+    if (!freestandingResult.ok) return;
+
+    const gableResult = applyGeometryEditIntent({
+      snapshot,
+      draft: freestandingResult.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'family',
+        value: 'gable',
+      },
+    });
+
+    expect(gableResult.ok).toBe(true);
+    if (!gableResult.ok) return;
+    expect(gableResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('none');
+    expect(gableResult.draft.inputs.modules[0]?.gableHouseEdgeGutter).toBe('our');
+    expect(gableResult.draft.inputs.modules[0]?.gableOuterEdgeGutter).toBe('our');
+  });
+
   it('translates drawing-field and footprint edits into geometry intents and produces the next draft', () => {
     const snapshot = getFixtureSnapshot('mono-standard');
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
@@ -162,5 +222,22 @@ describe('geometryEditAdapter', () => {
     expect(nextState.ok).toBe(true);
     if (!nextState.ok) return;
     expect(nextState.value.overrides.ledgerProfile).toBe('100x50');
+  });
+
+  it('exposes supported gable baseline values in geometry edit state', () => {
+    const snapshot = getFixtureSnapshot('gable-standard');
+    const result = buildGeometryEditState({
+      snapshot,
+      moduleIndex: 0,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.family).toBe('gable');
+    expect(result.value.gable).toEqual({
+      endFramesMode: 'none',
+      houseEaveGutterMode: 'house',
+      outerEaveGutterMode: 'our',
+    });
   });
 });

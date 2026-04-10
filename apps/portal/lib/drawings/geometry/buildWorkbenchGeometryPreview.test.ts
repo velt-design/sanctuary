@@ -4,6 +4,7 @@ import {
   buildEstimateDrawingDraftFromSnapshot,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
+import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 
 function requireFixture(slug: 'mono-standard' | 'gable-standard' | 'box-standard') {
@@ -195,5 +196,80 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.resultSource).toBe('snapshot');
     expect(preview.config.family).toBe('gable');
     expect(preview.scene.layers.find((layer) => layer.id === 'beams')?.objects.some((object) => object.id === 'ridge')).toBe(true);
+  });
+
+  it('re-solves mono drafts switched to gable against the supported baseline', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) {
+      throw new Error('Expected drawing draft from snapshot.');
+    }
+
+    const switched = applyGeometryEditIntent({
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'family',
+        value: 'gable',
+      },
+    });
+
+    expect(switched.ok).toBe(true);
+    if (!switched.ok) return;
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: switched.draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.previewMode).toBe('draft_local_resolved');
+    expect(preview.config.family).toBe('gable');
+    expect(preview.validation.status).toBe('pass');
+  });
+
+  it('re-solves gable acrylic drafts into a real roof-pack instead of fallback roof planes', () => {
+    const fixture = requireFixture('gable-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) {
+      throw new Error('Expected drawing draft from snapshot.');
+    }
+    const acrylic = applyGeometryEditIntent({
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'roof_material',
+        value: 'acrylic',
+      },
+    });
+    expect(acrylic.ok).toBe(true);
+    if (!acrylic.ok) return;
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: acrylic.draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.previewMode).toBe('draft_local_resolved');
+    expect(preview.config.family).toBe('gable');
+    expect(preview.config.roof.material).toBe('acrylic');
+    expect(preview.validation.status).toBe('pass');
+    expect(preview.assembly.roofCladdingPanels.some((panel) => panel.id === 'house-acrylic-panel-1')).toBe(true);
+    expect(preview.assembly.roofCladdingPanels.some((panel) => panel.id === 'outer-acrylic-panel-1')).toBe(true);
+    expect(preview.scene.layers.find((layer) => layer.id === 'roof_cladding')?.visibleByDefault).toBe(true);
+    expect(preview.scene.layers.find((layer) => layer.id === 'roof_planes')?.visibleByDefault).toBe(false);
   });
 });

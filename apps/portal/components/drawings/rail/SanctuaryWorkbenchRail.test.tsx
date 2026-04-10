@@ -40,6 +40,7 @@ function makeGeometryState(overrides: Partial<GeometryEditState> = {}): Geometry
       postCount: '2',
       postCutHeightM: '2.5',
     },
+    gable: null,
     overrides: {
       ledgerProfile: '',
       rafterProfile: '',
@@ -67,6 +68,7 @@ function makeGeometryState(overrides: Partial<GeometryEditState> = {}): Geometry
       },
     },
     supports: { ...base.supports, ...overrides.supports },
+    gable: overrides.gable ?? base.gable,
   };
 }
 
@@ -130,7 +132,7 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('disabled=""');
   });
 
-  it('shows gable-only overrides when the family is gable', () => {
+  it('shows gable-only overrides and the locked gable baseline when the family is gable', () => {
     const markup = renderToStaticMarkup(
       <SanctuaryWorkbenchRail
         moduleLabel="M2 - Gable"
@@ -141,14 +143,49 @@ describe('SanctuaryWorkbenchRail', () => {
             pitchDeg: '25',
             boxPerimeterEnabled: false,
           },
+          gable: {
+            endFramesMode: 'none',
+            houseEaveGutterMode: 'house',
+            outerEaveGutterMode: 'our',
+          },
         })}
         view="plan"
         onCommitGeometryEdit={() => ({ ok: true })}
       />,
     );
 
+    expect(markup).toContain('Gable Baseline');
+    expect(markup).toContain('Gable end frames');
+    expect(markup).toContain('House-side eave gutter');
+    expect(markup).toContain('Outer-side eave gutter');
+    expect(markup).toContain('This workbench currently supports the standard gable baseline only.');
     expect(markup).toContain('Tie beam override');
     expect(markup).toContain('King-post strut override');
     expect(markup).not.toContain('Box perimeter beam override');
+  });
+
+  it('shows the freestanding supported gable baseline when the connection is freestanding', () => {
+    const markup = renderToStaticMarkup(
+      <SanctuaryWorkbenchRail
+        moduleLabel="M2 - Gable"
+        geometryState={makeGeometryState({
+          family: 'gable',
+          connection: {
+            type: 'freestanding',
+            attachmentSide: 'rear',
+          },
+          gable: {
+            endFramesMode: 'none',
+            houseEaveGutterMode: 'our',
+            outerEaveGutterMode: 'our',
+          },
+        })}
+        view="plan"
+        onCommitGeometryEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('value="our"');
+    expect(markup).toContain('Gable Baseline');
   });
 });

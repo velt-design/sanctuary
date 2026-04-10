@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
@@ -36,6 +37,7 @@ type DrawingWorkbenchProps = {
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   meta: EstimateDrawingSheetMeta;
+  backHref?: string;
   editableFields?: EstimateDrawingField[];
   modelEditableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
@@ -70,6 +72,7 @@ export default function DrawingWorkbench({
   viewportTransform,
   onViewportTransformChange,
   meta,
+  backHref,
   editableFields,
   modelEditableFields,
   showDebugOverlays,
@@ -77,39 +80,25 @@ export default function DrawingWorkbench({
   onCommitModelField,
   onCommitFootprintEdit,
 }: DrawingWorkbenchProps) {
+  void moduleLabel;
+  void modules;
+  void activeModuleIndex;
+  void onActiveModuleIndexChange;
+
   return (
     <section className={styles.workbench} aria-label="Drawing workbench">
       <div className={styles.toolbar}>
-        <div className={styles.toolbarGroup}>
-          <div className={styles.toolbarMeta}>
-            <p className={styles.eyebrow}>Drawing Workbench</p>
-            <h3 className={styles.title}>{moduleLabel}</h3>
-          </div>
-          {modules.length > 1 ? (
-            <label className={styles.toolbarField}>
-              <span className={styles.eyebrow}>Module</span>
-              <select
-                className={styles.toolbarSelect}
-                aria-label="Drawing module"
-                value={String(activeModuleIndex)}
-                onChange={(event) => onActiveModuleIndexChange(Number(event.target.value))}
-              >
-                {modules.map((module, index) => (
-                  <option key={module.id} value={String(index)}>
-                    {module.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-        </div>
-
-        <div className={styles.toolbarGroup}>
+        <nav className={styles.toolbarNav} aria-label="Drawing workbench controls">
           <ViewportModeSwitch
             value={viewportMode}
             onChange={onViewportModeChange}
             availableModes={availableViewportModes}
           />
+          {backHref ? (
+            <Link href={backHref} className={styles.toolbarLink}>
+              Back to Project
+            </Link>
+          ) : null}
           <div className={styles.toggleGroup} role="tablist" aria-label="Drawing view">
             {VIEW_OPTIONS.map((option) => {
               const active = option.id === view;
@@ -127,7 +116,7 @@ export default function DrawingWorkbench({
               );
             })}
           </div>
-        </div>
+        </nav>
       </div>
 
       <div className={styles.viewport}>

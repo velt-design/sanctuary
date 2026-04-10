@@ -1,5 +1,6 @@
-import type { Assembly3D, GeometryConfig, GeometryValidationInvariant, QuantityHook } from '../contracts';
-import { dotProduct, lineLength, magnitude, normalizeVector, polygonArea, subtractPoints } from '../math3d';
+import type { Assembly3D, AssemblyMember3D, GeometryConfig, GeometryValidationInvariant, QuantityHook } from '../contracts';
+import { dotProduct, lineDirection, lineLength, magnitude, normalizeVector, polygonArea, subtractPoints } from '../math3d';
+import { resolveAssemblyMemberProfileAnchors } from '../profiles';
 
 const MM_TOLERANCE = 1;
 
@@ -13,6 +14,14 @@ function fail(key: string, message: string): GeometryValidationInvariant {
 
 function approxEqual(a: number, b: number, tolerance = MM_TOLERANCE): boolean {
   return Math.abs(a - b) <= tolerance;
+}
+
+function profileFaceY(member: AssemblyMember3D, face: 'backFaceY' | 'frontFaceY' | 'roofBearingFaceY'): number {
+  return resolveAssemblyMemberProfileAnchors(member.profile)[face];
+}
+
+function profileFaceZ(member: AssemblyMember3D, face: 'undersideZ' | 'topsideZ' | 'roofBearingFaceZ'): number {
+  return resolveAssemblyMemberProfileAnchors(member.profile)[face];
 }
 
 function recomputeQuantityHooks(assembly: Assembly3D): QuantityHook[] {
@@ -294,12 +303,32 @@ function validateMono(config: GeometryConfig, assembly: Assembly3D): GeometryVal
   const posts = assembly.members.filter((member) => member.role === 'post');
   const hasLedger = assembly.members.some((member) => member.id === 'ledger');
   const roofPlaneCountOk = assembly.roofPlanes.length === 1;
+  const referenceSupport = assembly.members.find((member) => member.id === 'ledger' || member.id === 'house-beam');
+  const outerSupport = assembly.members.find((member) => member.id === 'outer-beam');
+  const outerPrimarySupport = assembly.members.find((member) => member.id === 'outer-gutter') ?? outerSupport;
+  const uniquePostYs = Array.from(
+    posts.reduce((values, member) => {
+      const y = member.centerline.start.y;
+      if (!Array.from(values).some((existing) => approxEqual(existing, y))) {
+        values.add(y);
+      }
+      return values;
+    }, new Set<number>()),
+  );
   const layoutOk =
     config.connection.type === 'freestanding'
       ? !hasLedger &&
-        posts.some((member) => approxEqual(member.centerline.start.y, 0)) &&
-        posts.some((member) => approxEqual(member.centerline.start.y, config.dimensions.projectionMm))
-      : hasLedger && posts.every((member) => approxEqual(member.centerline.start.y, config.dimensions.projectionMm));
+        Boolean(referenceSupport) &&
+        Boolean(outerSupport) &&
+        Boolean(outerPrimarySupport) &&
+        uniquePostYs.length === 2 &&
+        uniquePostYs.some((y) => approxEqual(y, referenceSupport!.centerline.start.y)) &&
+        uniquePostYs.some((y) => approxEqual(y, outerPrimarySupport!.centerline.start.y))
+      : hasLedger &&
+        Boolean(outerPrimarySupport) &&
+        Boolean(outerSupport) &&
+        uniquePostYs.length === 1 &&
+        approxEqual(uniquePostYs[0] ?? Number.NaN, outerPrimarySupport!.centerline.start.y);
 
   return [
     roofPlaneCountOk
@@ -330,6 +359,9 @@ function validateMonoAcrylic(config: GeometryConfig, assembly: Assembly3D): Geom
     return [];
   }
 
+  const expectedPanelThicknessMm = 6;
+  const expectedGutterEmbedMm = 15;
+
   const coveringInputsReady = hasMonoAcrylicCoveringInputs(config);
   if (!coveringInputsReady) {
     return [
@@ -340,7 +372,7 @@ function validateMonoAcrylic(config: GeometryConfig, assembly: Assembly3D): Geom
       pass('mono_acrylic.joiner_count', 'Joiner count skipped because covering inputs are missing.'),
       pass('mono_acrylic.panel_count', 'Panel count skipped because covering inputs are missing.'),
       pass('mono_acrylic.joiner_length', 'Joiner length skipped because covering inputs are missing.'),
-      pass('mono_acrylic.panel_area', 'Panel area skipped because covering inputs are missing.'),
+      pass('mono_acrylic.panel_area', 'Panel geometry skipped because covering inputs are missing.'),
       pass('mono_acrylic.covering_alignment', 'Covering alignment skipped because covering inputs are missing.'),
     ];
   }
@@ -351,29 +383,64 @@ function validateMonoAcrylic(config: GeometryConfig, assembly: Assembly3D): Geom
   const expectedJoinerCount = config.roofCovering.joinerRunsTotal ?? 0;
   const expectedPanelCount = Math.max((config.structural.framing.rafterCount ?? 0) - 1, 0);
   const expectedJoinerLengthMm = config.roofCovering.joinerPieceLengthMm ?? 0;
-  const expectedPanelAreaMm2 = config.roofCovering.acrylicAreaMm2 ?? 0;
+  const expectedHouseAllowanceMm = config.roofCovering.houseAllowanceMm ?? 0;
 
   const joinerCountOk =
     joiners.length === expectedJoinerCount &&
     joiners.length === (config.structural.framing.rafterCount ?? Number.NaN);
   const panelCountOk = panels.length === expectedPanelCount;
   const joinerLengthOk = joiners.every((joiner) => approxEqual(lineLength(joiner.centerline), expectedJoinerLengthMm, 3));
-  const panelAreaOk = approxEqual(
-    Math.round(panels.reduce((sum, panel) => sum + polygonArea(panel.boundary), 0)),
-    Math.round(expectedPanelAreaMm2),
-    10_000,
-  );
 
   const roofNormal = roofPlane ? normalizeVector(roofPlane.plane.normal) : { x: 0, y: 0, z: 0 };
   const roofFall = roofPlane ? normalizeVector(roofPlane.fallVector) : { x: 0, y: 0, z: 0 };
-  const panelAlignmentOk =
+  const structuralDownslopeLengthMm = roofPlane
+    ? lineLength({
+        start: roofPlane.boundary[0] ?? roofPlane.plane.origin,
+        end: roofPlane.boundary[3] ?? roofPlane.plane.origin,
+      })
+    : 0;
+  const expectedPanelDownslopeLengthMm = structuralDownslopeLengthMm + expectedHouseAllowanceMm + expectedGutterEmbedMm;
+  const expectedPanelPlaneOffsetMm = joiners[0]?.profile.depthMm ? joiners[0]!.profile.depthMm / 2 : 0;
+  const panelGeometryOk =
     Boolean(roofPlane) &&
-    panels.every((panel) =>
-      panel.boundary.every(
+    panels.every((panel) => {
+      const panelPlaneOffset = dotProduct(subtractPoints(panel.plane.origin, roofPlane!.plane.origin), roofNormal);
+      const boundaryOnPanelPlane = panel.boundary.every(
         (point) =>
-          Math.abs(dotProduct(subtractPoints(point, roofPlane!.plane.origin), roofPlane!.plane.normal)) <= MM_TOLERANCE,
-      ),
-    );
+          Math.abs(dotProduct(subtractPoints(point, panel.plane.origin), panel.plane.normal)) <= MM_TOLERANCE,
+      );
+      const leftEdgeLengthMm = lineLength({
+        start: panel.boundary[0] ?? panel.plane.origin,
+        end: panel.boundary[3] ?? panel.plane.origin,
+      });
+      const rightEdgeLengthMm = lineLength({
+        start: panel.boundary[1] ?? panel.plane.origin,
+        end: panel.boundary[2] ?? panel.plane.origin,
+      });
+      const panelWidthMm = lineLength({
+        start: panel.boundary[0] ?? panel.plane.origin,
+        end: panel.boundary[1] ?? panel.plane.origin,
+      });
+      const expectedPanelAreaMm2 = panelWidthMm * expectedPanelDownslopeLengthMm;
+      const actualPanelAreaMm2 = polygonArea(panel.boundary);
+      const metadataDownslopeLengthMm =
+        typeof panel.metadata?.downslopeLengthMm === 'number' ? panel.metadata.downslopeLengthMm : null;
+      const metadataAreaMm2 = typeof panel.metadata?.areaMm2 === 'number' ? panel.metadata.areaMm2 : null;
+      const metadataGutterEmbedMm =
+        typeof panel.metadata?.gutterEmbedMm === 'number' ? panel.metadata.gutterEmbedMm : null;
+
+      return (
+        approxEqual(panel.thicknessMm, expectedPanelThicknessMm) &&
+        boundaryOnPanelPlane &&
+        approxEqual(panelPlaneOffset, expectedPanelPlaneOffsetMm, 3) &&
+        approxEqual(leftEdgeLengthMm, expectedPanelDownslopeLengthMm, 3) &&
+        approxEqual(rightEdgeLengthMm, expectedPanelDownslopeLengthMm, 3) &&
+        approxEqual(actualPanelAreaMm2, expectedPanelAreaMm2, 2_000) &&
+        approxEqual(metadataAreaMm2 ?? Number.NaN, Math.round(expectedPanelAreaMm2), 2_000) &&
+        approxEqual(metadataDownslopeLengthMm ?? Number.NaN, Math.round(expectedPanelDownslopeLengthMm), 3) &&
+        approxEqual(metadataGutterEmbedMm ?? Number.NaN, expectedGutterEmbedMm, 1)
+      );
+    });
   const joinerAlignmentOk =
     Boolean(roofPlane) &&
     joiners.every((joiner) => {
@@ -399,12 +466,12 @@ function validateMonoAcrylic(config: GeometryConfig, assembly: Assembly3D): Geom
     joinerLengthOk
       ? pass('mono_acrylic.joiner_length', 'Mono acrylic joiner run lengths match the costing-derived cut length.')
       : fail('mono_acrylic.joiner_length', 'Mono acrylic joiner run lengths do not match the costing-derived cut length.'),
-    panelAreaOk
-      ? pass('mono_acrylic.panel_area', 'Mono acrylic panel area matches the costing-derived acrylic area.')
-      : fail('mono_acrylic.panel_area', 'Mono acrylic panel area does not match the costing-derived acrylic area.'),
-    panelAlignmentOk && joinerAlignmentOk
-      ? pass('mono_acrylic.covering_alignment', 'Mono acrylic panels and joiners align with the structural mono roof plane.')
-      : fail('mono_acrylic.covering_alignment', 'Mono acrylic panels and joiners do not align with the structural mono roof plane.'),
+    panelGeometryOk
+      ? pass('mono_acrylic.panel_area', 'Mono acrylic panel geometry matches the physical slab thickness and embed rules.')
+      : fail('mono_acrylic.panel_area', 'Mono acrylic panel geometry does not match the physical slab thickness and embed rules.'),
+    panelGeometryOk && joinerAlignmentOk
+      ? pass('mono_acrylic.covering_alignment', 'Mono acrylic panels and joiners align with the physical mono roof pack.')
+      : fail('mono_acrylic.covering_alignment', 'Mono acrylic panels and joiners do not align with the physical mono roof pack.'),
   ];
 }
 
@@ -442,6 +509,218 @@ function validateGable(config: GeometryConfig, assembly: Assembly3D): GeometryVa
     symmetricalOk
       ? pass('gable.symmetrical_eaves', 'Gable eave support heights remain symmetrical.')
       : fail('gable.symmetrical_eaves', 'Gable eave support heights must remain symmetrical.'),
+  ];
+}
+
+function validateGableAcrylic(config: GeometryConfig, assembly: Assembly3D): GeometryValidationInvariant[] {
+  if (config.roof.material !== 'acrylic') {
+    return [];
+  }
+
+  const expectedPanelThicknessMm = 6;
+  const expectedGutterEmbedMm = 15;
+  const expectedJoinerCountPerHalf = config.structural.framing.rafterCount ?? 0;
+  const expectedPanelCountPerHalf = Math.max(expectedJoinerCountPerHalf - 1, 0);
+
+  const ridge = assembly.members.find((member) => member.id === 'ridge');
+  const houseRoofPlane = assembly.roofPlanes.find((candidate) => candidate.id === 'gable-house-roof') ?? assembly.roofPlanes[0];
+  const outerRoofPlane = assembly.roofPlanes.find((candidate) => candidate.id === 'gable-outer-roof') ?? assembly.roofPlanes[1];
+  const houseSupport = assembly.members.find((member) => member.id === 'ledger' || member.id === 'house-beam');
+  const houseGutter = assembly.members.find((member) => member.id === 'house-gutter');
+  const outerSupport = assembly.members.find((member) => member.id === 'outer-beam');
+  const outerGutter = assembly.members.find((member) => member.id === 'outer-gutter');
+  const houseJoiners = assembly.members.filter(
+    (member) => member.role === 'joiner' && member.metadata?.slope === 'house',
+  );
+  const outerJoiners = assembly.members.filter(
+    (member) => member.role === 'joiner' && member.metadata?.slope === 'outer',
+  );
+  const housePanels = assembly.roofCladdingPanels.filter((panel) => panel.metadata?.slope === 'house');
+  const outerPanels = assembly.roofCladdingPanels.filter((panel) => panel.metadata?.slope === 'outer');
+
+  const countsOk =
+    houseJoiners.length === expectedJoinerCountPerHalf &&
+    outerJoiners.length === expectedJoinerCountPerHalf &&
+    housePanels.length === expectedPanelCountPerHalf &&
+    outerPanels.length === expectedPanelCountPerHalf;
+
+  const houseAllowanceMm =
+    config.connection.type === 'freestanding'
+      ? expectedGutterEmbedMm
+      : (config.roofCovering.houseAllowanceMm ?? houseSupport?.profile.widthMm ?? 0);
+
+  const roofPackReady =
+    Boolean(ridge) &&
+    Boolean(houseRoofPlane) &&
+    Boolean(outerRoofPlane) &&
+    Boolean(houseSupport) &&
+    Boolean(outerSupport) &&
+    Boolean(outerGutter) &&
+    (config.connection.type === 'freestanding' ? Boolean(houseGutter) : true);
+
+  if (!roofPackReady) {
+    return [
+      fail('gable_acrylic.panel_count', 'Gable acrylic roof-pack is missing required roof-half geometry.'),
+      pass('gable_acrylic.joiner_count', 'Joiner-count validation skipped because the roof-pack is incomplete.'),
+      pass('gable_acrylic.joiner_length', 'Joiner-length validation skipped because the roof-pack is incomplete.'),
+      pass('gable_acrylic.panel_area', 'Panel-geometry validation skipped because the roof-pack is incomplete.'),
+      pass('gable_acrylic.covering_alignment', 'Alignment validation skipped because the roof-pack is incomplete.'),
+    ];
+  }
+
+  const ridgeHalfMm = ridge!.profile.widthMm / 2;
+  const houseRoofNormal = normalizeVector(houseRoofPlane!.plane.normal);
+  const outerRoofNormal = normalizeVector(outerRoofPlane!.plane.normal);
+
+  const houseBearingY = houseGutter
+    ? houseGutter.centerline.start.y + profileFaceY(houseGutter, 'roofBearingFaceY')
+    : houseSupport!.centerline.start.y + profileFaceY(houseSupport!, 'roofBearingFaceY');
+  const outerBearingY = outerGutter!.centerline.start.y + profileFaceY(outerGutter!, 'roofBearingFaceY');
+  const houseBearingZ = houseGutter
+    ? houseGutter.centerline.start.z + profileFaceZ(houseGutter, 'roofBearingFaceZ')
+    : houseSupport!.centerline.start.z + profileFaceZ(houseSupport!, 'roofBearingFaceZ');
+  const outerBearingZ = outerGutter!.centerline.start.z + profileFaceZ(outerGutter!, 'roofBearingFaceZ');
+
+  const houseRunStart = { x: 0, y: houseBearingY, z: houseBearingZ };
+  const houseRunEnd = { x: 0, y: ridge!.centerline.start.y - ridgeHalfMm, z: 0 };
+  const houseRunEndZ =
+    houseRoofPlane!.plane.origin.z +
+    ((ridge!.centerline.start.y - ridgeHalfMm - houseRoofPlane!.plane.origin.y) *
+      houseRoofPlane!.plane.yAxis.z) /
+      houseRoofPlane!.plane.yAxis.y;
+  houseRunEnd.z = houseRunEndZ;
+
+  const outerRunStart = { x: 0, y: outerBearingY, z: outerBearingZ };
+  const outerRunEnd = { x: 0, y: ridge!.centerline.start.y + ridgeHalfMm, z: 0 };
+  const outerRunEndZ =
+    outerRoofPlane!.plane.origin.z +
+    ((ridge!.centerline.start.y + ridgeHalfMm - outerRoofPlane!.plane.origin.y) *
+      outerRoofPlane!.plane.yAxis.z) /
+      outerRoofPlane!.plane.yAxis.y;
+  outerRunEnd.z = outerRunEndZ;
+
+  const validateRoofHalf = (input: {
+    joiners: AssemblyMember3D[];
+    panels: Assembly3D['roofCladdingPanels'];
+    roofPlane: Assembly3D['roofPlanes'][number];
+    roofNormal: { x: number; y: number; z: number };
+    eavePoint: { x: number; y: number; z: number };
+    ridgePoint: { x: number; y: number; z: number };
+    eaveExtensionMm: number;
+    expectedGutterEmbedMm: number;
+    expectedHouseAllowanceMm: number;
+  }) => {
+    const joinerProfile = input.joiners[0]?.profile;
+    const panelMidPlaneOffsetMm = joinerProfile ? joinerProfile.depthMm / 2 : 0;
+    const runVector = lineDirection({ start: input.eavePoint, end: input.ridgePoint });
+    const coverEavePointOnPlane = {
+      x: input.eavePoint.x - runVector.x * input.eaveExtensionMm,
+      y: input.eavePoint.y - runVector.y * input.eaveExtensionMm,
+      z: input.eavePoint.z - runVector.z * input.eaveExtensionMm,
+    };
+    const coverRidgePointOnPlane = input.ridgePoint;
+    const coverEavePoint = {
+      x: coverEavePointOnPlane.x + input.roofNormal.x * panelMidPlaneOffsetMm,
+      y: coverEavePointOnPlane.y + input.roofNormal.y * panelMidPlaneOffsetMm,
+      z: coverEavePointOnPlane.z + input.roofNormal.z * panelMidPlaneOffsetMm,
+    };
+    const coverRidgePoint = {
+      x: coverRidgePointOnPlane.x + input.roofNormal.x * panelMidPlaneOffsetMm,
+      y: coverRidgePointOnPlane.y + input.roofNormal.y * panelMidPlaneOffsetMm,
+      z: coverRidgePointOnPlane.z + input.roofNormal.z * panelMidPlaneOffsetMm,
+    };
+    const expectedRunLengthMm = lineLength({ start: coverEavePoint, end: coverRidgePoint });
+
+    const joinerLengthsOk = input.joiners.every((joiner) => {
+      const startOffset = dotProduct(subtractPoints(joiner.centerline.start, input.roofPlane.plane.origin), input.roofNormal);
+      const endOffset = dotProduct(subtractPoints(joiner.centerline.end, input.roofPlane.plane.origin), input.roofNormal);
+      const joinerDirection = normalizeVector(subtractPoints(joiner.centerline.end, joiner.centerline.start));
+      return (
+        approxEqual(joiner.centerline.start.y, coverEavePoint.y, 3) &&
+        approxEqual(joiner.centerline.start.z, coverEavePoint.z, 3) &&
+        approxEqual(joiner.centerline.end.y, coverRidgePoint.y, 3) &&
+        approxEqual(joiner.centerline.end.z, coverRidgePoint.z, 3) &&
+        approxEqual(lineLength(joiner.centerline), expectedRunLengthMm, 3) &&
+        approxEqual(startOffset, panelMidPlaneOffsetMm, 3) &&
+        approxEqual(endOffset, panelMidPlaneOffsetMm, 3) &&
+        Math.abs(dotProduct(joinerDirection, normalizeVector(input.roofPlane.fallVector))) >= 0.999
+      );
+    });
+
+    const panelGeometryOk = input.panels.every((panel) => {
+      const planeOffset = dotProduct(subtractPoints(panel.plane.origin, input.roofPlane.plane.origin), input.roofNormal);
+      const boundaryOnPanelPlane = panel.boundary.every(
+        (point) => Math.abs(dotProduct(subtractPoints(point, panel.plane.origin), panel.plane.normal)) <= MM_TOLERANCE,
+      );
+      const leftEdgeLengthMm = lineLength({
+        start: panel.boundary[0] ?? panel.plane.origin,
+        end: panel.boundary[3] ?? panel.plane.origin,
+      });
+      const rightEdgeLengthMm = lineLength({
+        start: panel.boundary[1] ?? panel.plane.origin,
+        end: panel.boundary[2] ?? panel.plane.origin,
+      });
+      const panelWidthMm = lineLength({
+        start: panel.boundary[0] ?? panel.plane.origin,
+        end: panel.boundary[1] ?? panel.plane.origin,
+      });
+      const expectedPanelAreaMm2 = panelWidthMm * expectedRunLengthMm;
+      return (
+        approxEqual(panel.thicknessMm, expectedPanelThicknessMm) &&
+        approxEqual(panel.boundary[0]?.y ?? Number.NaN, coverEavePoint.y, 3) &&
+        approxEqual(panel.boundary[0]?.z ?? Number.NaN, coverEavePoint.z, 3) &&
+        approxEqual(panel.boundary[2]?.y ?? Number.NaN, coverRidgePoint.y, 3) &&
+        approxEqual(panel.boundary[2]?.z ?? Number.NaN, coverRidgePoint.z, 3) &&
+        boundaryOnPanelPlane &&
+        approxEqual(planeOffset, panelMidPlaneOffsetMm, 3) &&
+        approxEqual(leftEdgeLengthMm, expectedRunLengthMm, 3) &&
+        approxEqual(rightEdgeLengthMm, expectedRunLengthMm, 3) &&
+        approxEqual(polygonArea(panel.boundary), expectedPanelAreaMm2, 2_000) &&
+        approxEqual((typeof panel.metadata?.downslopeLengthMm === 'number' ? panel.metadata.downslopeLengthMm : Number.NaN), Math.round(expectedRunLengthMm), 3) &&
+        approxEqual((typeof panel.metadata?.gutterEmbedMm === 'number' ? panel.metadata.gutterEmbedMm : Number.NaN), input.expectedGutterEmbedMm, 1) &&
+        approxEqual((typeof panel.metadata?.houseAllowanceMm === 'number' ? panel.metadata.houseAllowanceMm : Number.NaN), input.expectedHouseAllowanceMm, 1)
+      );
+    });
+
+    return { joinerLengthsOk, panelGeometryOk };
+  };
+
+  const houseValidation = validateRoofHalf({
+    joiners: houseJoiners,
+    panels: housePanels,
+    roofPlane: houseRoofPlane!,
+    roofNormal: houseRoofNormal,
+    eavePoint: houseRunStart,
+    ridgePoint: houseRunEnd,
+    eaveExtensionMm: houseAllowanceMm,
+    expectedGutterEmbedMm: config.connection.type === 'freestanding' ? expectedGutterEmbedMm : 0,
+    expectedHouseAllowanceMm: config.connection.type === 'freestanding' ? 0 : houseAllowanceMm,
+  });
+  const outerValidation = validateRoofHalf({
+    joiners: outerJoiners,
+    panels: outerPanels,
+    roofPlane: outerRoofPlane!,
+    roofNormal: outerRoofNormal,
+    eavePoint: outerRunStart,
+    ridgePoint: outerRunEnd,
+    eaveExtensionMm: expectedGutterEmbedMm,
+    expectedGutterEmbedMm,
+    expectedHouseAllowanceMm: 0,
+  });
+
+  return [
+    countsOk
+      ? pass('gable_acrylic.panel_count', 'Gable acrylic panel and joiner counts match the two roof-half bay layouts.')
+      : fail('gable_acrylic.panel_count', 'Gable acrylic panel or joiner counts do not match the two roof-half bay layouts.'),
+    houseValidation.joinerLengthsOk && outerValidation.joinerLengthsOk
+      ? pass('gable_acrylic.joiner_length', 'Gable acrylic joiner lengths match the physical roof-half runs.')
+      : fail('gable_acrylic.joiner_length', 'Gable acrylic joiner lengths do not match the physical roof-half runs.'),
+    houseValidation.panelGeometryOk && outerValidation.panelGeometryOk
+      ? pass('gable_acrylic.panel_area', 'Gable acrylic panel geometry matches the physical slab thickness and termination rules.')
+      : fail('gable_acrylic.panel_area', 'Gable acrylic panel geometry does not match the physical slab thickness and termination rules.'),
+    houseValidation.panelGeometryOk && outerValidation.panelGeometryOk && houseValidation.joinerLengthsOk && outerValidation.joinerLengthsOk
+      ? pass('gable_acrylic.covering_alignment', 'Gable acrylic panels and joiners align to ridge-half and eave termination rules.')
+      : fail('gable_acrylic.covering_alignment', 'Gable acrylic panels and joiners do not align to ridge-half and eave termination rules.'),
   ];
 }
 
@@ -500,6 +779,7 @@ export function runGeometryInvariants(config: GeometryConfig, assembly: Assembly
     invariants.push(...validateMonoAcrylic(config, assembly));
   } else if (assembly.family === 'gable') {
     invariants.push(...validateGable(config, assembly));
+    invariants.push(...validateGableAcrylic(config, assembly));
   } else if (assembly.family === 'box') {
     invariants.push(...validateBox(config, assembly));
   }

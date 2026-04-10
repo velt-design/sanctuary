@@ -46,6 +46,15 @@ export type Line2 = {
 
 export type Polygon2 = Point2[];
 
+export type AssemblyMemberProfileAnchors = {
+  undersideZ: number;
+  topsideZ: number;
+  backFaceY: number;
+  frontFaceY: number;
+  roofBearingFaceY: number;
+  roofBearingFaceZ: number;
+};
+
 /**
  * Plane basis vectors live in world space. The normal is not view-relative.
  */
@@ -128,6 +137,10 @@ export type AssemblyMemberProfile = {
    * Profile depth axis. This is the major section axis and maps to localFrame.zAxis.
    */
   depthMm: number;
+  profileKey?: string | null;
+  sectionOutline?: Polygon2 | null;
+  sectionVoids?: Polygon2[] | null;
+  anchors?: AssemblyMemberProfileAnchors | null;
 };
 
 /**
@@ -359,6 +372,7 @@ export type RoofCladdingPanel3D = {
   id: string;
   material: RoofCladdingMaterial;
   boundary: Polygon3;
+  thicknessMm: number;
   plane: Plane3;
   metadata?: GeometryMetadata;
 };
@@ -571,7 +585,7 @@ export type GeometryValidationReport = {
   fixtureComparisons: GeometryFixtureComparison[];
 };
 
-export type ViewerSceneMemberRenderMode = 'prism' | 'line_fallback';
+export type ViewerSceneMemberRenderMode = 'prism' | 'outline_extrusion' | 'line_fallback';
 export type ViewerSceneReferenceLineKind = 'attachment_edge' | 'fascia' | 'roof_edge';
 export type ViewerSceneReferencePlaneKind = 'house_wall';
 
@@ -604,6 +618,7 @@ export type ViewerSceneRoofCladdingPanelObject = {
   sourceId: string;
   material: RoofCladdingMaterial;
   boundary: Polygon3;
+  thicknessMm: number;
   plane: Plane3;
   metadata?: GeometryMetadata;
 };

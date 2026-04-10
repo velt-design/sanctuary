@@ -324,7 +324,8 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const boxEffectiveRunMm = resolveOptionalMetresToMillimetres(input.derived?.boxEffectiveRunM);
   const boxRiseMm = resolveOptionalMillimetres(input.derived?.boxRiseMm);
   const boxMaxFallMm = resolveOptionalMillimetres(input.derived?.boxMaxFallMm);
-  const roofCoveringKind = family === 'mono' && roof.material === 'acrylic' ? 'acrylic' : null;
+  const roofCoveringKind =
+    (family === 'mono' || family === 'gable') && roof.material === 'acrylic' ? 'acrylic' : null;
 
   if (
     family === 'gable' &&

@@ -13,12 +13,14 @@ type DesignWorkbenchFixtureClientProps = {
   fixture: SanctuaryGeometryWorkbenchFixture;
   projectName: string;
   siteAddress?: string | null;
+  backHref?: string;
 };
 
 export default function DesignWorkbenchFixtureClient({
   fixture,
   projectName,
   siteAddress,
+  backHref,
 }: DesignWorkbenchFixtureClientProps) {
   const [ui, setUi] = useState(() => createDrawingWorkbenchUiState());
   const store = useMemo(
@@ -30,6 +32,10 @@ export default function DesignWorkbenchFixtureClient({
       }),
     [fixture.moduleLabels, fixture.snapshot, ui],
   );
+  const modules = store.persisted.modules.map((module) => ({
+    id: module.id,
+    label: module.label,
+  }));
 
   const activeModule = store.derived.activeModule;
   const meta = useMemo(
@@ -66,6 +72,29 @@ export default function DesignWorkbenchFixtureClient({
     <div className={styles.shell}>
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
+          {modules.length > 1 ? (
+            <section className={styles.moduleSection}>
+              <p className={styles.moduleSectionTitle}>Module</p>
+              <select
+                className={styles.moduleSelect}
+                aria-label="Drawing module"
+                value={String(store.derived.activeModuleIndex)}
+                onChange={(event) =>
+                  setUi((current) => ({
+                    ...current,
+                    activeModuleIndex: Number(event.target.value),
+                  }))
+                }
+              >
+                {modules.map((module, index) => (
+                  <option key={module.id} value={String(index)}>
+                    {module.label}
+                  </option>
+                ))}
+              </select>
+            </section>
+          ) : null}
+
           <section className={styles.notice}>
             <p className={styles.noticeTitle}>Fixture Preview</p>
             <p className={styles.noticeText}>
@@ -79,10 +108,7 @@ export default function DesignWorkbenchFixtureClient({
         <div className={styles.workspaceSurface}>
           <DrawingWorkbench
             moduleLabel={store.derived.activeModuleLabel}
-            modules={store.persisted.modules.map((module) => ({
-              id: module.id,
-              label: module.label,
-            }))}
+            modules={modules}
             activeModuleIndex={store.derived.activeModuleIndex}
             onActiveModuleIndexChange={(index) =>
               setUi((current) => ({
@@ -118,6 +144,7 @@ export default function DesignWorkbenchFixtureClient({
               }))
             }
             meta={meta}
+            backHref={backHref}
           />
         </div>
       </div>

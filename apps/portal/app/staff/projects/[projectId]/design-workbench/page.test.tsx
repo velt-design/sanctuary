@@ -230,11 +230,10 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Route state: Fixture Ready');
-    expect(markup).toContain('Fixture: Mono Standard (mono-standard)');
-    expect(markup).toContain('Fixture source: baked calculator snapshot data');
+    expect(markup).toContain('Fixture Preview');
     expect(markup).toContain('Drawing workbench');
     expect(markup).toContain('Sheet View');
+    expect(markup).toContain('Back to Project');
     expect(markup).toContain('data-workbench-context="fixture_ready"');
     expect(markup).toContain('data-workbench-fixture="mono-standard"');
     expect(loadProjectEstimateMetasMock).not.toHaveBeenCalled();
@@ -309,19 +308,14 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Design Workbench');
-    expect(markup).toContain('Deck Build');
-    expect(markup).toContain('Sanctuary Geometry Workbench against the selected estimate context');
-    expect(markup).toContain('Route state: Ready');
-    expect(markup).toContain('Estimate selection: Active draft default');
-    expect(markup).toContain('Estimate: V2 (est_22222222-2222-4222-8222-222222222222) · Draft · active draft');
-    expect(markup).toContain('Design request selection: Active request');
-    expect(markup).toContain('Design request: Request v2 (dpr_22222222-2222-4222-8222-222222222222) · Open · Tier 3 · linked V2');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('Sheet View');
+    expect(markup).toContain('Back to Project');
     expect(markup).toContain('href="/staff/projects/proj_1"');
     expect(markup).toContain('data-project-id="proj_1"');
     expect(markup).toContain('data-workbench-context="ready"');
+    expect(markup).not.toContain('Route state: Ready');
+    expect(markup).not.toContain('Estimate selection: Active draft default');
     expect(loadProjectEstimateDetailMock).toHaveBeenCalledWith('proj_1', 'est_22222222-2222-4222-8222-222222222222');
   });
 
@@ -364,9 +358,8 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Estimate selection: Most recent default');
-    expect(markup).toContain('Estimate: V3 (est_33333333-3333-4333-8333-333333333333) · Draft');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).toContain('aria-label="Drawing workbench"');
+    expect(markup).not.toContain('Estimate selection: Most recent default');
   });
 
   it('uses an explicit estimateId when it belongs to the project', async () => {
@@ -407,10 +400,8 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Estimate selection: Query param');
-    expect(markup).toContain('Estimate: V4 (est_44444444-4444-4444-8444-444444444444) · Draft');
-    expect(markup).toContain('Design request: Request v4 (dpr_44444444-4444-4444-8444-444444444444) · Open · Tier 3 · linked V4');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).toContain('aria-label="Drawing workbench"');
+    expect(markup).not.toContain('Estimate selection: Query param');
   });
 
   it('uses an explicit requestId as metadata when it matches the selected estimate', async () => {
@@ -453,11 +444,8 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Estimate selection: Most recent default');
-    expect(markup).toContain('Estimate: V5 (est_55555555-5555-4555-8555-555555555555) · Draft');
-    expect(markup).toContain('Design request selection: Query param');
-    expect(markup).toContain('Design request: Request v5 (dpr_55555555-5555-4555-8555-555555555555) · Open · Tier 3 · linked V5');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).toContain('aria-label="Drawing workbench"');
+    expect(markup).not.toContain('Design request selection: Query param');
   });
 
   it('renders a no-estimate state when the project has no estimates', async () => {
@@ -478,7 +466,7 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Route state: No Estimate');
+    expect(markup).toContain('Design Workbench');
     expect(markup).toContain('No usable estimate exists for this project yet.');
     expect(markup).toContain('data-workbench-context="no_estimate"');
     expect(loadProjectEstimateDetailMock).not.toHaveBeenCalled();
@@ -537,11 +525,9 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Route state: Ready');
-    expect(markup).toContain('Estimate selection: Active draft default');
-    expect(markup).toContain('Design request context: none linked to the selected estimate');
+    expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('data-workbench-context="ready"');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).not.toContain('Design request context: none linked to the selected estimate');
   });
 
   it('keeps the route ready and warns when estimateId and requestId do not match', async () => {
@@ -588,13 +574,9 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Route state: Ready');
-    expect(markup).toContain(
-      'The supplied requestId (dpr_88888888-8888-4888-8888-888888888888) is linked to estimate est_88888888-8888-4888-8888-888888888888. Showing estimate est_77777777-7777-4777-8777-777777777777 and ignoring the request context.',
-    );
-    expect(markup).toContain('Design request context: none linked to the selected estimate');
+    expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('data-workbench-context="ready"');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).not.toContain('The supplied requestId (dpr_88888888-8888-4888-8888-888888888888)');
   });
 
   it('falls back to the default estimate and warns when estimateId is invalid', async () => {
@@ -616,13 +598,9 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Route state: Ready');
-    expect(markup).toContain('Estimate selection: Most recent default');
-    expect(markup).toContain(
-      'The supplied estimateId (not-an-estimate) is not available for this project. Showing the default estimate instead.',
-    );
+    expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('data-workbench-context="ready"');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).not.toContain('The supplied estimateId (not-an-estimate)');
   });
 
   it('keeps the route ready and warns when requestId is invalid', async () => {
@@ -644,12 +622,8 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Route state: Ready');
-    expect(markup).toContain(
-      'The supplied requestId (not-a-request) is not available for this project. Showing the selected estimate without design-request metadata.',
-    );
-    expect(markup).toContain('Design request context: none linked to the selected estimate');
+    expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('data-workbench-context="ready"');
-    expect(markup).toContain('Drawing Workbench');
+    expect(markup).not.toContain('The supplied requestId (not-a-request)');
   });
 });

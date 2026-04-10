@@ -93,6 +93,15 @@ const GROUND_OPTIONS: SelectOption[] = [
   { label: 'Easy', value: 'easy' },
   { label: 'Hard', value: 'hard' },
 ];
+const GABLE_END_FRAME_OPTIONS: SelectOption[] = [
+  { label: 'None', value: 'none' },
+  { label: 'Outer end only', value: 'outer_end_only' },
+  { label: 'Both ends', value: 'both_ends' },
+];
+const GABLE_GUTTER_OPTIONS: SelectOption[] = [
+  { label: 'House gutter', value: 'house' },
+  { label: 'Our gutter (SP)', value: 'our' },
+];
 const DRAWING_ROTATION_OPTIONS: SelectOption[] = [
   { label: '0 deg', value: '0' },
   { label: '90 deg', value: '1' },
@@ -393,6 +402,44 @@ export default function SanctuaryWorkbenchRail({
       },
     ] satisfies RailFieldDefinition[];
   }, [commitGeometryEdit, disabled, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
+
+  const gableFields = useMemo(() => {
+    if (!geometryState || family !== 'gable' || !geometryState.gable) return [];
+    const helperText = 'This workbench currently supports the standard gable baseline only.';
+    return [
+      {
+        id: 'gable-end-frames',
+        kind: 'select',
+        label: 'Gable end frames',
+        value: geometryState.gable.endFramesMode,
+        options: GABLE_END_FRAME_OPTIONS,
+        helperText,
+        disabled: true,
+        pending: false,
+        onCommit: () => undefined,
+      },
+      {
+        id: 'gable-house-eave-gutter',
+        kind: 'select',
+        label: 'House-side eave gutter',
+        value: geometryState.gable.houseEaveGutterMode,
+        options: GABLE_GUTTER_OPTIONS,
+        disabled: true,
+        pending: false,
+        onCommit: () => undefined,
+      },
+      {
+        id: 'gable-outer-eave-gutter',
+        kind: 'select',
+        label: 'Outer-side eave gutter',
+        value: geometryState.gable.outerEaveGutterMode,
+        options: GABLE_GUTTER_OPTIONS,
+        disabled: true,
+        pending: false,
+        onCommit: () => undefined,
+      },
+    ] satisfies RailFieldDefinition[];
+  }, [family, geometryState]);
 
   const houseFields = useMemo(() => {
     if (!geometryState) return [];
@@ -784,6 +831,7 @@ export default function SanctuaryWorkbenchRail({
 
       <Section title="Geometry">{geometryFields.map(renderField)}</Section>
       <Section title="Roof">{roofFields.map(renderField)}</Section>
+      {gableFields.length ? <Section title="Gable Baseline">{gableFields.map(renderField)}</Section> : null}
       <Section title="House / Context">{houseFields.map(renderField)}</Section>
       <Section title="Supports">{supportFields.map(renderField)}</Section>
       <Section title="Overrides">{overrideFields.map(renderField)}</Section>
