@@ -137,7 +137,7 @@ describe('buildLegacyModulePlanModelFromGeometry', () => {
       expect.arrayContaining(['footprint', 'roof', 'soffit', 'fascia']),
     );
     expect(planModel.houseContext?.lines.map((line) => line.kind)).toEqual(
-      expect.arrayContaining(['wall_segment', 'gutter', 'attachment_target']),
+      expect.arrayContaining(['wall_segment', 'roof_feature', 'gutter', 'attachment_target']),
     );
     expect(planModel.houseContext?.surfaces.find((surface) => surface.kind === 'footprint')?.boundary[0]).toEqual({ x: 0, y: -1.8 });
   });

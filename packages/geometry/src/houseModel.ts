@@ -2804,10 +2804,11 @@ function buildHouseEnvelopeSolids(input: {
   for (const [index, boundary] of input.soffitPolygons.entries()) {
     const plane = planeFromBoundary(boundary);
     if (!plane) continue;
+    const solidBoundary = extendRectangularBoundaryAlongRun(boundary, DEFAULT_SOFFIT_SOLID_THICKNESS_MM / 2);
     surfaceSolids.push({
       id: `house-solid-soffit-${index + 1}`,
       kind: 'soffit',
-      boundary,
+      boundary: solidBoundary,
       plane,
       thicknessMm: DEFAULT_SOFFIT_SOLID_THICKNESS_MM,
       metadata: {

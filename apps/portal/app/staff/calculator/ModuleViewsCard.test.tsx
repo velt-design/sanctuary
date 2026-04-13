@@ -313,6 +313,11 @@ describe('ModuleViewsCard', () => {
             line: { start: { x: 0, y: -0.45 }, end: { x: 6, y: -0.45 } },
           },
           {
+            id: 'house-roof-feature',
+            kind: 'roof_feature',
+            line: { start: { x: 0, y: -1.1 }, end: { x: 6, y: -1.1 } },
+          },
+          {
             id: 'house-attachment-target',
             kind: 'attachment_target',
             line: { start: { x: 0, y: 0 }, end: { x: 6, y: 0 } },
@@ -333,6 +338,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-house-plan-surface="footprint"');
     expect(markup).toContain('data-house-plan-surface="attachment_zone"');
     expect(markup).toContain('data-house-plan-line="gutter"');
+    expect(markup).toContain('data-house-plan-line="roof_feature"');
     expect(markup).toContain('data-house-plan-line="attachment_target"');
   });
 
@@ -370,6 +376,11 @@ describe('ModuleViewsCard', () => {
             line: { start: { x: -0.45, y: 2.4 }, end: { x: -0.45, y: 2.4 } },
           },
           {
+            id: 'house-roof-feature',
+            kind: 'roof_feature',
+            line: { start: { x: -0.55, y: 2.9 }, end: { x: 0.15, y: 2.65 } },
+          },
+          {
             id: 'house-attachment-target',
             kind: 'attachment_target',
             line: { start: { x: 0, y: 2.4 }, end: { x: 0, y: 2.4 } },
@@ -390,6 +401,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-house-section-surface="wall"');
     expect(markup).toContain('data-house-section-surface="attachment_zone"');
     expect(markup).toContain('data-house-section-line="gutter"');
+    expect(markup).toContain('data-house-section-line="roof_feature"');
     expect(markup).toContain('data-house-section-line="attachment_target"');
   });
 

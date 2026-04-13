@@ -28,14 +28,20 @@ export type ModuleHousePoint2D = {
   y: number;
 };
 
-export type ModuleHouseLine2D = {
+export type ModulePlanHouseLineKind = 'wall_segment' | 'roof_feature' | 'gutter' | 'attachment_target';
+export type ModuleSectionHouseLineKind = 'gutter' | 'roof_feature' | 'attachment_target' | 'house_reference';
+
+export type ModuleHouseLine2D<Kind extends string = ModulePlanHouseLineKind | ModuleSectionHouseLineKind> = {
   id: string;
-  kind: 'wall_segment' | 'gutter' | 'attachment_target' | 'house_reference';
+  kind: Kind;
   line: {
     start: ModuleHousePoint2D;
     end: ModuleHousePoint2D;
   };
 };
+
+export type ModulePlanHouseLine2D = ModuleHouseLine2D<ModulePlanHouseLineKind>;
+export type ModuleSectionHouseLine2D = ModuleHouseLine2D<ModuleSectionHouseLineKind>;
 
 export type ModulePlanHouseSurface = {
   id: string;
@@ -51,12 +57,12 @@ export type ModuleSectionHouseSurface = {
 
 export type ModulePlanHouseContext = {
   surfaces: ModulePlanHouseSurface[];
-  lines: ModuleHouseLine2D[];
+  lines: ModulePlanHouseLine2D[];
 };
 
 export type ModuleSectionHouseContext = {
   surfaces: ModuleSectionHouseSurface[];
-  lines: ModuleHouseLine2D[];
+  lines: ModuleSectionHouseLine2D[];
 };
 
 export type ModulePlanModel = {

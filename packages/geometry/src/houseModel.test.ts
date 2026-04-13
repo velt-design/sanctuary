@@ -563,10 +563,12 @@ function expectHouseGutterSolidsExtendAroundCorners(model: HouseModel): void {
   }
 }
 
-function expectHouseWallAndFasciaSolidsExtendAroundCorners(model: HouseModel): void {
+function expectHouseSurfaceSolidsExtendAroundCorners(model: HouseModel): void {
   const wallSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'wall') ?? [];
   const fasciaPolygons = model.eave.fasciaPolygons ?? [];
   const fasciaSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'fascia') ?? [];
+  const soffitPolygons = model.eave.soffitPolygons ?? [];
+  const soffitSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'soffit') ?? [];
 
   expectSurfaceSolidBoundariesExtendAroundCorners(
     model.wallSegments.map((segment) => segment.boundary),
@@ -580,6 +582,12 @@ function expectHouseWallAndFasciaSolidsExtendAroundCorners(model: HouseModel): v
     9,
   );
   expect(fasciaSolids.every((solid) => solid.thicknessMm === 18)).toBe(true);
+  expectSurfaceSolidBoundariesExtendAroundCorners(
+    soffitPolygons,
+    soffitSolids.map((solid) => solid.boundary),
+    5,
+  );
+  expect(soffitSolids.every((solid) => solid.thicknessMm === 10)).toBe(true);
 }
 
 describe('house model geometry builder', () => {
@@ -619,8 +627,15 @@ describe('house model geometry builder', () => {
     expect(model.eave.fasciaPolygons?.[0]?.[0]).toEqual({ x: -450, y: -2250, z: 2400 });
     expect(model.eave.fasciaPolygons?.[0]?.[1]).toEqual({ x: 6450, y: -2250, z: 2400 });
     expect(model.eave.fasciaPolygons?.[0]?.[2]?.z).toBe(2220);
+    expect(model.eave.soffitPolygons?.[0]).toEqual([
+      { x: -450, y: -2250, z: 2400 },
+      { x: 6450, y: -2250, z: 2400 },
+      { x: 6000, y: -1800, z: 2400 },
+      { x: 0, y: -1800, z: 2400 },
+    ]);
     expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'wall')).toHaveLength(4);
     expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(4);
+    expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'soffit')).toHaveLength(4);
     expect(model.solids?.linearSolids).toHaveLength(4);
     expect(model.solids?.linearSolids[0]).toMatchObject({
       kind: 'gutter',
@@ -637,7 +652,17 @@ describe('house model geometry builder', () => {
       y: -2250,
       z: 2400,
     });
-    expectHouseWallAndFasciaSolidsExtendAroundCorners(model);
+    expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'soffit')?.boundary[0], {
+      x: -455,
+      y: -2250,
+      z: 2400,
+    });
+    expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'soffit')?.boundary[1], {
+      x: 6455,
+      y: -2250,
+      z: 2400,
+    });
+    expectHouseSurfaceSolidsExtendAroundCorners(model);
     expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.start, { x: -512.5, y: -2250, z: 2355 });
     expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.end, { x: 6512.5, y: -2250, z: 2355 });
     expectHouseGutterSolidsExtendAroundCorners(model);
@@ -702,7 +727,7 @@ describe('house model geometry builder', () => {
     expectJoinedRoofFeaturesBackedByFinalFacets(model!);
     expect(model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(model?.roofPlanes.length ?? 0);
     expect(model?.solids?.linearSolids).toHaveLength(7);
-    expectHouseWallAndFasciaSolidsExtendAroundCorners(model);
+    expectHouseSurfaceSolidsExtendAroundCorners(model);
     expectHouseGutterSolidsExtendAroundCorners(model);
     expect(model?.attachmentTarget?.kind).toBe('plane');
     expect(model?.attachmentTarget?.sourceEdgeId).toBe('footprint-edge-3');

@@ -135,7 +135,7 @@ describe('buildLegacyModuleSectionModelFromGeometry', () => {
       expect.arrayContaining(['wall', 'roof', 'soffit', 'fascia']),
     );
     expect(sectionModel.houseContext?.lines.map((line) => line.kind)).toEqual(
-      expect.arrayContaining(['house_reference', 'gutter', 'attachment_target']),
+      expect.arrayContaining(['house_reference', 'roof_feature', 'gutter', 'attachment_target']),
     );
     expect(sectionModel.houseContext?.surfaces.find((surface) => surface.kind === 'wall')?.boundary.some((point) => point.y >= 2.4)).toBe(true);
   });

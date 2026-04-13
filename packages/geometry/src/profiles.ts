@@ -18,11 +18,15 @@ function clonePolygon(points: Point2[] | null | undefined): Point2[] | null {
   return points.map((point) => ({ x: point.x, y: point.y }));
 }
 
+function cloneSectionVoids(voids: Point2[][] | null | undefined): Point2[][] | null {
+  return voids?.map((voidBoundary) => clonePolygon(voidBoundary) ?? []) ?? null;
+}
+
 function cloneProfile(profile: AssemblyMemberProfile): AssemblyMemberProfile {
   return {
     ...profile,
     sectionOutline: clonePolygon(profile.sectionOutline),
-    sectionVoids: profile.sectionVoids?.map((voidBoundary) => clonePolygon(voidBoundary) ?? []),
+    sectionVoids: cloneSectionVoids(profile.sectionVoids),
     anchors: profile.anchors ? { ...profile.anchors } : null,
   };
 }
@@ -62,7 +66,7 @@ const SP_GUTTER_PROFILE: AssemblyMemberProfile = {
   widthMm: SP_GUTTER_ASSET.widthMm,
   depthMm: SP_GUTTER_ASSET.depthMm,
   sectionOutline: clonePolygon(SP_GUTTER_ASSET.sectionOutline),
-  sectionVoids: SP_GUTTER_ASSET.sectionVoids?.map((voidBoundary) => clonePolygon(voidBoundary) ?? []) ?? null,
+  sectionVoids: cloneSectionVoids(SP_GUTTER_ASSET.sectionVoids),
   anchors: SP_GUTTER_INSTALL_ANCHORS,
 };
 
@@ -73,7 +77,7 @@ const SP_JOINERS_PROFILE: AssemblyMemberProfile = {
   widthMm: SP_JOINERS_ASSET.widthMm,
   depthMm: SP_JOINERS_ASSET.depthMm,
   sectionOutline: clonePolygon(SP_JOINERS_ASSET.sectionOutline),
-  sectionVoids: SP_JOINERS_ASSET.sectionVoids?.map((voidBoundary) => clonePolygon(voidBoundary) ?? []) ?? null,
+  sectionVoids: cloneSectionVoids(SP_JOINERS_ASSET.sectionVoids),
   anchors: defaultProfileAnchors(SP_JOINERS_ASSET.widthMm, SP_JOINERS_ASSET.depthMm),
 };
 
