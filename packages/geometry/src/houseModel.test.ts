@@ -154,6 +154,21 @@ function roofBoundarySegmentCounts(model: HouseModel): Map<string, number> {
   return counts;
 }
 
+function roofBoundarySegments(model: HouseModel): Map<string, Array<{ roofPlaneIndex: number; edgeIndex: number }>> {
+  const segments = new Map<string, Array<{ roofPlaneIndex: number; edgeIndex: number }>>();
+  for (const [roofPlaneIndex, roofPlane] of model.roofPlanes.entries()) {
+    for (let edgeIndex = 0; edgeIndex < roofPlane.boundary.length; edgeIndex += 1) {
+      const start = roofPlane.boundary[edgeIndex]!;
+      const end = roofPlane.boundary[(edgeIndex + 1) % roofPlane.boundary.length]!;
+      const key = roofSegmentKey(start, end);
+      const references = segments.get(key) ?? [];
+      references.push({ roofPlaneIndex, edgeIndex });
+      segments.set(key, references);
+    }
+  }
+  return segments;
+}
+
 function expectJoinedRoofFeaturesBackedByFinalFacets(model: HouseModel): void {
   const eavePolygon = eavePolygonFromModel(model);
   const counts = roofBoundarySegmentCounts(model);
@@ -417,6 +432,40 @@ function expectPoint3CloseTo(actual: Point3 | undefined, expected: Point3): void
   expect(actual?.z).toBeCloseTo(expected.z, 6);
 }
 
+function pointDistanceSquared3(first: Point3, second: Point3): number {
+  return (first.x - second.x) ** 2 + (first.y - second.y) ** 2 + (first.z - second.z) ** 2;
+}
+
+function vectorLength3(vector: Point3): number {
+  return Math.hypot(vector.x, vector.y, vector.z);
+}
+
+function normalizeVector3(vector: Point3): Point3 {
+  const length = vectorLength3(vector);
+  return length > 0 ? { x: vector.x / length, y: vector.y / length, z: vector.z / length } : { x: 0, y: 0, z: 0 };
+}
+
+function dotPoint3(first: Point3, second: Point3): number {
+  return first.x * second.x + first.y * second.y + first.z * second.z;
+}
+
+function expectUnorderedSegment3CloseTo(
+  firstStart: Point3,
+  firstEnd: Point3,
+  secondStart: Point3,
+  secondEnd: Point3,
+): void {
+  const directDistance = pointDistanceSquared3(firstStart, secondStart) + pointDistanceSquared3(firstEnd, secondEnd);
+  const reversedDistance = pointDistanceSquared3(firstStart, secondEnd) + pointDistanceSquared3(firstEnd, secondStart);
+  if (directDistance <= reversedDistance) {
+    expectPoint3CloseTo(firstStart, secondStart);
+    expectPoint3CloseTo(firstEnd, secondEnd);
+  } else {
+    expectPoint3CloseTo(firstStart, secondEnd);
+    expectPoint3CloseTo(firstEnd, secondStart);
+  }
+}
+
 function lineLength3(line3: Line3): number {
   return Math.hypot(
     line3.end.x - line3.start.x,
@@ -545,6 +594,52 @@ function expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model: House
   expectMiteredRenderMeshesAroundCorners(soffitSolids.map((solid) => solid.renderMesh), 2395, 2405);
 }
 
+function expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model: HouseModel): void {
+  const roofSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof') ?? [];
+
+  expect(roofSolids).toHaveLength(model.roofPlanes.length);
+  expectSolidBoundariesExact(
+    model.roofPlanes.map((roofPlane) => roofPlane.boundary),
+    roofSolids.map((solid) => solid.boundary),
+  );
+
+  for (const [roofPlaneIndex, roofPlane] of model.roofPlanes.entries()) {
+    const roofSolid = roofSolids[roofPlaneIndex]!;
+    const renderMesh = roofSolid.renderMesh;
+    const roofNormal = normalizeVector3(roofPlane.plane.normal);
+    const topPlaneConstant = dotPoint3(roofNormal, roofPlane.plane.origin);
+    const expectedBottomPlaneOffset = roofNormal.z >= 0 ? -120 : 120;
+
+    expect(roofSolid.thicknessMm).toBe(120);
+    expect(renderMesh).toBeDefined();
+    expect(renderMesh?.vertices).toHaveLength(roofPlane.boundary.length * 2);
+    expect(renderMesh?.faces.length).toBeGreaterThan(0);
+    expectPolygon3CloseTo(renderMesh?.vertices.slice(0, roofPlane.boundary.length), roofPlane.boundary);
+
+    for (const bottomVertex of renderMesh?.vertices.slice(roofPlane.boundary.length) ?? []) {
+      expect(dotPoint3(roofNormal, bottomVertex) - topPlaneConstant).toBeCloseTo(expectedBottomPlaneOffset, 4);
+    }
+  }
+
+  for (const references of roofBoundarySegments(model).values()) {
+    if (references.length !== 2) continue;
+    const [firstReference, secondReference] = references;
+    const firstSolid = roofSolids[firstReference!.roofPlaneIndex]!;
+    const secondSolid = roofSolids[secondReference!.roofPlaneIndex]!;
+    const firstBoundaryLength = firstSolid.boundary.length;
+    const secondBoundaryLength = secondSolid.boundary.length;
+    const firstNext = (firstReference!.edgeIndex + 1) % firstBoundaryLength;
+    const secondNext = (secondReference!.edgeIndex + 1) % secondBoundaryLength;
+
+    expectUnorderedSegment3CloseTo(
+      firstSolid.renderMesh!.vertices[firstBoundaryLength + firstReference!.edgeIndex]!,
+      firstSolid.renderMesh!.vertices[firstBoundaryLength + firstNext]!,
+      secondSolid.renderMesh!.vertices[secondBoundaryLength + secondReference!.edgeIndex]!,
+      secondSolid.renderMesh!.vertices[secondBoundaryLength + secondNext]!,
+    );
+  }
+}
+
 describe('house model geometry builder', () => {
   it('builds walls, hipped roof planes, eave references, and a soffit attachment target', () => {
     const model = buildHouseModel3D({
@@ -632,6 +727,7 @@ describe('house model geometry builder', () => {
       y: -2312.5,
       z: 2310,
     });
+    expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.start, { x: -450, y: -2250, z: 2355 });
     expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.end, { x: 6450, y: -2250, z: 2355 });
@@ -697,6 +793,7 @@ describe('house model geometry builder', () => {
     expectJoinedRoofFeaturesBackedByFinalFacets(model!);
     expect(model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(model?.roofPlanes.length ?? 0);
     expect(model?.solids?.linearSolids).toHaveLength(7);
+    expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectHouseGutterSolidsMiteredAroundCorners(model);
     expect(model?.attachmentTarget?.kind).toBe('plane');
@@ -754,6 +851,7 @@ describe('house model geometry builder', () => {
     expectJoinedRoofFeaturesBackedByFinalFacets(model!);
     expectValleysStartAtReentrantCorners(model!, 2500, 2);
     expect(model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(model?.roofPlanes.length ?? 0);
+    expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model!);
   });
 
   it('keeps side-attached L roof features backed by the final joined facets', () => {

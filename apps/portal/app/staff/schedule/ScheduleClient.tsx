@@ -2311,7 +2311,7 @@ export default function ScheduleClient({
     qs.set('view', viewParam);
     const href = `/staff/schedule?${qs.toString()}`;
     const label = next === 'site_visits' ? 'Site visits' : next === 'gantt' ? 'Gantt' : 'Board';
-    beginRouteTransition({ href, label, source: 'schedule-view' });
+    beginRouteTransition({ href, label, source: 'schedule-view', show: 'immediate' });
     startUiTransition(() => {
       router.replace(href);
       setView(next);

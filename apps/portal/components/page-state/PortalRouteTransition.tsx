@@ -22,6 +22,7 @@ export type PortalRouteTransitionInput = {
   href: string;
   label?: string;
   source?: string;
+  show?: 'delayed' | 'immediate';
 };
 
 type PortalRouteTransitionContextValue = {
@@ -156,6 +157,7 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
     (input: PortalRouteTransitionInput) => {
       if (typeof window === 'undefined') return;
       if (!shouldStartRouteTransitionForHref(input.href)) return;
+      const showMode = input.show ?? 'delayed';
 
       activeRef.current = true;
       setAriaLabel(input.label ? `Preparing ${input.label}` : DEFAULT_MESSAGE);
@@ -167,6 +169,12 @@ export function PortalRouteTransitionProvider({ children }: { children: ReactNod
         maxTimerRef.current = null;
         finishRouteTransition({ force: true });
       }, MAX_TRANSITION_MS);
+
+      if (showMode === 'immediate') {
+        visibleAtRef.current = window.performance.now();
+        if (!visibleRef.current) setVisibleValue(true);
+        return;
+      }
 
       if (visibleRef.current) return;
 

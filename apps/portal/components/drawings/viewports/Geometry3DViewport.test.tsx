@@ -1220,13 +1220,19 @@ describe("Geometry3DViewport", () => {
       (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
         object.type === "house_surface_solid" && object.kind === "wall",
     );
+    const roofSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "roof",
+    );
     const gutterSolid = houseLayer?.objects.find(
       (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
         object.type === "house_linear_solid" && object.kind === "gutter",
     );
     const wallGeometry = buildRenderMeshGeometry(wallSolid?.renderMesh);
+    const roofGeometry = buildRenderMeshGeometry(roofSolid?.renderMesh);
     const gutterGeometry = buildRenderMeshGeometry(gutterSolid?.renderMesh);
     expect(wallGeometry?.getAttribute("position").count).toBeGreaterThan(0);
+    expect(roofGeometry?.getAttribute("position").count).toBeGreaterThan(0);
     expect(gutterGeometry?.getAttribute("position").count).toBeGreaterThan(0);
 
     clickButtonByText(rendered.container, "Workspace panel");

@@ -222,11 +222,17 @@ describe("buildViewerSceneModel", () => {
       (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
         object.type === "house_surface_solid" && object.kind === "soffit",
     );
+    const roofSolid = objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "roof",
+    );
     const gutterSolid = objects.find(
       (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
         object.type === "house_linear_solid" && object.kind === "gutter",
     );
     expect(wallSolid?.renderMesh?.vertices).toHaveLength(8);
+    expect(roofSolid?.renderMesh?.vertices.length).toBeGreaterThanOrEqual(6);
+    expect(roofSolid?.renderMesh?.faces.length).toBeGreaterThan(0);
     expect(soffitSolid?.renderMesh?.vertices).toHaveLength(8);
     expect(gutterSolid?.renderMesh?.vertices).toHaveLength(8);
   });

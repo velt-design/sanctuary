@@ -15,11 +15,11 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => mockSearchParams,
 }));
 
-function Trigger({ href }: { href: string }) {
+function Trigger({ href, show }: { href: string; show?: 'delayed' | 'immediate' }) {
   const { beginRouteTransition } = usePortalRouteTransition();
 
   return (
-    <button type="button" onClick={() => beginRouteTransition({ href, label: 'Projects', source: 'test' })}>
+    <button type="button" onClick={() => beginRouteTransition({ href, label: 'Projects', source: 'test', show })}>
       Start
     </button>
   );
@@ -101,6 +101,40 @@ describe('PortalRouteTransitionProvider', () => {
 
     act(() => {
       vi.advanceTimersByTime(1000);
+    });
+    expect(rendered.container.textContent).not.toContain('Preparing workspace...');
+
+    rendered.unmount();
+  });
+
+  it('shows the blueprint overlay immediately when requested', () => {
+    const rendered = renderIntoDocument(
+      <PortalRouteTransitionProvider>
+        <Trigger href="/staff/schedule?view=gantt" show="immediate" />
+      </PortalRouteTransitionProvider>,
+    );
+
+    act(() => {
+      rendered.container.querySelector('button')?.click();
+    });
+    expect(rendered.container.textContent).toContain('Preparing workspace...');
+
+    mockPathname = '/staff/schedule';
+    mockSearchParams = new URLSearchParams('view=gantt');
+    window.history.replaceState({}, '', '/staff/schedule?view=gantt');
+    rendered.rerender(
+      <PortalRouteTransitionProvider>
+        <Trigger href="/staff/schedule?view=gantt" show="immediate" />
+      </PortalRouteTransitionProvider>,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(449);
+    });
+    expect(rendered.container.textContent).toContain('Preparing workspace...');
+
+    act(() => {
+      vi.advanceTimersByTime(1);
     });
     expect(rendered.container.textContent).not.toContain('Preparing workspace...');
 
