@@ -12,9 +12,15 @@ import {
   useState,
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
 } from 'react';
 import { NAV_ITEMS, SIDEBAR_WIDTH_PX } from './navItems';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
+import {
+  shouldHandleRouteTransitionClick,
+  shouldStartRouteTransitionForHref,
+  usePortalRouteTransition,
+} from '@/components/page-state/PortalRouteTransition';
 import styles from './SidebarRevealOverlayLab.module.css';
 
 const OVERLAY_WIDTH_PX = 262;
@@ -49,6 +55,8 @@ function usePrefersReducedMotion() {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     const update = () => setPrefersReducedMotion(mediaQuery.matches);
 
@@ -129,6 +137,7 @@ export default function SidebarRevealOverlayLab() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { role } = usePortalSession();
+  const { beginRouteTransition } = usePortalRouteTransition();
   const prefersReducedMotion = usePrefersReducedMotion();
   const [expanded, setExpanded] = useState(false);
   const pointerInRailRef = useRef(false);
@@ -305,6 +314,18 @@ export default function SidebarRevealOverlayLab() {
     setExpanded(false);
   }, [clearSubmenuTimers, clearTimer]);
 
+  const handleNavLinkClick = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string, source: string) => {
+      if (!shouldHandleRouteTransitionClick(event)) return;
+
+      closeNow();
+
+      if (!shouldStartRouteTransitionForHref(href)) return;
+      beginRouteTransition({ href, label, source });
+    },
+    [beginRouteTransition, closeNow],
+  );
+
   useEffect(() => {
     const previousRouteKey = prevRouteKeyRef.current;
     prevRouteKeyRef.current = routeKey;
@@ -452,11 +473,30 @@ export default function SidebarRevealOverlayLab() {
       if (!isPointerInside()) closeNow();
     };
 
+    const onRailClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest<HTMLAnchorElement>('a[data-nav-key]');
+      if (!link || !railElement.contains(link)) return;
+      if (!shouldHandleRouteTransitionClick(event, link)) return;
+
+      closeNow();
+
+      const href = link.getAttribute('href') ?? '';
+      if (!shouldStartRouteTransitionForHref(href)) return;
+      beginRouteTransition({
+        href,
+        label: link.getAttribute('aria-label') ?? undefined,
+        source: 'sidebar-rail',
+      });
+    };
+
     railElement.addEventListener('mouseenter', onRailMouseEnter);
     railElement.addEventListener('mouseover', onRailMouseOver);
     railElement.addEventListener('mouseleave', onRailMouseLeave);
     railElement.addEventListener('focusin', onRailFocusIn);
     railElement.addEventListener('focusout', onRailFocusOut);
+    railElement.addEventListener('click', onRailClick);
 
     return () => {
       railElement.removeEventListener('mouseenter', onRailMouseEnter);
@@ -464,8 +504,9 @@ export default function SidebarRevealOverlayLab() {
       railElement.removeEventListener('mouseleave', onRailMouseLeave);
       railElement.removeEventListener('focusin', onRailFocusIn);
       railElement.removeEventListener('focusout', onRailFocusOut);
+      railElement.removeEventListener('click', onRailClick);
     };
-  }, [closeNow, isPointerInside, openNow, scheduleClose, scheduleOpen]);
+  }, [beginRouteTransition, closeNow, isPointerInside, openNow, scheduleClose, scheduleOpen]);
 
   useEffect(() => {
     const railElement = railElementRef.current;
@@ -498,6 +539,14 @@ export default function SidebarRevealOverlayLab() {
         syncIconShifts();
       });
     };
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', scheduleSync);
+      return () => {
+        if (rafId) cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', scheduleSync);
+      };
+    }
 
     const resizeObserver = new ResizeObserver(scheduleSync);
     resizeObserver.observe(labelNavElement);
@@ -557,6 +606,7 @@ export default function SidebarRevealOverlayLab() {
                   className={cx(styles.parentRow, isBubbled && styles.parentRowBubbled)}
                   ref={setParentRowRef(item.key)}
                   tabIndex={expanded ? 0 : -1}
+                  onClick={(event) => handleNavLinkClick(event, item.href, item.label, 'sidebar-overlay')}
                   onFocus={() => {
                     setHoveredKey(item.key);
                     if (!hasSubmenu) return;
@@ -584,6 +634,9 @@ export default function SidebarRevealOverlayLab() {
                             aria-current={childActive ? 'page' : undefined}
                             className={cx(styles.childRow, childActive && styles.childRowActive)}
                             tabIndex={expanded ? 0 : -1}
+                            onClick={(event) =>
+                              handleNavLinkClick(event, child.href, child.label, 'sidebar-overlay')
+                            }
                             onFocus={() => {
                               setHoveredKey(item.key);
                               setOpenParentKey(item.key);

@@ -9,6 +9,9 @@ import { renderIntoDocument } from '../../../../../test/reactHarness';
 const routerReplace = vi.fn();
 const routerPush = vi.fn();
 const scheduleSnapshotQueryOptions = vi.fn();
+const transitionMocks = vi.hoisted(() => ({
+  beginRouteTransition: vi.fn(),
+}));
 
 vi.mock('next/dynamic', () => ({
   default: () => () => null,
@@ -27,6 +30,12 @@ vi.mock('@/components/ui/toast/ToastProvider', () => ({
     error: vi.fn(),
     success: vi.fn(),
     info: vi.fn(),
+  }),
+}));
+
+vi.mock('@/components/page-state/PortalRouteTransition', () => ({
+  usePortalRouteTransition: () => ({
+    beginRouteTransition: transitionMocks.beginRouteTransition,
   }),
 }));
 
@@ -122,6 +131,7 @@ describe('ScheduleClient', () => {
   beforeEach(() => {
     routerReplace.mockReset();
     routerPush.mockReset();
+    transitionMocks.beginRouteTransition.mockReset();
     scheduleSnapshotQueryOptions.mockReset();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
@@ -159,6 +169,45 @@ describe('ScheduleClient', () => {
       rendered.container.querySelector('button[aria-label="Collapse unscheduled panel"], button[aria-label="Expand unscheduled panel"]'),
     ).not.toBeNull();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(initialSnapshot);
+
+    rendered.unmount();
+  });
+
+  it('starts the portal loading transition before switching schedule views', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={initialSnapshot} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const ganttButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Gantt',
+    ) as HTMLButtonElement | undefined;
+
+    expect(ganttButton).toBeTruthy();
+
+    act(() => {
+      ganttButton?.click();
+    });
+
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/staff/schedule?view=gantt',
+      label: 'Gantt',
+      source: 'schedule-view',
+    });
+    expect(routerReplace).toHaveBeenCalledWith('/staff/schedule?view=gantt');
 
     rendered.unmount();
   });

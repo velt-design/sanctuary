@@ -17,6 +17,7 @@ import Geometry3DViewport, {
   buildClippedBoxGeometry,
   buildClippedProfileExtrusionGeometry,
   buildPolygonSlabGeometry,
+  buildRenderMeshGeometry,
 } from "./Geometry3DViewport";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
 
@@ -287,16 +288,17 @@ function pointListsForObject(object: ViewerSceneObject): Point3[] {
   if (
     object.type === "roof_plane" ||
     object.type === "house_surface" ||
-    object.type === "house_surface_solid" ||
     object.type === "roof_cladding_panel"
   )
     return object.boundary;
+  if (object.type === "house_surface_solid")
+    return object.renderMesh?.vertices ?? object.boundary;
   if (object.type === "roof_flashing")
     return object.wings.flatMap((wing) => wing.boundary);
   if (object.type === "reference_line" || object.type === "house_line")
     return [object.line.start, object.line.end];
   if (object.type === "house_linear_solid")
-    return [object.centerline.start, object.centerline.end];
+    return object.renderMesh?.vertices ?? [object.centerline.start, object.centerline.end];
   return object.boundary;
 }
 
@@ -1213,6 +1215,19 @@ describe("Geometry3DViewport", () => {
         '[data-testid="scene-object-house-attachment-target-line"]',
       ),
     ).not.toBeNull();
+
+    const wallSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "wall",
+    );
+    const gutterSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
+        object.type === "house_linear_solid" && object.kind === "gutter",
+    );
+    const wallGeometry = buildRenderMeshGeometry(wallSolid?.renderMesh);
+    const gutterGeometry = buildRenderMeshGeometry(gutterSolid?.renderMesh);
+    expect(wallGeometry?.getAttribute("position").count).toBeGreaterThan(0);
+    expect(gutterGeometry?.getAttribute("position").count).toBeGreaterThan(0);
 
     clickButtonByText(rendered.container, "Workspace panel");
     clickSceneObject(rendered.container, "house-solid-house-roof-min-y");

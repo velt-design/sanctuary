@@ -6,6 +6,7 @@ import type {
   Plane3,
   Point3,
   Polygon3,
+  RenderMesh3D,
   ViewerSceneLayer,
   ViewerSceneHouseLineObject,
   ViewerSceneHouseLinearSolidObject,
@@ -395,6 +396,18 @@ function isRenderableHouseLinearSolid(input: {
   );
 }
 
+function renderMeshIsRenderable(mesh: RenderMesh3D | undefined): mesh is RenderMesh3D {
+  return Boolean(
+    mesh &&
+      mesh.vertices.length >= 3 &&
+      mesh.faces.length > 0 &&
+      mesh.vertices.every(isFinitePoint) &&
+      mesh.faces.every((face) =>
+        face.every((index) => Number.isInteger(index) && index >= 0 && index < mesh.vertices.length),
+      ),
+  );
+}
+
 function buildHouseSurfaceSolidObject(input: {
   id: string;
   sourceId?: string;
@@ -402,6 +415,7 @@ function buildHouseSurfaceSolidObject(input: {
   boundary: Polygon3;
   plane: Plane3;
   thicknessMm: number;
+  renderMesh?: RenderMesh3D;
   metadata?: GeometryMetadata;
 }): ViewerSceneHouseSurfaceSolidObject | null {
   if (
@@ -419,6 +433,7 @@ function buildHouseSurfaceSolidObject(input: {
     boundary: input.boundary,
     plane: input.plane,
     thicknessMm: input.thicknessMm,
+    ...(renderMeshIsRenderable(input.renderMesh) ? { renderMesh: input.renderMesh } : {}),
     metadata: sortMetadata(input.metadata),
   };
 }
@@ -431,6 +446,7 @@ function buildHouseLinearSolidObject(input: {
   localFrame: ViewerSceneHouseLinearSolidObject["localFrame"];
   profileWidthMm: number;
   profileDepthMm: number;
+  renderMesh?: RenderMesh3D;
   metadata?: GeometryMetadata;
 }): ViewerSceneHouseLinearSolidObject | null {
   if (!isRenderableHouseLinearSolid(input)) return null;
@@ -443,6 +459,7 @@ function buildHouseLinearSolidObject(input: {
     localFrame: input.localFrame,
     profileWidthMm: input.profileWidthMm,
     profileDepthMm: input.profileDepthMm,
+    ...(renderMeshIsRenderable(input.renderMesh) ? { renderMesh: input.renderMesh } : {}),
     metadata: sortMetadata(input.metadata),
   };
 }
@@ -519,6 +536,7 @@ function buildHouseModelObjects(
         boundary: solid.boundary,
         plane: solid.plane,
         thicknessMm: solid.thicknessMm,
+        renderMesh: solid.renderMesh,
         metadata: solid.metadata,
       });
       if (object) objects.push(object);
@@ -533,6 +551,7 @@ function buildHouseModelObjects(
         localFrame: solid.localFrame,
         profileWidthMm: solid.profileWidthMm,
         profileDepthMm: solid.profileDepthMm,
+        renderMesh: solid.renderMesh,
         metadata: solid.metadata,
       });
       if (object) objects.push(object);

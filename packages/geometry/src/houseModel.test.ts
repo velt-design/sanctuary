@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GeometryConfig, HouseAttachmentStrategy, Line3, Point3, Polygon3 } from './contracts';
+import type { GeometryConfig, HouseAttachmentStrategy, Line3, Point3, Polygon3, RenderMesh3D } from './contracts';
 import { buildHouseModel3D, buildHouseReferenceGeometry } from './houseModel';
 
 type HouseModel = NonNullable<ReturnType<typeof buildHouseModel3D>>;
@@ -425,77 +425,58 @@ function lineLength3(line3: Line3): number {
   );
 }
 
-function runAxis(boundary: Polygon3): Point3 {
-  const sourceLength = lineLength3({ start: boundary[0]!, end: boundary[1]! });
-  return {
-    x: (boundary[1]!.x - boundary[0]!.x) / sourceLength,
-    y: (boundary[1]!.y - boundary[0]!.y) / sourceLength,
-    z: (boundary[1]!.z - boundary[0]!.z) / sourceLength,
-  };
-}
-
-function dotPointDeltaWithAxis(start: Point3, end: Point3, axis: Point3): number {
-  return (end.x - start.x) * axis.x + (end.y - start.y) * axis.y + (end.z - start.z) * axis.z;
-}
-
-function expectRectangularBoundaryExtendedAlongRun(
-  actual: Polygon3 | undefined,
-  source: Polygon3,
-  extensionMm: number,
-): void {
+function expectPolygon3CloseTo(actual: Polygon3 | undefined, expected: Polygon3): void {
   expect(actual).toBeDefined();
-  expect(actual).toHaveLength(4);
-  const axis = runAxis(source);
-  expectPoint3CloseTo(actual?.[0], {
-    x: source[0]!.x - axis.x * extensionMm,
-    y: source[0]!.y - axis.y * extensionMm,
-    z: source[0]!.z - axis.z * extensionMm,
-  });
-  expectPoint3CloseTo(actual?.[1], {
-    x: source[1]!.x + axis.x * extensionMm,
-    y: source[1]!.y + axis.y * extensionMm,
-    z: source[1]!.z + axis.z * extensionMm,
-  });
-  expectPoint3CloseTo(actual?.[2], {
-    x: source[2]!.x + axis.x * extensionMm,
-    y: source[2]!.y + axis.y * extensionMm,
-    z: source[2]!.z + axis.z * extensionMm,
-  });
-  expectPoint3CloseTo(actual?.[3], {
-    x: source[3]!.x - axis.x * extensionMm,
-    y: source[3]!.y - axis.y * extensionMm,
-    z: source[3]!.z - axis.z * extensionMm,
-  });
+  expect(actual).toHaveLength(expected.length);
+  for (const [index, point] of expected.entries()) {
+    expectPoint3CloseTo(actual?.[index], point);
+  }
 }
 
-function expectSurfaceSolidBoundariesExtendAroundCorners(
+function expectSolidBoundariesExact(
   sourceBoundaries: Polygon3[],
   solidBoundaries: Polygon3[],
-  extensionMm: number,
 ): void {
   expect(sourceBoundaries.length).toBeGreaterThan(0);
   expect(solidBoundaries).toHaveLength(sourceBoundaries.length);
 
   for (const [index, sourceBoundary] of sourceBoundaries.entries()) {
-    expectRectangularBoundaryExtendedAlongRun(solidBoundaries[index], sourceBoundary, extensionMm);
-  }
-
-  for (const [index, sourceBoundary] of sourceBoundaries.entries()) {
-    const nextIndex = (index + 1) % sourceBoundaries.length;
-    const nextSourceBoundary = sourceBoundaries[nextIndex]!;
-    const solidBoundary = solidBoundaries[index]!;
-    const nextSolidBoundary = solidBoundaries[nextIndex]!;
-    const axis = runAxis(sourceBoundary);
-    const nextAxis = runAxis(nextSourceBoundary);
-    const corner = sourceBoundary[1]!;
-
-    expectPoint3CloseTo(nextSourceBoundary[0], corner);
-    expect(dotPointDeltaWithAxis(corner, solidBoundary[1]!, axis)).toBeCloseTo(extensionMm, 6);
-    expect(dotPointDeltaWithAxis(nextSolidBoundary[0]!, corner, nextAxis)).toBeCloseTo(extensionMm, 6);
+    expectPolygon3CloseTo(solidBoundaries[index], sourceBoundary);
   }
 }
 
-function expectHouseGutterSolidsExtendAroundCorners(model: HouseModel): void {
+function expectVerticalPrismRenderMesh(renderMesh: RenderMesh3D | undefined, bottomZ: number, topZ: number): void {
+  expect(renderMesh).toBeDefined();
+  expect(renderMesh?.vertices).toHaveLength(8);
+  expect(renderMesh?.faces).toHaveLength(12);
+  for (const vertex of renderMesh?.vertices.slice(0, 4) ?? []) {
+    expect(vertex.z).toBeCloseTo(bottomZ, 6);
+  }
+  for (const vertex of renderMesh?.vertices.slice(4) ?? []) {
+    expect(vertex.z).toBeCloseTo(topZ, 6);
+  }
+}
+
+function expectMiteredRenderMeshesAroundCorners(
+  renderMeshes: Array<RenderMesh3D | undefined>,
+  bottomZ: number,
+  topZ: number,
+): void {
+  expect(renderMeshes.length).toBeGreaterThan(0);
+  for (const renderMesh of renderMeshes) {
+    expectVerticalPrismRenderMesh(renderMesh, bottomZ, topZ);
+  }
+
+  for (const [index, renderMesh] of renderMeshes.entries()) {
+    const nextRenderMesh = renderMeshes[(index + 1) % renderMeshes.length]!;
+    expectPoint3CloseTo(renderMesh?.vertices[1], nextRenderMesh?.vertices[0]!);
+    expectPoint3CloseTo(renderMesh?.vertices[2], nextRenderMesh?.vertices[3]!);
+    expectPoint3CloseTo(renderMesh?.vertices[5], nextRenderMesh?.vertices[4]!);
+    expectPoint3CloseTo(renderMesh?.vertices[6], nextRenderMesh?.vertices[7]!);
+  }
+}
+
+function expectHouseGutterSolidsMiteredAroundCorners(model: HouseModel): void {
   const gutterLines = model.eave.gutterLines ?? [];
   const gutterSolids = model.solids?.linearSolids.filter((solid) => solid.kind === 'gutter') ?? [];
 
@@ -510,84 +491,58 @@ function expectHouseGutterSolidsExtendAroundCorners(model: HouseModel): void {
       y: (gutterLine.end.y - gutterLine.start.y) / sourceLength,
       z: (gutterLine.end.z - gutterLine.start.z) / sourceLength,
     };
-    const extensionMm = gutterSolid.profileWidthMm / 2;
     const centerlineZ = gutterLine.start.z - gutterSolid.profileDepthMm / 2;
 
     expectPoint3CloseTo(gutterSolid.centerline.start, {
-      x: gutterLine.start.x - xAxis.x * extensionMm,
-      y: gutterLine.start.y - xAxis.y * extensionMm,
-      z: centerlineZ - xAxis.z * extensionMm,
+      x: gutterLine.start.x,
+      y: gutterLine.start.y,
+      z: centerlineZ,
     });
     expectPoint3CloseTo(gutterSolid.centerline.end, {
-      x: gutterLine.end.x + xAxis.x * extensionMm,
-      y: gutterLine.end.y + xAxis.y * extensionMm,
-      z: centerlineZ + xAxis.z * extensionMm,
+      x: gutterLine.end.x,
+      y: gutterLine.end.y,
+      z: centerlineZ,
     });
     expectPoint3CloseTo(gutterSolid.localFrame.origin, gutterSolid.centerline.start);
     expect(gutterSolid.localFrame.xAxis.x).toBeCloseTo(xAxis.x, 6);
     expect(gutterSolid.localFrame.xAxis.y).toBeCloseTo(xAxis.y, 6);
     expect(gutterSolid.localFrame.xAxis.z).toBeCloseTo(xAxis.z, 6);
-    expect(lineLength3(gutterSolid.centerline)).toBeCloseTo(sourceLength + gutterSolid.profileWidthMm, 6);
+    expect(lineLength3(gutterSolid.centerline)).toBeCloseTo(sourceLength, 6);
+    expectVerticalPrismRenderMesh(gutterSolid.renderMesh, centerlineZ - gutterSolid.profileDepthMm / 2, centerlineZ + gutterSolid.profileDepthMm / 2);
   }
 
-  for (const [index, gutterLine] of gutterLines.entries()) {
-    const nextIndex = (index + 1) % gutterLines.length;
-    const nextGutterLine = gutterLines[nextIndex]!;
-    const gutterSolid = gutterSolids[index]!;
-    const nextGutterSolid = gutterSolids[nextIndex]!;
-    const currentLength = lineLength3(gutterLine);
-    const nextLength = lineLength3(nextGutterLine);
-    const currentAxis = {
-      x: (gutterLine.end.x - gutterLine.start.x) / currentLength,
-      y: (gutterLine.end.y - gutterLine.start.y) / currentLength,
-      z: (gutterLine.end.z - gutterLine.start.z) / currentLength,
-    };
-    const nextAxis = {
-      x: (nextGutterLine.end.x - nextGutterLine.start.x) / nextLength,
-      y: (nextGutterLine.end.y - nextGutterLine.start.y) / nextLength,
-      z: (nextGutterLine.end.z - nextGutterLine.start.z) / nextLength,
-    };
-    const currentVertex = gutterLine.end;
-
-    expectPoint3CloseTo(nextGutterLine.start, currentVertex);
-    expect(
-      (gutterSolid.centerline.end.x - currentVertex.x) * currentAxis.x +
-        (gutterSolid.centerline.end.y - currentVertex.y) * currentAxis.y +
-        (gutterSolid.centerline.end.z - (currentVertex.z - gutterSolid.profileDepthMm / 2)) * currentAxis.z,
-    ).toBeCloseTo(gutterSolid.profileWidthMm / 2, 6);
-    expect(
-      (currentVertex.x - nextGutterSolid.centerline.start.x) * nextAxis.x +
-        (currentVertex.y - nextGutterSolid.centerline.start.y) * nextAxis.y +
-        (currentVertex.z - nextGutterSolid.profileDepthMm / 2 - nextGutterSolid.centerline.start.z) * nextAxis.z,
-    ).toBeCloseTo(nextGutterSolid.profileWidthMm / 2, 6);
-  }
+  expectMiteredRenderMeshesAroundCorners(
+    gutterSolids.map((solid) => solid.renderMesh),
+    gutterSolids[0]!.centerline.start.z - gutterSolids[0]!.profileDepthMm / 2,
+    gutterSolids[0]!.centerline.start.z + gutterSolids[0]!.profileDepthMm / 2,
+  );
 }
 
-function expectHouseSurfaceSolidsExtendAroundCorners(model: HouseModel): void {
+function expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model: HouseModel): void {
   const wallSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'wall') ?? [];
   const fasciaPolygons = model.eave.fasciaPolygons ?? [];
   const fasciaSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'fascia') ?? [];
   const soffitPolygons = model.eave.soffitPolygons ?? [];
   const soffitSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'soffit') ?? [];
 
-  expectSurfaceSolidBoundariesExtendAroundCorners(
+  expectSolidBoundariesExact(
     model.wallSegments.map((segment) => segment.boundary),
     wallSolids.map((solid) => solid.boundary),
-    45,
   );
   expect(wallSolids.every((solid) => solid.thicknessMm === 90)).toBe(true);
-  expectSurfaceSolidBoundariesExtendAroundCorners(
+  expectMiteredRenderMeshesAroundCorners(wallSolids.map((solid) => solid.renderMesh), 0, model.wallSegments[0]!.boundary[2]!.z);
+  expectSolidBoundariesExact(
     fasciaPolygons,
     fasciaSolids.map((solid) => solid.boundary),
-    9,
   );
   expect(fasciaSolids.every((solid) => solid.thicknessMm === 18)).toBe(true);
-  expectSurfaceSolidBoundariesExtendAroundCorners(
+  expectMiteredRenderMeshesAroundCorners(fasciaSolids.map((solid) => solid.renderMesh), 2220, 2400);
+  expectSolidBoundariesExact(
     soffitPolygons,
     soffitSolids.map((solid) => solid.boundary),
-    5,
   );
   expect(soffitSolids.every((solid) => solid.thicknessMm === 10)).toBe(true);
+  expectMiteredRenderMeshesAroundCorners(soffitSolids.map((solid) => solid.renderMesh), 2395, 2405);
 }
 
 describe('house model geometry builder', () => {
@@ -643,29 +598,44 @@ describe('house model geometry builder', () => {
       profileDepthMm: 90,
     });
     expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'wall')?.boundary[0], {
-      x: -45,
+      x: 0,
       y: -1800,
       z: 0,
     });
     expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'fascia')?.boundary[0], {
-      x: -459,
+      x: -450,
       y: -2250,
       z: 2400,
     });
     expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'soffit')?.boundary[0], {
-      x: -455,
+      x: -450,
       y: -2250,
       z: 2400,
     });
     expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'soffit')?.boundary[1], {
-      x: 6455,
+      x: 6450,
       y: -2250,
       z: 2400,
     });
-    expectHouseSurfaceSolidsExtendAroundCorners(model);
-    expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.start, { x: -512.5, y: -2250, z: 2355 });
-    expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.end, { x: 6512.5, y: -2250, z: 2355 });
-    expectHouseGutterSolidsExtendAroundCorners(model);
+    expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'wall')?.renderMesh?.vertices[0], {
+      x: -45,
+      y: -1845,
+      z: 0,
+    });
+    expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'fascia')?.renderMesh?.vertices[0], {
+      x: -459,
+      y: -2259,
+      z: 2220,
+    });
+    expectPoint3CloseTo(model.solids?.linearSolids[0]?.renderMesh?.vertices[0], {
+      x: -512.5,
+      y: -2312.5,
+      z: 2310,
+    });
+    expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
+    expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.start, { x: -450, y: -2250, z: 2355 });
+    expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.end, { x: 6450, y: -2250, z: 2355 });
+    expectHouseGutterSolidsMiteredAroundCorners(model);
     expect(model.attachmentTarget?.kind).toBe('line');
     expect(model.attachmentTarget?.line).toEqual(makeAttachmentEdge());
   });
@@ -727,8 +697,8 @@ describe('house model geometry builder', () => {
     expectJoinedRoofFeaturesBackedByFinalFacets(model!);
     expect(model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(model?.roofPlanes.length ?? 0);
     expect(model?.solids?.linearSolids).toHaveLength(7);
-    expectHouseSurfaceSolidsExtendAroundCorners(model);
-    expectHouseGutterSolidsExtendAroundCorners(model);
+    expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
+    expectHouseGutterSolidsMiteredAroundCorners(model);
     expect(model?.attachmentTarget?.kind).toBe('plane');
     expect(model?.attachmentTarget?.sourceEdgeId).toBe('footprint-edge-3');
   });

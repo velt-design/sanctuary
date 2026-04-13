@@ -1,14 +1,5 @@
-import ListPageSkeleton from '@/components/page-state/ListPageSkeleton';
+import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
 
 export default function Loading() {
-  return (
-    <ListPageSkeleton
-      title="Projects"
-      actionCount={3}
-      filterFieldCount={3}
-      columnCount={7}
-      rowCount={6}
-      listTitle="All Projects"
-    />
-  );
+  return <BlueprintLoadingScreen />;
 }

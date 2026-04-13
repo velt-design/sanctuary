@@ -67,10 +67,10 @@ function pointsForViewerObject(object: ViewerSceneObject) {
     return [object.line.start, object.line.end];
   }
   if (object.type === "house_surface_solid") {
-    return object.boundary;
+    return object.renderMesh?.vertices ?? object.boundary;
   }
   if (object.type === "house_linear_solid") {
-    return [object.centerline.start, object.centerline.end];
+    return object.renderMesh?.vertices ?? [object.centerline.start, object.centerline.end];
   }
   return object.boundary;
 }
@@ -213,6 +213,22 @@ describe("buildViewerSceneModel", () => {
     expect(objects.some((object) => object.id === "house-wall-plane")).toBe(false);
     expect(objects.some((object) => object.id === "house-fascia-line")).toBe(false);
     expect(objects.some((object) => object.id === "house-roof-edge-line")).toBe(false);
+
+    const wallSolid = objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "wall",
+    );
+    const soffitSolid = objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "soffit",
+    );
+    const gutterSolid = objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
+        object.type === "house_linear_solid" && object.kind === "gutter",
+    );
+    expect(wallSolid?.renderMesh?.vertices).toHaveLength(8);
+    expect(soffitSolid?.renderMesh?.vertices).toHaveLength(8);
+    expect(gutterSolid?.renderMesh?.vertices).toHaveLength(8);
   });
 
   it("renders moved semantic house attachment targets at the projected facade", () => {

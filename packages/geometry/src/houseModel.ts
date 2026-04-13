@@ -13,6 +13,7 @@ import type {
   Plane3,
   Point3,
   Polygon3,
+  RenderMesh3D,
   RoofPlane3D,
   Vector3,
 } from './contracts';
@@ -21,7 +22,6 @@ import {
   normalizeVector,
   planeFromOriginAxes,
   planeFromPoints,
-  scaleVector,
   subtractPoints,
 } from './math3d';
 import { buildHouseSideAttachmentLine } from './footprints';
@@ -2734,28 +2734,121 @@ function edgeOutwardVector(polygon: Polygon3, index: number): Vector3 {
     : { x: -unitY, y: unitX, z: 0 };
 }
 
-function extendLineAlongDirection(source: Line3, direction: Vector3, extensionMm: number): Line3 {
-  if (extensionMm <= 0) return source;
-  const extension = scaleVector(direction, extensionMm);
-  return line(
-    point(source.start.x - extension.x, source.start.y - extension.y, source.start.z - extension.z),
-    point(source.end.x + extension.x, source.end.y + extension.y, source.end.z + extension.z),
+function renderMeshIsFinite(mesh: RenderMesh3D): boolean {
+  return (
+    mesh.vertices.length >= 6 &&
+    mesh.faces.length > 0 &&
+    mesh.vertices.every((candidate) =>
+      Number.isFinite(candidate.x) && Number.isFinite(candidate.y) && Number.isFinite(candidate.z),
+    ) &&
+    mesh.faces.every((face) =>
+      face.every((index) => Number.isInteger(index) && index >= 0 && index < mesh.vertices.length),
+    )
   );
 }
 
-function extendRectangularBoundaryAlongRun(boundary: Polygon3, extensionMm: number): Polygon3 {
-  if (boundary.length !== 4 || extensionMm <= 0) return boundary;
-  const run = line(boundary[0]!, boundary[1]!);
-  if (lineLength(run) <= 1e-6) return boundary;
-  const direction = normalizeVector(subtractPoints(run.end, run.start));
-  const extension = scaleVector(direction, extensionMm);
+function buildVerticalPrismRenderMesh(planFootprint: Polygon3, bottomZ: number, topZ: number): RenderMesh3D | undefined {
+  if (planFootprint.length < 3 || !Number.isFinite(bottomZ) || !Number.isFinite(topZ)) return undefined;
+  if (Math.abs(topZ - bottomZ) <= 1e-6 || Math.abs(signedAreaXY(planFootprint)) <= 1e-6) return undefined;
 
-  return [
-    point(boundary[0]!.x - extension.x, boundary[0]!.y - extension.y, boundary[0]!.z - extension.z),
-    point(boundary[1]!.x + extension.x, boundary[1]!.y + extension.y, boundary[1]!.z + extension.z),
-    point(boundary[2]!.x + extension.x, boundary[2]!.y + extension.y, boundary[2]!.z + extension.z),
-    point(boundary[3]!.x - extension.x, boundary[3]!.y - extension.y, boundary[3]!.z - extension.z),
+  const bottom = Math.min(bottomZ, topZ);
+  const top = Math.max(bottomZ, topZ);
+  const vertices = [
+    ...planFootprint.map((candidate) => point(candidate.x, candidate.y, bottom)),
+    ...planFootprint.map((candidate) => point(candidate.x, candidate.y, top)),
   ];
+  const vertexCount = planFootprint.length;
+  const faces: [number, number, number][] = [];
+
+  for (let index = 1; index < vertexCount - 1; index += 1) {
+    faces.push([0, index + 1, index]);
+    faces.push([vertexCount, vertexCount + index, vertexCount + index + 1]);
+  }
+
+  for (let index = 0; index < vertexCount; index += 1) {
+    const nextIndex = (index + 1) % vertexCount;
+    faces.push([index, nextIndex, vertexCount + nextIndex]);
+    faces.push([index, vertexCount + nextIndex, vertexCount + index]);
+  }
+
+  const mesh = { vertices, faces };
+  return renderMeshIsFinite(mesh) ? mesh : undefined;
+}
+
+function boundaryZRange(boundary: Polygon3): { bottomZ: number; topZ: number } | null {
+  if (!boundary.length) return null;
+  const zValues = boundary.map((candidate) => candidate.z);
+  const bottomZ = Math.min(...zValues);
+  const topZ = Math.max(...zValues);
+  return Number.isFinite(bottomZ) && Number.isFinite(topZ) && topZ - bottomZ > 1e-6
+    ? { bottomZ, topZ }
+    : null;
+}
+
+function miterCornerPoint(
+  previous: { start: Point3; end: Point3 },
+  current: { start: Point3; end: Point3 },
+): Point3 | null {
+  const intersection = lineIntersection2(previous.start, previous.end, current.start, current.end);
+  if (intersection) return point(intersection.x, intersection.y, 0);
+  return distanceSquared2(previous.end, current.start) <= 1e-6 ? current.start : null;
+}
+
+function buildMiteredStripFootprints(sourcePolygon: Polygon3, halfWidthMm: number): Polygon3[] | null {
+  if (sourcePolygon.length < 3 || halfWidthMm <= 0 || Math.abs(signedAreaXY(sourcePolygon)) <= 1e-6) return null;
+  if (
+    sourcePolygon.some(
+      (current, index) => lineLength(line(current, sourcePolygon[(index + 1) % sourcePolygon.length]!)) <= 1e-6,
+    )
+  ) {
+    return null;
+  }
+
+  const outerEdges = sourcePolygon.map((start, index) => {
+    const end = sourcePolygon[(index + 1) % sourcePolygon.length]!;
+    const outward = edgeOutwardVector(sourcePolygon, index);
+    return {
+      start: point(start.x + outward.x * halfWidthMm, start.y + outward.y * halfWidthMm, 0),
+      end: point(end.x + outward.x * halfWidthMm, end.y + outward.y * halfWidthMm, 0),
+    };
+  });
+  const innerEdges = sourcePolygon.map((start, index) => {
+    const end = sourcePolygon[(index + 1) % sourcePolygon.length]!;
+    const outward = edgeOutwardVector(sourcePolygon, index);
+    return {
+      start: point(start.x - outward.x * halfWidthMm, start.y - outward.y * halfWidthMm, 0),
+      end: point(end.x - outward.x * halfWidthMm, end.y - outward.y * halfWidthMm, 0),
+    };
+  });
+
+  const footprints: Polygon3[] = [];
+  for (let index = 0; index < sourcePolygon.length; index += 1) {
+    const previousIndex = (index - 1 + sourcePolygon.length) % sourcePolygon.length;
+    const nextIndex = (index + 1) % sourcePolygon.length;
+    const previousOuter = outerEdges[previousIndex]!;
+    const currentOuter = outerEdges[index]!;
+    const nextOuter = outerEdges[nextIndex]!;
+    const previousInner = innerEdges[previousIndex]!;
+    const currentInner = innerEdges[index]!;
+    const nextInner = innerEdges[nextIndex]!;
+
+    const outerStart = miterCornerPoint(previousOuter, currentOuter);
+    const outerEnd = miterCornerPoint(currentOuter, nextOuter);
+    const innerEnd = miterCornerPoint(currentInner, nextInner);
+    const innerStart = miterCornerPoint(previousInner, currentInner);
+
+    if (!outerStart || !outerEnd || !innerEnd || !innerStart) return null;
+    const footprint = [
+      outerStart,
+      outerEnd,
+      innerEnd,
+      innerStart,
+    ];
+    if (Math.abs(signedAreaXY(footprint)) <= 1e-6) return null;
+    footprints.push(footprint);
+  }
+
+  return footprints;
 }
 
 function buildHouseEnvelopeSolids(input: {
@@ -2771,15 +2864,26 @@ function buildHouseEnvelopeSolids(input: {
 }): NonNullable<HouseModel3D['solids']> {
   const surfaceSolids: NonNullable<HouseModel3D['solids']>['surfaceSolids'] = [];
   const linearSolids: NonNullable<HouseModel3D['solids']>['linearSolids'] = [];
+  const wallMiterFootprints = buildMiteredStripFootprints(
+    input.wallSegments.map((segment) => segment.line.start),
+    DEFAULT_WALL_SOLID_THICKNESS_MM / 2,
+  );
+  const fasciaMiterFootprints = buildMiteredStripFootprints(input.eavePolygon, DEFAULT_FASCIA_SOLID_THICKNESS_MM / 2);
+  const gutterMiterFootprints = buildMiteredStripFootprints(input.eavePolygon, input.gutterWidthMm / 2);
 
-  for (const wall of input.wallSegments) {
-    const solidBoundary = extendRectangularBoundaryAlongRun(wall.boundary, DEFAULT_WALL_SOLID_THICKNESS_MM / 2);
+  for (const [index, wall] of input.wallSegments.entries()) {
+    const zRange = boundaryZRange(wall.boundary);
+    const renderMesh =
+      zRange && wallMiterFootprints?.length === input.wallSegments.length
+        ? buildVerticalPrismRenderMesh(wallMiterFootprints[index]!, zRange.bottomZ, zRange.topZ)
+        : undefined;
     surfaceSolids.push({
       id: `house-solid-${wall.id}`,
       kind: 'wall',
-      boundary: solidBoundary,
+      boundary: wall.boundary,
       plane: wall.plane,
       thicknessMm: DEFAULT_WALL_SOLID_THICKNESS_MM,
+      ...(renderMesh ? { renderMesh } : {}),
       metadata: {
         sourceId: wall.id,
         sourceEdgeId: wall.sourceEdgeId ?? null,
@@ -2804,13 +2908,21 @@ function buildHouseEnvelopeSolids(input: {
   for (const [index, boundary] of input.soffitPolygons.entries()) {
     const plane = planeFromBoundary(boundary);
     if (!plane) continue;
-    const solidBoundary = extendRectangularBoundaryAlongRun(boundary, DEFAULT_SOFFIT_SOLID_THICKNESS_MM / 2);
+    const z = boundary[0]?.z;
+    const renderMesh = typeof z === 'number' && Number.isFinite(z)
+      ? buildVerticalPrismRenderMesh(
+          boundary,
+          z - DEFAULT_SOFFIT_SOLID_THICKNESS_MM / 2,
+          z + DEFAULT_SOFFIT_SOLID_THICKNESS_MM / 2,
+        )
+      : undefined;
     surfaceSolids.push({
       id: `house-solid-soffit-${index + 1}`,
       kind: 'soffit',
-      boundary: solidBoundary,
+      boundary,
       plane,
       thicknessMm: DEFAULT_SOFFIT_SOLID_THICKNESS_MM,
+      ...(renderMesh ? { renderMesh } : {}),
       metadata: {
         sourceId: `house-soffit-${index + 1}`,
       },
@@ -2820,13 +2932,18 @@ function buildHouseEnvelopeSolids(input: {
   for (const [index, boundary] of input.fasciaPolygons.entries()) {
     const plane = planeFromBoundary(boundary);
     if (!plane) continue;
-    const solidBoundary = extendRectangularBoundaryAlongRun(boundary, DEFAULT_FASCIA_SOLID_THICKNESS_MM / 2);
+    const zRange = boundaryZRange(boundary);
+    const renderMesh =
+      zRange && fasciaMiterFootprints?.length === input.fasciaPolygons.length
+        ? buildVerticalPrismRenderMesh(fasciaMiterFootprints[index]!, zRange.bottomZ, zRange.topZ)
+        : undefined;
     surfaceSolids.push({
       id: `house-solid-fascia-${index + 1}`,
       kind: 'fascia',
-      boundary: solidBoundary,
+      boundary,
       plane,
       thicknessMm: DEFAULT_FASCIA_SOLID_THICKNESS_MM,
+      ...(renderMesh ? { renderMesh } : {}),
       metadata: {
         sourceId: `house-fascia-${index + 1}`,
       },
@@ -2842,21 +2959,29 @@ function buildHouseEnvelopeSolids(input: {
     );
     if (lineLength(gutterLine) <= 1e-6) continue;
     const xAxis = normalizeVector(subtractPoints(gutterLine.end, gutterLine.start));
-    const solidGutterLine = extendLineAlongDirection(gutterLine, xAxis, input.gutterWidthMm / 2);
     const yAxis = edgeOutwardVector(input.eavePolygon, index);
     const localFrame: DatumFrame3 = {
-      origin: solidGutterLine.start,
+      origin: gutterLine.start,
       xAxis,
       yAxis,
       zAxis: WORLD_Z,
     };
+    const renderMesh =
+      gutterMiterFootprints?.length === input.eavePolygon.length
+        ? buildVerticalPrismRenderMesh(
+            gutterMiterFootprints[index]!,
+            input.eaveHeightMm - input.gutterDepthMm,
+            input.eaveHeightMm,
+          )
+        : undefined;
     linearSolids.push({
       id: `house-solid-gutter-${linearSolids.length + 1}`,
       kind: 'gutter',
-      centerline: solidGutterLine,
+      centerline: gutterLine,
       localFrame,
       profileWidthMm: input.gutterWidthMm,
       profileDepthMm: input.gutterDepthMm,
+      ...(renderMesh ? { renderMesh } : {}),
       metadata: {
         sourceId: `house-gutter-line-${index + 1}`,
         gutterProjectionMm: input.gutterProjectionMm,

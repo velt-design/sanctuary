@@ -7,6 +7,7 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import type {
   Point3,
+  RenderMesh3D,
   ViewerSceneHouseLineObject,
   ViewerSceneHouseLinearSolidObject,
   ViewerSceneHouseSurfaceObject,
@@ -125,6 +126,22 @@ function isFinitePoint(point: Point3): boolean {
     Number.isFinite(point.y) &&
     Number.isFinite(point.z)
   );
+}
+
+function isRenderableRenderMesh(mesh: RenderMesh3D | undefined): mesh is RenderMesh3D {
+  return Boolean(
+    mesh &&
+      mesh.vertices.length >= 3 &&
+      mesh.faces.length > 0 &&
+      mesh.vertices.every(isFinitePoint) &&
+      mesh.faces.every((face) =>
+        face.every((index) => Number.isInteger(index) && index >= 0 && index < mesh.vertices.length),
+      ),
+  );
+}
+
+function renderMeshPoints(mesh: RenderMesh3D | undefined): Point3[] {
+  return isRenderableRenderMesh(mesh) ? mesh.vertices : [];
 }
 
 function isRenderableLine(line: { start: Point3; end: Point3 }): boolean {
@@ -251,6 +268,8 @@ function collectScenePoints(scene: ViewerSceneModel): Point3[] {
         return isRenderablePolygon(object.boundary) ? object.boundary : [];
       }
       if (object.type === "house_surface_solid") {
+        const meshPoints = renderMeshPoints(object.renderMesh);
+        if (meshPoints.length) return meshPoints;
         return isRenderableSlab(
           object.boundary,
           object.plane,
@@ -260,6 +279,8 @@ function collectScenePoints(scene: ViewerSceneModel): Point3[] {
           : [];
       }
       if (object.type === "house_linear_solid") {
+        const meshPoints = renderMeshPoints(object.renderMesh);
+        if (meshPoints.length) return meshPoints;
         return buildLinearSolidPlacement(object)
           ? linePoints(object.centerline)
           : [];
@@ -397,6 +418,26 @@ function buildPolygonGeometry(points: Point3[]): THREE.BufferGeometry {
 function emptyGeometry(): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute([], 3));
+  return geometry;
+}
+
+export function buildRenderMeshGeometry(mesh: RenderMesh3D | undefined): THREE.BufferGeometry | null {
+  if (!isRenderableRenderMesh(mesh)) return null;
+
+  const positions: number[] = [];
+  const vertices = mesh.vertices.map(vectorFromPoint);
+  for (const [a, b, c] of mesh.faces) {
+    if (a === b || b === c || a === c) continue;
+    pushTriangle(positions, vertices[a]!, vertices[b]!, vertices[c]!);
+  }
+
+  if (!positions.length || !positions.every(Number.isFinite)) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
+  geometry.computeVertexNormals();
   return geometry;
 }
 
@@ -1404,12 +1445,18 @@ function pointsForObject(object: ViewerSceneObject): Point3[] {
     return isRenderableLine(object.line) ? linePoints(object.line) : [];
   if (object.type === "house_surface")
     return isRenderablePolygon(object.boundary) ? object.boundary : [];
-  if (object.type === "house_surface_solid")
+  if (object.type === "house_surface_solid") {
+    const meshPoints = renderMeshPoints(object.renderMesh);
+    if (meshPoints.length) return meshPoints;
     return isRenderablePolygon(object.boundary) ? object.boundary : [];
-  if (object.type === "house_linear_solid")
+  }
+  if (object.type === "house_linear_solid") {
+    const meshPoints = renderMeshPoints(object.renderMesh);
+    if (meshPoints.length) return meshPoints;
     return isRenderableLine(object.centerline)
       ? linePoints(object.centerline)
       : [];
+  }
   return object.boundary.filter(isFinitePoint);
 }
 
@@ -1418,8 +1465,12 @@ function focusPointForObject(object: ViewerSceneObject): Point3 {
     return midpoint(object.centerline.start, object.centerline.end);
   if (object.type === "reference_line" || object.type === "house_line")
     return midpoint(object.line.start, object.line.end);
-  if (object.type === "house_linear_solid")
-    return midpoint(object.centerline.start, object.centerline.end);
+  if (object.type === "house_linear_solid") {
+    const points = pointsForObject(object);
+    return points.length
+      ? centroid(points)
+      : midpoint(object.centerline.start, object.centerline.end);
+  }
   return centroid(pointsForObject(object));
 }
 
@@ -2423,8 +2474,10 @@ function HouseSurfaceSolidObject({
   clippingPlanes: THREE.Plane[];
 }) {
   const geometry = useMemo(
-    () => buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm),
-    [object.boundary, object.plane, object.thicknessMm],
+    () =>
+      buildRenderMeshGeometry(object.renderMesh) ??
+      buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm),
+    [object.boundary, object.plane, object.renderMesh, object.thicknessMm],
   );
   const opacity =
     object.kind === "roof"
@@ -2470,6 +2523,10 @@ function HouseLinearSolidObject({
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
 }) {
+  const renderMeshGeometry = useMemo(
+    () => buildRenderMeshGeometry(object.renderMesh),
+    [object.renderMesh],
+  );
   const placement = useMemo(() => buildLinearSolidPlacement(object), [
     object.centerline.end.x,
     object.centerline.end.y,
@@ -2489,6 +2546,30 @@ function HouseLinearSolidObject({
     object.profileDepthMm,
     object.profileWidthMm,
   ]);
+  if (renderMeshGeometry) {
+    return (
+      <mesh
+        data-testid={`scene-object-${object.id}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onSelect(object.id);
+        }}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          onFocus(object.id);
+        }}
+      >
+        <primitive attach="geometry" object={renderMeshGeometry} />
+        <meshStandardMaterial
+          color={color}
+          transparent
+          opacity={0.76}
+          side={THREE.DoubleSide}
+          clippingPlanes={clippingPlanes}
+        />
+      </mesh>
+    );
+  }
   if (!placement) return null;
 
   return (
@@ -2591,7 +2672,12 @@ function SceneObjectNode({
     );
   }
   if (object.type === "house_surface_solid") {
-    if (!isRenderableSlab(object.boundary, object.plane, object.thicknessMm)) return null;
+    if (
+      !isRenderableRenderMesh(object.renderMesh) &&
+      !isRenderableSlab(object.boundary, object.plane, object.thicknessMm)
+    ) {
+      return null;
+    }
     return (
       <HouseSurfaceSolidObject
         object={object}
@@ -2603,7 +2689,9 @@ function SceneObjectNode({
     );
   }
   if (object.type === "house_linear_solid") {
-    if (!buildLinearSolidPlacement(object)) return null;
+    if (!isRenderableRenderMesh(object.renderMesh) && !buildLinearSolidPlacement(object)) {
+      return null;
+    }
     return (
       <HouseLinearSolidObject
         object={object}

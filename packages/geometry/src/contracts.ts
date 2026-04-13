@@ -559,12 +559,18 @@ export type HouseRoofFeature3D = {
 export type HouseSurfaceSolidKind = "wall" | "roof" | "soffit" | "fascia";
 export type HouseLinearSolidKind = "gutter";
 
+export type RenderMesh3D = {
+  vertices: Point3[];
+  faces: [number, number, number][];
+};
+
 export type HouseSurfaceSolid3D = {
   id: string;
   kind: HouseSurfaceSolidKind;
   boundary: Polygon3;
   plane: Plane3;
   thicknessMm: number;
+  renderMesh?: RenderMesh3D;
   metadata?: GeometryMetadata;
 };
 
@@ -575,6 +581,7 @@ export type HouseLinearSolid3D = {
   localFrame: DatumFrame3;
   profileWidthMm: number;
   profileDepthMm: number;
+  renderMesh?: RenderMesh3D;
   metadata?: GeometryMetadata;
 };
 
@@ -975,6 +982,7 @@ export type ViewerSceneHouseSurfaceSolidObject = {
   boundary: Polygon3;
   plane: Plane3;
   thicknessMm: number;
+  renderMesh?: RenderMesh3D;
   metadata?: GeometryMetadata;
 };
 
@@ -987,6 +995,7 @@ export type ViewerSceneHouseLinearSolidObject = {
   localFrame: DatumFrame3;
   profileWidthMm: number;
   profileDepthMm: number;
+  renderMesh?: RenderMesh3D;
   metadata?: GeometryMetadata;
 };
 

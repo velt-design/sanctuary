@@ -8,6 +8,7 @@ import { SIDEBAR_WIDTH_PX } from '@/components/navigation/navItems';
 import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { buildAccessStatusHref, buildLoginHref, currentRequestPathWithSearch, toAccessStatusQueryState } from '@/lib/portalAccess';
+import { PortalRouteTransitionProvider } from '@/components/page-state/PortalRouteTransition';
 
 function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
@@ -72,12 +73,14 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}>
-      <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
-      <SidebarRevealOverlayLab />
-      <div className={cx(styles.content, isViewportLockedPath && styles.contentViewportLocked)} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
-        {children}
+    <PortalRouteTransitionProvider>
+      <div className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}>
+        <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
+        <SidebarRevealOverlayLab />
+        <div className={cx(styles.content, isViewportLockedPath && styles.contentViewportLocked)} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
+          {children}
+        </div>
       </div>
-    </div>
+    </PortalRouteTransitionProvider>
   );
 }

@@ -45,6 +45,7 @@ import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
 import { SupabaseRepoError } from '@/lib/supabase/repoError';
@@ -1764,6 +1765,7 @@ export default function ScheduleClient({
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { beginRouteTransition } = usePortalRouteTransition();
   const queryClient = useQueryClient();
   const [isTransitionPending, startUiTransition] = useTransition();
   const ganttScrollRef = useRef<HTMLDivElement | null>(null);
@@ -2303,10 +2305,15 @@ export default function ScheduleClient({
   }
 
   const setScheduleView = (next: 'board' | 'gantt' | 'site_visits') => {
+    if (next === view) return;
     const qs = new URLSearchParams(searchParams.toString());
-    qs.set('view', next === 'site_visits' ? 'site-visits' : next);
+    const viewParam = next === 'site_visits' ? 'site-visits' : next;
+    qs.set('view', viewParam);
+    const href = `/staff/schedule?${qs.toString()}`;
+    const label = next === 'site_visits' ? 'Site visits' : next === 'gantt' ? 'Gantt' : 'Board';
+    beginRouteTransition({ href, label, source: 'schedule-view' });
     startUiTransition(() => {
-      router.replace(`/staff/schedule?${qs.toString()}`);
+      router.replace(href);
       setView(next);
     });
   };
