@@ -2,11 +2,15 @@ import type {
   Assembly3D,
   AssemblyMember3D,
   AssemblyMemberProfile,
+  GeometryMetadata,
+  GeometrySectionHouseLine2D,
+  GeometrySectionHouseSurface2D,
   GeometrySectionLine2D,
   GeometrySectionMember2D,
   GeometrySectionViewModel,
   Line2,
   Point2,
+  Polygon2,
   RoofFallDirection,
 } from './contracts';
 
@@ -44,6 +48,58 @@ function projectLineToSection(line: { start: { y: number; z: number }; end: { y:
     start: toSectionPoint(line.start),
     end: toSectionPoint(line.end),
   };
+}
+
+function projectLine3ToSectionAtSlice(line: { start: { x: number; y: number; z: number }; end: { x: number; y: number; z: number } }, sliceXMm: number): Line2 | null {
+  const { start, end } = line;
+
+  if (Math.abs(start.x - sliceXMm) <= SECTION_EPSILON_MM && Math.abs(end.x - sliceXMm) <= SECTION_EPSILON_MM) {
+    return projectLineToSection(line);
+  }
+
+  const dx = end.x - start.x;
+  if (Math.abs(dx) <= SECTION_EPSILON_MM) {
+    return null;
+  }
+
+  const t = (sliceXMm - start.x) / dx;
+  if (t < -SECTION_EPSILON_MM || t > 1 + SECTION_EPSILON_MM) {
+    return null;
+  }
+
+  const point = toSectionPoint({
+    y: start.y + (end.y - start.y) * t,
+    z: start.z + (end.z - start.z) * t,
+  });
+  return {
+    start: point,
+    end: point,
+  };
+}
+
+function surfaceFromSectionLine(line: Line2, widthMm = 30): Polygon2 {
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= SECTION_EPSILON_MM) {
+    const half = widthMm / 2;
+    return [
+      { x: round(line.start.x - half), y: round(line.start.y - half) },
+      { x: round(line.start.x + half), y: round(line.start.y - half) },
+      { x: round(line.start.x + half), y: round(line.start.y + half) },
+      { x: round(line.start.x - half), y: round(line.start.y + half) },
+    ];
+  }
+
+  const half = widthMm / 2;
+  const nx = (-dy / length) * half;
+  const ny = (dx / length) * half;
+  return [
+    { x: round(line.start.x + nx), y: round(line.start.y + ny) },
+    { x: round(line.end.x + nx), y: round(line.end.y + ny) },
+    { x: round(line.end.x - nx), y: round(line.end.y - ny) },
+    { x: round(line.start.x - nx), y: round(line.start.y - ny) },
+  ];
 }
 
 function dedupePoints(points: Point2[], tolerance = 0.5): Point2[] {
@@ -135,6 +191,107 @@ function buildSectionLine(id: string, kind: GeometrySectionLine2D['kind'], line:
     kind,
     line,
     metadata,
+  };
+}
+
+function withKindMetadata(kind: string, metadata?: GeometryMetadata): GeometryMetadata {
+  return {
+    ...(metadata ?? {}),
+    kind,
+  };
+}
+
+function buildHouseSectionSurface(
+  id: string,
+  kind: GeometrySectionHouseSurface2D['kind'],
+  boundary: Array<{ x: number; y: number; z: number }>,
+  sliceXMm: number,
+  metadata?: GeometryMetadata,
+): GeometrySectionHouseSurface2D | null {
+  const line = intersectBoundaryAtSlice(boundary, sliceXMm);
+  if (!line) return null;
+  return {
+    id,
+    kind,
+    boundary: surfaceFromSectionLine(line),
+    metadata: withKindMetadata(kind, metadata),
+  };
+}
+
+function buildHouseSectionObjects(assembly: Assembly3D, sliceXMm: number, referenceLine: Line2 | null): {
+  surfaces: GeometrySectionHouseSurface2D[];
+  lines: GeometrySectionHouseLine2D[];
+} {
+  const model = assembly.house.model;
+  if (!model || assembly.semantics.connectionType === 'freestanding') {
+    return { surfaces: [], lines: [] };
+  }
+
+  const surfaces = [
+    ...model.wallSegments.map((segment) => buildHouseSectionSurface(segment.id, 'wall', segment.boundary, sliceXMm, segment.metadata)),
+    ...model.roofPlanes.map((roofPlane) => buildHouseSectionSurface(roofPlane.id, 'roof', roofPlane.boundary, sliceXMm, roofPlane.metadata)),
+    ...(model.eave.soffitPolygons ?? []).map((polygon, index) => buildHouseSectionSurface(`house-soffit-${index + 1}`, 'soffit', polygon, sliceXMm, model.eave.metadata)),
+    ...(model.eave.fasciaPolygons ?? []).map((polygon, index) => buildHouseSectionSurface(`house-fascia-${index + 1}`, 'fascia', polygon, sliceXMm, model.eave.metadata)),
+    ...(model.attachmentTarget?.zone?.boundary
+      ? [
+          buildHouseSectionSurface(
+            'house-attachment-zone',
+            'attachment_zone',
+            model.attachmentTarget.zone.boundary,
+            sliceXMm,
+            model.attachmentTarget.zone.metadata ?? model.attachmentTarget.metadata,
+          ),
+        ]
+      : []),
+  ].filter((surface): surface is GeometrySectionHouseSurface2D => Boolean(surface));
+
+  const lines: GeometrySectionHouseLine2D[] = [];
+  if (referenceLine) {
+    lines.push({
+      id: 'house-reference',
+      kind: 'house_reference',
+      line: referenceLine,
+      metadata: withKindMetadata('house_reference'),
+    });
+  }
+
+  (model.eave.gutterLines ?? []).forEach((line, index) => {
+    const sectionLine = projectLine3ToSectionAtSlice(line, sliceXMm);
+    if (!sectionLine) return;
+    lines.push({
+      id: `house-gutter-${index + 1}`,
+      kind: 'gutter',
+      line: sectionLine,
+      metadata: withKindMetadata('gutter', model.eave.metadata),
+    });
+  });
+
+  (model.roofFeatures ?? []).forEach((feature) => {
+    const sectionLine = projectLine3ToSectionAtSlice(feature.line, sliceXMm);
+    if (!sectionLine) return;
+    lines.push({
+      id: feature.id,
+      kind: 'roof_feature',
+      line: sectionLine,
+      metadata: withKindMetadata(feature.kind, feature.metadata),
+    });
+  });
+
+  const target = model.attachmentTarget;
+  const targetLine3 = target?.line ?? target?.zone?.safeLine ?? null;
+  const targetLine = targetLine3 ? projectLine3ToSectionAtSlice(targetLine3, sliceXMm) : null;
+  if (targetLine && target && target.kind !== 'none') {
+    lines.push({
+      id: 'house-attachment-target',
+      kind: 'attachment_target',
+      line: targetLine,
+      metadata: withKindMetadata(target.strategy, target.metadata),
+    });
+  }
+
+  return {
+    surfaces: sortById(surfaces),
+    lines: sortById(lines),
   };
 }
 
@@ -301,6 +458,21 @@ export function buildSectionViewModel(assembly: Assembly3D): GeometrySectionView
     ...(rightEdgeHeightMm !== null ? [rightEdgeHeightMm] : []),
     ...(ridgeHeightMm !== null ? [ridgeHeightMm] : []),
   ];
+  const houseReferenceLine = assembly.attachmentEdge
+    ? {
+        start: { x: minY, y: 0 },
+        end: { x: minY, y: round(Math.max(leftEdgeHeightMm ?? 0, 0)) },
+      }
+    : null;
+  const houseObjects = buildHouseSectionObjects(assembly, sliceXMm, houseReferenceLine);
+  const houseProjectionValues = [
+    ...houseObjects.surfaces.flatMap((surface) => surface.boundary.map((point) => point.x)),
+    ...houseObjects.lines.flatMap((line) => [line.line.start.x, line.line.end.x]),
+  ];
+  const houseHeightValues = [
+    ...houseObjects.surfaces.flatMap((surface) => surface.boundary.map((point) => point.y)),
+    ...houseObjects.lines.flatMap((line) => [line.line.start.y, line.line.end.y]),
+  ];
 
   return {
     family: assembly.family,
@@ -314,12 +486,9 @@ export function buildSectionViewModel(assembly: Assembly3D): GeometrySectionView
     sliceXMm,
     baseline,
     house: {
-      referenceLine: assembly.attachmentEdge
-        ? {
-            start: { x: minY, y: 0 },
-            end: { x: minY, y: round(Math.max(leftEdgeHeightMm ?? 0, 0)) },
-          }
-        : null,
+      referenceLine: houseReferenceLine,
+      surfaces: houseObjects.surfaces,
+      lines: houseObjects.lines,
     },
     members: {
       posts,
@@ -381,10 +550,10 @@ export function buildSectionViewModel(assembly: Assembly3D): GeometrySectionView
       boxRiseMm,
     },
     extents: {
-      minProjectionMm: minY,
-      maxProjectionMm: maxY,
-      minHeightMm: 0,
-      maxHeightMm: round(Math.max(...maxHeightCandidates), 3),
+      minProjectionMm: round(Math.min(minY, ...houseProjectionValues), 3),
+      maxProjectionMm: round(Math.max(maxY, ...houseProjectionValues), 3),
+      minHeightMm: round(Math.min(0, ...houseHeightValues), 3),
+      maxHeightMm: round(Math.max(...maxHeightCandidates, ...houseHeightValues), 3),
     },
   };
 }

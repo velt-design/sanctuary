@@ -1,14 +1,17 @@
 import type { RoofType } from '@sp/costing';
-import type { GeometryPlanMember2D, GeometryPlanViewModel } from '@sp/geometry';
-import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
+import type { GeometryPlanMember2D, GeometryPlanViewModel, Line2, Polygon2 } from '@sp/geometry';
+import type { ModulePlanHouseContext, ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
+  DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
   makeDefaultHouseFootprintParams,
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
   supportsHouseFootprints,
   type CalculatorModuleInputs,
@@ -19,6 +22,43 @@ const DEFAULT_RAFTER_MAX_SPACING_M = 0.642;
 function lineLengthM(line: { start: { x: number; y: number }; end: { x: number; y: number } } | null): number {
   if (!line) return 0;
   return Number((Math.hypot(line.end.x - line.start.x, line.end.y - line.start.y) / 1000).toFixed(6));
+}
+
+function pointToMetres(point: { x: number; y: number }): { x: number; y: number } {
+  return {
+    x: Number((point.x / 1000).toFixed(6)),
+    y: Number((point.y / 1000).toFixed(6)),
+  };
+}
+
+function lineToMetres(line: Line2): { start: { x: number; y: number }; end: { x: number; y: number } } {
+  return {
+    start: pointToMetres(line.start),
+    end: pointToMetres(line.end),
+  };
+}
+
+function polygonToMetres(polygon: Polygon2): Array<{ x: number; y: number }> {
+  return polygon.map(pointToMetres);
+}
+
+function buildHouseContext(geometryPlan: GeometryPlanViewModel): ModulePlanHouseContext | null {
+  const surfaces = (geometryPlan.house.surfaces ?? []).map((surface) => ({
+    id: surface.id,
+    kind: surface.kind,
+    boundary: polygonToMetres(surface.boundary),
+  }));
+  const lines = (geometryPlan.house.lines ?? []).map((line) => ({
+    id: line.id,
+    kind: line.kind,
+    line: lineToMetres(line.line),
+  }));
+
+  if (!surfaces.length && !lines.length) {
+    return null;
+  }
+
+  return { surfaces, lines };
 }
 
 function midpointXMetres(member: GeometryPlanMember2D): number {
@@ -90,9 +130,13 @@ export function buildLegacyModulePlanModelFromGeometry(input: {
   const houseFootprintPreset = supportsFootprintPresets
     ? normalizeHouseFootprintPreset(module.houseFootprintPreset)
     : DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET;
+  const houseFootprintMode = supportsFootprintPresets
+    ? normalizeHouseFootprintMode(module.houseFootprintMode)
+    : DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE;
   const houseFootprintParams = supportsFootprintPresets
     ? normalizeHouseFootprintParams(module.houseFootprintParams)
     : makeDefaultHouseFootprintParams();
+  const houseFootprintPolygon = supportsFootprintPresets ? normalizeHouseFootprintPolygon(module.houseFootprintPolygon) : [];
   const rafterPositionsA = uniqueSortedPositionsMetres(geometryPlan.members.rafters);
   const attachmentEdgeLengthM = Number(
     (
@@ -134,8 +178,10 @@ export function buildLegacyModulePlanModelFromGeometry(input: {
     houseConnectionType: module.houseConnectionType,
     attachmentSide,
     drawingRotationQuarterTurns,
+    houseFootprintMode,
     houseFootprintPreset,
     houseFootprintParams,
+    houseFootprintPolygon,
     supportsHouseFootprints: supportsFootprintPresets,
     overhangEnabled: Boolean(module.overhangEnabled),
     overhangAmountM: module.overhangEnabled ? Number.parseFloat(String(module.overhangAmountM ?? '0')) || 0 : 0,
@@ -166,5 +212,6 @@ export function buildLegacyModulePlanModelFromGeometry(input: {
     soffitBracketOffsetM: fallbackMetadata?.soffitBracketOffsetM ?? 0.5,
     soffitBracketMaxSpacingM: fallbackMetadata?.soffitBracketMaxSpacingM ?? 1.5,
     soffitBracketPositionsA: fallbackMetadata?.soffitBracketPositionsA ?? [],
+    houseContext: buildHouseContext(geometryPlan),
   };
 }

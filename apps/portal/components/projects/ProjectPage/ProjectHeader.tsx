@@ -67,6 +67,12 @@ export default function ProjectHeader({
             <Link href="/staff/projects" className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}>
               Projects
             </Link>
+            <Link
+              href={`/staff/projects/${encodeURIComponent(project.id)}/design-workbench`}
+              className={`${legacy.buttonSecondary} ${styles.mastheadAction}`}
+            >
+              Design Workbench
+            </Link>
             {isAdmin ? (
               <button
                 type="button"

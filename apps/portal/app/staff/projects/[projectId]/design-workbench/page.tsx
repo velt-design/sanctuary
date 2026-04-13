@@ -95,12 +95,10 @@ export default async function DesignWorkbenchPage({
   }
 
   if (fixtureSlug) {
-    const snapshot = await getProjectPageSnapshot(normalizedProjectId);
-    if (!snapshot) {
-      return renderUnavailable('We could not load this project. It may have been deleted, or access is temporarily unavailable.');
-    }
-
     const fixture = getSanctuaryGeometryWorkbenchFixture(fixtureSlug);
+    const snapshot = await getProjectPageSnapshot(normalizedProjectId).catch(() => null);
+    const projectName = snapshot?.project.name ?? 'Sanctuary Fixture Project';
+    const siteAddress = snapshot?.project.siteAddress ?? null;
 
     if (!fixture) {
       return (
@@ -113,7 +111,7 @@ export default async function DesignWorkbenchPage({
           <section className={styles.surface}>
             <div className={styles.surfaceInner}>
               <h1 className={styles.title}>Design Workbench</h1>
-              <p className={styles.subtitle}>{snapshot.project.name}</p>
+              <p className={styles.subtitle}>{projectName}</p>
               {renderInvalidFixtureLines(fixtureSlug).map((line) => (
                 <p key={line} className={styles.subtitle}>
                   {line}
@@ -139,8 +137,8 @@ export default async function DesignWorkbenchPage({
           <div className={styles.surfaceInner}>
             <DesignWorkbenchFixtureClient
               fixture={fixture}
-              projectName={snapshot.project.name}
-              siteAddress={snapshot.project.siteAddress ?? null}
+              projectName={projectName}
+              siteAddress={siteAddress}
               backHref={backHref}
             />
           </div>

@@ -8,7 +8,13 @@ import type {
   GableEndFramesMode,
   GutterAssemblyMode,
   GeometryConfig,
+  HouseAttachmentStrategy,
+  HouseFootprintMode,
   HouseFootprintPreset,
+  HouseModelConfig,
+  HouseRoofForm,
+  HouseStoreyMode,
+  HouseWallConstruction,
   RawGableEaveGutterMode,
   RawGableEndFramesMode,
   RawBoxGutterMode,
@@ -16,7 +22,7 @@ import type {
   RoofFallDirection,
   RoofMaterial,
 } from './contracts';
-import { buildHouseFootprintPolygon } from './footprints';
+import { buildCustomHouseFootprintPolygon, buildHouseFootprintPolygon } from './footprints';
 import { makeDatumFrame } from './math3d';
 import { parseAssemblyMemberProfile } from './profiles';
 import { metresToMillimetres, parseNonNegativeInteger, parseNonNegativeNumber, parsePositiveNumber } from './units';
@@ -44,6 +50,14 @@ function fail(code: NormalizeGeometryConfigErrorCode, error: string): NormalizeG
 
 const BOX_HOUSE_SETBACK_MM = 150;
 const BOX_OUTER_SETBACK_MM = 50;
+const DEFAULT_HOUSE_EAVE_HEIGHT_MM = 2400;
+const DEFAULT_HOUSE_ROOF_PITCH_DEG = 25;
+const DEFAULT_HOUSE_SOFFIT_DEPTH_MM = 450;
+const DEFAULT_HOUSE_FASCIA_HEIGHT_MM = 180;
+const DEFAULT_HOUSE_GUTTER_WIDTH_MM = 125;
+const DEFAULT_HOUSE_GUTTER_DEPTH_MM = 90;
+const DEFAULT_HOUSE_GUTTER_PROJECTION_MM = 125;
+const DEFAULT_HOUSE_EAVE_OVERHANG_MM = 450;
 
 function resolveFamily(input: RawGeometryModuleInput): GeometryConfig['family'] | null {
   if (input.pergolaStyle === 'pitched') {
@@ -63,6 +77,41 @@ function resolveConnectionType(value: RawGeometryModuleInput['connection']['hous
   if (value === 'facade' || value === 'wall') return 'wall';
   if (value === 'fascia') return 'fascia';
   return 'soffit';
+}
+
+function resolveHouseStoreyMode(value: HouseStoreyMode | null | undefined): HouseStoreyMode {
+  if (value === 'double_storey' || value === 'custom') return value;
+  return 'single_storey';
+}
+
+function resolveHouseWallConstruction(value: HouseWallConstruction | null | undefined): HouseWallConstruction {
+  if (value === 'timber_frame') return value;
+  return 'timber_frame';
+}
+
+function resolveHouseRoofForm(value: HouseRoofForm | null | undefined): HouseRoofForm {
+  if (value === 'hipped') return value;
+  return 'hipped';
+}
+
+function resolveHouseAttachmentStrategy(
+  value: HouseAttachmentStrategy | null | undefined,
+  connectionType: ConnectionType,
+): HouseAttachmentStrategy {
+  if (
+    value === 'soffit_brackets' ||
+    value === 'fascia_under_gutter' ||
+    value === 'facade_ledger' ||
+    value === 'post_supported_tieback' ||
+    value === 'none'
+  ) {
+    return value;
+  }
+
+  if (connectionType === 'freestanding') return 'none';
+  if (connectionType === 'wall') return 'facade_ledger';
+  if (connectionType === 'fascia') return 'fascia_under_gutter';
+  return 'soffit_brackets';
 }
 
 function resolveRoofMaterial(input: RawGeometryModuleInput): { material: RoofMaterial; mode?: string | null } {
@@ -257,6 +306,14 @@ function resolveOptionalMetresToMillimetres(value: string | number | null | unde
   return parsed === null ? null : metresToMillimetres(parsed);
 }
 
+function resolveOptionalDegrees(value: string | number | null | undefined): number | null {
+  return parseNonNegativeNumber(value);
+}
+
+function resolveMillimetresWithDefault(value: string | number | null | undefined, fallback: number): number {
+  return resolveOptionalMillimetres(value) ?? fallback;
+}
+
 function resolveOptionalSquareMetresToSquareMillimetres(value: number | null | undefined): number | null {
   const parsed = parseNonNegativeNumber(value);
   return parsed === null ? null : Math.round(parsed * 1_000_000);
@@ -275,6 +332,50 @@ function resolveFootprintPreset(value: HouseFootprintPreset | null | undefined):
     return value;
   }
   return 'straight';
+}
+
+function resolveFootprintMode(value: HouseFootprintMode | null | undefined): HouseFootprintMode {
+  return value === 'orthogonal_polygon' ? 'orthogonal_polygon' : 'preset';
+}
+
+function buildHouseModelConfig(input: {
+  rawHouseContext: RawGeometryModuleInput['houseContext'];
+  footprint: GeometryConfig['houseContext']['footprint'];
+  connectionType: ConnectionType;
+  houseUndersideMm: number | null;
+  referenceUndersideMm: number | null;
+}): HouseModelConfig | null {
+  if (input.connectionType === 'freestanding' || !input.footprint) {
+    return null;
+  }
+
+  const eaveHeightMm =
+    resolveOptionalMetresToMillimetres(input.rawHouseContext.eaveHeightM) ??
+    input.referenceUndersideMm ??
+    input.houseUndersideMm ??
+    DEFAULT_HOUSE_EAVE_HEIGHT_MM;
+  const wallHeightMm = resolveOptionalMetresToMillimetres(input.rawHouseContext.wallHeightM) ?? eaveHeightMm;
+  const roofPitchDeg = resolveOptionalDegrees(input.rawHouseContext.roofPitchDeg) ?? DEFAULT_HOUSE_ROOF_PITCH_DEG;
+  const rawEave = input.rawHouseContext.eave;
+
+  return {
+    footprint: input.footprint,
+    storeyMode: resolveHouseStoreyMode(input.rawHouseContext.storeyMode),
+    wallConstruction: resolveHouseWallConstruction(input.rawHouseContext.wallConstruction),
+    roofForm: resolveHouseRoofForm(input.rawHouseContext.roofForm),
+    eaveHeightMm,
+    wallHeightMm,
+    roofPitchDeg,
+    attachmentStrategy: resolveHouseAttachmentStrategy(input.rawHouseContext.attachmentStrategy, input.connectionType),
+    eave: {
+      soffitDepthMm: resolveMillimetresWithDefault(rawEave?.soffitDepthMm, DEFAULT_HOUSE_SOFFIT_DEPTH_MM),
+      fasciaHeightMm: resolveMillimetresWithDefault(rawEave?.fasciaHeightMm, DEFAULT_HOUSE_FASCIA_HEIGHT_MM),
+      gutterWidthMm: resolveMillimetresWithDefault(rawEave?.gutterWidthMm, DEFAULT_HOUSE_GUTTER_WIDTH_MM),
+      gutterDepthMm: resolveMillimetresWithDefault(rawEave?.gutterDepthMm, DEFAULT_HOUSE_GUTTER_DEPTH_MM),
+      gutterProjectionMm: resolveMillimetresWithDefault(rawEave?.gutterProjectionMm, DEFAULT_HOUSE_GUTTER_PROJECTION_MM),
+      eaveOverhangMm: resolveMillimetresWithDefault(rawEave?.eaveOverhangMm, DEFAULT_HOUSE_EAVE_OVERHANG_MM),
+    },
+  };
 }
 
 export function normalizeGeometryConfig(input: RawGeometryModuleInput): NormalizeGeometryConfigResult {
@@ -326,6 +427,42 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const boxMaxFallMm = resolveOptionalMillimetres(input.derived?.boxMaxFallMm);
   const roofCoveringKind =
     (family === 'mono' || family === 'gable') && roof.material === 'acrylic' ? 'acrylic' : null;
+  const footprintMode = resolveFootprintMode(input.houseContext.footprintMode);
+  let houseFootprint: GeometryConfig['houseContext']['footprint'] = null;
+  if (connectionType !== 'freestanding') {
+    if (footprintMode === 'orthogonal_polygon') {
+      const customFootprint = buildCustomHouseFootprintPolygon({
+        pergolaWidthMm: length.value,
+        pergolaDepthMm: projection.value,
+        polygon: input.houseContext.footprintPolygon,
+        params: input.houseContext.footprintParams,
+        attachmentSide,
+      });
+      if (!customFootprint.ok) {
+        return fail('invalid_numeric_input', customFootprint.error);
+      }
+      houseFootprint = customFootprint.polygon;
+    } else {
+      houseFootprint = buildHouseFootprintPolygon({
+        pergolaWidthMm: length.value,
+        pergolaDepthMm: projection.value,
+        preset: resolveFootprintPreset(input.houseContext.footprintPreset),
+        params: input.houseContext.footprintParams,
+        attachmentSide,
+      });
+    }
+  }
+  const houseAttachmentStrategy =
+    connectionType === 'freestanding'
+      ? 'none'
+      : resolveHouseAttachmentStrategy(input.houseContext.attachmentStrategy, connectionType);
+  const houseModel = buildHouseModelConfig({
+    rawHouseContext: input.houseContext,
+    footprint: houseFootprint,
+    connectionType,
+    houseUndersideMm,
+    referenceUndersideMm,
+  });
 
   if (
     family === 'gable' &&
@@ -423,6 +560,8 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
         supportBeam: resolveStructuralProfile(input.structural?.profiles?.supportBeam),
         gutter: resolveStructuralProfile(input.structural?.profiles?.gutter),
         ridge: resolveStructuralProfile(input.structural?.profiles?.ridge),
+        tieBeam: resolveStructuralProfile(input.structural?.profiles?.tieBeam),
+        strut: resolveStructuralProfile(input.structural?.profiles?.strut),
         boxPerimeter: resolveStructuralProfile(input.structural?.profiles?.boxPerimeter),
       },
       framing: {
@@ -441,15 +580,11 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       fasciaLine: null,
       roofEdgeLine: null,
       soffitDepthMm: null,
-      footprint:
-        connectionType === 'freestanding'
-          ? null
-          : buildHouseFootprintPolygon({
-              pergolaWidthMm: length.value,
-              pergolaDepthMm: projection.value,
-              preset: resolveFootprintPreset(input.houseContext.footprintPreset),
-              params: input.houseContext.footprintParams,
-            }),
+      footprint: houseFootprint,
+      footprintMode: connectionType === 'freestanding' ? 'preset' : footprintMode,
+      footprintPolygon: footprintMode === 'orthogonal_polygon' ? input.houseContext.footprintPolygon ?? null : null,
+      model: houseModel,
+      attachmentStrategy: houseAttachmentStrategy,
     },
   });
 }

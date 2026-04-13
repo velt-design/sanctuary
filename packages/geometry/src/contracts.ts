@@ -78,30 +78,68 @@ export type DatumFrame3 = {
 /**
  * Supported V1 Sanctuary families only.
  */
-export type PergolaFamily = 'mono' | 'gable' | 'box';
+export type PergolaFamily = "mono" | "gable" | "box";
 
-export type RoofMaterial = 'acrylic' | 'insulated' | 'timber' | 'louvre';
-export type ConnectionType = 'fascia' | 'soffit' | 'wall' | 'freestanding';
-export type AttachmentSide = 'left' | 'right' | 'rear' | 'front';
-export type PostMode = 'standard' | 'custom';
-export type FootingType = 'slab' | 'pier' | 'pile';
-export type RoofFallDirection = 'positiveY' | 'negativeY' | 'dual';
-export type GutterAssemblyMode = 'integrated' | 'separate' | 'none';
-export type SupportConditionType = 'house_connection' | 'post_connection' | 'ground' | 'bracing' | 'custom';
-export type AssemblyMemberRole = 'post' | 'beam' | 'ledger' | 'ridge' | 'rafter' | 'gutter' | 'brace' | 'joiner';
-export type ProfileShape = 'rectangular' | 'c-channel' | 'custom';
-export type RoofCladdingMaterial = 'acrylic';
+export type RoofMaterial = "acrylic" | "insulated" | "timber" | "louvre";
+export type ConnectionType = "fascia" | "soffit" | "wall" | "freestanding";
+export type AttachmentSide = "left" | "right" | "rear" | "front";
+export type PostMode = "standard" | "custom";
+export type FootingType = "slab" | "pier" | "pile";
+export type RoofFallDirection = "positiveY" | "negativeY" | "dual";
+export type GutterAssemblyMode = "integrated" | "separate" | "none";
+export type SupportConditionType =
+  | "house_connection"
+  | "post_connection"
+  | "ground"
+  | "bracing"
+  | "custom";
+export type AssemblyMemberRole =
+  | "post"
+  | "beam"
+  | "ledger"
+  | "ridge"
+  | "rafter"
+  | "gutter"
+  | "brace"
+  | "joiner";
+export type ProfileShape = "rectangular" | "c-channel" | "custom";
+export type RoofCladdingMaterial = "acrylic";
+export type HouseStoreyMode = "single_storey" | "double_storey" | "custom";
+export type HouseWallConstruction = "timber_frame";
+export type HouseRoofForm = "hipped";
+export type HouseRoofFeatureKind = "ridge" | "hip" | "valley";
+export type HouseAttachmentStrategy =
+  | "soffit_brackets"
+  | "fascia_under_gutter"
+  | "facade_ledger"
+  | "post_supported_tieback"
+  | "none";
+export type HouseAttachmentTargetKind =
+  | "line"
+  | "plane"
+  | "zone"
+  | "metadata_only"
+  | "none";
 export type HouseFootprintPreset =
-  | 'straight'
-  | 'l_left'
-  | 'l_right'
-  | 'recess_left'
-  | 'recess_right'
-  | 'u_shape'
-  | 'wrap_left'
-  | 'wrap_right';
+  | "straight"
+  | "l_left"
+  | "l_right"
+  | "recess_left"
+  | "recess_right"
+  | "u_shape"
+  | "wrap_left"
+  | "wrap_right";
+export type HouseFootprintMode = "preset" | "orthogonal_polygon";
+
+export type HouseFootprintPolygonPointInput = {
+  alongM: string | number;
+  depthM: string | number;
+};
 
 export type HouseFootprintParams = {
+  widthM: string;
+  offsetXM: string;
+  setbackM: string;
   bandDepthM: string;
   returnRunM: string;
   recessWidthM: string;
@@ -111,21 +149,62 @@ export type HouseFootprintParams = {
   sideRunM: string;
 };
 
-export type RawPergolaStyle = 'pitched' | 'gable' | 'hip' | 'hip_corner' | 'box_perimeter';
-export type RawRoofMaterial = 'acrylic' | 'timber' | 'mixed' | 'insulated' | 'louvre';
-export type RawHouseConnectionType = 'soffit' | 'fascia' | 'facade' | 'none' | 'wall' | 'freestanding';
-export type RawSlopeDirection = 'away_from_house' | 'toward_house';
-export type RawPostConnectionType = 'pile_1m' | 'pile_1_5m' | 'deck_bracket' | 'slab_anchors';
-export type RawGroundCondition = 'easy' | 'hard';
-export type RawGableEndFramesMode = 'none' | 'outer_end_only' | 'both_ends';
-export type RawGableEaveGutterMode = 'house' | 'our';
-export type RawBoxGutterMode = 'house' | 'our' | 'none';
+export type RawPergolaStyle =
+  | "pitched"
+  | "gable"
+  | "hip"
+  | "hip_corner"
+  | "box_perimeter";
+export type RawRoofMaterial =
+  | "acrylic"
+  | "timber"
+  | "mixed"
+  | "insulated"
+  | "louvre";
+export type RawHouseConnectionType =
+  | "soffit"
+  | "fascia"
+  | "facade"
+  | "none"
+  | "wall"
+  | "freestanding";
+export type RawSlopeDirection = "away_from_house" | "toward_house";
+export type RawPostConnectionType =
+  | "pile_1m"
+  | "pile_1_5m"
+  | "deck_bracket"
+  | "slab_anchors";
+export type RawGroundCondition = "easy" | "hard";
+export type RawGableEndFramesMode = "none" | "outer_end_only" | "both_ends";
+export type RawGableEaveGutterMode = "house" | "our";
+export type RawBoxGutterMode = "house" | "our" | "none";
 
 export type GeometryMetadataValue = string | number | boolean | null;
 export type GeometryMetadata = Record<string, GeometryMetadataValue>;
 export type GableEndFramesMode = RawGableEndFramesMode;
 export type GableEaveGutterMode = RawGableEaveGutterMode;
 export type BoxGutterMode = RawBoxGutterMode;
+
+export type HouseEaveConfig = {
+  soffitDepthMm?: number | null;
+  fasciaHeightMm?: number | null;
+  gutterWidthMm?: number | null;
+  gutterDepthMm?: number | null;
+  gutterProjectionMm?: number | null;
+  eaveOverhangMm?: number | null;
+};
+
+export type HouseModelConfig = {
+  footprint?: Polygon3 | null;
+  storeyMode?: HouseStoreyMode | null;
+  wallConstruction?: HouseWallConstruction | null;
+  roofForm?: HouseRoofForm | null;
+  eaveHeightMm?: number | null;
+  wallHeightMm?: number | null;
+  roofPitchDeg?: number | null;
+  eave?: HouseEaveConfig | null;
+  attachmentStrategy?: HouseAttachmentStrategy | null;
+};
 
 export type AssemblyMemberProfile = {
   shape: ProfileShape;
@@ -141,6 +220,18 @@ export type AssemblyMemberProfile = {
   sectionOutline?: Polygon2 | null;
   sectionVoids?: Polygon2[] | null;
   anchors?: AssemblyMemberProfileAnchors | null;
+};
+
+export type AssemblyMemberEndCutPlane = {
+  normal: Vector3;
+  offsetMm: number;
+  keepSide: "negative" | "positive";
+};
+
+export type AssemblyMemberEndCut = {
+  end: "start" | "end";
+  plane: AssemblyMemberEndCutPlane;
+  preClipExtensionMm: number;
 };
 
 /**
@@ -196,6 +287,8 @@ export type RawGeometryModuleInput = {
       supportBeam?: string | null;
       gutter?: string | null;
       ridge?: string | null;
+      tieBeam?: string | null;
+      strut?: string | null;
       boxPerimeter?: string | null;
     } | null;
     framing?: {
@@ -210,8 +303,25 @@ export type RawGeometryModuleInput = {
     } | null;
   } | null;
   houseContext: {
+    footprintMode?: HouseFootprintMode | null;
     footprintPreset?: HouseFootprintPreset | null;
     footprintParams?: HouseFootprintParams | null;
+    footprintPolygon?: HouseFootprintPolygonPointInput[] | null;
+    storeyMode?: HouseStoreyMode | null;
+    wallConstruction?: HouseWallConstruction | null;
+    roofForm?: HouseRoofForm | null;
+    attachmentStrategy?: HouseAttachmentStrategy | null;
+    eaveHeightM?: string | number | null;
+    wallHeightM?: string | number | null;
+    roofPitchDeg?: string | number | null;
+    eave?: {
+      soffitDepthMm?: string | number | null;
+      fasciaHeightMm?: string | number | null;
+      gutterWidthMm?: string | number | null;
+      gutterDepthMm?: string | number | null;
+      gutterProjectionMm?: string | number | null;
+      eaveOverhangMm?: string | number | null;
+    } | null;
   };
   dimensions: {
     lengthM?: string | number | null;
@@ -319,6 +429,8 @@ export type GeometryConfig = {
       supportBeam: AssemblyMemberProfile | null;
       gutter: AssemblyMemberProfile | null;
       ridge: AssemblyMemberProfile | null;
+      tieBeam?: AssemblyMemberProfile | null;
+      strut?: AssemblyMemberProfile | null;
       boxPerimeter: AssemblyMemberProfile | null;
     };
     framing: {
@@ -338,6 +450,10 @@ export type GeometryConfig = {
     roofEdgeLine?: Line3 | null;
     soffitDepthMm?: number | null;
     footprint?: Polygon3 | null;
+    footprintMode?: HouseFootprintMode | null;
+    footprintPolygon?: HouseFootprintPolygonPointInput[] | null;
+    model?: HouseModelConfig | null;
+    attachmentStrategy?: HouseAttachmentStrategy | null;
   };
 };
 
@@ -354,6 +470,7 @@ export type AssemblyMember3D = {
   centerline: Line3;
   profile: AssemblyMemberProfile;
   localFrame: DatumFrame3;
+  endCuts?: AssemblyMemberEndCut[] | null;
   metadata?: GeometryMetadata;
 };
 
@@ -377,6 +494,106 @@ export type RoofCladdingPanel3D = {
   metadata?: GeometryMetadata;
 };
 
+export type RoofFlashingWing3D = {
+  id: string;
+  boundary: Polygon3;
+  plane: Plane3;
+};
+
+export type RoofFlashing3D = {
+  id: string;
+  wings: RoofFlashingWing3D[];
+  thicknessMm: number;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseWallSegment3D = {
+  id: string;
+  line: Line3;
+  plane: Plane3;
+  boundary: Polygon3;
+  sourceEdgeId?: string | null;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseAttachmentZone3D = {
+  plane: Plane3;
+  topZMm?: number | null;
+  bottomZMm?: number | null;
+  boundary?: Polygon3 | null;
+  safeLine?: Line3 | null;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseAttachmentTarget3D = {
+  kind: HouseAttachmentTargetKind;
+  strategy: HouseAttachmentStrategy;
+  line?: Line3 | null;
+  plane?: Plane3 | null;
+  zone?: HouseAttachmentZone3D | null;
+  sourceEdgeId?: string | null;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseEaveGeometry3D = {
+  soffitDepthMm?: number | null;
+  fasciaHeightMm?: number | null;
+  gutterWidthMm?: number | null;
+  gutterDepthMm?: number | null;
+  gutterProjectionMm?: number | null;
+  eaveOverhangMm?: number | null;
+  soffitPolygons?: Polygon3[] | null;
+  fasciaPolygons?: Polygon3[] | null;
+  gutterLines?: Line3[] | null;
+  gutterBoundaries?: Polygon3[] | null;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseRoofFeature3D = {
+  id: string;
+  kind: HouseRoofFeatureKind;
+  line: Line3;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseSurfaceSolidKind = "wall" | "roof" | "soffit" | "fascia";
+export type HouseLinearSolidKind = "gutter";
+
+export type HouseSurfaceSolid3D = {
+  id: string;
+  kind: HouseSurfaceSolidKind;
+  boundary: Polygon3;
+  plane: Plane3;
+  thicknessMm: number;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseLinearSolid3D = {
+  id: string;
+  kind: HouseLinearSolidKind;
+  centerline: Line3;
+  localFrame: DatumFrame3;
+  profileWidthMm: number;
+  profileDepthMm: number;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseEnvelopeSolids3D = {
+  surfaceSolids: HouseSurfaceSolid3D[];
+  linearSolids: HouseLinearSolid3D[];
+};
+
+export type HouseModel3D = {
+  footprint: Polygon3;
+  wallSegments: HouseWallSegment3D[];
+  roofPlanes: RoofPlane3D[];
+  roofFeatures?: HouseRoofFeature3D[] | null;
+  solids?: HouseEnvelopeSolids3D | null;
+  eave: HouseEaveGeometry3D;
+  attachmentTarget?: HouseAttachmentTarget3D | null;
+  metadata?: GeometryMetadata;
+};
+
 /**
  * House-side references only. No derived drawing annotations belong here.
  */
@@ -386,6 +603,8 @@ export type HouseReferenceGeometry = {
   roofEdgeLine?: Line3 | null;
   soffitDepthMm?: number | null;
   footprint?: Polygon3 | null;
+  model?: HouseModel3D | null;
+  attachmentTarget?: HouseAttachmentTarget3D | null;
 };
 
 export type AssemblySupportCondition = {
@@ -405,13 +624,14 @@ export type QuantityHook = {
  */
 export type Assembly3D = {
   family: PergolaFamily;
-  datum: GeometryConfig['datum'];
+  datum: GeometryConfig["datum"];
   outline: Polygon3;
   attachmentEdge: Line3 | null;
   house: HouseReferenceGeometry;
   members: AssemblyMember3D[];
   roofPlanes: RoofPlane3D[];
   roofCladdingPanels: RoofCladdingPanel3D[];
+  roofFlashings?: RoofFlashing3D[];
   supportConditions: AssemblySupportCondition[];
   quantityHooks: QuantityHook[];
   semantics: {
@@ -432,8 +652,35 @@ export type GeometryPlanMember2D = {
 
 export type GeometryPlanSurface2D = {
   id: string;
-  kind: 'roof_plane' | 'roof_cladding' | 'house_footprint';
+  kind: "roof_plane" | "roof_cladding" | "house_footprint";
   boundary: Polygon2;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometryPlanHouseSurfaceKind =
+  | "footprint"
+  | "roof"
+  | "soffit"
+  | "fascia"
+  | "attachment_zone";
+
+export type GeometryPlanHouseLineKind =
+  | "wall_segment"
+  | "roof_feature"
+  | "gutter"
+  | "attachment_target";
+
+export type GeometryPlanHouseSurface2D = {
+  id: string;
+  kind: GeometryPlanHouseSurfaceKind;
+  boundary: Polygon2;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometryPlanHouseLine2D = {
+  id: string;
+  kind: GeometryPlanHouseLineKind;
+  line: Line2;
   metadata?: GeometryMetadata;
 };
 
@@ -457,6 +704,8 @@ export type GeometryPlanViewModel = {
     fasciaLine: Line2 | null;
     roofEdgeLine: Line2 | null;
     wallReferenceLine: Line2 | null;
+    surfaces?: GeometryPlanHouseSurface2D[];
+    lines?: GeometryPlanHouseLine2D[];
   };
   members: {
     posts: GeometryPlanMember2D[];
@@ -507,7 +756,34 @@ export type GeometrySectionMember2D = {
 
 export type GeometrySectionLine2D = {
   id: string;
-  kind: 'roof_plane' | 'roof_cladding' | 'baseline' | 'house_reference';
+  kind: "roof_plane" | "roof_cladding" | "baseline" | "house_reference";
+  line: Line2;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometrySectionHouseSurfaceKind =
+  | "wall"
+  | "roof"
+  | "soffit"
+  | "fascia"
+  | "attachment_zone";
+
+export type GeometrySectionHouseLineKind =
+  | "gutter"
+  | "roof_feature"
+  | "attachment_target"
+  | "house_reference";
+
+export type GeometrySectionHouseSurface2D = {
+  id: string;
+  kind: GeometrySectionHouseSurfaceKind;
+  boundary: Polygon2;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometrySectionHouseLine2D = {
+  id: string;
+  kind: GeometrySectionHouseLineKind;
   line: Line2;
   metadata?: GeometryMetadata;
 };
@@ -515,7 +791,7 @@ export type GeometrySectionLine2D = {
 export type GeometrySectionViewModel = {
   family: PergolaFamily;
   connectionType: ConnectionType;
-  sectionKind: 'mono' | 'gable';
+  sectionKind: "mono" | "gable";
   roofForm: {
     mono: boolean;
     gable: boolean;
@@ -525,6 +801,8 @@ export type GeometrySectionViewModel = {
   baseline: Line2;
   house: {
     referenceLine: Line2 | null;
+    surfaces?: GeometrySectionHouseSurface2D[];
+    lines?: GeometrySectionHouseLine2D[];
   };
   members: {
     posts: GeometrySectionMember2D[];
@@ -568,30 +846,48 @@ export type GeometrySectionViewModel = {
 
 export type GeometryValidationInvariant = {
   key: string;
-  status: 'pass' | 'fail';
+  status: "pass" | "fail";
   message: string;
 };
 
 export type GeometryFixtureComparison = {
   fixtureId: string;
-  status: 'match' | 'drift';
+  status: "match" | "drift";
   message: string;
 };
 
 export type GeometryValidationReport = {
-  status: 'pass' | 'fail' | 'unsupported';
+  status: "pass" | "fail" | "unsupported";
   invariants: GeometryValidationInvariant[];
   unsupportedReasons: string[];
   fixtureComparisons: GeometryFixtureComparison[];
 };
 
-export type ViewerSceneMemberRenderMode = 'prism' | 'outline_extrusion' | 'line_fallback';
-export type ViewerSceneReferenceLineKind = 'attachment_edge' | 'fascia' | 'roof_edge';
-export type ViewerSceneReferencePlaneKind = 'house_wall';
+export type ViewerSceneMemberRenderMode =
+  | "prism"
+  | "outline_extrusion"
+  | "line_fallback";
+export type ViewerSceneReferenceLineKind =
+  | "attachment_edge"
+  | "fascia"
+  | "roof_edge";
+export type ViewerSceneReferencePlaneKind = "house_wall";
+export type ViewerSceneHouseSurfaceKind =
+  | "wall"
+  | "roof"
+  | "soffit"
+  | "fascia"
+  | "attachment_zone"
+  | "attachment_plane";
+export type ViewerSceneHouseLineKind =
+  | "gutter"
+  | "roof_outline"
+  | "roof_feature"
+  | "attachment_target";
 
 export type ViewerSceneMemberPrismObject = {
   id: string;
-  type: 'member_prism';
+  type: "member_prism";
   sourceId: string;
   role: AssemblyMemberRole;
   centerline: Line3;
@@ -599,12 +895,13 @@ export type ViewerSceneMemberPrismObject = {
   localFrame: DatumFrame3;
   lengthMm: number;
   renderMode: ViewerSceneMemberRenderMode;
+  endCuts?: AssemblyMemberEndCut[] | null;
   metadata?: GeometryMetadata;
 };
 
 export type ViewerSceneRoofPlaneObject = {
   id: string;
-  type: 'roof_plane';
+  type: "roof_plane";
   sourceId: string;
   boundary: Polygon3;
   plane: Plane3;
@@ -614,7 +911,7 @@ export type ViewerSceneRoofPlaneObject = {
 
 export type ViewerSceneRoofCladdingPanelObject = {
   id: string;
-  type: 'roof_cladding_panel';
+  type: "roof_cladding_panel";
   sourceId: string;
   material: RoofCladdingMaterial;
   boundary: Polygon3;
@@ -623,9 +920,18 @@ export type ViewerSceneRoofCladdingPanelObject = {
   metadata?: GeometryMetadata;
 };
 
+export type ViewerSceneRoofFlashingObject = {
+  id: string;
+  type: "roof_flashing";
+  sourceId: string;
+  wings: RoofFlashingWing3D[];
+  thicknessMm: number;
+  metadata?: GeometryMetadata;
+};
+
 export type ViewerSceneReferenceLineObject = {
   id: string;
-  type: 'reference_line';
+  type: "reference_line";
   sourceId?: string;
   kind: ViewerSceneReferenceLineKind;
   line: Line3;
@@ -634,7 +940,7 @@ export type ViewerSceneReferenceLineObject = {
 
 export type ViewerSceneReferencePlaneObject = {
   id: string;
-  type: 'reference_plane';
+  type: "reference_plane";
   sourceId?: string;
   kind: ViewerSceneReferencePlaneKind;
   boundary: Polygon3;
@@ -642,12 +948,59 @@ export type ViewerSceneReferencePlaneObject = {
   metadata?: GeometryMetadata;
 };
 
+export type ViewerSceneHouseSurfaceObject = {
+  id: string;
+  type: "house_surface";
+  sourceId?: string;
+  kind: ViewerSceneHouseSurfaceKind;
+  boundary: Polygon3;
+  plane: Plane3;
+  metadata?: GeometryMetadata;
+};
+
+export type ViewerSceneHouseLineObject = {
+  id: string;
+  type: "house_line";
+  sourceId?: string;
+  kind: ViewerSceneHouseLineKind;
+  line: Line3;
+  metadata?: GeometryMetadata;
+};
+
+export type ViewerSceneHouseSurfaceSolidObject = {
+  id: string;
+  type: "house_surface_solid";
+  sourceId?: string;
+  kind: HouseSurfaceSolidKind;
+  boundary: Polygon3;
+  plane: Plane3;
+  thicknessMm: number;
+  metadata?: GeometryMetadata;
+};
+
+export type ViewerSceneHouseLinearSolidObject = {
+  id: string;
+  type: "house_linear_solid";
+  sourceId?: string;
+  kind: HouseLinearSolidKind;
+  centerline: Line3;
+  localFrame: DatumFrame3;
+  profileWidthMm: number;
+  profileDepthMm: number;
+  metadata?: GeometryMetadata;
+};
+
 export type ViewerSceneObject =
   | ViewerSceneMemberPrismObject
   | ViewerSceneRoofPlaneObject
   | ViewerSceneRoofCladdingPanelObject
+  | ViewerSceneRoofFlashingObject
   | ViewerSceneReferenceLineObject
-  | ViewerSceneReferencePlaneObject;
+  | ViewerSceneReferencePlaneObject
+  | ViewerSceneHouseSurfaceObject
+  | ViewerSceneHouseLineObject
+  | ViewerSceneHouseSurfaceSolidObject
+  | ViewerSceneHouseLinearSolidObject;
 
 export type ViewerSceneLayer = {
   id: string;
@@ -661,4 +1014,5 @@ export type ViewerSceneLayer = {
  */
 export type ViewerSceneModel = {
   layers: ViewerSceneLayer[];
+  metadata?: GeometryMetadata;
 };

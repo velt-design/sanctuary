@@ -199,11 +199,10 @@ Lock the runtime geometry contracts and the datum rules so the kernel can be imp
    - profile
    - centerline
    - local frame
-6. Define roof-plane semantics and house reference geometry.
+6. Define roof-plane semantics and house reference geometry.ge
 7. Define quantity-hook expectations.
 
 ### Exit criteria
-
 - datums and axes are unambiguous
 - config normalization rules are explicit
 - all supported V1 families fit the same contracts

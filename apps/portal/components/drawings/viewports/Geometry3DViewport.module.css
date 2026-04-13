@@ -124,6 +124,9 @@
 
 .canvasShell {
   position: relative;
+  isolation: isolate;
+  contain: layout paint;
+  height: clamp(38rem, 62vh, 56rem);
   min-height: 38rem;
   border: 1px solid rgba(27, 31, 35, 0.12);
   border-radius: 1rem;
@@ -136,7 +139,7 @@
   top: 0.9rem;
   left: 0.9rem;
   right: 0.9rem;
-  z-index: 2;
+  z-index: 4;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -186,11 +189,20 @@
   background: rgba(70, 115, 181, 0.18);
 }
 
+.canvas {
+  position: absolute !important;
+  inset: 0;
+  z-index: 0;
+}
+
 .canvasShell :global(canvas) {
   display: block;
   width: 100% !important;
   height: 100% !important;
-  min-height: 38rem;
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  object-fit: contain;
 }
 
 .workspacePanel {
@@ -198,7 +210,7 @@
   top: 4.4rem;
   left: 0.9rem;
   bottom: 0.9rem;
-  z-index: 2;
+  z-index: 5;
   width: min(24rem, calc(100% - 1.8rem));
   overflow: hidden;
   border: 1px solid rgba(27, 31, 35, 0.12);
@@ -206,6 +218,15 @@
   background: rgba(251, 250, 246, 0.96);
   backdrop-filter: blur(10px);
   box-shadow: 0 20px 40px rgba(27, 31, 35, 0.12);
+}
+
+.viewportDiagnostics {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none;
 }
 
 .workspacePanelContent {

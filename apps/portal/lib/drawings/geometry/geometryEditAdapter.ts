@@ -1,11 +1,17 @@
 import type {
+  CalculatorHouseAttachmentStrategy,
+  CalculatorHouseFootprintMode,
   CalculatorHouseFootprintParams,
+  CalculatorHouseFootprintPolygonPoint,
+  CalculatorHouseStoreyMode,
   CalculatorModuleInputs,
   CalculatorModuleOverrides,
 } from '@/lib/types/calculator';
 import {
   normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
   supportsHouseFootprints,
 } from '@/lib/types/calculator';
@@ -22,12 +28,31 @@ import {
   type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
+import {
+  coerceHiddenWorkbenchGableEndFramesMode,
+  coerceHiddenWorkbenchGableBaseline,
+  isHiddenWorkbenchGableEndFramesModeSupported,
+  resolveHiddenWorkbenchGableHouseEdgeGutter,
+} from './hiddenWorkbenchGableBaseline';
 import { solveActiveGeometryModuleResult } from './solveActiveGeometryModuleResult';
 import { normalizeGeometryConfig, type AttachmentSide, type GeometryConfig } from '@sp/geometry';
 
 export type SanctuaryPergolaFamily = 'mono' | 'gable' | 'box';
 
 export type GeometryEditConnectionType = 'soffit' | 'fascia' | 'wall' | 'freestanding';
+export type GeometryEditHouseAttachmentStrategy = CalculatorHouseAttachmentStrategy | 'auto';
+export type GeometryHouseConfigKey =
+  | 'houseStoreyMode'
+  | 'houseAttachmentStrategy'
+  | 'houseEaveHeightM'
+  | 'houseWallHeightM'
+  | 'houseRoofPitchDeg'
+  | 'houseSoffitDepthMm'
+  | 'houseFasciaHeightMm'
+  | 'houseGutterWidthMm'
+  | 'houseGutterDepthMm'
+  | 'houseGutterProjectionMm'
+  | 'houseEaveOverhangMm';
 
 export type GeometryEditState = {
   family: SanctuaryPergolaFamily;
@@ -47,9 +72,22 @@ export type GeometryEditState = {
   };
   houseContext: {
     canEditFootprint: boolean;
+    footprintMode: CalculatorHouseFootprintMode;
     footprintPreset: CalculatorModuleInputs['houseFootprintPreset'];
     footprintParams: CalculatorHouseFootprintParams;
+    footprintPolygon: CalculatorHouseFootprintPolygonPoint[];
     drawingRotationQuarterTurns: number;
+    attachmentStrategy: GeometryEditHouseAttachmentStrategy;
+    storeyMode: CalculatorHouseStoreyMode;
+    eaveHeightM: string;
+    wallHeightM: string;
+    roofPitchDeg: string;
+    soffitDepthMm: string;
+    fasciaHeightMm: string;
+    gutterWidthMm: string;
+    gutterDepthMm: string;
+    gutterProjectionMm: string;
+    eaveOverhangMm: string;
   };
   supports: {
     postConnectionType: CalculatorModuleInputs['postConnectionType'];
@@ -89,10 +127,14 @@ export type GeometryEditIntent =
   | { type: 'dimension'; field: 'lengthM' | 'projectionM'; value: string }
   | { type: 'roof_material'; value: CalculatorModuleInputs['roofMaterial'] }
   | { type: 'roof_pitch'; value: string }
+  | { type: 'gable_end_frames'; value: CalculatorModuleInputs['gableEndFramesMode'] }
   | { type: 'house_connection'; value: GeometryEditConnectionType }
+  | { type: 'house_config'; key: GeometryHouseConfigKey; value: string }
   | { type: 'attachment_side'; value: CalculatorModuleInputs['attachmentSide'] }
+  | { type: 'footprint_mode'; value: CalculatorHouseFootprintMode }
   | { type: 'footprint_preset'; value: CalculatorModuleInputs['houseFootprintPreset'] }
   | { type: 'footprint_param'; key: keyof CalculatorHouseFootprintParams; value: string }
+  | { type: 'footprint_polygon'; polygon: CalculatorHouseFootprintPolygonPoint[] }
   | { type: 'drawing_rotation'; delta: -1 | 1 }
   | { type: 'post_connection'; value: CalculatorModuleInputs['postConnectionType'] }
   | { type: 'ground'; value: CalculatorModuleInputs['ground'] }
@@ -138,6 +180,27 @@ function formatNumber(value: number | null | undefined): string {
   return value.toFixed(1).replace(/\.0$/, '');
 }
 
+function formatMillimetres(valueMm: number | null | undefined): string {
+  if (typeof valueMm !== 'number' || !Number.isFinite(valueMm)) return '';
+  return String(Math.round(valueMm));
+}
+
+function formatStringOverride(value: string | null | undefined): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function formatMetresOverride(value: string | null | undefined, fallbackMm: number | null | undefined): string {
+  return formatStringOverride(value) || formatMetres(fallbackMm);
+}
+
+function formatNumberOverride(value: string | null | undefined, fallback: number | null | undefined): string {
+  return formatStringOverride(value) || formatNumber(fallback);
+}
+
+function formatMillimetresOverride(value: string | null | undefined, fallbackMm: number | null | undefined): string {
+  return formatStringOverride(value) || formatMillimetres(fallbackMm);
+}
+
 function resolveFamily(value: GeometryConfig['family']): SanctuaryPergolaFamily {
   if (value === 'gable') return 'gable';
   if (value === 'box') return 'box';
@@ -162,18 +225,10 @@ function mapRoofMaterial(config: GeometryConfig): CalculatorModuleInputs['roofMa
   return config.roof.material as CalculatorModuleInputs['roofMaterial'];
 }
 
-function resolveSupportedGableHouseEdgeGutter(
-  houseConnectionType: CalculatorModuleInputs['houseConnectionType'] | null | undefined,
-): CalculatorModuleInputs['gableHouseEdgeGutter'] {
-  return houseConnectionType === 'none' ? 'our' : 'house';
-}
-
-function resolveSupportedGableRidgeOverride(
-  overrides: CalculatorModuleOverrides | null | undefined,
-): string {
-  return typeof overrides?.ridgeBeamProfile === 'string' && overrides.ridgeBeamProfile.trim()
-    ? overrides.ridgeBeamProfile
-    : '150x50';
+function resolveGableBaselineEndFramesMode(
+  module: CalculatorModuleInputs | null | undefined,
+): CalculatorModuleInputs['gableEndFramesMode'] {
+  return coerceHiddenWorkbenchGableEndFramesMode(module?.houseConnectionType, module?.gableEndFramesMode);
 }
 
 function formatOverrideValue(
@@ -232,7 +287,7 @@ function resolveModuleForGeometryState(input: {
   }
 
   return {
-    module,
+    module: coerceHiddenWorkbenchGableBaseline(module),
     moduleResult: moduleResult.moduleResult,
   };
 }
@@ -263,6 +318,8 @@ export function buildGeometryEditState(input: {
     };
   }
 
+  const houseModel = normalized.value.houseContext.model;
+
   return {
     ok: true,
     value: {
@@ -285,9 +342,22 @@ export function buildGeometryEditState(input: {
         canEditFootprint:
           normalized.value.connection.type !== 'freestanding' &&
           supportsHouseFootprints(resolved.module.pergolaStyle),
+        footprintMode: normalizeHouseFootprintMode(resolved.module.houseFootprintMode),
         footprintPreset: normalizeHouseFootprintPreset(resolved.module.houseFootprintPreset) as CalculatorModuleInputs['houseFootprintPreset'],
         footprintParams: normalizeHouseFootprintParams(resolved.module.houseFootprintParams),
+        footprintPolygon: normalizeHouseFootprintPolygon(resolved.module.houseFootprintPolygon),
         drawingRotationQuarterTurns: normalizeDrawingRotationQuarterTurns(resolved.module.drawingRotationQuarterTurns),
+        attachmentStrategy: resolved.module.houseAttachmentStrategy ?? 'auto',
+        storeyMode: (houseModel?.storeyMode as CalculatorHouseStoreyMode | undefined) ?? 'single_storey',
+        eaveHeightM: formatMetresOverride(resolved.module.houseEaveHeightM, houseModel?.eaveHeightMm),
+        wallHeightM: formatMetresOverride(resolved.module.houseWallHeightM, houseModel?.wallHeightMm),
+        roofPitchDeg: formatNumberOverride(resolved.module.houseRoofPitchDeg, houseModel?.roofPitchDeg),
+        soffitDepthMm: formatMillimetresOverride(resolved.module.houseSoffitDepthMm, houseModel?.eave?.soffitDepthMm),
+        fasciaHeightMm: formatMillimetresOverride(resolved.module.houseFasciaHeightMm, houseModel?.eave?.fasciaHeightMm),
+        gutterWidthMm: formatMillimetresOverride(resolved.module.houseGutterWidthMm, houseModel?.eave?.gutterWidthMm),
+        gutterDepthMm: formatMillimetresOverride(resolved.module.houseGutterDepthMm, houseModel?.eave?.gutterDepthMm),
+        gutterProjectionMm: formatMillimetresOverride(resolved.module.houseGutterProjectionMm, houseModel?.eave?.gutterProjectionMm),
+        eaveOverhangMm: formatMillimetresOverride(resolved.module.houseEaveOverhangMm, houseModel?.eave?.eaveOverhangMm),
       },
       supports: {
         postConnectionType:
@@ -421,18 +491,17 @@ function applyFamilyEdit(
   const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(snapshot, draft);
   const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
   const currentModule = calculatorInputs?.modules[moduleIndex] ?? draft.inputs.modules[moduleIndex];
-  const gableHouseEdgeGutter = resolveSupportedGableHouseEdgeGutter(currentModule?.houseConnectionType);
-  const gableRidgeBeamProfile = resolveSupportedGableRidgeOverride(currentModule?.overrides);
+  const gableHouseEdgeGutter = resolveHiddenWorkbenchGableHouseEdgeGutter(currentModule?.houseConnectionType);
+  const gableEndFramesMode = resolveGableBaselineEndFramesMode(currentModule);
 
   const edits =
     family === 'gable'
       ? [
           { field: 'pergolaStyle', value: 'gable' },
           { field: 'moduleValue', key: 'boxPerimeterEnabled', value: false },
-          { field: 'moduleValue', key: 'gableEndFramesMode', value: 'none' },
+          { field: 'moduleValue', key: 'gableEndFramesMode', value: gableEndFramesMode },
           { field: 'moduleValue', key: 'gableHouseEdgeGutter', value: gableHouseEdgeGutter },
           { field: 'moduleValue', key: 'gableOuterEdgeGutter', value: 'our' },
-          { field: 'moduleOverride', key: 'ridgeBeamProfile', value: gableRidgeBeamProfile },
         ]
       : family === 'box'
         ? [
@@ -485,13 +554,12 @@ export function applyGeometryEditIntent(input: {
       }
 
       let nextDraft = roofMaterialResult.draft;
-      const gableHouseEdgeGutter = resolveSupportedGableHouseEdgeGutter(currentModule.houseConnectionType);
-      const gableRidgeBeamProfile = resolveSupportedGableRidgeOverride(currentModule.overrides);
+      const gableHouseEdgeGutter = resolveHiddenWorkbenchGableHouseEdgeGutter(currentModule.houseConnectionType);
+      const gableEndFramesMode = resolveGableBaselineEndFramesMode(currentModule);
       for (const edit of [
-        { field: 'moduleValue', key: 'gableEndFramesMode', value: 'none' as const },
+        { field: 'moduleValue', key: 'gableEndFramesMode', value: gableEndFramesMode },
         { field: 'moduleValue', key: 'gableHouseEdgeGutter', value: gableHouseEdgeGutter },
         { field: 'moduleValue', key: 'gableOuterEdgeGutter', value: 'our' as const },
-        { field: 'moduleOverride', key: 'ridgeBeamProfile', value: gableRidgeBeamProfile },
       ]) {
         const result = applyModuleEdit(
           nextDraft,
@@ -511,6 +579,52 @@ export function applyGeometryEditIntent(input: {
     }
     case 'roof_pitch':
       return applyFieldEdit(input.draft, input.moduleIndex, 'roofPitchDeg', input.intent.value);
+    case 'house_config':
+      return applyModuleEdit(input.draft, input.moduleIndex, {
+        field: 'moduleValue',
+        key: input.intent.key,
+        value: input.intent.value,
+      } as Parameters<typeof applyEstimateDrawingModuleFieldEdit>[0]['edit']);
+    case 'gable_end_frames': {
+      const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);
+      const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
+      const currentModule = calculatorInputs?.modules[input.moduleIndex] ?? input.draft.inputs.modules[input.moduleIndex];
+
+      if (currentModule?.pergolaStyle !== 'gable') {
+        return {
+          ok: false,
+          kind: 'unsupported',
+          message: 'Gable end-frame controls are only available for gable modules.',
+        };
+      }
+
+      if (!isHiddenWorkbenchGableEndFramesModeSupported(currentModule.houseConnectionType, input.intent.value)) {
+        return {
+          ok: false,
+          kind: 'unsupported',
+          message:
+            currentModule.houseConnectionType === 'none'
+              ? 'Freestanding gable supports None or Both ends only.'
+              : 'Attached gable supports None, Outer end only, or Both ends.',
+        };
+      }
+
+      let nextDraft = input.draft;
+      const result = applyModuleEdit(nextDraft, input.moduleIndex, {
+        field: 'moduleValue',
+        key: 'gableEndFramesMode',
+        value: input.intent.value,
+      });
+      if (!result.ok) {
+        return result;
+      }
+      nextDraft = result.draft;
+
+      return {
+        ok: true,
+        draft: nextDraft,
+      };
+    }
     case 'house_connection': {
       const connectionResult = applyModuleEdit(input.draft, input.moduleIndex, {
         field: 'houseConnectionType',
@@ -528,13 +642,12 @@ export function applyGeometryEditIntent(input: {
       }
 
       let nextDraft = connectionResult.draft;
-      const gableHouseEdgeGutter = resolveSupportedGableHouseEdgeGutter(currentModule.houseConnectionType);
-      const gableRidgeBeamProfile = resolveSupportedGableRidgeOverride(currentModule.overrides);
+      const gableHouseEdgeGutter = resolveHiddenWorkbenchGableHouseEdgeGutter(currentModule.houseConnectionType);
+      const gableEndFramesMode = resolveGableBaselineEndFramesMode(currentModule);
       for (const edit of [
-        { field: 'moduleValue', key: 'gableEndFramesMode', value: 'none' as const },
+        { field: 'moduleValue', key: 'gableEndFramesMode', value: gableEndFramesMode },
         { field: 'moduleValue', key: 'gableHouseEdgeGutter', value: gableHouseEdgeGutter },
         { field: 'moduleValue', key: 'gableOuterEdgeGutter', value: 'our' as const },
-        { field: 'moduleOverride', key: 'ridgeBeamProfile', value: gableRidgeBeamProfile },
       ]) {
         const result = applyModuleEdit(
           nextDraft,
@@ -557,6 +670,11 @@ export function applyGeometryEditIntent(input: {
         type: 'attachment_side',
         side: input.intent.value,
       });
+    case 'footprint_mode':
+      return applyFootprintEdit(input.draft, input.moduleIndex, {
+        type: 'mode',
+        mode: input.intent.value,
+      });
     case 'footprint_preset':
       return applyFootprintEdit(input.draft, input.moduleIndex, {
         type: 'preset',
@@ -567,6 +685,11 @@ export function applyGeometryEditIntent(input: {
         type: 'param',
         key: input.intent.key,
         value: input.intent.value,
+      });
+    case 'footprint_polygon':
+      return applyFootprintEdit(input.draft, input.moduleIndex, {
+        type: 'polygon',
+        polygon: input.intent.polygon,
       });
     case 'drawing_rotation':
       return applyFootprintEdit(input.draft, input.moduleIndex, {
@@ -659,11 +782,21 @@ export function translateFootprintEditToGeometryIntent(
         type: 'attachment_side',
         value: edit.side,
       };
+    case 'mode':
+      return {
+        type: 'footprint_mode',
+        value: edit.mode,
+      };
     case 'param':
       return {
         type: 'footprint_param',
         key: edit.key,
         value: edit.value,
+      };
+    case 'polygon':
+      return {
+        type: 'footprint_polygon',
+        polygon: edit.polygon,
       };
     default:
       return null;

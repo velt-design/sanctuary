@@ -38,6 +38,15 @@ export type HouseFootprintEditorDragMeta = {
   maxValueM: number;
 };
 
+export type HouseFootprintVertexDragMeta = {
+  vertexIndex: number;
+  alongAxisX: number;
+  alongAxisY: number;
+  depthAxisX: number;
+  depthAxisY: number;
+  scale: number;
+};
+
 export type ModuleFootprintEditorSurface = 'card' | 'sheet' | 'model';
 
 export type ModulePlanSheetInteractionProps = {
@@ -92,7 +101,11 @@ export type ModuleFootprintEditorProps = {
   onAttachmentSideSelect: (side: AttachmentSide) => void;
   onHandleHover: (handleId: HouseFootprintHandleId | null) => void;
   onHandleDragStart: (meta: HouseFootprintEditorDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => void;
+  onVertexDragStart?: (meta: HouseFootprintVertexDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => void;
+  onVertexDelete?: (vertexIndex: number) => void;
+  onEdgeAdd?: (edgeIndex: number) => void;
   onPresetSelect: (preset: ModulePlanModel['houseFootprintPreset']) => void;
+  onModeSelect?: (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => void;
   onRotate: (delta: -1 | 1) => void;
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
@@ -338,11 +351,24 @@ export function ModuleDrawingRenderer({
               <div className={styles.moduleFootprintToolbar} aria-label="House footprint editor">
                 <div className={styles.moduleFootprintToolbarGroup}>
                   <label className={styles.moduleFootprintToolbarField}>
+                    <span className={styles.moduleFootprintToolbarFieldLabel}>Mode</span>
+                    <select
+                      aria-label="House footprint mode"
+                      className={styles.moduleFootprintToolbarSelect}
+                      value={planModel.houseFootprintMode ?? 'preset'}
+                      onChange={(event) => footprintEditor.onModeSelect?.(event.target.value as NonNullable<Required<ModulePlanModel>['houseFootprintMode']>)}
+                    >
+                      <option value="preset">Preset</option>
+                      <option value="orthogonal_polygon">Edit outline</option>
+                    </select>
+                  </label>
+                  <label className={styles.moduleFootprintToolbarField}>
                     <span className={styles.moduleFootprintToolbarFieldLabel}>Preset</span>
                     <select
                       aria-label="House footprint preset"
                       className={styles.moduleFootprintToolbarSelect}
                       value={planModel.houseFootprintPreset}
+                      disabled={(planModel.houseFootprintMode ?? 'preset') === 'orthogonal_polygon'}
                       onChange={(event) => footprintEditor.onPresetSelect(event.target.value as ModulePlanModel['houseFootprintPreset'])}
                     >
                       {HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => (
@@ -975,8 +1001,14 @@ function viewBoxUnitsToMm(value: number, viewportMm?: { widthMm: number; heightM
 }
 
 function getPlanRealExtents(model: ModulePlanModel): { widthM: number; heightM: number } {
-  const widthM = model.roofType === 'hip_corner' ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA;
-  const heightM = model.roofType === 'hip_corner' ? model.spanA + (model.spanB ?? 0) : model.spanA;
+  const housePoints = [
+    ...(model.houseContext?.surfaces ?? []).flatMap((surface) => surface.boundary),
+    ...(model.houseContext?.lines ?? []).flatMap((line) => [line.line.start, line.line.end]),
+  ];
+  const xValues = [0, model.roofType === 'hip_corner' ? Math.max(model.lengthA, model.lengthB ?? 0) : model.lengthA, ...housePoints.map((point) => point.x)];
+  const yValues = [0, model.roofType === 'hip_corner' ? model.spanA + (model.spanB ?? 0) : model.spanA, ...housePoints.map((point) => point.y)];
+  const widthM = Math.max(...xValues) - Math.min(...xValues);
+  const heightM = Math.max(...yValues) - Math.min(...yValues);
   if (model.roofType === 'hip_corner' || model.drawingRotationQuarterTurns % 2 === 0) {
     return { widthM, heightM };
   }
@@ -984,6 +1016,12 @@ function getPlanRealExtents(model: ModulePlanModel): { widthM: number; heightM: 
 }
 
 function getSectionRealExtents(model: ModuleSectionModel): { widthM: number; heightM: number } {
+  const housePoints = [
+    ...(model.houseContext?.surfaces ?? []).flatMap((surface) => surface.boundary),
+    ...(model.houseContext?.lines ?? []).flatMap((line) => [line.line.start, line.line.end]),
+  ];
+  const houseProjectionValues = housePoints.map((point) => point.x);
+  const houseHeightValues = housePoints.map((point) => point.y);
   const supportXFromHouseM = sectionSupportXFromHouseM(model);
   const leftEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : sectionLedgerBeamDepthM(model);
   const rightEaveBeamDepthM = model.sectionKind === 'gable' ? model.gutterDepthM : sectionSupportBeamDepthM(model);
@@ -1014,10 +1052,11 @@ function getSectionRealExtents(model: ModuleSectionModel): { widthM: number; hei
     outerRafterUndersideM + model.rafterDepthM,
     typeof model.ridgeHeightM === 'number' ? model.ridgeHeightM : 0,
     typeof model.ridgeHeightM === 'number' ? model.ridgeHeightM + ridgeBeamDepthM + model.rafterDepthM : 0,
+    ...houseHeightValues,
   );
 
   return {
-    widthM: Math.max(model.spanA, 0.001),
+    widthM: Math.max(model.spanA, 0.001, Math.max(model.spanA, ...houseProjectionValues) - Math.min(0, ...houseProjectionValues)),
     heightM: maxHeightM,
   };
 }
@@ -1583,6 +1622,50 @@ function rectToPoints(x: number, y: number, width: number, height: number): Poin
   ];
 }
 
+function planHousePointToSvg(point: Point, baseX: number, baseY: number, scale: number): Point {
+  return {
+    x: baseX + point.x * scale,
+    y: baseY + point.y * scale,
+  };
+}
+
+function sectionHousePointToSvg(point: Point, xLeft: number, yGround: number, scale: number): Point {
+  return {
+    x: xLeft + point.x * scale,
+    y: yGround - point.y * scale,
+  };
+}
+
+function planHouseSurfaceClass(kind: NonNullable<ModulePlanModel['houseContext']>['surfaces'][number]['kind']): string {
+  if (kind === 'roof') return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseRoof}`;
+  if (kind === 'soffit') return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseSoffit}`;
+  if (kind === 'fascia') return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseFascia}`;
+  if (kind === 'attachment_zone') return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseAttachmentZone}`;
+  return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseFootprint}`;
+}
+
+function planHouseLineClass(kind: NonNullable<ModulePlanModel['houseContext']>['lines'][number]['kind']): string {
+  if (kind === 'gutter') return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseGutter}`;
+  if (kind === 'roof_feature') return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseRoofFeature}`;
+  if (kind === 'attachment_target') return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseAttachmentTarget}`;
+  return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseWallSemantic}`;
+}
+
+function sectionHouseSurfaceClass(kind: NonNullable<ModuleSectionModel['houseContext']>['surfaces'][number]['kind']): string {
+  if (kind === 'roof') return `${styles.moduleSectionHouseSurface} ${styles.moduleSectionHouseRoof}`;
+  if (kind === 'soffit') return `${styles.moduleSectionHouseSurface} ${styles.moduleSectionHouseSoffit}`;
+  if (kind === 'fascia') return `${styles.moduleSectionHouseSurface} ${styles.moduleSectionHouseFascia}`;
+  if (kind === 'attachment_zone') return `${styles.moduleSectionHouseSurface} ${styles.moduleSectionHouseAttachmentZone}`;
+  return `${styles.moduleSectionHouseSurface} ${styles.moduleSectionHouseWallSemantic}`;
+}
+
+function sectionHouseLineClass(kind: NonNullable<ModuleSectionModel['houseContext']>['lines'][number]['kind']): string {
+  if (kind === 'gutter') return `${styles.moduleSectionHouseLine} ${styles.moduleSectionHouseGutter}`;
+  if (kind === 'roof_feature') return `${styles.moduleSectionHouseLine} ${styles.moduleSectionHouseRoofFeature}`;
+  if (kind === 'attachment_target') return `${styles.moduleSectionHouseLine} ${styles.moduleSectionHouseAttachmentTarget}`;
+  return `${styles.moduleSectionHouseLine} ${styles.moduleSectionHouseReference}`;
+}
+
 function resolvePlanRotationFrame(input: {
   x: number;
   y: number;
@@ -1948,10 +2031,28 @@ type FootprintResizeEdgeSpec = {
   maxValueM: number;
 };
 
+type FootprintCustomVertexSpec = {
+  index: number;
+  point: Point;
+  pointRoot: Point;
+  alongAxisX: number;
+  alongAxisY: number;
+  depthAxisX: number;
+  depthAxisY: number;
+};
+
+type FootprintCustomEdgeSpec = {
+  index: number;
+  start: Point;
+  end: Point;
+};
+
 type FootprintCanvasLayout = {
   polygon: Point[];
   handles: FootprintHandleSpec[];
   resizeEdges: FootprintResizeEdgeSpec[];
+  customVertices: FootprintCustomVertexSpec[];
+  customEdges: FootprintCustomEdgeSpec[];
   sideTurns: number;
 };
 
@@ -2011,7 +2112,22 @@ function resolveFootprintCanvasLayout(input: {
     params: model.houseFootprintParams,
   });
   const totalTurns = sideTurns + rotationTurns;
-  const polygon = localLayout.polygon.map((localPoint) =>
+  const customPoints =
+    model.houseFootprintMode === 'orthogonal_polygon'
+      ? (model.houseFootprintPolygon ?? [])
+          .map((raw) => {
+            const alongM = Number.parseFloat(raw.alongM);
+            const depthM = Number.parseFloat(raw.depthM);
+            if (!Number.isFinite(alongM) || !Number.isFinite(depthM)) return null;
+            return {
+              x: alongM + localLayout.resolved.offsetXM,
+              y: -localLayout.resolved.setbackM - depthM,
+            };
+          })
+          .filter((point): point is HouseFootprintPoint => Boolean(point))
+      : [];
+  const effectiveLocalPolygon = customPoints.length >= 4 ? customPoints : localLayout.polygon;
+  const polygon = effectiveLocalPolygon.map((localPoint) =>
     mapLocalFootprintPointToPlan({
       point: localPoint,
       rect,
@@ -2021,6 +2137,41 @@ function resolveFootprintCanvasLayout(input: {
       sideTurns,
     }),
   );
+  const customVertices =
+    customPoints.length >= 4
+      ? customPoints.map((localPoint, index): FootprintCustomVertexSpec => {
+          const point = mapLocalFootprintPointToPlan({
+            point: localPoint,
+            rect,
+            canonicalWidthM: dims.widthM,
+            canonicalDepthM: dims.depthM,
+            scale,
+            sideTurns,
+          });
+          const alongAxis = rotateVectorQuarterTurns({ x: 1, y: 0 }, totalTurns);
+          const depthAxis = rotateVectorQuarterTurns({ x: 0, y: -1 }, totalTurns);
+          return {
+            index,
+            point,
+            pointRoot: rotatePointQuarterTurns(point, rotationCenter, rotationTurns),
+            alongAxisX: alongAxis.x,
+            alongAxisY: alongAxis.y,
+            depthAxisX: depthAxis.x,
+            depthAxisY: depthAxis.y,
+          };
+        })
+      : [];
+  const customEdges =
+    customVertices.length >= 4
+      ? customVertices.map((vertex, index): FootprintCustomEdgeSpec => {
+          const next = customVertices[(index + 1) % customVertices.length]!;
+          return {
+            index,
+            start: vertex.point,
+            end: next.point,
+          };
+        })
+      : [];
   const handles = localLayout.handles.map((handle): FootprintHandleSpec => {
     const point = mapLocalFootprintPointToPlan({
       point: handle.point,
@@ -2084,8 +2235,10 @@ function resolveFootprintCanvasLayout(input: {
 
   return {
     polygon,
-    handles,
-    resizeEdges,
+    handles: customVertices.length ? [] : handles,
+    resizeEdges: customVertices.length ? [] : resizeEdges,
+    customVertices,
+    customEdges,
     sideTurns,
   };
 }
@@ -2562,6 +2715,13 @@ function measurePlanAnnotatedBounds(input: {
     start: pointOnAttachmentFrame(footprintFrame, sx, -2.3),
     end: pointOnAttachmentFrame(footprintFrame, sx, 0.1),
   }));
+  const semanticHouseSurfacePoints = (model.houseContext?.surfaces ?? []).map((surface) =>
+    surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale)),
+  );
+  const semanticHouseLines = (model.houseContext?.lines ?? []).map((line) => ({
+    start: planHousePointToSvg(line.line.start, baseX, baseY, scale),
+    end: planHousePointToSvg(line.line.end, baseX, baseY, scale),
+  }));
   const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
   const fallAnchor =
     attachmentSide === 'rear' || attachmentSide === 'front'
@@ -2662,6 +2822,8 @@ function measurePlanAnnotatedBounds(input: {
       : null;
 
   const localBounds = [
+    ...semanticHouseSurfacePoints.map((points) => boundsFromPoints(points, 0.25)),
+    ...semanticHouseLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
     boundsFromPoints(primaryPoints, 0.35),
     hipInner ? boundsFromPoints(hipInner, 0.35) : null,
     model.boxPerimeterEnabled ? boundsFromPoints(insetPoints, 0.35) : null,
@@ -2960,6 +3122,13 @@ function measureSectionAnnotatedBounds(input: {
           return { yTop, yUnder };
         })()
       : null;
+  const semanticHouseSurfacePoints = (model.houseContext?.surfaces ?? []).map((surface) =>
+    surface.boundary.map((point) => sectionHousePointToSvg(point, xLeft, yGround, scale)),
+  );
+  const semanticHouseLines = (model.houseContext?.lines ?? []).map((line) => ({
+    start: sectionHousePointToSvg(line.line.start, xLeft, yGround, scale),
+    end: sectionHousePointToSvg(line.line.end, xLeft, yGround, scale),
+  }));
   const depthDimAlongRoof = 0.18;
   const depthDimUnderX = monoRafterStartX + (monoRafterEndX - monoRafterStartX) * depthDimAlongRoof;
   const depthDimUnderY = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * depthDimAlongRoof;
@@ -3018,6 +3187,8 @@ function measureSectionAnnotatedBounds(input: {
   })();
 
   return unionBounds([
+    ...semanticHouseSurfacePoints.map((points) => boundsFromPoints(points, 0.25)),
+    ...semanticHouseLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
     boundsFromRect(Math.max(8, xLeft - 8), yGround + 1.3, Math.min(104, xRight + 8) - Math.max(8, xLeft - 8), 8),
     boundsFromLine(Math.max(8, xLeft - 8), yGround, Math.min(112, xRight + 8), yGround, 0.25),
     boundsFromRect(leftPostX, yHouseUnder, postW, yGround - yHouseUnder),
@@ -3329,6 +3500,16 @@ function PlanSvg({
   const houseClipRect = isSheet
     ? (sheetLayout?.outerField ?? getSheetDrawingField())
     : { x: 0, y: 0, width: 120, height: 90 };
+  const semanticPlanHouseSurfaces = (model.houseContext?.surfaces ?? []).map((surface) => ({
+    ...surface,
+    points: surface.boundary.map((point) => planHousePointToSvg(point, x, y, scale)),
+  }));
+  const semanticPlanHouseLines = (model.houseContext?.lines ?? []).map((line) => ({
+    ...line,
+    start: planHousePointToSvg(line.line.start, x, y, scale),
+    end: planHousePointToSvg(line.line.end, x, y, scale),
+  }));
+  const hasSemanticPlanHouseContext = semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0;
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
@@ -3595,7 +3776,30 @@ function PlanSvg({
 
       <g transform={planRotationTransform}>
         <g clipPath={`url(#${houseClipId})`}>
-          {showHouseFootprint ? (
+          {hasSemanticPlanHouseContext
+            ? semanticPlanHouseSurfaces.map((surface) => (
+                <polygon
+                  key={surface.id}
+                  points={toPointsAttr(surface.points)}
+                  className={planHouseSurfaceClass(surface.kind)}
+                  data-house-plan-surface={surface.kind}
+                />
+              ))
+            : null}
+          {hasSemanticPlanHouseContext
+            ? semanticPlanHouseLines.map((line) => (
+                <line
+                  key={line.id}
+                  x1={line.start.x}
+                  y1={line.start.y}
+                  x2={line.end.x}
+                  y2={line.end.y}
+                  className={planHouseLineClass(line.kind)}
+                  data-house-plan-line={line.kind}
+                />
+              ))
+            : null}
+          {showHouseFootprint && !hasSemanticPlanHouseContext ? (
             <polygon
               points={toPointsAttr(housePolygon)}
               fill={`url(#${hatchId})`}
@@ -3619,10 +3823,10 @@ function PlanSvg({
             </text>
           ) : null}
         </g>
-        {model.houseConnectionType === 'facade' ? (
+        {model.houseConnectionType === 'facade' && !hasSemanticPlanHouseContext ? (
           <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
         ) : null}
-        {model.houseConnectionType === 'fascia' ? (
+        {model.houseConnectionType === 'fascia' && !hasSemanticPlanHouseContext ? (
           <>
             <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
             <line
@@ -3691,7 +3895,7 @@ function PlanSvg({
             ))
           : null}
 
-        {model.houseConnectionType === 'soffit' && soffitXs.length > 0 ? (
+        {model.houseConnectionType === 'soffit' && soffitXs.length > 0 && !hasSemanticPlanHouseContext ? (
           <>
             <line x1={soffitGuideStart.x} y1={soffitGuideStart.y} x2={soffitGuideEnd.x} y2={soffitGuideEnd.y} className={styles.modulePlanSoffitGuide} />
             {soffitBracketLines.map((line, idx) => (
@@ -3992,6 +4196,78 @@ function PlanSvg({
                 </g>
               );
             })
+          : null}
+
+        {editorSurface !== 'card' && canEditFootprint
+          ? (footprintCanvasLayout?.customEdges ?? []).map((edge) => (
+              <g key={`footprint-custom-edge-${edge.index}`}>
+                <line
+                  x1={edge.start.x}
+                  y1={edge.start.y}
+                  x2={edge.end.x}
+                  y2={edge.end.y}
+                  data-footprint-custom-edge={edge.index}
+                  className={styles.moduleFootprintResizeEdge}
+                />
+                <line
+                  x1={edge.start.x}
+                  y1={edge.start.y}
+                  x2={edge.end.x}
+                  y2={edge.end.y}
+                  data-footprint-custom-edge-hit={edge.index}
+                  className={styles.moduleFootprintResizeEdgeHit}
+                  onDoubleClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    footprintEditor?.onEdgeAdd?.(edge.index);
+                  }}
+                />
+              </g>
+            ))
+          : null}
+
+        {editorSurface !== 'card' && canEditFootprint
+          ? (footprintCanvasLayout?.customVertices ?? []).map((vertex) => (
+              <g key={`footprint-custom-vertex-${vertex.index}`}>
+                <circle
+                  cx={vertex.point.x}
+                  cy={vertex.point.y}
+                  r={1.02}
+                  data-footprint-custom-vertex={vertex.index}
+                  className={styles.moduleFootprintHandle}
+                />
+                <circle
+                  cx={vertex.point.x}
+                  cy={vertex.point.y}
+                  r={2.8}
+                  className={styles.moduleFootprintHandleHit}
+                  onDoubleClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    footprintEditor?.onVertexDelete?.(vertex.index);
+                  }}
+                  onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    footprintEditor?.onVertexDragStart?.(
+                      {
+                        vertexIndex: vertex.index,
+                        alongAxisX: vertex.alongAxisX,
+                        alongAxisY: vertex.alongAxisY,
+                        depthAxisX: vertex.depthAxisX,
+                        depthAxisY: vertex.depthAxisY,
+                        scale,
+                      },
+                      {
+                        pointerId: event.pointerId,
+                        clientX: event.clientX,
+                        clientY: event.clientY,
+                      },
+                    );
+                  }}
+                />
+              </g>
+            ))
           : null}
 
         {editorSurface === 'card' && showFootprintControls
@@ -4481,6 +4757,16 @@ function SectionSvg({
 
     return [];
   })();
+  const semanticSectionHouseSurfaces = (model.houseContext?.surfaces ?? []).map((surface) => ({
+    ...surface,
+    points: surface.boundary.map((point) => sectionHousePointToSvg(point, xLeft, yGround, scale)),
+  }));
+  const semanticSectionHouseLines = (model.houseContext?.lines ?? []).map((line) => ({
+    ...line,
+    start: sectionHousePointToSvg(line.line.start, xLeft, yGround, scale),
+    end: sectionHousePointToSvg(line.line.end, xLeft, yGround, scale),
+  }));
+  const hasSemanticSectionHouseContext = semanticSectionHouseSurfaces.length > 0 || semanticSectionHouseLines.length > 0;
 
   return (
     <svg
@@ -4533,6 +4819,30 @@ function SectionSvg({
       <rect x={Math.max(8, xLeft - 8)} y={yGround + 1.3} width={Math.min(104, xRight + 8) - Math.max(8, xLeft - 8)} height={8} className={styles.moduleSectionGroundFill} />
       <line x1={Math.max(8, xLeft - 8)} y1={yGround} x2={Math.min(112, xRight + 8)} y2={yGround} className={styles.moduleSectionGround} />
 
+      {hasSemanticSectionHouseContext
+        ? semanticSectionHouseSurfaces.map((surface) => (
+            <polygon
+              key={surface.id}
+              points={toPointsAttr(surface.points)}
+              className={sectionHouseSurfaceClass(surface.kind)}
+              data-house-section-surface={surface.kind}
+            />
+          ))
+        : null}
+      {hasSemanticSectionHouseContext
+        ? semanticSectionHouseLines.map((line) => (
+            <line
+              key={line.id}
+              x1={line.start.x}
+              y1={line.start.y}
+              x2={line.end.x}
+              y2={line.end.y}
+              className={sectionHouseLineClass(line.kind)}
+              data-house-section-line={line.kind}
+            />
+          ))
+        : null}
+
       <rect x={leftPostX} y={yHouseUnder} width={postW} height={yGround - yHouseUnder} className={styles.moduleSectionPostPrimary} />
       <rect x={secondPostX} y={supportPostTopY} width={postW} height={yGround - supportPostTopY} className={styles.moduleSectionPostPrimary} />
       <rect
@@ -4542,16 +4852,16 @@ function SectionSvg({
         height={leftEaveDepth}
         className={styles.moduleSectionPrimaryBeam}
       />
-      {model.houseConnectionType === 'facade' ? (
+      {model.houseConnectionType === 'facade' && !hasSemanticSectionHouseContext ? (
         <line x1={ledgerX - 1.1} y1={yHouseUnder - 2.2} x2={ledgerX - 1.1} y2={yGround} className={styles.moduleSectionHouseWall} />
       ) : null}
-      {model.houseConnectionType === 'fascia' ? (
+      {model.houseConnectionType === 'fascia' && !hasSemanticSectionHouseContext ? (
         <>
           <line x1={ledgerX - 1.1} y1={yHouseUnder - 2.2} x2={ledgerX - 1.1} y2={yGround} className={styles.moduleSectionHouseWall} />
           <line x1={ledgerX - 1.1} y1={ledgerY - 0.9} x2={ledgerX + leftEaveWidth} y2={ledgerY - 0.9} className={styles.moduleSectionFasciaBand} />
         </>
       ) : null}
-      {model.houseConnectionType === 'soffit' ? (
+      {model.houseConnectionType === 'soffit' && !hasSemanticSectionHouseContext ? (
         <>
           <line x1={ledgerX - 0.25} y1={ledgerY - 1.25} x2={ledgerX + leftEaveWidth} y2={ledgerY - 1.25} className={styles.moduleSectionConnection} />
           <line x1={ledgerX + leftEaveWidth * 0.25} y1={ledgerY - 1.95} x2={ledgerX + leftEaveWidth * 0.25} y2={ledgerY - 0.15} className={styles.moduleSectionSoffitBracket} />

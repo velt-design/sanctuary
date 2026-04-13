@@ -3082,6 +3082,66 @@
   vector-effect: non-scaling-stroke;
 }
 
+.modulePlanHouseSurface {
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.modulePlanHouseFootprint {
+  fill: var(--mv-house-fill);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.modulePlanHouseRoof {
+  fill: var(--mv-panel-fill-subtle);
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.modulePlanHouseSoffit {
+  fill: var(--mv-overhang-fill);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.modulePlanHouseFascia,
+.modulePlanHouseAttachmentZone {
+  fill: none;
+  stroke: var(--mv-accent-olive);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.modulePlanHouseLine {
+  fill: none;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.modulePlanHouseWallSemantic {
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-emphasis-width);
+}
+
+.modulePlanHouseGutter {
+  stroke: var(--mv-line-tertiary);
+  stroke-width: var(--mv-line-tertiary-width);
+}
+
+.modulePlanHouseRoofFeature {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.modulePlanHouseAttachmentTarget {
+  stroke: var(--mv-line-annotation);
+  stroke-width: var(--mv-line-annotation-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
 .modulePlanOverhangZone {
   fill: var(--mv-overhang-fill);
   stroke: var(--mv-line-hidden);
@@ -3324,6 +3384,66 @@
   stroke-width: var(--mv-line-annotation-width);
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionHouseSurface {
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionHouseWallSemantic {
+  fill: var(--mv-house-fill);
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleSectionHouseRoof {
+  fill: var(--mv-panel-fill-subtle);
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-secondary-width);
+}
+
+.moduleSectionHouseSoffit {
+  fill: var(--mv-overhang-fill);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.moduleSectionHouseFascia,
+.moduleSectionHouseAttachmentZone {
+  fill: none;
+  stroke: var(--mv-accent-olive);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.moduleSectionHouseLine {
+  fill: none;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionHouseReference {
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleSectionHouseGutter {
+  stroke: var(--mv-line-tertiary);
+  stroke-width: var(--mv-line-tertiary-width);
+}
+
+.moduleSectionHouseRoofFeature {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.moduleSectionHouseAttachmentTarget {
+  stroke: var(--mv-line-annotation);
+  stroke-width: var(--mv-line-annotation-width);
+  stroke-dasharray: var(--mv-dash-guide);
 }
 
 .moduleSectionOverhangPost {

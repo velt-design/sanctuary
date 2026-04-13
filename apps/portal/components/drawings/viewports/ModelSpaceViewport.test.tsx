@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
+import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
@@ -121,13 +122,37 @@ function makePlanEditableFields(): EstimateDrawingField[] {
 describe('ModelSpaceViewport', () => {
   it('renders plan controls for the live model-space configurator', () => {
     const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -1.8 },
+              { x: 6, y: -1.8 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+        ],
+        lines: [
+          {
+            id: 'house-attachment-target',
+            kind: 'attachment_target',
+            line: { start: { x: 0, y: 0 }, end: { x: 6, y: 0 } },
+          },
+        ],
+      },
+    };
     const assembly = buildAssemblyModel({
       id: drawing.id,
       label: 'M1 - Pitched - 6m x 3m',
       moduleIndex: 0,
       moduleInput: drawing.input,
       moduleResult: drawing.result,
-      planModel: drawing.planModel,
+      planModel,
       sectionModel: drawing.sectionModel,
     });
 
@@ -135,7 +160,7 @@ describe('ModelSpaceViewport', () => {
       <ModelSpaceViewport
         view="plan"
         status="ready"
-        planModel={drawing.planModel}
+        planModel={planModel}
         sectionModel={drawing.sectionModel}
         planViewModel={buildPlanViewModel(assembly)}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
@@ -148,14 +173,54 @@ describe('ModelSpaceViewport', () => {
 
     expect(markup).toContain('Live plan viewport');
     expect(markup).toContain('Drag the primary resize handles or use the Sanctuary rail');
+    expect(markup).toContain('House footprint mode');
+    expect(markup).toContain('House footprint');
     expect(markup).toContain('Zoom in');
     expect(markup).toContain('data-plan-resize-handle-hit="plan:lengthA"');
     expect(markup).toContain('data-plan-resize-handle-hit="plan:spanA"');
     expect(markup).toContain('data-editable-field-id="plan:lengthA"');
     expect(markup).toContain('data-editable-field-id="plan:spanA"');
     expect(markup).toContain('data-footprint-edge="rear"');
+    expect(markup).toContain('data-house-plan-surface="footprint"');
+    expect(markup).toContain('data-house-plan-line="attachment_target"');
     expect(markup).not.toContain('House type');
     expect(markup).not.toContain('Rotate -90');
+  });
+
+  it('renders custom orthogonal footprint vertices and edge insertion targets in model space', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseFootprintMode: 'orthogonal_polygon',
+      houseFootprintPolygon: [
+        { alongM: '0', depthM: '2.4' },
+        { alongM: '6', depthM: '2.4' },
+        { alongM: '6', depthM: '0' },
+        { alongM: '3', depthM: '0' },
+        { alongM: '3', depthM: '1.2' },
+        { alongM: '0', depthM: '1.2' },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('data-footprint-custom-vertex="0"');
+    expect(markup).toContain('data-footprint-custom-vertex="5"');
+    expect(markup).toContain('data-footprint-custom-edge-hit="0"');
+    expect(markup).toContain('<option value="orthogonal_polygon" selected="">Edit outline</option>');
+    expect(markup).not.toContain('data-footprint-resize-edge-hit="bandDepth"');
   });
 
   it('shows a placeholder for section mode until section model space is implemented', () => {

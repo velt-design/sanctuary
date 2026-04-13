@@ -303,6 +303,8 @@ export function makeGableConfig(overrides: GeometryConfigOverrides = {}): Geomet
         supportBeam: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
         gutter: spGutterProfile,
         ridge: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
+        tieBeam: { shape: 'rectangular', widthMm: 50, depthMm: 150 },
+        strut: { shape: 'rectangular', widthMm: 50, depthMm: 50 },
         boxPerimeter: null,
       },
       framing: {

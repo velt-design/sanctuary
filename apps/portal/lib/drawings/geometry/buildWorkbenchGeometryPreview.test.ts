@@ -24,6 +24,33 @@ function makeDraft(snapshot: Record<string, unknown> | null, mutate: (draft: Est
   return draft;
 }
 
+function makeStaleGableSnapshot(
+  snapshot: Record<string, unknown>,
+  overrides: { houseConnectionType?: 'none' | 'soffit' | 'fascia' | 'facade' } = {},
+) {
+  const stale = structuredClone(snapshot) as {
+    inputs?: {
+      modules?: Array<{
+        houseConnectionType?: string;
+        gableEndFramesMode?: string;
+        gableHouseEdgeGutter?: string;
+        gableOuterEdgeGutter?: string;
+      }>;
+    };
+  };
+  const module = stale.inputs?.modules?.[0];
+  if (!module) {
+    throw new Error('Expected fixture snapshot module.');
+  }
+  module.gableEndFramesMode = 'none';
+  if (overrides.houseConnectionType) {
+    module.houseConnectionType = overrides.houseConnectionType;
+  }
+  module.gableHouseEdgeGutter = 'house';
+  module.gableOuterEdgeGutter = 'our';
+  return stale as Record<string, unknown>;
+}
+
 describe('buildWorkbenchGeometryPreview', () => {
   it('returns ready + snapshot_validated for solved fixture snapshots', () => {
     const fixture = requireFixture('mono-standard');
@@ -195,7 +222,194 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.previewMode).toBe('snapshot_validated');
     expect(preview.resultSource).toBe('snapshot');
     expect(preview.config.family).toBe('gable');
-    expect(preview.scene.layers.find((layer) => layer.id === 'beams')?.objects.some((object) => object.id === 'ridge')).toBe(true);
+    expect(preview.config.gable.endFramesMode).toBe('outer_end_only');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-tie-beam')?.role).toBe('beam');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-king-post-strut')?.role).toBe('brace');
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'gable_end_frames.count')?.quantity).toBe(1);
+    const beamLayer = preview.scene.layers.find((layer) => layer.id === 'beams');
+    expect(beamLayer?.objects.some((object) => object.id === 'ridge')).toBe(true);
+    expect(beamLayer?.objects.some((object) => object.id === 'outer-end-tie-beam')).toBe(true);
+    expect(beamLayer?.objects.some((object) => object.id === 'outer-end-king-post-strut')).toBe(true);
+    expect(preview.scene.layers.find((layer) => layer.id === 'support_beams')?.objects.some((object) => object.id === 'outer-end-tie-beam')).toBe(false);
+  });
+
+  it('preserves explicit attached gable no-frame snapshots while constraining gutters', () => {
+    const fixture = requireFixture('gable-standard');
+    const snapshot = makeStaleGableSnapshot(fixture.snapshot, {
+      houseConnectionType: 'soffit',
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.gable.endFramesMode).toBe('none');
+    expect(preview.config.gable.houseEaveGutterMode).toBe('house');
+    expect(preview.config.gable.outerEaveGutterMode).toBe('our');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-tie-beam')).toBeUndefined();
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-king-post-strut')).toBeUndefined();
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'gable_end_frames.count')?.quantity).toBe(0);
+  });
+
+  it('preserves explicit freestanding gable no-frame snapshots while constraining gutters', () => {
+    const fixture = requireFixture('gable-standard');
+    const snapshot = makeStaleGableSnapshot(fixture.snapshot, {
+      houseConnectionType: 'none',
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.gable.endFramesMode).toBe('none');
+    expect(preview.config.gable.houseEaveGutterMode).toBe('our');
+    expect(preview.config.gable.outerEaveGutterMode).toBe('our');
+    expect(preview.assembly.members.find((member) => member.id === 'inner-end-tie-beam')).toBeUndefined();
+    expect(preview.assembly.members.find((member) => member.id === 'inner-end-king-post-strut')).toBeUndefined();
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-tie-beam')).toBeUndefined();
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-king-post-strut')).toBeUndefined();
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'gable_end_frames.count')?.quantity).toBe(0);
+  });
+
+  it('re-solves attached gable end-frame edits into outer tie and king-post members', () => {
+    const fixture = requireFixture('gable-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) {
+      throw new Error('Expected drawing draft from snapshot.');
+    }
+
+    const endFrames = applyGeometryEditIntent({
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'outer_end_only',
+      },
+    });
+
+    expect(endFrames.ok).toBe(true);
+    if (!endFrames.ok) return;
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: endFrames.draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.gable.endFramesMode).toBe('outer_end_only');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-tie-beam')?.role).toBe('beam');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-king-post-strut')?.role).toBe('brace');
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'gable_end_frames.count')?.quantity).toBe(1);
+  });
+
+  it('re-solves attached both-end gable edits into inner and outer frame members', () => {
+    const fixture = requireFixture('gable-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) {
+      throw new Error('Expected drawing draft from snapshot.');
+    }
+
+    const endFrames = applyGeometryEditIntent({
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'both_ends',
+      },
+    });
+
+    expect(endFrames.ok).toBe(true);
+    if (!endFrames.ok) return;
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: endFrames.draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.gable.endFramesMode).toBe('both_ends');
+    expect(preview.config.gable.houseEaveGutterMode).toBe('house');
+    expect(preview.config.gable.outerEaveGutterMode).toBe('our');
+    expect(preview.assembly.members.find((member) => member.id === 'inner-end-tie-beam')?.role).toBe('beam');
+    expect(preview.assembly.members.find((member) => member.id === 'inner-end-king-post-strut')?.role).toBe('brace');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-tie-beam')?.role).toBe('beam');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-king-post-strut')?.role).toBe('brace');
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'gable_end_frames.count')?.quantity).toBe(2);
+  });
+
+  it('re-solves freestanding gable end-frame edits into inner and outer frame members', () => {
+    const fixture = requireFixture('gable-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) {
+      throw new Error('Expected drawing draft from snapshot.');
+    }
+
+    const freestanding = applyGeometryEditIntent({
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'house_connection',
+        value: 'freestanding',
+      },
+    });
+    expect(freestanding.ok).toBe(true);
+    if (!freestanding.ok) return;
+
+    const endFrames = applyGeometryEditIntent({
+      snapshot: fixture.snapshot,
+      draft: freestanding.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'both_ends',
+      },
+    });
+
+    expect(endFrames.ok).toBe(true);
+    if (!endFrames.ok) return;
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: endFrames.draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.gable.endFramesMode).toBe('both_ends');
+    expect(preview.assembly.members.find((member) => member.id === 'inner-end-tie-beam')?.role).toBe('beam');
+    expect(preview.assembly.members.find((member) => member.id === 'inner-end-king-post-strut')?.role).toBe('brace');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-tie-beam')?.role).toBe('beam');
+    expect(preview.assembly.members.find((member) => member.id === 'outer-end-king-post-strut')?.role).toBe('brace');
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'gable_end_frames.count')?.quantity).toBe(2);
   });
 
   it('re-solves mono drafts switched to gable against the supported baseline', () => {

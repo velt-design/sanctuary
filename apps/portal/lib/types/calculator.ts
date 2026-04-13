@@ -25,8 +25,23 @@ export type CalculatorHouseFootprintPreset =
   | 'u_shape'
   | 'wrap_left'
   | 'wrap_right';
+export type CalculatorHouseFootprintMode = 'preset' | 'orthogonal_polygon';
+export type CalculatorHouseFootprintPolygonPoint = {
+  alongM: string;
+  depthM: string;
+};
+export type CalculatorHouseStoreyMode = 'single_storey' | 'double_storey' | 'custom';
+export type CalculatorHouseAttachmentStrategy =
+  | 'soffit_brackets'
+  | 'fascia_under_gutter'
+  | 'facade_ledger'
+  | 'post_supported_tieback'
+  | 'none';
 
 export type CalculatorHouseFootprintParams = {
+  widthM: string;
+  offsetXM: string;
+  setbackM: string;
   bandDepthM: string;
   returnRunM: string;
   recessWidthM: string;
@@ -38,10 +53,14 @@ export type CalculatorHouseFootprintParams = {
 
 export const DEFAULT_CALCULATOR_ATTACHMENT_SIDE: AttachmentSide = 'rear';
 export const DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS: CalculatorDrawingRotationQuarterTurns = 0;
+export const DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE: CalculatorHouseFootprintMode = 'preset';
 export const DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET: CalculatorHouseFootprintPreset = 'straight';
 
 export function makeDefaultHouseFootprintParams(): CalculatorHouseFootprintParams {
   return {
+    widthM: '',
+    offsetXM: '0',
+    setbackM: '0',
     bandDepthM: '1.8',
     returnRunM: '2.4',
     recessWidthM: '2.4',
@@ -79,6 +98,10 @@ export function normalizeHouseFootprintPreset(value: unknown): CalculatorHouseFo
   return DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET;
 }
 
+export function normalizeHouseFootprintMode(value: unknown): CalculatorHouseFootprintMode {
+  return value === 'orthogonal_polygon' ? 'orthogonal_polygon' : DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE;
+}
+
 export function normalizeHouseFootprintParams(value: unknown): CalculatorHouseFootprintParams {
   const source = value && typeof value === 'object' ? (value as Partial<CalculatorHouseFootprintParams>) : {};
   const defaults = makeDefaultHouseFootprintParams();
@@ -88,6 +111,9 @@ export function normalizeHouseFootprintParams(value: unknown): CalculatorHouseFo
   };
 
   return {
+    widthM: pick(source.widthM, defaults.widthM),
+    offsetXM: pick(source.offsetXM, defaults.offsetXM),
+    setbackM: pick(source.setbackM, defaults.setbackM),
     bandDepthM: pick(source.bandDepthM, defaults.bandDepthM),
     returnRunM: pick(source.returnRunM, defaults.returnRunM),
     recessWidthM: pick(source.recessWidthM, defaults.recessWidthM),
@@ -96,6 +122,20 @@ export function normalizeHouseFootprintParams(value: unknown): CalculatorHouseFo
     rightLegRunM: pick(source.rightLegRunM, defaults.rightLegRunM),
     sideRunM: pick(source.sideRunM, defaults.sideRunM),
   };
+}
+
+export function normalizeHouseFootprintPolygon(value: unknown): CalculatorHouseFootprintPolygonPoint[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((point) => {
+      if (!point || typeof point !== 'object') return null;
+      const source = point as Partial<CalculatorHouseFootprintPolygonPoint>;
+      return {
+        alongM: typeof source.alongM === 'string' ? source.alongM.trim() : String(source.alongM ?? '').trim(),
+        depthM: typeof source.depthM === 'string' ? source.depthM.trim() : String(source.depthM ?? '').trim(),
+      };
+    })
+    .filter((point): point is CalculatorHouseFootprintPolygonPoint => Boolean(point && point.alongM && point.depthM));
 }
 
 export function supportsHouseFootprints(pergolaStyle: PergolaStyleUi): boolean {
@@ -239,8 +279,21 @@ export type CalculatorModuleInputs = {
   houseConnectionType: HouseConnectionType;
   attachmentSide?: AttachmentSide;
   drawingRotationQuarterTurns?: CalculatorDrawingRotationQuarterTurns;
+  houseFootprintMode?: CalculatorHouseFootprintMode;
   houseFootprintPreset?: CalculatorHouseFootprintPreset;
   houseFootprintParams?: CalculatorHouseFootprintParams;
+  houseFootprintPolygon?: CalculatorHouseFootprintPolygonPoint[];
+  houseStoreyMode?: CalculatorHouseStoreyMode;
+  houseAttachmentStrategy?: CalculatorHouseAttachmentStrategy;
+  houseEaveHeightM?: string;
+  houseWallHeightM?: string;
+  houseRoofPitchDeg?: string;
+  houseSoffitDepthMm?: string;
+  houseFasciaHeightMm?: string;
+  houseGutterWidthMm?: string;
+  houseGutterDepthMm?: string;
+  houseGutterProjectionMm?: string;
+  houseEaveOverhangMm?: string;
   postConnectionType: PostConnectionType;
   ground: GroundCondition;
 
@@ -427,8 +480,10 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         houseConnectionType: legacy.houseConnectionType,
         attachmentSide: DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
         drawingRotationQuarterTurns: DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
+        houseFootprintMode: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE,
         houseFootprintPreset: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
         houseFootprintParams: makeDefaultHouseFootprintParams(),
+        houseFootprintPolygon: [],
         postConnectionType: legacy.postConnectionType,
         ground: legacy.ground,
         lengthM: legacy.lengthM,

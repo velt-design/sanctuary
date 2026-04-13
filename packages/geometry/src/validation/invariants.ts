@@ -108,6 +108,23 @@ function recomputeQuantityHooks(assembly: Assembly3D): QuantityHook[] {
         unit: 'mm',
       });
     }
+    const tieBeams = assembly.members.filter((member) => member.metadata?.frameRole === 'tie_beam');
+    const kingPostStruts = assembly.members.filter((member) => member.metadata?.frameRole === 'king_post_strut');
+    quantityHooks.push({
+      key: 'gable_end_frames.count',
+      quantity: tieBeams.length,
+      unit: 'count',
+    });
+    quantityHooks.push({
+      key: 'tie_beams.total_length_mm',
+      quantity: Math.round(tieBeams.reduce((sum, member) => sum + lineLength(member.centerline), 0)),
+      unit: 'mm',
+    });
+    quantityHooks.push({
+      key: 'kingpost_struts.total_length_mm',
+      quantity: Math.round(kingPostStruts.reduce((sum, member) => sum + lineLength(member.centerline), 0)),
+      unit: 'mm',
+    });
     quantityHooks.push({
       key: 'roof_planes.count',
       quantity: assembly.roofPlanes.length,
@@ -572,78 +589,50 @@ function validateGableAcrylic(config: GeometryConfig, assembly: Assembly3D): Geo
   const houseRoofNormal = normalizeVector(houseRoofPlane!.plane.normal);
   const outerRoofNormal = normalizeVector(outerRoofPlane!.plane.normal);
 
-  const houseBearingY = houseGutter
-    ? houseGutter.centerline.start.y + profileFaceY(houseGutter, 'roofBearingFaceY')
-    : houseSupport!.centerline.start.y + profileFaceY(houseSupport!, 'roofBearingFaceY');
-  const outerBearingY = outerGutter!.centerline.start.y + profileFaceY(outerGutter!, 'roofBearingFaceY');
-  const houseBearingZ = houseGutter
-    ? houseGutter.centerline.start.z + profileFaceZ(houseGutter, 'roofBearingFaceZ')
-    : houseSupport!.centerline.start.z + profileFaceZ(houseSupport!, 'roofBearingFaceZ');
-  const outerBearingZ = outerGutter!.centerline.start.z + profileFaceZ(outerGutter!, 'roofBearingFaceZ');
-
-  const houseRunStart = { x: 0, y: houseBearingY, z: houseBearingZ };
-  const houseRunEnd = { x: 0, y: ridge!.centerline.start.y - ridgeHalfMm, z: 0 };
-  const houseRunEndZ =
-    houseRoofPlane!.plane.origin.z +
-    ((ridge!.centerline.start.y - ridgeHalfMm - houseRoofPlane!.plane.origin.y) *
-      houseRoofPlane!.plane.yAxis.z) /
-      houseRoofPlane!.plane.yAxis.y;
-  houseRunEnd.z = houseRunEndZ;
-
-  const outerRunStart = { x: 0, y: outerBearingY, z: outerBearingZ };
-  const outerRunEnd = { x: 0, y: ridge!.centerline.start.y + ridgeHalfMm, z: 0 };
-  const outerRunEndZ =
-    outerRoofPlane!.plane.origin.z +
-    ((ridge!.centerline.start.y + ridgeHalfMm - outerRoofPlane!.plane.origin.y) *
-      outerRoofPlane!.plane.yAxis.z) /
-      outerRoofPlane!.plane.yAxis.y;
-  outerRunEnd.z = outerRunEndZ;
-
   const validateRoofHalf = (input: {
     joiners: AssemblyMember3D[];
     panels: Assembly3D['roofCladdingPanels'];
     roofPlane: Assembly3D['roofPlanes'][number];
     roofNormal: { x: number; y: number; z: number };
-    eavePoint: { x: number; y: number; z: number };
-    ridgePoint: { x: number; y: number; z: number };
-    eaveExtensionMm: number;
     expectedGutterEmbedMm: number;
     expectedHouseAllowanceMm: number;
   }) => {
-    const joinerProfile = input.joiners[0]?.profile;
-    const panelMidPlaneOffsetMm = joinerProfile ? joinerProfile.depthMm / 2 : 0;
-    const runVector = lineDirection({ start: input.eavePoint, end: input.ridgePoint });
-    const coverEavePointOnPlane = {
-      x: input.eavePoint.x - runVector.x * input.eaveExtensionMm,
-      y: input.eavePoint.y - runVector.y * input.eaveExtensionMm,
-      z: input.eavePoint.z - runVector.z * input.eaveExtensionMm,
-    };
-    const coverRidgePointOnPlane = input.ridgePoint;
-    const coverEavePoint = {
-      x: coverEavePointOnPlane.x + input.roofNormal.x * panelMidPlaneOffsetMm,
-      y: coverEavePointOnPlane.y + input.roofNormal.y * panelMidPlaneOffsetMm,
-      z: coverEavePointOnPlane.z + input.roofNormal.z * panelMidPlaneOffsetMm,
-    };
-    const coverRidgePoint = {
-      x: coverRidgePointOnPlane.x + input.roofNormal.x * panelMidPlaneOffsetMm,
-      y: coverRidgePointOnPlane.y + input.roofNormal.y * panelMidPlaneOffsetMm,
-      z: coverRidgePointOnPlane.z + input.roofNormal.z * panelMidPlaneOffsetMm,
-    };
-    const expectedRunLengthMm = lineLength({ start: coverEavePoint, end: coverRidgePoint });
+    const representativeJoiner = input.joiners[0];
+    const panelMidPlaneOffsetMm = representativeJoiner?.profile.depthMm ? representativeJoiner.profile.depthMm / 2 : 0;
+    const expectedRunLengthMm =
+      typeof representativeJoiner?.metadata?.targetRunLengthMm === 'number'
+        ? representativeJoiner.metadata.targetRunLengthMm
+        : representativeJoiner
+          ? lineLength(representativeJoiner.centerline)
+          : 0;
+    const representativeEavePoint = representativeJoiner?.centerline.start ?? input.roofPlane.plane.origin;
+    const representativeRidgePoint = representativeJoiner?.centerline.end ?? input.roofPlane.plane.origin;
+    const roofFall = normalizeVector(input.roofPlane.fallVector);
 
     const joinerLengthsOk = input.joiners.every((joiner) => {
       const startOffset = dotProduct(subtractPoints(joiner.centerline.start, input.roofPlane.plane.origin), input.roofNormal);
       const endOffset = dotProduct(subtractPoints(joiner.centerline.end, input.roofPlane.plane.origin), input.roofNormal);
       const joinerDirection = normalizeVector(subtractPoints(joiner.centerline.end, joiner.centerline.start));
       return (
-        approxEqual(joiner.centerline.start.y, coverEavePoint.y, 3) &&
-        approxEqual(joiner.centerline.start.z, coverEavePoint.z, 3) &&
-        approxEqual(joiner.centerline.end.y, coverRidgePoint.y, 3) &&
-        approxEqual(joiner.centerline.end.z, coverRidgePoint.z, 3) &&
+        joiner.profile.profileKey === 'sp_joiners' &&
+        approxEqual(joiner.centerline.start.y, representativeEavePoint.y, 3) &&
+        approxEqual(joiner.centerline.start.z, representativeEavePoint.z, 3) &&
+        approxEqual(joiner.centerline.end.y, representativeRidgePoint.y, 3) &&
+        approxEqual(joiner.centerline.end.z, representativeRidgePoint.z, 3) &&
         approxEqual(lineLength(joiner.centerline), expectedRunLengthMm, 3) &&
+        approxEqual(
+          typeof joiner.metadata?.runLengthMm === 'number' ? joiner.metadata.runLengthMm : Number.NaN,
+          Math.round(expectedRunLengthMm),
+          3,
+        ) &&
+        approxEqual(
+          typeof joiner.metadata?.targetRunLengthMm === 'number' ? joiner.metadata.targetRunLengthMm : Number.NaN,
+          Math.round(expectedRunLengthMm),
+          3,
+        ) &&
         approxEqual(startOffset, panelMidPlaneOffsetMm, 3) &&
         approxEqual(endOffset, panelMidPlaneOffsetMm, 3) &&
-        Math.abs(dotProduct(joinerDirection, normalizeVector(input.roofPlane.fallVector))) >= 0.999
+        Math.abs(dotProduct(joinerDirection, roofFall)) >= 0.999
       );
     });
 
@@ -664,21 +653,44 @@ function validateGableAcrylic(config: GeometryConfig, assembly: Assembly3D): Geo
         start: panel.boundary[0] ?? panel.plane.origin,
         end: panel.boundary[1] ?? panel.plane.origin,
       });
+      const actualPanelAreaMm2 = polygonArea(panel.boundary);
       const expectedPanelAreaMm2 = panelWidthMm * expectedRunLengthMm;
+      const metadataDownslopeLengthMm =
+        typeof panel.metadata?.downslopeLengthMm === 'number' ? panel.metadata.downslopeLengthMm : Number.NaN;
+      const metadataAreaMm2 = typeof panel.metadata?.areaMm2 === 'number' ? panel.metadata.areaMm2 : Number.NaN;
+      const metadataPanelMidPlaneOffsetMm =
+        typeof panel.metadata?.panelMidPlaneOffsetMm === 'number' ? panel.metadata.panelMidPlaneOffsetMm : Number.NaN;
+      const metadataRidgeHalfMm =
+        typeof panel.metadata?.ridgeHalfMm === 'number' ? panel.metadata.ridgeHalfMm : Number.NaN;
       return (
         approxEqual(panel.thicknessMm, expectedPanelThicknessMm) &&
-        approxEqual(panel.boundary[0]?.y ?? Number.NaN, coverEavePoint.y, 3) &&
-        approxEqual(panel.boundary[0]?.z ?? Number.NaN, coverEavePoint.z, 3) &&
-        approxEqual(panel.boundary[2]?.y ?? Number.NaN, coverRidgePoint.y, 3) &&
-        approxEqual(panel.boundary[2]?.z ?? Number.NaN, coverRidgePoint.z, 3) &&
+        approxEqual(panel.boundary[0]?.y ?? Number.NaN, representativeEavePoint.y, 3) &&
+        approxEqual(panel.boundary[0]?.z ?? Number.NaN, representativeEavePoint.z, 3) &&
+        approxEqual(panel.boundary[1]?.y ?? Number.NaN, representativeEavePoint.y, 3) &&
+        approxEqual(panel.boundary[1]?.z ?? Number.NaN, representativeEavePoint.z, 3) &&
+        approxEqual(panel.boundary[2]?.y ?? Number.NaN, representativeRidgePoint.y, 3) &&
+        approxEqual(panel.boundary[2]?.z ?? Number.NaN, representativeRidgePoint.z, 3) &&
+        approxEqual(panel.boundary[3]?.y ?? Number.NaN, representativeRidgePoint.y, 3) &&
+        approxEqual(panel.boundary[3]?.z ?? Number.NaN, representativeRidgePoint.z, 3) &&
         boundaryOnPanelPlane &&
         approxEqual(planeOffset, panelMidPlaneOffsetMm, 3) &&
         approxEqual(leftEdgeLengthMm, expectedRunLengthMm, 3) &&
         approxEqual(rightEdgeLengthMm, expectedRunLengthMm, 3) &&
-        approxEqual(polygonArea(panel.boundary), expectedPanelAreaMm2, 2_000) &&
-        approxEqual((typeof panel.metadata?.downslopeLengthMm === 'number' ? panel.metadata.downslopeLengthMm : Number.NaN), Math.round(expectedRunLengthMm), 3) &&
-        approxEqual((typeof panel.metadata?.gutterEmbedMm === 'number' ? panel.metadata.gutterEmbedMm : Number.NaN), input.expectedGutterEmbedMm, 1) &&
-        approxEqual((typeof panel.metadata?.houseAllowanceMm === 'number' ? panel.metadata.houseAllowanceMm : Number.NaN), input.expectedHouseAllowanceMm, 1)
+        approxEqual(actualPanelAreaMm2, expectedPanelAreaMm2, 2_000) &&
+        approxEqual(metadataDownslopeLengthMm, Math.round(expectedRunLengthMm), 3) &&
+        approxEqual(metadataAreaMm2, Math.round(actualPanelAreaMm2), 2_000) &&
+        approxEqual(
+          typeof panel.metadata?.gutterEmbedMm === 'number' ? panel.metadata.gutterEmbedMm : Number.NaN,
+          input.expectedGutterEmbedMm,
+          1,
+        ) &&
+        approxEqual(
+          typeof panel.metadata?.houseAllowanceMm === 'number' ? panel.metadata.houseAllowanceMm : Number.NaN,
+          input.expectedHouseAllowanceMm,
+          1,
+        ) &&
+        approxEqual(metadataPanelMidPlaneOffsetMm, panelMidPlaneOffsetMm, 1) &&
+        approxEqual(metadataRidgeHalfMm, ridgeHalfMm, 1)
       );
     });
 
@@ -690,9 +702,6 @@ function validateGableAcrylic(config: GeometryConfig, assembly: Assembly3D): Geo
     panels: housePanels,
     roofPlane: houseRoofPlane!,
     roofNormal: houseRoofNormal,
-    eavePoint: houseRunStart,
-    ridgePoint: houseRunEnd,
-    eaveExtensionMm: houseAllowanceMm,
     expectedGutterEmbedMm: config.connection.type === 'freestanding' ? expectedGutterEmbedMm : 0,
     expectedHouseAllowanceMm: config.connection.type === 'freestanding' ? 0 : houseAllowanceMm,
   });
@@ -701,9 +710,6 @@ function validateGableAcrylic(config: GeometryConfig, assembly: Assembly3D): Geo
     panels: outerPanels,
     roofPlane: outerRoofPlane!,
     roofNormal: outerRoofNormal,
-    eavePoint: outerRunStart,
-    ridgePoint: outerRunEnd,
-    eaveExtensionMm: expectedGutterEmbedMm,
     expectedGutterEmbedMm,
     expectedHouseAllowanceMm: 0,
   });

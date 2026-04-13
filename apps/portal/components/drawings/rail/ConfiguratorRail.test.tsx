@@ -42,6 +42,9 @@ function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): Calculator
     drawingRotationQuarterTurns: 1,
     houseFootprintPreset: 'straight',
     houseFootprintParams: {
+      widthM: '',
+      offsetXM: '0',
+      setbackM: '0',
       bandDepthM: '1.8',
       returnRunM: '2.4',
       recessWidthM: '2.4',

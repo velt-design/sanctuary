@@ -4,10 +4,16 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { HOUSE_FOOTPRINT_PRESET_OPTIONS, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import {
   normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
   normalizeHouseFootprintPreset,
 } from '@/lib/types/calculator';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type {
+  CalculatorHouseAttachmentStrategy,
+  CalculatorHouseFootprintMode,
+  CalculatorHouseStoreyMode,
+  CalculatorModuleInputs,
+} from '@/lib/types/calculator';
 import type { GeometryEditIntent, GeometryEditState, SanctuaryPergolaFamily } from '@/lib/drawings/geometry/geometryEditAdapter';
 import styles from './ConfiguratorRail.module.css';
 
@@ -77,6 +83,19 @@ const HOUSE_CONNECTION_OPTIONS: SelectOption[] = [
   { label: 'Wall', value: 'wall' },
   { label: 'Freestanding', value: 'freestanding' },
 ];
+const HOUSE_ATTACHMENT_STRATEGY_OPTIONS: SelectOption[] = [
+  { label: 'Auto', value: 'auto' },
+  { label: 'Soffit brackets', value: 'soffit_brackets' },
+  { label: 'Fascia under gutter', value: 'fascia_under_gutter' },
+  { label: 'Facade ledger', value: 'facade_ledger' },
+  { label: 'Post-supported tieback', value: 'post_supported_tieback' },
+  { label: 'None', value: 'none' },
+];
+const HOUSE_STOREY_MODE_OPTIONS: SelectOption[] = [
+  { label: 'Single storey', value: 'single_storey' },
+  { label: 'Double storey', value: 'double_storey' },
+  { label: 'Custom', value: 'custom' },
+];
 const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Rear', value: 'rear' },
   { label: 'Front', value: 'front' },
@@ -112,6 +131,10 @@ const FOOTPRINT_OPTIONS: SelectOption[] = HOUSE_FOOTPRINT_PRESET_OPTIONS.map((op
   label: option.label,
   value: option.id,
 }));
+const FOOTPRINT_MODE_OPTIONS: SelectOption[] = [
+  { label: 'Preset', value: 'preset' },
+  { label: 'Edit outline', value: 'orthogonal_polygon' },
+];
 const DEFAULT_OVERRIDE_OPTION: SelectOption = { label: 'Auto', value: '' };
 const RAFTER_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }];
 const LEDGER_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }];
@@ -124,6 +147,14 @@ const STRUT_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label:
 function withCurrentOption(options: SelectOption[], value: string, fallbackLabel: string): SelectOption[] {
   if (!value || options.some((option) => option.value === value)) return options;
   return [{ label: `${fallbackLabel}: ${value}`, value }, ...options];
+}
+
+function gableEndFrameOptionsForConnection(connectionType: GeometryEditState['connection']['type']): SelectOption[] {
+  return GABLE_END_FRAME_OPTIONS.filter((option) => {
+    if (option.value === 'none') return true;
+    if (connectionType === 'freestanding') return option.value === 'both_ends';
+    return option.value === 'outer_end_only' || option.value === 'both_ends';
+  });
 }
 
 function renderField(field: RailFieldDefinition) {
@@ -244,6 +275,7 @@ export default function SanctuaryWorkbenchRail({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const family = geometryState?.family ?? null;
+  const footprintMode = geometryState ? normalizeHouseFootprintMode(geometryState.houseContext.footprintMode) : 'preset';
   const footprintPreset = geometryState ? normalizeHouseFootprintPreset(geometryState.houseContext.footprintPreset) : 'straight';
   const footprintParams = geometryState ? normalizeHouseFootprintParams(geometryState.houseContext.footprintParams) : normalizeHouseFootprintParams(undefined);
   const drawingRotation = geometryState ? String(normalizeDrawingRotationQuarterTurns(geometryState.houseContext.drawingRotationQuarterTurns)) : '0';
@@ -253,6 +285,7 @@ export default function SanctuaryWorkbenchRail({
     Boolean(geometryState) &&
     Boolean(onCommitGeometryEdit) &&
     Boolean(geometryState?.houseContext.canEditFootprint);
+  const canEditHouseModel = canEditHouseContext && geometryState?.connection.type !== 'freestanding';
   const showGround =
     geometryState?.supports.postConnectionType === 'pile_1m' || geometryState?.supports.postConnectionType === 'pile_1_5m';
 
@@ -405,18 +438,29 @@ export default function SanctuaryWorkbenchRail({
 
   const gableFields = useMemo(() => {
     if (!geometryState || family !== 'gable' || !geometryState.gable) return [];
-    const helperText = 'This workbench currently supports the standard gable baseline only.';
+    const endFrameOptions = withCurrentOption(
+      gableEndFrameOptionsForConnection(geometryState.connection.type),
+      geometryState.gable.endFramesMode,
+      'Current',
+    );
+    const helperText = 'End frames are editable. Eave gutter modes are constrained to the supported gable baseline.';
+    const gutterHelperText = 'Controlled by the supported gable baseline for this connection type.';
     return [
       {
         id: 'gable-end-frames',
         kind: 'select',
         label: 'Gable end frames',
         value: geometryState.gable.endFramesMode,
-        options: GABLE_END_FRAME_OPTIONS,
+        options: endFrameOptions,
         helperText,
-        disabled: true,
-        pending: false,
-        onCommit: () => undefined,
+        pending: pendingFieldId === 'gable-end-frames',
+        error: fieldErrors['gable-end-frames'],
+        disabled: disabled || !onCommitGeometryEdit,
+        onCommit: (value: string) =>
+          commitGeometryEdit('gable-end-frames', {
+            type: 'gable_end_frames',
+            value: value as CalculatorModuleInputs['gableEndFramesMode'],
+          }),
       },
       {
         id: 'gable-house-eave-gutter',
@@ -424,6 +468,7 @@ export default function SanctuaryWorkbenchRail({
         label: 'House-side eave gutter',
         value: geometryState.gable.houseEaveGutterMode,
         options: GABLE_GUTTER_OPTIONS,
+        helperText: gutterHelperText,
         disabled: true,
         pending: false,
         onCommit: () => undefined,
@@ -434,12 +479,13 @@ export default function SanctuaryWorkbenchRail({
         label: 'Outer-side eave gutter',
         value: geometryState.gable.outerEaveGutterMode,
         options: GABLE_GUTTER_OPTIONS,
+        helperText: gutterHelperText,
         disabled: true,
         pending: false,
         onCommit: () => undefined,
       },
     ] satisfies RailFieldDefinition[];
-  }, [family, geometryState]);
+  }, [commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
 
   const houseFields = useMemo(() => {
     if (!geometryState) return [];
@@ -461,6 +507,84 @@ export default function SanctuaryWorkbenchRail({
           }),
       },
       {
+        id: 'house-attachment-strategy',
+        kind: 'select',
+        label: 'Attachment strategy',
+        value: geometryState.houseContext.attachmentStrategy,
+        options: HOUSE_ATTACHMENT_STRATEGY_OPTIONS,
+        helperText: canEditHouseModel ? 'Auto follows the broad house connection.' : 'Available when the pergola is attached to the house.',
+        pending: pendingFieldId === 'house-attachment-strategy',
+        error: fieldErrors['house-attachment-strategy'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-attachment-strategy', {
+            type: 'house_config',
+            key: 'houseAttachmentStrategy',
+            value: value as CalculatorHouseAttachmentStrategy | 'auto',
+          }),
+      },
+      {
+        id: 'house-storey-mode',
+        kind: 'select',
+        label: 'Storey mode',
+        value: geometryState.houseContext.storeyMode,
+        options: HOUSE_STOREY_MODE_OPTIONS,
+        pending: pendingFieldId === 'house-storey-mode',
+        error: fieldErrors['house-storey-mode'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-storey-mode', {
+            type: 'house_config',
+            key: 'houseStoreyMode',
+            value: value as CalculatorHouseStoreyMode,
+          }),
+      },
+      {
+        id: 'house-eave-height',
+        kind: 'number',
+        label: 'Eave height (m)',
+        value: geometryState.houseContext.eaveHeightM,
+        pending: pendingFieldId === 'house-eave-height',
+        error: fieldErrors['house-eave-height'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-eave-height', {
+            type: 'house_config',
+            key: 'houseEaveHeightM',
+            value,
+          }),
+      },
+      {
+        id: 'house-wall-height',
+        kind: 'number',
+        label: 'Wall height (m)',
+        value: geometryState.houseContext.wallHeightM,
+        pending: pendingFieldId === 'house-wall-height',
+        error: fieldErrors['house-wall-height'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-wall-height', {
+            type: 'house_config',
+            key: 'houseWallHeightM',
+            value,
+          }),
+      },
+      {
+        id: 'house-roof-pitch',
+        kind: 'number',
+        label: 'House roof pitch (deg)',
+        value: geometryState.houseContext.roofPitchDeg,
+        pending: pendingFieldId === 'house-roof-pitch',
+        error: fieldErrors['house-roof-pitch'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-roof-pitch', {
+            type: 'house_config',
+            key: 'houseRoofPitchDeg',
+            value,
+          }),
+      },
+      {
         id: 'attachment-side',
         kind: 'select',
         label: 'Attachment side',
@@ -477,6 +601,22 @@ export default function SanctuaryWorkbenchRail({
           }),
       },
       {
+        id: 'house-footprint-mode',
+        kind: 'select',
+        label: 'House footprint mode',
+        value: footprintMode,
+        options: FOOTPRINT_MODE_OPTIONS,
+        helperText: footprintMode === 'orthogonal_polygon' ? 'Plan editor controls the outline.' : undefined,
+        pending: pendingFieldId === 'house-footprint-mode',
+        error: fieldErrors['house-footprint-mode'],
+        disabled: !canEditHouseContext,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-footprint-mode', {
+            type: 'footprint_mode',
+            value: value as CalculatorHouseFootprintMode,
+          }),
+      },
+      {
         id: 'house-footprint-preset',
         kind: 'select',
         label: 'House footprint',
@@ -485,7 +625,7 @@ export default function SanctuaryWorkbenchRail({
         helperText: canEditHouseContext ? undefined : 'Available when the pergola is attached to the house.',
         pending: pendingFieldId === 'house-footprint-preset',
         error: fieldErrors['house-footprint-preset'],
-        disabled: !canEditHouseContext,
+        disabled: !canEditHouseContext || footprintMode === 'orthogonal_polygon',
         onCommit: (value: string) =>
           commitGeometryEdit('house-footprint-preset', {
             type: 'footprint_preset',
@@ -505,13 +645,151 @@ export default function SanctuaryWorkbenchRail({
         onCommit: commitRotation,
       },
       {
+        id: 'house-soffit-depth',
+        kind: 'number',
+        label: 'Soffit depth (mm)',
+        value: geometryState.houseContext.soffitDepthMm,
+        pending: pendingFieldId === 'house-soffit-depth',
+        error: fieldErrors['house-soffit-depth'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-soffit-depth', {
+            type: 'house_config',
+            key: 'houseSoffitDepthMm',
+            value,
+          }),
+      },
+      {
+        id: 'house-fascia-height',
+        kind: 'number',
+        label: 'Fascia height (mm)',
+        value: geometryState.houseContext.fasciaHeightMm,
+        pending: pendingFieldId === 'house-fascia-height',
+        error: fieldErrors['house-fascia-height'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-fascia-height', {
+            type: 'house_config',
+            key: 'houseFasciaHeightMm',
+            value,
+          }),
+      },
+      {
+        id: 'house-gutter-width',
+        kind: 'number',
+        label: 'Gutter width (mm)',
+        value: geometryState.houseContext.gutterWidthMm,
+        pending: pendingFieldId === 'house-gutter-width',
+        error: fieldErrors['house-gutter-width'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-gutter-width', {
+            type: 'house_config',
+            key: 'houseGutterWidthMm',
+            value,
+          }),
+      },
+      {
+        id: 'house-gutter-depth',
+        kind: 'number',
+        label: 'Gutter depth (mm)',
+        value: geometryState.houseContext.gutterDepthMm,
+        pending: pendingFieldId === 'house-gutter-depth',
+        error: fieldErrors['house-gutter-depth'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-gutter-depth', {
+            type: 'house_config',
+            key: 'houseGutterDepthMm',
+            value,
+          }),
+      },
+      {
+        id: 'house-gutter-projection',
+        kind: 'number',
+        label: 'Gutter projection (mm)',
+        value: geometryState.houseContext.gutterProjectionMm,
+        pending: pendingFieldId === 'house-gutter-projection',
+        error: fieldErrors['house-gutter-projection'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-gutter-projection', {
+            type: 'house_config',
+            key: 'houseGutterProjectionMm',
+            value,
+          }),
+      },
+      {
+        id: 'house-eave-overhang',
+        kind: 'number',
+        label: 'Eave overhang (mm)',
+        value: geometryState.houseContext.eaveOverhangMm,
+        pending: pendingFieldId === 'house-eave-overhang',
+        error: fieldErrors['house-eave-overhang'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-eave-overhang', {
+            type: 'house_config',
+            key: 'houseEaveOverhangMm',
+            value,
+          }),
+      },
+      {
+        id: 'house-footprint-width',
+        kind: 'number',
+        label: 'House width (m)',
+        value: footprintParams.widthM,
+        helperText: 'Blank matches the pergola length.',
+        pending: pendingFieldId === 'house-footprint-width',
+        error: fieldErrors['house-footprint-width'],
+        disabled: !canEditHouseContext || footprintMode === 'orthogonal_polygon',
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-footprint-width', {
+            type: 'footprint_param',
+            key: 'widthM',
+            value,
+          }),
+      },
+      {
+        id: 'house-footprint-offset-x',
+        kind: 'number',
+        label: 'House offset X (m)',
+        value: footprintParams.offsetXM,
+        helperText: 'Negative values extend left of the pergola.',
+        pending: pendingFieldId === 'house-footprint-offset-x',
+        error: fieldErrors['house-footprint-offset-x'],
+        disabled: !canEditHouseContext,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-footprint-offset-x', {
+            type: 'footprint_param',
+            key: 'offsetXM',
+            value,
+          }),
+      },
+      {
+        id: 'house-footprint-setback',
+        kind: 'number',
+        label: 'Facade setback (m)',
+        value: footprintParams.setbackM,
+        helperText: 'Visual house context only; pergola attachment stays fixed.',
+        pending: pendingFieldId === 'house-footprint-setback',
+        error: fieldErrors['house-footprint-setback'],
+        disabled: !canEditHouseContext,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-footprint-setback', {
+            type: 'footprint_param',
+            key: 'setbackM',
+            value,
+          }),
+      },
+      {
         id: 'house-footprint-band-depth',
         kind: 'number',
         label: 'Footprint band depth (m)',
         value: footprintParams.bandDepthM,
         pending: pendingFieldId === 'house-footprint-band-depth',
         error: fieldErrors['house-footprint-band-depth'],
-        disabled: !canEditHouseContext,
+        disabled: !canEditHouseContext || footprintMode === 'orthogonal_polygon',
         onCommit: (value: string) =>
           commitGeometryEdit('house-footprint-band-depth', {
             type: 'footprint_param',
@@ -521,7 +799,7 @@ export default function SanctuaryWorkbenchRail({
       },
     ];
 
-    if (footprintPreset === 'l_left' || footprintPreset === 'l_right') {
+    if (footprintMode === 'preset' && (footprintPreset === 'l_left' || footprintPreset === 'l_right')) {
       footprintFields.push({
         id: 'house-footprint-return-run',
         kind: 'number',
@@ -539,7 +817,7 @@ export default function SanctuaryWorkbenchRail({
       });
     }
 
-    if (footprintPreset === 'recess_left' || footprintPreset === 'recess_right') {
+    if (footprintMode === 'preset' && (footprintPreset === 'recess_left' || footprintPreset === 'recess_right')) {
       footprintFields.push(
         {
           id: 'house-footprint-recess-width',
@@ -574,7 +852,7 @@ export default function SanctuaryWorkbenchRail({
       );
     }
 
-    if (footprintPreset === 'u_shape') {
+    if (footprintMode === 'preset' && footprintPreset === 'u_shape') {
       footprintFields.push(
         {
           id: 'house-footprint-left-leg',
@@ -609,7 +887,7 @@ export default function SanctuaryWorkbenchRail({
       );
     }
 
-    if (footprintPreset === 'wrap_left' || footprintPreset === 'wrap_right') {
+    if (footprintMode === 'preset' && (footprintPreset === 'wrap_left' || footprintPreset === 'wrap_right')) {
       footprintFields.push({
         id: 'house-footprint-side-run',
         kind: 'number',
@@ -628,7 +906,7 @@ export default function SanctuaryWorkbenchRail({
     }
 
     return footprintFields;
-  }, [canEditHouseContext, commitGeometryEdit, commitRotation, disabled, drawingRotation, fieldErrors, footprintParams, footprintPreset, geometryState, onCommitGeometryEdit, pendingFieldId]);
+  }, [canEditHouseContext, canEditHouseModel, commitGeometryEdit, commitRotation, disabled, drawingRotation, fieldErrors, footprintMode, footprintParams, footprintPreset, geometryState, onCommitGeometryEdit, pendingFieldId]);
 
   const supportFields = useMemo(() => {
     if (!geometryState) return [];

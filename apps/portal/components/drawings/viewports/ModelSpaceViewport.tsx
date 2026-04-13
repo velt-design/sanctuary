@@ -10,6 +10,7 @@ import {
   type ModulePlanResizeFieldId,
   canEditHouseFootprintPlan,
   type HouseFootprintEditorDragMeta,
+  type HouseFootprintVertexDragMeta,
   type ModuleFootprintEditorProps,
   type ModuleViewsStatus,
   type ModuleViewsTab,
@@ -27,6 +28,13 @@ type FootprintDragSession = HouseFootprintEditorDragMeta & {
   startSvgX: number;
   startSvgY: number;
   startParams: CalculatorHouseFootprintParams;
+};
+
+type FootprintVertexDragSession = HouseFootprintVertexDragMeta & {
+  pointerId: number;
+  startSvgX: number;
+  startSvgY: number;
+  startPolygon: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>;
 };
 
 type PlanFieldDragSession = ModulePlanResizeDragMeta & {
@@ -55,6 +63,46 @@ function parseHouseFootprintParamValue(value: string | undefined, fallback: numb
 
 function snapHouseFootprintValue(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function parsePolygonMetres(value: string | undefined): number {
+  const parsed = Number.parseFloat(value ?? '');
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatPolygonMetres(value: number): string {
+  return formatHouseFootprintParamValue(snapHouseFootprintValue(value));
+}
+
+function moveOrthogonalPolygonVertex(
+  polygon: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>,
+  vertexIndex: number,
+  nextAlongM: number,
+  nextDepthM: number,
+): NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']> {
+  const points = polygon.map((point) => ({
+    alongM: parsePolygonMetres(point.alongM),
+    depthM: parsePolygonMetres(point.depthM),
+  }));
+  if (points.length < 4 || vertexIndex < 0 || vertexIndex >= points.length) return polygon;
+
+  const prevIndex = (vertexIndex - 1 + points.length) % points.length;
+  const nextIndex = (vertexIndex + 1) % points.length;
+  const current = points[vertexIndex]!;
+  const prev = points[prevIndex]!;
+  const next = points[nextIndex]!;
+
+  if (Math.abs(prev.alongM - current.alongM) < 1e-6) prev.alongM = nextAlongM;
+  if (Math.abs(prev.depthM - current.depthM) < 1e-6) prev.depthM = nextDepthM;
+  if (Math.abs(next.alongM - current.alongM) < 1e-6) next.alongM = nextAlongM;
+  if (Math.abs(next.depthM - current.depthM) < 1e-6) next.depthM = nextDepthM;
+  current.alongM = nextAlongM;
+  current.depthM = nextDepthM;
+
+  return points.map((point) => ({
+    alongM: formatPolygonMetres(point.alongM),
+    depthM: formatPolygonMetres(point.depthM),
+  }));
 }
 
 function formatDrawingFieldValue(value: number): string {
@@ -115,6 +163,7 @@ export default function ModelSpaceViewport({
   const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintContextHovered, setFootprintContextHovered] = useState(false);
   const [footprintDragSession, setFootprintDragSession] = useState<FootprintDragSession | null>(null);
+  const [footprintVertexDragSession, setFootprintVertexDragSession] = useState<FootprintVertexDragSession | null>(null);
   const [planHoveredResizeFieldId, setPlanHoveredResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planActiveResizeFieldId, setPlanActiveResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldDragSession | null>(null);
@@ -245,6 +294,19 @@ export default function ModelSpaceViewport({
     [commitFootprintEdit],
   );
 
+  const handleFootprintModeSelect = useCallback(
+    async (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => {
+      setFieldError(null);
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
+      setFootprintError(null);
+      await commitFootprintEdit({ type: 'mode', mode });
+    },
+    [commitFootprintEdit],
+  );
+
   const handleFootprintRotate = useCallback(
     async (delta: -1 | 1) => {
       setFieldError(null);
@@ -252,6 +314,7 @@ export default function ModelSpaceViewport({
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
       setFootprintError(null);
       await commitFootprintEdit({ type: 'rotate', delta });
     },
@@ -265,6 +328,7 @@ export default function ModelSpaceViewport({
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
       setFootprintError(null);
       await commitFootprintEdit({ type: 'attachment_side', side });
     },
@@ -292,6 +356,56 @@ export default function ModelSpaceViewport({
       });
     },
     [canEditFootprint, planModel],
+  );
+
+  const handleFootprintVertexDragStart = useCallback(
+    (meta: HouseFootprintVertexDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'orthogonal_polygon') return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+      setFieldError(null);
+      setFootprintError(null);
+      setFootprintContextHovered(true);
+      setFootprintDragSession(null);
+      setFootprintVertexDragSession({
+        ...meta,
+        pointerId: event.pointerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startPolygon: planModel.houseFootprintPolygon ?? [],
+      });
+    },
+    [canEditFootprint, planModel],
+  );
+
+  const handleFootprintEdgeAdd = useCallback(
+    async (edgeIndex: number) => {
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'orthogonal_polygon') return;
+      const polygon = planModel.houseFootprintPolygon ?? [];
+      if (polygon.length < 4) return;
+      const start = polygon[edgeIndex];
+      const end = polygon[(edgeIndex + 1) % polygon.length];
+      if (!start || !end) return;
+      const next = [...polygon];
+      next.splice(edgeIndex + 1, 0, {
+        alongM: formatPolygonMetres((parsePolygonMetres(start.alongM) + parsePolygonMetres(end.alongM)) / 2),
+        depthM: formatPolygonMetres((parsePolygonMetres(start.depthM) + parsePolygonMetres(end.depthM)) / 2),
+      });
+      await commitFootprintEdit({ type: 'polygon', polygon: next });
+    },
+    [canEditFootprint, commitFootprintEdit, planModel],
+  );
+
+  const handleFootprintVertexDelete = useCallback(
+    async (vertexIndex: number) => {
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'orthogonal_polygon') return;
+      const polygon = planModel.houseFootprintPolygon ?? [];
+      if (polygon.length <= 4 || vertexIndex < 0 || vertexIndex >= polygon.length) return;
+      await commitFootprintEdit({ type: 'polygon', polygon: polygon.filter((_, index) => index !== vertexIndex) });
+    },
+    [canEditFootprint, commitFootprintEdit, planModel],
   );
 
   const handlePlanFieldDragStart = useCallback(
@@ -386,6 +500,7 @@ export default function ModelSpaceViewport({
     const handlePointerEnd = (event: PointerEvent) => {
       if (event.pointerId !== footprintDragSession.pointerId) return;
       setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
       setFootprintActiveHandleId(null);
       setFootprintHoveredHandleId(null);
       setFootprintContextHovered(false);
@@ -401,6 +516,52 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
   }, [commitFootprintEdit, footprintDragSession, onCommitFootprintEdit]);
+
+  useEffect(() => {
+    if (!footprintVertexDragSession || !onCommitFootprintEdit) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== footprintVertexDragSession.pointerId) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+
+      const deltaSvgX = nextPoint.x - footprintVertexDragSession.startSvgX;
+      const deltaSvgY = nextPoint.y - footprintVertexDragSession.startSvgY;
+      const deltaAlongM =
+        (deltaSvgX * footprintVertexDragSession.alongAxisX + deltaSvgY * footprintVertexDragSession.alongAxisY) /
+        Math.max(footprintVertexDragSession.scale, 0.001);
+      const deltaDepthM =
+        (deltaSvgX * footprintVertexDragSession.depthAxisX + deltaSvgY * footprintVertexDragSession.depthAxisY) /
+        Math.max(footprintVertexDragSession.scale, 0.001);
+      const startPoint = footprintVertexDragSession.startPolygon[footprintVertexDragSession.vertexIndex];
+      if (!startPoint) return;
+      const nextPolygon = moveOrthogonalPolygonVertex(
+        footprintVertexDragSession.startPolygon,
+        footprintVertexDragSession.vertexIndex,
+        snapHouseFootprintValue(parsePolygonMetres(startPoint.alongM) + deltaAlongM),
+        snapHouseFootprintValue(parsePolygonMetres(startPoint.depthM) + deltaDepthM),
+      );
+      void commitFootprintEdit({ type: 'polygon', polygon: nextPolygon });
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== footprintVertexDragSession.pointerId) return;
+      setFootprintVertexDragSession(null);
+      setFootprintContextHovered(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [commitFootprintEdit, footprintVertexDragSession, onCommitFootprintEdit]);
 
   useEffect(() => {
     if (!planFieldDragSession || !onCommitField) return;
@@ -476,7 +637,11 @@ export default function ModelSpaceViewport({
       onAttachmentSideSelect: (side) => void handleFootprintAttachmentSideSelect(side),
       onHandleHover: (handleId) => setFootprintHoveredHandleId(handleId),
       onHandleDragStart: handleFootprintDragStart,
+      onVertexDragStart: handleFootprintVertexDragStart,
+      onVertexDelete: (vertexIndex) => void handleFootprintVertexDelete(vertexIndex),
+      onEdgeAdd: (edgeIndex) => void handleFootprintEdgeAdd(edgeIndex),
       onPresetSelect: (preset) => void handleFootprintPresetSelect(preset),
+      onModeSelect: (mode) => void handleFootprintModeSelect(mode),
       onRotate: (delta) => void handleFootprintRotate(delta),
       onSvgMount: (node) => {
         footprintSvgRef.current = node;
@@ -491,8 +656,12 @@ export default function ModelSpaceViewport({
     footprintHoveredHandleId,
     handleFootprintAttachmentSideSelect,
     handleFootprintDragStart,
+    handleFootprintEdgeAdd,
+    handleFootprintModeSelect,
     handleFootprintPresetSelect,
     handleFootprintRotate,
+    handleFootprintVertexDelete,
+    handleFootprintVertexDragStart,
   ]);
 
   const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
@@ -519,6 +688,7 @@ export default function ModelSpaceViewport({
   const planStats = planViewModel
     ? `${planViewModel.primarySize.lengthA?.toFixed(1) ?? '?'}m x ${planViewModel.primarySize.spanA?.toFixed(1) ?? '?'}m`
     : null;
+  const houseFootprintMode = planModel?.houseFootprintMode ?? 'preset';
 
   return (
     <section className={styles.viewport} aria-label={`${view === 'plan' ? 'Plan' : 'Section'} model space viewport`} style={moduleDrawingThemeCssVariables('model')}>
@@ -538,6 +708,39 @@ export default function ModelSpaceViewport({
         </div>
 
         <div className={styles.toolbarGroup}>
+          {canEditFootprint && planModel ? (
+            <>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>House footprint mode</span>
+                <select
+                  className={styles.select}
+                  value={houseFootprintMode}
+                  onChange={(event) => void handleFootprintModeSelect(event.target.value as NonNullable<Required<ModulePlanModel>['houseFootprintMode']>)}
+                >
+                  <option value="preset">Preset</option>
+                  <option value="orthogonal_polygon">Edit outline</option>
+                </select>
+              </label>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>House footprint</span>
+                <select
+                  className={styles.select}
+                  value={planModel.houseFootprintPreset}
+                  disabled={houseFootprintMode === 'orthogonal_polygon'}
+                  onChange={(event) => void handleFootprintPresetSelect(event.target.value as NonNullable<ModulePlanModel['houseFootprintPreset']>)}
+                >
+                  <option value="straight">Straight</option>
+                  <option value="l_left">L left</option>
+                  <option value="l_right">L right</option>
+                  <option value="recess_left">Recess left</option>
+                  <option value="recess_right">Recess right</option>
+                  <option value="u_shape">U shape</option>
+                  <option value="wrap_left">Wrap left</option>
+                  <option value="wrap_right">Wrap right</option>
+                </select>
+              </label>
+            </>
+          ) : null}
           <button type="button" className={styles.toolbarButton} onClick={() => handleZoomChange(-0.2)}>
             Zoom out
           </button>

@@ -9,6 +9,7 @@ import {
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
 import { buildRawGeometryModuleInput } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
+import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
 import { buildLegacyModulePlanModelFromGeometry } from '@/lib/drawings/views/plan/buildLegacyModulePlanModelFromGeometry';
 import { buildLegacyModuleSectionModelFromGeometry } from '@/lib/drawings/views/section/buildLegacyModuleSectionModelFromGeometry';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
@@ -47,6 +48,7 @@ export type DrawingWorkbenchStore = {
 
 function buildGeometryDerivedModels(input: {
   drawingModule: EstimateDrawingModule;
+  moduleInput: EstimateDrawingModule['input'];
 }): {
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
@@ -56,7 +58,7 @@ function buildGeometryDerivedModels(input: {
     estimateId: 'hidden-workbench-estimate',
     designRequestId: null,
     moduleId: input.drawingModule.id,
-    module: input.drawingModule.input,
+    module: input.moduleInput,
     result: input.drawingModule.result,
   });
   const normalized = normalizeGeometryConfig(rawInput);
@@ -80,12 +82,12 @@ function buildGeometryDerivedModels(input: {
   return {
     planModel: buildLegacyModulePlanModelFromGeometry({
       geometryPlan,
-      module: input.drawingModule.input,
+      module: input.moduleInput,
       fallbackMetadata: input.drawingModule.planModel,
     }),
     sectionModel: buildLegacyModuleSectionModelFromGeometry({
       geometrySection,
-      module: input.drawingModule.input,
+      module: input.moduleInput,
       fallbackMetadata: input.drawingModule.sectionModel,
     }),
   };
@@ -103,14 +105,16 @@ export function buildDrawingWorkbenchStore(input: {
   const ui = normalizeDrawingWorkbenchUiState(input.ui, drawingModules.length);
   const modules = drawingModules.map((drawingModule, index) => {
     const label = input.moduleLabels?.[index] ?? drawingModule.label;
+    const geometryModule = coerceHiddenWorkbenchGableBaseline(drawingModule.input);
     const geometryModels = buildGeometryDerivedModels({
       drawingModule,
+      moduleInput: geometryModule,
     });
     const assemblyModel = buildAssemblyModel({
       id: drawingModule.id,
       label,
       moduleIndex: index,
-      moduleInput: drawingModule.input,
+      moduleInput: geometryModule,
       moduleResult: drawingModule.result,
       planModel: geometryModels.planModel,
       sectionModel: geometryModels.sectionModel,

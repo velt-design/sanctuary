@@ -5,7 +5,6 @@ import type {
   BoxGutterMode,
   DatumFrame3,
   GeometryConfig,
-  HouseReferenceGeometry,
   Line3,
   Plane3,
   Point3,
@@ -21,6 +20,7 @@ import {
   planeFromOriginAxes,
   scaleVector,
 } from './math3d';
+import { buildHouseReferenceGeometry } from './houseModel';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
 type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
@@ -104,28 +104,6 @@ function requireProfile(profile: AssemblyMemberProfile | null): AssemblyMemberPr
     return profile;
   }
   return null;
-}
-
-function buildHouseReferenceGeometry(input: {
-  config: GeometryConfig;
-  attachmentEdge: Line3 | null;
-}): HouseReferenceGeometry {
-  const wallPlane: Plane3 = planeFromOriginAxes(
-    input.config.datum.origin,
-    input.config.datum.xAxis,
-    input.config.datum.zAxis,
-  );
-
-  return {
-    wallPlane: {
-      ...wallPlane,
-      normal: { x: 0, y: -1, z: 0 },
-    },
-    fasciaLine: input.config.connection.type === 'fascia' ? input.attachmentEdge : null,
-    roofEdgeLine: input.attachmentEdge,
-    soffitDepthMm: input.config.houseContext.soffitDepthMm ?? null,
-    footprint: input.config.houseContext.footprint ?? null,
-  };
 }
 
 type BoxStructuralInput = {

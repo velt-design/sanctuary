@@ -1,6 +1,6 @@
 import type { RoofType } from '@sp/costing';
-import type { GeometrySectionMember2D, GeometrySectionViewModel } from '@sp/geometry';
-import type { ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { GeometrySectionMember2D, GeometrySectionViewModel, Line2, Polygon2 } from '@sp/geometry';
+import type { ModuleSectionHouseContext, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   normalizeAttachmentSide,
@@ -11,6 +11,43 @@ import {
 function roofTypeFromGeometry(geometrySection: GeometrySectionViewModel): RoofType {
   if (geometrySection.family === 'gable') return 'gable';
   return 'pitched';
+}
+
+function pointToMetres(point: { x: number; y: number }): { x: number; y: number } {
+  return {
+    x: Number((point.x / 1000).toFixed(6)),
+    y: Number((point.y / 1000).toFixed(6)),
+  };
+}
+
+function lineToMetres(line: Line2): { start: { x: number; y: number }; end: { x: number; y: number } } {
+  return {
+    start: pointToMetres(line.start),
+    end: pointToMetres(line.end),
+  };
+}
+
+function polygonToMetres(polygon: Polygon2): Array<{ x: number; y: number }> {
+  return polygon.map(pointToMetres);
+}
+
+function buildHouseContext(geometrySection: GeometrySectionViewModel): ModuleSectionHouseContext | null {
+  const surfaces = (geometrySection.house.surfaces ?? []).map((surface) => ({
+    id: surface.id,
+    kind: surface.kind,
+    boundary: polygonToMetres(surface.boundary),
+  }));
+  const lines = (geometrySection.house.lines ?? []).map((line) => ({
+    id: line.id,
+    kind: line.kind,
+    line: lineToMetres(line.line),
+  }));
+
+  if (!surfaces.length && !lines.length) {
+    return null;
+  }
+
+  return { surfaces, lines };
 }
 
 function attachmentSideFromModule(module: CalculatorModuleInputs): ModuleSectionModel['attachmentSide'] {
@@ -110,5 +147,6 @@ export function buildLegacyModuleSectionModelFromGeometry(input: {
     ridgeHeightM:
       geometrySection.metrics.ridgeHeightMm === null ? null : Number((geometrySection.metrics.ridgeHeightMm / 1000).toFixed(6)),
     boxRiseM: geometrySection.metrics.boxRiseMm === null ? null : Number((geometrySection.metrics.boxRiseMm / 1000).toFixed(6)),
+    houseContext: buildHouseContext(geometrySection),
   };
 }

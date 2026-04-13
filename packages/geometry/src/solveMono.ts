@@ -5,9 +5,7 @@ import type {
   ConnectionType,
   DatumFrame3,
   GeometryConfig,
-  HouseReferenceGeometry,
   Line3,
-  Plane3,
   Point3,
   RoofCladdingPanel3D,
   RoofPlane3D,
@@ -15,6 +13,7 @@ import type {
 } from './contracts';
 import { crossProduct, lineDirection, lineLength, magnitude, normalizeVector, planeFromOriginAxes, polygonArea, scaleVector } from './math3d';
 import { parseAssemblyMemberProfile, resolveAssemblyMemberProfileAnchors } from './profiles';
+import { buildHouseReferenceGeometry } from './houseModel';
 import type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
 
 type SolveAssembly3DFailure = Extract<SolveAssembly3DResult, { ok: false }>;
@@ -102,38 +101,6 @@ function profileFaceY(profile: AssemblyMemberProfile, face: 'backFaceY' | 'front
 
 function profileFaceZ(profile: AssemblyMemberProfile, face: 'undersideZ' | 'topsideZ' | 'roofBearingFaceZ'): number {
   return resolveAssemblyMemberProfileAnchors(profile)[face];
-}
-
-function buildHouseReferenceGeometry(input: {
-  config: GeometryConfig;
-  attachmentEdge: Line3 | null;
-}): HouseReferenceGeometry {
-  if (input.config.connection.type === 'freestanding') {
-    return {
-      wallPlane: null,
-      fasciaLine: null,
-      roofEdgeLine: null,
-      soffitDepthMm: input.config.houseContext.soffitDepthMm ?? null,
-      footprint: input.config.houseContext.footprint ?? null,
-    };
-  }
-
-  const wallPlane: Plane3 = planeFromOriginAxes(
-    input.config.datum.origin,
-    input.config.datum.xAxis,
-    input.config.datum.zAxis,
-  );
-
-  return {
-    wallPlane: {
-      ...wallPlane,
-      normal: { x: 0, y: -1, z: 0 },
-    },
-    fasciaLine: input.config.connection.type === 'fascia' ? input.attachmentEdge : null,
-    roofEdgeLine: input.attachmentEdge,
-    soffitDepthMm: input.config.houseContext.soffitDepthMm ?? null,
-    footprint: input.config.houseContext.footprint ?? null,
-  };
 }
 
 type MonoStructuralInput = {

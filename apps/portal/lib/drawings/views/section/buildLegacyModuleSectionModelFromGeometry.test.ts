@@ -131,6 +131,13 @@ describe('buildLegacyModuleSectionModelFromGeometry', () => {
     expect(sectionModel.leftEdgeHeightM).toBe(2.4);
     expect(sectionModel.rightEdgeHeightM).toBe(2.1);
     expect(sectionModel.pitchDeg).toBeCloseTo(5, 2);
+    expect(sectionModel.houseContext?.surfaces.map((surface) => surface.kind)).toEqual(
+      expect.arrayContaining(['wall', 'roof', 'soffit', 'fascia']),
+    );
+    expect(sectionModel.houseContext?.lines.map((line) => line.kind)).toEqual(
+      expect.arrayContaining(['house_reference', 'gutter', 'attachment_target']),
+    );
+    expect(sectionModel.houseContext?.surfaces.find((surface) => surface.kind === 'wall')?.boundary.some((point) => point.y >= 2.4)).toBe(true);
   });
 
   it('takes geometric section fields from the geometry projection instead of fallback metadata', () => {

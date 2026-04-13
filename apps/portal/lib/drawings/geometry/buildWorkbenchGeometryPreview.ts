@@ -16,6 +16,7 @@ import {
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
+import { coerceHiddenWorkbenchGableBaseline } from './hiddenWorkbenchGableBaseline';
 import { solveActiveGeometryModuleResult } from './solveActiveGeometryModuleResult';
 
 export type GeometryPreviewMode = 'snapshot_validated' | 'draft_local_resolved';
@@ -75,6 +76,7 @@ export function buildWorkbenchGeometryPreview(input: {
       message: 'The selected module is not available for 3D geometry preview.',
     };
   }
+  const geometryModule = coerceHiddenWorkbenchGableBaseline(module);
 
   const moduleResult =
     previewMode === 'draft_local_resolved'
@@ -99,7 +101,7 @@ export function buildWorkbenchGeometryPreview(input: {
     estimateId: input.estimateId,
     designRequestId: input.designRequestId ?? null,
     moduleId: `module-${input.moduleIndex + 1}`,
-    module,
+    module: geometryModule,
     result: moduleResult.moduleResult,
   });
 

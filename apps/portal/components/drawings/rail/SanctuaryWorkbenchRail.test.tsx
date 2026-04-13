@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { GeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import SanctuaryWorkbenchRail from './SanctuaryWorkbenchRail';
 
-function makeGeometryState(overrides: Partial<GeometryEditState> = {}): GeometryEditState {
+function makeGeometryState(
+  overrides: Partial<Omit<GeometryEditState, 'houseContext'>> & {
+    houseContext?: Partial<GeometryEditState['houseContext']>;
+  } = {},
+): GeometryEditState {
   const base: GeometryEditState = {
     family: 'mono',
     config: {} as GeometryEditState['config'],
@@ -24,6 +28,9 @@ function makeGeometryState(overrides: Partial<GeometryEditState> = {}): Geometry
       canEditFootprint: true,
       footprintPreset: 'straight',
       footprintParams: {
+        widthM: '',
+        offsetXM: '0',
+        setbackM: '0',
         bandDepthM: '1.8',
         returnRunM: '2.4',
         recessWidthM: '2.4',
@@ -33,6 +40,17 @@ function makeGeometryState(overrides: Partial<GeometryEditState> = {}): Geometry
         sideRunM: '2.4',
       },
       drawingRotationQuarterTurns: 1,
+      attachmentStrategy: 'auto',
+      storeyMode: 'single_storey',
+      eaveHeightM: '2.4',
+      wallHeightM: '2.4',
+      roofPitchDeg: '25',
+      soffitDepthMm: '450',
+      fasciaHeightMm: '180',
+      gutterWidthMm: '125',
+      gutterDepthMm: '90',
+      gutterProjectionMm: '125',
+      eaveOverhangMm: '450',
     },
     supports: {
       postConnectionType: 'slab_anchors',
@@ -72,6 +90,17 @@ function makeGeometryState(overrides: Partial<GeometryEditState> = {}): Geometry
   };
 }
 
+function selectMarkup(markup: string, label: string): string {
+  const marker = `aria-label="${label}"`;
+  const markerIndex = markup.indexOf(marker);
+  if (markerIndex < 0) {
+    throw new Error(`Missing select: ${label}`);
+  }
+  const start = markup.lastIndexOf('<select', markerIndex);
+  const end = markup.indexOf('</select>', markerIndex);
+  return markup.slice(start, end);
+}
+
 describe('SanctuaryWorkbenchRail', () => {
   it('renders only the curated Sanctuary sections and hides calculator sprawl', () => {
     const markup = renderToStaticMarkup(
@@ -91,6 +120,13 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('Box perimeter');
     expect(markup).toContain('Roof material');
     expect(markup).toContain('House connection');
+    expect(markup).toContain('Attachment strategy');
+    expect(markup).toContain('Storey mode');
+    expect(markup).toContain('Eave height (m)');
+    expect(markup).toContain('Fascia height (mm)');
+    expect(markup).toContain('House width (m)');
+    expect(markup).toContain('House offset X (m)');
+    expect(markup).toContain('Facade setback (m)');
     expect(markup).toContain('Post count');
     expect(markup).toContain('Overrides');
     expect(markup).toContain('Ledger override');
@@ -132,7 +168,71 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('disabled=""');
   });
 
-  it('shows gable-only overrides and the locked gable baseline when the family is gable', () => {
+  it('renders separate house attachment strategy and effective default values', () => {
+    const markup = renderToStaticMarkup(
+      <SanctuaryWorkbenchRail
+        moduleLabel="M1 - Mono"
+        geometryState={makeGeometryState({
+          houseContext: {
+            attachmentStrategy: 'auto',
+            storeyMode: 'single_storey',
+            eaveHeightM: '2.4',
+            wallHeightM: '2.4',
+            roofPitchDeg: '25',
+            soffitDepthMm: '450',
+            fasciaHeightMm: '180',
+            gutterWidthMm: '125',
+            gutterDepthMm: '90',
+            gutterProjectionMm: '125',
+            eaveOverhangMm: '450',
+          },
+        })}
+        view="plan"
+        onCommitGeometryEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(selectMarkup(markup, 'House connection')).toContain('value="fascia"');
+    expect(selectMarkup(markup, 'Attachment strategy')).toContain('value="auto"');
+    expect(selectMarkup(markup, 'Attachment strategy')).toContain('value="fascia_under_gutter"');
+    expect(selectMarkup(markup, 'Storey mode')).toContain('value="single_storey"');
+    expect(markup).toContain('aria-label="Eave height (m)"');
+    expect(markup).toContain('value="2.4"');
+    expect(markup).toContain('aria-label="Soffit depth (mm)"');
+    expect(markup).toContain('value="450"');
+    expect(markup).toContain('aria-label="Gutter projection (mm)"');
+    expect(markup).toContain('aria-label="House width (m)"');
+    expect(markup).toContain('aria-label="House offset X (m)"');
+    expect(markup).toContain('aria-label="Facade setback (m)"');
+    expect(markup).toContain('Blank matches the pergola length.');
+  });
+
+  it('disables house model controls for freestanding modules', () => {
+    const markup = renderToStaticMarkup(
+      <SanctuaryWorkbenchRail
+        moduleLabel="M1 - Mono"
+        geometryState={makeGeometryState({
+          connection: {
+            type: 'freestanding',
+            attachmentSide: 'rear',
+          },
+          houseContext: {
+            canEditFootprint: true,
+          },
+        })}
+        view="plan"
+        onCommitGeometryEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(selectMarkup(markup, 'Attachment strategy')).toContain('disabled=""');
+    expect(selectMarkup(markup, 'Storey mode')).toContain('disabled=""');
+    expect(markup).toContain('aria-label="Eave height (m)"');
+    expect(markup).toContain('disabled=""');
+    expect(markup).toContain('aria-label="House width (m)"');
+  });
+
+  it('shows gable-only overrides and editable attached gable end frames', () => {
     const markup = renderToStaticMarkup(
       <SanctuaryWorkbenchRail
         moduleLabel="M2 - Gable"
@@ -158,7 +258,13 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('Gable end frames');
     expect(markup).toContain('House-side eave gutter');
     expect(markup).toContain('Outer-side eave gutter');
-    expect(markup).toContain('This workbench currently supports the standard gable baseline only.');
+    expect(markup).toContain('End frames are editable. Eave gutter modes are constrained to the supported gable baseline.');
+    expect(selectMarkup(markup, 'Gable end frames')).not.toContain('disabled=""');
+    expect(selectMarkup(markup, 'Gable end frames')).toContain('value="none"');
+    expect(selectMarkup(markup, 'Gable end frames')).toContain('value="outer_end_only"');
+    expect(selectMarkup(markup, 'Gable end frames')).toContain('value="both_ends"');
+    expect(selectMarkup(markup, 'House-side eave gutter')).toContain('disabled=""');
+    expect(selectMarkup(markup, 'Outer-side eave gutter')).toContain('disabled=""');
     expect(markup).toContain('Tie beam override');
     expect(markup).toContain('King-post strut override');
     expect(markup).not.toContain('Box perimeter beam override');
@@ -187,5 +293,11 @@ describe('SanctuaryWorkbenchRail', () => {
 
     expect(markup).toContain('value="our"');
     expect(markup).toContain('Gable Baseline');
+    expect(selectMarkup(markup, 'Gable end frames')).not.toContain('disabled=""');
+    expect(selectMarkup(markup, 'Gable end frames')).toContain('value="none"');
+    expect(selectMarkup(markup, 'Gable end frames')).toContain('value="both_ends"');
+    expect(selectMarkup(markup, 'Gable end frames')).not.toContain('value="outer_end_only"');
+    expect(selectMarkup(markup, 'House-side eave gutter')).toContain('disabled=""');
+    expect(selectMarkup(markup, 'Outer-side eave gutter')).toContain('disabled=""');
   });
 });

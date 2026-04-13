@@ -1,5 +1,6 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import {
   isPrimaryFlashingLengthAutoLinked,
   normalizeFlashingsStateForUi,
@@ -12,6 +13,7 @@ import {
 } from './drawingSheet';
 import type {
   CalculatorFlashingsState,
+  CalculatorHouseAttachmentStrategy,
   CalculatorInputs,
   CalculatorModuleInputs,
   CalculatorModuleOverrides,
@@ -22,9 +24,14 @@ import {
   migrateLegacyCalculatorInputsToV2,
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
+  type CalculatorHouseStoreyMode,
+  type CalculatorHouseFootprintMode,
   type CalculatorHouseFootprintParams,
+  type CalculatorHouseFootprintPolygonPoint,
 } from '@/lib/types/calculator';
 
 type AnyRecord = Record<string, unknown>;
@@ -86,6 +93,10 @@ export type EstimateDrawingFieldApplyResult =
 
 export type EstimateDrawingFootprintEdit =
   | {
+      type: 'mode';
+      mode: CalculatorHouseFootprintMode;
+    }
+  | {
       type: 'preset';
       preset: CalculatorModuleInputs['houseFootprintPreset'];
     }
@@ -101,6 +112,10 @@ export type EstimateDrawingFootprintEdit =
       type: 'param';
       key: keyof CalculatorHouseFootprintParams;
       value: string;
+    }
+  | {
+      type: 'polygon';
+      polygon: CalculatorHouseFootprintPolygonPoint[];
     };
 
 export type EstimateDrawingModuleFieldEdit =
@@ -183,6 +198,17 @@ export type EditableModuleFieldKey =
   | 'houseConnectionType'
   | 'postConnectionType'
   | 'ground'
+  | 'houseStoreyMode'
+  | 'houseAttachmentStrategy'
+  | 'houseEaveHeightM'
+  | 'houseWallHeightM'
+  | 'houseRoofPitchDeg'
+  | 'houseSoffitDepthMm'
+  | 'houseFasciaHeightMm'
+  | 'houseGutterWidthMm'
+  | 'houseGutterDepthMm'
+  | 'houseGutterProjectionMm'
+  | 'houseEaveOverhangMm'
   | 'boxGutterHouseEdge'
   | 'boxGutterFarEdge'
   | 'downpipeCount'
@@ -229,6 +255,41 @@ function normalizePitchInput(value: string): string {
   const parsed = Number.parseFloat(value);
   const rounded = Math.round(parsed * 10) / 10;
   return rounded.toFixed(1).replace(/\.?0+$/, '') || '0';
+}
+
+function seedHouseFootprintPolygon(module: CalculatorModuleInputs): CalculatorHouseFootprintPolygonPoint[] {
+  const lengthM = Number.parseFloat(module.lengthM);
+  const projectionM = Number.parseFloat(module.projectionM);
+  const points = buildHouseFootprintPresetSideLocalPoints({
+    pergolaWidthMm: Number.isFinite(lengthM) && lengthM > 0 ? Math.round(lengthM * 1000) : 6000,
+    pergolaDepthMm: Number.isFinite(projectionM) && projectionM > 0 ? Math.round(projectionM * 1000) : 3000,
+    preset: normalizeHouseFootprintPreset(module.houseFootprintPreset),
+    params: normalizeHouseFootprintParams(module.houseFootprintParams),
+    attachmentSide: normalizeAttachmentSide(module.attachmentSide),
+  });
+  return points.map((point) => ({
+    alongM: normalizeLengthInput(String(point.alongM)),
+    depthM: normalizeLengthInput(String(point.depthM)),
+  }));
+}
+
+function resolveHouseFootprintDimensionMm(value: string, fallbackMm: number): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 1000) : fallbackMm;
+}
+
+function validateHouseFootprintPolygonEdit(
+  module: CalculatorModuleInputs,
+  polygon: CalculatorHouseFootprintPolygonPoint[],
+): { ok: true } | { ok: false; error: string } {
+  const validation = buildCustomHouseFootprintPolygon({
+    pergolaWidthMm: resolveHouseFootprintDimensionMm(module.lengthM, 6000),
+    pergolaDepthMm: resolveHouseFootprintDimensionMm(module.projectionM, 3000),
+    polygon,
+    params: normalizeHouseFootprintParams(module.houseFootprintParams),
+    attachmentSide: normalizeAttachmentSide(module.attachmentSide),
+  });
+  return validation.ok ? { ok: true } : { ok: false, error: validation.error };
 }
 
 function isPortalPergolaStyle(value: unknown): value is CalculatorModuleInputs['pergolaStyle'] {
@@ -285,6 +346,39 @@ function isBoxGutter(value: unknown): value is CalculatorModuleInputs['boxGutter
 
 function isOverhangSupportBeamProfile(value: unknown): value is CalculatorModuleInputs['overhangSupportBeamProfile'] {
   return value === '150x50' || value === '200x50' || value === 'RHS 150x50x3';
+}
+
+function isHouseStoreyMode(value: unknown): value is CalculatorHouseStoreyMode {
+  return value === 'single_storey' || value === 'double_storey' || value === 'custom';
+}
+
+function isHouseAttachmentStrategy(value: unknown): value is CalculatorHouseAttachmentStrategy {
+  return (
+    value === 'soffit_brackets' ||
+    value === 'fascia_under_gutter' ||
+    value === 'facade_ledger' ||
+    value === 'post_supported_tieback' ||
+    value === 'none'
+  );
+}
+
+function normalizeNumericOverrideInput(
+  value: unknown,
+  options: { positive: boolean; unitLabel: string },
+): { ok: true; value: string | null } | { ok: false; error: string } {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return { ok: true, value: null };
+  const parsed = Number(trimmed);
+  const valid = Number.isFinite(parsed) && (options.positive ? parsed > 0 : parsed >= 0);
+  if (!valid) {
+    return {
+      ok: false,
+      error: options.positive
+        ? `Enter a positive ${options.unitLabel} value.`
+        : `Enter a ${options.unitLabel} value of 0 or more.`,
+    };
+  }
+  return { ok: true, value: trimmed };
 }
 
 function normalizeOverrideValue(value: string | undefined): string | undefined {
@@ -409,6 +503,42 @@ function setDraftModuleField(
       if (!isHouseConnectionType(value)) return { ok: false, error: 'Choose a supported house connection.' };
       updated.houseConnectionType = value;
       break;
+    case 'houseStoreyMode':
+      if (!isHouseStoreyMode(value)) return { ok: false, error: 'Choose a supported house storey mode.' };
+      updated.houseStoreyMode = value;
+      break;
+    case 'houseAttachmentStrategy':
+      if (value === 'auto' || String(value ?? '').trim() === '') {
+        delete updated.houseAttachmentStrategy;
+      } else {
+        if (!isHouseAttachmentStrategy(value)) return { ok: false, error: 'Choose a supported house attachment strategy.' };
+        updated.houseAttachmentStrategy = value;
+      }
+      break;
+    case 'houseEaveHeightM':
+    case 'houseWallHeightM': {
+      const normalized = normalizeNumericOverrideInput(value, { positive: true, unitLabel: 'metre' });
+      if (!normalized.ok) return normalized;
+      if (normalized.value === null) delete updatedRecord[key];
+      else updatedRecord[key] = normalized.value;
+      break;
+    }
+    case 'houseRoofPitchDeg':
+    case 'houseSoffitDepthMm':
+    case 'houseFasciaHeightMm':
+    case 'houseGutterWidthMm':
+    case 'houseGutterDepthMm':
+    case 'houseGutterProjectionMm':
+    case 'houseEaveOverhangMm': {
+      const normalized = normalizeNumericOverrideInput(value, {
+        positive: false,
+        unitLabel: key === 'houseRoofPitchDeg' ? 'degree' : 'millimetre',
+      });
+      if (!normalized.ok) return normalized;
+      if (normalized.value === null) delete updatedRecord[key];
+      else updatedRecord[key] = normalized.value;
+      break;
+    }
     case 'postConnectionType':
       if (!isPostConnectionType(value)) return { ok: false, error: 'Choose a supported post connection.' };
       updated.postConnectionType = value;
@@ -824,6 +954,12 @@ export function applyEstimateDrawingFootprintEdit(input: {
   if (!module) return { ok: false, error: 'This drawing footprint no longer maps to a module input.' };
 
   switch (input.edit.type) {
+    case 'mode':
+      module.houseFootprintMode = normalizeHouseFootprintMode(input.edit.mode) as CalculatorModuleInputs['houseFootprintMode'];
+      if (module.houseFootprintMode === 'orthogonal_polygon' && !normalizeHouseFootprintPolygon(module.houseFootprintPolygon).length) {
+        module.houseFootprintPolygon = seedHouseFootprintPolygon(module) as CalculatorModuleInputs['houseFootprintPolygon'];
+      }
+      return { ok: true, draft: nextDraft };
     case 'preset':
       module.houseFootprintPreset = normalizeHouseFootprintPreset(input.edit.preset) as CalculatorModuleInputs['houseFootprintPreset'];
       return { ok: true, draft: nextDraft };
@@ -840,6 +976,14 @@ export function applyEstimateDrawingFootprintEdit(input: {
         ...normalizeHouseFootprintParams(module.houseFootprintParams),
         [input.edit.key]: input.edit.value,
       };
+      return { ok: true, draft: nextDraft };
+    case 'polygon':
+      {
+        const nextPolygon = normalizeHouseFootprintPolygon(input.edit.polygon);
+        const validation = validateHouseFootprintPolygonEdit(module, nextPolygon);
+        if (!validation.ok) return validation;
+        module.houseFootprintPolygon = nextPolygon as CalculatorModuleInputs['houseFootprintPolygon'];
+      }
       return { ok: true, draft: nextDraft };
     default:
       return { ok: false, error: 'Unsupported footprint edit.' };

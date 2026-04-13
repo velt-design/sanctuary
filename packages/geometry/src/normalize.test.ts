@@ -72,6 +72,9 @@ function makeRawInput(overrides: Partial<RawGeometryModuleInput> = {}): RawGeome
     houseContext: {
       footprintPreset: 'straight',
       footprintParams: {
+        widthM: '',
+        offsetXM: '0',
+        setbackM: '0',
         bandDepthM: '1.8',
         returnRunM: '2.4',
         recessWidthM: '2.4',
@@ -360,11 +363,11 @@ describe('normalizeGeometryConfig', () => {
         }),
         structural: expect.objectContaining({
           profiles: expect.objectContaining({
-            boxPerimeter: {
+            boxPerimeter: expect.objectContaining({
               shape: 'rectangular',
               widthMm: 50,
               depthMm: 300,
-            },
+            }),
           }),
           drainage: expect.objectContaining({
             gutterAssemblyMode: 'integrated',
@@ -393,6 +396,8 @@ describe('normalizeGeometryConfig', () => {
         },
         houseContext: expect.objectContaining({
           footprint: null,
+          model: null,
+          attachmentStrategy: 'none',
         }),
         structural: expect.objectContaining({
           profiles: expect.objectContaining({
@@ -401,6 +406,108 @@ describe('normalizeGeometryConfig', () => {
         }),
       }),
     });
+  });
+
+  it('adds deterministic default house model context for attached modules', () => {
+    const result = normalizeGeometryConfig(makeRawInput());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.attachmentStrategy).toBe('soffit_brackets');
+    expect(result.value.houseContext.model).toEqual({
+      footprint: result.value.houseContext.footprint,
+      storeyMode: 'single_storey',
+      wallConstruction: 'timber_frame',
+      roofForm: 'hipped',
+      eaveHeightMm: 2400,
+      wallHeightMm: 2400,
+      roofPitchDeg: 25,
+      attachmentStrategy: 'soffit_brackets',
+      eave: {
+        soffitDepthMm: 450,
+        fasciaHeightMm: 180,
+        gutterWidthMm: 125,
+        gutterDepthMm: 90,
+        gutterProjectionMm: 125,
+        eaveOverhangMm: 450,
+      },
+    });
+  });
+
+  it('maps existing house connection types into first-class house attachment strategies', () => {
+    const cases = [
+      { raw: 'soffit' as const, expectedConnection: 'soffit' as const, expectedStrategy: 'soffit_brackets' as const },
+      { raw: 'fascia' as const, expectedConnection: 'fascia' as const, expectedStrategy: 'fascia_under_gutter' as const },
+      { raw: 'facade' as const, expectedConnection: 'wall' as const, expectedStrategy: 'facade_ledger' as const },
+      { raw: 'wall' as const, expectedConnection: 'wall' as const, expectedStrategy: 'facade_ledger' as const },
+      { raw: 'none' as const, expectedConnection: 'freestanding' as const, expectedStrategy: 'none' as const },
+    ];
+
+    for (const testCase of cases) {
+      const result = normalizeGeometryConfig(
+        makeRawInput({
+          connection: {
+            houseConnectionType: testCase.raw,
+            attachmentSide: 'rear',
+          },
+        }),
+      );
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.value.connection.type).toBe(testCase.expectedConnection);
+      expect(result.value.houseContext.attachmentStrategy).toBe(testCase.expectedStrategy);
+      expect(result.value.houseContext.model?.attachmentStrategy ?? 'none').toBe(testCase.expectedStrategy);
+    }
+  });
+
+  it('uses raw house model overrides when provided', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        houseContext: {
+          storeyMode: 'double_storey',
+          wallConstruction: 'timber_frame',
+          roofForm: 'hipped',
+          attachmentStrategy: 'post_supported_tieback',
+          eaveHeightM: '3.1',
+          wallHeightM: '5.8',
+          roofPitchDeg: '30',
+          eave: {
+            soffitDepthMm: 600,
+            fasciaHeightMm: 240,
+            gutterWidthMm: 150,
+            gutterDepthMm: 100,
+            gutterProjectionMm: 160,
+            eaveOverhangMm: 550,
+          },
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.attachmentStrategy).toBe('post_supported_tieback');
+    expect(result.value.houseContext.model).toEqual(
+      expect.objectContaining({
+        storeyMode: 'double_storey',
+        wallConstruction: 'timber_frame',
+        roofForm: 'hipped',
+        eaveHeightMm: 3100,
+        wallHeightMm: 5800,
+        roofPitchDeg: 30,
+        attachmentStrategy: 'post_supported_tieback',
+        eave: {
+          soffitDepthMm: 600,
+          fasciaHeightMm: 240,
+          gutterWidthMm: 150,
+          gutterDepthMm: 100,
+          gutterProjectionMm: 160,
+          eaveOverhangMm: 550,
+        },
+      }),
+    );
   });
 
   it('returns unsupported_family for unsupported pergola styles', () => {
@@ -509,6 +616,9 @@ describe('normalizeGeometryConfig', () => {
           houseContext: {
             footprintPreset: preset,
             footprintParams: {
+              widthM: '',
+              offsetXM: '0',
+              setbackM: '0',
               bandDepthM: '1.8',
               returnRunM: '2.4',
               recessWidthM: '2.4',
@@ -525,6 +635,9 @@ describe('normalizeGeometryConfig', () => {
           houseContext: {
             footprintPreset: preset,
             footprintParams: {
+              widthM: '',
+              offsetXM: '0',
+              setbackM: '0',
               bandDepthM: '1.8',
               returnRunM: '2.4',
               recessWidthM: '2.4',
@@ -546,12 +659,354 @@ describe('normalizeGeometryConfig', () => {
     }
   });
 
+  it('keeps the rear default straight house footprint unchanged', () => {
+    const result = normalizeGeometryConfig(makeRawInput());
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.footprint).toEqual([
+      { x: 0, y: -1800, z: 0 },
+      { x: 6000, y: -1800, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ]);
+    expect(result.value.houseContext.model?.footprint).toEqual(result.value.houseContext.footprint);
+  });
+
+  it('applies parametric house footprint width, offset, and facade setback to the normalized model footprint', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        houseContext: {
+          footprintPreset: 'straight',
+          footprintParams: {
+            widthM: '8',
+            offsetXM: '-1',
+            setbackM: '0.4',
+            bandDepthM: '2',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.footprint).toEqual([
+      { x: -1000, y: -2400, z: 0 },
+      { x: 7000, y: -2400, z: 0 },
+      { x: 7000, y: -400, z: 0 },
+      { x: -1000, y: -400, z: 0 },
+    ]);
+    expect(result.value.houseContext.model?.footprint).toEqual(result.value.houseContext.footprint);
+  });
+
+  it('places front-side house footprints outside the selected front attachment edge', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        connection: {
+          houseConnectionType: 'soffit',
+          attachmentSide: 'front',
+        },
+        houseContext: {
+          footprintPreset: 'straight',
+          footprintParams: {
+            widthM: '8',
+            offsetXM: '-1',
+            setbackM: '0.4',
+            bandDepthM: '2',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.footprint).toEqual([
+      { x: -1000, y: 5400, z: 0 },
+      { x: 7000, y: 5400, z: 0 },
+      { x: 7000, y: 3400, z: 0 },
+      { x: -1000, y: 3400, z: 0 },
+    ]);
+    expect(result.value.houseContext.model?.footprint).toEqual(result.value.houseContext.footprint);
+  });
+
+  it('uses projection as the default footprint width for side attachment footprints', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        connection: {
+          houseConnectionType: 'soffit',
+          attachmentSide: 'left',
+        },
+        houseContext: {
+          footprintPreset: 'straight',
+          footprintParams: {
+            widthM: '',
+            offsetXM: '0',
+            setbackM: '0',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.footprint).toEqual([
+      { x: -1800, y: 0, z: 0 },
+      { x: -1800, y: 3000, z: 0 },
+      { x: 0, y: 3000, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ]);
+  });
+
+  it('applies custom side footprint width, offset, and setback along the selected edge', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        connection: {
+          houseConnectionType: 'soffit',
+          attachmentSide: 'right',
+        },
+        houseContext: {
+          footprintPreset: 'straight',
+          footprintParams: {
+            widthM: '2',
+            offsetXM: '0.5',
+            setbackM: '0.3',
+            bandDepthM: '1.2',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.footprint).toEqual([
+      { x: 7500, y: 500, z: 0 },
+      { x: 7500, y: 2500, z: 0 },
+      { x: 6300, y: 2500, z: 0 },
+      { x: 6300, y: 500, z: 0 },
+    ]);
+  });
+
+  it('normalizes custom orthogonal house footprint polygons in the selected-side frame', () => {
+    const polygon = [
+      { alongM: '0', depthM: '2.4' },
+      { alongM: '6', depthM: '2.4' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '3.6', depthM: '0' },
+      { alongM: '3.6', depthM: '1.2' },
+      { alongM: '0', depthM: '1.2' },
+    ];
+    const rear = normalizeGeometryConfig(
+      makeRawInput({
+        houseContext: {
+          footprintMode: 'orthogonal_polygon',
+          footprintPolygon: polygon,
+          footprintParams: {
+            widthM: '',
+            offsetXM: '0.5',
+            setbackM: '0.3',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+    const front = normalizeGeometryConfig(
+      makeRawInput({
+        connection: { houseConnectionType: 'soffit', attachmentSide: 'front' },
+        houseContext: {
+          footprintMode: 'orthogonal_polygon',
+          footprintPolygon: polygon,
+          footprintParams: {
+            widthM: '',
+            offsetXM: '0.5',
+            setbackM: '0.3',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+    const left = normalizeGeometryConfig(
+      makeRawInput({
+        connection: { houseConnectionType: 'soffit', attachmentSide: 'left' },
+        houseContext: {
+          footprintMode: 'orthogonal_polygon',
+          footprintPolygon: polygon,
+          footprintParams: {
+            widthM: '',
+            offsetXM: '0.5',
+            setbackM: '0.3',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+    const right = normalizeGeometryConfig(
+      makeRawInput({
+        connection: { houseConnectionType: 'soffit', attachmentSide: 'right' },
+        houseContext: {
+          footprintMode: 'orthogonal_polygon',
+          footprintPolygon: polygon,
+          footprintParams: {
+            widthM: '',
+            offsetXM: '0.5',
+            setbackM: '0.3',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+        },
+      }),
+    );
+
+    expect(rear.ok).toBe(true);
+    expect(front.ok).toBe(true);
+    expect(left.ok).toBe(true);
+    expect(right.ok).toBe(true);
+    if (!rear.ok || !front.ok || !left.ok || !right.ok) return;
+
+    expect(rear.value.houseContext.footprint).toEqual([
+      { x: 500, y: -1500, z: 0 },
+      { x: 500, y: -2700, z: 0 },
+      { x: 6500, y: -2700, z: 0 },
+      { x: 6500, y: -300, z: 0 },
+      { x: 4100, y: -300, z: 0 },
+      { x: 4100, y: -1500, z: 0 },
+    ]);
+    expect(front.value.houseContext.footprint?.map((point) => point.y)).toEqual([4500, 5700, 5700, 3300, 3300, 4500]);
+    expect(front.value.houseContext.model?.footprint).toEqual(front.value.houseContext.footprint);
+    expect(left.value.houseContext.footprint).toEqual([
+      { x: -1500, y: 500, z: 0 },
+      { x: -2700, y: 500, z: 0 },
+      { x: -2700, y: 6500, z: 0 },
+      { x: -300, y: 6500, z: 0 },
+      { x: -300, y: 4100, z: 0 },
+      { x: -1500, y: 4100, z: 0 },
+    ]);
+    expect(right.value.houseContext.footprint).toEqual([
+      { x: 7500, y: 500, z: 0 },
+      { x: 8700, y: 500, z: 0 },
+      { x: 8700, y: 6500, z: 0 },
+      { x: 6300, y: 6500, z: 0 },
+      { x: 6300, y: 4100, z: 0 },
+      { x: 7500, y: 4100, z: 0 },
+    ]);
+  });
+
+  it('rejects invalid custom footprint polygons using the existing normalize error shape', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        houseContext: {
+          footprintMode: 'orthogonal_polygon',
+          footprintPolygon: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '3', depthM: '1' },
+            { alongM: '3', depthM: '0' },
+            { alongM: '0', depthM: '1' },
+          ],
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('invalid_numeric_input');
+    expect(result.error).toContain('90-degree');
+  });
+
+  it('clamps dependent footprint preset dimensions against the resolved house width', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        houseContext: {
+          footprintPreset: 'recess_left',
+          footprintParams: {
+            widthM: '3',
+            offsetXM: '0',
+            setbackM: '0',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '9',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '9',
+          },
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.value.houseContext.footprint).toEqual([
+      { x: 0, y: -3000, z: 0 },
+      { x: 3000, y: -3000, z: 0 },
+      { x: 3000, y: 0, z: 0 },
+      { x: 2500, y: 0, z: 0 },
+      { x: 2500, y: -1200, z: 0 },
+      { x: 0, y: -1200, z: 0 },
+    ]);
+  });
+
   it('falls back to default footprint parameters when preset params are invalid or missing', () => {
     const withBadParams = normalizeGeometryConfig(
       makeRawInput({
         houseContext: {
           footprintPreset: 'recess_left',
           footprintParams: {
+            widthM: '',
+            offsetXM: 'bad',
+            setbackM: '-1',
             bandDepthM: '-2',
             returnRunM: '',
             recessWidthM: 'bad',

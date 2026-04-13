@@ -14,6 +14,33 @@ function getFixtureSnapshot(slug: 'mono-standard' | 'gable-standard' | 'box-stan
   return fixture.snapshot;
 }
 
+function makeStaleGableSnapshot(
+  snapshot: Record<string, unknown>,
+  overrides: { houseConnectionType?: 'none' | 'soffit' | 'fascia' | 'facade' } = {},
+) {
+  const stale = structuredClone(snapshot) as {
+    inputs?: {
+      modules?: Array<{
+        houseConnectionType?: string;
+        gableEndFramesMode?: string;
+        gableHouseEdgeGutter?: string;
+        gableOuterEdgeGutter?: string;
+      }>;
+    };
+  };
+  const module = stale.inputs?.modules?.[0];
+  if (!module) {
+    throw new Error('Expected fixture snapshot module.');
+  }
+  module.gableEndFramesMode = 'none';
+  if (overrides.houseConnectionType) {
+    module.houseConnectionType = overrides.houseConnectionType;
+  }
+  module.gableHouseEdgeGutter = 'house';
+  module.gableOuterEdgeGutter = 'our';
+  return stale as Record<string, unknown>;
+}
+
 describe('geometryEditAdapter', () => {
   it('builds geometry-backed edit state from the effective draft snapshot', () => {
     const snapshot = getFixtureSnapshot('mono-standard');
@@ -72,10 +99,10 @@ describe('geometryEditAdapter', () => {
     if (!result.ok) return;
     expect(result.draft.inputs.modules[0]?.pergolaStyle).toBe('gable');
     expect(result.draft.inputs.modules[0]?.boxPerimeterEnabled).toBe(false);
-    expect(result.draft.inputs.modules[0]?.gableEndFramesMode).toBe('none');
+    expect(result.draft.inputs.modules[0]?.gableEndFramesMode).toBe('outer_end_only');
     expect(result.draft.inputs.modules[0]?.gableHouseEdgeGutter).toBe('house');
     expect(result.draft.inputs.modules[0]?.gableOuterEdgeGutter).toBe('our');
-    expect(result.draft.inputs.modules[0]?.overrides?.ridgeBeamProfile).toBe('150x50');
+    expect(result.draft.inputs.modules[0]?.overrides?.ridgeBeamProfile ?? '').toBe('');
   });
 
   it('coerces freestanding family switches onto the supported gable baseline', () => {
@@ -108,7 +135,7 @@ describe('geometryEditAdapter', () => {
 
     expect(gableResult.ok).toBe(true);
     if (!gableResult.ok) return;
-    expect(gableResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('none');
+    expect(gableResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('both_ends');
     expect(gableResult.draft.inputs.modules[0]?.gableHouseEdgeGutter).toBe('our');
     expect(gableResult.draft.inputs.modules[0]?.gableOuterEdgeGutter).toBe('our');
   });
@@ -181,6 +208,137 @@ describe('geometryEditAdapter', () => {
     expect(nextState.value.houseContext.footprintPreset).toBe('u_shape');
   });
 
+  it('applies house footprint size and placement params and reflects moved normalized context', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const edits = [
+      { key: 'widthM', value: '8' },
+      { key: 'offsetXM', value: '-1' },
+      { key: 'setbackM', value: '0.4' },
+    ] as const;
+
+    let nextDraft = draft;
+    for (const edit of edits) {
+      const result = applyGeometryEditIntent({
+        snapshot,
+        draft: nextDraft,
+        moduleIndex: 0,
+        intent: {
+          type: 'footprint_param',
+          key: edit.key,
+          value: edit.value,
+        },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      nextDraft = result.draft;
+    }
+
+    expect(nextDraft.inputs.modules[0]?.houseFootprintParams).toEqual(
+      expect.objectContaining({
+        widthM: '8',
+        offsetXM: '-1',
+        setbackM: '0.4',
+      }),
+    );
+
+    const nextState = buildGeometryEditState({
+      snapshot,
+      draft: nextDraft,
+      moduleIndex: 0,
+    });
+    expect(nextState.ok).toBe(true);
+    if (!nextState.ok) return;
+
+    expect(nextState.value.houseContext.footprintParams).toEqual(
+      expect.objectContaining({
+        widthM: '8',
+        offsetXM: '-1',
+        setbackM: '0.4',
+      }),
+    );
+    expect(nextState.value.config.houseContext.footprint?.[0]).toEqual({ x: -1000, y: -2200, z: 0 });
+    expect(nextState.value.config.houseContext.model?.footprint?.[2]).toEqual({ x: 7000, y: -400, z: 0 });
+  });
+
+  it('applies custom orthogonal footprint mode and polygon edits into normalized context', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const modeResult = applyGeometryEditIntent({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'footprint_mode',
+        value: 'orthogonal_polygon',
+      },
+    });
+    expect(modeResult.ok).toBe(true);
+    if (!modeResult.ok) return;
+    expect(modeResult.draft.inputs.modules[0]?.houseFootprintMode).toBe('orthogonal_polygon');
+    expect(modeResult.draft.inputs.modules[0]?.houseFootprintPolygon?.length).toBeGreaterThanOrEqual(4);
+
+    const polygon = [
+      { alongM: '0', depthM: '2.4' },
+      { alongM: '6', depthM: '2.4' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '3', depthM: '0' },
+      { alongM: '3', depthM: '1.2' },
+      { alongM: '0', depthM: '1.2' },
+    ];
+    const polygonResult = applyGeometryEditIntent({
+      snapshot,
+      draft: modeResult.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'footprint_polygon',
+        polygon,
+      },
+    });
+    expect(polygonResult.ok).toBe(true);
+    if (!polygonResult.ok) return;
+
+    const nextState = buildGeometryEditState({
+      snapshot,
+      draft: polygonResult.draft,
+      moduleIndex: 0,
+    });
+    expect(nextState.ok).toBe(true);
+    if (!nextState.ok) return;
+    expect(nextState.value.houseContext.footprintMode).toBe('orthogonal_polygon');
+    expect(nextState.value.houseContext.footprintPolygon).toEqual(polygon);
+    expect(nextState.value.config.houseContext.footprint).toContainEqual({ x: 3000, y: -1200, z: 0 });
+  });
+
+  it('rejects invalid custom orthogonal footprint polygon edits before persisting the draft', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const result = applyGeometryEditIntent({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'footprint_polygon',
+        polygon: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '3', depthM: '1' },
+          { alongM: '3', depthM: '0' },
+          { alongM: '0', depthM: '1' },
+        ],
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.message).toContain('90-degree');
+  });
+
   it('returns no geometry intent for unsupported field targets', () => {
     const unsupportedField: EstimateDrawingField = {
       id: 'meta:note',
@@ -224,8 +382,135 @@ describe('geometryEditAdapter', () => {
     expect(nextState.value.overrides.ledgerProfile).toBe('100x50');
   });
 
+  it('applies house config edits and reflects normalized house model values', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const edits = [
+      { key: 'houseAttachmentStrategy', value: 'fascia_under_gutter' },
+      { key: 'houseStoreyMode', value: 'double_storey' },
+      { key: 'houseEaveHeightM', value: '3' },
+      { key: 'houseWallHeightM', value: '2.7' },
+      { key: 'houseRoofPitchDeg', value: '30' },
+      { key: 'houseSoffitDepthMm', value: '600' },
+      { key: 'houseFasciaHeightMm', value: '240' },
+      { key: 'houseGutterWidthMm', value: '150' },
+      { key: 'houseGutterDepthMm', value: '100' },
+      { key: 'houseGutterProjectionMm', value: '135' },
+      { key: 'houseEaveOverhangMm', value: '650' },
+    ] as const;
+
+    let nextDraft = draft;
+    for (const edit of edits) {
+      const result = applyGeometryEditIntent({
+        snapshot,
+        draft: nextDraft,
+        moduleIndex: 0,
+        intent: {
+          type: 'house_config',
+          key: edit.key,
+          value: edit.value,
+        },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      nextDraft = result.draft;
+    }
+
+    expect(nextDraft.inputs.modules[0]).toEqual(
+      expect.objectContaining({
+        houseAttachmentStrategy: 'fascia_under_gutter',
+        houseStoreyMode: 'double_storey',
+        houseEaveHeightM: '3',
+        houseWallHeightM: '2.7',
+        houseRoofPitchDeg: '30',
+        houseSoffitDepthMm: '600',
+        houseFasciaHeightMm: '240',
+        houseGutterWidthMm: '150',
+        houseGutterDepthMm: '100',
+        houseGutterProjectionMm: '135',
+        houseEaveOverhangMm: '650',
+      }),
+    );
+
+    const nextState = buildGeometryEditState({
+      snapshot,
+      draft: nextDraft,
+      moduleIndex: 0,
+    });
+    expect(nextState.ok).toBe(true);
+    if (!nextState.ok) return;
+    expect(nextState.value.houseContext.attachmentStrategy).toBe('fascia_under_gutter');
+    expect(nextState.value.houseContext.storeyMode).toBe('double_storey');
+    expect(nextState.value.houseContext.eaveHeightM).toBe('3');
+    expect(nextState.value.houseContext.wallHeightM).toBe('2.7');
+    expect(nextState.value.houseContext.roofPitchDeg).toBe('30');
+    expect(nextState.value.config.houseContext.model?.eaveHeightMm).toBe(3000);
+    expect(nextState.value.config.houseContext.model?.eave?.fasciaHeightMm).toBe(240);
+
+    const clearHeight = applyGeometryEditIntent({
+      snapshot,
+      draft: nextDraft,
+      moduleIndex: 0,
+      intent: {
+        type: 'house_config',
+        key: 'houseEaveHeightM',
+        value: '',
+      },
+    });
+    expect(clearHeight.ok).toBe(true);
+    if (!clearHeight.ok) return;
+    expect(clearHeight.draft.inputs.modules[0]?.houseEaveHeightM).toBeUndefined();
+
+    const clearStrategy = applyGeometryEditIntent({
+      snapshot,
+      draft: clearHeight.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'house_config',
+        key: 'houseAttachmentStrategy',
+        value: 'auto',
+      },
+    });
+    expect(clearStrategy.ok).toBe(true);
+    if (!clearStrategy.ok) return;
+    expect(clearStrategy.draft.inputs.modules[0]?.houseAttachmentStrategy).toBeUndefined();
+
+    const clearedState = buildGeometryEditState({
+      snapshot,
+      draft: clearStrategy.draft,
+      moduleIndex: 0,
+    });
+    expect(clearedState.ok).toBe(true);
+    if (!clearedState.ok) return;
+    expect(clearedState.value.houseContext.attachmentStrategy).toBe('auto');
+    expect(clearedState.value.houseContext.eaveHeightM).not.toBe('3');
+    expect(clearedState.value.config.houseContext.attachmentStrategy).toBe('soffit_brackets');
+  });
+
   it('exposes supported gable baseline values in geometry edit state', () => {
     const snapshot = getFixtureSnapshot('gable-standard');
+    const result = buildGeometryEditState({
+      snapshot,
+      moduleIndex: 0,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.family).toBe('gable');
+    expect(result.value.gable).toEqual({
+      endFramesMode: 'outer_end_only',
+      houseEaveGutterMode: 'house',
+      outerEaveGutterMode: 'our',
+    });
+  });
+
+  it('preserves explicit attached gable no-frame edit state while constraining gutters', () => {
+    const snapshot = makeStaleGableSnapshot(getFixtureSnapshot('gable-standard'), {
+      houseConnectionType: 'soffit',
+    });
+
     const result = buildGeometryEditState({
       snapshot,
       moduleIndex: 0,
@@ -239,5 +524,134 @@ describe('geometryEditAdapter', () => {
       houseEaveGutterMode: 'house',
       outerEaveGutterMode: 'our',
     });
+  });
+
+  it('preserves explicit freestanding gable no-frame edit state while constraining gutters', () => {
+    const snapshot = makeStaleGableSnapshot(getFixtureSnapshot('gable-standard'), {
+      houseConnectionType: 'none',
+    });
+
+    const result = buildGeometryEditState({
+      snapshot,
+      moduleIndex: 0,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.family).toBe('gable');
+    expect(result.value.gable).toEqual({
+      endFramesMode: 'none',
+      houseEaveGutterMode: 'our',
+      outerEaveGutterMode: 'our',
+    });
+  });
+
+  it('edits attached gable end frames across the supported values', () => {
+    const snapshot = getFixtureSnapshot('gable-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const noneResult = applyGeometryEditIntent({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'none',
+      },
+    });
+
+    expect(noneResult.ok).toBe(true);
+    if (!noneResult.ok) return;
+    expect(noneResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('none');
+
+    const outerResult = applyGeometryEditIntent({
+      snapshot,
+      draft: noneResult.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'outer_end_only',
+      },
+    });
+
+    expect(outerResult.ok).toBe(true);
+    if (!outerResult.ok) return;
+    expect(outerResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('outer_end_only');
+
+    const bothResult = applyGeometryEditIntent({
+      snapshot,
+      draft: outerResult.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'both_ends',
+      },
+    });
+
+    expect(bothResult.ok).toBe(true);
+    if (!bothResult.ok) return;
+    expect(bothResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('both_ends');
+  });
+
+  it('edits freestanding gable end frames only within the supported values', () => {
+    const snapshot = getFixtureSnapshot('gable-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const freestandingResult = applyGeometryEditIntent({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'house_connection',
+        value: 'freestanding',
+      },
+    });
+
+    expect(freestandingResult.ok).toBe(true);
+    if (!freestandingResult.ok) return;
+
+    const noneResult = applyGeometryEditIntent({
+      snapshot,
+      draft: freestandingResult.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'none',
+      },
+    });
+
+    expect(noneResult.ok).toBe(true);
+    if (!noneResult.ok) return;
+    expect(noneResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('none');
+
+    const bothResult = applyGeometryEditIntent({
+      snapshot,
+      draft: noneResult.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'both_ends',
+      },
+    });
+
+    expect(bothResult.ok).toBe(true);
+    if (!bothResult.ok) return;
+    expect(bothResult.draft.inputs.modules[0]?.gableEndFramesMode).toBe('both_ends');
+
+    const outerResult = applyGeometryEditIntent({
+      snapshot,
+      draft: bothResult.draft,
+      moduleIndex: 0,
+      intent: {
+        type: 'gable_end_frames',
+        value: 'outer_end_only',
+      },
+    });
+
+    expect(outerResult.ok).toBe(false);
+    if (outerResult.ok) return;
+    expect(outerResult.message).toContain('Freestanding gable supports None or Both ends only.');
   });
 });

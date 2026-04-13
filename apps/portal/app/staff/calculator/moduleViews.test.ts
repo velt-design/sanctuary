@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1, RoofType } from '@sp/costing';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { CalculatorHouseFootprintParams, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { attachmentSideQuarterTurns, buildHouseFootprintLocalLayout, buildModulePlanModel, buildModuleSectionModel } from './moduleViews';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -49,8 +49,11 @@ function makeResult(params: {
   } as unknown as CostOutputV1;
 }
 
-function makeFootprintParams(overrides: Partial<Record<'bandDepthM' | 'returnRunM' | 'recessWidthM' | 'recessDepthM' | 'leftLegRunM' | 'rightLegRunM' | 'sideRunM', string>> = {}) {
+function makeFootprintParams(overrides: Partial<Record<keyof CalculatorHouseFootprintParams, string>> = {}) {
   return {
+    widthM: '',
+    offsetXM: '0',
+    setbackM: '0',
     bandDepthM: '1.8',
     returnRunM: '2.4',
     recessWidthM: '2.4',
@@ -260,6 +263,29 @@ describe('buildModulePlanModel', () => {
     const mirroredLeft = left.polygon.map((point) => ({ x: 6 - point.x, y: point.y }));
 
     expect(normalizePoints(mirroredLeft)).toEqual(normalizePoints(right.polygon));
+  });
+
+  it('applies house width, offset, and facade setback to local footprint layout and handles', () => {
+    const layout = buildHouseFootprintLocalLayout({
+      pergolaWidthM: 6,
+      pergolaDepthM: 5,
+      preset: 'straight',
+      params: makeFootprintParams({
+        widthM: '8',
+        offsetXM: '-1',
+        setbackM: '0.4',
+        bandDepthM: '2',
+      }),
+    });
+
+    expect(layout.polygon).toEqual([
+      { x: -1, y: -2.4 },
+      { x: 7, y: -2.4 },
+      { x: 7, y: -0.4 },
+      { x: -1, y: -0.4 },
+    ]);
+    expect(layout.handles.find((handle) => handle.id === 'bandDepth')?.point).toEqual({ x: 3, y: -2.4 });
+    expect(layout.edges.find((edge) => edge.id === 'bandDepth')?.end).toEqual({ x: 7, y: -2.4 });
   });
 
   it('builds recess presets as true front-opening notches aligned to the chosen side', () => {

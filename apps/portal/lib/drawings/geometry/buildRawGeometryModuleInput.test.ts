@@ -46,6 +46,9 @@ function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): Calculator
     drawingRotationQuarterTurns: 0,
     houseFootprintPreset: 'l_left',
     houseFootprintParams: {
+      widthM: '',
+      offsetXM: '0',
+      setbackM: '0',
       bandDepthM: '1.8',
       returnRunM: '2.4',
       recessWidthM: '2.4',
@@ -145,6 +148,8 @@ describe('buildRawGeometryModuleInput', () => {
           supportBeam: null,
           gutter: null,
           ridge: null,
+          tieBeam: '150x50',
+          strut: '50x50',
           boxPerimeter: null,
         },
         framing: {
@@ -160,6 +165,11 @@ describe('buildRawGeometryModuleInput', () => {
       },
       houseContext: expect.objectContaining({
         footprintPreset: 'l_left',
+        footprintParams: expect.objectContaining({
+          widthM: '',
+          offsetXM: '0',
+          setbackM: '0',
+        }),
       }),
       dimensions: {
         lengthM: '6',
@@ -210,6 +220,124 @@ describe('buildRawGeometryModuleInput', () => {
       outerEaveGutter: 'our',
     });
     expect(raw.structural?.profiles?.ridge).toBe('150x50');
+    expect(raw.structural?.profiles?.tieBeam).toBe('150x50');
+    expect(raw.structural?.profiles?.strut).toBe('50x50');
+  });
+
+  it('maps house model override fields into raw house context', () => {
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        houseStoreyMode: 'double_storey',
+        houseAttachmentStrategy: 'fascia_under_gutter',
+        houseEaveHeightM: '3.0',
+        houseWallHeightM: '2.7',
+        houseRoofPitchDeg: '30',
+        houseSoffitDepthMm: '600',
+        houseFasciaHeightMm: '240',
+        houseGutterWidthMm: '150',
+        houseGutterDepthMm: '100',
+        houseGutterProjectionMm: '135',
+        houseEaveOverhangMm: '650',
+      }),
+      result: makeResult(),
+    });
+
+    expect(raw.houseContext).toEqual(
+      expect.objectContaining({
+        footprintPreset: 'l_left',
+        storeyMode: 'double_storey',
+        attachmentStrategy: 'fascia_under_gutter',
+        eaveHeightM: '3.0',
+        wallHeightM: '2.7',
+        roofPitchDeg: '30',
+        eave: {
+          soffitDepthMm: '600',
+          fasciaHeightMm: '240',
+          gutterWidthMm: '150',
+          gutterDepthMm: '100',
+          gutterProjectionMm: '135',
+          eaveOverhangMm: '650',
+        },
+      }),
+    );
+  });
+
+  it('maps house footprint size and placement params into raw house context', () => {
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        houseFootprintParams: {
+          widthM: '8',
+          offsetXM: '-1',
+          setbackM: '0.4',
+          bandDepthM: '2',
+          returnRunM: '2.4',
+          recessWidthM: '2.4',
+          recessDepthM: '1.2',
+          leftLegRunM: '2.4',
+          rightLegRunM: '2.4',
+          sideRunM: '2.4',
+        },
+        houseFootprintMode: 'orthogonal_polygon',
+        houseFootprintPolygon: [
+          { alongM: '0', depthM: '2.4' },
+          { alongM: '8', depthM: '2.4' },
+          { alongM: '8', depthM: '0' },
+          { alongM: '0', depthM: '0' },
+        ],
+      }),
+      result: makeResult(),
+    });
+
+    expect(raw.houseContext.footprintMode).toBe('orthogonal_polygon');
+    expect(raw.houseContext.footprintPolygon).toEqual([
+      { alongM: '0', depthM: '2.4' },
+      { alongM: '8', depthM: '2.4' },
+      { alongM: '8', depthM: '0' },
+      { alongM: '0', depthM: '0' },
+    ]);
+    expect(raw.houseContext.footprintParams).toEqual(
+      expect.objectContaining({
+        widthM: '8',
+        offsetXM: '-1',
+        setbackM: '0.4',
+      }),
+    );
+  });
+
+  it('resolves a non-persisted default ridge profile for gable Auto state', () => {
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        pergolaStyle: 'gable',
+        roofMaterial: 'timber',
+        overrides: {},
+      }),
+      result: makeResult({
+        slope_direction: 'away_from_house',
+      }),
+    });
+
+    expect(raw.structural?.profiles?.ridge).toBe('150x50');
+
+    const explicit = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        pergolaStyle: 'gable',
+        roofMaterial: 'timber',
+        overrides: { ridgeBeamProfile: '200x50' },
+      }),
+      result: makeResult({
+        slope_direction: 'away_from_house',
+      }),
+    });
+
+    expect(explicit.structural?.profiles?.ridge).toBe('200x50');
   });
 
   it('maps box modules with the box flag and box-specific derived pitch override', () => {
@@ -321,6 +449,8 @@ describe('buildRawGeometryModuleInput', () => {
         supportBeam: '150x50',
         gutter: '150x50',
         ridge: null,
+        tieBeam: '150x50',
+        strut: '50x50',
         boxPerimeter: null,
       },
       framing: {
@@ -333,6 +463,29 @@ describe('buildRawGeometryModuleInput', () => {
         integratedGutterBeam: true,
         hasOurGutter: true,
       },
+    });
+  });
+
+  it('tolerates partial costing results without normalized inputs', () => {
+    const result = makeResult({
+      gutter_assembly_mode: 'integrated',
+      integrated_gutter_beam: true,
+      has_our_gutter: true,
+    }) as CostOutputV1;
+    delete (result as Partial<CostOutputV1>).inputs_normalized;
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule(),
+      result,
+    });
+
+    expect(raw.structural?.drainage).toEqual({
+      gutterType: null,
+      gutterAssemblyMode: 'integrated',
+      integratedGutterBeam: true,
+      hasOurGutter: true,
     });
   });
 

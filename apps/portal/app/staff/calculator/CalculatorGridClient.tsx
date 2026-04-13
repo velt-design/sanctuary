@@ -35,6 +35,7 @@ import type {
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
+  DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
   isCalculatorInputsV2,
   isLegacyCalculatorInputsV1,
@@ -43,7 +44,9 @@ import {
   normalizeAttachmentSide,
   normalizeBlindsState,
   normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
   supportsHouseFootprints,
 } from '@/lib/types/calculator';
@@ -1224,8 +1227,10 @@ function makeDefaultModule(pergolaId = 'pergola-1'): CalculatorModuleInputs {
     houseConnectionType: 'soffit',
     attachmentSide: DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
     drawingRotationQuarterTurns: DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
+    houseFootprintMode: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE,
     houseFootprintPreset: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
     houseFootprintParams: makeDefaultHouseFootprintParams(),
+    houseFootprintPolygon: [],
     postConnectionType: 'deck_bracket',
     ground: 'easy',
 
@@ -1581,8 +1586,10 @@ function normalizeModuleForUi(value: unknown): CalculatorModuleInputs {
       ? DEFAULT_CALCULATOR_ATTACHMENT_SIDE
       : normalizeAttachmentSide(source.attachmentSide);
   merged.drawingRotationQuarterTurns = normalizeDrawingRotationQuarterTurns(source.drawingRotationQuarterTurns);
+  merged.houseFootprintMode = normalizeHouseFootprintMode(source.houseFootprintMode);
   merged.houseFootprintPreset = normalizeHouseFootprintPreset(source.houseFootprintPreset);
   merged.houseFootprintParams = normalizeHouseFootprintParams(source.houseFootprintParams);
+  merged.houseFootprintPolygon = normalizeHouseFootprintPolygon(source.houseFootprintPolygon);
   merged.flashings = normalizeFlashingsStateForUi((source as any).flashings, merged);
   merged.infills = normalizeInfillsStateForUi((source as any).infills);
 
@@ -5631,6 +5638,30 @@ export default function CalculatorGridClient({
             value: activeHouseFootprintParams.bandDepthM,
             onChange: (v) => setHouseFootprintParam('bandDepthM', String(v)),
             helperText: 'Depth of the main hatched house band.',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'houseFootprintWidthM',
+            label: 'House width (m)',
+            type: 'number',
+            value: activeHouseFootprintParams.widthM,
+            onChange: (v) => setHouseFootprintParam('widthM', String(v)),
+            helperText: 'Blank matches the pergola length.',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'houseFootprintOffsetXM',
+            label: 'House offset X (m)',
+            type: 'number',
+            value: activeHouseFootprintParams.offsetXM,
+            onChange: (v) => setHouseFootprintParam('offsetXM', String(v)),
+            helperText: 'Negative values extend left of the pergola.',
+          } satisfies FieldSchemaItem,
+          {
+            id: 'houseFootprintSetbackM',
+            label: 'Facade setback (m)',
+            type: 'number',
+            value: activeHouseFootprintParams.setbackM,
+            onChange: (v) => setHouseFootprintParam('setbackM', String(v)),
+            helperText: 'Visual house context only; pergola attachment stays fixed.',
           } satisfies FieldSchemaItem,
           ...((activeHouseFootprintPreset === 'l_left' || activeHouseFootprintPreset === 'l_right')
             ? [

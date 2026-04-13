@@ -133,6 +133,13 @@ describe('buildLegacyModulePlanModelFromGeometry', () => {
     expect(planModel.attachmentEdgeLengthM).toBe(6);
     expect(planModel.drawingRotationQuarterTurns).toBe(2);
     expect(planModel.houseFootprintPreset).toBe('straight');
+    expect(planModel.houseContext?.surfaces.map((surface) => surface.kind)).toEqual(
+      expect.arrayContaining(['footprint', 'roof', 'soffit', 'fascia']),
+    );
+    expect(planModel.houseContext?.lines.map((line) => line.kind)).toEqual(
+      expect.arrayContaining(['wall_segment', 'gutter', 'attachment_target']),
+    );
+    expect(planModel.houseContext?.surfaces.find((surface) => surface.kind === 'footprint')?.boundary[0]).toEqual({ x: 0, y: -1.8 });
   });
 
   it('takes geometric fields from the geometry projection instead of fallback metadata', () => {

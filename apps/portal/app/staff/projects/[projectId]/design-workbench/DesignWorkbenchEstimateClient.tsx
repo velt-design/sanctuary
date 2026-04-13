@@ -44,7 +44,7 @@ export default function DesignWorkbenchEstimateClient({
   siteAddress,
   backHref,
 }: DesignWorkbenchEstimateClientProps) {
-  const [ui, setUi] = useState(() => createDrawingWorkbenchUiState());
+  const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
   const baseDraft = useMemo(() => buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot), [estimate.calculatorSnapshot]);
   const drawingWorkingCopy = useLocalWorkingCopy<EstimateDrawingDraft | null>(
     buildEstimateDrawingDraftEntityKey(estimate.id),

@@ -53,13 +53,9 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Fixture Preview');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
-    clickButtonByText(rendered.container, '3D View');
-    await act(async () => {
-      await Promise.resolve();
-    });
-
     expect(rendered.container.textContent).toContain('Workspace panel');
     expect(rendered.container.textContent).not.toContain('Inspection');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
     clickButtonByText(rendered.container, 'Workspace panel');
     expect(rendered.container.textContent).toContain('Snapshot Validated');
     expect(rendered.container.textContent).toContain('Inspection');
@@ -67,7 +63,6 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Datum axes');
     expect(rendered.container.textContent).toContain('Measurement');
     expect(rendered.container.textContent).toContain('Enable measurement');
-    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Model Space');
     await act(async () => {

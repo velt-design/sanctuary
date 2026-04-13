@@ -210,11 +210,9 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).not.toContain('Flashings');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
-    clickButtonByText(rendered.container, '3D View');
-    await flushAsyncWork();
-
     expect(rendered.container.textContent).toContain('Workspace panel');
     expect(rendered.container.textContent).not.toContain('Inspection');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
     clickButtonByText(rendered.container, 'Workspace panel');
     expect(rendered.container.textContent).toContain('Snapshot Validated');
     expect(rendered.container.textContent).toContain('Inspection');
@@ -222,7 +220,6 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Datum axes');
     expect(rendered.container.textContent).toContain('Measurement');
     expect(rendered.container.textContent).toContain('Enable measurement');
-    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
@@ -369,9 +366,6 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(rendered.container.textContent).toContain('3D Preview Resolved Locally');
 
-    clickButtonByText(rendered.container, '3D View');
-    await flushAsyncWork();
-
     clickButtonByText(rendered.container, 'Workspace panel');
     expect(rendered.container.textContent).toContain('Draft Resolved Locally');
     expect(rendered.container.textContent).toContain('Inspection');
@@ -465,6 +459,8 @@ describe('DesignWorkbenchEstimateClient', () => {
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
 
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Sheet View');
     await flushAsyncWork();
 
     expect(rendered.container.textContent).toContain('Draft overlay note for hidden route');

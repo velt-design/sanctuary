@@ -3,7 +3,14 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import * as geometryModule from '@sp/geometry';
 import * as legacyGeometryModule from '@sp/geometry/legacy';
-import type { Assembly3D, GeometryConfig, ViewerSceneModel } from '@sp/geometry';
+import type {
+  Assembly3D,
+  GeometryConfig,
+  HouseAttachmentTarget3D,
+  HouseModel3D,
+  HouseModelConfig,
+  ViewerSceneModel,
+} from '@sp/geometry';
 import type { LegacyAssemblyModel, LegacyGeometryConfig } from '@sp/geometry/legacy';
 
 const monoConfig: GeometryConfig = {
@@ -296,6 +303,91 @@ const boxConfig: GeometryConfig = {
   },
 };
 
+const houseModelConfig: HouseModelConfig = {
+  footprint: [
+    { x: 0, y: -1800, z: 0 },
+    { x: 6000, y: -1800, z: 0 },
+    { x: 6000, y: 0, z: 0 },
+    { x: 0, y: 0, z: 0 },
+  ],
+  storeyMode: 'single_storey',
+  wallConstruction: 'timber_frame',
+  roofForm: 'hipped',
+  eaveHeightMm: 2700,
+  wallHeightMm: 2700,
+  roofPitchDeg: 25,
+  attachmentStrategy: 'fascia_under_gutter',
+  eave: {
+    soffitDepthMm: 450,
+    fasciaHeightMm: 180,
+    gutterWidthMm: 125,
+    gutterDepthMm: 90,
+    gutterProjectionMm: 125,
+    eaveOverhangMm: 450,
+  },
+};
+
+const houseAttachmentTarget: HouseAttachmentTarget3D = {
+  kind: 'zone',
+  strategy: 'fascia_under_gutter',
+  sourceEdgeId: 'rear-wall',
+  zone: {
+    plane: {
+      origin: { x: 0, y: 0, z: 2520 },
+      xAxis: { x: 1, y: 0, z: 0 },
+      yAxis: { x: 0, y: 0, z: 1 },
+      normal: { x: 0, y: -1, z: 0 },
+    },
+    topZMm: 2700,
+    bottomZMm: 2520,
+    safeLine: {
+      start: { x: 0, y: 0, z: 2610 },
+      end: { x: 6000, y: 0, z: 2610 },
+    },
+  },
+};
+
+const houseModel: HouseModel3D = {
+  footprint: houseModelConfig.footprint ?? [],
+  wallSegments: [
+    {
+      id: 'rear-wall',
+      sourceEdgeId: 'rear-wall',
+      line: {
+        start: { x: 0, y: 0, z: 0 },
+        end: { x: 6000, y: 0, z: 0 },
+      },
+      plane: {
+        origin: { x: 0, y: 0, z: 0 },
+        xAxis: { x: 1, y: 0, z: 0 },
+        yAxis: { x: 0, y: 0, z: 1 },
+        normal: { x: 0, y: -1, z: 0 },
+      },
+      boundary: [
+        { x: 0, y: 0, z: 0 },
+        { x: 6000, y: 0, z: 0 },
+        { x: 6000, y: 0, z: 2700 },
+        { x: 0, y: 0, z: 2700 },
+      ],
+    },
+  ],
+  roofPlanes: [],
+  eave: {
+    soffitDepthMm: houseModelConfig.eave?.soffitDepthMm,
+    fasciaHeightMm: houseModelConfig.eave?.fasciaHeightMm,
+    gutterLines: [
+      {
+        start: { x: 0, y: 0, z: 2700 },
+        end: { x: 6000, y: 0, z: 2700 },
+      },
+    ],
+  },
+  attachmentTarget: houseAttachmentTarget,
+  metadata: {
+    roofForm: 'hipped',
+  },
+};
+
 const monoAssembly: Assembly3D = {
   family: 'mono',
   datum: monoConfig.datum,
@@ -376,6 +468,7 @@ const monoAssembly: Assembly3D = {
       fallVector: { x: 0, y: 1, z: -0.0875 },
     },
   ],
+  roofCladdingPanels: [],
   supportConditions: [
     {
       type: 'house_connection',
@@ -518,6 +611,15 @@ describe('@sp/geometry contracts', () => {
     expect(monoConfig.datum.attachmentEdgeEnd.z).toBe(0);
     expect(monoConfig.structural.profiles.ledger?.depthMm).toBe(100);
     expect(monoConfig.roof.overhangMm).toBe(0);
+  });
+
+  it('exposes first-class house model contracts for future configurator geometry', () => {
+    expect(houseModelConfig.attachmentStrategy).toBe('fascia_under_gutter');
+    expect(houseModelConfig.wallConstruction).toBe('timber_frame');
+    expect(houseAttachmentTarget.kind).toBe('zone');
+    expect(houseAttachmentTarget.strategy).toBe('fascia_under_gutter');
+    expect(houseModel.wallSegments[0]?.id).toBe('rear-wall');
+    expect(houseModel.attachmentTarget?.zone?.safeLine?.end.x).toBe(6000);
   });
 
   it('expresses the required assembly semantics for future validation and viewer work', () => {

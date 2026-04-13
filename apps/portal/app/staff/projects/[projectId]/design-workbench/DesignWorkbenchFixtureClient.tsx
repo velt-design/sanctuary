@@ -22,7 +22,7 @@ export default function DesignWorkbenchFixtureClient({
   siteAddress,
   backHref,
 }: DesignWorkbenchFixtureClientProps) {
-  const [ui, setUi] = useState(() => createDrawingWorkbenchUiState());
+  const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
   const store = useMemo(
     () =>
       buildDrawingWorkbenchStore({

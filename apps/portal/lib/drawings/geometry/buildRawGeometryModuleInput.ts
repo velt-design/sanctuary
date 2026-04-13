@@ -4,7 +4,9 @@ import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
   normalizeAttachmentSide,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
   supportsHouseFootprints,
   type CalculatorModuleInputs,
@@ -42,12 +44,34 @@ function resolveFootprintPreset(module: CalculatorModuleInputs): RawGeometryModu
   return normalizeHouseFootprintPreset(module.houseFootprintPreset);
 }
 
+function resolveFootprintMode(module: CalculatorModuleInputs): RawGeometryModuleInput['houseContext']['footprintMode'] {
+  if (!supportsHouseFootprints(module.pergolaStyle)) {
+    return 'preset';
+  }
+
+  return normalizeHouseFootprintMode(module.houseFootprintMode);
+}
+
 function resolveFootprintParams(module: CalculatorModuleInputs): RawGeometryModuleInput['houseContext']['footprintParams'] {
   if (!supportsHouseFootprints(module.pergolaStyle)) {
     return normalizeHouseFootprintParams(null);
   }
 
   return normalizeHouseFootprintParams(module.houseFootprintParams);
+}
+
+function resolveFootprintPolygon(module: CalculatorModuleInputs): RawGeometryModuleInput['houseContext']['footprintPolygon'] {
+  if (!supportsHouseFootprints(module.pergolaStyle)) {
+    return null;
+  }
+
+  const polygon = normalizeHouseFootprintPolygon(module.houseFootprintPolygon);
+  return polygon.length ? polygon : null;
+}
+
+function resolveOptionalOverride(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }
 
 function resolveDerivedRoofPitchDeg(module: CalculatorModuleInputs, result: CostOutputV1 | null): number | null {
@@ -90,6 +114,8 @@ function resolveStructuralProfiles(module: CalculatorModuleInputs, result: CostO
     | (CostOutputV1['derived'] & {
         support_beam_profile_used?: string | null;
         box_perimeter_beam_profile_used?: string | null;
+        tie_beam_profile_used?: string | null;
+        strut_profile_used?: string | null;
       })
     | undefined;
   const normalized = result?.inputs_normalized;
@@ -100,21 +126,39 @@ function resolveStructuralProfiles(module: CalculatorModuleInputs, result: CostO
     ledger: derived?.ledger_profile_used ?? module.overrides?.ledgerProfile ?? null,
     supportBeam: derived?.support_beam_profile_used ?? derived?.front_beam_profile_used ?? module.overrides?.frontBeamProfile ?? null,
     gutter: normalized?.gutter_type ?? derived?.front_beam_profile_used ?? module.overrides?.frontBeamProfile ?? null,
-    ridge: derived?.ridge_beam_profile_used ?? module.overrides?.ridgeBeamProfile ?? null,
+    ridge: derived?.ridge_beam_profile_used ?? module.overrides?.ridgeBeamProfile ?? (module.pergolaStyle === 'gable' ? '150x50' : null),
+    tieBeam: derived?.tie_beam_profile_used ?? module.overrides?.tieBeamProfile ?? '150x50',
+    strut: derived?.strut_profile_used ?? module.overrides?.strutProfile ?? '50x50',
     boxPerimeter: derived?.box_perimeter_beam_profile_used ?? module.overrides?.boxPerimeterBeamProfile ?? null,
   };
 }
 
-function resolveStructuralFraming(result: CostOutputV1 | null): NonNullable<RawGeometryModuleInput['structural']>['framing'] {
+function resolveFallbackRafterSpacingMm(module: CalculatorModuleInputs, result: CostOutputV1 | null): number | null {
+  const rafterCount = result?.derived.rafter_count;
+  const lengthM = Number(module.lengthM);
+  if (
+    typeof rafterCount !== 'number' ||
+    !Number.isFinite(rafterCount) ||
+    rafterCount <= 1 ||
+    !Number.isFinite(lengthM) ||
+    lengthM <= 0
+  ) {
+    return null;
+  }
+
+  return Math.round((lengthM * 1000) / (rafterCount - 1));
+}
+
+function resolveStructuralFraming(module: CalculatorModuleInputs, result: CostOutputV1 | null): NonNullable<RawGeometryModuleInput['structural']>['framing'] {
   return {
     rafterCount: result?.derived.rafter_count ?? null,
-    rafterSpacingMm: result?.derived.rafter_spacing_mm ?? null,
+    rafterSpacingMm: result?.derived.rafter_spacing_mm ?? resolveFallbackRafterSpacingMm(module, result),
   };
 }
 
 function resolveStructuralDrainage(result: CostOutputV1 | null): NonNullable<RawGeometryModuleInput['structural']>['drainage'] {
   return {
-    gutterType: result?.inputs_normalized.gutter_type ?? null,
+    gutterType: result?.inputs_normalized?.gutter_type ?? null,
     gutterAssemblyMode: result?.derived.gutter_assembly_mode ?? null,
     integratedGutterBeam: result?.derived.integrated_gutter_beam ?? null,
     hasOurGutter: result?.derived.has_our_gutter ?? null,
@@ -169,12 +213,27 @@ export function buildRawGeometryModuleInput(input: {
     structural: {
       heights: resolveStructuralHeights(module, result),
       profiles: resolveStructuralProfiles(module, result),
-      framing: resolveStructuralFraming(result),
+      framing: resolveStructuralFraming(module, result),
       drainage: resolveStructuralDrainage(result),
     },
     houseContext: {
+      footprintMode: resolveFootprintMode(module),
       footprintPreset: resolveFootprintPreset(module),
       footprintParams: resolveFootprintParams(module),
+      footprintPolygon: resolveFootprintPolygon(module),
+      storeyMode: module.houseStoreyMode ?? null,
+      attachmentStrategy: module.houseAttachmentStrategy ?? null,
+      eaveHeightM: resolveOptionalOverride(module.houseEaveHeightM),
+      wallHeightM: resolveOptionalOverride(module.houseWallHeightM),
+      roofPitchDeg: resolveOptionalOverride(module.houseRoofPitchDeg),
+      eave: {
+        soffitDepthMm: resolveOptionalOverride(module.houseSoffitDepthMm),
+        fasciaHeightMm: resolveOptionalOverride(module.houseFasciaHeightMm),
+        gutterWidthMm: resolveOptionalOverride(module.houseGutterWidthMm),
+        gutterDepthMm: resolveOptionalOverride(module.houseGutterDepthMm),
+        gutterProjectionMm: resolveOptionalOverride(module.houseGutterProjectionMm),
+        eaveOverhangMm: resolveOptionalOverride(module.houseEaveOverhangMm),
+      },
     },
     dimensions: {
       lengthM: module.lengthM,

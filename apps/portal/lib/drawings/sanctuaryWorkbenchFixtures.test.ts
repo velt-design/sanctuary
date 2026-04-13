@@ -10,7 +10,15 @@ describe('sanctuary workbench fixtures', () => {
       'mono-standard',
       'gable-standard',
       'box-standard',
+      'gable-u-hipped-screenshot',
     ]);
+  });
+
+  it('keeps the gable fixture on the installed end-frame baseline', () => {
+    const gable = listSanctuaryGeometryWorkbenchFixtures().find((fixture) => fixture.slug === 'gable-standard');
+    const module = (gable?.snapshot as { inputs?: { modules?: Array<{ gableEndFramesMode?: string }> } } | undefined)?.inputs?.modules?.[0];
+
+    expect(module?.gableEndFramesMode).toBe('outer_end_only');
   });
 
   it('builds a non-empty drawing store and sheet meta for every fixture', () => {

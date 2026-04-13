@@ -1,5 +1,7 @@
 import type {
   Assembly3D,
+  GeometryPlanHouseLine2D,
+  GeometryPlanHouseSurface2D,
   GeometryPlanMember2D,
   GeometryPlanSurface2D,
   GeometryPlanViewModel,
@@ -101,6 +103,96 @@ function buildPlanSurface(
   };
 }
 
+function withKindMetadata(kind: string, metadata?: Record<string, string | number | boolean | null>): Record<string, string | number | boolean | null> {
+  return {
+    ...(metadata ?? {}),
+    kind,
+  };
+}
+
+function buildPlanHouseObjects(assembly: Assembly3D): {
+  surfaces: GeometryPlanHouseSurface2D[];
+  lines: GeometryPlanHouseLine2D[];
+} {
+  const model = assembly.house.model;
+  if (!model || assembly.semantics.connectionType === 'freestanding') {
+    return { surfaces: [], lines: [] };
+  }
+
+  const surfaces: GeometryPlanHouseSurface2D[] = [
+    {
+      id: 'house-footprint',
+      kind: 'footprint',
+      boundary: toPolygon2(model.footprint),
+      metadata: withKindMetadata('footprint', model.metadata),
+    },
+    ...model.roofPlanes.map((roofPlane) => ({
+      id: roofPlane.id,
+      kind: 'roof' as const,
+      boundary: toPolygon2(roofPlane.boundary),
+      metadata: withKindMetadata('roof', roofPlane.metadata),
+    })),
+    ...(model.eave.soffitPolygons ?? []).map((polygon, index) => ({
+      id: `house-soffit-${index + 1}`,
+      kind: 'soffit' as const,
+      boundary: toPolygon2(polygon),
+      metadata: withKindMetadata('soffit', model.eave.metadata),
+    })),
+    ...(model.eave.fasciaPolygons ?? []).map((polygon, index) => ({
+      id: `house-fascia-${index + 1}`,
+      kind: 'fascia' as const,
+      boundary: toPolygon2(polygon),
+      metadata: withKindMetadata('fascia', model.eave.metadata),
+    })),
+  ];
+
+  if (model.attachmentTarget?.zone?.boundary) {
+    surfaces.push({
+      id: 'house-attachment-zone',
+      kind: 'attachment_zone',
+      boundary: toPolygon2(model.attachmentTarget.zone.boundary),
+      metadata: withKindMetadata(model.attachmentTarget.strategy, model.attachmentTarget.zone.metadata ?? model.attachmentTarget.metadata),
+    });
+  }
+
+  const lines: GeometryPlanHouseLine2D[] = [
+    ...model.wallSegments.map((segment) => ({
+      id: segment.id,
+      kind: 'wall_segment' as const,
+      line: toLine2(segment.line),
+      metadata: withKindMetadata('wall_segment', segment.metadata),
+    })),
+    ...(model.roofFeatures ?? []).map((feature) => ({
+      id: feature.id,
+      kind: 'roof_feature' as const,
+      line: toLine2(feature.line),
+      metadata: withKindMetadata(feature.kind, feature.metadata),
+    })),
+    ...(model.eave.gutterLines ?? []).map((line, index) => ({
+      id: `house-gutter-${index + 1}`,
+      kind: 'gutter' as const,
+      line: toLine2(line),
+      metadata: withKindMetadata('gutter', model.eave.metadata),
+    })),
+  ];
+
+  const target = model.attachmentTarget;
+  const targetLine = target?.line ?? target?.zone?.safeLine ?? null;
+  if (targetLine && target && target.kind !== 'none') {
+    lines.push({
+      id: 'house-attachment-target',
+      kind: 'attachment_target',
+      line: toLine2(targetLine),
+      metadata: withKindMetadata(target.strategy, target.metadata),
+    });
+  }
+
+  return {
+    surfaces: sortById(surfaces),
+    lines: sortById(lines),
+  };
+}
+
 export function buildPlanViewModel(assembly: Assembly3D): GeometryPlanViewModel {
   const outline = toPolygon2(assembly.outline);
   const xValues = outline.map((point) => point.x);
@@ -143,6 +235,7 @@ export function buildPlanViewModel(assembly: Assembly3D): GeometryPlanViewModel 
     } satisfies Line2);
 
   const ridgeLine = ridge[0]?.centerline ?? null;
+  const houseObjects = buildPlanHouseObjects(assembly);
 
   return {
     family: assembly.family,
@@ -159,6 +252,8 @@ export function buildPlanViewModel(assembly: Assembly3D): GeometryPlanViewModel 
       fasciaLine: assembly.house.fasciaLine ? toLine2(assembly.house.fasciaLine) : null,
       roofEdgeLine: assembly.house.roofEdgeLine ? toLine2(assembly.house.roofEdgeLine) : null,
       wallReferenceLine: assembly.house.wallPlane ? attachmentEdge : null,
+      surfaces: houseObjects.surfaces,
+      lines: houseObjects.lines,
     },
     members: {
       posts,

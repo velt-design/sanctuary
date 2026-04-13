@@ -2,21 +2,62 @@ import type { AttachmentSide, CostOutputV1, RoofType, SlopeDirection } from '@sp
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,
+  DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
   makeDefaultHouseFootprintParams,
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
   supportsHouseFootprints,
   type CalculatorDrawingRotationQuarterTurns,
+  type CalculatorHouseFootprintMode,
   type CalculatorHouseFootprintParams,
+  type CalculatorHouseFootprintPolygonPoint,
   type CalculatorHouseFootprintPreset,
   type CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 
 export type ModulePlanDataSource = 'derived' | 'input_fallback';
 export type ModuleSectionDataSource = ModulePlanDataSource;
+
+export type ModuleHousePoint2D = {
+  x: number;
+  y: number;
+};
+
+export type ModuleHouseLine2D = {
+  id: string;
+  kind: 'wall_segment' | 'gutter' | 'attachment_target' | 'house_reference';
+  line: {
+    start: ModuleHousePoint2D;
+    end: ModuleHousePoint2D;
+  };
+};
+
+export type ModulePlanHouseSurface = {
+  id: string;
+  kind: 'footprint' | 'roof' | 'soffit' | 'fascia' | 'attachment_zone';
+  boundary: ModuleHousePoint2D[];
+};
+
+export type ModuleSectionHouseSurface = {
+  id: string;
+  kind: 'wall' | 'roof' | 'soffit' | 'fascia' | 'attachment_zone';
+  boundary: ModuleHousePoint2D[];
+};
+
+export type ModulePlanHouseContext = {
+  surfaces: ModulePlanHouseSurface[];
+  lines: ModuleHouseLine2D[];
+};
+
+export type ModuleSectionHouseContext = {
+  surfaces: ModuleSectionHouseSurface[];
+  lines: ModuleHouseLine2D[];
+};
 
 export type ModulePlanModel = {
   dataSource: ModulePlanDataSource;
@@ -26,8 +67,10 @@ export type ModulePlanModel = {
   houseConnectionType: CalculatorModuleInputs['houseConnectionType'];
   attachmentSide: AttachmentSide;
   drawingRotationQuarterTurns: CalculatorDrawingRotationQuarterTurns;
+  houseFootprintMode?: CalculatorHouseFootprintMode;
   houseFootprintPreset: CalculatorHouseFootprintPreset;
   houseFootprintParams: CalculatorHouseFootprintParams;
+  houseFootprintPolygon?: CalculatorHouseFootprintPolygonPoint[];
   supportsHouseFootprints: boolean;
   overhangEnabled: boolean;
   overhangAmountM: number;
@@ -58,6 +101,7 @@ export type ModulePlanModel = {
   soffitBracketOffsetM: number;
   soffitBracketMaxSpacingM: number;
   soffitBracketPositionsA: number[];
+  houseContext?: ModulePlanHouseContext | null;
 };
 
 export type ModuleSectionModel = {
@@ -91,6 +135,7 @@ export type ModuleSectionModel = {
   rightEdgeHeightM: number;
   ridgeHeightM: number | null;
   boxRiseM: number | null;
+  houseContext?: ModuleSectionHouseContext | null;
 };
 
 export type HouseFootprintHandleId = 'bandDepth' | 'returnRun' | 'recessWidth' | 'recessDepth' | 'leftLegRun' | 'rightLegRun' | 'sideRun';
@@ -101,6 +146,9 @@ export type HouseFootprintPoint = {
 };
 
 export type HouseFootprintResolvedParams = {
+  widthM: number;
+  offsetXM: number;
+  setbackM: number;
   bandDepthM: number;
   returnRunM: number;
   recessWidthM: number;
@@ -165,6 +213,11 @@ function parseFootprintMetres(raw: string | undefined, fallbackM: number): numbe
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackM;
 }
 
+function parseFootprintOffsetMetres(raw: string | undefined, fallbackM: number): number {
+  const parsed = Number.parseFloat(raw ?? '');
+  return Number.isFinite(parsed) ? parsed : fallbackM;
+}
+
 function point(x: number, y: number): HouseFootprintPoint {
   return { x, y };
 }
@@ -184,15 +237,21 @@ export function resolveHouseFootprintParamMetres(input: {
   const { params } = input;
   const pergolaWidthM = Math.max(0.5, input.pergolaWidthM);
   const pergolaDepthM = Math.max(0.5, input.pergolaDepthM);
+  const widthM = clamp(parseFootprintMetres(params.widthM, pergolaWidthM), 0.5, 30);
+  const offsetXM = parseFootprintOffsetMetres(params.offsetXM, 0);
+  const setbackM = Math.max(0, parseFootprintOffsetMetres(params.setbackM, 0));
   const bandDepthM = clamp(parseFootprintMetres(params.bandDepthM, 1.8), 0.5, 12);
   const returnRunM = clamp(parseFootprintMetres(params.returnRunM, 2.4), 0.5, pergolaDepthM);
-  const recessWidthM = clamp(parseFootprintMetres(params.recessWidthM, 2.4), 0.5, Math.max(0.5, pergolaWidthM - 0.5));
+  const recessWidthM = clamp(parseFootprintMetres(params.recessWidthM, 2.4), 0.5, Math.max(0.5, widthM - 0.5));
   const recessDepthM = clamp(parseFootprintMetres(params.recessDepthM, 1.2), 0.3, bandDepthM);
   const leftLegRunM = clamp(parseFootprintMetres(params.leftLegRunM, 2.4), 0.5, pergolaDepthM);
   const rightLegRunM = clamp(parseFootprintMetres(params.rightLegRunM, 2.4), 0.5, pergolaDepthM);
-  const sideRunM = clamp(parseFootprintMetres(params.sideRunM, 2.4), 0.5, pergolaWidthM);
+  const sideRunM = clamp(parseFootprintMetres(params.sideRunM, 2.4), 0.5, widthM);
 
   return {
+    widthM,
+    offsetXM,
+    setbackM,
     bandDepthM,
     returnRunM,
     recessWidthM,
@@ -209,13 +268,13 @@ export function buildHouseFootprintLocalLayout(input: {
   preset: CalculatorHouseFootprintPreset;
   params: CalculatorHouseFootprintParams;
 }): HouseFootprintLocalLayout {
-  const width = Math.max(0.5, input.pergolaWidthM);
   const depth = Math.max(0.5, input.pergolaDepthM);
   const resolved = resolveHouseFootprintParamMetres({
     params: input.params,
-    pergolaWidthM: width,
+    pergolaWidthM: Math.max(0.5, input.pergolaWidthM),
     pergolaDepthM: depth,
   });
+  const width = resolved.widthM;
   const bandDepth = resolved.bandDepthM;
   const returnRun = resolved.returnRunM;
   const recessWidth = resolved.recessWidthM;
@@ -226,6 +285,26 @@ export function buildHouseFootprintLocalLayout(input: {
   const totalRecessDepth = bandDepth + recessDepth;
   const handles: HouseFootprintHandleLayout[] = [];
   const edges: HouseFootprintEdgeLayout[] = [];
+
+  const transformPoint = (pt: HouseFootprintPoint): HouseFootprintPoint => ({
+    x: pt.x + resolved.offsetXM,
+    y: pt.y - resolved.setbackM,
+  });
+  const transformLayout = (layout: HouseFootprintLocalLayout): HouseFootprintLocalLayout => ({
+    polygon: layout.polygon.map(transformPoint),
+    handles: layout.handles.map((handle) => ({
+      ...handle,
+      point: transformPoint(handle.point),
+      guideFrom: transformPoint(handle.guideFrom),
+      guideTo: transformPoint(handle.guideTo),
+    })),
+    edges: layout.edges.map((edge) => ({
+      ...edge,
+      start: transformPoint(edge.start),
+      end: transformPoint(edge.end),
+    })),
+    resolved: layout.resolved,
+  });
 
   const addHandle = (
     id: HouseFootprintHandleId,
@@ -347,7 +426,7 @@ export function buildHouseFootprintLocalLayout(input: {
     );
 
     if (input.preset === 'recess_left') {
-      return {
+      return transformLayout({
         polygon: [
           point(0, -totalRecessDepth),
           point(width, -totalRecessDepth),
@@ -359,10 +438,10 @@ export function buildHouseFootprintLocalLayout(input: {
         handles,
         edges,
         resolved,
-      };
+      });
     }
 
-    return {
+    return transformLayout({
       polygon: [
         point(0, -totalRecessDepth),
         point(width, -totalRecessDepth),
@@ -374,7 +453,7 @@ export function buildHouseFootprintLocalLayout(input: {
       handles,
       edges,
       resolved,
-    };
+    });
   }
 
   addHandle(
@@ -392,12 +471,12 @@ export function buildHouseFootprintLocalLayout(input: {
   addEdge('bandDepth', 'Band depth', bandDepth, point(0, -bandDepth), point(width, -bandDepth), 0, -1, 0.5, 12);
 
   if (input.preset === 'straight') {
-    return {
+    return transformLayout({
       polygon: [point(0, -bandDepth), point(width, -bandDepth), point(width, 0), point(0, 0)],
       handles,
       edges,
       resolved,
-    };
+    });
   }
 
   if (input.preset === 'l_left') {
@@ -414,7 +493,7 @@ export function buildHouseFootprintLocalLayout(input: {
       depth,
     );
     addEdge('returnRun', 'Return run', returnRun, point(-bandDepth, returnRun), point(-bandDepth, -bandDepth), 0, 1, 0.5, depth);
-    return {
+    return transformLayout({
       polygon: [
         point(-bandDepth, -bandDepth),
         point(width, -bandDepth),
@@ -426,7 +505,7 @@ export function buildHouseFootprintLocalLayout(input: {
       handles,
       edges,
       resolved,
-    };
+    });
   }
 
   if (input.preset === 'l_right') {
@@ -443,7 +522,7 @@ export function buildHouseFootprintLocalLayout(input: {
       depth,
     );
     addEdge('returnRun', 'Return run', returnRun, point(width + bandDepth, -bandDepth), point(width + bandDepth, returnRun), 0, 1, 0.5, depth);
-    return {
+    return transformLayout({
       polygon: [
         point(0, -bandDepth),
         point(width + bandDepth, -bandDepth),
@@ -455,7 +534,7 @@ export function buildHouseFootprintLocalLayout(input: {
       handles,
       edges,
       resolved,
-    };
+    });
   }
 
   if (input.preset === 'u_shape') {
@@ -485,7 +564,7 @@ export function buildHouseFootprintLocalLayout(input: {
     );
     addEdge('leftLegRun', 'Left leg run', leftLegRun, point(-bandDepth, leftLegRun), point(-bandDepth, -bandDepth), 0, 1, 0.5, depth);
     addEdge('rightLegRun', 'Right leg run', rightLegRun, point(width + bandDepth, -bandDepth), point(width + bandDepth, rightLegRun), 0, 1, 0.5, depth);
-    return {
+    return transformLayout({
       polygon: [
         point(-bandDepth, -bandDepth),
         point(width + bandDepth, -bandDepth),
@@ -499,7 +578,7 @@ export function buildHouseFootprintLocalLayout(input: {
       handles,
       edges,
       resolved,
-    };
+    });
   }
 
   if (input.preset === 'wrap_left') {
@@ -516,7 +595,7 @@ export function buildHouseFootprintLocalLayout(input: {
       width,
     );
     addEdge('sideRun', 'Side run', sideRun, point(sideRun, depth), point(sideRun, depth + bandDepth), 1, 0, 0.5, width);
-    return {
+    return transformLayout({
       polygon: [
         point(-bandDepth, -bandDepth),
         point(width, -bandDepth),
@@ -530,7 +609,7 @@ export function buildHouseFootprintLocalLayout(input: {
       handles,
       edges,
       resolved,
-    };
+    });
   }
 
   if (input.preset === 'wrap_right') {
@@ -547,7 +626,7 @@ export function buildHouseFootprintLocalLayout(input: {
       width,
     );
     addEdge('sideRun', 'Side run', sideRun, point(width - sideRun, depth + bandDepth), point(width - sideRun, depth), -1, 0, 0.5, width);
-    return {
+    return transformLayout({
       polygon: [
         point(0, -bandDepth),
         point(width + bandDepth, -bandDepth),
@@ -561,15 +640,15 @@ export function buildHouseFootprintLocalLayout(input: {
       handles,
       edges,
       resolved,
-    };
+    });
   }
 
-  return {
+  return transformLayout({
     polygon: [point(0, -bandDepth), point(width, -bandDepth), point(width, 0), point(0, 0)],
     handles,
     edges,
     resolved,
-  };
+  });
 }
 
 function roofTypeFromModule(module: CalculatorModuleInputs): RoofType {
@@ -624,9 +703,19 @@ function houseFootprintPresetFromModule(module: CalculatorModuleInputs): Calcula
   return normalizeHouseFootprintPreset((module as Partial<CalculatorModuleInputs>).houseFootprintPreset);
 }
 
+function houseFootprintModeFromModule(module: CalculatorModuleInputs): CalculatorHouseFootprintMode {
+  if (!supportsPresetFootprints(module)) return DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE;
+  return normalizeHouseFootprintMode((module as Partial<CalculatorModuleInputs>).houseFootprintMode);
+}
+
 function houseFootprintParamsFromModule(module: CalculatorModuleInputs): CalculatorHouseFootprintParams {
   if (!supportsPresetFootprints(module)) return makeDefaultHouseFootprintParams();
   return normalizeHouseFootprintParams((module as Partial<CalculatorModuleInputs>).houseFootprintParams);
+}
+
+function houseFootprintPolygonFromModule(module: CalculatorModuleInputs): CalculatorHouseFootprintPolygonPoint[] {
+  if (!supportsPresetFootprints(module)) return [];
+  return normalizeHouseFootprintPolygon((module as Partial<CalculatorModuleInputs>).houseFootprintPolygon);
 }
 
 function attachmentEdgeLengthForRectangularPlan(lengthA: number, spanA: number, attachmentSide: AttachmentSide): number {
@@ -798,8 +887,10 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
   const supportsFootprints = supportsPresetFootprints(module);
   const attachmentSide = attachmentSideFromModule(module);
   const drawingRotationQuarterTurns = drawingRotationQuarterTurnsFromModule(module);
+  const houseFootprintMode = houseFootprintModeFromModule(module);
   const houseFootprintPreset = houseFootprintPresetFromModule(module);
   const houseFootprintParams = houseFootprintParamsFromModule(module);
+  const houseFootprintPolygon = houseFootprintPolygonFromModule(module);
 
   const lengthA = toPositiveNumber(derived?.length_m);
   const spanA = toPositiveNumber(derived?.projection_m);
@@ -834,8 +925,10 @@ function tryBuildFromDerived(module: CalculatorModuleInputs, moduleResult: CostO
     houseConnectionType: module.houseConnectionType,
     attachmentSide,
     drawingRotationQuarterTurns,
+    houseFootprintMode,
     houseFootprintPreset,
     houseFootprintParams,
+    houseFootprintPolygon,
     supportsHouseFootprints: supportsFootprints,
     overhangEnabled: overhang.enabled,
     overhangAmountM: overhang.amountM,
@@ -875,8 +968,10 @@ function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | n
   const supportsFootprints = supportsPresetFootprints(module);
   const attachmentSide = attachmentSideFromModule(module);
   const drawingRotationQuarterTurns = drawingRotationQuarterTurnsFromModule(module);
+  const houseFootprintMode = houseFootprintModeFromModule(module);
   const houseFootprintPreset = houseFootprintPresetFromModule(module);
   const houseFootprintParams = houseFootprintParamsFromModule(module);
+  const houseFootprintPolygon = houseFootprintPolygonFromModule(module);
   const lengthA = toPositiveNumber(module.lengthM);
   const spanA = toPositiveNumber(module.projectionM);
   if (!lengthA || !spanA) return null;
@@ -899,8 +994,10 @@ function tryBuildFromInputs(module: CalculatorModuleInputs): ModulePlanModel | n
     houseConnectionType: module.houseConnectionType,
     attachmentSide,
     drawingRotationQuarterTurns,
+    houseFootprintMode,
     houseFootprintPreset,
     houseFootprintParams,
+    houseFootprintPolygon,
     supportsHouseFootprints: supportsFootprints,
     overhangEnabled: Boolean(module.overhangEnabled),
     overhangAmountM: module.overhangEnabled ? overhangAmountM : 0,

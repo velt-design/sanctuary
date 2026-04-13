@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildDrawingWorkbenchStore } from './drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from './drawingWorkbenchUiState';
 
@@ -89,6 +90,32 @@ function makeResult(params: { lengthA?: number; spanA?: number } = {}): CostOutp
   } as unknown as CostOutputV1;
 }
 
+function makeStaleGableFixtureSnapshot(houseConnectionType: 'none' | 'soffit' = 'soffit') {
+  const fixture = getSanctuaryGeometryWorkbenchFixture('gable-standard');
+  if (!fixture) {
+    throw new Error('Missing gable-standard fixture.');
+  }
+  const snapshot = structuredClone(fixture.snapshot) as {
+    inputs?: {
+      modules?: Array<{
+        houseConnectionType?: string;
+        gableEndFramesMode?: string;
+        gableHouseEdgeGutter?: string;
+        gableOuterEdgeGutter?: string;
+      }>;
+    };
+  };
+  const module = snapshot.inputs?.modules?.[0];
+  if (!module) {
+    throw new Error('Expected fixture module.');
+  }
+  module.houseConnectionType = houseConnectionType;
+  module.gableEndFramesMode = 'none';
+  module.gableHouseEdgeGutter = 'house';
+  module.gableOuterEdgeGutter = 'our';
+  return snapshot as Record<string, unknown>;
+}
+
 describe('buildDrawingWorkbenchStore', () => {
   it('builds shared module, assembly, and plan-view state from one snapshot', () => {
     const snapshot = {
@@ -168,5 +195,37 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activePlanViewModel).toBeNull();
     expect(store.derived.activeSectionModel).toBeNull();
     expect(store.derived.status).toBe('empty');
+  });
+
+  it('builds sheet models from explicit attached gable no-frame snapshots while constraining gutters', () => {
+    const store = buildDrawingWorkbenchStore({
+      snapshot: makeStaleGableFixtureSnapshot('soffit'),
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'plan',
+      }),
+    });
+
+    expect(store.derived.status).toBe('ready');
+    expect(store.derived.activePlanModel?.roofType).toBe('gable');
+    expect(store.derived.activeSectionModel?.roofType).toBe('gable');
+    expect(store.derived.activeAssemblyModel?.moduleInput.gableEndFramesMode).toBe('none');
+    expect(store.derived.activeAssemblyModel?.moduleInput.gableHouseEdgeGutter).toBe('house');
+    expect(store.derived.activeAssemblyModel?.moduleInput.gableOuterEdgeGutter).toBe('our');
+  });
+
+  it('builds freestanding sheet models from explicit gable no-frame snapshots while constraining gutters', () => {
+    const store = buildDrawingWorkbenchStore({
+      snapshot: makeStaleGableFixtureSnapshot('none'),
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'plan',
+      }),
+    });
+
+    expect(store.derived.status).toBe('ready');
+    expect(store.derived.activePlanModel?.roofType).toBe('gable');
+    expect(store.derived.activeSectionModel?.roofType).toBe('gable');
+    expect(store.derived.activeAssemblyModel?.moduleInput.gableEndFramesMode).toBe('none');
+    expect(store.derived.activeAssemblyModel?.moduleInput.gableHouseEdgeGutter).toBe('our');
+    expect(store.derived.activeAssemblyModel?.moduleInput.gableOuterEdgeGutter).toBe('our');
   });
 });

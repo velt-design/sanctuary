@@ -1,4 +1,5 @@
-import type { GeometryConfig } from '../contracts';
+import type { GeometryConfig, HouseAttachmentStrategy } from '../contracts';
+import { buildHouseFootprintPolygon } from '../footprints';
 import type { SolveAssembly3DErrorCode } from '../solve.types';
 import type { CanonicalAssembly3D } from '../validation/canonical';
 import { makeBoxConfig, makeGableConfig, makeMonoConfig } from './builders';
@@ -26,17 +27,77 @@ export type GeometryFixtureCase =
       expectedMessageIncludes: string;
     };
 
+function resolveFixtureAttachmentStrategy(config: GeometryConfig): HouseAttachmentStrategy {
+  if (config.connection.type === 'freestanding') return 'none';
+  if (config.connection.type === 'wall') return 'facade_ledger';
+  if (config.connection.type === 'fascia') return 'fascia_under_gutter';
+  return 'soffit_brackets';
+}
+
+function withSupportedHouseContext(config: GeometryConfig): GeometryConfig {
+  const attachmentStrategy = resolveFixtureAttachmentStrategy(config);
+  if (config.connection.type === 'freestanding') {
+    return {
+      ...config,
+      houseContext: {
+        ...config.houseContext,
+        footprint: null,
+        model: null,
+        attachmentStrategy,
+      },
+    };
+  }
+
+  const footprint =
+    config.houseContext.footprint ??
+    buildHouseFootprintPolygon({
+      pergolaWidthMm: config.dimensions.lengthMm,
+      pergolaDepthMm: config.dimensions.projectionMm,
+    });
+  const eaveHeightMm =
+    config.structural.heights.referenceUndersideMm ??
+    config.structural.heights.houseUndersideMm ??
+    2400;
+
+  return {
+    ...config,
+    houseContext: {
+      ...config.houseContext,
+      footprint,
+      attachmentStrategy,
+      model: {
+        footprint,
+        storeyMode: 'single_storey',
+        wallConstruction: 'timber_frame',
+        roofForm: 'hipped',
+        eaveHeightMm,
+        wallHeightMm: eaveHeightMm,
+        roofPitchDeg: 25,
+        attachmentStrategy,
+        eave: {
+          soffitDepthMm: 450,
+          fasciaHeightMm: 180,
+          gutterWidthMm: 125,
+          gutterDepthMm: 90,
+          gutterProjectionMm: 125,
+          eaveOverhangMm: 450,
+        },
+      },
+    },
+  };
+}
+
 const FIXTURES: GeometryFixtureCase[] = [
   {
     id: 'mono_attached_soffit_away_standard',
     kind: 'supported',
-    config: makeMonoConfig(),
+    config: withSupportedHouseContext(makeMonoConfig()),
     expectedAssembly: MONO_ATTACHED_SOFFIT_AWAY_STANDARD_GOLDEN,
   },
   {
     id: 'mono_attached_fascia_toward_standard',
     kind: 'supported',
-    config: makeMonoConfig({
+    config: withSupportedHouseContext(makeMonoConfig({
       connection: {
         type: 'fascia',
         attachmentSide: 'rear',
@@ -51,13 +112,13 @@ const FIXTURES: GeometryFixtureCase[] = [
           referenceUndersideMm: 2137,
         },
       },
-    }),
+    })),
     expectedAssembly: MONO_ATTACHED_FASCIA_TOWARD_STANDARD_GOLDEN,
   },
   {
     id: 'mono_freestanding_standard',
     kind: 'supported',
-    config: makeMonoConfig({
+    config: withSupportedHouseContext(makeMonoConfig({
       connection: {
         type: 'freestanding',
         attachmentSide: 'rear',
@@ -72,19 +133,19 @@ const FIXTURES: GeometryFixtureCase[] = [
           referenceUndersideMm: 2400,
         },
       },
-    }),
+    })),
     expectedAssembly: MONO_FREESTANDING_STANDARD_GOLDEN,
   },
   {
     id: 'gable_attached_standard',
     kind: 'supported',
-    config: makeGableConfig(),
+    config: withSupportedHouseContext(makeGableConfig()),
     expectedAssembly: GABLE_ATTACHED_STANDARD_GOLDEN,
   },
   {
     id: 'gable_freestanding_standard',
     kind: 'supported',
-    config: makeGableConfig({
+    config: withSupportedHouseContext(makeGableConfig({
       connection: {
         type: 'freestanding',
         attachmentSide: 'rear',
@@ -96,13 +157,13 @@ const FIXTURES: GeometryFixtureCase[] = [
       supports: {
         postCount: 4,
       },
-    }),
+    })),
     expectedAssembly: GABLE_FREESTANDING_STANDARD_GOLDEN,
   },
   {
     id: 'box_attached_standard',
     kind: 'supported',
-    config: makeBoxConfig(),
+    config: withSupportedHouseContext(makeBoxConfig()),
     expectedAssembly: BOX_ATTACHED_STANDARD_GOLDEN,
   },
   {
@@ -130,18 +191,25 @@ const FIXTURES: GeometryFixtureCase[] = [
     expectedMessageIncludes: 'separate-gutter mono',
   },
   {
-    id: 'gable_end_frames_unsupported',
+    id: 'gable_incompatible_end_frames_unsupported',
     kind: 'unsupported',
     config: makeGableConfig({
+      connection: {
+        type: 'freestanding',
+        attachmentSide: 'rear',
+      },
       gable: {
         ridgePositionMm: 2000,
         endFramesMode: 'outer_end_only',
-        houseEaveGutterMode: 'house',
+        houseEaveGutterMode: 'our',
         outerEaveGutterMode: 'our',
+      },
+      supports: {
+        postCount: 4,
       },
     }),
     expectedErrorCode: 'unsupported_variant',
-    expectedMessageIncludes: 'gable end frames',
+    expectedMessageIncludes: 'both-ends for freestanding',
   },
   {
     id: 'gable_asymmetrical_eaves_unsupported',

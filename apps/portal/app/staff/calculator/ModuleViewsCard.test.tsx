@@ -10,6 +10,7 @@ import ModuleViewsCard, {
   getSuggestedModuleDrawingScale,
   resolveModuleDrawingScaleState,
 } from './ModuleViewsCard';
+import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -100,7 +101,7 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
 function makeFootprintEditor(overrides: Partial<{
   isEditing: boolean;
   isContextHovered: boolean;
-  surface: 'card' | 'sheet';
+  surface: 'card' | 'sheet' | 'model';
   hoveredHandleId: HouseFootprintHandleId | null;
   activeHandleId: HouseFootprintHandleId | null;
 }> = {}) {
@@ -278,6 +279,120 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('House side');
   });
 
+  it('renders semantic house context overlays in plan drawings', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -1.8 },
+              { x: 6, y: -1.8 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+          {
+            id: 'house-attachment-zone',
+            kind: 'attachment_zone',
+            boundary: [
+              { x: 0, y: -0.05 },
+              { x: 6, y: -0.05 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+        ],
+        lines: [
+          {
+            id: 'house-gutter',
+            kind: 'gutter',
+            line: { start: { x: 0, y: -0.45 }, end: { x: 6, y: -0.45 } },
+          },
+          {
+            id: 'house-attachment-target',
+            kind: 'attachment_target',
+            line: { start: { x: 0, y: 0 }, end: { x: 6, y: 0 } },
+          },
+        ],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+      />,
+    );
+
+    expect(markup).toContain('data-house-plan-surface="footprint"');
+    expect(markup).toContain('data-house-plan-surface="attachment_zone"');
+    expect(markup).toContain('data-house-plan-line="gutter"');
+    expect(markup).toContain('data-house-plan-line="attachment_target"');
+  });
+
+  it('renders semantic house context overlays in section drawings', () => {
+    const drawing = makeDrawingModule();
+    const sectionModel: ModuleSectionModel = {
+      ...drawing.sectionModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-wall',
+            kind: 'wall',
+            boundary: [
+              { x: 0, y: 0 },
+              { x: 0.03, y: 0 },
+              { x: 0.03, y: 2.4 },
+              { x: 0, y: 2.4 },
+            ],
+          },
+          {
+            id: 'house-attachment-zone',
+            kind: 'attachment_zone',
+            boundary: [
+              { x: -0.02, y: 2.22 },
+              { x: 0.02, y: 2.22 },
+              { x: 0.02, y: 2.4 },
+              { x: -0.02, y: 2.4 },
+            ],
+          },
+        ],
+        lines: [
+          {
+            id: 'house-gutter',
+            kind: 'gutter',
+            line: { start: { x: -0.45, y: 2.4 }, end: { x: -0.45, y: 2.4 } },
+          },
+          {
+            id: 'house-attachment-target',
+            kind: 'attachment_target',
+            line: { start: { x: 0, y: 2.4 }, end: { x: 0, y: 2.4 } },
+          },
+        ],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={sectionModel}
+      />,
+    );
+
+    expect(markup).toContain('data-house-section-surface="wall"');
+    expect(markup).toContain('data-house-section-surface="attachment_zone"');
+    expect(markup).toContain('data-house-section-line="gutter"');
+    expect(markup).toContain('data-house-section-line="attachment_target"');
+  });
+
   it('applies quarter-turn rotation as a final plan transform', () => {
     const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
     const markup = renderToStaticMarkup(
@@ -325,6 +440,7 @@ describe('ModuleViewsCard', () => {
     );
 
     expect(markup).toContain('House footprint editor');
+    expect(markup).toContain('aria-label="House footprint mode"');
     expect(markup).toContain('aria-label="House footprint preset"');
     expect(markup).toContain('Rotate -90');
     expect(markup).toContain('Attached edge');
@@ -335,6 +451,38 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('Attached edge</text>');
     expect(markup).not.toContain('House side</text>');
     expect(markup).toContain('clipPath');
+  });
+
+  it('renders custom orthogonal outline mode without preset resize handles in the card editor', () => {
+    const drawing = makeDrawingModule();
+    const planModel = {
+      ...drawing.planModel!,
+      houseFootprintMode: 'orthogonal_polygon' as const,
+      houseFootprintPolygon: [
+        { alongM: '0', depthM: '2.4' },
+        { alongM: '6', depthM: '2.4' },
+        { alongM: '6', depthM: '0' },
+        { alongM: '3', depthM: '0' },
+        { alongM: '3', depthM: '1.2' },
+        { alongM: '0', depthM: '1.2' },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleViewsCard
+        moduleLabel="M1"
+        view="plan"
+        onViewChange={() => undefined}
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        footprintEditor={makeFootprintEditor({ isEditing: true })}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="House footprint mode"');
+    expect(markup).toContain('aria-label="House footprint preset"');
+    expect(markup).not.toContain('data-footprint-handle="bandDepth"');
   });
 
   it('renders U-shape handle affordances on both parallel legs', () => {
