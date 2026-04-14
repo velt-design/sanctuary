@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireStaffContext = vi.fn();
 const parseJsonBody = vi.fn();
@@ -21,6 +21,8 @@ const scheduledJobsByProjectMaybeSingle = vi.fn();
 const projectsMaybeSingle = vi.fn();
 const estimatesEq = vi.fn();
 const rpc = vi.fn();
+let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
@@ -75,6 +77,8 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     projectsMaybeSingle.mockReset();
     estimatesEq.mockReset();
     rpc.mockReset();
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     requireStaffContext.mockResolvedValue({
       ok: true,
@@ -173,6 +177,11 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     });
   });
 
+  afterEach(() => {
+    consoleWarnSpy?.mockRestore();
+    consoleErrorSpy?.mockRestore();
+  });
+
   it('returns 401 when staff auth is missing', async () => {
     requireStaffContext.mockResolvedValueOnce({
       ok: false,
@@ -197,6 +206,19 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
 
     expect(res.status).toBe(400);
     await expect(res.json()).resolves.toEqual({ error: 'job_id and crew_id are required' });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.validation_failed',
+        requestId: expect.any(String),
+        route: '/api/staff/v1/schedule/job/assign',
+        status: 400,
+        reason: 'missing_job_or_crew',
+        jobId: 'project-1',
+        crewId: null,
+        requestedPosition: null,
+      }),
+    );
   });
 
   it('returns confirmation before any RPC call', async () => {
@@ -447,5 +469,17 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     expect(res.status).toBe(500);
     await expect(res.json()).resolves.toEqual({ error: 'Failed to assign scheduled job' });
     expect(res.headers.get('x-portal-request-id')).toBe('req_assign_fail');
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.commit_failed',
+        requestId: 'req_assign_fail',
+        status: 500,
+        reason: 'commit_failed',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+        requestedPosition: 1,
+      }),
+    );
   });
 });

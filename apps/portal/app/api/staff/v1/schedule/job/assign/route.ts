@@ -40,7 +40,20 @@ export async function POST(req: Request) {
   const positionRaw = body.position;
   const force = Boolean(body.force);
 
-  if (!jobId || !crewId) return jsonError('job_id and crew_id are required', 400, diagnostics);
+  if (!jobId || !crewId) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.validation_failed',
+      status: 400,
+      message: 'job_id and crew_id are required',
+      extra: {
+        reason: 'missing_job_or_crew',
+        jobId: jobId || null,
+        crewId: crewId || null,
+        requestedPosition: typeof positionRaw === 'number' && Number.isFinite(positionRaw) ? Math.trunc(positionRaw) : null,
+      },
+    });
+    return jsonError('job_id and crew_id are required', 400, diagnostics);
+  }
 
   let existingJob: any = null;
   const existingRes = await supabase.from('scheduled_jobs').select('id, crew_id, forecast_duration_days').eq('job_id', jobId).maybeSingle();
@@ -241,7 +254,25 @@ export async function POST(req: Request) {
         }
       : null),
   });
-  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+  if (!commitRes.ok) {
+    const logInput = {
+      event: 'schedule.assign.commit_failed',
+      status: commitRes.status,
+      message: commitRes.responseMessage,
+      extra: {
+        reason: 'commit_failed',
+        jobId,
+        crewId,
+        requestedPosition: position,
+      },
+    };
+    if (commitRes.status === 501) {
+      logPortalServerWarn(diagnostics, logInput);
+    } else {
+      logPortalServerError(diagnostics, logInput);
+    }
+    return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+  }
 
   const scheduledJobId = commitRes.data.scheduled_job_id;
   const newScheduleItemId = commitRes.data.schedule_item_id;

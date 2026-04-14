@@ -58,12 +58,14 @@ import { runScheduleDiagnostics } from '@/lib/queries/scheduleDiagnostics';
 import {
   closestCenter,
   DndContext,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragMoveEvent,
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
   useDraggable,
   useDroppable,
   useSensor,
@@ -80,6 +82,7 @@ import {
 } from './ganttAxis';
 import type { ScheduleActionModalsProps, ScheduleModalState } from './ScheduleActionModals';
 import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
+import { resolveBoardDropTarget, type BoardDropTarget, type BoardDragLane, type BoardDragPoint, type BoardDragRect } from './boardDrag';
 
 const LazySiteVisitsView = dynamic(() => import('./SiteVisitsView'), {
   ssr: false,
@@ -169,6 +172,11 @@ const GANTT_DENSITY_STORAGE_KEY = 'sp.schedule.ganttDensity';
 const GANTT_LABEL_WIDTH_STORAGE_KEY = 'sp.schedule.ganttLabelWidth';
 const USE_SCHEDULE_V2 = true;
 const V2_MUTATION_DEBOUNCE_MS = 180;
+
+const boardCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length ? pointerCollisions : closestCenter(args);
+};
 
 function normalizeGanttZoomWeeks(value: number): GanttZoomWeeks {
   if (value === 4 || value === 8 || value === 12) return value;
@@ -1180,6 +1188,7 @@ function GanttBarPopover({
 }
 
 function JobCardShell({
+  dragId,
   title,
   descriptor,
   statusLabel,
@@ -1200,6 +1209,7 @@ function JobCardShell({
   style,
   dropTarget,
 }: {
+  dragId?: string;
   title: string;
   descriptor: string;
   statusLabel: string;
@@ -1225,6 +1235,7 @@ function JobCardShell({
       ref={cardRef}
       className={styles.jobCard}
       style={style}
+      data-schedule-card-id={dragId}
       data-drop-target={dropTarget ? 'true' : 'false'}
       data-draggable={draggable ? 'true' : undefined}
       data-dragging={dragging ? 'true' : undefined}
@@ -1293,6 +1304,7 @@ function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
 
   return (
     <JobCardShell
+      dragId={job.id}
       title={job.projectName}
       descriptor={job.descriptor}
       statusLabel={formatStatusLabel(job.status)}
@@ -1319,6 +1331,7 @@ function ScheduledJobCard({
   pinned,
   extraBadges,
   issueLevel,
+  onMount,
 }: {
   id: string;
   job: SchedulableJob | null;
@@ -1329,6 +1342,7 @@ function ScheduledJobCard({
   pinned?: boolean;
   extraBadges?: React.ReactNode;
   issueLevel?: 'warning' | 'error';
+  onMount?: (node: HTMLElement | null) => void;
 }) {
   const router = useRouter();
   const locked = isLockedScheduleStatus(scheduleStatus);
@@ -1341,6 +1355,7 @@ function ScheduledJobCard({
 
   return (
     <JobCardShell
+      dragId={id}
       title={job?.projectName ?? 'Untitled project'}
       descriptor={job?.descriptor ?? '—'}
       statusLabel={formatStatusLabel(job?.status ?? '')}
@@ -1361,7 +1376,10 @@ function ScheduledJobCard({
       draggable={!locked}
       dragging={isDragging}
       menu={<JobActionsMenu actions={menuActions} />}
-      cardRef={(node) => setNodeRef(node as any)}
+      cardRef={(node) => {
+        setNodeRef(node as any);
+        onMount?.(node);
+      }}
       style={style}
       dropTarget={dropTarget}
     />
@@ -1375,6 +1393,7 @@ function DowntimeCard({
   dropTarget,
   menuActions,
   issueLevel,
+  onMount,
 }: {
   id: string;
   item: ScheduleItem;
@@ -1382,6 +1401,7 @@ function DowntimeCard({
   dropTarget?: boolean;
   menuActions: MenuAction[];
   issueLevel?: 'warning' | 'error';
+  onMount?: (node: HTMLElement | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
@@ -1401,6 +1421,7 @@ function DowntimeCard({
 
   return (
     <JobCardShell
+      dragId={id}
       title={reason}
       descriptor={item.downtimeNote ?? 'Crew unavailable'}
       statusLabel="Downtime"
@@ -1412,7 +1433,10 @@ function DowntimeCard({
       draggable
       dragging={isDragging}
       menu={<JobActionsMenu actions={menuActions} ariaLabel="Downtime actions" />}
-      cardRef={(node) => setNodeRef(node as any)}
+      cardRef={(node) => {
+        setNodeRef(node as any);
+        onMount?.(node);
+      }}
       style={style}
       dropTarget={dropTarget}
     />
@@ -1771,6 +1795,7 @@ export default function ScheduleClient({
   const ganttScrollRef = useRef<HTMLDivElement | null>(null);
   const boardScrollRef = useRef<HTMLDivElement | null>(null);
   const laneBodyRefs = useRef(new Map<string, HTMLDivElement | null>());
+  const boardCardRefs = useRef(new Map<string, HTMLElement | null>());
   const unscheduledBodyRef = useRef<HTMLDivElement | null>(null);
   const hydratedFromCacheRef = useRef(false);
   const scheduleItemsRef = useRef<ScheduleItem[]>([]);
@@ -2400,6 +2425,7 @@ export default function ScheduleClient({
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [overLaneId, setOverLaneId] = useState<string | null>(null);
+  const [boardDropTarget, setBoardDropTarget] = useState<BoardDropTarget | null>(null);
   const v2ErrorNotifiedRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -3510,7 +3536,7 @@ export default function ScheduleClient({
 
   async function runWithCommitConfirmation(
     run: (force: boolean) => Promise<any>,
-    opts?: { successToast?: string; errorToast?: string },
+    opts?: { successToast?: string; errorToast?: string; refreshOnError?: boolean },
   ): Promise<boolean> {
     if (scheduleMode === 'v2') {
       v2PendingMutationsRef.current += 1;
@@ -3535,7 +3561,7 @@ export default function ScheduleClient({
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
         toast.error(opts?.errorToast ?? msg);
-        if (v2PendingMutationsRef.current <= 1) refreshSchedule();
+        if (opts?.refreshOnError !== false && v2PendingMutationsRef.current <= 1) refreshSchedule();
         return false;
       } finally {
         v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
@@ -3986,17 +4012,92 @@ export default function ScheduleClient({
     }
   };
 
+  function rectFromElement(element: Element | null | undefined): BoardDragRect | null {
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  }
+
+  function dragPointFromEvent(event: DragMoveEvent | DragEndEvent): BoardDragPoint | null {
+    const rect = ((event.active.rect?.current as any)?.translated ?? (event.active.rect?.current as any)?.initial) as
+      | { left: number; top: number; width: number; height: number }
+      | undefined;
+    if (!rect) return null;
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    };
+  }
+
+  function buildBoardDragLanes(): BoardDragLane[] {
+    return installers
+      .filter((installer) => installer.active)
+      .map((installer) => {
+        const items = laneItems.get(installer.id) ?? [];
+        const itemRects: BoardDragLane['itemRects'] = {};
+        for (const item of items) {
+          itemRects[item.id] = rectFromElement(boardCardRefs.current.get(item.id));
+        }
+        return {
+          id: installer.id,
+          itemIds: items.map((item) => item.id),
+          rect: rectFromElement(laneBodyRefs.current.get(installer.id) ?? null),
+          itemRects,
+        };
+      });
+  }
+
+  function resolveBoardDrop(event: DragMoveEvent | DragEndEvent): BoardDropTarget {
+    const activeId = String(event.active.id);
+    const eventOverId = event.over ? String(event.over.id) : null;
+    const activeItem = scheduleItemsRef.current.find((item) => item.id === activeId) ?? null;
+    return resolveBoardDropTarget({
+      activeId,
+      sourceLaneId: activeItem?.installerId ?? null,
+      overId: eventOverId,
+      point: dragPointFromEvent(event),
+      lanes: buildBoardDragLanes(),
+      unscheduledRect: rectFromElement(unscheduledBodyRef.current),
+    });
+  }
+
+  function applyBoardDropTarget(target: BoardDropTarget): void {
+    setBoardDropTarget(target);
+    if (!target.valid) {
+      setOverId(null);
+      setOverLaneId(null);
+      return;
+    }
+    if (target.kind === 'unscheduled') {
+      setOverId('unscheduled');
+      setOverLaneId(null);
+      return;
+    }
+    setOverId(target.overId);
+    setOverLaneId(target.laneId);
+  }
+
+  function clearBoardDragState(): void {
+    setActiveDragId(null);
+    setOverId(null);
+    setOverLaneId(null);
+    setBoardDropTarget(null);
+  }
+
   function handleDragMove(event: DragMoveEvent) {
     if (view !== 'board') return;
     if (!activeDragId) return;
 
-    const rect = ((event.active.rect?.current as any)?.translated ?? (event.active.rect?.current as any)?.initial) as
-      | { left: number; top: number; width: number; height: number }
-      | undefined;
-    if (!rect) return;
+    const target = resolveBoardDrop(event);
+    applyBoardDropTarget(target);
 
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
+    const point = dragPointFromEvent(event);
+    if (!point) return;
 
     const EDGE_PX = 80;
     const STEP_PX = 32;
@@ -4004,20 +4105,20 @@ export default function ScheduleClient({
     const board = boardScrollRef.current;
     if (board) {
       const br = board.getBoundingClientRect();
-      if (x < br.left + EDGE_PX) board.scrollLeft -= STEP_PX;
-      else if (x > br.right - EDGE_PX) board.scrollLeft += STEP_PX;
+      if (point.x < br.left + EDGE_PX) board.scrollLeft -= STEP_PX;
+      else if (point.x > br.right - EDGE_PX) board.scrollLeft += STEP_PX;
     }
 
     const verticalTarget =
-      overId === 'unscheduled'
+      target.valid && target.kind === 'unscheduled'
         ? unscheduledBodyRef.current
-        : overLaneId
-          ? laneBodyRefs.current.get(overLaneId) ?? null
+        : target.valid && target.kind === 'lane'
+          ? laneBodyRefs.current.get(target.laneId) ?? null
           : null;
     if (verticalTarget) {
       const vr = verticalTarget.getBoundingClientRect();
-      if (y < vr.top + EDGE_PX) verticalTarget.scrollTop -= STEP_PX;
-      else if (y > vr.bottom - EDGE_PX) verticalTarget.scrollTop += STEP_PX;
+      if (point.y < vr.top + EDGE_PX) verticalTarget.scrollTop -= STEP_PX;
+      else if (point.y > vr.bottom - EDGE_PX) verticalTarget.scrollTop += STEP_PX;
     }
   }
 
@@ -4628,19 +4729,18 @@ export default function ScheduleClient({
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    setActiveDragId(null);
-    setOverId(null);
-    setOverLaneId(null);
-    if (!over) return;
+    const { active } = event;
+    const dropTarget = view === 'board' ? resolveBoardDrop(event) : null;
+    clearBoardDragState();
+    if (!dropTarget?.valid) return;
 
     const activeId = String(active.id);
-    const overId = String(over.id);
+    const resolvedOverId = dropTarget.kind === 'lane' ? dropTarget.overId ?? `lane:${dropTarget.laneId}` : dropTarget.overId;
 
     const isScheduled = scheduleItems.some((i) => i.id === activeId);
 
     if (scheduleMode === 'v2') {
-      if (overId === 'unscheduled') {
+      if (dropTarget.kind === 'unscheduled') {
         if (!isScheduled) return;
 
         const optimistic = optimisticUnassign(scheduleItemsRef.current, unscheduledJobsSeedRef.current, activeId, projectsById);
@@ -4653,18 +4753,14 @@ export default function ScheduleClient({
         return;
       }
 
-      const destInstallerId = (() => {
-        if (overId.startsWith('lane:')) return overId.slice('lane:'.length);
-        const overItem = scheduleItems.find((i) => i.id === overId);
-        return overItem?.installerId ?? null;
-      })();
+      const destInstallerId = dropTarget.laneId;
       if (!destInstallerId) return;
 
       if (!isScheduled) {
         const job = schedulable.jobsById.get(activeId);
         if (!job) return;
         const existing = laneItems.get(destInstallerId) ?? [];
-        const destIndex = overId.startsWith('lane:') ? existing.length : Math.max(0, existing.findIndex((i) => i.id === overId));
+        const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, existing.length));
         let projectUuid: string;
         let crewUuid: string;
         try {
@@ -4675,15 +4771,22 @@ export default function ScheduleClient({
           return;
         }
 
+        const previousState = {
+          scheduleItems: scheduleItemsRef.current,
+          unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+          scheduleConflicts: scheduleConflictsRef.current,
+          nextAvailableByInstallerId: new Map(nextAvailRef.current),
+        };
         const optimisticItems = optimisticAssignUnscheduled(scheduleItemsRef.current, job, destInstallerId, destIndex);
         const optimisticUnscheduled = unscheduledJobsSeedRef.current.filter((unscheduled) => unscheduled.id !== activeId);
         applyV2OptimisticState(optimisticItems, optimisticUnscheduled);
 
         void (async () => {
-          await runWithCommitConfirmation(
-            (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex < 0 ? existing.length : destIndex, force, today }),
-            { successToast: 'Job scheduled.', errorToast: 'Failed to schedule job.' },
+          const ok = await runWithCommitConfirmation(
+            (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex, force, today }),
+            { successToast: 'Job scheduled.', errorToast: 'Failed to schedule job.', refreshOnError: false },
           );
+          if (!ok) setV2LocalState(previousState, nextV2GeneratedAt());
         })();
         return;
       }
@@ -4707,24 +4810,13 @@ export default function ScheduleClient({
       const sourceList = (laneItems.get(sourceInstallerId) ?? []).map((i) => i.id);
       const destList = (laneItems.get(destInstallerId) ?? []).map((i) => i.id);
 
-      if (sourceInstallerId === destInstallerId && overId === activeId) return;
+      if (sourceInstallerId === destInstallerId && resolvedOverId === activeId) return;
 
-      const sourceIndex = sourceList.indexOf(activeId);
-      const destIndex = overId.startsWith('lane:')
-        ? destList.length
-        : destList.indexOf(overId) >= 0
-          ? destList.indexOf(overId)
-          : destList.length;
+      const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, sourceInstallerId === destInstallerId ? Math.max(0, destList.length - 1) : destList.length));
 
       const nextSource = sourceList.filter((id) => id !== activeId);
       const nextDest = sourceInstallerId === destInstallerId ? nextSource.slice() : destList.slice();
-
-      const insertAt = (() => {
-        if (sourceInstallerId !== destInstallerId) return destIndex;
-        if (sourceIndex < 0) return destIndex;
-        if (destIndex > sourceIndex) return Math.max(0, destIndex - 1);
-        return destIndex;
-      })();
+      const insertAt = destIndex;
 
       nextDest.splice(Math.max(0, insertAt), 0, activeId);
 
@@ -4781,23 +4873,19 @@ export default function ScheduleClient({
       return;
     }
 
-    if (overId === 'unscheduled') {
+    if (dropTarget.kind === 'unscheduled') {
       if (isScheduled) void handleUnschedule(activeId);
       return;
     }
 
-    const destInstallerId = (() => {
-      if (overId.startsWith('lane:')) return overId.slice('lane:'.length);
-      const overItem = scheduleItems.find((i) => i.id === overId);
-      return overItem?.installerId ?? null;
-    })();
+    const destInstallerId = dropTarget.laneId;
     if (!destInstallerId) return;
 
     if (!isScheduled) {
       const job = schedulable.jobsById.get(activeId);
       if (!job) return;
       const existing = laneItems.get(destInstallerId) ?? [];
-      const sortIndex = existing.length ? Math.max(...existing.map((i) => i.sortIndex)) + 1 : 0;
+      const sortIndex = Math.max(0, Math.min(dropTarget.insertionIndex, existing.length));
       const item: ScheduleItem = {
         id: newId('sch'),
         projectId: job.projectId,
@@ -4824,24 +4912,13 @@ export default function ScheduleClient({
     const sourceList = (laneItems.get(sourceInstallerId) ?? []).map((i) => i.id);
     const destList = (laneItems.get(destInstallerId) ?? []).map((i) => i.id);
 
-    if (sourceInstallerId === destInstallerId && overId === activeId) return;
+    if (sourceInstallerId === destInstallerId && resolvedOverId === activeId) return;
 
-    const sourceIndex = sourceList.indexOf(activeId);
-    const destIndex = overId.startsWith('lane:')
-      ? destList.length
-      : destList.indexOf(overId) >= 0
-        ? destList.indexOf(overId)
-        : destList.length;
+    const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, sourceInstallerId === destInstallerId ? Math.max(0, destList.length - 1) : destList.length));
 
     const nextSource = sourceList.filter((id) => id !== activeId);
     const nextDest = sourceInstallerId === destInstallerId ? nextSource.slice() : destList.slice();
-
-    const insertAt = (() => {
-      if (sourceInstallerId !== destInstallerId) return destIndex;
-      if (sourceIndex < 0) return destIndex;
-      if (destIndex > sourceIndex) return Math.max(0, destIndex - 1);
-      return destIndex;
-    })();
+    const insertAt = destIndex;
 
     nextDest.splice(Math.max(0, insertAt), 0, activeId);
 
@@ -5386,28 +5463,17 @@ export default function ScheduleClient({
 
         <DndContext
           sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={(e) => setActiveDragId(String(e.active.id))}
+          collisionDetection={view === 'board' ? boardCollisionDetection : closestCenter}
+          autoScroll={view === 'board' ? false : undefined}
+          onDragStart={(e) => {
+            setActiveDragId(String(e.active.id));
+            setBoardDropTarget(null);
+          }}
           onDragOver={(e: DragOverEvent) => {
-            const nextOverId = e.over ? String(e.over.id) : null;
-            setOverId(nextOverId);
-            if (!nextOverId) {
-              setOverLaneId(null);
-              return;
-            }
-            if (nextOverId.startsWith('lane:')) {
-              setOverLaneId(nextOverId.slice('lane:'.length));
-              return;
-            }
-            const overItem = scheduleItems.find((i) => i.id === nextOverId);
-            setOverLaneId(overItem?.installerId ?? null);
+            applyBoardDropTarget(resolveBoardDrop(e));
           }}
           onDragMove={handleDragMove}
-          onDragCancel={() => {
-            setActiveDragId(null);
-            setOverId(null);
-            setOverLaneId(null);
-          }}
+          onDragCancel={clearBoardDragState}
           onDragEnd={handleDragEnd}
         >
           <div className={styles.panels}>
@@ -5898,7 +5964,8 @@ export default function ScheduleClient({
                   const items = laneItems.get(installer.id) ?? [];
                   const ids = items.map((i) => i.id);
                   const laneIsOver = overLaneId === installer.id && Boolean(activeDragId);
-                  const insertionAtEnd = overId === `lane:${installer.id}` && Boolean(activeDragId);
+                  const laneDropTarget = boardDropTarget?.valid && boardDropTarget.kind === 'lane' && boardDropTarget.laneId === installer.id ? boardDropTarget : null;
+                  const insertionAtEnd = Boolean(laneDropTarget && laneDropTarget.placement === 'end' && activeDragId);
                   let maxEnd: string | null = null;
                   for (const id of ids) {
                     const dates = barsByScheduleId.get(id);
@@ -5912,7 +5979,7 @@ export default function ScheduleClient({
 
                   const cards: React.ReactNode[] = [];
                   for (const id of ids) {
-                    const showInsertBefore = overId === id && activeDragId !== id && Boolean(activeDragId);
+                    const showInsertBefore = Boolean(laneDropTarget && laneDropTarget.overId === id && activeDragId !== id && activeDragId);
                     if (showInsertBefore) cards.push(<div key={`insert-${id}`} className={styles.insertionMarker} aria-hidden="true" />);
 
                     const job = schedulable.jobsById.get(id) ?? null;
@@ -5934,6 +6001,7 @@ export default function ScheduleClient({
                           dropTarget={overId === id && activeDragId !== id}
                           menuActions={downtimeActions}
                           issueLevel={issueLevel}
+                          onMount={(node) => boardCardRefs.current.set(id, node)}
                         />,
                       );
                       continue;
@@ -5974,6 +6042,7 @@ export default function ScheduleClient({
                         issueLevel={issueLevel}
                         pinned={scheduleMode === 'v2' && scheduleItem.mode === 'pinned'}
                         extraBadges={extraBadges}
+                        onMount={(node) => boardCardRefs.current.set(id, node)}
                       />,
                     );
                   }
