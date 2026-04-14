@@ -1813,6 +1813,11 @@ export default function ScheduleClient({
   const v2SnapshotKey = useMemo(() => qk.schedule.board(hostKey, today), [hostKey, today]);
   const cachedV2Snapshot = USE_SCHEDULE_V2 ? (queryClient.getQueryData<ScheduleV2Snapshot>(v2SnapshotKey) ?? null) : null;
   const initialV2Snapshot = USE_SCHEDULE_V2 ? initialV2SnapshotProp ?? cachedV2Snapshot : null;
+  const initialV2SnapshotUpdatedAt = useMemo(() => {
+    if (!initialV2Snapshot) return undefined;
+    const generatedAtMs = Date.parse(initialV2Snapshot.generatedAt);
+    return Number.isFinite(generatedAtMs) ? generatedAtMs : Date.now();
+  }, [initialV2Snapshot]);
   if (initialV2Snapshot) hydratedFromCacheRef.current = true;
   const v2GeneratedAtRef = useRef<string>(initialV2Snapshot?.generatedAt ?? '');
   const v2MutationBufferRef = useRef<Array<{ run: () => Promise<any>; resolve: (result: any) => void; reject: (error: unknown) => void }>>([]);
@@ -2414,6 +2419,7 @@ export default function ScheduleClient({
     ...scheduleV2SnapshotQueryOptions(hostKey, today),
     enabled: scheduleMode === 'v2' && view !== 'site_visits',
     initialData: scheduleMode === 'v2' ? initialV2Snapshot ?? undefined : undefined,
+    initialDataUpdatedAt: scheduleMode === 'v2' ? initialV2SnapshotUpdatedAt : undefined,
     retry: (failureCount, error) => !(error instanceof ApiError && error.status === 501) && failureCount < 1,
   });
 
@@ -3536,7 +3542,12 @@ export default function ScheduleClient({
 
   async function runWithCommitConfirmation(
     run: (force: boolean) => Promise<any>,
-    opts?: { successToast?: string; errorToast?: string; refreshOnError?: boolean },
+    opts?: {
+      successToast?: string;
+      errorToast?: string;
+      refreshOnError?: boolean;
+      formatErrorToast?: (error: unknown, fallback: string) => string;
+    },
   ): Promise<boolean> {
     if (scheduleMode === 'v2') {
       v2PendingMutationsRef.current += 1;
@@ -3560,7 +3571,8 @@ export default function ScheduleClient({
         return true;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
-        toast.error(opts?.errorToast ?? msg);
+        const fallback = opts?.errorToast ?? msg;
+        toast.error(opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback);
         if (opts?.refreshOnError !== false && v2PendingMutationsRef.current <= 1) refreshSchedule();
         return false;
       } finally {
@@ -3587,9 +3599,18 @@ export default function ScheduleClient({
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
-      toast.error(opts?.errorToast ?? msg);
+      const fallback = opts?.errorToast ?? msg;
+      toast.error(opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback);
       return false;
     }
+  }
+
+  function formatAssignMutationErrorToast(error: unknown, fallback: string): string {
+    if (error instanceof ApiError) {
+      if ([400, 404, 409, 501].includes(error.status) && error.message) return error.message;
+      if (error.status >= 500 && error.requestId) return `${fallback} Reference: ${error.requestId}.`;
+    }
+    return fallback;
   }
 
   const resolveProjectUuid = (item: ScheduleItem): string | null => {
@@ -4784,7 +4805,12 @@ export default function ScheduleClient({
         void (async () => {
           const ok = await runWithCommitConfirmation(
             (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex, force, today }),
-            { successToast: 'Job scheduled.', errorToast: 'Failed to schedule job.', refreshOnError: false },
+            {
+              successToast: 'Job scheduled.',
+              errorToast: 'Failed to schedule job.',
+              refreshOnError: false,
+              formatErrorToast: formatAssignMutationErrorToast,
+            },
           );
           if (!ok) setV2LocalState(previousState, nextV2GeneratedAt());
         })();
@@ -4866,7 +4892,7 @@ export default function ScheduleClient({
         void (async () => {
           await runWithCommitConfirmation(
             (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
-            { successToast: 'Job moved.', errorToast: 'Failed to move job.' },
+            { successToast: 'Job moved.', errorToast: 'Failed to move job.', formatErrorToast: formatAssignMutationErrorToast },
           );
         })();
       }

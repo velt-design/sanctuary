@@ -25,6 +25,29 @@ function tempId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function fallbackExistingJobModel(input: {
+  scheduledJobId: string;
+  projectId: string;
+  crewId: string;
+  durationDays: number;
+}) {
+  return {
+    id: input.scheduledJobId,
+    jobId: input.projectId,
+    crewId: input.crewId,
+    mode: 'floating' as const,
+    plannedStart: null,
+    plannedDurationDays: null,
+    forecastStart: null,
+    forecastDurationDays: input.durationDays,
+    forecastEndExclusive: null,
+    actualStart: null,
+    actualFinish: null,
+    status: 'not_started' as const,
+    daysRemaining: null,
+  };
+}
+
 export async function POST(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/job/assign');
   const auth = await requireStaffContext(diagnostics);
@@ -39,6 +62,7 @@ export async function POST(req: Request) {
   const crewId = typeof body.crew_id === 'string' ? body.crew_id.trim() : '';
   const positionRaw = body.position;
   const force = Boolean(body.force);
+  const requestedPosition = typeof positionRaw === 'number' && Number.isFinite(positionRaw) ? Math.trunc(positionRaw) : null;
 
   if (!jobId || !crewId) {
     logPortalServerWarn(diagnostics, {
@@ -49,7 +73,7 @@ export async function POST(req: Request) {
         reason: 'missing_job_or_crew',
         jobId: jobId || null,
         crewId: crewId || null,
-        requestedPosition: typeof positionRaw === 'number' && Number.isFinite(positionRaw) ? Math.trunc(positionRaw) : null,
+        requestedPosition,
       },
     });
     return jsonError('job_id and crew_id are required', 400, diagnostics);
@@ -67,7 +91,9 @@ export async function POST(req: Request) {
   }
   existingJob = existingRes.data ?? null;
 
-  const isMove = Boolean(existingJob && existingJob.crew_id && existingJob.crew_id !== crewId);
+  const existingScheduledJobId = existingJob?.id ? String(existingJob.id) : null;
+  const existingCrewId = existingJob?.crew_id ? String(existingJob.crew_id) : null;
+  const isMove = Boolean(existingJob && existingCrewId && existingCrewId !== crewId);
 
   let durationDays = ensureForecastDurationDays(existingJob?.forecast_duration_days ?? null, 1);
   if (!existingJob) {
@@ -80,8 +106,22 @@ export async function POST(req: Request) {
       logPortalServerError(diagnostics, { status: 500, message: 'Failed to load project', error: projectRes.error });
       return jsonError('Failed to load project', 500, diagnostics);
     }
-    if (!projectRes.data) return jsonError('Project not found', 404, diagnostics);
+    if (!projectRes.data) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.validation_failed',
+        status: 404,
+        message: 'Project not found',
+        extra: { reason: 'project_not_found', jobId, crewId, requestedPosition },
+      });
+      return jsonError('Project not found', 404, diagnostics);
+    }
     if (!isSchedulingReadyProjectStatus(projectRes.data.pipeline_stage)) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.validation_failed',
+        status: 409,
+        message: 'Only deposit-stage projects can be scheduled.',
+        extra: { reason: 'project_not_scheduling_ready', jobId, crewId, requestedPosition },
+      });
       return jsonError('Only deposit-stage projects can be scheduled.', 409, diagnostics);
     }
 
@@ -115,13 +155,44 @@ export async function POST(req: Request) {
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
+  if (!crewCtx) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.validation_failed',
+      status: 404,
+      message: 'Crew not found',
+      extra: { reason: 'crew_not_found', jobId, crewId, scheduledJobId: existingScheduledJobId, requestedPosition },
+    });
+    return jsonError('Crew not found', 404, diagnostics);
+  }
 
-  const existingItem = existingJob ? crewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingJob?.id) : null;
-  if (existingItem && !isMove) return jsonError('Job is already scheduled in this crew', 409, diagnostics);
+  const existingTargetItem = existingScheduledJobId
+    ? crewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingScheduledJobId) ?? null
+    : null;
+  if (existingTargetItem && !isMove) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.validation_failed',
+      status: 409,
+      message: 'Job is already scheduled in this crew. Refresh the board.',
+      extra: {
+        reason: 'already_scheduled_same_crew',
+        jobId,
+        crewId,
+        scheduledJobId: existingScheduledJobId,
+        requestedPosition,
+        targetItemPresent: true,
+        sourceCrewId: existingCrewId,
+        sourceItemPresent: true,
+      },
+    });
+    return jsonError('Job is already scheduled in this crew. Refresh the board.', 409, diagnostics);
+  }
 
-  const jobRecordId = existingJob?.id ?? tempId('temp_job');
-  const existingJobModel = existingJob ? crewCtx.jobs.find((job) => job.id === existingJob.id) ?? ctx.jobs.find((job) => job.id === existingJob.id) ?? null : null;
+  const jobRecordId = existingScheduledJobId ?? tempId('temp_job');
+  const existingJobModel = existingScheduledJobId
+    ? crewCtx.jobs.find((job) => job.id === existingScheduledJobId) ??
+      ctx.jobs.find((job) => job.id === existingScheduledJobId) ??
+      fallbackExistingJobModel({ scheduledJobId: existingScheduledJobId, projectId: jobId, crewId: existingCrewId ?? crewId, durationDays })
+    : null;
   const newJob = existingJob
     ? existingJobModel
       ? { ...existingJobModel, crewId }
@@ -185,49 +256,104 @@ export async function POST(req: Request) {
   let sourceItemId: string | null = null;
   let sourcePositions: Array<{ id: string; position: number }> = [];
   let sourceForecastUpdates: Array<{ id: string; forecast_start: string | null; forecast_end_exclusive: string | null; forecast_duration_days: number }> = [];
+  let repairedMissingSourceItem = false;
 
-  if (isMove && existingJob?.crew_id) {
-    const oldCrewId = String(existingJob.crew_id);
+  if (isMove && existingScheduledJobId && existingCrewId) {
+    const oldCrewId = existingCrewId;
     sourceCrewId = oldCrewId;
     const oldCrewCtx = buildCrewContext(ctx, oldCrewId);
-    if (!oldCrewCtx) return jsonError('Source crew not found', 404, diagnostics);
-    sourceItemId = oldCrewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingJob.id)?.id ?? null;
-    if (!sourceItemId) {
-      logPortalServerError(diagnostics, {
-        status: 500,
-        message: 'Failed to assign scheduled job',
-        extra: { scheduledJobId: String(existingJob.id), reason: 'missing_source_queue_item' },
+    if (!oldCrewCtx) {
+      repairedMissingSourceItem = true;
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.consistency_repair',
+        status: 200,
+        message: 'Repairing scheduled job with missing source crew context',
+        extra: {
+          reason: 'missing_source_crew_repaired',
+          jobId,
+          crewId,
+          scheduledJobId: existingScheduledJobId,
+          sourceCrewId,
+          requestedPosition,
+          targetItemPresent: Boolean(existingTargetItem),
+          sourceItemPresent: false,
+        },
       });
-      return jsonError('Failed to assign scheduled job', 500, diagnostics);
+    } else {
+      sourceItemId = oldCrewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingScheduledJobId)?.id ?? null;
+      if (!sourceItemId) {
+        repairedMissingSourceItem = true;
+        logPortalServerWarn(diagnostics, {
+          event: 'schedule.assign.consistency_repair',
+          status: 200,
+          message: 'Repairing scheduled job with missing source queue item',
+          extra: {
+            reason: 'missing_source_queue_item_repaired',
+            jobId,
+            crewId,
+            scheduledJobId: existingScheduledJobId,
+            sourceCrewId,
+            requestedPosition,
+            targetItemPresent: Boolean(existingTargetItem),
+            sourceItemPresent: false,
+          },
+        });
+      } else {
+        const oldItems = removeItem(oldCrewCtx.items, (item) => item.itemType === 'job' && item.jobId === existingScheduledJobId);
+        const oldJobs = oldCrewCtx.jobs.filter((job) => job.id !== existingScheduledJobId);
+        const oldAfter = recomputeForCrew({
+          crewRow: oldCrewCtx.crewRow,
+          items: oldItems,
+          jobs: oldJobs,
+          downtimes: oldCrewCtx.downtimes,
+          calendar: ctx.calendar,
+          today: ctx.today,
+        });
+        const oldImpacts = computeCommitImpacts({
+          before: oldCrewCtx.recompute,
+          after: oldAfter,
+          jobMetaById: buildJobMetaMap(oldCrewCtx.jobs),
+          today: ctx.today,
+          horizonDays: 10,
+          region: oldCrewCtx.crewRow.calendar_region || 'Auckland',
+          calendar: ctx.calendar,
+        });
+        impacts = [...impacts, ...oldImpacts];
+        sourcePositions = applyScheduleItemPositions(oldItems);
+        sourceForecastUpdates = oldAfter.job_updates;
+        sourceFormatted = formatCrewScheduleBlocks({
+          crewRow: oldCrewCtx.crewRow,
+          recompute: oldAfter,
+          jobsById: new Map(oldJobs.map((job) => [job.id, job])),
+          downtimesById: oldCrewCtx.downtimesById,
+        });
+      }
     }
-    const oldItems = removeItem(oldCrewCtx.items, (item) => item.itemType === 'job' && item.jobId === existingJob.id);
-    const oldJobs = oldCrewCtx.jobs.filter((job) => job.id !== existingJob.id);
-    const oldAfter = recomputeForCrew({
-      crewRow: oldCrewCtx.crewRow,
-      items: oldItems,
-      jobs: oldJobs,
-      downtimes: oldCrewCtx.downtimes,
-      calendar: ctx.calendar,
-      today: ctx.today,
+  }
+
+  if (existingJob && !isMove && !existingTargetItem) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.consistency_repair',
+      status: 200,
+      message: 'Repairing scheduled job with missing target queue item',
+      extra: {
+        reason: 'missing_target_queue_item_repaired',
+        jobId,
+        crewId,
+        scheduledJobId: existingScheduledJobId,
+        sourceCrewId: existingCrewId,
+        requestedPosition,
+        targetItemPresent: false,
+        sourceItemPresent: false,
+      },
     });
-    const oldImpacts = computeCommitImpacts({
-      before: oldCrewCtx.recompute,
-      after: oldAfter,
-      jobMetaById: buildJobMetaMap(oldCrewCtx.jobs),
-      today: ctx.today,
-      horizonDays: 10,
-      region: oldCrewCtx.crewRow.calendar_region || 'Auckland',
-      calendar: ctx.calendar,
-    });
-    impacts = [...impacts, ...oldImpacts];
-    sourcePositions = applyScheduleItemPositions(oldItems);
-    sourceForecastUpdates = oldAfter.job_updates;
-    sourceFormatted = formatCrewScheduleBlocks({
-      crewRow: oldCrewCtx.crewRow,
-      recompute: oldAfter,
-      jobsById: new Map(oldJobs.map((job) => [job.id, job])),
-      downtimesById: oldCrewCtx.downtimesById,
-    });
+  }
+
+  if (repairedMissingSourceItem) {
+    sourceItemId = null;
+    sourcePositions = [];
+    sourceForecastUpdates = [];
+    sourceFormatted = null;
   }
 
   if (impacts.length && !force) {
@@ -263,7 +389,11 @@ export async function POST(req: Request) {
         reason: 'commit_failed',
         jobId,
         crewId,
+        scheduledJobId: existingScheduledJobId,
+        sourceCrewId,
         requestedPosition: position,
+        targetItemPresent: Boolean(existingTargetItem),
+        sourceItemPresent: Boolean(sourceItemId),
       },
     };
     if (commitRes.status === 501) {

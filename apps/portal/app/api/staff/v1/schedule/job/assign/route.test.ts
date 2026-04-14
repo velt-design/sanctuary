@@ -437,6 +437,248 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_assign_move_ok');
   });
 
+  it('returns 409 when an existing scheduled job already has a same-crew queue item', async () => {
+    scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
+      data: { id: 'scheduled-job-1', crew_id: 'crew-new', forecast_duration_days: 2 },
+      error: null,
+    });
+    buildCrewContext.mockReturnValueOnce({
+      crewRow: { id: 'crew-new', calendar_region: 'Auckland' },
+      items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: 'scheduled-job-1', downtimeId: null, position: 0 }],
+      jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-new', forecastDurationDays: 2 }],
+      downtimes: [],
+      recompute: { before: true },
+      downtimesById: new Map(),
+    });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_same_crew_existing' },
+      }),
+    );
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({ error: 'Job is already scheduled in this crew. Refresh the board.' });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.validation_failed',
+        requestId: 'req_assign_same_crew_existing',
+        status: 409,
+        reason: 'already_scheduled_same_crew',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+        scheduledJobId: 'scheduled-job-1',
+        targetItemPresent: true,
+        sourceItemPresent: true,
+      }),
+    );
+  });
+
+  it('repairs an existing same-crew scheduled job that is missing a queue item', async () => {
+    scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
+      data: { id: 'scheduled-job-1', crew_id: 'crew-new', forecast_duration_days: 2 },
+      error: null,
+    });
+    loadScheduleContext.mockResolvedValueOnce({
+      today: '2026-04-10',
+      calendar: {},
+      jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-new', forecastDurationDays: 2 }],
+    });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_same_crew_repair' },
+      }),
+    );
+
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+      p_target_crew_id: 'crew-new',
+      p_target_insert_position: 1,
+      p_target_positions: [{ id: 'target-item-1', position: 0 }],
+      p_target_forecast_updates: [
+        {
+          id: 'scheduled-job-1',
+          forecast_start: '2026-04-15',
+          forecast_end_exclusive: '2026-04-18',
+          forecast_duration_days: 3,
+        },
+      ],
+      p_assignment: { scheduled_job_id: 'scheduled-job-1' },
+      p_move: null,
+    });
+    expect(res.status).toBe(200);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.consistency_repair',
+        requestId: 'req_assign_same_crew_repair',
+        reason: 'missing_target_queue_item_repaired',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+        scheduledJobId: 'scheduled-job-1',
+        sourceCrewId: 'crew-new',
+        targetItemPresent: false,
+      }),
+    );
+  });
+
+  it('repairs an existing cross-crew scheduled job when the source queue item is missing', async () => {
+    scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
+      data: { id: 'scheduled-job-1', crew_id: 'crew-old', forecast_duration_days: 2 },
+      error: null,
+    });
+    loadScheduleContext.mockResolvedValueOnce({
+      today: '2026-04-10',
+      calendar: {},
+      jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-old', forecastDurationDays: 2 }],
+    });
+    buildCrewContext.mockImplementation((_ctx: any, id: string) => {
+      if (id === 'crew-new') {
+        return {
+          crewRow: { id: 'crew-new', calendar_region: 'Auckland' },
+          items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: 'scheduled-job-2', downtimeId: null, position: 0 }],
+          jobs: [{ id: 'scheduled-job-2', jobId: 'project-2', crewId: 'crew-new', forecastDurationDays: 2 }],
+          downtimes: [],
+          recompute: { before: true },
+          downtimesById: new Map(),
+        };
+      }
+      if (id === 'crew-old') {
+        return {
+          crewRow: { id: 'crew-old', calendar_region: 'Auckland' },
+          items: [{ id: 'source-item-2', crewId: 'crew-old', itemType: 'job', jobId: 'scheduled-job-3', downtimeId: null, position: 0 }],
+          jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-old', forecastDurationDays: 2 }],
+          downtimes: [],
+          recompute: { before: true },
+          downtimesById: new Map(),
+        };
+      }
+      return null;
+    });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_source_missing_repair' },
+      }),
+    );
+
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+      p_target_crew_id: 'crew-new',
+      p_target_insert_position: 1,
+      p_target_positions: [{ id: 'target-item-1', position: 0 }],
+      p_target_forecast_updates: [
+        {
+          id: 'scheduled-job-1',
+          forecast_start: '2026-04-15',
+          forecast_end_exclusive: '2026-04-18',
+          forecast_duration_days: 3,
+        },
+      ],
+      p_assignment: { scheduled_job_id: 'scheduled-job-1' },
+      p_move: null,
+    });
+    expect(res.status).toBe(200);
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.consistency_repair',
+        requestId: 'req_assign_source_missing_repair',
+        reason: 'missing_source_queue_item_repaired',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+        scheduledJobId: 'scheduled-job-1',
+        sourceCrewId: 'crew-old',
+        sourceItemPresent: false,
+      }),
+    );
+  });
+
+  it('logs project-not-found assignment failures with a structured reason', async () => {
+    projectsMaybeSingle.mockResolvedValueOnce({ data: null, error: null });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_project_missing' },
+      }),
+    );
+
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({ error: 'Project not found' });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.validation_failed',
+        requestId: 'req_assign_project_missing',
+        status: 404,
+        reason: 'project_not_found',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+      }),
+    );
+  });
+
+  it('logs not-ready project assignment failures with a structured reason', async () => {
+    projectsMaybeSingle.mockResolvedValueOnce({ data: { id: 'project-1', pipeline_stage: 'NEW' }, error: null });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_not_ready' },
+      }),
+    );
+
+    expect(res.status).toBe(409);
+    await expect(res.json()).resolves.toEqual({ error: 'Only deposit-stage projects can be scheduled.' });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.validation_failed',
+        requestId: 'req_assign_not_ready',
+        status: 409,
+        reason: 'project_not_scheduling_ready',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+      }),
+    );
+  });
+
+  it('logs crew-not-found assignment failures with a structured reason', async () => {
+    buildCrewContext.mockReturnValueOnce(null);
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_crew_missing' },
+      }),
+    );
+
+    expect(res.status).toBe(404);
+    await expect(res.json()).resolves.toEqual({ error: 'Crew not found' });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.validation_failed',
+        requestId: 'req_assign_crew_missing',
+        status: 404,
+        reason: 'crew_not_found',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+      }),
+    );
+  });
+
   it('returns 501 when the command function is missing', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.schedule_v2_assign_job' } });
 

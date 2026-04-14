@@ -6,10 +6,12 @@ import { qk } from '@/lib/queries/keys';
 import type { ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import { assignJob } from '@/lib/repo/scheduleV2Repo';
+import { ApiError } from '@/lib/repo/apiClient';
 
 const routerReplace = vi.fn();
 const routerPush = vi.fn();
 const scheduleSnapshotQueryOptions = vi.fn();
+const scheduleSnapshotQueryFn = vi.fn();
 const transitionMocks = vi.hoisted(() => ({
   beginRouteTransition: vi.fn(),
 }));
@@ -135,7 +137,7 @@ vi.mock('@/lib/scheduling/scheduleClock', async () => {
 });
 
 const initialSnapshot: ScheduleV2Snapshot = {
-  generatedAt: '2026-04-07T00:00:00.000Z',
+  generatedAt: new Date().toISOString(),
   installers: [
     {
       id: 'crew_alpha',
@@ -181,7 +183,9 @@ const ALPHA_ESTIMATE_UUID = '00000000-0000-4000-8000-000000000201';
 const BETA_PROJECT_UUID = '00000000-0000-4000-8000-000000000102';
 const BETA_ESTIMATE_UUID = '00000000-0000-4000-8000-000000000202';
 const SCHEDULE_ITEM_UUID = '00000000-0000-4000-8000-000000000301';
+const BETA_SCHEDULE_ITEM_UUID = '00000000-0000-4000-8000-000000000302';
 const SCHEDULED_JOB_UUID = '00000000-0000-4000-8000-000000000401';
+const BETA_SCHEDULED_JOB_UUID = '00000000-0000-4000-8000-000000000402';
 
 const crewId = `crew_${CREW_UUID}`;
 const alphaProjectId = `proj_${ALPHA_PROJECT_UUID}`;
@@ -290,10 +294,12 @@ describe('ScheduleClient', () => {
     toastMocks.info.mockReset();
     dndMocks.latestContextProps = null;
     vi.mocked(assignJob).mockReset();
+    scheduleSnapshotQueryFn.mockReset();
     scheduleSnapshotQueryOptions.mockReset();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
-      queryFn: async () => initialSnapshot,
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(initialSnapshot),
+      staleTime: 30_000,
     }));
   });
 
@@ -328,6 +334,7 @@ describe('ScheduleClient', () => {
       rendered.container.querySelector('button[aria-label="Collapse unscheduled panel"], button[aria-label="Expand unscheduled panel"]'),
     ).not.toBeNull();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(initialSnapshot);
+    expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
 
     rendered.unmount();
   });
@@ -377,7 +384,8 @@ describe('ScheduleClient', () => {
     const snapshot = boardMutationSnapshot();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
-      queryFn: async () => snapshot,
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
     }));
     vi.mocked(assignJob).mockResolvedValue({ ok: true } as any);
 
@@ -421,7 +429,8 @@ describe('ScheduleClient', () => {
     const snapshot = boardMutationSnapshot();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
-      queryFn: async () => snapshot,
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
     }));
     vi.mocked(assignJob).mockRejectedValue(new Error('assign failed'));
 
@@ -453,6 +462,203 @@ describe('ScheduleClient', () => {
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
     expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job.');
+
+    rendered.unmount();
+  });
+
+  it('shows a specific API error and rolls back when unscheduled assignment returns 409', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockRejectedValue(
+      new ApiError('Job is already scheduled in this crew. Refresh the board.', {
+        status: 409,
+        body: { error: 'Job is already scheduled in this crew. Refresh the board.' },
+        requestId: 'req_assign_409',
+      }),
+    );
+
+    const { rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
+    expect(unscheduledAfter?.textContent).toContain('Beta Deck');
+    expect(toastMocks.error).toHaveBeenCalledWith('Job is already scheduled in this crew. Refresh the board.');
+
+    rendered.unmount();
+  });
+
+  it('shows a request reference and rolls back when unscheduled assignment returns 500', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockRejectedValue(
+      new ApiError('Failed to assign scheduled job', {
+        status: 500,
+        body: { error: 'Failed to assign scheduled job' },
+        requestId: 'req_assign_500',
+      }),
+    );
+
+    const { rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
+    expect(unscheduledAfter?.textContent).toContain('Beta Deck');
+    expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job. Reference: req_assign_500.');
+
+    rendered.unmount();
+  });
+
+  it('keeps a repaired successful assignment on the board and writes the returned schedule to cache', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockResolvedValue({
+      ok: true,
+      crew_id: CREW_UUID,
+      schedule: {
+        crew_id: CREW_UUID,
+        items: [
+          {
+            id: SCHEDULE_ITEM_UUID,
+            item_type: 'job',
+            position: 0,
+            start: '2026-04-08',
+            end_exclusive: '2026-04-10',
+            duration_days: 2,
+            job: {
+              id: SCHEDULED_JOB_UUID,
+              job_id: ALPHA_PROJECT_UUID,
+              crew_id: CREW_UUID,
+              mode: 'floating',
+              planned_commitment_type: null,
+              planned_week_start: null,
+              planned_start: null,
+              planned_duration_days: null,
+              planned_flex_days: null,
+              forecast_start: '2026-04-08',
+              forecast_end_exclusive: '2026-04-10',
+              forecast_duration_days: 2,
+              actual_start: null,
+              actual_finish: null,
+              status: 'not_started',
+              days_remaining: null,
+            },
+            downtime: null,
+          },
+          {
+            id: BETA_SCHEDULE_ITEM_UUID,
+            item_type: 'job',
+            position: 1,
+            start: '2026-04-10',
+            end_exclusive: '2026-04-14',
+            duration_days: 2,
+            job: {
+              id: BETA_SCHEDULED_JOB_UUID,
+              job_id: BETA_PROJECT_UUID,
+              crew_id: CREW_UUID,
+              mode: 'floating',
+              planned_commitment_type: null,
+              planned_week_start: null,
+              planned_start: null,
+              planned_duration_days: null,
+              planned_flex_days: null,
+              forecast_start: '2026-04-10',
+              forecast_end_exclusive: '2026-04-14',
+              forecast_duration_days: 2,
+              actual_start: null,
+              actual_finish: null,
+              status: 'not_started',
+              days_remaining: null,
+            },
+            downtime: null,
+          },
+        ],
+        conflicts: [],
+        next_available_date: '2026-04-14',
+      },
+      conflicts: [],
+      next_available_date: '2026-04-14',
+    } as any);
+
+    const { queryClient, rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const cached = queryClient.getQueryData<ScheduleV2Snapshot>(qk.schedule.board('example.supabase.co', '2026-04-07'));
+    expect(cached?.scheduleItems.some((item) => item.id === `sch_${BETA_SCHEDULE_ITEM_UUID}`)).toBe(true);
+    expect(cached?.unscheduledJobs.some((job) => job.projectId === betaProjectId)).toBe(false);
+    expect(rendered.container.textContent).toContain('Beta Deck');
+    expect(toastMocks.success).toHaveBeenCalledWith('Job scheduled.');
 
     rendered.unmount();
   });

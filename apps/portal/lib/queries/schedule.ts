@@ -4,6 +4,8 @@ import { mapScheduleBoardResponseToV2Snapshot, type ScheduleV2Snapshot } from '@
 import { qk } from './keys';
 export type { ScheduleProjectSummary, ScheduleV2Snapshot } from '@/lib/scheduling/scheduleV2Snapshot';
 
+export const SCHEDULE_BOARD_STALE_TIME_MS = 30_000;
+
 async function fetchScheduleV2Snapshot(today: string): Promise<ScheduleV2Snapshot> {
   const board = await fetchScheduleBoard({ today });
   return mapScheduleBoardResponseToV2Snapshot(board);
@@ -13,4 +15,5 @@ export const scheduleV2SnapshotQueryOptions = (host: string, today: string) =>
   queryOptions({
     queryKey: qk.schedule.board(host, today),
     queryFn: () => fetchScheduleV2Snapshot(today),
+    staleTime: SCHEDULE_BOARD_STALE_TIME_MS,
   });

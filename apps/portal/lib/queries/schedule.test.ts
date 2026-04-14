@@ -51,11 +51,12 @@ describe('scheduleV2SnapshotQueryOptions', () => {
       closures: [],
     });
 
-    const { scheduleV2SnapshotQueryOptions } = await import('./schedule');
+    const { SCHEDULE_BOARD_STALE_TIME_MS, scheduleV2SnapshotQueryOptions } = await import('./schedule');
     const opts = scheduleV2SnapshotQueryOptions('example.supabase.co', '2026-04-07');
-    const snapshot = await opts.queryFn();
+    const snapshot = await opts.queryFn!({} as any);
 
     expect(fetchScheduleBoard).toHaveBeenCalledWith({ today: '2026-04-07' });
+    expect(opts.staleTime).toBe(SCHEDULE_BOARD_STALE_TIME_MS);
     expect(snapshot.projects).toEqual([
       {
         id: 'proj_22222222-2222-4222-8222-222222222222',
