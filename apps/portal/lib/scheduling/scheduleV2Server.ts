@@ -2,7 +2,7 @@ import 'server-only';
 
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { addDaysYmd, diffDaysYmd, isYmd, todayYmd } from '@/lib/scheduling/date';
-import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { SCHEDULING_READY_PROJECT_STATUS, normalizeSchedulingProjectStatus } from '@/lib/scheduling/readiness';
 import {
   addWorkingDays,
@@ -39,8 +39,8 @@ type EstimateRowLite = {
   status: string | null;
   created_at: string | null;
   version: number | null;
-  inputs?: unknown;
-  outputs: unknown;
+  duration_days: number | null;
+  crew_hours: number | null;
 };
 
 export type CrewRow = {
@@ -472,15 +472,13 @@ export function getLatestSchedulableEstimate(estimates: EstimateRowLite[]): Esti
 
 export function durationDaysFromEstimate(estimate: EstimateRowLite | null): number {
   if (!estimate) return 1;
-  const derived = deriveDurationHoursFromEstimate(
-    {
-      id: estimate.id,
-      projectId: estimate.project_id,
-      outputs: estimate.outputs ?? {},
-    } as any,
-  );
-  const hours = derived.durationHours;
-  return Math.max(1, Math.ceil(hours / WORK_HOURS_PER_DAY));
+  if (typeof estimate.duration_days === 'number' && Number.isFinite(estimate.duration_days) && estimate.duration_days > 0) {
+    return Math.max(1, Math.ceil(estimate.duration_days));
+  }
+  if (typeof estimate.crew_hours === 'number' && Number.isFinite(estimate.crew_hours) && estimate.crew_hours > 0) {
+    return Math.max(1, Math.ceil(estimate.crew_hours / WORK_HOURS_PER_DAY));
+  }
+  return 1;
 }
 
 export function recomputeForCrew(input: {
@@ -725,7 +723,7 @@ export function formatCrewScheduleBlocks(input: {
 export async function listProjectsAndEstimates(): Promise<{ projects: ProjectRowLite[]; estimates: EstimateRowLite[] }> {
   const [projectsRes, estimatesRes] = await Promise.all([
     supabaseServiceRole.from('projects').select('id, name, pipeline_stage, follow_up_date'),
-    supabaseServiceRole.from('estimates').select('id, project_id, status, created_at, version, outputs'),
+    supabaseServiceRole.from('estimates').select('id, project_id, status, created_at, version, duration_days, crew_hours'),
   ]);
   if (projectsRes.error) throw projectsRes.error;
   if (estimatesRes.error) throw estimatesRes.error;
@@ -743,7 +741,8 @@ export async function listProjectsAndEstimates(): Promise<{ projects: ProjectRow
     status: typeof row?.status === 'string' ? row.status : null,
     created_at: typeof row?.created_at === 'string' ? row.created_at : null,
     version: typeof row?.version === 'number' && Number.isFinite(row.version) ? row.version : null,
-    outputs: row?.outputs ?? null,
+    duration_days: typeof row?.duration_days === 'number' && Number.isFinite(row.duration_days) ? row.duration_days : null,
+    crew_hours: typeof row?.crew_hours === 'number' && Number.isFinite(row.crew_hours) ? row.crew_hours : null,
   }));
 
   return {
