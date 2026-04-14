@@ -8,12 +8,16 @@ import type {
   HouseReferenceGeometry,
   HouseRoofFeature3D,
   HouseRoofFeatureKind,
+  HouseRoofMaterial,
+  HouseRoofMaterialProfileKind,
+  HouseRoofMaterialVisual3D,
   HouseWallSegment3D,
   Line3,
   Plane3,
   Point3,
   Polygon3,
   RenderMesh3D,
+  RoofFlashing3D,
   RoofPlane3D,
   Vector3,
 } from './contracts';
@@ -42,6 +46,13 @@ const DEFAULT_WALL_SOLID_THICKNESS_MM = 90;
 const DEFAULT_ROOF_SOLID_THICKNESS_MM = 120;
 const DEFAULT_SOFFIT_SOLID_THICKNESS_MM = 10;
 const DEFAULT_FASCIA_SOLID_THICKNESS_MM = 18;
+const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_GIRTH_MM = 300;
+const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM = 150;
+const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM = 1;
+const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM =
+  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM / 2;
+const DEFAULT_HOUSE_ROOF_MATERIAL: HouseRoofMaterial = 'corrugated_iron';
+const DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM = 2;
 const RIDGE_COLLAPSE_EPSILON_MM = 1;
 
 function point(x: number, y: number, z: number): Point3 {
@@ -615,6 +626,20 @@ function buildPolygonGutterLines(input: { eavePolygon: Polygon3; z: number }): L
     if (lineLength(gutterLine) > 1e-6) lines.push(gutterLine);
   }
   return lines;
+}
+
+function buildPolygonGutterBoundaries(input: {
+  eavePolygon: Polygon3;
+  z: number;
+  gutterWidthMm: number;
+  gutterProjectionMm: number;
+}): Polygon3[] | null {
+  const footprints = buildMiteredOffsetStripFootprints(
+    input.eavePolygon,
+    input.gutterProjectionMm,
+    input.gutterProjectionMm - input.gutterWidthMm,
+  );
+  return footprints?.map((footprint) => footprint.map((candidate) => point(candidate.x, candidate.y, input.z))) ?? null;
 }
 
 function buildPolygonFasciaPolygons(input: {
@@ -2798,7 +2823,24 @@ function miterCornerPoint(
 }
 
 function buildMiteredStripFootprints(sourcePolygon: Polygon3, halfWidthMm: number): Polygon3[] | null {
-  if (sourcePolygon.length < 3 || halfWidthMm <= 0 || Math.abs(signedAreaXY(sourcePolygon)) <= 1e-6) return null;
+  if (!Number.isFinite(halfWidthMm) || halfWidthMm <= 0) return null;
+  return buildMiteredOffsetStripFootprints(sourcePolygon, halfWidthMm, -halfWidthMm);
+}
+
+function buildMiteredOffsetStripFootprints(
+  sourcePolygon: Polygon3,
+  outerOffsetMm: number,
+  innerOffsetMm: number,
+): Polygon3[] | null {
+  if (
+    sourcePolygon.length < 3 ||
+    !Number.isFinite(outerOffsetMm) ||
+    !Number.isFinite(innerOffsetMm) ||
+    Math.abs(outerOffsetMm - innerOffsetMm) <= 1e-6 ||
+    Math.abs(signedAreaXY(sourcePolygon)) <= 1e-6
+  ) {
+    return null;
+  }
   if (
     sourcePolygon.some(
       (current, index) => lineLength(line(current, sourcePolygon[(index + 1) % sourcePolygon.length]!)) <= 1e-6,
@@ -2811,16 +2853,16 @@ function buildMiteredStripFootprints(sourcePolygon: Polygon3, halfWidthMm: numbe
     const end = sourcePolygon[(index + 1) % sourcePolygon.length]!;
     const outward = edgeOutwardVector(sourcePolygon, index);
     return {
-      start: point(start.x + outward.x * halfWidthMm, start.y + outward.y * halfWidthMm, 0),
-      end: point(end.x + outward.x * halfWidthMm, end.y + outward.y * halfWidthMm, 0),
+      start: point(start.x + outward.x * outerOffsetMm, start.y + outward.y * outerOffsetMm, 0),
+      end: point(end.x + outward.x * outerOffsetMm, end.y + outward.y * outerOffsetMm, 0),
     };
   });
   const innerEdges = sourcePolygon.map((start, index) => {
     const end = sourcePolygon[(index + 1) % sourcePolygon.length]!;
     const outward = edgeOutwardVector(sourcePolygon, index);
     return {
-      start: point(start.x - outward.x * halfWidthMm, start.y - outward.y * halfWidthMm, 0),
-      end: point(end.x - outward.x * halfWidthMm, end.y - outward.y * halfWidthMm, 0),
+      start: point(start.x + outward.x * innerOffsetMm, start.y + outward.y * innerOffsetMm, 0),
+      end: point(end.x + outward.x * innerOffsetMm, end.y + outward.y * innerOffsetMm, 0),
     };
   });
 
@@ -3442,6 +3484,517 @@ function buildRoofSolidRenderMesh(input: {
   return renderMeshIsFinite(mesh) ? mesh : undefined;
 }
 
+function polygonArea3D(points: Polygon3): number {
+  if (points.length < 3) return 0;
+  const areaVector = points.reduce<Vector3>(
+    (sum, current, index) => {
+      const next = points[(index + 1) % points.length]!;
+      const cross = crossProduct(current, next);
+      return {
+        x: sum.x + cross.x,
+        y: sum.y + cross.y,
+        z: sum.z + cross.z,
+      };
+    },
+    { x: 0, y: 0, z: 0 },
+  );
+  return finiteVectorLength(areaVector) / 2;
+}
+
+function polygonAveragePoint3D(points: Polygon3): Point3 {
+  const total = points.reduce(
+    (sum, current) => ({
+      x: sum.x + current.x,
+      y: sum.y + current.y,
+      z: sum.z + current.z,
+    }),
+    { x: 0, y: 0, z: 0 },
+  );
+  const divisor = Math.max(1, points.length);
+  return point(total.x / divisor, total.y / divisor, total.z / divisor);
+}
+
+function cleanPolygon3D(points: Polygon3): Polygon3 {
+  const withoutDuplicates: Polygon3 = [];
+  for (const candidate of points) {
+    const previous = withoutDuplicates[withoutDuplicates.length - 1];
+    if (previous && finiteVectorLength(subtractPoints(candidate, previous)) <= ROOF_JOIN_EPSILON_MM) continue;
+    withoutDuplicates.push(candidate);
+  }
+
+  if (
+    withoutDuplicates.length > 1 &&
+    finiteVectorLength(subtractPoints(withoutDuplicates[0]!, withoutDuplicates[withoutDuplicates.length - 1]!)) <=
+      ROOF_JOIN_EPSILON_MM
+  ) {
+    withoutDuplicates.pop();
+  }
+
+  if (withoutDuplicates.length < 3) return withoutDuplicates;
+
+  const cleaned: Polygon3 = [];
+  for (let index = 0; index < withoutDuplicates.length; index += 1) {
+    const previous = withoutDuplicates[(index - 1 + withoutDuplicates.length) % withoutDuplicates.length]!;
+    const current = withoutDuplicates[index]!;
+    const next = withoutDuplicates[(index + 1) % withoutDuplicates.length]!;
+    const first = subtractPoints(current, previous);
+    const second = subtractPoints(next, current);
+    if (finiteVectorLength(crossProduct(first, second)) <= ROOF_JOIN_EPSILON_MM) continue;
+    cleaned.push(current);
+  }
+
+  return cleaned.length >= 3 ? cleaned : withoutDuplicates;
+}
+
+function clipPolygon3DByScalar(
+  polygon: Polygon3,
+  scalar: (candidate: Point3) => number,
+): Polygon3 {
+  if (polygon.length < 3) return [];
+  const clipped: Polygon3 = [];
+
+  for (let index = 0; index < polygon.length; index += 1) {
+    const current = polygon[index]!;
+    const next = polygon[(index + 1) % polygon.length]!;
+    const currentValue = scalar(current);
+    const nextValue = scalar(next);
+    const currentInside = currentValue <= ROOF_JOIN_EPSILON_MM;
+    const nextInside = nextValue <= ROOF_JOIN_EPSILON_MM;
+    const denominator = currentValue - nextValue;
+    const intersection =
+      Math.abs(denominator) <= ROOF_JOIN_EPSILON_MM
+        ? null
+        : translatePointByVector(
+            current,
+            scaleVector(subtractPoints(next, current), clamp(currentValue / denominator, 0, 1)),
+          );
+
+    if (currentInside && nextInside) {
+      clipped.push(next);
+    } else if (currentInside && !nextInside) {
+      if (intersection) clipped.push(intersection);
+    } else if (!currentInside && nextInside) {
+      if (intersection) clipped.push(intersection);
+      clipped.push(next);
+    }
+  }
+
+  return cleanPolygon3D(clipped);
+}
+
+function roofPlaneTopNormal(roofPlane: RoofPlane3D): Vector3 | null {
+  const normal = normalizeVector(roofPlane.plane.normal);
+  if (finiteVectorLength(normal) <= ROOF_JOIN_EPSILON_MM) return null;
+  return normal.z >= 0 ? normal : negateVector(normal);
+}
+
+function buildHouseRoofFeatureFlashingWing(input: {
+  flashingId: string;
+  featureLine: Line3;
+  roofPlane: RoofPlane3D;
+}): RoofFlashing3D['wings'][number] | null {
+  if (lineLength(input.featureLine) <= ROOF_JOIN_FEATURE_MIN_LENGTH_MM) return null;
+  const topNormal = roofPlaneTopNormal(input.roofPlane);
+  if (!topNormal || input.roofPlane.boundary.length < 3) return null;
+
+  const featureDirection = normalizeVector(subtractPoints(input.featureLine.end, input.featureLine.start));
+  if (finiteVectorLength(featureDirection) <= ROOF_JOIN_EPSILON_MM) return null;
+
+  let interiorDirection = normalizeVector(crossProduct(topNormal, featureDirection));
+  if (finiteVectorLength(interiorDirection) <= ROOF_JOIN_EPSILON_MM) return null;
+
+  const centroidDistance = dotProduct(
+    subtractPoints(polygonAveragePoint3D(input.roofPlane.boundary), input.featureLine.start),
+    interiorDirection,
+  );
+  if (Math.abs(centroidDistance) <= ROOF_JOIN_EPSILON_MM) {
+    const distances = input.roofPlane.boundary.map((candidate) =>
+      dotProduct(subtractPoints(candidate, input.featureLine.start), interiorDirection),
+    );
+    const positiveMax = Math.max(...distances);
+    const negativeMax = Math.max(...distances.map((distance) => -distance));
+    if (negativeMax > positiveMax) interiorDirection = negateVector(interiorDirection);
+  } else if (centroidDistance < 0) {
+    interiorDirection = negateVector(interiorDirection);
+  }
+
+  const distanceFromFeature = (candidate: Point3) =>
+    dotProduct(subtractPoints(candidate, input.featureLine.start), interiorDirection);
+  const interiorSide = clipPolygon3DByScalar(
+    input.roofPlane.boundary,
+    (candidate) => -distanceFromFeature(candidate),
+  );
+  const strip = clipPolygon3DByScalar(
+    interiorSide,
+    (candidate) => distanceFromFeature(candidate) - DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM,
+  );
+  if (strip.length < 3 || polygonArea3D(strip) <= ROOF_REGION_MIN_AREA_MM2) return null;
+
+  const surfaceOffset = scaleVector(topNormal, DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM);
+  const boundary = strip.map((candidate) => translatePointByVector(candidate, surfaceOffset));
+  const plane = {
+    ...input.roofPlane.plane,
+    origin: translatePointByVector(input.roofPlane.plane.origin, surfaceOffset),
+  };
+
+  return {
+    id: `${input.flashingId}-${input.roofPlane.id}-wing`,
+    boundary,
+    plane,
+  };
+}
+
+function buildHouseRoofFeatureFlashings(input: {
+  roofPlanes: RoofPlane3D[];
+  roofFeatures: HouseRoofFeature3D[];
+}): RoofFlashing3D[] {
+  const adjacency = buildRoofSolidAdjacency(input.roofPlanes);
+  const flashings: RoofFlashing3D[] = [];
+
+  for (const feature of input.roofFeatures) {
+    if (feature.metadata?.roofFeatureSource === 'reentrant_fallback') continue;
+    const edgeReferences = adjacency.edgeMap.get(roofSolidEdgeKey(feature.line.start, feature.line.end)) ?? [];
+    const uniqueRoofPlaneIndexes = new Set(edgeReferences.map((reference) => reference.roofPlaneIndex));
+    if (edgeReferences.length !== 2 || uniqueRoofPlaneIndexes.size !== 2) continue;
+    if (edgeReferences.some((reference) => adjacency.invalidRoofPlaneIndexes.has(reference.roofPlaneIndex))) continue;
+
+    const flashingId = `house-roof-flashing-${feature.id}`;
+    const wings = edgeReferences
+      .map((reference) => {
+        const roofPlane = input.roofPlanes[reference.roofPlaneIndex];
+        return roofPlane
+          ? buildHouseRoofFeatureFlashingWing({
+              flashingId,
+              featureLine: feature.line,
+              roofPlane,
+            })
+          : null;
+      })
+      .filter((wing): wing is RoofFlashing3D['wings'][number] => wing !== null);
+
+    if (wings.length !== 2) continue;
+    flashings.push({
+      id: flashingId,
+      wings,
+      thicknessMm: DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM,
+      metadata: {
+        position: feature.kind,
+        source: 'house_model',
+        sourceFeatureId: feature.id,
+        featureKind: feature.kind,
+        girthMm: DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_GIRTH_MM,
+        wingLengthMm: DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM,
+        thicknessMm: DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM,
+        surfaceOffsetMm: DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM,
+        roofGeometry: typeof feature.metadata?.roofGeometry === 'string' ? feature.metadata.roofGeometry : null,
+      },
+    });
+  }
+
+  return flashings;
+}
+
+type HouseRoofMaterialSettings = {
+  profileKind: HouseRoofMaterialProfileKind;
+  spacingMm: number;
+  lineDirection: 'fall' | 'across';
+};
+
+type HouseRoofMaterialProjection = {
+  u: number;
+  v: number;
+};
+
+function houseRoofMaterialSettings(material: HouseRoofMaterial): HouseRoofMaterialSettings {
+  switch (material) {
+    case 'trapezoidal_5_rib':
+      return { profileKind: 'rib', spacingMm: 190, lineDirection: 'fall' };
+    case 'eurotray_300':
+      return { profileKind: 'seam', spacingMm: 300, lineDirection: 'fall' };
+    case 'eurotray_500':
+      return { profileKind: 'seam', spacingMm: 500, lineDirection: 'fall' };
+    case 'shingles':
+      return { profileKind: 'course', spacingMm: 250, lineDirection: 'across' };
+    case 'corrugated_iron':
+    default:
+      return { profileKind: 'rib', spacingMm: 76.2, lineDirection: 'fall' };
+  }
+}
+
+function pointOnHouseRoofMaterialProjectedSegment(
+  candidate: HouseRoofMaterialProjection,
+  start: HouseRoofMaterialProjection,
+  end: HouseRoofMaterialProjection,
+): boolean {
+  const dx = end.u - start.u;
+  const dy = end.v - start.v;
+  const cross = (candidate.u - start.u) * dy - (candidate.v - start.v) * dx;
+  if (Math.abs(cross) > ROOF_JOIN_EPSILON_MM) return false;
+  const dot = (candidate.u - start.u) * dx + (candidate.v - start.v) * dy;
+  if (dot < -ROOF_JOIN_EPSILON_MM) return false;
+  return dot <= dx * dx + dy * dy + ROOF_JOIN_EPSILON_MM;
+}
+
+function pointInHouseRoofMaterialProjectedPolygon(
+  candidate: HouseRoofMaterialProjection,
+  polygon: HouseRoofMaterialProjection[],
+): boolean {
+  if (
+    polygon.some((start, index) =>
+      pointOnHouseRoofMaterialProjectedSegment(candidate, start, polygon[(index + 1) % polygon.length]!),
+    )
+  ) {
+    return true;
+  }
+
+  let inside = false;
+  for (let index = 0, previousIndex = polygon.length - 1; index < polygon.length; previousIndex = index, index += 1) {
+    const current = polygon[index]!;
+    const previous = polygon[previousIndex]!;
+    const intersects =
+      current.v > candidate.v !== previous.v > candidate.v &&
+      candidate.u < ((previous.u - current.u) * (candidate.v - current.v)) / (previous.v - current.v || 1) + current.u;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function projectedHouseRoofMaterialPolygonArea(polygon: HouseRoofMaterialProjection[]): number {
+  if (polygon.length < 3) return 0;
+  return Math.abs(
+    polygon.reduce((sum, current, index) => {
+      const next = polygon[(index + 1) % polygon.length]!;
+      return sum + current.u * next.v - next.u * current.v;
+    }, 0) / 2,
+  );
+}
+
+function uniqueHouseRoofMaterialProjectedPointCount(polygon: HouseRoofMaterialProjection[]): number {
+  return new Set(
+    polygon.map((candidate) => `${Math.round(candidate.u / ROOF_JOIN_EPSILON_MM)},${Math.round(candidate.v / ROOF_JOIN_EPSILON_MM)}`),
+  ).size;
+}
+
+function worldHouseRoofMaterialPoint(input: {
+  origin: Point3;
+  acrossAxis: Vector3;
+  fallAxis: Vector3;
+  offset: Vector3;
+  u: number;
+  v: number;
+}): Point3 {
+  return point(
+    input.origin.x + input.acrossAxis.x * input.u + input.fallAxis.x * input.v + input.offset.x,
+    input.origin.y + input.acrossAxis.y * input.u + input.fallAxis.y * input.v + input.offset.y,
+    input.origin.z + input.acrossAxis.z * input.u + input.fallAxis.z * input.v + input.offset.z,
+  );
+}
+
+function houseRoofMaterialCoordinateValues(min: number, max: number, spacingMm: number): number[] {
+  const span = max - min;
+  if (!Number.isFinite(span) || span <= ROOF_JOIN_EPSILON_MM || !Number.isFinite(spacingMm) || spacingMm <= ROOF_JOIN_EPSILON_MM) {
+    return [];
+  }
+  const values: number[] = [];
+  const start = Math.ceil(min / spacingMm) * spacingMm;
+  for (let value = start; value <= max + ROOF_JOIN_EPSILON_MM; value += spacingMm) {
+    if (value > min + ROOF_JOIN_EPSILON_MM && value < max - ROOF_JOIN_EPSILON_MM) {
+      values.push(value);
+    }
+    if (values.length > 1000) break;
+  }
+  if (values.length === 0) values.push((min + max) / 2);
+  return values;
+}
+
+function clipHouseRoofMaterialLine(input: {
+  polygon: HouseRoofMaterialProjection[];
+  fixedAxis: 'u' | 'v';
+  fixedValue: number;
+}): Array<{ start: HouseRoofMaterialProjection; end: HouseRoofMaterialProjection }> {
+  const intersections: number[] = [];
+  const variableAxis = input.fixedAxis === 'u' ? 'v' : 'u';
+
+  for (let index = 0; index < input.polygon.length; index += 1) {
+    const start = input.polygon[index]!;
+    const end = input.polygon[(index + 1) % input.polygon.length]!;
+    const startFixedDistance = start[input.fixedAxis] - input.fixedValue;
+    const endFixedDistance = end[input.fixedAxis] - input.fixedValue;
+
+    if (Math.abs(startFixedDistance) <= ROOF_JOIN_EPSILON_MM && Math.abs(endFixedDistance) <= ROOF_JOIN_EPSILON_MM) {
+      intersections.push(start[variableAxis], end[variableAxis]);
+      continue;
+    }
+
+    if (Math.abs(startFixedDistance) <= ROOF_JOIN_EPSILON_MM) {
+      intersections.push(start[variableAxis]);
+      continue;
+    }
+
+    if (Math.abs(endFixedDistance) <= ROOF_JOIN_EPSILON_MM) {
+      intersections.push(end[variableAxis]);
+      continue;
+    }
+
+    if (startFixedDistance * endFixedDistance < 0) {
+      const ratio = startFixedDistance / (startFixedDistance - endFixedDistance);
+      intersections.push(start[variableAxis] + (end[variableAxis] - start[variableAxis]) * ratio);
+    }
+  }
+
+  const sorted = [...intersections]
+    .filter((candidate) => Number.isFinite(candidate))
+    .sort((a, b) => a - b)
+    .reduce<number[]>((unique, candidate) => {
+      const previous = unique[unique.length - 1];
+      if (previous === undefined || Math.abs(candidate - previous) > ROOF_JOIN_EPSILON_MM) unique.push(candidate);
+      return unique;
+    }, []);
+
+  const segments: Array<{ start: HouseRoofMaterialProjection; end: HouseRoofMaterialProjection }> = [];
+  for (let index = 0; index < sorted.length - 1; index += 1) {
+    const startValue = sorted[index]!;
+    const endValue = sorted[index + 1]!;
+    if (endValue - startValue <= 1) continue;
+    const midpointValue = (startValue + endValue) / 2;
+    const midpoint =
+      input.fixedAxis === 'u'
+        ? { u: input.fixedValue, v: midpointValue }
+        : { u: midpointValue, v: input.fixedValue };
+    if (!pointInHouseRoofMaterialProjectedPolygon(midpoint, input.polygon)) continue;
+
+    segments.push(
+      input.fixedAxis === 'u'
+        ? {
+            start: { u: input.fixedValue, v: startValue },
+            end: { u: input.fixedValue, v: endValue },
+          }
+        : {
+            start: { u: startValue, v: input.fixedValue },
+            end: { u: endValue, v: input.fixedValue },
+          },
+    );
+  }
+
+  return segments;
+}
+
+function buildHouseRoofMaterialVisualForPlane(input: {
+  roofPlane: RoofPlane3D;
+  material: HouseRoofMaterial;
+}): HouseRoofMaterialVisual3D | null {
+  const settings = houseRoofMaterialSettings(input.material);
+  const topNormal = roofPlaneTopNormal(input.roofPlane);
+  if (!topNormal || input.roofPlane.boundary.length < 3) return null;
+  if (!input.roofPlane.boundary.every(finiteRoofQaPoint) || polygonArea3D(input.roofPlane.boundary) <= ROOF_REGION_MIN_AREA_MM2) {
+    return null;
+  }
+
+  const rawFall = normalizeVector(input.roofPlane.fallVector);
+  if (finiteVectorLength(rawFall) <= ROOF_JOIN_EPSILON_MM) return null;
+  const normalFallDot = dotProduct(rawFall, topNormal);
+  const fallAxis = normalizeVector({
+    x: rawFall.x - topNormal.x * normalFallDot,
+    y: rawFall.y - topNormal.y * normalFallDot,
+    z: rawFall.z - topNormal.z * normalFallDot,
+  });
+  if (finiteVectorLength(fallAxis) <= ROOF_JOIN_EPSILON_MM) return null;
+
+  const acrossAxis = normalizeVector(crossProduct(topNormal, fallAxis));
+  if (finiteVectorLength(acrossAxis) <= ROOF_JOIN_EPSILON_MM) return null;
+
+  const origin = input.roofPlane.plane.origin;
+  const projected = input.roofPlane.boundary.map((candidate) => {
+    const relative = subtractPoints(candidate, origin);
+    return {
+      u: dotProduct(relative, acrossAxis),
+      v: dotProduct(relative, fallAxis),
+    };
+  });
+  if (
+    projected.length < 3 ||
+    uniqueHouseRoofMaterialProjectedPointCount(projected) < 3 ||
+    projectedHouseRoofMaterialPolygonArea(projected) <= ROOF_REGION_MIN_AREA_MM2
+  ) {
+    return null;
+  }
+
+  const coordinates =
+    settings.lineDirection === 'fall'
+      ? houseRoofMaterialCoordinateValues(
+          Math.min(...projected.map((candidate) => candidate.u)),
+          Math.max(...projected.map((candidate) => candidate.u)),
+          settings.spacingMm,
+        )
+      : houseRoofMaterialCoordinateValues(
+          Math.min(...projected.map((candidate) => candidate.v)),
+          Math.max(...projected.map((candidate) => candidate.v)),
+          settings.spacingMm,
+        );
+  const offset = scaleVector(topNormal, DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM);
+  const lines = coordinates.flatMap((fixedValue) =>
+    clipHouseRoofMaterialLine({
+      polygon: projected,
+      fixedAxis: settings.lineDirection === 'fall' ? 'u' : 'v',
+      fixedValue,
+    }).map((segment) =>
+      line(
+        worldHouseRoofMaterialPoint({
+          origin,
+          acrossAxis,
+          fallAxis,
+          offset,
+          u: segment.start.u,
+          v: segment.start.v,
+        }),
+        worldHouseRoofMaterialPoint({
+          origin,
+          acrossAxis,
+          fallAxis,
+          offset,
+          u: segment.end.u,
+          v: segment.end.v,
+        }),
+      ),
+    ),
+  ).filter((candidate) => lineLength(candidate) > 1 && finiteRoofQaPoint(candidate.start) && finiteRoofQaPoint(candidate.end));
+
+  if (lines.length === 0) return null;
+
+  return {
+    id: `house-roof-material-${input.roofPlane.id}`,
+    roofPlaneId: input.roofPlane.id,
+    material: input.material,
+    profileKind: settings.profileKind,
+    lines,
+    plane: {
+      ...input.roofPlane.plane,
+      origin: translatePointByVector(input.roofPlane.plane.origin, offset),
+    },
+    spacingMm: settings.spacingMm,
+    surfaceOffsetMm: DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM,
+    metadata: {
+      source: 'house_model',
+      sourceRoofPlaneId: input.roofPlane.id,
+      material: input.material,
+      profileKind: settings.profileKind,
+      lineDirection: settings.lineDirection,
+      spacingMm: settings.spacingMm,
+      surfaceOffsetMm: DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM,
+      lineCount: lines.length,
+    },
+  };
+}
+
+function buildHouseRoofMaterialVisuals(input: {
+  roofPlanes: RoofPlane3D[];
+  material: HouseRoofMaterial;
+}): HouseRoofMaterialVisual3D[] {
+  return input.roofPlanes
+    .map((roofPlane) => buildHouseRoofMaterialVisualForPlane({ roofPlane, material: input.material }))
+    .filter((visual): visual is HouseRoofMaterialVisual3D => visual !== null);
+}
+
 function buildHouseEnvelopeSolids(input: {
   wallSegments: HouseWallSegment3D[];
   roofPlanes: RoofPlane3D[];
@@ -3460,7 +4013,11 @@ function buildHouseEnvelopeSolids(input: {
     DEFAULT_WALL_SOLID_THICKNESS_MM / 2,
   );
   const fasciaMiterFootprints = buildMiteredStripFootprints(input.eavePolygon, DEFAULT_FASCIA_SOLID_THICKNESS_MM / 2);
-  const gutterMiterFootprints = buildMiteredStripFootprints(input.eavePolygon, input.gutterWidthMm / 2);
+  const gutterMiterFootprints = buildMiteredOffsetStripFootprints(
+    input.eavePolygon,
+    input.gutterProjectionMm,
+    input.gutterProjectionMm - input.gutterWidthMm,
+  );
   const roofSolidAdjacency = buildRoofSolidAdjacency(input.roofPlanes);
   const roofBottomPlanes = input.roofPlanes.map((roofPlane) =>
     roofSolidBottomPlaneEquation(roofPlane.plane, DEFAULT_ROOF_SOLID_THICKNESS_MM),
@@ -3836,6 +4393,7 @@ export function buildHouseModel3D(input: {
   const gutterDepthMm = positiveNumber(model.eave?.gutterDepthMm, DEFAULT_GUTTER_DEPTH_MM);
   const gutterProjectionMm = positiveNumber(model.eave?.gutterProjectionMm, DEFAULT_GUTTER_PROJECTION_MM);
   const eaveOverhangMm = positiveNumber(model.eave?.eaveOverhangMm, DEFAULT_EAVE_OVERHANG_MM);
+  const roofMaterial = model.roofMaterial ?? DEFAULT_HOUSE_ROOF_MATERIAL;
   const wallBox = boundingBox(footprint);
   const eavePolygon =
     offsetFootprintPolygon(footprint, eaveOverhangMm) ?? [
@@ -3859,6 +4417,12 @@ export function buildHouseModel3D(input: {
     fasciaHeightMm,
   });
   const gutterLines = buildPolygonGutterLines({ eavePolygon, z: eaveHeightMm });
+  const gutterBoundaries = buildPolygonGutterBoundaries({
+    eavePolygon,
+    z: eaveHeightMm,
+    gutterWidthMm,
+    gutterProjectionMm,
+  });
   const fasciaPolygons = buildPolygonFasciaPolygons({
     eavePolygon,
     topZ: eaveHeightMm,
@@ -3870,12 +4434,29 @@ export function buildHouseModel3D(input: {
     z: eaveHeightMm,
   });
   const roofPlanesForSolids = roof.metadata.roofQaStatus === 'valid' ? roof.roofPlanes : [];
+  const roofFlashings =
+    roof.metadata.roofQaStatus === 'valid'
+      ? buildHouseRoofFeatureFlashings({
+          roofPlanes: roof.roofPlanes,
+          roofFeatures: roof.roofFeatures,
+        })
+      : [];
+  const roofMaterialVisuals =
+    roof.metadata.roofQaStatus === 'valid'
+      ? buildHouseRoofMaterialVisuals({
+          roofPlanes: roof.roofPlanes,
+          material: roofMaterial,
+        })
+      : [];
 
   return {
     footprint,
     wallSegments,
     roofPlanes: roof.roofPlanes,
     roofFeatures: roof.roofFeatures,
+    roofFlashings,
+    roofMaterial,
+    roofMaterialVisuals,
     solids: buildHouseEnvelopeSolids({
       wallSegments,
       roofPlanes: roofPlanesForSolids,
@@ -3895,6 +4476,7 @@ export function buildHouseModel3D(input: {
       gutterProjectionMm,
       eaveOverhangMm,
       gutterLines,
+      gutterBoundaries,
       fasciaPolygons,
       soffitPolygons,
       metadata: roof.metadata,
@@ -3902,6 +4484,7 @@ export function buildHouseModel3D(input: {
     attachmentTarget,
     metadata: {
       roofForm: model.roofForm ?? 'hipped',
+      roofMaterial,
       storeyMode: model.storeyMode ?? 'single_storey',
       wallConstruction: model.wallConstruction ?? 'timber_frame',
       attachmentStrategy: attachmentTarget.strategy,

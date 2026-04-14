@@ -11,6 +11,7 @@ import {
 import type {
   CalculatorHouseAttachmentStrategy,
   CalculatorHouseFootprintMode,
+  CalculatorHouseRoofMaterial,
   CalculatorHouseStoreyMode,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
@@ -19,7 +20,7 @@ import styles from './ConfiguratorRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
 
-type SelectOption = { label: string; value: string };
+type SelectOption = { label: string; value: string; disabled?: boolean };
 
 type RailFieldDefinition =
   | {
@@ -62,6 +63,8 @@ type SanctuaryWorkbenchRailProps = {
   geometryState?: GeometryEditState | null;
   view: ModuleViewsTab;
   disabled?: boolean;
+  canStartDrawOutline?: boolean;
+  onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitGeometryEdit?: (intent: GeometryEditIntent) => Promise<CommitResult> | CommitResult;
 };
 
@@ -95,6 +98,13 @@ const HOUSE_STOREY_MODE_OPTIONS: SelectOption[] = [
   { label: 'Single storey', value: 'single_storey' },
   { label: 'Double storey', value: 'double_storey' },
   { label: 'Custom', value: 'custom' },
+];
+const HOUSE_ROOF_MATERIAL_OPTIONS: SelectOption[] = [
+  { label: 'Corrugated iron', value: 'corrugated_iron' },
+  { label: '5-rib / trapezoidal', value: 'trapezoidal_5_rib' },
+  { label: 'Eurotray 300', value: 'eurotray_300' },
+  { label: 'Eurotray 500', value: 'eurotray_500' },
+  { label: 'Shingles', value: 'shingles' },
 ];
 const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Rear', value: 'rear' },
@@ -133,7 +143,7 @@ const FOOTPRINT_OPTIONS: SelectOption[] = HOUSE_FOOTPRINT_PRESET_OPTIONS.map((op
 }));
 const FOOTPRINT_MODE_OPTIONS: SelectOption[] = [
   { label: 'Preset', value: 'preset' },
-  { label: 'Edit outline', value: 'orthogonal_polygon' },
+  { label: 'Draw outline', value: 'custom_polygon' },
 ];
 const DEFAULT_OVERRIDE_OPTION: SelectOption = { label: 'Auto', value: '' };
 const RAFTER_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }];
@@ -182,7 +192,7 @@ function SelectField(field: Extract<RailFieldDefinition, { kind: 'select' }>) {
         onChange={(event) => void field.onCommit(event.target.value)}
       >
         {field.options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}
@@ -269,6 +279,8 @@ export default function SanctuaryWorkbenchRail({
   geometryState,
   view,
   disabled = false,
+  canStartDrawOutline = false,
+  onStartDrawOutline,
   onCommitGeometryEdit,
 }: SanctuaryWorkbenchRailProps) {
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
@@ -285,6 +297,7 @@ export default function SanctuaryWorkbenchRail({
     Boolean(geometryState) &&
     Boolean(onCommitGeometryEdit) &&
     Boolean(geometryState?.houseContext.canEditFootprint);
+  const canOpenDrawOutlineEditor = canEditHouseContext && view === 'plan' && canStartDrawOutline && Boolean(onStartDrawOutline);
   const canEditHouseModel = canEditHouseContext && geometryState?.connection.type !== 'freestanding';
   const showGround =
     geometryState?.supports.postConnectionType === 'pile_1m' || geometryState?.supports.postConnectionType === 'pile_1_5m';
@@ -331,6 +344,15 @@ export default function SanctuaryWorkbenchRail({
       return { ok: true } satisfies CommitResult;
     },
     [commitGeometryEdit, drawingRotation],
+  );
+
+  const footprintModeOptions = useMemo(
+    () =>
+      FOOTPRINT_MODE_OPTIONS.map((option) => ({
+        ...option,
+        disabled: option.value === 'custom_polygon' && !canOpenDrawOutlineEditor,
+      })),
+    [canOpenDrawOutlineEditor],
   );
 
   const geometryFields = useMemo(() => {
@@ -540,6 +562,22 @@ export default function SanctuaryWorkbenchRail({
           }),
       },
       {
+        id: 'house-roof-material',
+        kind: 'select',
+        label: 'House roof material',
+        value: geometryState.houseContext.roofMaterial ?? 'corrugated_iron',
+        options: HOUSE_ROOF_MATERIAL_OPTIONS,
+        pending: pendingFieldId === 'house-roof-material',
+        error: fieldErrors['house-roof-material'],
+        disabled: !canEditHouseModel,
+        onCommit: (value: string) =>
+          commitGeometryEdit('house-roof-material', {
+            type: 'house_config',
+            key: 'houseRoofMaterial',
+            value: value as CalculatorHouseRoofMaterial,
+          }),
+      },
+      {
         id: 'house-eave-height',
         kind: 'number',
         label: 'Eave height (m)',
@@ -605,16 +643,29 @@ export default function SanctuaryWorkbenchRail({
         kind: 'select',
         label: 'House footprint mode',
         value: footprintMode,
-        options: FOOTPRINT_MODE_OPTIONS,
-        helperText: footprintMode === 'orthogonal_polygon' ? 'Plan editor controls the outline.' : undefined,
+        options: footprintModeOptions,
+        helperText:
+          footprintMode === 'custom_polygon' || !canOpenDrawOutlineEditor
+            ? 'Use Model Space > Plan to draw the outline.'
+            : undefined,
         pending: pendingFieldId === 'house-footprint-mode',
         error: fieldErrors['house-footprint-mode'],
         disabled: !canEditHouseContext,
-        onCommit: (value: string) =>
-          commitGeometryEdit('house-footprint-mode', {
+        onCommit: (value: string) => {
+          if (value === 'custom_polygon' && !canOpenDrawOutlineEditor) {
+            return runCommit('house-footprint-mode', {
+              ok: false,
+              error: 'Use Model Space > Plan to draw the outline.',
+            });
+          }
+          if (value === 'custom_polygon') {
+            return runCommit('house-footprint-mode', onStartDrawOutline?.() ?? { ok: false, error: 'Use Model Space > Plan to draw the outline.' });
+          }
+          return commitGeometryEdit('house-footprint-mode', {
             type: 'footprint_mode',
             value: value as CalculatorHouseFootprintMode,
-          }),
+          });
+        },
       },
       {
         id: 'house-footprint-preset',
@@ -625,7 +676,7 @@ export default function SanctuaryWorkbenchRail({
         helperText: canEditHouseContext ? undefined : 'Available when the pergola is attached to the house.',
         pending: pendingFieldId === 'house-footprint-preset',
         error: fieldErrors['house-footprint-preset'],
-        disabled: !canEditHouseContext || footprintMode === 'orthogonal_polygon',
+        disabled: !canEditHouseContext || footprintMode === 'custom_polygon',
         onCommit: (value: string) =>
           commitGeometryEdit('house-footprint-preset', {
             type: 'footprint_preset',
@@ -742,7 +793,7 @@ export default function SanctuaryWorkbenchRail({
         helperText: 'Blank matches the pergola length.',
         pending: pendingFieldId === 'house-footprint-width',
         error: fieldErrors['house-footprint-width'],
-        disabled: !canEditHouseContext || footprintMode === 'orthogonal_polygon',
+        disabled: !canEditHouseContext || footprintMode === 'custom_polygon',
         onCommit: (value: string) =>
           commitGeometryEdit('house-footprint-width', {
             type: 'footprint_param',
@@ -789,7 +840,7 @@ export default function SanctuaryWorkbenchRail({
         value: footprintParams.bandDepthM,
         pending: pendingFieldId === 'house-footprint-band-depth',
         error: fieldErrors['house-footprint-band-depth'],
-        disabled: !canEditHouseContext || footprintMode === 'orthogonal_polygon',
+        disabled: !canEditHouseContext || footprintMode === 'custom_polygon',
         onCommit: (value: string) =>
           commitGeometryEdit('house-footprint-band-depth', {
             type: 'footprint_param',

@@ -13,6 +13,7 @@ import type {
   HouseFootprintPreset,
   HouseModelConfig,
   HouseRoofForm,
+  HouseRoofMaterial,
   HouseStoreyMode,
   HouseWallConstruction,
   RawGableEaveGutterMode,
@@ -58,6 +59,7 @@ const DEFAULT_HOUSE_GUTTER_WIDTH_MM = 125;
 const DEFAULT_HOUSE_GUTTER_DEPTH_MM = 90;
 const DEFAULT_HOUSE_GUTTER_PROJECTION_MM = 125;
 const DEFAULT_HOUSE_EAVE_OVERHANG_MM = 450;
+const DEFAULT_HOUSE_ROOF_MATERIAL: HouseRoofMaterial = 'corrugated_iron';
 
 function resolveFamily(input: RawGeometryModuleInput): GeometryConfig['family'] | null {
   if (input.pergolaStyle === 'pitched') {
@@ -92,6 +94,18 @@ function resolveHouseWallConstruction(value: HouseWallConstruction | null | unde
 function resolveHouseRoofForm(value: HouseRoofForm | null | undefined): HouseRoofForm {
   if (value === 'hipped') return value;
   return 'hipped';
+}
+
+function resolveHouseRoofMaterial(value: HouseRoofMaterial | null | undefined): HouseRoofMaterial {
+  if (
+    value === 'trapezoidal_5_rib' ||
+    value === 'eurotray_300' ||
+    value === 'eurotray_500' ||
+    value === 'shingles'
+  ) {
+    return value;
+  }
+  return DEFAULT_HOUSE_ROOF_MATERIAL;
 }
 
 function resolveHouseAttachmentStrategy(
@@ -334,8 +348,8 @@ function resolveFootprintPreset(value: HouseFootprintPreset | null | undefined):
   return 'straight';
 }
 
-function resolveFootprintMode(value: HouseFootprintMode | null | undefined): HouseFootprintMode {
-  return value === 'orthogonal_polygon' ? 'orthogonal_polygon' : 'preset';
+function resolveFootprintMode(value: HouseFootprintMode | 'orthogonal_polygon' | null | undefined): HouseFootprintMode {
+  return value === 'custom_polygon' || value === 'orthogonal_polygon' ? 'custom_polygon' : 'preset';
 }
 
 function buildHouseModelConfig(input: {
@@ -363,6 +377,7 @@ function buildHouseModelConfig(input: {
     storeyMode: resolveHouseStoreyMode(input.rawHouseContext.storeyMode),
     wallConstruction: resolveHouseWallConstruction(input.rawHouseContext.wallConstruction),
     roofForm: resolveHouseRoofForm(input.rawHouseContext.roofForm),
+    roofMaterial: resolveHouseRoofMaterial(input.rawHouseContext.roofMaterial),
     eaveHeightMm,
     wallHeightMm,
     roofPitchDeg,
@@ -430,7 +445,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const footprintMode = resolveFootprintMode(input.houseContext.footprintMode);
   let houseFootprint: GeometryConfig['houseContext']['footprint'] = null;
   if (connectionType !== 'freestanding') {
-    if (footprintMode === 'orthogonal_polygon') {
+    if (footprintMode === 'custom_polygon') {
       const customFootprint = buildCustomHouseFootprintPolygon({
         pergolaWidthMm: length.value,
         pergolaDepthMm: projection.value,
@@ -582,7 +597,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       soffitDepthMm: null,
       footprint: houseFootprint,
       footprintMode: connectionType === 'freestanding' ? 'preset' : footprintMode,
-      footprintPolygon: footprintMode === 'orthogonal_polygon' ? input.houseContext.footprintPolygon ?? null : null,
+      footprintPolygon: footprintMode === 'custom_polygon' ? input.houseContext.footprintPolygon ?? null : null,
       model: houseModel,
       attachmentStrategy: houseAttachmentStrategy,
     },

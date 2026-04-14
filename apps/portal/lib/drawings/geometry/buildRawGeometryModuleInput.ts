@@ -8,6 +8,7 @@ import {
   normalizeHouseFootprintParams,
   normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
+  normalizeHouseRoofMaterial,
   supportsHouseFootprints,
   type CalculatorModuleInputs,
 } from '@/lib/types/calculator';
@@ -222,6 +223,7 @@ export function buildRawGeometryModuleInput(input: {
       footprintParams: resolveFootprintParams(module),
       footprintPolygon: resolveFootprintPolygon(module),
       storeyMode: module.houseStoreyMode ?? null,
+      roofMaterial: normalizeHouseRoofMaterial(module.houseRoofMaterial),
       attachmentStrategy: module.houseAttachmentStrategy ?? null,
       eaveHeightM: resolveOptionalOverride(module.houseEaveHeightM),
       wallHeightM: resolveOptionalOverride(module.houseWallHeightM),

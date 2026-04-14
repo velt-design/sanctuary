@@ -10,10 +10,12 @@ import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
 import { buildRawGeometryModuleInput } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
 import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
+import { resolveWorkbenchGeometryModule } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
 import { buildLegacyModulePlanModelFromGeometry } from '@/lib/drawings/views/plan/buildLegacyModulePlanModelFromGeometry';
 import { buildLegacyModuleSectionModelFromGeometry } from '@/lib/drawings/views/section/buildLegacyModuleSectionModelFromGeometry';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
+import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
 
 export type DrawingWorkbenchModuleEntry = {
@@ -49,6 +51,7 @@ export type DrawingWorkbenchStore = {
 function buildGeometryDerivedModels(input: {
   drawingModule: EstimateDrawingModule;
   moduleInput: EstimateDrawingModule['input'];
+  moduleResult: EstimateDrawingModule['result'];
 }): {
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
@@ -59,7 +62,7 @@ function buildGeometryDerivedModels(input: {
     designRequestId: null,
     moduleId: input.drawingModule.id,
     module: input.moduleInput,
-    result: input.drawingModule.result,
+    result: input.moduleResult,
   });
   const normalized = normalizeGeometryConfig(rawInput);
   if (!normalized.ok) {
@@ -95,27 +98,45 @@ function buildGeometryDerivedModels(input: {
 
 export function buildDrawingWorkbenchStore(input: {
   snapshot: Record<string, unknown> | null;
+  draft?: EstimateDrawingDraft | null;
   ui: DrawingWorkbenchUiState;
   ignoreModuleResults?: boolean;
   moduleLabels?: string[];
 }): DrawingWorkbenchStore {
-  const drawingModules = buildEstimateDrawingModules(input.snapshot, {
+  const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);
+  const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
   const ui = normalizeDrawingWorkbenchUiState(input.ui, drawingModules.length);
   const modules = drawingModules.map((drawingModule, index) => {
     const label = input.moduleLabels?.[index] ?? drawingModule.label;
     const geometryModule = coerceHiddenWorkbenchGableBaseline(drawingModule.input);
-    const geometryModels = buildGeometryDerivedModels({
-      drawingModule,
-      moduleInput: geometryModule,
+    const resolved = resolveWorkbenchGeometryModule({
+      snapshot: input.snapshot,
+      draft: input.draft,
+      moduleIndex: index,
+      ignoreModuleResults: input.ignoreModuleResults,
     });
+    const resolvedDrawingModule: EstimateDrawingModule = {
+      ...drawingModule,
+      result: resolved.ok ? resolved.moduleResult : null,
+    };
+    const geometryModels = resolved.ok
+      ? buildGeometryDerivedModels({
+          drawingModule: resolvedDrawingModule,
+          moduleInput: geometryModule,
+          moduleResult: resolved.moduleResult,
+        })
+      : {
+          planModel: null,
+          sectionModel: null,
+        };
     const assemblyModel = buildAssemblyModel({
       id: drawingModule.id,
       label,
       moduleIndex: index,
       moduleInput: geometryModule,
-      moduleResult: drawingModule.result,
+      moduleResult: resolvedDrawingModule.result,
       planModel: geometryModels.planModel,
       sectionModel: geometryModels.sectionModel,
     });
@@ -123,7 +144,7 @@ export function buildDrawingWorkbenchStore(input: {
     return {
       id: drawingModule.id,
       label,
-      drawingModule,
+      drawingModule: resolvedDrawingModule,
       assemblyModel,
       planViewModel: buildPlanViewModel({
         moduleId: drawingModule.id,
@@ -140,7 +161,7 @@ export function buildDrawingWorkbenchStore(input: {
 
   return {
     persisted: {
-      snapshot: input.snapshot,
+      snapshot: effectiveSnapshot,
       ignoreModuleResults: Boolean(input.ignoreModuleResults),
       modules,
     },

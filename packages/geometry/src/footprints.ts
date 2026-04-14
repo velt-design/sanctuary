@@ -334,8 +334,8 @@ function segmentsIntersect(
 function parseCustomSideLocalPolygon(
   polygon: HouseFootprintPolygonPointInput[] | null | undefined,
 ): { ok: true; points: HouseFootprintSideLocalPoint[] } | { ok: false; error: string } {
-  if (!polygon || polygon.length < 4) {
-    return { ok: false, error: 'House footprint outline needs at least 4 points.' };
+  if (!polygon || polygon.length < 3) {
+    return { ok: false, error: 'House footprint outline needs at least 3 points.' };
   }
 
   const points: HouseFootprintSideLocalPoint[] = [];
@@ -351,8 +351,8 @@ function parseCustomSideLocalPolygon(
   if (points.length > 1 && pointsEqual(points[0]!, points[points.length - 1]!)) {
     points.pop();
   }
-  if (points.length < 4) {
-    return { ok: false, error: 'House footprint outline needs at least 4 unique points.' };
+  if (points.length < 3) {
+    return { ok: false, error: 'House footprint outline needs at least 3 unique points.' };
   }
 
   for (let idx = 0; idx < points.length; idx += 1) {
@@ -360,9 +360,6 @@ function parseCustomSideLocalPolygon(
     const next = points[(idx + 1) % points.length]!;
     if (pointsEqual(current, next)) {
       return { ok: false, error: 'House footprint outline cannot include duplicate consecutive points.' };
-    }
-    if (Math.abs(current.alongM - next.alongM) > EPSILON && Math.abs(current.depthM - next.depthM) > EPSILON) {
-      return { ok: false, error: 'House footprint outline must use 90-degree wall segments.' };
     }
   }
 

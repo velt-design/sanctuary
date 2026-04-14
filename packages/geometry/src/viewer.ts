@@ -10,6 +10,7 @@ import type {
   ViewerSceneLayer,
   ViewerSceneHouseLineObject,
   ViewerSceneHouseLinearSolidObject,
+  ViewerSceneHouseRoofMaterialObject,
   ViewerSceneHouseSurfaceObject,
   ViewerSceneHouseSurfaceSolidObject,
   ViewerSceneMemberPrismObject,
@@ -133,6 +134,15 @@ function sortObjects(objects: ViewerSceneObject[]): ViewerSceneObject[] {
   return [...objects].sort((a, b) => a.id.localeCompare(b.id));
 }
 
+function roofFlashingsForScene(
+  assembly: Assembly3D,
+): NonNullable<Assembly3D["roofFlashings"]> {
+  return [
+    ...(assembly.roofFlashings ?? []),
+    ...(assembly.house.model?.roofFlashings ?? []),
+  ];
+}
+
 function maxAssemblyHeight(assembly: Assembly3D): number {
   const zValues: number[] = [];
 
@@ -152,11 +162,16 @@ function maxAssemblyHeight(assembly: Assembly3D): number {
       zValues.push(point.z);
     }
   }
-  for (const flashing of assembly.roofFlashings ?? []) {
+  for (const flashing of roofFlashingsForScene(assembly)) {
     for (const wing of flashing.wings) {
       for (const point of wing.boundary) {
         zValues.push(point.z);
       }
+    }
+  }
+  for (const visual of assembly.house.model?.roofMaterialVisuals ?? []) {
+    for (const line of visual.lines) {
+      zValues.push(line.start.z, line.end.z);
     }
   }
   if (assembly.attachmentEdge) {
@@ -297,6 +312,29 @@ function buildRoofFlashingObject(
     wings: flashing.wings,
     thicknessMm: flashing.thicknessMm,
     metadata: sortMetadata(flashing.metadata),
+  };
+}
+
+function buildHouseRoofMaterialObject(
+  visual: NonNullable<NonNullable<Assembly3D["house"]["model"]>["roofMaterialVisuals"]>[number],
+): ViewerSceneHouseRoofMaterialObject | null {
+  const lines = visual.lines.filter(isRenderableHouseLine);
+  if (lines.length === 0 || !isFinitePlane(visual.plane)) return null;
+  return {
+    id: visual.id,
+    type: "house_roof_material",
+    sourceId: visual.id,
+    roofPlaneId: visual.roofPlaneId,
+    material: visual.material,
+    profileKind: visual.profileKind,
+    lines,
+    plane: visual.plane,
+    spacingMm: visual.spacingMm,
+    surfaceOffsetMm: visual.surfaceOffsetMm,
+    metadata: sortMetadata({
+      ...visual.metadata,
+      lineCount: lines.length,
+    }),
   };
 }
 
@@ -773,9 +811,12 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
   const roofCladdingObjects = (assembly.roofCladdingPanels ?? []).map(
     buildRoofCladdingPanelObject,
   );
-  const roofFlashingObjects = (assembly.roofFlashings ?? []).map(
+  const roofFlashingObjects = roofFlashingsForScene(assembly).map(
     buildRoofFlashingObject,
   );
+  const houseRoofMaterialObjects = (assembly.house.model?.roofMaterialVisuals ?? [])
+    .map(buildHouseRoofMaterialObject)
+    .filter((object): object is ViewerSceneHouseRoofMaterialObject => object !== null);
   const roofPlaneObjects = assembly.roofPlanes.map(buildRoofPlaneObject);
   const attachmentObjects = assembly.attachmentEdge
     ? [
@@ -881,6 +922,16 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
       visibleByDefault: true,
       objects: sortObjects(roofCladdingObjects),
     },
+    ...(houseRoofMaterialObjects.length > 0
+      ? [
+          {
+            id: "house_roof_materials",
+            label: "House Roof Materials",
+            visibleByDefault: true,
+            objects: sortObjects(houseRoofMaterialObjects),
+          },
+        ]
+      : []),
     ...(roofFlashingObjects.length > 0
       ? [
           {

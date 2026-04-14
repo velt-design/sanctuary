@@ -8,18 +8,12 @@ import {
   type GeometryValidationReport,
   type ViewerSceneModel,
 } from '@sp/geometry';
-import { getModuleCostOutputFromSnapshot } from '@/lib/costingAudit/viewModel';
-import {
-  estimateDrawingDraftTouchesGeometry,
-  mergeEstimateDrawingDraftIntoSnapshot,
-  resolveCalculatorInputsFromSnapshot,
-  type EstimateDrawingDraft,
-} from '@/lib/estimates/drawingEdits';
+import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
 import { coerceHiddenWorkbenchGableBaseline } from './hiddenWorkbenchGableBaseline';
-import { solveActiveGeometryModuleResult } from './solveActiveGeometryModuleResult';
+import { resolveWorkbenchGeometryModule } from './resolveWorkbenchGeometryModule';
 
-export type GeometryPreviewMode = 'snapshot_validated' | 'draft_local_resolved';
+export type GeometryPreviewMode = 'snapshot_validated' | 'snapshot_local_resolved' | 'draft_local_resolved';
 
 export type GeometryPreviewState =
   | {
@@ -43,11 +37,12 @@ export type GeometryPreviewState =
       message: string;
     };
 
-function resolvePreviewMode(
-  snapshot: Record<string, unknown> | null,
-  draft: EstimateDrawingDraft | null | undefined,
-): GeometryPreviewMode {
-  return estimateDrawingDraftTouchesGeometry(draft, snapshot) ? 'draft_local_resolved' : 'snapshot_validated';
+function resolvePreviewMode(input: {
+  resultSource: 'snapshot' | 'local_resolve';
+  draftTouchesGeometry: boolean;
+}): GeometryPreviewMode {
+  if (input.draftTouchesGeometry) return 'draft_local_resolved';
+  return input.resultSource === 'local_resolve' ? 'snapshot_local_resolved' : 'snapshot_validated';
 }
 
 export function buildWorkbenchGeometryPreview(input: {
@@ -58,43 +53,25 @@ export function buildWorkbenchGeometryPreview(input: {
   draft?: EstimateDrawingDraft | null;
   moduleIndex: number;
 }): GeometryPreviewState {
-  const previewMode = resolvePreviewMode(input.snapshot, input.draft);
-  const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);
-  const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
+  const resolved = resolveWorkbenchGeometryModule({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    moduleIndex: input.moduleIndex,
+  });
+  const previewMode = resolvePreviewMode({
+    resultSource: resolved.resultSource,
+    draftTouchesGeometry: resolved.draftTouchesGeometry,
+  });
 
-  if (!calculatorInputs) {
+  if (!resolved.ok) {
     return {
       kind: 'error',
-      message: 'Calculator inputs are not available for 3D geometry preview.',
+      message: resolved.message.replace('workbench geometry', '3D geometry preview'),
     };
   }
 
-  const module = calculatorInputs.modules[input.moduleIndex];
-  if (!module) {
-    return {
-      kind: 'error',
-      message: 'The selected module is not available for 3D geometry preview.',
-    };
-  }
+  const module = resolved.module;
   const geometryModule = coerceHiddenWorkbenchGableBaseline(module);
-
-  const moduleResult =
-    previewMode === 'draft_local_resolved'
-      ? solveActiveGeometryModuleResult({
-          calculatorInputs,
-          moduleIndex: input.moduleIndex,
-        })
-      : {
-          ok: true as const,
-          moduleResult: getModuleCostOutputFromSnapshot(input.snapshot, input.moduleIndex),
-        };
-
-  if (!moduleResult.ok) {
-    return {
-      kind: 'error',
-      message: moduleResult.message,
-    };
-  }
 
   const rawInput = buildRawGeometryModuleInput({
     projectId: input.projectId,
@@ -102,7 +79,7 @@ export function buildWorkbenchGeometryPreview(input: {
     designRequestId: input.designRequestId ?? null,
     moduleId: `module-${input.moduleIndex + 1}`,
     module: geometryModule,
-    result: moduleResult.moduleResult,
+    result: resolved.moduleResult,
   });
 
   const normalized = normalizeGeometryConfig(rawInput);
@@ -141,7 +118,7 @@ export function buildWorkbenchGeometryPreview(input: {
   return {
     kind: 'ready',
     previewMode,
-    resultSource: previewMode === 'draft_local_resolved' ? 'local_resolve' : 'snapshot',
+    resultSource: resolved.resultSource,
     config: normalized.value,
     assembly: solveResult.value,
     validation,

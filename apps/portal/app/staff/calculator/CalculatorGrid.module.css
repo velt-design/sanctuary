@@ -2766,6 +2766,42 @@
   stroke-width: 0.6;
 }
 
+.moduleFootprintCustomPreviewEdge {
+  stroke: var(--mv-accent-olive);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.moduleFootprintCustomLatestVertex {
+  fill: rgba(255, 255, 255, 0.98);
+  stroke: var(--mv-line-primary);
+  stroke-width: 0.72;
+}
+
+.moduleFootprintCustomPendingVertex,
+.moduleFootprintCustomHoverVertex {
+  stroke: var(--mv-accent-olive);
+}
+
+.moduleFootprintCustomHoverVertex {
+  fill: rgba(255, 255, 255, 0.72);
+}
+
+.moduleFootprintCustomCloseTarget {
+  fill: none;
+  stroke: var(--mv-accent-olive);
+  stroke-width: 0.42;
+  stroke-dasharray: var(--mv-dash-guide);
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleFootprintCustomCloseTargetHover {
+  stroke: var(--mv-line-primary);
+  stroke-dasharray: none;
+  stroke-width: 0.56;
+}
+
 .moduleFootprintHandleHit {
   fill: transparent;
   cursor: grab;
@@ -2774,6 +2810,11 @@
 
 .moduleFootprintHandleHit:active {
   cursor: grabbing;
+}
+
+.moduleFootprintHandleHit.moduleFootprintCustomCloseHit,
+.moduleFootprintHandleHit.moduleFootprintCustomCloseHit:active {
+  cursor: pointer;
 }
 
 .moduleFootprintValueBadgeRect {

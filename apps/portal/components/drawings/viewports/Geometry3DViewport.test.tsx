@@ -1175,6 +1175,14 @@ describe("Geometry3DViewport", () => {
     const houseLayer = geometryPreview.scene.layers.find(
       (layer) => layer.id === "house",
     );
+    const roofFlashingLayer = geometryPreview.scene.layers.find(
+      (layer) => layer.id === "roof_flashings",
+    );
+    const houseRoofFlashing = roofFlashingLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "roof_flashing" }> =>
+        object.type === "roof_flashing" &&
+        object.metadata?.source === "house_model",
+    );
     const sceneCenter = computeSceneCenter(geometryPreview.scene);
     expect(sceneCenter.y).toBeLessThan(1000);
     expect(
@@ -1186,6 +1194,7 @@ describe("Geometry3DViewport", () => {
     expect(
       houseLayer?.objects.some((object) => object.type === "house_line"),
     ).toBe(true);
+    expect(houseRoofFlashing?.wings).toHaveLength(2);
 
     const rendered = renderIntoDocument(
       <Geometry3DViewport geometryPreview={geometryPreview} />,
@@ -1211,6 +1220,9 @@ describe("Geometry3DViewport", () => {
       rendered.container.querySelector('[data-testid="scene-object-house-solid-gutter-1"]'),
     ).not.toBeNull();
     expect(
+      rendered.container.querySelector(`[data-testid="scene-object-${houseRoofFlashing?.id}"]`),
+    ).not.toBeNull();
+    expect(
       rendered.container.querySelector(
         '[data-testid="scene-object-house-attachment-target-line"]',
       ),
@@ -1234,8 +1246,20 @@ describe("Geometry3DViewport", () => {
     expect(wallGeometry?.getAttribute("position").count).toBeGreaterThan(0);
     expect(roofGeometry?.getAttribute("position").count).toBeGreaterThan(0);
     expect(gutterGeometry?.getAttribute("position").count).toBeGreaterThan(0);
+    if (!houseRoofFlashing) {
+      throw new Error("Expected house roof flashing object.");
+    }
+    const flashingGeometry = buildPolygonSlabGeometry(
+      houseRoofFlashing.wings[0]!.boundary,
+      houseRoofFlashing.wings[0]!.plane,
+      houseRoofFlashing.thicknessMm,
+    );
+    expect(flashingGeometry.getAttribute("position").count).toBeGreaterThan(0);
 
     clickButtonByText(rendered.container, "Workspace panel");
+    clickSceneObject(rendered.container, houseRoofFlashing.id);
+    expect(rendered.container.textContent).toContain(houseRoofFlashing.id);
+    expect(rendered.container.textContent).toContain("roof flashing");
     clickSceneObject(rendered.container, "house-solid-house-roof-min-y");
     expect(rendered.container.textContent).toContain("house-solid-house-roof-min-y");
     expect(rendered.container.textContent).toContain("house solid roof");

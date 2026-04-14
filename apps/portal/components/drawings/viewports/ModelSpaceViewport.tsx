@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent } from 'react';
 import type { AttachmentSide } from '@sp/costing';
 import {
   ModuleDrawingRenderer,
@@ -45,8 +45,46 @@ type PlanFieldDragSession = ModulePlanResizeDragMeta & {
   field: EstimateDrawingField;
 };
 
-const MIN_MODEL_ZOOM = 1;
+type PanDragSession = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startPanX: number;
+  startPanY: number;
+};
+
+type DrawOutlinePoint = {
+  alongM: number;
+  depthM: number;
+};
+
+type DrawOutlineAngleMode = 'relative' | 'absolute';
+
+type DrawOutlineSession = {
+  points: DrawOutlinePoint[];
+  pendingPoint: DrawOutlinePoint | null;
+  distanceDraft: string;
+  angleDraft: string;
+  angleMode: DrawOutlineAngleMode;
+};
+
+type DrawOutlineHoverPoint = {
+  point: DrawOutlinePoint;
+  closeHovered: boolean;
+};
+
+type DrawPopoverPosition = {
+  left: number;
+  top: number;
+};
+
+const MIN_MODEL_ZOOM = 0.25;
 const MAX_MODEL_ZOOM = 4;
+const MIN_OUTLINE_SEGMENT_M = 0.001;
+const CLOSE_START_TOLERANCE_M = 0.2;
+const FIT_VIEW_MARGIN_PX = 24;
+const DRAW_POPOVER_MARGIN_PX = 12;
+const DRAW_POPOVER_GAP_PX = 14;
 
 function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
@@ -74,7 +112,7 @@ function formatPolygonMetres(value: number): string {
   return formatHouseFootprintParamValue(snapHouseFootprintValue(value));
 }
 
-function moveOrthogonalPolygonVertex(
+function moveCustomPolygonVertex(
   polygon: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>,
   vertexIndex: number,
   nextAlongM: number,
@@ -84,25 +122,116 @@ function moveOrthogonalPolygonVertex(
     alongM: parsePolygonMetres(point.alongM),
     depthM: parsePolygonMetres(point.depthM),
   }));
-  if (points.length < 4 || vertexIndex < 0 || vertexIndex >= points.length) return polygon;
-
-  const prevIndex = (vertexIndex - 1 + points.length) % points.length;
-  const nextIndex = (vertexIndex + 1) % points.length;
-  const current = points[vertexIndex]!;
-  const prev = points[prevIndex]!;
-  const next = points[nextIndex]!;
-
-  if (Math.abs(prev.alongM - current.alongM) < 1e-6) prev.alongM = nextAlongM;
-  if (Math.abs(prev.depthM - current.depthM) < 1e-6) prev.depthM = nextDepthM;
-  if (Math.abs(next.alongM - current.alongM) < 1e-6) next.alongM = nextAlongM;
-  if (Math.abs(next.depthM - current.depthM) < 1e-6) next.depthM = nextDepthM;
-  current.alongM = nextAlongM;
-  current.depthM = nextDepthM;
+  if (points.length < 3 || vertexIndex < 0 || vertexIndex >= points.length) return polygon;
+  points[vertexIndex] = { alongM: nextAlongM, depthM: nextDepthM };
 
   return points.map((point) => ({
     alongM: formatPolygonMetres(point.alongM),
     depthM: formatPolygonMetres(point.depthM),
   }));
+}
+
+function outlinePointsToPolygon(points: DrawOutlinePoint[]): NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']> {
+  return points.map((point) => ({
+    alongM: formatPolygonMetres(point.alongM),
+    depthM: formatPolygonMetres(point.depthM),
+  }));
+}
+
+function distanceBetweenOutlinePoints(a: DrawOutlinePoint, b: DrawOutlinePoint): number {
+  return Math.hypot(b.alongM - a.alongM, b.depthM - a.depthM);
+}
+
+function absoluteAngleDeg(a: DrawOutlinePoint, b: DrawOutlinePoint): number {
+  return (Math.atan2(b.depthM - a.depthM, b.alongM - a.alongM) * 180) / Math.PI;
+}
+
+function normalizeAngleDeg(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  let next = ((value % 360) + 360) % 360;
+  if (next > 180) next -= 360;
+  return Math.round(next * 10) / 10;
+}
+
+function formatOutlineNumber(value: number): string {
+  return (Math.round(value * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '') || '0';
+}
+
+function resolvePendingOutlinePoint(session: DrawOutlineSession): DrawOutlinePoint | null {
+  const start = session.points[session.points.length - 1];
+  if (!start) return null;
+  const distance = Number.parseFloat(session.distanceDraft);
+  const angle = Number.parseFloat(session.angleDraft);
+  if (!Number.isFinite(distance) || distance < MIN_OUTLINE_SEGMENT_M || !Number.isFinite(angle)) return null;
+  const previous = session.points[session.points.length - 2];
+  const baseAngle = session.angleMode === 'relative' && previous ? absoluteAngleDeg(previous, start) : 0;
+  const absoluteAngle = session.angleMode === 'relative' ? baseAngle + angle : angle;
+  const radians = (absoluteAngle * Math.PI) / 180;
+  return {
+    alongM: snapHouseFootprintValue(start.alongM + Math.cos(radians) * distance),
+    depthM: snapHouseFootprintValue(start.depthM + Math.sin(radians) * distance),
+  };
+}
+
+function hasDrawOutlineDraft(session: DrawOutlineSession): boolean {
+  return Boolean(session.pendingPoint || session.distanceDraft || session.angleDraft);
+}
+
+function orientation(a: DrawOutlinePoint, b: DrawOutlinePoint, c: DrawOutlinePoint): number {
+  return (b.depthM - a.depthM) * (c.alongM - b.alongM) - (b.alongM - a.alongM) * (c.depthM - b.depthM);
+}
+
+function outlinePointOnSegment(a: DrawOutlinePoint, b: DrawOutlinePoint, c: DrawOutlinePoint): boolean {
+  return (
+    b.alongM <= Math.max(a.alongM, c.alongM) + 1e-9 &&
+    b.alongM + 1e-9 >= Math.min(a.alongM, c.alongM) &&
+    b.depthM <= Math.max(a.depthM, c.depthM) + 1e-9 &&
+    b.depthM + 1e-9 >= Math.min(a.depthM, c.depthM)
+  );
+}
+
+function outlineSegmentsIntersect(a1: DrawOutlinePoint, a2: DrawOutlinePoint, b1: DrawOutlinePoint, b2: DrawOutlinePoint): boolean {
+  const o1 = orientation(a1, a2, b1);
+  const o2 = orientation(a1, a2, b2);
+  const o3 = orientation(b1, b2, a1);
+  const o4 = orientation(b1, b2, a2);
+  if (Math.abs(o1) <= 1e-9 && outlinePointOnSegment(a1, b1, a2)) return true;
+  if (Math.abs(o2) <= 1e-9 && outlinePointOnSegment(a1, b2, a2)) return true;
+  if (Math.abs(o3) <= 1e-9 && outlinePointOnSegment(b1, a1, b2)) return true;
+  if (Math.abs(o4) <= 1e-9 && outlinePointOnSegment(b1, a2, b2)) return true;
+  return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
+}
+
+function validateOutlinePoints(points: DrawOutlinePoint[]): { ok: true } | { ok: false; error: string } {
+  if (points.length < 3) return { ok: false, error: 'Add at least 3 points before closing the outline.' };
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index]!;
+    const next = points[(index + 1) % points.length]!;
+    if (!Number.isFinite(current.alongM) || !Number.isFinite(current.depthM)) {
+      return { ok: false, error: 'House footprint outline points need finite along/depth values.' };
+    }
+    if (distanceBetweenOutlinePoints(current, next) < MIN_OUTLINE_SEGMENT_M) {
+      return { ok: false, error: 'House footprint outline cannot include duplicate consecutive points.' };
+    }
+  }
+  const area = points.reduce((sum, current, index) => {
+    const next = points[(index + 1) % points.length]!;
+    return sum + current.alongM * next.depthM - next.alongM * current.depthM;
+  }, 0) / 2;
+  if (Math.abs(area) <= 1e-9) return { ok: false, error: 'House footprint outline needs a non-zero area.' };
+  for (let index = 0; index < points.length; index += 1) {
+    const a1 = points[index]!;
+    const a2 = points[(index + 1) % points.length]!;
+    for (let jndex = index + 1; jndex < points.length; jndex += 1) {
+      if (Math.abs(index - jndex) <= 1 || (index === 0 && jndex === points.length - 1)) continue;
+      const b1 = points[jndex]!;
+      const b2 = points[(jndex + 1) % points.length]!;
+      if (outlineSegmentsIntersect(a1, a2, b1, b2)) {
+        return { ok: false, error: 'House footprint outline cannot self-intersect.' };
+      }
+    }
+  }
+  return { ok: true };
 }
 
 function formatDrawingFieldValue(value: number): string {
@@ -131,6 +260,8 @@ export default function ModelSpaceViewport({
   planModel,
   sectionModel,
   planViewModel,
+  drawOutlineRequestId,
+  fitViewKey = view,
   viewportTransform,
   onViewportTransformChange,
   editableFields,
@@ -142,6 +273,8 @@ export default function ModelSpaceViewport({
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
+  drawOutlineRequestId?: number;
+  fitViewKey?: string;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange?: (next: DrawingWorkbenchViewportTransform) => void;
   editableFields?: EstimateDrawingField[];
@@ -154,8 +287,12 @@ export default function ModelSpaceViewport({
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const scaleFrameRef = useRef<HTMLDivElement | null>(null);
+  const drawPopoverRef = useRef<HTMLDivElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
-  const syncingScrollRef = useRef(false);
+  const lastDrawOutlineRequestIdRef = useRef<number | undefined>(undefined);
+  const userAdjustedViewportRef = useRef(false);
+  const autoFitKeyRef = useRef<string | null>(null);
   const [footprintError, setFootprintError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [footprintHoveredAttachmentSide, setFootprintHoveredAttachmentSide] = useState<AttachmentSide | null>(null);
@@ -164,6 +301,10 @@ export default function ModelSpaceViewport({
   const [footprintContextHovered, setFootprintContextHovered] = useState(false);
   const [footprintDragSession, setFootprintDragSession] = useState<FootprintDragSession | null>(null);
   const [footprintVertexDragSession, setFootprintVertexDragSession] = useState<FootprintVertexDragSession | null>(null);
+  const [drawOutlineSession, setDrawOutlineSession] = useState<DrawOutlineSession | null>(null);
+  const [drawOutlineHoverPoint, setDrawOutlineHoverPoint] = useState<DrawOutlineHoverPoint | null>(null);
+  const [drawPopoverPosition, setDrawPopoverPosition] = useState<DrawPopoverPosition | null>(null);
+  const [panDragSession, setPanDragSession] = useState<PanDragSession | null>(null);
   const [planHoveredResizeFieldId, setPlanHoveredResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planActiveResizeFieldId, setPlanActiveResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldDragSession | null>(null);
@@ -195,6 +336,8 @@ export default function ModelSpaceViewport({
     Boolean(onCommitField) &&
     (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
   const showPlanViewport = view === 'plan' && Boolean(planModel);
+  const showSectionViewport = view === 'section' && Boolean(sectionModel);
+  const showDrawingViewport = showPlanViewport || showSectionViewport;
   const interactionError = fieldError ?? footprintError;
 
   const commitFootprintEdit = useCallback(
@@ -237,50 +380,88 @@ export default function ModelSpaceViewport({
 
   const handleZoomChange = useCallback(
     (delta: number) => {
+      userAdjustedViewportRef.current = true;
       updateViewportTransform({ zoom: clampZoom(zoom + delta) });
     },
     [updateViewportTransform, zoom],
   );
 
+  const handleZoomAtViewportPoint = useCallback(
+    (delta: number, clientX: number, clientY: number) => {
+      const scroller = scrollerRef.current;
+      if (!scroller) {
+        handleZoomChange(delta);
+        return;
+      }
+      const nextZoom = clampZoom(zoom + delta);
+      if (nextZoom === zoom) return;
+      userAdjustedViewportRef.current = true;
+      const rect = scroller.getBoundingClientRect();
+      const anchorX = clientX - rect.left;
+      const anchorY = clientY - rect.top;
+      const scale = nextZoom / Math.max(zoom, 0.001);
+      updateViewportTransform({
+        zoom: nextZoom,
+        panX: anchorX - (anchorX - viewportTransform.panX) * scale,
+        panY: anchorY - (anchorY - viewportTransform.panY) * scale,
+      });
+    },
+    [handleZoomChange, updateViewportTransform, viewportTransform.panX, viewportTransform.panY, zoom],
+  );
+
+  const measureFitViewTransform = useCallback((): DrawingWorkbenchViewportTransform | null => {
+    const scroller = scrollerRef.current;
+    const scaleFrame = scaleFrameRef.current;
+    if (!scroller || !scaleFrame) return null;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const frameRect = scaleFrame.getBoundingClientRect();
+    const scrollerWidth = scroller.clientWidth || scrollerRect.width;
+    const scrollerHeight = scroller.clientHeight || scrollerRect.height;
+    const frameWidth =
+      scaleFrame.offsetWidth || scaleFrame.scrollWidth || (frameRect.width > 0 ? frameRect.width / Math.max(zoom, 0.001) : 0);
+    const frameHeight =
+      scaleFrame.offsetHeight || scaleFrame.scrollHeight || (frameRect.height > 0 ? frameRect.height / Math.max(zoom, 0.001) : 0);
+
+    if (scrollerWidth <= 0 || scrollerHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) return null;
+
+    const availableWidth = Math.max(1, scrollerWidth - FIT_VIEW_MARGIN_PX * 2);
+    const availableHeight = Math.max(1, scrollerHeight - FIT_VIEW_MARGIN_PX * 2);
+    const nextZoom = clampZoom(Math.min(availableWidth / frameWidth, availableHeight / frameHeight));
+    return {
+      zoom: nextZoom,
+      panX: (scrollerWidth - frameWidth * nextZoom) / 2,
+      panY: (scrollerHeight - frameHeight * nextZoom) / 2,
+    };
+  }, [zoom]);
+
+  const fitViewportToContent = useCallback((): boolean => {
+    const next = measureFitViewTransform();
+    if (!next) return false;
+    updateViewportTransform(next);
+    return true;
+  }, [measureFitViewTransform, updateViewportTransform]);
+
   const handleResetView = useCallback(() => {
     setFootprintError(null);
     setFieldError(null);
-    updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
-  }, [updateViewportTransform]);
+    setPanDragSession(null);
+    userAdjustedViewportRef.current = false;
+    if (fitViewportToContent()) {
+      autoFitKeyRef.current = fitViewKey;
+    } else {
+      updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
+    }
+  }, [fitViewportToContent, fitViewKey, updateViewportTransform]);
 
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
-      handleZoomChange(event.deltaY < 0 ? 0.2 : -0.2);
+      handleZoomAtViewportPoint(event.deltaY < 0 ? 0.1 : -0.1, event.clientX, event.clientY);
     },
-    [handleZoomChange],
+    [handleZoomAtViewportPoint],
   );
-
-  const handleScroll = useCallback(() => {
-    if (syncingScrollRef.current) return;
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    updateViewportTransform({
-      panX: scroller.scrollLeft,
-      panY: scroller.scrollTop,
-    });
-  }, [updateViewportTransform]);
-
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    const nextLeft = Math.max(0, viewportTransform.panX);
-    const nextTop = Math.max(0, viewportTransform.panY);
-    if (Math.abs(scroller.scrollLeft - nextLeft) < 1 && Math.abs(scroller.scrollTop - nextTop) < 1) return;
-    syncingScrollRef.current = true;
-    scroller.scrollLeft = nextLeft;
-    scroller.scrollTop = nextTop;
-    const timeoutId = window.setTimeout(() => {
-      syncingScrollRef.current = false;
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [viewportTransform.panX, viewportTransform.panY, zoom]);
 
   const handleFootprintPresetSelect = useCallback(
     async (preset: NonNullable<ModulePlanModel['houseFootprintPreset']>) => {
@@ -288,11 +469,37 @@ export default function ModelSpaceViewport({
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      setDrawOutlineSession(null);
+      setDrawOutlineHoverPoint(null);
       setFootprintError(null);
       await commitFootprintEdit({ type: 'preset', preset });
     },
     [commitFootprintEdit],
   );
+
+  const startDrawOutlineSession = useCallback(() => {
+    setFieldError(null);
+    setFootprintHoveredHandleId(null);
+    setFootprintActiveHandleId(null);
+    setFootprintDragSession(null);
+    setFootprintVertexDragSession(null);
+    setDrawOutlineHoverPoint(null);
+    setFootprintError(null);
+    setDrawOutlineSession({
+      points: [],
+      pendingPoint: null,
+      distanceDraft: '',
+      angleDraft: '',
+      angleMode: 'relative',
+    });
+  }, []);
+
+  useEffect(() => {
+    if (drawOutlineRequestId === undefined || drawOutlineRequestId <= 0 || drawOutlineRequestId === lastDrawOutlineRequestIdRef.current) return;
+    lastDrawOutlineRequestIdRef.current = drawOutlineRequestId;
+    if (!canEditFootprint || view !== 'plan') return;
+    startDrawOutlineSession();
+  }, [canEditFootprint, drawOutlineRequestId, startDrawOutlineSession, view]);
 
   const handleFootprintModeSelect = useCallback(
     async (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => {
@@ -301,10 +508,17 @@ export default function ModelSpaceViewport({
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
       setFootprintVertexDragSession(null);
+      setDrawOutlineHoverPoint(null);
       setFootprintError(null);
+      if (mode === 'custom_polygon') {
+        startDrawOutlineSession();
+        return;
+      }
+      setDrawOutlineSession(null);
+      setDrawOutlineHoverPoint(null);
       await commitFootprintEdit({ type: 'mode', mode });
     },
-    [commitFootprintEdit],
+    [commitFootprintEdit, startDrawOutlineSession],
   );
 
   const handleFootprintRotate = useCallback(
@@ -315,6 +529,8 @@ export default function ModelSpaceViewport({
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
       setFootprintVertexDragSession(null);
+      setDrawOutlineSession(null);
+      setDrawOutlineHoverPoint(null);
       setFootprintError(null);
       await commitFootprintEdit({ type: 'rotate', delta });
     },
@@ -329,6 +545,8 @@ export default function ModelSpaceViewport({
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
       setFootprintVertexDragSession(null);
+      setDrawOutlineSession(null);
+      setDrawOutlineHoverPoint(null);
       setFootprintError(null);
       await commitFootprintEdit({ type: 'attachment_side', side });
     },
@@ -360,7 +578,7 @@ export default function ModelSpaceViewport({
 
   const handleFootprintVertexDragStart = useCallback(
     (meta: HouseFootprintVertexDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
-      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'orthogonal_polygon') return;
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
@@ -382,9 +600,9 @@ export default function ModelSpaceViewport({
 
   const handleFootprintEdgeAdd = useCallback(
     async (edgeIndex: number) => {
-      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'orthogonal_polygon') return;
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
       const polygon = planModel.houseFootprintPolygon ?? [];
-      if (polygon.length < 4) return;
+      if (polygon.length < 3) return;
       const start = polygon[edgeIndex];
       const end = polygon[(edgeIndex + 1) % polygon.length];
       if (!start || !end) return;
@@ -400,13 +618,177 @@ export default function ModelSpaceViewport({
 
   const handleFootprintVertexDelete = useCallback(
     async (vertexIndex: number) => {
-      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'orthogonal_polygon') return;
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
       const polygon = planModel.houseFootprintPolygon ?? [];
-      if (polygon.length <= 4 || vertexIndex < 0 || vertexIndex >= polygon.length) return;
+      if (polygon.length <= 3 || vertexIndex < 0 || vertexIndex >= polygon.length) return;
       await commitFootprintEdit({ type: 'polygon', polygon: polygon.filter((_, index) => index !== vertexIndex) });
     },
     [canEditFootprint, commitFootprintEdit, planModel],
   );
+
+  const handleDrawOutlinePointSelect = useCallback(
+    (rawPoint: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number]) => {
+      if (!drawOutlineSession) return;
+      const point = {
+        alongM: parsePolygonMetres(rawPoint.alongM),
+        depthM: parsePolygonMetres(rawPoint.depthM),
+      };
+      if (!Number.isFinite(point.alongM) || !Number.isFinite(point.depthM)) return;
+      setDrawOutlineHoverPoint(null);
+      if (!drawOutlineSession.points.length) {
+        setFootprintError(null);
+        setDrawOutlineSession({ ...drawOutlineSession, points: [point], pendingPoint: null, distanceDraft: '', angleDraft: '', angleMode: 'absolute' });
+        return;
+      }
+
+      const start = drawOutlineSession.points[drawOutlineSession.points.length - 1]!;
+      const distance = distanceBetweenOutlinePoints(start, point);
+      if (distance < MIN_OUTLINE_SEGMENT_M) {
+        setFootprintError('Click a point at least 1mm from the previous point.');
+        return;
+      }
+      const previous = drawOutlineSession.points[drawOutlineSession.points.length - 2];
+      const absoluteAngle = absoluteAngleDeg(start, point);
+      const nextAngleMode: DrawOutlineAngleMode = previous ? drawOutlineSession.angleMode : 'absolute';
+      const angle =
+        nextAngleMode === 'relative' && previous
+          ? normalizeAngleDeg(absoluteAngle - absoluteAngleDeg(previous, start))
+          : normalizeAngleDeg(absoluteAngle);
+      setFootprintError(null);
+      setDrawOutlineSession({
+        ...drawOutlineSession,
+        pendingPoint: point,
+        distanceDraft: formatOutlineNumber(distance),
+        angleDraft: formatOutlineNumber(angle),
+        angleMode: previous ? nextAngleMode : 'absolute',
+      });
+    },
+    [drawOutlineSession],
+  );
+
+  const handleDrawOutlineConfirmSegment = useCallback(() => {
+    if (!drawOutlineSession) return;
+    const nextPoint = resolvePendingOutlinePoint(drawOutlineSession);
+    if (!nextPoint) {
+      setFootprintError('Enter a valid segment distance and angle.');
+      return;
+    }
+    const previous = drawOutlineSession.points[drawOutlineSession.points.length - 1];
+    if (previous && distanceBetweenOutlinePoints(previous, nextPoint) < MIN_OUTLINE_SEGMENT_M) {
+      setFootprintError('House footprint outline cannot include duplicate consecutive points.');
+      return;
+    }
+    setDrawOutlineHoverPoint(null);
+    setFootprintError(null);
+    setDrawOutlineSession({
+      ...drawOutlineSession,
+      points: [...drawOutlineSession.points, nextPoint],
+      pendingPoint: null,
+      distanceDraft: '',
+      angleDraft: '',
+      angleMode: 'relative',
+    });
+  }, [drawOutlineSession]);
+
+  const handleDrawOutlineUndo = useCallback(() => {
+    if (!drawOutlineSession) return;
+    setDrawOutlineHoverPoint(null);
+    setFootprintError(null);
+    if (drawOutlineSession.pendingPoint || drawOutlineSession.distanceDraft || drawOutlineSession.angleDraft) {
+      setDrawOutlineSession({ ...drawOutlineSession, pendingPoint: null, distanceDraft: '', angleDraft: '' });
+      return;
+    }
+    setDrawOutlineSession({
+      ...drawOutlineSession,
+      points: drawOutlineSession.points.slice(0, -1),
+      angleMode: drawOutlineSession.points.length <= 2 ? 'absolute' : drawOutlineSession.angleMode,
+    });
+  }, [drawOutlineSession]);
+
+  const handleDrawOutlineCancel = useCallback(() => {
+    setFootprintError(null);
+    setDrawOutlineHoverPoint(null);
+    setDrawOutlineSession(null);
+  }, []);
+
+  const handleDrawOutlineClose = useCallback(async () => {
+    if (!drawOutlineSession) return;
+    const pendingPoint = resolvePendingOutlinePoint(drawOutlineSession);
+    const points = pendingPoint ? [...drawOutlineSession.points, pendingPoint] : drawOutlineSession.points;
+    const validation = validateOutlinePoints(points);
+    if (!validation.ok) {
+      setFootprintError(validation.error);
+      return;
+    }
+    const result = await commitFootprintEdit({ type: 'custom_polygon', polygon: outlinePointsToPolygon(points) });
+    if (result.ok) {
+      setDrawOutlineHoverPoint(null);
+      setDrawOutlineSession(null);
+    }
+  }, [commitFootprintEdit, drawOutlineSession]);
+
+  const handleDrawOutlinePointHover = useCallback(
+    (rawPoint: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number] | null) => {
+      if (!drawOutlineSession || !rawPoint || !drawOutlineSession.points.length || hasDrawOutlineDraft(drawOutlineSession)) {
+        setDrawOutlineHoverPoint(null);
+        return;
+      }
+      const point = {
+        alongM: parsePolygonMetres(rawPoint.alongM),
+        depthM: parsePolygonMetres(rawPoint.depthM),
+      };
+      if (!Number.isFinite(point.alongM) || !Number.isFinite(point.depthM)) {
+        setDrawOutlineHoverPoint(null);
+        return;
+      }
+
+      const firstPoint = drawOutlineSession.points[0];
+      const closeHovered =
+        drawOutlineSession.points.length >= 3 && firstPoint ? distanceBetweenOutlinePoints(firstPoint, point) <= CLOSE_START_TOLERANCE_M : false;
+      const nextPoint = closeHovered && firstPoint ? firstPoint : point;
+      setDrawOutlineHoverPoint((current) => {
+        if (
+          current &&
+          current.closeHovered === closeHovered &&
+          current.point.alongM === nextPoint.alongM &&
+          current.point.depthM === nextPoint.depthM
+        ) {
+          return current;
+        }
+        return { point: nextPoint, closeHovered };
+      });
+    },
+    [drawOutlineSession],
+  );
+
+  const handleCanvasPanStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0 || drawOutlineSession) return;
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          'button,input,select,[data-plan-resize-handle-hit],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex]',
+        )
+      ) {
+        return;
+      }
+      userAdjustedViewportRef.current = true;
+      setPanDragSession({
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startPanX: viewportTransform.panX,
+        startPanY: viewportTransform.panY,
+      });
+    },
+    [drawOutlineSession, viewportTransform.panX, viewportTransform.panY],
+  );
+
+  useEffect(() => {
+    userAdjustedViewportRef.current = false;
+    autoFitKeyRef.current = null;
+  }, [fitViewKey]);
 
   const handlePlanFieldDragStart = useCallback(
     (meta: ModulePlanResizeDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
@@ -436,6 +818,33 @@ export default function ModelSpaceViewport({
     },
     [canEditPlanDimensions, editableFieldMap, planModel],
   );
+
+  useEffect(() => {
+    if (!panDragSession) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== panDragSession.pointerId) return;
+      updateViewportTransform({
+        panX: panDragSession.startPanX + event.clientX - panDragSession.startClientX,
+        panY: panDragSession.startPanY + event.clientY - panDragSession.startClientY,
+      });
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== panDragSession.pointerId) return;
+      setPanDragSession(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [panDragSession, updateViewportTransform]);
 
   useEffect(() => {
     if (!footprintDragSession || !onCommitFootprintEdit) return;
@@ -537,7 +946,7 @@ export default function ModelSpaceViewport({
         Math.max(footprintVertexDragSession.scale, 0.001);
       const startPoint = footprintVertexDragSession.startPolygon[footprintVertexDragSession.vertexIndex];
       if (!startPoint) return;
-      const nextPolygon = moveOrthogonalPolygonVertex(
+      const nextPolygon = moveCustomPolygonVertex(
         footprintVertexDragSession.startPolygon,
         footprintVertexDragSession.vertexIndex,
         snapHouseFootprintValue(parsePolygonMetres(startPoint.alongM) + deltaAlongM),
@@ -590,6 +999,7 @@ export default function ModelSpaceViewport({
       setPlanFieldDragSession(null);
       setPlanActiveResizeFieldId(null);
       setPlanHoveredResizeFieldId(null);
+      setPanDragSession(null);
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -605,7 +1015,22 @@ export default function ModelSpaceViewport({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (drawOutlineSession && event.key === 'Enter') {
+        event.preventDefault();
+        handleDrawOutlineConfirmSegment();
+        return;
+      }
+      if (drawOutlineSession && event.key === 'Backspace') {
+        event.preventDefault();
+        handleDrawOutlineUndo();
+        return;
+      }
       if (event.key !== 'Escape') return;
+      if (drawOutlineSession) {
+        event.preventDefault();
+        handleDrawOutlineCancel();
+        return;
+      }
       setFootprintDragSession(null);
       setFootprintActiveHandleId(null);
       setFootprintHoveredHandleId(null);
@@ -617,7 +1042,75 @@ export default function ModelSpaceViewport({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [drawOutlineSession, handleDrawOutlineCancel, handleDrawOutlineConfirmSegment, handleDrawOutlineUndo]);
+
+  const drawOutlinePendingPoint = useMemo(() => (drawOutlineSession ? resolvePendingOutlinePoint(drawOutlineSession) : null), [drawOutlineSession]);
+  const drawOutlineHoverPreviewPoint =
+    drawOutlineSession && !drawOutlinePendingPoint && !hasDrawOutlineDraft(drawOutlineSession) ? drawOutlineHoverPoint?.point ?? null : null;
+  const drawOutlinePreviewPointKind: 'pending' | 'hover' | null = drawOutlinePendingPoint ? 'pending' : drawOutlineHoverPreviewPoint ? 'hover' : null;
+  const drawOutlineConfirmedPointCount = drawOutlineSession?.points.length ?? 0;
+  const drawOutlineCloseReady = drawOutlineConfirmedPointCount >= 3;
+  const drawOutlineCloseHovered = Boolean(drawOutlineCloseReady && drawOutlineHoverPoint?.closeHovered && drawOutlineHoverPreviewPoint);
+  const drawOutlinePopoverAnchorPointCount = drawOutlinePendingPoint ? drawOutlineConfirmedPointCount + 1 : drawOutlineConfirmedPointCount;
+  const drawOutlinePreviewPolygon = useMemo(() => {
+    if (!drawOutlineSession) return undefined;
+    const previewPoint = drawOutlinePendingPoint ?? drawOutlineHoverPreviewPoint;
+    return outlinePointsToPolygon(previewPoint ? [...drawOutlineSession.points, previewPoint] : drawOutlineSession.points);
+  }, [drawOutlineHoverPreviewPoint, drawOutlinePendingPoint, drawOutlineSession]);
+
+  useEffect(() => {
+    if (!showDrawingViewport || userAdjustedViewportRef.current || autoFitKeyRef.current === fitViewKey) return;
+    if (fitViewportToContent()) autoFitKeyRef.current = fitViewKey;
+  }, [fitViewKey, fitViewportToContent, showDrawingViewport]);
+
+  useEffect(() => {
+    if (!drawOutlineSession) {
+      setDrawPopoverPosition(null);
+      return;
+    }
+
+    const pointCount = drawOutlinePopoverAnchorPointCount;
+    if (pointCount < 1) {
+      setDrawPopoverPosition(null);
+      return;
+    }
+
+    const scroller = scrollerRef.current;
+    const popover = drawPopoverRef.current;
+    const anchor = scroller?.querySelector(`[data-footprint-custom-vertex="${pointCount - 1}"]`);
+    if (!scroller || !popover || !anchor) return;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const scrollerWidth = scroller.clientWidth || scrollerRect.width;
+    const scrollerHeight = scroller.clientHeight || scrollerRect.height;
+    const popoverWidth = popover.offsetWidth || popoverRect.width;
+    const popoverHeight = popover.offsetHeight || popoverRect.height;
+
+    if (scrollerWidth <= 0 || scrollerHeight <= 0 || popoverWidth <= 0 || popoverHeight <= 0) return;
+
+    const anchorLeft = anchorRect.left - scrollerRect.left;
+    const anchorRight = anchorRect.right - scrollerRect.left;
+    const anchorCenterY = anchorRect.top - scrollerRect.top + anchorRect.height / 2;
+    let left = anchorRight + DRAW_POPOVER_GAP_PX;
+    let top = anchorCenterY - popoverHeight / 2;
+
+    if (left + popoverWidth + DRAW_POPOVER_MARGIN_PX > scrollerWidth) {
+      left = anchorLeft - popoverWidth - DRAW_POPOVER_GAP_PX;
+    }
+    if (left < DRAW_POPOVER_MARGIN_PX) {
+      left = Math.min(Math.max(anchorRight + DRAW_POPOVER_GAP_PX, DRAW_POPOVER_MARGIN_PX), scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX);
+    }
+
+    left = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(left, scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX));
+    top = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(top, scrollerHeight - popoverHeight - DRAW_POPOVER_MARGIN_PX));
+
+    setDrawPopoverPosition((current) => {
+      if (current && Math.abs(current.left - left) < 0.5 && Math.abs(current.top - top) < 0.5) return current;
+      return { left, top };
+    });
+  }, [drawOutlinePopoverAnchorPointCount, drawOutlineSession, viewportTransform.panX, viewportTransform.panY, zoom]);
 
   const footprintEditor = useMemo<ModuleFootprintEditorProps | undefined>(() => {
     if (!canEditFootprint && !canRotatePlan) return undefined;
@@ -625,6 +1118,13 @@ export default function ModelSpaceViewport({
       available: canEditFootprint,
       surface: 'model',
       isEditing: true,
+      customPolygonOverride: drawOutlinePreviewPolygon,
+      customPolygonOpen: Boolean(drawOutlineSession),
+      customPolygonConfirmedPointCount: drawOutlineConfirmedPointCount,
+      customPolygonPreviewPointKind: drawOutlinePreviewPointKind,
+      customPolygonCloseReady: drawOutlineCloseReady,
+      customPolygonCloseHovered: drawOutlineCloseHovered,
+      hideHouseFootprint: Boolean(drawOutlineSession && (drawOutlinePreviewPolygon?.length ?? 0) < 3),
       isContextHovered: footprintContextHovered,
       hoveredAttachmentSide: footprintHoveredAttachmentSide,
       hoveredHandleId: footprintHoveredHandleId,
@@ -643,6 +1143,9 @@ export default function ModelSpaceViewport({
       onPresetSelect: (preset) => void handleFootprintPresetSelect(preset),
       onModeSelect: (mode) => void handleFootprintModeSelect(mode),
       onRotate: (delta) => void handleFootprintRotate(delta),
+      onCanvasPointSelect: drawOutlineSession ? handleDrawOutlinePointSelect : undefined,
+      onCanvasPointHover: drawOutlineSession ? handleDrawOutlinePointHover : undefined,
+      onCloseStartSelect: drawOutlineSession ? () => void handleDrawOutlineClose() : undefined,
       onSvgMount: (node) => {
         footprintSvgRef.current = node;
       },
@@ -650,6 +1153,12 @@ export default function ModelSpaceViewport({
   }, [
     canEditFootprint,
     canRotatePlan,
+    drawOutlineCloseHovered,
+    drawOutlineCloseReady,
+    drawOutlineConfirmedPointCount,
+    drawOutlinePreviewPointKind,
+    drawOutlinePreviewPolygon,
+    drawOutlineSession,
     footprintActiveHandleId,
     footprintContextHovered,
     footprintHoveredAttachmentSide,
@@ -662,6 +1171,9 @@ export default function ModelSpaceViewport({
     handleFootprintRotate,
     handleFootprintVertexDelete,
     handleFootprintVertexDragStart,
+    handleDrawOutlineClose,
+    handleDrawOutlinePointHover,
+    handleDrawOutlinePointSelect,
   ]);
 
   const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
@@ -680,100 +1192,123 @@ export default function ModelSpaceViewport({
 
   const scaleFrameStyle = useMemo(
     () => ({
-      width: `${zoom * 100}%`,
+      transform: `translate(${viewportTransform.panX}px, ${viewportTransform.panY}px) scale(${zoom})`,
     }),
-    [zoom],
+    [viewportTransform.panX, viewportTransform.panY, zoom],
+  );
+  const drawPopoverStyle = useMemo(
+    () =>
+      drawPopoverPosition
+        ? {
+            left: `${drawPopoverPosition.left}px`,
+            top: `${drawPopoverPosition.top}px`,
+          }
+        : undefined,
+    [drawPopoverPosition],
   );
 
-  const planStats = planViewModel
-    ? `${planViewModel.primarySize.lengthA?.toFixed(1) ?? '?'}m x ${planViewModel.primarySize.spanA?.toFixed(1) ?? '?'}m`
-    : null;
-  const houseFootprintMode = planModel?.houseFootprintMode ?? 'preset';
+  void planViewModel;
 
   return (
     <section className={styles.viewport} aria-label={`${view === 'plan' ? 'Plan' : 'Section'} model space viewport`} style={moduleDrawingThemeCssVariables('model')}>
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarGroup}>
-          <div className={styles.toolbarMeta}>
-            <p className={styles.eyebrow}>Model Space</p>
-            <h3 className={styles.title}>{showPlanViewport ? 'Live plan viewport' : 'Drawing-space viewer'}</h3>
-            <p className={styles.subtitle}>
-              {showPlanViewport
-                ? planStats
-                  ? `${planStats}. Drag the primary resize handles or use the Sanctuary rail to adjust the live draft.`
-                  : 'Drag the primary resize handles or use the Sanctuary rail to adjust the live draft.'
-                : 'Section model-space editing lands in a later milestone. Use Sheet View for the generated section for now.'}
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.toolbarGroup}>
-          {canEditFootprint && planModel ? (
-            <>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>House footprint mode</span>
-                <select
-                  className={styles.select}
-                  value={houseFootprintMode}
-                  onChange={(event) => void handleFootprintModeSelect(event.target.value as NonNullable<Required<ModulePlanModel>['houseFootprintMode']>)}
-                >
-                  <option value="preset">Preset</option>
-                  <option value="orthogonal_polygon">Edit outline</option>
-                </select>
-              </label>
-              <label className={styles.field}>
-                <span className={styles.fieldLabel}>House footprint</span>
-                <select
-                  className={styles.select}
-                  value={planModel.houseFootprintPreset}
-                  disabled={houseFootprintMode === 'orthogonal_polygon'}
-                  onChange={(event) => void handleFootprintPresetSelect(event.target.value as NonNullable<ModulePlanModel['houseFootprintPreset']>)}
-                >
-                  <option value="straight">Straight</option>
-                  <option value="l_left">L left</option>
-                  <option value="l_right">L right</option>
-                  <option value="recess_left">Recess left</option>
-                  <option value="recess_right">Recess right</option>
-                  <option value="u_shape">U shape</option>
-                  <option value="wrap_left">Wrap left</option>
-                  <option value="wrap_right">Wrap right</option>
-                </select>
-              </label>
-            </>
-          ) : null}
-          <button type="button" className={styles.toolbarButton} onClick={() => handleZoomChange(-0.2)}>
-            Zoom out
+      <div
+        ref={scrollerRef}
+        data-model-space-scroller
+        className={`${styles.scroller} ${panDragSession ? styles.scrollerPanning : ''}`}
+        onPointerDown={handleCanvasPanStart}
+        onWheel={handleWheel}
+      >
+        <div className={styles.canvasControls} onPointerDown={(event) => event.stopPropagation()}>
+          <button type="button" className={styles.overlayButton} onClick={() => handleZoomChange(-0.1)}>
+            -
           </button>
           <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
-          <button type="button" className={styles.toolbarButton} onClick={() => handleZoomChange(0.2)}>
-            Zoom in
+          <button type="button" className={styles.overlayButton} onClick={() => handleZoomChange(0.1)}>
+            +
           </button>
-          <button type="button" className={styles.toolbarButton} onClick={handleResetView}>
-            Reset view
+          <button type="button" className={styles.overlayButton} onClick={handleResetView}>
+            Reset
           </button>
         </div>
-      </div>
 
-      {interactionError ? <p className={styles.error}>{interactionError}</p> : null}
+        {interactionError ? <p className={styles.error}>{interactionError}</p> : null}
 
-      <div ref={scrollerRef} className={styles.scroller} onScroll={handleScroll} onWheel={handleWheel}>
-        <div className={styles.scaleFrame} style={scaleFrameStyle}>
+        {drawOutlineSession ? (
+          <div
+            ref={drawPopoverRef}
+            className={styles.drawPopover}
+            aria-label="Draw house outline controls"
+            data-draw-popover-anchor={drawPopoverPosition ? 'vertex' : 'default'}
+            style={drawPopoverStyle}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <p className={styles.drawHint}>
+              {drawOutlineSession.points.length
+                ? `${drawOutlineSession.points.length} point${drawOutlineSession.points.length === 1 ? '' : 's'} placed`
+                : 'Click first corner'}
+            </p>
+            <label className={styles.popoverField}>
+              <span className={styles.fieldLabel}>Distance (m)</span>
+              <input
+                className={styles.input}
+                inputMode="decimal"
+                value={drawOutlineSession.distanceDraft}
+                disabled={!drawOutlineSession.points.length}
+                onChange={(event) =>
+                  setDrawOutlineSession((current) =>
+                    current ? { ...current, distanceDraft: event.target.value, pendingPoint: null } : current,
+                  )
+                }
+              />
+            </label>
+            <label className={styles.popoverField}>
+              <span className={styles.fieldLabel}>Angle (deg)</span>
+              <input
+                className={styles.input}
+                inputMode="decimal"
+                value={drawOutlineSession.angleDraft}
+                disabled={!drawOutlineSession.points.length}
+                onChange={(event) =>
+                  setDrawOutlineSession((current) =>
+                    current ? { ...current, angleDraft: event.target.value, pendingPoint: null } : current,
+                  )
+                }
+              />
+            </label>
+            <button type="button" className={styles.confirmButton} onClick={handleDrawOutlineConfirmSegment} disabled={!drawOutlineSession.points.length}>
+              Confirm
+            </button>
+            <div className={styles.drawActions}>
+              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineClose}>
+                Close
+              </button>
+              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineUndo} disabled={!drawOutlineSession.points.length}>
+                Undo
+              </button>
+              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineCancel}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        <div ref={scaleFrameRef} data-model-space-scale-frame className={styles.scaleFrame} style={scaleFrameStyle}>
           <div className={styles.canvas}>
-            {showPlanViewport ? (
+            {showDrawingViewport ? (
               <ModuleDrawingRenderer
                 view={view}
                 status={status}
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="model"
-                interactiveFields={modelInteractiveFields}
-                footprintEditor={footprintEditor}
-                planInteraction={planInteraction}
+                interactiveFields={showPlanViewport ? modelInteractiveFields : undefined}
+                footprintEditor={showPlanViewport ? footprintEditor : undefined}
+                planInteraction={showPlanViewport ? planInteraction : undefined}
               />
             ) : (
               <div className={styles.placeholder}>
-                <p className={styles.placeholderTitle}>Section model space is staged for a later milestone.</p>
-                <p className={styles.placeholderText}>Switch to Sheet View to review the generated section while we finish the shared section and elevation foundation.</p>
+                <p className={styles.placeholderTitle}>Waiting for valid model-space geometry.</p>
+                <p className={styles.placeholderText}>Resolve the current drawing inputs to restore the generated model-space view.</p>
               </div>
             )}
           </div>

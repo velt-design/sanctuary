@@ -35,6 +35,7 @@ type DrawingWorkbenchProps = {
   planViewModel?: PlanViewModel | null;
   geometryPreview?: GeometryPreviewState | null;
   viewportTransform: DrawingWorkbenchViewportTransform;
+  drawOutlineRequestId?: number;
   onViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   meta: EstimateDrawingSheetMeta;
   backHref?: string;
@@ -70,6 +71,7 @@ export default function DrawingWorkbench({
   planViewModel,
   geometryPreview,
   viewportTransform,
+  drawOutlineRequestId,
   onViewportTransformChange,
   meta,
   backHref,
@@ -140,6 +142,8 @@ export default function DrawingWorkbench({
             planModel={planModel}
             sectionModel={sectionModel}
             planViewModel={planViewModel}
+            drawOutlineRequestId={drawOutlineRequestId}
+            fitViewKey={`${activeModuleIndex}:${view}`}
             viewportTransform={viewportTransform}
             onViewportTransformChange={onViewportTransformChange}
             editableFields={modelEditableFields}

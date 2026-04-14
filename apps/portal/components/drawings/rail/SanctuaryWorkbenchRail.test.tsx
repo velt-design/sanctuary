@@ -26,6 +26,7 @@ function makeGeometryState(
     },
     houseContext: {
       canEditFootprint: true,
+      footprintMode: 'preset',
       footprintPreset: 'straight',
       footprintParams: {
         widthM: '',
@@ -39,9 +40,11 @@ function makeGeometryState(
         rightLegRunM: '2.4',
         sideRunM: '2.4',
       },
+      footprintPolygon: [],
       drawingRotationQuarterTurns: 1,
       attachmentStrategy: 'auto',
       storeyMode: 'single_storey',
+      roofMaterial: 'corrugated_iron',
       eaveHeightM: '2.4',
       wallHeightM: '2.4',
       roofPitchDeg: '25',
@@ -108,6 +111,8 @@ describe('SanctuaryWorkbenchRail', () => {
         moduleLabel="M1 - Mono"
         geometryState={makeGeometryState()}
         view="plan"
+        canStartDrawOutline
+        onStartDrawOutline={() => ({ ok: true })}
         onCommitGeometryEdit={() => ({ ok: true })}
       />,
     );
@@ -299,5 +304,34 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(selectMarkup(markup, 'Gable end frames')).not.toContain('value="outer_end_only"');
     expect(selectMarkup(markup, 'House-side eave gutter')).toContain('disabled=""');
     expect(selectMarkup(markup, 'Outer-side eave gutter')).toContain('disabled=""');
+  });
+
+  it('keeps draw outline locked to the model-space plan editor', () => {
+    const sectionMarkup = renderToStaticMarkup(
+      <SanctuaryWorkbenchRail
+        moduleLabel="M1 - Mono"
+        geometryState={makeGeometryState()}
+        view="section"
+        onCommitGeometryEdit={() => ({ ok: true })}
+      />,
+    );
+    const sectionModeSelect = selectMarkup(sectionMarkup, 'House footprint mode');
+
+    expect(sectionModeSelect).toContain('value="custom_polygon" disabled=""');
+    expect(sectionMarkup).toContain('Use Model Space &gt; Plan to draw the outline.');
+
+    const planMarkup = renderToStaticMarkup(
+      <SanctuaryWorkbenchRail
+        moduleLabel="M1 - Mono"
+        geometryState={makeGeometryState()}
+        view="plan"
+        canStartDrawOutline
+        onStartDrawOutline={() => ({ ok: true })}
+        onCommitGeometryEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(selectMarkup(planMarkup, 'House footprint mode')).toContain('value="custom_polygon"');
+    expect(selectMarkup(planMarkup, 'House footprint mode')).not.toContain('value="custom_polygon" disabled=""');
   });
 });

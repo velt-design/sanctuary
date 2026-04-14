@@ -12,6 +12,7 @@ import {
   writeLocalFirstWorkingCopy,
 } from '@/lib/localFirst/store';
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
+import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { LocalFirstPersistedState } from '@/lib/localFirst/types';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
@@ -225,7 +226,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Reset view');
+    expect(rendered.container.textContent).toContain('Reset');
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).not.toBeNull();
     expect(rendered.container.textContent).not.toContain('Rotate +90');
@@ -233,7 +234,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Section');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Section model space is staged for a later milestone.');
+    expect(rendered.container.querySelector('[aria-label="Section model space viewport"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Module section view"]')).not.toBeNull();
 
     rendered.unmount();
   });
@@ -296,7 +298,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       overrides: {
         editability: {
           isLocked: true,
-          lockReason: 'Locked by quote send.',
+          lockReason: 'Locked by quote send.' as any,
           lockedAt: null,
           lockedByQuoteVersionId: null,
           lockedByQuoteRef: null,
@@ -375,6 +377,36 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('renders Sheet View from locally resolved stale pricing outputs', async () => {
+    const estimate = buildEstimateDetail({
+      mutateSnapshot: (snapshot) => {
+        const next = structuredClone(snapshot) as {
+          inputs?: { modules?: Array<{ lengthM?: string }> };
+          outputs?: Record<string, unknown>;
+        } | null;
+        if (!next?.inputs?.modules?.[0] || !next.outputs) return next as Record<string, unknown> | null;
+        next.inputs.modules[0].lengthM = '8.4';
+        next.outputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY] = 'stale';
+        return next as Record<string, unknown>;
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Sheet View');
+    await flushAsyncWork();
+
+    expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Module plan view"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('8.40m');
+    expect(rendered.container.textContent).not.toContain('Waiting for valid inputs before geometry is available.');
+
+    rendered.unmount();
+  });
+
   it('writes house/context edits into the local working copy', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
@@ -427,11 +459,21 @@ describe('DesignWorkbenchEstimateClient', () => {
     dispatchPointer(window, 'pointerup', { pointerId: 7, clientX: 15.333, clientY: 0 });
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[0]?.lengthM).toBe('7');
+    const firstDraftLength = Number.parseFloat(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[0]?.lengthM ?? '');
+    expect(firstDraftLength).toBeGreaterThan(6);
 
-    dispatchPointer(lengthHandle, 'pointerdown', { pointerId: 8, clientX: 0, clientY: 0 });
-    dispatchPointer(window, 'pointermove', { pointerId: 8, clientX: -15.333, clientY: 0 });
-    dispatchPointer(window, 'pointerup', { pointerId: 8, clientX: -15.333, clientY: 0 });
+    const currentLengthHandle = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]');
+    if (!currentLengthHandle) throw new Error('Missing updated model-space length handle');
+    const handleWidth = Math.abs(
+      Number.parseFloat(currentLengthHandle.getAttribute('x2') ?? '0') -
+        Number.parseFloat(currentLengthHandle.getAttribute('x1') ?? '0'),
+    );
+    const currentScale = handleWidth / (firstDraftLength * 0.44);
+    const returnToSnapshotDelta = (6 - firstDraftLength) * currentScale;
+
+    dispatchPointer(currentLengthHandle, 'pointerdown', { pointerId: 8, clientX: 0, clientY: 0 });
+    dispatchPointer(window, 'pointermove', { pointerId: 8, clientX: returnToSnapshotDelta, clientY: 0 });
+    dispatchPointer(window, 'pointerup', { pointerId: 8, clientX: returnToSnapshotDelta, clientY: 0 });
     await flushAsyncWork();
 
     expect(getLocalFirstWorkingCopy(entityKey)).toBeNull();

@@ -104,12 +104,24 @@ function makeFootprintEditor(overrides: Partial<{
   surface: 'card' | 'sheet' | 'model';
   hoveredHandleId: HouseFootprintHandleId | null;
   activeHandleId: HouseFootprintHandleId | null;
+  customPolygonOverride: ModulePlanModel['houseFootprintPolygon'] | null;
+  customPolygonOpen: boolean;
+  customPolygonConfirmedPointCount: number;
+  customPolygonPreviewPointKind: 'pending' | 'hover' | null;
+  customPolygonCloseReady: boolean;
+  customPolygonCloseHovered: boolean;
 }> = {}) {
   return {
     available: true,
     isEditing: overrides.isEditing ?? false,
     isContextHovered: overrides.isContextHovered ?? false,
     surface: overrides.surface ?? 'card',
+    customPolygonOverride: overrides.customPolygonOverride,
+    customPolygonOpen: overrides.customPolygonOpen,
+    customPolygonConfirmedPointCount: overrides.customPolygonConfirmedPointCount,
+    customPolygonPreviewPointKind: overrides.customPolygonPreviewPointKind,
+    customPolygonCloseReady: overrides.customPolygonCloseReady,
+    customPolygonCloseHovered: overrides.customPolygonCloseHovered,
     hoveredAttachmentSide: null,
     hoveredHandleId: overrides.hoveredHandleId ?? null,
     activeHandleId: overrides.activeHandleId ?? null,
@@ -465,11 +477,11 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('clipPath');
   });
 
-  it('renders custom orthogonal outline mode without preset resize handles in the card editor', () => {
+  it('renders custom outline mode without preset resize handles in the card editor', () => {
     const drawing = makeDrawingModule();
     const planModel = {
       ...drawing.planModel!,
-      houseFootprintMode: 'orthogonal_polygon' as const,
+      houseFootprintMode: 'custom_polygon' as const,
       houseFootprintPolygon: [
         { alongM: '0', depthM: '2.4' },
         { alongM: '6', depthM: '2.4' },
@@ -637,6 +649,64 @@ describe('ModuleViewsCard', () => {
     expect(modelMarkup).toContain('data-editable-field-id="plan:lengthA"');
     expect(modelMarkup).toContain('data-editable-field-id="plan:spanA"');
     expect(sheetMarkup).not.toContain('data-plan-resize-handle-hit=');
+  });
+
+  it('renders custom draw preview edges and vertex aid markers in model space', () => {
+    const drawing = makeDrawingModule();
+    const hoverMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        footprintEditor={makeFootprintEditor({
+          surface: 'model',
+          isEditing: true,
+          customPolygonOverride: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '2', depthM: '0' },
+            { alongM: '2', depthM: '1' },
+            { alongM: '0', depthM: '1' },
+          ],
+          customPolygonOpen: true,
+          customPolygonConfirmedPointCount: 3,
+          customPolygonPreviewPointKind: 'hover',
+          customPolygonCloseReady: true,
+          customPolygonCloseHovered: true,
+        })}
+      />,
+    );
+    const pendingMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        footprintEditor={makeFootprintEditor({
+          surface: 'model',
+          isEditing: true,
+          customPolygonOverride: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '2', depthM: '0' },
+            { alongM: '2', depthM: '1' },
+          ],
+          customPolygonOpen: true,
+          customPolygonConfirmedPointCount: 2,
+          customPolygonPreviewPointKind: 'pending',
+        })}
+      />,
+    );
+
+    expect(hoverMarkup).toContain('data-footprint-custom-edge-kind="confirmed"');
+    expect(hoverMarkup).toContain('data-footprint-custom-preview-edge="hover"');
+    expect(hoverMarkup).toContain('data-footprint-custom-preview-vertex="hover"');
+    expect(hoverMarkup).toContain('data-footprint-custom-latest-vertex="true"');
+    expect(hoverMarkup).toContain('data-footprint-custom-close-target="0"');
+    expect(hoverMarkup).toContain('data-footprint-custom-close-hovered="true"');
+    expect(pendingMarkup).toContain('data-footprint-custom-preview-edge="pending"');
+    expect(pendingMarkup).toContain('data-footprint-custom-preview-vertex="pending"');
   });
 
   it('renders fall and spacing annotations in page space for rotated sheet plans', () => {

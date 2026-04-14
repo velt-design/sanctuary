@@ -20,7 +20,6 @@ import {
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
   estimateDrawingDraftMatchesSnapshot,
-  mergeEstimateDrawingDraftIntoSnapshot,
   type EstimateDrawingDraft,
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
@@ -45,6 +44,7 @@ export default function DesignWorkbenchEstimateClient({
   backHref,
 }: DesignWorkbenchEstimateClientProps) {
   const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
+  const [drawOutlineRequestId, setDrawOutlineRequestId] = useState(0);
   const baseDraft = useMemo(() => buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot), [estimate.calculatorSnapshot]);
   const drawingWorkingCopy = useLocalWorkingCopy<EstimateDrawingDraft | null>(
     buildEstimateDrawingDraftEntityKey(estimate.id),
@@ -52,17 +52,14 @@ export default function DesignWorkbenchEstimateClient({
   );
   const drawingDraft = drawingWorkingCopy.value;
 
-  const drawingSnapshot = useMemo(
-    () => mergeEstimateDrawingDraftIntoSnapshot(estimate.calculatorSnapshot, drawingDraft),
-    [drawingDraft, estimate.calculatorSnapshot],
-  );
   const store = useMemo(
     () =>
       buildDrawingWorkbenchStore({
-        snapshot: drawingSnapshot,
+        snapshot: estimate.calculatorSnapshot,
+        draft: drawingDraft,
         ui,
       }),
-    [drawingSnapshot, ui],
+    [drawingDraft, estimate.calculatorSnapshot, ui],
   );
 
   useEffect(() => {
@@ -249,6 +246,16 @@ export default function DesignWorkbenchEstimateClient({
     [drawingDraft, estimate.calculatorSnapshot, persistDrawingDraftLocally, store.derived.activeModuleIndex],
   );
 
+  const startDrawOutlineEditor = useCallback((): CommitResult => {
+    setUi((current) => ({
+      ...current,
+      viewportMode: 'model',
+      activeView: 'plan',
+    }));
+    setDrawOutlineRequestId((current) => current + 1);
+    return { ok: true };
+  }, []);
+
   const workbenchFieldCommit = !isLocked && supportsSanctuaryEditing ? commitDrawingField : undefined;
   const workbenchFootprintCommit =
     !isLocked && supportsSanctuaryEditing && store.ui.viewportMode === 'model' ? commitDrawingFootprintEdit : undefined;
@@ -295,6 +302,8 @@ export default function DesignWorkbenchEstimateClient({
             geometryState={geometryEditState}
             view={store.ui.activeView}
             disabled={isLocked}
+            canStartDrawOutline={!isLocked && store.ui.viewportMode === 'model' && store.ui.activeView === 'plan'}
+            onStartDrawOutline={startDrawOutlineEditor}
             onCommitGeometryEdit={!isLocked ? commitGeometryIntent : undefined}
           />
         ) : (
@@ -359,6 +368,7 @@ export default function DesignWorkbenchEstimateClient({
           planViewModel={store.derived.activePlanViewModel}
           geometryPreview={geometryPreview}
           viewportTransform={store.ui.viewportTransform}
+          drawOutlineRequestId={drawOutlineRequestId}
           onViewportTransformChange={(viewportTransform) =>
             setUi((current) => ({
               ...current,

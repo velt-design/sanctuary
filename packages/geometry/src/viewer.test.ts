@@ -63,6 +63,9 @@ function pointsForViewerObject(object: ViewerSceneObject) {
   if (object.type === "roof_flashing") {
     return object.wings.flatMap((wing) => wing.boundary);
   }
+  if (object.type === "house_roof_material") {
+    return object.lines.flatMap((line) => [line.start, line.end]);
+  }
   if (object.type === "reference_line" || object.type === "house_line") {
     return [object.line.start, object.line.end];
   }
@@ -127,6 +130,8 @@ describe("buildViewerSceneModel", () => {
         "joiners",
         "gutters",
         "roof_cladding",
+        "house_roof_materials",
+        "roof_flashings",
         "roof_planes",
         "attachment_edge",
       ],
@@ -139,6 +144,8 @@ describe("buildViewerSceneModel", () => {
         "joiners",
         "gutters",
         "roof_cladding",
+        "house_roof_materials",
+        "roof_flashings",
         "roof_planes",
         "attachment_edge",
       ],
@@ -150,6 +157,8 @@ describe("buildViewerSceneModel", () => {
         "joiners",
         "gutters",
         "roof_cladding",
+        "house_roof_materials",
+        "roof_flashings",
         "roof_planes",
         "attachment_edge",
       ],
@@ -184,8 +193,10 @@ describe("buildViewerSceneModel", () => {
       throw new Error(solveResult.error);
     }
 
-    const houseLayer = buildViewerSceneModel(solveResult.value).layers.find(
-      (layer) => layer.id === "house",
+    const scene = buildViewerSceneModel(solveResult.value);
+    const houseLayer = scene.layers.find((layer) => layer.id === "house");
+    const roofFlashingLayer = scene.layers.find(
+      (layer) => layer.id === "roof_flashings",
     );
     const objects = houseLayer?.objects ?? [];
     const objectKinds = objects.map((object) =>
@@ -235,6 +246,27 @@ describe("buildViewerSceneModel", () => {
     expect(roofSolid?.renderMesh?.faces.length).toBeGreaterThan(0);
     expect(soffitSolid?.renderMesh?.vertices).toHaveLength(8);
     expect(gutterSolid?.renderMesh?.vertices).toHaveLength(8);
+
+    const houseRoofFlashing = roofFlashingLayer?.objects.find(
+      (object) =>
+        object.type === "roof_flashing" &&
+        object.metadata?.source === "house_model",
+    );
+    expect(roofFlashingLayer?.visibleByDefault).toBe(true);
+    expect(houseRoofFlashing).toMatchObject({
+      type: "roof_flashing",
+      thicknessMm: 1,
+      metadata: {
+        source: "house_model",
+        sourceFeatureId: expect.stringMatching(/^house-roof-/),
+        girthMm: 300,
+        wingLengthMm: 150,
+      },
+    });
+    if (!houseRoofFlashing || houseRoofFlashing.type !== "roof_flashing") {
+      throw new Error("Expected house roof flashing object.");
+    }
+    expect(houseRoofFlashing.wings).toHaveLength(2);
   });
 
   it("renders moved semantic house attachment targets at the projected facade", () => {
@@ -506,10 +538,10 @@ describe("buildViewerSceneModel", () => {
     expect(solidHousePoints.every((point) => Number.isFinite(point.x))).toBe(true);
     expect(solidHousePoints.every((point) => Number.isFinite(point.y))).toBe(true);
     expect(solidHousePoints.every((point) => Number.isFinite(point.z))).toBe(true);
-    expect(Math.min(...xs)).toBeGreaterThanOrEqual(-2100);
-    expect(Math.max(...xs)).toBeLessThanOrEqual(10100);
-    expect(Math.min(...ys)).toBeGreaterThanOrEqual(3900);
-    expect(Math.max(...ys)).toBeLessThanOrEqual(10100);
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(-2125);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(10125);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(3875);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(10125);
     expect(Math.max(...zs)).toBeLessThan(6500);
   });
 

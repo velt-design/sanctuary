@@ -10,6 +10,7 @@ import type {
   RenderMesh3D,
   ViewerSceneHouseLineObject,
   ViewerSceneHouseLinearSolidObject,
+  ViewerSceneHouseRoofMaterialObject,
   ViewerSceneHouseSurfaceObject,
   ViewerSceneHouseSurfaceSolidObject,
   ViewerSceneMemberPrismObject,
@@ -109,6 +110,7 @@ const LAYER_COLORS: Record<string, string> = {
   gutters: "#437da8",
   roof_cladding: "#d9c77b",
   roof_flashings: "#d8d2bd",
+  house_roof_materials: "#f0f2f3",
   roof_planes: "#d4b35a",
   attachment_edge: "#bb4b4b",
 };
@@ -258,6 +260,8 @@ function collectScenePoints(scene: ViewerSceneModel): Point3[] {
         return object.wings.flatMap((wing) =>
           wing.boundary.filter(isFinitePoint),
         );
+      if (object.type === "house_roof_material")
+        return object.lines.flatMap((line) => linePoints(line)).filter(isFinitePoint);
       if (object.type === "reference_line") {
         return linePoints(object.line).filter(isFinitePoint);
       }
@@ -1439,6 +1443,8 @@ function pointsForObject(object: ViewerSceneObject): Point3[] {
     return object.wings.flatMap((wing) =>
       wing.boundary.filter(isFinitePoint),
     );
+  if (object.type === "house_roof_material")
+    return object.lines.flatMap((line) => linePoints(line)).filter(isFinitePoint);
   if (object.type === "reference_line")
     return linePoints(object.line).filter(isFinitePoint);
   if (object.type === "house_line")
@@ -1700,9 +1706,9 @@ function houseRoofQaSummary(
 }
 
 function previewModeLabel(previewMode: GeometryPreviewMode): string {
-  return previewMode === "snapshot_validated"
-    ? "Snapshot Validated"
-    : "Draft Resolved Locally";
+  if (previewMode === "snapshot_validated") return "Snapshot Validated";
+  if (previewMode === "snapshot_local_resolved") return "Snapshot Resolved Locally";
+  return "Draft Resolved Locally";
 }
 
 function objectSummary(
@@ -1789,6 +1795,22 @@ function objectSummary(
         label: "Wing length",
         value: `${Math.round(Number(object.metadata?.wingLengthMm ?? 0))} mm`,
       },
+      { label: "Metadata", value: formatMetadata(object.metadata) },
+    ];
+  }
+
+  if (object.type === "house_roof_material") {
+    return [
+      { label: "Object", value: object.id },
+      { label: "Type", value: "house roof material" },
+      { label: "Material", value: object.material.replace(/_/g, " ") },
+      { label: "Profile", value: object.profileKind },
+      { label: "Roof plane", value: object.roofPlaneId },
+      { label: "Lines", value: `${object.lines.length}` },
+      { label: "Spacing", value: `${Math.round(object.spacingMm)} mm` },
+      { label: "Surface offset", value: `${Math.round(object.surfaceOffsetMm)} mm` },
+      { label: "Plane origin", value: formatPoint(object.plane.origin) },
+      { label: "Plane normal", value: formatVector(object.plane.normal) },
       { label: "Metadata", value: formatMetadata(object.metadata) },
     ];
   }
@@ -2297,6 +2319,50 @@ function RoofFlashingObject({
   );
 }
 
+function HouseRoofMaterialObject({
+  object,
+  color,
+  onSelect,
+  onFocus,
+  clippingPlanes,
+}: {
+  object: ViewerSceneHouseRoofMaterialObject;
+  color: string;
+  onSelect: (id: string) => void;
+  onFocus: (id: string) => void;
+  clippingPlanes: THREE.Plane[];
+}) {
+  const lineGeometries = useMemo(
+    () =>
+      object.lines.map((line, index) => ({
+        id: `${object.id}-${index + 1}`,
+        geometry: buildLineGeometry(linePoints(line)),
+      })),
+    [object.id, object.lines],
+  );
+
+  return (
+    <group
+      data-testid={`scene-object-${object.id}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        onSelect(object.id);
+      }}
+      onDoubleClick={(event) => {
+        event.stopPropagation();
+        onFocus(object.id);
+      }}
+    >
+      {lineGeometries.map((line) => (
+        <line key={line.id}>
+          <primitive attach="geometry" object={line.geometry} />
+          <lineBasicMaterial color={color} clippingPlanes={clippingPlanes} />
+        </line>
+      ))}
+    </group>
+  );
+}
+
 function ReferenceLineObject({
   object,
   color,
@@ -2652,6 +2718,18 @@ function SceneObjectNode({
   if (object.type === "roof_flashing") {
     return (
       <RoofFlashingObject
+        object={object}
+        color={color}
+        onSelect={onSelect}
+        onFocus={onFocus}
+        clippingPlanes={clippingPlanes}
+      />
+    );
+  }
+  if (object.type === "house_roof_material") {
+    if (!object.lines.some(isRenderableLine)) return null;
+    return (
+      <HouseRoofMaterialObject
         object={object}
         color={color}
         onSelect={onSelect}

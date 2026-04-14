@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
+import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import { buildDrawingWorkbenchStore } from './drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from './drawingWorkbenchUiState';
 
@@ -195,6 +197,53 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activePlanViewModel).toBeNull();
     expect(store.derived.activeSectionModel).toBeNull();
     expect(store.derived.status).toBe('empty');
+  });
+
+  it('locally resolves stale pricing outputs so sheet models remain available', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const snapshot = structuredClone(fixture.snapshot) as {
+      inputs?: { modules?: Array<{ lengthM?: string }> };
+      outputs?: Record<string, unknown>;
+    };
+    if (!snapshot.inputs?.modules?.[0] || !snapshot.outputs) throw new Error('Expected fixture snapshot.');
+    snapshot.inputs.modules[0].lengthM = '8.4';
+    snapshot.outputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY] = 'stale';
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: snapshot as Record<string, unknown>,
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'plan',
+      }),
+    });
+
+    expect(store.derived.status).toBe('ready');
+    expect(store.persisted.modules[0]?.drawingModule.result?.derived.length_m).toBeCloseTo(8.4);
+    expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(8.4);
+    expect(store.derived.activeSectionModel).not.toBeNull();
+  });
+
+  it('builds 2D models from locally resolved draft geometry instead of stale snapshot outputs', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.lengthM = '6.4';
+    draft.inputs.modules[0]!.roofPitchDeg = '10';
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'section',
+      }),
+    });
+
+    expect(store.derived.status).toBe('ready');
+    expect(store.persisted.modules[0]?.drawingModule.input.lengthM).toBe('6.4');
+    expect(store.persisted.modules[0]?.drawingModule.result?.derived.length_m).toBeCloseTo(6.4);
+    expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(6.4);
+    expect(store.derived.activeSectionModel?.pitchDeg).toBeCloseTo(10);
   });
 
   it('builds sheet models from explicit attached gable no-frame snapshots while constraining gutters', () => {

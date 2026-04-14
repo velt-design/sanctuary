@@ -25,12 +25,18 @@ export type CalculatorHouseFootprintPreset =
   | 'u_shape'
   | 'wrap_left'
   | 'wrap_right';
-export type CalculatorHouseFootprintMode = 'preset' | 'orthogonal_polygon';
+export type CalculatorHouseFootprintMode = 'preset' | 'custom_polygon';
 export type CalculatorHouseFootprintPolygonPoint = {
   alongM: string;
   depthM: string;
 };
 export type CalculatorHouseStoreyMode = 'single_storey' | 'double_storey' | 'custom';
+export type CalculatorHouseRoofMaterial =
+  | 'corrugated_iron'
+  | 'trapezoidal_5_rib'
+  | 'eurotray_300'
+  | 'eurotray_500'
+  | 'shingles';
 export type CalculatorHouseAttachmentStrategy =
   | 'soffit_brackets'
   | 'fascia_under_gutter'
@@ -55,6 +61,7 @@ export const DEFAULT_CALCULATOR_ATTACHMENT_SIDE: AttachmentSide = 'rear';
 export const DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS: CalculatorDrawingRotationQuarterTurns = 0;
 export const DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE: CalculatorHouseFootprintMode = 'preset';
 export const DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET: CalculatorHouseFootprintPreset = 'straight';
+export const DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL: CalculatorHouseRoofMaterial = 'corrugated_iron';
 
 export function makeDefaultHouseFootprintParams(): CalculatorHouseFootprintParams {
   return {
@@ -99,7 +106,21 @@ export function normalizeHouseFootprintPreset(value: unknown): CalculatorHouseFo
 }
 
 export function normalizeHouseFootprintMode(value: unknown): CalculatorHouseFootprintMode {
-  return value === 'orthogonal_polygon' ? 'orthogonal_polygon' : DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE;
+  return value === 'custom_polygon' || value === 'orthogonal_polygon'
+    ? 'custom_polygon'
+    : DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE;
+}
+
+export function normalizeHouseRoofMaterial(value: unknown): CalculatorHouseRoofMaterial {
+  if (
+    value === 'trapezoidal_5_rib' ||
+    value === 'eurotray_300' ||
+    value === 'eurotray_500' ||
+    value === 'shingles'
+  ) {
+    return value;
+  }
+  return DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL;
 }
 
 export function normalizeHouseFootprintParams(value: unknown): CalculatorHouseFootprintParams {
@@ -284,6 +305,7 @@ export type CalculatorModuleInputs = {
   houseFootprintParams?: CalculatorHouseFootprintParams;
   houseFootprintPolygon?: CalculatorHouseFootprintPolygonPoint[];
   houseStoreyMode?: CalculatorHouseStoreyMode;
+  houseRoofMaterial?: CalculatorHouseRoofMaterial;
   houseAttachmentStrategy?: CalculatorHouseAttachmentStrategy;
   houseEaveHeightM?: string;
   houseWallHeightM?: string;
@@ -484,6 +506,7 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
         houseFootprintPreset: DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
         houseFootprintParams: makeDefaultHouseFootprintParams(),
         houseFootprintPolygon: [],
+        houseRoofMaterial: DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
         postConnectionType: legacy.postConnectionType,
         ground: legacy.ground,
         lengthM: legacy.lengthM,

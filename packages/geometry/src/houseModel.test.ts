@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GeometryConfig, HouseAttachmentStrategy, Line3, Point3, Polygon3, RenderMesh3D } from './contracts';
+import type { GeometryConfig, HouseAttachmentStrategy, HouseRoofMaterial, Line3, Point3, Polygon3, RenderMesh3D } from './contracts';
 import { buildHouseModel3D, buildHouseReferenceGeometry } from './houseModel';
 
 type HouseModel = NonNullable<ReturnType<typeof buildHouseModel3D>>;
@@ -245,7 +245,10 @@ function makeConfig(input: {
   eaveHeightMm?: number;
   wallHeightMm?: number;
   roofPitchDeg?: number;
+  roofMaterial?: HouseRoofMaterial;
   fasciaHeightMm?: number;
+  gutterWidthMm?: number;
+  gutterProjectionMm?: number;
   eaveOverhangMm?: number;
 } = {}): GeometryConfig {
   const footprint = input.footprint ?? makeFootprint();
@@ -354,6 +357,7 @@ function makeConfig(input: {
         storeyMode: 'single_storey',
         wallConstruction: 'timber_frame',
         roofForm: 'hipped',
+        roofMaterial: input.roofMaterial,
         eaveHeightMm,
         wallHeightMm,
         roofPitchDeg: input.roofPitchDeg ?? 25,
@@ -361,9 +365,9 @@ function makeConfig(input: {
         eave: {
           soffitDepthMm: 450,
           fasciaHeightMm: input.fasciaHeightMm ?? 180,
-          gutterWidthMm: 125,
+          gutterWidthMm: input.gutterWidthMm ?? 125,
           gutterDepthMm: 90,
-          gutterProjectionMm: 125,
+          gutterProjectionMm: input.gutterProjectionMm ?? 125,
           eaveOverhangMm: input.eaveOverhangMm ?? 450,
         },
       },
@@ -474,6 +478,29 @@ function lineLength3(line3: Line3): number {
   );
 }
 
+function crossPoint3(first: Point3, second: Point3): Point3 {
+  return {
+    x: first.y * second.z - first.z * second.y,
+    y: first.z * second.x - first.x * second.z,
+    z: first.x * second.y - first.y * second.x,
+  };
+}
+
+function subtractPoint3(first: Point3, second: Point3): Point3 {
+  return {
+    x: first.x - second.x,
+    y: first.y - second.y,
+    z: first.z - second.z,
+  };
+}
+
+function distanceToLine3D(candidate: Point3, source: Line3): number {
+  const axis = subtractPoint3(source.end, source.start);
+  const length = vectorLength3(axis);
+  if (length <= 1e-6) return vectorLength3(subtractPoint3(candidate, source.start));
+  return vectorLength3(crossPoint3(subtractPoint3(candidate, source.start), axis)) / length;
+}
+
 function expectPolygon3CloseTo(actual: Polygon3 | undefined, expected: Polygon3): void {
   expect(actual).toBeDefined();
   expect(actual).toHaveLength(expected.length);
@@ -525,6 +552,74 @@ function expectMiteredRenderMeshesAroundCorners(
   }
 }
 
+function polygonOutwardVectorXY(polygon: Polygon3, edgeIndex: number): { x: number; y: number } {
+  const start = polygon[edgeIndex]!;
+  const end = polygon[(edgeIndex + 1) % polygon.length]!;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= 1e-6) return { x: 0, y: 0 };
+  const area = signedPolygonAreaXY(polygon);
+  return area >= 0
+    ? { x: dy / length, y: -dx / length }
+    : { x: -dy / length, y: dx / length };
+}
+
+function expectHouseGutterBoundariesUseProjection(model: HouseModel): void {
+  const eavePolygon = eavePolygonFromModel(model);
+  const gutterBoundaries = model.eave.gutterBoundaries ?? [];
+  const gutterLines = model.eave.gutterLines ?? [];
+  const gutterSolids = model.solids?.linearSolids.filter((solid) => solid.kind === 'gutter') ?? [];
+  const outerOffsetMm = model.eave.gutterProjectionMm ?? 0;
+
+  expect(gutterBoundaries).toHaveLength(gutterLines.length);
+
+  for (const [index, boundary] of gutterBoundaries.entries()) {
+    const gutterLine = gutterLines[index]!;
+    const gutterSolid = gutterSolids[index]!;
+    const outward = polygonOutwardVectorXY(eavePolygon, index);
+    const innerOffsetMm = outerOffsetMm - gutterSolid.profileWidthMm;
+    const offsets = boundary.map(
+      (candidate) =>
+        (candidate.x - gutterLine.start.x) * outward.x +
+        (candidate.y - gutterLine.start.y) * outward.y,
+    );
+
+    expectPolygon3CloseTo(boundary, [
+      {
+        x: gutterSolid.renderMesh!.vertices[4]!.x,
+        y: gutterSolid.renderMesh!.vertices[4]!.y,
+        z: gutterLine.start.z,
+      },
+      {
+        x: gutterSolid.renderMesh!.vertices[5]!.x,
+        y: gutterSolid.renderMesh!.vertices[5]!.y,
+        z: gutterLine.start.z,
+      },
+      {
+        x: gutterSolid.renderMesh!.vertices[6]!.x,
+        y: gutterSolid.renderMesh!.vertices[6]!.y,
+        z: gutterLine.start.z,
+      },
+      {
+        x: gutterSolid.renderMesh!.vertices[7]!.x,
+        y: gutterSolid.renderMesh!.vertices[7]!.y,
+        z: gutterLine.start.z,
+      },
+    ]);
+    expect(offsets[0]).toBeCloseTo(outerOffsetMm, 6);
+    expect(offsets[1]).toBeCloseTo(outerOffsetMm, 6);
+    expect(offsets[2]).toBeCloseTo(innerOffsetMm, 6);
+    expect(offsets[3]).toBeCloseTo(innerOffsetMm, 6);
+  }
+
+  for (const [index, boundary] of gutterBoundaries.entries()) {
+    const nextBoundary = gutterBoundaries[(index + 1) % gutterBoundaries.length]!;
+    expectPoint3CloseTo(boundary[1], nextBoundary[0]!);
+    expectPoint3CloseTo(boundary[2], nextBoundary[3]!);
+  }
+}
+
 function expectHouseGutterSolidsMiteredAroundCorners(model: HouseModel): void {
   const gutterLines = model.eave.gutterLines ?? [];
   const gutterSolids = model.solids?.linearSolids.filter((solid) => solid.kind === 'gutter') ?? [];
@@ -565,6 +660,7 @@ function expectHouseGutterSolidsMiteredAroundCorners(model: HouseModel): void {
     gutterSolids[0]!.centerline.start.z - gutterSolids[0]!.profileDepthMm / 2,
     gutterSolids[0]!.centerline.start.z + gutterSolids[0]!.profileDepthMm / 2,
   );
+  expectHouseGutterBoundariesUseProjection(model);
 }
 
 function expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model: HouseModel): void {
@@ -637,6 +733,128 @@ function expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model: HouseMod
       secondSolid.renderMesh!.vertices[secondBoundaryLength + secondReference!.edgeIndex]!,
       secondSolid.renderMesh!.vertices[secondBoundaryLength + secondNext]!,
     );
+  }
+}
+
+function expectHouseRoofFeatureFlashings(model: HouseModel, expectedKinds: Array<'ridge' | 'hip' | 'valley'>): void {
+  const featureById = new Map((model.roofFeatures ?? []).map((feature) => [feature.id, feature]));
+  const roofSegments = roofBoundarySegments(model);
+  const expectedFeatures = (model.roofFeatures ?? []).filter((feature) => {
+    if (feature.metadata?.roofFeatureSource === 'reentrant_fallback') return false;
+    return (roofSegments.get(roofSegmentKey(feature.line.start, feature.line.end)) ?? []).length === 2;
+  });
+  const flashings = model.roofFlashings ?? [];
+
+  expect(flashings).toHaveLength(expectedFeatures.length);
+  expect(flashings.map((flashing) => flashing.metadata?.featureKind)).toEqual(expect.arrayContaining(expectedKinds));
+
+  for (const flashing of flashings) {
+    const sourceFeatureId = flashing.metadata?.sourceFeatureId;
+    const feature = typeof sourceFeatureId === 'string' ? featureById.get(sourceFeatureId) : undefined;
+    expect(feature, flashing.id).toBeDefined();
+    if (!feature) continue;
+
+    const adjacentReferences = roofSegments.get(roofSegmentKey(feature.line.start, feature.line.end)) ?? [];
+    const adjacentPlaneIndexes = adjacentReferences.map((reference) => reference.roofPlaneIndex).sort((a, b) => a - b);
+
+    expect(flashing.thicknessMm).toBe(1);
+    expect(flashing.metadata).toMatchObject({
+      source: 'house_model',
+      sourceFeatureId: feature.id,
+      featureKind: feature.kind,
+      position: feature.kind,
+      girthMm: 300,
+      wingLengthMm: 150,
+      thicknessMm: 1,
+      surfaceOffsetMm: 0.5,
+    });
+    expect(flashing.wings).toHaveLength(2);
+
+    const wingPlaneIndexes = flashing.wings.map((wing) => {
+      expect(wing.boundary.length, wing.id).toBeGreaterThanOrEqual(3);
+      expect(wing.boundary.every((candidate) => Number.isFinite(candidate.x) && Number.isFinite(candidate.y) && Number.isFinite(candidate.z))).toBe(true);
+      expect(Math.min(...wing.boundary.map((candidate) => distanceToLine3D(candidate, feature.line))), wing.id).toBeLessThanOrEqual(1);
+      expect(Math.max(...wing.boundary.map((candidate) => distanceToLine3D(candidate, feature.line))), wing.id).toBeLessThanOrEqual(151);
+
+      const roofPlaneIndex = model.roofPlanes.findIndex((roofPlane) => wing.id === `${flashing.id}-${roofPlane.id}-wing`);
+      expect(roofPlaneIndex, wing.id).toBeGreaterThanOrEqual(0);
+
+      const roofPlane = model.roofPlanes[roofPlaneIndex]!;
+      const roofNormal = normalizeVector3(roofPlane.plane.normal);
+      const topNormal = roofNormal.z >= 0 ? roofNormal : { x: -roofNormal.x, y: -roofNormal.y, z: -roofNormal.z };
+      const topPlaneConstant = dotPoint3(topNormal, roofPlane.plane.origin);
+      const projectedBoundary = wing.boundary.map((candidate) => ({
+        x: candidate.x - topNormal.x * 0.5,
+        y: candidate.y - topNormal.y * 0.5,
+        z: candidate.z - topNormal.z * 0.5,
+      }));
+      for (let index = 0; index < projectedBoundary.length; index += 1) {
+        expect(
+          segmentInsidePolygon2D(projectedBoundary[index]!, projectedBoundary[(index + 1) % projectedBoundary.length]!, roofPlane.boundary),
+          `${wing.id} edge ${index}`,
+        ).toBe(true);
+      }
+      for (const candidate of wing.boundary) {
+        expect(dotPoint3(topNormal, candidate) - topPlaneConstant, `${wing.id} ${roofPointKey(candidate)}`).toBeCloseTo(0.5, 3);
+      }
+
+      return roofPlaneIndex;
+    }).sort((a, b) => a - b);
+
+    expect(wingPlaneIndexes, flashing.id).toEqual(adjacentPlaneIndexes);
+  }
+}
+
+function expectHouseRoofMaterialVisuals(model: HouseModel, material: HouseRoofMaterial): void {
+  const visuals = model.roofMaterialVisuals ?? [];
+
+  expect(model.roofMaterial).toBe(material);
+  expect(visuals.length).toBeGreaterThan(0);
+  expect(visuals.every((visual) => visual.material === material)).toBe(true);
+
+  for (const visual of visuals) {
+    const roofPlane = model.roofPlanes.find((candidate) => candidate.id === visual.roofPlaneId);
+    expect(roofPlane, visual.id).toBeDefined();
+    if (!roofPlane) continue;
+
+    const roofNormal = normalizeVector3(roofPlane.plane.normal);
+    const topNormal = roofNormal.z >= 0 ? roofNormal : { x: -roofNormal.x, y: -roofNormal.y, z: -roofNormal.z };
+    const topPlaneConstant = dotPoint3(topNormal, roofPlane.plane.origin);
+    const fallAxis = normalizeVector3(roofPlane.fallVector);
+
+    expect(visual.surfaceOffsetMm).toBe(2);
+    expect(visual.lines.length, visual.id).toBeGreaterThan(0);
+    expect(visual.metadata).toMatchObject({
+      source: 'house_model',
+      sourceRoofPlaneId: roofPlane.id,
+      material,
+      lineCount: visual.lines.length,
+    });
+
+    for (const materialLine of visual.lines) {
+      for (const candidate of [materialLine.start, materialLine.end]) {
+        expect(dotPoint3(topNormal, candidate) - topPlaneConstant, `${visual.id} ${roofPointKey(candidate)}`).toBeCloseTo(2, 3);
+      }
+
+      const projectedStart = {
+        x: materialLine.start.x - topNormal.x * 2,
+        y: materialLine.start.y - topNormal.y * 2,
+        z: materialLine.start.z - topNormal.z * 2,
+      };
+      const projectedEnd = {
+        x: materialLine.end.x - topNormal.x * 2,
+        y: materialLine.end.y - topNormal.y * 2,
+        z: materialLine.end.z - topNormal.z * 2,
+      };
+      expect(segmentInsidePolygon2D(projectedStart, projectedEnd, roofPlane.boundary), `${visual.id} clipped`).toBe(true);
+
+      const lineDirection = normalizeVector3(subtractPoint3(materialLine.end, materialLine.start));
+      if (material === 'shingles') {
+        expect(Math.abs(dotPoint3(lineDirection, fallAxis)), visual.id).toBeLessThan(0.01);
+      } else {
+        expect(Math.abs(dotPoint3(lineDirection, fallAxis)), visual.id).toBeGreaterThan(0.99);
+      }
+    }
   }
 }
 
@@ -723,17 +941,52 @@ describe('house model geometry builder', () => {
       z: 2220,
     });
     expectPoint3CloseTo(model.solids?.linearSolids[0]?.renderMesh?.vertices[0], {
-      x: -512.5,
-      y: -2312.5,
+      x: -575,
+      y: -2375,
       z: 2310,
     });
+    expectPolygon3CloseTo(model.eave.gutterBoundaries?.[0], [
+      { x: -575, y: -2375, z: 2400 },
+      { x: 6575, y: -2375, z: 2400 },
+      { x: 6450, y: -2250, z: 2400 },
+      { x: -450, y: -2250, z: 2400 },
+    ]);
     expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model);
+    expectHouseRoofFeatureFlashings(model, ['ridge', 'hip']);
     expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.start, { x: -450, y: -2250, z: 2355 });
     expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.end, { x: 6450, y: -2250, z: 2355 });
     expectHouseGutterSolidsMiteredAroundCorners(model);
     expect(model.attachmentTarget?.kind).toBe('line');
     expect(model.attachmentTarget?.line).toEqual(makeAttachmentEdge());
+  });
+
+  it('uses house gutter projection as the rendered outside face offset', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        gutterWidthMm: 150,
+        gutterProjectionMm: 160,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    expect(model.eave.gutterLines?.[0]).toEqual({
+      start: { x: -450, y: -2250, z: 2400 },
+      end: { x: 6450, y: -2250, z: 2400 },
+    });
+    expectPolygon3CloseTo(model.eave.gutterBoundaries?.[0], [
+      { x: -610, y: -2410, z: 2400 },
+      { x: 6610, y: -2410, z: 2400 },
+      { x: 6460, y: -2260, z: 2400 },
+      { x: -460, y: -2260, z: 2400 },
+    ]);
+    expectPoint3CloseTo(model.solids?.linearSolids[0]?.centerline.start, { x: -450, y: -2250, z: 2355 });
+    expectPoint3CloseTo(model.solids?.linearSolids[0]?.renderMesh?.vertices[0], { x: -610, y: -2410, z: 2310 });
+    expectPoint3CloseTo(model.solids?.linearSolids[0]?.renderMesh?.vertices[3], { x: -460, y: -2260, z: 2310 });
+    expectHouseGutterSolidsMiteredAroundCorners(model);
   });
 
   it('builds wall/eave geometry and selected-facade targets from a custom recessed footprint', () => {
@@ -794,6 +1047,7 @@ describe('house model geometry builder', () => {
     expect(model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(model?.roofPlanes.length ?? 0);
     expect(model?.solids?.linearSolids).toHaveLength(7);
     expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model);
+    expectHouseRoofFeatureFlashings(model, ['ridge', 'hip', 'valley']);
     expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectHouseGutterSolidsMiteredAroundCorners(model);
     expect(model?.attachmentTarget?.kind).toBe('plane');
@@ -852,6 +1106,27 @@ describe('house model geometry builder', () => {
     expectValleysStartAtReentrantCorners(model!, 2500, 2);
     expect(model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(model?.roofPlanes.length ?? 0);
     expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model!);
+    expectHouseRoofFeatureFlashings(model!, ['ridge', 'hip', 'valley']);
+  });
+
+  it('omits house roof feature flashings when roof QA rejects the roof geometry', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: [
+          { x: 0, y: 0, z: 0 },
+          { x: 6000, y: 0, z: 0 },
+          { x: Number.NaN, y: 1800, z: 0 },
+          { x: 0, y: 1800, z: 0 },
+        ],
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    expect(model?.metadata?.roofQaStatus).toBe('invalid');
+    expect(model?.metadata?.roofQaFailureReason).toBe('invalid_eave_polygon');
+    expect(model?.roofFeatures?.length).toBeGreaterThan(0);
+    expect(model?.roofFlashings).toEqual([]);
   });
 
   it('keeps side-attached L roof features backed by the final joined facets', () => {

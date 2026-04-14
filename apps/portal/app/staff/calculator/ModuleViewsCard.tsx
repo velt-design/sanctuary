@@ -89,6 +89,13 @@ export type ModuleFootprintEditorProps = {
   available: boolean;
   isEditing: boolean;
   surface?: ModuleFootprintEditorSurface;
+  customPolygonOverride?: ModulePlanModel['houseFootprintPolygon'] | null;
+  customPolygonOpen?: boolean;
+  customPolygonConfirmedPointCount?: number;
+  customPolygonPreviewPointKind?: 'pending' | 'hover' | null;
+  customPolygonCloseReady?: boolean;
+  customPolygonCloseHovered?: boolean;
+  hideHouseFootprint?: boolean;
   isContextHovered?: boolean;
   onContextPopoverHoverChange?: (hovered: boolean) => void;
   hoveredAttachmentSide: AttachmentSide | null;
@@ -107,6 +114,9 @@ export type ModuleFootprintEditorProps = {
   onPresetSelect: (preset: ModulePlanModel['houseFootprintPreset']) => void;
   onModeSelect?: (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => void;
   onRotate: (delta: -1 | 1) => void;
+  onCanvasPointSelect?: (point: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number]) => void;
+  onCanvasPointHover?: (point: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number] | null) => void;
+  onCloseStartSelect?: () => void;
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
@@ -359,7 +369,7 @@ export function ModuleDrawingRenderer({
                       onChange={(event) => footprintEditor.onModeSelect?.(event.target.value as NonNullable<Required<ModulePlanModel>['houseFootprintMode']>)}
                     >
                       <option value="preset">Preset</option>
-                      <option value="orthogonal_polygon">Edit outline</option>
+                      <option value="custom_polygon">Draw outline</option>
                     </select>
                   </label>
                   <label className={styles.moduleFootprintToolbarField}>
@@ -368,7 +378,7 @@ export function ModuleDrawingRenderer({
                       aria-label="House footprint preset"
                       className={styles.moduleFootprintToolbarSelect}
                       value={planModel.houseFootprintPreset}
-                      disabled={(planModel.houseFootprintMode ?? 'preset') === 'orthogonal_polygon'}
+                      disabled={(planModel.houseFootprintMode ?? 'preset') === 'custom_polygon'}
                       onChange={(event) => footprintEditor.onPresetSelect(event.target.value as ModulePlanModel['houseFootprintPreset'])}
                     >
                       {HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => (
@@ -2033,6 +2043,10 @@ type FootprintResizeEdgeSpec = {
 
 type FootprintCustomVertexSpec = {
   index: number;
+  kind: 'confirmed' | 'pending' | 'hover';
+  isLatestConfirmed: boolean;
+  isCloseReady: boolean;
+  isCloseHovered: boolean;
   point: Point;
   pointRoot: Point;
   alongAxisX: number;
@@ -2043,6 +2057,8 @@ type FootprintCustomVertexSpec = {
 
 type FootprintCustomEdgeSpec = {
   index: number;
+  kind: 'confirmed' | 'preview';
+  previewPointKind: 'pending' | 'hover' | null;
   start: Point;
   end: Point;
 };
@@ -2101,6 +2117,13 @@ function resolveFootprintCanvasLayout(input: {
   scale: number;
   rotationCenter: Point;
   rotationTurns: number;
+  customPolygonOverride?: ModulePlanModel['houseFootprintPolygon'] | null;
+  customPolygonOpen?: boolean;
+  customPolygonConfirmedPointCount?: number;
+  customPolygonPreviewPointKind?: 'pending' | 'hover' | null;
+  customPolygonCloseReady?: boolean;
+  customPolygonCloseHovered?: boolean;
+  hideHouseFootprint?: boolean;
 }): FootprintCanvasLayout {
   const { model, rect, scale, rotationCenter, rotationTurns } = input;
   const sideTurns = attachmentSideQuarterTurns(model.attachmentSide);
@@ -2112,9 +2135,16 @@ function resolveFootprintCanvasLayout(input: {
     params: model.houseFootprintParams,
   });
   const totalTurns = sideTurns + rotationTurns;
+  const customPolygonSource = input.customPolygonOverride === undefined ? model.houseFootprintPolygon : input.customPolygonOverride;
+  const hasCustomPolygonSource = input.customPolygonOverride !== undefined || model.houseFootprintMode === 'custom_polygon';
+  const customPolygonConfirmedPointCount =
+    input.customPolygonConfirmedPointCount === undefined ? Number.POSITIVE_INFINITY : Math.max(0, input.customPolygonConfirmedPointCount);
+  const customPolygonPreviewPointKind = input.customPolygonPreviewPointKind ?? null;
+  const customPolygonCloseReady = Boolean(input.customPolygonCloseReady);
+  const customPolygonCloseHovered = Boolean(input.customPolygonCloseHovered);
   const customPoints =
-    model.houseFootprintMode === 'orthogonal_polygon'
-      ? (model.houseFootprintPolygon ?? [])
+    hasCustomPolygonSource
+      ? (customPolygonSource ?? [])
           .map((raw) => {
             const alongM = Number.parseFloat(raw.alongM);
             const depthM = Number.parseFloat(raw.depthM);
@@ -2126,7 +2156,7 @@ function resolveFootprintCanvasLayout(input: {
           })
           .filter((point): point is HouseFootprintPoint => Boolean(point))
       : [];
-  const effectiveLocalPolygon = customPoints.length >= 4 ? customPoints : localLayout.polygon;
+  const effectiveLocalPolygon = customPoints.length >= 3 ? customPoints : input.hideHouseFootprint ? [] : localLayout.polygon;
   const polygon = effectiveLocalPolygon.map((localPoint) =>
     mapLocalFootprintPointToPlan({
       point: localPoint,
@@ -2138,7 +2168,7 @@ function resolveFootprintCanvasLayout(input: {
     }),
   );
   const customVertices =
-    customPoints.length >= 4
+    customPoints.length > 0
       ? customPoints.map((localPoint, index): FootprintCustomVertexSpec => {
           const point = mapLocalFootprintPointToPlan({
             point: localPoint,
@@ -2150,8 +2180,14 @@ function resolveFootprintCanvasLayout(input: {
           });
           const alongAxis = rotateVectorQuarterTurns({ x: 1, y: 0 }, totalTurns);
           const depthAxis = rotateVectorQuarterTurns({ x: 0, y: -1 }, totalTurns);
+          const isConfirmed = index < customPolygonConfirmedPointCount;
+          const isPreviewPoint = !isConfirmed && index === customPolygonConfirmedPointCount;
           return {
             index,
+            kind: isPreviewPoint ? customPolygonPreviewPointKind ?? 'hover' : 'confirmed',
+            isLatestConfirmed: isConfirmed && index === customPolygonConfirmedPointCount - 1,
+            isCloseReady: customPolygonCloseReady && index === 0,
+            isCloseHovered: customPolygonCloseHovered && index === 0,
             point,
             pointRoot: rotatePointQuarterTurns(point, rotationCenter, rotationTurns),
             alongAxisX: alongAxis.x,
@@ -2162,14 +2198,21 @@ function resolveFootprintCanvasLayout(input: {
         })
       : [];
   const customEdges =
-    customVertices.length >= 4
-      ? customVertices.map((vertex, index): FootprintCustomEdgeSpec => {
+    customVertices.length >= 2
+      ? customVertices.flatMap((vertex, index): FootprintCustomEdgeSpec[] => {
+          if (input.customPolygonOpen && index === customVertices.length - 1) return [];
           const next = customVertices[(index + 1) % customVertices.length]!;
-          return {
+          const isPreviewEdge =
+            Boolean(customPolygonPreviewPointKind) &&
+            index === customPolygonConfirmedPointCount - 1 &&
+            next.index === customPolygonConfirmedPointCount;
+          return [{
             index,
+            kind: isPreviewEdge ? 'preview' : 'confirmed',
+            previewPointKind: isPreviewEdge ? customPolygonPreviewPointKind : null,
             start: vertex.point,
             end: next.point,
-          };
+          }];
         })
       : [];
   const handles = localLayout.handles.map((handle): FootprintHandleSpec => {
@@ -2235,8 +2278,8 @@ function resolveFootprintCanvasLayout(input: {
 
   return {
     polygon,
-    handles: customVertices.length ? [] : handles,
-    resizeEdges: customVertices.length ? [] : resizeEdges,
+    handles: hasCustomPolygonSource ? [] : handles,
+    resizeEdges: hasCustomPolygonSource ? [] : resizeEdges,
     customVertices,
     customEdges,
     sideTurns,
@@ -3453,20 +3496,30 @@ function PlanSvg({
   const hipRidgeStartX = x + aW * 0.32;
   const hipRidgeEndX = x + aW * 0.68;
   const attachmentSide = model.houseConnectionType === 'none' || !model.supportsHouseFootprints || isHipCorner ? 'rear' : model.attachmentSide;
-  const showHouseFootprint = model.houseConnectionType !== 'none';
+  const customPolygonOverride = footprintEditor?.customPolygonOverride;
+  const customPolygonOverrideActive = customPolygonOverride !== undefined;
+  const hideHouseFootprint = Boolean(footprintEditor?.hideHouseFootprint);
+  const showHouseFootprint = model.houseConnectionType !== 'none' && !hideHouseFootprint;
   const houseBandOffset = isSheet ? (planSheetFrame?.houseBandOffset ?? 1.15) : layout.houseBandOffset;
   const houseBandHeight = isSheet ? (planSheetFrame?.houseBandHeight ?? 5.3) : layout.houseBandHeight;
   const houseInset = isSheet ? (planSheetFrame?.houseInset ?? 1.7) : layout.houseInset;
   const fallGap = isSheet ? (planSheetFrame?.fallGap ?? 5.0) : layout.fallGap;
   const footprintRect = { x, y, width: aW, height: aH };
   const footprintCanvasLayout =
-    showHouseFootprint && model.supportsHouseFootprints && !isHipCorner
+    (showHouseFootprint || customPolygonOverrideActive) && model.supportsHouseFootprints && !isHipCorner
       ? resolveFootprintCanvasLayout({
           model: { ...model, attachmentSide },
           rect: footprintRect,
           scale,
           rotationCenter: rotationFrame.center,
           rotationTurns: rotationFrame.turns,
+          customPolygonOverride,
+          customPolygonOpen: footprintEditor?.customPolygonOpen,
+          customPolygonConfirmedPointCount: footprintEditor?.customPolygonConfirmedPointCount,
+          customPolygonPreviewPointKind: footprintEditor?.customPolygonPreviewPointKind,
+          customPolygonCloseReady: footprintEditor?.customPolygonCloseReady,
+          customPolygonCloseHovered: footprintEditor?.customPolygonCloseHovered,
+          hideHouseFootprint,
         })
       : null;
   const housePolygon = (() => {
@@ -3480,11 +3533,12 @@ function PlanSvg({
     const houseRightX = Math.min(isSheet ? (sheetLayout?.fitArea.x ?? 0) + (sheetLayout?.fitArea.width ?? 114) - 1.8 : 114, x + Math.max(aW, bW) + houseInset);
     return rectToPoints(houseLeftX, houseTopY, houseRightX - houseLeftX, houseBottomY - houseTopY);
   })();
+  const effectiveHousePolygon = housePolygon.length ? housePolygon : rectToPoints(x, y, 0.1, 0.1);
   const outerFieldOutline = sheetLayout?.outerField ?? null;
   const fitAreaOutline = sheetLayout?.fitArea ?? null;
   const annotatedBoundsOutline = sheetLayout?.annotatedBounds ?? null;
   const debugMetrics = sheetLayout ? buildSheetDebugMetrics(sheetLayout, debugScaleState, scaleDiagnostics) : null;
-  const houseLabel = footprintLabelPoint(housePolygon);
+  const houseLabel = footprintLabelPoint(effectiveHousePolygon);
   const hatchId = `${idBase}_house_hatch`;
   const houseClipId = `${idBase}_house_clip`;
   const editorSurface = footprintEditor?.surface ?? 'card';
@@ -3509,7 +3563,8 @@ function PlanSvg({
     start: planHousePointToSvg(line.line.start, x, y, scale),
     end: planHousePointToSvg(line.line.end, x, y, scale),
   }));
-  const hasSemanticPlanHouseContext = semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0;
+  const hasSemanticPlanHouseContext =
+    !customPolygonOverrideActive && !hideHouseFootprint && (semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0);
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
@@ -3639,7 +3694,7 @@ function PlanSvg({
     rotationFrame.turns === 0 ? primaryPoints : rotatePointsQuarterTurns(primaryPoints, rotationFrame.center, rotationFrame.turns);
   const rotatedPrimaryBounds = boundsFromPoints(rotatedPrimaryPoints);
   const rotatedHousePoints =
-    rotationFrame.turns === 0 ? housePolygon : rotatePointsQuarterTurns(housePolygon, rotationFrame.center, rotationFrame.turns);
+    rotationFrame.turns === 0 ? effectiveHousePolygon : rotatePointsQuarterTurns(effectiveHousePolygon, rotationFrame.center, rotationFrame.turns);
   const rotatedHouseBounds = showHouseFootprint ? boundsFromPoints(rotatedHousePoints) : null;
   const showHousePopover = isSheetFootprintEditor && Boolean(footprintEditor?.isContextHovered);
   const showFootprintControls =
@@ -3710,6 +3765,42 @@ function PlanSvg({
       axisY: axisDy / axisLength,
     };
   });
+  const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number] | null => {
+    const ctm = event.currentTarget.getScreenCTM();
+    if (!ctm || isHipCorner) return null;
+    const svgPoint = event.currentTarget.createSVGPoint();
+    svgPoint.x = event.clientX;
+    svgPoint.y = event.clientY;
+    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
+    const unrotatedPlanPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
+    const footprintCenter = actualPergolaCenter(footprintRect);
+    const localDims = localFootprintDimensionsM(model, attachmentSide);
+    const sideLocalPoint = rotatePointQuarterTurns(unrotatedPlanPoint, footprintCenter, -attachmentSideQuarterTurns(attachmentSide));
+    const localX = (sideLocalPoint.x - (footprintCenter.x - (localDims.widthM * scale) / 2)) / scale;
+    const localY = (sideLocalPoint.y - (footprintCenter.y - (localDims.depthM * scale) / 2)) / scale;
+    const localLayout = buildHouseFootprintLocalLayout({
+      pergolaWidthM: localDims.widthM,
+      pergolaDepthM: localDims.depthM,
+      preset: model.houseFootprintPreset,
+      params: model.houseFootprintParams,
+    });
+    const formatPointValue = (value: number) => (Math.round(value * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '') || '0';
+    return {
+      alongM: formatPointValue(localX - localLayout.resolved.offsetXM),
+      depthM: formatPointValue(-localY - localLayout.resolved.setbackM),
+    };
+  };
+  const handlePlanSvgPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!footprintEditor?.onCanvasPointSelect || event.button !== 0) return;
+    const point = resolvePlanSvgPointerPoint(event);
+    if (!point) return;
+    event.preventDefault();
+    footprintEditor.onCanvasPointSelect(point);
+  };
+  const handlePlanSvgPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!footprintEditor?.onCanvasPointHover) return;
+    footprintEditor.onCanvasPointHover(resolvePlanSvgPointerPoint(event));
+  };
 
   return (
     <>
@@ -3721,6 +3812,9 @@ function PlanSvg({
           footprintEditor?.onSvgMount?.(node);
           planInteraction?.onSvgMount?.(node);
         }}
+        onPointerDown={handlePlanSvgPointerDown}
+        onPointerMove={handlePlanSvgPointerMove}
+        onPointerLeave={() => footprintEditor?.onCanvasPointHover?.(null)}
         className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
           presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
         } ${isSheetFootprintEditor ? styles.modulePlanSvgSheetFootprint : ''} ${
@@ -3801,7 +3895,7 @@ function PlanSvg({
             : null}
           {showHouseFootprint && !hasSemanticPlanHouseContext ? (
             <polygon
-              points={toPointsAttr(housePolygon)}
+              points={toPointsAttr(effectiveHousePolygon)}
               fill={`url(#${hatchId})`}
               className={`${styles.moduleHouseHatch} ${isSheetFootprintEditor ? styles.moduleHouseHatchSheetContext : ''} ${
                 showHouseHoverState ? styles.moduleHouseHatchSheetHover : ''
@@ -3810,7 +3904,7 @@ function PlanSvg({
           ) : null}
           {showHouseHoverTarget ? (
             <polygon
-              points={toPointsAttr(housePolygon)}
+              points={toPointsAttr(effectiveHousePolygon)}
               className={styles.moduleHouseContextHit}
               data-sheet-hover-target="house"
               onPointerEnter={() => footprintEditor?.onContextHoverChange?.(true)}
@@ -4207,21 +4301,29 @@ function PlanSvg({
                   x2={edge.end.x}
                   y2={edge.end.y}
                   data-footprint-custom-edge={edge.index}
-                  className={styles.moduleFootprintResizeEdge}
+                  data-footprint-custom-edge-kind={edge.kind}
+                  data-footprint-custom-preview-edge={edge.previewPointKind ?? undefined}
+                  className={
+                    edge.kind === 'preview'
+                      ? `${styles.moduleFootprintResizeEdge} ${styles.moduleFootprintCustomPreviewEdge}`
+                      : styles.moduleFootprintResizeEdge
+                  }
                 />
-                <line
-                  x1={edge.start.x}
-                  y1={edge.start.y}
-                  x2={edge.end.x}
-                  y2={edge.end.y}
-                  data-footprint-custom-edge-hit={edge.index}
-                  className={styles.moduleFootprintResizeEdgeHit}
-                  onDoubleClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    footprintEditor?.onEdgeAdd?.(edge.index);
-                  }}
-                />
+                {edge.kind === 'confirmed' ? (
+                  <line
+                    x1={edge.start.x}
+                    y1={edge.start.y}
+                    x2={edge.end.x}
+                    y2={edge.end.y}
+                    data-footprint-custom-edge-hit={edge.index}
+                    className={styles.moduleFootprintResizeEdgeHit}
+                    onDoubleClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      footprintEditor?.onEdgeAdd?.(edge.index);
+                    }}
+                  />
+                ) : null}
               </g>
             ))
           : null}
@@ -4229,18 +4331,48 @@ function PlanSvg({
         {editorSurface !== 'card' && canEditFootprint
           ? (footprintCanvasLayout?.customVertices ?? []).map((vertex) => (
               <g key={`footprint-custom-vertex-${vertex.index}`}>
+                {vertex.isCloseReady ? (
+                  <circle
+                    cx={vertex.point.x}
+                    cy={vertex.point.y}
+                    r={2.0}
+                    data-footprint-custom-close-target={vertex.index}
+                    data-footprint-custom-close-hovered={vertex.isCloseHovered ? 'true' : undefined}
+                    className={
+                      vertex.isCloseHovered
+                        ? `${styles.moduleFootprintCustomCloseTarget} ${styles.moduleFootprintCustomCloseTargetHover}`
+                        : styles.moduleFootprintCustomCloseTarget
+                    }
+                  />
+                ) : null}
                 <circle
                   cx={vertex.point.x}
                   cy={vertex.point.y}
-                  r={1.02}
+                  r={vertex.isLatestConfirmed ? 1.16 : vertex.kind === 'pending' || vertex.kind === 'hover' ? 1.08 : 1.02}
                   data-footprint-custom-vertex={vertex.index}
-                  className={styles.moduleFootprintHandle}
+                  data-footprint-custom-vertex-kind={vertex.kind}
+                  data-footprint-custom-latest-vertex={vertex.isLatestConfirmed ? 'true' : undefined}
+                  data-footprint-custom-preview-vertex={vertex.kind === 'pending' || vertex.kind === 'hover' ? vertex.kind : undefined}
+                  data-footprint-custom-close-ready={vertex.isCloseReady ? 'true' : undefined}
+                  className={[
+                    styles.moduleFootprintHandle,
+                    vertex.isLatestConfirmed ? styles.moduleFootprintCustomLatestVertex : '',
+                    vertex.kind === 'pending' ? styles.moduleFootprintCustomPendingVertex : '',
+                    vertex.kind === 'hover' ? styles.moduleFootprintCustomHoverVertex : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                 />
                 <circle
                   cx={vertex.point.x}
                   cy={vertex.point.y}
-                  r={2.8}
-                  className={styles.moduleFootprintHandleHit}
+                  r={vertex.isCloseReady ? 3.3 : 2.8}
+                  data-footprint-custom-vertex-hit={vertex.index}
+                  className={
+                    vertex.isCloseReady
+                      ? `${styles.moduleFootprintHandleHit} ${styles.moduleFootprintCustomCloseHit}`
+                      : styles.moduleFootprintHandleHit
+                  }
                   onDoubleClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -4249,6 +4381,10 @@ function PlanSvg({
                   onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
                     event.preventDefault();
                     event.stopPropagation();
+                    if (vertex.isCloseReady && vertex.index === 0 && footprintEditor?.onCloseStartSelect) {
+                      footprintEditor.onCloseStartSelect();
+                      return;
+                    }
                     footprintEditor?.onVertexDragStart?.(
                       {
                         vertexIndex: vertex.index,

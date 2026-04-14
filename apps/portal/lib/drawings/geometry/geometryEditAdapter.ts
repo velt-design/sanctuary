@@ -3,6 +3,7 @@ import type {
   CalculatorHouseFootprintMode,
   CalculatorHouseFootprintParams,
   CalculatorHouseFootprintPolygonPoint,
+  CalculatorHouseRoofMaterial,
   CalculatorHouseStoreyMode,
   CalculatorModuleInputs,
   CalculatorModuleOverrides,
@@ -13,6 +14,7 @@ import {
   normalizeHouseFootprintParams,
   normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
+  normalizeHouseRoofMaterial,
   supportsHouseFootprints,
 } from '@/lib/types/calculator';
 import { getModuleCostOutputFromSnapshot } from '@/lib/costingAudit/viewModel';
@@ -43,6 +45,7 @@ export type GeometryEditConnectionType = 'soffit' | 'fascia' | 'wall' | 'freesta
 export type GeometryEditHouseAttachmentStrategy = CalculatorHouseAttachmentStrategy | 'auto';
 export type GeometryHouseConfigKey =
   | 'houseStoreyMode'
+  | 'houseRoofMaterial'
   | 'houseAttachmentStrategy'
   | 'houseEaveHeightM'
   | 'houseWallHeightM'
@@ -79,6 +82,7 @@ export type GeometryEditState = {
     drawingRotationQuarterTurns: number;
     attachmentStrategy: GeometryEditHouseAttachmentStrategy;
     storeyMode: CalculatorHouseStoreyMode;
+    roofMaterial: CalculatorHouseRoofMaterial;
     eaveHeightM: string;
     wallHeightM: string;
     roofPitchDeg: string;
@@ -135,6 +139,7 @@ export type GeometryEditIntent =
   | { type: 'footprint_preset'; value: CalculatorModuleInputs['houseFootprintPreset'] }
   | { type: 'footprint_param'; key: keyof CalculatorHouseFootprintParams; value: string }
   | { type: 'footprint_polygon'; polygon: CalculatorHouseFootprintPolygonPoint[] }
+  | { type: 'footprint_custom_polygon'; polygon: CalculatorHouseFootprintPolygonPoint[] }
   | { type: 'drawing_rotation'; delta: -1 | 1 }
   | { type: 'post_connection'; value: CalculatorModuleInputs['postConnectionType'] }
   | { type: 'ground'; value: CalculatorModuleInputs['ground'] }
@@ -349,6 +354,7 @@ export function buildGeometryEditState(input: {
         drawingRotationQuarterTurns: normalizeDrawingRotationQuarterTurns(resolved.module.drawingRotationQuarterTurns),
         attachmentStrategy: resolved.module.houseAttachmentStrategy ?? 'auto',
         storeyMode: (houseModel?.storeyMode as CalculatorHouseStoreyMode | undefined) ?? 'single_storey',
+        roofMaterial: normalizeHouseRoofMaterial(resolved.module.houseRoofMaterial ?? houseModel?.roofMaterial),
         eaveHeightM: formatMetresOverride(resolved.module.houseEaveHeightM, houseModel?.eaveHeightMm),
         wallHeightM: formatMetresOverride(resolved.module.houseWallHeightM, houseModel?.wallHeightMm),
         roofPitchDeg: formatNumberOverride(resolved.module.houseRoofPitchDeg, houseModel?.roofPitchDeg),
@@ -691,6 +697,11 @@ export function applyGeometryEditIntent(input: {
         type: 'polygon',
         polygon: input.intent.polygon,
       });
+    case 'footprint_custom_polygon':
+      return applyFootprintEdit(input.draft, input.moduleIndex, {
+        type: 'custom_polygon',
+        polygon: input.intent.polygon,
+      });
     case 'drawing_rotation':
       return applyFootprintEdit(input.draft, input.moduleIndex, {
         type: 'rotate',
@@ -796,6 +807,11 @@ export function translateFootprintEditToGeometryIntent(
     case 'polygon':
       return {
         type: 'footprint_polygon',
+        polygon: edit.polygon,
+      };
+    case 'custom_polygon':
+      return {
+        type: 'footprint_custom_polygon',
         polygon: edit.polygon,
       };
     default:

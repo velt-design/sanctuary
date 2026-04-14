@@ -4,6 +4,7 @@ import {
   buildEstimateDrawingDraftFromSnapshot,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
+import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 
@@ -95,6 +96,34 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.validation.status).toBe('pass');
     expect(preview.assembly.outline[1]?.x).toBe(6400);
     expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'ledger.length_mm')?.quantity).toBe(6400);
+  });
+
+  it('locally resolves stale snapshot pricing outputs', () => {
+    const fixture = requireFixture('mono-standard');
+    const snapshot = structuredClone(fixture.snapshot) as {
+      inputs?: { modules?: Array<{ lengthM?: string }> };
+      outputs?: Record<string, unknown>;
+    };
+    if (!snapshot.inputs?.modules?.[0] || !snapshot.outputs) {
+      throw new Error('Expected fixture snapshot module.');
+    }
+    snapshot.inputs.modules[0].lengthM = '6.8';
+    snapshot.outputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY] = 'stale';
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: snapshot as Record<string, unknown>,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.previewMode).toBe('snapshot_local_resolved');
+    expect(preview.resultSource).toBe('local_resolve');
+    expect(preview.config.dimensions.lengthMm).toBe(6800);
+    expect(preview.assembly.quantityHooks.find((hook) => hook.key === 'ledger.length_mm')?.quantity).toBe(6800);
   });
 
   it('re-solves draft pitch changes locally instead of reusing stale snapshot geometry', () => {

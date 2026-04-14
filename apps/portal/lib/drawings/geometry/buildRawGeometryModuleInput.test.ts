@@ -281,7 +281,7 @@ describe('buildRawGeometryModuleInput', () => {
           rightLegRunM: '2.4',
           sideRunM: '2.4',
         },
-        houseFootprintMode: 'orthogonal_polygon',
+        houseFootprintMode: 'custom_polygon',
         houseFootprintPolygon: [
           { alongM: '0', depthM: '2.4' },
           { alongM: '8', depthM: '2.4' },
@@ -292,7 +292,7 @@ describe('buildRawGeometryModuleInput', () => {
       result: makeResult(),
     });
 
-    expect(raw.houseContext.footprintMode).toBe('orthogonal_polygon');
+    expect(raw.houseContext.footprintMode).toBe('custom_polygon');
     expect(raw.houseContext.footprintPolygon).toEqual([
       { alongM: '0', depthM: '2.4' },
       { alongM: '8', depthM: '2.4' },

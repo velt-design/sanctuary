@@ -14,6 +14,7 @@ import {
 import type {
   CalculatorFlashingsState,
   CalculatorHouseAttachmentStrategy,
+  CalculatorHouseRoofMaterial,
   CalculatorInputs,
   CalculatorModuleInputs,
   CalculatorModuleOverrides,
@@ -116,6 +117,10 @@ export type EstimateDrawingFootprintEdit =
   | {
       type: 'polygon';
       polygon: CalculatorHouseFootprintPolygonPoint[];
+    }
+  | {
+      type: 'custom_polygon';
+      polygon: CalculatorHouseFootprintPolygonPoint[];
     };
 
 export type EstimateDrawingModuleFieldEdit =
@@ -199,6 +204,7 @@ export type EditableModuleFieldKey =
   | 'postConnectionType'
   | 'ground'
   | 'houseStoreyMode'
+  | 'houseRoofMaterial'
   | 'houseAttachmentStrategy'
   | 'houseEaveHeightM'
   | 'houseWallHeightM'
@@ -350,6 +356,16 @@ function isOverhangSupportBeamProfile(value: unknown): value is CalculatorModule
 
 function isHouseStoreyMode(value: unknown): value is CalculatorHouseStoreyMode {
   return value === 'single_storey' || value === 'double_storey' || value === 'custom';
+}
+
+function isHouseRoofMaterial(value: unknown): value is CalculatorHouseRoofMaterial {
+  return (
+    value === 'corrugated_iron' ||
+    value === 'trapezoidal_5_rib' ||
+    value === 'eurotray_300' ||
+    value === 'eurotray_500' ||
+    value === 'shingles'
+  );
 }
 
 function isHouseAttachmentStrategy(value: unknown): value is CalculatorHouseAttachmentStrategy {
@@ -506,6 +522,10 @@ function setDraftModuleField(
     case 'houseStoreyMode':
       if (!isHouseStoreyMode(value)) return { ok: false, error: 'Choose a supported house storey mode.' };
       updated.houseStoreyMode = value;
+      break;
+    case 'houseRoofMaterial':
+      if (!isHouseRoofMaterial(value)) return { ok: false, error: 'Choose a supported house roof material.' };
+      updated.houseRoofMaterial = value;
       break;
     case 'houseAttachmentStrategy':
       if (value === 'auto' || String(value ?? '').trim() === '') {
@@ -956,7 +976,7 @@ export function applyEstimateDrawingFootprintEdit(input: {
   switch (input.edit.type) {
     case 'mode':
       module.houseFootprintMode = normalizeHouseFootprintMode(input.edit.mode) as CalculatorModuleInputs['houseFootprintMode'];
-      if (module.houseFootprintMode === 'orthogonal_polygon' && !normalizeHouseFootprintPolygon(module.houseFootprintPolygon).length) {
+      if (module.houseFootprintMode === 'custom_polygon' && !normalizeHouseFootprintPolygon(module.houseFootprintPolygon).length) {
         module.houseFootprintPolygon = seedHouseFootprintPolygon(module) as CalculatorModuleInputs['houseFootprintPolygon'];
       }
       return { ok: true, draft: nextDraft };
@@ -982,6 +1002,15 @@ export function applyEstimateDrawingFootprintEdit(input: {
         const nextPolygon = normalizeHouseFootprintPolygon(input.edit.polygon);
         const validation = validateHouseFootprintPolygonEdit(module, nextPolygon);
         if (!validation.ok) return validation;
+        module.houseFootprintPolygon = nextPolygon as CalculatorModuleInputs['houseFootprintPolygon'];
+      }
+      return { ok: true, draft: nextDraft };
+    case 'custom_polygon':
+      {
+        const nextPolygon = normalizeHouseFootprintPolygon(input.edit.polygon);
+        const validation = validateHouseFootprintPolygonEdit(module, nextPolygon);
+        if (!validation.ok) return validation;
+        module.houseFootprintMode = 'custom_polygon' as CalculatorModuleInputs['houseFootprintMode'];
         module.houseFootprintPolygon = nextPolygon as CalculatorModuleInputs['houseFootprintPolygon'];
       }
       return { ok: true, draft: nextDraft };

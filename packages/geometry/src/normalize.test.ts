@@ -420,6 +420,7 @@ describe('normalizeGeometryConfig', () => {
       storeyMode: 'single_storey',
       wallConstruction: 'timber_frame',
       roofForm: 'hipped',
+      roofMaterial: 'corrugated_iron',
       eaveHeightMm: 2400,
       wallHeightMm: 2400,
       roofPitchDeg: 25,
@@ -816,7 +817,7 @@ describe('normalizeGeometryConfig', () => {
     ]);
   });
 
-  it('normalizes custom orthogonal house footprint polygons in the selected-side frame', () => {
+  it('normalizes custom house footprint polygons in the selected-side frame', () => {
     const polygon = [
       { alongM: '0', depthM: '2.4' },
       { alongM: '6', depthM: '2.4' },
@@ -828,7 +829,7 @@ describe('normalizeGeometryConfig', () => {
     const rear = normalizeGeometryConfig(
       makeRawInput({
         houseContext: {
-          footprintMode: 'orthogonal_polygon',
+          footprintMode: 'custom_polygon',
           footprintPolygon: polygon,
           footprintParams: {
             widthM: '',
@@ -849,7 +850,7 @@ describe('normalizeGeometryConfig', () => {
       makeRawInput({
         connection: { houseConnectionType: 'soffit', attachmentSide: 'front' },
         houseContext: {
-          footprintMode: 'orthogonal_polygon',
+          footprintMode: 'custom_polygon',
           footprintPolygon: polygon,
           footprintParams: {
             widthM: '',
@@ -870,7 +871,7 @@ describe('normalizeGeometryConfig', () => {
       makeRawInput({
         connection: { houseConnectionType: 'soffit', attachmentSide: 'left' },
         houseContext: {
-          footprintMode: 'orthogonal_polygon',
+          footprintMode: 'custom_polygon',
           footprintPolygon: polygon,
           footprintParams: {
             widthM: '',
@@ -891,7 +892,7 @@ describe('normalizeGeometryConfig', () => {
       makeRawInput({
         connection: { houseConnectionType: 'soffit', attachmentSide: 'right' },
         houseContext: {
-          footprintMode: 'orthogonal_polygon',
+          footprintMode: 'custom_polygon',
           footprintPolygon: polygon,
           footprintParams: {
             widthM: '',
@@ -947,12 +948,12 @@ describe('normalizeGeometryConfig', () => {
     const result = normalizeGeometryConfig(
       makeRawInput({
         houseContext: {
-          footprintMode: 'orthogonal_polygon',
+          footprintMode: 'custom_polygon',
           footprintPolygon: [
             { alongM: '0', depthM: '0' },
-            { alongM: '3', depthM: '1' },
-            { alongM: '3', depthM: '0' },
-            { alongM: '0', depthM: '1' },
+            { alongM: '4', depthM: '0' },
+            { alongM: '1', depthM: '3' },
+            { alongM: '4', depthM: '2' },
           ],
         },
       }),
@@ -961,7 +962,28 @@ describe('normalizeGeometryConfig', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.code).toBe('invalid_numeric_input');
-    expect(result.error).toContain('90-degree');
+    expect(result.error).toContain('self-intersect');
+  });
+
+  it('accepts arbitrary-angle custom house footprint polygons', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        houseContext: {
+          footprintMode: 'custom_polygon',
+          footprintPolygon: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '4', depthM: '0' },
+            { alongM: '3', depthM: '2' },
+            { alongM: '0', depthM: '1.5' },
+          ],
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.houseContext.footprintMode).toBe('custom_polygon');
+    expect(result.value.houseContext.footprint?.length).toBe(4);
   });
 
   it('clamps dependent footprint preset dimensions against the resolved house width', () => {

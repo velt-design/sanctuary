@@ -70,7 +70,7 @@ describe('DesignWorkbenchFixtureClient', () => {
     });
 
     expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Reset view');
+    expect(rendered.container.textContent).toContain('Reset');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
     clickButtonByText(rendered.container, 'Section');
@@ -78,7 +78,8 @@ describe('DesignWorkbenchFixtureClient', () => {
       await Promise.resolve();
     });
 
-    expect(rendered.container.textContent).toContain('Section model space is staged for a later milestone.');
+    expect(rendered.container.querySelector('[aria-label="Section model space viewport"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Module section view"]')).not.toBeNull();
 
     rendered.unmount();
   });

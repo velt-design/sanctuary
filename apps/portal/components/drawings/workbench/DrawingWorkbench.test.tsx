@@ -160,7 +160,7 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('aria-label="Plan model space viewport"');
-    expect(markup).toContain('Reset view');
+    expect(markup).toContain('Reset');
     expect(markup).not.toContain('Live configurator surface');
     expect(markup).not.toContain('A3 drawing sheet');
     expect(markup).not.toContain('Open full calculator');

@@ -263,7 +263,7 @@ describe('geometryEditAdapter', () => {
     expect(nextState.value.config.houseContext.model?.footprint?.[2]).toEqual({ x: 7000, y: -400, z: 0 });
   });
 
-  it('applies custom orthogonal footprint mode and polygon edits into normalized context', () => {
+  it('applies custom footprint mode and polygon edits into normalized context', () => {
     const snapshot = getFixtureSnapshot('mono-standard');
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
     if (!draft) throw new Error('Expected draft');
@@ -274,12 +274,12 @@ describe('geometryEditAdapter', () => {
       moduleIndex: 0,
       intent: {
         type: 'footprint_mode',
-        value: 'orthogonal_polygon',
+        value: 'custom_polygon',
       },
     });
     expect(modeResult.ok).toBe(true);
     if (!modeResult.ok) return;
-    expect(modeResult.draft.inputs.modules[0]?.houseFootprintMode).toBe('orthogonal_polygon');
+    expect(modeResult.draft.inputs.modules[0]?.houseFootprintMode).toBe('custom_polygon');
     expect(modeResult.draft.inputs.modules[0]?.houseFootprintPolygon?.length).toBeGreaterThanOrEqual(4);
 
     const polygon = [
@@ -309,12 +309,12 @@ describe('geometryEditAdapter', () => {
     });
     expect(nextState.ok).toBe(true);
     if (!nextState.ok) return;
-    expect(nextState.value.houseContext.footprintMode).toBe('orthogonal_polygon');
+    expect(nextState.value.houseContext.footprintMode).toBe('custom_polygon');
     expect(nextState.value.houseContext.footprintPolygon).toEqual(polygon);
     expect(nextState.value.config.houseContext.footprint).toContainEqual({ x: 3000, y: -1200, z: 0 });
   });
 
-  it('rejects invalid custom orthogonal footprint polygon edits before persisting the draft', () => {
+  it('rejects invalid custom footprint polygon edits before persisting the draft', () => {
     const snapshot = getFixtureSnapshot('mono-standard');
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
     if (!draft) throw new Error('Expected draft');
@@ -327,16 +327,16 @@ describe('geometryEditAdapter', () => {
         type: 'footprint_polygon',
         polygon: [
           { alongM: '0', depthM: '0' },
-          { alongM: '3', depthM: '1' },
-          { alongM: '3', depthM: '0' },
-          { alongM: '0', depthM: '1' },
+          { alongM: '4', depthM: '0' },
+          { alongM: '1', depthM: '3' },
+          { alongM: '4', depthM: '2' },
         ],
       },
     });
 
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.message).toContain('90-degree');
+    expect(result.message).toContain('self-intersect');
   });
 
   it('returns no geometry intent for unsupported field targets', () => {

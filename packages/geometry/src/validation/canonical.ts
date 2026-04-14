@@ -14,6 +14,7 @@ import type {
   Point3,
   Polygon3,
   QuantityHook,
+  RoofFlashing3D,
   RoofPlane3D,
   Vector3,
 } from "../contracts";
@@ -250,9 +251,56 @@ function canonicalizeHouseModel(
     roofFeatures: [...(model.roofFeatures ?? [])]
       .sort((a, b) => a.id.localeCompare(b.id))
       .map(canonicalizeHouseRoofFeature),
+    ...(model.roofFlashings?.length
+      ? {
+          roofFlashings: [...model.roofFlashings]
+            .sort((a, b) => a.id.localeCompare(b.id))
+            .map(canonicalizeRoofFlashing),
+        }
+      : {}),
     eave: canonicalizeHouseEaveGeometry(model.eave),
     attachmentTarget: canonicalizeHouseAttachmentTarget(model.attachmentTarget),
     metadata: canonicalizeMetadata(model.metadata),
+  };
+}
+
+function canonicalizeRoofFlashing(flashing: RoofFlashing3D): RoofFlashing3D {
+  return {
+    ...flashing,
+    thicknessMm: roundMillimetre(flashing.thicknessMm),
+    wings: [...flashing.wings]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((wing) => ({
+        id: wing.id,
+        boundary: wing.boundary.map((point) => ({
+          x: roundMillimetre(point.x),
+          y: roundMillimetre(point.y),
+          z: roundMillimetre(point.z),
+        })),
+        plane: {
+          origin: {
+            x: roundMillimetre(wing.plane.origin.x),
+            y: roundMillimetre(wing.plane.origin.y),
+            z: roundMillimetre(wing.plane.origin.z),
+          },
+          xAxis: {
+            x: roundUnit(wing.plane.xAxis.x),
+            y: roundUnit(wing.plane.xAxis.y),
+            z: roundUnit(wing.plane.xAxis.z),
+          },
+          yAxis: {
+            x: roundUnit(wing.plane.yAxis.x),
+            y: roundUnit(wing.plane.yAxis.y),
+            z: roundUnit(wing.plane.yAxis.z),
+          },
+          normal: {
+            x: roundUnit(wing.plane.normal.x),
+            y: roundUnit(wing.plane.normal.y),
+            z: roundUnit(wing.plane.normal.z),
+          },
+        },
+      })),
+    metadata: canonicalizeMetadata(flashing.metadata),
   };
 }
 
@@ -492,43 +540,7 @@ export function canonicalizeAssembly3D(
       ? {
           roofFlashings: [...assembly.roofFlashings]
             .sort((a, b) => a.id.localeCompare(b.id))
-            .map((flashing) => ({
-              ...flashing,
-              thicknessMm: roundMillimetre(flashing.thicknessMm),
-              wings: [...flashing.wings]
-                .sort((a, b) => a.id.localeCompare(b.id))
-                .map((wing) => ({
-                  id: wing.id,
-                  boundary: wing.boundary.map((point) => ({
-                    x: roundMillimetre(point.x),
-                    y: roundMillimetre(point.y),
-                    z: roundMillimetre(point.z),
-                  })),
-                  plane: {
-                    origin: {
-                      x: roundMillimetre(wing.plane.origin.x),
-                      y: roundMillimetre(wing.plane.origin.y),
-                      z: roundMillimetre(wing.plane.origin.z),
-                    },
-                    xAxis: {
-                      x: roundUnit(wing.plane.xAxis.x),
-                      y: roundUnit(wing.plane.xAxis.y),
-                      z: roundUnit(wing.plane.xAxis.z),
-                    },
-                    yAxis: {
-                      x: roundUnit(wing.plane.yAxis.x),
-                      y: roundUnit(wing.plane.yAxis.y),
-                      z: roundUnit(wing.plane.yAxis.z),
-                    },
-                    normal: {
-                      x: roundUnit(wing.plane.normal.x),
-                      y: roundUnit(wing.plane.normal.y),
-                      z: roundUnit(wing.plane.normal.z),
-                    },
-                  },
-                })),
-              metadata: canonicalizeMetadata(flashing.metadata),
-            })),
+            .map(canonicalizeRoofFlashing),
         }
       : {}),
     supportConditions: [...assembly.supportConditions]
@@ -574,6 +586,12 @@ function arrayComparisonKey(path: string, value: unknown): string | null {
     return value.id;
   if (
     path === "house.model.roofFeatures" &&
+    "id" in value &&
+    typeof value.id === "string"
+  )
+    return value.id;
+  if (
+    path === "house.model.roofFlashings" &&
     "id" in value &&
     typeof value.id === "string"
   )
