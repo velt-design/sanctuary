@@ -141,8 +141,8 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     });
     buildCrewContext.mockReturnValue({
       crewRow: { id: 'crew-new', calendar_region: 'Auckland' },
-      items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: 'scheduled-job-2', downtimeId: null, position: 0 }],
-      jobs: [{ id: 'scheduled-job-2', jobId: 'project-2', crewId: 'crew-new', forecastDurationDays: 2 }],
+      items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: '00000000-0000-4000-8000-000000000402', downtimeId: null, position: 0 }],
+      jobs: [{ id: '00000000-0000-4000-8000-000000000402', jobId: 'project-2', crewId: 'crew-new', forecastDurationDays: 2 }],
       downtimes: [],
       recompute: { before: true },
       downtimesById: new Map(),
@@ -159,7 +159,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       items.map((item) => ({ id: item.id, position: item.position })),
     );
     recomputeForCrew.mockReturnValue({
-      job_updates: [{ id: 'scheduled-job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-18', forecast_duration_days: 3 }],
+      job_updates: [{ id: '00000000-0000-4000-8000-000000000401', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-18', forecast_duration_days: 3 }],
     });
     buildJobMetaMap.mockReturnValue(new Map());
     computeCommitImpacts.mockReturnValue([]);
@@ -171,7 +171,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     });
     rpc.mockResolvedValue({
       data: {
-        scheduled_job_id: 'scheduled-job-1',
+        scheduled_job_id: '00000000-0000-4000-8000-000000000401',
         schedule_item_id: 'item-new',
         source_crew_id: null,
         updated_target_items: 1,
@@ -262,7 +262,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
       p_target_forecast_updates: [
         {
-          id: 'scheduled-job-1',
+          id: '00000000-0000-4000-8000-000000000401',
           forecast_start: '2026-04-15',
           forecast_end_exclusive: '2026-04-18',
           forecast_duration_days: 3,
@@ -335,7 +335,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
             forecast_duration_days: 3,
           },
           {
-            id: 'scheduled-job-2',
+            id: '00000000-0000-4000-8000-000000000402',
             forecast_start: '2026-04-18',
             forecast_end_exclusive: '2026-04-20',
             forecast_duration_days: 2,
@@ -356,7 +356,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     const [, rpcArgs] = rpc.mock.calls[0];
     expect(rpcArgs.p_target_forecast_updates).toEqual([
       {
-        id: 'scheduled-job-2',
+        id: '00000000-0000-4000-8000-000000000402',
         forecast_start: '2026-04-18',
         forecast_end_exclusive: '2026-04-20',
         forecast_duration_days: 2,
@@ -376,14 +376,14 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     parseJsonBody.mockResolvedValueOnce({ ok: true, body: { job_id: 'project-1', crew_id: 'crew-new', position: 1, force: true } });
     scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
       data: {
-        id: 'scheduled-job-1',
+        id: '00000000-0000-4000-8000-000000000401',
         crew_id: 'crew-old',
         forecast_duration_days: 2,
       },
       error: null,
     });
     const movedJob = {
-      id: 'scheduled-job-1',
+      id: '00000000-0000-4000-8000-000000000401',
       jobId: 'project-1',
       crewId: 'crew-old',
       mode: 'floating',
@@ -404,8 +404,8 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       if (id === 'crew-new') {
         return {
           crewRow: { id: 'crew-new', calendar_region: 'Auckland' },
-          items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: 'scheduled-job-2', downtimeId: null, position: 0 }],
-          jobs: [{ id: 'scheduled-job-2', jobId: 'project-2', crewId: 'crew-new', forecastDurationDays: 2 }],
+          items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: '00000000-0000-4000-8000-000000000402', downtimeId: null, position: 0 }],
+          jobs: [{ id: '00000000-0000-4000-8000-000000000402', jobId: 'project-2', crewId: 'crew-new', forecastDurationDays: 2 }],
           downtimes: [],
           recompute: { before: true },
           downtimesById: new Map(),
@@ -415,12 +415,12 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         return {
           crewRow: { id: 'crew-old', calendar_region: 'Auckland' },
           items: [
-            { id: 'source-item-1', crewId: 'crew-old', itemType: 'job', jobId: 'scheduled-job-1', downtimeId: null, position: 0 },
-            { id: 'source-item-2', crewId: 'crew-old', itemType: 'job', jobId: 'scheduled-job-3', downtimeId: null, position: 1 },
+            { id: 'source-item-1', crewId: 'crew-old', itemType: 'job', jobId: '00000000-0000-4000-8000-000000000401', downtimeId: null, position: 0 },
+            { id: 'source-item-2', crewId: 'crew-old', itemType: 'job', jobId: '00000000-0000-4000-8000-000000000403', downtimeId: null, position: 1 },
           ],
           jobs: [
             movedJob,
-            { id: 'scheduled-job-3', jobId: 'project-3', crewId: 'crew-old', forecastDurationDays: 2 },
+            { id: '00000000-0000-4000-8000-000000000403', jobId: 'project-3', crewId: 'crew-old', forecastDurationDays: 2 },
           ],
           downtimes: [],
           recompute: { before: true },
@@ -431,13 +431,19 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     });
     recomputeForCrew
       .mockReturnValueOnce({
-        job_updates: [{ id: 'scheduled-job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
+        job_updates: [
+          { id: '00000000-0000-4000-8000-000000000401', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 },
+          { id: 'temp_job_target', forecast_start: '2026-04-17', forecast_end_exclusive: '2026-04-18', forecast_duration_days: 1 },
+        ],
       })
       .mockReturnValueOnce({
-        job_updates: [{ id: 'scheduled-job-3', forecast_start: '2026-04-18', forecast_end_exclusive: '2026-04-20', forecast_duration_days: 2 }],
+        job_updates: [
+          { id: '00000000-0000-4000-8000-000000000403', forecast_start: '2026-04-18', forecast_end_exclusive: '2026-04-20', forecast_duration_days: 2 },
+          { id: 'temp_job_source', forecast_start: '2026-04-20', forecast_end_exclusive: '2026-04-21', forecast_duration_days: 1 },
+        ],
       })
       .mockReturnValueOnce({
-        job_updates: [{ id: 'scheduled-job-1', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
+        job_updates: [{ id: '00000000-0000-4000-8000-000000000401', forecast_start: '2026-04-15', forecast_end_exclusive: '2026-04-17', forecast_duration_days: 2 }],
       });
     formatCrewScheduleBlocks
       .mockReturnValueOnce({
@@ -454,7 +460,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       });
     rpc.mockResolvedValueOnce({
       data: {
-        scheduled_job_id: 'scheduled-job-1',
+        scheduled_job_id: '00000000-0000-4000-8000-000000000401',
         schedule_item_id: 'item-new',
         source_crew_id: 'crew-old',
         updated_target_items: 1,
@@ -478,14 +484,14 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
       p_target_forecast_updates: [
         {
-          id: 'scheduled-job-1',
+          id: '00000000-0000-4000-8000-000000000401',
           forecast_start: '2026-04-15',
           forecast_end_exclusive: '2026-04-17',
           forecast_duration_days: 2,
         },
       ],
       p_assignment: {
-        scheduled_job_id: 'scheduled-job-1',
+        scheduled_job_id: '00000000-0000-4000-8000-000000000401',
       },
       p_move: {
         source_crew_id: 'crew-old',
@@ -493,7 +499,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         source_positions: [{ id: 'source-item-2', position: 0 }],
         source_forecast_updates: [
           {
-            id: 'scheduled-job-3',
+            id: '00000000-0000-4000-8000-000000000403',
             forecast_start: '2026-04-18',
             forecast_end_exclusive: '2026-04-20',
             forecast_duration_days: 2,
@@ -501,6 +507,27 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         ],
       },
     });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.forecast_updates_sanitized',
+        requestId: 'req_assign_move_ok',
+        status: 200,
+        reason: 'non_uuid_forecast_updates_filtered',
+        assignmentKind: 'move',
+        targetRawForecastCount: 2,
+        targetForecastCount: 1,
+        targetForecastNonUuidCount: 1,
+        sourceRawForecastCount: 2,
+        sourceForecastCount: 1,
+        sourceForecastNonUuidCount: 1,
+        jobId: 'project-1',
+        crewId: 'crew-new',
+        scheduledJobId: '00000000-0000-4000-8000-000000000401',
+        sourceCrewId: 'crew-old',
+        requestedPosition: 1,
+      }),
+    );
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({
       ok: true,
@@ -526,13 +553,13 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
 
   it('returns 409 when an existing scheduled job already has a same-crew queue item', async () => {
     scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
-      data: { id: 'scheduled-job-1', crew_id: 'crew-new', forecast_duration_days: 2 },
+      data: { id: '00000000-0000-4000-8000-000000000401', crew_id: 'crew-new', forecast_duration_days: 2 },
       error: null,
     });
     buildCrewContext.mockReturnValueOnce({
       crewRow: { id: 'crew-new', calendar_region: 'Auckland' },
-      items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: 'scheduled-job-1', downtimeId: null, position: 0 }],
-      jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-new', forecastDurationDays: 2 }],
+      items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: '00000000-0000-4000-8000-000000000401', downtimeId: null, position: 0 }],
+      jobs: [{ id: '00000000-0000-4000-8000-000000000401', jobId: 'project-1', crewId: 'crew-new', forecastDurationDays: 2 }],
       downtimes: [],
       recompute: { before: true },
       downtimesById: new Map(),
@@ -558,7 +585,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         reason: 'already_scheduled_same_crew',
         jobId: 'project-1',
         crewId: 'crew-new',
-        scheduledJobId: 'scheduled-job-1',
+        scheduledJobId: '00000000-0000-4000-8000-000000000401',
         targetItemPresent: true,
         sourceItemPresent: true,
       }),
@@ -567,13 +594,13 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
 
   it('repairs an existing same-crew scheduled job that is missing a queue item', async () => {
     scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
-      data: { id: 'scheduled-job-1', crew_id: 'crew-new', forecast_duration_days: 2 },
+      data: { id: '00000000-0000-4000-8000-000000000401', crew_id: 'crew-new', forecast_duration_days: 2 },
       error: null,
     });
     loadScheduleContext.mockResolvedValueOnce({
       today: '2026-04-10',
       calendar: {},
-      jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-new', forecastDurationDays: 2 }],
+      jobs: [{ id: '00000000-0000-4000-8000-000000000401', jobId: 'project-1', crewId: 'crew-new', forecastDurationDays: 2 }],
     });
 
     const mod = await import('./route');
@@ -590,13 +617,13 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
       p_target_forecast_updates: [
         {
-          id: 'scheduled-job-1',
+          id: '00000000-0000-4000-8000-000000000401',
           forecast_start: '2026-04-15',
           forecast_end_exclusive: '2026-04-18',
           forecast_duration_days: 3,
         },
       ],
-      p_assignment: { scheduled_job_id: 'scheduled-job-1' },
+      p_assignment: { scheduled_job_id: '00000000-0000-4000-8000-000000000401' },
       p_move: null,
     });
     expect(res.status).toBe(200);
@@ -608,7 +635,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         reason: 'missing_target_queue_item_repaired',
         jobId: 'project-1',
         crewId: 'crew-new',
-        scheduledJobId: 'scheduled-job-1',
+        scheduledJobId: '00000000-0000-4000-8000-000000000401',
         sourceCrewId: 'crew-new',
         targetItemPresent: false,
       }),
@@ -617,7 +644,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
 
   it('returns 501 when the assign repair RPC migration is missing during same-crew repair', async () => {
     scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
-      data: { id: 'scheduled-job-1', crew_id: 'crew-new', forecast_duration_days: 2 },
+      data: { id: '00000000-0000-4000-8000-000000000401', crew_id: 'crew-new', forecast_duration_days: 2 },
       error: null,
     });
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'p_assignment.job_id is required' } });
@@ -643,27 +670,27 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         reason: 'old_assign_repair_rpc_revision',
         jobId: 'project-1',
         crewId: 'crew-new',
-        scheduledJobId: 'scheduled-job-1',
+        scheduledJobId: '00000000-0000-4000-8000-000000000401',
       }),
     );
   });
 
   it('repairs an existing cross-crew scheduled job when the source queue item is missing', async () => {
     scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
-      data: { id: 'scheduled-job-1', crew_id: 'crew-old', forecast_duration_days: 2 },
+      data: { id: '00000000-0000-4000-8000-000000000401', crew_id: 'crew-old', forecast_duration_days: 2 },
       error: null,
     });
     loadScheduleContext.mockResolvedValueOnce({
       today: '2026-04-10',
       calendar: {},
-      jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-old', forecastDurationDays: 2 }],
+      jobs: [{ id: '00000000-0000-4000-8000-000000000401', jobId: 'project-1', crewId: 'crew-old', forecastDurationDays: 2 }],
     });
     buildCrewContext.mockImplementation((_ctx: any, id: string) => {
       if (id === 'crew-new') {
         return {
           crewRow: { id: 'crew-new', calendar_region: 'Auckland' },
-          items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: 'scheduled-job-2', downtimeId: null, position: 0 }],
-          jobs: [{ id: 'scheduled-job-2', jobId: 'project-2', crewId: 'crew-new', forecastDurationDays: 2 }],
+          items: [{ id: 'target-item-1', crewId: 'crew-new', itemType: 'job', jobId: '00000000-0000-4000-8000-000000000402', downtimeId: null, position: 0 }],
+          jobs: [{ id: '00000000-0000-4000-8000-000000000402', jobId: 'project-2', crewId: 'crew-new', forecastDurationDays: 2 }],
           downtimes: [],
           recompute: { before: true },
           downtimesById: new Map(),
@@ -672,8 +699,8 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       if (id === 'crew-old') {
         return {
           crewRow: { id: 'crew-old', calendar_region: 'Auckland' },
-          items: [{ id: 'source-item-2', crewId: 'crew-old', itemType: 'job', jobId: 'scheduled-job-3', downtimeId: null, position: 0 }],
-          jobs: [{ id: 'scheduled-job-1', jobId: 'project-1', crewId: 'crew-old', forecastDurationDays: 2 }],
+          items: [{ id: 'source-item-2', crewId: 'crew-old', itemType: 'job', jobId: '00000000-0000-4000-8000-000000000403', downtimeId: null, position: 0 }],
+          jobs: [{ id: '00000000-0000-4000-8000-000000000401', jobId: 'project-1', crewId: 'crew-old', forecastDurationDays: 2 }],
           downtimes: [],
           recompute: { before: true },
           downtimesById: new Map(),
@@ -696,13 +723,13 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       p_target_positions: [{ id: 'target-item-1', position: 0 }],
       p_target_forecast_updates: [
         {
-          id: 'scheduled-job-1',
+          id: '00000000-0000-4000-8000-000000000401',
           forecast_start: '2026-04-15',
           forecast_end_exclusive: '2026-04-18',
           forecast_duration_days: 3,
         },
       ],
-      p_assignment: { scheduled_job_id: 'scheduled-job-1' },
+      p_assignment: { scheduled_job_id: '00000000-0000-4000-8000-000000000401' },
       p_move: null,
     });
     expect(res.status).toBe(200);
@@ -714,7 +741,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         reason: 'missing_source_queue_item_repaired',
         jobId: 'project-1',
         crewId: 'crew-new',
-        scheduledJobId: 'scheduled-job-1',
+        scheduledJobId: '00000000-0000-4000-8000-000000000401',
         sourceCrewId: 'crew-old',
         sourceItemPresent: false,
       }),
@@ -817,6 +844,32 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_assign_schema');
   });
 
+  it('returns a phase diagnostic when schedule context loading fails', async () => {
+    loadScheduleContext.mockRejectedValueOnce({ code: 'P0001', message: 'context boom', details: 'context detail', hint: 'context hint' });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_context_fail' },
+      }),
+    );
+
+    expect(res.status).toBe(500);
+    await expect(res.json()).resolves.toEqual({
+      error: 'Failed to load schedule data',
+      diagnostic: expect.objectContaining({
+        phase: 'load_schedule_context',
+        requestId: 'req_assign_context_fail',
+        errorCode: 'P0001',
+        errorMessage: 'context boom',
+        errorDetails: 'context detail',
+        errorHint: 'context hint',
+      }),
+    });
+    expect(res.headers.get('x-portal-request-id')).toBe('req_assign_context_fail');
+  });
+
   it('returns 500 on a generic RPC failure', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'boom', details: 'detail text', hint: 'hint text' } });
 
@@ -829,7 +882,26 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     );
 
     expect(res.status).toBe(500);
-    await expect(res.json()).resolves.toEqual({ error: 'Failed to assign scheduled job' });
+    await expect(res.json()).resolves.toEqual({
+      error: 'Failed to assign scheduled job',
+      diagnostic: expect.objectContaining({
+        phase: 'commit_rpc',
+        requestId: 'req_assign_fail',
+        assignmentKind: 'new_assignment',
+        targetRawForecastCount: 1,
+        targetForecastCount: 1,
+        targetForecastNonUuidCount: 0,
+        sourceForecastCount: 0,
+        sourceForecastNonUuidCount: 0,
+        targetPositionCount: 1,
+        initialForecastPresent: false,
+        sanitizedTempForecastPresent: false,
+        errorCode: 'P0001',
+        errorMessage: 'boom',
+        errorDetails: 'detail text',
+        errorHint: 'hint text',
+      }),
+    });
     expect(res.headers.get('x-portal-request-id')).toBe('req_assign_fail');
     expect(consoleErrorSpy).toHaveBeenCalledWith(
       '[portal]',
@@ -841,7 +913,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         assignmentKind: 'new_assignment',
         targetRawForecastCount: 1,
         targetForecastCount: 1,
-        targetForecastNonUuidCount: 1,
+        targetForecastNonUuidCount: 0,
         sourceForecastCount: 0,
         sourceForecastNonUuidCount: 0,
         targetPositionCount: 1,

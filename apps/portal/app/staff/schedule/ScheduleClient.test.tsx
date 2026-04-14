@@ -634,6 +634,60 @@ describe('ScheduleClient', () => {
     rendered.unmount();
   });
 
+  it('shows assign diagnostics and rolls back when unscheduled assignment returns 500', async () => {
+    vi.useFakeTimers();
+    const snapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(snapshot),
+      staleTime: 30_000,
+    }));
+    vi.mocked(assignJob).mockRejectedValue(
+      new ApiError('Failed to assign scheduled job', {
+        status: 500,
+        body: {
+          error: 'Failed to assign scheduled job',
+          diagnostic: {
+            phase: 'commit_rpc',
+            errorCode: 'P0001',
+            errorMessage: 'failed to update every scheduled job forecast',
+          },
+        },
+        requestId: 'req_assign_diag_500',
+      }),
+    );
+
+    const { rendered } = renderSchedule(snapshot);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: betaJobId }, activatorEvent: new Event('pointerdown') });
+      dndMocks.latestContextProps.onDragEnd({
+        active: { id: betaJobId, rect: { current: {} } },
+        over: { id: `lane:${crewId}` },
+        collisions: null,
+        delta: { x: 0, y: 0 },
+      });
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
+    expect(unscheduledAfter?.textContent).toContain('Beta Deck');
+    expect(toastMocks.error).toHaveBeenCalledWith(
+      'Failed to schedule job. P0001: failed to update every scheduled job forecast. Reference: req_assign_diag_500.',
+    );
+
+    rendered.unmount();
+  });
+
   it('keeps a repaired successful assignment on the board and writes the returned schedule to cache', async () => {
     vi.useFakeTimers();
     const snapshot = boardMutationSnapshot();

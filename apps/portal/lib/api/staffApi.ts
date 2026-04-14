@@ -5,8 +5,8 @@ import { applyRouteDiagnostics, type RouteDiagnostics } from '@/lib/api/routeDia
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { NextResponse } from 'next/server';
 
-export function jsonError(message: string, status = 400, diagnostics?: RouteDiagnostics | null) {
-  return applyRouteDiagnostics(NextResponse.json({ error: message }, { status }), diagnostics);
+export function jsonError(message: string, status = 400, diagnostics?: RouteDiagnostics | null, extra?: Record<string, unknown>) {
+  return applyRouteDiagnostics(NextResponse.json({ error: message, ...(extra ?? {}) }, { status }), diagnostics);
 }
 
 export function jsonOk<T extends Record<string, unknown>>(payload: T, status = 200, diagnostics?: RouteDiagnostics | null) {

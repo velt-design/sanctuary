@@ -639,6 +639,10 @@ function memberSizeM(value: number | null | undefined, fallbackM: number): numbe
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallbackM;
 }
 
+const MODEL_SPACE_UNITS_PER_METRE = 12;
+const MODEL_SPACE_CSS_PX_PER_UNIT = 8;
+const MODEL_SPACE_VIEWBOX_PADDING = 6;
+
 type PlanFitBox = {
   x: number;
   y: number;
@@ -681,6 +685,13 @@ type DebugOutlineProps = {
   rect: SheetRect;
   className: string;
   marker: string;
+};
+
+type ResolvedModelSpaceLayout = ResolvedSheetLayout & {
+  viewBox: SheetRect;
+  viewBoxValue: string;
+  svgWidthPx: number;
+  svgHeightPx: number;
 };
 
 function getSheetDrawingField(): SheetDrawingField {
@@ -771,6 +782,35 @@ function getBoundsWidth(bounds: AnnotatedBounds): number {
 
 function getBoundsHeight(bounds: AnnotatedBounds): number {
   return Math.max(0, bounds.maxY - bounds.minY);
+}
+
+function boundsToPaddedRect(bounds: AnnotatedBounds, padding: number): SheetRect {
+  const width = Math.max(1, getBoundsWidth(bounds) + padding * 2);
+  const height = Math.max(1, getBoundsHeight(bounds) + padding * 2);
+  return {
+    x: bounds.minX - padding,
+    y: bounds.minY - padding,
+    width,
+    height,
+  };
+}
+
+function formatViewBoxNumber(value: number): string {
+  return Number.isInteger(value) ? `${value}` : value.toFixed(3).replace(/\.?0+$/, '');
+}
+
+function rectToViewBox(rect: SheetRect): string {
+  return [rect.x, rect.y, rect.width, rect.height].map(formatViewBoxNumber).join(' ');
+}
+
+function resolveModelSpaceSvgMetrics(bounds: AnnotatedBounds): Pick<ResolvedModelSpaceLayout, 'viewBox' | 'viewBoxValue' | 'svgWidthPx' | 'svgHeightPx'> {
+  const viewBox = boundsToPaddedRect(bounds, MODEL_SPACE_VIEWBOX_PADDING);
+  return {
+    viewBox,
+    viewBoxValue: rectToViewBox(viewBox),
+    svgWidthPx: Math.round(viewBox.width * MODEL_SPACE_CSS_PX_PER_UNIT),
+    svgHeightPx: Math.round(viewBox.height * MODEL_SPACE_CSS_PX_PER_UNIT),
+  };
 }
 
 function resolveBoundsPlacement(bounds: AnnotatedBounds, fitArea: SheetFitArea, verticalBias: number): LayoutOffset {
@@ -2670,6 +2710,16 @@ function measurePlanAnnotatedBounds(input: {
   scale: number;
   presentation?: ModuleDrawingPresentation;
   frame: PlanSheetFrame;
+  footprintEditor?: Pick<
+    ModuleFootprintEditorProps,
+    | 'customPolygonOverride'
+    | 'customPolygonOpen'
+    | 'customPolygonConfirmedPointCount'
+    | 'customPolygonPreviewPointKind'
+    | 'customPolygonCloseReady'
+    | 'customPolygonCloseHovered'
+    | 'hideHouseFootprint'
+  >;
 }): AnnotatedBounds {
   const { model, x, y, scale, presentation = 'sheet', frame } = input;
   const isHipCorner = model.roofType === 'hip_corner';
@@ -2725,18 +2775,30 @@ function measurePlanAnnotatedBounds(input: {
   const hipRidgeEndX = baseX + aW * 0.68;
   const attachmentSide =
     model.houseConnectionType === 'none' || !model.supportsHouseFootprints || isHipCorner ? 'rear' : model.attachmentSide;
-  const showHouseFootprint = model.houseConnectionType !== 'none';
+  const customPolygonOverrideActive = input.footprintEditor?.customPolygonOverride !== undefined;
+  const hideHouseFootprint = Boolean(input.footprintEditor?.hideHouseFootprint);
+  const showHouseFootprint = model.houseConnectionType !== 'none' && !hideHouseFootprint;
   const footprintRect = { x: baseX, y: baseY, width: aW, height: aH };
   const footprintCanvasLayout =
-    showHouseFootprint && model.supportsHouseFootprints && !isHipCorner
+    (showHouseFootprint || customPolygonOverrideActive) && model.supportsHouseFootprints && !isHipCorner
       ? resolveFootprintCanvasLayout({
-          model,
+          model: { ...model, attachmentSide },
           rect: footprintRect,
           scale,
           rotationCenter: rotationFrame.center,
           rotationTurns: 0,
+          customPolygonOverride: input.footprintEditor?.customPolygonOverride,
+          customPolygonOpen: input.footprintEditor?.customPolygonOpen,
+          customPolygonConfirmedPointCount: input.footprintEditor?.customPolygonConfirmedPointCount,
+          customPolygonPreviewPointKind: input.footprintEditor?.customPolygonPreviewPointKind,
+          customPolygonCloseReady: input.footprintEditor?.customPolygonCloseReady,
+          customPolygonCloseHovered: input.footprintEditor?.customPolygonCloseHovered,
+          hideHouseFootprint,
         })
       : null;
+  const footprintBoundsPoints = footprintCanvasLayout
+    ? [...footprintCanvasLayout.polygon, ...footprintCanvasLayout.customVertices.map((vertex) => vertex.point)]
+    : [];
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, baseX, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, baseX, bW);
   const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
@@ -2867,6 +2929,7 @@ function measurePlanAnnotatedBounds(input: {
   const localBounds = [
     ...semanticHouseSurfacePoints.map((points) => boundsFromPoints(points, 0.25)),
     ...semanticHouseLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
+    presentation === 'model' && footprintBoundsPoints.length > 0 ? boundsFromPoints(footprintBoundsPoints, 0.35) : null,
     boundsFromPoints(primaryPoints, 0.35),
     hipInner ? boundsFromPoints(hipInner, 0.35) : null,
     model.boxPerimeterEnabled ? boundsFromPoints(insetPoints, 0.35) : null,
@@ -3062,6 +3125,53 @@ function resolvePlanSheetLayout(input: {
   });
 }
 
+function getPlanModelSpaceFrame(isHipCorner: boolean): PlanSheetFrame {
+  return {
+    ...getPlanSheetFrame(isHipCorner),
+    outerField: { x: 0, y: 0, width: 0, height: 0 },
+    fitArea: { x: 0, y: 0, width: 0, height: 0 },
+    houseBandHeight: 10,
+    houseBandOffset: 2.1,
+    houseInset: 2.4,
+    fallGap: 7,
+  };
+}
+
+function resolvePlanModelSpaceLayout(
+  model: ModulePlanModel,
+  footprintEditor?: Pick<
+    ModuleFootprintEditorProps,
+    | 'customPolygonOverride'
+    | 'customPolygonOpen'
+    | 'customPolygonConfirmedPointCount'
+    | 'customPolygonPreviewPointKind'
+    | 'customPolygonCloseReady'
+    | 'customPolygonCloseHovered'
+    | 'hideHouseFootprint'
+  >,
+): ResolvedModelSpaceLayout {
+  const frame = getPlanModelSpaceFrame(model.roofType === 'hip_corner');
+  const scale = MODEL_SPACE_UNITS_PER_METRE;
+  const x = 0;
+  const y = 0;
+  const annotatedBounds = measurePlanAnnotatedBounds({ model, x, y, scale, presentation: 'model', frame, footprintEditor });
+  const svgMetrics = resolveModelSpaceSvgMetrics(annotatedBounds);
+
+  return {
+    outerField: svgMetrics.viewBox,
+    fitArea: svgMetrics.viewBox,
+    annotatedBounds,
+    x,
+    y,
+    scale,
+    houseBandHeight: frame.houseBandHeight,
+    houseBandOffset: frame.houseBandOffset,
+    houseInset: frame.houseInset,
+    fallGap: frame.fallGap,
+    ...svgMetrics,
+  };
+}
+
 function measureSectionAnnotatedBounds(input: {
   model: ModuleSectionModel;
   xLeft: number;
@@ -3071,6 +3181,7 @@ function measureSectionAnnotatedBounds(input: {
 }): AnnotatedBounds {
   const { model, xLeft, yGround, scale, presentation = 'sheet' } = input;
   const isSheet = presentation === 'sheet';
+  const isModel = presentation === 'model';
   const overhangM = sectionOverhangM(model);
   const supportXFromHouseM = sectionSupportXFromHouseM(model);
   const ledgerBeamDepthM = sectionLedgerBeamDepthM(model);
@@ -3228,12 +3339,15 @@ function measureSectionAnnotatedBounds(input: {
     }
     return [];
   })();
+  const groundLeftX = isModel ? xLeft - 8 : Math.max(8, xLeft - 8);
+  const groundRightX = isModel ? xRight + 8 : Math.min(104, xRight + 8);
+  const groundLineRightX = isModel ? xRight + 8 : Math.min(112, xRight + 8);
 
   return unionBounds([
     ...semanticHouseSurfacePoints.map((points) => boundsFromPoints(points, 0.25)),
     ...semanticHouseLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
-    boundsFromRect(Math.max(8, xLeft - 8), yGround + 1.3, Math.min(104, xRight + 8) - Math.max(8, xLeft - 8), 8),
-    boundsFromLine(Math.max(8, xLeft - 8), yGround, Math.min(112, xRight + 8), yGround, 0.25),
+    boundsFromRect(groundLeftX, yGround + 1.3, groundRightX - groundLeftX, 8),
+    boundsFromLine(groundLeftX, yGround, groundLineRightX, yGround, 0.25),
     boundsFromRect(leftPostX, yHouseUnder, postW, yGround - yHouseUnder),
     boundsFromRect(secondPostX, supportPostTopY, postW, yGround - supportPostTopY),
     boundsFromRect(ledgerX, ledgerY, leftEaveWidth, leftEaveDepth),
@@ -3403,6 +3517,29 @@ function resolveSectionSheetLayout(input: {
   });
 }
 
+function resolveSectionModelSpaceLayout(model: ModuleSectionModel): ResolvedModelSpaceLayout {
+  const scale = MODEL_SPACE_UNITS_PER_METRE;
+  const extents = getSectionRealExtents(model);
+  const x = 0;
+  const y = extents.heightM * scale;
+  const annotatedBounds = measureSectionAnnotatedBounds({ model, xLeft: x, yGround: y, scale, presentation: 'model' });
+  const svgMetrics = resolveModelSpaceSvgMetrics(annotatedBounds);
+
+  return {
+    outerField: svgMetrics.viewBox,
+    fitArea: svgMetrics.viewBox,
+    annotatedBounds,
+    x,
+    y,
+    scale,
+    houseBandHeight: 0,
+    houseBandOffset: 0,
+    houseInset: 0,
+    fallGap: 0,
+    ...svgMetrics,
+  };
+}
+
 function PlanSvg({
   model,
   idBase,
@@ -3439,7 +3576,14 @@ function PlanSvg({
   const planSheetFrame = isSheet ? getPlanSheetFrame(isHipCorner) : null;
   const total = getPlanRealExtents(model);
   const sheetLayout = isSheet ? resolvePlanSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
-  const layout = sheetLayout ?? resolvePlanFitBox(total.widthM, total.heightM, presentation, isHipCorner);
+  const modelSpaceLayout = isModel ? resolvePlanModelSpaceLayout(model, footprintEditor) : null;
+  const layout = sheetLayout ?? modelSpaceLayout ?? resolvePlanFitBox(total.widthM, total.heightM, presentation, isHipCorner);
+  const modelSvgStyle = modelSpaceLayout
+    ? {
+        width: `${modelSpaceLayout.svgWidthPx}px`,
+        height: `${modelSpaceLayout.svgHeightPx}px`,
+      }
+    : undefined;
   const scale = layout.scale;
   const rotationFrame = resolvePlanRotationFrame({
     x: layout.x,
@@ -3528,9 +3672,11 @@ function PlanSvg({
       return rectToPoints(x, y, 0.1, 0.1);
     }
     const houseBottomY = y - houseBandOffset;
-    const houseTopY = Math.max(isSheet ? (sheetLayout?.outerField.y ?? 0) + 4.8 : 4, houseBottomY - houseBandHeight);
-    const houseLeftX = Math.max(isSheet ? (sheetLayout?.fitArea.x ?? 0) + 1.8 : 6, x - houseInset);
-    const houseRightX = Math.min(isSheet ? (sheetLayout?.fitArea.x ?? 0) + (sheetLayout?.fitArea.width ?? 114) - 1.8 : 114, x + Math.max(aW, bW) + houseInset);
+    const houseTopY = isModel ? houseBottomY - houseBandHeight : Math.max(isSheet ? (sheetLayout?.outerField.y ?? 0) + 4.8 : 4, houseBottomY - houseBandHeight);
+    const houseLeftX = isModel ? x - houseInset : Math.max(isSheet ? (sheetLayout?.fitArea.x ?? 0) + 1.8 : 6, x - houseInset);
+    const houseRightX = isModel
+      ? x + Math.max(aW, bW) + houseInset
+      : Math.min(isSheet ? (sheetLayout?.fitArea.x ?? 0) + (sheetLayout?.fitArea.width ?? 114) - 1.8 : 114, x + Math.max(aW, bW) + houseInset);
     return rectToPoints(houseLeftX, houseTopY, houseRightX - houseLeftX, houseBottomY - houseTopY);
   })();
   const effectiveHousePolygon = housePolygon.length ? housePolygon : rectToPoints(x, y, 0.1, 0.1);
@@ -3553,6 +3699,8 @@ function PlanSvg({
   const isEditingFootprint = canEditFootprint && Boolean(footprintEditor?.isEditing);
   const houseClipRect = isSheet
     ? (sheetLayout?.outerField ?? getSheetDrawingField())
+    : isModel && modelSpaceLayout
+      ? modelSpaceLayout.viewBox
     : { x: 0, y: 0, width: 120, height: 90 };
   const semanticPlanHouseSurfaces = (model.houseContext?.surfaces ?? []).map((surface) => ({
     ...surface,
@@ -3609,15 +3757,16 @@ function PlanSvg({
   }));
 
   const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
+  const planFallGap = isSheet ? fallGap - 0.55 : layout.fallGap;
   const fallAnchor =
     attachmentSide === 'rear' || attachmentSide === 'front'
       ? attachmentFrameForRect('right', {
-          x: x + Math.max(aW, bW) + (isSheet ? fallGap - 0.55 : layout.fallGap),
+          x: x + Math.max(aW, bW) + planFallGap,
           y,
           width: 0,
           height: isHipCorner ? aH + bH : aH,
         })
-      : attachmentFrameForRect('front', { x, y: (isHipCorner ? bottomY : y + aH) + (isSheet ? fallGap - 0.55 : layout.fallGap), width: aW, height: 0 });
+      : attachmentFrameForRect('front', { x, y: (isHipCorner ? bottomY : y + aH) + planFallGap, width: aW, height: 0 });
   const fallStart = pointOnAttachmentFrame(fallAnchor, isSheet ? 1.5 : 1, 0);
   const fallEnd = pointOnAttachmentFrame(fallAnchor, Math.max(isSheet ? 1.5 : 1, fallAnchor.length - (isSheet ? 1.5 : 1)), 0);
   const fallLabelPoint = pointOnAttachmentFrame(fallAnchor, fallAnchor.length / 2, fallIsHorizontal ? (isSheet ? 0.8 : 2.2) : (isSheet ? 0.62 : 2.3));
@@ -3625,9 +3774,9 @@ function PlanSvg({
     ? { bottom: 7.8, secondary: 5.4, tertiary: 6.15, side: 5.6, hipSide: 5.9 }
     : { bottom: 7.1, secondary: 5.1, tertiary: 5.8, side: 7.0, hipSide: 7.2 };
 
-  const dimBaseY = Math.min(87.4, bottomY + dimensionOffsets.bottom);
-  const secondaryDimY = Math.min(88.5, dimBaseY + dimensionOffsets.secondary);
-  const rafterDimY = Math.min(88.9, dimBaseY + dimensionOffsets.tertiary);
+  const dimBaseY = isModel ? bottomY + dimensionOffsets.bottom : Math.min(87.4, bottomY + dimensionOffsets.bottom);
+  const secondaryDimY = isModel ? dimBaseY + dimensionOffsets.secondary : Math.min(88.5, dimBaseY + dimensionOffsets.secondary);
+  const rafterDimY = isModel ? dimBaseY + dimensionOffsets.tertiary : Math.min(88.9, dimBaseY + dimensionOffsets.tertiary);
   const yTopInner = y + topFrameW;
   const yBottomInner = y + aH - gutterW;
   const sheetFallAnnotationSpec = isSheet
@@ -3716,7 +3865,7 @@ function PlanSvg({
   const leftDimensionLabel = formatMetres(primaryDimensionSwap ? model.lengthA : model.spanA);
   const bottomDimensionField = interactiveFields?.[primaryDimensionSwap ? 'plan:spanA' : 'plan:lengthA'];
   const leftDimensionField = interactiveFields?.[primaryDimensionSwap ? 'plan:lengthA' : 'plan:spanA'];
-  const pinnedBottomDimensionY = Math.min(87.4, rotatedPrimaryBounds.maxY + dimensionOffsets.bottom);
+  const pinnedBottomDimensionY = isModel ? rotatedPrimaryBounds.maxY + dimensionOffsets.bottom : Math.min(87.4, rotatedPrimaryBounds.maxY + dimensionOffsets.bottom);
   const pinnedLeftDimensionX = rotatedPrimaryBounds.minX - dimensionOffsets.side;
   const housePopoverStyle =
     rotatedHouseBounds
@@ -3805,7 +3954,11 @@ function PlanSvg({
   return (
     <>
       <svg
-        viewBox="0 0 120 90"
+        viewBox={modelSpaceLayout?.viewBoxValue ?? '0 0 120 90'}
+        width={modelSpaceLayout?.svgWidthPx}
+        height={modelSpaceLayout?.svgHeightPx}
+        style={modelSvgStyle}
+        data-model-space-svg={isModel ? 'plan' : undefined}
         role="img"
         aria-label="Module plan view"
         ref={(node) => {
@@ -3817,7 +3970,7 @@ function PlanSvg({
         onPointerLeave={() => footprintEditor?.onCanvasPointHover?.(null)}
         className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
           presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
-        } ${isSheetFootprintEditor ? styles.modulePlanSvgSheetFootprint : ''} ${
+        } ${isModel ? styles.modulePlanSvgModel : ''} ${isSheetFootprintEditor ? styles.modulePlanSvgSheetFootprint : ''} ${
           showHousePopover ? styles.modulePlanSvgSheetFootprintHover : ''
         } ${showFootprintControls && isSheetFootprintEditor ? styles.modulePlanSvgSheetFootprintEditing : ''} ${
           showPergolaPopover ? styles.modulePlanSvgSheetPergolaHover : ''
@@ -4676,7 +4829,15 @@ function SectionSvg({
   showDebugOverlays?: boolean;
 }) {
   const isSheet = presentation === 'sheet';
+  const isModel = presentation === 'model';
   const sectionSheetLayout = isSheet ? resolveSectionSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
+  const modelSpaceLayout = isModel ? resolveSectionModelSpaceLayout(model) : null;
+  const modelSvgStyle = modelSpaceLayout
+    ? {
+        width: `${modelSpaceLayout.svgWidthPx}px`,
+        height: `${modelSpaceLayout.svgHeightPx}px`,
+      }
+    : undefined;
   const overhangM = sectionOverhangM(model);
   const totalSpanM = Math.max(model.spanA, 0.001);
   const supportXFromHouseM = sectionSupportXFromHouseM(model);
@@ -4733,6 +4894,7 @@ function SectionSvg({
   const fixedScale = isSheet && drawingScale.mode === 'fixed' ? getViewBoxUnitsPerMetreAtScale(drawingScale.ratio, sheetViewportMm) : null;
   const scale =
     sectionSheetLayout?.scale ??
+    modelSpaceLayout?.scale ??
     fixedScale ??
     (() => {
       const scaleX = chartWidth / safeSpanM;
@@ -4740,8 +4902,11 @@ function SectionSvg({
       return Math.min(scaleX, scaleY);
     })();
   const drawHeight = maxHeightM * scale;
-  const topOffset = sectionSheetLayout ? sectionSheetLayout.y - drawHeight : topMargin + Math.max(0, availableHeight - drawHeight) * fitFrame.verticalBias;
-  const yGround = sectionSheetLayout?.y ?? topOffset + drawHeight;
+  const topOffset =
+    sectionSheetLayout || modelSpaceLayout
+      ? (sectionSheetLayout?.y ?? modelSpaceLayout?.y ?? 0) - drawHeight
+      : topMargin + Math.max(0, availableHeight - drawHeight) * fitFrame.verticalBias;
+  const yGround = sectionSheetLayout?.y ?? modelSpaceLayout?.y ?? topOffset + drawHeight;
 
   const postW = memberSizeM(model.postWidthM, 0.1) * scale;
   const rafterDepth = memberSizeM(model.rafterDepthM, 0.15) * scale;
@@ -4757,7 +4922,7 @@ function SectionSvg({
   const ridgeBeamWidth = ridgeBeamWidthM * scale;
 
   const drawWidth = safeSpanM * scale;
-  const xLeft = sectionSheetLayout?.x ?? (fitFrame.fitArea.x + (chartWidth - drawWidth) / 2);
+  const xLeft = sectionSheetLayout?.x ?? modelSpaceLayout?.x ?? (fitFrame.fitArea.x + (chartWidth - drawWidth) / 2);
   const xRight = xLeft + model.spanA * scale;
   const xSupport = model.sectionKind === 'mono' ? xLeft + supportXFromHouseM * scale : xRight;
   const ridgeX = (xLeft + xRight) / 2;
@@ -4792,16 +4957,18 @@ function SectionSvg({
   const gableLeftRafterStartX = ledgerX + leftEaveWidth;
   const gableRightRafterEndX = xRight - rightEaveBeamWidth;
 
-  const leftDimX = Math.max(6, xLeft - (isSheet ? 9.8 : 8.6));
-  const rightDimX = Math.min(114, xRight + (isSheet ? 10.6 : 9.4));
+  const leftDimX = isModel ? xLeft - 8.6 : Math.max(6, xLeft - (isSheet ? 9.8 : 8.6));
+  const rightDimX = isModel ? xRight + 9.4 : Math.min(114, xRight + (isSheet ? 10.6 : 9.4));
   const spanAnchorLeftY = yHouseUnder;
   const spanAnchorSupportY = ySupportUnder;
   const spanAnchorRightY = yOuterGutterUnder;
   const spanDatumY = Math.max(spanAnchorLeftY, spanAnchorSupportY, spanAnchorRightY);
-  const spanDimY = Math.min(89.2, Math.max(yGround + (isSheet ? 10.9 : 10.2), spanDatumY + (isSheet ? 9.4 : 8.4)));
+  const spanDimY = isModel
+    ? Math.max(yGround + 10.2, spanDatumY + 8.4)
+    : Math.min(89.2, Math.max(yGround + (isSheet ? 10.9 : 10.2), spanDatumY + (isSheet ? 9.4 : 8.4)));
   const overhangDimY = Math.max(spanAnchorRightY + (isSheet ? 4.9 : 4.2), spanDimY - (isSheet ? 5.8 : 5.2));
-  const pitchLabelY = isSheet ? spanDimY + 6.2 : 88;
-  const metaLabelY = isSheet ? pitchLabelY - 3.2 : 84.8;
+  const pitchLabelY = isSheet || isModel ? spanDimY + 6.2 : 88;
+  const metaLabelY = isSheet || isModel ? pitchLabelY - 3.2 : 84.8;
   const roofLengthLabelGap = isSheet ? 1.6 : 1.2;
   const pitchInteractiveField = interactiveFields?.['section:pitch'];
 
@@ -4903,15 +5070,22 @@ function SectionSvg({
     end: sectionHousePointToSvg(line.line.end, xLeft, yGround, scale),
   }));
   const hasSemanticSectionHouseContext = semanticSectionHouseSurfaces.length > 0 || semanticSectionHouseLines.length > 0;
+  const groundLeftX = isModel ? xLeft - 8 : Math.max(8, xLeft - 8);
+  const groundRightX = isModel ? xRight + 8 : Math.min(104, xRight + 8);
+  const groundLineRightX = isModel ? xRight + 8 : Math.min(112, xRight + 8);
 
   return (
     <svg
-      viewBox="0 0 120 90"
+      viewBox={modelSpaceLayout?.viewBoxValue ?? '0 0 120 90'}
+      width={modelSpaceLayout?.svgWidthPx}
+      height={modelSpaceLayout?.svgHeightPx}
+      style={modelSvgStyle}
+      data-model-space-svg={isModel ? 'section' : undefined}
       role="img"
       aria-label="Module section view"
       className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
         presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
-      }`}
+      } ${isModel ? styles.modulePlanSvgModel : ''}`}
     >
       {showDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-section" /> : null}
 
@@ -4952,8 +5126,8 @@ function SectionSvg({
         </g>
       ) : null}
 
-      <rect x={Math.max(8, xLeft - 8)} y={yGround + 1.3} width={Math.min(104, xRight + 8) - Math.max(8, xLeft - 8)} height={8} className={styles.moduleSectionGroundFill} />
-      <line x1={Math.max(8, xLeft - 8)} y1={yGround} x2={Math.min(112, xRight + 8)} y2={yGround} className={styles.moduleSectionGround} />
+      <rect x={groundLeftX} y={yGround + 1.3} width={groundRightX - groundLeftX} height={8} className={styles.moduleSectionGroundFill} />
+      <line x1={groundLeftX} y1={yGround} x2={groundLineRightX} y2={yGround} className={styles.moduleSectionGround} />
 
       {hasSemanticSectionHouseContext
         ? semanticSectionHouseSurfaces.map((surface) => (

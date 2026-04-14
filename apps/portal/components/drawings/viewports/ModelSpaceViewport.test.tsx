@@ -320,7 +320,7 @@ describe('ModelSpaceViewport', () => {
     const onViewportTransformChange = vi.fn();
     const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
       if (this instanceof HTMLElement && this.dataset.modelSpaceScroller !== undefined) return makeRect(0, 0, 600, 400);
-      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 1200, 900);
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 480, 360);
       return makeRect(0, 0, 0, 0);
     });
 
@@ -345,7 +345,7 @@ describe('ModelSpaceViewport', () => {
 
     expect(rendered.container.querySelector('[data-house-plan-surface="footprint"]')).not.toBeNull();
     const initialFit = onViewportTransformChange.mock.calls.at(-1)?.[0];
-    expect(initialFit?.zoom).toBeCloseTo(0.391, 3);
+    expect(initialFit?.zoom).toBeCloseTo(0.978, 3);
     expect(initialFit?.panX).toBeCloseTo(65.333, 3);
     expect(initialFit?.panY).toBeCloseTo(24, 3);
 
@@ -353,7 +353,7 @@ describe('ModelSpaceViewport', () => {
     clickButtonByText(rendered.container, 'Reset');
 
     const resetFit = onViewportTransformChange.mock.calls.at(-1)?.[0];
-    expect(resetFit?.zoom).toBeCloseTo(0.391, 3);
+    expect(resetFit?.zoom).toBeCloseTo(0.978, 3);
     expect(resetFit?.panX).toBeCloseTo(65.333, 3);
     expect(resetFit?.panY).toBeCloseTo(24, 3);
 

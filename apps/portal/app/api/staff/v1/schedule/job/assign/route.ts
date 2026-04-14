@@ -1,5 +1,5 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
-import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn, type RouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
 import { commitAssignJob } from '@/lib/scheduling/scheduleCommands';
 import {
@@ -32,9 +32,29 @@ type ForecastUpdate = {
 };
 
 type AssignmentKind = 'new_assignment' | 'existing_repair' | 'move';
+type AssignFailurePhase = 'load_scheduled_job' | 'load_project' | 'load_estimates' | 'load_schedule_context' | 'commit_rpc';
+
+type AssignDiagnostic = {
+  phase: AssignFailurePhase;
+  requestId: string;
+  assignmentKind?: AssignmentKind;
+  targetRawForecastCount?: number;
+  targetForecastCount?: number;
+  targetForecastNonUuidCount?: number;
+  sourceRawForecastCount?: number;
+  sourceForecastCount?: number;
+  sourceForecastNonUuidCount?: number;
+  targetPositionCount?: number;
+  initialForecastPresent?: boolean;
+  sanitizedTempForecastPresent?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  errorDetails?: string;
+  errorHint?: string;
+};
 
 function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value.trim());
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim());
 }
 
 function tempId(prefix: string): string {
@@ -43,6 +63,58 @@ function tempId(prefix: string): string {
 
 function errorMessage(error: unknown): string {
   return typeof (error as { message?: unknown })?.message === 'string' ? ((error as { message?: string }).message ?? '').trim() : '';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function assignErrorDetails(error: unknown): Pick<AssignDiagnostic, 'errorCode' | 'errorMessage' | 'errorDetails' | 'errorHint'> {
+  if (error instanceof Error) {
+    return { errorMessage: error.message || undefined };
+  }
+  if (typeof error === 'string' && error.trim()) {
+    return { errorMessage: error.trim() };
+  }
+  if (!isRecord(error)) return {};
+
+  const code = typeof error.code === 'string' && error.code.trim() ? error.code.trim() : undefined;
+  const message = typeof error.message === 'string' && error.message.trim() ? error.message.trim() : undefined;
+  const details = typeof error.details === 'string' && error.details.trim() ? error.details.trim() : undefined;
+  const hint = typeof error.hint === 'string' && error.hint.trim() ? error.hint.trim() : undefined;
+  return {
+    errorCode: code,
+    errorMessage: message,
+    errorDetails: details,
+    errorHint: hint,
+  };
+}
+
+function assignFailureDiagnostic(
+  diagnostics: RouteDiagnostics,
+  phase: AssignFailurePhase,
+  error?: unknown,
+  extra?: Partial<AssignDiagnostic>,
+): AssignDiagnostic {
+  return {
+    ...(extra ?? {}),
+    phase,
+    requestId: diagnostics.requestId,
+    ...assignErrorDetails(error),
+  };
+}
+
+function jsonAssignFailure(
+  message: string,
+  status: number,
+  diagnostics: RouteDiagnostics,
+  phase: AssignFailurePhase,
+  error?: unknown,
+  extra?: Partial<AssignDiagnostic>,
+) {
+  return jsonError(message, status, diagnostics, {
+    diagnostic: assignFailureDiagnostic(diagnostics, phase, error, extra),
+  });
 }
 
 function isOldAssignRepairRpcError(error: unknown): boolean {
@@ -77,6 +149,10 @@ function splitNewAssignmentForecast(input: {
     targetForecastUpdates: input.updates.filter((update) => update.id !== input.jobRecordId),
     initialForecast,
   };
+}
+
+function filterUuidForecastUpdates(updates: ForecastUpdate[]): ForecastUpdate[] {
+  return updates.filter((update) => isUuid(update.id));
 }
 
 function fallbackExistingJobModel(input: {
@@ -141,7 +217,7 @@ export async function POST(req: Request) {
       return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
     logPortalServerError(diagnostics, { status: 500, message: 'Failed to load scheduled job', error: existingRes.error });
-    return jsonError('Failed to load scheduled job', 500, diagnostics);
+    return jsonAssignFailure('Failed to load scheduled job', 500, diagnostics, 'load_scheduled_job', existingRes.error);
   }
   existingJob = existingRes.data ?? null;
 
@@ -158,7 +234,7 @@ export async function POST(req: Request) {
         return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
       }
       logPortalServerError(diagnostics, { status: 500, message: 'Failed to load project', error: projectRes.error });
-      return jsonError('Failed to load project', 500, diagnostics);
+      return jsonAssignFailure('Failed to load project', 500, diagnostics, 'load_project', projectRes.error);
     }
     if (!projectRes.data) {
       logPortalServerWarn(diagnostics, {
@@ -189,7 +265,7 @@ export async function POST(req: Request) {
         return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
       }
       logPortalServerError(diagnostics, { status: 500, message: 'Failed to load estimates', error: estimatesRes.error });
-      return jsonError('Failed to load estimates', 500, diagnostics);
+      return jsonAssignFailure('Failed to load estimates', 500, diagnostics, 'load_estimates', estimatesRes.error);
     }
     const estimates = Array.isArray(estimatesRes.data) ? estimatesRes.data : [];
     const latest = getLatestSchedulableEstimate(estimates as any);
@@ -205,7 +281,7 @@ export async function POST(req: Request) {
       return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
     logPortalServerError(diagnostics, { status: 500, message: 'Failed to load schedule data', error: err });
-    return jsonError('Failed to load schedule data', 500, diagnostics);
+    return jsonAssignFailure('Failed to load schedule data', 500, diagnostics, 'load_schedule_context', err);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
@@ -420,25 +496,46 @@ export async function POST(req: Request) {
     jobRecordId,
     hasExistingJob: Boolean(existingJob),
   });
+  const targetForecastUpdatesForCommit = filterUuidForecastUpdates(targetForecastCommit.targetForecastUpdates);
+  const sourceForecastUpdatesForCommit = filterUuidForecastUpdates(sourceForecastUpdates);
+  const targetForecastNonUuidCount = targetForecastCommit.targetForecastUpdates.length - targetForecastUpdatesForCommit.length;
+  const sourceForecastNonUuidCount = sourceForecastUpdates.length - sourceForecastUpdatesForCommit.length;
   const targetPositions = applyScheduleItemPositions(items.filter((item) => item.id !== newItem.id));
   const assignCommitDiagnostics = {
     assignmentKind,
     targetRawForecastCount: afterRecompute.job_updates.length,
-    targetForecastCount: targetForecastCommit.targetForecastUpdates.length,
-    targetForecastNonUuidCount: targetForecastCommit.targetForecastUpdates.filter((update) => !isUuid(update.id)).length,
-    sourceForecastCount: sourceForecastUpdates.length,
-    sourceForecastNonUuidCount: sourceForecastUpdates.filter((update) => !isUuid(update.id)).length,
+    targetForecastCount: targetForecastUpdatesForCommit.length,
+    targetForecastNonUuidCount,
+    sourceRawForecastCount: sourceForecastUpdates.length,
+    sourceForecastCount: sourceForecastUpdatesForCommit.length,
+    sourceForecastNonUuidCount,
     targetPositionCount: targetPositions.length,
     initialForecastPresent: Boolean(targetForecastCommit.initialForecast),
     sanitizedTempForecastPresent: Boolean(targetForecastCommit.initialForecast?.id.startsWith('temp_job_')),
   };
+  if (targetForecastNonUuidCount > 0 || sourceForecastNonUuidCount > 0) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.forecast_updates_sanitized',
+      status: 200,
+      message: 'Filtered non-UUID forecast updates before assign commit',
+      extra: {
+        reason: 'non_uuid_forecast_updates_filtered',
+        ...assignCommitDiagnostics,
+        jobId,
+        crewId,
+        scheduledJobId: existingScheduledJobId,
+        sourceCrewId,
+        requestedPosition: position,
+      },
+    });
+  }
 
   const commitRes = await commitAssignJob({
     diagnostics,
     targetCrewId: crewId,
     targetInsertPosition: position,
     targetPositions,
-    targetForecastUpdates: targetForecastCommit.targetForecastUpdates,
+    targetForecastUpdates: targetForecastUpdatesForCommit,
     ...(existingJob
       ? { scheduledJobId: String(existingJob.id) }
       : {
@@ -453,7 +550,7 @@ export async function POST(req: Request) {
             sourceCrewId,
             sourceJobItemId: sourceItemId,
             sourcePositions,
-            sourceForecastUpdates,
+            sourceForecastUpdates: sourceForecastUpdatesForCommit,
           },
         }
       : null),
@@ -500,10 +597,11 @@ export async function POST(req: Request) {
     };
     if (commitRes.status === 501) {
       logPortalServerWarn(diagnostics, logInput);
+      return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
     } else {
       logPortalServerError(diagnostics, logInput);
     }
-    return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+    return jsonAssignFailure(commitRes.responseMessage, commitRes.status, diagnostics, 'commit_rpc', commitRes.error, assignCommitDiagnostics);
   }
 
   const scheduledJobId = commitRes.data.scheduled_job_id;

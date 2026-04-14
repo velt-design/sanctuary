@@ -3590,10 +3590,34 @@ export default function ScheduleClient({
     }
   }
 
+  function isObjectRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  }
+
+  function compactAssignDiagnosticText(value: string): string {
+    const trimmed = value.trim();
+    return trimmed.length > 180 ? `${trimmed.slice(0, 177)}...` : trimmed;
+  }
+
+  function assignDiagnosticMessage(body: unknown): string | null {
+    const diagnostic = isObjectRecord(body) && isObjectRecord(body.diagnostic) ? body.diagnostic : null;
+    if (!diagnostic) return null;
+
+    const rawCode = typeof diagnostic.errorCode === 'string' ? diagnostic.errorCode.trim() : '';
+    const rawMessage = typeof diagnostic.errorMessage === 'string' ? diagnostic.errorMessage.trim() : '';
+    const code = rawCode ? compactAssignDiagnosticText(rawCode) : '';
+    const message = rawMessage ? compactAssignDiagnosticText(rawMessage) : '';
+    if (code && message) return `${code}: ${message}`;
+    return code || message || null;
+  }
+
   function formatAssignMutationErrorToast(error: unknown, fallback: string): string {
     if (error instanceof ApiError) {
       if ([400, 404, 409, 501].includes(error.status) && error.message) return error.message;
-      if (error.status >= 500 && error.requestId) return `${fallback} Reference: ${error.requestId}.`;
+      if (error.status >= 500 && error.requestId) {
+        const diagnosticMessage = assignDiagnosticMessage(error.body);
+        return diagnosticMessage ? `${fallback} ${diagnosticMessage}. Reference: ${error.requestId}.` : `${fallback} Reference: ${error.requestId}.`;
+      }
     }
     return fallback;
   }

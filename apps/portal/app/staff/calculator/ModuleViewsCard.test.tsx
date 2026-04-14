@@ -161,6 +161,22 @@ function extractDebugRect(markup: string, marker: string): { minX: number; maxX:
   };
 }
 
+function extractSvgTag(markup: string, ariaLabel: string): string {
+  const labelIndex = markup.indexOf(`aria-label="${ariaLabel}"`);
+  expect(labelIndex).toBeGreaterThanOrEqual(0);
+  const start = markup.lastIndexOf('<svg', labelIndex);
+  const end = markup.indexOf('>', labelIndex);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return markup.slice(start, end + 1);
+}
+
+function extractSvgNumberAttribute(svgTag: string, attr: string): number {
+  const match = svgTag.match(new RegExp(`${attr}="([^"]+)"`));
+  expect(match?.[1]).toBeTruthy();
+  return Number.parseFloat(match?.[1] ?? '0');
+}
+
 function extractPlanPrimaryDimensionGroup(markup: string, side: 'bottom' | 'left'): string {
   const marker = `data-plan-primary-dim="${side}"`;
   const markerIndex = markup.indexOf(marker);
@@ -235,6 +251,48 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-debug-crop="outer-section"');
     expect(markup).toContain('data-debug-crop="fit-section"');
     expect(markup).toContain('data-debug-crop="bounds-section"');
+  });
+
+  it('renders plan model space with a content-sized SVG viewport', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+
+    expect(svgTag).toContain('data-model-space-svg="plan"');
+    expect(svgTag).not.toContain('viewBox="0 0 120 90"');
+    expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
+    expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
+    expect(markup).not.toContain('data-debug-crop=');
+  });
+
+  it('renders section model space with a content-sized SVG viewport', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module section view');
+
+    expect(svgTag).toContain('data-model-space-svg="section"');
+    expect(svgTag).not.toContain('viewBox="0 0 120 90"');
+    expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
+    expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
+    expect(markup).not.toContain('data-debug-crop=');
   });
 
   it('centers plan sheet geometry vertically within the viewport', () => {

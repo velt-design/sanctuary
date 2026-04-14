@@ -109,12 +109,13 @@
 }
 
 .scaleFrame {
-  width: 100%;
+  width: max-content;
   transform-origin: top left;
   will-change: transform;
 }
 
 .canvas {
+  width: max-content;
   padding: 14px;
 }
 
@@ -122,6 +123,11 @@
   width: 100%;
   height: auto;
   display: block;
+}
+
+.canvas :global(svg[data-model-space-svg]) {
+  width: auto;
+  max-width: none;
 }
 
 .canvasControls {
