@@ -19,6 +19,7 @@ const recomputeForCrew = vi.fn();
 
 const scheduledJobsByProjectMaybeSingle = vi.fn();
 const projectsMaybeSingle = vi.fn();
+const estimatesSelect = vi.fn();
 const estimatesEq = vi.fn();
 const rpc = vi.fn();
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
@@ -75,6 +76,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     recomputeForCrew.mockReset();
     scheduledJobsByProjectMaybeSingle.mockReset();
     projectsMaybeSingle.mockReset();
+    estimatesSelect.mockReset();
     estimatesEq.mockReset();
     rpc.mockReset();
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -107,12 +109,15 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
           }
           if (table === 'estimates') {
             return {
-              select: () => ({
-                eq: (column: string, value: string) => {
-                  if (column !== 'project_id') throw new Error(`Unexpected estimates column ${column}`);
-                  return estimatesEq(value);
-                },
-              }),
+              select: (columns: string) => {
+                estimatesSelect(columns);
+                return {
+                  eq: (column: string, value: string) => {
+                    if (column !== 'project_id') throw new Error(`Unexpected estimates column ${column}`);
+                    return estimatesEq(value);
+                  },
+                };
+              },
             };
           }
           throw new Error(`Unexpected table ${table}`);
@@ -128,7 +133,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     durationDaysFromEstimate.mockReturnValue(3);
     scheduledJobsByProjectMaybeSingle.mockResolvedValue({ data: null, error: null });
     projectsMaybeSingle.mockResolvedValue({ data: { id: 'project-1', pipeline_stage: 'DEPOSIT' }, error: null });
-    estimatesEq.mockResolvedValue({ data: [{ id: 'est-1', project_id: 'project-1' }], error: null });
+    estimatesEq.mockResolvedValue({ data: [{ id: 'est-1', project_id: 'project-1', duration_days: 2, crew_hours: 16 }], error: null });
     loadScheduleContext.mockResolvedValue({
       today: '2026-04-10',
       calendar: {},
@@ -283,6 +288,38 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
       next_available_date: '2026-04-19',
     });
     expect(res.headers.get('x-portal-request-id')).toBe('req_assign_ok');
+  });
+
+  it('uses selected estimate duration fields for new assignments', async () => {
+    estimatesEq.mockResolvedValueOnce({
+      data: [{ id: 'est-duration', project_id: 'project-1', duration_days: 1.5233333333333334, crew_hours: 13.71 }],
+      error: null,
+    });
+    getLatestSchedulableEstimate.mockImplementationOnce((estimates: any[]) => estimates[0]);
+    durationDaysFromEstimate.mockImplementationOnce((estimate: { duration_days: number }) => Math.ceil(estimate.duration_days));
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_duration' },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(estimatesSelect).toHaveBeenCalledWith(expect.stringContaining('duration_days'));
+    expect(estimatesSelect).toHaveBeenCalledWith(expect.stringContaining('crew_hours'));
+    expect(durationDaysFromEstimate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        duration_days: 1.5233333333333334,
+        crew_hours: 13.71,
+      }),
+    );
+    const [, rpcArgs] = rpc.mock.calls[0];
+    expect(rpcArgs.p_assignment).toEqual({
+      job_id: 'project-1',
+      forecast_duration_days: 2,
+    });
   });
 
   it('moves new assignment temp forecasts into p_assignment before commit', async () => {
@@ -781,7 +818,7 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
   });
 
   it('returns 500 on a generic RPC failure', async () => {
-    rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    rpc.mockResolvedValueOnce({ data: null, error: { code: 'P0001', message: 'boom', details: 'detail text', hint: 'hint text' } });
 
     const mod = await import('./route');
     const res = await mod.POST(
@@ -801,9 +838,22 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
         requestId: 'req_assign_fail',
         status: 500,
         reason: 'commit_failed',
+        assignmentKind: 'new_assignment',
+        targetRawForecastCount: 1,
+        targetForecastCount: 1,
+        targetForecastNonUuidCount: 1,
+        sourceForecastCount: 0,
+        sourceForecastNonUuidCount: 0,
+        targetPositionCount: 1,
+        initialForecastPresent: false,
+        sanitizedTempForecastPresent: false,
         jobId: 'project-1',
         crewId: 'crew-new',
         requestedPosition: 1,
+        errorCode: 'P0001',
+        errorMessage: 'boom',
+        errorDetails: 'detail text',
+        errorHint: 'hint text',
       }),
     );
   });

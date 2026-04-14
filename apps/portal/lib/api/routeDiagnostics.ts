@@ -41,7 +41,11 @@ function durationMs(context: PortalServerLogContext): number | undefined {
   return Number((performance.now() - context.startedAt).toFixed(1));
 }
 
-function errorDetails(error: unknown): { errorName?: string; errorMessage?: string } {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function errorDetails(error: unknown): { errorName?: string; errorMessage?: string; errorCode?: string; errorDetails?: string; errorHint?: string } {
   if (error instanceof Error) {
     return {
       errorName: error.name || undefined,
@@ -50,6 +54,20 @@ function errorDetails(error: unknown): { errorName?: string; errorMessage?: stri
   }
   if (typeof error === 'string' && error.trim()) {
     return { errorMessage: error.trim() };
+  }
+  if (isRecord(error)) {
+    const name = typeof error.name === 'string' && error.name.trim() ? error.name.trim() : undefined;
+    const message = typeof error.message === 'string' && error.message.trim() ? error.message.trim() : undefined;
+    const code = typeof error.code === 'string' && error.code.trim() ? error.code.trim() : undefined;
+    const details = typeof error.details === 'string' && error.details.trim() ? error.details.trim() : undefined;
+    const hint = typeof error.hint === 'string' && error.hint.trim() ? error.hint.trim() : undefined;
+    return {
+      errorName: name,
+      errorMessage: message,
+      errorCode: code,
+      errorDetails: details,
+      errorHint: hint,
+    };
   }
   return {};
 }

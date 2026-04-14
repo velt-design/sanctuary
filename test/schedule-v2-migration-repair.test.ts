@@ -29,4 +29,21 @@ describe('schedule v2 repair migrations', () => {
     expect(source).toMatch(/values \([\s\S]*v_assignment\.forecast_start,[\s\S]*v_assignment\.forecast_end_exclusive,[\s\S]*v_assignment\.forecast_duration_days/i);
     expect(source).toMatch(/notify pgrst, 'reload schema'/i);
   });
+
+  it('filters non-UUID forecast rows before bulk forecast updates', () => {
+    const source = readFileSync(
+      path.join(process.cwd(), 'supabase/migrations/20260414_000004_schedule_v2_assign_filter_non_uuid_forecasts.sql'),
+      'utf8',
+    );
+
+    expect(source).toMatch(/v_uuid_pattern text := '\^\[0-9a-f\]\{8\}/i);
+    expect(source).toMatch(/from jsonb_array_elements\(v_target_forecast_payload\)[\s\S]*where coalesce\(forecast_rows\.row_data->>'id', ''\) !~\* v_uuid_pattern/i);
+    expect(source).toMatch(/from jsonb_array_elements\(v_target_forecast_payload\) with ordinality as forecast_elements\(row_data, ordinality\)/i);
+    expect(source).toMatch(/cross join lateral jsonb_to_record\(forecast_elements\.row_data\) as forecast_rows\([\s\S]*id text,/i);
+    expect(source).toMatch(/coalesce\(v_assignment\.forecast_start, v_initial_forecast_start\)/i);
+    expect(source).toMatch(/where coalesce\(target_rows\.row_data->>'id', ''\) ~\* v_uuid_pattern/i);
+    expect(source).toMatch(/where coalesce\(source_rows\.row_data->>'id', ''\) ~\* v_uuid_pattern/i);
+    expect(source).toMatch(/from jsonb_to_recordset\(v_combined_forecast_payload\) as rows\(\s*id uuid/i);
+    expect(source).toMatch(/contains non-UUID ids for existing scheduled job updates/i);
+  });
 });

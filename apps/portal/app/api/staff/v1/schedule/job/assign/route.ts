@@ -33,6 +33,10 @@ type ForecastUpdate = {
 
 type AssignmentKind = 'new_assignment' | 'existing_repair' | 'move';
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(value.trim());
+}
+
 function tempId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -177,7 +181,7 @@ export async function POST(req: Request) {
 
     const estimatesRes = await supabase
       .from('estimates')
-      .select('id, project_id, status, created_at, version, inputs, outputs')
+      .select('id, project_id, status, created_at, version, duration_days, crew_hours, inputs, outputs')
       .eq('project_id', jobId);
     if (estimatesRes.error) {
       if (isMissingSchemaError(estimatesRes.error)) {
@@ -416,12 +420,24 @@ export async function POST(req: Request) {
     jobRecordId,
     hasExistingJob: Boolean(existingJob),
   });
+  const targetPositions = applyScheduleItemPositions(items.filter((item) => item.id !== newItem.id));
+  const assignCommitDiagnostics = {
+    assignmentKind,
+    targetRawForecastCount: afterRecompute.job_updates.length,
+    targetForecastCount: targetForecastCommit.targetForecastUpdates.length,
+    targetForecastNonUuidCount: targetForecastCommit.targetForecastUpdates.filter((update) => !isUuid(update.id)).length,
+    sourceForecastCount: sourceForecastUpdates.length,
+    sourceForecastNonUuidCount: sourceForecastUpdates.filter((update) => !isUuid(update.id)).length,
+    targetPositionCount: targetPositions.length,
+    initialForecastPresent: Boolean(targetForecastCommit.initialForecast),
+    sanitizedTempForecastPresent: Boolean(targetForecastCommit.initialForecast?.id.startsWith('temp_job_')),
+  };
 
   const commitRes = await commitAssignJob({
     diagnostics,
     targetCrewId: crewId,
     targetInsertPosition: position,
-    targetPositions: applyScheduleItemPositions(items.filter((item) => item.id !== newItem.id)),
+    targetPositions,
     targetForecastUpdates: targetForecastCommit.targetForecastUpdates,
     ...(existingJob
       ? { scheduledJobId: String(existingJob.id) }
@@ -452,7 +468,7 @@ export async function POST(req: Request) {
         error: commitRes.error,
         extra: {
           reason: 'old_assign_repair_rpc_revision',
-          assignmentKind,
+          ...assignCommitDiagnostics,
           jobId,
           crewId,
           scheduledJobId: existingScheduledJobId,
@@ -469,9 +485,10 @@ export async function POST(req: Request) {
       event: 'schedule.assign.commit_failed',
       status: commitRes.status,
       message: commitRes.responseMessage,
+      error: commitRes.error,
       extra: {
         reason: 'commit_failed',
-        assignmentKind,
+        ...assignCommitDiagnostics,
         jobId,
         crewId,
         scheduledJobId: existingScheduledJobId,
