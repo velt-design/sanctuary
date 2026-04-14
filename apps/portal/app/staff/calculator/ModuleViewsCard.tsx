@@ -690,6 +690,9 @@ type DebugOutlineProps = {
 type ResolvedModelSpaceLayout = ResolvedSheetLayout & {
   viewBox: SheetRect;
   viewBoxValue: string;
+  focusBounds: AnnotatedBounds;
+  focusBox: SheetRect;
+  focusBoxValue: string;
   svgWidthPx: number;
   svgHeightPx: number;
 };
@@ -810,6 +813,15 @@ function resolveModelSpaceSvgMetrics(bounds: AnnotatedBounds): Pick<ResolvedMode
     viewBoxValue: rectToViewBox(viewBox),
     svgWidthPx: Math.round(viewBox.width * MODEL_SPACE_CSS_PX_PER_UNIT),
     svgHeightPx: Math.round(viewBox.height * MODEL_SPACE_CSS_PX_PER_UNIT),
+  };
+}
+
+function resolveModelSpaceFocusMetrics(bounds: AnnotatedBounds): Pick<ResolvedModelSpaceLayout, 'focusBounds' | 'focusBox' | 'focusBoxValue'> {
+  const focusBox = boundsToPaddedRect(bounds, MODEL_SPACE_VIEWBOX_PADDING);
+  return {
+    focusBounds: bounds,
+    focusBox,
+    focusBoxValue: rectToViewBox(focusBox),
   };
 }
 
@@ -2710,6 +2722,7 @@ function measurePlanAnnotatedBounds(input: {
   scale: number;
   presentation?: ModuleDrawingPresentation;
   frame: PlanSheetFrame;
+  includeHouseContext?: boolean;
   footprintEditor?: Pick<
     ModuleFootprintEditorProps,
     | 'customPolygonOverride'
@@ -2722,6 +2735,7 @@ function measurePlanAnnotatedBounds(input: {
   >;
 }): AnnotatedBounds {
   const { model, x, y, scale, presentation = 'sheet', frame } = input;
+  const includeHouseContext = input.includeHouseContext ?? true;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
@@ -2796,7 +2810,7 @@ function measurePlanAnnotatedBounds(input: {
           hideHouseFootprint,
         })
       : null;
-  const footprintBoundsPoints = footprintCanvasLayout
+  const footprintBoundsPoints = includeHouseContext && footprintCanvasLayout
     ? [...footprintCanvasLayout.polygon, ...footprintCanvasLayout.customVertices.map((vertex) => vertex.point)]
     : [];
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, baseX, aW);
@@ -2820,13 +2834,15 @@ function measurePlanAnnotatedBounds(input: {
     start: pointOnAttachmentFrame(footprintFrame, sx, -2.3),
     end: pointOnAttachmentFrame(footprintFrame, sx, 0.1),
   }));
-  const semanticHouseSurfacePoints = (model.houseContext?.surfaces ?? []).map((surface) =>
-    surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale)),
-  );
-  const semanticHouseLines = (model.houseContext?.lines ?? []).map((line) => ({
-    start: planHousePointToSvg(line.line.start, baseX, baseY, scale),
-    end: planHousePointToSvg(line.line.end, baseX, baseY, scale),
-  }));
+  const semanticHouseSurfacePoints = includeHouseContext
+    ? (model.houseContext?.surfaces ?? []).map((surface) => surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale)))
+    : [];
+  const semanticHouseLines = includeHouseContext
+    ? (model.houseContext?.lines ?? []).map((line) => ({
+        start: planHousePointToSvg(line.line.start, baseX, baseY, scale),
+        end: planHousePointToSvg(line.line.end, baseX, baseY, scale),
+      }))
+    : [];
   const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
   const fallAnchor =
     attachmentSide === 'rear' || attachmentSide === 'front'
@@ -3155,7 +3171,18 @@ function resolvePlanModelSpaceLayout(
   const x = 0;
   const y = 0;
   const annotatedBounds = measurePlanAnnotatedBounds({ model, x, y, scale, presentation: 'model', frame, footprintEditor });
+  const focusBounds = measurePlanAnnotatedBounds({
+    model,
+    x,
+    y,
+    scale,
+    presentation: 'model',
+    frame,
+    includeHouseContext: false,
+    footprintEditor,
+  });
   const svgMetrics = resolveModelSpaceSvgMetrics(annotatedBounds);
+  const focusMetrics = resolveModelSpaceFocusMetrics(focusBounds);
 
   return {
     outerField: svgMetrics.viewBox,
@@ -3169,6 +3196,7 @@ function resolvePlanModelSpaceLayout(
     houseInset: frame.houseInset,
     fallGap: frame.fallGap,
     ...svgMetrics,
+    ...focusMetrics,
   };
 }
 
@@ -3178,10 +3206,12 @@ function measureSectionAnnotatedBounds(input: {
   yGround: number;
   scale: number;
   presentation?: ModuleDrawingPresentation;
+  includeHouseContext?: boolean;
 }): AnnotatedBounds {
   const { model, xLeft, yGround, scale, presentation = 'sheet' } = input;
   const isSheet = presentation === 'sheet';
   const isModel = presentation === 'model';
+  const includeHouseContext = input.includeHouseContext ?? true;
   const overhangM = sectionOverhangM(model);
   const supportXFromHouseM = sectionSupportXFromHouseM(model);
   const ledgerBeamDepthM = sectionLedgerBeamDepthM(model);
@@ -3276,13 +3306,15 @@ function measureSectionAnnotatedBounds(input: {
           return { yTop, yUnder };
         })()
       : null;
-  const semanticHouseSurfacePoints = (model.houseContext?.surfaces ?? []).map((surface) =>
-    surface.boundary.map((point) => sectionHousePointToSvg(point, xLeft, yGround, scale)),
-  );
-  const semanticHouseLines = (model.houseContext?.lines ?? []).map((line) => ({
-    start: sectionHousePointToSvg(line.line.start, xLeft, yGround, scale),
-    end: sectionHousePointToSvg(line.line.end, xLeft, yGround, scale),
-  }));
+  const semanticHouseSurfacePoints = includeHouseContext
+    ? (model.houseContext?.surfaces ?? []).map((surface) => surface.boundary.map((point) => sectionHousePointToSvg(point, xLeft, yGround, scale)))
+    : [];
+  const semanticHouseLines = includeHouseContext
+    ? (model.houseContext?.lines ?? []).map((line) => ({
+        start: sectionHousePointToSvg(line.line.start, xLeft, yGround, scale),
+        end: sectionHousePointToSvg(line.line.end, xLeft, yGround, scale),
+      }))
+    : [];
   const depthDimAlongRoof = 0.18;
   const depthDimUnderX = monoRafterStartX + (monoRafterEndX - monoRafterStartX) * depthDimAlongRoof;
   const depthDimUnderY = yHouseRafterUnder + (yOuterRafterUnder - yHouseRafterUnder) * depthDimAlongRoof;
@@ -3523,7 +3555,9 @@ function resolveSectionModelSpaceLayout(model: ModuleSectionModel): ResolvedMode
   const x = 0;
   const y = extents.heightM * scale;
   const annotatedBounds = measureSectionAnnotatedBounds({ model, xLeft: x, yGround: y, scale, presentation: 'model' });
+  const focusBounds = measureSectionAnnotatedBounds({ model, xLeft: x, yGround: y, scale, presentation: 'model', includeHouseContext: false });
   const svgMetrics = resolveModelSpaceSvgMetrics(annotatedBounds);
+  const focusMetrics = resolveModelSpaceFocusMetrics(focusBounds);
 
   return {
     outerField: svgMetrics.viewBox,
@@ -3537,6 +3571,7 @@ function resolveSectionModelSpaceLayout(model: ModuleSectionModel): ResolvedMode
     houseInset: 0,
     fallGap: 0,
     ...svgMetrics,
+    ...focusMetrics,
   };
 }
 
@@ -3959,6 +3994,8 @@ function PlanSvg({
         height={modelSpaceLayout?.svgHeightPx}
         style={modelSvgStyle}
         data-model-space-svg={isModel ? 'plan' : undefined}
+        data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
+        data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
         role="img"
         aria-label="Module plan view"
         ref={(node) => {
@@ -5081,6 +5118,8 @@ function SectionSvg({
       height={modelSpaceLayout?.svgHeightPx}
       style={modelSvgStyle}
       data-model-space-svg={isModel ? 'section' : undefined}
+      data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
+      data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
       role="img"
       aria-label="Module section view"
       className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${

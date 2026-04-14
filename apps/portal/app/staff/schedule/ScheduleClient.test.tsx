@@ -26,7 +26,22 @@ const dndMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('next/dynamic', () => ({
-  default: () => () => null,
+  default: () => (props: any) => {
+    if (!Array.isArray(props?.holidays)) return null;
+    const labelFor = (holiday: { date: string; name?: string }) => {
+      const [, month, day] = holiday.date.split('-');
+      const monthLabel = month === '04' ? 'Apr' : month;
+      return `${holiday.name ?? 'Public holiday'} (${Number(day)} ${monthLabel})`;
+    };
+    return (
+      <div>
+        <span>Gantt</span>
+        {props.holidays.map((holiday: { date: string; name?: string }) => (
+          <div key={holiday.date} aria-label={labelFor(holiday)} />
+        ))}
+      </div>
+    );
+  },
 }));
 
 vi.mock('next/navigation', () => ({

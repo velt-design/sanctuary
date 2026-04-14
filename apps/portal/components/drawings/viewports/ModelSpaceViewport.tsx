@@ -78,6 +78,13 @@ type DrawPopoverPosition = {
   top: number;
 };
 
+type ModelSpaceRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 const MIN_MODEL_ZOOM = 0.25;
 const MAX_MODEL_ZOOM = 4;
 const MIN_OUTLINE_SEGMENT_M = 0.001;
@@ -88,6 +95,60 @@ const DRAW_POPOVER_GAP_PX = 14;
 
 function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
+}
+
+function parseModelSpaceRect(value: string | null | undefined): ModelSpaceRect | null {
+  const parts = value
+    ?.trim()
+    .split(/[\s,]+/)
+    .map((part) => Number.parseFloat(part));
+  if (!parts || parts.length !== 4 || parts.some((part) => !Number.isFinite(part))) return null;
+  const [x, y, width, height] = parts as [number, number, number, number];
+  if (width <= 0 || height <= 0) return null;
+  return { x, y, width, height };
+}
+
+function resolveModelSpaceSvgLayoutKey(scaleFrame: HTMLDivElement | null): string {
+  const svg = scaleFrame?.querySelector<SVGSVGElement>('svg[data-model-space-svg]');
+  if (!svg) return 'no-model-space-svg';
+  return [
+    svg.dataset.modelSpaceSvg ?? 'model',
+    svg.getAttribute('width') ?? '',
+    svg.getAttribute('height') ?? '',
+    svg.dataset.modelSpaceViewBox ?? svg.getAttribute('viewBox') ?? '',
+    svg.dataset.modelSpaceFocusBox ?? '',
+  ].join('|');
+}
+
+function resolveModelSpaceSvgFocusRect(input: {
+  scaleFrame: HTMLDivElement;
+  frameRect: DOMRect;
+  frameWidth: number;
+  frameHeight: number;
+  zoom: number;
+}): ModelSpaceRect | null {
+  const svg = input.scaleFrame.querySelector<SVGSVGElement>('svg[data-model-space-svg]');
+  const viewBox = parseModelSpaceRect(svg?.dataset.modelSpaceViewBox ?? svg?.getAttribute('viewBox'));
+  const focusBox = parseModelSpaceRect(svg?.dataset.modelSpaceFocusBox);
+  if (!svg || !viewBox || !focusBox) return null;
+
+  const safeZoom = Math.max(input.zoom, 0.001);
+  const svgRect = svg.getBoundingClientRect();
+  const svgWidth = (svgRect.width > 0 ? svgRect.width / safeZoom : 0) || Number.parseFloat(svg.getAttribute('width') ?? '') || input.frameWidth;
+  const svgHeight = (svgRect.height > 0 ? svgRect.height / safeZoom : 0) || Number.parseFloat(svg.getAttribute('height') ?? '') || input.frameHeight;
+  if (svgWidth <= 0 || svgHeight <= 0) return null;
+
+  const svgLeft = svgRect.width > 0 ? (svgRect.left - input.frameRect.left) / safeZoom : Math.max(0, (input.frameWidth - svgWidth) / 2);
+  const svgTop = svgRect.height > 0 ? (svgRect.top - input.frameRect.top) / safeZoom : Math.max(0, (input.frameHeight - svgHeight) / 2);
+  const cssPerUnitX = svgWidth / viewBox.width;
+  const cssPerUnitY = svgHeight / viewBox.height;
+
+  return {
+    x: svgLeft + (focusBox.x - viewBox.x) * cssPerUnitX,
+    y: svgTop + (focusBox.y - viewBox.y) * cssPerUnitY,
+    width: focusBox.width * cssPerUnitX,
+    height: focusBox.height * cssPerUnitY,
+  };
 }
 
 function formatHouseFootprintParamValue(value: number): string {
@@ -425,15 +486,22 @@ export default function ModelSpaceViewport({
 
     if (scrollerWidth <= 0 || scrollerHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) return null;
 
+    const focusRect = resolveModelSpaceSvgFocusRect({ scaleFrame, frameRect, frameWidth, frameHeight, zoom });
+    const targetRect = focusRect ?? { x: 0, y: 0, width: frameWidth, height: frameHeight };
     const availableWidth = Math.max(1, scrollerWidth - FIT_VIEW_MARGIN_PX * 2);
     const availableHeight = Math.max(1, scrollerHeight - FIT_VIEW_MARGIN_PX * 2);
-    const nextZoom = clampZoom(Math.min(availableWidth / frameWidth, availableHeight / frameHeight));
+    const nextZoom = clampZoom(Math.min(availableWidth / targetRect.width, availableHeight / targetRect.height));
     return {
       zoom: nextZoom,
-      panX: (scrollerWidth - frameWidth * nextZoom) / 2,
-      panY: (scrollerHeight - frameHeight * nextZoom) / 2,
+      panX: scrollerWidth / 2 - (targetRect.x + targetRect.width / 2) * nextZoom,
+      panY: scrollerHeight / 2 - (targetRect.y + targetRect.height / 2) * nextZoom,
     };
   }, [zoom]);
+
+  const resolveCurrentFitKey = useCallback(
+    () => `${fitViewKey}:${resolveModelSpaceSvgLayoutKey(scaleFrameRef.current)}`,
+    [fitViewKey],
+  );
 
   const fitViewportToContent = useCallback((): boolean => {
     const next = measureFitViewTransform();
@@ -448,11 +516,11 @@ export default function ModelSpaceViewport({
     setPanDragSession(null);
     userAdjustedViewportRef.current = false;
     if (fitViewportToContent()) {
-      autoFitKeyRef.current = fitViewKey;
+      autoFitKeyRef.current = resolveCurrentFitKey();
     } else {
       updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
     }
-  }, [fitViewportToContent, fitViewKey, updateViewportTransform]);
+  }, [fitViewportToContent, resolveCurrentFitKey, updateViewportTransform]);
 
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
@@ -1059,9 +1127,12 @@ export default function ModelSpaceViewport({
   }, [drawOutlineHoverPreviewPoint, drawOutlinePendingPoint, drawOutlineSession]);
 
   useEffect(() => {
-    if (!showDrawingViewport || userAdjustedViewportRef.current || autoFitKeyRef.current === fitViewKey) return;
-    if (fitViewportToContent()) autoFitKeyRef.current = fitViewKey;
-  }, [fitViewKey, fitViewportToContent, showDrawingViewport]);
+    if (!showDrawingViewport) return;
+    const currentFitKey = resolveCurrentFitKey();
+    if (autoFitKeyRef.current === currentFitKey) return;
+    if (userAdjustedViewportRef.current && autoFitKeyRef.current === null) return;
+    if (fitViewportToContent()) autoFitKeyRef.current = currentFitKey;
+  }, [fitViewportToContent, planModel, resolveCurrentFitKey, sectionModel, showDrawingViewport]);
 
   useEffect(() => {
     if (!drawOutlineSession) {

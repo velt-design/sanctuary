@@ -149,6 +149,27 @@ function makePlanModelWithHouseContext(): ModulePlanModel {
   };
 }
 
+function makePlanModelWithLargeHouseContext(): ModulePlanModel {
+  return {
+    ...makePlanModelWithHouseContext(),
+    houseContext: {
+      surfaces: [
+        {
+          id: 'house-footprint-large',
+          kind: 'footprint',
+          boundary: [
+            { x: -80, y: -60 },
+            { x: 140, y: -60 },
+            { x: 140, y: 0 },
+            { x: -80, y: 0 },
+          ],
+        },
+      ],
+      lines: [],
+    },
+  };
+}
+
 function clickButtonByText(container: HTMLElement, text: string): void {
   const button = Array.from(container.querySelectorAll('button')).find((candidate) => candidate.textContent === text);
   if (!button) throw new Error(`Missing button: ${text}`);
@@ -188,6 +209,40 @@ function makeRect(x: number, y: number, width: number, height: number): DOMRect 
     bottom: y + height,
     toJSON: () => ({}),
   } as DOMRect;
+}
+
+function parseModelSpaceBox(value: string | undefined): { x: number; y: number; width: number; height: number } {
+  const parts = value?.split(/\s+/).map((part) => Number.parseFloat(part)) ?? [];
+  expect(parts).toHaveLength(4);
+  const [x, y, width, height] = parts as [number, number, number, number];
+  return { x, y, width, height };
+}
+
+function expectedFitForSvgFocus(input: {
+  scrollerWidth: number;
+  scrollerHeight: number;
+  frameWidth: number;
+  frameHeight: number;
+  svg: SVGSVGElement;
+}): { zoom: number; panX: number; panY: number } {
+  const viewBox = parseModelSpaceBox(input.svg.dataset.modelSpaceViewBox);
+  const focusBox = parseModelSpaceBox(input.svg.dataset.modelSpaceFocusBox);
+  const svgWidth = Number.parseFloat(input.svg.getAttribute('width') ?? '0');
+  const svgHeight = Number.parseFloat(input.svg.getAttribute('height') ?? '0');
+  const svgLeft = Math.max(0, (input.frameWidth - svgWidth) / 2);
+  const svgTop = Math.max(0, (input.frameHeight - svgHeight) / 2);
+  const focusRect = {
+    x: svgLeft + (focusBox.x - viewBox.x) * (svgWidth / viewBox.width),
+    y: svgTop + (focusBox.y - viewBox.y) * (svgHeight / viewBox.height),
+    width: focusBox.width * (svgWidth / viewBox.width),
+    height: focusBox.height * (svgHeight / viewBox.height),
+  };
+  const zoom = Math.min(Math.max(Math.min((input.scrollerWidth - 48) / focusRect.width, (input.scrollerHeight - 48) / focusRect.height), 0.25), 4);
+  return {
+    zoom,
+    panX: input.scrollerWidth / 2 - (focusRect.x + focusRect.width / 2) * zoom,
+    panY: input.scrollerHeight / 2 - (focusRect.y + focusRect.height / 2) * zoom,
+  };
 }
 
 describe('ModelSpaceViewport', () => {
@@ -328,7 +383,7 @@ describe('ModelSpaceViewport', () => {
       <ModelSpaceViewport
         view="plan"
         status="ready"
-        planModel={makePlanModelWithHouseContext()}
+        planModel={makePlanModelWithLargeHouseContext()}
         sectionModel={drawing.sectionModel}
         fitViewKey="module-1:plan"
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
@@ -344,24 +399,34 @@ describe('ModelSpaceViewport', () => {
     });
 
     expect(rendered.container.querySelector('[data-house-plan-surface="footprint"]')).not.toBeNull();
+    const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
+    expect(svg).not.toBeNull();
+    const expectedFit = expectedFitForSvgFocus({
+      scrollerWidth: 600,
+      scrollerHeight: 400,
+      frameWidth: 480,
+      frameHeight: 360,
+      svg: svg!,
+    });
     const initialFit = onViewportTransformChange.mock.calls.at(-1)?.[0];
-    expect(initialFit?.zoom).toBeCloseTo(0.978, 3);
-    expect(initialFit?.panX).toBeCloseTo(65.333, 3);
-    expect(initialFit?.panY).toBeCloseTo(24, 3);
+    expect(initialFit?.zoom).toBeCloseTo(expectedFit.zoom, 3);
+    expect(initialFit?.panX).toBeCloseTo(expectedFit.panX, 3);
+    expect(initialFit?.panY).toBeCloseTo(expectedFit.panY, 3);
+    expect(initialFit?.zoom).toBeGreaterThan(0.25);
 
     onViewportTransformChange.mockClear();
     clickButtonByText(rendered.container, 'Reset');
 
     const resetFit = onViewportTransformChange.mock.calls.at(-1)?.[0];
-    expect(resetFit?.zoom).toBeCloseTo(0.978, 3);
-    expect(resetFit?.panX).toBeCloseTo(65.333, 3);
-    expect(resetFit?.panY).toBeCloseTo(24, 3);
+    expect(resetFit?.zoom).toBeCloseTo(expectedFit.zoom, 3);
+    expect(resetFit?.panX).toBeCloseTo(expectedFit.panX, 3);
+    expect(resetFit?.panY).toBeCloseTo(expectedFit.panY, 3);
 
     rectSpy.mockRestore();
     rendered.unmount();
   });
 
-  it('does not auto-fit again after a manual zoom adjustment for the same view key', async () => {
+  it('keeps manual zoom for the same layout and auto-fits when model-space layout metadata changes', async () => {
     const drawing = makeDrawingModule();
     const onViewportTransformChange = vi.fn();
     const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
@@ -395,11 +460,18 @@ describe('ModelSpaceViewport', () => {
     expect(onViewportTransformChange).toHaveBeenCalledWith(expect.objectContaining({ zoom: 0.9 }));
 
     onViewportTransformChange.mockClear();
-    rendered.rerender(renderViewport({ ...drawing.planModel!, lengthA: drawing.planModel!.lengthA + 1 }));
+    rendered.rerender(renderViewport(drawing.planModel));
     await act(async () => {
       await Promise.resolve();
     });
     expect(onViewportTransformChange).not.toHaveBeenCalled();
+
+    onViewportTransformChange.mockClear();
+    rendered.rerender(renderViewport({ ...drawing.planModel!, lengthA: drawing.planModel!.lengthA + 1 }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onViewportTransformChange).toHaveBeenCalled();
 
     rectSpy.mockRestore();
     rendered.unmount();

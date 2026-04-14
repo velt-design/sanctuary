@@ -1,4 +1,5 @@
 import ScheduleClient from './ScheduleClient';
+import SiteVisitsScheduleClient from './SiteVisitsScheduleClient';
 import { loadSchedulePageSeed } from '@/lib/scheduling/serverSchedulePageSeed';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -13,7 +14,7 @@ export default async function StaffSchedulePage({
   const view = Array.isArray(rawView) ? rawView[0] : rawView;
 
   if ((view ?? '').trim().toLowerCase() === 'site-visits') {
-    return <ScheduleClient />;
+    return <SiteVisitsScheduleClient />;
   }
 
   const seed = await loadSchedulePageSeed();

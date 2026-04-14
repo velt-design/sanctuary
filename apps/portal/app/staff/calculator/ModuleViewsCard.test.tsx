@@ -268,6 +268,8 @@ describe('ModuleViewsCard', () => {
     const svgTag = extractSvgTag(markup, 'Module plan view');
 
     expect(svgTag).toContain('data-model-space-svg="plan"');
+    expect(svgTag).toContain('data-model-space-view-box=');
+    expect(svgTag).toContain('data-model-space-focus-box=');
     expect(svgTag).not.toContain('viewBox="0 0 120 90"');
     expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
     expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
@@ -289,6 +291,8 @@ describe('ModuleViewsCard', () => {
     const svgTag = extractSvgTag(markup, 'Module section view');
 
     expect(svgTag).toContain('data-model-space-svg="section"');
+    expect(svgTag).toContain('data-model-space-view-box=');
+    expect(svgTag).toContain('data-model-space-focus-box=');
     expect(svgTag).not.toContain('viewBox="0 0 120 90"');
     expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
     expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
