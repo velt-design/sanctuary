@@ -426,6 +426,40 @@ describe('scheduleCommands', () => {
     });
   });
 
+  it('maps old assign repair RPC revisions to the repair migration message', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'p_assignment.job_id is required' } });
+
+    const mod = await import('./scheduleCommands');
+    const res = await mod.commitAssignJob({
+      diagnostics: { requestId: 'req-assign-old-revision', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
+      targetCrewId: 'crew-1',
+      targetInsertPosition: 0,
+      targetPositions: [],
+      targetForecastUpdates: [],
+      scheduledJobId: 'job-1',
+    });
+
+    expect(res).toEqual({
+      ok: false,
+      status: 501,
+      responseMessage:
+        'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.',
+    });
+    expect(res.error).toEqual({ message: 'p_assignment.job_id is required' });
+    expect(logPortalServerWarn).toHaveBeenCalledWith(
+      expect.objectContaining({ requestId: 'req-assign-old-revision' }),
+      expect.objectContaining({
+        status: 501,
+        message:
+          'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.',
+        extra: {
+          reason: 'old_assign_repair_rpc_revision',
+          command: 'schedule_v2_assign_job',
+        },
+      }),
+    );
+  });
+
   it('maps generic assign failures to a stable route message', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
 

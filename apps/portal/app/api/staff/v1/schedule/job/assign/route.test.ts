@@ -528,6 +528,39 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     );
   });
 
+  it('returns 501 when the assign repair RPC migration is missing during same-crew repair', async () => {
+    scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
+      data: { id: 'scheduled-job-1', crew_id: 'crew-new', forecast_duration_days: 2 },
+      error: null,
+    });
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'p_assignment.job_id is required' } });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_old_rpc_revision' },
+      }),
+    );
+
+    expect(res.status).toBe(501);
+    await expect(res.json()).resolves.toEqual({
+      error: expect.stringContaining('20260414_000001_schedule_v2_assign_existing_job_repair.sql'),
+    });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.assign.schema_revision_missing',
+        requestId: 'req_assign_old_rpc_revision',
+        status: 501,
+        reason: 'old_assign_repair_rpc_revision',
+        jobId: 'project-1',
+        crewId: 'crew-new',
+        scheduledJobId: 'scheduled-job-1',
+      }),
+    );
+  });
+
   it('repairs an existing cross-crew scheduled job when the source queue item is missing', async () => {
     scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({
       data: { id: 'scheduled-job-1', crew_id: 'crew-old', forecast_duration_days: 2 },

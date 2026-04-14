@@ -5,13 +5,14 @@ import ScheduleClient from './ScheduleClient';
 import { qk } from '@/lib/queries/keys';
 import type { ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
-import { assignJob } from '@/lib/repo/scheduleV2Repo';
+import { assignJob, fetchScheduleGantt } from '@/lib/repo/scheduleV2Repo';
 import { ApiError } from '@/lib/repo/apiClient';
 
 const routerReplace = vi.fn();
 const routerPush = vi.fn();
 const scheduleSnapshotQueryOptions = vi.fn();
 const scheduleSnapshotQueryFn = vi.fn();
+let searchParamsString = '';
 const transitionMocks = vi.hoisted(() => ({
   beginRouteTransition: vi.fn(),
 }));
@@ -33,7 +34,7 @@ vi.mock('next/navigation', () => ({
     replace: routerReplace,
     push: routerPush,
   }),
-  useSearchParams: () => new URLSearchParams(''),
+  useSearchParams: () => new URLSearchParams(searchParamsString),
 }));
 
 vi.mock('@/components/ui/toast/ToastProvider', () => ({
@@ -294,6 +295,8 @@ describe('ScheduleClient', () => {
     toastMocks.info.mockReset();
     dndMocks.latestContextProps = null;
     vi.mocked(assignJob).mockReset();
+    vi.mocked(fetchScheduleGantt).mockReset();
+    searchParamsString = '';
     scheduleSnapshotQueryFn.mockReset();
     scheduleSnapshotQueryOptions.mockReset();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
@@ -375,6 +378,81 @@ describe('ScheduleClient', () => {
       show: 'immediate',
     });
     expect(routerReplace).toHaveBeenCalledWith('/staff/schedule?view=gantt');
+    expect(fetchScheduleGantt).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('renders seeded Gantt without calling the Gantt recompute endpoint', async () => {
+    searchParamsString = 'view=gantt';
+    const snapshot: ScheduleV2Snapshot = {
+      ...initialSnapshot,
+      holidays: [
+        { date: '2026-04-10', name: 'Regional Day', scope: 'regional', region: 'Auckland' },
+        { date: '2026-04-13', name: 'National Day', scope: 'national', region: null },
+        { date: '2026-04-14', name: 'Other Region', scope: 'regional', region: 'Wellington' },
+      ],
+    };
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={snapshot} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(fetchScheduleGantt).not.toHaveBeenCalled();
+    expect(rendered.container.textContent).toContain('Gantt');
+    expect(rendered.container.querySelector('[aria-label="Regional Day (10 Apr)"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="National Day (13 Apr)"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Other Region (14 Apr)"]')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('uses refreshed board snapshot holidays for Gantt without calling the Gantt endpoint', async () => {
+    searchParamsString = 'view=gantt';
+    const refreshedSnapshot: ScheduleV2Snapshot = {
+      ...initialSnapshot,
+      holidays: [{ date: '2026-04-10', name: 'Query Holiday', scope: 'national', region: null }],
+    };
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(refreshedSnapshot),
+      staleTime: 30_000,
+    }));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(scheduleSnapshotQueryFn).toHaveBeenCalled();
+    expect(fetchScheduleGantt).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(refreshedSnapshot);
 
     rendered.unmount();
   });

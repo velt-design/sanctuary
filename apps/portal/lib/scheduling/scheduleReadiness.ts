@@ -26,6 +26,8 @@ type RpcProbe = {
 };
 
 const NIL_UUID = '00000000-0000-0000-0000-000000000000';
+const ASSIGN_REPAIR_MIGRATION_MESSAGE =
+  'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.';
 
 export const REQUIRED_SCHEDULE_RPC_FUNCTIONS = [
   'schedule_v2_reorder_queue',
@@ -120,6 +122,25 @@ const REQUIRED_SCHEDULE_RPC_PROBES: RpcProbe[] = [
   },
 ];
 
+function probeForRpc(fn: string, crewId: string | null): RpcProbe | null {
+  const base = REQUIRED_SCHEDULE_RPC_PROBES.find((probe) => probe.fn === fn) ?? null;
+  if (!base) return null;
+  if (fn !== 'schedule_v2_assign_job' || !crewId) return base;
+
+  return {
+    fn,
+    args: {
+      p_target_crew_id: crewId,
+      p_target_insert_position: 0,
+      p_target_positions: [],
+      p_target_forecast_updates: [],
+      p_assignment: { scheduled_job_id: NIL_UUID },
+      p_move: null,
+    },
+    expectedMessages: ['scheduled job not found'],
+  };
+}
+
 function errorCode(error: unknown): string {
   return typeof (error as { code?: unknown })?.code === 'string' ? ((error as { code?: string }).code ?? '').trim() : '';
 }
@@ -146,6 +167,10 @@ function isExpectedProbeFailure(error: unknown, expectedMessages: string[]): boo
   return expectedMessages.some((expected) => message.includes(expected.toLowerCase()));
 }
 
+function isOldAssignRepairRpcError(error: unknown): boolean {
+  return errorMessage(error).toLowerCase().includes('p_assignment.job_id is required');
+}
+
 function notReadyMessage(missingFunctions: string[]): string {
   if (missingFunctions.length) {
     return `Schedule schema is not upgraded yet. Missing required functions: ${missingFunctions.join(', ')}. Run latest schedule migrations then refresh.`;
@@ -157,9 +182,10 @@ export async function verifyScheduleReadiness(
   diagnostics?: PortalServerLogContext,
 ): Promise<ScheduleReadinessResult> {
   const readinessChecks: ScheduleReadinessCheck[] = [];
+  let scheduleContext: Awaited<ReturnType<typeof loadScheduleContext>> | null = null;
 
   try {
-    await loadScheduleContext();
+    scheduleContext = await loadScheduleContext();
     readinessChecks.push({ kind: 'read', name: 'loadScheduleContext', ok: true });
   } catch (error) {
     if (isMissingSchemaError(error)) {
@@ -191,8 +217,11 @@ export async function verifyScheduleReadiness(
   }
 
   const missingFunctions: string[] = [];
+  const assignProbeCrewId = scheduleContext?.crews.find((crew) => typeof crew.id === 'string' && crew.id)?.id ?? null;
 
-  for (const probe of REQUIRED_SCHEDULE_RPC_PROBES) {
+  for (const fn of REQUIRED_SCHEDULE_RPC_FUNCTIONS) {
+    const probe = probeForRpc(fn, assignProbeCrewId);
+    if (!probe) continue;
     const rpcRes = await supabaseServiceRole.rpc(probe.fn, probe.args as any);
 
     if (!rpcRes.error) {
@@ -219,6 +248,16 @@ export async function verifyScheduleReadiness(
     if (isExpectedProbeFailure(rpcRes.error, probe.expectedMessages)) {
       readinessChecks.push({ kind: 'rpc', name: probe.fn, ok: true, detail: errorMessage(rpcRes.error) });
       continue;
+    }
+
+    if (probe.fn === 'schedule_v2_assign_job' && assignProbeCrewId && isOldAssignRepairRpcError(rpcRes.error)) {
+      readinessChecks.push({ kind: 'rpc', name: probe.fn, ok: false, detail: errorMessage(rpcRes.error) || 'old assign RPC revision' });
+      return {
+        ok: false,
+        missingFunctions,
+        readinessChecks,
+        message: ASSIGN_REPAIR_MIGRATION_MESSAGE,
+      };
     }
 
     if (diagnostics) {

@@ -13,7 +13,6 @@ import {
   assignJob,
   createDowntime,
   deleteDowntime,
-  fetchScheduleGantt,
   lockJobSchedule,
   markJobDone,
   markJobInProgress,
@@ -668,6 +667,20 @@ function mapV2UnscheduledJobs(list: ScheduleV2Snapshot['unscheduledJobs'] | null
   }
   out.sort((a, b) => a.projectName.localeCompare(b.projectName));
   return out;
+}
+
+function mapGanttHolidaysFromSnapshot(holidays: NzHoliday[] | null | undefined): Array<{ date: string; name?: string; kind: 'holiday' }> {
+  if (!Array.isArray(holidays)) return [];
+  return holidays
+    .filter((holiday) => isYmd(holiday?.date ?? ''))
+    .filter((holiday) => {
+      const scope = typeof holiday.scope === 'string' ? holiday.scope.trim().toLowerCase() : '';
+      const region = typeof holiday.region === 'string' ? holiday.region.trim().toLowerCase() : '';
+      if (scope === 'national') return true;
+      if (!region) return false;
+      return region.includes('auckland');
+    })
+    .map((holiday) => ({ date: holiday.date, name: holiday.name, kind: 'holiday' as const }));
 }
 
 function scheduleStatusFromV2JobStatus(value: unknown): ScheduleItemStatus {
@@ -1840,7 +1853,9 @@ export default function ScheduleClient({
   const [nextAvailableByInstallerId, setNextAvailableByInstallerId] = useState<Map<string, string>>(
     () => new Map(Object.entries(initialV2Snapshot?.nextAvailableByInstallerId ?? {})),
   );
-  const [ganttHolidays, setGanttHolidays] = useState<Array<{ date: string; name?: string; kind: 'holiday' }>>([]);
+  const [ganttHolidays, setGanttHolidays] = useState<Array<{ date: string; name?: string; kind: 'holiday' }>>(() =>
+    mapGanttHolidaysFromSnapshot(initialV2Snapshot?.holidays),
+  );
   const [ganttPopover, setGanttPopover] = useState<{ scheduleItemId: string; anchor: GanttPopoverAnchor } | null>(null);
   const [quickEdit, setQuickEdit] = useState<{ id: string; startDateOverride: string; durationDays: string } | null>(null);
   const [durationEdit, setDurationEdit] = useState<{ id: string; durationDays: string } | null>(null);
@@ -2449,6 +2464,7 @@ export default function ScheduleClient({
     hydratedFromCacheRef.current = true;
     v2HolidaysRef.current = Array.isArray(snapshot.holidays) ? snapshot.holidays : [];
     v2ClosuresRef.current = Array.isArray(snapshot.closures) ? snapshot.closures : [];
+    setGanttHolidays(mapGanttHolidaysFromSnapshot(v2HolidaysRef.current));
 
     const nextItems = snapshot.scheduleItems;
     const nextUnscheduled = mapV2UnscheduledJobs(snapshot.unscheduledJobs);
@@ -2497,6 +2513,7 @@ export default function ScheduleClient({
       v2GeneratedAtRef.current = '';
       v2HolidaysRef.current = [];
       v2ClosuresRef.current = [];
+      setGanttHolidays([]);
       setLoadError(null);
       setSyncing(false);
       setHydrated(false);
@@ -2731,38 +2748,6 @@ export default function ScheduleClient({
       cancelled = true;
     };
   }, [reloadNonce, toast, view, scheduleMode, today]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      if (scheduleMode !== 'v2') return;
-      if (view !== 'gantt') return;
-      const rangeStart = startOfWeekMonday(today);
-      const rangeDays = GANTT_TIMELINE_DAYS;
-      const rangeEnd = addDaysYmd(rangeStart, rangeDays - 1);
-      try {
-        const res = await fetchScheduleGantt({ rangeStart, rangeEnd, today });
-        if (cancelled) return;
-        const holidayBlocks = (res.holidays ?? [])
-          .filter((h) => isYmd(h?.date ?? ''))
-          .filter((h) => {
-            const scope = typeof h.scope === 'string' ? h.scope.trim().toLowerCase() : '';
-            const region = typeof h.region === 'string' ? h.region.trim().toLowerCase() : '';
-            if (scope === 'national') return true;
-            if (!region) return false;
-            return region.includes('auckland');
-          })
-          .map((h) => ({ date: h.date, name: h.name, kind: 'holiday' as const }));
-        setGanttHolidays(holidayBlocks);
-      } catch (err) {
-        if (cancelled) return;
-        setGanttHolidays([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [scheduleMode, view, today]);
 
   const devOnly = process.env.NODE_ENV !== 'production';
 

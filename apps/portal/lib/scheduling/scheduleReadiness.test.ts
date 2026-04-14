@@ -113,6 +113,51 @@ describe('scheduleReadiness', () => {
     );
   });
 
+  it('detects the pre-repair assign RPC revision when a crew is available', async () => {
+    loadScheduleContext.mockResolvedValueOnce({
+      crews: [{ id: '11111111-1111-4111-8111-111111111111' }],
+      items: [],
+      jobs: [],
+      downtimes: [],
+      holidays: [],
+      closures: [],
+      calendar: {},
+      today: '2026-04-07',
+    });
+    rpc.mockImplementation(async (fn: string, args: Record<string, unknown>) => {
+      if (fn === 'schedule_v2_assign_job') {
+        expect(args).toEqual({
+          p_target_crew_id: '11111111-1111-4111-8111-111111111111',
+          p_target_insert_position: 0,
+          p_target_positions: [],
+          p_target_forecast_updates: [],
+          p_assignment: { scheduled_job_id: '00000000-0000-0000-0000-000000000000' },
+          p_move: null,
+        });
+        return { data: null, error: { message: 'p_assignment.job_id is required' } };
+      }
+      return {
+        data: null,
+        error: { message: expectedProbeFailures.get(fn) ?? 'unexpected probe failure' },
+      };
+    });
+
+    const mod = await import('./scheduleReadiness');
+    const readiness = await mod.verifyScheduleReadiness();
+
+    expect(readiness.ok).toBe(false);
+    expect(readiness.missingFunctions).toEqual([]);
+    expect(readiness.message).toContain('20260414_000001_schedule_v2_assign_existing_job_repair.sql');
+    expect(readiness.readinessChecks).toContainEqual(
+      expect.objectContaining({
+        kind: 'rpc',
+        name: 'schedule_v2_assign_job',
+        ok: false,
+        detail: 'p_assignment.job_id is required',
+      }),
+    );
+  });
+
   it('treats read-path schema errors as not ready', async () => {
     const missing = new Error('column projects.pipeline_stage does not exist');
     loadScheduleContext.mockRejectedValueOnce(missing);

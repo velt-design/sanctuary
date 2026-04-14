@@ -5,6 +5,8 @@ import { logPortalServerError, logPortalServerWarn, type PortalServerLogContext 
 import { supabaseServiceRole } from '@/lib/supabaseClient';
 
 const SCHEMA_NOT_READY_MESSAGE = 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.';
+const ASSIGN_REPAIR_MIGRATION_MESSAGE =
+  'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.';
 
 type ScheduleCommandOk<T> = {
   ok: true;
@@ -15,6 +17,7 @@ type ScheduleCommandFailure = {
   ok: false;
   status: 500 | 501;
   responseMessage: string;
+  error?: unknown;
 };
 
 type ScheduleCommandResult<T> = ScheduleCommandOk<T> | ScheduleCommandFailure;
@@ -117,6 +120,23 @@ export type UpdateDowntimeCommandResult = {
   updated_forecasts: number;
 };
 
+function commandFailure(input: {
+  status: 500 | 501;
+  responseMessage: string;
+  error: unknown;
+}): ScheduleCommandFailure {
+  const failure: ScheduleCommandFailure = {
+    ok: false,
+    status: input.status,
+    responseMessage: input.responseMessage,
+  };
+  Object.defineProperty(failure, 'error', {
+    value: input.error,
+    enumerable: false,
+  });
+  return failure;
+}
+
 function jsonbWithoutUndefined(input: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
 }
@@ -137,6 +157,13 @@ function isMissingScheduleRpcError(error: unknown): boolean {
   );
 }
 
+function isOldAssignRepairRpcError(fn: string, error: unknown): boolean {
+  if (fn !== 'schedule_v2_assign_job') return false;
+  const message =
+    typeof (error as { message?: unknown })?.message === 'string' ? ((error as { message?: string }).message ?? '').toLowerCase() : '';
+  return message.includes('p_assignment.job_id is required');
+}
+
 async function runScheduleRpcCommand<T>(input: RunScheduleRpcCommandInput<T>): Promise<ScheduleCommandResult<T>> {
   const rpcRes = await supabaseServiceRole.rpc(input.fn, input.args as any);
 
@@ -148,11 +175,25 @@ async function runScheduleRpcCommand<T>(input: RunScheduleRpcCommandInput<T>): P
         error: rpcRes.error,
         extra: { command: input.fn },
       });
-      return {
-        ok: false,
+      return commandFailure({
         status: 501,
         responseMessage: SCHEMA_NOT_READY_MESSAGE,
-      };
+        error: rpcRes.error,
+      });
+    }
+
+    if (isOldAssignRepairRpcError(input.fn, rpcRes.error)) {
+      logPortalServerWarn(input.diagnostics, {
+        status: 501,
+        message: ASSIGN_REPAIR_MIGRATION_MESSAGE,
+        error: rpcRes.error,
+        extra: { command: input.fn, reason: 'old_assign_repair_rpc_revision' },
+      });
+      return commandFailure({
+        status: 501,
+        responseMessage: ASSIGN_REPAIR_MIGRATION_MESSAGE,
+        error: rpcRes.error,
+      });
     }
 
     logPortalServerError(input.diagnostics, {
@@ -161,11 +202,11 @@ async function runScheduleRpcCommand<T>(input: RunScheduleRpcCommandInput<T>): P
       error: rpcRes.error,
       extra: { command: input.fn },
     });
-    return {
-      ok: false,
+    return commandFailure({
       status: 500,
       responseMessage: input.failureMessage,
-    };
+      error: rpcRes.error,
+    });
   }
 
   return {

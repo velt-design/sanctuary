@@ -21,8 +21,20 @@ import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
 
 export const runtime = 'nodejs';
 
+const ASSIGN_REPAIR_MIGRATION_MESSAGE =
+  'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.';
+
 function tempId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function errorMessage(error: unknown): string {
+  return typeof (error as { message?: unknown })?.message === 'string' ? ((error as { message?: string }).message ?? '').trim() : '';
+}
+
+function isOldAssignRepairRpcError(error: unknown): boolean {
+  const message = errorMessage(error).toLowerCase();
+  return message.includes('p_assignment.job_id is required');
 }
 
 function fallbackExistingJobModel(input: {
@@ -381,6 +393,27 @@ export async function POST(req: Request) {
       : null),
   });
   if (!commitRes.ok) {
+    const usesExistingJobRepairPath = Boolean(existingJob && !(isMove && sourceCrewId && sourceItemId));
+    if (usesExistingJobRepairPath && isOldAssignRepairRpcError(commitRes.error)) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.schema_revision_missing',
+        status: 501,
+        message: ASSIGN_REPAIR_MIGRATION_MESSAGE,
+        error: commitRes.error,
+        extra: {
+          reason: 'old_assign_repair_rpc_revision',
+          jobId,
+          crewId,
+          scheduledJobId: existingScheduledJobId,
+          sourceCrewId,
+          requestedPosition: position,
+          targetItemPresent: Boolean(existingTargetItem),
+          sourceItemPresent: Boolean(sourceItemId),
+        },
+      });
+      return jsonError(ASSIGN_REPAIR_MIGRATION_MESSAGE, 501, diagnostics);
+    }
+
     const logInput = {
       event: 'schedule.assign.commit_failed',
       status: commitRes.status,

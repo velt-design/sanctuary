@@ -201,6 +201,39 @@ test.describe('portal auth routing authenticated flows', () => {
     await expect(collapse).toHaveAttribute('aria-expanded', initialExpanded === 'true' ? 'false' : 'true');
   });
 
+  test('drags an unscheduled schedule job into a crew lane and keeps it scheduled after refresh', async ({ page }) => {
+    test.skip(
+      process.env.PORTAL_SCHEDULE_DRAG_SMOKE !== '1',
+      'Set PORTAL_SCHEDULE_DRAG_SMOKE=1 against a disposable schedule dataset to run the mutating drag/drop smoke test.',
+    );
+
+    await page.goto('/staff/schedule');
+    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+
+    const sourceCard = page.locator('aside[aria-label="Unscheduled jobs"] [data-schedule-card-id]').first();
+    test.skip((await sourceCard.count()) === 0, 'No unscheduled jobs are available for schedule drag/drop smoke coverage.');
+
+    const jobName = (await sourceCard.locator('[title]').first().getAttribute('title'))?.trim();
+    test.skip(!jobName, 'The first unscheduled job did not expose a stable project title.');
+
+    const targetLane = page.locator('section[aria-label^="Lane "]').first();
+    await expect(targetLane).toBeVisible();
+
+    const assignResponse = page.waitForResponse(
+      (res) => res.url().includes('/api/staff/v1/schedule/job/assign') && res.request().method() === 'POST',
+      { timeout: 60_000 },
+    );
+    await sourceCard.dragTo(targetLane);
+
+    const response = await assignResponse;
+    expect(response.ok(), `Assign request failed with status ${response.status()}: ${await response.text()}`).toBe(true);
+    await expect(targetLane.getByText(jobName!, { exact: false })).toBeVisible({ timeout: 60_000 });
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Schedule' })).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('section[aria-label^="Lane "]').filter({ hasText: jobName! }).first()).toBeVisible({ timeout: 60_000 });
+  });
+
   test('opens a contact detail page from the list without losing shell chrome', async ({ page }) => {
     await page.goto('/staff/contacts');
     await expect(page.getByRole('heading', { name: 'Contacts' })).toBeVisible({ timeout: 60_000 });
