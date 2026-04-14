@@ -285,6 +285,56 @@ describe('POST /api/staff/v1/schedule/job/assign', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_assign_ok');
   });
 
+  it('moves new assignment temp forecasts into p_assignment before commit', async () => {
+    recomputeForCrew.mockImplementationOnce((input: { jobs: Array<{ id: string }> }) => {
+      const tempJob = input.jobs.find((job) => job.id.startsWith('temp_job_'));
+      if (!tempJob) throw new Error('Expected a temp scheduled job during assignment recompute');
+      return {
+        job_updates: [
+          {
+            id: tempJob.id,
+            forecast_start: '2026-04-15',
+            forecast_end_exclusive: '2026-04-18',
+            forecast_duration_days: 3,
+          },
+          {
+            id: 'scheduled-job-2',
+            forecast_start: '2026-04-18',
+            forecast_end_exclusive: '2026-04-20',
+            forecast_duration_days: 2,
+          },
+        ],
+      };
+    });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/job/assign', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_assign_temp_forecast' },
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    const [, rpcArgs] = rpc.mock.calls[0];
+    expect(rpcArgs.p_target_forecast_updates).toEqual([
+      {
+        id: 'scheduled-job-2',
+        forecast_start: '2026-04-18',
+        forecast_end_exclusive: '2026-04-20',
+        forecast_duration_days: 2,
+      },
+    ]);
+    expect(rpcArgs.p_target_forecast_updates.some((update: { id: string }) => update.id.startsWith('temp_job_'))).toBe(false);
+    expect(rpcArgs.p_assignment).toEqual({
+      job_id: 'project-1',
+      forecast_duration_days: 3,
+      forecast_start: '2026-04-15',
+      forecast_end_exclusive: '2026-04-18',
+    });
+    expect(res.headers.get('x-portal-request-id')).toBe('req_assign_temp_forecast');
+  });
+
   it('commits a cross-crew move through one RPC call and preserves source schedule output', async () => {
     parseJsonBody.mockResolvedValueOnce({ ok: true, body: { job_id: 'project-1', crew_id: 'crew-new', position: 1, force: true } });
     scheduledJobsByProjectMaybeSingle.mockResolvedValueOnce({

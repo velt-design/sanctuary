@@ -108,6 +108,58 @@ describe('scheduleCommands', () => {
     });
   });
 
+  it('passes new assignment initial forecast fields through to the assign RPC', async () => {
+    rpc.mockResolvedValueOnce({
+      data: {
+        scheduled_job_id: 'job-1',
+        schedule_item_id: 'item-2',
+        source_crew_id: null,
+        updated_target_items: 1,
+        updated_source_items: 0,
+        updated_forecasts: 1,
+      },
+      error: null,
+    });
+
+    const mod = await import('./scheduleCommands');
+    const res = await mod.commitAssignJob({
+      diagnostics: { requestId: 'req-assign-new', route: '/api/staff/v1/schedule/job/assign', method: 'POST', startedAt: 1 },
+      targetCrewId: 'crew-new',
+      targetInsertPosition: 1,
+      targetPositions: [{ id: 'item-1', position: 0 }],
+      targetForecastUpdates: [{ id: 'job-2', forecast_start: '2026-04-18', forecast_end_exclusive: '2026-04-20', forecast_duration_days: 2 }],
+      jobId: 'project-1',
+      forecastDurationDays: 3,
+      initialForecastStart: '2026-04-15',
+      initialForecastEndExclusive: '2026-04-18',
+    });
+
+    expect(res).toEqual({
+      ok: true,
+      data: {
+        scheduled_job_id: 'job-1',
+        schedule_item_id: 'item-2',
+        source_crew_id: null,
+        updated_target_items: 1,
+        updated_source_items: 0,
+        updated_forecasts: 1,
+      },
+    });
+    expect(rpc).toHaveBeenCalledWith('schedule_v2_assign_job', {
+      p_target_crew_id: 'crew-new',
+      p_target_insert_position: 1,
+      p_target_positions: [{ id: 'item-1', position: 0 }],
+      p_target_forecast_updates: [{ id: 'job-2', forecast_start: '2026-04-18', forecast_end_exclusive: '2026-04-20', forecast_duration_days: 2 }],
+      p_assignment: {
+        job_id: 'project-1',
+        forecast_duration_days: 3,
+        forecast_start: '2026-04-15',
+        forecast_end_exclusive: '2026-04-18',
+      },
+      p_move: null,
+    });
+  });
+
   it('passes existing scheduled job repair payloads through to the assign RPC without move state', async () => {
     rpc.mockResolvedValueOnce({
       data: {
@@ -445,6 +497,7 @@ describe('scheduleCommands', () => {
       responseMessage:
         'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.',
     });
+    if (res.ok) throw new Error('Expected assign repair RPC revision failure');
     expect(res.error).toEqual({ message: 'p_assignment.job_id is required' });
     expect(logPortalServerWarn).toHaveBeenCalledWith(
       expect.objectContaining({ requestId: 'req-assign-old-revision' }),

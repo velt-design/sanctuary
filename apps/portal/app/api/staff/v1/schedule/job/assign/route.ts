@@ -24,6 +24,15 @@ export const runtime = 'nodejs';
 const ASSIGN_REPAIR_MIGRATION_MESSAGE =
   'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.';
 
+type ForecastUpdate = {
+  id: string;
+  forecast_start: string | null;
+  forecast_end_exclusive: string | null;
+  forecast_duration_days: number;
+};
+
+type AssignmentKind = 'new_assignment' | 'existing_repair' | 'move';
+
 function tempId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -35,6 +44,35 @@ function errorMessage(error: unknown): string {
 function isOldAssignRepairRpcError(error: unknown): boolean {
   const message = errorMessage(error).toLowerCase();
   return message.includes('p_assignment.job_id is required');
+}
+
+function splitNewAssignmentForecast(input: {
+  updates: ForecastUpdate[];
+  jobRecordId: string;
+  hasExistingJob: boolean;
+}): {
+  targetForecastUpdates: ForecastUpdate[];
+  initialForecast: ForecastUpdate | null;
+} {
+  if (input.hasExistingJob) {
+    return {
+      targetForecastUpdates: input.updates,
+      initialForecast: null,
+    };
+  }
+
+  const initialForecast = input.updates.find((update) => update.id === input.jobRecordId) ?? null;
+  if (!initialForecast) {
+    return {
+      targetForecastUpdates: input.updates,
+      initialForecast: null,
+    };
+  }
+
+  return {
+    targetForecastUpdates: input.updates.filter((update) => update.id !== input.jobRecordId),
+    initialForecast,
+  };
 }
 
 function fallbackExistingJobModel(input: {
@@ -372,15 +410,27 @@ export async function POST(req: Request) {
     return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
+  const assignmentKind: AssignmentKind = isMove && sourceCrewId && sourceItemId ? 'move' : existingJob ? 'existing_repair' : 'new_assignment';
+  const targetForecastCommit = splitNewAssignmentForecast({
+    updates: afterRecompute.job_updates,
+    jobRecordId,
+    hasExistingJob: Boolean(existingJob),
+  });
+
   const commitRes = await commitAssignJob({
     diagnostics,
     targetCrewId: crewId,
     targetInsertPosition: position,
     targetPositions: applyScheduleItemPositions(items.filter((item) => item.id !== newItem.id)),
-    targetForecastUpdates: afterRecompute.job_updates,
+    targetForecastUpdates: targetForecastCommit.targetForecastUpdates,
     ...(existingJob
       ? { scheduledJobId: String(existingJob.id) }
-      : { jobId, forecastDurationDays: durationDays }),
+      : {
+          jobId,
+          forecastDurationDays: targetForecastCommit.initialForecast?.forecast_duration_days ?? durationDays,
+          initialForecastStart: targetForecastCommit.initialForecast?.forecast_start,
+          initialForecastEndExclusive: targetForecastCommit.initialForecast?.forecast_end_exclusive,
+        }),
     ...(isMove && sourceCrewId && sourceItemId
       ? {
           move: {
@@ -402,6 +452,7 @@ export async function POST(req: Request) {
         error: commitRes.error,
         extra: {
           reason: 'old_assign_repair_rpc_revision',
+          assignmentKind,
           jobId,
           crewId,
           scheduledJobId: existingScheduledJobId,
@@ -420,6 +471,7 @@ export async function POST(req: Request) {
       message: commitRes.responseMessage,
       extra: {
         reason: 'commit_failed',
+        assignmentKind,
         jobId,
         crewId,
         scheduledJobId: existingScheduledJobId,

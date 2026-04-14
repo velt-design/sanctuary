@@ -242,6 +242,8 @@ export async function commitAssignJob(input: {
   scheduledJobId?: string;
   jobId?: string;
   forecastDurationDays?: number;
+  initialForecastStart?: string | null;
+  initialForecastEndExclusive?: string | null;
   move?: AssignMoveInput | null;
 }): Promise<ScheduleCommandResult<AssignJobCommandResult>> {
   return runScheduleRpcCommand({
@@ -256,6 +258,8 @@ export async function commitAssignJob(input: {
         scheduled_job_id: input.scheduledJobId,
         job_id: input.jobId,
         forecast_duration_days: input.forecastDurationDays,
+        forecast_start: input.initialForecastStart,
+        forecast_end_exclusive: input.initialForecastEndExclusive,
       }),
       p_move: input.move
         ? {

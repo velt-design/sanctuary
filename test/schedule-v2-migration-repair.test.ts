@@ -17,4 +17,16 @@ describe('schedule v2 repair migrations', () => {
     expect(source).not.toMatch(/\bdelete\s+from\s+public\.(scheduled_jobs|crew_schedule_items)\b/i);
     expect(source).not.toMatch(/\bupdate\s+public\.(scheduled_jobs|crew_schedule_items)\b/i);
   });
+
+  it('persists initial forecast dates for newly assigned scheduled jobs', () => {
+    const source = readFileSync(
+      path.join(process.cwd(), 'supabase/migrations/20260414_000003_schedule_v2_assign_new_job_initial_forecast.sql'),
+      'utf8',
+    );
+
+    expect(source).toMatch(/from jsonb_to_record\(p_assignment\) as payload\([\s\S]*forecast_start date,[\s\S]*forecast_end_exclusive date/i);
+    expect(source).toMatch(/insert into public\.scheduled_jobs \([\s\S]*forecast_start,[\s\S]*forecast_end_exclusive,[\s\S]*forecast_duration_days/i);
+    expect(source).toMatch(/values \([\s\S]*v_assignment\.forecast_start,[\s\S]*v_assignment\.forecast_end_exclusive,[\s\S]*v_assignment\.forecast_duration_days/i);
+    expect(source).toMatch(/notify pgrst, 'reload schema'/i);
+  });
 });
