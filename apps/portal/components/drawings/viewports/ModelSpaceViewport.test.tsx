@@ -170,11 +170,115 @@ function makePlanModelWithLargeHouseContext(): ModulePlanModel {
   };
 }
 
+function makeCustomPolygonPlanModel(): ModulePlanModel {
+  return {
+    ...makePlanModelWithHouseContext(),
+    houseFootprintMode: 'custom_polygon',
+    houseFootprintPolygon: [
+      { alongM: '0', depthM: '2.4' },
+      { alongM: '6', depthM: '2.4' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '0', depthM: '0' },
+    ],
+  };
+}
+
 function clickButtonByText(container: HTMLElement, text: string): void {
   const button = Array.from(container.querySelectorAll('button')).find((candidate) => candidate.textContent === text);
   if (!button) throw new Error(`Missing button: ${text}`);
   act(() => {
     button.click();
+  });
+}
+
+function getDrawOutlineDiagnostics(container: HTMLElement): DOMStringMap {
+  const scroller = container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+  if (!scroller) throw new Error('Missing model-space scroller.');
+  return scroller.dataset;
+}
+
+function getDrawOutlineStatus(container: HTMLElement): HTMLElement | null {
+  return container.querySelector('[aria-label="Draw outline status"]');
+}
+
+function getDrawOutlineLandingMarker(container: HTMLElement): SVGElement | null {
+  return container.querySelector('[data-draw-outline-landing-marker="true"]') as SVGElement | null;
+}
+
+function expectFiniteDrawOutlineLanding(container: HTMLElement): { alongM: number; depthM: number } {
+  const diagnostics = getDrawOutlineDiagnostics(container);
+  expect(diagnostics.drawOutlineHasLandingPoint).toBe('true');
+  const alongM = Number.parseFloat(diagnostics.drawOutlineLandingAlongM ?? '');
+  const depthM = Number.parseFloat(diagnostics.drawOutlineLandingDepthM ?? '');
+  expect(Number.isFinite(alongM)).toBe(true);
+  expect(Number.isFinite(depthM)).toBe(true);
+  const marker = getDrawOutlineLandingMarker(container);
+  expect(marker).not.toBeNull();
+  expect(marker?.getAttribute('data-draw-outline-landing-along-m')).toBe(diagnostics.drawOutlineLandingAlongM);
+  expect(marker?.getAttribute('data-draw-outline-landing-depth-m')).toBe(diagnostics.drawOutlineLandingDepthM);
+  return { alongM, depthM };
+}
+
+function dispatchEscape(): void {
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  });
+}
+
+function dispatchDrawClick(svg: SVGSVGElement, init: MouseEventInit & { pointerId?: number }): void {
+  const pointerId = init.pointerId ?? 1;
+  dispatchPointer(svg, 'pointerdown', { ...init, pointerId, button: init.button ?? 0 });
+  dispatchPointer(window, 'pointerup', {
+    pointerId,
+    button: init.button ?? 0,
+    clientX: init.clientX,
+    clientY: init.clientY,
+  });
+}
+
+function dispatchWheel(target: EventTarget, init: WheelEventInit): void {
+  act(() => {
+    target.dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        ...init,
+      }),
+    );
+  });
+}
+
+function dispatchGesture(
+  target: EventTarget,
+  type: 'gesturestart' | 'gesturechange' | 'gestureend' | 'gesturecancel',
+  init: { scale?: number; clientX?: number; clientY?: number } = {},
+): void {
+  act(() => {
+    const event = new Event(type, {
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, 'scale', { configurable: true, value: init.scale });
+    Object.defineProperty(event, 'clientX', { configurable: true, value: init.clientX });
+    Object.defineProperty(event, 'clientY', { configurable: true, value: init.clientY });
+    target.dispatchEvent(event);
+  });
+}
+
+function dispatchTouchPointer(
+  target: EventTarget,
+  type: string,
+  init: MouseEventInit & { pointerId: number; pointerType?: string },
+): void {
+  act(() => {
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    });
+    Object.defineProperty(event, 'pointerId', { configurable: true, value: init.pointerId });
+    Object.defineProperty(event, 'pointerType', { configurable: true, value: init.pointerType ?? 'touch' });
+    target.dispatchEvent(event);
   });
 }
 
@@ -211,37 +315,16 @@ function makeRect(x: number, y: number, width: number, height: number): DOMRect 
   } as DOMRect;
 }
 
-function parseModelSpaceBox(value: string | undefined): { x: number; y: number; width: number; height: number } {
-  const parts = value?.split(/\s+/).map((part) => Number.parseFloat(part)) ?? [];
-  expect(parts).toHaveLength(4);
-  const [x, y, width, height] = parts as [number, number, number, number];
-  return { x, y, width, height };
-}
-
-function expectedFitForSvgFocus(input: {
+function expectedFitForTargetRect(input: {
   scrollerWidth: number;
   scrollerHeight: number;
-  frameWidth: number;
-  frameHeight: number;
-  svg: SVGSVGElement;
+  target: { x: number; y: number; width: number; height: number };
 }): { zoom: number; panX: number; panY: number } {
-  const viewBox = parseModelSpaceBox(input.svg.dataset.modelSpaceViewBox);
-  const focusBox = parseModelSpaceBox(input.svg.dataset.modelSpaceFocusBox);
-  const svgWidth = Number.parseFloat(input.svg.getAttribute('width') ?? '0');
-  const svgHeight = Number.parseFloat(input.svg.getAttribute('height') ?? '0');
-  const svgLeft = Math.max(0, (input.frameWidth - svgWidth) / 2);
-  const svgTop = Math.max(0, (input.frameHeight - svgHeight) / 2);
-  const focusRect = {
-    x: svgLeft + (focusBox.x - viewBox.x) * (svgWidth / viewBox.width),
-    y: svgTop + (focusBox.y - viewBox.y) * (svgHeight / viewBox.height),
-    width: focusBox.width * (svgWidth / viewBox.width),
-    height: focusBox.height * (svgHeight / viewBox.height),
-  };
-  const zoom = Math.min(Math.max(Math.min((input.scrollerWidth - 48) / focusRect.width, (input.scrollerHeight - 48) / focusRect.height), 0.25), 4);
+  const zoom = Math.min(Math.max(Math.min((input.scrollerWidth - 48) / input.target.width, (input.scrollerHeight - 48) / input.target.height), 0.25), 4);
   return {
     zoom,
-    panX: input.scrollerWidth / 2 - (focusRect.x + focusRect.width / 2) * zoom,
-    panY: input.scrollerHeight / 2 - (focusRect.y + focusRect.height / 2) * zoom,
+    panX: input.scrollerWidth / 2 - (input.target.x + input.target.width / 2) * zoom,
+    panY: input.scrollerHeight / 2 - (input.target.y + input.target.height / 2) * zoom,
   };
 }
 
@@ -275,7 +358,21 @@ describe('ModelSpaceViewport', () => {
     );
 
     expect(markup).toContain('aria-label="Plan model space viewport"');
-    expect(markup).toContain('Reset');
+    expect(markup).toContain('data-draw-outline-active="false"');
+    expect(markup).toContain('data-draw-outline-state="inactive"');
+    expect(markup).toContain('data-draw-outline-point-count="0"');
+    expect(markup).toContain('data-draw-outline-preview-kind="none"');
+    expect(markup).toContain('data-draw-outline-angle-mode="none"');
+    expect(markup).toContain('data-model-space-gesture="idle"');
+    expect(markup).toContain('data-model-space-active-touch-count="0"');
+    expect(markup).toContain('data-model-space-pinch-active="false"');
+    expect(markup).toContain('data-model-space-pinch-source="none"');
+    expect(markup).toContain('data-model-space-auto-fit-key="plan:plan:ready"');
+    expect(markup).toContain('data-model-space-auto-fit-ready="true"');
+    expect(markup).toContain('data-draw-outline-can-redraw="false"');
+    expect(markup).toContain('data-draw-outline-redraw-active="false"');
+    expect(markup).not.toContain('aria-label="Draw outline status"');
+    expect(markup).toContain('Fit view');
     expect(markup).toContain('data-plan-resize-handle-hit="plan:lengthA"');
     expect(markup).toContain('data-plan-resize-handle-hit="plan:spanA"');
     expect(markup).toContain('data-editable-field-id="plan:lengthA"');
@@ -370,12 +467,360 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('fits and centers the model-space drawing on initial render and reset', async () => {
+  it('zooms around the wheel pointer anchor with normalized trackpad input', () => {
+    const drawing = makeDrawingModule();
+    const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
+    const onViewportTransformChange = vi.fn();
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+    onViewportTransformChange.mockClear();
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!scroller) throw new Error('Missing model-space scroller.');
+    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
+    if (!resizeHit) throw new Error('Missing plan resize hit target.');
+    dispatchWheel(resizeHit, { ctrlKey: true, deltaY: -120, clientX: 100, clientY: 80 });
+
+    const next = onViewportTransformChange.mock.calls.at(-1)?.[0];
+    expect(next?.zoom).toBeGreaterThan(viewportTransform.zoom);
+    expect(next?.panX).toBeLessThan(viewportTransform.panX);
+    expect(next?.panY).toBeLessThan(viewportTransform.panY);
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpaceGesture).toBe('wheel-zoom');
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpacePinchSource).toBe('wheel');
+
+    rendered.unmount();
+  });
+
+  it('pans the model-space viewport with non-modifier wheel input', () => {
+    const drawing = makeDrawingModule();
+    const viewportTransform = { zoom: 1.25, panX: 20, panY: -10 };
+    const onViewportTransformChange = vi.fn();
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+    onViewportTransformChange.mockClear();
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!scroller) throw new Error('Missing model-space scroller.');
+    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
+    if (!resizeHit) throw new Error('Missing plan resize hit target.');
+    dispatchWheel(resizeHit, { deltaX: 12, deltaY: 30, clientX: 100, clientY: 80 });
+
+    expect(onViewportTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        zoom: viewportTransform.zoom,
+        panX: 8,
+        panY: -40,
+      }),
+    );
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpaceGesture).toBe('wheel-pan');
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpacePinchSource).toBe('none');
+
+    rendered.unmount();
+  });
+
+  it('zooms with WebKit gesture events over drawing geometry', () => {
+    const drawing = makeDrawingModule();
+    const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
+    const onViewportTransformChange = vi.fn();
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+    onViewportTransformChange.mockClear();
+
+    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
+    if (!resizeHit) throw new Error('Missing plan resize hit target.');
+    dispatchGesture(resizeHit, 'gesturestart', { clientX: 120, clientY: 80 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceGesture: 'trackpad-pinch',
+      modelSpacePinchActive: 'true',
+      modelSpacePinchSource: 'webkit-gesture',
+    });
+
+    dispatchGesture(resizeHit, 'gesturechange', { scale: 1.5, clientX: 120, clientY: 80 });
+    expect(onViewportTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        zoom: 1.5,
+        panX: -60,
+        panY: -40,
+      }),
+    );
+
+    dispatchGesture(resizeHit, 'gestureend', { clientX: 120, clientY: 80 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceGesture: 'idle',
+      modelSpacePinchActive: 'false',
+      modelSpacePinchSource: 'none',
+    });
+
+    rendered.unmount();
+  });
+
+  it('ignores WebKit gesture events from controls and draw inputs', () => {
     const drawing = makeDrawingModule();
     const onViewportTransformChange = vi.fn();
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+    onViewportTransformChange.mockClear();
+
+    const zoomOut = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === '-');
+    const distanceInput = rendered.container.querySelector('[data-draw-outline-controls="true"] input') as HTMLInputElement | null;
+    if (!zoomOut || !distanceInput) throw new Error('Missing viewport controls.');
+
+    dispatchGesture(zoomOut, 'gesturestart', { clientX: 20, clientY: 20 });
+    dispatchGesture(zoomOut, 'gesturechange', { scale: 1.4, clientX: 20, clientY: 20 });
+    dispatchGesture(distanceInput, 'gesturestart', { clientX: 20, clientY: 20 });
+    dispatchGesture(distanceInput, 'gesturechange', { scale: 1.4, clientX: 20, clientY: 20 });
+
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceGesture: 'idle',
+      modelSpacePinchActive: 'false',
+      modelSpacePinchSource: 'none',
+    });
+
+    rendered.unmount();
+  });
+
+  it('ignores viewport wheel navigation from controls and draw inputs', () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+    onViewportTransformChange.mockClear();
+
+    const zoomOut = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === '-');
+    const distanceInput = rendered.container.querySelector('[data-draw-outline-controls="true"] input') as HTMLInputElement | null;
+    if (!zoomOut || !distanceInput) throw new Error('Missing viewport controls.');
+
+    dispatchWheel(zoomOut, { ctrlKey: true, deltaY: -120, clientX: 20, clientY: 20 });
+    dispatchWheel(distanceInput, { deltaY: 30, clientX: 20, clientY: 20 });
+
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpaceGesture).toBe('idle');
+
+    rendered.unmount();
+  });
+
+  it('pinch zooms and pans with two touch pointers', () => {
+    const drawing = makeDrawingModule();
+    const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
+    const onViewportTransformChange = vi.fn();
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+    onViewportTransformChange.mockClear();
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!scroller) throw new Error('Missing model-space scroller.');
+    const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing model-space SVG.');
+    installSvgPointMock(svg);
+    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
+    if (!resizeHit) throw new Error('Missing plan resize hit target.');
+    dispatchTouchPointer(resizeHit, 'pointerdown', { pointerId: 21, button: 0, clientX: 100, clientY: 100 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceActiveTouchCount: '1',
+      modelSpacePinchActive: 'false',
+    });
+    dispatchTouchPointer(resizeHit, 'pointerdown', { pointerId: 22, button: 0, clientX: 200, clientY: 100 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceGesture: 'pinch-zoom',
+      modelSpaceActiveTouchCount: '2',
+      modelSpacePinchActive: 'true',
+      modelSpacePinchSource: 'touch-pointer',
+    });
+
+    dispatchTouchPointer(window, 'pointermove', { pointerId: 22, button: 0, clientX: 240, clientY: 100 });
+    expect(onViewportTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        zoom: 1.4,
+        panX: -40,
+        panY: -40,
+      }),
+    );
+
+    dispatchTouchPointer(window, 'pointermove', { pointerId: 22, button: 0, clientX: 170, clientY: 100 });
+    expect(onViewportTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        zoom: 0.7,
+        panX: 30,
+        panY: 30,
+      }),
+    );
+
+    dispatchTouchPointer(window, 'pointercancel', { pointerId: 22, button: 0, clientX: 170, clientY: 100 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceGesture: 'idle',
+      modelSpaceActiveTouchCount: '0',
+      modelSpacePinchActive: 'false',
+      modelSpacePinchSource: 'none',
+    });
+
+    rendered.unmount();
+  });
+
+  it('keeps one-touch plan resize drag working on edit hit targets', () => {
+    const drawing = makeDrawingModule();
+    const onCommitField = vi.fn(() => ({ ok: true }));
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={onCommitField}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing model-space SVG.');
+    installSvgPointMock(svg);
+    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
+    if (!resizeHit) throw new Error('Missing plan resize hit target.');
+
+    dispatchTouchPointer(resizeHit, 'pointerdown', { pointerId: 25, button: 0, clientX: 45, clientY: 28 });
+    dispatchTouchPointer(window, 'pointermove', { pointerId: 25, button: 0, clientX: 65, clientY: 28 });
+    dispatchTouchPointer(window, 'pointerup', { pointerId: 25, button: 0, clientX: 65, clientY: 28 });
+
+    expect(onCommitField).toHaveBeenCalledWith(expect.objectContaining({ id: 'plan:lengthA' }), expect.any(String));
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceActiveTouchCount: '0',
+      modelSpacePinchActive: 'false',
+    });
+
+    rendered.unmount();
+  });
+
+  it('pinch navigation leaves draw outline active without placing or committing points', () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const onViewportTransformChange = vi.fn();
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+    onViewportTransformChange.mockClear();
+
+    const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing model-space SVG.');
+    installSvgPointMock(svg);
+    dispatchTouchPointer(svg, 'pointerdown', { pointerId: 23, button: 0, clientX: 100, clientY: 100 });
+    dispatchTouchPointer(svg, 'pointerdown', { pointerId: 24, button: 0, clientX: 200, clientY: 100 });
+    dispatchTouchPointer(window, 'pointermove', { pointerId: 24, button: 0, clientX: 230, clientY: 110 });
+    dispatchTouchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 230, clientY: 110 });
+
+    expect(onViewportTransformChange).toHaveBeenCalled();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'true',
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      modelSpacePinchActive: 'false',
+    });
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('fits and centers the model-space drawing on initial render and Fit view', async () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const focusTargetRect = { x: 140, y: 90, width: 260, height: 180 };
     const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
       if (this instanceof HTMLElement && this.dataset.modelSpaceScroller !== undefined) return makeRect(0, 0, 600, 400);
-      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 480, 360);
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 12000, 9000);
+      if (this instanceof Element && this.getAttribute('data-model-space-focus-target') === 'true') {
+        return makeRect(focusTargetRect.x, focusTargetRect.y, focusTargetRect.width, focusTargetRect.height);
+      }
       return makeRect(0, 0, 0, 0);
     });
 
@@ -400,13 +845,13 @@ describe('ModelSpaceViewport', () => {
 
     expect(rendered.container.querySelector('[data-house-plan-surface="footprint"]')).not.toBeNull();
     const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
+    const focusTarget = rendered.container.querySelector('[data-model-space-focus-target="true"]');
     expect(svg).not.toBeNull();
-    const expectedFit = expectedFitForSvgFocus({
+    expect(focusTarget).not.toBeNull();
+    const expectedFit = expectedFitForTargetRect({
       scrollerWidth: 600,
       scrollerHeight: 400,
-      frameWidth: 480,
-      frameHeight: 360,
-      svg: svg!,
+      target: focusTargetRect,
     });
     const initialFit = onViewportTransformChange.mock.calls.at(-1)?.[0];
     expect(initialFit?.zoom).toBeCloseTo(expectedFit.zoom, 3);
@@ -415,7 +860,7 @@ describe('ModelSpaceViewport', () => {
     expect(initialFit?.zoom).toBeGreaterThan(0.25);
 
     onViewportTransformChange.mockClear();
-    clickButtonByText(rendered.container, 'Reset');
+    clickButtonByText(rendered.container, 'Fit view');
 
     const resetFit = onViewportTransformChange.mock.calls.at(-1)?.[0];
     expect(resetFit?.zoom).toBeCloseTo(expectedFit.zoom, 3);
@@ -426,7 +871,57 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('keeps manual zoom for the same layout and auto-fits when model-space layout metadata changes', async () => {
+  it('falls back to model-space focus metadata when the focus target cannot be measured', async () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScroller !== undefined) return makeRect(0, 0, 600, 400);
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 12000, 9000);
+      return makeRect(0, 0, 0, 0);
+    });
+
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithLargeHouseContext()}
+        sectionModel={drawing.sectionModel}
+        fitViewKey="module-1:plan"
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing model-space SVG.');
+    const target = {
+      x: 0,
+      y: 0,
+      width: Number.parseFloat(svg.getAttribute('width') ?? '0'),
+      height: Number.parseFloat(svg.getAttribute('height') ?? '0'),
+    };
+    const expectedFit = expectedFitForTargetRect({
+      scrollerWidth: 600,
+      scrollerHeight: 400,
+      target,
+    });
+    const initialFit = onViewportTransformChange.mock.calls.at(-1)?.[0];
+    expect(initialFit?.zoom).toBeCloseTo(expectedFit.zoom, 3);
+    expect(initialFit?.panX).toBeCloseTo(expectedFit.panX, 3);
+    expect(initialFit?.panY).toBeCloseTo(expectedFit.panY, 3);
+
+    rectSpy.mockRestore();
+    rendered.unmount();
+  });
+
+  it('keeps the current view through model edits and auto-fits only when the viewport context changes', async () => {
     const drawing = makeDrawingModule();
     const onViewportTransformChange = vi.fn();
     const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
@@ -434,13 +929,16 @@ describe('ModelSpaceViewport', () => {
       if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 1200, 900);
       return makeRect(0, 0, 0, 0);
     });
-    const renderViewport = (planModel: ModulePlanModel | null | undefined = drawing.planModel) => (
+    const renderViewport = (
+      planModel: ModulePlanModel | null | undefined = drawing.planModel,
+      fitViewKey = 'module-1:plan',
+    ) => (
       <ModelSpaceViewport
         view="plan"
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
-        fitViewKey="module-1:plan"
+        fitViewKey={fitViewKey}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={onViewportTransformChange}
         editableFields={makePlanEditableFields()}
@@ -470,6 +968,111 @@ describe('ModelSpaceViewport', () => {
     rendered.rerender(renderViewport({ ...drawing.planModel!, lengthA: drawing.planModel!.lengthA + 1 }));
     await act(async () => {
       await Promise.resolve();
+    });
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+
+    onViewportTransformChange.mockClear();
+    rendered.rerender(renderViewport({ ...drawing.planModel!, lengthA: drawing.planModel!.lengthA + 2 }, 'module-2:plan'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onViewportTransformChange).toHaveBeenCalled();
+
+    rectSpy.mockRestore();
+    rendered.unmount();
+  });
+
+  it('auto-fits once when drawable model-space content becomes available', async () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScroller !== undefined) return makeRect(0, 0, 600, 400);
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 1200, 900);
+      return makeRect(0, 0, 0, 0);
+    });
+    const renderViewport = (planModel: ModulePlanModel | null | undefined) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        fitViewKey="module-1:plan"
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport(null));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceAutoFitKey: 'module-1:plan:plan:empty',
+      modelSpaceAutoFitReady: 'false',
+    });
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+
+    rendered.rerender(renderViewport(drawing.planModel));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceAutoFitKey: 'module-1:plan:plan:ready',
+      modelSpaceAutoFitReady: 'true',
+    });
+    expect(onViewportTransformChange).toHaveBeenCalledTimes(1);
+
+    onViewportTransformChange.mockClear();
+    rendered.rerender(renderViewport({ ...drawing.planModel!, lengthA: drawing.planModel!.lengthA + 1 }));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+
+    rectSpy.mockRestore();
+    rendered.unmount();
+  });
+
+  it('auto-fits again when switching between model-space plan and section views', async () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScroller !== undefined) return makeRect(0, 0, 600, 400);
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 1200, 900);
+      return makeRect(0, 0, 0, 0);
+    });
+    const renderViewport = (view: 'plan' | 'section') => (
+      <ModelSpaceViewport
+        view={view}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        fitViewKey={`module-1:${view}`}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport('plan'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onViewportTransformChange).toHaveBeenCalled();
+
+    onViewportTransformChange.mockClear();
+    rendered.rerender(renderViewport('section'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceAutoFitKey: 'module-1:section:section:ready',
+      modelSpaceAutoFitReady: 'true',
     });
     expect(onViewportTransformChange).toHaveBeenCalled();
 
@@ -504,15 +1107,248 @@ describe('ModelSpaceViewport', () => {
     rendered.rerender(renderViewport(1));
 
     expect(commitFootprintEdit).not.toHaveBeenCalled();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'true',
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlineHasPendingPoint: 'false',
+      drawOutlinePreviewKind: 'none',
+      drawOutlineCloseReady: 'false',
+      drawOutlineCloseHovered: 'false',
+      drawOutlineHasLandingPoint: 'false',
+      drawOutlineGesture: 'idle',
+      drawOutlinePanThresholdPx: '5',
+      drawOutlineAngleMode: 'relative',
+      drawOutlineHasError: 'false',
+    });
+    const status = getDrawOutlineStatus(rendered.container);
+    expect(status?.getAttribute('data-draw-outline-status')).toBe('true');
+    expect(status?.getAttribute('data-draw-outline-status-state')).toBe('first-point');
+    expect(status?.textContent).toContain('Draw outline: click first corner');
+    expect(status?.textContent).toContain('Esc cancels');
     expect(rendered.container.textContent).toContain('Click first corner');
     expect(rendered.container.textContent).not.toContain('Angle mode');
     expect(rendered.container.querySelector('[data-house-plan-surface="footprint"]')).toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Draw house outline controls"]')?.getAttribute('data-draw-popover-anchor')).toBe('default');
+    expect(rendered.container.querySelector('[data-footprint-edge]')).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-resize-edge-hit]')).toBeNull();
+    const controls = rendered.container.querySelector('[aria-label="Draw house outline controls"]');
+    expect(controls?.getAttribute('data-draw-outline-controls')).toBe('true');
+    expect(controls?.getAttribute('data-draw-popover-anchor')).toBe('default');
 
     clickButtonByText(rendered.container, 'Cancel');
 
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'false',
+      drawOutlineState: 'inactive',
+      drawOutlinePointCount: '0',
+      drawOutlineHasLandingPoint: 'false',
+      drawOutlineAngleMode: 'none',
+    });
+    expect(getDrawOutlineStatus(rendered.container)).toBeNull();
     expect(rendered.container.querySelector('[data-house-plan-surface="footprint"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-edge]')).not.toBeNull();
     expect(rendered.container.textContent).not.toContain('Click first corner');
+
+    rendered.unmount();
+  });
+
+  it('starts redraw for an existing custom outline as a draft and cancel restores the persisted polygon', () => {
+    const drawing = makeDrawingModule();
+    const planModel = makeCustomPolygonPlanModel();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />,
+    );
+
+    expect(rendered.container.textContent).toContain('Redraw outline');
+    expect(rendered.container.querySelector('[data-draw-outline-redraw-entry="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'false',
+      drawOutlineCanRedraw: 'true',
+      drawOutlineRedrawActive: 'false',
+      drawOutlinePointCount: '0',
+    });
+
+    clickButtonByText(rendered.container, 'Redraw outline');
+
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+    expect(rendered.container.textContent).not.toContain('Redraw outline');
+    expect(rendered.container.querySelector('[data-draw-outline-redraw-entry="true"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).toBeNull();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'true',
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlineCanRedraw: 'false',
+      drawOutlineRedrawActive: 'true',
+    });
+
+    clickButtonByText(rendered.container, 'Cancel');
+
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Redraw outline');
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'false',
+      drawOutlineState: 'inactive',
+      drawOutlineCanRedraw: 'true',
+      drawOutlineRedrawActive: 'false',
+    });
+
+    rendered.unmount();
+  });
+
+  it('commits a replacement custom polygon only after a redraw outline closes successfully', async () => {
+    const drawing = makeDrawingModule();
+    const planModel = makeCustomPolygonPlanModel();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />,
+    );
+
+    clickButtonByText(rendered.container, 'Redraw outline');
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
+    clickButtonByText(rendered.container, 'Confirm');
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
+    clickButtonByText(rendered.container, 'Confirm');
+
+    await act(async () => {
+      clickButtonByText(rendered.container, 'Close');
+      await Promise.resolve();
+    });
+
+    expect(commitFootprintEdit).toHaveBeenCalledTimes(1);
+    expect(commitFootprintEdit).toHaveBeenCalledWith({
+      type: 'custom_polygon',
+      polygon: expect.arrayContaining([
+        expect.objectContaining({ alongM: expect.any(String), depthM: expect.any(String) }),
+      ]),
+    });
+    const firstCommit = (commitFootprintEdit.mock.calls as unknown as Array<[{ type: 'custom_polygon'; polygon: unknown[] }]>)[0]?.[0];
+    expect(firstCommit?.polygon).toHaveLength(3);
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'inactive',
+      drawOutlineRedrawActive: 'false',
+    });
+
+    rendered.unmount();
+  });
+
+  it('keeps Fit view as a camera-only action for existing custom outlines', async () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const focusTargetRect = { x: 90, y: 70, width: 240, height: 170 };
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScroller !== undefined) return makeRect(0, 0, 600, 400);
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 12000, 9000);
+      if (this instanceof Element && this.getAttribute('data-model-space-focus-target') === 'true') {
+        return makeRect(focusTargetRect.x, focusTargetRect.y, focusTargetRect.width, focusTargetRect.height);
+      }
+      return makeRect(0, 0, 0, 0);
+    });
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makeCustomPolygonPlanModel()}
+        sectionModel={drawing.sectionModel}
+        fitViewKey="module-1:plan"
+        viewportTransform={{ zoom: 1.5, panX: 30, panY: -20 }}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    onViewportTransformChange.mockClear();
+
+    clickButtonByText(rendered.container, 'Fit view');
+
+    expect(onViewportTransformChange).toHaveBeenCalled();
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'false',
+      drawOutlineCanRedraw: 'true',
+    });
+
+    rectSpy.mockRestore();
+    rendered.unmount();
+  });
+
+  it('escape exits draw outline without committing and restores the previous footprint', () => {
+    const drawing = makeDrawingModule();
+    const planModel = makePlanModelWithHouseContext();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'true',
+      drawOutlineState: 'first-point',
+    });
+    expect(getDrawOutlineStatus(rendered.container)).not.toBeNull();
+    expect(rendered.container.querySelector('[data-house-plan-surface="footprint"]')).toBeNull();
+
+    dispatchEscape();
+
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'false',
+      drawOutlineState: 'inactive',
+    });
+    expect(getDrawOutlineStatus(rendered.container)).toBeNull();
+    expect(rendered.container.querySelector('[data-house-plan-surface="footprint"]')).not.toBeNull();
 
     rendered.unmount();
   });
@@ -548,7 +1384,7 @@ describe('ModelSpaceViewport', () => {
     if (!svg) throw new Error('Missing module plan SVG.');
     installSvgPointMock(svg);
 
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 45, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
     await act(async () => {
       await Promise.resolve();
     });
@@ -561,6 +1397,427 @@ describe('ModelSpaceViewport', () => {
     expect(Number.parseFloat(popover?.style.top ?? '')).toBeLessThanOrEqual(298);
 
     rectSpy.mockRestore();
+    rendered.unmount();
+  });
+
+  it('sets draw outline landing diagnostics before placing the first point', () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(svg, 'pointermove', { clientX: 45, clientY: 28 });
+    const landing = expectFiniteDrawOutlineLanding(rendered.container);
+    expect(landing.alongM).toBeCloseTo(3.75, 3);
+    expect(landing.depthM).toBeCloseTo(-2.333, 3);
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlinePreviewKind: 'none',
+    });
+    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge]')).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-preview-vertex]')).toBeNull();
+
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'placing',
+      drawOutlinePointCount: '1',
+      drawOutlineHasLandingPoint: 'true',
+    });
+    const markerCircle = getDrawOutlineLandingMarker(rendered.container)?.querySelector('circle');
+    const latestVertex = rendered.container.querySelector('[data-footprint-custom-latest-vertex="true"]') as SVGCircleElement | null;
+    expect(latestVertex).not.toBeNull();
+    expect(Number.parseFloat(latestVertex?.getAttribute('cx') ?? '')).toBeCloseTo(Number.parseFloat(markerCircle?.getAttribute('cx') ?? ''), 2);
+    expect(Number.parseFloat(latestVertex?.getAttribute('cy') ?? '')).toBeCloseTo(Number.parseFloat(markerCircle?.getAttribute('cy') ?? ''), 2);
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    dispatchPointer(svg, 'pointerout');
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlinePointCount: '1',
+      drawOutlineHasLandingPoint: 'false',
+    });
+    expect(getDrawOutlineLandingMarker(rendered.container)).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('places draw outline points from model-space scroller space outside the pergola outline', () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!scroller || !svg) throw new Error('Missing model-space scroller or SVG.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(scroller, 'pointermove', { clientX: 20, clientY: -12 });
+    const landing = expectFiniteDrawOutlineLanding(rendered.container);
+    expect(landing.alongM).toBeCloseTo(1.667, 3);
+    expect(landing.depthM).toBeCloseTo(1, 3);
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlineDraftSource: 'active-draft',
+    });
+
+    dispatchPointer(scroller, 'pointerdown', { pointerId: 31, button: 0, clientX: 20, clientY: -12 });
+    dispatchPointer(window, 'pointerup', { pointerId: 31, button: 0, clientX: 20, clientY: -12 });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'placing',
+      drawOutlinePointCount: '1',
+      drawOutlineDraftSource: 'active-draft',
+    });
+    expect(rendered.container.querySelector('[data-footprint-custom-latest-vertex="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-edge]')).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-resize-edge-hit]')).toBeNull();
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('does not place draw outline points from viewport or draw controls', () => {
+    const drawing = makeDrawingModule();
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+    const fitViewButton = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Fit view');
+    const confirmButton = Array.from(rendered.container.querySelectorAll('button')).find((button) => button.textContent === 'Confirm');
+    if (!fitViewButton || !confirmButton) throw new Error('Missing controls.');
+
+    dispatchPointer(fitViewButton, 'pointerdown', { pointerId: 41, button: 0, clientX: 20, clientY: -12 });
+    dispatchPointer(window, 'pointerup', { pointerId: 41, button: 0, clientX: 20, clientY: -12 });
+    dispatchPointer(confirmButton, 'pointerdown', { pointerId: 42, button: 0, clientX: 20, clientY: -12 });
+    dispatchPointer(window, 'pointerup', { pointerId: 42, button: 0, clientX: 20, clientY: -12 });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlineGesture: 'idle',
+    });
+
+    rendered.unmount();
+  });
+
+  it('defers draw outline point placement until pointer up', () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(svg, 'pointerdown', { pointerId: 9, button: 0, clientX: 45, clientY: 28 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlineGesture: 'click-candidate',
+      drawOutlineHasLandingPoint: 'true',
+    });
+
+    dispatchPointer(window, 'pointerup', { pointerId: 9, button: 0, clientX: 45, clientY: 28 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'placing',
+      drawOutlinePointCount: '1',
+      drawOutlineGesture: 'idle',
+    });
+    expect(rendered.container.querySelector('[data-footprint-custom-latest-vertex="true"]')).not.toBeNull();
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('keeps micro-movement below the draw outline pan threshold as a click', () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+    onViewportTransformChange.mockClear();
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(svg, 'pointerdown', { pointerId: 10, button: 0, clientX: 45, clientY: 28 });
+    dispatchPointer(window, 'pointermove', { pointerId: 10, button: 0, clientX: 48, clientY: 31 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineGesture: 'click-candidate',
+      drawOutlinePointCount: '0',
+    });
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 10, button: 0, clientX: 48, clientY: 31 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineGesture: 'idle',
+      drawOutlinePointCount: '1',
+    });
+
+    rendered.unmount();
+  });
+
+  it('pans instead of placing a draw outline point after crossing the drag threshold outside the pergola outline', () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const onViewportTransformChange = vi.fn();
+    const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+    onViewportTransformChange.mockClear();
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!scroller || !svg) throw new Error('Missing model-space scroller or SVG.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(scroller, 'pointerdown', { pointerId: 11, button: 0, clientX: 20, clientY: -12 });
+    dispatchPointer(window, 'pointermove', { pointerId: 11, button: 0, clientX: 36, clientY: -2 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'true',
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlineGesture: 'panning',
+      drawOutlinePreviewKind: 'none',
+    });
+    expect(onViewportTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        panX: viewportTransform.panX + 16,
+        panY: viewportTransform.panY + 10,
+      }),
+    );
+
+    dispatchPointer(window, 'pointerup', { pointerId: 11, button: 0, clientX: 36, clientY: -2 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'true',
+      drawOutlineState: 'first-point',
+      drawOutlinePointCount: '0',
+      drawOutlineGesture: 'idle',
+    });
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('cancels a pending draw outline click without placing a point', () => {
+    const drawing = makeDrawingModule();
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(svg, 'pointerdown', { pointerId: 12, button: 0, clientX: 45, clientY: 28 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineGesture: 'click-candidate',
+      drawOutlinePointCount: '0',
+    });
+
+    dispatchPointer(window, 'pointercancel', { pointerId: 12, button: 0, clientX: 45, clientY: 28 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'first-point',
+      drawOutlineGesture: 'idle',
+      drawOutlinePointCount: '0',
+    });
+
+    rendered.unmount();
+  });
+
+  it('keeps inactive model-space drag panning unchanged', () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+    onViewportTransformChange.mockClear();
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!scroller) throw new Error('Missing model-space scroller.');
+
+    dispatchPointer(scroller, 'pointerdown', { pointerId: 13, button: 0, clientX: 100, clientY: 120 });
+    dispatchPointer(window, 'pointermove', { pointerId: 13, button: 0, clientX: 116, clientY: 130 });
+    expect(onViewportTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        panX: viewportTransform.panX + 16,
+        panY: viewportTransform.panY + 10,
+      }),
+    );
+
+    dispatchPointer(window, 'pointerup', { pointerId: 13, button: 0, clientX: 116, clientY: 130 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'false',
+      drawOutlineGesture: 'idle',
+    });
+
+    rendered.unmount();
+  });
+
+  it('keeps draw outline landing diagnostics finite with viewport transform props', () => {
+    const drawing = makeDrawingModule();
+    const renderViewport = (viewportTransform = createDrawingWorkbenchUiState().viewportTransform) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={1}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(svg, 'pointermove', { clientX: 45, clientY: 28 });
+    const initial = expectFiniteDrawOutlineLanding(rendered.container);
+
+    rendered.rerender(renderViewport({ zoom: 2, panX: 40, panY: -30 }));
+    dispatchPointer(svg, 'pointermove', { clientX: 45, clientY: 28 });
+    const transformed = expectFiniteDrawOutlineLanding(rendered.container);
+    expect(transformed.alongM).toBeCloseTo(initial.alongM, 3);
+    expect(transformed.depthM).toBeCloseTo(initial.depthM, 3);
+
     rendered.unmount();
   });
 
@@ -590,15 +1847,34 @@ describe('ModelSpaceViewport', () => {
     if (!svg) throw new Error('Missing module plan SVG.');
     installSvgPointMock(svg);
 
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 45, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
     dispatchPointer(svg, 'pointermove', { clientX: 75, clientY: 28 });
 
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'placing',
+      drawOutlinePointCount: '1',
+      drawOutlineHasPendingPoint: 'false',
+      drawOutlinePreviewKind: 'hover',
+      drawOutlineCloseReady: 'false',
+      drawOutlineCloseHovered: 'false',
+      drawOutlineHasLandingPoint: 'true',
+      drawOutlineAngleMode: 'absolute',
+      drawOutlineHasError: 'false',
+    });
+    expectFiniteDrawOutlineLanding(rendered.container);
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('placing');
+    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: click next corner or enter distance and angle');
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-preview-vertex="hover"]')).not.toBeNull();
     expect(commitFootprintEdit).not.toHaveBeenCalled();
 
     clickButtonByText(rendered.container, 'Cancel');
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).toBeNull();
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'inactive',
+      drawOutlineHasLandingPoint: 'false',
+    });
+    expect(getDrawOutlineLandingMarker(rendered.container)).toBeNull();
     expect(commitFootprintEdit).not.toHaveBeenCalled();
 
     rendered.unmount();
@@ -630,10 +1906,24 @@ describe('ModelSpaceViewport', () => {
     if (!svg) throw new Error('Missing module plan SVG.');
     installSvgPointMock(svg);
 
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 45, clientY: 28 });
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 75, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
     dispatchPointer(svg, 'pointermove', { clientX: 75, clientY: 48 });
 
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'pending-segment',
+      drawOutlinePointCount: '1',
+      drawOutlineHasPendingPoint: 'true',
+      drawOutlinePreviewKind: 'pending',
+      drawOutlineCloseReady: 'false',
+      drawOutlineCloseHovered: 'false',
+      drawOutlineHasLandingPoint: 'true',
+      drawOutlineAngleMode: 'absolute',
+      drawOutlineHasError: 'false',
+    });
+    expectFiniteDrawOutlineLanding(rendered.container);
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('pending-segment');
+    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: confirm segment or undo');
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="pending"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-preview-vertex="pending"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).toBeNull();
@@ -642,6 +1932,14 @@ describe('ModelSpaceViewport', () => {
     clickButtonByText(rendered.container, 'Undo');
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="pending"]')).toBeNull();
     dispatchPointer(svg, 'pointermove', { clientX: 75, clientY: 48 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'placing',
+      drawOutlinePreviewKind: 'hover',
+      drawOutlineHasPendingPoint: 'false',
+      drawOutlineHasLandingPoint: 'true',
+    });
+    expectFiniteDrawOutlineLanding(rendered.container);
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('placing');
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).not.toBeNull();
     expect(commitFootprintEdit).not.toHaveBeenCalled();
 
@@ -673,17 +1971,137 @@ describe('ModelSpaceViewport', () => {
     if (!svg) throw new Error('Missing module plan SVG.');
     installSvgPointMock(svg);
 
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 45, clientY: 28 });
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 75, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
+    expect(rendered.container.querySelector('[data-footprint-custom-close-target]')).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-close-hit]')).toBeNull();
     clickButtonByText(rendered.container, 'Confirm');
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 75, clientY: 48 });
+    expect(rendered.container.querySelector('[data-footprint-custom-active-edge="true"]')?.getAttribute('data-footprint-custom-edge')).toBe('0');
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
     clickButtonByText(rendered.container, 'Confirm');
 
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'close-ready',
+      drawOutlinePointCount: '3',
+      drawOutlineHasPendingPoint: 'false',
+      drawOutlinePreviewKind: 'none',
+      drawOutlineCloseReady: 'true',
+      drawOutlineCloseHovered: 'false',
+      drawOutlineAngleMode: 'relative',
+      drawOutlineHasError: 'false',
+    });
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('close-ready');
+    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: close shape or add another corner');
     expect(rendered.container.querySelector('[data-footprint-custom-close-target="0"]')).not.toBeNull();
+    expect(rendered.container.querySelectorAll('[data-footprint-custom-close-target]')).toHaveLength(1);
+    expect(rendered.container.querySelector('[data-footprint-custom-close-hit="0"]')).not.toBeNull();
+    expect(rendered.container.querySelectorAll('[data-footprint-custom-close-hit]')).toHaveLength(1);
     expect(rendered.container.querySelector('[data-footprint-custom-latest-vertex="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-active-edge="true"]')?.getAttribute('data-footprint-custom-edge')).toBe('1');
+
+    dispatchPointer(svg, 'pointermove', { clientX: 75, clientY: 58 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'close-ready',
+      drawOutlinePreviewKind: 'hover',
+      drawOutlineCloseHovered: 'false',
+    });
+    expect(rendered.container.querySelector('[data-footprint-custom-close-hovered="true"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-close-preview="true"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).not.toBeNull();
 
     dispatchPointer(svg, 'pointermove', { clientX: 45.05, clientY: 28.05 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'close-hovered',
+      drawOutlinePreviewKind: 'hover',
+      drawOutlineCloseHovered: 'true',
+    });
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('close-hovered');
+    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: release on first corner to close');
     expect(rendered.container.querySelector('[data-footprint-custom-close-hovered="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-close-preview="true"]')).not.toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('exposes draw outline errors through viewport diagnostics', async () => {
+    const drawing = makeDrawingModule();
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    await act(async () => {
+      clickButtonByText(rendered.container, 'Close');
+      await Promise.resolve();
+    });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'error',
+      drawOutlinePointCount: '0',
+      drawOutlineHasError: 'true',
+    });
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('error');
+    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: fix issue or undo');
+    expect(rendered.container.textContent).toContain('Add at least 3 points before closing the outline.');
+
+    rendered.unmount();
+  });
+
+  it('marks the draft outline invalid when close validation fails with existing points', async () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    await act(async () => {
+      clickButtonByText(rendered.container, 'Close');
+      await Promise.resolve();
+    });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'error',
+      drawOutlinePointCount: '1',
+      drawOutlineHasError: 'true',
+    });
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status')).toBe('true');
+    expect(rendered.container.querySelector('[data-footprint-custom-invalid="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')?.getAttribute('data-footprint-custom-invalid')).toBe('true');
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
 
     rendered.unmount();
   });
@@ -714,17 +2132,35 @@ describe('ModelSpaceViewport', () => {
     if (!svg) throw new Error('Missing module plan SVG.');
     installSvgPointMock(svg);
 
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 45, clientY: 28 });
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 75, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
     clickButtonByText(rendered.container, 'Confirm');
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 75, clientY: 48 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
     clickButtonByText(rendered.container, 'Confirm');
 
-    const startHit = rendered.container.querySelector('[data-footprint-custom-vertex-hit="0"]');
-    if (!startHit) throw new Error('Missing close-ready start hit target.');
+    const genericStartHit = rendered.container.querySelector('[data-footprint-custom-vertex-hit="0"]');
+    if (!genericStartHit) throw new Error('Missing generic start vertex hit target.');
     const PointerCtor = window.PointerEvent ?? MouseEvent;
     await act(async () => {
-      startHit.dispatchEvent(new PointerCtor('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
+      genericStartHit.dispatchEvent(new PointerCtor('pointerdown', { bubbles: true, cancelable: true, button: 0, pointerId: 21, clientX: 45, clientY: 28 }));
+      window.dispatchEvent(new PointerCtor('pointerup', { bubbles: true, cancelable: true, button: 0, pointerId: 21, clientX: 45, clientY: 28 }));
+      await Promise.resolve();
+    });
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    const secondVertexHit = rendered.container.querySelector('[data-footprint-custom-vertex-hit="1"]');
+    if (!secondVertexHit) throw new Error('Missing non-close vertex hit target.');
+    await act(async () => {
+      secondVertexHit.dispatchEvent(new PointerCtor('pointerdown', { bubbles: true, cancelable: true, button: 0, pointerId: 22, clientX: 75, clientY: 28 }));
+      window.dispatchEvent(new PointerCtor('pointerup', { bubbles: true, cancelable: true, button: 0, pointerId: 22, clientX: 75, clientY: 28 }));
+      await Promise.resolve();
+    });
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    const closeHit = rendered.container.querySelector('[data-footprint-custom-close-hit="0"]');
+    if (!closeHit) throw new Error('Missing close-ready start hit target.');
+    await act(async () => {
+      closeHit.dispatchEvent(new PointerCtor('pointerdown', { bubbles: true, cancelable: true, button: 0, pointerId: 23, clientX: 45, clientY: 28 }));
       await Promise.resolve();
     });
 
@@ -737,6 +2173,11 @@ describe('ModelSpaceViewport', () => {
     });
     const firstCommit = (commitFootprintEdit.mock.calls as unknown as Array<[{ type: 'custom_polygon'; polygon: unknown[] }]>)[0]?.[0];
     expect(firstCommit?.polygon).toHaveLength(3);
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'inactive',
+      drawOutlineHasLandingPoint: 'false',
+    });
+    expect(getDrawOutlineLandingMarker(rendered.container)).toBeNull();
 
     rendered.unmount();
   });
@@ -768,11 +2209,11 @@ describe('ModelSpaceViewport', () => {
     if (!svg) throw new Error('Missing module plan SVG.');
     installSvgPointMock(svg);
 
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 45, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
     expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 75, clientY: 28 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
     clickButtonByText(rendered.container, 'Confirm');
-    dispatchPointer(svg, 'pointerdown', { button: 0, clientX: 75, clientY: 48 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
     clickButtonByText(rendered.container, 'Confirm');
 
     await act(async () => {

@@ -49,6 +49,13 @@ export type HouseFootprintVertexDragMeta = {
 
 export type ModuleFootprintEditorSurface = 'card' | 'sheet' | 'model';
 
+export type ModuleFootprintCanvasPoint = {
+  alongM: string;
+  depthM: string;
+  numericAlongM: number;
+  numericDepthM: number;
+};
+
 export type ModulePlanSheetInteractionProps = {
   isPergolaPopoverOpen?: boolean;
   onPergolaHoverChange?: (hovered: boolean) => void;
@@ -79,6 +86,8 @@ export type ModulePlanInteractionProps = {
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
+export type ModuleFootprintCanvasPointResolver = (clientX: number, clientY: number) => ModuleFootprintCanvasPoint | null;
+
 type GeometryConsistency = {
   level: 'ok' | 'warn';
   summary: string;
@@ -95,6 +104,8 @@ export type ModuleFootprintEditorProps = {
   customPolygonPreviewPointKind?: 'pending' | 'hover' | null;
   customPolygonCloseReady?: boolean;
   customPolygonCloseHovered?: boolean;
+  customPolygonLandingPoint?: ModuleFootprintCanvasPoint | null;
+  customPolygonHasError?: boolean;
   hideHouseFootprint?: boolean;
   isContextHovered?: boolean;
   onContextPopoverHoverChange?: (hovered: boolean) => void;
@@ -114,8 +125,13 @@ export type ModuleFootprintEditorProps = {
   onPresetSelect: (preset: ModulePlanModel['houseFootprintPreset']) => void;
   onModeSelect?: (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => void;
   onRotate: (delta: -1 | 1) => void;
-  onCanvasPointSelect?: (point: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number]) => void;
-  onCanvasPointHover?: (point: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number] | null) => void;
+  onCanvasPointSelect?: (point: ModuleFootprintCanvasPoint) => void;
+  onCanvasPointPointerDown?: (
+    point: ModuleFootprintCanvasPoint,
+    event: { pointerId: number; clientX: number; clientY: number },
+  ) => void;
+  onCanvasPointHover?: (point: ModuleFootprintCanvasPoint | null) => void;
+  onCanvasPointResolverChange?: (resolver: ModuleFootprintCanvasPointResolver | null) => void;
   onCloseStartSelect?: () => void;
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
@@ -690,6 +706,9 @@ type DebugOutlineProps = {
 type ResolvedModelSpaceLayout = ResolvedSheetLayout & {
   viewBox: SheetRect;
   viewBoxValue: string;
+  worldBounds: AnnotatedBounds;
+  worldBox: SheetRect;
+  worldBoxValue: string;
   focusBounds: AnnotatedBounds;
   focusBox: SheetRect;
   focusBoxValue: string;
@@ -823,6 +842,31 @@ function resolveModelSpaceFocusMetrics(bounds: AnnotatedBounds): Pick<ResolvedMo
     focusBox,
     focusBoxValue: rectToViewBox(focusBox),
   };
+}
+
+function resolveModelSpaceWorldMetrics(bounds: AnnotatedBounds): Pick<ResolvedModelSpaceLayout, 'worldBounds' | 'worldBox' | 'worldBoxValue'> {
+  const worldBox = boundsToPaddedRect(bounds, MODEL_SPACE_VIEWBOX_PADDING);
+  return {
+    worldBounds: bounds,
+    worldBox,
+    worldBoxValue: rectToViewBox(worldBox),
+  };
+}
+
+function FocusTarget({ rect }: { rect: SheetRect }) {
+  return (
+    <rect
+      x={rect.x}
+      y={rect.y}
+      width={rect.width}
+      height={rect.height}
+      fill="transparent"
+      opacity={0}
+      pointerEvents="none"
+      aria-hidden="true"
+      data-model-space-focus-target="true"
+    />
+  );
 }
 
 function resolveBoundsPlacement(bounds: AnnotatedBounds, fitArea: SheetFitArea, verticalBias: number): LayoutOffset {
@@ -2111,6 +2155,8 @@ type FootprintCustomEdgeSpec = {
   index: number;
   kind: 'confirmed' | 'preview';
   previewPointKind: 'pending' | 'hover' | null;
+  isClosePreview: boolean;
+  isActive: boolean;
   start: Point;
   end: Point;
 };
@@ -2121,6 +2167,7 @@ type FootprintCanvasLayout = {
   resizeEdges: FootprintResizeEdgeSpec[];
   customVertices: FootprintCustomVertexSpec[];
   customEdges: FootprintCustomEdgeSpec[];
+  landingPoint: Point | null;
   sideTurns: number;
 };
 
@@ -2142,6 +2189,85 @@ function localFootprintDimensionsM(model: ModulePlanModel, attachmentSide: Attac
   return {
     widthM: model.lengthA,
     depthM: model.spanA,
+  };
+}
+
+export type PlanSvgPointerFootprintPointInput = {
+  rootPoint: { x: number; y: number };
+  rotationCenter: { x: number; y: number };
+  rotationTurns: number;
+  footprintRect: { x: number; y: number; width: number; height: number };
+  scale: number;
+  attachmentSide: AttachmentSide;
+  lengthA: number;
+  spanA: number;
+  houseFootprintPreset: ModulePlanModel['houseFootprintPreset'];
+  houseFootprintParams: ModulePlanModel['houseFootprintParams'];
+  isHipCorner?: boolean;
+};
+
+export type PlanSvgPointerFootprintPoint = {
+  formatted: {
+    alongM: string;
+    depthM: string;
+  };
+  numeric: {
+    alongM: number;
+    depthM: number;
+  };
+};
+
+function formatPlanPointerMetres(value: number): string {
+  return (Math.round(value * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '') || '0';
+}
+
+export function resolvePlanSvgPointerFootprintPoint(input: PlanSvgPointerFootprintPointInput): PlanSvgPointerFootprintPoint | null {
+  if (
+    input.isHipCorner ||
+    !Number.isFinite(input.rootPoint.x) ||
+    !Number.isFinite(input.rootPoint.y) ||
+    !Number.isFinite(input.rotationCenter.x) ||
+    !Number.isFinite(input.rotationCenter.y) ||
+    !Number.isFinite(input.footprintRect.x) ||
+    !Number.isFinite(input.footprintRect.y) ||
+    !Number.isFinite(input.footprintRect.width) ||
+    !Number.isFinite(input.footprintRect.height) ||
+    !Number.isFinite(input.scale) ||
+    input.scale <= 0 ||
+    !Number.isFinite(input.lengthA) ||
+    !Number.isFinite(input.spanA)
+  ) {
+    return null;
+  }
+
+  const unrotatedPlanPoint = rotatePointQuarterTurns(input.rootPoint, input.rotationCenter, -input.rotationTurns);
+  const footprintCenter = actualPergolaCenter(input.footprintRect);
+  const localDims =
+    input.attachmentSide === 'left' || input.attachmentSide === 'right'
+      ? { widthM: input.spanA, depthM: input.lengthA }
+      : { widthM: input.lengthA, depthM: input.spanA };
+  const sideLocalPoint = rotatePointQuarterTurns(unrotatedPlanPoint, footprintCenter, -attachmentSideQuarterTurns(input.attachmentSide));
+  const localX = (sideLocalPoint.x - (footprintCenter.x - (localDims.widthM * input.scale) / 2)) / input.scale;
+  const localY = (sideLocalPoint.y - (footprintCenter.y - (localDims.depthM * input.scale) / 2)) / input.scale;
+  const localLayout = buildHouseFootprintLocalLayout({
+    pergolaWidthM: localDims.widthM,
+    pergolaDepthM: localDims.depthM,
+    preset: input.houseFootprintPreset,
+    params: input.houseFootprintParams,
+  });
+  const alongM = localX - localLayout.resolved.offsetXM;
+  const depthM = -localY - localLayout.resolved.setbackM;
+  if (!Number.isFinite(alongM) || !Number.isFinite(depthM)) return null;
+
+  return {
+    formatted: {
+      alongM: formatPlanPointerMetres(alongM),
+      depthM: formatPlanPointerMetres(depthM),
+    },
+    numeric: {
+      alongM,
+      depthM,
+    },
   };
 }
 
@@ -2175,6 +2301,7 @@ function resolveFootprintCanvasLayout(input: {
   customPolygonPreviewPointKind?: 'pending' | 'hover' | null;
   customPolygonCloseReady?: boolean;
   customPolygonCloseHovered?: boolean;
+  customPolygonLandingPoint?: ModuleFootprintCanvasPoint | null;
   hideHouseFootprint?: boolean;
 }): FootprintCanvasLayout {
   const { model, rect, scale, rotationCenter, rotationTurns } = input;
@@ -2187,13 +2314,30 @@ function resolveFootprintCanvasLayout(input: {
     params: model.houseFootprintParams,
   });
   const totalTurns = sideTurns + rotationTurns;
+  const customPolygonOpen = Boolean(input.customPolygonOpen);
   const customPolygonSource = input.customPolygonOverride === undefined ? model.houseFootprintPolygon : input.customPolygonOverride;
-  const hasCustomPolygonSource = input.customPolygonOverride !== undefined || model.houseFootprintMode === 'custom_polygon';
+  const hasCustomPolygonSource = customPolygonOpen || input.customPolygonOverride !== undefined || model.houseFootprintMode === 'custom_polygon';
   const customPolygonConfirmedPointCount =
     input.customPolygonConfirmedPointCount === undefined ? Number.POSITIVE_INFINITY : Math.max(0, input.customPolygonConfirmedPointCount);
   const customPolygonPreviewPointKind = input.customPolygonPreviewPointKind ?? null;
   const customPolygonCloseReady = Boolean(input.customPolygonCloseReady);
   const customPolygonCloseHovered = Boolean(input.customPolygonCloseHovered);
+  const landingPoint =
+    input.customPolygonLandingPoint &&
+    Number.isFinite(input.customPolygonLandingPoint.numericAlongM) &&
+    Number.isFinite(input.customPolygonLandingPoint.numericDepthM)
+      ? mapLocalFootprintPointToPlan({
+          point: {
+            x: input.customPolygonLandingPoint.numericAlongM + localLayout.resolved.offsetXM,
+            y: -localLayout.resolved.setbackM - input.customPolygonLandingPoint.numericDepthM,
+          },
+          rect,
+          canonicalWidthM: dims.widthM,
+          canonicalDepthM: dims.depthM,
+          scale,
+          sideTurns,
+        })
+      : null;
   const customPoints =
     hasCustomPolygonSource
       ? (customPolygonSource ?? [])
@@ -2208,7 +2352,7 @@ function resolveFootprintCanvasLayout(input: {
           })
           .filter((point): point is HouseFootprintPoint => Boolean(point))
       : [];
-  const effectiveLocalPolygon = customPoints.length >= 3 ? customPoints : input.hideHouseFootprint ? [] : localLayout.polygon;
+  const effectiveLocalPolygon = customPoints.length >= 3 ? customPoints : customPolygonOpen || input.hideHouseFootprint ? [] : localLayout.polygon;
   const polygon = effectiveLocalPolygon.map((localPoint) =>
     mapLocalFootprintPointToPlan({
       point: localPoint,
@@ -2262,12 +2406,14 @@ function resolveFootprintCanvasLayout(input: {
             index,
             kind: isPreviewEdge ? 'preview' : 'confirmed',
             previewPointKind: isPreviewEdge ? customPolygonPreviewPointKind : null,
+            isClosePreview: Boolean(isPreviewEdge && customPolygonCloseHovered),
+            isActive: !isPreviewEdge && next.isLatestConfirmed,
             start: vertex.point,
             end: next.point,
           }];
         })
       : [];
-  const handles = localLayout.handles.map((handle): FootprintHandleSpec => {
+  const handles = customPolygonOpen ? [] : localLayout.handles.map((handle): FootprintHandleSpec => {
     const point = mapLocalFootprintPointToPlan({
       point: handle.point,
       rect,
@@ -2300,7 +2446,7 @@ function resolveFootprintCanvasLayout(input: {
       axisY: rotateVectorQuarterTurns({ x: handle.axisX, y: handle.axisY }, totalTurns).y,
     };
   });
-  const resizeEdges = localLayout.edges.map((edge): FootprintResizeEdgeSpec => {
+  const resizeEdges = customPolygonOpen ? [] : localLayout.edges.map((edge): FootprintResizeEdgeSpec => {
     const start = mapLocalFootprintPointToPlan({
       point: edge.start,
       rect,
@@ -2334,6 +2480,7 @@ function resolveFootprintCanvasLayout(input: {
     resizeEdges: hasCustomPolygonSource ? [] : resizeEdges,
     customVertices,
     customEdges,
+    landingPoint,
     sideTurns,
   };
 }
@@ -2811,7 +2958,11 @@ function measurePlanAnnotatedBounds(input: {
         })
       : null;
   const footprintBoundsPoints = includeHouseContext && footprintCanvasLayout
-    ? [...footprintCanvasLayout.polygon, ...footprintCanvasLayout.customVertices.map((vertex) => vertex.point)]
+    ? [
+        ...footprintCanvasLayout.polygon,
+        ...footprintCanvasLayout.customVertices.map((vertex) => vertex.point),
+        ...(footprintCanvasLayout.landingPoint ? [footprintCanvasLayout.landingPoint] : []),
+      ]
     : [];
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, baseX, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, baseX, bW);
@@ -3089,6 +3240,133 @@ function measurePlanAnnotatedBounds(input: {
   ]);
 }
 
+function measurePlanModelSpaceFocusBounds(input: {
+  model: ModulePlanModel;
+  x: number;
+  y: number;
+  scale: number;
+}): AnnotatedBounds {
+  const { model, x, y, scale } = input;
+  const isHipCorner = model.roofType === 'hip_corner';
+  const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
+  const rotationFrame = resolvePlanRotationFrame({
+    x,
+    y,
+    width: model.lengthA * scale,
+    height: model.spanA * scale,
+    turns: isHipCorner ? 0 : model.drawingRotationQuarterTurns,
+  });
+  const baseX = rotationFrame.baseX;
+  const baseY = rotationFrame.baseY;
+  const aW = model.lengthA * scale;
+  const aH = model.spanA * scale;
+  const bW = (model.lengthB ?? 0) * scale;
+  const bH = (model.spanB ?? 0) * scale;
+  const splitY = baseY + aH;
+  const bottomY = splitY + bH;
+  const topFrameW = memberSizeM(model.ledgerBeamWidthM, 0.05) * scale;
+  const sideFrameW = memberSizeM(model.supportBeamWidthM, 0.05) * scale;
+  const gutterW = memberSizeM(model.gutterWidthM, 0.1) * scale;
+  const rafterW = memberSizeM(model.rafterWidthM, 0.05) * scale;
+  const ridgeBandW = memberSizeM(model.ridgeBeamWidthM, 0.05) * scale;
+  const primaryPoints: Point[] = isHipCorner
+    ? [
+        { x: baseX, y: baseY },
+        { x: baseX + aW, y: baseY },
+        { x: baseX + aW, y: splitY },
+        { x: baseX + bW, y: splitY },
+        { x: baseX + bW, y: bottomY },
+        { x: baseX, y: bottomY },
+      ]
+    : [
+        { x: baseX, y: baseY },
+        { x: baseX + aW, y: baseY },
+        { x: baseX + aW, y: baseY + aH },
+        { x: baseX, y: baseY + aH },
+      ];
+  const centerX = baseX + (isHipCorner ? Math.max(aW, bW) : aW) / 2;
+  const centerY = baseY + (isHipCorner ? aH + bH : aH) / 2;
+  const insetPoints = primaryPoints.map((point) => ({
+    x: centerX + (point.x - centerX) * 0.92,
+    y: centerY + (point.y - centerY) * 0.92,
+  }));
+  const hipInner = isHipCorner ? hipCornerInnerPoints(baseX, baseY, aW, bW, splitY, bottomY, Math.max(sideFrameW, topFrameW, gutterW)) : null;
+  const gableMidY = baseY + aH / 2;
+  const ridgeBandY = gableMidY - ridgeBandW / 2;
+  const hipRidgeStartX = baseX + aW * 0.32;
+  const hipRidgeEndX = baseX + aW * 0.68;
+  const ridgeBandX = baseX + sideFrameW;
+  const ridgeBandWidth = Math.max(0, aW - sideFrameW * 2);
+  const overhangFrameDepth = isHipCorner ? bH : aH;
+  const overhangDepth = model.overhangEnabled
+    ? Math.min(Math.max(0, model.overhangAmountM * scale), Math.max(0, overhangFrameDepth - topFrameW - gutterW))
+    : 0;
+  const overhangY = isHipCorner ? bottomY - overhangDepth : baseY + aH - overhangDepth;
+  const overhangWidth = Math.max(0, (isHipCorner ? bW : aW) - sideFrameW * 2);
+  const overhangX = baseX + sideFrameW;
+  const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, baseX, aW);
+  const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, baseX, bW);
+  const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
+  const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
+  const yTopInner = baseY + topFrameW;
+  const yBottomInner = baseY + aH - gutterW;
+  const dimensionOffsets = { bottom: 7.8, secondary: 5.4, side: 5.6, hipSide: 5.9 };
+  const dimBaseY = bottomY + dimensionOffsets.bottom;
+  const secondaryDimY = dimBaseY + dimensionOffsets.secondary;
+
+  const localBounds = unionBounds([
+    boundsFromPoints(primaryPoints, 0.35),
+    hipInner ? boundsFromPoints(hipInner, 0.35) : null,
+    model.boxPerimeterEnabled ? boundsFromPoints(insetPoints, 0.35) : null,
+    hasFullLengthRidge && ridgeBandWidth > 0 ? boundsFromRect(ridgeBandX, ridgeBandY, ridgeBandWidth, ridgeBandW) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX, baseY, hipRidgeStartX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX + aW, baseY, hipRidgeEndX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX, baseY + aH, hipRidgeStartX, gableMidY, 0.3) : null,
+    model.roofType === 'hip' ? boundsFromLine(baseX + aW, baseY + aH, hipRidgeEndX, gableMidY, 0.3) : null,
+    isHipCorner ? boundsFromLine(baseX, splitY, baseX + bW, splitY, 0.25) : null,
+    ...interiorRafterXsA.map((rx) => boundsFromRect(rx - rafterW / 2, yTopInner, rafterW, Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner))),
+    ...interiorRafterXsB.map((rx) =>
+      boundsFromRect(rx - rafterW / 2, splitY + topFrameW, rafterW, Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))),
+    ),
+    model.overhangEnabled && overhangDepth > 0 ? boundsFromRect(overhangX, overhangY, overhangWidth, overhangDepth) : null,
+    boundsFromLine(baseX, isHipCorner ? bottomY : baseY + aH, baseX, dimBaseY, 0.2),
+    boundsFromLine(baseX + aW, isHipCorner ? splitY : baseY + aH, baseX + aW, dimBaseY, 0.2),
+    estimateTickDimensionBounds({ x1: baseX, y1: dimBaseY, x2: baseX + aW, y2: dimBaseY, label: formatMetres(model.lengthA), presentation: 'model' }),
+    boundsFromLine(baseX, baseY, baseX - dimensionOffsets.side, baseY, 0.2),
+    boundsFromLine(baseX, baseY + aH, baseX - dimensionOffsets.side, baseY + aH, 0.2),
+    estimateTickDimensionBounds({
+      x1: baseX - dimensionOffsets.side,
+      y1: baseY,
+      x2: baseX - dimensionOffsets.side,
+      y2: baseY + aH,
+      label: formatMetres(model.spanA),
+      presentation: 'model',
+    }),
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX, bottomY, baseX, secondaryDimY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX + bW, bottomY, baseX + bW, secondaryDimY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB
+      ? estimateTickDimensionBounds({ x1: baseX, y1: secondaryDimY, x2: baseX + bW, y2: secondaryDimY, label: formatMetres(model.lengthB), presentation: 'model' })
+      : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX + bW, splitY, baseX + bW + dimensionOffsets.hipSide, splitY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB ? boundsFromLine(baseX + bW, bottomY, baseX + bW + dimensionOffsets.hipSide, bottomY, 0.2) : null,
+    isHipCorner && model.lengthB && model.spanB
+      ? estimateTickDimensionBounds({
+          x1: baseX + bW + dimensionOffsets.hipSide,
+          y1: splitY,
+          x2: baseX + bW + dimensionOffsets.hipSide,
+          y2: bottomY,
+          label: formatMetres(model.spanB),
+          presentation: 'model',
+        })
+      : null,
+  ]);
+
+  if (rotationFrame.turns === 0) {
+    return localBounds;
+  }
+  return rotateBoundsQuarterTurns(localBounds, rotationFrame.center, rotationFrame.turns);
+}
+
 function resolvePlanSheetLayoutForScale(input: {
   model: ModulePlanModel;
   scale: number;
@@ -3171,18 +3449,10 @@ function resolvePlanModelSpaceLayout(
   const x = 0;
   const y = 0;
   const annotatedBounds = measurePlanAnnotatedBounds({ model, x, y, scale, presentation: 'model', frame, footprintEditor });
-  const focusBounds = measurePlanAnnotatedBounds({
-    model,
-    x,
-    y,
-    scale,
-    presentation: 'model',
-    frame,
-    includeHouseContext: false,
-    footprintEditor,
-  });
-  const svgMetrics = resolveModelSpaceSvgMetrics(annotatedBounds);
+  const focusBounds = measurePlanModelSpaceFocusBounds({ model, x, y, scale });
+  const svgMetrics = resolveModelSpaceSvgMetrics(focusBounds);
   const focusMetrics = resolveModelSpaceFocusMetrics(focusBounds);
+  const worldMetrics = resolveModelSpaceWorldMetrics(annotatedBounds);
 
   return {
     outerField: svgMetrics.viewBox,
@@ -3197,6 +3467,7 @@ function resolvePlanModelSpaceLayout(
     fallGap: frame.fallGap,
     ...svgMetrics,
     ...focusMetrics,
+    ...worldMetrics,
   };
 }
 
@@ -3556,8 +3827,9 @@ function resolveSectionModelSpaceLayout(model: ModuleSectionModel): ResolvedMode
   const y = extents.heightM * scale;
   const annotatedBounds = measureSectionAnnotatedBounds({ model, xLeft: x, yGround: y, scale, presentation: 'model' });
   const focusBounds = measureSectionAnnotatedBounds({ model, xLeft: x, yGround: y, scale, presentation: 'model', includeHouseContext: false });
-  const svgMetrics = resolveModelSpaceSvgMetrics(annotatedBounds);
+  const svgMetrics = resolveModelSpaceSvgMetrics(focusBounds);
   const focusMetrics = resolveModelSpaceFocusMetrics(focusBounds);
+  const worldMetrics = resolveModelSpaceWorldMetrics(annotatedBounds);
 
   return {
     outerField: svgMetrics.viewBox,
@@ -3572,6 +3844,7 @@ function resolveSectionModelSpaceLayout(model: ModuleSectionModel): ResolvedMode
     fallGap: 0,
     ...svgMetrics,
     ...focusMetrics,
+    ...worldMetrics,
   };
 }
 
@@ -3677,6 +3950,8 @@ function PlanSvg({
   const attachmentSide = model.houseConnectionType === 'none' || !model.supportsHouseFootprints || isHipCorner ? 'rear' : model.attachmentSide;
   const customPolygonOverride = footprintEditor?.customPolygonOverride;
   const customPolygonOverrideActive = customPolygonOverride !== undefined;
+  const isDrawOutlineDraftOpen = Boolean(footprintEditor?.customPolygonOpen);
+  const customPolygonHasError = Boolean(footprintEditor?.customPolygonHasError);
   const hideHouseFootprint = Boolean(footprintEditor?.hideHouseFootprint);
   const showHouseFootprint = model.houseConnectionType !== 'none' && !hideHouseFootprint;
   const houseBandOffset = isSheet ? (planSheetFrame?.houseBandOffset ?? 1.15) : layout.houseBandOffset;
@@ -3698,6 +3973,7 @@ function PlanSvg({
           customPolygonPreviewPointKind: footprintEditor?.customPolygonPreviewPointKind,
           customPolygonCloseReady: footprintEditor?.customPolygonCloseReady,
           customPolygonCloseHovered: footprintEditor?.customPolygonCloseHovered,
+          customPolygonLandingPoint: footprintEditor?.customPolygonLandingPoint,
           hideHouseFootprint,
         })
       : null;
@@ -3735,7 +4011,7 @@ function PlanSvg({
   const houseClipRect = isSheet
     ? (sheetLayout?.outerField ?? getSheetDrawingField())
     : isModel && modelSpaceLayout
-      ? modelSpaceLayout.viewBox
+      ? modelSpaceLayout.worldBox
     : { x: 0, y: 0, width: 120, height: 90 };
   const semanticPlanHouseSurfaces = (model.houseContext?.surfaces ?? []).map((surface) => ({
     ...surface,
@@ -3882,9 +4158,11 @@ function PlanSvg({
   const rotatedHouseBounds = showHouseFootprint ? boundsFromPoints(rotatedHousePoints) : null;
   const showHousePopover = isSheetFootprintEditor && Boolean(footprintEditor?.isContextHovered);
   const showFootprintControls =
-    canEditFootprint && (editorSurface === 'sheet' ? Boolean(footprintEditor?.isEditing) : editorSurface === 'model' ? true : isEditingFootprint);
+    canEditFootprint &&
+    !isDrawOutlineDraftOpen &&
+    (editorSurface === 'sheet' ? Boolean(footprintEditor?.isEditing) : editorSurface === 'model' ? true : isEditingFootprint);
   const showPergolaPopover = isSheet && Boolean(sheetPlanInteraction?.isPergolaPopoverOpen) && !showHousePopover;
-  const showHouseHoverTarget = (isSheetFootprintEditor || isModelFootprintEditor) && showHouseFootprint;
+  const showHouseHoverTarget = (isSheetFootprintEditor || isModelFootprintEditor) && showHouseFootprint && !isDrawOutlineDraftOpen;
   const showPergolaHoverTarget = isSheet && Boolean(sheetPlanInteraction?.onPergolaHoverChange) && !isHipCorner;
   const showHouseHoverState =
     (isSheetFootprintEditor && (Boolean(footprintEditor?.isEditing) || showHousePopover)) ||
@@ -3949,37 +4227,51 @@ function PlanSvg({
       axisY: axisDy / axisLength,
     };
   });
-  const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number] | null => {
-    const ctm = event.currentTarget.getScreenCTM();
-    if (!ctm || isHipCorner) return null;
-    const svgPoint = event.currentTarget.createSVGPoint();
-    svgPoint.x = event.clientX;
-    svgPoint.y = event.clientY;
+  const resolvePlanClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): ModuleFootprintCanvasPoint | null => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = clientX;
+    svgPoint.y = clientY;
     const rootPoint = svgPoint.matrixTransform(ctm.inverse());
-    const unrotatedPlanPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
-    const footprintCenter = actualPergolaCenter(footprintRect);
-    const localDims = localFootprintDimensionsM(model, attachmentSide);
-    const sideLocalPoint = rotatePointQuarterTurns(unrotatedPlanPoint, footprintCenter, -attachmentSideQuarterTurns(attachmentSide));
-    const localX = (sideLocalPoint.x - (footprintCenter.x - (localDims.widthM * scale) / 2)) / scale;
-    const localY = (sideLocalPoint.y - (footprintCenter.y - (localDims.depthM * scale) / 2)) / scale;
-    const localLayout = buildHouseFootprintLocalLayout({
-      pergolaWidthM: localDims.widthM,
-      pergolaDepthM: localDims.depthM,
-      preset: model.houseFootprintPreset,
-      params: model.houseFootprintParams,
+    const resolved = resolvePlanSvgPointerFootprintPoint({
+      rootPoint,
+      rotationCenter: rotationFrame.center,
+      rotationTurns: rotationFrame.turns,
+      footprintRect,
+      scale,
+      attachmentSide,
+      lengthA: model.lengthA,
+      spanA: model.spanA,
+      houseFootprintPreset: model.houseFootprintPreset,
+      houseFootprintParams: model.houseFootprintParams,
+      isHipCorner,
     });
-    const formatPointValue = (value: number) => (Math.round(value * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '') || '0';
-    return {
-      alongM: formatPointValue(localX - localLayout.resolved.offsetXM),
-      depthM: formatPointValue(-localY - localLayout.resolved.setbackM),
-    };
+    return resolved
+      ? {
+          alongM: resolved.formatted.alongM,
+          depthM: resolved.formatted.depthM,
+          numericAlongM: resolved.numeric.alongM,
+          numericDepthM: resolved.numeric.depthM,
+      }
+      : null;
   };
+  const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): ModuleFootprintCanvasPoint | null =>
+    resolvePlanClientPoint(event.currentTarget, event.clientX, event.clientY);
   const handlePlanSvgPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (!footprintEditor?.onCanvasPointSelect || event.button !== 0) return;
+    if ((!footprintEditor?.onCanvasPointSelect && !footprintEditor?.onCanvasPointPointerDown) || event.button !== 0) return;
     const point = resolvePlanSvgPointerPoint(event);
     if (!point) return;
     event.preventDefault();
-    footprintEditor.onCanvasPointSelect(point);
+    if (footprintEditor.onCanvasPointPointerDown) {
+      footprintEditor.onCanvasPointPointerDown(point, {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+      return;
+    }
+    footprintEditor.onCanvasPointSelect?.(point);
   };
   const handlePlanSvgPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
     if (!footprintEditor?.onCanvasPointHover) return;
@@ -3992,15 +4284,18 @@ function PlanSvg({
         viewBox={modelSpaceLayout?.viewBoxValue ?? '0 0 120 90'}
         width={modelSpaceLayout?.svgWidthPx}
         height={modelSpaceLayout?.svgHeightPx}
+        overflow={isModel ? 'visible' : undefined}
         style={modelSvgStyle}
         data-model-space-svg={isModel ? 'plan' : undefined}
         data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
+        data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
         data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
         role="img"
         aria-label="Module plan view"
         ref={(node) => {
           footprintEditor?.onSvgMount?.(node);
           planInteraction?.onSvgMount?.(node);
+          footprintEditor?.onCanvasPointResolverChange?.(node ? (clientX, clientY) => resolvePlanClientPoint(node, clientX, clientY) : null);
         }}
         onPointerDown={handlePlanSvgPointerDown}
         onPointerMove={handlePlanSvgPointerMove}
@@ -4021,6 +4316,7 @@ function PlanSvg({
           <rect x={houseClipRect.x} y={houseClipRect.y} width={houseClipRect.width} height={houseClipRect.height} />
         </clipPath>
       </defs>
+      {modelSpaceLayout ? <FocusTarget rect={modelSpaceLayout.focusBox} /> : null}
 
       {effectiveShowDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-plan" /> : null}
       {effectiveShowDebugOverlays && fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-plan" /> : null}
@@ -4493,11 +4789,18 @@ function PlanSvg({
                   data-footprint-custom-edge={edge.index}
                   data-footprint-custom-edge-kind={edge.kind}
                   data-footprint-custom-preview-edge={edge.previewPointKind ?? undefined}
-                  className={
-                    edge.kind === 'preview'
-                      ? `${styles.moduleFootprintResizeEdge} ${styles.moduleFootprintCustomPreviewEdge}`
-                      : styles.moduleFootprintResizeEdge
-                  }
+                  data-footprint-custom-close-preview={edge.isClosePreview ? 'true' : undefined}
+                  data-footprint-custom-active-edge={edge.isActive ? 'true' : undefined}
+                  data-footprint-custom-invalid={customPolygonHasError ? 'true' : undefined}
+                  className={[
+                    styles.moduleFootprintResizeEdge,
+                    edge.kind === 'preview' ? styles.moduleFootprintCustomPreviewEdge : '',
+                    edge.isActive ? styles.moduleFootprintCustomActiveEdge : '',
+                    edge.isClosePreview ? styles.moduleFootprintCustomClosePreviewEdge : '',
+                    customPolygonHasError ? styles.moduleFootprintCustomInvalidEdge : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                 />
                 {edge.kind === 'confirmed' ? (
                   <line
@@ -4517,6 +4820,31 @@ function PlanSvg({
               </g>
             ))
           : null}
+
+        {editorSurface !== 'card' && canEditFootprint && footprintCanvasLayout?.landingPoint && footprintEditor?.customPolygonLandingPoint ? (
+          <g
+            pointerEvents="none"
+            aria-hidden="true"
+            data-draw-outline-landing-marker="true"
+            data-draw-outline-landing-along-m={footprintEditor.customPolygonLandingPoint.alongM}
+            data-draw-outline-landing-depth-m={footprintEditor.customPolygonLandingPoint.depthM}
+            className={styles.moduleFootprintLandingMarker}
+          >
+            <line
+              x1={footprintCanvasLayout.landingPoint.x - 1.15}
+              y1={footprintCanvasLayout.landingPoint.y}
+              x2={footprintCanvasLayout.landingPoint.x + 1.15}
+              y2={footprintCanvasLayout.landingPoint.y}
+            />
+            <line
+              x1={footprintCanvasLayout.landingPoint.x}
+              y1={footprintCanvasLayout.landingPoint.y - 1.15}
+              x2={footprintCanvasLayout.landingPoint.x}
+              y2={footprintCanvasLayout.landingPoint.y + 1.15}
+            />
+            <circle cx={footprintCanvasLayout.landingPoint.x} cy={footprintCanvasLayout.landingPoint.y} r={0.34} />
+          </g>
+        ) : null}
 
         {editorSurface !== 'card' && canEditFootprint
           ? (footprintCanvasLayout?.customVertices ?? []).map((vertex) => (
@@ -4544,11 +4872,13 @@ function PlanSvg({
                   data-footprint-custom-latest-vertex={vertex.isLatestConfirmed ? 'true' : undefined}
                   data-footprint-custom-preview-vertex={vertex.kind === 'pending' || vertex.kind === 'hover' ? vertex.kind : undefined}
                   data-footprint-custom-close-ready={vertex.isCloseReady ? 'true' : undefined}
+                  data-footprint-custom-invalid={customPolygonHasError ? 'true' : undefined}
                   className={[
                     styles.moduleFootprintHandle,
                     vertex.isLatestConfirmed ? styles.moduleFootprintCustomLatestVertex : '',
                     vertex.kind === 'pending' ? styles.moduleFootprintCustomPendingVertex : '',
                     vertex.kind === 'hover' ? styles.moduleFootprintCustomHoverVertex : '',
+                    customPolygonHasError ? styles.moduleFootprintCustomInvalidVertex : '',
                   ]
                     .filter(Boolean)
                     .join(' ')}
@@ -4556,13 +4886,9 @@ function PlanSvg({
                 <circle
                   cx={vertex.point.x}
                   cy={vertex.point.y}
-                  r={vertex.isCloseReady ? 3.3 : 2.8}
+                  r={2.8}
                   data-footprint-custom-vertex-hit={vertex.index}
-                  className={
-                    vertex.isCloseReady
-                      ? `${styles.moduleFootprintHandleHit} ${styles.moduleFootprintCustomCloseHit}`
-                      : styles.moduleFootprintHandleHit
-                  }
+                  className={styles.moduleFootprintHandleHit}
                   onDoubleClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -4571,10 +4897,6 @@ function PlanSvg({
                   onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    if (vertex.isCloseReady && vertex.index === 0 && footprintEditor?.onCloseStartSelect) {
-                      footprintEditor.onCloseStartSelect();
-                      return;
-                    }
                     footprintEditor?.onVertexDragStart?.(
                       {
                         vertexIndex: vertex.index,
@@ -4592,6 +4914,21 @@ function PlanSvg({
                     );
                   }}
                 />
+                {vertex.isCloseReady && vertex.index === 0 ? (
+                  <circle
+                    cx={vertex.point.x}
+                    cy={vertex.point.y}
+                    r={4.2}
+                    data-footprint-custom-close-hit={vertex.index}
+                    data-footprint-custom-close-hovered={vertex.isCloseHovered ? 'true' : undefined}
+                    className={`${styles.moduleFootprintHandleHit} ${styles.moduleFootprintCustomCloseHit}`}
+                    onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      footprintEditor?.onCloseStartSelect?.();
+                    }}
+                  />
+                ) : null}
               </g>
             ))
           : null}
@@ -5116,9 +5453,11 @@ function SectionSvg({
       viewBox={modelSpaceLayout?.viewBoxValue ?? '0 0 120 90'}
       width={modelSpaceLayout?.svgWidthPx}
       height={modelSpaceLayout?.svgHeightPx}
+      overflow={isModel ? 'visible' : undefined}
       style={modelSvgStyle}
       data-model-space-svg={isModel ? 'section' : undefined}
       data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
+      data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
       data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
       role="img"
       aria-label="Module section view"
@@ -5126,6 +5465,7 @@ function SectionSvg({
         presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
       } ${isModel ? styles.modulePlanSvgModel : ''}`}
     >
+      {modelSpaceLayout ? <FocusTarget rect={modelSpaceLayout.focusBox} /> : null}
       {showDebugOverlays && outerFieldOutline ? <DebugOutline rect={outerFieldOutline} className={styles.moduleDebugCropOutline} marker="outer-section" /> : null}
 
       {showDebugOverlays && fitAreaOutline ? <DebugOutline rect={fitAreaOutline} className={styles.moduleDebugFitOutline} marker="fit-section" /> : null}

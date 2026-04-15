@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
-import { buildScheduleBoardModel, type SchedulableJob } from './ScheduleClient';
+import { buildScheduleBoardModel } from './ScheduleClient';
+import type { SchedulableJob } from './ScheduleClientModel';
 
 vi.mock('next/dynamic', () => ({
   default: () => () => null,

@@ -11,6 +11,8 @@ import {
   canEditHouseFootprintPlan,
   type HouseFootprintEditorDragMeta,
   type HouseFootprintVertexDragMeta,
+  type ModuleFootprintCanvasPoint,
+  type ModuleFootprintCanvasPointResolver,
   type ModuleFootprintEditorProps,
   type ModuleViewsStatus,
   type ModuleViewsTab,
@@ -22,6 +24,24 @@ import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/e
 import { normalizeHouseFootprintParams, type CalculatorHouseFootprintParams } from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import styles from './ModelSpaceViewport.module.css';
+import {
+  cancelDrawOutlineTool,
+  confirmDrawOutlineSegment,
+  createInactiveDrawOutlineState,
+  deriveDrawOutlineViewModel,
+  finishSuccessfulDrawOutlineCommit,
+  hoverDrawOutlinePoint,
+  isDrawOutlineActive,
+  prepareDrawOutlineClose,
+  selectDrawOutlinePoint,
+  setDrawOutlineAngleDraft,
+  setDrawOutlineDistanceDraft,
+  startDrawOutlineTool,
+  undoDrawOutline,
+  type DrawOutlineDiagnosticState,
+  type DrawOutlineToolState,
+  type DrawOutlineTransitionResult,
+} from './drawOutlineToolState';
 
 type FootprintDragSession = HouseFootprintEditorDragMeta & {
   pointerId: number;
@@ -53,24 +73,45 @@ type PanDragSession = {
   startPanY: number;
 };
 
-type DrawOutlinePoint = {
-  alongM: number;
-  depthM: number;
+type TouchPointerSnapshot = {
+  pointerId: number;
+  clientX: number;
+  clientY: number;
 };
 
-type DrawOutlineAngleMode = 'relative' | 'absolute';
-
-type DrawOutlineSession = {
-  points: DrawOutlinePoint[];
-  pendingPoint: DrawOutlinePoint | null;
-  distanceDraft: string;
-  angleDraft: string;
-  angleMode: DrawOutlineAngleMode;
+type PinchZoomSession = {
+  firstPointerId: number;
+  secondPointerId: number;
+  startMidpointX: number;
+  startMidpointY: number;
+  startDistance: number;
+  startZoom: number;
+  startPanX: number;
+  startPanY: number;
 };
 
-type DrawOutlineHoverPoint = {
-  point: DrawOutlinePoint;
-  closeHovered: boolean;
+type WebKitGestureSession = {
+  startAnchorX: number;
+  startAnchorY: number;
+  startZoom: number;
+  startPanX: number;
+  startPanY: number;
+};
+
+type NativeGestureEvent = Event & {
+  scale?: number;
+  clientX?: number;
+  clientY?: number;
+};
+
+type DrawOutlinePointerSession = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startPanX: number;
+  startPanY: number;
+  startPoint: ModuleFootprintCanvasPoint;
+  hasPanned: boolean;
 };
 
 type DrawPopoverPosition = {
@@ -85,16 +126,105 @@ type ModelSpaceRect = {
   height: number;
 };
 
+type ModelSpaceGesture =
+  | 'idle'
+  | 'mouse-pan'
+  | 'wheel-pan'
+  | 'wheel-zoom'
+  | 'pinch-zoom'
+  | 'trackpad-pinch'
+  | 'draw-click-candidate'
+  | 'draw-panning';
+
+type ModelSpacePinchSource = 'none' | 'touch-pointer' | 'wheel' | 'webkit-gesture';
+
 const MIN_MODEL_ZOOM = 0.25;
 const MAX_MODEL_ZOOM = 4;
-const MIN_OUTLINE_SEGMENT_M = 0.001;
-const CLOSE_START_TOLERANCE_M = 0.2;
 const FIT_VIEW_MARGIN_PX = 24;
 const DRAW_POPOVER_MARGIN_PX = 12;
 const DRAW_POPOVER_GAP_PX = 14;
+const DRAW_OUTLINE_PAN_THRESHOLD_PX = 5;
+const WHEEL_LINE_DELTA_PX = 16;
+const WHEEL_PAGE_DELTA_PX = 240;
+const WHEEL_ZOOM_SENSITIVITY = 0.0012;
+const WHEEL_GESTURE_IDLE_MS = 600;
+
+function drawOutlineStatusText(state: DrawOutlineDiagnosticState): string {
+  switch (state) {
+    case 'first-point':
+      return 'Draw outline: click first corner';
+    case 'placing':
+      return 'Draw outline: click next corner or enter distance and angle';
+    case 'pending-segment':
+      return 'Draw outline: confirm segment or undo';
+    case 'close-ready':
+      return 'Draw outline: close shape or add another corner';
+    case 'close-hovered':
+      return 'Draw outline: release on first corner to close';
+    case 'error':
+      return 'Draw outline: fix issue or undo';
+    case 'inactive':
+    default:
+      return '';
+  }
+}
 
 function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
+}
+
+function isViewportNavigationControlTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest('button,input,select,textarea,[contenteditable="true"],[data-draw-outline-controls]'),
+    )
+  );
+}
+
+function isViewportEditHitTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        '[data-plan-resize-handle-hit],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex],[data-footprint-custom-vertex-hit],[data-footprint-custom-close-hit]',
+      ),
+    )
+  );
+}
+
+function isViewportMousePanIgnoredTarget(target: EventTarget | null): boolean {
+  return isViewportNavigationControlTarget(target) || isViewportEditHitTarget(target);
+}
+
+function normalizeWheelDeltaPixels(event: Pick<WheelEvent<Element>, 'deltaMode' | 'deltaX' | 'deltaY'>): {
+  deltaX: number;
+  deltaY: number;
+} {
+  const multiplier = event.deltaMode === 1 ? WHEEL_LINE_DELTA_PX : event.deltaMode === 2 ? WHEEL_PAGE_DELTA_PX : 1;
+  return {
+    deltaX: event.deltaX * multiplier,
+    deltaY: event.deltaY * multiplier,
+  };
+}
+
+function resolveTouchMidpoint(first: TouchPointerSnapshot, second: TouchPointerSnapshot): { x: number; y: number } {
+  return {
+    x: (first.clientX + second.clientX) / 2,
+    y: (first.clientY + second.clientY) / 2,
+  };
+}
+
+function resolveTouchDistance(first: TouchPointerSnapshot, second: TouchPointerSnapshot): number {
+  return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+}
+
+function resolveTouchPointerPair(pointers: Map<number, TouchPointerSnapshot>): [TouchPointerSnapshot, TouchPointerSnapshot] | null {
+  if (pointers.size !== 2) return null;
+  const pair = Array.from(pointers.values());
+  const first = pair[0];
+  const second = pair[1];
+  return first && second ? [first, second] : null;
 }
 
 function parseModelSpaceRect(value: string | null | undefined): ModelSpaceRect | null {
@@ -108,23 +238,25 @@ function parseModelSpaceRect(value: string | null | undefined): ModelSpaceRect |
   return { x, y, width, height };
 }
 
-function resolveModelSpaceSvgLayoutKey(scaleFrame: HTMLDivElement | null): string {
-  const svg = scaleFrame?.querySelector<SVGSVGElement>('svg[data-model-space-svg]');
-  if (!svg) return 'no-model-space-svg';
-  return [
-    svg.dataset.modelSpaceSvg ?? 'model',
-    svg.getAttribute('width') ?? '',
-    svg.getAttribute('height') ?? '',
-    svg.dataset.modelSpaceViewBox ?? svg.getAttribute('viewBox') ?? '',
-    svg.dataset.modelSpaceFocusBox ?? '',
-  ].join('|');
+function resolveModelSpaceFocusTargetRect(input: { scaleFrame: HTMLDivElement; frameRect: DOMRect; zoom: number }): ModelSpaceRect | null {
+  const focusTarget = input.scaleFrame.querySelector('[data-model-space-focus-target]');
+  if (!focusTarget) return null;
+  const safeZoom = Math.max(input.zoom, 0.001);
+  const targetRect = focusTarget.getBoundingClientRect();
+  const width = targetRect.width / safeZoom;
+  const height = targetRect.height / safeZoom;
+  if (width <= 0 || height <= 0) return null;
+  return {
+    x: (targetRect.left - input.frameRect.left) / safeZoom,
+    y: (targetRect.top - input.frameRect.top) / safeZoom,
+    width,
+    height,
+  };
 }
 
 function resolveModelSpaceSvgFocusRect(input: {
   scaleFrame: HTMLDivElement;
   frameRect: DOMRect;
-  frameWidth: number;
-  frameHeight: number;
   zoom: number;
 }): ModelSpaceRect | null {
   const svg = input.scaleFrame.querySelector<SVGSVGElement>('svg[data-model-space-svg]');
@@ -134,12 +266,12 @@ function resolveModelSpaceSvgFocusRect(input: {
 
   const safeZoom = Math.max(input.zoom, 0.001);
   const svgRect = svg.getBoundingClientRect();
-  const svgWidth = (svgRect.width > 0 ? svgRect.width / safeZoom : 0) || Number.parseFloat(svg.getAttribute('width') ?? '') || input.frameWidth;
-  const svgHeight = (svgRect.height > 0 ? svgRect.height / safeZoom : 0) || Number.parseFloat(svg.getAttribute('height') ?? '') || input.frameHeight;
+  const svgWidth = (svgRect.width > 0 ? svgRect.width / safeZoom : 0) || Number.parseFloat(svg.getAttribute('width') ?? '');
+  const svgHeight = (svgRect.height > 0 ? svgRect.height / safeZoom : 0) || Number.parseFloat(svg.getAttribute('height') ?? '');
   if (svgWidth <= 0 || svgHeight <= 0) return null;
 
-  const svgLeft = svgRect.width > 0 ? (svgRect.left - input.frameRect.left) / safeZoom : Math.max(0, (input.frameWidth - svgWidth) / 2);
-  const svgTop = svgRect.height > 0 ? (svgRect.top - input.frameRect.top) / safeZoom : Math.max(0, (input.frameHeight - svgHeight) / 2);
+  const svgLeft = svgRect.width > 0 ? (svgRect.left - input.frameRect.left) / safeZoom : 0;
+  const svgTop = svgRect.height > 0 ? (svgRect.top - input.frameRect.top) / safeZoom : 0;
   const cssPerUnitX = svgWidth / viewBox.width;
   const cssPerUnitY = svgHeight / viewBox.height;
 
@@ -148,6 +280,22 @@ function resolveModelSpaceSvgFocusRect(input: {
     y: svgTop + (focusBox.y - viewBox.y) * cssPerUnitY,
     width: focusBox.width * cssPerUnitX,
     height: focusBox.height * cssPerUnitY,
+  };
+}
+
+function resolveModelSpaceSvgRect(input: { scaleFrame: HTMLDivElement; frameRect: DOMRect; zoom: number }): ModelSpaceRect | null {
+  const svg = input.scaleFrame.querySelector<SVGSVGElement>('svg[data-model-space-svg]');
+  if (!svg) return null;
+  const safeZoom = Math.max(input.zoom, 0.001);
+  const svgRect = svg.getBoundingClientRect();
+  const width = (svgRect.width > 0 ? svgRect.width / safeZoom : 0) || Number.parseFloat(svg.getAttribute('width') ?? '');
+  const height = (svgRect.height > 0 ? svgRect.height / safeZoom : 0) || Number.parseFloat(svg.getAttribute('height') ?? '');
+  if (width <= 0 || height <= 0) return null;
+  return {
+    x: svgRect.width > 0 ? (svgRect.left - input.frameRect.left) / safeZoom : 0,
+    y: svgRect.height > 0 ? (svgRect.top - input.frameRect.top) / safeZoom : 0,
+    width,
+    height,
   };
 }
 
@@ -190,109 +338,6 @@ function moveCustomPolygonVertex(
     alongM: formatPolygonMetres(point.alongM),
     depthM: formatPolygonMetres(point.depthM),
   }));
-}
-
-function outlinePointsToPolygon(points: DrawOutlinePoint[]): NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']> {
-  return points.map((point) => ({
-    alongM: formatPolygonMetres(point.alongM),
-    depthM: formatPolygonMetres(point.depthM),
-  }));
-}
-
-function distanceBetweenOutlinePoints(a: DrawOutlinePoint, b: DrawOutlinePoint): number {
-  return Math.hypot(b.alongM - a.alongM, b.depthM - a.depthM);
-}
-
-function absoluteAngleDeg(a: DrawOutlinePoint, b: DrawOutlinePoint): number {
-  return (Math.atan2(b.depthM - a.depthM, b.alongM - a.alongM) * 180) / Math.PI;
-}
-
-function normalizeAngleDeg(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  let next = ((value % 360) + 360) % 360;
-  if (next > 180) next -= 360;
-  return Math.round(next * 10) / 10;
-}
-
-function formatOutlineNumber(value: number): string {
-  return (Math.round(value * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '') || '0';
-}
-
-function resolvePendingOutlinePoint(session: DrawOutlineSession): DrawOutlinePoint | null {
-  const start = session.points[session.points.length - 1];
-  if (!start) return null;
-  const distance = Number.parseFloat(session.distanceDraft);
-  const angle = Number.parseFloat(session.angleDraft);
-  if (!Number.isFinite(distance) || distance < MIN_OUTLINE_SEGMENT_M || !Number.isFinite(angle)) return null;
-  const previous = session.points[session.points.length - 2];
-  const baseAngle = session.angleMode === 'relative' && previous ? absoluteAngleDeg(previous, start) : 0;
-  const absoluteAngle = session.angleMode === 'relative' ? baseAngle + angle : angle;
-  const radians = (absoluteAngle * Math.PI) / 180;
-  return {
-    alongM: snapHouseFootprintValue(start.alongM + Math.cos(radians) * distance),
-    depthM: snapHouseFootprintValue(start.depthM + Math.sin(radians) * distance),
-  };
-}
-
-function hasDrawOutlineDraft(session: DrawOutlineSession): boolean {
-  return Boolean(session.pendingPoint || session.distanceDraft || session.angleDraft);
-}
-
-function orientation(a: DrawOutlinePoint, b: DrawOutlinePoint, c: DrawOutlinePoint): number {
-  return (b.depthM - a.depthM) * (c.alongM - b.alongM) - (b.alongM - a.alongM) * (c.depthM - b.depthM);
-}
-
-function outlinePointOnSegment(a: DrawOutlinePoint, b: DrawOutlinePoint, c: DrawOutlinePoint): boolean {
-  return (
-    b.alongM <= Math.max(a.alongM, c.alongM) + 1e-9 &&
-    b.alongM + 1e-9 >= Math.min(a.alongM, c.alongM) &&
-    b.depthM <= Math.max(a.depthM, c.depthM) + 1e-9 &&
-    b.depthM + 1e-9 >= Math.min(a.depthM, c.depthM)
-  );
-}
-
-function outlineSegmentsIntersect(a1: DrawOutlinePoint, a2: DrawOutlinePoint, b1: DrawOutlinePoint, b2: DrawOutlinePoint): boolean {
-  const o1 = orientation(a1, a2, b1);
-  const o2 = orientation(a1, a2, b2);
-  const o3 = orientation(b1, b2, a1);
-  const o4 = orientation(b1, b2, a2);
-  if (Math.abs(o1) <= 1e-9 && outlinePointOnSegment(a1, b1, a2)) return true;
-  if (Math.abs(o2) <= 1e-9 && outlinePointOnSegment(a1, b2, a2)) return true;
-  if (Math.abs(o3) <= 1e-9 && outlinePointOnSegment(b1, a1, b2)) return true;
-  if (Math.abs(o4) <= 1e-9 && outlinePointOnSegment(b1, a2, b2)) return true;
-  return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0);
-}
-
-function validateOutlinePoints(points: DrawOutlinePoint[]): { ok: true } | { ok: false; error: string } {
-  if (points.length < 3) return { ok: false, error: 'Add at least 3 points before closing the outline.' };
-  for (let index = 0; index < points.length; index += 1) {
-    const current = points[index]!;
-    const next = points[(index + 1) % points.length]!;
-    if (!Number.isFinite(current.alongM) || !Number.isFinite(current.depthM)) {
-      return { ok: false, error: 'House footprint outline points need finite along/depth values.' };
-    }
-    if (distanceBetweenOutlinePoints(current, next) < MIN_OUTLINE_SEGMENT_M) {
-      return { ok: false, error: 'House footprint outline cannot include duplicate consecutive points.' };
-    }
-  }
-  const area = points.reduce((sum, current, index) => {
-    const next = points[(index + 1) % points.length]!;
-    return sum + current.alongM * next.depthM - next.alongM * current.depthM;
-  }, 0) / 2;
-  if (Math.abs(area) <= 1e-9) return { ok: false, error: 'House footprint outline needs a non-zero area.' };
-  for (let index = 0; index < points.length; index += 1) {
-    const a1 = points[index]!;
-    const a2 = points[(index + 1) % points.length]!;
-    for (let jndex = index + 1; jndex < points.length; jndex += 1) {
-      if (Math.abs(index - jndex) <= 1 || (index === 0 && jndex === points.length - 1)) continue;
-      const b1 = points[jndex]!;
-      const b2 = points[(jndex + 1) % points.length]!;
-      if (outlineSegmentsIntersect(a1, a2, b1, b2)) {
-        return { ok: false, error: 'House footprint outline cannot self-intersect.' };
-      }
-    }
-  }
-  return { ok: true };
 }
 
 function formatDrawingFieldValue(value: number): string {
@@ -351,6 +396,12 @@ export default function ModelSpaceViewport({
   const scaleFrameRef = useRef<HTMLDivElement | null>(null);
   const drawPopoverRef = useRef<HTMLDivElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
+  const drawOutlineCanvasPointResolverRef = useRef<ModuleFootprintCanvasPointResolver | null>(null);
+  const drawOutlinePointerSessionRef = useRef<DrawOutlinePointerSession | null>(null);
+  const activeTouchPointersRef = useRef<Map<number, TouchPointerSnapshot>>(new Map());
+  const pinchZoomSessionRef = useRef<PinchZoomSession | null>(null);
+  const webKitGestureSessionRef = useRef<WebKitGestureSession | null>(null);
+  const wheelGestureIdleTimeoutRef = useRef<number | null>(null);
   const lastDrawOutlineRequestIdRef = useRef<number | undefined>(undefined);
   const userAdjustedViewportRef = useRef(false);
   const autoFitKeyRef = useRef<string | null>(null);
@@ -362,13 +413,31 @@ export default function ModelSpaceViewport({
   const [footprintContextHovered, setFootprintContextHovered] = useState(false);
   const [footprintDragSession, setFootprintDragSession] = useState<FootprintDragSession | null>(null);
   const [footprintVertexDragSession, setFootprintVertexDragSession] = useState<FootprintVertexDragSession | null>(null);
-  const [drawOutlineSession, setDrawOutlineSession] = useState<DrawOutlineSession | null>(null);
-  const [drawOutlineHoverPoint, setDrawOutlineHoverPoint] = useState<DrawOutlineHoverPoint | null>(null);
+  const [drawOutlineState, setDrawOutlineState] = useState<DrawOutlineToolState>(() => createInactiveDrawOutlineState());
+  const [drawOutlineLandingPoint, setDrawOutlineLandingPoint] = useState<ModuleFootprintCanvasPoint | null>(null);
+  const [drawOutlinePointerSession, setDrawOutlinePointerSession] = useState<DrawOutlinePointerSession | null>(null);
   const [drawPopoverPosition, setDrawPopoverPosition] = useState<DrawPopoverPosition | null>(null);
+  const [activeTouchCount, setActiveTouchCount] = useState(0);
+  const [pinchZoomActive, setPinchZoomActive] = useState(false);
+  const [pinchSource, setPinchSource] = useState<ModelSpacePinchSource>('none');
+  const [viewportNavigationGesture, setViewportNavigationGesture] = useState<ModelSpaceGesture>('idle');
   const [panDragSession, setPanDragSession] = useState<PanDragSession | null>(null);
   const [planHoveredResizeFieldId, setPlanHoveredResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planActiveResizeFieldId, setPlanActiveResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldDragSession | null>(null);
+
+  useEffect(() => {
+    drawOutlinePointerSessionRef.current = drawOutlinePointerSession;
+  }, [drawOutlinePointerSession]);
+
+  useEffect(
+    () => () => {
+      if (wheelGestureIdleTimeoutRef.current !== null) {
+        window.clearTimeout(wheelGestureIdleTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const zoom = clampZoom(viewportTransform.zoom);
   const editableFieldMap = useMemo(() => {
@@ -399,6 +468,8 @@ export default function ModelSpaceViewport({
   const showPlanViewport = view === 'plan' && Boolean(planModel);
   const showSectionViewport = view === 'section' && Boolean(sectionModel);
   const showDrawingViewport = showPlanViewport || showSectionViewport;
+  const modelSpaceAutoFitReady = showDrawingViewport;
+  const modelSpaceAutoFitKey = `${fitViewKey}:${view}:${modelSpaceAutoFitReady ? 'ready' : 'empty'}`;
   const interactionError = fieldError ?? footprintError;
 
   const commitFootprintEdit = useCallback(
@@ -427,6 +498,16 @@ export default function ModelSpaceViewport({
     [onCommitField],
   );
 
+  const applyDrawOutlineTransition = useCallback((result: DrawOutlineTransitionResult) => {
+    setDrawOutlineState(result.state);
+    if (!isDrawOutlineActive(result.state)) {
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+    }
+    if (result.error !== undefined) setFootprintError(result.error);
+  }, []);
+
   const updateViewportTransform = useCallback(
     (next: Partial<DrawingWorkbenchViewportTransform>) => {
       onViewportTransformChange?.({
@@ -439,35 +520,93 @@ export default function ModelSpaceViewport({
     [onViewportTransformChange, viewportTransform.panX, viewportTransform.panY, zoom],
   );
 
+  const clearTouchNavigation = useCallback(() => {
+    activeTouchPointersRef.current.clear();
+    pinchZoomSessionRef.current = null;
+    setActiveTouchCount(0);
+    setPinchZoomActive(false);
+    setPinchSource((current) => (current === 'touch-pointer' ? 'none' : current));
+    setViewportNavigationGesture((current) => (current === 'pinch-zoom' ? 'idle' : current));
+  }, []);
+
+  const clearWebKitGestureNavigation = useCallback(() => {
+    webKitGestureSessionRef.current = null;
+    setPinchZoomActive(false);
+    setPinchSource((current) => (current === 'webkit-gesture' ? 'none' : current));
+    setViewportNavigationGesture((current) => (current === 'trackpad-pinch' ? 'idle' : current));
+  }, []);
+
+  const markTransientViewportGesture = useCallback((gesture: 'wheel-pan' | 'wheel-zoom', source: ModelSpacePinchSource = 'none') => {
+    setViewportNavigationGesture(gesture);
+    setPinchSource(source);
+    if (wheelGestureIdleTimeoutRef.current !== null) {
+      window.clearTimeout(wheelGestureIdleTimeoutRef.current);
+    }
+    wheelGestureIdleTimeoutRef.current = window.setTimeout(() => {
+      wheelGestureIdleTimeoutRef.current = null;
+      setViewportNavigationGesture((current) => (current === gesture ? 'idle' : current));
+      setPinchSource((current) => (current === source ? 'none' : current));
+    }, WHEEL_GESTURE_IDLE_MS);
+  }, []);
+
+  const resolveViewportAnchor = useCallback((clientX: number, clientY: number): { x: number; y: number } | null => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return null;
+    const rect = scroller.getBoundingClientRect();
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  }, []);
+
+  const resolveViewportAnchorFromGestureEvent = useCallback((event: NativeGestureEvent): { x: number; y: number } | null => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return null;
+    const rect = scroller.getBoundingClientRect();
+    if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
+      return {
+        x: Number(event.clientX) - rect.left,
+        y: Number(event.clientY) - rect.top,
+      };
+    }
+    const width = scroller.clientWidth || rect.width;
+    const height = scroller.clientHeight || rect.height;
+    return {
+      x: Math.max(0, width / 2),
+      y: Math.max(0, height / 2),
+    };
+  }, []);
+
+  const applyAnchoredViewportZoom = useCallback(
+    (input: {
+      nextZoom: number;
+      startZoom: number;
+      startPanX: number;
+      startPanY: number;
+      startAnchorX: number;
+      startAnchorY: number;
+      currentAnchorX: number;
+      currentAnchorY: number;
+    }) => {
+      const nextZoom = clampZoom(input.nextZoom);
+      const safeStartZoom = Math.max(input.startZoom, 0.001);
+      const contentAnchorX = (input.startAnchorX - input.startPanX) / safeStartZoom;
+      const contentAnchorY = (input.startAnchorY - input.startPanY) / safeStartZoom;
+      updateViewportTransform({
+        zoom: nextZoom,
+        panX: input.currentAnchorX - contentAnchorX * nextZoom,
+        panY: input.currentAnchorY - contentAnchorY * nextZoom,
+      });
+    },
+    [updateViewportTransform],
+  );
+
   const handleZoomChange = useCallback(
     (delta: number) => {
       userAdjustedViewportRef.current = true;
       updateViewportTransform({ zoom: clampZoom(zoom + delta) });
     },
     [updateViewportTransform, zoom],
-  );
-
-  const handleZoomAtViewportPoint = useCallback(
-    (delta: number, clientX: number, clientY: number) => {
-      const scroller = scrollerRef.current;
-      if (!scroller) {
-        handleZoomChange(delta);
-        return;
-      }
-      const nextZoom = clampZoom(zoom + delta);
-      if (nextZoom === zoom) return;
-      userAdjustedViewportRef.current = true;
-      const rect = scroller.getBoundingClientRect();
-      const anchorX = clientX - rect.left;
-      const anchorY = clientY - rect.top;
-      const scale = nextZoom / Math.max(zoom, 0.001);
-      updateViewportTransform({
-        zoom: nextZoom,
-        panX: anchorX - (anchorX - viewportTransform.panX) * scale,
-        panY: anchorY - (anchorY - viewportTransform.panY) * scale,
-      });
-    },
-    [handleZoomChange, updateViewportTransform, viewportTransform.panX, viewportTransform.panY, zoom],
   );
 
   const measureFitViewTransform = useCallback((): DrawingWorkbenchViewportTransform | null => {
@@ -479,15 +618,20 @@ export default function ModelSpaceViewport({
     const frameRect = scaleFrame.getBoundingClientRect();
     const scrollerWidth = scroller.clientWidth || scrollerRect.width;
     const scrollerHeight = scroller.clientHeight || scrollerRect.height;
+    if (scrollerWidth <= 0 || scrollerHeight <= 0) return null;
+
+    const focusRect =
+      resolveModelSpaceFocusTargetRect({ scaleFrame, frameRect, zoom }) ??
+      resolveModelSpaceSvgFocusRect({ scaleFrame, frameRect, zoom });
+    const svgRect = focusRect ? null : resolveModelSpaceSvgRect({ scaleFrame, frameRect, zoom });
     const frameWidth =
       scaleFrame.offsetWidth || scaleFrame.scrollWidth || (frameRect.width > 0 ? frameRect.width / Math.max(zoom, 0.001) : 0);
     const frameHeight =
       scaleFrame.offsetHeight || scaleFrame.scrollHeight || (frameRect.height > 0 ? frameRect.height / Math.max(zoom, 0.001) : 0);
+    const frameFallback = frameWidth > 0 && frameHeight > 0 ? { x: 0, y: 0, width: frameWidth, height: frameHeight } : null;
+    const targetRect = focusRect ?? svgRect ?? frameFallback;
+    if (!targetRect) return null;
 
-    if (scrollerWidth <= 0 || scrollerHeight <= 0 || frameWidth <= 0 || frameHeight <= 0) return null;
-
-    const focusRect = resolveModelSpaceSvgFocusRect({ scaleFrame, frameRect, frameWidth, frameHeight, zoom });
-    const targetRect = focusRect ?? { x: 0, y: 0, width: frameWidth, height: frameHeight };
     const availableWidth = Math.max(1, scrollerWidth - FIT_VIEW_MARGIN_PX * 2);
     const availableHeight = Math.max(1, scrollerHeight - FIT_VIEW_MARGIN_PX * 2);
     const nextZoom = clampZoom(Math.min(availableWidth / targetRect.width, availableHeight / targetRect.height));
@@ -498,11 +642,6 @@ export default function ModelSpaceViewport({
     };
   }, [zoom]);
 
-  const resolveCurrentFitKey = useCallback(
-    () => `${fitViewKey}:${resolveModelSpaceSvgLayoutKey(scaleFrameRef.current)}`,
-    [fitViewKey],
-  );
-
   const fitViewportToContent = useCallback((): boolean => {
     const next = measureFitViewTransform();
     if (!next) return false;
@@ -510,25 +649,60 @@ export default function ModelSpaceViewport({
     return true;
   }, [measureFitViewTransform, updateViewportTransform]);
 
-  const handleResetView = useCallback(() => {
+  const handleFitView = useCallback(() => {
     setFootprintError(null);
     setFieldError(null);
     setPanDragSession(null);
+    clearTouchNavigation();
+    clearWebKitGestureNavigation();
     userAdjustedViewportRef.current = false;
     if (fitViewportToContent()) {
-      autoFitKeyRef.current = resolveCurrentFitKey();
+      autoFitKeyRef.current = modelSpaceAutoFitKey;
     } else {
       updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
     }
-  }, [fitViewportToContent, resolveCurrentFitKey, updateViewportTransform]);
+  }, [clearTouchNavigation, clearWebKitGestureNavigation, fitViewportToContent, modelSpaceAutoFitKey, updateViewportTransform]);
 
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
-      if (!event.ctrlKey && !event.metaKey) return;
+      if (isViewportNavigationControlTarget(event.target)) return;
+      const delta = normalizeWheelDeltaPixels(event);
+      if (delta.deltaX === 0 && delta.deltaY === 0) return;
       event.preventDefault();
-      handleZoomAtViewportPoint(event.deltaY < 0 ? 0.1 : -0.1, event.clientX, event.clientY);
+      userAdjustedViewportRef.current = true;
+      if (event.ctrlKey || event.metaKey) {
+        const anchor = resolveViewportAnchor(event.clientX, event.clientY);
+        if (!anchor) return;
+        const nextZoom = clampZoom(zoom * Math.exp(-delta.deltaY * WHEEL_ZOOM_SENSITIVITY));
+        if (nextZoom === zoom) return;
+        markTransientViewportGesture('wheel-zoom', 'wheel');
+        applyAnchoredViewportZoom({
+          nextZoom,
+          startZoom: zoom,
+          startPanX: viewportTransform.panX,
+          startPanY: viewportTransform.panY,
+          startAnchorX: anchor.x,
+          startAnchorY: anchor.y,
+          currentAnchorX: anchor.x,
+          currentAnchorY: anchor.y,
+        });
+        return;
+      }
+      markTransientViewportGesture('wheel-pan');
+      updateViewportTransform({
+        panX: viewportTransform.panX - delta.deltaX,
+        panY: viewportTransform.panY - delta.deltaY,
+      });
     },
-    [handleZoomAtViewportPoint],
+    [
+      applyAnchoredViewportZoom,
+      markTransientViewportGesture,
+      resolveViewportAnchor,
+      updateViewportTransform,
+      viewportTransform.panX,
+      viewportTransform.panY,
+      zoom,
+    ],
   );
 
   const handleFootprintPresetSelect = useCallback(
@@ -537,8 +711,10 @@ export default function ModelSpaceViewport({
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
-      setDrawOutlineSession(null);
-      setDrawOutlineHoverPoint(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
       await commitFootprintEdit({ type: 'preset', preset });
     },
@@ -551,16 +727,11 @@ export default function ModelSpaceViewport({
     setFootprintActiveHandleId(null);
     setFootprintDragSession(null);
     setFootprintVertexDragSession(null);
-    setDrawOutlineHoverPoint(null);
-    setFootprintError(null);
-    setDrawOutlineSession({
-      points: [],
-      pendingPoint: null,
-      distanceDraft: '',
-      angleDraft: '',
-      angleMode: 'relative',
-    });
-  }, []);
+    setDrawOutlineLandingPoint(null);
+    drawOutlinePointerSessionRef.current = null;
+    setDrawOutlinePointerSession(null);
+    applyDrawOutlineTransition(startDrawOutlineTool());
+  }, [applyDrawOutlineTransition]);
 
   useEffect(() => {
     if (drawOutlineRequestId === undefined || drawOutlineRequestId <= 0 || drawOutlineRequestId === lastDrawOutlineRequestIdRef.current) return;
@@ -576,14 +747,15 @@ export default function ModelSpaceViewport({
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
       setFootprintVertexDragSession(null);
-      setDrawOutlineHoverPoint(null);
       setFootprintError(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
       if (mode === 'custom_polygon') {
         startDrawOutlineSession();
         return;
       }
-      setDrawOutlineSession(null);
-      setDrawOutlineHoverPoint(null);
+      setDrawOutlineState(createInactiveDrawOutlineState());
       await commitFootprintEdit({ type: 'mode', mode });
     },
     [commitFootprintEdit, startDrawOutlineSession],
@@ -597,8 +769,10 @@ export default function ModelSpaceViewport({
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
       setFootprintVertexDragSession(null);
-      setDrawOutlineSession(null);
-      setDrawOutlineHoverPoint(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
       await commitFootprintEdit({ type: 'rotate', delta });
     },
@@ -613,8 +787,10 @@ export default function ModelSpaceViewport({
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
       setFootprintVertexDragSession(null);
-      setDrawOutlineSession(null);
-      setDrawOutlineHoverPoint(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
       await commitFootprintEdit({ type: 'attachment_side', side });
     },
@@ -695,153 +871,181 @@ export default function ModelSpaceViewport({
   );
 
   const handleDrawOutlinePointSelect = useCallback(
-    (rawPoint: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number]) => {
-      if (!drawOutlineSession) return;
+    (rawPoint: ModuleFootprintCanvasPoint) => {
       const point = {
         alongM: parsePolygonMetres(rawPoint.alongM),
         depthM: parsePolygonMetres(rawPoint.depthM),
       };
       if (!Number.isFinite(point.alongM) || !Number.isFinite(point.depthM)) return;
-      setDrawOutlineHoverPoint(null);
-      if (!drawOutlineSession.points.length) {
-        setFootprintError(null);
-        setDrawOutlineSession({ ...drawOutlineSession, points: [point], pendingPoint: null, distanceDraft: '', angleDraft: '', angleMode: 'absolute' });
-        return;
-      }
-
-      const start = drawOutlineSession.points[drawOutlineSession.points.length - 1]!;
-      const distance = distanceBetweenOutlinePoints(start, point);
-      if (distance < MIN_OUTLINE_SEGMENT_M) {
-        setFootprintError('Click a point at least 1mm from the previous point.');
-        return;
-      }
-      const previous = drawOutlineSession.points[drawOutlineSession.points.length - 2];
-      const absoluteAngle = absoluteAngleDeg(start, point);
-      const nextAngleMode: DrawOutlineAngleMode = previous ? drawOutlineSession.angleMode : 'absolute';
-      const angle =
-        nextAngleMode === 'relative' && previous
-          ? normalizeAngleDeg(absoluteAngle - absoluteAngleDeg(previous, start))
-          : normalizeAngleDeg(absoluteAngle);
-      setFootprintError(null);
-      setDrawOutlineSession({
-        ...drawOutlineSession,
-        pendingPoint: point,
-        distanceDraft: formatOutlineNumber(distance),
-        angleDraft: formatOutlineNumber(angle),
-        angleMode: previous ? nextAngleMode : 'absolute',
-      });
+      setDrawOutlineLandingPoint(rawPoint);
+      applyDrawOutlineTransition(selectDrawOutlinePoint(drawOutlineState, point));
     },
-    [drawOutlineSession],
+    [applyDrawOutlineTransition, drawOutlineState],
+  );
+
+  const handleDrawOutlineCanvasPointerDown = useCallback(
+    (rawPoint: ModuleFootprintCanvasPoint, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!Number.isFinite(rawPoint.numericAlongM) || !Number.isFinite(rawPoint.numericDepthM)) return;
+      const nextSession = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startPanX: viewportTransform.panX,
+        startPanY: viewportTransform.panY,
+        startPoint: rawPoint,
+        hasPanned: false,
+      };
+      setDrawOutlineLandingPoint(rawPoint);
+      drawOutlinePointerSessionRef.current = nextSession;
+      setDrawOutlinePointerSession(nextSession);
+    },
+    [viewportTransform.panX, viewportTransform.panY],
   );
 
   const handleDrawOutlineConfirmSegment = useCallback(() => {
-    if (!drawOutlineSession) return;
-    const nextPoint = resolvePendingOutlinePoint(drawOutlineSession);
-    if (!nextPoint) {
-      setFootprintError('Enter a valid segment distance and angle.');
-      return;
-    }
-    const previous = drawOutlineSession.points[drawOutlineSession.points.length - 1];
-    if (previous && distanceBetweenOutlinePoints(previous, nextPoint) < MIN_OUTLINE_SEGMENT_M) {
-      setFootprintError('House footprint outline cannot include duplicate consecutive points.');
-      return;
-    }
-    setDrawOutlineHoverPoint(null);
-    setFootprintError(null);
-    setDrawOutlineSession({
-      ...drawOutlineSession,
-      points: [...drawOutlineSession.points, nextPoint],
-      pendingPoint: null,
-      distanceDraft: '',
-      angleDraft: '',
-      angleMode: 'relative',
-    });
-  }, [drawOutlineSession]);
+    applyDrawOutlineTransition(confirmDrawOutlineSegment(drawOutlineState));
+  }, [applyDrawOutlineTransition, drawOutlineState]);
 
   const handleDrawOutlineUndo = useCallback(() => {
-    if (!drawOutlineSession) return;
-    setDrawOutlineHoverPoint(null);
-    setFootprintError(null);
-    if (drawOutlineSession.pendingPoint || drawOutlineSession.distanceDraft || drawOutlineSession.angleDraft) {
-      setDrawOutlineSession({ ...drawOutlineSession, pendingPoint: null, distanceDraft: '', angleDraft: '' });
-      return;
-    }
-    setDrawOutlineSession({
-      ...drawOutlineSession,
-      points: drawOutlineSession.points.slice(0, -1),
-      angleMode: drawOutlineSession.points.length <= 2 ? 'absolute' : drawOutlineSession.angleMode,
-    });
-  }, [drawOutlineSession]);
+    applyDrawOutlineTransition(undoDrawOutline(drawOutlineState));
+  }, [applyDrawOutlineTransition, drawOutlineState]);
 
   const handleDrawOutlineCancel = useCallback(() => {
-    setFootprintError(null);
-    setDrawOutlineHoverPoint(null);
-    setDrawOutlineSession(null);
-  }, []);
+    applyDrawOutlineTransition(cancelDrawOutlineTool());
+  }, [applyDrawOutlineTransition]);
 
   const handleDrawOutlineClose = useCallback(async () => {
-    if (!drawOutlineSession) return;
-    const pendingPoint = resolvePendingOutlinePoint(drawOutlineSession);
-    const points = pendingPoint ? [...drawOutlineSession.points, pendingPoint] : drawOutlineSession.points;
-    const validation = validateOutlinePoints(points);
-    if (!validation.ok) {
-      setFootprintError(validation.error);
+    const closeResult = prepareDrawOutlineClose(drawOutlineState);
+    if (!closeResult.ok) {
+      if (closeResult.error) setFootprintError(closeResult.error);
       return;
     }
-    const result = await commitFootprintEdit({ type: 'custom_polygon', polygon: outlinePointsToPolygon(points) });
+    const result = await commitFootprintEdit({ type: 'custom_polygon', polygon: closeResult.polygon });
     if (result.ok) {
-      setDrawOutlineHoverPoint(null);
-      setDrawOutlineSession(null);
+      applyDrawOutlineTransition(finishSuccessfulDrawOutlineCommit());
     }
-  }, [commitFootprintEdit, drawOutlineSession]);
+  }, [applyDrawOutlineTransition, commitFootprintEdit, drawOutlineState]);
 
   const handleDrawOutlinePointHover = useCallback(
-    (rawPoint: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>[number] | null) => {
-      if (!drawOutlineSession || !rawPoint || !drawOutlineSession.points.length || hasDrawOutlineDraft(drawOutlineSession)) {
-        setDrawOutlineHoverPoint(null);
+    (rawPoint: ModuleFootprintCanvasPoint | null) => {
+      if (!rawPoint) {
+        setDrawOutlineLandingPoint(null);
+        applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
         return;
       }
       const point = {
         alongM: parsePolygonMetres(rawPoint.alongM),
         depthM: parsePolygonMetres(rawPoint.depthM),
       };
-      if (!Number.isFinite(point.alongM) || !Number.isFinite(point.depthM)) {
-        setDrawOutlineHoverPoint(null);
+      if (
+        !Number.isFinite(point.alongM) ||
+        !Number.isFinite(point.depthM) ||
+        !Number.isFinite(rawPoint.numericAlongM) ||
+        !Number.isFinite(rawPoint.numericDepthM)
+      ) {
+        setDrawOutlineLandingPoint(null);
+        applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
         return;
       }
+      setDrawOutlineLandingPoint(rawPoint);
+      applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, point));
+    },
+    [applyDrawOutlineTransition, drawOutlineState],
+  );
 
-      const firstPoint = drawOutlineSession.points[0];
-      const closeHovered =
-        drawOutlineSession.points.length >= 3 && firstPoint ? distanceBetweenOutlinePoints(firstPoint, point) <= CLOSE_START_TOLERANCE_M : false;
-      const nextPoint = closeHovered && firstPoint ? firstPoint : point;
-      setDrawOutlineHoverPoint((current) => {
-        if (
-          current &&
-          current.closeHovered === closeHovered &&
-          current.point.alongM === nextPoint.alongM &&
-          current.point.depthM === nextPoint.depthM
-        ) {
-          return current;
+  const clearViewportEditSessions = useCallback(() => {
+    setPanDragSession(null);
+    setFootprintDragSession(null);
+    setFootprintVertexDragSession(null);
+    setFootprintActiveHandleId(null);
+    setPlanFieldDragSession(null);
+    setPlanActiveResizeFieldId(null);
+  }, []);
+
+  const startPinchZoomSessionFromActiveTouches = useCallback(() => {
+    const pair = resolveTouchPointerPair(activeTouchPointersRef.current);
+    const midpoint = pair ? resolveTouchMidpoint(pair[0], pair[1]) : null;
+    const anchor = midpoint ? resolveViewportAnchor(midpoint.x, midpoint.y) : null;
+    if (!pair || !anchor) return;
+    const distance = resolveTouchDistance(pair[0], pair[1]);
+    if (distance <= 0) return;
+    pinchZoomSessionRef.current = {
+      firstPointerId: pair[0].pointerId,
+      secondPointerId: pair[1].pointerId,
+      startMidpointX: anchor.x,
+      startMidpointY: anchor.y,
+      startDistance: distance,
+      startZoom: zoom,
+      startPanX: viewportTransform.panX,
+      startPanY: viewportTransform.panY,
+    };
+    userAdjustedViewportRef.current = true;
+    drawOutlinePointerSessionRef.current = null;
+    setDrawOutlinePointerSession(null);
+    setDrawOutlineState((current) => hoverDrawOutlinePoint(current, null).state);
+    setPinchZoomActive(true);
+    setPinchSource('touch-pointer');
+    setViewportNavigationGesture('pinch-zoom');
+  }, [resolveViewportAnchor, viewportTransform.panX, viewportTransform.panY, zoom]);
+
+  const handleScrollerPointerDownCapture = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'touch' && !isViewportNavigationControlTarget(event.target)) {
+        activeTouchPointersRef.current.set(event.pointerId, {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        });
+        setActiveTouchCount(activeTouchPointersRef.current.size);
+        if (activeTouchPointersRef.current.size === 2 && !pinchZoomSessionRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          clearViewportEditSessions();
+          startPinchZoomSessionFromActiveTouches();
+          return;
         }
-        return { point: nextPoint, closeHovered };
+      }
+
+      if (!isDrawOutlineActive(drawOutlineState) || event.button !== 0 || isViewportMousePanIgnoredTarget(event.target)) return;
+      const point = drawOutlineCanvasPointResolverRef.current?.(event.clientX, event.clientY) ?? null;
+      if (!point) {
+        setDrawOutlineLandingPoint(null);
+        return;
+      }
+      event.preventDefault();
+      handleDrawOutlineCanvasPointerDown(point, {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
       });
     },
-    [drawOutlineSession],
+    [clearViewportEditSessions, drawOutlineState, handleDrawOutlineCanvasPointerDown, startPinchZoomSessionFromActiveTouches],
+  );
+
+  const handleScrollerPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isDrawOutlineActive(drawOutlineState) || isViewportMousePanIgnoredTarget(event.target)) return;
+      if (drawOutlinePointerSessionRef.current?.hasPanned) return;
+      handleDrawOutlinePointHover(drawOutlineCanvasPointResolverRef.current?.(event.clientX, event.clientY) ?? null);
+    },
+    [drawOutlineState, handleDrawOutlinePointHover],
+  );
+
+  const handleScrollerPointerLeave = useCallback(
+    () => {
+      if (!isDrawOutlineActive(drawOutlineState)) return;
+      handleDrawOutlinePointHover(null);
+    },
+    [drawOutlineState, handleDrawOutlinePointHover],
   );
 
   const handleCanvasPanStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0 || drawOutlineSession) return;
-      const target = event.target;
-      if (
-        target instanceof Element &&
-        target.closest(
-          'button,input,select,[data-plan-resize-handle-hit],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex]',
-        )
-      ) {
-        return;
-      }
+      if (event.pointerType === 'touch') return;
+      if (event.button !== 0 || isDrawOutlineActive(drawOutlineState)) return;
+      if (isViewportMousePanIgnoredTarget(event.target)) return;
       userAdjustedViewportRef.current = true;
+      setViewportNavigationGesture('mouse-pan');
       setPanDragSession({
         pointerId: event.pointerId,
         startClientX: event.clientX,
@@ -850,13 +1054,90 @@ export default function ModelSpaceViewport({
         startPanY: viewportTransform.panY,
       });
     },
-    [drawOutlineSession, viewportTransform.panX, viewportTransform.panY],
+    [drawOutlineState, viewportTransform.panX, viewportTransform.panY],
   );
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const shouldHandleGestureEvent = (event: Event): boolean => {
+      if (isViewportNavigationControlTarget(event.target)) return false;
+      return event.target instanceof Node ? scroller.contains(event.target) : true;
+    };
+
+    const handleGestureStart = (event: Event) => {
+      if (!shouldHandleGestureEvent(event)) return;
+      const gestureEvent = event as NativeGestureEvent;
+      const anchor = resolveViewportAnchorFromGestureEvent(gestureEvent);
+      if (!anchor) return;
+      event.preventDefault();
+      clearTouchNavigation();
+      clearViewportEditSessions();
+      webKitGestureSessionRef.current = {
+        startAnchorX: anchor.x,
+        startAnchorY: anchor.y,
+        startZoom: zoom,
+        startPanX: viewportTransform.panX,
+        startPanY: viewportTransform.panY,
+      };
+      userAdjustedViewportRef.current = true;
+      setPinchZoomActive(true);
+      setPinchSource('webkit-gesture');
+      setViewportNavigationGesture('trackpad-pinch');
+    };
+
+    const handleGestureChange = (event: Event) => {
+      if (!shouldHandleGestureEvent(event)) return;
+      const session = webKitGestureSessionRef.current;
+      if (!session) return;
+      const scale = Number((event as NativeGestureEvent).scale ?? 1);
+      if (!Number.isFinite(scale) || scale <= 0) return;
+      event.preventDefault();
+      applyAnchoredViewportZoom({
+        nextZoom: session.startZoom * scale,
+        startZoom: session.startZoom,
+        startPanX: session.startPanX,
+        startPanY: session.startPanY,
+        startAnchorX: session.startAnchorX,
+        startAnchorY: session.startAnchorY,
+        currentAnchorX: session.startAnchorX,
+        currentAnchorY: session.startAnchorY,
+      });
+    };
+
+    const handleGestureEnd = () => {
+      clearWebKitGestureNavigation();
+    };
+
+    scroller.addEventListener('gesturestart', handleGestureStart);
+    scroller.addEventListener('gesturechange', handleGestureChange);
+    scroller.addEventListener('gestureend', handleGestureEnd);
+    scroller.addEventListener('gesturecancel', handleGestureEnd);
+
+    return () => {
+      scroller.removeEventListener('gesturestart', handleGestureStart);
+      scroller.removeEventListener('gesturechange', handleGestureChange);
+      scroller.removeEventListener('gestureend', handleGestureEnd);
+      scroller.removeEventListener('gesturecancel', handleGestureEnd);
+    };
+  }, [
+    applyAnchoredViewportZoom,
+    clearTouchNavigation,
+    clearViewportEditSessions,
+    clearWebKitGestureNavigation,
+    resolveViewportAnchorFromGestureEvent,
+    viewportTransform.panX,
+    viewportTransform.panY,
+    zoom,
+  ]);
 
   useEffect(() => {
     userAdjustedViewportRef.current = false;
     autoFitKeyRef.current = null;
-  }, [fitViewKey]);
+    clearTouchNavigation();
+    clearWebKitGestureNavigation();
+  }, [clearTouchNavigation, clearWebKitGestureNavigation, modelSpaceAutoFitKey]);
 
   const handlePlanFieldDragStart = useCallback(
     (meta: ModulePlanResizeDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
@@ -887,6 +1168,113 @@ export default function ModelSpaceViewport({
     [canEditPlanDimensions, editableFieldMap, planModel],
   );
 
+  const drawOutlineActiveForPointerListeners = isDrawOutlineActive(drawOutlineState);
+
+  useEffect(() => {
+    if (!drawOutlineActiveForPointerListeners) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const session = drawOutlinePointerSessionRef.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+      const deltaX = event.clientX - session.startClientX;
+      const deltaY = event.clientY - session.startClientY;
+      const distance = Math.hypot(deltaX, deltaY);
+      if (distance < DRAW_OUTLINE_PAN_THRESHOLD_PX && !session.hasPanned) return;
+
+      userAdjustedViewportRef.current = true;
+      updateViewportTransform({
+        panX: session.startPanX + deltaX,
+        panY: session.startPanY + deltaY,
+      });
+      if (!session.hasPanned) {
+        const nextSession = {
+          ...session,
+          hasPanned: true,
+        };
+        drawOutlinePointerSessionRef.current = nextSession;
+        setDrawOutlinePointerSession(nextSession);
+        setDrawOutlineState((current) => hoverDrawOutlinePoint(current, null).state);
+      }
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      const latestSession = drawOutlinePointerSessionRef.current;
+      if (!latestSession || event.pointerId !== latestSession.pointerId) return;
+      const shouldSelect = event.type === 'pointerup' && !latestSession.hasPanned;
+      const startPoint = latestSession.startPoint;
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      if (shouldSelect) handleDrawOutlinePointSelect(startPoint);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [drawOutlineActiveForPointerListeners, handleDrawOutlinePointSelect, updateViewportTransform]);
+
+  useEffect(() => {
+    if (activeTouchCount <= 0) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const current = activeTouchPointersRef.current.get(event.pointerId);
+      if (!current) return;
+      activeTouchPointersRef.current.set(event.pointerId, {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+
+      const session = pinchZoomSessionRef.current;
+      if (!session) return;
+      const first = activeTouchPointersRef.current.get(session.firstPointerId);
+      const second = activeTouchPointersRef.current.get(session.secondPointerId);
+      if (!first || !second) return;
+      const distance = resolveTouchDistance(first, second);
+      if (distance <= 0) return;
+      const midpoint = resolveTouchMidpoint(first, second);
+      const anchor = resolveViewportAnchor(midpoint.x, midpoint.y);
+      if (!anchor) return;
+      event.preventDefault();
+      applyAnchoredViewportZoom({
+        nextZoom: session.startZoom * (distance / Math.max(session.startDistance, 0.001)),
+        startZoom: session.startZoom,
+        startPanX: session.startPanX,
+        startPanY: session.startPanY,
+        startAnchorX: session.startMidpointX,
+        startAnchorY: session.startMidpointY,
+        currentAnchorX: anchor.x,
+        currentAnchorY: anchor.y,
+      });
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (!activeTouchPointersRef.current.has(event.pointerId)) return;
+      const session = pinchZoomSessionRef.current;
+      if (session && (event.pointerId === session.firstPointerId || event.pointerId === session.secondPointerId)) {
+        clearTouchNavigation();
+        return;
+      }
+      activeTouchPointersRef.current.delete(event.pointerId);
+      setActiveTouchCount(activeTouchPointersRef.current.size);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [activeTouchCount, applyAnchoredViewportZoom, clearTouchNavigation, resolveViewportAnchor]);
+
   useEffect(() => {
     if (!panDragSession) return;
 
@@ -901,6 +1289,7 @@ export default function ModelSpaceViewport({
     const handlePointerEnd = (event: PointerEvent) => {
       if (event.pointerId !== panDragSession.pointerId) return;
       setPanDragSession(null);
+      setViewportNavigationGesture((current) => (current === 'mouse-pan' ? 'idle' : current));
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -1083,18 +1472,18 @@ export default function ModelSpaceViewport({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (drawOutlineSession && event.key === 'Enter') {
+      if (isDrawOutlineActive(drawOutlineState) && event.key === 'Enter') {
         event.preventDefault();
         handleDrawOutlineConfirmSegment();
         return;
       }
-      if (drawOutlineSession && event.key === 'Backspace') {
+      if (isDrawOutlineActive(drawOutlineState) && event.key === 'Backspace') {
         event.preventDefault();
         handleDrawOutlineUndo();
         return;
       }
       if (event.key !== 'Escape') return;
-      if (drawOutlineSession) {
+      if (isDrawOutlineActive(drawOutlineState)) {
         event.preventDefault();
         handleDrawOutlineCancel();
         return;
@@ -1110,32 +1499,64 @@ export default function ModelSpaceViewport({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [drawOutlineSession, handleDrawOutlineCancel, handleDrawOutlineConfirmSegment, handleDrawOutlineUndo]);
+  }, [drawOutlineState, handleDrawOutlineCancel, handleDrawOutlineConfirmSegment, handleDrawOutlineUndo]);
 
-  const drawOutlinePendingPoint = useMemo(() => (drawOutlineSession ? resolvePendingOutlinePoint(drawOutlineSession) : null), [drawOutlineSession]);
-  const drawOutlineHoverPreviewPoint =
-    drawOutlineSession && !drawOutlinePendingPoint && !hasDrawOutlineDraft(drawOutlineSession) ? drawOutlineHoverPoint?.point ?? null : null;
-  const drawOutlinePreviewPointKind: 'pending' | 'hover' | null = drawOutlinePendingPoint ? 'pending' : drawOutlineHoverPreviewPoint ? 'hover' : null;
-  const drawOutlineConfirmedPointCount = drawOutlineSession?.points.length ?? 0;
-  const drawOutlineCloseReady = drawOutlineConfirmedPointCount >= 3;
-  const drawOutlineCloseHovered = Boolean(drawOutlineCloseReady && drawOutlineHoverPoint?.closeHovered && drawOutlineHoverPreviewPoint);
-  const drawOutlinePopoverAnchorPointCount = drawOutlinePendingPoint ? drawOutlineConfirmedPointCount + 1 : drawOutlineConfirmedPointCount;
-  const drawOutlinePreviewPolygon = useMemo(() => {
-    if (!drawOutlineSession) return undefined;
-    const previewPoint = drawOutlinePendingPoint ?? drawOutlineHoverPreviewPoint;
-    return outlinePointsToPolygon(previewPoint ? [...drawOutlineSession.points, previewPoint] : drawOutlineSession.points);
-  }, [drawOutlineHoverPreviewPoint, drawOutlinePendingPoint, drawOutlineSession]);
+  const drawOutlineViewModel = useMemo(
+    () => deriveDrawOutlineViewModel(drawOutlineState, Boolean(isDrawOutlineActive(drawOutlineState) && interactionError)),
+    [drawOutlineState, interactionError],
+  );
+  const activeDrawOutlineState = drawOutlineViewModel.activeState;
+  const drawOutlinePendingPoint = drawOutlineViewModel.pendingPoint;
+  const drawOutlinePreviewPointKind = drawOutlineViewModel.previewPointKind;
+  const drawOutlineConfirmedPointCount = drawOutlineViewModel.confirmedPointCount;
+  const drawOutlineCloseReady = drawOutlineViewModel.closeReady;
+  const drawOutlineCloseHovered = drawOutlineViewModel.closeHovered;
+  const drawOutlinePopoverAnchorPointCount = drawOutlineViewModel.popoverAnchorPointCount;
+  const drawOutlinePreviewPolygon = drawOutlineViewModel.previewPolygon;
+  const activeDrawOutlineLandingPoint = drawOutlineViewModel.isActive ? drawOutlineLandingPoint : null;
+  const drawOutlineGesture = drawOutlinePointerSession
+    ? drawOutlinePointerSession.hasPanned
+      ? 'panning'
+      : 'click-candidate'
+    : 'idle';
+  const modelSpaceGesture: ModelSpaceGesture =
+    drawOutlineGesture === 'click-candidate'
+      ? 'draw-click-candidate'
+      : drawOutlineGesture === 'panning'
+        ? 'draw-panning'
+        : pinchZoomActive
+          ? pinchSource === 'webkit-gesture'
+            ? 'trackpad-pinch'
+            : 'pinch-zoom'
+          : panDragSession
+            ? 'mouse-pan'
+            : viewportNavigationGesture;
+  const drawOutlineHasError = drawOutlineViewModel.diagnosticState === 'error';
+  const drawOutlineDiagnosticState = drawOutlineViewModel.diagnosticState;
+  const drawOutlineStatusCopy = drawOutlineStatusText(drawOutlineDiagnosticState);
+  const isCustomPolygonFootprint = view === 'plan' && (planModel?.houseFootprintMode ?? 'preset') === 'custom_polygon';
+  const hasExistingCustomPolygon = isCustomPolygonFootprint && (planModel?.houseFootprintPolygon?.length ?? 0) >= 3;
+  const canRedrawDrawOutline = canEditFootprint && hasExistingCustomPolygon && !drawOutlineViewModel.isActive;
+  const drawOutlineRedrawActive = drawOutlineViewModel.isActive && hasExistingCustomPolygon;
+  const drawOutlineDraftSource = drawOutlineViewModel.isActive ? 'active-draft' : planModel?.houseConnectionType === 'none' ? 'none' : 'persisted';
+
+  const handleDrawOutlineRedraw = useCallback(() => {
+    if (!canRedrawDrawOutline) return;
+    startDrawOutlineSession();
+  }, [canRedrawDrawOutline, startDrawOutlineSession]);
 
   useEffect(() => {
-    if (!showDrawingViewport) return;
-    const currentFitKey = resolveCurrentFitKey();
-    if (autoFitKeyRef.current === currentFitKey) return;
-    if (userAdjustedViewportRef.current && autoFitKeyRef.current === null) return;
-    if (fitViewportToContent()) autoFitKeyRef.current = currentFitKey;
-  }, [fitViewportToContent, planModel, resolveCurrentFitKey, sectionModel, showDrawingViewport]);
+    if (!drawOutlineViewModel.isActive && drawOutlineLandingPoint) setDrawOutlineLandingPoint(null);
+  }, [drawOutlineLandingPoint, drawOutlineViewModel.isActive]);
 
   useEffect(() => {
-    if (!drawOutlineSession) {
+    if (!modelSpaceAutoFitReady) return;
+    if (autoFitKeyRef.current === modelSpaceAutoFitKey) return;
+    if (fitViewportToContent()) autoFitKeyRef.current = modelSpaceAutoFitKey;
+  }, [fitViewportToContent, modelSpaceAutoFitKey, modelSpaceAutoFitReady]);
+
+  useEffect(() => {
+    if (!drawOutlineViewModel.isActive) {
       setDrawPopoverPosition(null);
       return;
     }
@@ -1181,7 +1602,7 @@ export default function ModelSpaceViewport({
       if (current && Math.abs(current.left - left) < 0.5 && Math.abs(current.top - top) < 0.5) return current;
       return { left, top };
     });
-  }, [drawOutlinePopoverAnchorPointCount, drawOutlineSession, viewportTransform.panX, viewportTransform.panY, zoom]);
+  }, [drawOutlinePopoverAnchorPointCount, drawOutlineViewModel.isActive, viewportTransform.panX, viewportTransform.panY, zoom]);
 
   const footprintEditor = useMemo<ModuleFootprintEditorProps | undefined>(() => {
     if (!canEditFootprint && !canRotatePlan) return undefined;
@@ -1190,12 +1611,14 @@ export default function ModelSpaceViewport({
       surface: 'model',
       isEditing: true,
       customPolygonOverride: drawOutlinePreviewPolygon,
-      customPolygonOpen: Boolean(drawOutlineSession),
+      customPolygonOpen: drawOutlineViewModel.isActive,
       customPolygonConfirmedPointCount: drawOutlineConfirmedPointCount,
       customPolygonPreviewPointKind: drawOutlinePreviewPointKind,
       customPolygonCloseReady: drawOutlineCloseReady,
       customPolygonCloseHovered: drawOutlineCloseHovered,
-      hideHouseFootprint: Boolean(drawOutlineSession && (drawOutlinePreviewPolygon?.length ?? 0) < 3),
+      customPolygonLandingPoint: activeDrawOutlineLandingPoint,
+      customPolygonHasError: drawOutlineHasError,
+      hideHouseFootprint: drawOutlineViewModel.hideHouseFootprint,
       isContextHovered: footprintContextHovered,
       hoveredAttachmentSide: footprintHoveredAttachmentSide,
       hoveredHandleId: footprintHoveredHandleId,
@@ -1214,9 +1637,13 @@ export default function ModelSpaceViewport({
       onPresetSelect: (preset) => void handleFootprintPresetSelect(preset),
       onModeSelect: (mode) => void handleFootprintModeSelect(mode),
       onRotate: (delta) => void handleFootprintRotate(delta),
-      onCanvasPointSelect: drawOutlineSession ? handleDrawOutlinePointSelect : undefined,
-      onCanvasPointHover: drawOutlineSession ? handleDrawOutlinePointHover : undefined,
-      onCloseStartSelect: drawOutlineSession ? () => void handleDrawOutlineClose() : undefined,
+      onCanvasPointSelect: undefined,
+      onCanvasPointPointerDown: undefined,
+      onCanvasPointHover: undefined,
+      onCanvasPointResolverChange: (resolver) => {
+        drawOutlineCanvasPointResolverRef.current = resolver;
+      },
+      onCloseStartSelect: drawOutlineViewModel.isActive ? () => void handleDrawOutlineClose() : undefined,
       onSvgMount: (node) => {
         footprintSvgRef.current = node;
       },
@@ -1227,9 +1654,12 @@ export default function ModelSpaceViewport({
     drawOutlineCloseHovered,
     drawOutlineCloseReady,
     drawOutlineConfirmedPointCount,
+    drawOutlineHasError,
+    activeDrawOutlineLandingPoint,
     drawOutlinePreviewPointKind,
     drawOutlinePreviewPolygon,
-    drawOutlineSession,
+    drawOutlineViewModel.hideHouseFootprint,
+    drawOutlineViewModel.isActive,
     footprintActiveHandleId,
     footprintContextHovered,
     footprintHoveredAttachmentSide,
@@ -1243,8 +1673,6 @@ export default function ModelSpaceViewport({
     handleFootprintVertexDelete,
     handleFootprintVertexDragStart,
     handleDrawOutlineClose,
-    handleDrawOutlinePointHover,
-    handleDrawOutlinePointSelect,
   ]);
 
   const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
@@ -1285,7 +1713,37 @@ export default function ModelSpaceViewport({
       <div
         ref={scrollerRef}
         data-model-space-scroller
-        className={`${styles.scroller} ${panDragSession ? styles.scrollerPanning : ''}`}
+        data-draw-outline-active={drawOutlineViewModel.isActive ? 'true' : 'false'}
+        data-draw-outline-state={drawOutlineDiagnosticState}
+        data-draw-outline-point-count={drawOutlineConfirmedPointCount}
+        data-draw-outline-has-pending-point={drawOutlinePendingPoint ? 'true' : 'false'}
+        data-draw-outline-preview-kind={drawOutlinePreviewPointKind ?? 'none'}
+        data-draw-outline-close-ready={drawOutlineCloseReady ? 'true' : 'false'}
+        data-draw-outline-close-hovered={drawOutlineCloseHovered ? 'true' : 'false'}
+        data-draw-outline-has-landing-point={activeDrawOutlineLandingPoint ? 'true' : 'false'}
+        data-draw-outline-landing-along-m={activeDrawOutlineLandingPoint?.alongM ?? ''}
+        data-draw-outline-landing-depth-m={activeDrawOutlineLandingPoint?.depthM ?? ''}
+        data-draw-outline-gesture={drawOutlineGesture}
+        data-draw-outline-pan-threshold-px={DRAW_OUTLINE_PAN_THRESHOLD_PX}
+        data-draw-outline-angle-mode={drawOutlineViewModel.angleMode}
+        data-draw-outline-has-error={drawOutlineHasError ? 'true' : 'false'}
+        data-draw-outline-can-redraw={canRedrawDrawOutline ? 'true' : 'false'}
+        data-draw-outline-redraw-active={drawOutlineRedrawActive ? 'true' : 'false'}
+        data-draw-outline-draft-source={drawOutlineDraftSource}
+        data-model-space-gesture={modelSpaceGesture}
+        data-model-space-active-touch-count={activeTouchCount}
+        data-model-space-pinch-active={pinchZoomActive ? 'true' : 'false'}
+        data-model-space-pinch-source={pinchSource}
+        data-model-space-auto-fit-key={modelSpaceAutoFitKey}
+        data-model-space-auto-fit-ready={modelSpaceAutoFitReady ? 'true' : 'false'}
+        className={`${styles.scroller} ${
+          modelSpaceGesture === 'mouse-pan' || modelSpaceGesture === 'pinch-zoom' || modelSpaceGesture === 'trackpad-pinch'
+            ? styles.scrollerPanning
+            : ''
+        }`}
+        onPointerDownCapture={handleScrollerPointerDownCapture}
+        onPointerMove={handleScrollerPointerMove}
+        onPointerLeave={handleScrollerPointerLeave}
         onPointerDown={handleCanvasPanStart}
         onWheel={handleWheel}
       >
@@ -1297,25 +1755,46 @@ export default function ModelSpaceViewport({
           <button type="button" className={styles.overlayButton} onClick={() => handleZoomChange(0.1)}>
             +
           </button>
-          <button type="button" className={styles.overlayButton} onClick={handleResetView}>
-            Reset
+          <button type="button" className={styles.overlayButton} onClick={handleFitView}>
+            Fit view
           </button>
         </div>
 
+        {canRedrawDrawOutline ? (
+          <div className={styles.drawRedrawBar} data-draw-outline-redraw-entry="true" onPointerDown={(event) => event.stopPropagation()}>
+            <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineRedraw}>
+              Redraw outline
+            </button>
+          </div>
+        ) : null}
+
+        {drawOutlineViewModel.isActive ? (
+          <div
+            className={styles.drawStatus}
+            aria-label="Draw outline status"
+            data-draw-outline-status="true"
+            data-draw-outline-status-state={drawOutlineDiagnosticState}
+          >
+            <span className={styles.drawStatusText}>{drawOutlineStatusCopy}</span>
+            <span className={styles.drawStatusMeta}>Esc cancels</span>
+          </div>
+        ) : null}
+
         {interactionError ? <p className={styles.error}>{interactionError}</p> : null}
 
-        {drawOutlineSession ? (
+        {activeDrawOutlineState ? (
           <div
             ref={drawPopoverRef}
             className={styles.drawPopover}
             aria-label="Draw house outline controls"
+            data-draw-outline-controls="true"
             data-draw-popover-anchor={drawPopoverPosition ? 'vertex' : 'default'}
             style={drawPopoverStyle}
             onPointerDown={(event) => event.stopPropagation()}
           >
             <p className={styles.drawHint}>
-              {drawOutlineSession.points.length
-                ? `${drawOutlineSession.points.length} point${drawOutlineSession.points.length === 1 ? '' : 's'} placed`
+              {activeDrawOutlineState.points.length
+                ? `${activeDrawOutlineState.points.length} point${activeDrawOutlineState.points.length === 1 ? '' : 's'} placed`
                 : 'Click first corner'}
             </p>
             <label className={styles.popoverField}>
@@ -1323,12 +1802,10 @@ export default function ModelSpaceViewport({
               <input
                 className={styles.input}
                 inputMode="decimal"
-                value={drawOutlineSession.distanceDraft}
-                disabled={!drawOutlineSession.points.length}
+                value={activeDrawOutlineState.distanceDraft}
+                disabled={!activeDrawOutlineState.points.length}
                 onChange={(event) =>
-                  setDrawOutlineSession((current) =>
-                    current ? { ...current, distanceDraft: event.target.value, pendingPoint: null } : current,
-                  )
+                  setDrawOutlineState((current) => setDrawOutlineDistanceDraft(current, event.target.value).state)
                 }
               />
             </label>
@@ -1337,23 +1814,21 @@ export default function ModelSpaceViewport({
               <input
                 className={styles.input}
                 inputMode="decimal"
-                value={drawOutlineSession.angleDraft}
-                disabled={!drawOutlineSession.points.length}
+                value={activeDrawOutlineState.angleDraft}
+                disabled={!activeDrawOutlineState.points.length}
                 onChange={(event) =>
-                  setDrawOutlineSession((current) =>
-                    current ? { ...current, angleDraft: event.target.value, pendingPoint: null } : current,
-                  )
+                  setDrawOutlineState((current) => setDrawOutlineAngleDraft(current, event.target.value).state)
                 }
               />
             </label>
-            <button type="button" className={styles.confirmButton} onClick={handleDrawOutlineConfirmSegment} disabled={!drawOutlineSession.points.length}>
+            <button type="button" className={styles.confirmButton} onClick={handleDrawOutlineConfirmSegment} disabled={!activeDrawOutlineState.points.length}>
               Confirm
             </button>
             <div className={styles.drawActions}>
               <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineClose}>
                 Close
               </button>
-              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineUndo} disabled={!drawOutlineSession.points.length}>
+              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineUndo} disabled={!activeDrawOutlineState.points.length}>
                 Undo
               </button>
               <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineCancel}>

@@ -4,6 +4,10 @@ import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import styles from './schedule.module.css';
+import { listInstallers } from '@/lib/repo/installersRepo';
+import { getProject, listProjects } from '@/lib/repo/projectsRepo';
+import { listAllEstimates } from '@/lib/repo/estimatesRepo';
+import { confirmScheduleItem, listScheduleItems, normalizeScheduleItemsStarted, replaceScheduleItems, unlockScheduleItem } from '@/lib/repo/scheduleRepo';
 import {
   ackClientUpdate,
   assignJob,
@@ -43,17 +47,18 @@ import HeaderActions from '@/components/layout/HeaderActions';
 import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
+import { SupabaseRepoError } from '@/lib/supabase/repoError';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { ApiError } from '@/lib/repo/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 import { runScheduleDiagnostics } from '@/lib/queries/scheduleDiagnostics';
 import type { ScheduleActionModalsProps, ScheduleModalState } from './ScheduleActionModals';
 import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
 import type { ScheduleBoardDrop, ScheduleBoardMenuAction, ScheduleBoardViewProps } from './ScheduleBoardView';
 import type { ScheduleGanttViewProps } from './ScheduleGanttView';
 import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
-import type { ScheduleLegacyFallbackClientProps } from './ScheduleLegacyFallbackClient';
-import { getScheduleSupabaseHost } from './scheduleRuntime';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
@@ -69,14 +74,6 @@ const LazyScheduleGanttView = dynamic<ScheduleGanttViewProps>(
   {
     ssr: false,
     loading: () => <p className={styles.note}>Loading Gantt...</p>,
-  },
-);
-
-const LazyScheduleLegacyFallbackClient = dynamic<ScheduleLegacyFallbackClientProps>(
-  () => import('./ScheduleLegacyFallbackClient'),
-  {
-    ssr: false,
-    loading: () => <p className={styles.note}>Loading legacy schedule fallback...</p>,
   },
 );
 
@@ -998,13 +995,17 @@ export function buildScheduleBoardModel(input: {
   };
 }
 
-export default function ScheduleClient({
-  initialScheduleMode = 'v2',
-  initialV2Snapshot: initialV2SnapshotProp = null,
-}: {
-  initialScheduleMode?: 'v2' | 'legacy';
-  initialV2Snapshot?: ScheduleV2Snapshot | null;
-}) {
+export type ScheduleLegacyFallbackClientProps = {
+  initialReason?: 'server-schema-not-ready' | 'client-schema-not-ready';
+  today: string;
+  initialView?: Extract<ScheduleView, 'board' | 'gantt'>;
+};
+
+export default function ScheduleLegacyFallbackClient({
+  initialReason,
+  today: todayProp,
+  initialView,
+}: ScheduleLegacyFallbackClientProps) {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1019,14 +1020,13 @@ export default function ScheduleClient({
   const installersRef = useRef<Installer[]>([]);
   const projectsRef = useRef<ScheduleProjectSummary[]>([]);
 
-  const today = useMemo(() => resolveScheduleTodayYmd(), []);
+  const today = useMemo(() => todayProp || resolveScheduleTodayYmd(), [todayProp]);
 
-  const supabaseHost = useMemo(() => getScheduleSupabaseHost(), []);
+  const supabaseHost = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()), []);
   const hostKey = supabaseHost || 'unknown';
 
   const v2SnapshotKey = useMemo(() => qk.schedule.board(hostKey, today), [hostKey, today]);
-  const cachedV2Snapshot = USE_SCHEDULE_V2 ? (queryClient.getQueryData<ScheduleV2Snapshot>(v2SnapshotKey) ?? null) : null;
-  const initialV2Snapshot = USE_SCHEDULE_V2 && initialScheduleMode === 'v2' ? initialV2SnapshotProp ?? cachedV2Snapshot : null;
+  const initialV2Snapshot: ScheduleV2Snapshot | null = null;
   const initialV2SnapshotUpdatedAt = useMemo(() => {
     if (!initialV2Snapshot) return undefined;
     const generatedAtMs = Date.parse(initialV2Snapshot.generatedAt);
@@ -1043,15 +1043,13 @@ export default function ScheduleClient({
 
   const [hydrated, setHydrated] = useState(() => Boolean(initialV2Snapshot));
   const [loadError, setLoadError] = useState<{ message: string; table?: string; code?: string } | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [installers, setInstallers] = useState<Installer[]>(() => initialV2Snapshot?.installers ?? []);
   const [projects, setProjects] = useState<ScheduleProjectSummary[]>(() => initialV2Snapshot?.projects ?? []);
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(() => initialV2Snapshot?.scheduleItems ?? []);
   const [estimatesById, setEstimatesById] = useState<Map<string, Estimate>>(() => new Map());
   const [unscheduledJobsSeed, setUnscheduledJobsSeed] = useState<SchedulableJob[]>(() => mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs));
-  const [scheduleMode, setScheduleMode] = useState<'v2' | 'legacy'>(initialScheduleMode);
-  const [legacyFallbackReason, setLegacyFallbackReason] = useState<ScheduleLegacyFallbackClientProps['initialReason']>(
-    initialScheduleMode === 'legacy' ? 'server-schema-not-ready' : undefined,
-  );
+  const [scheduleMode, setScheduleMode] = useState<'v2' | 'legacy'>('legacy');
   const [scheduleConflicts, setScheduleConflicts] = useState<any[]>(() => initialV2Snapshot?.conflicts ?? []);
   const [nextAvailableByInstallerId, setNextAvailableByInstallerId] = useState<Map<string, string>>(
     () => new Map(Object.entries(initialV2Snapshot?.nextAvailableByInstallerId ?? {})),
@@ -1093,6 +1091,7 @@ export default function ScheduleClient({
   const [cleanupBusy, setCleanupBusy] = useState(false);
 
   const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(() => {
+    if (initialView === 'board' || initialView === 'gantt') return initialView;
     const raw = (searchParams.get('view') || '').trim().toLowerCase();
     if (raw === 'site-visits') return 'site_visits';
     if (raw === 'gantt') return 'gantt';
@@ -1544,6 +1543,42 @@ export default function ScheduleClient({
 
   const scheduleTabs = <ScheduleViewTabs view={view} onChange={setScheduleView} />;
 
+  type ScheduleSnapshotV1 = {
+    generatedAt: string;
+    host: string | null;
+    crews: Array<{ id: string; name: string; color: string | null; is_active: boolean; sort_order: number }>;
+    scheduleItems: Array<{
+      id: string;
+      crew_id: string;
+      project_id: string;
+      estimate_id: string | null;
+      start_date: string;
+      end_date: string;
+      duration_days: number | null;
+      sort_order: number;
+      updated_at: string | null;
+      status?: string | null;
+      locked?: boolean | null;
+      confirmed_at?: string | null;
+      confirmed_by?: string | null;
+      actual_start_date?: string | null;
+      actual_end_date?: string | null;
+    }>;
+    projectsIndex: Array<{
+      id: string;
+      name: string;
+      pipeline_stage: string;
+      follow_up_date?: string | null;
+    }>;
+  };
+
+  const snapshotKey = useMemo(() => qk.schedule.snapshot(hostKey), [hostKey]);
+  const { data: cachedSnapshot } = useQuery<ScheduleSnapshotV1 | null>({
+    queryKey: snapshotKey,
+    queryFn: async () => null,
+    enabled: false,
+  });
+
   const v2SnapshotQuery = useQuery({
     ...scheduleV2SnapshotQueryOptions(hostKey, today),
     enabled: scheduleMode === 'v2' && view !== 'site_visits',
@@ -1614,7 +1649,6 @@ export default function ScheduleClient({
 
     if (err instanceof ApiError && err.status === 501) {
       toast.error(err.message || 'Schedule v2 schema not ready yet. Falling back to legacy.');
-      setLegacyFallbackReason('client-schema-not-ready');
       hydratedFromCacheRef.current = false;
       v2GeneratedAtRef.current = '';
       v2HolidaysRef.current = [];
@@ -1645,6 +1679,213 @@ export default function ScheduleClient({
     setSyncing(false);
     setHydrated(true);
   }, [installers.length, projects.length, scheduleItems.length, scheduleMode, toast, v2SnapshotQuery.error, view]);
+
+  function tryWriteScheduleSnapshotToCache(input: {
+    installers: Installer[];
+    projects: ScheduleProjectSummary[];
+    scheduleItems: ScheduleItem[];
+    estimatesById: Map<string, Estimate>;
+  }): void {
+    if (scheduleMode !== 'legacy') return;
+    try {
+      const projectsById = new Map<string, ScheduleProjectSummary>();
+      for (const p of input.projects) projectsById.set(p.id, p);
+      const renderable = input.scheduleItems.filter((i) => projectsById.has(i.projectId));
+      const build = buildScheduleBars({ today, installers: input.installers, scheduleItems: renderable, projectsById, estimatesById: input.estimatesById });
+      const bars = new Map(build.bars.map((b) => [b.scheduleItemId, b]));
+
+      queryClient.setQueryData(snapshotKey, {
+        generatedAt: nowIso(),
+        host: supabaseHostFromUrl(supabaseRuntimeUrl()),
+        crews: input.installers.map((c) => ({
+          id: uuidFromAppId(c.id, 'crew'),
+          name: c.name,
+          color: c.color ?? null,
+          is_active: Boolean(c.active),
+          sort_order: Number.isFinite(c.sortOrder) ? c.sortOrder : 0,
+        })),
+        scheduleItems: input.scheduleItems.map((i) => {
+          const bar = bars.get(i.id) ?? null;
+          const durationDays =
+            typeof i.durationHoursOverride === 'number' && Number.isFinite(i.durationHoursOverride) && i.durationHoursOverride > 0
+              ? i.durationHoursOverride / WORK_HOURS_PER_DAY
+              : bar && Number.isFinite(bar.durationHours) && bar.durationHours > 0
+                ? bar.durationHours / WORK_HOURS_PER_DAY
+                : null;
+
+          return {
+            id: uuidFromAppId(i.id, 'sch'),
+            crew_id: uuidFromAppId(i.installerId, 'crew'),
+            project_id: uuidFromAppId(i.projectId, 'proj'),
+            estimate_id: i.estimateId ? uuidFromAppId(i.estimateId, 'est') : null,
+            start_date: bar?.startDate ?? i.startDateOverride ?? '',
+            end_date: bar?.endDate ?? bar?.startDate ?? i.startDateOverride ?? '',
+            duration_days: typeof durationDays === 'number' && Number.isFinite(durationDays) ? durationDays : null,
+            sort_order: i.sortIndex,
+            updated_at: i.updatedAt ?? null,
+            status: typeof i.scheduleStatus === 'string' ? i.scheduleStatus : null,
+            locked: typeof i.locked === 'boolean' ? i.locked : null,
+            confirmed_at: typeof i.confirmedAt === 'string' ? i.confirmedAt : null,
+            confirmed_by: typeof i.confirmedBy === 'string' ? i.confirmedBy : null,
+            actual_start_date: typeof i.actualStartDate === 'string' ? i.actualStartDate : null,
+            actual_end_date: typeof i.actualEndDate === 'string' ? i.actualEndDate : null,
+          };
+        }),
+        projectsIndex: input.projects.map((p) => ({
+          id: uuidFromAppId(p.id, 'proj'),
+          name: p.projectName,
+          pipeline_stage: String(p.status ?? 'NEW'),
+          follow_up_date: p.followUpDate ?? null,
+        })),
+      });
+    } catch {
+      // ignore cache failures
+    }
+  }
+
+  useEffect(() => {
+    if (hydrated) return;
+    if (scheduleMode !== 'legacy') return;
+    if (!cachedSnapshot) return;
+
+    try {
+      const cachedInstallers: Installer[] = cachedSnapshot.crews.map((c) => ({
+        id: appIdFromUuid('crew', c.id),
+        name: c.name,
+        color: c.color ?? PORTAL_DEFAULT_ACCENT_HEX,
+        active: c.is_active,
+        sortOrder: c.sort_order,
+      }));
+
+      const cachedProjects: ScheduleProjectSummary[] = cachedSnapshot.projectsIndex.map((p) => ({
+        id: appIdFromUuid('proj', p.id),
+        projectName: p.name,
+        name: p.name,
+        status: p.pipeline_stage as any,
+        nextActionDate: p.follow_up_date ?? null,
+        followUpDate: p.follow_up_date ?? null,
+      }));
+
+      const cachedItems: ScheduleItem[] = cachedSnapshot.scheduleItems.map((i) => ({
+        id: appIdFromUuid('sch', i.id),
+        installerId: appIdFromUuid('crew', i.crew_id),
+        projectId: appIdFromUuid('proj', i.project_id),
+        estimateId: i.estimate_id ? appIdFromUuid('est', i.estimate_id) : '',
+        sortIndex: i.sort_order,
+        scheduleStatus: typeof i.status === 'string' && i.status ? normalizeScheduleStatus(i.status) : undefined,
+        locked: typeof i.locked === 'boolean' ? i.locked : undefined,
+        confirmedAt: typeof i.confirmed_at === 'string' ? i.confirmed_at : null,
+        confirmedBy: typeof i.confirmed_by === 'string' ? i.confirmed_by : null,
+        actualStartDate: typeof i.actual_start_date === 'string' ? i.actual_start_date : null,
+        actualEndDate: typeof i.actual_end_date === 'string' ? i.actual_end_date : null,
+        startDateOverride: i.start_date || undefined,
+        durationHoursOverride: typeof i.duration_days === 'number' ? i.duration_days * WORK_HOURS_PER_DAY : undefined,
+        updatedAt: i.updated_at ?? new Date(0).toISOString(),
+      }));
+
+      hydratedFromCacheRef.current = true;
+      setLoadError(null);
+      setInstallers(cachedInstallers);
+      setProjects(cachedProjects);
+      setScheduleItems(cachedItems);
+      setEstimatesById(new Map());
+      setHydrated(true);
+      setSyncing(true);
+    } catch {
+      // ignore cache failures
+    }
+  }, [cachedSnapshot, hydrated, scheduleMode]);
+
+	  useEffect(() => {
+	    let cancelled = false;
+	    void (async () => {
+	      if (view === 'site_visits') return;
+	      if (scheduleMode !== 'legacy') return;
+	      setLoadError(null);
+	      setSyncing(true);
+	      try {
+	        if (typeof window !== 'undefined') {
+	          // Legacy localStorage contamination: schedule is DB-backed; do not merge/restore pre-DB schedule caches.
+	          window.localStorage.removeItem('sp_schedule_items_v1');
+	          window.localStorage.removeItem('sp_installers_v1');
+	        }
+
+	        const [installers, scheduleItems, projects, allEstimates] = await Promise.all([
+	          listInstallers(),
+	          listScheduleItems(),
+	          listProjects(),
+          listAllEstimates(),
+        ]);
+        if (cancelled) return;
+
+        const scheduleProjects = projects.map(toScheduleProjectSummary);
+
+        const estimatesById = new Map<string, Estimate>();
+        for (const e of allEstimates) estimatesById.set(e.id, e);
+
+        // Normalize sortIndex per lane for robustness.
+        const laneOrder = new Map<string, number>();
+        const normalised = scheduleItems
+          .slice()
+          .sort((a, b) => a.installerId.localeCompare(b.installerId) || a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt))
+          .map((item) => {
+            const idx = laneOrder.get(item.installerId) ?? 0;
+            laneOrder.set(item.installerId, idx + 1);
+            return item.sortIndex === idx ? item : { ...item, sortIndex: idx };
+          });
+
+        setInstallers(installers);
+        setProjects(scheduleProjects);
+        setScheduleItems(normalised);
+        setEstimatesById(estimatesById);
+        setHydrated(true);
+        tryWriteScheduleSnapshotToCache({ installers, projects: scheduleProjects, scheduleItems: normalised, estimatesById });
+        setSyncing(false);
+
+        // Background: mark any jobs whose planned start is <= today as started (IN_PROGRESS).
+        // This also emits an idempotent audit event for future automations.
+        void (async () => {
+          const res = await normalizeScheduleItemsStarted(today).catch(() => null);
+          if (!res || res.updated <= 0) return;
+          const refreshed = await listScheduleItems().catch(() => null);
+          if (!refreshed || cancelled) return;
+
+          const laneOrder = new Map<string, number>();
+          const normalizedRefreshed = refreshed
+            .slice()
+            .sort((a, b) => a.installerId.localeCompare(b.installerId) || a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt))
+            .map((item) => {
+              const idx = laneOrder.get(item.installerId) ?? 0;
+              laneOrder.set(item.installerId, idx + 1);
+              return item.sortIndex === idx ? item : { ...item, sortIndex: idx };
+            });
+
+          setScheduleItems(normalizedRefreshed);
+          tryWriteScheduleSnapshotToCache({ installers, projects: scheduleProjects, scheduleItems: normalizedRefreshed, estimatesById });
+        })();
+      } catch (err) {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : 'Failed to load schedule data.';
+        const showingCached = hydratedFromCacheRef.current || installers.length > 0 || scheduleItems.length > 0 || projects.length > 0;
+        if (showingCached) {
+          toast.error("Couldn't refresh schedule (showing last saved).");
+          setSyncing(false);
+          return;
+        }
+        if (err instanceof SupabaseRepoError) {
+          const code = typeof err.postgrestError?.code === 'string' ? String(err.postgrestError.code) : undefined;
+          setLoadError({ message: msg, table: err.table, code });
+        } else {
+          setLoadError({ message: msg });
+        }
+        setHydrated(true);
+        setSyncing(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadNonce, toast, view, scheduleMode, today]);
 
   const devOnly = process.env.NODE_ENV !== 'production';
 
@@ -1828,8 +2069,12 @@ export default function ScheduleClient({
 
   function refreshSchedule(): void {
     setLoadError(null);
-    setSyncing(true);
-    void queryClient.invalidateQueries({ queryKey: v2SnapshotKey });
+    if (scheduleMode === 'v2') {
+      setSyncing(true);
+      void queryClient.invalidateQueries({ queryKey: v2SnapshotKey });
+      return;
+    }
+    setReloadNonce((n) => n + 1);
   }
 
   async function runWithCommitConfirmation(
@@ -2106,11 +2351,33 @@ export default function ScheduleClient({
   }, [today]);
 
   async function persist(
-    _next: ScheduleItem[],
+    next: ScheduleItem[],
     opts?: { successToast?: string; errorToast?: string },
   ): Promise<boolean> {
-    toast.error(opts?.errorToast ?? 'Legacy schedule changes are handled by the fallback client. Refresh and try again.');
-    return false;
+    if (scheduleMode === 'v2') {
+      toast.error('Schedule v2 changes must be applied via the new endpoints. Refresh and try again.');
+      return false;
+    }
+    const prev = scheduleItems;
+    setScheduleItems(next);
+    tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: next, estimatesById });
+
+    try {
+      const renderable = next.filter((i) => projectsById.has(i.projectId));
+      const build = buildScheduleBars({ today, installers, scheduleItems: renderable, projectsById, estimatesById });
+      const barsById = new Map(build.bars.map((b) => [b.scheduleItemId, { startDate: b.startDate, endDate: b.endDate, durationHours: b.durationHours }]));
+      const persisted = await replaceScheduleItems(next, { barsById, today });
+      setScheduleItems(persisted);
+      tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: persisted, estimatesById });
+      if (opts?.successToast) toast.success(opts.successToast);
+      return true;
+    } catch (err) {
+      setScheduleItems(prev);
+      tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: prev, estimatesById });
+      const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
+      toast.error(opts?.errorToast ?? msg);
+      return false;
+    }
   }
 
   async function handleUnschedule(id: string, options?: { optimisticAlreadyApplied?: boolean }): Promise<boolean> {
@@ -2139,13 +2406,130 @@ export default function ScheduleClient({
       });
     }
 
-    return false;
+    const status = scheduleStatusById.get(id) ?? 'TENTATIVE';
+    if (isLockedScheduleStatus(status) && typeof window !== 'undefined') {
+      const ok = window.confirm(`This job is ${scheduleStatusLabel(status)}. Unschedule anyway?`);
+      if (!ok) return false;
+    }
+    const next = scheduleItems.filter((i) => i.id !== id);
+    return await persist(next, { successToast: 'Job unscheduled.', errorToast: 'Failed to unschedule job.' });
+  }
+
+  async function handleConfirmSchedule(id: string) {
+    if (scheduleMode === 'v2') {
+      toast.info('Schedule confirmations are not used in V2.');
+      return;
+    }
+    try {
+      const res = await confirmScheduleItem(id);
+      setScheduleItems((prev) =>
+        prev.map((it) =>
+          it.id === id
+            ? {
+                ...it,
+                scheduleStatus: normalizeScheduleStatus(res.status),
+                locked: true,
+                confirmedAt: res.confirmedAt ?? it.confirmedAt ?? null,
+                confirmedBy: res.confirmedBy ?? it.confirmedBy ?? null,
+              }
+            : it,
+        ),
+      );
+      toast.success('Schedule confirmed.');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 501) {
+        toast.error('Schedule schema not upgraded yet. Run supabase/schedule_engine.sql then refresh.');
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'Failed to confirm schedule.';
+      toast.error(msg);
+    }
+  }
+
+  async function handleUnlockSchedule(id: string) {
+    if (scheduleMode === 'v2') {
+      toast.info('Schedule locks are not used in V2.');
+      return;
+    }
+    const status = scheduleStatusById.get(id) ?? 'TENTATIVE';
+    const needsForce = status === 'IN_PROGRESS';
+    const force = needsForce && typeof window !== 'undefined' ? window.confirm('This job is in progress. Unlock anyway?') : false;
+    if (needsForce && !force) return;
+
+    try {
+      await unlockScheduleItem(id, { force });
+      setScheduleItems((prev) =>
+        prev.map((it) =>
+          it.id === id
+            ? {
+                ...it,
+                scheduleStatus: 'TENTATIVE',
+                locked: false,
+                confirmedAt: null,
+                confirmedBy: null,
+              }
+            : it,
+        ),
+      );
+      toast.success('Schedule unlocked.');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409 && needsForce && typeof window !== 'undefined') {
+        const ok = window.confirm('Unlock requires confirmation. Unlock anyway?');
+        if (!ok) return;
+        void handleUnlockSchedule(id);
+        return;
+      }
+      if (err instanceof ApiError && err.status === 501) {
+        toast.error('Schedule schema not upgraded yet. Run supabase/schedule_engine.sql then refresh.');
+        return;
+      }
+      const msg = err instanceof Error ? err.message : 'Failed to unlock schedule.';
+      toast.error(msg);
+    }
   }
 
   async function handleRemoveOrphanedScheduleItems() {
     if (scheduleMode === 'v2') {
       toast.info('Orphan cleanup is not available in Schedule V2 yet.');
       return;
+    }
+    if (cleanupBusy) return;
+    if (!orphanedScheduleItems.length) return;
+
+    setCleanupBusy(true);
+    try {
+      const candidates = orphanedScheduleItems.slice();
+      const uniqueProjectIds = Array.from(new Set(candidates.map((i) => i.projectId)));
+
+      // Confirm missing foreign keys via authoritative lookup (do not delete based on list-join alone).
+      const missingProjectIds = new Set<string>();
+      for (const projectId of uniqueProjectIds) {
+        const project = await getProject(projectId).catch(() => null);
+        if (!project) missingProjectIds.add(projectId);
+      }
+
+      const confirmedOrphans = candidates.filter((i) => missingProjectIds.has(i.projectId));
+      const count = confirmedOrphans.length;
+      if (!count) {
+        toast.info('No orphaned schedule items found.');
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        const ok = window.confirm(`Remove ${count} orphaned schedule item(s)? This cannot be undone.`);
+        if (!ok) return;
+      }
+
+      const orphanIds = new Set(confirmedOrphans.map((i) => i.id));
+      const nextItems = scheduleItems.filter((i) => !orphanIds.has(i.id));
+      const okPersisted = await persist(nextItems, { successToast: `Removed ${count} orphaned schedule items` });
+      if (!okPersisted) return;
+      refreshSchedule();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to remove orphaned schedule items.';
+      toast.error(msg);
+    } finally {
+      setCleanupBusy(false);
     }
   }
 
@@ -2616,7 +3000,39 @@ export default function ScheduleClient({
       return v2Actions;
     }
 
-    return [];
+    const locked = isLockedScheduleStatus(scheduleStatus);
+    const legacyActions: ScheduleBoardMenuAction[] = [
+      ...(scheduleStatus === 'TENTATIVE'
+        ? [
+            {
+              label: 'Confirm dates',
+              onClick: () => void handleConfirmSchedule(id),
+            },
+          ]
+        : []),
+      ...(locked
+        ? [
+            {
+              label: 'Unlock',
+              onClick: () => void handleUnlockSchedule(id),
+            },
+          ]
+        : []),
+      ...(!locked
+        ? [
+            {
+              label: 'Quick edit…',
+              onClick: () => openQuickEdit(id),
+            },
+          ]
+        : []),
+      {
+        label: 'Unschedule',
+        tone: 'danger',
+        onClick: () => void handleUnschedule(id),
+      },
+    ];
+    return legacyActions;
   }
 
   function handleBoardDrop(activeId: string, dropTarget: ScheduleBoardDrop) {
@@ -2845,7 +3261,7 @@ export default function ScheduleClient({
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Diagnostics failed';
         setDiagnostics({
-          host: getScheduleSupabaseHost(),
+          host: supabaseHostFromUrl(supabaseRuntimeUrl()),
           crewsOk: false,
           crewsError: msg,
           itemsOk: false,
@@ -3182,15 +3598,20 @@ export default function ScheduleClient({
     />
   ) : null;
 
-  if (scheduleMode === 'legacy') {
-    return (
-      <LazyScheduleLegacyFallbackClient
-        initialReason={legacyFallbackReason}
-        today={today}
-        initialView={view === 'gantt' ? 'gantt' : 'board'}
-      />
-    );
-  }
+  const legacyFallbackNotice = initialReason ? (
+    <section className={styles.issues} aria-label="Legacy schedule fallback">
+      <div className={styles.issuesHeader}>
+        <div>
+          <h2 className={styles.panelTitle}>Legacy schedule fallback</h2>
+          <p className={styles.hint}>
+            {initialReason === 'server-schema-not-ready'
+              ? 'Schedule V2 schema was not ready during the server load. Showing the legacy schedule fallback.'
+              : 'Schedule V2 schema was not ready during refresh. Showing the legacy schedule fallback.'}
+          </p>
+        </div>
+      </div>
+    </section>
+  ) : null;
 
   if (!hydrated) {
     return (
@@ -3303,6 +3724,8 @@ export default function ScheduleClient({
       />
 
       <div className={cx(styles.stack, styles.stackLocked)}>
+        {legacyFallbackNotice}
+
         {schedulingIssues.length ? (
           <section className={styles.issues} aria-label="Scheduling issues">
             <div className={styles.issuesHeader}>

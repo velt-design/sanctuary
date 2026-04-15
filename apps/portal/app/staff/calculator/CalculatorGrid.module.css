@@ -2612,6 +2612,7 @@
   width: auto;
   max-width: none;
   height: auto;
+  overflow: visible;
 }
 
 .modulePlanSvgSheetFootprint {
@@ -2658,8 +2659,8 @@
 }
 
 .moduleFootprintResizeEdge {
-  stroke: rgba(47, 56, 47, 0.9);
-  stroke-width: 0.92;
+  stroke: rgba(47, 56, 47, 0.82);
+  stroke-width: 0.96;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
@@ -2772,38 +2773,85 @@
 
 .moduleFootprintCustomPreviewEdge {
   stroke: var(--mv-accent-olive);
-  stroke-width: var(--mv-line-guide-width);
-  stroke-dasharray: var(--mv-dash-guide);
+  stroke-width: 1.12;
+  stroke-dasharray: 2.2 1.5;
+}
+
+.moduleFootprintCustomActiveEdge {
+  stroke: rgba(34, 40, 34, 0.96);
+  stroke-width: 1.34;
+}
+
+.moduleFootprintCustomClosePreviewEdge {
+  stroke: rgba(31, 91, 107, 0.95);
+  stroke-width: 1.34;
+  stroke-dasharray: none;
+}
+
+.moduleFootprintCustomInvalidEdge {
+  stroke: rgba(168, 60, 43, 0.92);
+  stroke-width: 1.32;
 }
 
 .moduleFootprintCustomLatestVertex {
   fill: rgba(255, 255, 255, 0.98);
   stroke: var(--mv-line-primary);
+  stroke-width: 0.82;
+}
+
+.moduleFootprintCustomPendingVertex {
+  stroke: var(--mv-accent-olive);
   stroke-width: 0.72;
 }
 
-.moduleFootprintCustomPendingVertex,
 .moduleFootprintCustomHoverVertex {
-  stroke: var(--mv-accent-olive);
+  stroke: rgba(95, 118, 74, 0.78);
+  stroke-width: 0.58;
 }
 
 .moduleFootprintCustomHoverVertex {
   fill: rgba(255, 255, 255, 0.72);
 }
 
+.moduleFootprintCustomInvalidVertex {
+  fill: rgba(255, 255, 255, 0.98);
+  stroke: rgba(168, 60, 43, 0.96);
+  stroke-width: 0.86;
+}
+
+.moduleFootprintLandingMarker {
+  color: rgba(31, 91, 107, 0.84);
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+.moduleFootprintLandingMarker line {
+  stroke: currentColor;
+  stroke-width: 0.54;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleFootprintLandingMarker circle {
+  fill: currentColor;
+  stroke: #fff;
+  stroke-width: 0.32;
+  vector-effect: non-scaling-stroke;
+}
+
 .moduleFootprintCustomCloseTarget {
   fill: none;
-  stroke: var(--mv-accent-olive);
-  stroke-width: 0.42;
-  stroke-dasharray: var(--mv-dash-guide);
+  stroke: rgba(31, 91, 107, 0.9);
+  stroke-width: 0.5;
+  stroke-dasharray: 1.2 0.8;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
 
 .moduleFootprintCustomCloseTargetHover {
-  stroke: var(--mv-line-primary);
+  stroke: rgba(31, 91, 107, 1);
   stroke-dasharray: none;
-  stroke-width: 0.56;
+  stroke-width: 0.72;
 }
 
 .moduleFootprintHandleHit {

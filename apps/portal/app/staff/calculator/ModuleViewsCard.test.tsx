@@ -8,6 +8,7 @@ import ModuleViewsCard, {
   type HouseFootprintHandleId,
   getModuleDrawingScaleDiagnostics,
   getSuggestedModuleDrawingScale,
+  resolvePlanSvgPointerFootprintPoint,
   resolveModuleDrawingScaleState,
 } from './ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
@@ -177,6 +178,54 @@ function extractSvgNumberAttribute(svgTag: string, attr: string): number {
   return Number.parseFloat(match?.[1] ?? '0');
 }
 
+function extractSvgStringAttribute(svgTag: string, attr: string): string {
+  const match = svgTag.match(new RegExp(`${attr}="([^"]+)"`));
+  expect(match?.[1]).toBeTruthy();
+  return match?.[1] ?? '';
+}
+
+function parseSvgRect(value: string): { x: number; y: number; width: number; height: number } {
+  const parts = value.split(/\s+/).map((part) => Number.parseFloat(part));
+  expect(parts).toHaveLength(4);
+  const [x, y, width, height] = parts as [number, number, number, number];
+  return { x, y, width, height };
+}
+
+function extractHouseClipRect(markup: string): { x: number; y: number; width: number; height: number } {
+  const clipStart = markup.indexOf('<clipPath');
+  expect(clipStart).toBeGreaterThanOrEqual(0);
+  const clipEnd = markup.indexOf('</clipPath>', clipStart);
+  expect(clipEnd).toBeGreaterThan(clipStart);
+  const clipMarkup = markup.slice(clipStart, clipEnd);
+  const rectMatch = clipMarkup.match(/<rect[^>]*>/);
+  expect(rectMatch?.[0]).toBeTruthy();
+  const rectTag = rectMatch?.[0] ?? '';
+  return {
+    x: extractSvgNumberAttribute(rectTag, 'x'),
+    y: extractSvgNumberAttribute(rectTag, 'y'),
+    width: extractSvgNumberAttribute(rectTag, 'width'),
+    height: extractSvgNumberAttribute(rectTag, 'height'),
+  };
+}
+
+function expectRectCloseTo(actual: { x: number; y: number; width: number; height: number }, expected: { x: number; y: number; width: number; height: number }) {
+  expect(actual.x).toBeCloseTo(expected.x, 3);
+  expect(actual.y).toBeCloseTo(expected.y, 3);
+  expect(actual.width).toBeCloseTo(expected.width, 3);
+  expect(actual.height).toBeCloseTo(expected.height, 3);
+}
+
+function expectPointerPointCloseTo(
+  actual: ReturnType<typeof resolvePlanSvgPointerFootprintPoint>,
+  expected: { alongM: number; depthM: number; formattedAlongM?: string; formattedDepthM?: string },
+): void {
+  expect(actual).not.toBeNull();
+  expect(actual?.numeric.alongM).toBeCloseTo(expected.alongM, 6);
+  expect(actual?.numeric.depthM).toBeCloseTo(expected.depthM, 6);
+  expect(actual?.formatted.alongM).toBe(expected.formattedAlongM ?? String(expected.alongM));
+  expect(actual?.formatted.depthM).toBe(expected.formattedDepthM ?? String(expected.depthM));
+}
+
 function extractPlanPrimaryDimensionGroup(markup: string, side: 'bottom' | 'left'): string {
   const marker = `data-plan-primary-dim="${side}"`;
   const markerIndex = markup.indexOf(marker);
@@ -195,6 +244,94 @@ function extractSheetAnnotationSegment(markup: string, marker: string, nextMarke
 }
 
 describe('ModuleViewsCard', () => {
+  it('converts plan SVG root pointer points to house footprint metres for every attachment side', () => {
+    const model = makeDrawingModule().planModel!;
+    const baseInput = {
+      rotationCenter: { x: 30, y: 15 },
+      rotationTurns: 0,
+      footprintRect: { x: 0, y: 0, width: 60, height: 30 },
+      scale: 10,
+      lengthA: 6,
+      spanA: 3,
+      houseFootprintPreset: model.houseFootprintPreset,
+      houseFootprintParams: model.houseFootprintParams,
+    };
+
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'rear', rootPoint: { x: 20, y: -10 } }),
+      { alongM: 2, depthM: 1 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'front', rootPoint: { x: 40, y: 40 } }),
+      { alongM: 2, depthM: 1 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'left', rootPoint: { x: -20, y: 20 } }),
+      { alongM: 1, depthM: 2 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'right', rootPoint: { x: 80, y: 10 } }),
+      { alongM: 1, depthM: 2 },
+    );
+  });
+
+  it('converts plan SVG pointer points through drawing rotation and footprint offsets', () => {
+    const model = makeDrawingModule().planModel!;
+    const commonInput = {
+      rotationCenter: { x: 30, y: 15 },
+      footprintRect: { x: 0, y: 0, width: 60, height: 30 },
+      scale: 10,
+      attachmentSide: 'rear' as const,
+      lengthA: 6,
+      spanA: 3,
+      houseFootprintPreset: model.houseFootprintPreset,
+    };
+
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({
+        ...commonInput,
+        rotationTurns: 1,
+        rootPoint: { x: 5, y: 25 },
+        houseFootprintParams: model.houseFootprintParams,
+      }),
+      { alongM: 2, depthM: 1 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({
+        ...commonInput,
+        rotationTurns: 0,
+        rootPoint: { x: 25, y: -12.5 },
+        houseFootprintParams: {
+          ...model.houseFootprintParams,
+          widthM: '6',
+          offsetXM: '0.5',
+          setbackM: '0.25',
+        },
+      }),
+      { alongM: 2, depthM: 1 },
+    );
+  });
+
+  it('does not resolve plan SVG pointer points for hip-corner plans', () => {
+    const model = makeDrawingModule().planModel!;
+
+    expect(
+      resolvePlanSvgPointerFootprintPoint({
+        rootPoint: { x: 20, y: -10 },
+        rotationCenter: { x: 30, y: 15 },
+        rotationTurns: 0,
+        footprintRect: { x: 0, y: 0, width: 60, height: 30 },
+        scale: 10,
+        attachmentSide: 'rear',
+        lengthA: 6,
+        spanA: 3,
+        houseFootprintPreset: model.houseFootprintPreset,
+        houseFootprintParams: model.houseFootprintParams,
+        isHipCorner: true,
+      }),
+    ).toBeNull();
+  });
+
   it('renders the extracted plan renderer inside the calculator card chrome', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
@@ -269,7 +406,10 @@ describe('ModuleViewsCard', () => {
 
     expect(svgTag).toContain('data-model-space-svg="plan"');
     expect(svgTag).toContain('data-model-space-view-box=');
+    expect(svgTag).toContain('data-model-space-world-box=');
     expect(svgTag).toContain('data-model-space-focus-box=');
+    expect(markup).toContain('data-model-space-focus-target="true"');
+    expect(svgTag).toContain('overflow="visible"');
     expect(svgTag).not.toContain('viewBox="0 0 120 90"');
     expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
     expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
@@ -292,11 +432,93 @@ describe('ModuleViewsCard', () => {
 
     expect(svgTag).toContain('data-model-space-svg="section"');
     expect(svgTag).toContain('data-model-space-view-box=');
+    expect(svgTag).toContain('data-model-space-world-box=');
     expect(svgTag).toContain('data-model-space-focus-box=');
+    expect(markup).toContain('data-model-space-focus-target="true"');
+    expect(svgTag).toContain('overflow="visible"');
     expect(svgTag).not.toContain('viewBox="0 0 120 90"');
     expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
     expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
     expect(markup).not.toContain('data-debug-crop=');
+  });
+
+  it('keeps oversized context out of the rendered plan model-space viewport size', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'oversized-context',
+            kind: 'footprint',
+            boundary: [
+              { x: -80, y: -60 },
+              { x: 140, y: -60 },
+              { x: 140, y: 0 },
+              { x: -80, y: 0 },
+            ],
+          },
+        ],
+        lines: [],
+      },
+    };
+    const baseMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+
+    const baseSvgTag = extractSvgTag(baseMarkup, 'Module plan view');
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+    const viewBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-view-box'));
+    const worldBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-world-box'));
+    const focusBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-focus-box'));
+
+    expect(markup).toContain('data-model-space-focus-target="true"');
+    expect(viewBox).toEqual(focusBox);
+    expect(worldBox.width).toBeGreaterThan(viewBox.width);
+    expect(worldBox.height).toBeGreaterThan(viewBox.height);
+    expectRectCloseTo(extractHouseClipRect(markup), worldBox);
+    expect(extractSvgNumberAttribute(svgTag, 'width')).toBe(extractSvgNumberAttribute(baseSvgTag, 'width'));
+    expect(extractSvgNumberAttribute(svgTag, 'height')).toBe(extractSvgNumberAttribute(baseSvgTag, 'height'));
+  });
+
+  it('keeps card and sheet plan house clipping unchanged', () => {
+    const drawing = makeDrawingModule();
+    const cardMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="card"
+      />,
+    );
+    const sheetMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    expect(extractHouseClipRect(cardMarkup)).toEqual({ x: 0, y: 0, width: 120, height: 90 });
+    expect(extractHouseClipRect(sheetMarkup)).toEqual({ x: 0, y: 0, width: 120, height: 86 });
   });
 
   it('centers plan sheet geometry vertically within the viewport', () => {
@@ -769,6 +991,49 @@ describe('ModuleViewsCard', () => {
     expect(hoverMarkup).toContain('data-footprint-custom-close-hovered="true"');
     expect(pendingMarkup).toContain('data-footprint-custom-preview-edge="pending"');
     expect(pendingMarkup).toContain('data-footprint-custom-preview-vertex="pending"');
+  });
+
+  it('hides preset footprint affordances while a model-space draw outline draft is open', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
+    const renderDraft = (customPolygonOverride: ModulePlanModel['houseFootprintPolygon'], confirmedPointCount: number) =>
+      renderToStaticMarkup(
+        <ModuleDrawingRenderer
+          view="plan"
+          status="ready"
+          planModel={drawing.planModel}
+          sectionModel={drawing.sectionModel}
+          presentation="model"
+          footprintEditor={makeFootprintEditor({
+            surface: 'model',
+            isEditing: true,
+            customPolygonOverride,
+            customPolygonOpen: true,
+            customPolygonConfirmedPointCount: confirmedPointCount,
+          })}
+        />,
+      );
+
+    const emptyDraftMarkup = renderDraft([], 0);
+    expect(emptyDraftMarkup).not.toContain('data-footprint-edge=');
+    expect(emptyDraftMarkup).not.toContain('data-footprint-resize-edge-hit=');
+    expect(emptyDraftMarkup).not.toContain('data-footprint-custom-vertex=');
+
+    const onePointMarkup = renderDraft([{ alongM: '0', depthM: '0' }], 1);
+    expect(onePointMarkup).toContain('data-footprint-custom-vertex="0"');
+    expect(onePointMarkup).toContain('data-footprint-custom-latest-vertex="true"');
+    expect(onePointMarkup).not.toContain('data-footprint-edge=');
+    expect(onePointMarkup).not.toContain('data-footprint-resize-edge-hit=');
+
+    const threePointMarkup = renderDraft(
+      [
+        { alongM: '0', depthM: '0' },
+        { alongM: '2', depthM: '0' },
+        { alongM: '2', depthM: '1' },
+      ],
+      3,
+    );
+    expect(threePointMarkup).toContain('data-footprint-custom-edge-kind="confirmed"');
+    expect(threePointMarkup).not.toContain('data-footprint-resize-edge-hit=');
   });
 
   it('renders fall and spacing annotations in page space for rotated sheet plans', () => {

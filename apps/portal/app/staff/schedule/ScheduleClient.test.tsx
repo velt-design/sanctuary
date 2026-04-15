@@ -23,10 +23,68 @@ const toastMocks = vi.hoisted(() => ({
 }));
 const dndMocks = vi.hoisted(() => ({
   latestContextProps: null as any,
+  activeId: null as string | null,
 }));
 
 vi.mock('next/dynamic', () => ({
   default: () => (props: any) => {
+    if (props?.initialReason) {
+      return (
+        <div data-testid="legacy-schedule-fallback" data-reason={props.initialReason}>
+          Legacy schedule fallback
+        </div>
+      );
+    }
+    if (typeof props?.onDrop === 'function') {
+      dndMocks.latestContextProps = {
+        onDragStart: (event: any) => {
+          dndMocks.activeId = String(event.active.id);
+        },
+        onDragEnd: (event: any) => {
+          const activeId = String(event.active.id ?? dndMocks.activeId);
+          const overId = event.over ? String(event.over.id) : null;
+          if (overId === 'unscheduled') {
+            props.onDrop(activeId, { kind: 'unscheduled', overId: 'unscheduled' });
+            return;
+          }
+          const laneId = overId?.startsWith('lane:') ? overId.slice('lane:'.length) : props.installers?.[0]?.id;
+          if (!laneId) return;
+          const existing = props.laneItems?.get(laneId) ?? [];
+          props.onDrop(activeId, {
+            kind: 'lane',
+            laneId,
+            insertionIndex: existing.length,
+            placement: 'end',
+            overId: `lane:${laneId}`,
+          });
+        },
+      };
+      return (
+        <div>
+          <aside aria-label="Unscheduled jobs">
+            <h2>Unscheduled</h2>
+            <button
+              type="button"
+              aria-label={props.unscheduledCollapsed ? 'Expand unscheduled panel' : 'Collapse unscheduled panel'}
+            />
+            {props.unscheduledJobs?.map((job: { id: string; projectName: string }) => (
+              <div key={job.id}>{job.projectName}</div>
+            ))}
+          </aside>
+          <section aria-label="Installer lanes">
+            {props.installers?.map((installer: { id: string; name: string }) => (
+              <div key={installer.id}>
+                <div>{installer.name}</div>
+                {(props.laneItems?.get(installer.id) ?? []).map((item: { id: string }) => {
+                  const job = props.schedulable?.jobsById?.get(item.id);
+                  return <div key={item.id}>{job?.projectName ?? item.id}</div>;
+                })}
+              </div>
+            ))}
+          </section>
+        </div>
+      );
+    }
     if (!Array.isArray(props?.holidays)) return null;
     const labelFor = (holiday: { date: string; name?: string }) => {
       const [, month, day] = holiday.date.split('-');
@@ -309,6 +367,7 @@ describe('ScheduleClient', () => {
     toastMocks.success.mockReset();
     toastMocks.info.mockReset();
     dndMocks.latestContextProps = null;
+    dndMocks.activeId = null;
     vi.mocked(assignJob).mockReset();
     vi.mocked(fetchScheduleGantt).mockReset();
     searchParamsString = '';
@@ -353,6 +412,74 @@ describe('ScheduleClient', () => {
     ).not.toBeNull();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(initialSnapshot);
     expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('renders the lazy legacy fallback when the server seed reports schema-not-ready', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="legacy" initialV2Snapshot={null} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const fallback = rendered.container.querySelector('[data-testid="legacy-schedule-fallback"]');
+    expect(fallback).not.toBeNull();
+    expect(fallback?.getAttribute('data-reason')).toBe('server-schema-not-ready');
+    expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('switches to the lazy legacy fallback when a v2 refresh reports schema-not-ready', async () => {
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockRejectedValue(
+        new ApiError('Schedule v2 schema not ready yet.', {
+          status: 501,
+          body: { error: 'Schedule v2 schema not ready yet.' },
+          requestId: 'req_schema_501',
+        }),
+      ),
+      staleTime: 30_000,
+    }));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={null} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      for (let i = 0; i < 10; i += 1) {
+        await Promise.resolve();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    const fallback = rendered.container.querySelector('[data-testid="legacy-schedule-fallback"]');
+    expect(fallback).not.toBeNull();
+    expect(fallback?.getAttribute('data-reason')).toBe('client-schema-not-ready');
+    expect(toastMocks.error).toHaveBeenCalledWith('Schedule v2 schema not ready yet.');
 
     rendered.unmount();
   });
