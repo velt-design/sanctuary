@@ -17,6 +17,13 @@ export default async function StaffSchedulePage({
     return <SiteVisitsScheduleClient />;
   }
 
-  const seed = await loadSchedulePageSeed();
-  return <ScheduleClient initialScheduleMode={seed.initialScheduleMode} initialV2Snapshot={seed.initialV2Snapshot} />;
+  const scheduleView = (view ?? '').trim().toLowerCase() === 'gantt' ? 'gantt' : 'board';
+  const seed = await loadSchedulePageSeed({ view: scheduleView });
+  return (
+    <ScheduleClient
+      initialScheduleMode={seed.initialScheduleMode}
+      initialSeedKind={seed.initialScheduleMode === 'v2' ? seed.initialSeedKind : undefined}
+      initialV2Snapshot={seed.initialV2Snapshot}
+    />
+  );
 }

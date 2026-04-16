@@ -1,6 +1,7 @@
 'use client';
 
 import styles from './schedule.module.css';
+import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 
 export type ScheduleDiagnosticsResult = {
   host: string | null;
@@ -18,12 +19,14 @@ export default function ScheduleDiagnosticsPanel({
   open,
   busy,
   diagnostics,
+  recentTelemetryEvents = [],
   onToggle,
   onRun,
 }: {
   open: boolean;
   busy: boolean;
   diagnostics: ScheduleDiagnosticsResult | null;
+  recentTelemetryEvents?: ScheduleClientTelemetryEvent[];
   onToggle: () => void;
   onRun: () => void;
 }) {
@@ -93,6 +96,26 @@ export default function ScheduleDiagnosticsPanel({
               Click “Run diagnostics” to test PostgREST access.
             </p>
           )}
+
+          <div className={styles.note} style={{ marginTop: 12 }}>
+            <strong>Recent schedule telemetry</strong>
+            {recentTelemetryEvents.length ? (
+              <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>
+                {recentTelemetryEvents.map((event, index) => (
+                  <li key={`${event.createdAt ?? 'event'}-${event.event}-${index}`}>
+                    <code>{event.event}</code>
+                    {event.view ? <> / {event.view}</> : null}
+                    {event.reason ? <> / {event.reason}</> : null}
+                    {event.requestId ? <> / {event.requestId}</> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className={styles.muted} style={{ marginTop: 8 }}>
+                No client schedule telemetry yet.
+              </div>
+            )}
+          </div>
         </div>
       ) : null}
     </div>

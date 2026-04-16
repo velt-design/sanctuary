@@ -2,7 +2,8 @@
 
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import styles from './schedule.module.css';
+import sharedStyles from './schedule.module.css';
+import siteVisitsStyles from './scheduleSiteVisits.module.css';
 import type { SiteVisitCalendarItem, SiteVisitsSnapshotV1 } from '@/lib/types/siteVisits';
 import UnscheduledSiteVisitCard from './UnscheduledSiteVisitCard';
 import { apiJson } from '@/lib/repo/apiClient';
@@ -28,6 +29,8 @@ import { ApiError } from '@/lib/repo/apiClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/lib/queries/keys';
+
+const styles = { ...sharedStyles, ...siteVisitsStyles };
 
 const HOURS = Array.from({ length: DAY_END_HOUR - DAY_START_HOUR }, (_, i) => i + DAY_START_HOUR);
 const DAY_START_MINUTES = DAY_START_HOUR * 60;

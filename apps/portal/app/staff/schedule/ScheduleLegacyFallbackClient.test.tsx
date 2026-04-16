@@ -76,24 +76,6 @@ vi.mock('@/lib/repo/scheduleRepo', () => ({
   replaceScheduleItems: vi.fn(),
   unlockScheduleItem: vi.fn(),
 }));
-vi.mock('@/lib/repo/scheduleV2Repo', () => ({
-  ackClientUpdate: vi.fn(),
-  assignJob: vi.fn(),
-  createDowntime: vi.fn(),
-  deleteDowntime: vi.fn(),
-  fetchScheduleGantt: vi.fn(),
-  lockJobSchedule: vi.fn(),
-  markJobDone: vi.fn(),
-  markJobInProgress: vi.fn(),
-  pinJob: vi.fn(),
-  reorderItems: vi.fn(),
-  rescheduleJob: vi.fn(),
-  setDaysRemaining: vi.fn(),
-  setJobDuration: vi.fn(),
-  unassignJob: vi.fn(),
-  unpinJob: vi.fn(),
-  updateDowntime: vi.fn(),
-}));
 vi.mock('@/lib/queries/scheduleDiagnostics', () => ({
   runScheduleDiagnostics: vi.fn(),
 }));

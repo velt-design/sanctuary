@@ -31,7 +31,15 @@ export async function POST(req: Request) {
   const newPositionRaw = body.new_position;
   const force = Boolean(body.force);
 
-  if (!crewId) return jsonError('crew_id is required', 400, diagnostics);
+  if (!crewId) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.validation_failed',
+      status: 400,
+      message: 'crew_id is required',
+      extra: { reason: 'missing_crew_id' },
+    });
+    return jsonError('crew_id is required', 400, diagnostics);
+  }
 
   let ctx;
   try {
@@ -54,7 +62,15 @@ export async function POST(req: Request) {
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
+  if (!crewCtx) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.validation_failed',
+      status: 404,
+      message: 'Crew not found',
+      extra: { reason: 'crew_not_found', crewId },
+    });
+    return jsonError('Crew not found', 404, diagnostics);
+  }
 
   let nextItems = crewCtx.items.slice();
   if (orderedIds && orderedIds.length) {
@@ -62,13 +78,27 @@ export async function POST(req: Request) {
   } else if (moveItemId) {
     const sorted = nextItems.slice().sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
     const idx = sorted.findIndex((item) => item.id === moveItemId);
-    if (idx === -1) return jsonError('item_id not found in crew schedule', 404, diagnostics);
+    if (idx === -1) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.reorder.validation_failed',
+        status: 404,
+        message: 'item_id not found in crew schedule',
+        extra: { reason: 'item_not_found', crewId, itemId: moveItemId },
+      });
+      return jsonError('item_id not found in crew schedule', 404, diagnostics);
+    }
     const [moving] = sorted.splice(idx, 1);
     const newPosition = typeof newPositionRaw === 'number' && Number.isFinite(newPositionRaw) ? Math.trunc(newPositionRaw) : sorted.length;
     const insertAt = Math.max(0, Math.min(newPosition, sorted.length));
     sorted.splice(insertAt, 0, moving);
     nextItems = sorted.map((item, index) => ({ ...item, position: index }));
   } else {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.validation_failed',
+      status: 400,
+      message: 'ordered_item_ids or item_id is required',
+      extra: { reason: 'missing_reorder_payload', crewId },
+    });
     return jsonError('ordered_item_ids or item_id is required', 400, diagnostics);
   }
 
@@ -101,7 +131,20 @@ export async function POST(req: Request) {
     positions: applyScheduleItemPositions(nextItems),
     forecastUpdates: afterRecompute.job_updates,
   });
-  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+  if (!commitRes.ok) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.commit_failed',
+      status: commitRes.status,
+      message: commitRes.responseMessage,
+      error: commitRes.error,
+      extra: {
+        crewId,
+        positionCount: nextItems.length,
+        forecastUpdateCount: afterRecompute.job_updates.length,
+      },
+    });
+    return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+  }
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,

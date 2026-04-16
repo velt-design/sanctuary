@@ -26,15 +26,36 @@ import { addDaysYmd } from '@/lib/scheduling/date';
 import { SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus } from '@/lib/types/scheduling';
-import styles from './schedule.module.css';
+import sharedStyles from './schedule.module.css';
+import boardStyles from './scheduleBoard.module.css';
+import timelineStyles from './scheduleTimeline.module.css';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import { resolveBoardDropTarget, type BoardDragLane, type BoardDragPoint, type BoardDragRect, type BoardDropTarget } from './boardDrag';
+import { logScheduleDebug } from './scheduleDebug';
+
+const styles = { ...sharedStyles, ...timelineStyles, ...boardStyles };
 
 export type ScheduleBoardMenuAction = {
   label: string;
   onClick: () => void;
   disabled?: boolean;
   tone?: 'danger';
+};
+
+export type ScheduleBoardDropDebug = {
+  activeId: string;
+  rawOverId: string | null;
+  sourceLaneId: string | null;
+  resolvedKind: BoardDropTarget['kind'];
+  resolvedLaneId: string | null;
+  insertionIndex: number | null;
+  placement: 'before' | 'after' | 'end' | null;
+  resolvedOverId: string | null;
+  point: BoardDragPoint | null;
+  activeRect: BoardDragRect | null;
+  targetLaneRect: BoardDragRect | null;
+  unscheduledRect: BoardDragRect | null;
+  laneItemCounts: Record<string, number>;
 };
 
 export type ScheduleBoardDrop =
@@ -44,10 +65,12 @@ export type ScheduleBoardDrop =
       insertionIndex: number;
       placement: 'before' | 'after' | 'end';
       overId: string | null;
+      debug?: ScheduleBoardDropDebug;
     }
   | {
       kind: 'unscheduled';
       overId: 'unscheduled';
+      debug?: ScheduleBoardDropDebug;
     };
 
 export type ScheduleBoardViewProps = {
@@ -229,10 +252,21 @@ function rectFromElement(element: Element | null | undefined): BoardDragRect | n
   };
 }
 
-function dragPointFromEvent(event: DragMoveEvent | DragEndEvent): BoardDragPoint | null {
+function dragRectFromEvent(event: DragMoveEvent | DragEndEvent): BoardDragRect | null {
   const rect = ((event.active.rect?.current as any)?.translated ?? (event.active.rect?.current as any)?.initial) as
     | { left: number; top: number; width: number; height: number }
     | undefined;
+  if (!rect) return null;
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function dragPointFromEvent(event: DragMoveEvent | DragEndEvent): BoardDragPoint | null {
+  const rect = dragRectFromEvent(event);
   if (!rect) return null;
   return {
     x: rect.left + rect.width / 2,
@@ -240,16 +274,23 @@ function dragPointFromEvent(event: DragMoveEvent | DragEndEvent): BoardDragPoint
   };
 }
 
-function toBoardDrop(target: BoardDropTarget): ScheduleBoardDrop | null {
+function toBoardDrop(target: BoardDropTarget, debug?: ScheduleBoardDropDebug): ScheduleBoardDrop | null {
   if (!target.valid) return null;
-  if (target.kind === 'unscheduled') return { kind: 'unscheduled', overId: target.overId };
+  if (target.kind === 'unscheduled') return { kind: 'unscheduled', overId: target.overId, debug };
   return {
     kind: 'lane',
     laneId: target.laneId,
     insertionIndex: target.insertionIndex,
     placement: target.placement,
     overId: target.overId,
+    debug,
   };
+}
+
+function boardDropSignature(target: BoardDropTarget): string {
+  if (!target.valid) return `none:${target.overId ?? ''}`;
+  if (target.kind === 'unscheduled') return 'unscheduled';
+  return `lane:${target.laneId}:${target.insertionIndex}:${target.placement}:${target.overId ?? ''}`;
 }
 
 function LaneDropZone({
@@ -679,6 +720,7 @@ export default function ScheduleBoardView({
   const [overId, setOverId] = useState<string | null>(null);
   const [overLaneId, setOverLaneId] = useState<string | null>(null);
   const [boardDropTarget, setBoardDropTarget] = useState<BoardDropTarget | null>(null);
+  const lastDropTargetSignatureRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -703,21 +745,51 @@ export default function ScheduleBoardView({
       });
   }
 
-  function resolveBoardDrop(event: DragMoveEvent | DragEndEvent): BoardDropTarget {
+  function resolveBoardDrop(event: DragMoveEvent | DragEndEvent): { target: BoardDropTarget; debug: ScheduleBoardDropDebug } {
     const activeId = String(event.active.id);
     const eventOverId = event.over ? String(event.over.id) : null;
     const activeItem = scheduleItemById.get(activeId) ?? null;
-    return resolveBoardDropTarget({
+    const sourceLaneId = activeItem?.installerId ?? null;
+    const lanes = buildBoardDragLanes();
+    const point = dragPointFromEvent(event);
+    const unscheduledRect = rectFromElement(unscheduledBodyRef.current);
+    const target = resolveBoardDropTarget({
       activeId,
-      sourceLaneId: activeItem?.installerId ?? null,
+      sourceLaneId,
       overId: eventOverId,
-      point: dragPointFromEvent(event),
-      lanes: buildBoardDragLanes(),
-      unscheduledRect: rectFromElement(unscheduledBodyRef.current),
+      point,
+      lanes,
+      unscheduledRect,
     });
+    const resolvedLaneId = target.valid && target.kind === 'lane' ? target.laneId : null;
+    const targetLaneRect = resolvedLaneId ? (lanes.find((lane) => lane.id === resolvedLaneId)?.rect ?? null) : null;
+    const laneItemCounts = Object.fromEntries(lanes.map((lane) => [lane.id, lane.itemIds.length]));
+    return {
+      target,
+      debug: {
+        activeId,
+        rawOverId: eventOverId,
+        sourceLaneId,
+        resolvedKind: target.kind,
+        resolvedLaneId,
+        insertionIndex: target.valid && target.kind === 'lane' ? target.insertionIndex : null,
+        placement: target.valid && target.kind === 'lane' ? target.placement : null,
+        resolvedOverId: target.overId,
+        point,
+        activeRect: dragRectFromEvent(event),
+        targetLaneRect,
+        unscheduledRect,
+        laneItemCounts,
+      },
+    };
   }
 
-  function applyBoardDropTarget(target: BoardDropTarget): void {
+  function applyBoardDropTarget(target: BoardDropTarget, debug: ScheduleBoardDropDebug, phase: 'over' | 'move'): void {
+    const signature = boardDropSignature(target);
+    if (lastDropTargetSignatureRef.current !== signature) {
+      lastDropTargetSignatureRef.current = signature;
+      logScheduleDebug('board.drop.target', { phase, ...debug });
+    }
     setBoardDropTarget(target);
     if (!target.valid) {
       setOverId(null);
@@ -738,13 +810,14 @@ export default function ScheduleBoardView({
     setOverId(null);
     setOverLaneId(null);
     setBoardDropTarget(null);
+    lastDropTargetSignatureRef.current = null;
   }
 
   function handleDragMove(event: DragMoveEvent) {
     if (!activeDragId) return;
 
-    const target = resolveBoardDrop(event);
-    applyBoardDropTarget(target);
+    const { target, debug } = resolveBoardDrop(event);
+    applyBoardDropTarget(target, debug, 'move');
 
     const point = dragPointFromEvent(event);
     if (!point) return;
@@ -774,7 +847,9 @@ export default function ScheduleBoardView({
 
   function handleDragEnd(event: DragEndEvent) {
     const activeId = String(event.active.id);
-    const drop = toBoardDrop(resolveBoardDrop(event));
+    const { target, debug } = resolveBoardDrop(event);
+    const drop = toBoardDrop(target, debug);
+    logScheduleDebug('board.drop.end', { ...debug, valid: Boolean(drop) });
     clearBoardDragState();
     if (!drop) return;
     onDrop(activeId, drop);
@@ -790,9 +865,11 @@ export default function ScheduleBoardView({
       onDragStart={(event) => {
         setActiveDragId(String(event.active.id));
         setBoardDropTarget(null);
+        lastDropTargetSignatureRef.current = null;
       }}
       onDragOver={(event) => {
-        applyBoardDropTarget(resolveBoardDrop(event));
+        const { target, debug } = resolveBoardDrop(event);
+        applyBoardDropTarget(target, debug, 'over');
       }}
       onDragMove={handleDragMove}
       onDragCancel={clearBoardDragState}

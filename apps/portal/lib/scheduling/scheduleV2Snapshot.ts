@@ -1,4 +1,4 @@
-import type { ScheduleBoardResponse } from '@/lib/repo/scheduleV2Repo';
+import type { ScheduleBoardResponse, ScheduleGanttResponse } from '@/lib/repo/scheduleV2Repo';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { nowIso } from '@/lib/utils/time';
 import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
@@ -199,4 +199,44 @@ export function mapScheduleBoardResponseToV2Snapshot(board: ScheduleBoardRespons
     holidays,
     closures,
   };
+}
+
+export function mapScheduleGanttResponseToV2Snapshot(gantt: ScheduleGanttResponse): ScheduleV2Snapshot {
+  const scheduleByCrew = new Map<string, ScheduleBoardResponse['schedule'][number]>();
+
+  for (const crew of gantt.crews) {
+    scheduleByCrew.set(crew.id, {
+      crew_id: crew.id,
+      items: [],
+      conflicts: [],
+      next_available_date: '',
+    });
+  }
+
+  for (const item of gantt.items) {
+    const lane = scheduleByCrew.get(item.crew_id) ?? {
+      crew_id: item.crew_id,
+      items: [],
+      conflicts: [],
+      next_available_date: '',
+    };
+    lane.items.push(item);
+    scheduleByCrew.set(item.crew_id, lane);
+  }
+
+  for (const lane of scheduleByCrew.values()) {
+    lane.items.sort((a, b) => a.position - b.position);
+  }
+
+  return mapScheduleBoardResponseToV2Snapshot({
+    generated_at: gantt.generated_at,
+    crews: gantt.crews,
+    schedule: Array.from(scheduleByCrew.values()),
+    project_index: gantt.project_index ?? [],
+    unscheduled_jobs: [],
+    conflicts: gantt.conflicts ?? [],
+    scheduled_estimate_ids: gantt.scheduled_estimate_ids ?? {},
+    holidays: gantt.holidays ?? [],
+    closures: gantt.closures ?? [],
+  });
 }

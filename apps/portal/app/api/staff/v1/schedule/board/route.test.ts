@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireStaffSession = vi.fn();
 const loadScheduleBoardResponse = vi.fn();
@@ -16,15 +16,23 @@ class ScheduleSchemaNotReadyError extends Error {}
 vi.mock('@/lib/scheduling/scheduleBoardServer', () => ({
   loadScheduleBoardResponse,
   isScheduleSchemaNotReadyError: (error: unknown) => error instanceof ScheduleSchemaNotReadyError,
+  isScheduleBoardBuildError: () => false,
 }));
 
 describe('GET /api/staff/v1/schedule/board', () => {
+  let infoSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.resetModules();
     requireStaffSession.mockReset();
     loadScheduleBoardResponse.mockReset();
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('returns a lightweight project index for scheduled and unscheduled projects', async () => {
@@ -62,9 +70,36 @@ describe('GET /api/staff/v1/schedule/board', () => {
     });
 
     const mod = await import('./route');
-    const res = await mod.GET(new Request('http://localhost/api/staff/v1/schedule/board?today=2026-04-07'));
+    const res = await mod.GET(
+      new Request('http://localhost/api/staff/v1/schedule/board?today=2026-04-07', {
+        headers: { 'x-portal-request-id': 'req-board-1' },
+      }),
+    );
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('x-portal-request-id')).toBe('req-board-1');
+    expect(res.headers.get('server-timing')).toContain('total;dur=');
+    expect(infoSpy).toHaveBeenCalledWith('[portal]', expect.objectContaining({
+      event: 'schedule.endpoint',
+      requestId: 'req-board-1',
+      route: '/api/staff/v1/schedule/board',
+      method: 'GET',
+      status: 200,
+      view: 'board',
+      payloadBytes: expect.any(Number),
+      durationBudgetMs: expect.any(Number),
+      payloadBudgetBytes: expect.any(Number),
+      overDurationBudget: expect.any(Boolean),
+      overPayloadBudget: expect.any(Boolean),
+    }));
+    expect(loadScheduleBoardResponse).toHaveBeenCalledWith({
+      today: '2026-04-07',
+      diagnostics: expect.objectContaining({
+        requestId: 'req-board-1',
+        route: '/api/staff/v1/schedule/board',
+        method: 'GET',
+      }),
+    });
     const body = await res.json();
     expect(body.project_index).toEqual([
       {
@@ -91,9 +126,22 @@ describe('GET /api/staff/v1/schedule/board', () => {
     loadScheduleBoardResponse.mockRejectedValue(new ScheduleSchemaNotReadyError('Schedule schema is not upgraded yet.'));
 
     const mod = await import('./route');
-    const res = await mod.GET(new Request('http://localhost/api/staff/v1/schedule/board'));
+    const res = await mod.GET(
+      new Request('http://localhost/api/staff/v1/schedule/board', {
+        headers: { 'x-portal-request-id': 'req-board-schema' },
+      }),
+    );
 
     expect(res.status).toBe(501);
+    expect(res.headers.get('x-portal-request-id')).toBe('req-board-schema');
+    expect(res.headers.get('server-timing')).toContain('total;dur=');
+    expect(infoSpy).toHaveBeenCalledWith('[portal]', expect.objectContaining({
+      event: 'schedule.endpoint',
+      requestId: 'req-board-schema',
+      status: 501,
+      view: 'board',
+      reason: 'schema_not_ready',
+    }));
     await expect(res.json()).resolves.toEqual({
       error: expect.stringContaining('Schedule schema is not upgraded yet.'),
     });

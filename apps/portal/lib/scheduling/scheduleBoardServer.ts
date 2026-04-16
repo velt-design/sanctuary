@@ -1,13 +1,14 @@
 import 'server-only';
 
+import type { PortalServerLogContext } from '@/lib/api/routeDiagnostics';
 import type { ScheduleBoardResponse } from '@/lib/repo/scheduleV2Repo';
 import { isYmd } from '@/lib/scheduling/date';
 import {
-  applyDriftStatusPatches,
   buildUnscheduledJobs,
+  computeJobsWithDriftStatus,
   formatCrewScheduleBlocks,
   isMissingSchemaError,
-  listProjectsAndEstimates,
+  listBoardProjectsAndEstimates,
   loadScheduleContext,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
@@ -82,10 +83,53 @@ function computeScheduledEstimateIds(estimates: any[], scheduledProjectIds: Set<
   return out;
 }
 
-export async function loadScheduleBoardResponse(options?: { today?: string }): Promise<ScheduleBoardResponse> {
+function elapsedMs(startedAt: number): number {
+  return Number((performance.now() - startedAt).toFixed(1));
+}
+
+function logDevelopmentBoardDiagnostics(input: {
+  diagnostics?: PortalServerLogContext | null;
+  contextMs: number;
+  recomputeMs: number;
+  driftMs: number;
+  formattingMs: number;
+  projectEstimateMs: number;
+  responseMappingMs: number;
+  totalMs: number;
+  counts: Record<string, unknown>;
+}) {
+  if (process.env.NODE_ENV !== 'development') return;
+  console.debug('[schedule]', {
+    event: 'schedule.board.load',
+    requestId: input.diagnostics?.requestId ?? null,
+    route: input.diagnostics?.route ?? '/api/staff/v1/schedule/board',
+    method: input.diagnostics?.method ?? 'GET',
+    contextMs: input.contextMs,
+    recomputeMs: input.recomputeMs,
+    driftMs: input.driftMs,
+    formattingMs: input.formattingMs,
+    projectEstimateMs: input.projectEstimateMs,
+    responseMappingMs: input.responseMappingMs,
+    totalMs: input.totalMs,
+    ...input.counts,
+  });
+}
+
+export async function loadScheduleBoardResponse(options?: { today?: string; diagnostics?: PortalServerLogContext | null }): Promise<ScheduleBoardResponse> {
+  const startedAt = performance.now();
+  const requestNowIso = new Date().toISOString();
   let ctx;
+  let contextMs = 0;
+  let recomputeMs = 0;
+  let driftMs = 0;
+  let formattingMs = 0;
+  let projectEstimateMs = 0;
+  let responseMappingMs = 0;
+  let boardDataCounts: Record<string, unknown> = {};
   try {
+    const contextStartedAt = performance.now();
     ctx = await loadScheduleContext({ today: options?.today && isYmd(options.today) ? options.today : undefined });
+    contextMs = elapsedMs(contextStartedAt);
   } catch (error) {
     if (isMissingSchemaError(error)) {
       throw new ScheduleSchemaNotReadyError(schemaNotReadyMessage((error as any)?.message ?? 'missing schema'));
@@ -101,6 +145,7 @@ export async function loadScheduleBoardResponse(options?: { today?: string }): P
     const crewItems = ctx.items.filter((item) => item.crewId === crewRow.id);
     const crewJobs = ctx.jobs.filter((job) => job.crewId === crewRow.id);
     const crewDowntimes = ctx.downtimes.filter((dt) => dt.crewId === crewRow.id);
+    const recomputeStartedAt = performance.now();
     const recompute = recomputeForCrew({
       crewRow,
       items: crewItems,
@@ -109,15 +154,19 @@ export async function loadScheduleBoardResponse(options?: { today?: string }): P
       calendar: ctx.calendar,
       today: ctx.today,
     });
+    recomputeMs += elapsedMs(recomputeStartedAt);
 
     let jobsWithDrift;
     try {
-      jobsWithDrift = await applyDriftStatusPatches({
+      const driftStartedAt = performance.now();
+      jobsWithDrift = computeJobsWithDriftStatus({
         jobs: crewJobs,
         recompute,
         region: crewRow.calendar_region || 'Auckland',
         calendar: ctx.calendar,
+        nowIso: requestNowIso,
       });
+      driftMs += elapsedMs(driftStartedAt);
     } catch (error) {
       if (isMissingSchemaError(error)) {
         throw new ScheduleSchemaNotReadyError(schemaNotReadyMessage());
@@ -127,7 +176,9 @@ export async function loadScheduleBoardResponse(options?: { today?: string }): P
 
     const jobsById = new Map(jobsWithDrift.map((job) => [job.id, job]));
     const downtimesById = new Map(crewDowntimes.map((dt) => [dt.id, dt]));
+    const formattingStartedAt = performance.now();
     const formatted = formatCrewScheduleBlocks({ crewRow, recompute, jobsById, downtimesById });
+    formattingMs += elapsedMs(formattingStartedAt);
     schedule.push(formatted);
     nextAvailableByCrew.set(crewRow.id, formatted.next_available_date);
     conflicts.push(...formatted.conflicts.map((conflict: any) => ({ ...conflict, crew_id: crewRow.id })));
@@ -137,8 +188,14 @@ export async function loadScheduleBoardResponse(options?: { today?: string }): P
   let projectIndex: NonNullable<ScheduleBoardResponse['project_index']> = [];
   let scheduledEstimateIds: NonNullable<ScheduleBoardResponse['scheduled_estimate_ids']> = {};
   try {
-    const { projects, estimates } = await listProjectsAndEstimates();
     const scheduledProjectIds = new Set(ctx.jobs.map((job) => job.jobId));
+    const projectEstimateStartedAt = performance.now();
+    const { projects, estimates, diagnostics } = await listBoardProjectsAndEstimates({
+      scheduledProjectIds,
+      diagnostics: options?.diagnostics ?? null,
+    });
+    projectEstimateMs = elapsedMs(projectEstimateStartedAt);
+    boardDataCounts = diagnostics;
     unscheduledJobs = buildUnscheduledJobs({ projects, estimates, scheduledProjectIds });
     scheduledEstimateIds = computeScheduledEstimateIds(estimates, scheduledProjectIds);
     const relevantProjectIds = new Set<string>(scheduledProjectIds);
@@ -161,7 +218,8 @@ export async function loadScheduleBoardResponse(options?: { today?: string }): P
     }
   }
 
-  return {
+  const responseMappingStartedAt = performance.now();
+  const board: ScheduleBoardResponse = {
     generated_at: new Date().toISOString(),
     crews: ctx.crews.map((crew) => ({
       id: crew.id,
@@ -181,4 +239,28 @@ export async function loadScheduleBoardResponse(options?: { today?: string }): P
     holidays: ctx.holidays,
     closures: ctx.closures,
   };
+  responseMappingMs = elapsedMs(responseMappingStartedAt);
+
+  logDevelopmentBoardDiagnostics({
+    diagnostics: options?.diagnostics ?? null,
+    contextMs,
+    recomputeMs,
+    driftMs,
+    formattingMs,
+    projectEstimateMs,
+    responseMappingMs,
+    totalMs: elapsedMs(startedAt),
+    counts: {
+      crewCount: ctx.crews.length,
+      scheduleItemCount: ctx.items.length,
+      scheduledJobCount: ctx.jobs.length,
+      downtimeCount: ctx.downtimes.length,
+      unscheduledJobCount: unscheduledJobs.length,
+      projectIndexCount: projectIndex.length,
+      scheduledEstimateIdCount: Object.keys(scheduledEstimateIds).length,
+      ...boardDataCounts,
+    },
+  });
+
+  return board;
 }

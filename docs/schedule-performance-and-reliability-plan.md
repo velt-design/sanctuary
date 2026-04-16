@@ -382,3 +382,290 @@ The schedule pages can be considered production-grade when:
 - Site Visits does not pay the Board/Gantt bundle or data cost.
 - Production telemetry can identify whether slowness is caused by server query time, payload size, hydration, client render, or drag/drop interaction.
 - Regression tests cover the two known Board bugs and the main performance safeguards.
+
+## 21. Post-Isolation Review And Updated Plan
+
+This section captures the current state after the schedule client split work and reframes the next tasks around what was learned during implementation.
+
+### 21.1 Completed Since The Original Plan
+
+Completed or partially completed:
+- Site Visits now has a separate schedule entrypoint and the page skips the Board/Gantt server seed for `view=site-visits`.
+- Board drag/drop code has moved behind the Board view boundary.
+- Gantt axis code is behind the Gantt view boundary.
+- The shared Board/Gantt client no longer statically imports dnd-kit.
+- The main `ScheduleClient` is now V2-first for normal Board/Gantt loads.
+- Legacy schedule repo imports have been removed from the normal `ScheduleClient` path.
+- `listAllEstimates`, legacy schedule item loading, legacy schedule mutations, legacy confirm/unlock behavior, and legacy orphan cleanup have moved behind a lazy legacy fallback client boundary.
+- Server schema-not-ready and client schema-not-ready recovery still route to a legacy fallback instead of becoming a hard failure.
+- Import-guard tests now assert that legacy repos and `listAllEstimates` stay out of `ScheduleClient`.
+- A focused legacy fallback test now verifies that the fallback loads installers, projects, estimates, and schedule items and can render the Board path.
+- Shared Board model types have started moving into schedule-local modules so Board does not type-import from the main client.
+- Focused schedule tests and focused lint pass for the changed schedule files.
+
+### 21.2 Important Findings
+
+Findings from the isolation work:
+- Legacy fallback was not just a data loader. It also owned legacy mutations, V1 snapshot cache hydration, confirm/unlock actions, orphan cleanup, quick edit behavior, and parts of Board interaction handling.
+- Isolating legacy behind a lazy boundary was safer than trying to delete it immediately, because production schema readiness has not been explicitly retired.
+- The highest-risk bundle dependency was not pure model logic; it was the static repo/runtime imports that pulled direct browser repo helpers and all-estimate loading into the normal path.
+- The normal client still contains some legacy-aware pure model branches. These are lower risk than repo imports, but they keep `ScheduleClient` harder to reason about.
+- The copied fallback exposed a hook-order issue around the previous isomorphic layout effect pattern. This confirms that rarely-used fallback paths need direct tests rather than relying on normal Board tests.
+- Architectural import guards are valuable here. They catch regressions where a future change accidentally reintroduces `listAllEstimates`, `scheduleRepo`, dnd-kit, or Board/Gantt-only modules into a shared path.
+- The schedule route has two distinct performance problems: JavaScript/module weight and data/query weight. The legacy isolation improves module weight for normal loads, but does not solve the all-estimate payload problem inside the fallback or the board endpoint payload problem.
+- Gantt still appears coupled to the Board seed. Even with dynamic view modules, route-level data loading still needs to be split if Gantt should avoid Board-only data.
+
+### 21.3 Current Architecture Snapshot
+
+Current intended shape:
+- `/staff/schedule?view=site-visits` uses the Site Visits entrypoint and should not initialize Board/Gantt schedule state.
+- `/staff/schedule?view=board` and `/staff/schedule?view=gantt` enter `ScheduleClient`.
+- `ScheduleClient` owns V2 seed hydration, V2 board query state, V2 mutations, diagnostics, tabs, dynamic Board view, dynamic Gantt view, and schema-not-ready fallback selection.
+- `ScheduleBoardView` owns Board UI and drag/drop dependencies.
+- `ScheduleGanttView` owns Gantt UI and Gantt axis dependencies.
+- `ScheduleLegacyFallbackClient` owns legacy-only repo loading and legacy mutations.
+- Shared schedule-local type modules are beginning to separate pure contracts from runtime clients.
+
+Current remaining coupling:
+- `ScheduleClient` still contains a large amount of shared model and mutation code.
+- `ScheduleLegacyFallbackClient` was copied from the mixed client and still contains V2-only code paths that are dead or nearly dead when running as legacy.
+- Board and Gantt still share the main V2 client state and payload.
+- Schedule CSS is still shared broadly.
+- Server seed behavior still appears Board-shaped even for Gantt.
+
+## 22. Updated Execution Plan
+
+The updated plan is split into phases. Each phase should leave the app in a working state with focused tests.
+
+### Phase 1: Finish The Client Boundary Cleanup
+
+Goal: make the current splits clean enough that future performance work does not fight the old component shape.
+
+Tasks:
+1. Move `buildScheduleBoardModel` and related pure formatting/model helpers into a schedule-local model module.
+2. Split the model builder into explicit V2 and legacy entrypoints, even if they share internal helpers.
+3. Keep V2 model helpers free of `Estimate` output parsing.
+4. Keep legacy model helpers allowed to use estimates, but only inside the legacy fallback path.
+5. Remove any unused legacy branches from `ScheduleClient`.
+6. Remove any unused V2 branches from `ScheduleLegacyFallbackClient`.
+7. Make `ScheduleLegacyFallbackClient` a true legacy-only component instead of a copied mixed client.
+8. Move V1 snapshot cache handling fully into the fallback module.
+9. Move legacy orphan cleanup helpers into the fallback module or a fallback-only helper file.
+10. Move legacy confirm/unlock/quick-edit helpers into the fallback module or fallback-only helper files.
+11. Add a guard test that `ScheduleLegacyFallbackClient` does not import V2 mutation repo functions unless there is a documented reason.
+12. Add a guard test that `ScheduleBoardView` does not import `ScheduleClient`.
+13. Add a guard test that `ScheduleGanttView` does not import `ScheduleClient`.
+14. Confirm focused lint and tests after each extraction.
+
+Acceptance criteria:
+- `ScheduleClient` imports no legacy repo modules and contains no legacy mutation code.
+- `ScheduleLegacyFallbackClient` imports no V2 mutation modules unless explicitly justified.
+- Board/Gantt view files do not import the main client at runtime or for types.
+- Pure shared helpers live in schedule-local modules with clear dependency direction.
+
+### Phase 2: Make Route Data Match The Requested View
+
+Goal: stop loading Board-shaped data for views that do not need it.
+
+Tasks:
+1. Inventory the exact data fields Board uses from the V2 snapshot.
+2. Inventory the exact data fields Gantt uses from the V2 snapshot.
+3. Inventory the exact data fields Site Visits uses.
+4. Decide whether Gantt needs unscheduled jobs at all.
+5. Decide whether Gantt needs Board action state on direct navigation.
+6. Create a Gantt-specific server seed or endpoint if the inventory shows Gantt does not need the full Board snapshot.
+7. Update the schedule page so `view=gantt` loads the Gantt seed, not the Board seed, when safe.
+8. Keep Board direct navigation using the Board seed.
+9. Keep Site Visits skipping schedule Board/Gantt seed entirely.
+10. Add route tests for `view=board`, `view=gantt`, and `view=site-visits` seed selection.
+11. Add a test that Gantt direct navigation does not request unscheduled jobs if they are not used.
+12. Add a test that Gantt direct navigation does not call the old Gantt recompute endpoint if the Board seed already provides the required calendar data, or replace it with a small calendar endpoint.
+
+Acceptance criteria:
+- Board loads Board data.
+- Gantt loads only Gantt-required data.
+- Site Visits loads no Board/Gantt schedule data.
+- Route tests lock the behavior.
+
+### Phase 3: Fix Board Drag Targeting And Assignment Reliability
+
+Goal: remove the two most visible Board reliability issues.
+
+Tasks:
+1. Add development instrumentation for every assign and reorder attempt.
+2. Log active id, active type, source lane, target lane, over id, insertion index, pointer position, and computed backend position.
+3. Log the normalized backend ids sent to `assignJob` and reorder calls.
+4. Improve error formatting so backend validation failures are visible in development and actionable in production.
+5. Confirm whether failed unscheduled assignment is caused by target selection, stale unscheduled data, bad id mapping, invalid position, backend RPC failure, or response reconciliation.
+6. Add tests for assigning an unscheduled job to an empty lane.
+7. Add tests for assigning an unscheduled job to the end of a populated lane.
+8. Add tests for assigning an unscheduled job into the middle of a lane.
+9. Add tests for failed assignment rollback without full refresh when possible.
+10. Move Board insertion-index calculation into a pure helper.
+11. Choose lane-first hit testing: first resolve the lane under the pointer, then resolve insertion index inside that lane.
+12. Avoid allowing a nearby current/in-progress job to win collision when the pointer is lower in the lane.
+13. Disable one of the competing scroll systems if both manual and dnd-kit autoscroll are active.
+14. Add tests for long-lane dragging near top, middle, lower half, and bottom.
+15. Add a Playwright smoke test for dragging an unscheduled job into a lane and confirming it persists after refresh.
+
+Acceptance criteria:
+- Drag destination is predictable in long lanes.
+- Assign failures explain the actual failure class.
+- Optimistic rollback is deterministic.
+- Regression tests cover the known jump and rollback issues.
+
+### Phase 4: Reduce Board Data Payload
+
+Goal: stop schedule reads from loading full estimate outputs when only duration and IDs are needed.
+
+Tasks:
+1. Measure current Board endpoint payload size with production-like data.
+2. Measure current server time for schedule context load, recompute, unscheduled-job assembly, and response mapping.
+3. Confirm whether estimates have cached duration fields that can be trusted.
+4. Backfill missing cached duration fields if needed.
+5. Add or update database columns/indexes needed for schedule-ready latest-estimate lookup.
+6. Build a compact unscheduled-job query or RPC.
+7. Return only project id, project name, project status, estimate id, and duration days for unscheduled jobs.
+8. Filter scheduling-ready projects in the database.
+9. Select the latest non-archived estimate per project in the database.
+10. Avoid selecting estimate `outputs` in the Board endpoint.
+11. Add a fallback path for rare estimates missing cached duration that does not load every estimate output.
+12. Add contract tests proving schedule endpoints do not return full estimate outputs.
+13. Add data-volume tests with hundreds or thousands of estimates.
+14. Add payload size logging in development.
+15. Add optional production sampling for payload size and server timing.
+
+Acceptance criteria:
+- Normal Board snapshot does not select or return full estimate outputs.
+- Unscheduled jobs are compact and database-filtered.
+- Payload size has a clear budget and test coverage.
+
+### Phase 5: Simplify Board GET Work
+
+Goal: make page-load reads cheap and predictable.
+
+Tasks:
+1. Split Board endpoint timing into explicit phases.
+2. Identify which phases mutate or evaluate mutable drift/client-update state.
+3. Move mutation-like drift/client-update work out of the GET path.
+4. Make GET read-only unless there is a deliberately documented exception.
+5. Cache calendar/holiday data with a clear TTL.
+6. Avoid recomputing inactive or invisible crews unless required by the response contract.
+7. Consider returning persisted forecast fields when no mutation has invalidated them.
+8. Investigate materialized schedule snapshots if recompute remains expensive.
+9. Add server timing headers for schedule endpoints.
+10. Add alerts or logs for Board endpoint responses over the target threshold.
+
+Acceptance criteria:
+- Board GET can be reasoned about as a read path.
+- Slow phases are visible in logs.
+- Endpoint time stays within budget for production-like data.
+
+### Phase 6: Split CSS And Remaining View Weight
+
+Goal: make each schedule view pay only for its own UI.
+
+Tasks:
+1. Inventory selectors in the shared schedule CSS module.
+2. Split common layout/tabs styles from Board, Gantt, Site Visits, diagnostics, and modal styles.
+3. Move Board-only selectors into a Board CSS module.
+4. Move Gantt-only selectors into a Gantt CSS module.
+5. Move Site Visits selectors into a Site Visits CSS module.
+6. Move modal-only selectors into a modal CSS module if useful.
+7. Remove dead selectors after component splits.
+8. Run visual checks for Board, Gantt, Site Visits, and legacy fallback.
+9. Add CSS size tracking or at least a manual build-size note.
+
+Acceptance criteria:
+- Site Visits does not load Board/Gantt CSS.
+- Board does not load Gantt-only CSS.
+- Gantt does not load Board-only CSS.
+- Legacy fallback still renders acceptably.
+
+### Phase 7: Observability And Operational Readiness
+
+Goal: know what happens in production before staff report it manually.
+
+Tasks:
+1. Add client timing for route start, first schedule visible, hydrated, and interactive.
+2. Add server timing for Board, Gantt, and calendar endpoints.
+3. Add event logging for failed assign, reorder, unassign, downtime, pin, and status mutations.
+4. Add event logging when schema-not-ready fallback activates.
+5. Include reason: server schema not ready, client schema not ready, legacy load failed, cached fallback used.
+6. Add payload size sampling for schedule endpoints.
+7. Add bundle/chunk size tracking for schedule views.
+8. Add duplicate-fetch detection for initial Board load.
+9. Add a diagnostics panel section for recent schedule mutation failures.
+10. Add a dashboard or log query for fallback activation count.
+
+Acceptance criteria:
+- Production can show whether slowness is caused by server time, payload size, hydration, render, or drag/drop interaction.
+- Fallback usage is measurable.
+- Mutation failures include enough context to debug without reproducing blindly.
+
+### Phase 8: Decide The Future Of Legacy
+
+Goal: either retire the fallback safely or keep it intentionally as a disaster-recovery path.
+
+Tasks:
+1. Add telemetry for every legacy fallback activation.
+2. Run production for a defined observation window.
+3. Confirm all production environments have the V2 schema.
+4. Confirm staging and preview environments have a documented schema setup path.
+5. Decide whether the legacy fallback is still needed after the observation window.
+6. If kept, document exactly when it is expected to run and who should see it.
+7. If kept, optimize the fallback enough that it is usable during recovery.
+8. If removed, delete legacy repo browser loading from schedule entirely.
+9. Remove fallback tests only after replacing them with schema readiness tests.
+10. Update deployment runbooks with schema-not-ready recovery instructions.
+
+Acceptance criteria:
+- Legacy fallback is either intentionally retained with telemetry or removed with confidence.
+- There is no ambiguous half-supported legacy path.
+
+## 23. Updated Suggested Work Order
+
+Recommended next order from the current state:
+1. Finish client boundary cleanup by pruning V2 code from the legacy fallback and moving model helpers into schedule-local modules.
+2. Add guard tests for dependency direction between `ScheduleClient`, Board, Gantt, and legacy fallback.
+3. Split Gantt route data from Board route data.
+4. Instrument Board assign/reorder failures and drag target selection.
+5. Fix Board insertion-index and current-job jump behavior.
+6. Add Board drag/drop regression tests and one Playwright persistence smoke test.
+7. Replace Board unscheduled-job all-estimate loading with a compact query.
+8. Make Board GET cheaper and read-only where possible.
+9. Split schedule CSS by view.
+10. Add production telemetry and performance budgets.
+11. Observe schema-not-ready fallback usage in production.
+12. Decide whether to retire legacy fallback.
+
+## 24. Updated Near-Term Task: Clean The Fallback Split
+
+The next best task is not another large feature. It should be a cleanup pass that finishes the split created by the legacy isolation.
+
+Scope:
+- Do not change route behavior.
+- Do not change V2 payload shape.
+- Do not change Board/Gantt UI behavior.
+- Do not remove legacy fallback yet.
+- Do not touch unrelated calculator or drawing work.
+
+Tasks:
+1. Move `buildScheduleBoardModel` out of `ScheduleClient`.
+2. Create separate `buildScheduleBoardModelV2` and `buildScheduleBoardModelLegacy` functions or equivalent explicit branches.
+3. Update `ScheduleClient` to call only the V2 model path.
+4. Update `ScheduleLegacyFallbackClient` to call only the legacy model path.
+5. Remove dead V2 query and mutation code from `ScheduleLegacyFallbackClient`.
+6. Remove dead legacy no-op code from `ScheduleClient`.
+7. Keep `ScheduleLegacyFallbackClientProps` stable.
+8. Add import guards for the new model/helper modules.
+9. Run the focused schedule test suite.
+10. Run focused lint for changed schedule files.
+
+Test plan:
+- Existing schedule client tests.
+- Existing Board view tests.
+- Existing page route tests.
+- Existing model tests, updated to target the new model module.
+- Legacy fallback test.
+- New import-guard tests for model/helper dependency direction.

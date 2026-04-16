@@ -12,6 +12,8 @@ const routerReplace = vi.fn();
 const routerPush = vi.fn();
 const scheduleSnapshotQueryOptions = vi.fn();
 const scheduleSnapshotQueryFn = vi.fn();
+const scheduleGanttSnapshotQueryOptions = vi.fn();
+const scheduleGanttSnapshotQueryFn = vi.fn();
 let searchParamsString = '';
 const transitionMocks = vi.hoisted(() => ({
   beginRouteTransition: vi.fn(),
@@ -25,6 +27,21 @@ const dndMocks = vi.hoisted(() => ({
   latestContextProps: null as any,
   activeId: null as string | null,
 }));
+const sendBeaconMock = vi.fn();
+
+class TestBeaconBlob {
+  readonly type: string;
+  private readonly value: string;
+
+  constructor(parts: Array<string>, options?: { type?: string }) {
+    this.value = parts.join('');
+    this.type = options?.type ?? '';
+  }
+
+  async text() {
+    return this.value;
+  }
+}
 
 vi.mock('next/dynamic', () => ({
   default: () => (props: any) => {
@@ -50,12 +67,28 @@ vi.mock('next/dynamic', () => ({
           const laneId = overId?.startsWith('lane:') ? overId.slice('lane:'.length) : props.installers?.[0]?.id;
           if (!laneId) return;
           const existing = props.laneItems?.get(laneId) ?? [];
+          const debug = {
+            activeId,
+            rawOverId: overId,
+            sourceLaneId: props.scheduleItemById?.get(activeId)?.installerId ?? null,
+            resolvedKind: 'lane',
+            resolvedLaneId: laneId,
+            insertionIndex: existing.length,
+            placement: 'end',
+            resolvedOverId: `lane:${laneId}`,
+            point: null,
+            activeRect: null,
+            targetLaneRect: null,
+            unscheduledRect: null,
+            laneItemCounts: Object.fromEntries((props.installers ?? []).map((installer: { id: string }) => [installer.id, props.laneItems?.get(installer.id)?.length ?? 0])),
+          };
           props.onDrop(activeId, {
             kind: 'lane',
             laneId,
             insertionIndex: existing.length,
             placement: 'end',
             overId: `lane:${laneId}`,
+            debug,
           });
         },
       };
@@ -193,6 +226,7 @@ vi.mock('@/lib/repo/scheduleV2Repo', () => ({
   updateDowntime: vi.fn(),
 }));
 vi.mock('@/lib/queries/schedule', () => ({
+  scheduleGanttV2SnapshotQueryOptions: (...args: unknown[]) => scheduleGanttSnapshotQueryOptions(...args),
   scheduleV2SnapshotQueryOptions: (...args: unknown[]) => scheduleSnapshotQueryOptions(...args),
 }));
 vi.mock('@/lib/queries/scheduleDiagnostics', () => ({
@@ -358,6 +392,19 @@ function renderSchedule(snapshot: ScheduleV2Snapshot) {
   return { queryClient, rendered };
 }
 
+async function scheduleTelemetryPayloads() {
+  return Promise.all(
+    sendBeaconMock.mock.calls
+      .filter((call) => call[0] === '/api/staff/v1/schedule/telemetry')
+      .map(async (call) => {
+        const body = call[1];
+        if (body instanceof Blob) return JSON.parse(await body.text());
+        if (typeof body === 'string') return JSON.parse(body);
+        return body;
+      }),
+  );
+}
+
 describe('ScheduleClient', () => {
   beforeEach(() => {
     routerReplace.mockReset();
@@ -373,15 +420,33 @@ describe('ScheduleClient', () => {
     searchParamsString = '';
     scheduleSnapshotQueryFn.mockReset();
     scheduleSnapshotQueryOptions.mockReset();
+    scheduleGanttSnapshotQueryFn.mockReset();
+    scheduleGanttSnapshotQueryOptions.mockReset();
+    sendBeaconMock.mockReset();
+    sendBeaconMock.mockReturnValue(true);
+    vi.stubGlobal('Blob', TestBeaconBlob);
+    Object.defineProperty(navigator, 'sendBeacon', {
+      configurable: true,
+      value: sendBeaconMock,
+    });
+    window.localStorage.removeItem('sp_schedule_debug');
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
       queryFn: scheduleSnapshotQueryFn.mockResolvedValue(initialSnapshot),
+      staleTime: 30_000,
+    }));
+    scheduleGanttSnapshotQueryOptions.mockImplementation((host: string, today: string, range: { rangeStart: string; rangeEnd: string }) => ({
+      queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
+      queryFn: scheduleGanttSnapshotQueryFn.mockResolvedValue({ ...initialSnapshot, unscheduledJobs: [] }),
       staleTime: 30_000,
     }));
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    window.localStorage.removeItem('sp_schedule_debug');
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
     document.body.innerHTML = '';
   });
 
@@ -412,6 +477,20 @@ describe('ScheduleClient', () => {
     ).not.toBeNull();
     expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(initialSnapshot);
     expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+    expect(scheduleGanttSnapshotQueryFn).not.toHaveBeenCalled();
+    await expect(scheduleTelemetryPayloads()).resolves.toEqual([
+      expect.objectContaining({
+        event: 'schedule_hydrated',
+        view: 'board',
+        counts: expect.objectContaining({
+          installers: 1,
+          projects: 1,
+          scheduleItems: 0,
+          unscheduledJobs: 1,
+        }),
+        meta: expect.objectContaining({ source: 'server_seed' }),
+      }),
+    ]);
 
     rendered.unmount();
   });
@@ -439,6 +518,49 @@ describe('ScheduleClient', () => {
     expect(fallback).not.toBeNull();
     expect(fallback?.getAttribute('data-reason')).toBe('server-schema-not-ready');
     expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+    await expect(scheduleTelemetryPayloads()).resolves.toEqual([
+      expect.objectContaining({
+        event: 'fallback_activated',
+        view: 'board',
+        reason: 'server-schema-not-ready',
+      }),
+    ]);
+
+    rendered.unmount();
+  });
+
+  it('reports a duplicate Board fetch when the initial server seed is immediately refetched', async () => {
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(initialSnapshot),
+      staleTime: 0,
+    }));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={initialSnapshot} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      for (let i = 0; i < 5; i += 1) {
+        await Promise.resolve();
+      }
+    });
+
+    await expect(scheduleTelemetryPayloads()).resolves.toContainEqual(expect.objectContaining({
+      event: 'duplicate_initial_fetch',
+      view: 'board',
+      counts: expect.objectContaining({ fetchCount: 1 }),
+    }));
+    expect(scheduleSnapshotQueryFn).toHaveBeenCalled();
 
     rendered.unmount();
   });
@@ -480,6 +602,13 @@ describe('ScheduleClient', () => {
     expect(fallback).not.toBeNull();
     expect(fallback?.getAttribute('data-reason')).toBe('client-schema-not-ready');
     expect(toastMocks.error).toHaveBeenCalledWith('Schedule v2 schema not ready yet.');
+    await expect(scheduleTelemetryPayloads()).resolves.toContainEqual(expect.objectContaining({
+      event: 'fallback_activated',
+      view: 'board',
+      reason: 'client-schema-not-ready',
+      requestId: 'req_schema_501',
+      meta: expect.objectContaining({ status: 501 }),
+    }));
 
     rendered.unmount();
   });
@@ -545,7 +674,7 @@ describe('ScheduleClient', () => {
 
     const rendered = renderIntoDocument(
       <QueryClientProvider client={queryClient}>
-        <ScheduleClient initialScheduleMode="v2" initialV2Snapshot={snapshot} />
+        <ScheduleClient initialScheduleMode="v2" initialSeedKind="gantt" initialV2Snapshot={snapshot} />
       </QueryClientProvider>,
     );
 
@@ -554,23 +683,41 @@ describe('ScheduleClient', () => {
     });
 
     expect(fetchScheduleGantt).not.toHaveBeenCalled();
+    expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+    expect(scheduleGanttSnapshotQueryFn).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toBeUndefined();
+    expect(queryClient.getQueryData(qk.schedule.gantt('example.supabase.co', '2026-04-06', '2026-06-28', '2026-04-07'))).toEqual(snapshot);
     expect(rendered.container.textContent).toContain('Gantt');
     expect(rendered.container.querySelector('[aria-label="Regional Day (10 Apr)"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="National Day (13 Apr)"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="Other Region (14 Apr)"]')).toBeNull();
+    await expect(scheduleTelemetryPayloads()).resolves.toEqual([
+      expect.objectContaining({
+        event: 'schedule_hydrated',
+        view: 'gantt',
+        counts: expect.objectContaining({
+          installers: 1,
+          projects: 1,
+          scheduleItems: 0,
+          unscheduledJobs: 1,
+        }),
+        meta: expect.objectContaining({ source: 'server_seed' }),
+      }),
+    ]);
 
     rendered.unmount();
   });
 
-  it('uses refreshed board snapshot holidays for Gantt without calling the Gantt endpoint', async () => {
+  it('uses the Gantt query for direct Gantt navigation without seeding the Board cache', async () => {
     searchParamsString = 'view=gantt';
     const refreshedSnapshot: ScheduleV2Snapshot = {
       ...initialSnapshot,
+      unscheduledJobs: [],
       holidays: [{ date: '2026-04-10', name: 'Query Holiday', scope: 'national', region: null }],
     };
-    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
-      queryKey: qk.schedule.board(host, today),
-      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(refreshedSnapshot),
+    scheduleGanttSnapshotQueryOptions.mockImplementation((host: string, today: string, range: { rangeStart: string; rangeEnd: string }) => ({
+      queryKey: qk.schedule.gantt(host, range.rangeStart, range.rangeEnd, today),
+      queryFn: scheduleGanttSnapshotQueryFn.mockResolvedValue(refreshedSnapshot),
       staleTime: 30_000,
     }));
     const queryClient = new QueryClient({
@@ -588,13 +735,70 @@ describe('ScheduleClient', () => {
     );
 
     await act(async () => {
+      for (let i = 0; i < 10; i += 1) {
+        await Promise.resolve();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(scheduleSnapshotQueryFn).not.toHaveBeenCalled();
+    expect(scheduleGanttSnapshotQueryFn).toHaveBeenCalled();
+    expect(fetchScheduleGantt).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toBeUndefined();
+    expect(queryClient.getQueryData(qk.schedule.gantt('example.supabase.co', '2026-04-06', '2026-06-28', '2026-04-07'))).toEqual(refreshedSnapshot);
+
+    rendered.unmount();
+  });
+
+  it('does not render stale Board data while fetching Board after starting from a Gantt-only seed', async () => {
+    searchParamsString = 'view=gantt';
+    const ganttSeed: ScheduleV2Snapshot = {
+      ...initialSnapshot,
+      unscheduledJobs: [],
+    };
+    const boardSnapshot = boardMutationSnapshot();
+    scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
+      queryKey: qk.schedule.board(host, today),
+      queryFn: scheduleSnapshotQueryFn.mockResolvedValue(boardSnapshot),
+      staleTime: 30_000,
+    }));
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <QueryClientProvider client={queryClient}>
+        <ScheduleClient initialScheduleMode="v2" initialSeedKind="gantt" initialV2Snapshot={ganttSeed} />
+      </QueryClientProvider>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const boardButton = Array.from(rendered.container.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Board',
+    ) as HTMLButtonElement | undefined;
+
+    act(() => {
+      boardButton?.click();
+    });
+
+    expect(rendered.container.textContent).toContain('Loading schedule data from the portal database…');
+
+    await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
 
     expect(scheduleSnapshotQueryFn).toHaveBeenCalled();
-    expect(fetchScheduleGantt).not.toHaveBeenCalled();
-    expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(refreshedSnapshot);
+    expect(queryClient.getQueryData(qk.schedule.board('example.supabase.co', '2026-04-07'))).toEqual(boardSnapshot);
+    expect(rendered.container.textContent).toContain('Loading schedule data from the portal database…');
+    expect(rendered.container.textContent).not.toContain('Alpha Deck');
 
     rendered.unmount();
   });
@@ -733,6 +937,8 @@ describe('ScheduleClient', () => {
 
   it('shows a request reference and rolls back when unscheduled assignment returns 500', async () => {
     vi.useFakeTimers();
+    window.localStorage.setItem('sp_schedule_debug', '1');
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
     const snapshot = boardMutationSnapshot();
     scheduleSnapshotQueryOptions.mockImplementation((host: string, today: string) => ({
       queryKey: qk.schedule.board(host, today),
@@ -772,6 +978,38 @@ describe('ScheduleClient', () => {
     const unscheduledAfter = rendered.container.querySelector('aside[aria-label="Unscheduled jobs"]');
     expect(unscheduledAfter?.textContent).toContain('Beta Deck');
     expect(toastMocks.error).toHaveBeenCalledWith('Failed to schedule job. Reference: req_assign_500.');
+    const scheduleDebugPayloads = debugSpy.mock.calls
+      .filter((call) => call[0] === '[schedule]')
+      .map((call) => call[1] as { event?: string; [key: string]: unknown });
+    expect(scheduleDebugPayloads).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'board.assign.attempt',
+          activeId: betaJobId,
+          activeType: 'unscheduled',
+          projectUuid: BETA_PROJECT_UUID,
+          crewUuid: CREW_UUID,
+          position: 1,
+          drop: expect.objectContaining({
+            rawOverId: `lane:${crewId}`,
+            resolvedLaneId: crewId,
+            insertionIndex: 1,
+          }),
+        }),
+        expect.objectContaining({
+          event: 'board.assign.failure',
+          activeId: betaJobId,
+          projectUuid: BETA_PROJECT_UUID,
+          crewUuid: CREW_UUID,
+          position: 1,
+          error: expect.objectContaining({
+            status: 500,
+            requestId: 'req_assign_500',
+            message: 'Failed to assign scheduled job',
+          }),
+        }),
+      ]),
+    );
 
     rendered.unmount();
   });

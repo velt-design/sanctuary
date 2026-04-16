@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import styles from './schedule.module.css';
 import {
   ackClientUpdate,
@@ -24,17 +24,14 @@ import {
   updateDowntime,
 } from '@/lib/repo/scheduleV2Repo';
 import { qk } from '@/lib/queries/keys';
-import { scheduleV2SnapshotQueryOptions, type ScheduleProjectSummary, type ScheduleV2Snapshot } from '@/lib/queries/schedule';
+import { scheduleGanttV2SnapshotQueryOptions, scheduleV2SnapshotQueryOptions, type ScheduleProjectSummary, type ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
-import type { Estimate } from '@/lib/types/estimate';
-import type { Project } from '@/lib/types/project';
-import { nextActionTypeLabel, normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
+import { normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus, SchedulingIssue } from '@/lib/types/scheduling';
-import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
-import { buildScheduleBars } from '@/lib/scheduling/engine';
-import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { recomputeCrewSchedule, type CrewDowntime, type CrewScheduleItem, type ScheduledJob as RecomputeScheduledJob } from '@/lib/scheduling/recompute';
+import { resolveDefaultScheduleGanttRange } from '@/lib/scheduling/scheduleGanttRange';
 import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -55,6 +52,11 @@ import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
 import type { ScheduleLegacyFallbackClientProps } from './ScheduleLegacyFallbackClient';
 import { getScheduleSupabaseHost } from './scheduleRuntime';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
+import { EMPTY_SCHEDULE_BOARD_MODEL, buildScheduleBarsFromForecast, formatDuration, formatHours, makeJobId, mapV2UnscheduledJobs, safeProjectName } from './ScheduleBoardModelShared';
+import { buildScheduleBoardModelV2 } from './ScheduleBoardModelV2';
+import { logScheduleDebug } from './scheduleDebug';
+import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
+import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
@@ -96,19 +98,6 @@ export type { ScheduleBoardModel, ScheduleRuntimeState, SchedulableJob } from '.
 const USE_SCHEDULE_V2 = true;
 const V2_MUTATION_DEBOUNCE_MS = 180;
 
-function formatDuration(hours: number): string {
-  if (!Number.isFinite(hours) || hours <= 0) return '—';
-  const days = hours / WORK_HOURS_PER_DAY;
-  const daysLabel = Number.isFinite(days) ? days.toFixed(days % 1 === 0 ? 0 : 1) : '—';
-  return `${daysLabel}d`;
-}
-
-function formatHours(hours: number): string {
-  if (!Number.isFinite(hours)) return '—';
-  const h = hours.toFixed(hours % 1 === 0 ? 0 : 1);
-  return `${h}h`;
-}
-
 function formatStatusLabel(status: string): string {
   if (!status) return '—';
   if (status.toUpperCase() === 'DOWNTIME') return 'Downtime';
@@ -139,96 +128,12 @@ function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemSt
   return 'TENTATIVE';
 }
 
-function safeProjectName(project: ScheduleProjectSummary | null | undefined): string {
-  return project?.projectName ?? project?.name ?? 'Untitled project';
-}
-
-function safeProjectStatus(project: ScheduleProjectSummary | null | undefined): string {
-  return project?.status ?? 'NEW';
-}
-
-function toScheduleProjectSummary(project: Project): ScheduleProjectSummary {
-  const name = project.projectName ?? project.name ?? 'Untitled project';
-  const nextActionDate =
-    typeof project.nextActionDate === 'string'
-      ? project.nextActionDate
-      : typeof project.followUpDate === 'string'
-        ? project.followUpDate
-        : null;
-
-  return {
-    id: project.id,
-    projectName: name,
-    name,
-    status: project.status ?? 'NEW',
-    nextActionDate,
-    followUpDate: nextActionDate,
-  };
-}
-
-function endInclusiveFromExclusive(endExclusive: string, fallback: string): string {
-  if (!isYmd(endExclusive)) return fallback;
-  return addDaysYmd(endExclusive, -1);
-}
-
-function buildScheduleBarsFromForecast(input: {
-  scheduleItems: ScheduleItem[];
-  projectsById: Map<string, ScheduleProjectSummary>;
-  estimatesById: Map<string, Estimate>;
-}): { bars: Array<{ scheduleItemId: string; installerId: string; projectId: string; estimateId: string; projectName: string; status: string; startDate: string; endDate: string; durationHours: number }>; issues: SchedulingIssue[] } {
-  const bars: Array<{ scheduleItemId: string; installerId: string; projectId: string; estimateId: string; projectName: string; status: string; startDate: string; endDate: string; durationHours: number }> = [];
-  const issues: SchedulingIssue[] = [];
-
-  for (const item of input.scheduleItems) {
-    const start = item.forecastStart ?? item.startDateOverride ?? '';
-    if (!start || !isYmd(start)) continue;
-    const durationDays =
-      typeof item.forecastDurationDays === 'number' && Number.isFinite(item.forecastDurationDays) && item.forecastDurationDays > 0
-        ? item.forecastDurationDays
-        : typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-          ? item.durationHoursOverride / WORK_HOURS_PER_DAY
-          : 1;
-    const endExclusive = item.forecastEndExclusive ?? (start ? addDaysYmd(start, Math.max(1, Math.ceil(durationDays))) : start);
-    const endDate = endInclusiveFromExclusive(endExclusive, start);
-
-    const project = item.projectId ? input.projectsById.get(item.projectId) ?? null : null;
-    const projectName =
-      item.itemType === 'downtime'
-        ? `Downtime${item.downtimeReason ? ` · ${titleCase(item.downtimeReason)}` : ''}`
-        : safeProjectName(project);
-    const status = item.itemType === 'downtime' ? 'DOWNTIME' : safeProjectStatus(project);
-
-    bars.push({
-      scheduleItemId: item.id,
-      installerId: item.installerId,
-      projectId: item.projectId,
-      estimateId: item.estimateId,
-      projectName,
-      status,
-      startDate: start,
-      endDate,
-      durationHours: Math.max(0.5, durationDays * WORK_HOURS_PER_DAY),
-    });
-  }
-
-  return { bars, issues };
-}
-
 function isLockedScheduleStatus(status: ScheduleItemStatus): boolean {
   return status === 'CONFIRMED' || status === 'IN_PROGRESS' || status === 'COMPLETED';
 }
 
 function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
-}
-
-function titleCase(value: string): string {
-  return value
-    .replace(/[_-]+/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
-    .join(' ');
 }
 
 function parseYmd(ymd: string): Date | null {
@@ -347,41 +252,6 @@ function parsePositiveInt(value: string): number | null {
   return v;
 }
 
-function makeJobId(projectId: string, estimateId: string): string {
-  return `job_${projectId}_${estimateId}`;
-}
-
-function mapV2UnscheduledJobs(list: ScheduleV2Snapshot['unscheduledJobs'] | null | undefined): SchedulableJob[] {
-  if (!Array.isArray(list)) return [];
-  const out: SchedulableJob[] = [];
-  for (const job of list) {
-    const projectId = typeof job?.projectId === 'string' ? job.projectId : '';
-    const estimateId = typeof job?.estimateId === 'string' ? job.estimateId : '';
-    if (!projectId || !estimateId) continue;
-    const status = normalizeProjectStatus(job?.status ?? 'NEW').status;
-    if (!isSchedulingReadyProjectStatus(status)) continue;
-
-    const durationDays =
-      typeof job?.durationDays === 'number' && Number.isFinite(job.durationDays) && job.durationDays > 0 ? job.durationDays : 1;
-    const durationHours = Math.max(0.5, durationDays * WORK_HOURS_PER_DAY);
-
-    out.push({
-      id: makeJobId(projectId, estimateId),
-      projectId,
-      estimateId,
-      projectName: (typeof job?.projectName === 'string' ? job.projectName : '').trim() || 'Untitled project',
-      descriptor: '',
-      status,
-      durationHours,
-      durationLabel: formatDuration(durationHours),
-      durationTitle: formatHours(durationHours),
-      warnings: [],
-    });
-  }
-  out.sort((a, b) => a.projectName.localeCompare(b.projectName));
-  return out;
-}
-
 function mapGanttHolidaysFromSnapshot(holidays: NzHoliday[] | null | undefined): Array<{ date: string; name?: string; kind: 'holiday' }> {
   if (!Array.isArray(holidays)) return [];
   return holidays
@@ -442,49 +312,6 @@ function durationDaysFromScheduleItem(item: ScheduleItem): number {
     return Math.max(1, Math.ceil(item.durationHoursOverride / WORK_HOURS_PER_DAY));
   }
   return 1;
-}
-
-function normaliseEnumValue(value: unknown): string {
-  if (typeof value !== 'string') return '';
-  return value.trim().toLowerCase().replace(/\s+/g, '_');
-}
-
-function isSchedulableEstimate(estimate: Estimate): boolean {
-  return normaliseEnumValue((estimate as any).status) !== 'archived';
-}
-
-function getLatestSchedulableEstimate(estimates: Estimate[]): Estimate | null {
-  const schedulable = estimates.filter((e) => isSchedulableEstimate(e));
-  if (!schedulable.length) return null;
-  schedulable.sort((a, b) => ((b as any).version ?? 0) - ((a as any).version ?? 0) || b.createdAt.localeCompare(a.createdAt));
-  return schedulable[0] ?? null;
-}
-
-function getJobDescriptorFromEstimate(estimate: Estimate): string {
-  const inputs: unknown = (estimate as any).inputs;
-  if (isCalculatorInputsV2(inputs)) {
-    const m = inputs.modules?.[0];
-    if (!m) return '—';
-    const base = `${titleCase(m.pergolaStyle)} · ${titleCase(m.roofMaterial)}`;
-    const length = Number.parseFloat(m.lengthM);
-    const projection = Number.parseFloat(m.projectionM);
-    const pitch = Number.parseFloat(m.roofPitchDeg);
-    const dims =
-      Number.isFinite(length) && Number.isFinite(projection) ? ` · ${length.toFixed(0)}×${projection.toFixed(0)}m` : '';
-    const pitchLabel = Number.isFinite(pitch) && pitch > 0 ? ` · ${pitch.toFixed(0)}°` : '';
-    return `${base}${dims}${pitchLabel}`;
-  }
-  if (isLegacyCalculatorInputsV1(inputs)) {
-    const base = `${titleCase(inputs.pergolaStyle)} · ${titleCase(inputs.roofMaterial)}`;
-    const length = Number.parseFloat(inputs.lengthM);
-    const projection = Number.parseFloat(inputs.projectionM);
-    const pitch = Number.parseFloat(inputs.roofPitchDeg);
-    const dims =
-      Number.isFinite(length) && Number.isFinite(projection) ? ` · ${length.toFixed(0)}×${projection.toFixed(0)}m` : '';
-    const pitchLabel = Number.isFinite(pitch) && pitch > 0 ? ` · ${pitch.toFixed(0)}°` : '';
-    return `${base}${dims}${pitchLabel}`;
-  }
-  return '—';
 }
 
 function renormalizeLane(items: ScheduleItem[], installerId: string): ScheduleItem[] {
@@ -662,347 +489,13 @@ function optimisticUnassign(
   };
 }
 
-const EMPTY_SCHEDULE_BOARD_MODEL: ScheduleBoardModel = {
-  schedulable: {
-    jobsById: new Map(),
-    unscheduledJobs: [],
-    debug: {},
-    blockingProjectIds: new Set(),
-  },
-  unscheduledJobsAll: [],
-  unscheduledJobs: [],
-  laneItems: new Map(),
-};
-
-export function buildScheduleBoardModel(input: {
-  estimatesById: Map<string, Estimate>;
-  installers: Installer[];
-  orphanedScheduleItems: ScheduleItem[];
-  projects: ScheduleProjectSummary[];
-  projectsById: Map<string, ScheduleProjectSummary>;
-  query: string;
-  scheduleItems: ScheduleItem[];
-  scheduleItemsRenderable: ScheduleItem[];
-  scheduleMode: 'v2' | 'legacy';
-  today: string;
-  unscheduledJobsSeed: SchedulableJob[];
-  visibleScheduleItems: ScheduleItem[];
-}): ScheduleBoardModel {
-  const {
-    estimatesById,
-    installers,
-    orphanedScheduleItems,
-    projects,
-    projectsById,
-    query,
-    scheduleItems,
-    scheduleItemsRenderable,
-    scheduleMode,
-    today,
-    unscheduledJobsSeed,
-    visibleScheduleItems,
-  } = input;
-
-  const schedulable = (() => {
-    if (scheduleMode === 'v2') {
-      const jobsById = new Map<string, SchedulableJob>();
-      const unscheduledJobs = unscheduledJobsSeed;
-      for (const job of unscheduledJobs) jobsById.set(job.id, job);
-
-      const blockingProjectIds = new Set<string>();
-      for (const item of scheduleItemsRenderable) {
-        if (item.itemType === 'downtime') continue;
-        if (item.projectId) blockingProjectIds.add(item.projectId);
-      }
-
-      for (const item of visibleScheduleItems) {
-        const id = item.id;
-        if (jobsById.has(id)) continue;
-
-        if (item.itemType === 'downtime') {
-          const durationHours =
-            typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-              ? item.durationHoursOverride
-              : WORK_HOURS_PER_DAY;
-          const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-          jobsById.set(id, {
-            id,
-            projectId: '',
-            estimateId: '',
-            projectName: reason,
-            descriptor: item.downtimeNote ?? 'Crew unavailable',
-            status: 'DOWNTIME',
-            durationHours,
-            durationLabel: formatDuration(durationHours),
-            durationTitle: formatHours(durationHours),
-            warnings: [],
-          });
-          continue;
-        }
-
-        const project = projectsById.get(item.projectId) ?? null;
-        const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
-        const status = project ? normalizeProjectStatus(project.status).status : '—';
-        const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
-        const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
-        const nextActionSuffix =
-          typeof nextActionDate === 'string' && nextActionDate
-            ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-            : '';
-        const nextActionLine = nextActionSuffix ? nextActionSuffix.replace(/^ · /, '') : '';
-
-        let durationHours = WORK_HOURS_PER_DAY;
-        if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
-          durationHours = item.durationHoursOverride;
-        } else if (
-          typeof item.forecastDurationDays === 'number' &&
-          Number.isFinite(item.forecastDurationDays) &&
-          item.forecastDurationDays > 0
-        ) {
-          durationHours = item.forecastDurationDays * WORK_HOURS_PER_DAY;
-        }
-
-        jobsById.set(id, {
-          id,
-          projectId: item.projectId,
-          estimateId: item.estimateId,
-          projectName,
-          descriptor: nextActionLine,
-          status,
-          durationHours,
-          durationLabel: formatDuration(durationHours),
-          durationTitle: formatHours(durationHours),
-          warnings: [],
-        });
-      }
-
-      return {
-        jobsById,
-        unscheduledJobs,
-        debug: {
-          totalProjects: projects.length,
-          schedulableProjects: unscheduledJobs.length + blockingProjectIds.size,
-          unscheduledJobs: unscheduledJobs.length,
-          excluded: {
-            noEstimates: 0,
-            noSchedulableEstimate: 0,
-            alreadyScheduled: 0,
-          },
-          scheduleItems: {
-            total: scheduleItems.length,
-            blocking: scheduleItemsRenderable.filter((item) => item.itemType !== 'downtime').length,
-            missingProject: orphanedScheduleItems.length,
-            missingEstimate: 0,
-            estimateNotSchedulable: 0,
-          },
-        },
-        blockingProjectIds,
-      };
-    }
-
-    const jobsById = new Map<string, SchedulableJob>();
-    const unscheduledJobs: SchedulableJob[] = [];
-
-    const debug = {
-      totalProjects: projects.length,
-      schedulableProjects: 0,
-      unscheduledJobs: 0,
-      excluded: {
-        noEstimates: 0,
-        noSchedulableEstimate: 0,
-        notReadyStage: 0,
-        alreadyScheduled: 0,
-      },
-      scheduleItems: {
-        total: scheduleItems.length,
-        blocking: 0,
-        missingProject: 0,
-        missingEstimate: 0,
-        estimateNotSchedulable: 0,
-      },
-    };
-
-    const blockingProjectIds = new Set<string>();
-    for (const item of scheduleItems) {
-      if (item.itemType === 'downtime') continue;
-      const project = projectsById.get(item.projectId) ?? null;
-      if (!project) {
-        debug.scheduleItems.missingProject += 1;
-        continue;
-      }
-
-      const estimate = estimatesById.get(item.estimateId) ?? null;
-      if (!estimate) {
-        debug.scheduleItems.missingEstimate += 1;
-        continue;
-      }
-
-      if (!isSchedulableEstimate(estimate)) {
-        debug.scheduleItems.estimateNotSchedulable += 1;
-        continue;
-      }
-
-      blockingProjectIds.add(item.projectId);
-      debug.scheduleItems.blocking += 1;
-    }
-
-    const estimatesByProjectId = new Map<string, Estimate[]>();
-    for (const estimate of estimatesById.values()) {
-      const list = estimatesByProjectId.get(estimate.projectId) ?? [];
-      list.push(estimate);
-      estimatesByProjectId.set(estimate.projectId, list);
-    }
-
-    for (const project of projects) {
-      const estimates = (estimatesByProjectId.get(project.id) ?? []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      if (!estimates.length) {
-        debug.excluded.noEstimates += 1;
-        continue;
-      }
-
-      const latestEstimate = getLatestSchedulableEstimate(estimates);
-      if (!latestEstimate) {
-        debug.excluded.noSchedulableEstimate += 1;
-        continue;
-      }
-
-      debug.schedulableProjects += 1;
-
-      if (blockingProjectIds.has(project.id)) {
-        debug.excluded.alreadyScheduled += 1;
-        continue;
-      }
-
-      const derived = deriveDurationHoursFromEstimate(latestEstimate);
-      const durationHours = derived.durationHours;
-      const warnings = derived.issues.map((issue) => issue.message);
-
-      const projectName = project.projectName ?? project.name ?? 'Untitled project';
-      const status = normalizeProjectStatus(project.status).status;
-      if (!isSchedulingReadyProjectStatus(status)) {
-        debug.excluded.notReadyStage += 1;
-        continue;
-      }
-      const nextActionDate = (project as any).nextActionDate ?? (project as any).followUpDate ?? null;
-      const nextActionType = (project as any).nextActionType ?? null;
-      const nextActionSuffix =
-        typeof nextActionDate === 'string' && nextActionDate
-          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-          : '';
-
-      const id = makeJobId(project.id, latestEstimate.id);
-      const job: SchedulableJob = {
-        id,
-        projectId: project.id,
-        estimateId: latestEstimate.id,
-        projectName,
-        descriptor: `${getJobDescriptorFromEstimate(latestEstimate)}${nextActionSuffix}`,
-        status,
-        durationHours,
-        durationLabel: formatDuration(durationHours),
-        durationTitle: formatHours(durationHours),
-        warnings,
-      };
-      jobsById.set(id, job);
-      unscheduledJobs.push(job);
-      debug.unscheduledJobs += 1;
-    }
-
-    for (const item of visibleScheduleItems) {
-      const id = item.id;
-      if (jobsById.has(id)) continue;
-
-      if (item.itemType === 'downtime') {
-        const durationHours =
-          typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-            ? item.durationHoursOverride
-            : WORK_HOURS_PER_DAY;
-        const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-        jobsById.set(id, {
-          id,
-          projectId: '',
-          estimateId: '',
-          projectName: reason,
-          descriptor: item.downtimeNote ?? 'Crew unavailable',
-          status: 'DOWNTIME',
-          durationHours,
-          durationLabel: formatDuration(durationHours),
-          durationTitle: formatHours(durationHours),
-          warnings: [],
-        });
-        continue;
-      }
-
-      const project = projectsById.get(item.projectId) ?? null;
-      const estimate = estimatesById.get(item.estimateId) ?? null;
-
-      const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
-      const status = project ? normalizeProjectStatus(project.status).status : '—';
-      const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
-      const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
-      const nextActionSuffix =
-        typeof nextActionDate === 'string' && nextActionDate
-          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-          : '';
-
-      let durationHours = WORK_HOURS_PER_DAY;
-      const warnings: string[] = [];
-      if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
-        durationHours = item.durationHoursOverride;
-      } else if (estimate) {
-        const derived = deriveDurationHoursFromEstimate(estimate);
-        durationHours = derived.durationHours;
-        warnings.push(...derived.issues.map((issue) => issue.message));
-      } else {
-        warnings.push('Estimate missing; defaulted duration to 1 day.');
-      }
-
-      jobsById.set(id, {
-        id,
-        projectId: item.projectId,
-        estimateId: item.estimateId,
-        projectName,
-        descriptor: `${estimate ? getJobDescriptorFromEstimate(estimate) : '—'}${nextActionSuffix}`,
-        status,
-        durationHours,
-        durationLabel: formatDuration(durationHours),
-        durationTitle: formatHours(durationHours),
-        warnings,
-      });
-    }
-
-    unscheduledJobs.sort((a, b) => a.projectName.localeCompare(b.projectName));
-    return { jobsById, unscheduledJobs, debug, blockingProjectIds };
-  })();
-
-  const unscheduledJobsAll = schedulable.unscheduledJobs;
-  const q = query.trim().toLowerCase();
-  const unscheduledJobs = unscheduledJobsAll.filter((job) => (!q ? true : job.projectName.toLowerCase().includes(q)));
-
-  const laneItems = new Map<string, ScheduleItem[]>();
-  for (const installer of installers) laneItems.set(installer.id, []);
-  for (const item of visibleScheduleItems) {
-    const list = laneItems.get(item.installerId);
-    if (list) list.push(item);
-    else laneItems.set(item.installerId, [item]);
-  }
-  for (const list of laneItems.values()) {
-    list.sort((a, b) => a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt));
-  }
-
-  return {
-    schedulable,
-    unscheduledJobsAll,
-    unscheduledJobs,
-    laneItems,
-  };
-}
-
 export default function ScheduleClient({
   initialScheduleMode = 'v2',
+  initialSeedKind = 'board',
   initialV2Snapshot: initialV2SnapshotProp = null,
 }: {
   initialScheduleMode?: 'v2' | 'legacy';
+  initialSeedKind?: 'board' | 'gantt';
   initialV2Snapshot?: ScheduleV2Snapshot | null;
 }) {
   const toast = useToast();
@@ -1019,14 +512,31 @@ export default function ScheduleClient({
   const installersRef = useRef<Installer[]>([]);
   const projectsRef = useRef<ScheduleProjectSummary[]>([]);
 
+  const initialView = (() => {
+    const raw = (searchParams.get('view') || '').trim().toLowerCase();
+    if (raw === 'site-visits') return 'site_visits' as const;
+    if (raw === 'gantt') return 'gantt' as const;
+    return 'board' as const;
+  })();
+
   const today = useMemo(() => resolveScheduleTodayYmd(), []);
 
   const supabaseHost = useMemo(() => getScheduleSupabaseHost(), []);
   const hostKey = supabaseHost || 'unknown';
 
-  const v2SnapshotKey = useMemo(() => qk.schedule.board(hostKey, today), [hostKey, today]);
-  const cachedV2Snapshot = USE_SCHEDULE_V2 ? (queryClient.getQueryData<ScheduleV2Snapshot>(v2SnapshotKey) ?? null) : null;
+  const ganttRange = useMemo(() => resolveDefaultScheduleGanttRange(today), [today]);
+  const boardSnapshotKey = useMemo(() => qk.schedule.board(hostKey, today), [hostKey, today]);
+  const ganttSnapshotKey = useMemo(
+    () => qk.schedule.gantt(hostKey, ganttRange.rangeStart, ganttRange.rangeEnd, today),
+    [ganttRange.rangeEnd, ganttRange.rangeStart, hostKey, today],
+  );
+  const cachedV2Snapshot = USE_SCHEDULE_V2
+    ? (initialView === 'gantt'
+        ? queryClient.getQueryData<ScheduleV2Snapshot>(ganttSnapshotKey)
+        : queryClient.getQueryData<ScheduleV2Snapshot>(boardSnapshotKey)) ?? null
+    : null;
   const initialV2Snapshot = USE_SCHEDULE_V2 && initialScheduleMode === 'v2' ? initialV2SnapshotProp ?? cachedV2Snapshot : null;
+  const initialSnapshotKind = initialV2Snapshot ? (initialV2SnapshotProp ? initialSeedKind : initialView === 'gantt' ? 'gantt' : 'board') : null;
   const initialV2SnapshotUpdatedAt = useMemo(() => {
     if (!initialV2Snapshot) return undefined;
     const generatedAtMs = Date.parse(initialV2Snapshot.generatedAt);
@@ -1046,9 +556,9 @@ export default function ScheduleClient({
   const [installers, setInstallers] = useState<Installer[]>(() => initialV2Snapshot?.installers ?? []);
   const [projects, setProjects] = useState<ScheduleProjectSummary[]>(() => initialV2Snapshot?.projects ?? []);
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(() => initialV2Snapshot?.scheduleItems ?? []);
-  const [estimatesById, setEstimatesById] = useState<Map<string, Estimate>>(() => new Map());
   const [unscheduledJobsSeed, setUnscheduledJobsSeed] = useState<SchedulableJob[]>(() => mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs));
   const [scheduleMode, setScheduleMode] = useState<'v2' | 'legacy'>(initialScheduleMode);
+  const [activeSnapshotKind, setActiveSnapshotKind] = useState<'board' | 'gantt' | null>(initialSnapshotKind);
   const [legacyFallbackReason, setLegacyFallbackReason] = useState<ScheduleLegacyFallbackClientProps['initialReason']>(
     initialScheduleMode === 'legacy' ? 'server-schema-not-ready' : undefined,
   );
@@ -1092,20 +602,27 @@ export default function ScheduleClient({
   } | null>(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
 
-  const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(() => {
-    const raw = (searchParams.get('view') || '').trim().toLowerCase();
-    if (raw === 'site-visits') return 'site_visits';
-    if (raw === 'gantt') return 'gantt';
-    return 'board';
-  });
+  const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(initialView);
   const [query, setQuery] = useState('');
   const [showCompleted, setShowCompleted] = useState(false);
   const [unscheduledCollapsed, setUnscheduledCollapsed] = useState<boolean>(() => !mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs).length);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
   const [diagnostics, setDiagnostics] = useState<ScheduleDiagnosticsResult | null>(null);
+  const [recentTelemetryEvents, setRecentTelemetryEvents] = useState<ScheduleClientTelemetryEvent[]>(() => recentScheduleTelemetryEvents());
   const [syncing, setSyncing] = useState(false);
   const deferredQuery = useDeferredValue(query);
+  const devOnly = process.env.NODE_ENV !== 'production';
+  const telemetryEmittedRef = useRef<Set<string>>(new Set());
+  const boardFetchCountRef = useRef(0);
+  const ganttFetchCountRef = useRef(0);
+  const previousBoardFetchingRef = useRef(false);
+  const previousGanttFetchingRef = useRef(false);
+
+  const emitScheduleTelemetry = useCallback((input: Parameters<typeof sendScheduleTelemetry>[0]) => {
+    const event = sendScheduleTelemetry(input);
+    if (event && devOnly) setRecentTelemetryEvents(recentScheduleTelemetryEvents());
+  }, [devOnly]);
 
   useEffect(() => {
     scheduleItemsRef.current = scheduleItems;
@@ -1159,7 +676,7 @@ export default function ScheduleClient({
 
   function writeV2SnapshotToCache(state: V2LocalState, generatedAt: string): void {
     if (scheduleMode !== 'v2') return;
-    queryClient.setQueryData<ScheduleV2Snapshot>(v2SnapshotKey, {
+    queryClient.setQueryData<ScheduleV2Snapshot>(boardSnapshotKey, {
       generatedAt,
       installers: installersRef.current,
       projects: projectsRef.current,
@@ -1190,6 +707,7 @@ export default function ScheduleClient({
     setUnscheduledJobsSeed(state.unscheduledJobsSeed);
     setScheduleConflicts(state.scheduleConflicts);
     setNextAvailableByInstallerId(new Map(state.nextAvailableByInstallerId));
+    setActiveSnapshotKind(view === 'gantt' ? 'gantt' : 'board');
     setHydrated(true);
 
     writeV2SnapshotToCache(state, generatedAt);
@@ -1526,6 +1044,10 @@ export default function ScheduleClient({
     beginRouteTransition({ href, label, source: 'schedule-view', show: 'immediate' });
     startUiTransition(() => {
       router.replace(href);
+      if (next === 'board' && activeSnapshotKind !== 'board') {
+        v2GeneratedAtRef.current = '';
+        setActiveSnapshotKind(null);
+      }
       if (next !== 'site_visits') setView(next);
     });
   };
@@ -1544,26 +1066,76 @@ export default function ScheduleClient({
 
   const scheduleTabs = <ScheduleViewTabs view={view} onChange={setScheduleView} />;
 
-  const v2SnapshotQuery = useQuery({
+  const boardSnapshotQuery = useQuery({
     ...scheduleV2SnapshotQueryOptions(hostKey, today),
-    enabled: scheduleMode === 'v2' && view !== 'site_visits',
-    initialData: scheduleMode === 'v2' ? initialV2Snapshot ?? undefined : undefined,
-    initialDataUpdatedAt: scheduleMode === 'v2' ? initialV2SnapshotUpdatedAt : undefined,
+    enabled: scheduleMode === 'v2' && view === 'board',
+    initialData: scheduleMode === 'v2' && initialSnapshotKind === 'board' ? initialV2Snapshot ?? undefined : undefined,
+    initialDataUpdatedAt: scheduleMode === 'v2' && initialSnapshotKind === 'board' ? initialV2SnapshotUpdatedAt : undefined,
     retry: (failureCount, error) => !(error instanceof ApiError && error.status === 501) && failureCount < 1,
   });
+
+  const ganttSnapshotQuery = useQuery({
+    ...scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange),
+    enabled: scheduleMode === 'v2' && view === 'gantt',
+    initialData: scheduleMode === 'v2' && initialSnapshotKind === 'gantt' ? initialV2Snapshot ?? undefined : undefined,
+    initialDataUpdatedAt: scheduleMode === 'v2' && initialSnapshotKind === 'gantt' ? initialV2SnapshotUpdatedAt : undefined,
+    retry: (failureCount, error) => !(error instanceof ApiError && error.status === 501) && failureCount < 1,
+  });
+
+  const activeV2SnapshotError = view === 'gantt' ? ganttSnapshotQuery.error : boardSnapshotQuery.error;
+  const activeV2SnapshotIsFetching = view === 'gantt' ? ganttSnapshotQuery.isFetching : boardSnapshotQuery.isFetching;
+  const activeV2SnapshotKind = view === 'gantt' ? 'gantt' : 'board';
 
   const v2ErrorNotifiedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (scheduleMode !== 'v2') return;
-    if (view === 'site_visits') return;
-    const snapshot = v2SnapshotQuery.data;
-    if (!snapshot) return;
+    if (initialScheduleMode !== 'legacy') return;
+    const key = 'fallback:server-schema-not-ready';
+    if (telemetryEmittedRef.current.has(key)) return;
+    telemetryEmittedRef.current.add(key);
+    emitScheduleTelemetry({
+      event: 'fallback_activated',
+      view: initialView === 'site_visits' ? 'site_visits' : initialView,
+      reason: 'server-schema-not-ready',
+      meta: { initialSeedKind },
+    });
+  }, [emitScheduleTelemetry, initialScheduleMode, initialSeedKind, initialView]);
 
+  useEffect(() => {
+    if (boardSnapshotQuery.isFetching && !previousBoardFetchingRef.current) {
+      boardFetchCountRef.current += 1;
+      if (initialSnapshotKind === 'board' && boardFetchCountRef.current === 1) {
+        emitScheduleTelemetry({
+          event: 'duplicate_initial_fetch',
+          view: 'board',
+          counts: { fetchCount: boardFetchCountRef.current },
+          meta: { initialSeedKind },
+        });
+      }
+    }
+    previousBoardFetchingRef.current = boardSnapshotQuery.isFetching;
+  }, [boardSnapshotQuery.isFetching, emitScheduleTelemetry, initialSeedKind, initialSnapshotKind]);
+
+  useEffect(() => {
+    if (ganttSnapshotQuery.isFetching && !previousGanttFetchingRef.current) {
+      ganttFetchCountRef.current += 1;
+      if (initialSnapshotKind === 'gantt' && ganttFetchCountRef.current === 1) {
+        emitScheduleTelemetry({
+          event: 'duplicate_initial_fetch',
+          view: 'gantt',
+          counts: { fetchCount: ganttFetchCountRef.current },
+          meta: { initialSeedKind },
+        });
+      }
+    }
+    previousGanttFetchingRef.current = ganttSnapshotQuery.isFetching;
+  }, [emitScheduleTelemetry, ganttSnapshotQuery.isFetching, initialSeedKind, initialSnapshotKind]);
+
+  function applySnapshotFromQuery(snapshot: ScheduleV2Snapshot, kind: 'board' | 'gantt') {
     const incomingGeneratedAt = typeof snapshot.generatedAt === 'string' && snapshot.generatedAt ? snapshot.generatedAt : nowIso();
     const latestGeneratedAt = v2GeneratedAtRef.current;
-    if (v2PendingMutationsRef.current > 0 && latestGeneratedAt && incomingGeneratedAt <= latestGeneratedAt) return;
-    if (latestGeneratedAt && incomingGeneratedAt < latestGeneratedAt) return;
+    const replacingSnapshotKind = activeSnapshotKind !== kind;
+    if (!replacingSnapshotKind && v2PendingMutationsRef.current > 0 && latestGeneratedAt && incomingGeneratedAt <= latestGeneratedAt) return;
 
     v2GeneratedAtRef.current = incomingGeneratedAt;
     hydratedFromCacheRef.current = true;
@@ -1582,27 +1154,61 @@ export default function ScheduleClient({
     nextAvailRef.current = nextAvail;
 
     setLoadError(null);
-        setInstallers(snapshot.installers);
-        setProjects(snapshot.projects);
+    setInstallers(snapshot.installers);
+    setProjects(snapshot.projects);
     setScheduleItems(nextItems);
-    setEstimatesById(new Map());
     setUnscheduledJobsSeed(nextUnscheduled);
     setScheduleConflicts(nextConflicts);
     setNextAvailableByInstallerId(nextAvail);
+    setActiveSnapshotKind(kind);
     setHydrated(true);
-  }, [scheduleMode, view, v2SnapshotQuery.data]);
+
+    const telemetryKey = `hydrated:${kind}`;
+    if (!telemetryEmittedRef.current.has(telemetryKey)) {
+      telemetryEmittedRef.current.add(telemetryKey);
+      emitScheduleTelemetry({
+        event: 'schedule_hydrated',
+        view: kind,
+        counts: {
+          installers: snapshot.installers.length,
+          projects: snapshot.projects.length,
+          scheduleItems: nextItems.length,
+          unscheduledJobs: nextUnscheduled.length,
+        },
+        meta: {
+          source: initialV2SnapshotProp ? 'server_seed' : hydratedFromCacheRef.current ? 'cache_or_query' : 'query',
+          generatedAt: incomingGeneratedAt,
+        },
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (scheduleMode !== 'v2') return;
+    if (view !== 'board') return;
+    const snapshot = boardSnapshotQuery.data ?? queryClient.getQueryData<ScheduleV2Snapshot>(boardSnapshotKey) ?? null;
+    if (!snapshot) return;
+    applySnapshotFromQuery(snapshot, 'board');
+  }, [activeSnapshotKind, boardSnapshotKey, boardSnapshotQuery.data, boardSnapshotQuery.isFetching, queryClient, scheduleMode, view]);
+
+  useEffect(() => {
+    if (scheduleMode !== 'v2') return;
+    if (view !== 'gantt') return;
+    if (!ganttSnapshotQuery.data) return;
+    applySnapshotFromQuery(ganttSnapshotQuery.data, 'gantt');
+  }, [activeSnapshotKind, ganttSnapshotQuery.data, scheduleMode, view]);
 
   useEffect(() => {
     if (scheduleMode !== 'v2') return;
     if (view === 'site_visits') return;
-    setSyncing(v2SnapshotQuery.isFetching || v2PendingMutationsRef.current > 0);
-  }, [scheduleMode, view, v2SnapshotQuery.isFetching]);
+    setSyncing(activeV2SnapshotIsFetching || v2PendingMutationsRef.current > 0);
+  }, [activeV2SnapshotIsFetching, scheduleMode, view]);
 
   useEffect(() => {
     if (scheduleMode !== 'v2') return;
     if (view === 'site_visits') return;
 
-    const err = v2SnapshotQuery.error;
+    const err = activeV2SnapshotError;
     if (!err) {
       v2ErrorNotifiedRef.current = null;
       return;
@@ -1614,6 +1220,17 @@ export default function ScheduleClient({
 
     if (err instanceof ApiError && err.status === 501) {
       toast.error(err.message || 'Schedule v2 schema not ready yet. Falling back to legacy.');
+      const telemetryKey = `fallback:client-schema-not-ready:${activeV2SnapshotKind}`;
+      if (!telemetryEmittedRef.current.has(telemetryKey)) {
+        telemetryEmittedRef.current.add(telemetryKey);
+        emitScheduleTelemetry({
+          event: 'fallback_activated',
+          view: activeV2SnapshotKind,
+          reason: 'client-schema-not-ready',
+          requestId: err.requestId ?? null,
+          meta: { status: err.status },
+        });
+      }
       setLegacyFallbackReason('client-schema-not-ready');
       hydratedFromCacheRef.current = false;
       v2GeneratedAtRef.current = '';
@@ -1626,9 +1243,9 @@ export default function ScheduleClient({
       setInstallers([]);
       setProjects([]);
       setScheduleItems([]);
-      setEstimatesById(new Map());
       setScheduleConflicts([]);
       setNextAvailableByInstallerId(new Map());
+      setActiveSnapshotKind(null);
       setScheduleMode('legacy');
       return;
     }
@@ -1644,9 +1261,7 @@ export default function ScheduleClient({
     setLoadError({ message: msg });
     setSyncing(false);
     setHydrated(true);
-  }, [installers.length, projects.length, scheduleItems.length, scheduleMode, toast, v2SnapshotQuery.error, view]);
-
-  const devOnly = process.env.NODE_ENV !== 'production';
+  }, [activeV2SnapshotError, activeV2SnapshotKind, emitScheduleTelemetry, installers.length, projects.length, scheduleItems.length, scheduleMode, toast, view]);
 
   const projectsById = useMemo(() => {
     const map = new Map<string, ScheduleProjectSummary>();
@@ -1689,8 +1304,7 @@ export default function ScheduleClient({
 
   const boardModel = useMemo(() => {
     if (view === 'site_visits') return EMPTY_SCHEDULE_BOARD_MODEL;
-    return buildScheduleBoardModel({
-      estimatesById,
+    return buildScheduleBoardModelV2({
       installers,
       orphanedScheduleItems,
       projects,
@@ -1698,14 +1312,11 @@ export default function ScheduleClient({
       query: deferredQuery,
       scheduleItems,
       scheduleItemsRenderable,
-      scheduleMode,
-      today,
       unscheduledJobsSeed,
       visibleScheduleItems,
     });
   }, [
     deferredQuery,
-    estimatesById,
     installers,
     orphanedScheduleItems,
     projects,
@@ -1730,36 +1341,27 @@ export default function ScheduleClient({
 
   const unscheduledJobs = boardModel.unscheduledJobs;
   const laneItems = boardModel.laneItems;
+  const emptyEstimatesById = useMemo(() => new Map(), []);
 
   const schedule = useMemo(() => {
-    if (scheduleMode === 'v2') {
-      const base = buildScheduleBarsFromForecast({ scheduleItems: visibleScheduleItems, projectsById, estimatesById });
-      const scheduleItemByJobId = new Map<string, string>();
-      for (const item of visibleScheduleItems) {
-        if (item.scheduledJobId) scheduleItemByJobId.set(item.scheduledJobId, item.id);
-      }
-      const conflictIssues: SchedulingIssue[] = (scheduleConflicts ?? [])
-        .map((c: any) => {
-          const scheduleItemId = scheduleItemByJobId.get(String(c.job_id));
-          if (!scheduleItemId) return null;
-          const pinned = typeof c.pinned_start === 'string' ? c.pinned_start : '';
-          const expected = typeof c.expected_cursor_start === 'string' ? c.expected_cursor_start : '';
-          const overlap = typeof c.overlap_days === 'number' ? c.overlap_days : null;
-          const message = `Pinned start ${pinned || '—'} overlaps crew availability (${expected || '—'})${overlap ? ` by ${overlap} day(s)` : ''}.`;
-          return { level: 'error' as const, scheduleItemId, message };
-        })
-        .filter(Boolean) as SchedulingIssue[];
-      return { bars: base.bars, issues: [...base.issues, ...conflictIssues] };
+    const base = buildScheduleBarsFromForecast({ scheduleItems: visibleScheduleItems, projectsById });
+    const scheduleItemByJobId = new Map<string, string>();
+    for (const item of visibleScheduleItems) {
+      if (item.scheduledJobId) scheduleItemByJobId.set(item.scheduledJobId, item.id);
     }
-
-    return buildScheduleBars({
-      today,
-      installers,
-      scheduleItems: visibleScheduleItems,
-      projectsById,
-      estimatesById,
-    });
-  }, [estimatesById, installers, projectsById, scheduleConflicts, scheduleMode, today, visibleScheduleItems]);
+    const conflictIssues: SchedulingIssue[] = (scheduleConflicts ?? [])
+      .map((c: any) => {
+        const scheduleItemId = scheduleItemByJobId.get(String(c.job_id));
+        if (!scheduleItemId) return null;
+        const pinned = typeof c.pinned_start === 'string' ? c.pinned_start : '';
+        const expected = typeof c.expected_cursor_start === 'string' ? c.expected_cursor_start : '';
+        const overlap = typeof c.overlap_days === 'number' ? c.overlap_days : null;
+        const message = `Pinned start ${pinned || '—'} overlaps crew availability (${expected || '—'})${overlap ? ` by ${overlap} day(s)` : ''}.`;
+        return { level: 'error' as const, scheduleItemId, message };
+      })
+      .filter(Boolean) as SchedulingIssue[];
+    return { bars: base.bars, issues: [...base.issues, ...conflictIssues] };
+  }, [projectsById, scheduleConflicts, visibleScheduleItems]);
 
   const orphanedIssues = useMemo((): SchedulingIssue[] => {
     return orphanedScheduleItems.map((item) => {
@@ -1829,7 +1431,7 @@ export default function ScheduleClient({
   function refreshSchedule(): void {
     setLoadError(null);
     setSyncing(true);
-    void queryClient.invalidateQueries({ queryKey: v2SnapshotKey });
+    void queryClient.invalidateQueries({ queryKey: view === 'gantt' ? ganttSnapshotKey : boardSnapshotKey });
   }
 
   async function runWithCommitConfirmation(
@@ -1839,6 +1441,8 @@ export default function ScheduleClient({
       errorToast?: string;
       refreshOnError?: boolean;
       formatErrorToast?: (error: unknown, fallback: string) => string;
+      onSuccess?: (response: unknown) => void;
+      onError?: (error: unknown) => void;
     },
   ): Promise<boolean> {
     if (scheduleMode === 'v2') {
@@ -1859,17 +1463,19 @@ export default function ScheduleClient({
         const applied = res && res.ok ? (shouldApplyResponseNow ? applyV2MutationResponse(res as ScheduleMutationResult) : true) : false;
         if (!applied) refreshSchedule();
 
+        opts?.onSuccess?.(res);
         if (opts?.successToast) toast.success(opts.successToast);
         return true;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
         const fallback = opts?.errorToast ?? msg;
+        opts?.onError?.(err);
         toast.error(opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback);
         if (opts?.refreshOnError !== false && v2PendingMutationsRef.current <= 1) refreshSchedule();
         return false;
       } finally {
         v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
-        if (v2PendingMutationsRef.current === 0 && !v2SnapshotQuery.isFetching) {
+        if (v2PendingMutationsRef.current === 0 && !activeV2SnapshotIsFetching) {
           setSyncing(false);
         }
       }
@@ -1887,14 +1493,36 @@ export default function ScheduleClient({
       }
 
       if (opts?.successToast) toast.success(opts.successToast);
+      opts?.onSuccess?.(res);
       refreshSchedule();
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
       const fallback = opts?.errorToast ?? msg;
+      opts?.onError?.(err);
       toast.error(opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback);
       return false;
     }
+  }
+
+  function scheduleMutationErrorDebug(error: unknown): Record<string, unknown> {
+    if (error instanceof ApiError) {
+      return {
+        status: error.status,
+        requestId: error.requestId ?? null,
+        message: error.message,
+        body: error.body,
+      };
+    }
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+      };
+    }
+    return {
+      message: String(error),
+    };
   }
 
   function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -2419,7 +2047,7 @@ export default function ScheduleClient({
       if (v2PendingMutationsRef.current <= 1) refreshSchedule();
     } finally {
       v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
-      if (v2PendingMutationsRef.current === 0 && !v2SnapshotQuery.isFetching) {
+      if (v2PendingMutationsRef.current === 0 && !activeV2SnapshotIsFetching) {
         setSyncing(false);
       }
     }
@@ -2656,6 +2284,19 @@ export default function ScheduleClient({
           return;
         }
 
+        const assignDebug = {
+          activeId,
+          activeType: 'unscheduled',
+          projectId: job.projectId,
+          projectUuid,
+          crewId: destInstallerId,
+          crewUuid,
+          position: destIndex,
+          overId: resolvedOverId,
+          drop: dropTarget.debug ?? null,
+        };
+        logScheduleDebug('board.assign.attempt', assignDebug);
+
         const previousState = {
           scheduleItems: scheduleItemsRef.current,
           unscheduledJobsSeed: unscheduledJobsSeedRef.current,
@@ -2674,6 +2315,8 @@ export default function ScheduleClient({
               errorToast: 'Failed to schedule job.',
               refreshOnError: false,
               formatErrorToast: formatAssignMutationErrorToast,
+              onSuccess: (response) => logScheduleDebug('board.assign.success', { ...assignDebug, response }),
+              onError: (error) => logScheduleDebug('board.assign.failure', { ...assignDebug, error: scheduleMutationErrorDebug(error) }),
             },
           );
           if (!ok) setV2LocalState(previousState, nextV2GeneratedAt());
@@ -2726,13 +2369,33 @@ export default function ScheduleClient({
           }
         }).filter(Boolean) as string[];
 
+        const reorderDebug = {
+          activeId,
+          activeType: activeItem.itemType ?? 'job',
+          crewId: destInstallerId,
+          crewUuid,
+          sourceLaneId: sourceInstallerId,
+          destinationLaneId: destInstallerId,
+          insertionIndex: insertAt,
+          overId: resolvedOverId,
+          orderedItemIds: nextDest,
+          orderedScheduleItemUuids: ordered,
+          drop: dropTarget.debug ?? null,
+        };
+        logScheduleDebug('board.reorder.attempt', reorderDebug);
+
         const optimisticItems = optimisticReorderCrew(scheduleItemsRef.current, destInstallerId, nextDest);
         applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
 
         void (async () => {
           await runWithCommitConfirmation(
             (force) => reorderScheduleItemsV2({ crew_id: crewUuid, ordered_item_ids: ordered, force, today }),
-            { successToast: 'Schedule updated.', errorToast: 'Failed to reorder schedule.' },
+            {
+              successToast: 'Schedule updated.',
+              errorToast: 'Failed to reorder schedule.',
+              onSuccess: (response) => logScheduleDebug('board.reorder.success', { ...reorderDebug, response }),
+              onError: (error) => logScheduleDebug('board.reorder.failure', { ...reorderDebug, error: scheduleMutationErrorDebug(error) }),
+            },
           );
         })();
         return;
@@ -2750,13 +2413,35 @@ export default function ScheduleClient({
           return;
         }
 
+        const moveDebug = {
+          activeId,
+          activeType: 'scheduled',
+          scheduleItemId: activeItem.id,
+          scheduledJobId: activeItem.scheduledJobId ?? null,
+          projectId: activeItem.projectId,
+          projectUuid,
+          sourceLaneId: sourceInstallerId,
+          destinationLaneId: destInstallerId,
+          crewUuid,
+          position: insertAt,
+          overId: resolvedOverId,
+          drop: dropTarget.debug ?? null,
+        };
+        logScheduleDebug('board.assign.attempt', moveDebug);
+
         const optimisticItems = optimisticMoveBetweenCrews(scheduleItemsRef.current, activeId, sourceInstallerId, destInstallerId, insertAt);
         applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
 
         void (async () => {
           await runWithCommitConfirmation(
             (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
-            { successToast: 'Job moved.', errorToast: 'Failed to move job.', formatErrorToast: formatAssignMutationErrorToast },
+            {
+              successToast: 'Job moved.',
+              errorToast: 'Failed to move job.',
+              formatErrorToast: formatAssignMutationErrorToast,
+              onSuccess: (response) => logScheduleDebug('board.assign.success', { ...moveDebug, response }),
+              onError: (error) => logScheduleDebug('board.assign.failure', { ...moveDebug, error: scheduleMutationErrorDebug(error) }),
+            },
           );
         })();
       }
@@ -3177,6 +2862,7 @@ export default function ScheduleClient({
       open={diagnosticsOpen}
       busy={diagnosticsBusy}
       diagnostics={diagnostics}
+      recentTelemetryEvents={recentTelemetryEvents}
       onToggle={() => setDiagnosticsOpen((value) => !value)}
       onRun={handleRunDiagnostics}
     />
@@ -3192,7 +2878,9 @@ export default function ScheduleClient({
     );
   }
 
-  if (!hydrated) {
+  const waitingForBoardSnapshot = scheduleMode === 'v2' && view === 'board' && activeSnapshotKind !== 'board';
+
+  if (!hydrated || waitingForBoardSnapshot) {
     return (
       <main className={cx(styles.page, styles.pageLocked)}>
         <PageHeader
@@ -3352,7 +3040,7 @@ export default function ScheduleClient({
                 laneItems={laneItems}
                 visibleScheduleItems={visibleScheduleItems}
                 projectsById={projectsById}
-                estimatesById={estimatesById}
+                estimatesById={emptyEstimatesById}
                 scheduleBars={schedule.bars}
                 scheduleIssues={schedule.issues}
                 holidays={ganttHolidays}

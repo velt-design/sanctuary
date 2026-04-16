@@ -15,7 +15,11 @@ import {
   GANTT_WEEKEND_WEIGHT,
   snapAxisDayDeltaForPixelDelta,
 } from './ganttAxis';
-import styles from './schedule.module.css';
+import sharedStyles from './schedule.module.css';
+import ganttStyles from './scheduleGantt.module.css';
+import timelineStyles from './scheduleTimeline.module.css';
+
+const styles = { ...sharedStyles, ...timelineStyles, ...ganttStyles };
 
 type GanttDensity = 'compact' | 'comfortable';
 type GanttZoomWeeks = 4 | 8 | 12;

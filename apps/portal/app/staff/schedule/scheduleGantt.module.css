@@ -1,0 +1,782 @@
+.ganttPopoverBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+}
+
+.ganttPopover {
+  position: fixed;
+  z-index: 121;
+  width: clamp(280px, 32vw, 320px);
+  max-width: calc(100vw - 24px);
+  max-height: min(72vh, 560px);
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  box-shadow: 0 20px 48px rgba(var(--portal-text-rgb), 0.2);
+  padding: 16px;
+}
+
+.ganttPopover:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14), 0 20px 48px rgba(var(--portal-text-rgb), 0.2);
+}
+
+.ganttPopoverHeader {
+  display: grid;
+  gap: 6px;
+}
+
+.ganttPopoverTitle {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ganttPopoverMeta {
+  font-size: 12px;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.ganttPopoverStatus {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.04);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ganttPopoverSections {
+  margin-top: 12px;
+  display: grid;
+  gap: 2px;
+}
+
+.ganttPopoverSection {
+  display: grid;
+  gap: 8px;
+}
+
+.ganttPopoverDivider {
+  height: 1px;
+  background: rgba(var(--portal-text-rgb), 0.1);
+  margin: 2px 0 2px;
+}
+
+.ganttPopoverSectionTitle {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.6);
+}
+
+.ganttPopoverActionList {
+  display: grid;
+  gap: 6px;
+}
+
+.ganttPopoverDetails {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.1);
+}
+
+.ganttPopoverAction {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  border-radius: 11px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: var(--text);
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.ganttPopoverAction:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ganttPopoverAction:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+}
+
+.ganttPopoverActionDanger {
+  border-color: rgba(185, 28, 28, 0.3);
+  background: rgba(185, 28, 28, 0.08);
+  color: rgb(185, 28, 28);
+}
+
+.ganttPopoverShortcut {
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(var(--portal-text-rgb), 0.62);
+}
+
+.gantt {
+  padding: 14px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ganttControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.ganttControlsLeft,
+.ganttControlsRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.ganttControlsLeft {
+  flex: 1 1 auto;
+}
+
+.ganttControlsRight {
+  flex: 0 0 auto;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.ganttDensityControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(var(--portal-text-rgb), 0.7);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.ganttDensityLabel {
+  font-weight: 700;
+}
+
+.ganttDensitySelect {
+  margin: 0;
+  padding: 5px 8px;
+  border-radius: 9px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  background: var(--portal-bg-surface);
+  color: inherit;
+  font-size: 11px;
+  min-height: 30px;
+  text-transform: none;
+}
+
+.ganttDensitySelect:focus {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
+}
+
+.ganttMeta {
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(var(--portal-text-rgb), 0.8);
+}
+
+.ganttControlSelect {
+  width: auto;
+  min-width: 100px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.ganttControlButton {
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.ganttJumpButton {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.ganttLegendInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: rgba(var(--portal-text-rgb), 0.7);
+}
+
+.ganttLegendInline > span {
+  font-size: 11px;
+  letter-spacing: 0.015em;
+}
+
+@media (max-width: 1180px) {
+  .ganttControlsRight {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+}
+
+.ganttScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: var(--scrollBottomBuffer);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 14px;
+  background: rgba(var(--portal-bg-surface-rgb), 0.88);
+}
+
+.ganttTable {
+  position: relative;
+  display: grid;
+  --ganttHeaderH: 74px;
+  --ganttRowHGroup: 34px;
+  --ganttRowHItem: 28px;
+  --ganttBarH: 16px;
+  --ganttLeftPadYGroup: 6px;
+  --ganttLeftPadYItem: 4px;
+}
+
+.ganttTable[data-density='compact'] {
+  --ganttRowHGroup: 34px;
+  --ganttRowHItem: 28px;
+  --ganttBarH: 16px;
+  --ganttLeftPadYGroup: 6px;
+  --ganttLeftPadYItem: 4px;
+}
+
+.ganttTable[data-density='comfortable'] {
+  --ganttRowHGroup: 40px;
+  --ganttRowHItem: 34px;
+  --ganttBarH: 18px;
+  --ganttLeftPadYGroup: 8px;
+  --ganttLeftPadYItem: 6px;
+}
+
+.ganttRowWrap {
+  display: contents;
+}
+
+.todayColumnWash {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(174, 51, 45, 0.05);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.weekendShade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(var(--portal-text-rgb), 0.04);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.holidayShade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(234, 179, 8, 0.16);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ganttGridLines {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--ganttHeaderH, 74px);
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ganttDayBoundary,
+.ganttWeekBoundary {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.ganttDayBoundary {
+  background: rgba(var(--portal-text-rgb), 0.045);
+}
+
+.ganttWeekBoundary {
+  background: rgba(var(--portal-text-rgb), 0.14);
+}
+
+.ganttLabelResizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  z-index: 20;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.ganttLabelResizer::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(var(--portal-text-rgb), 0.22);
+  transition: background 120ms ease;
+}
+
+.ganttLabelResizer:hover::before,
+.ganttLabelResizer[data-active='true']::before {
+  background: rgba(var(--accentRgb), 0.6);
+}
+
+.ganttCorner {
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 18;
+  height: var(--ganttHeaderH, 74px);
+  padding: 12px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--portal-bg-surface);
+  box-shadow: 8px 0 12px rgba(var(--portal-text-rgb), 0.06);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+.ganttLeftHeaderGrid,
+.ganttLeftGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+}
+
+.ganttLeftHeaderGrid {
+  color: rgba(var(--portal-text-rgb), 0.75);
+}
+
+.ganttLeftCell {
+  position: sticky;
+  left: 0;
+  z-index: 17;
+  min-height: var(--ganttRowHItem);
+  padding: var(--ganttLeftPadYItem) 12px;
+  background: var(--portal-bg-surface);
+  box-shadow: 8px 0 12px rgba(var(--portal-text-rgb), 0.06);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.06);
+}
+
+.ganttLeftCellGroup {
+  background: var(--portal-bg-surface);
+}
+
+.ganttRowWrap[data-kind='group'] .ganttLeftCell {
+  min-height: var(--ganttRowHGroup);
+  padding: var(--ganttLeftPadYGroup) 12px;
+}
+
+.ganttColProject {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ganttColStatus,
+.ganttColDur,
+.ganttColStart,
+.ganttColEnd {
+  font-size: 12px;
+  color: rgba(var(--portal-text-rgb), 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ganttGroupLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ganttCollapseBtn {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.9);
+  color: rgba(var(--portal-text-rgb), 0.72);
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ganttCollapseBtn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+}
+
+.ganttProjectText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.ganttProjectTextItem {
+  padding-left: 18px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.ganttProjectTextItem:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ganttProjectTextItem:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+  border-radius: 10px;
+  padding-right: 8px;
+  margin-right: -8px;
+}
+
+.ganttGroupCount {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(var(--portal-text-rgb), 0.75);
+}
+
+.ganttEmptyLabel {
+  color: rgba(var(--portal-text-rgb), 0.6);
+  font-size: 12px;
+}
+
+.ganttHeader {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: var(--ganttHeaderH, 74px);
+  background: rgba(var(--portal-bg-surface-rgb), 0.98);
+  border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.08);
+}
+
+.ganttTodayPillTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 18px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.ganttTodayPill {
+  position: absolute;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(var(--portal-text-rgb), 0.84);
+  white-space: nowrap;
+}
+
+.ganttMonthBand,
+.ganttWeekBand {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.ganttMonthBand {
+  top: 24px;
+  height: 20px;
+}
+
+.ganttWeekBand {
+  top: 44px;
+  height: 30px;
+}
+
+.ganttMonthLabel,
+.ganttWeekLabel {
+  position: absolute;
+  min-height: 20px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 6px;
+}
+
+.ganttMonthLabel {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.ganttWeekLabel {
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: rgba(var(--portal-text-rgb), 0.6);
+}
+
+.ganttHolidayHoverZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: transparent;
+  z-index: 2;
+}
+
+.todayLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(176, 47, 41, 0.68);
+  z-index: 5;
+  pointer-events: none;
+}
+
+.ganttSnapGuide {
+  position: absolute;
+  top: var(--ganttHeaderH, 74px);
+  bottom: 0;
+  width: 1px;
+  background: rgba(var(--portal-text-rgb), 0.26);
+  z-index: 6;
+  pointer-events: none;
+}
+
+.ganttTimelineRow {
+  position: relative;
+  height: var(--ganttRowHItem);
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.06);
+  background-color: rgba(var(--portal-bg-surface-rgb), 0.86);
+}
+
+.ganttTimelineRowGroup {
+  background-color: rgba(var(--portal-text-rgb), 0.03);
+  background-image: none;
+  cursor: pointer;
+}
+
+.ganttRowWrap[data-kind='group'] .ganttTimelineRow {
+  height: var(--ganttRowHGroup);
+}
+
+.ganttRowWrap[data-hovered='true'] .ganttTimelineRow {
+  box-shadow: inset 0 0 0 1px rgba(var(--accentRgb), 0.35);
+  background-color: rgba(var(--accentRgb), 0.04);
+}
+
+.ganttRowWrap[data-hovered='true'] .ganttLeftCell {
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--accentRgb), 0.35),
+    8px 0 12px rgba(var(--portal-text-rgb), 0.06);
+  background-color: var(--portal-text-inverse);
+}
+
+.ganttCrewSummaryBar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.22);
+  opacity: 0.78;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.ganttPlannedBar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 12px;
+  border-radius: 8px;
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.45);
+  background: rgba(var(--portal-text-rgb), 0.06);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ganttGhostBar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: calc(var(--ganttBarH) + 6px);
+  border-radius: 10px;
+  border: 1px dashed rgba(var(--portal-text-rgb), 0.4);
+  background: rgba(var(--portal-text-rgb), 0.1);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.ganttBar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: var(--ganttBarH);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.22);
+  border-radius: calc(var(--ganttBarH) / 2 + 1px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px 0 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(var(--portal-text-rgb), 0.16);
+  cursor: pointer;
+  transition:
+    box-shadow 140ms ease,
+    filter 140ms ease;
+  z-index: 4;
+  touch-action: none;
+}
+
+.ganttBar[data-dragging='true'] {
+  cursor: grabbing;
+  opacity: 0.85;
+}
+
+.ganttResizeHandle {
+  position: absolute;
+  right: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 12px;
+  border-left: 1px solid rgba(var(--portal-text-rgb), 0.38);
+  border-right: 1px solid rgba(var(--portal-text-rgb), 0.22);
+  border-radius: 1px;
+  cursor: ew-resize;
+  background: rgba(var(--portal-bg-surface-rgb), 0.52);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  touch-action: none;
+}
+
+.ganttBar[data-conflict='true'] {
+  border-color: rgba(185, 28, 28, 0.85);
+  box-shadow: 0 4px 18px rgba(185, 28, 28, 0.28);
+}
+
+.ganttRowWrap[data-hovered='true'] .ganttBar {
+  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.22);
+  filter: brightness(0.96);
+}
+
+.ganttBar:hover .ganttResizeHandle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ganttPin {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.55);
+  background: rgba(var(--portal-bg-surface-rgb), 0.85);
+  margin-right: 6px;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px rgba(var(--portal-bg-surface-rgb), 0.45);
+}
+
+.ganttBarText {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: inherit;
+}
+
+.ganttBarTextFade {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 12px), transparent 100%);
+}
+
+.ganttDragTooltip {
+  position: fixed;
+  z-index: 1200;
+  pointer-events: none;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-bg-surface-rgb), 0.96);
+  box-shadow: 0 8px 20px rgba(var(--portal-text-rgb), 0.16);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(var(--portal-text-rgb), 0.86);
+  display: grid;
+  gap: 2px;
+}

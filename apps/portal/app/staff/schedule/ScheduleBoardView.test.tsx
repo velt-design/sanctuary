@@ -1,5 +1,5 @@
 import { act } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ScheduleBoardView, { type ScheduleBoardViewProps } from './ScheduleBoardView';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
@@ -140,6 +140,15 @@ function baseProps(overrides: Partial<ScheduleBoardViewProps> = {}): ScheduleBoa
 }
 
 describe('ScheduleBoardView', () => {
+  beforeEach(() => {
+    window.localStorage.removeItem('sp_schedule_debug');
+  });
+
+  afterEach(() => {
+    window.localStorage.removeItem('sp_schedule_debug');
+    vi.restoreAllMocks();
+  });
+
   it('owns the board dnd context and reports semantic lane drops', () => {
     const onDrop = vi.fn();
     const rendered = renderIntoDocument(<ScheduleBoardView {...baseProps({ onDrop })} />);
@@ -156,13 +165,76 @@ describe('ScheduleBoardView', () => {
       });
     });
 
-    expect(onDrop).toHaveBeenCalledWith('job_alpha', {
-      kind: 'lane',
-      laneId: 'crew_alpha',
-      insertionIndex: 0,
-      placement: 'end',
-      overId: 'lane:crew_alpha',
+    expect(onDrop).toHaveBeenCalledWith(
+      'job_alpha',
+      expect.objectContaining({
+        kind: 'lane',
+        laneId: 'crew_alpha',
+        insertionIndex: 0,
+        placement: 'end',
+        overId: 'lane:crew_alpha',
+      }),
+    );
+
+    rendered.unmount();
+  });
+
+  it('emits dev-only drop diagnostics when the resolved target changes and on drop end', () => {
+    window.localStorage.setItem('sp_schedule_debug', '1');
+    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+    const onDrop = vi.fn();
+    const rendered = renderIntoDocument(<ScheduleBoardView {...baseProps({ onDrop })} />);
+    const dragEvent = {
+      active: {
+        id: 'job_alpha',
+        rect: { current: { initial: { left: 10, top: 20, width: 100, height: 40 } } },
+      },
+      over: { id: 'lane:crew_alpha' },
+    };
+
+    act(() => {
+      dndMocks.latestContextProps.onDragStart({ active: { id: 'job_alpha' } });
+      dndMocks.latestContextProps.onDragOver(dragEvent);
+      dndMocks.latestContextProps.onDragMove(dragEvent);
+      dndMocks.latestContextProps.onDragEnd(dragEvent);
     });
+
+    const debugPayloads = debugSpy.mock.calls
+      .filter((call) => call[0] === '[schedule]')
+      .map((call) => call[1] as { event?: string; [key: string]: unknown });
+
+    expect(debugPayloads.filter((payload) => payload.event === 'board.drop.target')).toHaveLength(1);
+    expect(debugPayloads).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          event: 'board.drop.target',
+          activeId: 'job_alpha',
+          rawOverId: 'lane:crew_alpha',
+          resolvedLaneId: 'crew_alpha',
+          insertionIndex: 0,
+          placement: 'end',
+        }),
+        expect.objectContaining({
+          event: 'board.drop.end',
+          activeId: 'job_alpha',
+          rawOverId: 'lane:crew_alpha',
+          resolvedLaneId: 'crew_alpha',
+          insertionIndex: 0,
+          valid: true,
+        }),
+      ]),
+    );
+    expect(onDrop).toHaveBeenCalledWith(
+      'job_alpha',
+      expect.objectContaining({
+        debug: expect.objectContaining({
+          activeId: 'job_alpha',
+          rawOverId: 'lane:crew_alpha',
+          resolvedLaneId: 'crew_alpha',
+          insertionIndex: 0,
+        }),
+      }),
+    );
 
     rendered.unmount();
   });

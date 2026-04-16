@@ -12,10 +12,11 @@ vi.mock('@/lib/scheduling/serverSchedulePageSeed', () => ({
 }));
 
 vi.mock('./ScheduleClient', () => ({
-  default: (props: { initialScheduleMode?: 'v2' | 'legacy'; initialV2Snapshot?: { generatedAt: string } | null }) => (
+  default: (props: { initialScheduleMode?: 'v2' | 'legacy'; initialSeedKind?: 'board' | 'gantt'; initialV2Snapshot?: { generatedAt: string } | null }) => (
     <div
       data-testid="schedule-client"
       data-mode={props.initialScheduleMode ?? 'default'}
+      data-seed-kind={props.initialSeedKind ?? 'none'}
       data-generated-at={props.initialV2Snapshot?.generatedAt ?? 'none'}
     />
   ),
@@ -30,18 +31,37 @@ describe('StaffSchedulePage', () => {
     loadSchedulePageSeedMock.mockReset();
   });
 
-  it('loads the server schedule seed for board/gantt and passes it into the client entrypoint', async () => {
+  it('loads the Board server schedule seed for board and passes it into the client entrypoint', async () => {
     loadSchedulePageSeedMock.mockResolvedValue({
       initialScheduleMode: 'v2',
+      initialSeedKind: 'board',
       initialV2Snapshot: { generatedAt: '2026-04-07T00:00:00.000Z' },
     });
 
     const ui = (await StaffSchedulePage({ searchParams: { view: 'board' } })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(loadSchedulePageSeedMock).toHaveBeenCalled();
+    expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'board' });
     expect(markup).toContain('data-testid="schedule-client"');
     expect(markup).toContain('data-mode="v2"');
+    expect(markup).toContain('data-seed-kind="board"');
+    expect(markup).toContain('data-generated-at="2026-04-07T00:00:00.000Z"');
+  });
+
+  it('loads the Gantt server schedule seed for gantt and passes it into the client entrypoint', async () => {
+    loadSchedulePageSeedMock.mockResolvedValue({
+      initialScheduleMode: 'v2',
+      initialSeedKind: 'gantt',
+      initialV2Snapshot: { generatedAt: '2026-04-07T00:00:00.000Z' },
+    });
+
+    const ui = (await StaffSchedulePage({ searchParams: { view: 'gantt' } })) as ReactElement;
+    const markup = renderToStaticMarkup(ui);
+
+    expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'gantt' });
+    expect(markup).toContain('data-testid="schedule-client"');
+    expect(markup).toContain('data-mode="v2"');
+    expect(markup).toContain('data-seed-kind="gantt"');
     expect(markup).toContain('data-generated-at="2026-04-07T00:00:00.000Z"');
   });
 
@@ -63,7 +83,7 @@ describe('StaffSchedulePage', () => {
     const ui = (await StaffSchedulePage({ searchParams: { view: 'board' } })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(loadSchedulePageSeedMock).toHaveBeenCalled();
+    expect(loadSchedulePageSeedMock).toHaveBeenCalledWith({ view: 'board' });
     expect(markup).toContain('data-testid="schedule-client"');
     expect(markup).toContain('data-mode="legacy"');
   });
@@ -121,5 +141,62 @@ describe('StaffSchedulePage', () => {
     expect(legacyClient).toContain('@/lib/repo/estimatesRepo');
     expect(legacyClient).toContain('@/lib/repo/scheduleRepo');
     expect(legacyClient).toContain('listAllEstimates');
+    expect(legacyClient).not.toContain('scheduleV2Repo');
+  });
+
+  it('keeps Board and Gantt views independent from the shared client entrypoint', () => {
+    const boardView = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleBoardView.tsx'), 'utf8');
+    const ganttView = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleGanttView.tsx'), 'utf8');
+
+    expect(boardView).not.toContain("from './ScheduleClient'");
+    expect(ganttView).not.toContain("from './ScheduleClient'");
+  });
+
+  it('keeps V2 and legacy board model dependencies separated', () => {
+    const v2Model = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleBoardModelV2.ts'), 'utf8');
+    const legacyModel = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/ScheduleBoardModelLegacy.ts'), 'utf8');
+
+    expect(v2Model).not.toContain('@/lib/types/estimate');
+    expect(v2Model).not.toContain('isCalculatorInputsV2');
+    expect(v2Model).not.toContain('isLegacyCalculatorInputsV1');
+    expect(v2Model).not.toContain('deriveDurationHoursFromEstimate');
+
+    expect(legacyModel).toContain('@/lib/types/estimate');
+    expect(legacyModel).toContain('isCalculatorInputsV2');
+    expect(legacyModel).toContain('deriveDurationHoursFromEstimate');
+  });
+
+  it('keeps schedule CSS imports scoped by view boundary', () => {
+    const scheduleDir = path.join(process.cwd(), 'apps/portal/app/staff/schedule');
+    const siteVisitsShell = readFileSync(path.join(scheduleDir, 'SiteVisitsScheduleClient.tsx'), 'utf8');
+    const boardView = readFileSync(path.join(scheduleDir, 'ScheduleBoardView.tsx'), 'utf8');
+    const ganttView = readFileSync(path.join(scheduleDir, 'ScheduleGanttView.tsx'), 'utf8');
+    const siteVisitsView = readFileSync(path.join(scheduleDir, 'SiteVisitsView.tsx'), 'utf8');
+    const siteVisitCard = readFileSync(path.join(scheduleDir, 'UnscheduledSiteVisitCard.tsx'), 'utf8');
+
+    expect(siteVisitsShell).not.toContain('scheduleBoard.module.css');
+    expect(siteVisitsShell).not.toContain('scheduleGantt.module.css');
+    expect(siteVisitsShell).not.toContain('scheduleTimeline.module.css');
+    expect(boardView).toContain('scheduleBoard.module.css');
+    expect(boardView).toContain('scheduleTimeline.module.css');
+    expect(boardView).not.toContain('scheduleGantt.module.css');
+    expect(boardView).not.toContain('scheduleSiteVisits.module.css');
+    expect(ganttView).toContain('scheduleGantt.module.css');
+    expect(ganttView).toContain('scheduleTimeline.module.css');
+    expect(ganttView).not.toContain('scheduleBoard.module.css');
+    expect(ganttView).not.toContain('scheduleSiteVisits.module.css');
+
+    for (const source of [siteVisitsView, siteVisitCard]) {
+      expect(source).toContain('scheduleSiteVisits.module.css');
+      expect(source).not.toContain('scheduleBoard.module.css');
+      expect(source).not.toContain('scheduleGantt.module.css');
+    }
+  });
+
+  it('keeps shared schedule CSS free of view-owned selectors', () => {
+    const sharedCss = readFileSync(path.join(process.cwd(), 'apps/portal/app/staff/schedule/schedule.module.css'), 'utf8');
+
+    expect(sharedCss).not.toMatch(/^\\.(?:gantt|siteVisit|siteVisits|jobCard|lane\\b|unscheduledBody\\b)/m);
+    expect(sharedCss).not.toContain('eventModal');
   });
 });

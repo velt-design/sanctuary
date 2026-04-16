@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireStaffSession = vi.fn();
 const parseJsonBody = vi.fn();
@@ -46,6 +46,9 @@ vi.mock('@/lib/supabaseClient', () => ({
 }));
 
 describe('POST /api/staff/v1/schedule/items/reorder', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.resetModules();
     requireStaffSession.mockReset();
@@ -60,6 +63,8 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     reorderItems.mockReset();
     recomputeForCrew.mockReset();
     rpc.mockReset();
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
     parseJsonBody.mockResolvedValue({ ok: true, body: { crew_id: 'crew-1', ordered_item_ids: ['item-2', 'item-1'] } });
@@ -95,6 +100,11 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
       next_available_date: '2026-04-14',
     });
     rpc.mockResolvedValue({ data: { updated_items: 2, updated_forecasts: 1 }, error: null });
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
   });
 
   it('commits the reorder through one RPC call on success', async () => {
@@ -158,6 +168,32 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     expect(res.headers.get('x-portal-request-id')).toBe('req_reorder_confirm');
   });
 
+  it('logs validation failures with route diagnostics', async () => {
+    parseJsonBody.mockResolvedValueOnce({ ok: true, body: { ordered_item_ids: ['item-2', 'item-1'] } });
+
+    const mod = await import('./route');
+    const res = await mod.POST(
+      new Request('http://localhost/api/staff/v1/schedule/items/reorder', {
+        method: 'POST',
+        headers: { 'x-request-id': 'req_reorder_validation' },
+      }),
+    );
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toEqual({ error: 'crew_id is required' });
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.reorder.validation_failed',
+        requestId: 'req_reorder_validation',
+        route: '/api/staff/v1/schedule/items/reorder',
+        method: 'POST',
+        status: 400,
+        reason: 'missing_crew_id',
+      }),
+    );
+  });
+
   it('returns 501 when the command function is missing', async () => {
     rpc.mockResolvedValueOnce({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.schedule_v2_reorder_queue' } });
 
@@ -192,5 +228,20 @@ describe('POST /api/staff/v1/schedule/items/reorder', () => {
     await expect(res.json()).resolves.toEqual({ error: 'Failed to reorder schedule items' });
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(res.headers.get('x-portal-request-id')).toBe('req_reorder_fail');
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[portal]',
+      expect.objectContaining({
+        event: 'schedule.reorder.commit_failed',
+        requestId: 'req_reorder_fail',
+        route: '/api/staff/v1/schedule/items/reorder',
+        method: 'POST',
+        status: 500,
+        message: 'Failed to reorder schedule items',
+        errorMessage: 'boom',
+        crewId: 'crew-1',
+        positionCount: 2,
+        forecastUpdateCount: 1,
+      }),
+    );
   });
 });

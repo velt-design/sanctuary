@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Installer, ScheduleItem } from '@/lib/types/scheduling';
-import { buildScheduleBoardModel } from './ScheduleClient';
+import { buildScheduleBoardModelV2 } from './ScheduleBoardModelV2';
 import type { SchedulableJob } from './ScheduleClientModel';
 
 vi.mock('next/dynamic', () => ({
@@ -57,14 +57,13 @@ const unscheduledJobsSeed: SchedulableJob[] = [
   },
 ];
 
-describe('buildScheduleBoardModel', () => {
+describe('buildScheduleBoardModelV2', () => {
   afterEach(() => {
     document.body.innerHTML = '';
   });
 
   it('filters the unscheduled board list without touching scheduled lane items', () => {
-    const model = buildScheduleBoardModel({
-      estimatesById: new Map(),
+    const model = buildScheduleBoardModelV2({
       installers,
       orphanedScheduleItems: [],
       projects: [],
@@ -72,8 +71,6 @@ describe('buildScheduleBoardModel', () => {
       query: 'alpha',
       scheduleItems: visibleScheduleItems,
       scheduleItemsRenderable: visibleScheduleItems,
-      scheduleMode: 'v2',
-      today: '2026-04-03',
       unscheduledJobsSeed,
       visibleScheduleItems,
     });
@@ -84,8 +81,7 @@ describe('buildScheduleBoardModel', () => {
   });
 
   it('keeps empty installer lanes stable when there are no visible schedule items', () => {
-    const model = buildScheduleBoardModel({
-      estimatesById: new Map(),
+    const model = buildScheduleBoardModelV2({
       installers,
       orphanedScheduleItems: [],
       projects: [],
@@ -93,8 +89,6 @@ describe('buildScheduleBoardModel', () => {
       query: '',
       scheduleItems: [],
       scheduleItemsRenderable: [],
-      scheduleMode: 'v2',
-      today: '2026-04-03',
       unscheduledJobsSeed: [],
       visibleScheduleItems: [],
     });
@@ -104,8 +98,7 @@ describe('buildScheduleBoardModel', () => {
   });
 
   it('uses the lightweight project summary to label scheduled V2 items', () => {
-    const model = buildScheduleBoardModel({
-      estimatesById: new Map(),
+    const model = buildScheduleBoardModelV2({
       installers,
       orphanedScheduleItems: [],
       projects: [
@@ -134,8 +127,6 @@ describe('buildScheduleBoardModel', () => {
       query: '',
       scheduleItems: visibleScheduleItems,
       scheduleItemsRenderable: visibleScheduleItems,
-      scheduleMode: 'v2',
-      today: '2026-04-03',
       unscheduledJobsSeed: [],
       visibleScheduleItems,
     });

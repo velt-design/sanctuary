@@ -77,6 +77,13 @@ export type ScheduleGanttResponse = {
   range_end: string;
   crews: ScheduleBoardCrew[];
   items: Array<ScheduleBoardItem & { crew_id: string }>;
+  project_index?: Array<{
+    id: string;
+    name: string;
+    pipeline_stage: string | null;
+    follow_up_date: string | null;
+  }>;
+  scheduled_estimate_ids?: Record<string, string>;
   holidays: Array<{ date: string; name?: string; scope: string; region?: string | null }>;
   closures: Array<{ date: string; name?: string; region?: string | null }>;
   conflicts: any[];
