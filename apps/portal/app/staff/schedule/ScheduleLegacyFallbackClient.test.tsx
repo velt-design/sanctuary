@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ScheduleLegacyFallbackClient from './ScheduleLegacyFallbackClient';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
+import { qk } from '@/lib/queries/keys';
 import { listAllEstimates } from '@/lib/repo/estimatesRepo';
 import { listInstallers } from '@/lib/repo/installersRepo';
 import { listProjects } from '@/lib/repo/projectsRepo';
@@ -18,6 +19,21 @@ const toastMocks = vi.hoisted(() => ({
   success: vi.fn(),
   info: vi.fn(),
 }));
+const sendBeaconMock = vi.fn();
+
+class TestBeaconBlob {
+  readonly type: string;
+  private readonly value: string;
+
+  constructor(parts: Array<string>, options?: { type?: string }) {
+    this.value = parts.join('');
+    this.type = options?.type ?? '';
+  }
+
+  async text() {
+    return this.value;
+  }
+}
 
 vi.mock('next/dynamic', () => ({
   default: () => (props: any) => {
@@ -84,7 +100,23 @@ vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseHostFromUrl: () => 'example.supabase.co',
 }));
 
-function renderLegacyFallback() {
+async function scheduleTelemetryPayloads() {
+  return Promise.all(
+    sendBeaconMock.mock.calls
+      .filter((call) => call[0] === '/api/staff/v1/schedule/telemetry')
+      .map(async (call) => {
+        const body = call[1];
+        if (body instanceof Blob) return JSON.parse(await body.text());
+        if (typeof body === 'string') return JSON.parse(body);
+        return body;
+      }),
+  );
+}
+
+function renderLegacyFallback(options?: {
+  initialReason?: 'server-schema-not-ready' | 'client-schema-not-ready';
+  seedCache?: boolean;
+}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -93,10 +125,48 @@ function renderLegacyFallback() {
     },
   });
 
+  if (options?.seedCache) {
+    queryClient.setQueryData(qk.schedule.snapshot('example.supabase.co'), {
+      generatedAt: '2026-04-07T00:00:00.000Z',
+      host: 'example.supabase.co',
+      crews: [
+        {
+          id: '00000000-0000-4000-8000-000000000001',
+          name: 'Cached Crew',
+          color: '#0f766e',
+          is_active: true,
+          sort_order: 0,
+        },
+      ],
+      scheduleItems: [
+        {
+          id: '00000000-0000-4000-8000-000000000301',
+          crew_id: '00000000-0000-4000-8000-000000000001',
+          project_id: '00000000-0000-4000-8000-000000000101',
+          estimate_id: '00000000-0000-4000-8000-000000000201',
+          start_date: '2026-04-08',
+          end_date: '2026-04-09',
+          duration_days: 1,
+          sort_order: 0,
+          updated_at: '2026-04-07T00:00:00.000Z',
+          status: 'TENTATIVE',
+        },
+      ],
+      projectsIndex: [
+        {
+          id: '00000000-0000-4000-8000-000000000101',
+          name: 'Cached Project',
+          pipeline_stage: 'DEPOSIT',
+          follow_up_date: '2026-04-10',
+        },
+      ],
+    });
+  }
+
   const rendered = renderIntoDocument(
     <QueryClientProvider client={queryClient}>
       <ScheduleLegacyFallbackClient
-        initialReason="server-schema-not-ready"
+        initialReason={options?.initialReason ?? 'server-schema-not-ready'}
         today="2026-04-07"
         initialView="board"
       />
@@ -176,9 +246,17 @@ describe('ScheduleLegacyFallbackClient', () => {
       },
     ] as any);
     vi.mocked(normalizeScheduleItemsStarted).mockResolvedValue({ updated: 0 } as any);
+    sendBeaconMock.mockReset();
+    sendBeaconMock.mockReturnValue(true);
+    vi.stubGlobal('Blob', TestBeaconBlob);
+    Object.defineProperty(navigator, 'sendBeacon', {
+      configurable: true,
+      value: sendBeaconMock,
+    });
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     document.body.innerHTML = '';
   });
 
@@ -198,6 +276,76 @@ describe('ScheduleLegacyFallbackClient', () => {
     expect(rendered.container.textContent).toContain('Crew Alpha');
     expect(rendered.container.textContent).toContain('Alpha Deck');
     expect(rendered.container.textContent).toContain('Beta Pergola');
+    await expect(scheduleTelemetryPayloads()).resolves.toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        event: 'legacy_fallback_mounted',
+        view: 'legacy',
+        reason: 'server-schema-not-ready',
+        meta: expect.objectContaining({
+          initialReason: 'server-schema-not-ready',
+          loadSource: 'component',
+        }),
+      }),
+      expect.objectContaining({
+        event: 'legacy_fallback_hydrated',
+        view: 'legacy',
+        reason: 'server-schema-not-ready',
+        counts: expect.objectContaining({
+          installers: 1,
+          projects: 2,
+          scheduleItems: 1,
+          estimates: 2,
+        }),
+        meta: expect.objectContaining({ loadSource: 'repo' }),
+      }),
+    ]));
+
+    rendered.unmount();
+  });
+
+  it('sends telemetry when the legacy fallback hydrates from cache', async () => {
+    const { rendered } = renderLegacyFallback({ seedCache: true });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await expect(scheduleTelemetryPayloads()).resolves.toContainEqual(expect.objectContaining({
+      event: 'legacy_fallback_cache_used',
+      view: 'legacy',
+      counts: expect.objectContaining({
+        installers: 1,
+        projects: 1,
+        scheduleItems: 1,
+      }),
+      meta: expect.objectContaining({ loadSource: 'cache' }),
+    }));
+
+    rendered.unmount();
+  });
+
+  it('sends sanitized telemetry when the legacy repo load fails', async () => {
+    vi.mocked(listProjects).mockRejectedValueOnce(new Error('Customer Alice Deck failed to load'));
+    const { rendered } = renderLegacyFallback({ initialReason: 'client-schema-not-ready' });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const telemetry = await scheduleTelemetryPayloads();
+    expect(telemetry).toContainEqual(expect.objectContaining({
+      event: 'legacy_fallback_load_failed',
+      view: 'legacy',
+      reason: 'initial_load_failed',
+      meta: expect.objectContaining({
+        loadSource: 'repo',
+        errorType: 'Error',
+      }),
+    }));
+    expect(JSON.stringify(telemetry)).not.toContain('Alice');
+    expect(JSON.stringify(telemetry)).not.toContain('Deck');
 
     rendered.unmount();
   });

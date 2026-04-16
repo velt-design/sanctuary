@@ -603,6 +603,10 @@ Acceptance criteria:
 - Fallback usage is measurable.
 - Mutation failures include enough context to debug without reproducing blindly.
 
+Bundle budget check:
+- Run `npm run build:portal && npm run schedule:bundle-budget` to check the schedule route's Next static asset budget.
+- The check reads `.next` build artifacts only; raw and gzip byte counts are estimates from emitted JS/CSS assets and do not require an external bundle analyzer.
+
 ### Phase 8: Decide The Future Of Legacy
 
 Goal: either retire the fallback safely or keep it intentionally as a disaster-recovery path.
@@ -622,6 +626,13 @@ Tasks:
 Acceptance criteria:
 - Legacy fallback is either intentionally retained with telemetry or removed with confidence.
 - There is no ambiguous half-supported legacy path.
+
+Legacy fallback observation runbook:
+- Observe production logs for 14 calendar days after deploying fallback lifecycle telemetry.
+- Search `[portal]` structured logs for `schedule.client.fallback_activated` and `schedule.client.legacy_fallback_*`.
+- Begin retirement planning only if the window has zero `fallback_activated` events and zero `legacy_fallback_load_failed` events.
+- If any fallback activation appears, check V2 schema readiness in production, staging, and preview before continuing removal work.
+- Treat `legacy_fallback_cache_used` as a recovery signal: it means staff saw cached legacy data while the repo path refreshed.
 
 ## 23. Updated Suggested Work Order
 

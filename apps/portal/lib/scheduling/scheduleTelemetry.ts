@@ -23,7 +23,7 @@ export const SCHEDULE_ENDPOINT_BUDGETS = {
 } as const;
 
 export const SCHEDULE_CLIENT_TELEMETRY_MAX_BYTES = 4_096;
-const SAFE_META_KEYS = new Set(['generatedAt', 'initialSeedKind', 'source', 'status']);
+const SAFE_META_KEYS = new Set(['errorType', 'generatedAt', 'initialReason', 'initialSeedKind', 'loadSource', 'source', 'status', 'table']);
 
 function byteLength(value: string): number {
   if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(value).length;

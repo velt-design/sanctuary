@@ -74,6 +74,42 @@ describe('POST /api/staff/v1/schedule/telemetry', () => {
     }));
   });
 
+  it('keeps safe legacy fallback metadata and drops arbitrary text metadata', async () => {
+    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+
+    const mod = await import('./route');
+    const res = await mod.POST(new Request('http://localhost/api/staff/v1/schedule/telemetry', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-portal-request-id': 'req-telemetry-legacy' },
+      body: JSON.stringify({
+        event: 'legacy_fallback_load_failed',
+        view: 'legacy',
+        reason: 'initial_load_failed',
+        meta: {
+          loadSource: 'repo',
+          errorType: 'Error',
+          table: 'schedule_items',
+          customerName: 'Alice Deck',
+        },
+      }),
+    }));
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ ok: true });
+    expect(infoSpy).toHaveBeenCalledWith('[portal]', expect.objectContaining({
+      event: 'schedule.client.legacy_fallback_load_failed',
+      requestId: 'req-telemetry-legacy',
+      view: 'legacy',
+      reason: 'initial_load_failed',
+      meta: {
+        loadSource: 'repo',
+        errorType: 'Error',
+        table: 'schedule_items',
+      },
+    }));
+    expect(JSON.stringify(infoSpy.mock.calls)).not.toContain('Alice Deck');
+  });
+
   it('rejects invalid telemetry payloads without throwing', async () => {
     requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
 

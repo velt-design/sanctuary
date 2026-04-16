@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import styles from './schedule.module.css';
 import { listInstallers } from '@/lib/repo/installersRepo';
 import { getProject, listProjects } from '@/lib/repo/projectsRepo';
@@ -38,6 +38,8 @@ import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
 import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
 import { EMPTY_SCHEDULE_BOARD_MODEL, isCompletedScheduleItem, safeProjectName } from './ScheduleBoardModelShared';
 import { buildScheduleBoardModelLegacy, toScheduleProjectSummary } from './ScheduleBoardModelLegacy';
+import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
+import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 
 const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
   () => import('./ScheduleBoardView'),
@@ -327,8 +329,31 @@ export default function ScheduleLegacyFallbackClient({
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
   const [diagnostics, setDiagnostics] = useState<ScheduleDiagnosticsResult | null>(null);
+  const [recentTelemetryEvents, setRecentTelemetryEvents] = useState<ScheduleClientTelemetryEvent[]>(() => recentScheduleTelemetryEvents());
   const [syncing, setSyncing] = useState(false);
   const deferredQuery = useDeferredValue(query);
+  const devOnly = process.env.NODE_ENV !== 'production';
+  const legacyTelemetryEmittedRef = useRef<Set<string>>(new Set());
+
+  const emitLegacyScheduleTelemetry = useCallback((input: Parameters<typeof sendScheduleTelemetry>[0]) => {
+    const event = sendScheduleTelemetry(input);
+    if (event && devOnly) setRecentTelemetryEvents(recentScheduleTelemetryEvents());
+  }, [devOnly]);
+
+  useEffect(() => {
+    const key = 'legacy_fallback_mounted';
+    if (legacyTelemetryEmittedRef.current.has(key)) return;
+    legacyTelemetryEmittedRef.current.add(key);
+    emitLegacyScheduleTelemetry({
+      event: 'legacy_fallback_mounted',
+      view: 'legacy',
+      reason: initialReason ?? 'unknown',
+      meta: {
+        initialReason: initialReason ?? 'unknown',
+        loadSource: 'component',
+      },
+    });
+  }, [emitLegacyScheduleTelemetry, initialReason]);
 
   useEffect(() => {
     scheduleItemsRef.current = scheduleItems;
@@ -517,16 +542,32 @@ export default function ScheduleLegacyFallbackClient({
       setEstimatesById(new Map());
       setHydrated(true);
       setSyncing(true);
+      const telemetryKey = 'legacy_fallback_cache_used';
+      if (!legacyTelemetryEmittedRef.current.has(telemetryKey)) {
+        legacyTelemetryEmittedRef.current.add(telemetryKey);
+        emitLegacyScheduleTelemetry({
+          event: 'legacy_fallback_cache_used',
+          view: 'legacy',
+          reason: initialReason ?? 'unknown',
+          counts: {
+            installers: cachedInstallers.length,
+            projects: cachedProjects.length,
+            scheduleItems: cachedItems.length,
+          },
+          meta: { loadSource: 'cache' },
+        });
+      }
     } catch {
       // ignore cache failures
     }
-  }, [cachedSnapshot, hydrated, scheduleMode]);
+  }, [cachedSnapshot, emitLegacyScheduleTelemetry, hydrated, initialReason, scheduleMode]);
 
 	  useEffect(() => {
 	    let cancelled = false;
 	    void (async () => {
 	      if (view === 'site_visits') return;
 	      if (scheduleMode !== 'legacy') return;
+        const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
 	      setLoadError(null);
 	      setSyncing(true);
 	      try {
@@ -567,6 +608,21 @@ export default function ScheduleLegacyFallbackClient({
         setHydrated(true);
         tryWriteScheduleSnapshotToCache({ installers, projects: scheduleProjects, scheduleItems: normalised, estimatesById });
         setSyncing(false);
+        emitLegacyScheduleTelemetry({
+          event: 'legacy_fallback_hydrated',
+          view: 'legacy',
+          reason: initialReason ?? 'unknown',
+          timings: {
+            loadMs: (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt,
+          },
+          counts: {
+            installers: installers.length,
+            projects: scheduleProjects.length,
+            scheduleItems: normalised.length,
+            estimates: allEstimates.length,
+          },
+          meta: { loadSource: 'repo' },
+        });
 
         // Background: mark any jobs whose planned start is <= today as started (IN_PROGRESS).
         // This also emits an idempotent audit event for future automations.
@@ -592,7 +648,31 @@ export default function ScheduleLegacyFallbackClient({
       } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : 'Failed to load schedule data.';
-        const showingCached = hydratedFromCacheRef.current || installers.length > 0 || scheduleItems.length > 0 || projects.length > 0;
+        const showingCached =
+          hydratedFromCacheRef.current ||
+          installersRef.current.length > 0 ||
+          scheduleItemsRef.current.length > 0 ||
+          projectsRef.current.length > 0;
+        const errorType = err instanceof SupabaseRepoError ? 'supabase_repo_error' : err instanceof Error ? err.name || 'error' : 'unknown';
+        const table = err instanceof SupabaseRepoError ? err.table : undefined;
+        emitLegacyScheduleTelemetry({
+          event: 'legacy_fallback_load_failed',
+          view: 'legacy',
+          reason: showingCached ? 'refresh_failed_showing_cache' : 'initial_load_failed',
+          timings: {
+            loadMs: (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt,
+          },
+          counts: {
+            installers: installersRef.current.length,
+            projects: projectsRef.current.length,
+            scheduleItems: scheduleItemsRef.current.length,
+          },
+          meta: {
+            loadSource: 'repo',
+            errorType,
+            ...(table ? { table } : null),
+          },
+        });
         if (showingCached) {
           toast.error("Couldn't refresh schedule (showing last saved).");
           setSyncing(false);
@@ -611,9 +691,7 @@ export default function ScheduleLegacyFallbackClient({
     return () => {
       cancelled = true;
     };
-  }, [reloadNonce, toast, view, scheduleMode, today]);
-
-  const devOnly = process.env.NODE_ENV !== 'production';
+  }, [emitLegacyScheduleTelemetry, initialReason, reloadNonce, toast, view, scheduleMode, today]);
 
   const projectsById = useMemo(() => {
     const map = new Map<string, ScheduleProjectSummary>();
@@ -1238,6 +1316,7 @@ export default function ScheduleLegacyFallbackClient({
       open={diagnosticsOpen}
       busy={diagnosticsBusy}
       diagnostics={diagnostics}
+      recentTelemetryEvents={recentTelemetryEvents}
       onToggle={() => setDiagnosticsOpen((value) => !value)}
       onRun={handleRunDiagnostics}
     />
