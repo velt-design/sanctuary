@@ -1,13 +1,13 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request, ctx: { params: Promise<{ quoteId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
@@ -27,12 +27,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ quoteId: strin
     return jsonError('Invalid projectId', 400);
   }
 
-  const prev = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+  const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
   if (prev.error || !prev.data) return jsonError('Project not found', 404);
   const fromStage = String(prev.data.pipeline_stage ?? '').toUpperCase();
   if (fromStage !== 'QUOTING') return jsonError('Invalid stage transition (expected QUOTING)', 409);
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('projects')
     .update({ pipeline_stage: 'SENT' } as any)
     .eq('id', projectUuid)

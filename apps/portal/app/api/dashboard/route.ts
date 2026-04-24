@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
-import type { QueueMode } from '@/lib/dashboard/types';
+import { requireStaffContext } from '@/lib/api/staffApi';
 import { getDashboardData } from '@/lib/dashboard/getDashboardData';
+import { parseDashboardQueueMode } from '@/lib/dashboard/queueMode';
 
-function parseQueueMode(value: string | null): QueueMode {
-  if (value === 'next7' || value === 'alldue') return value;
-  return 'today';
-}
+export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+
   try {
     const url = new URL(req.url);
-    const queue = parseQueueMode(url.searchParams.get('queue'));
+    const queue = parseDashboardQueueMode(url.searchParams.get('queue'));
     const data = await getDashboardData({ queueMode: queue });
     return NextResponse.json(data);
   } catch (err) {

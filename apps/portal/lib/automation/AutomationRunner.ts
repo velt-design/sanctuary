@@ -10,7 +10,7 @@ import {
   EMAIL_PROJECT_COMPLETED_V1,
   EMAIL_PROJECT_SCHEDULED_V1,
 } from '@/lib/emails/transactionalTemplates';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { isUuid } from '@/lib/supabase/mappers';
 import type { ProjectStatus } from '@/lib/types/project';
 
@@ -182,7 +182,7 @@ function normaliseStage(value: unknown): ProjectStatus {
 }
 
 async function loadProject(projectId: string): Promise<ProjectRow | null> {
-  const { data, error } = await supabaseServer
+  const { data, error } = await supabaseServiceRole
     .from('projects')
     .select('id, contact_id, name, pipeline_stage, site_address, quote_ref')
     .eq('id', projectId)
@@ -192,13 +192,13 @@ async function loadProject(projectId: string): Promise<ProjectRow | null> {
 }
 
 async function loadContact(contactId: string): Promise<ContactRow | null> {
-  const { data, error } = await supabaseServer.from('contacts').select('id, name, email').eq('id', contactId).single();
+  const { data, error } = await supabaseServiceRole.from('contacts').select('id, name, email').eq('id', contactId).single();
   if (error || !data) return null;
   return data as any;
 }
 
 async function loadEmailTemplate(templateId: string): Promise<EmailTemplateRow | null> {
-  const { data, error } = await supabaseServer.from('email_templates').select('id, subject').eq('id', templateId).single();
+  const { data, error } = await supabaseServiceRole.from('email_templates').select('id, subject').eq('id', templateId).single();
   if (error || !data) return null;
   return data as any;
 }
@@ -265,7 +265,7 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 async function ensureEmailTemplateSeed(templateId: string, subject: string): Promise<void> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('email_templates')
     .upsert(
       {
@@ -307,7 +307,7 @@ async function upsertTask(params: {
     idempotency_key: params.idempotencyKey,
   };
 
-  const { error } = await supabaseServer.from('tasks').upsert(payload, { onConflict: 'idempotency_key' });
+  const { error } = await supabaseServiceRole.from('tasks').upsert(payload, { onConflict: 'idempotency_key' });
   if (error) throw error;
 }
 
@@ -321,7 +321,7 @@ async function insertEmailOutbox(params: {
   variables: Record<string, unknown>;
   idempotencyKey: string;
 }): Promise<void> {
-  const { error } = await supabaseServer.from('email_outbox').insert({
+  const { error } = await supabaseServiceRole.from('email_outbox').insert({
     project_id: params.projectId,
     contact_id: params.contactId,
     email_type: params.emailType,
@@ -365,11 +365,11 @@ async function insertOrUpdateEmailOutbox(params: {
     idempotency_key: params.idempotencyKey,
   };
 
-  const insertRes = await supabaseServer.from('email_outbox').insert(payload as any);
+  const insertRes = await supabaseServiceRole.from('email_outbox').insert(payload as any);
   if (!insertRes.error) return;
   if (!isUniqueViolation(insertRes.error)) throw insertRes.error;
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('email_outbox')
     .update({
       subject: params.subject,
@@ -384,7 +384,7 @@ async function insertOrUpdateEmailOutbox(params: {
 }
 
 async function loadScheduleWindow(projectId: string): Promise<{ startDate: string | null; endDate: string | null }> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('schedule_items')
     .select('start_date, end_date')
     .eq('project_id', projectId)
@@ -401,7 +401,7 @@ async function loadScheduleWindow(projectId: string): Promise<{ startDate: strin
 }
 
 async function ensureFollowupPlanActive(projectId: string, quoteUuid: string | null): Promise<{ id: string } | null> {
-  const insertRes = await supabaseServer
+  const insertRes = await supabaseServiceRole
     .from('followup_plans')
     .insert({
       project_id: projectId,
@@ -414,7 +414,7 @@ async function ensureFollowupPlanActive(projectId: string, quoteUuid: string | n
   if (!insertRes.error && insertRes.data) return insertRes.data as any;
 
   if (isUniqueViolation(insertRes.error)) {
-    const existing = await supabaseServer.from('followup_plans').select('id').eq('project_id', projectId).eq('status', 'ACTIVE').single();
+    const existing = await supabaseServiceRole.from('followup_plans').select('id').eq('project_id', projectId).eq('status', 'ACTIVE').single();
     if (existing.error || !existing.data) return null;
     return existing.data as any;
   }
@@ -429,7 +429,7 @@ async function insertFollowupTask(params: {
   dueAt: string;
   idempotencyKey: string;
 }): Promise<void> {
-  const { error } = await supabaseServer.from('followup_tasks').insert({
+  const { error } = await supabaseServiceRole.from('followup_tasks').insert({
     plan_id: params.planId,
     project_id: params.projectId,
     type: params.type,
@@ -445,14 +445,14 @@ async function insertFollowupTask(params: {
 async function cancelFollowupsForProject(projectId: string, reason: string): Promise<void> {
   const nowIso = new Date().toISOString();
 
-  const planRes = await supabaseServer
+  const planRes = await supabaseServiceRole
     .from('followup_plans')
     .update({ status: 'CANCELLED' } as any)
     .eq('project_id', projectId)
     .in('status', ['ACTIVE', 'PAUSED']);
   if (planRes.error) throw planRes.error;
 
-  const tasksRes = await supabaseServer
+  const tasksRes = await supabaseServiceRole
     .from('followup_tasks')
     .update({ status: 'SKIPPED', outcome_note: reason, completed_at: nowIso } as any)
     .eq('project_id', projectId)
@@ -468,7 +468,7 @@ async function upsertSiteVisitEvent(projectId: string, patch: Record<string, unk
   const mutable = { ...payload };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const { error } = await supabaseServer.from('site_visit_events').upsert(mutable, { onConflict: 'project_id' });
+    const { error } = await supabaseServiceRole.from('site_visit_events').upsert(mutable, { onConflict: 'project_id' });
     if (!error) return;
 
     if (isOnConflictConstraintMissing(error)) {
@@ -476,7 +476,7 @@ async function upsertSiteVisitEvent(projectId: string, patch: Record<string, unk
       delete updatePatch.project_id;
 
       for (let updateAttempt = 0; updateAttempt < 4; updateAttempt += 1) {
-        const updateRes = await supabaseServer.from('site_visit_events').update(updatePatch).eq('project_id', projectId);
+        const updateRes = await supabaseServiceRole.from('site_visit_events').update(updatePatch).eq('project_id', projectId);
         if (!updateRes.error) return;
 
         if (isMissingColumnError(updateRes.error)) {
@@ -498,7 +498,7 @@ async function upsertSiteVisitEvent(projectId: string, patch: Record<string, unk
       // If update couldn't find a row (or schema is too drifted), attempt insert without relying on ON CONFLICT.
       const insertPayload: any = { project_id: projectId, ...updatePatch };
       for (let insertAttempt = 0; insertAttempt < 4; insertAttempt += 1) {
-        const insertRes = await supabaseServer.from('site_visit_events').insert(insertPayload);
+        const insertRes = await supabaseServiceRole.from('site_visit_events').insert(insertPayload);
         if (!insertRes.error) return;
         if (isMissingColumnError(insertRes.error)) {
           const missing = missingColumnFromError(insertRes.error);
@@ -538,7 +538,7 @@ async function upsertSiteVisitEvent(projectId: string, patch: Record<string, unk
 }
 
 async function ensureUnscheduledSiteVisit(projectId: string): Promise<void> {
-  const selectRes = await supabaseServer
+  const selectRes = await supabaseServiceRole
     .from('site_visit_events')
     .select('id,status,scheduled_start,scheduled_end')
     .eq('project_id', projectId)
@@ -570,7 +570,7 @@ async function ensureUnscheduledSiteVisit(projectId: string): Promise<void> {
 }
 
 async function setProjectNextAction(projectId: string, nextActionAt: string | null, nextActionType: string | null): Promise<void> {
-  const { error } = await supabaseServer
+  const { error } = await supabaseServiceRole
     .from('projects')
     .update({ next_action_at: nextActionAt, next_action_type: nextActionType } as any)
     .eq('id', projectId);
@@ -593,7 +593,7 @@ export class AutomationRunner {
       throw new Error('AutomationRunner.emitEvent requires an idempotency key (type + projectId).');
     }
 
-    const insertRes = await supabaseServer
+    const insertRes = await supabaseServiceRole
       .from('audit_events')
       .insert({
         project_id: params.projectId ?? null,

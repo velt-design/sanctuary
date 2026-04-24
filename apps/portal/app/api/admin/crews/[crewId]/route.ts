@@ -1,5 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireAdminSession } from '@/lib/api/adminApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, parseJsonBody, requireAdminContext } from '@/lib/api/adminApi';
 import { countScheduledItemsForCrew, readCrewByIdWithCount, sanitizeHexColor, isYmd } from '../_shared';
 
 export const runtime = 'nodejs';
@@ -8,8 +7,9 @@ type Params = { crewId: string };
 type Ctx = { params: Params | Promise<Params> };
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const { crewId: crewIdRaw } = await Promise.resolve(params);
   const crewId = decodeURIComponent(crewIdRaw ?? '').trim();
@@ -63,17 +63,17 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   if (!Object.keys(payload).length) return jsonError('No supported fields provided.', 400);
 
-  const existing = await readCrewByIdWithCount(crewId);
+  const existing = await readCrewByIdWithCount(crewId, supabase);
   if (!existing) return jsonError('Crew not found.', 404);
 
   if (payload.is_active === false) {
-    const scheduledItemCount = await countScheduledItemsForCrew(crewId);
+    const scheduledItemCount = await countScheduledItemsForCrew(crewId, supabase);
     if (scheduledItemCount > 0) {
       return jsonError('Move/unschedule items before deactivating this crew.', 409);
     }
   }
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('schedule_crews')
     .update(payload as any)
     .eq('id', crewId)
@@ -82,7 +82,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update crew', 500);
 
-  const scheduledItemCount = await countScheduledItemsForCrew(crewId);
+  const scheduledItemCount = await countScheduledItemsForCrew(crewId, supabase);
 
   return jsonOk({
     ok: true,

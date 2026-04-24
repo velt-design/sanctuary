@@ -1,58 +1,21 @@
 'use client';
 
-import Link from 'next/link';
-import { useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ProjectPageFrame from '@/components/projects/ProjectPage/ProjectPageFrame';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
-import { getProjectSnapshotPlaceholderFromList } from '@/lib/queries/projectCache';
-import { projectPageSnapshotQueryOptions } from '@/lib/queries/projects';
-import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import type { ProjectPageSnapshot } from '@/lib/projects/types';
 
 export default function ProjectSnapshotPageClient({
   projectId,
   tab,
+  initialSnapshot,
 }: {
   projectId: string;
   tab: string;
+  initialSnapshot: ProjectPageSnapshot;
 }) {
-  const queryClient = useQueryClient();
-  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
-  const placeholder = useMemo(
-    () => getProjectSnapshotPlaceholderFromList(queryClient, hostKey, projectId),
-    [hostKey, projectId, queryClient],
-  );
-
-  const snapshotQuery = useQuery({
-    ...projectPageSnapshotQueryOptions(hostKey, projectId),
-    placeholderData: placeholder,
-  });
-
-  const snapshot = snapshotQuery.data?.snapshot ?? null;
-  const error =
-    snapshotQuery.error instanceof Error ? snapshotQuery.error.message : snapshotQuery.error ? String(snapshotQuery.error) : null;
-
-  if (!snapshot) {
-    return (
-      <main className={styles.page}>
-        <section className={styles.surface}>
-          <div className={styles.surfaceInner}>
-            <h1 className={styles.title}>Project unavailable</h1>
-            <p className={styles.subtitle}>
-              {error || 'We could not load this project. It may have been deleted, or access is temporarily unavailable.'}
-            </p>
-            <Link href="/staff/projects" className={styles.backLink}>
-              Back to Projects
-            </Link>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
   return (
-    <main className={styles.page}>
-      <ProjectPageFrame snapshot={snapshot} tab={tab} />
+    <main className={styles.page} data-project-id={projectId}>
+      <ProjectPageFrame snapshot={initialSnapshot} tab={tab} />
     </main>
   );
 }

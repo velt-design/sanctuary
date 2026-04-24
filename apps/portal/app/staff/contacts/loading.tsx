@@ -1,6 +1,5 @@
-import ContactsIndexClient from './ContactsIndexClient';
+import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
 
 export default function Loading() {
-  return <ContactsIndexClient mode="loading" />;
+  return <BlueprintLoadingScreen />;
 }
-

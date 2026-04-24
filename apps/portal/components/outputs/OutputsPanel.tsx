@@ -10,7 +10,7 @@ import {
   mapPowdercoatToCsvRows,
 } from '@/lib/export/mappers';
 import { addProjectActivity } from '@/lib/repo/projectsRepo';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import type { Estimate } from '@/lib/types/estimate';
 import type { JobPack } from '@/lib/outputs/types';
 import OrderListTable from './OrderListTable';

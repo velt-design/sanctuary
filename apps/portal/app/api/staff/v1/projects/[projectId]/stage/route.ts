@@ -1,6 +1,5 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -14,8 +13,9 @@ function normaliseStage(value: unknown): string | null {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400);
@@ -41,7 +41,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid projectId', 400);
   }
 
-  const prevRes = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+  const prevRes = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
   if (prevRes.error || !prevRes.data) return jsonError('Project not found', 404);
 
   const fromStage = normaliseStage(prevRes.data.pipeline_stage) ?? 'NEW';
@@ -51,7 +51,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     updatePayload.site_visit_priority_tier = siteVisitTier;
   }
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('projects')
     .update(updatePayload as any)
     .eq('id', projectUuid)

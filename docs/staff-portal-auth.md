@@ -50,6 +50,9 @@ values ('AUTH_USER_ID_HERE', 'admin');
 
 - `/login` signs in successfully
 - Admin users can access `/admin/*`
-- Staff users are redirected away from admin-only routes
+- Admin users can access `/pricebook`
+- Staff users are redirected away from `/admin/*` and `/pricebook`
+- Staff and admin API reads/writes should use the auth-bound server client from `apps/portal/lib/supabase/serverClient.ts`
+- Explicit service-role usage is reserved for server-owned flows such as Auth admin management, public quote or invoice token flows, and background automation modules
 
 If a user can sign in but sees no data, check that they have a row in `public.portal_users`.

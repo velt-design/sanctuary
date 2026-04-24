@@ -1,5 +1,4 @@
-import { jsonError, jsonOk, requireAdminSession } from '@/lib/api/adminApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, requireAdminContext } from '@/lib/api/adminApi';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -36,8 +35,9 @@ async function parseOptionalJson(req: Request): Promise<any> {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   let projectAppId: string;
@@ -49,7 +49,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid projectId', 400);
   }
 
-  const projectRes = await supabaseServer
+  const projectRes = await supabase
     .from('projects')
     .select('id, name, pipeline_stage')
     .eq('id', projectUuid)
@@ -70,15 +70,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   // Project delete can fail when quote_versions rows reference estimates with RESTRICT.
   // Removing quotes first cascades quote_versions and unblocks estimate/project deletion.
-  const deleteQuotesRes = await supabaseServer.from('quotes').delete().eq('project_id', projectUuid);
+  const deleteQuotesRes = await supabase.from('quotes').delete().eq('project_id', projectUuid);
   if (deleteQuotesRes.error && !isMissingTableError(deleteQuotesRes.error)) {
     return jsonError(deleteQuotesRes.error.message ?? 'Failed to delete project quotes', 500);
   }
 
-  const deleteRes = await supabaseServer.from('projects').delete().eq('id', projectUuid);
+  const deleteRes = await supabase.from('projects').delete().eq('id', projectUuid);
   if (deleteRes.error) return jsonError(deleteRes.error.message ?? 'Failed to delete project', 500);
 
-  const tombstoneRes = await supabaseServer.from('audit_events').insert({
+  const tombstoneRes = await supabase.from('audit_events').insert({
     project_id: null,
     type: 'project.deleted',
     idempotency_key: `project.deleted:${projectUuid}:${crypto.randomUUID()}`,

@@ -1,5 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -18,8 +17,9 @@ function isMissingColumnError(error: unknown): boolean {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ scheduleItemId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let itemUuid: string;
   try {
@@ -33,9 +33,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ scheduleItemId
   if (!parsed.ok) return jsonError(parsed.error, 400);
   const body = parsed.body ?? {};
   const force = Boolean(body.force);
-  const unlockedBy = (session.user?.email || '').trim() || null;
+  const unlockedBy = (auth.session.user?.email || '').trim() || null;
 
-  const select = await supabaseServer
+  const select = await supabase
     .from('schedule_items')
     .select('id, project_id, status, actual_start_date')
     .eq('id', itemUuid)
@@ -55,7 +55,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ scheduleItemId
     return jsonError('This job is in progress. Unlock requires confirmation.', 409);
   }
 
-  const update = await supabaseServer
+  const update = await supabase
     .from('schedule_items')
     .update({ status: 'TENTATIVE', locked: false, confirmed_at: null, confirmed_by: null } as any)
     .eq('id', itemUuid);
@@ -69,7 +69,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ scheduleItemId
 
   const eventKey = `${itemUuid}:SCHEDULE_UNLOCKED:${new Date().toISOString().slice(0, 10)}`;
   try {
-    await supabaseServer
+    await supabase
       .from('schedule_events')
       .insert(
         {

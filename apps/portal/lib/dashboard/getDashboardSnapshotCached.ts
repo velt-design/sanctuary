@@ -1,8 +1,8 @@
-import { getSupabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import type { QueueMode } from './types';
 
 export async function getDashboardSnapshotCached(queueMode: QueueMode) {
-  const supabase = getSupabaseServer();
+  const supabase = supabaseServiceRole;
   const { data, error } = await supabase.rpc('dashboard_snapshot_v1', {
     queue_mode: queueMode,
     tz: 'Pacific/Auckland',

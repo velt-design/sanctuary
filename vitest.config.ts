@@ -4,6 +4,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   resolve: {
     alias: [
+      { find: /^@sp\/geometry\/(.*)$/, replacement: path.resolve(__dirname, 'packages/geometry/src') + '/$1.ts' },
+      { find: '@sp/geometry', replacement: path.resolve(__dirname, 'packages/geometry/src/index.ts') },
       { find: '@sp/theme', replacement: path.resolve(__dirname, 'packages/theme/src/index.ts') },
       { find: /^@\/lib\/emails\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/lib/emails') + '/$1' },
       { find: /^@\/lib\/projects\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/lib/projects') + '/$1' },

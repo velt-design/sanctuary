@@ -15,19 +15,29 @@ import {
   deleteDraftQuoteVersion,
   markQuoteAccepted,
   markQuoteDeclined,
-  previewQuoteEmail,
   previewQuotePdf,
+  previewDraftQuoteRefreshFromEstimate,
   quotePdfUrl,
+  refreshDraftQuoteFromEstimate,
   resendQuote,
   reviseQuote,
   sendQuote,
 } from '@/lib/quotes/quotesRepo';
+import type { QuoteRefreshMode, QuoteRefreshPreview } from '@/lib/quotes/refresh';
+import {
+  buildPergolaStructuredDescription,
+  parsePergolaStructuredDescription,
+  updateSharedPergolaField,
+  type PergolaFieldMap,
+  type PergolaModuleDraft,
+} from '@/lib/quotes/pergolaDraft';
 import { quoteVersionDetailQueryOptions, quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { estimateDetailQueryOptions, estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';
 import { qk } from '@/lib/queries/keys';
 import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { generateJobPack } from '@/lib/repo/jobPacksRepo';
+import { formatPortalDate, formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { useAliasedEntitySyncState } from '@/lib/localFirst/useEntitySyncState';
 import { useResolvedLocalFirstId } from '@/lib/localFirst/useResolvedLocalFirstId';
@@ -51,17 +61,11 @@ function formatMoneyFromCents(value: number): string {
 }
 
 function formatDateShort(value: string | null | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString();
+  return formatPortalDate(value);
 }
 
 function formatDateTime(value: string | null | undefined): string {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleString();
+  return formatPortalDateTime(value);
 }
 
 function parseDateLocal(value: string | null | undefined): Date | null {
@@ -231,10 +235,9 @@ function defaultSubject(quoteRef: string): string {
 }
 
 const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
-const SEND_PREVIEW_DEBOUNCE_MS = 250;
 const QUOTE_PREVIEW_DEBOUNCE_MS = 200;
 
-type SendEditorMode = 'compose' | 'preview';
+type SendEditorMode = 'compose' | 'review';
 
 function validateDesignPdf(file: File): string | null {
   if (file.size <= 0) return 'Design PDF is empty.';
@@ -291,6 +294,26 @@ function quoteDraftFilename(detail: QuoteVersionDetail): string {
   const rawBase = `${detail.quoteRef || 'quote'}-v${detail.versionNumber}-draft`;
   const safeBase = rawBase.replace(/[^a-z0-9._-]+/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
   return `${safeBase || 'quote-draft'}.pdf`;
+}
+
+function isPergolaLineItemDescription(value: string): boolean {
+  return /\bpergola\b/i.test(String(value ?? '').split('\n')[0] ?? '');
+}
+
+function formatRefreshModeLabel(mode: QuoteRefreshMode): string {
+  switch (mode) {
+    case 'pricing_only':
+      return 'Pricing only';
+    case 'generated_content':
+      return 'Generated content only';
+    default:
+      return 'Full rebuild';
+  }
+}
+
+function renderPersonalNoteSummary(value: string): string {
+  const trimmed = value.trim();
+  return trimmed || 'No personal note added.';
 }
 
 export default function QuotesTab({
@@ -358,12 +381,9 @@ export default function QuotesTab({
   const [sendPersonalNote, setSendPersonalNote] = useState('');
   const [sendDesignPdf, setSendDesignPdf] = useState<File | null>(null);
   const [sendEditorMode, setSendEditorMode] = useState<SendEditorMode>('compose');
-  const [sendPreviewHtml, setSendPreviewHtml] = useState('');
-  const [sendPreviewLoading, setSendPreviewLoading] = useState(false);
-  const [sendPreviewError, setSendPreviewError] = useState<string | null>(null);
-  const [sendPreviewHeight, setSendPreviewHeight] = useState(640);
-  const sendPreviewRequestRef = useRef(0);
-  const sendPreviewFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const [sendReviewPdfData, setSendReviewPdfData] = useState<Uint8Array | null>(null);
+  const [sendReviewPdfLoading, setSendReviewPdfLoading] = useState(false);
+  const [sendReviewPdfError, setSendReviewPdfError] = useState<string | null>(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
@@ -382,10 +402,18 @@ export default function QuotesTab({
   const [expiredPromptOpen, setExpiredPromptOpen] = useState(false);
   const [pendingResendId, setPendingResendId] = useState<string | null>(null);
   const [jobPackBusy, setJobPackBusy] = useState(false);
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
+  const [refreshConfirmOpen, setRefreshConfirmOpen] = useState(false);
+  const [refreshMode, setRefreshMode] = useState<QuoteRefreshMode>('pricing_only');
+  const [refreshPreview, setRefreshPreview] = useState<QuoteRefreshPreview | null>(null);
+  const [refreshPreviewLoading, setRefreshPreviewLoading] = useState(false);
+  const [refreshPreviewError, setRefreshPreviewError] = useState<string | null>(null);
+  const [refreshBusy, setRefreshBusy] = useState(false);
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const [draftItems, setDraftItems] = useState<QuoteLineItem[]>([]);
+  const [draftPergolaOverrideMode, setDraftPergolaOverrideMode] = useState<Record<string, boolean>>({});
   const [unitInputDrafts, setUnitInputDrafts] = useState<Record<string, string>>({});
   const [activeUnitInputId, setActiveUnitInputId] = useState<string | null>(null);
   const [draftReference, setDraftReference] = useState('');
@@ -396,6 +424,18 @@ export default function QuotesTab({
   const [savingDraft, setSavingDraft] = useState(false);
   const [downloadingDraftPdf, setDownloadingDraftPdf] = useState(false);
   const prefetchedQuoteDetailsRef = useRef(new Set<string>());
+
+  const resetDraftFormFromDetail = useCallback((quoteDetail: QuoteVersionDetail) => {
+    setDraftItems(quoteDetail.lineItems);
+    setDraftPergolaOverrideMode({});
+    setUnitInputDrafts({});
+    setActiveUnitInputId(null);
+    setDraftReference(quoteDetail.reference ?? '');
+    setDraftIntro(quoteDetail.introText ?? '');
+    setDraftTerms(quoteDetail.termsText ?? '');
+    setDraftDepositPercent(formatPercentInput(quoteDetail.depositPercent));
+    setDraftExpiry(quoteDetail.expiresAt ?? '');
+  }, []);
 
   const refreshQuotes = useCallback(async (opts?: { includeEstimates?: boolean }) => {
     await invalidateProjectReadCaches(queryClient, hostKey, projectId, {
@@ -452,15 +492,8 @@ export default function QuotesTab({
 
   useEffect(() => {
     if (!detail) return;
-    setDraftItems(detail.lineItems);
-    setUnitInputDrafts({});
-    setActiveUnitInputId(null);
-    setDraftReference(detail.reference ?? '');
-    setDraftIntro(detail.introText ?? '');
-    setDraftTerms(detail.termsText ?? '');
-    setDraftDepositPercent(formatPercentInput(detail.depositPercent));
-    setDraftExpiry(detail.expiresAt ?? '');
-  }, [detail?.id]);
+    resetDraftFormFromDetail(detail);
+  }, [detail?.id, resetDraftFormFromDetail]);
 
   const getLiveUnitPriceIncGstCents = useCallback(
     (item: QuoteLineItem): number => {
@@ -480,6 +513,33 @@ export default function QuotesTab({
       }),
     [draftItems, getLiveUnitPriceIncGstCents],
   );
+
+  const parsedPergolaDrafts = useMemo(() => {
+    const next = new Map<string, ReturnType<typeof parsePergolaStructuredDescription>>();
+    draftItems.forEach((item) => {
+      next.set(item.id, isPergolaLineItemDescription(item.description) ? parsePergolaStructuredDescription(item.description) : null);
+    });
+    return next;
+  }, [draftItems]);
+
+  const updateDraftItemDescription = useCallback((itemId: string, description: string) => {
+    setDraftItems((prev) =>
+      prev.map((entry) => (entry.id === itemId ? { ...entry, description } : entry)),
+    );
+  }, []);
+
+  const updatePergolaModule = useCallback((itemId: string, moduleIndex: number, updater: (module: PergolaModuleDraft) => PergolaModuleDraft) => {
+    const parsed = parsedPergolaDrafts.get(itemId);
+    if (!parsed) return;
+    const modules = parsed.modules.map((module, index) => (index === moduleIndex ? updater(module) : module));
+    updateDraftItemDescription(itemId, buildPergolaStructuredDescription({ ...parsed, modules }));
+  }, [parsedPergolaDrafts, updateDraftItemDescription]);
+
+  const updatePergolaSharedField = useCallback((itemId: string, key: keyof PergolaFieldMap, value: string) => {
+    const parsed = parsedPergolaDrafts.get(itemId);
+    if (!parsed) return;
+    updateDraftItemDescription(itemId, buildPergolaStructuredDescription(updateSharedPergolaField(parsed, key, value)));
+  }, [parsedPergolaDrafts, updateDraftItemDescription]);
 
   const commitUnitPriceDraft = useCallback((itemId: string, rawValue: string) => {
     const nextCents = parseMoneyInput(rawValue);
@@ -539,8 +599,21 @@ export default function QuotesTab({
   }, [estimates]);
   const preferredQuoteSourceDesign = useMemo(() => {
     if (!estimates.length) return null;
-    return estimates.find((estimate) => estimate.isActiveDraft) ?? latestEstimate ?? estimates[0] ?? null;
+      return estimates.find((estimate) => estimate.isActiveDraft) ?? latestEstimate ?? estimates[0] ?? null;
   }, [estimates, latestEstimate]);
+  const currentSourceEstimate = useMemo(
+    () => (detail ? estimates.find((estimate) => estimate.id === detail.sourceEstimateVersionId) ?? null : null),
+    [detail, estimates],
+  );
+  const refreshEstimateTarget = useMemo(() => {
+    if (!detail) return preferredQuoteSourceDesign ?? currentSourceEstimate;
+    return preferredQuoteSourceDesign ?? currentSourceEstimate;
+  }, [currentSourceEstimate, detail, preferredQuoteSourceDesign]);
+  const refreshUsesLatestDesign = Boolean(
+    detail &&
+      refreshEstimateTarget &&
+      refreshEstimateTarget.id !== detail.sourceEstimateVersionId,
+  );
 
   const detailTotals = useMemo(() => {
     if (!detail) return null;
@@ -774,115 +847,170 @@ export default function QuotesTab({
     });
   }, [createDraftQuoteFromEstimate, createFromEstimateId, estimates, estimatesLoading, projectId, toast, updateParams]);
 
-  const openSendModal = useCallback((mode: 'send' | 'resend', editorMode: SendEditorMode = 'compose') => {
-    if (!detail) return;
-    if (mode === 'send' && draftDirty) {
-      toast.error('Save the draft before sending.');
-      return;
+  const persistDraft = useCallback(async (opts?: { silent?: boolean }) => {
+    if (!detail || detail.status !== 'DRAFT') return detail;
+    if (!draftDirty) return detail;
+
+    setSavingDraft(true);
+    try {
+      const patch = {
+        reference: draftReference,
+        introText: draftIntro,
+        termsText: draftTerms,
+        depositPercent: parsePercentInput(draftDepositPercent),
+        expiresAt: draftExpiry || null,
+        lineItems: effectiveDraftItems.map((item) => ({
+          description: item.description,
+          qty: item.qty,
+          unitPriceIncGstCents: item.unitPriceIncGstCents,
+        })),
+      };
+      const updated = applyDraftPatchToQuoteDetail(detail, patch);
+      upsertQuoteDetailCache(queryClient, hostKey, projectId, updated);
+      await writeLocalFirstWorkingCopy({
+        entityKey: buildQuoteEntityKey(detail.id),
+        data: updated,
+      });
+
+      const mutationPayload: PortalQuoteUpdateMutationPayload = {
+        quoteVersionId: detail.id,
+        patch,
+      };
+      await enqueueAndProcessLocalFirstMutation({
+        entityKey: buildQuoteEntityKey(detail.id),
+        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.quoteUpdateDraft,
+        payload: mutationPayload,
+      });
+
+      setDraftItems(updated.lineItems);
+      setUnitInputDrafts({});
+      setActiveUnitInputId(null);
+      setDraftReference(updated.reference ?? '');
+      setDraftIntro(updated.introText ?? '');
+      setDraftTerms(updated.termsText ?? '');
+      setDraftDepositPercent(formatPercentInput(updated.depositPercent));
+      setDraftExpiry(updated.expiresAt ?? '');
+      if (!opts?.silent) {
+        toast.success('Draft saved locally. Syncing in the background.');
+      }
+      return updated;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save draft';
+      toast.error(msg);
+      return null;
+    } finally {
+      setSavingDraft(false);
     }
-    if (mode === 'send' && draftSyncPending) {
-      toast.error('Wait for the draft to finish syncing before sending.');
-      return;
-    }
-    const to = detail.contact?.email ?? '';
+  }, [
+    detail,
+    draftDepositPercent,
+    draftDirty,
+    draftExpiry,
+    draftIntro,
+    draftReference,
+    draftTerms,
+    effectiveDraftItems,
+    hostKey,
+    projectId,
+    queryClient,
+    toast,
+  ]);
+
+  const openSendModal = useCallback((mode: 'send' | 'resend', editorMode: SendEditorMode = 'compose', sourceDetail?: QuoteVersionDetail | null) => {
+    const quoteForModal = sourceDetail ?? detail;
+    if (!quoteForModal) return;
+    const to = quoteForModal.contact?.email ?? '';
     setSendMode(mode);
     setSendTo(to);
-    setSendSubject(defaultSubject(detail.quoteRef));
+    setSendSubject(defaultSubject(quoteForModal.quoteRef));
     setSendPersonalNote(defaultPersonalNote());
     setSendDesignPdf(null);
     setSendEditorMode(editorMode);
-    setSendPreviewHtml('');
-    setSendPreviewError(null);
-    setSendPreviewLoading(false);
-    setSendPreviewHeight(640);
-    sendPreviewRequestRef.current += 1;
+    setSendReviewPdfData(null);
+    setSendReviewPdfError(null);
+    setSendReviewPdfLoading(false);
     setSendError(null);
     setSendOpen(true);
-  }, [detail, draftDirty, draftSyncPending, toast]);
+    setMoreActionsOpen(false);
+  }, [detail]);
 
   const closeSendModal = useCallback(() => {
     setSendDesignPdf(null);
     setSendEditorMode('compose');
-    setSendPreviewHtml('');
-    setSendPreviewError(null);
-    setSendPreviewLoading(false);
-    setSendPreviewHeight(640);
+    setSendReviewPdfData(null);
+    setSendReviewPdfError(null);
+    setSendReviewPdfLoading(false);
     setSendError(null);
     setSendOpen(false);
-    sendPreviewRequestRef.current += 1;
   }, []);
 
-  const sizeSendPreviewIframe = useCallback(() => {
-    const frame = sendPreviewFrameRef.current;
-    if (!frame) return;
-    const doc = frame.contentDocument;
-    if (!doc) return;
-    const next = Math.max(
-      doc.documentElement?.scrollHeight ?? 0,
-      doc.body?.scrollHeight ?? 0,
-      220,
-    );
-    setSendPreviewHeight((prev) => (Math.abs(prev - next) > 8 ? next : prev));
-  }, []);
+  const reviewQuoteDetail = useMemo(
+    () => (sendMode === 'send' ? previewDetail : detail),
+    [detail, previewDetail, sendMode],
+  );
 
   useEffect(() => {
-    const previewQuoteId = detail?.id ?? '';
-    if (!sendOpen || sendEditorMode !== 'preview' || !previewQuoteId) return;
+    if (!sendOpen || sendEditorMode !== 'review' || !reviewQuoteDetail) return;
 
-    const requestId = sendPreviewRequestRef.current + 1;
-    sendPreviewRequestRef.current = requestId;
     const ac = new AbortController();
-    const to = sendTo.split(',').map((entry) => entry.trim()).filter(Boolean);
+    const cacheKey = [
+      reviewQuoteDetail.id,
+      reviewQuoteDetail.status,
+      reviewQuoteDetail.expiresAt ?? '',
+      reviewQuoteDetail.reference ?? '',
+      reviewQuoteDetail.depositPercent,
+      reviewQuoteDetail.totals.totalIncGstCents,
+      reviewQuoteDetail.lineItems.map((item) => `${item.description}:${item.qty}:${item.unitPriceIncGstCents}`).join('|'),
+    ].join('::review::');
+    const cached = quotePdfPreviewCacheRef.current.get(cacheKey);
+    if (cached) {
+      setSendReviewPdfData(cached);
+      setSendReviewPdfError(null);
+      setSendReviewPdfLoading(false);
+      return () => {
+        ac.abort();
+      };
+    }
 
-    const run = async () => {
-      setSendPreviewLoading(true);
-      setSendPreviewError(null);
+    setSendReviewPdfLoading(true);
+    setSendReviewPdfError(null);
+
+    void (async () => {
       try {
-        const rendered = await previewQuoteEmail(
-          previewQuoteId,
-          {
-            mode: sendMode,
-            to,
-            subject: sendSubject,
-            personalNote: sendPersonalNote,
-          },
-          { signal: ac.signal },
-        );
-        if (ac.signal.aborted || requestId !== sendPreviewRequestRef.current) return;
-        setSendPreviewHtml(rendered.html);
-        requestAnimationFrame(() => sizeSendPreviewIframe());
+        const bytes = reviewQuoteDetail.status === 'DRAFT'
+          ? await previewQuotePdf(reviewQuoteDetail, { signal: ac.signal })
+          : new Uint8Array(await (await fetch(quotePdfUrl(reviewQuoteDetail.id, { inline: true }), {
+            method: 'GET',
+            credentials: 'same-origin',
+            signal: ac.signal,
+          })).arrayBuffer());
+        if (ac.signal.aborted) return;
+        quotePdfPreviewCacheRef.current.set(cacheKey, bytes);
+        setSendReviewPdfData(bytes);
       } catch (err) {
-        if (ac.signal.aborted || requestId !== sendPreviewRequestRef.current) return;
-        const msg = err instanceof Error ? err.message : 'Failed to load preview';
-        setSendPreviewHtml('');
-        setSendPreviewError(msg);
+        if (ac.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : 'Failed to load quote PDF';
+        setSendReviewPdfError(msg);
+        setSendReviewPdfData(null);
       } finally {
-        if (!ac.signal.aborted && requestId === sendPreviewRequestRef.current) {
-          setSendPreviewLoading(false);
-        }
+        if (!ac.signal.aborted) setSendReviewPdfLoading(false);
       }
-    };
-
-    const timeout = window.setTimeout(() => {
-      void run();
-    }, SEND_PREVIEW_DEBOUNCE_MS);
+    })();
 
     return () => {
       ac.abort();
-      window.clearTimeout(timeout);
     };
-  }, [detail?.id, sendEditorMode, sendMode, sendOpen, sendPersonalNote, sendSubject, sendTo, sizeSendPreviewIframe]);
+  }, [reviewQuoteDetail, sendEditorMode, sendOpen]);
+
+  const handleReviewAndSend = useCallback(async () => {
+    if (!detail) return;
+    const updated = detail.status === 'DRAFT' ? await persistDraft({ silent: true }) : detail;
+    if (!updated) return;
+    openSendModal('send', 'review', updated);
+  }, [detail, openSendModal, persistDraft]);
 
   const handleSend = async () => {
     if (!detail || sendBusy) return;
-    if (sendMode === 'send' && draftDirty) {
-      toast.error('Save the draft before sending.');
-      return;
-    }
-    if (sendMode === 'send' && draftSyncPending) {
-      toast.error('Wait for the draft to finish syncing before sending.');
-      return;
-    }
     const to = sendTo.split(',').map((v) => v.trim()).filter(Boolean);
     if (!to.length) {
       toast.error('Recipient email is required.');
@@ -943,7 +1071,7 @@ export default function QuotesTab({
       setExpiredPromptOpen(true);
       return;
     }
-    openSendModal('resend');
+    openSendModal('resend', 'review');
   };
 
   const handleExpiredResend = async (mode: 'resend' | 'revise') => {
@@ -953,57 +1081,11 @@ export default function QuotesTab({
       await handleRevise();
       return;
     }
-    openSendModal('resend');
+    openSendModal('resend', 'review');
   };
 
   const handleSaveDraft = async () => {
-    if (!detail) return;
-    setSavingDraft(true);
-    try {
-      const patch = {
-        reference: draftReference,
-        introText: draftIntro,
-        termsText: draftTerms,
-        depositPercent: parsePercentInput(draftDepositPercent),
-        expiresAt: draftExpiry || null,
-        lineItems: effectiveDraftItems.map((item) => ({
-          description: item.description,
-          qty: item.qty,
-          unitPriceIncGstCents: item.unitPriceIncGstCents,
-        })),
-      };
-      const updated = applyDraftPatchToQuoteDetail(detail, patch);
-      upsertQuoteDetailCache(queryClient, hostKey, projectId, updated);
-      await writeLocalFirstWorkingCopy({
-        entityKey: buildQuoteEntityKey(detail.id),
-        data: updated,
-      });
-
-      const mutationPayload: PortalQuoteUpdateMutationPayload = {
-        quoteVersionId: detail.id,
-        patch,
-      };
-      await enqueueAndProcessLocalFirstMutation({
-        entityKey: buildQuoteEntityKey(detail.id),
-        mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.quoteUpdateDraft,
-        payload: mutationPayload,
-      });
-
-      setDraftItems(updated.lineItems);
-      setUnitInputDrafts({});
-      setActiveUnitInputId(null);
-      setDraftReference(updated.reference ?? '');
-      setDraftIntro(updated.introText ?? '');
-      setDraftTerms(updated.termsText ?? '');
-      setDraftDepositPercent(formatPercentInput(updated.depositPercent));
-      setDraftExpiry(updated.expiresAt ?? '');
-      toast.success('Draft saved locally. Syncing in the background.');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to save draft';
-      toast.error(msg);
-    } finally {
-      setSavingDraft(false);
-    }
+    await persistDraft();
   };
 
   const handleDownloadDraftPdf = async () => {
@@ -1040,6 +1122,68 @@ export default function QuotesTab({
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to delete draft';
       toast.error(msg);
+    }
+  };
+
+  const openRefreshModal = useCallback(() => {
+    setRefreshMode('pricing_only');
+    setRefreshPreview(null);
+    setRefreshPreviewError(null);
+    setRefreshConfirmOpen(true);
+    setMoreActionsOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!refreshConfirmOpen || !detail || detail.status !== 'DRAFT' || !refreshEstimateTarget) return;
+    if (isLocalQuoteId(detail.id) || draftSyncPending) return;
+
+    const ac = new AbortController();
+    setRefreshPreviewLoading(true);
+    setRefreshPreviewError(null);
+
+    void (async () => {
+      try {
+        const preview = await previewDraftQuoteRefreshFromEstimate(detail.id, refreshEstimateTarget.id, refreshMode);
+        if (ac.signal.aborted) return;
+        setRefreshPreview(preview);
+      } catch (err) {
+        if (ac.signal.aborted) return;
+        const msg = err instanceof Error ? err.message : 'Failed to preview quote refresh';
+        setRefreshPreview(null);
+        setRefreshPreviewError(msg);
+      } finally {
+        if (!ac.signal.aborted) setRefreshPreviewLoading(false);
+      }
+    })();
+
+    return () => {
+      ac.abort();
+    };
+  }, [detail, draftSyncPending, refreshConfirmOpen, refreshEstimateTarget, refreshMode]);
+
+  const handleRefreshFromEstimate = async () => {
+    if (!detail || detail.status !== 'DRAFT' || !refreshEstimateTarget || refreshBusy) return;
+    if (isLocalQuoteId(detail.id) || draftSyncPending) {
+      toast.error('Wait for the draft to finish syncing before refreshing from design.');
+      return;
+    }
+    setRefreshBusy(true);
+    try {
+      const updated = await refreshDraftQuoteFromEstimate(detail.id, refreshEstimateTarget.id, refreshMode);
+      upsertQuoteDetailCache(queryClient, hostKey, projectId, updated);
+      resetDraftFormFromDetail(updated);
+      setRefreshConfirmOpen(false);
+      await refreshQuotes({ includeEstimates: true });
+      toast.success(
+        refreshUsesLatestDesign
+          ? `${formatRefreshModeLabel(refreshMode)} applied from ${refreshEstimateTarget.versionLabel}.`
+          : `${formatRefreshModeLabel(refreshMode)} applied from the current design.`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to refresh quote from design';
+      toast.error(msg);
+    } finally {
+      setRefreshBusy(false);
     }
   };
 
@@ -1204,7 +1348,7 @@ export default function QuotesTab({
 
   if (selectedId && detail) {
     const expired = isExpired(detail.expiresAt);
-    const hasNewerEstimate = latestEstimate && latestEstimate.id !== detail.sourceEstimateVersionId;
+    const hasNewerEstimate = refreshUsesLatestDesign;
     const generatedJobPack = generatedJobPacks.find((jobPack) => jobPack.quoteVersionId === detail.id) ?? null;
     const canGenerateJobPack =
       (detail.status === 'SENT' || detail.status === 'ACCEPTED' || detail.status === 'DECLINED') && !generatedJobPack;
@@ -1222,68 +1366,110 @@ export default function QuotesTab({
           </button>
           <div className={styles.detailActions}>
             {detail.status === 'DRAFT' ? (
-              <button
-                type="button"
-                className={legacy.buttonSecondary}
-                onClick={handleDownloadDraftPdf}
-                disabled={downloadingDraftPdf}
-              >
-                {downloadingDraftPdf ? 'Preparing PDF...' : 'Download PDF'}
+              <button type="button" className={legacy.button} onClick={() => void handleReviewAndSend()} disabled={savingDraft}>
+                {savingDraft ? 'Saving draft...' : 'Review & Send'}
               </button>
+            ) : detail.status === 'SENT' ? (
+              <button type="button" className={legacy.button} onClick={handleResendClick}>
+                Resend
+              </button>
+            ) : detail.status === 'ACCEPTED' ? (
+              openJobPackHref ? (
+                <Link className={legacy.button} href={openJobPackHref}>
+                  Open Job Pack
+                </Link>
+              ) : (
+                <button type="button" className={legacy.button} onClick={openInvoiceModal}>
+                  Create invoice
+                </button>
+              )
             ) : (
-              <a className={legacy.buttonSecondary} href={quotePdfUrl(detail.id)}>
-                Download PDF
-              </a>
+              <button type="button" className={legacy.button} onClick={handleRevise}>
+                Create revision
+              </button>
             )}
-            {detail.status === 'DRAFT' ? (
-              <>
-                <button type="button" className={legacy.button} onClick={() => openSendModal('send')}>
-                  Send
-                </button>
-                <button
-                  type="button"
-                  className={legacy.buttonSecondary}
-                  onClick={() => setDeleteConfirmOpen(true)}
-                  disabled={isLocalQuoteId(detail.id) || draftSyncPending}
-                >
-                  Delete draft
-                </button>
-                {draftDirty || draftSyncPending ? (
-                  <button
-                    type="button"
-                    className={legacy.button}
-                    disabled={savingDraft || (draftSyncPending && !draftDirty)}
-                    onClick={handleSaveDraft}
-                  >
-                    {savingDraft || draftSyncPending ? 'Syncing...' : 'Save draft'}
-                  </button>
-                ) : null}
-              </>
-            ) : (
-              <>
-                {openJobPackHref ? (
-                  <Link className={legacy.buttonSecondary} href={openJobPackHref}>
-                    Open Job Pack
-                  </Link>
-                ) : null}
-                {canGenerateJobPack ? (
-                  <button type="button" className={legacy.buttonSecondary} onClick={handleGenerateJobPack} disabled={jobPackBusy}>
-                    {jobPackBusy ? 'Generating job pack...' : 'Generate Job Pack'}
-                  </button>
-                ) : null}
-                {(detail.status === 'SENT' || detail.status === 'ACCEPTED') ? (
-                  <button type="button" className={legacy.buttonSecondary} onClick={openInvoiceModal}>
-                    Create invoice
-                  </button>
-                ) : null}
-                <button type="button" className={legacy.buttonSecondary} onClick={handleRevise}>
-                  Revise
-                </button>
-                <button type="button" className={legacy.button} onClick={handleResendClick}>
-                  Resend
-                </button>
-              </>
-            )}
+
+            <div className={styles.moreActionsWrap}>
+              <button type="button" className={legacy.buttonSecondary} onClick={() => setMoreActionsOpen((prev) => !prev)}>
+                More actions
+              </button>
+              {moreActionsOpen ? (
+                <div className={styles.moreActionsMenu}>
+                  {detail.status === 'DRAFT' ? (
+                    <>
+                      {refreshEstimateTarget ? (
+                        <button
+                          type="button"
+                          className={styles.moreActionsItem}
+                          onClick={openRefreshModal}
+                          disabled={refreshBusy || isLocalQuoteId(detail.id) || draftSyncPending}
+                        >
+                          {refreshUsesLatestDesign
+                            ? `Refresh from latest design (${refreshEstimateTarget.versionLabel})`
+                            : 'Regenerate from current design'}
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className={styles.moreActionsItem}
+                        onClick={handleDownloadDraftPdf}
+                        disabled={downloadingDraftPdf}
+                      >
+                        {downloadingDraftPdf ? 'Preparing PDF...' : 'Download PDF'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.moreActionsItem}
+                        onClick={() => void handleSaveDraft()}
+                        disabled={savingDraft || (draftSyncPending && !draftDirty)}
+                      >
+                        {savingDraft || draftSyncPending ? 'Syncing...' : 'Save draft'}
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.moreActionsItem} ${styles.moreActionsDanger}`}
+                        onClick={() => {
+                          setDeleteConfirmOpen(true);
+                          setMoreActionsOpen(false);
+                        }}
+                        disabled={isLocalQuoteId(detail.id) || draftSyncPending}
+                      >
+                        Delete draft
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {(detail.status === 'SENT' || detail.status === 'ACCEPTED' || detail.status === 'DECLINED') ? (
+                        <button type="button" className={styles.moreActionsItem} onClick={handleResendClick}>
+                          Resend
+                        </button>
+                      ) : null}
+                      <button type="button" className={styles.moreActionsItem} onClick={handleRevise}>
+                        Create revision
+                      </button>
+                      {(detail.status === 'SENT' || detail.status === 'ACCEPTED') ? (
+                        <button type="button" className={styles.moreActionsItem} onClick={openInvoiceModal}>
+                          Create invoice
+                        </button>
+                      ) : null}
+                      {openJobPackHref ? (
+                        <Link className={styles.moreActionsItemLink} href={openJobPackHref}>
+                          Open Job Pack
+                        </Link>
+                      ) : null}
+                      {canGenerateJobPack ? (
+                        <button type="button" className={styles.moreActionsItem} onClick={handleGenerateJobPack} disabled={jobPackBusy}>
+                          {jobPackBusy ? 'Generating job pack...' : 'Generate Job Pack'}
+                        </button>
+                      ) : null}
+                      <a className={styles.moreActionsItemLink} href={quotePdfUrl(detail.id)}>
+                        Download PDF
+                      </a>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
@@ -1387,8 +1573,13 @@ export default function QuotesTab({
                 Built from design {detail.sourceEstimateVersionLabel}
               </Link>
             </div>
+            {detail.status === 'DRAFT' ? (
+              <div className={styles.metaNote}>
+                Draft quotes are independent once created. Design edits do not overwrite quote wording, pricing, deposit, expiry, or reference unless you explicitly refresh from design.
+              </div>
+            ) : null}
             {detail.status === 'DRAFT' && hasNewerEstimate ? (
-              <div className={styles.metaWarning}>A newer design ({latestEstimate?.versionLabel}) exists. This quote was built from design {detail.sourceEstimateVersionLabel}.</div>
+              <div className={styles.metaWarning}>A newer design ({refreshEstimateTarget?.versionLabel}) exists. This quote was built from design {detail.sourceEstimateVersionLabel}.</div>
             ) : null}
           </div>
         </section>
@@ -1423,20 +1614,198 @@ export default function QuotesTab({
                       : formatMoneyFromCents(item.unitPriceIncGstCents).replace('$', ''));
                   const liveUnitPriceIncGstCents = detail.status === 'DRAFT' ? getLiveUnitPriceIncGstCents(item) : item.unitPriceIncGstCents;
                   const lineTotal = Math.round((Number.isFinite(item.qty) ? item.qty : 0) * liveUnitPriceIncGstCents);
+                  const parsedPergola = parsedPergolaDrafts.get(item.id) ?? null;
+                  const pergolaOverride = Boolean(draftPergolaOverrideMode[item.id]);
+                  const canUseStructuredPergola = detail.status === 'DRAFT' && parsedPergola && !pergolaOverride;
                   return (
                     <tr key={item.id}>
                       <td>
                         {detail.status === 'DRAFT' ? (
-                          <textarea
-                            className={styles.textarea}
-                            value={item.description}
-                            onChange={(e) =>
-                              setDraftItems((prev) =>
-                                prev.map((entry, i) => (i === idx ? { ...entry, description: e.target.value } : entry)),
-                              )
-                            }
-                            rows={3}
-                          />
+                          <div className={styles.lineEditorCell}>
+                            {canUseStructuredPergola ? (
+                              <div className={styles.structuredPergolaEditor}>
+                                <div className={styles.structuredPergolaToolbar}>
+                                  <span className={styles.structuredPergolaLabel}>Structured pergola editor</span>
+                                  <button
+                                    type="button"
+                                    className={styles.rowButton}
+                                    onClick={() =>
+                                      setDraftPergolaOverrideMode((prev) => ({
+                                        ...prev,
+                                        [item.id]: true,
+                                      }))
+                                    }
+                                  >
+                                    Advanced text override
+                                  </button>
+                                </div>
+                                <label className={styles.metaLabel}>Pergola heading</label>
+                                <input
+                                  className={styles.metaInput}
+                                  value={parsedPergola.heading}
+                                  onChange={(e) =>
+                                    updateDraftItemDescription(item.id, buildPergolaStructuredDescription({
+                                      ...parsedPergola,
+                                      heading: e.target.value,
+                                    }))
+                                  }
+                                />
+                                {parsedPergola.modules.length > 1 ? (
+                                  <>
+                                    <label className={styles.metaLabel}>Configuration</label>
+                                    <input
+                                      className={styles.metaInput}
+                                      value={parsedPergola.configuration}
+                                      onChange={(e) =>
+                                        updateDraftItemDescription(item.id, buildPergolaStructuredDescription({
+                                          ...parsedPergola,
+                                          configuration: e.target.value,
+                                        }))
+                                      }
+                                    />
+                                    <div className={styles.pergolaSectionCard}>
+                                      <div className={styles.pergolaSectionTitle}>Shared specification</div>
+                                      <div className={styles.pergolaFieldGrid}>
+                                        {(['roof', 'colour', 'houseConnection', 'postFixings'] as const).map((fieldKey) => (
+                                          <label key={fieldKey} className={styles.pergolaField}>
+                                            <span className={styles.metaLabel}>
+                                              {fieldKey === 'houseConnection'
+                                                ? 'House connection'
+                                                : fieldKey === 'postFixings'
+                                                  ? 'Post fixings'
+                                                  : fieldKey.charAt(0).toUpperCase() + fieldKey.slice(1)}
+                                            </span>
+                                            <input
+                                              className={styles.metaInput}
+                                              value={parsedPergola.shared[fieldKey]}
+                                              onChange={(e) => updatePergolaSharedField(item.id, fieldKey, e.target.value)}
+                                            />
+                                          </label>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : null}
+                                <div className={styles.pergolaModuleList}>
+                                  {parsedPergola.modules.map((module, moduleIndex) => (
+                                    <div key={`${item.id}:module:${moduleIndex}`} className={styles.pergolaSectionCard}>
+                                      <div className={styles.pergolaSectionTitle}>{module.title || `Module ${moduleIndex + 1}`}</div>
+                                      <div className={styles.pergolaFieldGrid}>
+                                        <label className={styles.pergolaField}>
+                                          <span className={styles.metaLabel}>Type / style</span>
+                                          <input
+                                            className={styles.metaInput}
+                                            value={module.style}
+                                            onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, style: e.target.value }))}
+                                          />
+                                        </label>
+                                        <label className={styles.pergolaField}>
+                                          <span className={styles.metaLabel}>Size</span>
+                                          <input
+                                            className={styles.metaInput}
+                                            value={module.size}
+                                            onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, size: e.target.value }))}
+                                          />
+                                        </label>
+                                        <label className={styles.pergolaField}>
+                                          <span className={styles.metaLabel}>Pitch / slope</span>
+                                          <input
+                                            className={styles.metaInput}
+                                            value={module.pitch}
+                                            onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, pitch: e.target.value }))}
+                                          />
+                                        </label>
+                                        <label className={styles.pergolaField}>
+                                          <span className={styles.metaLabel}>Posts</span>
+                                          <input
+                                            className={styles.metaInput}
+                                            value={module.posts}
+                                            onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, posts: e.target.value }))}
+                                          />
+                                        </label>
+                                        {!parsedPergola.shared.roof.trim() ? (
+                                          <label className={styles.pergolaField}>
+                                            <span className={styles.metaLabel}>Roof</span>
+                                            <input
+                                              className={styles.metaInput}
+                                              value={module.roof}
+                                              onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, roof: e.target.value }))}
+                                            />
+                                          </label>
+                                        ) : null}
+                                        {!parsedPergola.shared.colour.trim() ? (
+                                          <label className={styles.pergolaField}>
+                                            <span className={styles.metaLabel}>Colour</span>
+                                            <input
+                                              className={styles.metaInput}
+                                              value={module.colour}
+                                              onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, colour: e.target.value }))}
+                                            />
+                                          </label>
+                                        ) : null}
+                                        {!parsedPergola.shared.houseConnection.trim() ? (
+                                          <label className={styles.pergolaField}>
+                                            <span className={styles.metaLabel}>House connection</span>
+                                            <input
+                                              className={styles.metaInput}
+                                              value={module.houseConnection}
+                                              onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, houseConnection: e.target.value }))}
+                                            />
+                                          </label>
+                                        ) : null}
+                                        {!parsedPergola.shared.postFixings.trim() ? (
+                                          <label className={styles.pergolaField}>
+                                            <span className={styles.metaLabel}>Post fixings</span>
+                                            <input
+                                              className={styles.metaInput}
+                                              value={module.postFixings}
+                                              onChange={(e) => updatePergolaModule(item.id, moduleIndex, (current) => ({ ...current, postFixings: e.target.value }))}
+                                            />
+                                          </label>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                {isPergolaLineItemDescription(item.description) ? (
+                                  <div className={styles.structuredPergolaToolbar}>
+                                    <span className={styles.structuredPergolaLabel}>
+                                      {parsedPergola ? 'Advanced text override' : 'Manual pergola text'}
+                                    </span>
+                                    {parsedPergola ? (
+                                      <button
+                                        type="button"
+                                        className={styles.rowButton}
+                                        onClick={() =>
+                                          setDraftPergolaOverrideMode((prev) => {
+                                            const next = { ...prev };
+                                            delete next[item.id];
+                                            return next;
+                                          })
+                                        }
+                                      >
+                                        Return to structured editor
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                                <textarea
+                                  className={styles.textarea}
+                                  value={item.description}
+                                  onChange={(e) => updateDraftItemDescription(item.id, e.target.value)}
+                                  rows={6}
+                                />
+                                {isPergolaLineItemDescription(item.description) && !parsedPergola ? (
+                                  <div className={styles.metaWarning}>
+                                    This row is using manual pergola text. Return to the structured editor after the text matches the supported pergola format.
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
+                          </div>
                         ) : (
                           <div className={styles.readonlyBlock}>{item.description}</div>
                         )}
@@ -1630,6 +1999,75 @@ export default function QuotesTab({
           </>
         )}
 
+        {refreshConfirmOpen ? (
+          <div className={styles.modalOverlay}>
+            <div className={styles.modal}>
+              <div className={styles.modalHeader}>
+                <h4 className={styles.cardTitle}>
+                  {refreshUsesLatestDesign ? 'Refresh from latest design' : 'Refresh from current design'}
+                </h4>
+                <button type="button" className={styles.modalClose} onClick={() => setRefreshConfirmOpen(false)} disabled={refreshBusy}>
+                  Close
+                </button>
+              </div>
+              <div className={styles.modalBody}>
+                <p className={styles.modalBodyText}>
+                  {refreshUsesLatestDesign
+                    ? `Choose how to refresh this draft from ${refreshEstimateTarget?.versionLabel}.`
+                    : 'Choose how to refresh this draft from the current design snapshot.'}
+                </p>
+                <div className={styles.refreshModeList}>
+                  {(['pricing_only', 'generated_content', 'full_rebuild'] as const).map((modeValue) => (
+                    <label key={modeValue} className={styles.refreshModeOption}>
+                      <input
+                        type="radio"
+                        name="refresh-mode"
+                        checked={refreshMode === modeValue}
+                        onChange={() => setRefreshMode(modeValue)}
+                      />
+                      <span>
+                        <strong>{formatRefreshModeLabel(modeValue)}</strong>
+                        <span className={styles.refreshModeDescription}>
+                          {modeValue === 'pricing_only'
+                            ? 'Update generated pricing and totals, keep wording and quote metadata.'
+                            : modeValue === 'generated_content'
+                              ? 'Update generated wording, pricing, and totals, keep intro, terms, deposit, expiry, and reference.'
+                              : 'Replace generated content and reset intro, terms, deposit, expiry, and reference to design defaults.'}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {refreshPreviewLoading ? <p className={legacy.note}>Loading refresh summary...</p> : null}
+                {refreshPreviewError ? <div className={styles.errorText}>{refreshPreviewError}</div> : null}
+                {refreshPreview?.summary.length ? (
+                  <div className={styles.refreshSummaryCard}>
+                    <div className={styles.pergolaSectionTitle}>Change summary</div>
+                    <ul className={styles.refreshSummaryList}>
+                      {refreshPreview.summary.map((entry) => (
+                        <li key={entry}>{entry}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={legacy.buttonSecondary} onClick={() => setRefreshConfirmOpen(false)} disabled={refreshBusy}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className={legacy.button}
+                  onClick={() => void handleRefreshFromEstimate()}
+                  disabled={refreshBusy || refreshPreviewLoading}
+                >
+                  {refreshBusy ? 'Refreshing...' : formatRefreshModeLabel(refreshMode)}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {invoiceOpen ? (
           <div className={styles.modalOverlay}>
             <div className={styles.modal}>
@@ -1687,40 +2125,42 @@ export default function QuotesTab({
         ) : null}
 
         {sendOpen ? (
-          <div className={styles.modalOverlay}>
-            <div className={`${styles.modal} ${styles.modalWide}`}>
-              <div className={styles.modalHeader}>
-                <h4 className={styles.cardTitle}>{sendMode === 'send' ? 'Send quote' : 'Resend quote'}</h4>
-                <button
-                  type="button"
-                  className={styles.modalClose}
-                  onClick={() => closeSendModal()}
-                >
-                  Close
-                </button>
-              </div>
-              <div className={styles.modalModeSwitch} role="tablist" aria-label="Email editor mode">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={sendEditorMode === 'compose'}
-                  className={`${styles.modalModeButton} ${sendEditorMode === 'compose' ? styles.modalModeButtonActive : ''}`}
-                  onClick={() => setSendEditorMode('compose')}
-                >
-                  Compose
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={sendEditorMode === 'preview'}
-                  className={`${styles.modalModeButton} ${sendEditorMode === 'preview' ? styles.modalModeButtonActive : ''}`}
-                  onClick={() => setSendEditorMode('preview')}
-                >
-                  Preview
-                </button>
+          <div className={`${styles.modalOverlay} ${styles.sendModalOverlay}`}>
+            <div className={`${styles.modal} ${styles.modalWide} ${styles.sendModal}`}>
+              <div className={styles.sendModalTop}>
+                <div className={styles.modalHeader}>
+                  <h4 className={styles.cardTitle}>{sendMode === 'send' ? 'Send quote' : 'Resend quote'}</h4>
+                  <button
+                    type="button"
+                    className={styles.modalClose}
+                    onClick={() => closeSendModal()}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className={styles.modalModeSwitch} role="tablist" aria-label="Email editor mode">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sendEditorMode === 'compose'}
+                    className={`${styles.modalModeButton} ${sendEditorMode === 'compose' ? styles.modalModeButtonActive : ''}`}
+                    onClick={() => setSendEditorMode('compose')}
+                  >
+                    Edit email
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={sendEditorMode === 'review'}
+                    className={`${styles.modalModeButton} ${sendEditorMode === 'review' ? styles.modalModeButtonActive : ''}`}
+                    onClick={() => setSendEditorMode('review')}
+                  >
+                    Review
+                  </button>
+                </div>
               </div>
               {sendEditorMode === 'compose' ? (
-                <div className={styles.modalBody}>
+                <div className={`${styles.modalBody} ${styles.sendModalBody}`}>
                   <label className={styles.metaLabel} htmlFor="sendTo">To</label>
                   <input id="sendTo" className={styles.metaInput} value={sendTo} onChange={(e) => setSendTo(e.target.value)} />
                   <label className={styles.metaLabel} htmlFor="sendSubject">Subject</label>
@@ -1768,7 +2208,7 @@ export default function QuotesTab({
                   {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
                 </div>
               ) : (
-                <div className={styles.modalBody}>
+                <div className={`${styles.modalBody} ${styles.sendModalBody} ${styles.sendPreviewBody}`}>
                   <div className={styles.previewMetaGrid}>
                     <div className={styles.previewMetaItem}>
                       <div className={styles.metaLabel}>To</div>
@@ -1779,32 +2219,33 @@ export default function QuotesTab({
                       <div className={styles.previewMetaValue}>{sendSubject || '—'}</div>
                     </div>
                   </div>
-                  <p className={styles.attachmentsHint}>
-                    Preview shows rendered email HTML. Action links are illustrative in preview mode.
-                  </p>
-                  {sendPreviewLoading ? <p className={legacy.note}>Loading preview...</p> : null}
-                  {sendPreviewError ? <div className={styles.errorText}>{sendPreviewError}</div> : null}
-                  {!sendPreviewLoading && !sendPreviewError && !sendPreviewHtml ? <p className={legacy.note}>No preview available.</p> : null}
-                  {!sendPreviewError && sendPreviewHtml ? (
-                    <div className={styles.previewFrameWrap}>
-                      <iframe
-                        ref={sendPreviewFrameRef}
-                        title="Quote email preview"
-                        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-                        style={{ width: '100%', height: sendPreviewHeight, border: 0, background: '#fff', display: 'block' }}
-                        srcDoc={sendPreviewHtml}
-                        onLoad={() => {
-                          sizeSendPreviewIframe();
-                          setTimeout(sizeSendPreviewIframe, 50);
-                          setTimeout(sizeSendPreviewIframe, 250);
-                        }}
-                        scrolling="no"
-                      />
+                  <div className={styles.previewMetaGrid}>
+                    <div className={styles.previewMetaItem}>
+                      <div className={styles.metaLabel}>Personal note</div>
+                      <div className={styles.previewMetaValue}>{renderPersonalNoteSummary(sendPersonalNote)}</div>
+                    </div>
+                    <div className={styles.previewMetaItem}>
+                      <div className={styles.metaLabel}>Attachments</div>
+                      <div className={styles.previewMetaValue}>
+                        Quote PDF
+                        {sendDesignPdf ? `, ${sendDesignPdf.name}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  {sendMode === 'send' && (draftDirty || draftSyncPending) ? (
+                    <div className={styles.metaWarning}>This review is based on your current local draft changes.</div>
+                  ) : null}
+                  {sendReviewPdfLoading ? <p className={legacy.note}>Loading quote PDF...</p> : null}
+                  {sendReviewPdfError ? <div className={styles.errorText}>{sendReviewPdfError}</div> : null}
+                  {!sendReviewPdfLoading && !sendReviewPdfError && !sendReviewPdfData ? <p className={legacy.note}>No PDF preview available.</p> : null}
+                  {!sendReviewPdfError && sendReviewPdfData ? (
+                    <div className={styles.quotePreviewFrameWrap}>
+                      <QuotePdfInlinePreview data={sendReviewPdfData} />
                     </div>
                   ) : null}
                 </div>
               )}
-              <div className={styles.modalFooter}>
+              <div className={`${styles.modalFooter} ${styles.sendModalFooter}`}>
                 <button
                   type="button"
                   className={legacy.buttonSecondary}
@@ -1812,9 +2253,20 @@ export default function QuotesTab({
                 >
                   Cancel
                 </button>
-                <button type="button" className={legacy.button} onClick={handleSend} disabled={sendBusy}>
-                  {sendBusy ? 'Sending...' : sendMode === 'send' ? 'Send quote' : 'Resend quote'}
-                </button>
+                {sendEditorMode === 'compose' ? (
+                  <button type="button" className={legacy.button} onClick={() => setSendEditorMode('review')}>
+                    Continue to review
+                  </button>
+                ) : (
+                  <>
+                    <button type="button" className={legacy.buttonSecondary} onClick={() => setSendEditorMode('compose')}>
+                      Back to edit
+                    </button>
+                    <button type="button" className={legacy.button} onClick={handleSend} disabled={sendBusy}>
+                      {sendBusy ? 'Sending...' : sendMode === 'send' ? 'Send quote' : 'Resend quote'}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>

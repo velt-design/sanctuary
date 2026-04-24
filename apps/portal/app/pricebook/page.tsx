@@ -1,4 +1,4 @@
-import { getPortalSession } from '@/lib/auth';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { getCostingConfigWithOverrides } from '@/lib/costing/overrides';
 import { ACTIVE_COSTING_MANIFEST_PATH } from '@sp/costing';
 import PricebookHub from './PricebookHub';
@@ -6,9 +6,8 @@ import PricebookHub from './PricebookHub';
 export const runtime = 'nodejs';
 
 export default async function PricebookPage() {
-  const session = await getPortalSession();
-  const isAdmin = session?.role === 'admin';
-  const { config, overrides } = await getCostingConfigWithOverrides();
+  const supabase = await getSupabaseServerAuth();
+  const { config, overrides } = await getCostingConfigWithOverrides(supabase);
   const files = config.manifest.files;
 
   return (
@@ -36,7 +35,7 @@ export default async function PricebookPage() {
       materialOverrides={overrides.materialCostOverrides}
       actionOverrides={overrides.actionMinutesOverrides}
       driverCurveOverrides={overrides.driverCurveOverrides}
-      isAdmin={isAdmin}
+      isAdmin={true}
     />
   );
 }

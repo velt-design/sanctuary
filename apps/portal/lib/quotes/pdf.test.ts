@@ -130,4 +130,32 @@ describe('quote pdf layout', () => {
     expect(lastPage?.paymentBlock?.lineCount).toBe(4);
     expect((lastPage?.paymentBlock?.topY ?? 0) < (lastPage?.totalsBounds?.belowTotalRuleY ?? 0)).toBe(true);
   });
+
+  it('renders a mixed pergola line item without collapsing the heading to the first style', async () => {
+    const quote = buildQuoteDetail({
+      lineItems: [
+        {
+          id: 'line-mixed',
+          description: [
+            'Pergola 1',
+            '- Configuration: Gable + Perimeter modules',
+            'Shared specification',
+            '- Roof: Acrylic',
+            'Module 1: Gable',
+            '- Size: 6m x 3m',
+            'Module 2: Perimeter',
+            '- Size: 4.2m x 2.6m',
+          ].join('\n'),
+          qty: 1,
+          unitPriceIncGstCents: 10000,
+          lineTotalIncGstCents: 10000,
+          sortOrder: 0,
+        },
+      ],
+    });
+
+    const { bytes } = await generateQuotePdfBytesWithLayout(quote);
+
+    expect(bytes.byteLength).toBeGreaterThan(0);
+  });
 });

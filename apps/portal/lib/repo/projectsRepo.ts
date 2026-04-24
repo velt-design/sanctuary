@@ -5,6 +5,7 @@ import { newId } from '@/lib/utils/id';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
+import { formatSupportedSchemaMessage } from '@/lib/supabase/schemaGuard';
 import { apiJson } from '@/lib/repo/apiClient';
 
 function toPostgrestError(value: unknown): PostgrestErrorLike | null {
@@ -34,7 +35,8 @@ function wrapError(table: string, error: unknown): SupabaseRepoError {
   const details = typeof pg?.details === 'string' && pg.details.trim() ? pg.details.trim() : '';
   const hint = typeof pg?.hint === 'string' && pg.hint.trim() ? pg.hint.trim() : '';
   const extras = [details, hint].filter(Boolean).join(' · ');
-  const message = `Supabase ${code ? `${code}: ` : ''}${msg}${extras ? ` (${extras})` : ''}${hostSuffix()}`;
+  const schemaMessage = formatSupportedSchemaMessage(table, error);
+  const message = schemaMessage ?? `Supabase ${code ? `${code}: ` : ''}${msg}${extras ? ` (${extras})` : ''}${hostSuffix()}`;
   return new SupabaseRepoError(message, {
     table,
     supabaseUrl,
@@ -43,16 +45,6 @@ function wrapError(table: string, error: unknown): SupabaseRepoError {
     postgrestHost,
     postgrestError: pg,
   });
-}
-
-function missingColumnFromError(error: unknown): string | null {
-  const pg = toPostgrestError(error);
-  if (!pg) return null;
-  const code = typeof pg.code === 'string' ? pg.code.trim() : '';
-  if (code !== 'PGRST204') return null;
-  const msg = typeof pg.message === 'string' ? pg.message : '';
-  const match = msg.match(/'([^']+)' column/i);
-  return match ? match[1] : null;
 }
 
 function normaliseProjectShape(p: Project): Project {
@@ -133,66 +125,22 @@ function removeProjectFromList(list: Project[], projectId: string): Project[] {
 async function insertWithUnknownColumnRetry(payloadIn: Record<string, any>): Promise<{ data: any | null; error: any | null }> {
   const supabase = getSupabaseBrowser();
   const payload = { ...payloadIn };
-  let lastError: any | null = null;
-  const removedColumns: string[] = [];
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const res = await supabase.from('projects').insert(payload as any).select('*').single();
-    if (!res.error && res.data) return { data: res.data, error: null };
-
-    const missing = missingColumnFromError(res.error);
-    if (missing && missing in payload) {
-      removedColumns.push(missing);
-      delete payload[missing];
-      lastError = res.error;
-      continue;
-    }
-
-    lastError = res.error;
-    return { data: null, error: res.error };
-  }
-
-  const fallback = { message: 'Supabase insert failed after retries', code: 'CLIENT_RETRY', details: removedColumns.length ? `Removed columns: ${removedColumns.join(', ')}` : null };
-  return { data: null, error: lastError ?? fallback };
+  const res = await supabase.from('projects').insert(payload as any).select('*').single();
+  if (!res.error && res.data) return { data: res.data, error: null };
+  return { data: null, error: res.error };
 }
 
 async function updateWithUnknownColumnRetry(uuid: string, payloadIn: Record<string, any>): Promise<{ data: any | null; error: any | null }> {
   const supabase = getSupabaseBrowser();
   const payload = { ...payloadIn };
-  let lastError: any | null = null;
-  const removedColumns: string[] = [];
-
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const res = await supabase.from('projects').update(payload as any).eq('id', uuid).select('*').single();
-    if (!res.error && res.data) return { data: res.data, error: null };
-
-    const missing = missingColumnFromError(res.error);
-    if (missing && missing in payload) {
-      removedColumns.push(missing);
-      delete payload[missing];
-      lastError = res.error;
-      continue;
-    }
-
-    lastError = res.error;
-    return { data: null, error: res.error };
-  }
-
-  const fallback = { message: 'Supabase update failed after retries', code: 'CLIENT_RETRY', details: removedColumns.length ? `Removed columns: ${removedColumns.join(', ')}` : null };
-  return { data: null, error: lastError ?? fallback };
+  const res = await supabase.from('projects').update(payload as any).eq('id', uuid).select('*').single();
+  if (!res.error && res.data) return { data: res.data, error: null };
+  return { data: null, error: res.error };
 }
 
 export async function listProjects(): Promise<Project[]> {
   const supabase = getSupabaseBrowser();
-  let { data, error } = await supabase.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
-  if (error) {
-    const missing = missingColumnFromError(error);
-    if (missing === 'archived_at') {
-      const fallback = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-      data = fallback.data ?? [];
-      error = fallback.error;
-    }
-  }
+  const { data, error } = await supabase.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
   if (error) throw wrapError('projects', error);
   const projects = (Array.isArray(data) ? data : []).map(projectFromRow);
   return projects.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -201,24 +149,12 @@ export async function listProjects(): Promise<Project[]> {
 export async function listProjectsForContact(contactId: string): Promise<Project[]> {
   const supabase = getSupabaseBrowser();
   const contactUuid = uuidFromAppId(contactId, 'ct');
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('projects')
     .select('*')
     .eq('contact_id', contactUuid)
     .is('archived_at', null)
     .order('created_at', { ascending: false });
-  if (error) {
-    const missing = missingColumnFromError(error);
-    if (missing === 'archived_at') {
-      const fallback = await supabase
-        .from('projects')
-        .select('*')
-        .eq('contact_id', contactUuid)
-        .order('created_at', { ascending: false });
-      data = fallback.data ?? [];
-      error = fallback.error;
-    }
-  }
   if (error) throw wrapError('projects', error);
   const projects = (Array.isArray(data) ? data : []).map(projectFromRow);
   return projects.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));

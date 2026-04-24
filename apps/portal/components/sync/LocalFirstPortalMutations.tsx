@@ -9,18 +9,13 @@ import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { enqueueAndProcessLocalFirstMutation, registerLocalFirstMutationHandler } from '@/lib/localFirst/queue';
 import {
   PORTAL_LOCAL_FIRST_MUTATIONS,
-  type PortalContactUpdateMutationPayload,
   type PortalDesignRequestCreateMutationPayload,
   type PortalEstimateCreateMutationPayload,
   type PortalEstimateNotesMutationPayload,
   type PortalEstimateUpdateMutationPayload,
-  type PortalProjectDetailsMutationPayload,
-  type PortalProjectTaskToggleMutationPayload,
   type PortalQuoteCreateMutationPayload,
   type PortalQuoteUpdateMutationPayload,
   buildDesignRequestEntityKey,
-  patchProjectDetailsCaches,
-  upsertContactCaches,
   replaceEstimateDetailCache,
   replaceQuoteDetailCache,
   upsertEstimateDetailCache,
@@ -29,7 +24,6 @@ import {
 import { registerLocalFirstIdAlias, resolveLocalFirstId } from '@/lib/localFirst/store';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { QuoteVersionDetail } from '@/lib/quotes/types';
-import type { Contact } from '@/lib/types/contact';
 
 function isEstimateConflict(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 409;
@@ -271,53 +265,6 @@ export default function LocalFirstPortalMutations() {
       },
     );
 
-    const unregisterProjectDetailsUpdate = registerLocalFirstMutationHandler(
-      PORTAL_LOCAL_FIRST_MUTATIONS.projectDetailsUpdate,
-      async (item) => {
-        const payload = item.payload as PortalProjectDetailsMutationPayload;
-        try {
-          await apiJson(`/api/projects/${encodeURIComponent(payload.projectId)}/details`, {
-            method: 'PATCH',
-            body: JSON.stringify({
-              project: {
-                name: payload.draft.projectName,
-                siteAddress: payload.draft.siteAddress,
-                region: payload.draft.region,
-                quoteRef: payload.draft.quoteRef,
-                nextActionDate: payload.draft.nextActionDate,
-              },
-              contact: {
-                name: payload.draft.contactName,
-                email: payload.draft.contactEmail,
-                phone: payload.draft.contactPhone,
-              },
-              contactId: payload.contactId,
-            }),
-            skipSaveTracking: true,
-          });
-
-          patchProjectDetailsCaches(queryClient, hostKey, payload.projectId, payload.draft, {
-            contactId: payload.contactId,
-          });
-          void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId);
-
-          return {
-            kind: 'success',
-            clearWorkingCopy: true,
-          } as const;
-        } catch (error) {
-          if (isValidationConflict(error)) {
-            return {
-              kind: 'conflict',
-              message: error.message,
-              serverSnapshot: error.body,
-            } as const;
-          }
-          throw error;
-        }
-      },
-    );
-
     const unregisterEstimateNotesUpdate = registerLocalFirstMutationHandler(
       PORTAL_LOCAL_FIRST_MUTATIONS.estimateNotesUpdate,
       async (item) => {
@@ -357,83 +304,13 @@ export default function LocalFirstPortalMutations() {
       },
     );
 
-    const unregisterProjectTaskToggle = registerLocalFirstMutationHandler(
-      PORTAL_LOCAL_FIRST_MUTATIONS.projectTaskToggle,
-      async (item) => {
-        const payload = item.payload as PortalProjectTaskToggleMutationPayload;
-        try {
-          await apiJson(`/api/projects/${encodeURIComponent(payload.projectId)}/tasks`, {
-            method: 'POST',
-            body: JSON.stringify({
-              taskKey: payload.taskKey,
-              completed: payload.completed,
-            }),
-            skipSaveTracking: true,
-          });
-
-          void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId, {
-            includeProjectDetail: false,
-            includeProjectsList: false,
-          });
-
-          return {
-            kind: 'success',
-            clearWorkingCopy: true,
-          } as const;
-        } catch (error) {
-          if (isValidationConflict(error)) {
-            return {
-              kind: 'conflict',
-              message: error.message,
-              serverSnapshot: error.body,
-            } as const;
-          }
-          throw error;
-        }
-      },
-    );
-
-    const unregisterContactUpdate = registerLocalFirstMutationHandler(
-      PORTAL_LOCAL_FIRST_MUTATIONS.contactUpdate,
-      async (item) => {
-        const payload = item.payload as PortalContactUpdateMutationPayload;
-        try {
-          const res = await apiJson<{ contact: Contact }>(`/api/contacts/${encodeURIComponent(payload.contactId)}`, {
-            method: 'PATCH',
-            body: JSON.stringify(payload.draft),
-            skipSaveTracking: true,
-          });
-
-          if (!res.contact) throw new Error('Contact not saved');
-          upsertContactCaches(queryClient, hostKey, res.contact);
-
-          return {
-            kind: 'success',
-            clearWorkingCopy: true,
-          } as const;
-        } catch (error) {
-          if (isValidationConflict(error)) {
-            return {
-              kind: 'conflict',
-              message: error.message,
-              serverSnapshot: error.body,
-            } as const;
-          }
-          throw error;
-        }
-      },
-    );
-
     return () => {
       unregisterEstimateCreate();
       unregisterEstimateUpdate();
       unregisterDesignRequestCreate();
       unregisterQuoteCreate();
       unregisterQuoteUpdate();
-      unregisterProjectDetailsUpdate();
       unregisterEstimateNotesUpdate();
-      unregisterProjectTaskToggle();
-      unregisterContactUpdate();
     };
   }, [hostKey, queryClient]);
 

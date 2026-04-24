@@ -1,30 +1,39 @@
 import { NextResponse } from 'next/server';
+import { createRouteDiagnostics, logPortalServerError } from '@/lib/api/routeDiagnostics';
 import { jsonError, requireStaffSession } from '@/lib/api/staffApi';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
 export const runtime = 'nodejs';
 
-export async function GET(_req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const startedAt = performance.now();
+export async function GET(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
+  const diagnostics = createRouteDiagnostics(req, '/api/projects/[projectId]/snapshot');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   const { projectId } = await ctx.params;
   const id = typeof projectId === 'string' ? projectId.trim() : '';
-  if (!id) return jsonError('Invalid projectId', 400);
+  if (!id) return jsonError('Invalid projectId', 400, diagnostics);
 
   try {
-    const snapshot = await getProjectPageSnapshot(id);
-    if (!snapshot) return jsonError('Project not found', 404);
+    const snapshot = await getProjectPageSnapshot(id, diagnostics);
+    if (!snapshot) return jsonError('Project not found', 404, diagnostics);
 
-    const response = NextResponse.json({
+    return NextResponse.json({
       snapshot,
       generatedAt: new Date().toISOString(),
+    }, {
+      headers: {
+        'x-portal-request-id': diagnostics.requestId,
+        'server-timing': `total;dur=${(performance.now() - diagnostics.startedAt).toFixed(1)}`,
+      },
     });
-    response.headers.set('server-timing', `total;dur=${(performance.now() - startedAt).toFixed(1)}`);
-    return response;
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to load project snapshot';
-    return jsonError(msg, 500);
+    logPortalServerError(diagnostics, {
+      status: 500,
+      message: msg,
+      error: err,
+    });
+    return jsonError(msg, 500, diagnostics);
   }
 }

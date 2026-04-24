@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { QueueMode, WorkQueueItem } from '@/lib/dashboard/types';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import WorkQueueTable from './WorkQueueTable';
 import dash from '../dashboard.module.css';
 import { projectsHref } from '@/lib/dashboard/links';

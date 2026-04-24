@@ -1,0 +1,169 @@
+.shell {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  min-height: 44rem;
+  height: calc(100dvh - var(--portal-header-height, 72px) - 32px);
+  overflow: hidden;
+}
+
+.configuratorColumn,
+.workspaceColumn {
+  min-width: 0;
+  min-height: 0;
+}
+
+.configuratorColumn {
+  display: grid;
+}
+
+.configuratorScroll {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding-right: 4px;
+}
+
+.moduleSection {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
+    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.04), transparent 50%);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.moduleSectionTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.56);
+}
+
+.moduleSelect {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 14px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.88);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.modeButton {
+  min-height: 38px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  border-radius: 12px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+  color: rgba(var(--portal-text-rgb), 0.9);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.modeButton:hover {
+  border-color: rgba(var(--portal-text-rgb), 0.18);
+  transform: translateY(-1px);
+}
+
+.modeButtonActive {
+  border-color: rgba(var(--portal-text-rgb), 0.16);
+  background: rgba(var(--portal-text-rgb), 0.08);
+}
+
+.diagnosticsList {
+  display: grid;
+  gap: 8px;
+}
+
+.diagnosticRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.diagnosticLabel {
+  color: rgba(var(--portal-text-rgb), 0.62);
+  font-weight: 700;
+}
+
+.diagnosticValue {
+  color: rgba(var(--portal-text-rgb), 0.9);
+  font-weight: 700;
+}
+
+.workspaceColumn {
+  display: grid;
+}
+
+.workspaceSurface {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.notice,
+.emptyState {
+  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
+    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.04), transparent 50%);
+  padding: 14px;
+}
+
+.noticeTitle,
+.emptyTitle {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.84);
+}
+
+.noticeText,
+.emptyText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+@media (max-width: 1023px) {
+  .shell {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .configuratorScroll,
+  .workspaceSurface {
+    overflow: visible;
+  }
+
+  .workspaceSurface {
+    min-height: 38rem;
+  }
+}

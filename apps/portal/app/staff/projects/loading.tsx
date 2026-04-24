@@ -1,6 +1,5 @@
-import ProjectsIndexClient from './ProjectsIndexClient';
+import BlueprintLoadingScreen from '@/components/page-state/BlueprintLoadingScreen';
 
 export default function Loading() {
-  return <ProjectsIndexClient mode="loading" />;
+  return <BlueprintLoadingScreen />;
 }
-

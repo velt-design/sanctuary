@@ -1,9 +1,7 @@
-import { getPortalSession } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireAdminPageAccess } from '@/lib/auth';
 
 export default async function PricebookLayout({ children }: { children: React.ReactNode }) {
-  const session = await getPortalSession();
-  if (!session) redirect('/login?callbackUrl=/pricebook');
+  await requireAdminPageAccess('/pricebook');
 
   return children;
 }

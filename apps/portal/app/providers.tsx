@@ -5,6 +5,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { createIDBPersister } from '@/lib/react-query/idbPersister';
+import { resolvePortalQueryCacheBuster, shouldDehydratePortalQuery } from '@/lib/react-query/persistence';
 import LocalFirstRuntime from '@/components/sync/LocalFirstRuntime';
 import LocalFirstPortalMutations from '@/components/sync/LocalFirstPortalMutations';
 
@@ -26,7 +27,7 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   const [persister] = useState(() => createIDBPersister('sanctuary-portal-react-query'));
-  const buster = process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER ?? 'v2';
+  const buster = resolvePortalQueryCacheBuster(process.env.NEXT_PUBLIC_QUERY_CACHE_BUSTER);
 
   return (
     <PersistQueryClientProvider
@@ -35,6 +36,9 @@ export function Providers({ children }: { children: ReactNode }) {
         persister,
         maxAge: ONE_DAY,
         buster,
+        dehydrateOptions: {
+          shouldDehydrateQuery: shouldDehydratePortalQuery,
+        },
       }}
     >
       <LocalFirstRuntime />

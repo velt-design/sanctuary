@@ -1,18 +1,14 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import styles from './schedule.module.css';
-import { listInstallers } from '@/lib/repo/installersRepo';
-import { getProject, listProjects } from '@/lib/repo/projectsRepo';
-import { listAllEstimates } from '@/lib/repo/estimatesRepo';
-import { confirmScheduleItem, deleteScheduleItem, listScheduleItems, normalizeScheduleItemsStarted, replaceScheduleItems, unlockScheduleItem } from '@/lib/repo/scheduleRepo';
 import {
   ackClientUpdate,
   assignJob,
   createDowntime,
   deleteDowntime,
-  fetchScheduleGantt,
   lockJobSchedule,
   markJobDone,
   markJobInProgress,
@@ -28,280 +24,79 @@ import {
   updateDowntime,
 } from '@/lib/repo/scheduleV2Repo';
 import { qk } from '@/lib/queries/keys';
-import { scheduleV2SnapshotQueryOptions, type ScheduleV2Snapshot } from '@/lib/queries/schedule';
+import { scheduleGanttV2SnapshotQueryOptions, scheduleV2SnapshotQueryOptions, type ScheduleProjectSummary, type ScheduleV2Snapshot } from '@/lib/queries/schedule';
 import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
-import type { Estimate } from '@/lib/types/estimate';
-import type { Project } from '@/lib/types/project';
-import { nextActionTypeLabel, normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
+import { normalizeProjectStatus, projectStatusLabel } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduleItemStatus, SchedulingIssue } from '@/lib/types/scheduling';
-import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
-import { buildScheduleBars } from '@/lib/scheduling/engine';
-import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
-import { addDaysYmd, diffDaysYmd, isYmd } from '@/lib/scheduling/date';
+import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import { addDaysYmd, isYmd } from '@/lib/scheduling/date';
 import { recomputeCrewSchedule, type CrewDowntime, type CrewScheduleItem, type ScheduledJob as RecomputeScheduledJob } from '@/lib/scheduling/recompute';
+import { resolveDefaultScheduleGanttRange } from '@/lib/scheduling/scheduleGanttRange';
+import { resolveScheduleTodayYmd, SCHEDULE_TIME_ZONE } from '@/lib/scheduling/scheduleClock';
 import { buildWorkingDayIndex, type CompanyClosure, type NzHoliday } from '@/lib/scheduling/workingDays';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import Modal from '@/components/ui/modal/Modal';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import { usePortalRouteTransition } from '@/components/page-state/PortalRouteTransition';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
-import { SupabaseRepoError } from '@/lib/supabase/repoError';
-import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { ApiError } from '@/lib/repo/apiClient';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 import { runScheduleDiagnostics } from '@/lib/queries/scheduleDiagnostics';
-import {
-  closestCenter,
-  DndContext,
-  type DragEndEvent,
-  type DragOverEvent,
-  type DragMoveEvent,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import {
-  axisSpanPx,
-  axisXForDayIndex,
-  buildGanttAxis,
-  GANTT_WEEKEND_WEIGHT,
-  snapAxisDayDeltaForPixelDelta,
-  todayYmdInTimeZone,
-} from './ganttAxis';
-import SiteVisitsView from './SiteVisitsView';
+import type { ScheduleActionModalsProps, ScheduleModalState } from './ScheduleActionModals';
+import type { ScheduleDiagnosticsResult } from './ScheduleDiagnosticsPanel';
+import type { ScheduleBoardDrop, ScheduleBoardMenuAction, ScheduleBoardViewProps } from './ScheduleBoardView';
+import type { ScheduleGanttViewProps } from './ScheduleGanttView';
+import ScheduleViewTabs, { type ScheduleView } from './ScheduleViewTabs';
+import type { ScheduleLegacyFallbackClientProps } from './ScheduleLegacyFallbackClient';
+import { getScheduleSupabaseHost } from './scheduleRuntime';
+import type { ScheduleBoardModel, SchedulableJob } from './ScheduleClientModel';
+import { EMPTY_SCHEDULE_BOARD_MODEL, buildScheduleBarsFromForecast, formatDuration, formatHours, makeJobId, mapV2UnscheduledJobs, safeProjectName } from './ScheduleBoardModelShared';
+import { buildScheduleBoardModelV2 } from './ScheduleBoardModelV2';
+import { logScheduleDebug } from './scheduleDebug';
+import { recentScheduleTelemetryEvents, sendScheduleTelemetry } from './scheduleTelemetryClient';
+import type { ScheduleClientTelemetryEvent } from '@/lib/scheduling/scheduleTelemetry';
 
-type SchedulableJob = {
-  id: string;
-  projectId: string;
-  estimateId: string;
-  projectName: string;
-  descriptor: string;
-  status: string;
-  durationHours: number;
-  durationLabel: string;
-  durationTitle: string;
-  warnings: string[];
-};
+const LazyScheduleBoardView = dynamic<ScheduleBoardViewProps>(
+  () => import('./ScheduleBoardView'),
+  {
+    ssr: false,
+    loading: () => <p className={styles.note}>Loading Board...</p>,
+  },
+);
 
-type GanttDensity = 'compact' | 'comfortable';
+const LazyScheduleGanttView = dynamic<ScheduleGanttViewProps>(
+  () => import('./ScheduleGanttView'),
+  {
+    ssr: false,
+    loading: () => <p className={styles.note}>Loading Gantt...</p>,
+  },
+);
 
-type GanttSummarySpan = {
-  leftPx: number;
-  widthPx: number;
-};
+const LazyScheduleLegacyFallbackClient = dynamic<ScheduleLegacyFallbackClientProps>(
+  () => import('./ScheduleLegacyFallbackClient'),
+  {
+    ssr: false,
+    loading: () => <p className={styles.note}>Loading legacy schedule fallback...</p>,
+  },
+);
 
-const GANTT_DAY_PX = 18;
-const GANTT_TIMELINE_WEEKS = 12;
-const GANTT_TIMELINE_DAYS = GANTT_TIMELINE_WEEKS * 7;
-const GANTT_ZOOM_WEEK_OPTIONS = [4, 8, 12] as const;
-type GanttZoomWeeks = (typeof GANTT_ZOOM_WEEK_OPTIONS)[number];
-const GANTT_DEFAULT_ZOOM_WEEKS: GanttZoomWeeks = 12;
-const GANTT_LABEL_MIN_PX = 220;
-const GANTT_LABEL_DEFAULT_PX = 260;
-const GANTT_LABEL_MAX_PX = 420;
-const GANTT_BAR_LABEL_MIN_PX = 120;
-const GANTT_TZ = 'Pacific/Auckland';
-const GANTT_DENSITY_STORAGE_KEY = 'sp.schedule.ganttDensity';
-const GANTT_LABEL_WIDTH_STORAGE_KEY = 'sp.schedule.ganttLabelWidth';
+const LazyScheduleActionModals = dynamic<ScheduleActionModalsProps>(
+  () => import('./ScheduleActionModals'),
+  {
+    ssr: false,
+  },
+);
+
+const LazyScheduleDiagnosticsPanel = dynamic(() => import('./ScheduleDiagnosticsPanel'), {
+  ssr: false,
+});
+
+export type { ScheduleBoardModel, ScheduleRuntimeState, SchedulableJob } from './ScheduleClientModel';
+
 const USE_SCHEDULE_V2 = true;
 const V2_MUTATION_DEBOUNCE_MS = 180;
-
-function normalizeGanttZoomWeeks(value: number): GanttZoomWeeks {
-  if (value === 4 || value === 8 || value === 12) return value;
-  return GANTT_DEFAULT_ZOOM_WEEKS;
-}
-
-function ganttBaseDayPxForZoomWeeks(zoomWeeks: GanttZoomWeeks): number {
-  return Math.max(1, Math.round((GANTT_DAY_PX * GANTT_TIMELINE_WEEKS) / zoomWeeks));
-}
-
-function clampGanttLabelWidth(value: number): number {
-  if (!Number.isFinite(value)) return GANTT_LABEL_DEFAULT_PX;
-  return Math.max(GANTT_LABEL_MIN_PX, Math.min(GANTT_LABEL_MAX_PX, Math.round(value)));
-}
-
-function readGanttDensityPreference(): GanttDensity {
-  if (typeof window === 'undefined') return 'compact';
-  try {
-    const value = window.localStorage.getItem(GANTT_DENSITY_STORAGE_KEY);
-    if (value === 'compact' || value === 'comfortable') return value;
-  } catch {
-    // ignore read errors
-  }
-  return 'compact';
-}
-
-function writeGanttDensityPreference(value: GanttDensity): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(GANTT_DENSITY_STORAGE_KEY, value);
-  } catch {
-    // ignore write errors
-  }
-}
-
-function readGanttLabelWidthPreference(): number {
-  if (typeof window === 'undefined') return GANTT_LABEL_DEFAULT_PX;
-  try {
-    const raw = window.localStorage.getItem(GANTT_LABEL_WIDTH_STORAGE_KEY);
-    if (!raw) return GANTT_LABEL_DEFAULT_PX;
-    const parsed = Number.parseFloat(raw);
-    return clampGanttLabelWidth(parsed);
-  } catch {
-    // ignore read errors
-  }
-  return GANTT_LABEL_DEFAULT_PX;
-}
-
-function writeGanttLabelWidthPreference(value: number): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(GANTT_LABEL_WIDTH_STORAGE_KEY, String(clampGanttLabelWidth(value)));
-  } catch {
-    // ignore write errors
-  }
-}
-
-function parseHexColour(value: string): { r: number; g: number; b: number } | null {
-  const raw = value.trim().replace(/^#/, '');
-  if (!raw) return null;
-  const hex = raw.length === 3 ? raw.split('').map((c) => `${c}${c}`).join('') : raw;
-  if (!/^[0-9a-f]{6}$/i.test(hex)) return null;
-  const num = Number.parseInt(hex, 16);
-  return {
-    r: (num >> 16) & 0xff,
-    g: (num >> 8) & 0xff,
-    b: num & 0xff,
-  };
-}
-
-function toHexByte(n: number): string {
-  const clamped = Math.max(0, Math.min(255, Math.round(n)));
-  return clamped.toString(16).padStart(2, '0');
-}
-
-function darkenHex(hex: string, amount: number): string {
-  const rgb = parseHexColour(hex);
-  if (!rgb) return hex;
-  const factor = 1 - Math.max(0, Math.min(1, amount));
-  return `#${toHexByte(rgb.r * factor)}${toHexByte(rgb.g * factor)}${toHexByte(rgb.b * factor)}`;
-}
-
-function relativeLuminance({ r, g, b }: { r: number; g: number; b: number }): number {
-  const toLinear = (v: number) => {
-    const s = v / 255;
-    return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  };
-  const R = toLinear(r);
-  const G = toLinear(g);
-  const B = toLinear(b);
-  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
-}
-
-function getReadableTextColor(bgHex: string): '#000000' | '#ffffff' {
-  const rgb = parseHexColour(bgHex);
-  if (!rgb) return '#000000';
-  const L = relativeLuminance(rgb);
-  const contrastWithBlack = (L + 0.05) / 0.05;
-  const contrastWithWhite = 1.05 / (L + 0.05);
-  return contrastWithWhite >= contrastWithBlack ? '#ffffff' : '#000000';
-}
-
-function mergeSummarySpans(spans: GanttSummarySpan[]): GanttSummarySpan[] {
-  const sorted = spans
-    .filter((span) => Number.isFinite(span.leftPx) && Number.isFinite(span.widthPx) && span.widthPx > 0)
-    .sort((a, b) => a.leftPx - b.leftPx);
-  if (!sorted.length) return [];
-
-  const merged: GanttSummarySpan[] = [];
-  for (const span of sorted) {
-    const last = merged[merged.length - 1];
-    if (!last) {
-      merged.push({ leftPx: span.leftPx, widthPx: span.widthPx });
-      continue;
-    }
-    const lastRight = last.leftPx + last.widthPx;
-    const spanRight = span.leftPx + span.widthPx;
-    if (span.leftPx <= lastRight + 1) {
-      last.widthPx = Math.max(lastRight, spanRight) - last.leftPx;
-      continue;
-    }
-    merged.push({ leftPx: span.leftPx, widthPx: span.widthPx });
-  }
-
-  return merged;
-}
-
-type GanttRow =
-  | {
-      kind: 'group';
-      id: string;
-      installerId: string;
-      label: string;
-      color: string;
-      jobCount: number;
-      collapsed: boolean;
-      summarySpans: GanttSummarySpan[];
-    }
-  | {
-      kind: 'item';
-      id: string;
-      installerId: string;
-      scheduleItemId: string;
-      projectId: string;
-      estimateId: string;
-      projectName: string;
-      status: string;
-      durationLabel: string;
-      durationDays: number;
-      startDate: string;
-      endDate: string;
-      barLeftPx: number;
-      barWidthPx: number;
-      ghostLeftPx?: number;
-      ghostWidthPx?: number;
-      barColor: string;
-      isDowntime?: boolean;
-      isPinned?: boolean;
-      issueLevel?: 'warning' | 'error';
-      plannedLeftPx?: number;
-      plannedWidthPx?: number;
-      plannedStart?: string;
-      plannedEnd?: string;
-      plannedCommitmentLabel?: string | null;
-      plannedFlexDays?: number | null;
-      plannedDurationDays?: number | null;
-      driftDays?: number | null;
-      clientUpdateStatus?: 'none' | 'needed' | 'acknowledged' | null;
-    }
-  | {
-      kind: 'empty';
-      id: string;
-      installerId: string;
-      label: string;
-    };
-
-function formatDuration(hours: number): string {
-  if (!Number.isFinite(hours) || hours <= 0) return '—';
-  const days = hours / WORK_HOURS_PER_DAY;
-  const daysLabel = Number.isFinite(days) ? days.toFixed(days % 1 === 0 ? 0 : 1) : '—';
-  return `${daysLabel}d`;
-}
-
-function formatHours(hours: number): string {
-  if (!Number.isFinite(hours)) return '—';
-  const h = hours.toFixed(hours % 1 === 0 ? 0 : 1);
-  return `${h}h`;
-}
 
 function formatStatusLabel(status: string): string {
   if (!status) return '—';
@@ -333,77 +128,12 @@ function deriveScheduleStatus(item: ScheduleItem, today: string): ScheduleItemSt
   return 'TENTATIVE';
 }
 
-function safeProjectName(project: Project | null | undefined): string {
-  return project?.projectName ?? project?.name ?? 'Untitled project';
-}
-
-function safeProjectStatus(project: Project | null | undefined): string {
-  return project?.status ?? 'NEW';
-}
-
-function endInclusiveFromExclusive(endExclusive: string, fallback: string): string {
-  if (!isYmd(endExclusive)) return fallback;
-  return addDaysYmd(endExclusive, -1);
-}
-
-function buildScheduleBarsFromForecast(input: {
-  scheduleItems: ScheduleItem[];
-  projectsById: Map<string, Project>;
-  estimatesById: Map<string, Estimate>;
-}): { bars: Array<{ scheduleItemId: string; installerId: string; projectId: string; estimateId: string; projectName: string; status: string; startDate: string; endDate: string; durationHours: number }>; issues: SchedulingIssue[] } {
-  const bars: Array<{ scheduleItemId: string; installerId: string; projectId: string; estimateId: string; projectName: string; status: string; startDate: string; endDate: string; durationHours: number }> = [];
-  const issues: SchedulingIssue[] = [];
-
-  for (const item of input.scheduleItems) {
-    const start = item.forecastStart ?? item.startDateOverride ?? '';
-    if (!start || !isYmd(start)) continue;
-    const durationDays =
-      typeof item.forecastDurationDays === 'number' && Number.isFinite(item.forecastDurationDays) && item.forecastDurationDays > 0
-        ? item.forecastDurationDays
-        : typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-          ? item.durationHoursOverride / WORK_HOURS_PER_DAY
-          : 1;
-    const endExclusive = item.forecastEndExclusive ?? (start ? addDaysYmd(start, Math.max(1, Math.ceil(durationDays))) : start);
-    const endDate = endInclusiveFromExclusive(endExclusive, start);
-
-    const project = item.projectId ? input.projectsById.get(item.projectId) ?? null : null;
-    const projectName =
-      item.itemType === 'downtime'
-        ? `Downtime${item.downtimeReason ? ` · ${titleCase(item.downtimeReason)}` : ''}`
-        : safeProjectName(project);
-    const status = item.itemType === 'downtime' ? 'DOWNTIME' : safeProjectStatus(project);
-
-    bars.push({
-      scheduleItemId: item.id,
-      installerId: item.installerId,
-      projectId: item.projectId,
-      estimateId: item.estimateId,
-      projectName,
-      status,
-      startDate: start,
-      endDate,
-      durationHours: Math.max(0.5, durationDays * WORK_HOURS_PER_DAY),
-    });
-  }
-
-  return { bars, issues };
-}
-
 function isLockedScheduleStatus(status: ScheduleItemStatus): boolean {
   return status === 'CONFIRMED' || status === 'IN_PROGRESS' || status === 'COMPLETED';
 }
 
 function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
-}
-
-function titleCase(value: string): string {
-  return value
-    .replace(/[_-]+/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
-    .join(' ');
 }
 
 function parseYmd(ymd: string): Date | null {
@@ -457,7 +187,7 @@ function snapToWeekdayYmd(ymd: string): string {
 function formatShortDate(ymd: string): string {
   const dt = parseYmd(ymd);
   if (!dt) return ymd;
-  return new Intl.DateTimeFormat('en-NZ', { day: '2-digit', month: 'short', timeZone: GANTT_TZ }).format(dt);
+  return new Intl.DateTimeFormat('en-NZ', { day: '2-digit', month: 'short', timeZone: SCHEDULE_TIME_ZONE }).format(dt);
 }
 
 function formatDateRange(startYmd: string, endYmd: string): string {
@@ -471,19 +201,6 @@ function isWeekendDate(ymd: string): boolean {
   return day === 0 || day === 6;
 }
 
-function workingDaysInclusive(startYmd: string, endYmd: string): number {
-  if (!isYmd(startYmd) || !isYmd(endYmd)) return 1;
-  if (diffDaysYmd(startYmd, endYmd) < 0) return 1;
-  let count = 0;
-  let d = startYmd;
-  for (let i = 0; i < 8000; i += 1) {
-    if (!isWeekendDate(d)) count += 1;
-    if (d === endYmd) break;
-    d = addDaysYmd(d, 1);
-  }
-  return Math.max(1, count);
-}
-
 function addWorkingDaysInclusive(startYmd: string, durationDays: number): string {
   const dur = Number.isFinite(durationDays) ? Math.max(1, Math.trunc(durationDays)) : 1;
   let remaining = dur - 1;
@@ -492,24 +209,6 @@ function addWorkingDaysInclusive(startYmd: string, durationDays: number): string
     d = addDaysYmd(d, 1);
     if (isWeekendDate(d)) continue;
     remaining -= 1;
-  }
-  return d;
-}
-
-function snapToWeekdayYmdDirectional(ymd: string, direction: number): string {
-  const dt = parseYmd(ymd);
-  if (!dt) return ymd;
-  const day = dt.getUTCDay();
-  if (day !== 0 && day !== 6) return ymd;
-
-  const step = direction < 0 ? -1 : 1;
-  let d = ymd;
-  for (let i = 0; i < 3; i += 1) {
-    d = addDaysYmd(d, step);
-    const nd = parseYmd(d);
-    if (!nd) return d;
-    const dow = nd.getUTCDay();
-    if (dow !== 0 && dow !== 6) return d;
   }
   return d;
 }
@@ -553,39 +252,18 @@ function parsePositiveInt(value: string): number | null {
   return v;
 }
 
-function makeJobId(projectId: string, estimateId: string): string {
-  return `job_${projectId}_${estimateId}`;
-}
-
-function mapV2UnscheduledJobs(list: ScheduleV2Snapshot['unscheduledJobs'] | null | undefined): SchedulableJob[] {
-  if (!Array.isArray(list)) return [];
-  const out: SchedulableJob[] = [];
-  for (const job of list) {
-    const projectId = typeof job?.projectId === 'string' ? job.projectId : '';
-    const estimateId = typeof job?.estimateId === 'string' ? job.estimateId : '';
-    if (!projectId || !estimateId) continue;
-    const status = normalizeProjectStatus(job?.status ?? 'NEW').status;
-    if (!isSchedulingReadyProjectStatus(status)) continue;
-
-    const durationDays =
-      typeof job?.durationDays === 'number' && Number.isFinite(job.durationDays) && job.durationDays > 0 ? job.durationDays : 1;
-    const durationHours = Math.max(0.5, durationDays * WORK_HOURS_PER_DAY);
-
-    out.push({
-      id: makeJobId(projectId, estimateId),
-      projectId,
-      estimateId,
-      projectName: (typeof job?.projectName === 'string' ? job.projectName : '').trim() || 'Untitled project',
-      descriptor: '',
-      status,
-      durationHours,
-      durationLabel: formatDuration(durationHours),
-      durationTitle: formatHours(durationHours),
-      warnings: [],
-    });
-  }
-  out.sort((a, b) => a.projectName.localeCompare(b.projectName));
-  return out;
+function mapGanttHolidaysFromSnapshot(holidays: NzHoliday[] | null | undefined): Array<{ date: string; name?: string; kind: 'holiday' }> {
+  if (!Array.isArray(holidays)) return [];
+  return holidays
+    .filter((holiday) => isYmd(holiday?.date ?? ''))
+    .filter((holiday) => {
+      const scope = typeof holiday.scope === 'string' ? holiday.scope.trim().toLowerCase() : '';
+      const region = typeof holiday.region === 'string' ? holiday.region.trim().toLowerCase() : '';
+      if (scope === 'national') return true;
+      if (!region) return false;
+      return region.includes('auckland');
+    })
+    .map((holiday) => ({ date: holiday.date, name: holiday.name, kind: 'holiday' as const }));
 }
 
 function scheduleStatusFromV2JobStatus(value: unknown): ScheduleItemStatus {
@@ -634,49 +312,6 @@ function durationDaysFromScheduleItem(item: ScheduleItem): number {
     return Math.max(1, Math.ceil(item.durationHoursOverride / WORK_HOURS_PER_DAY));
   }
   return 1;
-}
-
-function normaliseEnumValue(value: unknown): string {
-  if (typeof value !== 'string') return '';
-  return value.trim().toLowerCase().replace(/\s+/g, '_');
-}
-
-function isSchedulableEstimate(estimate: Estimate): boolean {
-  return normaliseEnumValue((estimate as any).status) !== 'archived';
-}
-
-function getLatestSchedulableEstimate(estimates: Estimate[]): Estimate | null {
-  const schedulable = estimates.filter((e) => isSchedulableEstimate(e));
-  if (!schedulable.length) return null;
-  schedulable.sort((a, b) => ((b as any).version ?? 0) - ((a as any).version ?? 0) || b.createdAt.localeCompare(a.createdAt));
-  return schedulable[0] ?? null;
-}
-
-function getJobDescriptorFromEstimate(estimate: Estimate): string {
-  const inputs: unknown = (estimate as any).inputs;
-  if (isCalculatorInputsV2(inputs)) {
-    const m = inputs.modules?.[0];
-    if (!m) return '—';
-    const base = `${titleCase(m.pergolaStyle)} · ${titleCase(m.roofMaterial)}`;
-    const length = Number.parseFloat(m.lengthM);
-    const projection = Number.parseFloat(m.projectionM);
-    const pitch = Number.parseFloat(m.roofPitchDeg);
-    const dims =
-      Number.isFinite(length) && Number.isFinite(projection) ? ` · ${length.toFixed(0)}×${projection.toFixed(0)}m` : '';
-    const pitchLabel = Number.isFinite(pitch) && pitch > 0 ? ` · ${pitch.toFixed(0)}°` : '';
-    return `${base}${dims}${pitchLabel}`;
-  }
-  if (isLegacyCalculatorInputsV1(inputs)) {
-    const base = `${titleCase(inputs.pergolaStyle)} · ${titleCase(inputs.roofMaterial)}`;
-    const length = Number.parseFloat(inputs.lengthM);
-    const projection = Number.parseFloat(inputs.projectionM);
-    const pitch = Number.parseFloat(inputs.roofPitchDeg);
-    const dims =
-      Number.isFinite(length) && Number.isFinite(projection) ? ` · ${length.toFixed(0)}×${projection.toFixed(0)}m` : '';
-    const pitchLabel = Number.isFinite(pitch) && pitch > 0 ? ` · ${pitch.toFixed(0)}°` : '';
-    return `${base}${dims}${pitchLabel}`;
-  }
-  return '—';
 }
 
 function renormalizeLane(items: ScheduleItem[], installerId: string): ScheduleItem[] {
@@ -814,7 +449,7 @@ function optimisticUnassign(
   items: ScheduleItem[],
   unscheduledSeed: SchedulableJob[],
   scheduleItemId: string,
-  projectsById: Map<string, Project>,
+  projectsById: Map<string, ScheduleProjectSummary>,
 ): { items: ScheduleItem[]; unscheduledSeed: SchedulableJob[] } {
   const it = items.find((i) => i.id === scheduleItemId);
   if (!it || it.itemType === 'downtime') return { items, unscheduledSeed };
@@ -854,526 +489,59 @@ function optimisticUnassign(
   };
 }
 
-function LaneDropZone({
-  laneId,
-  children,
-  onMount,
+export default function ScheduleClient({
+  initialScheduleMode = 'v2',
+  initialSeedKind = 'board',
+  initialV2Snapshot: initialV2SnapshotProp = null,
 }: {
-  laneId: string;
-  children: React.ReactNode;
-  onMount?: (node: HTMLDivElement | null) => void;
+  initialScheduleMode?: 'v2' | 'legacy';
+  initialSeedKind?: 'board' | 'gantt';
+  initialV2Snapshot?: ScheduleV2Snapshot | null;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `lane:${laneId}` });
-  return (
-    <div
-      ref={(node) => {
-        setNodeRef(node);
-        onMount?.(node);
-      }}
-      className={styles.laneBody}
-      data-over={isOver ? 'true' : 'false'}
-    >
-      {children}
-    </div>
-  );
-}
-
-function UnscheduledDropZone({
-  children,
-  onMount,
-}: {
-  children: React.ReactNode;
-  onMount?: (node: HTMLDivElement | null) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({ id: 'unscheduled' });
-  return (
-    <div
-      ref={(node) => {
-        setNodeRef(node);
-        onMount?.(node);
-      }}
-      className={styles.unscheduledBody}
-      data-over={isOver ? 'true' : 'false'}
-    >
-      {children}
-    </div>
-  );
-}
-
-type MenuAction = {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: 'danger';
-};
-
-type GanttPopoverAnchor = {
-  top: number;
-  left: number;
-  right: number;
-  bottom: number;
-  width: number;
-  height: number;
-};
-
-type GanttPopoverAction = {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  tone?: 'danger';
-  shortcut?: string;
-};
-
-function isElementOrParentNoDnd(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest('[data-no-dnd="true"]'));
-}
-
-function isTextInputLikeTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (target.isContentEditable) return true;
-  const tag = target.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-}
-
-function computeGanttPopoverPosition(anchor: GanttPopoverAnchor): { top: number; left: number } {
-  const width = 300;
-  const margin = 12;
-  const gap = 10;
-  if (typeof window === 'undefined') {
-    return { top: anchor.bottom + gap, left: anchor.left };
-  }
-
-  const maxLeft = Math.max(margin, window.innerWidth - width - margin);
-  const left = Math.min(Math.max(anchor.left, margin), maxLeft);
-  const preferredTop = anchor.bottom + gap;
-  const estimatedHeight = 340;
-  const canOpenBelow = preferredTop + estimatedHeight <= window.innerHeight - margin;
-  const top = canOpenBelow ? preferredTop : Math.max(margin, anchor.top - estimatedHeight - gap);
-  return { top, left };
-}
-
-function JobActionsMenu({
-  actions,
-  ariaLabel,
-}: {
-  actions: MenuAction[];
-  ariaLabel?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-  const items = actions.filter((action) => action && typeof action.onClick === 'function');
-
-  if (!items.length) return null;
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (!ref.current) return;
-      if (!ref.current.contains(target)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [open]);
-
-  return (
-    <div
-      ref={ref}
-      className={styles.menuWrap}
-      data-no-dnd="true"
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        type="button"
-        className={styles.kebab}
-        data-no-dnd="true"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={ariaLabel ?? 'Job actions'}
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-        title="Job actions"
-      >
-        ⋯
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className={styles.menu}
-          data-no-dnd="true"
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {items.map((action, idx) => (
-            <button
-              key={`${action.label}-${idx}`}
-              type="button"
-              role="menuitem"
-              data-no-dnd="true"
-              className={cx(styles.menuItem, action.tone === 'danger' && styles.menuItemDanger)}
-              disabled={Boolean(action.disabled)}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-              }}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                if (action.disabled) return;
-                setOpen(false);
-                window.setTimeout(() => action.onClick(), 0);
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                if (action.disabled) return;
-                setOpen(false);
-                window.setTimeout(() => action.onClick(), 0);
-              }}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function GanttBarPopover({
-  anchor,
-  actions,
-  details,
-  onClose,
-  onKeyDown,
-  focusRef,
-}: {
-  anchor: GanttPopoverAnchor;
-  actions: GanttPopoverAction[];
-  details?: React.ReactNode;
-  onClose: () => void;
-  onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
-  focusRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  const pos = computeGanttPopoverPosition(anchor);
-  return (
-    <>
-      <div className={styles.ganttPopoverBackdrop} onPointerDown={onClose} onMouseDown={onClose} />
-      <div
-        ref={focusRef}
-        tabIndex={-1}
-        className={styles.ganttPopover}
-        style={{ top: pos.top, left: pos.left }}
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={onKeyDown}
-        aria-label="Gantt quick actions"
-      >
-        {details ? <div className={styles.ganttPopoverDetails}>{details}</div> : null}
-        <div className={styles.ganttPopoverActionList}>
-          {actions.map((action, actionIndex) => (
-            <button
-              key={`${action.label}-${actionIndex}`}
-              type="button"
-              className={cx(styles.ganttPopoverAction, action.tone === 'danger' && styles.ganttPopoverActionDanger)}
-              disabled={Boolean(action.disabled)}
-              onClick={() => action.onClick()}
-            >
-              <span>{action.label}</span>
-              {action.shortcut ? <span className={styles.ganttPopoverShortcut}>{action.shortcut}</span> : null}
-            </button>
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
-function JobCardShell({
-  title,
-  descriptor,
-  statusLabel,
-  durationLabel,
-  durationTitle,
-  scheduleStatus,
-  pinned,
-  onOpen,
-  dateLine,
-  extraBadges,
-  warning,
-  issueLevel,
-  dragProps,
-  draggable,
-  dragging,
-  menu,
-  cardRef,
-  style,
-  dropTarget,
-}: {
-  title: string;
-  descriptor: string;
-  statusLabel: string;
-  durationLabel: string;
-  durationTitle: string;
-  scheduleStatus?: ScheduleItemStatus;
-  pinned?: boolean;
-  onOpen?: () => void;
-  dateLine?: string;
-  extraBadges?: React.ReactNode;
-  warning?: boolean;
-  issueLevel?: 'warning' | 'error';
-  dragProps?: Record<string, unknown>;
-  draggable?: boolean;
-  dragging?: boolean;
-  menu?: React.ReactNode;
-  cardRef: (node: HTMLElement | null) => void;
-  style?: React.CSSProperties;
-  dropTarget?: boolean;
-}) {
-  return (
-    <div
-      ref={cardRef}
-      className={styles.jobCard}
-      style={style}
-      data-drop-target={dropTarget ? 'true' : 'false'}
-      data-draggable={draggable ? 'true' : undefined}
-      data-dragging={dragging ? 'true' : undefined}
-      data-issue-level={issueLevel ?? (warning ? 'warning' : undefined)}
-      role={onOpen ? 'button' : undefined}
-      tabIndex={onOpen ? 0 : undefined}
-      {...(dragProps as any)}
-      onDoubleClick={(e) => {
-        if (!onOpen) return;
-        if (dragging) return;
-        if (isElementOrParentNoDnd(e.target)) return;
-        onOpen();
-      }}
-      onKeyDown={(e) => {
-        if (!onOpen) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
-    >
-      <div className={styles.jobTopRow}>
-        <div className={styles.jobMain}>
-          <div className={styles.jobTitle} title={title}>
-            {title}
-          </div>
-          <div className={styles.jobDescriptor} title={descriptor}>
-            {descriptor}
-          </div>
-        </div>
-
-        <div className={styles.jobRight}>{menu}</div>
-      </div>
-
-      <div className={styles.badgesRow}>
-        <span className={styles.statusPill}>{statusLabel}</span>
-        <span className={styles.durationPill} title={durationTitle}>
-          {durationLabel}
-        </span>
-        {pinned ? (
-          <span className={styles.pinnedPill}>
-            <span className={styles.pinnedDot} aria-hidden="true" />
-            Pinned
-          </span>
-        ) : null}
-        {scheduleStatus ? <span className={styles.schedulePill}>{scheduleStatusLabel(scheduleStatus)}</span> : null}
-        {extraBadges}
-        {issueLevel === 'error' ? <span className={styles.warnBadge}>Conflict</span> : warning || issueLevel === 'warning' ? <span className={styles.warnBadge}>Warning</span> : null}
-      </div>
-
-      {dateLine ? <div className={styles.dateLine}>{dateLine}</div> : null}
-    </div>
-  );
-}
-
-function UnscheduledJobCard({ job }: { job: SchedulableJob }) {
-  const router = useRouter();
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: job.id,
-    data: { kind: 'job' },
-  });
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.55 : 1,
-  } as React.CSSProperties;
-
-  return (
-    <JobCardShell
-      title={job.projectName}
-      descriptor={job.descriptor}
-      statusLabel={formatStatusLabel(job.status)}
-      durationLabel={job.durationLabel}
-      durationTitle={job.durationTitle}
-      onOpen={() => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`)}
-      warning={job.warnings.length > 0}
-      dragProps={{ ...attributes, ...listeners }}
-      draggable
-      dragging={isDragging}
-      cardRef={(node) => setNodeRef(node as any)}
-      style={style}
-    />
-  );
-}
-
-function ScheduledJobCard({
-  id,
-  job,
-  scheduleStatus,
-  dateLine,
-  dropTarget,
-  menuActions,
-  pinned,
-  extraBadges,
-  issueLevel,
-}: {
-  id: string;
-  job: SchedulableJob | null;
-  scheduleStatus: ScheduleItemStatus;
-  dateLine?: string;
-  dropTarget?: boolean;
-  menuActions: MenuAction[];
-  pinned?: boolean;
-  extraBadges?: React.ReactNode;
-  issueLevel?: 'warning' | 'error';
-}) {
-  const router = useRouter();
-  const locked = isLockedScheduleStatus(scheduleStatus);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: locked });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.55 : 1,
-  } as React.CSSProperties;
-
-  return (
-    <JobCardShell
-      title={job?.projectName ?? 'Untitled project'}
-      descriptor={job?.descriptor ?? '—'}
-      statusLabel={formatStatusLabel(job?.status ?? '')}
-      durationLabel={job?.durationLabel ?? '—'}
-      durationTitle={job?.durationTitle ?? '—'}
-      scheduleStatus={scheduleStatus}
-      pinned={pinned}
-      extraBadges={extraBadges}
-      onOpen={
-        job
-          ? () => router.push(`/staff/projects/${encodeURIComponent(job.projectId)}`)
-          : undefined
-      }
-      dateLine={dateLine}
-      warning={Boolean(job?.warnings?.length)}
-      issueLevel={issueLevel}
-      dragProps={locked ? {} : { ...attributes, ...listeners }}
-      draggable={!locked}
-      dragging={isDragging}
-      menu={<JobActionsMenu actions={menuActions} />}
-      cardRef={(node) => setNodeRef(node as any)}
-      style={style}
-      dropTarget={dropTarget}
-    />
-  );
-}
-
-function DowntimeCard({
-  id,
-  item,
-  dateLine,
-  dropTarget,
-  menuActions,
-  issueLevel,
-}: {
-  id: string;
-  item: ScheduleItem;
-  dateLine?: string;
-  dropTarget?: boolean;
-  menuActions: MenuAction[];
-  issueLevel?: 'warning' | 'error';
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.55 : 1,
-  } as React.CSSProperties;
-
-  const durationHours =
-    typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-      ? item.durationHoursOverride
-      : typeof item.forecastDurationDays === 'number' && Number.isFinite(item.forecastDurationDays) && item.forecastDurationDays > 0
-        ? item.forecastDurationDays * WORK_HOURS_PER_DAY
-        : WORK_HOURS_PER_DAY;
-
-  const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-
-  return (
-    <JobCardShell
-      title={reason}
-      descriptor={item.downtimeNote ?? 'Crew unavailable'}
-      statusLabel="Downtime"
-      durationLabel={formatDuration(durationHours)}
-      durationTitle={formatHours(durationHours)}
-      dateLine={dateLine}
-      issueLevel={issueLevel}
-      dragProps={{ ...attributes, ...listeners }}
-      draggable
-      dragging={isDragging}
-      menu={<JobActionsMenu actions={menuActions} ariaLabel="Downtime actions" />}
-      cardRef={(node) => setNodeRef(node as any)}
-      style={style}
-      dropTarget={dropTarget}
-    />
-  );
-}
-
-export default function ScheduleClient() {
   const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { beginRouteTransition } = usePortalRouteTransition();
   const queryClient = useQueryClient();
-  const ganttScrollRef = useRef<HTMLDivElement | null>(null);
-  const boardScrollRef = useRef<HTMLDivElement | null>(null);
-  const laneBodyRefs = useRef(new Map<string, HTMLDivElement | null>());
-  const unscheduledBodyRef = useRef<HTMLDivElement | null>(null);
+  const [isTransitionPending, startUiTransition] = useTransition();
   const hydratedFromCacheRef = useRef(false);
   const scheduleItemsRef = useRef<ScheduleItem[]>([]);
   const unscheduledJobsSeedRef = useRef<SchedulableJob[]>([]);
   const scheduleConflictsRef = useRef<any[]>([]);
   const nextAvailRef = useRef<Map<string, string>>(new Map());
   const installersRef = useRef<Installer[]>([]);
-  const projectsRef = useRef<Project[]>([]);
+  const projectsRef = useRef<ScheduleProjectSummary[]>([]);
 
-  const today = useMemo(() => {
-    const ymd = todayYmdInTimeZone(GANTT_TZ);
-    if (isYmd(ymd)) return ymd;
-    const utcYmd = todayYmdInTimeZone('UTC');
-    return isYmd(utcYmd) ? utcYmd : '1970-01-01';
-  }, []);
+  const initialView = (() => {
+    const raw = (searchParams.get('view') || '').trim().toLowerCase();
+    if (raw === 'site-visits') return 'site_visits' as const;
+    if (raw === 'gantt') return 'gantt' as const;
+    return 'board' as const;
+  })();
 
-  const supabaseHost = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()), []);
+  const today = useMemo(() => resolveScheduleTodayYmd(), []);
+
+  const supabaseHost = useMemo(() => getScheduleSupabaseHost(), []);
   const hostKey = supabaseHost || 'unknown';
 
-  const v2SnapshotKey = useMemo(() => qk.schedule.board(hostKey, today), [hostKey, today]);
-  const initialV2Snapshot = USE_SCHEDULE_V2 ? (queryClient.getQueryData<ScheduleV2Snapshot>(v2SnapshotKey) ?? null) : null;
+  const ganttRange = useMemo(() => resolveDefaultScheduleGanttRange(today), [today]);
+  const boardSnapshotKey = useMemo(() => qk.schedule.board(hostKey, today), [hostKey, today]);
+  const ganttSnapshotKey = useMemo(
+    () => qk.schedule.gantt(hostKey, ganttRange.rangeStart, ganttRange.rangeEnd, today),
+    [ganttRange.rangeEnd, ganttRange.rangeStart, hostKey, today],
+  );
+  const cachedV2Snapshot = USE_SCHEDULE_V2
+    ? (initialView === 'gantt'
+        ? queryClient.getQueryData<ScheduleV2Snapshot>(ganttSnapshotKey)
+        : queryClient.getQueryData<ScheduleV2Snapshot>(boardSnapshotKey)) ?? null
+    : null;
+  const initialV2Snapshot = USE_SCHEDULE_V2 && initialScheduleMode === 'v2' ? initialV2SnapshotProp ?? cachedV2Snapshot : null;
+  const initialSnapshotKind = initialV2Snapshot ? (initialV2SnapshotProp ? initialSeedKind : initialView === 'gantt' ? 'gantt' : 'board') : null;
+  const initialV2SnapshotUpdatedAt = useMemo(() => {
+    if (!initialV2Snapshot) return undefined;
+    const generatedAtMs = Date.parse(initialV2Snapshot.generatedAt);
+    return Number.isFinite(generatedAtMs) ? generatedAtMs : Date.now();
+  }, [initialV2Snapshot]);
   if (initialV2Snapshot) hydratedFromCacheRef.current = true;
   const v2GeneratedAtRef = useRef<string>(initialV2Snapshot?.generatedAt ?? '');
   const v2MutationBufferRef = useRef<Array<{ run: () => Promise<any>; resolve: (result: any) => void; reject: (error: unknown) => void }>>([]);
@@ -1385,19 +553,22 @@ export default function ScheduleClient() {
 
   const [hydrated, setHydrated] = useState(() => Boolean(initialV2Snapshot));
   const [loadError, setLoadError] = useState<{ message: string; table?: string; code?: string } | null>(null);
-  const [reloadNonce, setReloadNonce] = useState(0);
   const [installers, setInstallers] = useState<Installer[]>(() => initialV2Snapshot?.installers ?? []);
-  const [projects, setProjects] = useState<Project[]>(() => initialV2Snapshot?.projects ?? []);
+  const [projects, setProjects] = useState<ScheduleProjectSummary[]>(() => initialV2Snapshot?.projects ?? []);
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>(() => initialV2Snapshot?.scheduleItems ?? []);
-  const [estimatesById, setEstimatesById] = useState<Map<string, Estimate>>(() => new Map());
   const [unscheduledJobsSeed, setUnscheduledJobsSeed] = useState<SchedulableJob[]>(() => mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs));
-  const [scheduleMode, setScheduleMode] = useState<'v2' | 'legacy'>(USE_SCHEDULE_V2 ? 'v2' : 'legacy');
+  const [scheduleMode, setScheduleMode] = useState<'v2' | 'legacy'>(initialScheduleMode);
+  const [activeSnapshotKind, setActiveSnapshotKind] = useState<'board' | 'gantt' | null>(initialSnapshotKind);
+  const [legacyFallbackReason, setLegacyFallbackReason] = useState<ScheduleLegacyFallbackClientProps['initialReason']>(
+    initialScheduleMode === 'legacy' ? 'server-schema-not-ready' : undefined,
+  );
   const [scheduleConflicts, setScheduleConflicts] = useState<any[]>(() => initialV2Snapshot?.conflicts ?? []);
   const [nextAvailableByInstallerId, setNextAvailableByInstallerId] = useState<Map<string, string>>(
     () => new Map(Object.entries(initialV2Snapshot?.nextAvailableByInstallerId ?? {})),
   );
-  const [ganttHolidays, setGanttHolidays] = useState<Array<{ date: string; name?: string; kind: 'holiday' }>>([]);
-  const [ganttPopover, setGanttPopover] = useState<{ scheduleItemId: string; anchor: GanttPopoverAnchor } | null>(null);
+  const [ganttHolidays, setGanttHolidays] = useState<Array<{ date: string; name?: string; kind: 'holiday' }>>(() =>
+    mapGanttHolidaysFromSnapshot(initialV2Snapshot?.holidays),
+  );
   const [quickEdit, setQuickEdit] = useState<{ id: string; startDateOverride: string; durationDays: string } | null>(null);
   const [durationEdit, setDurationEdit] = useState<{ id: string; durationDays: string } | null>(null);
   const [commitmentEdit, setCommitmentEdit] = useState<{
@@ -1431,52 +602,27 @@ export default function ScheduleClient() {
   } | null>(null);
   const [cleanupBusy, setCleanupBusy] = useState(false);
 
-  const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(() => {
-    const raw = (searchParams.get('view') || '').trim().toLowerCase();
-    if (raw === 'site-visits') return 'site_visits';
-    if (raw === 'gantt') return 'gantt';
-    return 'board';
-  });
+  const [view, setView] = useState<'board' | 'gantt' | 'site_visits'>(initialView);
   const [query, setQuery] = useState('');
-  const [zoomWeeks, setZoomWeeks] = useState<GanttZoomWeeks>(GANTT_DEFAULT_ZOOM_WEEKS);
-  const [ganttDensity, setGanttDensity] = useState<GanttDensity>(() => readGanttDensityPreference());
-  const [labelWidthPx, setLabelWidthPx] = useState<number>(() => readGanttLabelWidthPreference());
-  const [showPlanned, setShowPlanned] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [hoveredGanttRowId, setHoveredGanttRowId] = useState<string | null>(null);
-  const [collapsedCrews, setCollapsedCrews] = useState<Record<string, boolean>>({});
   const [unscheduledCollapsed, setUnscheduledCollapsed] = useState<boolean>(() => !mapV2UnscheduledJobs(initialV2Snapshot?.unscheduledJobs).length);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [diagnosticsBusy, setDiagnosticsBusy] = useState(false);
-  const [diagnostics, setDiagnostics] = useState<{
-    host: string | null;
-    crewsOk: boolean;
-    crewsError?: string;
-    itemsOk: boolean;
-    itemsError?: string;
-    projectsOk: boolean;
-    projectsError?: string;
-    estimatesOk: boolean;
-    estimatesError?: string;
-  } | null>(null);
+  const [diagnostics, setDiagnostics] = useState<ScheduleDiagnosticsResult | null>(null);
+  const [recentTelemetryEvents, setRecentTelemetryEvents] = useState<ScheduleClientTelemetryEvent[]>(() => recentScheduleTelemetryEvents());
   const [syncing, setSyncing] = useState(false);
-  const [ganttDrag, setGanttDrag] = useState<{
-    id: string;
-    mode: 'move' | 'resize';
-    originX: number;
-    startDate: string;
-    endDate: string;
-    durationDays: number;
-  } | null>(null);
-  const [ganttDragDelta, setGanttDragDelta] = useState(0);
-  const [ganttDragPointer, setGanttDragPointer] = useState<{ x: number; y: number } | null>(null);
-  const [ganttLabelResize, setGanttLabelResize] = useState<{ startX: number; startWidth: number } | null>(null);
-  const ganttDragDeltaRef = useRef(0);
-  const ganttDragMovedRef = useRef(false);
-  const ganttClickBlockUntilRef = useRef(0);
-  const ganttPopoverRef = useRef<HTMLDivElement | null>(null);
-  const labelWidthPxRef = useRef(labelWidthPx);
-  const pendingZoomAnchorRef = useRef<{ date: string; viewportOffsetPx: number } | null>(null);
+  const deferredQuery = useDeferredValue(query);
+  const devOnly = process.env.NODE_ENV !== 'production';
+  const telemetryEmittedRef = useRef<Set<string>>(new Set());
+  const boardFetchCountRef = useRef(0);
+  const ganttFetchCountRef = useRef(0);
+  const previousBoardFetchingRef = useRef(false);
+  const previousGanttFetchingRef = useRef(false);
+
+  const emitScheduleTelemetry = useCallback((input: Parameters<typeof sendScheduleTelemetry>[0]) => {
+    const event = sendScheduleTelemetry(input);
+    if (event && devOnly) setRecentTelemetryEvents(recentScheduleTelemetryEvents());
+  }, [devOnly]);
 
   useEffect(() => {
     scheduleItemsRef.current = scheduleItems;
@@ -1501,18 +647,6 @@ export default function ScheduleClient() {
   useEffect(() => {
     nextAvailRef.current = nextAvailableByInstallerId;
   }, [nextAvailableByInstallerId]);
-
-  useEffect(() => {
-    labelWidthPxRef.current = labelWidthPx;
-  }, [labelWidthPx]);
-
-  useEffect(() => {
-    writeGanttDensityPreference(ganttDensity);
-  }, [ganttDensity]);
-
-  useEffect(() => {
-    writeGanttLabelWidthPreference(labelWidthPx);
-  }, [labelWidthPx]);
 
   useEffect(() => {
     return () => {
@@ -1542,7 +676,7 @@ export default function ScheduleClient() {
 
   function writeV2SnapshotToCache(state: V2LocalState, generatedAt: string): void {
     if (scheduleMode !== 'v2') return;
-    queryClient.setQueryData<ScheduleV2Snapshot>(v2SnapshotKey, {
+    queryClient.setQueryData<ScheduleV2Snapshot>(boardSnapshotKey, {
       generatedAt,
       installers: installersRef.current,
       projects: projectsRef.current,
@@ -1573,6 +707,7 @@ export default function ScheduleClient() {
     setUnscheduledJobsSeed(state.unscheduledJobsSeed);
     setScheduleConflicts(state.scheduleConflicts);
     setNextAvailableByInstallerId(new Map(state.nextAvailableByInstallerId));
+    setActiveSnapshotKind(view === 'gantt' ? 'gantt' : 'board');
     setHydrated(true);
 
     writeV2SnapshotToCache(state, generatedAt);
@@ -1899,101 +1034,114 @@ export default function ScheduleClient() {
     });
   }
 
-  const setScheduleView = (next: 'board' | 'gantt' | 'site_visits') => {
+  const setScheduleView = (next: ScheduleView) => {
+    if (next === view) return;
     const qs = new URLSearchParams(searchParams.toString());
-    qs.set('view', next === 'site_visits' ? 'site-visits' : next);
-    router.replace(`/staff/schedule?${qs.toString()}`);
-    setView(next);
+    const viewParam = next === 'site_visits' ? 'site-visits' : next;
+    qs.set('view', viewParam);
+    const href = `/staff/schedule?${qs.toString()}`;
+    const label = next === 'site_visits' ? 'Site visits' : next === 'gantt' ? 'Gantt' : 'Board';
+    beginRouteTransition({ href, label, source: 'schedule-view', show: 'immediate' });
+    startUiTransition(() => {
+      router.replace(href);
+      if (next === 'board' && activeSnapshotKind !== 'board') {
+        v2GeneratedAtRef.current = '';
+        setActiveSnapshotKind(null);
+      }
+      if (next !== 'site_visits') setView(next);
+    });
   };
 
-  const scheduleTabs = (
-    <>
-      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'board'} onClick={() => setScheduleView('board')}>
-        Board
-      </button>
-      <button type="button" className={styles.buttonSecondary} aria-pressed={view === 'gantt'} onClick={() => setScheduleView('gantt')}>
-        Gantt
-      </button>
-      <button
-        type="button"
-        className={styles.buttonSecondary}
-        aria-pressed={view === 'site_visits'}
-        onClick={() => setScheduleView('site_visits')}
-      >
-        Site visits
-      </button>
-    </>
-  );
-
-  type ScheduleSnapshotV1 = {
-    generatedAt: string;
-    host: string | null;
-    crews: Array<{ id: string; name: string; color: string | null; is_active: boolean; sort_order: number }>;
-    scheduleItems: Array<{
-      id: string;
-      crew_id: string;
-      project_id: string;
-      estimate_id: string | null;
-      start_date: string;
-      end_date: string;
-      duration_days: number | null;
-      sort_order: number;
-      updated_at: string | null;
-      status?: string | null;
-      locked?: boolean | null;
-      confirmed_at?: string | null;
-      confirmed_by?: string | null;
-      actual_start_date?: string | null;
-      actual_end_date?: string | null;
-    }>;
-    projectsIndex: Array<{
-      id: string;
-      name: string;
-      pipeline_stage: string;
-      site_address: string | null;
-      created_at: string | null;
-      updated_at: string | null;
-    }>;
+  const handleShowCompletedChange = (next: boolean) => {
+    startUiTransition(() => {
+      setShowCompleted(next);
+    });
   };
 
-  const snapshotKey = useMemo(() => qk.schedule.snapshot(hostKey), [hostKey]);
-  const { data: cachedSnapshot } = useQuery<ScheduleSnapshotV1 | null>({
-    queryKey: snapshotKey,
-    queryFn: async () => null,
-    enabled: false,
-  });
+  const handleToggleUnscheduledCollapsed = () => {
+    startUiTransition(() => {
+      setUnscheduledCollapsed((prev) => !prev);
+    });
+  };
 
-  const v2SnapshotQuery = useQuery({
+  const scheduleTabs = <ScheduleViewTabs view={view} onChange={setScheduleView} />;
+
+  const boardSnapshotQuery = useQuery({
     ...scheduleV2SnapshotQueryOptions(hostKey, today),
-    enabled: scheduleMode === 'v2' && view !== 'site_visits',
+    enabled: scheduleMode === 'v2' && view === 'board',
+    initialData: scheduleMode === 'v2' && initialSnapshotKind === 'board' ? initialV2Snapshot ?? undefined : undefined,
+    initialDataUpdatedAt: scheduleMode === 'v2' && initialSnapshotKind === 'board' ? initialV2SnapshotUpdatedAt : undefined,
     retry: (failureCount, error) => !(error instanceof ApiError && error.status === 501) && failureCount < 1,
   });
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
+  const ganttSnapshotQuery = useQuery({
+    ...scheduleGanttV2SnapshotQueryOptions(hostKey, today, ganttRange),
+    enabled: scheduleMode === 'v2' && view === 'gantt',
+    initialData: scheduleMode === 'v2' && initialSnapshotKind === 'gantt' ? initialV2Snapshot ?? undefined : undefined,
+    initialDataUpdatedAt: scheduleMode === 'v2' && initialSnapshotKind === 'gantt' ? initialV2SnapshotUpdatedAt : undefined,
+    retry: (failureCount, error) => !(error instanceof ApiError && error.status === 501) && failureCount < 1,
+  });
 
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
-  const [overLaneId, setOverLaneId] = useState<string | null>(null);
+  const activeV2SnapshotError = view === 'gantt' ? ganttSnapshotQuery.error : boardSnapshotQuery.error;
+  const activeV2SnapshotIsFetching = view === 'gantt' ? ganttSnapshotQuery.isFetching : boardSnapshotQuery.isFetching;
+  const activeV2SnapshotKind = view === 'gantt' ? 'gantt' : 'board';
+
   const v2ErrorNotifiedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (scheduleMode !== 'v2') return;
-    if (view === 'site_visits') return;
-    const snapshot = v2SnapshotQuery.data;
-    if (!snapshot) return;
+    if (initialScheduleMode !== 'legacy') return;
+    const key = 'fallback:server-schema-not-ready';
+    if (telemetryEmittedRef.current.has(key)) return;
+    telemetryEmittedRef.current.add(key);
+    emitScheduleTelemetry({
+      event: 'fallback_activated',
+      view: initialView === 'site_visits' ? 'site_visits' : initialView,
+      reason: 'server-schema-not-ready',
+      meta: { initialSeedKind },
+    });
+  }, [emitScheduleTelemetry, initialScheduleMode, initialSeedKind, initialView]);
 
+  useEffect(() => {
+    if (boardSnapshotQuery.isFetching && !previousBoardFetchingRef.current) {
+      boardFetchCountRef.current += 1;
+      if (initialSnapshotKind === 'board' && boardFetchCountRef.current === 1) {
+        emitScheduleTelemetry({
+          event: 'duplicate_initial_fetch',
+          view: 'board',
+          counts: { fetchCount: boardFetchCountRef.current },
+          meta: { initialSeedKind },
+        });
+      }
+    }
+    previousBoardFetchingRef.current = boardSnapshotQuery.isFetching;
+  }, [boardSnapshotQuery.isFetching, emitScheduleTelemetry, initialSeedKind, initialSnapshotKind]);
+
+  useEffect(() => {
+    if (ganttSnapshotQuery.isFetching && !previousGanttFetchingRef.current) {
+      ganttFetchCountRef.current += 1;
+      if (initialSnapshotKind === 'gantt' && ganttFetchCountRef.current === 1) {
+        emitScheduleTelemetry({
+          event: 'duplicate_initial_fetch',
+          view: 'gantt',
+          counts: { fetchCount: ganttFetchCountRef.current },
+          meta: { initialSeedKind },
+        });
+      }
+    }
+    previousGanttFetchingRef.current = ganttSnapshotQuery.isFetching;
+  }, [emitScheduleTelemetry, ganttSnapshotQuery.isFetching, initialSeedKind, initialSnapshotKind]);
+
+  function applySnapshotFromQuery(snapshot: ScheduleV2Snapshot, kind: 'board' | 'gantt') {
     const incomingGeneratedAt = typeof snapshot.generatedAt === 'string' && snapshot.generatedAt ? snapshot.generatedAt : nowIso();
     const latestGeneratedAt = v2GeneratedAtRef.current;
-    if (v2PendingMutationsRef.current > 0 && latestGeneratedAt && incomingGeneratedAt <= latestGeneratedAt) return;
-    if (latestGeneratedAt && incomingGeneratedAt < latestGeneratedAt) return;
+    const replacingSnapshotKind = activeSnapshotKind !== kind;
+    if (!replacingSnapshotKind && v2PendingMutationsRef.current > 0 && latestGeneratedAt && incomingGeneratedAt <= latestGeneratedAt) return;
 
     v2GeneratedAtRef.current = incomingGeneratedAt;
     hydratedFromCacheRef.current = true;
     v2HolidaysRef.current = Array.isArray(snapshot.holidays) ? snapshot.holidays : [];
     v2ClosuresRef.current = Array.isArray(snapshot.closures) ? snapshot.closures : [];
+    setGanttHolidays(mapGanttHolidaysFromSnapshot(v2HolidaysRef.current));
 
     const nextItems = snapshot.scheduleItems;
     const nextUnscheduled = mapV2UnscheduledJobs(snapshot.unscheduledJobs);
@@ -2009,24 +1157,58 @@ export default function ScheduleClient() {
     setInstallers(snapshot.installers);
     setProjects(snapshot.projects);
     setScheduleItems(nextItems);
-    setEstimatesById(new Map());
     setUnscheduledJobsSeed(nextUnscheduled);
     setScheduleConflicts(nextConflicts);
     setNextAvailableByInstallerId(nextAvail);
+    setActiveSnapshotKind(kind);
     setHydrated(true);
-  }, [scheduleMode, view, v2SnapshotQuery.data]);
+
+    const telemetryKey = `hydrated:${kind}`;
+    if (!telemetryEmittedRef.current.has(telemetryKey)) {
+      telemetryEmittedRef.current.add(telemetryKey);
+      emitScheduleTelemetry({
+        event: 'schedule_hydrated',
+        view: kind,
+        counts: {
+          installers: snapshot.installers.length,
+          projects: snapshot.projects.length,
+          scheduleItems: nextItems.length,
+          unscheduledJobs: nextUnscheduled.length,
+        },
+        meta: {
+          source: initialV2SnapshotProp ? 'server_seed' : hydratedFromCacheRef.current ? 'cache_or_query' : 'query',
+          generatedAt: incomingGeneratedAt,
+        },
+      });
+    }
+  }
+
+  useEffect(() => {
+    if (scheduleMode !== 'v2') return;
+    if (view !== 'board') return;
+    const snapshot = boardSnapshotQuery.data ?? queryClient.getQueryData<ScheduleV2Snapshot>(boardSnapshotKey) ?? null;
+    if (!snapshot) return;
+    applySnapshotFromQuery(snapshot, 'board');
+  }, [activeSnapshotKind, boardSnapshotKey, boardSnapshotQuery.data, boardSnapshotQuery.isFetching, queryClient, scheduleMode, view]);
+
+  useEffect(() => {
+    if (scheduleMode !== 'v2') return;
+    if (view !== 'gantt') return;
+    if (!ganttSnapshotQuery.data) return;
+    applySnapshotFromQuery(ganttSnapshotQuery.data, 'gantt');
+  }, [activeSnapshotKind, ganttSnapshotQuery.data, scheduleMode, view]);
 
   useEffect(() => {
     if (scheduleMode !== 'v2') return;
     if (view === 'site_visits') return;
-    setSyncing(v2SnapshotQuery.isFetching || v2PendingMutationsRef.current > 0);
-  }, [scheduleMode, view, v2SnapshotQuery.isFetching]);
+    setSyncing(activeV2SnapshotIsFetching || v2PendingMutationsRef.current > 0);
+  }, [activeV2SnapshotIsFetching, scheduleMode, view]);
 
   useEffect(() => {
     if (scheduleMode !== 'v2') return;
     if (view === 'site_visits') return;
 
-    const err = v2SnapshotQuery.error;
+    const err = activeV2SnapshotError;
     if (!err) {
       v2ErrorNotifiedRef.current = null;
       return;
@@ -2038,19 +1220,32 @@ export default function ScheduleClient() {
 
     if (err instanceof ApiError && err.status === 501) {
       toast.error(err.message || 'Schedule v2 schema not ready yet. Falling back to legacy.');
+      const telemetryKey = `fallback:client-schema-not-ready:${activeV2SnapshotKind}`;
+      if (!telemetryEmittedRef.current.has(telemetryKey)) {
+        telemetryEmittedRef.current.add(telemetryKey);
+        emitScheduleTelemetry({
+          event: 'fallback_activated',
+          view: activeV2SnapshotKind,
+          reason: 'client-schema-not-ready',
+          requestId: err.requestId ?? null,
+          meta: { status: err.status },
+        });
+      }
+      setLegacyFallbackReason('client-schema-not-ready');
       hydratedFromCacheRef.current = false;
       v2GeneratedAtRef.current = '';
       v2HolidaysRef.current = [];
       v2ClosuresRef.current = [];
+      setGanttHolidays([]);
       setLoadError(null);
       setSyncing(false);
       setHydrated(false);
       setInstallers([]);
       setProjects([]);
       setScheduleItems([]);
-      setEstimatesById(new Map());
       setScheduleConflicts([]);
       setNextAvailableByInstallerId(new Map());
+      setActiveSnapshotKind(null);
       setScheduleMode('legacy');
       return;
     }
@@ -2066,255 +1261,10 @@ export default function ScheduleClient() {
     setLoadError({ message: msg });
     setSyncing(false);
     setHydrated(true);
-  }, [installers.length, projects.length, scheduleItems.length, scheduleMode, toast, v2SnapshotQuery.error, view]);
-
-  function tryWriteScheduleSnapshotToCache(input: {
-    installers: Installer[];
-    projects: Project[];
-    scheduleItems: ScheduleItem[];
-    estimatesById: Map<string, Estimate>;
-  }): void {
-    if (scheduleMode !== 'legacy') return;
-    try {
-      const projectsById = new Map<string, Project>();
-      for (const p of input.projects) projectsById.set(p.id, p);
-      const renderable = input.scheduleItems.filter((i) => projectsById.has(i.projectId));
-      const build = buildScheduleBars({ today, installers: input.installers, scheduleItems: renderable, projectsById, estimatesById: input.estimatesById });
-      const bars = new Map(build.bars.map((b) => [b.scheduleItemId, b]));
-
-      queryClient.setQueryData(snapshotKey, {
-        generatedAt: nowIso(),
-        host: supabaseHostFromUrl(supabaseRuntimeUrl()),
-        crews: input.installers.map((c) => ({
-          id: uuidFromAppId(c.id, 'crew'),
-          name: c.name,
-          color: c.color ?? null,
-          is_active: Boolean(c.active),
-          sort_order: Number.isFinite(c.sortOrder) ? c.sortOrder : 0,
-        })),
-        scheduleItems: input.scheduleItems.map((i) => {
-          const bar = bars.get(i.id) ?? null;
-          const durationDays =
-            typeof i.durationHoursOverride === 'number' && Number.isFinite(i.durationHoursOverride) && i.durationHoursOverride > 0
-              ? i.durationHoursOverride / WORK_HOURS_PER_DAY
-              : bar && Number.isFinite(bar.durationHours) && bar.durationHours > 0
-                ? bar.durationHours / WORK_HOURS_PER_DAY
-                : null;
-
-          return {
-            id: uuidFromAppId(i.id, 'sch'),
-            crew_id: uuidFromAppId(i.installerId, 'crew'),
-            project_id: uuidFromAppId(i.projectId, 'proj'),
-            estimate_id: i.estimateId ? uuidFromAppId(i.estimateId, 'est') : null,
-            start_date: bar?.startDate ?? i.startDateOverride ?? '',
-            end_date: bar?.endDate ?? bar?.startDate ?? i.startDateOverride ?? '',
-            duration_days: typeof durationDays === 'number' && Number.isFinite(durationDays) ? durationDays : null,
-            sort_order: i.sortIndex,
-            updated_at: i.updatedAt ?? null,
-            status: typeof i.scheduleStatus === 'string' ? i.scheduleStatus : null,
-            locked: typeof i.locked === 'boolean' ? i.locked : null,
-            confirmed_at: typeof i.confirmedAt === 'string' ? i.confirmedAt : null,
-            confirmed_by: typeof i.confirmedBy === 'string' ? i.confirmedBy : null,
-            actual_start_date: typeof i.actualStartDate === 'string' ? i.actualStartDate : null,
-            actual_end_date: typeof i.actualEndDate === 'string' ? i.actualEndDate : null,
-          };
-        }),
-        projectsIndex: input.projects.map((p) => ({
-          id: uuidFromAppId(p.id, 'proj'),
-          name: p.projectName ?? p.name ?? 'Untitled project',
-          pipeline_stage: String(p.status ?? 'NEW'),
-          site_address: p.siteAddress ?? p.address ?? null,
-          created_at: p.createdAt ?? null,
-          updated_at: p.updatedAt ?? null,
-        })),
-      });
-    } catch {
-      // ignore cache failures
-    }
-  }
-
-  const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
-
-  useIsomorphicLayoutEffect(() => {
-    if (hydrated) return;
-    if (scheduleMode !== 'legacy') return;
-    if (!cachedSnapshot) return;
-
-    try {
-      const cachedInstallers: Installer[] = cachedSnapshot.crews.map((c) => ({
-        id: appIdFromUuid('crew', c.id),
-        name: c.name,
-        color: c.color ?? PORTAL_DEFAULT_ACCENT_HEX,
-        active: c.is_active,
-        sortOrder: c.sort_order,
-      }));
-
-      const cachedProjects: Project[] = cachedSnapshot.projectsIndex.map((p) => ({
-        id: appIdFromUuid('proj', p.id),
-        createdAt: p.created_at ?? p.updated_at ?? new Date(0).toISOString(),
-        updatedAt: p.updated_at ?? p.created_at ?? undefined,
-        projectName: p.name,
-        name: p.name,
-        siteAddress: p.site_address ?? undefined,
-        address: p.site_address ?? undefined,
-        status: p.pipeline_stage as any,
-      }));
-
-      const cachedItems: ScheduleItem[] = cachedSnapshot.scheduleItems.map((i) => ({
-        id: appIdFromUuid('sch', i.id),
-        installerId: appIdFromUuid('crew', i.crew_id),
-        projectId: appIdFromUuid('proj', i.project_id),
-        estimateId: i.estimate_id ? appIdFromUuid('est', i.estimate_id) : '',
-        sortIndex: i.sort_order,
-        scheduleStatus: typeof i.status === 'string' && i.status ? normalizeScheduleStatus(i.status) : undefined,
-        locked: typeof i.locked === 'boolean' ? i.locked : undefined,
-        confirmedAt: typeof i.confirmed_at === 'string' ? i.confirmed_at : null,
-        confirmedBy: typeof i.confirmed_by === 'string' ? i.confirmed_by : null,
-        actualStartDate: typeof i.actual_start_date === 'string' ? i.actual_start_date : null,
-        actualEndDate: typeof i.actual_end_date === 'string' ? i.actual_end_date : null,
-        startDateOverride: i.start_date || undefined,
-        durationHoursOverride: typeof i.duration_days === 'number' ? i.duration_days * WORK_HOURS_PER_DAY : undefined,
-        updatedAt: i.updated_at ?? new Date(0).toISOString(),
-      }));
-
-      hydratedFromCacheRef.current = true;
-      setLoadError(null);
-      setInstallers(cachedInstallers);
-      setProjects(cachedProjects);
-      setScheduleItems(cachedItems);
-      setEstimatesById(new Map());
-      setHydrated(true);
-      setSyncing(true);
-    } catch {
-      // ignore cache failures
-    }
-  }, [cachedSnapshot, hydrated, scheduleMode]);
-
-	  useEffect(() => {
-	    let cancelled = false;
-	    void (async () => {
-	      if (view === 'site_visits') return;
-	      if (scheduleMode !== 'legacy') return;
-	      setLoadError(null);
-	      setSyncing(true);
-	      try {
-	        if (typeof window !== 'undefined') {
-	          // Legacy localStorage contamination: schedule is DB-backed; do not merge/restore pre-DB schedule caches.
-	          window.localStorage.removeItem('sp_schedule_items_v1');
-	          window.localStorage.removeItem('sp_installers_v1');
-	        }
-
-	        const [installers, scheduleItems, projects, allEstimates] = await Promise.all([
-	          listInstallers(),
-	          listScheduleItems(),
-	          listProjects(),
-          listAllEstimates(),
-        ]);
-        if (cancelled) return;
-
-        const estimatesById = new Map<string, Estimate>();
-        for (const e of allEstimates) estimatesById.set(e.id, e);
-
-        // Normalize sortIndex per lane for robustness.
-        const laneOrder = new Map<string, number>();
-        const normalised = scheduleItems
-          .slice()
-          .sort((a, b) => a.installerId.localeCompare(b.installerId) || a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt))
-          .map((item) => {
-            const idx = laneOrder.get(item.installerId) ?? 0;
-            laneOrder.set(item.installerId, idx + 1);
-            return item.sortIndex === idx ? item : { ...item, sortIndex: idx };
-          });
-
-        setInstallers(installers);
-        setProjects(projects);
-        setScheduleItems(normalised);
-        setEstimatesById(estimatesById);
-        setHydrated(true);
-        tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: normalised, estimatesById });
-        setSyncing(false);
-
-        // Background: mark any jobs whose planned start is <= today as started (IN_PROGRESS).
-        // This also emits an idempotent audit event for future automations.
-        void (async () => {
-          const res = await normalizeScheduleItemsStarted(today).catch(() => null);
-          if (!res || res.updated <= 0) return;
-          const refreshed = await listScheduleItems().catch(() => null);
-          if (!refreshed || cancelled) return;
-
-          const laneOrder = new Map<string, number>();
-          const normalizedRefreshed = refreshed
-            .slice()
-            .sort((a, b) => a.installerId.localeCompare(b.installerId) || a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt))
-            .map((item) => {
-              const idx = laneOrder.get(item.installerId) ?? 0;
-              laneOrder.set(item.installerId, idx + 1);
-              return item.sortIndex === idx ? item : { ...item, sortIndex: idx };
-            });
-
-          setScheduleItems(normalizedRefreshed);
-          tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: normalizedRefreshed, estimatesById });
-        })();
-      } catch (err) {
-        if (cancelled) return;
-        const msg = err instanceof Error ? err.message : 'Failed to load schedule data.';
-        const showingCached = hydratedFromCacheRef.current || installers.length > 0 || scheduleItems.length > 0 || projects.length > 0;
-        if (showingCached) {
-          toast.error("Couldn't refresh schedule (showing last saved).");
-          setSyncing(false);
-          return;
-        }
-        if (err instanceof SupabaseRepoError) {
-          const code = typeof err.postgrestError?.code === 'string' ? String(err.postgrestError.code) : undefined;
-          setLoadError({ message: msg, table: err.table, code });
-        } else {
-          setLoadError({ message: msg });
-        }
-        setHydrated(true);
-        setSyncing(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadNonce, toast, view, scheduleMode, today]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      if (scheduleMode !== 'v2') return;
-      if (view !== 'gantt') return;
-      const rangeStart = startOfWeekMonday(today);
-      const rangeDays = GANTT_TIMELINE_DAYS;
-      const rangeEnd = addDaysYmd(rangeStart, rangeDays - 1);
-      try {
-        const res = await fetchScheduleGantt({ rangeStart, rangeEnd, today });
-        if (cancelled) return;
-        const holidayBlocks = (res.holidays ?? [])
-          .filter((h) => isYmd(h?.date ?? ''))
-          .filter((h) => {
-            const scope = typeof h.scope === 'string' ? h.scope.trim().toLowerCase() : '';
-            const region = typeof h.region === 'string' ? h.region.trim().toLowerCase() : '';
-            if (scope === 'national') return true;
-            if (!region) return false;
-            return region.includes('auckland');
-          })
-          .map((h) => ({ date: h.date, name: h.name, kind: 'holiday' as const }));
-        setGanttHolidays(holidayBlocks);
-      } catch (err) {
-        if (cancelled) return;
-        setGanttHolidays([]);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [scheduleMode, view, today]);
-
-  const devOnly = process.env.NODE_ENV !== 'production';
+  }, [activeV2SnapshotError, activeV2SnapshotKind, emitScheduleTelemetry, installers.length, projects.length, scheduleItems.length, scheduleMode, toast, view]);
 
   const projectsById = useMemo(() => {
-    const map = new Map<string, Project>();
+    const map = new Map<string, ScheduleProjectSummary>();
     for (const p of projects) map.set(p.id, p);
     return map;
   }, [projects]);
@@ -2352,283 +1302,36 @@ export default function ScheduleClient() {
     return map;
   }, [installers]);
 
-  const schedulable = useMemo(() => {
-    if (scheduleMode === 'v2') {
-      const jobsById = new Map<string, SchedulableJob>();
-      const unscheduledJobs = unscheduledJobsSeed;
-      for (const job of unscheduledJobs) jobsById.set(job.id, job);
+  const boardModel = useMemo(() => {
+    if (view === 'site_visits') return EMPTY_SCHEDULE_BOARD_MODEL;
+    return buildScheduleBoardModelV2({
+      installers,
+      orphanedScheduleItems,
+      projects,
+      projectsById,
+      query: deferredQuery,
+      scheduleItems,
+      scheduleItemsRenderable,
+      unscheduledJobsSeed,
+      visibleScheduleItems,
+    });
+  }, [
+    deferredQuery,
+    installers,
+    orphanedScheduleItems,
+    projects,
+    projectsById,
+    scheduleItems,
+    scheduleItemsRenderable,
+    scheduleMode,
+    today,
+    unscheduledJobsSeed,
+    view,
+    visibleScheduleItems,
+  ]);
 
-      const blockingProjectIds = new Set<string>();
-      for (const item of scheduleItemsRenderable) {
-        if (item.itemType === 'downtime') continue;
-        if (item.projectId) blockingProjectIds.add(item.projectId);
-      }
-
-      // Scheduled jobs: ensure they have job entries too.
-      for (const item of visibleScheduleItems) {
-        const id = item.id;
-        if (jobsById.has(id)) continue;
-
-        if (item.itemType === 'downtime') {
-          const durationHours =
-            typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0
-              ? item.durationHoursOverride
-              : WORK_HOURS_PER_DAY;
-          const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-          jobsById.set(id, {
-            id,
-            projectId: '',
-            estimateId: '',
-            projectName: reason,
-            descriptor: item.downtimeNote ?? 'Crew unavailable',
-            status: 'DOWNTIME',
-            durationHours,
-            durationLabel: formatDuration(durationHours),
-            durationTitle: formatHours(durationHours),
-            warnings: [],
-          });
-          continue;
-        }
-
-        const project = projectsById.get(item.projectId) ?? null;
-        const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
-        const status = project ? normalizeProjectStatus(project.status).status : '—';
-        const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
-        const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
-        const nextActionSuffix =
-          typeof nextActionDate === 'string' && nextActionDate
-            ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-            : '';
-        const nextActionLine = nextActionSuffix ? nextActionSuffix.replace(/^ · /, '') : '';
-
-        let durationHours = WORK_HOURS_PER_DAY;
-        if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
-          durationHours = item.durationHoursOverride;
-        } else if (
-          typeof item.forecastDurationDays === 'number' &&
-          Number.isFinite(item.forecastDurationDays) &&
-          item.forecastDurationDays > 0
-        ) {
-          durationHours = item.forecastDurationDays * WORK_HOURS_PER_DAY;
-        }
-
-        jobsById.set(id, {
-          id,
-          projectId: item.projectId,
-          estimateId: item.estimateId,
-          projectName,
-          descriptor: nextActionLine,
-          status,
-          durationHours,
-          durationLabel: formatDuration(durationHours),
-          durationTitle: formatHours(durationHours),
-          warnings: [],
-        });
-      }
-
-      const debug = {
-        totalProjects: projects.length,
-        schedulableProjects: unscheduledJobs.length + blockingProjectIds.size,
-        unscheduledJobs: unscheduledJobs.length,
-        excluded: {
-          noEstimates: 0,
-          noSchedulableEstimate: 0,
-          alreadyScheduled: 0,
-        },
-        scheduleItems: {
-          total: scheduleItems.length,
-          blocking: scheduleItemsRenderable.filter((i) => i.itemType !== 'downtime').length,
-          missingProject: orphanedScheduleItems.length,
-          missingEstimate: 0,
-          estimateNotSchedulable: 0,
-        },
-      };
-
-      return { jobsById, unscheduledJobs, debug, blockingProjectIds };
-    }
-
-    const jobsById = new Map<string, SchedulableJob>();
-    const unscheduledJobs: SchedulableJob[] = [];
-
-    const debug = {
-      totalProjects: projects.length,
-      schedulableProjects: 0,
-      unscheduledJobs: 0,
-      excluded: {
-        noEstimates: 0,
-        noSchedulableEstimate: 0,
-        notReadyStage: 0,
-        alreadyScheduled: 0,
-      },
-      scheduleItems: {
-        total: scheduleItems.length,
-        blocking: 0,
-        missingProject: 0,
-        missingEstimate: 0,
-        estimateNotSchedulable: 0,
-      },
-    };
-
-    const blockingProjectIds = new Set<string>();
-    for (const item of scheduleItems) {
-      if (item.itemType === 'downtime') continue;
-      const project = projectsById.get(item.projectId) ?? null;
-      if (!project) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[schedule] ScheduleItem references missing project', item);
-        }
-        debug.scheduleItems.missingProject += 1;
-        continue;
-      }
-
-      const estimate = estimatesById.get(item.estimateId) ?? null;
-      if (!estimate) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[schedule] ScheduleItem references missing estimate', item);
-        }
-        debug.scheduleItems.missingEstimate += 1;
-        continue;
-      }
-
-      if (!isSchedulableEstimate(estimate)) {
-        debug.scheduleItems.estimateNotSchedulable += 1;
-        continue;
-      }
-
-      blockingProjectIds.add(item.projectId);
-      debug.scheduleItems.blocking += 1;
-    }
-
-    const estimatesByProjectId = new Map<string, Estimate[]>();
-    for (const e of estimatesById.values()) {
-      const list = estimatesByProjectId.get(e.projectId) ?? [];
-      list.push(e);
-      estimatesByProjectId.set(e.projectId, list);
-    }
-
-    for (const p of projects) {
-      const estimates = (estimatesByProjectId.get(p.id) ?? []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-      if (!estimates.length) {
-        debug.excluded.noEstimates += 1;
-        continue;
-      }
-
-      const latestEstimate = getLatestSchedulableEstimate(estimates);
-      if (!latestEstimate) {
-        debug.excluded.noSchedulableEstimate += 1;
-        continue;
-      }
-
-      debug.schedulableProjects += 1;
-
-      if (blockingProjectIds.has(p.id)) {
-        debug.excluded.alreadyScheduled += 1;
-        continue;
-      }
-
-      const derived = deriveDurationHoursFromEstimate(latestEstimate);
-      const durationHours = derived.durationHours;
-      const warnings = derived.issues.map((i) => i.message);
-
-      const projectName = p.projectName ?? p.name ?? 'Untitled project';
-      const status = normalizeProjectStatus(p.status).status;
-      if (!isSchedulingReadyProjectStatus(status)) {
-        debug.excluded.notReadyStage += 1;
-        continue;
-      }
-      const nextActionDate = (p as any).nextActionDate ?? (p as any).followUpDate ?? null;
-      const nextActionType = (p as any).nextActionType ?? null;
-      const nextActionSuffix =
-        typeof nextActionDate === 'string' && nextActionDate
-          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-          : '';
-
-      const id = makeJobId(p.id, latestEstimate.id);
-      const job: SchedulableJob = {
-        id,
-        projectId: p.id,
-        estimateId: latestEstimate.id,
-        projectName,
-        descriptor: `${getJobDescriptorFromEstimate(latestEstimate)}${nextActionSuffix}`,
-        status,
-        durationHours,
-        durationLabel: formatDuration(durationHours),
-        durationTitle: formatHours(durationHours),
-        warnings,
-      };
-      jobsById.set(id, job);
-      unscheduledJobs.push(job);
-      debug.unscheduledJobs += 1;
-    }
-
-    // Scheduled jobs: ensure they have job entries too (even if estimate/project missing).
-    for (const item of visibleScheduleItems) {
-      const id = item.id;
-      if (jobsById.has(id)) continue;
-
-      if (item.itemType === 'downtime') {
-        const durationHours = typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0 ? item.durationHoursOverride : WORK_HOURS_PER_DAY;
-        const reason = item.downtimeReason ? titleCase(item.downtimeReason) : 'Downtime';
-        jobsById.set(id, {
-          id,
-          projectId: '',
-          estimateId: '',
-          projectName: reason,
-          descriptor: item.downtimeNote ?? 'Crew unavailable',
-          status: 'DOWNTIME',
-          durationHours,
-          durationLabel: formatDuration(durationHours),
-          durationTitle: formatHours(durationHours),
-          warnings: [],
-        });
-        continue;
-      }
-
-      const project = projectsById.get(item.projectId) ?? null;
-      const estimate = estimatesById.get(item.estimateId) ?? null;
-
-      const projectName = project?.projectName ?? project?.name ?? 'Untitled project';
-      const status = project ? normalizeProjectStatus(project.status).status : '—';
-      const nextActionDate = project ? ((project as any).nextActionDate ?? (project as any).followUpDate ?? null) : null;
-      const nextActionType = project ? ((project as any).nextActionType ?? null) : null;
-      const nextActionSuffix =
-        typeof nextActionDate === 'string' && nextActionDate
-          ? ` · Next: ${nextActionDate}${typeof nextActionType === 'string' && nextActionType ? ` (${nextActionTypeLabel(nextActionType as any)})` : ''}`
-          : '';
-
-      let durationHours = WORK_HOURS_PER_DAY;
-      const warnings: string[] = [];
-      if (typeof item.durationHoursOverride === 'number' && Number.isFinite(item.durationHoursOverride) && item.durationHoursOverride > 0) {
-        durationHours = item.durationHoursOverride;
-      } else if (estimate) {
-        const derived = deriveDurationHoursFromEstimate(estimate);
-        durationHours = derived.durationHours;
-        warnings.push(...derived.issues.map((i) => i.message));
-      } else {
-        warnings.push('Estimate missing; defaulted duration to 1 day.');
-      }
-
-      jobsById.set(id, {
-        id,
-        projectId: item.projectId,
-        estimateId: item.estimateId,
-        projectName,
-        descriptor: `${estimate ? getJobDescriptorFromEstimate(estimate) : '—'}${nextActionSuffix}`,
-        status,
-        durationHours,
-        durationLabel: formatDuration(durationHours),
-        durationTitle: formatHours(durationHours),
-        warnings,
-      });
-    }
-
-    unscheduledJobs.sort((a, b) => a.projectName.localeCompare(b.projectName));
-    return { jobsById, unscheduledJobs, debug, blockingProjectIds };
-  }, [estimatesById, orphanedScheduleItems, projects, projectsById, scheduleItems, scheduleItemsRenderable, scheduleMode, unscheduledJobsSeed, visibleScheduleItems]);
-
-  const unscheduledJobsAll = useMemo(() => {
-    return schedulable.unscheduledJobs;
-  }, [schedulable.unscheduledJobs]);
+  const schedulable = boardModel.schedulable;
+  const unscheduledJobsAll = boardModel.unscheduledJobsAll;
 
   const unscheduledEmpty = unscheduledJobsAll.length === 0;
 
@@ -2636,52 +1339,29 @@ export default function ScheduleClient() {
     setUnscheduledCollapsed(unscheduledEmpty);
   }, [unscheduledEmpty]);
 
-  const unscheduledJobs = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return unscheduledJobsAll.filter((j) => (!q ? true : j.projectName.toLowerCase().includes(q)));
-  }, [query, unscheduledJobsAll]);
-
-  const laneItems = useMemo(() => {
-    const map = new Map<string, ScheduleItem[]>();
-    for (const installer of installers) map.set(installer.id, []);
-    for (const item of visibleScheduleItems) {
-      const list = map.get(item.installerId);
-      if (list) list.push(item);
-      else map.set(item.installerId, [item]);
-    }
-    for (const list of map.values()) list.sort((a, b) => a.sortIndex - b.sortIndex || a.updatedAt.localeCompare(b.updatedAt));
-    return map;
-  }, [installers, visibleScheduleItems]);
+  const unscheduledJobs = boardModel.unscheduledJobs;
+  const laneItems = boardModel.laneItems;
+  const emptyEstimatesById = useMemo(() => new Map(), []);
 
   const schedule = useMemo(() => {
-    if (scheduleMode === 'v2') {
-      const base = buildScheduleBarsFromForecast({ scheduleItems: visibleScheduleItems, projectsById, estimatesById });
-      const scheduleItemByJobId = new Map<string, string>();
-      for (const item of visibleScheduleItems) {
-        if (item.scheduledJobId) scheduleItemByJobId.set(item.scheduledJobId, item.id);
-      }
-      const conflictIssues: SchedulingIssue[] = (scheduleConflicts ?? [])
-        .map((c: any) => {
-          const scheduleItemId = scheduleItemByJobId.get(String(c.job_id));
-          if (!scheduleItemId) return null;
-          const pinned = typeof c.pinned_start === 'string' ? c.pinned_start : '';
-          const expected = typeof c.expected_cursor_start === 'string' ? c.expected_cursor_start : '';
-          const overlap = typeof c.overlap_days === 'number' ? c.overlap_days : null;
-          const message = `Pinned start ${pinned || '—'} overlaps crew availability (${expected || '—'})${overlap ? ` by ${overlap} day(s)` : ''}.`;
-          return { level: 'error' as const, scheduleItemId, message };
-        })
-        .filter(Boolean) as SchedulingIssue[];
-      return { bars: base.bars, issues: [...base.issues, ...conflictIssues] };
+    const base = buildScheduleBarsFromForecast({ scheduleItems: visibleScheduleItems, projectsById });
+    const scheduleItemByJobId = new Map<string, string>();
+    for (const item of visibleScheduleItems) {
+      if (item.scheduledJobId) scheduleItemByJobId.set(item.scheduledJobId, item.id);
     }
-
-    return buildScheduleBars({
-      today,
-      installers,
-      scheduleItems: visibleScheduleItems,
-      projectsById,
-      estimatesById,
-    });
-  }, [estimatesById, installers, projectsById, scheduleConflicts, scheduleMode, today, visibleScheduleItems]);
+    const conflictIssues: SchedulingIssue[] = (scheduleConflicts ?? [])
+      .map((c: any) => {
+        const scheduleItemId = scheduleItemByJobId.get(String(c.job_id));
+        if (!scheduleItemId) return null;
+        const pinned = typeof c.pinned_start === 'string' ? c.pinned_start : '';
+        const expected = typeof c.expected_cursor_start === 'string' ? c.expected_cursor_start : '';
+        const overlap = typeof c.overlap_days === 'number' ? c.overlap_days : null;
+        const message = `Pinned start ${pinned || '—'} overlaps crew availability (${expected || '—'})${overlap ? ` by ${overlap} day(s)` : ''}.`;
+        return { level: 'error' as const, scheduleItemId, message };
+      })
+      .filter(Boolean) as SchedulingIssue[];
+    return { bars: base.bars, issues: [...base.issues, ...conflictIssues] };
+  }, [projectsById, scheduleConflicts, visibleScheduleItems]);
 
   const orphanedIssues = useMemo((): SchedulingIssue[] => {
     return orphanedScheduleItems.map((item) => {
@@ -2736,498 +1416,6 @@ export default function ScheduleClient() {
     return [...fromOrphans, ...fromScheduled, ...fromUnscheduled];
   }, [orphanedIssues, schedule.issues, unscheduledJobsAll]);
 
-  const gantt = useMemo(() => {
-    const rangeStart = startOfWeekMonday(today);
-    const rangeDays = GANTT_TIMELINE_DAYS;
-    const rangeEnd = addDaysYmd(rangeStart, rangeDays - 1);
-    const baseDayPx = ganttBaseDayPxForZoomWeeks(zoomWeeks);
-    const axis = buildGanttAxis({
-      rangeStart,
-      rangeDays,
-      baseDayPx,
-      weekendWeight: GANTT_WEEKEND_WEIGHT,
-    });
-    const totalWidth = axis.totalWidth;
-
-    const displayToday = isWeekendDate(today) ? snapToWeekdayYmd(today) : today;
-    const todayIndex = diffDaysYmd(rangeStart, displayToday);
-    const todayLinePx = axisXForDayIndex(axis, todayIndex);
-    const todayColumn = todayIndex >= 0 && todayIndex < axis.days.length ? axis.days[todayIndex] : null;
-
-    const holidayNamesByDate = new Map<string, string[]>();
-    for (const holiday of ganttHolidays) {
-      if (!holiday?.date || !isYmd(holiday.date)) continue;
-      const idx = diffDaysYmd(rangeStart, holiday.date);
-      if (idx < 0 || idx >= rangeDays) continue;
-      const names = holidayNamesByDate.get(holiday.date) ?? [];
-      if (holiday.name?.trim()) names.push(holiday.name.trim());
-      holidayNamesByDate.set(holiday.date, names);
-    }
-
-    const weekendBlocks: Array<{ leftPx: number; widthPx: number; date: string }> = [];
-    const holidayBlocks: Array<{ leftPx: number; widthPx: number; date: string; label: string }> = [];
-    for (const day of axis.days) {
-      if (day.widthPx <= 0) continue;
-      const holidayNames = holidayNamesByDate.get(day.date);
-      if (holidayNames) {
-        const uniqueHolidayNames = Array.from(new Set(holidayNames));
-        const dateLabel = formatShortDate(day.date);
-        const holidayLabel = uniqueHolidayNames.length ? `${uniqueHolidayNames.join(', ')} (${dateLabel})` : `Public holiday (${dateLabel})`;
-        holidayBlocks.push({
-          leftPx: day.startPx,
-          widthPx: day.widthPx,
-          date: day.date,
-          label: holidayLabel,
-        });
-        continue;
-      }
-      if (day.isWeekend) {
-        weekendBlocks.push({
-          leftPx: day.startPx,
-          widthPx: day.widthPx,
-          date: day.date,
-        });
-      }
-    }
-
-    const weekBoundaryLines = Array.from(new Set(axis.weeks.map((week) => week.startPx).filter((px) => px > 0 && px < totalWidth))).sort(
-      (a, b) => a - b,
-    );
-    const weekBoundarySet = new Set(weekBoundaryLines);
-    const dayBoundarySet = new Set<number>();
-    for (const day of axis.days) {
-      if (day.isWeekend) continue;
-      const px = day.startPx;
-      if (px <= 0 || px >= totalWidth || weekBoundarySet.has(px)) continue;
-      dayBoundarySet.add(px);
-    }
-    const dayBoundaryLines = Array.from(dayBoundarySet).sort((a, b) => a - b);
-
-    const barsById = new Map(schedule.bars.map((b) => [b.scheduleItemId, b]));
-    const plannedBarsById = new Map<string, { leftPx: number; widthPx: number; startDate: string; endDate: string }>();
-
-    if (showPlanned && scheduleMode === 'v2') {
-      for (const item of visibleScheduleItems) {
-        if (item.itemType === 'downtime') continue;
-        if (!item.plannedStart || !isYmd(item.plannedStart)) continue;
-        const plannedDays =
-          typeof item.plannedDurationDays === 'number' && Number.isFinite(item.plannedDurationDays) && item.plannedDurationDays > 0
-            ? item.plannedDurationDays
-            : null;
-        if (!plannedDays) continue;
-        const plannedEndExcl = addDaysYmd(item.plannedStart, plannedDays);
-        const plannedEnd = endInclusiveFromExclusive(plannedEndExcl, item.plannedStart);
-        const plannedSpan = axisSpanPx(axis, item.plannedStart, plannedEnd);
-        if (plannedSpan.widthPx <= 0) continue;
-        plannedBarsById.set(item.id, {
-          leftPx: plannedSpan.leftPx,
-          widthPx: Math.max(plannedSpan.widthPx, 6),
-          startDate: item.plannedStart,
-          endDate: plannedEnd,
-        });
-      }
-    }
-    const rows: GanttRow[] = [];
-
-    for (const installer of installers.filter((i) => i.active)) {
-      const items = laneItems.get(installer.id) ?? [];
-      const collapsed = Boolean(collapsedCrews[installer.id]);
-      const summarySpans = collapsed
-        ? mergeSummarySpans(
-            items
-              .map((item) => {
-                const bar = barsById.get(item.id);
-                if (!bar) return null;
-                const span = axisSpanPx(axis, bar.startDate, bar.endDate);
-                if (span.widthPx <= 0) return null;
-                return { leftPx: span.leftPx, widthPx: Math.max(span.widthPx, 8) };
-              })
-              .filter((span): span is GanttSummarySpan => Boolean(span)),
-          )
-        : [];
-      rows.push({
-        kind: 'group',
-        id: `group:${installer.id}`,
-        installerId: installer.id,
-        label: installer.name,
-        color: installer.color,
-        jobCount: items.length,
-        collapsed,
-        summarySpans,
-      });
-
-      if (!items.length) {
-        rows.push({
-          kind: 'empty',
-          id: `empty:${installer.id}`,
-          installerId: installer.id,
-          label: '(empty)',
-        });
-        continue;
-      }
-
-      if (collapsed) continue;
-
-      for (const item of items) {
-        const bar = barsById.get(item.id);
-        if (!bar) continue;
-
-        const job = schedulable.jobsById.get(item.id);
-        const scheduleItem = scheduleItemById.get(item.id) ?? null;
-        const isDowntime = scheduleItem?.itemType === 'downtime';
-        const isPinned = scheduleItem?.mode === 'pinned';
-        const plannedCommitmentLabel = scheduleItem ? formatCommitmentLabel(scheduleItem) : null;
-        const plannedFlexDays = scheduleItem ? resolvePlannedFlexDays(scheduleItem) : null;
-        const plannedDurationDays =
-          scheduleItem && typeof scheduleItem.plannedDurationDays === 'number' && Number.isFinite(scheduleItem.plannedDurationDays)
-            ? Math.max(1, Math.trunc(scheduleItem.plannedDurationDays))
-            : null;
-        const driftDays =
-          scheduleItem && typeof scheduleItem.driftDays === 'number' && Number.isFinite(scheduleItem.driftDays)
-            ? Math.max(0, Math.trunc(scheduleItem.driftDays))
-            : null;
-        const clientUpdateStatus = scheduleItem?.clientUpdateStatus ?? null;
-        const issueLevel = issueLevelByScheduleId.get(item.id);
-        const planned = plannedBarsById.get(item.id);
-
-        const baseSpan = axisSpanPx(axis, bar.startDate, bar.endDate);
-        const baseBarLeftPx = baseSpan.leftPx;
-        const baseBarWidthPx = baseSpan.widthPx > 0 ? Math.max(baseSpan.widthPx, 8) : 0;
-
-        let displayStart = bar.startDate;
-        let displayEnd = bar.endDate;
-        let displayLeftPx = baseBarLeftPx;
-        let displayWidthPx = baseBarWidthPx;
-
-        if (ganttDrag && ganttDrag.id === item.id) {
-          if (ganttDrag.mode === 'move') {
-            const requestedStart = addDaysYmd(bar.startDate, ganttDragDelta);
-            displayStart = snapToWeekdayYmdDirectional(requestedStart, ganttDragDelta);
-            displayEnd = addWorkingDaysInclusive(displayStart, Math.max(1, ganttDrag.durationDays));
-            const movingSpan = axisSpanPx(axis, displayStart, displayEnd);
-            displayLeftPx = movingSpan.leftPx;
-            displayWidthPx = movingSpan.widthPx > 0 ? Math.max(movingSpan.widthPx, 8) : 0;
-          } else if (ganttDrag.mode === 'resize') {
-            const requestedEnd = addDaysYmd(bar.endDate, ganttDragDelta);
-            const snappedEnd = snapToWeekdayYmdDirectional(requestedEnd, ganttDragDelta);
-            const nextDuration = Math.max(1, workingDaysInclusive(bar.startDate, snappedEnd));
-            displayEnd = addWorkingDaysInclusive(bar.startDate, nextDuration);
-            const resizedSpan = axisSpanPx(axis, bar.startDate, displayEnd);
-            displayLeftPx = resizedSpan.leftPx;
-            displayWidthPx = resizedSpan.widthPx > 0 ? Math.max(resizedSpan.widthPx, 8) : 0;
-          }
-        }
-
-        rows.push({
-          kind: 'item',
-          id: item.id,
-          installerId: installer.id,
-          scheduleItemId: item.id,
-          projectId: isDowntime ? '' : bar.projectId,
-          estimateId: isDowntime ? '' : bar.estimateId,
-          projectName: bar.projectName,
-          status: bar.status,
-          durationLabel: job?.durationLabel ?? formatDuration(bar.durationHours),
-          durationDays: Math.max(1, workingDaysInclusive(displayStart, displayEnd)),
-          startDate: displayStart,
-          endDate: displayEnd,
-          barLeftPx: displayLeftPx,
-          barWidthPx: displayWidthPx,
-          barColor: isDowntime ? '#6b7280' : installer.color,
-          ghostLeftPx: ganttDrag && ganttDrag.id === item.id ? baseBarLeftPx : undefined,
-          ghostWidthPx: ganttDrag && ganttDrag.id === item.id ? baseBarWidthPx : undefined,
-          isDowntime,
-          isPinned,
-          issueLevel,
-          plannedLeftPx: planned?.leftPx,
-          plannedWidthPx: planned?.widthPx,
-          plannedStart: planned?.startDate,
-          plannedEnd: planned?.endDate,
-          plannedCommitmentLabel,
-          plannedFlexDays,
-          plannedDurationDays,
-          driftDays,
-          clientUpdateStatus,
-        });
-      }
-    }
-
-    return {
-      rangeStart,
-      rangeEnd,
-      rangeDays,
-      axis,
-      totalWidth,
-      displayToday,
-      todayLinePx,
-      todayColumnLeftPx: todayColumn?.startPx ?? null,
-      todayColumnWidthPx: todayColumn?.widthPx ?? 0,
-      weekendBlocks,
-      holidayBlocks,
-      dayBoundaryLines,
-      weekBoundaryLines,
-      rows,
-    };
-  }, [
-    collapsedCrews,
-    ganttHolidays,
-    installers,
-    laneItems,
-    zoomWeeks,
-    schedulable.jobsById,
-    schedule.bars,
-    scheduleItemById,
-    visibleScheduleItems,
-    showPlanned,
-    scheduleMode,
-    issueLevelByScheduleId,
-    ganttDrag,
-    ganttDragDelta,
-    today,
-  ]);
-
-  const handleGanttZoomWeeksChange = (next: GanttZoomWeeks) => {
-    if (next === zoomWeeks) return;
-
-    const scroller = ganttScrollRef.current;
-    if (view === 'gantt' && scroller && gantt.axis.rangeDays > 0) {
-      const timelineViewportWidth = Math.max(0, scroller.clientWidth - labelWidthPx);
-      const todayViewportOffsetPx = labelWidthPx + gantt.todayLinePx - scroller.scrollLeft;
-      const minVisiblePx = labelWidthPx + 8;
-      const maxVisiblePx = Math.max(minVisiblePx, scroller.clientWidth - 8);
-      const fallbackVisiblePx = labelWidthPx + timelineViewportWidth * 0.3;
-      const viewportOffsetPx =
-        todayViewportOffsetPx >= minVisiblePx && todayViewportOffsetPx <= maxVisiblePx ? todayViewportOffsetPx : fallbackVisiblePx;
-      pendingZoomAnchorRef.current = {
-        date: gantt.displayToday,
-        viewportOffsetPx,
-      };
-    }
-
-    setZoomWeeks(next);
-  };
-
-  useLayoutEffect(() => {
-    if (view !== 'gantt') return;
-    const anchor = pendingZoomAnchorRef.current;
-    if (!anchor) return;
-
-    const scroller = ganttScrollRef.current;
-    if (!scroller || gantt.axis.rangeDays <= 0) {
-      pendingZoomAnchorRef.current = null;
-      return;
-    }
-
-    const rawIndex = diffDaysYmd(gantt.rangeStart, anchor.date);
-    const dayIndex = Math.max(0, Math.min(gantt.axis.rangeDays - 1, rawIndex));
-    const nextTodayAbsolutePx = labelWidthPx + axisXForDayIndex(gantt.axis, dayIndex);
-    const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-    const nextScrollLeft = Math.max(0, Math.min(maxLeft, nextTodayAbsolutePx - anchor.viewportOffsetPx));
-
-    scroller.scrollLeft = nextScrollLeft;
-    pendingZoomAnchorRef.current = null;
-  }, [gantt.axis.boundaryPx, gantt.axis.rangeDays, gantt.rangeStart, gantt.totalWidth, labelWidthPx, view, zoomWeeks]);
-
-  const activeGanttPopoverRow = useMemo(() => {
-    if (!ganttPopover) return null;
-    for (const row of gantt.rows) {
-      if (row.kind !== 'item') continue;
-      if (row.scheduleItemId === ganttPopover.scheduleItemId) return row;
-    }
-    return null;
-  }, [gantt.rows, ganttPopover]);
-
-  const activeGanttDragRow = useMemo(() => {
-    if (!ganttDrag) return null;
-    for (const row of gantt.rows) {
-      if (row.kind !== 'item') continue;
-      if (row.scheduleItemId === ganttDrag.id) return row;
-    }
-    return null;
-  }, [gantt.rows, ganttDrag]);
-
-  const ganttDragFeedback = useMemo(() => {
-    if (!ganttDrag || !activeGanttDragRow) return null;
-    return {
-      mode: ganttDrag.mode,
-      startDate: activeGanttDragRow.startDate,
-      endDate: activeGanttDragRow.endDate,
-      durationDays: Math.max(1, activeGanttDragRow.durationDays),
-      snapLinePx: ganttDrag.mode === 'resize' ? activeGanttDragRow.barLeftPx + activeGanttDragRow.barWidthPx : activeGanttDragRow.barLeftPx,
-    };
-  }, [activeGanttDragRow, ganttDrag]);
-
-  const ganttPopoverDetails = useMemo(() => {
-    if (!ganttPopover || !activeGanttPopoverRow) return null;
-
-    const row = activeGanttPopoverRow;
-    if (row.isDowntime) return null;
-    const scheduleItem = scheduleItemById.get(row.scheduleItemId) ?? null;
-    if (!scheduleItem || scheduleItem.itemType === 'downtime') return null;
-    const isPinned = scheduleItem.mode === 'pinned';
-    const hasCommitment = hasPlannedCommitment(scheduleItem);
-    const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
-
-    const openProjectAction = () =>
-      runGanttPopoverAction(() => {
-        router.push(`/staff/projects/${encodeURIComponent(row.projectId)}`);
-      });
-    const openProjectPackAction = () =>
-      runGanttPopoverAction(() => {
-        router.push(`/staff/projects/${encodeURIComponent(row.projectId)}/estimate/${encodeURIComponent(row.estimateId)}`);
-      });
-    const pinAction = () =>
-      runGanttPopoverAction(() => {
-        if (isPinned) {
-          let jobUuid: string;
-          try {
-            jobUuid = uuidFromAppId(scheduleItem.projectId, 'proj');
-          } catch {
-            toast.error('Invalid project ID for schedule action.');
-            return;
-          }
-          void queueUnpinJob(jobUuid, {
-            successToast: 'Job unpinned.',
-            errorToast: 'Failed to unpin job.',
-          });
-          return;
-        }
-
-        const startCandidate = scheduleItem.forecastStart ?? scheduleItem.startDateOverride ?? today;
-        setPinEdit({ id: row.scheduleItemId, requestedStart: isYmd(startCandidate) ? startCandidate : '' });
-      });
-
-    const commitmentAction = () =>
-      runGanttPopoverAction(() => {
-        openCommitmentEdit(row.scheduleItemId, hasCommitment ? 'reschedule' : 'lock');
-      });
-
-    const ackClientUpdateAction =
-      clientUpdateStatus === 'needed'
-        ? () =>
-            runGanttPopoverAction(() => {
-              const jobUuid = resolveProjectUuid(scheduleItem);
-              if (!jobUuid) return;
-              void ackClientUpdate({ job_id: jobUuid })
-                .then(() => {
-                  applyClientAckLocally(jobUuid);
-                  toast.success('Client update marked as contacted.');
-                })
-                .catch((err) => {
-                  const msg = err instanceof Error ? err.message : 'Failed to mark client as contacted.';
-                  toast.error(msg);
-                });
-            })
-        : null;
-
-    const details = (
-      <>
-        <div className={styles.ganttPopoverTitle}>{row.projectName}</div>
-        <div className={styles.ganttPopoverMeta}>
-          Planned: {hasCommitment ? row.plannedCommitmentLabel ?? 'Committed' : 'Draft'}
-          {hasCommitment && row.plannedDurationDays ? ` · ~${row.plannedDurationDays}d` : ''}
-          {hasCommitment && typeof row.plannedFlexDays === 'number' ? ` · flex ${row.plannedFlexDays}wd` : ''}
-        </div>
-        <div className={styles.ganttPopoverMeta}>
-          Forecast: {formatShortDate(row.startDate)} → {formatShortDate(row.endDate)} · {row.durationLabel}
-        </div>
-        {hasCommitment && typeof row.driftDays === 'number' ? (
-          <div className={styles.ganttPopoverMeta}>Drift: +{row.driftDays} working day{row.driftDays === 1 ? '' : 's'}</div>
-        ) : null}
-        {clientUpdateStatus === 'needed' ? <div className={styles.clientUpdatePill}>Client update needed</div> : null}
-        {clientUpdateStatus === 'acknowledged' ? <div className={styles.clientAckPill}>Client contacted</div> : null}
-      </>
-    );
-
-    return {
-      details,
-      actions: [
-        {
-          label: 'Open project',
-          shortcut: '⏎',
-          onClick: openProjectAction,
-        },
-        {
-          label: 'Open project pack',
-          onClick: openProjectPackAction,
-        },
-        {
-          label: hasCommitment ? 'Reschedule…' : 'Lock schedule…',
-          onClick: commitmentAction,
-        },
-        ...(ackClientUpdateAction
-          ? [
-              {
-                label: 'Mark client contacted',
-                onClick: ackClientUpdateAction,
-              },
-            ]
-          : clientUpdateStatus === 'acknowledged'
-            ? [
-                {
-                  label: 'Client contacted',
-                  onClick: () => {},
-                  disabled: true,
-                },
-              ]
-            : []),
-        {
-          label: isPinned ? 'Unpin' : 'Pin…',
-          shortcut: 'P',
-          onClick: pinAction,
-        },
-      ],
-      openProjectAction,
-      pinAction,
-    };
-  }, [
-    activeGanttPopoverRow,
-    ganttPopover,
-    router,
-    runGanttPopoverAction,
-    scheduleItemById,
-    setPinEdit,
-    today,
-    toast,
-  ]);
-
-  const handleGanttPopoverKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (isTextInputLikeTarget(event.target)) return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      setGanttPopover(null);
-      return;
-    }
-    if (!ganttPopoverDetails) return;
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      ganttPopoverDetails.openProjectAction?.();
-      return;
-    }
-    const key = event.key.toLowerCase();
-    if (key === 'p') {
-      event.preventDefault();
-      ganttPopoverDetails.pinAction?.();
-    }
-  };
-
-  useEffect(() => {
-    if (!ganttPopover) return;
-    if (!activeGanttPopoverRow) {
-      setGanttPopover(null);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      ganttPopoverRef.current?.focus();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [activeGanttPopoverRow, ganttPopover]);
-
-  useEffect(() => {
-    if (view === 'gantt') return;
-    setGanttPopover(null);
-  }, [view]);
-
   function formatCommitImpactList(impacts: any[]): string {
     return impacts
       .slice(0, 10)
@@ -3242,17 +1430,20 @@ export default function ScheduleClient() {
 
   function refreshSchedule(): void {
     setLoadError(null);
-    if (scheduleMode === 'v2') {
-      setSyncing(true);
-      void queryClient.invalidateQueries({ queryKey: v2SnapshotKey });
-      return;
-    }
-    setReloadNonce((n) => n + 1);
+    setSyncing(true);
+    void queryClient.invalidateQueries({ queryKey: view === 'gantt' ? ganttSnapshotKey : boardSnapshotKey });
   }
 
   async function runWithCommitConfirmation(
     run: (force: boolean) => Promise<any>,
-    opts?: { successToast?: string; errorToast?: string },
+    opts?: {
+      successToast?: string;
+      errorToast?: string;
+      refreshOnError?: boolean;
+      formatErrorToast?: (error: unknown, fallback: string) => string;
+      onSuccess?: (response: unknown) => void;
+      onError?: (error: unknown) => void;
+    },
   ): Promise<boolean> {
     if (scheduleMode === 'v2') {
       v2PendingMutationsRef.current += 1;
@@ -3272,16 +1463,19 @@ export default function ScheduleClient() {
         const applied = res && res.ok ? (shouldApplyResponseNow ? applyV2MutationResponse(res as ScheduleMutationResult) : true) : false;
         if (!applied) refreshSchedule();
 
+        opts?.onSuccess?.(res);
         if (opts?.successToast) toast.success(opts.successToast);
         return true;
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
-        toast.error(opts?.errorToast ?? msg);
-        if (v2PendingMutationsRef.current <= 1) refreshSchedule();
+        const fallback = opts?.errorToast ?? msg;
+        opts?.onError?.(err);
+        toast.error(opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback);
+        if (opts?.refreshOnError !== false && v2PendingMutationsRef.current <= 1) refreshSchedule();
         return false;
       } finally {
         v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
-        if (v2PendingMutationsRef.current === 0 && !v2SnapshotQuery.isFetching) {
+        if (v2PendingMutationsRef.current === 0 && !activeV2SnapshotIsFetching) {
           setSyncing(false);
         }
       }
@@ -3299,13 +1493,68 @@ export default function ScheduleClient() {
       }
 
       if (opts?.successToast) toast.success(opts.successToast);
+      opts?.onSuccess?.(res);
       refreshSchedule();
       return true;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
-      toast.error(opts?.errorToast ?? msg);
+      const fallback = opts?.errorToast ?? msg;
+      opts?.onError?.(err);
+      toast.error(opts?.formatErrorToast ? opts.formatErrorToast(err, fallback) : fallback);
       return false;
     }
+  }
+
+  function scheduleMutationErrorDebug(error: unknown): Record<string, unknown> {
+    if (error instanceof ApiError) {
+      return {
+        status: error.status,
+        requestId: error.requestId ?? null,
+        message: error.message,
+        body: error.body,
+      };
+    }
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+      };
+    }
+    return {
+      message: String(error),
+    };
+  }
+
+  function isObjectRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+  }
+
+  function compactAssignDiagnosticText(value: string): string {
+    const trimmed = value.trim();
+    return trimmed.length > 180 ? `${trimmed.slice(0, 177)}...` : trimmed;
+  }
+
+  function assignDiagnosticMessage(body: unknown): string | null {
+    const diagnostic = isObjectRecord(body) && isObjectRecord(body.diagnostic) ? body.diagnostic : null;
+    if (!diagnostic) return null;
+
+    const rawCode = typeof diagnostic.errorCode === 'string' ? diagnostic.errorCode.trim() : '';
+    const rawMessage = typeof diagnostic.errorMessage === 'string' ? diagnostic.errorMessage.trim() : '';
+    const code = rawCode ? compactAssignDiagnosticText(rawCode) : '';
+    const message = rawMessage ? compactAssignDiagnosticText(rawMessage) : '';
+    if (code && message) return `${code}: ${message}`;
+    return code || message || null;
+  }
+
+  function formatAssignMutationErrorToast(error: unknown, fallback: string): string {
+    if (error instanceof ApiError) {
+      if ([400, 404, 409, 501].includes(error.status) && error.message) return error.message;
+      if (error.status >= 500 && error.requestId) {
+        const diagnosticMessage = assignDiagnosticMessage(error.body);
+        return diagnosticMessage ? `${fallback} ${diagnosticMessage}. Reference: ${error.requestId}.` : `${fallback} Reference: ${error.requestId}.`;
+      }
+    }
+    return fallback;
   }
 
   const resolveProjectUuid = (item: ScheduleItem): string | null => {
@@ -3484,311 +1733,12 @@ export default function ScheduleClient() {
     todayRef.current = today;
   }, [today]);
 
-  useEffect(() => {
-    if (!ganttDrag) return;
-
-    const onMove = (e: PointerEvent) => {
-      const deltaPx = e.clientX - ganttDrag.originX;
-      setGanttDragPointer({ x: e.clientX, y: e.clientY });
-      if (Math.abs(deltaPx) > 3) ganttDragMovedRef.current = true;
-      const anchorDate = ganttDrag.mode === 'resize' ? ganttDrag.endDate : ganttDrag.startDate;
-      const rawDelta = snapAxisDayDeltaForPixelDelta({
-        startDate: anchorDate,
-        deltaPx,
-        baseDayPx: gantt.axis.baseDayPx,
-        weekendWeight: GANTT_WEEKEND_WEIGHT,
-        maxSteps: gantt.rangeDays + 21,
-      });
-      let nextDelta = rawDelta;
-      if (ganttDrag.mode === 'move') {
-        const requestedStart = addDaysYmd(ganttDrag.startDate, rawDelta);
-        const snappedStart = snapToWeekdayYmdDirectional(requestedStart, rawDelta);
-        nextDelta = diffDaysYmd(ganttDrag.startDate, snappedStart);
-      } else {
-        const requestedEnd = addDaysYmd(ganttDrag.endDate, rawDelta);
-        const snappedEnd = snapToWeekdayYmdDirectional(requestedEnd, rawDelta);
-        nextDelta = diffDaysYmd(ganttDrag.endDate, snappedEnd);
-      }
-      if (nextDelta !== ganttDragDeltaRef.current) {
-        ganttDragDeltaRef.current = nextDelta;
-        setGanttDragDelta(nextDelta);
-      }
-    };
-
-    const onUp = () => {
-      const deltaDays = ganttDragDeltaRef.current;
-      const moved = ganttDragMovedRef.current;
-
-      ganttDragDeltaRef.current = 0;
-      ganttDragMovedRef.current = false;
-      setGanttDrag(null);
-      setGanttDragDelta(0);
-      setGanttDragPointer(null);
-
-      if (moved) ganttClickBlockUntilRef.current = Date.now() + 250;
-      if (!moved || deltaDays === 0) return;
-
-      const item = scheduleItemByIdRef.current.get(ganttDrag.id) ?? null;
-      if (!item || item.itemType === 'downtime') return;
-
-      const jobUuid = resolveProjectUuidRef.current(item);
-      if (!jobUuid) return;
-
-      const todayValue = todayRef.current;
-
-      if (ganttDrag.mode === 'move') {
-        const requested = addDaysYmd(ganttDrag.startDate, deltaDays);
-        const snapped = snapToWeekdayYmdDirectional(requested, deltaDays);
-
-        const optimisticItems = scheduleItemsRef.current.map((item) => {
-          if (item.id !== ganttDrag.id || item.itemType === 'downtime') return item;
-          const durationDays = Math.max(1, ganttDrag.durationDays);
-          const snappedEnd = addWorkingDaysInclusive(snapped, durationDays);
-          const endExclusive = addDaysYmd(snappedEnd, 1);
-          return {
-            ...item,
-            mode: 'pinned' as const,
-            forecastStart: snapped,
-            forecastEndExclusive: endExclusive,
-            forecastDurationDays: durationDays,
-            startDateOverride: snapped,
-            durationHoursOverride: durationDays * WORK_HOURS_PER_DAY,
-            updatedAt: new Date().toISOString(),
-          };
-        });
-        applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
-
-        void (async () => {
-          await runWithCommitConfirmationRef.current(
-            (force) => pinJob({ job_id: jobUuid, requested_start_date: snapped, force, today: todayValue }),
-            { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
-          );
-        })();
-        return;
-      }
-
-      const baseStart = item.forecastStart ?? ganttDrag.startDate;
-      const snappedStart = snapToWeekdayYmd(baseStart);
-      const requestedEnd = addDaysYmd(ganttDrag.endDate, deltaDays);
-      const snappedEnd = snapToWeekdayYmdDirectional(requestedEnd, deltaDays);
-      const nextDuration = Math.max(1, workingDaysInclusive(snappedStart, snappedEnd));
-
-      const optimisticItems = scheduleItemsRef.current.map((scheduleItem) => {
-        if (scheduleItem.id !== ganttDrag.id || scheduleItem.itemType === 'downtime') return scheduleItem;
-        const computedEnd = addWorkingDaysInclusive(snappedStart, nextDuration);
-        const endExclusive = addDaysYmd(computedEnd, 1);
-        return {
-          ...scheduleItem,
-          mode: 'pinned' as const,
-          forecastStart: snappedStart,
-          forecastEndExclusive: endExclusive,
-          forecastDurationDays: nextDuration,
-          startDateOverride: snappedStart,
-          durationHoursOverride: nextDuration * WORK_HOURS_PER_DAY,
-          updatedAt: new Date().toISOString(),
-        };
-      });
-      applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
-
-      void (async () => {
-        const ok = await runWithCommitConfirmationRef.current(
-          (force) => setJobDuration({ job_id: jobUuid, forecast_duration_days: nextDuration, force, today: todayValue }),
-          { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
-        );
-        if (!ok) return;
-
-        // server pins too (keep consistent). If this fails, rollback is not required; refetch will correct.
-        await runWithCommitConfirmationRef.current(
-          (force) => pinJob({ job_id: jobUuid, requested_start_date: snappedStart, force, today: todayValue }),
-          { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
-        );
-      })();
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-  }, [gantt.axis.baseDayPx, gantt.rangeDays, ganttDrag]);
-
-  useEffect(() => {
-    if (!ganttLabelResize) return;
-
-    const onMove = (event: PointerEvent) => {
-      const deltaX = event.clientX - ganttLabelResize.startX;
-      setLabelWidthPx(clampGanttLabelWidth(ganttLabelResize.startWidth + deltaX));
-    };
-
-    const onUp = () => {
-      writeGanttLabelWidthPreference(labelWidthPxRef.current);
-      setGanttLabelResize(null);
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    return () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-  }, [ganttLabelResize]);
-
-  const shouldBlockGanttClick = () => {
-    if (typeof window === 'undefined') return false;
-    return Date.now() < ganttClickBlockUntilRef.current;
-  };
-
-  const toggleCrewCollapsed = (installerId: string) => {
-    setCollapsedCrews((prev) => ({ ...prev, [installerId]: !prev[installerId] }));
-  };
-
-  const jumpGanttToToday = () => {
-    const scroller = ganttScrollRef.current;
-    if (!scroller) return;
-    const timelineViewportWidth = Math.max(0, scroller.clientWidth - labelWidthPx);
-    const todayAbsolutePx = labelWidthPx + gantt.todayLinePx;
-    const targetLeft = Math.max(0, todayAbsolutePx - (labelWidthPx + timelineViewportWidth * 0.3));
-    const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth);
-    scroller.scrollTo({
-      left: Math.min(maxLeft, targetLeft),
-      behavior: 'smooth',
-    });
-  };
-
-  const beginGanttLabelResize = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setGanttLabelResize({ startX: event.clientX, startWidth: labelWidthPx });
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // ignore pointer capture errors
-    }
-  };
-
-  const openGanttPopover = (row: Extract<GanttRow, { kind: 'item' }>, target: HTMLElement) => {
-    if (row.isDowntime) {
-      setGanttPopover(null);
-      return;
-    }
-    const rect = target.getBoundingClientRect();
-    setGanttPopover({
-      scheduleItemId: row.scheduleItemId,
-      anchor: {
-        top: rect.top,
-        left: rect.left,
-        right: rect.right,
-        bottom: rect.bottom,
-        width: rect.width,
-        height: rect.height,
-      },
-    });
-  };
-
-  const beginGanttDrag = (
-    row: {
-      scheduleItemId: string;
-      startDate: string;
-      endDate: string;
-      durationDays: number;
-      isDowntime?: boolean;
-    },
-    mode: 'move' | 'resize',
-    e: React.PointerEvent,
-  ) => {
-    if (scheduleMode !== 'v2') return;
-    if (row.isDowntime) return;
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setGanttPopover(null);
-    const durationDays = Math.max(1, Math.trunc(row.durationDays));
-    ganttDragDeltaRef.current = 0;
-    ganttDragMovedRef.current = false;
-    setGanttDragDelta(0);
-    setGanttDragPointer({ x: e.clientX, y: e.clientY });
-    setGanttDrag({
-      id: row.scheduleItemId,
-      mode,
-      originX: e.clientX,
-      startDate: row.startDate,
-      endDate: row.endDate,
-      durationDays,
-    });
-    try {
-      const target = e.currentTarget as HTMLElement | null;
-      target?.setPointerCapture?.(e.pointerId);
-    } catch {
-      // ignore pointer capture errors
-    }
-  };
-
-  function handleDragMove(event: DragMoveEvent) {
-    if (view !== 'board') return;
-    if (!activeDragId) return;
-
-    const rect = ((event.active.rect?.current as any)?.translated ?? (event.active.rect?.current as any)?.initial) as
-      | { left: number; top: number; width: number; height: number }
-      | undefined;
-    if (!rect) return;
-
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-
-    const EDGE_PX = 80;
-    const STEP_PX = 32;
-
-    const board = boardScrollRef.current;
-    if (board) {
-      const br = board.getBoundingClientRect();
-      if (x < br.left + EDGE_PX) board.scrollLeft -= STEP_PX;
-      else if (x > br.right - EDGE_PX) board.scrollLeft += STEP_PX;
-    }
-
-    const verticalTarget =
-      overId === 'unscheduled'
-        ? unscheduledBodyRef.current
-        : overLaneId
-          ? laneBodyRefs.current.get(overLaneId) ?? null
-          : null;
-    if (verticalTarget) {
-      const vr = verticalTarget.getBoundingClientRect();
-      if (y < vr.top + EDGE_PX) verticalTarget.scrollTop -= STEP_PX;
-      else if (y > vr.bottom - EDGE_PX) verticalTarget.scrollTop += STEP_PX;
-    }
-  }
-
   async function persist(
-    next: ScheduleItem[],
+    _next: ScheduleItem[],
     opts?: { successToast?: string; errorToast?: string },
   ): Promise<boolean> {
-    if (scheduleMode === 'v2') {
-      toast.error('Schedule v2 changes must be applied via the new endpoints. Refresh and try again.');
-      return false;
-    }
-    const prev = scheduleItems;
-    setScheduleItems(next);
-    tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: next, estimatesById });
-
-    try {
-      const renderable = next.filter((i) => projectsById.has(i.projectId));
-      const build = buildScheduleBars({ today, installers, scheduleItems: renderable, projectsById, estimatesById });
-      const barsById = new Map(build.bars.map((b) => [b.scheduleItemId, { startDate: b.startDate, endDate: b.endDate, durationHours: b.durationHours }]));
-      const persisted = await replaceScheduleItems(next, { barsById, today });
-      setScheduleItems(persisted);
-      tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: persisted, estimatesById });
-      if (opts?.successToast) toast.success(opts.successToast);
-      return true;
-    } catch (err) {
-      setScheduleItems(prev);
-      tryWriteScheduleSnapshotToCache({ installers, projects, scheduleItems: prev, estimatesById });
-      const msg = err instanceof Error ? err.message : 'Failed to update schedule.';
-      toast.error(opts?.errorToast ?? msg);
-      return false;
-    }
+    toast.error(opts?.errorToast ?? 'Legacy schedule changes are handled by the fallback client. Refresh and try again.');
+    return false;
   }
 
   async function handleUnschedule(id: string, options?: { optimisticAlreadyApplied?: boolean }): Promise<boolean> {
@@ -3817,130 +1767,13 @@ export default function ScheduleClient() {
       });
     }
 
-    const status = scheduleStatusById.get(id) ?? 'TENTATIVE';
-    if (isLockedScheduleStatus(status) && typeof window !== 'undefined') {
-      const ok = window.confirm(`This job is ${scheduleStatusLabel(status)}. Unschedule anyway?`);
-      if (!ok) return false;
-    }
-    const next = scheduleItems.filter((i) => i.id !== id);
-    return await persist(next, { successToast: 'Job unscheduled.', errorToast: 'Failed to unschedule job.' });
-  }
-
-  async function handleConfirmSchedule(id: string) {
-    if (scheduleMode === 'v2') {
-      toast.info('Schedule confirmations are not used in V2.');
-      return;
-    }
-    try {
-      const res = await confirmScheduleItem(id);
-      setScheduleItems((prev) =>
-        prev.map((it) =>
-          it.id === id
-            ? {
-                ...it,
-                scheduleStatus: normalizeScheduleStatus(res.status),
-                locked: true,
-                confirmedAt: res.confirmedAt ?? it.confirmedAt ?? null,
-                confirmedBy: res.confirmedBy ?? it.confirmedBy ?? null,
-              }
-            : it,
-        ),
-      );
-      toast.success('Schedule confirmed.');
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 501) {
-        toast.error('Schedule schema not upgraded yet. Run supabase/schedule_engine.sql then refresh.');
-        return;
-      }
-      const msg = err instanceof Error ? err.message : 'Failed to confirm schedule.';
-      toast.error(msg);
-    }
-  }
-
-  async function handleUnlockSchedule(id: string) {
-    if (scheduleMode === 'v2') {
-      toast.info('Schedule locks are not used in V2.');
-      return;
-    }
-    const status = scheduleStatusById.get(id) ?? 'TENTATIVE';
-    const needsForce = status === 'IN_PROGRESS';
-    const force = needsForce && typeof window !== 'undefined' ? window.confirm('This job is in progress. Unlock anyway?') : false;
-    if (needsForce && !force) return;
-
-    try {
-      await unlockScheduleItem(id, { force });
-      setScheduleItems((prev) =>
-        prev.map((it) =>
-          it.id === id
-            ? {
-                ...it,
-                scheduleStatus: 'TENTATIVE',
-                locked: false,
-                confirmedAt: null,
-                confirmedBy: null,
-              }
-            : it,
-        ),
-      );
-      toast.success('Schedule unlocked.');
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409 && needsForce && typeof window !== 'undefined') {
-        const ok = window.confirm('Unlock requires confirmation. Unlock anyway?');
-        if (!ok) return;
-        void handleUnlockSchedule(id);
-        return;
-      }
-      if (err instanceof ApiError && err.status === 501) {
-        toast.error('Schedule schema not upgraded yet. Run supabase/schedule_engine.sql then refresh.');
-        return;
-      }
-      const msg = err instanceof Error ? err.message : 'Failed to unlock schedule.';
-      toast.error(msg);
-    }
+    return false;
   }
 
   async function handleRemoveOrphanedScheduleItems() {
     if (scheduleMode === 'v2') {
       toast.info('Orphan cleanup is not available in Schedule V2 yet.');
       return;
-    }
-    if (cleanupBusy) return;
-    if (!orphanedScheduleItems.length) return;
-
-    setCleanupBusy(true);
-    try {
-      const candidates = orphanedScheduleItems.slice();
-      const uniqueProjectIds = Array.from(new Set(candidates.map((i) => i.projectId)));
-
-      // Confirm missing foreign keys via authoritative lookup (do not delete based on list-join alone).
-      const missingProjectIds = new Set<string>();
-      for (const projectId of uniqueProjectIds) {
-        const project = await getProject(projectId).catch(() => null);
-        if (!project) missingProjectIds.add(projectId);
-      }
-
-      const confirmedOrphans = candidates.filter((i) => missingProjectIds.has(i.projectId));
-      const count = confirmedOrphans.length;
-      if (!count) {
-        toast.info('No orphaned schedule items found.');
-        return;
-      }
-
-      if (typeof window !== 'undefined') {
-        const ok = window.confirm(`Remove ${count} orphaned schedule item(s)? This cannot be undone.`);
-        if (!ok) return;
-      }
-
-      const orphanIds = new Set(confirmedOrphans.map((i) => i.id));
-      const nextItems = scheduleItems.filter((i) => !orphanIds.has(i.id));
-      const okPersisted = await persist(nextItems, { successToast: `Removed ${count} orphaned schedule items` });
-      if (!okPersisted) return;
-      refreshSchedule();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to remove orphaned schedule items.';
-      toast.error(msg);
-    } finally {
-      setCleanupBusy(false);
     }
   }
 
@@ -4045,6 +1878,91 @@ export default function ScheduleClient() {
     setPinEdit({ id, requestedStart: isYmd(startCandidate) ? startCandidate : '' });
   };
 
+  const handleGanttOpenProject = (projectId: string) => {
+    router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
+  };
+
+  const handleGanttOpenProjectPack = (projectId: string, estimateId: string) => {
+    router.push(`/staff/projects/${encodeURIComponent(projectId)}/estimate/${encodeURIComponent(estimateId)}`);
+  };
+
+  const handleGanttOpenPinEdit = (id: string, requestedStart: string) => {
+    if (isYmd(requestedStart)) {
+      setPinEdit({ id, requestedStart });
+      return;
+    }
+    openPinEdit(id);
+  };
+
+  const handleGanttUnpinScheduleItem = (id: string) => {
+    const item = scheduleItemById.get(id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+    void queueUnpinJob(jobUuid, {
+      successToast: 'Job unpinned.',
+      errorToast: 'Failed to unpin job.',
+    });
+  };
+
+  const handleGanttAckClientUpdate = (id: string) => {
+    const item = scheduleItemById.get(id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+    void ackClientUpdate({ job_id: jobUuid })
+      .then(() => {
+        applyClientAckLocally(jobUuid);
+        toast.success('Client update marked as contacted.');
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : 'Failed to mark client as contacted.';
+        toast.error(msg);
+      });
+  };
+
+  const handleGanttMovePin = (id: string, requestedStart: string) => {
+    const item = scheduleItemById.get(id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+    void queuePinJob(jobUuid, requestedStart, {
+      successToast: 'Job pinned.',
+      errorToast: 'Failed to pin job.',
+    });
+  };
+
+  const handleGanttResizePin = (id: string, requestedStart: string, durationDays: number) => {
+    const item = scheduleItemById.get(id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+    const nextDuration = Math.max(1, Math.round(durationDays));
+    void (async () => {
+      const ok = await queueSetDurationJob(jobUuid, nextDuration, {
+        successToast: 'Duration updated.',
+        errorToast: 'Failed to update duration.',
+      });
+      if (!ok) return;
+      await queuePinJob(jobUuid, requestedStart, {
+        successToast: 'Job pinned.',
+        errorToast: 'Failed to pin job.',
+      });
+    })();
+  };
+
   const openDaysRemainingEdit = (id: string) => {
     const item = scheduleItemById.get(id) ?? null;
     if (!item || item.itemType === 'downtime') {
@@ -4129,19 +2047,13 @@ export default function ScheduleClient() {
       if (v2PendingMutationsRef.current <= 1) refreshSchedule();
     } finally {
       v2PendingMutationsRef.current = Math.max(0, v2PendingMutationsRef.current - 1);
-      if (v2PendingMutationsRef.current === 0 && !v2SnapshotQuery.isFetching) {
+      if (v2PendingMutationsRef.current === 0 && !activeV2SnapshotIsFetching) {
         setSyncing(false);
       }
     }
   };
 
-  function runGanttPopoverAction(action: (() => void) | null | undefined) {
-    if (!action) return;
-    setGanttPopover(null);
-    window.setTimeout(() => action(), 0);
-  }
-
-  function buildDowntimeMenuActions(id: string, scheduleItem: ScheduleItem): MenuAction[] {
+  function buildDowntimeMenuActions(id: string, scheduleItem: ScheduleItem): ScheduleBoardMenuAction[] {
     if (scheduleMode === 'v2') {
       return [
         {
@@ -4188,7 +2100,7 @@ export default function ScheduleClient() {
     scheduleItem: ScheduleItem;
     job: SchedulableJob | null;
     scheduleStatus: ScheduleItemStatus;
-  }): MenuAction[] {
+  }): ScheduleBoardMenuAction[] {
     if (scheduleItem.itemType === 'downtime') return [];
 
     const jobStatus = scheduleItem.jobStatus ?? null;
@@ -4207,7 +2119,7 @@ export default function ScheduleClient() {
             : 1;
 
     if (scheduleMode === 'v2') {
-      const v2Actions: MenuAction[] = [];
+      const v2Actions: ScheduleBoardMenuAction[] = [];
       if (!isDone) {
         v2Actions.push({
           label: hasCommitment ? 'Reschedule…' : 'Lock schedule…',
@@ -4332,55 +2244,16 @@ export default function ScheduleClient() {
       return v2Actions;
     }
 
-    const locked = isLockedScheduleStatus(scheduleStatus);
-    const legacyActions: MenuAction[] = [
-      ...(scheduleStatus === 'TENTATIVE'
-        ? [
-            {
-              label: 'Confirm dates',
-              onClick: () => void handleConfirmSchedule(id),
-            },
-          ]
-        : []),
-      ...(locked
-        ? [
-            {
-              label: 'Unlock',
-              onClick: () => void handleUnlockSchedule(id),
-            },
-          ]
-        : []),
-      ...(!locked
-        ? [
-            {
-              label: 'Quick edit…',
-              onClick: () => openQuickEdit(id),
-            },
-          ]
-        : []),
-      {
-        label: 'Unschedule',
-        tone: 'danger',
-        onClick: () => void handleUnschedule(id),
-      },
-    ];
-    return legacyActions;
+    return [];
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    setActiveDragId(null);
-    setOverId(null);
-    setOverLaneId(null);
-    if (!over) return;
-
-    const activeId = String(active.id);
-    const overId = String(over.id);
+  function handleBoardDrop(activeId: string, dropTarget: ScheduleBoardDrop) {
+    const resolvedOverId = dropTarget.kind === 'lane' ? dropTarget.overId ?? `lane:${dropTarget.laneId}` : dropTarget.overId;
 
     const isScheduled = scheduleItems.some((i) => i.id === activeId);
 
     if (scheduleMode === 'v2') {
-      if (overId === 'unscheduled') {
+      if (dropTarget.kind === 'unscheduled') {
         if (!isScheduled) return;
 
         const optimistic = optimisticUnassign(scheduleItemsRef.current, unscheduledJobsSeedRef.current, activeId, projectsById);
@@ -4393,18 +2266,14 @@ export default function ScheduleClient() {
         return;
       }
 
-      const destInstallerId = (() => {
-        if (overId.startsWith('lane:')) return overId.slice('lane:'.length);
-        const overItem = scheduleItems.find((i) => i.id === overId);
-        return overItem?.installerId ?? null;
-      })();
+      const destInstallerId = dropTarget.laneId;
       if (!destInstallerId) return;
 
       if (!isScheduled) {
         const job = schedulable.jobsById.get(activeId);
         if (!job) return;
         const existing = laneItems.get(destInstallerId) ?? [];
-        const destIndex = overId.startsWith('lane:') ? existing.length : Math.max(0, existing.findIndex((i) => i.id === overId));
+        const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, existing.length));
         let projectUuid: string;
         let crewUuid: string;
         try {
@@ -4415,15 +2284,42 @@ export default function ScheduleClient() {
           return;
         }
 
+        const assignDebug = {
+          activeId,
+          activeType: 'unscheduled',
+          projectId: job.projectId,
+          projectUuid,
+          crewId: destInstallerId,
+          crewUuid,
+          position: destIndex,
+          overId: resolvedOverId,
+          drop: dropTarget.debug ?? null,
+        };
+        logScheduleDebug('board.assign.attempt', assignDebug);
+
+        const previousState = {
+          scheduleItems: scheduleItemsRef.current,
+          unscheduledJobsSeed: unscheduledJobsSeedRef.current,
+          scheduleConflicts: scheduleConflictsRef.current,
+          nextAvailableByInstallerId: new Map(nextAvailRef.current),
+        };
         const optimisticItems = optimisticAssignUnscheduled(scheduleItemsRef.current, job, destInstallerId, destIndex);
         const optimisticUnscheduled = unscheduledJobsSeedRef.current.filter((unscheduled) => unscheduled.id !== activeId);
         applyV2OptimisticState(optimisticItems, optimisticUnscheduled);
 
         void (async () => {
-          await runWithCommitConfirmation(
-            (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex < 0 ? existing.length : destIndex, force, today }),
-            { successToast: 'Job scheduled.', errorToast: 'Failed to schedule job.' },
+          const ok = await runWithCommitConfirmation(
+            (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: destIndex, force, today }),
+            {
+              successToast: 'Job scheduled.',
+              errorToast: 'Failed to schedule job.',
+              refreshOnError: false,
+              formatErrorToast: formatAssignMutationErrorToast,
+              onSuccess: (response) => logScheduleDebug('board.assign.success', { ...assignDebug, response }),
+              onError: (error) => logScheduleDebug('board.assign.failure', { ...assignDebug, error: scheduleMutationErrorDebug(error) }),
+            },
           );
+          if (!ok) setV2LocalState(previousState, nextV2GeneratedAt());
         })();
         return;
       }
@@ -4447,24 +2343,13 @@ export default function ScheduleClient() {
       const sourceList = (laneItems.get(sourceInstallerId) ?? []).map((i) => i.id);
       const destList = (laneItems.get(destInstallerId) ?? []).map((i) => i.id);
 
-      if (sourceInstallerId === destInstallerId && overId === activeId) return;
+      if (sourceInstallerId === destInstallerId && resolvedOverId === activeId) return;
 
-      const sourceIndex = sourceList.indexOf(activeId);
-      const destIndex = overId.startsWith('lane:')
-        ? destList.length
-        : destList.indexOf(overId) >= 0
-          ? destList.indexOf(overId)
-          : destList.length;
+      const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, sourceInstallerId === destInstallerId ? Math.max(0, destList.length - 1) : destList.length));
 
       const nextSource = sourceList.filter((id) => id !== activeId);
       const nextDest = sourceInstallerId === destInstallerId ? nextSource.slice() : destList.slice();
-
-      const insertAt = (() => {
-        if (sourceInstallerId !== destInstallerId) return destIndex;
-        if (sourceIndex < 0) return destIndex;
-        if (destIndex > sourceIndex) return Math.max(0, destIndex - 1);
-        return destIndex;
-      })();
+      const insertAt = destIndex;
 
       nextDest.splice(Math.max(0, insertAt), 0, activeId);
 
@@ -4484,13 +2369,33 @@ export default function ScheduleClient() {
           }
         }).filter(Boolean) as string[];
 
+        const reorderDebug = {
+          activeId,
+          activeType: activeItem.itemType ?? 'job',
+          crewId: destInstallerId,
+          crewUuid,
+          sourceLaneId: sourceInstallerId,
+          destinationLaneId: destInstallerId,
+          insertionIndex: insertAt,
+          overId: resolvedOverId,
+          orderedItemIds: nextDest,
+          orderedScheduleItemUuids: ordered,
+          drop: dropTarget.debug ?? null,
+        };
+        logScheduleDebug('board.reorder.attempt', reorderDebug);
+
         const optimisticItems = optimisticReorderCrew(scheduleItemsRef.current, destInstallerId, nextDest);
         applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
 
         void (async () => {
           await runWithCommitConfirmation(
             (force) => reorderScheduleItemsV2({ crew_id: crewUuid, ordered_item_ids: ordered, force, today }),
-            { successToast: 'Schedule updated.', errorToast: 'Failed to reorder schedule.' },
+            {
+              successToast: 'Schedule updated.',
+              errorToast: 'Failed to reorder schedule.',
+              onSuccess: (response) => logScheduleDebug('board.reorder.success', { ...reorderDebug, response }),
+              onError: (error) => logScheduleDebug('board.reorder.failure', { ...reorderDebug, error: scheduleMutationErrorDebug(error) }),
+            },
           );
         })();
         return;
@@ -4508,36 +2413,54 @@ export default function ScheduleClient() {
           return;
         }
 
+        const moveDebug = {
+          activeId,
+          activeType: 'scheduled',
+          scheduleItemId: activeItem.id,
+          scheduledJobId: activeItem.scheduledJobId ?? null,
+          projectId: activeItem.projectId,
+          projectUuid,
+          sourceLaneId: sourceInstallerId,
+          destinationLaneId: destInstallerId,
+          crewUuid,
+          position: insertAt,
+          overId: resolvedOverId,
+          drop: dropTarget.debug ?? null,
+        };
+        logScheduleDebug('board.assign.attempt', moveDebug);
+
         const optimisticItems = optimisticMoveBetweenCrews(scheduleItemsRef.current, activeId, sourceInstallerId, destInstallerId, insertAt);
         applyV2OptimisticState(optimisticItems, unscheduledJobsSeedRef.current);
 
         void (async () => {
           await runWithCommitConfirmation(
             (force) => assignJob({ job_id: projectUuid, crew_id: crewUuid, position: insertAt, force, today }),
-            { successToast: 'Job moved.', errorToast: 'Failed to move job.' },
+            {
+              successToast: 'Job moved.',
+              errorToast: 'Failed to move job.',
+              formatErrorToast: formatAssignMutationErrorToast,
+              onSuccess: (response) => logScheduleDebug('board.assign.success', { ...moveDebug, response }),
+              onError: (error) => logScheduleDebug('board.assign.failure', { ...moveDebug, error: scheduleMutationErrorDebug(error) }),
+            },
           );
         })();
       }
       return;
     }
 
-    if (overId === 'unscheduled') {
+    if (dropTarget.kind === 'unscheduled') {
       if (isScheduled) void handleUnschedule(activeId);
       return;
     }
 
-    const destInstallerId = (() => {
-      if (overId.startsWith('lane:')) return overId.slice('lane:'.length);
-      const overItem = scheduleItems.find((i) => i.id === overId);
-      return overItem?.installerId ?? null;
-    })();
+    const destInstallerId = dropTarget.laneId;
     if (!destInstallerId) return;
 
     if (!isScheduled) {
       const job = schedulable.jobsById.get(activeId);
       if (!job) return;
       const existing = laneItems.get(destInstallerId) ?? [];
-      const sortIndex = existing.length ? Math.max(...existing.map((i) => i.sortIndex)) + 1 : 0;
+      const sortIndex = Math.max(0, Math.min(dropTarget.insertionIndex, existing.length));
       const item: ScheduleItem = {
         id: newId('sch'),
         projectId: job.projectId,
@@ -4564,24 +2487,13 @@ export default function ScheduleClient() {
     const sourceList = (laneItems.get(sourceInstallerId) ?? []).map((i) => i.id);
     const destList = (laneItems.get(destInstallerId) ?? []).map((i) => i.id);
 
-    if (sourceInstallerId === destInstallerId && overId === activeId) return;
+    if (sourceInstallerId === destInstallerId && resolvedOverId === activeId) return;
 
-    const sourceIndex = sourceList.indexOf(activeId);
-    const destIndex = overId.startsWith('lane:')
-      ? destList.length
-      : destList.indexOf(overId) >= 0
-        ? destList.indexOf(overId)
-        : destList.length;
+    const destIndex = Math.max(0, Math.min(dropTarget.insertionIndex, sourceInstallerId === destInstallerId ? Math.max(0, destList.length - 1) : destList.length));
 
     const nextSource = sourceList.filter((id) => id !== activeId);
     const nextDest = sourceInstallerId === destInstallerId ? nextSource.slice() : destList.slice();
-
-    const insertAt = (() => {
-      if (sourceInstallerId !== destInstallerId) return destIndex;
-      if (sourceIndex < 0) return destIndex;
-      if (destIndex > sourceIndex) return Math.max(0, destIndex - 1);
-      return destIndex;
-    })();
+    const insertAt = destIndex;
 
     nextDest.splice(Math.max(0, insertAt), 0, activeId);
 
@@ -4608,122 +2520,367 @@ export default function ScheduleClient() {
     void persist(nextItems, { successToast: 'Schedule updated.' });
   }
 
-  const overlayJob = activeDragId ? schedulable.jobsById.get(activeDragId) ?? null : null;
+  const handleRunDiagnostics = () => {
+    if (diagnosticsBusy) return;
+    setDiagnosticsBusy(true);
+    void (async () => {
+      try {
+        const res = await runScheduleDiagnostics();
+        setDiagnostics(res);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Diagnostics failed';
+        setDiagnostics({
+          host: getScheduleSupabaseHost(),
+          crewsOk: false,
+          crewsError: msg,
+          itemsOk: false,
+          itemsError: msg,
+          projectsOk: false,
+          projectsError: msg,
+          estimatesOk: false,
+          estimatesError: msg,
+        });
+      } finally {
+        setDiagnosticsBusy(false);
+      }
+    })();
+  };
+
+  const handleSaveQuickEdit = () => {
+    if (!quickEdit) return;
+
+    const item = scheduleItemById.get(quickEdit.id) ?? null;
+    if (!item) {
+      setQuickEdit(null);
+      return;
+    }
+
+    const start = quickEdit.startDateOverride.trim();
+    const daysRaw = quickEdit.durationDays.trim();
+    const days = daysRaw ? Number(daysRaw) : Number.NaN;
+
+    if (scheduleMode === 'v2') {
+      if (item.itemType === 'downtime') {
+        setQuickEdit(null);
+        return;
+      }
+
+      const projectUuid = resolveProjectUuid(item);
+      if (!projectUuid) return;
+
+      const durationDays = Number.isFinite(days) && days > 0 ? Math.max(1, Math.round(days)) : null;
+
+      void (async () => {
+        let ok = true;
+        if (durationDays != null) {
+          ok = await queueSetDurationJob(projectUuid, durationDays, {
+            successToast: 'Duration updated.',
+            errorToast: 'Failed to update duration.',
+          });
+          if (!ok) return;
+        }
+
+        if (start) {
+          ok = await queuePinJob(projectUuid, start, {
+            successToast: 'Job pinned.',
+            errorToast: 'Failed to pin job.',
+          });
+          if (!ok) return;
+        } else if (item.mode === 'pinned') {
+          ok = await queueUnpinJob(projectUuid, {
+            successToast: 'Job unpinned.',
+            errorToast: 'Failed to unpin job.',
+          });
+          if (!ok) return;
+        }
+
+        setQuickEdit(null);
+      })();
+      return;
+    }
+
+    const durationHoursOverride = Number.isFinite(days) && days > 0 ? days * WORK_HOURS_PER_DAY : null;
+    const nextItems = scheduleItems.map((scheduleItem) => {
+      if (scheduleItem.id !== item.id) return scheduleItem;
+      return {
+        ...scheduleItem,
+        startDateOverride: start ? start : undefined,
+        durationHoursOverride: durationHoursOverride ?? undefined,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+
+    void persist(nextItems, { successToast: 'Job updated.' }).then((ok) => {
+      if (ok) setQuickEdit(null);
+    });
+  };
+
+  const handleSaveCommitment = () => {
+    if (!commitmentEdit) return;
+
+    const item = scheduleItemById.get(commitmentEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const durationDays = parsePositiveInt(commitmentEdit.durationDays);
+    if (durationDays === null) {
+      toast.error('Enter a valid duration in whole days.');
+      return;
+    }
+
+    const flexRaw = Number(commitmentEdit.flexDays.trim());
+    if (!Number.isFinite(flexRaw)) {
+      toast.error('Enter a valid flex value.');
+      return;
+    }
+    const flexDays = Math.max(0, Math.trunc(flexRaw));
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    const payload =
+      commitmentEdit.commitmentType === 'week_of'
+        ? {
+            job_id: jobUuid,
+            commitment_type: 'week_of' as const,
+            week_of_date: startOfWeekMonday(commitmentEdit.weekOfDate),
+            duration_days: durationDays,
+            flex_days: flexDays,
+            hard_lock: commitmentEdit.hardLock,
+            today,
+          }
+        : {
+            job_id: jobUuid,
+            commitment_type: 'fixed_date' as const,
+            start_date: snapToWeekdayYmd(commitmentEdit.startDate),
+            duration_days: durationDays,
+            flex_days: flexDays,
+            hard_lock: commitmentEdit.hardLock,
+            today,
+          };
+
+    const runMutation =
+      commitmentEdit.mode === 'lock'
+        ? (force: boolean) => lockJobSchedule({ ...payload, force })
+        : (force: boolean) => rescheduleJob({ ...payload, force });
+
+    const successToast = commitmentEdit.mode === 'lock' ? 'Schedule locked.' : 'Schedule updated.';
+    void runWithCommitConfirmation(runMutation, {
+      successToast,
+      errorToast: 'Failed to save schedule commitment.',
+    }).then((ok) => {
+      if (ok) setCommitmentEdit(null);
+    });
+  };
+
+  const handleSaveDuration = () => {
+    if (!durationEdit) return;
+
+    const item = scheduleItemById.get(durationEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const days = Number(durationEdit.durationDays.trim());
+    if (!Number.isFinite(days) || days <= 0) {
+      toast.error('Enter a valid duration in days.');
+      return;
+    }
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    const durationDays = Math.max(1, Math.round(days));
+    void queueSetDurationJob(jobUuid, durationDays, {
+      successToast: 'Duration updated.',
+      errorToast: 'Failed to update duration.',
+    }).then((ok) => {
+      if (ok) setDurationEdit(null);
+    });
+  };
+
+  const handleSavePin = () => {
+    if (!pinEdit) return;
+
+    const item = scheduleItemById.get(pinEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const start = pinEdit.requestedStart.trim();
+    if (!isYmd(start)) {
+      toast.error('Select a valid start date.');
+      return;
+    }
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    void queuePinJob(jobUuid, start, {
+      successToast: 'Job pinned.',
+      errorToast: 'Failed to pin job.',
+    }).then((ok) => {
+      if (ok) setPinEdit(null);
+    });
+  };
+
+  const handleSaveDaysRemaining = () => {
+    if (!daysRemainingEdit) return;
+
+    const item = scheduleItemById.get(daysRemainingEdit.id) ?? null;
+    if (!item || item.itemType === 'downtime') {
+      toast.error('Scheduled job not found.');
+      return;
+    }
+
+    const days = Number(daysRemainingEdit.daysRemaining.trim());
+    if (!Number.isFinite(days) || days <= 0) {
+      toast.error('Enter a valid number of days.');
+      return;
+    }
+
+    const jobUuid = resolveProjectUuid(item);
+    if (!jobUuid) return;
+
+    const daysRemaining = Math.max(1, Math.round(days));
+    void queueSetDaysRemainingJob(jobUuid, daysRemaining, {
+      successToast: 'Days remaining updated.',
+      errorToast: 'Failed to update days remaining.',
+    }).then((ok) => {
+      if (ok) setDaysRemainingEdit(null);
+    });
+  };
+
+  const handleSaveDowntime = () => {
+    if (!downtimeEdit) return;
+
+    const days = Number(downtimeEdit.durationDays.trim());
+    if (!Number.isFinite(days) || days <= 0) {
+      toast.error('Enter a valid duration in days.');
+      return;
+    }
+
+    const durationDays = Math.max(1, Math.round(days));
+    const reason = downtimeEdit.reason || 'other';
+    const note = downtimeEdit.note.trim();
+
+    if (downtimeEdit.mode === 'create') {
+      const crewUuid = resolveCrewUuid(downtimeEdit.crewId);
+      if (!crewUuid) return;
+
+      void runWithCommitConfirmation(
+        (force) =>
+          createDowntime({
+            crew_id: crewUuid,
+            position: downtimeEdit.position,
+            duration_days: durationDays,
+            reason,
+            note: note || null,
+            force,
+            today,
+          }),
+        { successToast: 'Downtime added.', errorToast: 'Failed to add downtime.' },
+      ).then((ok) => {
+        if (ok) setDowntimeEdit(null);
+      });
+      return;
+    }
+
+    if (!downtimeEdit.downtimeId) {
+      toast.error('Downtime record not found.');
+      return;
+    }
+
+    void runWithCommitConfirmation(
+      (force) =>
+        updateDowntime({
+          downtime_id: downtimeEdit.downtimeId as string,
+          duration_days: durationDays,
+          reason,
+          note: note || null,
+          force,
+          today,
+        }),
+      { successToast: 'Downtime updated.', errorToast: 'Failed to update downtime.' },
+    ).then((ok) => {
+      if (ok) setDowntimeEdit(null);
+    });
+  };
+
+  const handleFinishEarlyKeepSchedule = () => {
+    if (!finishEarlyPrompt) return;
+    void runWithCommitConfirmation(
+      (force) =>
+        markJobDone({
+          job_id: finishEarlyPrompt.jobId,
+          finish_early_action: 'keep_schedule',
+          force,
+          today,
+        }),
+      { successToast: 'Buffer added. Schedule held.', errorToast: 'Failed to keep schedule as-is.' },
+    ).then((ok) => {
+      if (ok) setFinishEarlyPrompt(null);
+    });
+  };
+
+  const handleFinishEarlyPullForward = () => {
+    if (!finishEarlyPrompt) return;
+    void runWithCommitConfirmation(
+      (force) =>
+        markJobDone({
+          job_id: finishEarlyPrompt.jobId,
+          finish_early_action: 'pull_forward',
+          force,
+          today,
+        }),
+      { successToast: 'Schedule pulled forward.', errorToast: 'Failed to pull schedule forward.' },
+    ).then((ok) => {
+      if (ok) setFinishEarlyPrompt(null);
+    });
+  };
+
+  const actionModalState: ScheduleModalState = {
+    quickEdit,
+    commitmentEdit,
+    durationEdit,
+    pinEdit,
+    daysRemainingEdit,
+    downtimeEdit,
+    finishEarlyPrompt,
+  };
+
+  const hasOpenActionModal = Boolean(
+    quickEdit || commitmentEdit || durationEdit || pinEdit || daysRemainingEdit || downtimeEdit || finishEarlyPrompt,
+  );
 
   const diagnosticsPanel = devOnly ? (
-    <div
-      aria-label="Schedule diagnostics"
-      style={{
-        marginTop: 12,
-        border: '1px solid rgba(var(--portal-text-rgb), 0.14)',
-        borderRadius: 14,
-        background: 'rgba(var(--portal-bg-surface-rgb), 0.92)',
-        overflow: 'hidden',
-      }}
-    >
-      <div style={{ padding: 12, display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <strong style={{ fontSize: 12, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Diagnostics (dev only)</strong>
-          <span className={styles.muted} style={{ fontSize: 12 }}>
-            Checks projects + estimates + schedule tables
-          </span>
-        </div>
-        <button
-          type="button"
-          className={styles.buttonSecondary}
-          aria-expanded={diagnosticsOpen}
-          onClick={() => setDiagnosticsOpen((v) => !v)}
-        >
-          {diagnosticsOpen ? 'Hide' : 'Show'}
-        </button>
-      </div>
-
-      {diagnosticsOpen ? (
-        <div style={{ padding: 12, borderTop: '1px solid rgba(var(--portal-text-rgb), 0.08)' }}>
-          <button
-            type="button"
-            className={styles.buttonSecondary}
-            disabled={diagnosticsBusy}
-            onClick={() => {
-              if (diagnosticsBusy) return;
-              setDiagnosticsBusy(true);
-              void (async () => {
-                try {
-                  const res = await runScheduleDiagnostics();
-                  setDiagnostics(res);
-                } catch (e) {
-                  const msg = e instanceof Error ? e.message : 'Diagnostics failed';
-                  setDiagnostics({
-                    host: supabaseHostFromUrl(supabaseRuntimeUrl()),
-                    crewsOk: false,
-                    crewsError: msg,
-                    itemsOk: false,
-                    itemsError: msg,
-                    projectsOk: false,
-                    projectsError: msg,
-                    estimatesOk: false,
-                    estimatesError: msg,
-                  });
-                } finally {
-                  setDiagnosticsBusy(false);
-                }
-              })();
-            }}
-          >
-            {diagnosticsBusy ? 'Checking…' : 'Run diagnostics'}
-          </button>
-
-          {diagnostics ? (
-            <div className={styles.note} style={{ marginTop: 12 }}>
-              <div>
-                Host: <strong>{diagnostics.host || '—'}</strong>
-              </div>
-              <div>
-                schedule_crews: <strong>{diagnostics.crewsOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.crewsOk && diagnostics.crewsError ? <div className={styles.muted}>{diagnostics.crewsError}</div> : null}
-              </div>
-              <div>
-                schedule_items: <strong>{diagnostics.itemsOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.itemsOk && diagnostics.itemsError ? <div className={styles.muted}>{diagnostics.itemsError}</div> : null}
-              </div>
-              <div>
-                projects: <strong>{diagnostics.projectsOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.projectsOk && diagnostics.projectsError ? <div className={styles.muted}>{diagnostics.projectsError}</div> : null}
-              </div>
-              <div>
-                estimates: <strong>{diagnostics.estimatesOk ? 'OK' : 'FAIL'}</strong>
-                {!diagnostics.estimatesOk && diagnostics.estimatesError ? <div className={styles.muted}>{diagnostics.estimatesError}</div> : null}
-              </div>
-            </div>
-          ) : (
-            <p className={styles.note} style={{ marginTop: 12 }}>
-              Click “Run diagnostics” to test PostgREST access.
-            </p>
-          )}
-        </div>
-      ) : null}
-    </div>
+    <LazyScheduleDiagnosticsPanel
+      open={diagnosticsOpen}
+      busy={diagnosticsBusy}
+      diagnostics={diagnostics}
+      recentTelemetryEvents={recentTelemetryEvents}
+      onToggle={() => setDiagnosticsOpen((value) => !value)}
+      onRun={handleRunDiagnostics}
+    />
   ) : null;
 
-  if (view === 'site_visits') {
+  if (scheduleMode === 'legacy') {
     return (
-      <main className={cx(styles.page, styles.pageLocked)}>
-        <PageHeader
-          title="Schedule"
-          right={
-            <HeaderActions>
-              {scheduleTabs}
-            </HeaderActions>
-          }
-        />
-        <div className={cx(styles.stack, styles.stackLocked)}>
-          <SiteVisitsView />
-        </div>
-      </main>
+      <LazyScheduleLegacyFallbackClient
+        initialReason={legacyFallbackReason}
+        today={today}
+        initialView={view === 'gantt' ? 'gantt' : 'board'}
+      />
     );
   }
 
-  if (!hydrated) {
+  const waitingForBoardSnapshot = scheduleMode === 'v2' && view === 'board' && activeSnapshotKind !== 'board';
+
+  if (!hydrated || waitingForBoardSnapshot) {
     return (
       <main className={cx(styles.page, styles.pageLocked)}>
         <PageHeader
@@ -4873,1493 +3030,86 @@ export default function ScheduleClient() {
 
         {diagnosticsPanel}
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={(e) => setActiveDragId(String(e.active.id))}
-          onDragOver={(e: DragOverEvent) => {
-            const nextOverId = e.over ? String(e.over.id) : null;
-            setOverId(nextOverId);
-            if (!nextOverId) {
-              setOverLaneId(null);
-              return;
-            }
-            if (nextOverId.startsWith('lane:')) {
-              setOverLaneId(nextOverId.slice('lane:'.length));
-              return;
-            }
-            const overItem = scheduleItems.find((i) => i.id === nextOverId);
-            setOverLaneId(overItem?.installerId ?? null);
-          }}
-          onDragMove={handleDragMove}
-          onDragCancel={() => {
-            setActiveDragId(null);
-            setOverId(null);
-            setOverLaneId(null);
-          }}
-          onDragEnd={handleDragEnd}
-        >
+        {view === 'gantt' ? (
           <div className={styles.panels}>
-            <aside className={cx(styles.leftPanel, unscheduledCollapsed && styles.leftPanelCollapsed)} aria-label="Unscheduled jobs">
-              <div className={styles.panelHeader}>
-                <h2 className={styles.panelTitle}>Unscheduled</h2>
-                <div className={styles.panelHeaderActions}>
-                  <span className={styles.muted}>{unscheduledJobs.length}</span>
-                  <button
-                    type="button"
-                    className={styles.panelCollapseButton}
-                    aria-label={unscheduledCollapsed ? 'Expand unscheduled panel' : 'Collapse unscheduled panel'}
-                    aria-expanded={!unscheduledCollapsed}
-                    onClick={() => setUnscheduledCollapsed((prev) => !prev)}
-                  >
-                    {unscheduledCollapsed ? '▸' : '◂'}
-                  </button>
-                </div>
-              </div>
+            <section className={styles.mainPanel} aria-label="Installer lanes">
+              <LazyScheduleGanttView
+                today={today}
+                scheduleMode={scheduleMode}
+                installers={installers}
+                laneItems={laneItems}
+                visibleScheduleItems={visibleScheduleItems}
+                projectsById={projectsById}
+                estimatesById={emptyEstimatesById}
+                scheduleBars={schedule.bars}
+                scheduleIssues={schedule.issues}
+                holidays={ganttHolidays}
+                showCompleted={showCompleted}
+                onShowCompletedChange={handleShowCompletedChange}
+                onOpenProject={handleGanttOpenProject}
+                onOpenProjectPack={handleGanttOpenProjectPack}
+                onOpenCommitmentEdit={openCommitmentEdit}
+                onOpenPinEdit={handleGanttOpenPinEdit}
+                onUnpinScheduleItem={handleGanttUnpinScheduleItem}
+                onAckClientUpdate={handleGanttAckClientUpdate}
+                onMovePin={handleGanttMovePin}
+                onResizePin={handleGanttResizePin}
+              />
+            </section>
+          </div>
+        ) : (
+          <LazyScheduleBoardView
+            today={today}
+            scheduleMode={scheduleMode}
+            installers={installers}
+            schedulable={schedulable}
+            unscheduledJobs={unscheduledJobs}
+            unscheduledJobsAll={unscheduledJobsAll}
+            laneItems={laneItems}
+            scheduleItemById={scheduleItemById}
+            barsByScheduleId={barsByScheduleId}
+            issueLevelByScheduleId={issueLevelByScheduleId}
+            nextAvailableByInstallerId={nextAvailableByInstallerId}
+            unscheduledCollapsed={unscheduledCollapsed}
+            query={query}
+            showCompleted={showCompleted}
+            onQueryChange={setQuery}
+            onToggleUnscheduledCollapsed={handleToggleUnscheduledCollapsed}
+            onShowCompletedChange={handleShowCompletedChange}
+            onDrop={handleBoardDrop}
+            buildJobMenuActions={buildJobMenuActions}
+            buildDowntimeMenuActions={buildDowntimeMenuActions}
+          />
+        )}
 
-              <div className={styles.filters}>
-                <input
-                  className={styles.input}
-                  placeholder="Search projects…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-                <p className={styles.hint}>Only deposit-stage projects with at least one active estimate appear here.</p>
-              </div>
-
-              <UnscheduledDropZone onMount={(node) => (unscheduledBodyRef.current = node)}>
-                {unscheduledJobs.length ? (
-                  <div className={styles.cardList}>
-                    {unscheduledJobs.map((job) => (
-                      <UnscheduledJobCard key={job.id} job={job} />
-                    ))}
-                  </div>
-                ) : (
-                  <div>
-                    {unscheduledJobsAll.length === 0 ? (
-                      <>
-                        <p className={styles.note}>No unscheduled deposit-stage projects.</p>
-                        <p className={styles.hint}>Projects appear here once they reach Deposit and have an active estimate.</p>
-                      </>
-                    ) : (
-                      <p className={styles.note}>No projects match this search.</p>
-                    )}
-                  </div>
-                )}
-              </UnscheduledDropZone>
-
-              {process.env.NODE_ENV === 'development' ? (
-                <details className={styles.debugDetails}>
-                  <summary className={styles.debugSummary}>Debug: schedulable jobs</summary>
-                  <div className={styles.debugBody}>
-                    <div className={styles.debugRow}>
-                    <span className={styles.muted}>Projects</span>
-                    <span>{schedulable.debug.totalProjects}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Schedulable (has active estimate)</span>
-                    <span>{schedulable.debug.schedulableProjects}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Unscheduled</span>
-                    <span>{schedulable.debug.unscheduledJobs}</span>
-                  </div>
-
-                  <div className={styles.debugSectionTitle}>Excluded projects</div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>No estimates</span>
-                    <span>{schedulable.debug.excluded.noEstimates}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>No active estimate</span>
-                    <span>{schedulable.debug.excluded.noSchedulableEstimate}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Already scheduled</span>
-                    <span>{schedulable.debug.excluded.alreadyScheduled}</span>
-                  </div>
-
-                  <div className={styles.debugSectionTitle}>Schedule items</div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Total</span>
-                    <span>{schedulable.debug.scheduleItems.total}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Blocking (valid + active estimate)</span>
-                    <span>{schedulable.debug.scheduleItems.blocking}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Missing project</span>
-                    <span>{schedulable.debug.scheduleItems.missingProject}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Missing estimate</span>
-                    <span>{schedulable.debug.scheduleItems.missingEstimate}</span>
-                  </div>
-                  <div className={styles.debugRow}>
-                    <span className={styles.muted}>Estimate archived</span>
-                    <span>{schedulable.debug.scheduleItems.estimateNotSchedulable}</span>
-                  </div>
-                </div>
-              </details>
-            ) : null}
-          </aside>
-
-          <section className={styles.mainPanel} aria-label="Installer lanes">
-            {view === 'gantt' ? (
-              <div className={styles.gantt}>
-                <div className={styles.ganttControls}>
-                  <div className={styles.ganttControlsLeft}>
-                    <div className={styles.ganttMeta}>
-                      Range: <strong>{formatShortDate(gantt.rangeStart)}</strong>{' -> '}<strong>{formatShortDate(gantt.rangeEnd)}</strong>
-                    </div>
-                    <select
-                      className={cx(styles.input, styles.ganttControlSelect)}
-                      value={zoomWeeks}
-                      onChange={(e) => handleGanttZoomWeeksChange(normalizeGanttZoomWeeks(Number(e.target.value)))}
-                      aria-label="Zoom"
-                    >
-                      <option value={4}>4 weeks</option>
-                      <option value={8}>8 weeks</option>
-                      <option value={12}>12 weeks</option>
-                    </select>
-                    <label className={styles.ganttDensityControl}>
-                      <span className={styles.ganttDensityLabel}>Density</span>
-                      <select
-                        className={styles.ganttDensitySelect}
-                        value={ganttDensity}
-                        onChange={(e) => setGanttDensity(e.target.value === 'comfortable' ? 'comfortable' : 'compact')}
-                        aria-label="Density"
-                      >
-                        <option value="compact">Compact</option>
-                        <option value="comfortable">Comfortable</option>
-                      </select>
-                    </label>
-                    {scheduleMode === 'v2' ? (
-                      <div className={styles.ganttLegendInline} aria-label="Gantt legend">
-                        <span className={styles.legendItem}>
-                          <span className={styles.legendSwatch} />
-                          Forecast
-                        </span>
-                        {showPlanned ? (
-                          <span className={styles.legendItem}>
-                            <span className={cx(styles.legendSwatch, styles.legendSwatchPlanned)} />
-                            Planned
-                          </span>
-                        ) : null}
-                        <span className={styles.legendItem}>
-                          <span className={styles.legendDot} aria-hidden="true" />
-                          Pinned
-                        </span>
-                        <span className={styles.legendItem}>
-                          <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
-                          Conflict
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className={styles.ganttControlsRight}>
-                    <label className={styles.toggleControl}>
-                      <input
-                        type="checkbox"
-                        className={styles.toggleCheckbox}
-                        checked={showCompleted}
-                        onChange={(e) => setShowCompleted(e.target.checked)}
-                      />
-                      Show completed jobs
-                    </label>
-                    <button
-                      type="button"
-                      className={cx(styles.buttonSecondary, styles.ganttControlButton, styles.ganttJumpButton)}
-                      onClick={jumpGanttToToday}
-                    >
-                      Jump to today
-                    </button>
-                    {scheduleMode === 'v2' ? (
-                      <button
-                        type="button"
-                        className={cx(styles.buttonSecondary, styles.ganttControlButton)}
-                        aria-pressed={showPlanned}
-                        onClick={() => setShowPlanned((v) => !v)}
-                      >
-                        {showPlanned ? 'Hide planned' : 'Show planned'}
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className={styles.ganttScroll} aria-label="Gantt timeline" ref={ganttScrollRef}>
-                  <div
-                    className={styles.ganttTable}
-                    data-density={ganttDensity}
-                    style={
-                      {
-                        gridTemplateColumns: `${labelWidthPx}px ${gantt.totalWidth}px`,
-                        ['--ganttLabelW' as any]: `${labelWidthPx}px`,
-                        ['--ganttDayW' as any]: `${gantt.axis.baseDayPx}px`,
-                      } as React.CSSProperties
-                    }
-                  >
-                    {gantt.todayColumnLeftPx != null ? (
-                      <div
-                        className={styles.todayColumnWash}
-                        style={{ left: labelWidthPx + gantt.todayColumnLeftPx, width: gantt.todayColumnWidthPx }}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                    {gantt.weekendBlocks.map((b) => (
-                      <div
-                        key={`weekend-${b.date}`}
-                        className={styles.weekendShade}
-                        style={{ left: labelWidthPx + b.leftPx, width: b.widthPx }}
-                        aria-hidden="true"
-                      />
-                    ))}
-                    {gantt.holidayBlocks.map((b) => (
-                      <div
-                        key={`holiday-${b.date}`}
-                        className={styles.holidayShade}
-                        style={{ left: labelWidthPx + b.leftPx, width: b.widthPx }}
-                        aria-hidden="true"
-                      />
-                    ))}
-                    <div className={styles.ganttGridLines} aria-hidden="true">
-                      {gantt.dayBoundaryLines.map((leftPx, idx) => (
-                        <div key={`day-line-${idx}-${leftPx}`} className={styles.ganttDayBoundary} style={{ left: labelWidthPx + leftPx }} />
-                      ))}
-                      {gantt.weekBoundaryLines.map((leftPx, idx) => (
-                        <div key={`week-line-${idx}-${leftPx}`} className={styles.ganttWeekBoundary} style={{ left: labelWidthPx + leftPx }} />
-                      ))}
-                    </div>
-                    <div
-                      className={styles.ganttLabelResizer}
-                      data-active={ganttLabelResize ? 'true' : 'false'}
-                      style={{ left: labelWidthPx - 4 }}
-                      role="separator"
-                      aria-orientation="vertical"
-                      aria-label="Resize crew label column"
-                      onPointerDown={beginGanttLabelResize}
-                    />
-
-                    <div className={styles.ganttCorner}>
-                      <div className={styles.ganttLeftHeaderGrid}>
-                        <div className={styles.ganttColProject}>Crew / Project</div>
-                      </div>
-                    </div>
-
-                    <div className={styles.ganttHeader} style={{ width: gantt.totalWidth }}>
-                      <div className={styles.ganttTodayPillTrack}>
-                        {gantt.todayColumnLeftPx != null ? (
-                          <span className={styles.ganttTodayPill} style={{ left: gantt.todayColumnLeftPx + gantt.todayColumnWidthPx / 2 }}>
-                            Today · {formatShortDate(gantt.displayToday)}
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className={styles.ganttMonthBand}>
-                        {gantt.axis.months.map((month) => (
-                          <div
-                            key={`month-${month.key}-${month.startWeekIndex}`}
-                            className={styles.ganttMonthLabel}
-                            style={{ left: month.startPx, width: month.widthPx }}
-                          >
-                            {month.label}
-                          </div>
-                        ))}
-                      </div>
-                      <div className={styles.ganttWeekBand}>
-                        {gantt.axis.weeks.map((week) => (
-                          <div key={`week-${week.index}-${week.startDate}`} className={styles.ganttWeekLabel} style={{ left: week.startPx, width: week.widthPx }}>
-                            {week.label}
-                          </div>
-                        ))}
-                      </div>
-                      {gantt.holidayBlocks.map((b) => (
-                        <div
-                          key={`holiday-hover-${b.date}`}
-                          className={styles.ganttHolidayHoverZone}
-                          style={{ left: b.leftPx, width: b.widthPx }}
-                          title={b.label}
-                          aria-label={b.label}
-                        />
-                      ))}
-                    </div>
-
-                    <div className={styles.todayLine} style={{ left: labelWidthPx + gantt.todayLinePx }} aria-hidden="true" />
-                    {ganttDragFeedback ? (
-                      <div className={styles.ganttSnapGuide} style={{ left: labelWidthPx + ganttDragFeedback.snapLinePx }} aria-hidden="true" />
-                    ) : null}
-
-                    {gantt.rows.map((row) => (
-                      <div
-                        key={row.id}
-                        className={styles.ganttRowWrap}
-                        data-kind={row.kind}
-                        data-hovered={hoveredGanttRowId === row.id ? 'true' : 'false'}
-                        onMouseEnter={() => setHoveredGanttRowId(row.id)}
-                        onMouseLeave={() => setHoveredGanttRowId((prev) => (prev === row.id ? null : prev))}
-                      >
-                        <div className={cx(styles.ganttLeftCell, row.kind === 'group' && styles.ganttLeftCellGroup)}>
-                          <div className={styles.ganttLeftGrid}>
-                            <div className={styles.ganttColProject}>
-                              {row.kind === 'group' ? (
-                                <span className={styles.ganttGroupLabel}>
-                                  <button
-                                    type="button"
-                                    className={styles.ganttCollapseBtn}
-                                    aria-label={row.collapsed ? `Expand ${row.label}` : `Collapse ${row.label}`}
-                                    aria-expanded={!row.collapsed}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleCrewCollapsed(row.installerId);
-                                    }}
-                                  >
-                                    {row.collapsed ? '▸' : '▾'}
-                                  </button>
-                                  <span className={styles.colorDot} style={{ background: row.color }} />
-                                  <span className={styles.ganttProjectText}>{row.label}</span>
-                                  <span className={styles.ganttGroupCount}>{row.jobCount}</span>
-                                </span>
-                              ) : row.kind === 'empty' ? (
-                                <span className={styles.ganttEmptyLabel}>{row.label}</span>
-                              ) : row.isDowntime ? (
-                                <span className={styles.ganttProjectText}>{row.projectName}</span>
-                              ) : (
-                                <span className={styles.ganttProjectText} title={row.projectName}>
-                                  {row.projectName}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div
-                          className={cx(styles.ganttTimelineRow, row.kind === 'group' && styles.ganttTimelineRowGroup)}
-                          style={{ width: gantt.totalWidth, cursor: row.kind === 'group' ? 'pointer' : undefined }}
-                          role={row.kind === 'group' ? 'button' : undefined}
-                          tabIndex={row.kind === 'group' ? 0 : undefined}
-                          onClick={row.kind === 'group' ? () => toggleCrewCollapsed(row.installerId) : undefined}
-                          onKeyDown={
-                            row.kind === 'group'
-                              ? (event) => {
-                                  if (event.key !== 'Enter' && event.key !== ' ') return;
-                                  event.preventDefault();
-                                  toggleCrewCollapsed(row.installerId);
-                                }
-                              : undefined
-                          }
-                        >
-                          {row.kind === 'group' && row.collapsed
-                            ? row.summarySpans.map((span, idx) => (
-                                <div
-                                  key={`crew-summary-${row.installerId}-${idx}`}
-                                  className={styles.ganttCrewSummaryBar}
-                                  style={{ left: span.leftPx, width: span.widthPx, backgroundColor: row.color }}
-                                  aria-hidden="true"
-                                />
-                              ))
-                            : null}
-                          {row.kind === 'item' && row.plannedWidthPx && row.plannedWidthPx > 0 ? (
-                            <div
-                              className={styles.ganttPlannedBar}
-                              style={{
-                                left: row.plannedLeftPx,
-                                width: row.plannedWidthPx,
-                              }}
-                              title={
-                                row.plannedStart && row.plannedEnd
-                                  ? `Planned: ${formatShortDate(row.plannedStart)} → ${formatShortDate(row.plannedEnd)}`
-                                  : 'Planned dates'
-                              }
-                            />
-                          ) : null}
-                          {row.kind === 'item' && row.ghostWidthPx && row.ghostWidthPx > 0 ? (
-                            <div
-                              className={styles.ganttGhostBar}
-                              style={{
-                                left: row.ghostLeftPx,
-                                width: row.ghostWidthPx,
-                              }}
-                              aria-hidden="true"
-                            />
-                          ) : null}
-                          {row.kind === 'item' && row.barWidthPx > 0 ? (
-                            <div
-                              className={styles.ganttBar}
-                              data-conflict={row.issueLevel === 'error' ? 'true' : undefined}
-                              data-pinned={row.isPinned ? 'true' : undefined}
-                              data-dragging={ganttDrag?.id === row.scheduleItemId ? 'true' : undefined}
-                              style={{
-                                left: row.barLeftPx,
-                                width: row.barWidthPx,
-                                backgroundColor: row.barColor,
-                                borderColor: darkenHex(row.barColor, 0.12),
-                                color: getReadableTextColor(row.barColor),
-                              }}
-                              title={(() => {
-                                const crewName = installersById.get(row.installerId)?.name ?? null;
-                                const conflict = row.issueLevel === 'error' ? conflictMessageByScheduleId.get(row.scheduleItemId) : null;
-                                const lines = [
-                                  row.projectName,
-                                  crewName ? `Crew: ${crewName}` : null,
-                                  row.isPinned ? 'Pinned' : null,
-                                  row.plannedCommitmentLabel ? `Planned: ${row.plannedCommitmentLabel}` : 'Planned: Draft',
-                                  typeof row.driftDays === 'number' ? `Drift: +${row.driftDays} working day${row.driftDays === 1 ? '' : 's'}` : null,
-                                  row.clientUpdateStatus === 'needed'
-                                    ? 'Client update needed'
-                                    : row.clientUpdateStatus === 'acknowledged'
-                                      ? 'Client contacted'
-                                      : null,
-                                  conflict ? `Conflict: ${conflict}` : null,
-                                  `Status: ${formatStatusLabel(row.status)}`,
-                                  `Duration: ${row.durationLabel}`,
-                                  `Start: ${formatShortDate(row.startDate)}`,
-                                  `End: ${formatShortDate(row.endDate)}`,
-                                ].filter((line): line is string => Boolean(line));
-                                return lines.join('\n');
-                              })()}
-                              onPointerDown={(e) => beginGanttDrag(row, 'move', e)}
-                              onClick={(e) => {
-                                if (shouldBlockGanttClick()) return;
-                                e.stopPropagation();
-                                openGanttPopover(row, e.currentTarget);
-                              }}
-                            >
-                              {row.isPinned ? <span className={styles.ganttPin} aria-hidden="true" /> : null}
-                              {row.barWidthPx >= GANTT_BAR_LABEL_MIN_PX ? (
-                                <span className={styles.ganttBarTextFade}>
-                                  <span className={styles.ganttBarText}>{row.projectName}</span>
-                                </span>
-                              ) : null}
-                              {scheduleMode === 'v2' && !row.isDowntime ? (
-                                <span
-                                  className={styles.ganttResizeHandle}
-                                  role="presentation"
-                                  onPointerDown={(e) => beginGanttDrag(row, 'resize', e)}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {ganttDragFeedback && ganttDragPointer ? (
-                  <div className={styles.ganttDragTooltip} style={{ left: ganttDragPointer.x + 14, top: ganttDragPointer.y + 14 }}>
-                    {ganttDragFeedback.mode === 'move' ? <div>Start: {formatShortDate(ganttDragFeedback.startDate)}</div> : null}
-                    <div>End: {formatShortDate(ganttDragFeedback.endDate)}</div>
-                    <div>Duration: {ganttDragFeedback.durationDays}d</div>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <>
-                <div className={styles.legendRow} aria-label="Schedule controls">
-                  {scheduleMode === 'v2' ? (
-                    <>
-                      <span className={styles.legendItem}>
-                        <span className={styles.legendSwatch} />
-                        Forecast
-                      </span>
-                      <span className={styles.legendItem}>
-                        <span className={styles.legendDot} aria-hidden="true" />
-                        Pinned
-                      </span>
-                      <span className={styles.legendItem}>
-                        <span className={cx(styles.legendSwatch, styles.legendSwatchConflict)} />
-                        Conflict
-                      </span>
-                    </>
-                  ) : null}
-                  <label className={styles.toggleControl}>
-                    <input
-                      type="checkbox"
-                      className={styles.toggleCheckbox}
-                      checked={showCompleted}
-                      onChange={(e) => setShowCompleted(e.target.checked)}
-                    />
-                    Show completed jobs
-                  </label>
-                </div>
-                <div className={styles.lanes} ref={boardScrollRef}>
-                {installers.filter((i) => i.active).map((installer) => {
-                  const items = laneItems.get(installer.id) ?? [];
-                  const ids = items.map((i) => i.id);
-                  const laneIsOver = overLaneId === installer.id && Boolean(activeDragId);
-                  const insertionAtEnd = overId === `lane:${installer.id}` && Boolean(activeDragId);
-                  let maxEnd: string | null = null;
-                  for (const id of ids) {
-                    const dates = barsByScheduleId.get(id);
-                    if (!dates) continue;
-                    const end = dates.endDate;
-                    if (!maxEnd || end > maxEnd) maxEnd = end;
-                  }
-                  const nextAvailableCandidate = maxEnd ? nextWorkdayAfter(maxEnd) : null;
-                  const computedNextAvailable = nextAvailableCandidate && nextAvailableCandidate < today ? today : nextAvailableCandidate;
-                  const nextAvailable = scheduleMode === 'v2' ? nextAvailableByInstallerId.get(installer.id) ?? computedNextAvailable : computedNextAvailable;
-
-                  const cards: React.ReactNode[] = [];
-                  for (const id of ids) {
-                    const showInsertBefore = overId === id && activeDragId !== id && Boolean(activeDragId);
-                    if (showInsertBefore) cards.push(<div key={`insert-${id}`} className={styles.insertionMarker} aria-hidden="true" />);
-
-                    const job = schedulable.jobsById.get(id) ?? null;
-                    const dates = barsByScheduleId.get(id);
-                    const dateLine = dates ? formatDateRange(dates.startDate, dates.endDate) : undefined;
-                    const scheduleItem = scheduleItemById.get(id) ?? null;
-                    const scheduleStatus = scheduleItem ? deriveScheduleStatus(scheduleItem, today) : 'TENTATIVE';
-                    const issueLevel = issueLevelByScheduleId.get(id);
-
-                    if (scheduleItem?.itemType === 'downtime') {
-                      const downtimeActions = buildDowntimeMenuActions(id, scheduleItem);
-
-                      cards.push(
-                        <DowntimeCard
-                          key={id}
-                          id={id}
-                          item={scheduleItem}
-                          dateLine={dateLine}
-                          dropTarget={overId === id && activeDragId !== id}
-                          menuActions={downtimeActions}
-                          issueLevel={issueLevel}
-                        />,
-                      );
-                      continue;
-                    }
-
-                    if (!scheduleItem) continue;
-                    const menuActions = buildJobMenuActions({ id, scheduleItem, job, scheduleStatus });
-                    const commitmentLabel = formatCommitmentLabel(scheduleItem);
-                    const commitmentType = resolveCommitmentType(scheduleItem);
-                    const flexDays = resolvePlannedFlexDays(scheduleItem);
-                    const driftDays =
-                      typeof scheduleItem.driftDays === 'number' && Number.isFinite(scheduleItem.driftDays)
-                        ? Math.max(0, Math.trunc(scheduleItem.driftDays))
-                        : null;
-                    const driftExceeded = driftDays !== null && flexDays !== null ? driftDays > flexDays : false;
-                    const clientUpdateStatus = scheduleItem.clientUpdateStatus ?? 'none';
-                    const extraBadges = (
-                      <>
-                        {!hasPlannedCommitment(scheduleItem) ? <span className={styles.draftPill}>Draft</span> : null}
-                        {hasPlannedCommitment(scheduleItem) && commitmentLabel ? <span className={styles.commitmentPill}>{commitmentLabel}</span> : null}
-                        {commitmentType && driftDays !== null && driftDays > 0 && !driftExceeded ? (
-                          <span className={styles.driftPill}>Drift +{driftDays}d</span>
-                        ) : null}
-                        {clientUpdateStatus === 'needed' ? <span className={styles.clientUpdatePill}>Client update needed</span> : null}
-                        {clientUpdateStatus === 'acknowledged' ? <span className={styles.clientAckPill}>Client contacted</span> : null}
-                      </>
-                    );
-
-                    cards.push(
-                      <ScheduledJobCard
-                        key={id}
-                        id={id}
-                        job={job}
-                        scheduleStatus={scheduleStatus}
-                        dateLine={dateLine}
-                        dropTarget={overId === id && activeDragId !== id}
-                        menuActions={menuActions}
-                        issueLevel={issueLevel}
-                        pinned={scheduleMode === 'v2' && scheduleItem.mode === 'pinned'}
-                        extraBadges={extraBadges}
-                      />,
-                    );
-                  }
-                  if (insertionAtEnd) cards.push(<div key="insert-end" className={styles.insertionMarker} aria-hidden="true" />);
-
-                  return (
-                    <section
-                      key={installer.id}
-                      className={styles.lane}
-                      style={{ borderLeftColor: installer.color }}
-                      data-over={laneIsOver ? 'true' : 'false'}
-                      aria-label={`Lane ${installer.name}`}
-                    >
-                      <div className={styles.laneHeader}>
-                        <div>
-                          <div className={styles.laneNameRow}>
-                            <span className={styles.colorDot} style={{ background: installer.color }} />
-                            <h3 className={styles.laneTitle}>{installer.name}</h3>
-                          </div>
-                          {nextAvailable ? (
-                            <div className={styles.smallMeta}>Next available: {formatShortDate(nextAvailable)}</div>
-                          ) : null}
-                        </div>
-                        <span className={styles.muted}>{ids.length}</span>
-                      </div>
-                      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                        <LaneDropZone laneId={installer.id} onMount={(node) => laneBodyRefs.current.set(installer.id, node)}>
-                          {ids.length ? (
-                            <div className={styles.cardList}>
-                              {cards}
-                            </div>
-                          ) : (
-                            <div className={styles.emptyLane}>
-                              <div className={styles.emptyLaneIcon} aria-hidden="true">
-                                ↓
-                              </div>
-                              <p className={styles.emptyLaneTitle}>Drop jobs here</p>
-                              <p className={styles.emptyLaneHint}>Drag from Unscheduled or move from another crew</p>
-                            </div>
-                          )}
-                        </LaneDropZone>
-                      </SortableContext>
-                    </section>
-                  );
-                })}
-                </div>
-              </>
-            )}
-          </section>
-        </div>
-
-        <DragOverlay>
-          {overlayJob ? (
-            <div className={styles.dragOverlay}>
-              <div className={styles.jobTitle}>{overlayJob.projectName}</div>
-              <div className={styles.jobDescriptor}>{overlayJob.descriptor}</div>
-              <div className={styles.badgesRow}>
-                <span className={styles.statusPill}>{formatStatusLabel(overlayJob.status)}</span>
-                <span className={styles.durationPill}>{overlayJob.durationLabel}</span>
-              </div>
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-
-      {ganttPopover && ganttPopoverDetails ? (
-        <GanttBarPopover
-          anchor={ganttPopover.anchor}
-          actions={ganttPopoverDetails.actions}
-          details={ganttPopoverDetails.details}
-          onClose={() => setGanttPopover(null)}
-          onKeyDown={handleGanttPopoverKeyDown}
-          focusRef={ganttPopoverRef}
+      {hasOpenActionModal ? (
+        <LazyScheduleActionModals
+          state={actionModalState}
+          scheduleMode={scheduleMode}
+          findScheduleItem={(id) => scheduleItemById.get(id) ?? null}
+          findProjectName={(scheduleItemId) => {
+            const scheduleItem = scheduleItemById.get(scheduleItemId) ?? null;
+            const project = scheduleItem?.projectId ? projectsById.get(scheduleItem.projectId) ?? null : null;
+            return scheduleItem?.itemType === 'job' ? safeProjectName(project) : 'Job';
+          }}
+          formatShortDate={formatShortDate}
+          formatCommitImpactList={formatCommitImpactList}
+          setQuickEdit={setQuickEdit}
+          setCommitmentEdit={setCommitmentEdit}
+          setDurationEdit={setDurationEdit}
+          setPinEdit={setPinEdit}
+          setDaysRemainingEdit={setDaysRemainingEdit}
+          setDowntimeEdit={setDowntimeEdit}
+          setFinishEarlyPrompt={setFinishEarlyPrompt}
+          onSaveQuickEdit={handleSaveQuickEdit}
+          onSaveCommitment={handleSaveCommitment}
+          onSaveDuration={handleSaveDuration}
+          onSavePin={handleSavePin}
+          onSaveDaysRemaining={handleSaveDaysRemaining}
+          onSaveDowntime={handleSaveDowntime}
+          onFinishEarlyKeepSchedule={handleFinishEarlyKeepSchedule}
+          onFinishEarlyPullForward={handleFinishEarlyPullForward}
         />
-      ) : null}
-
-      {quickEdit ? (
-        <Modal
-          open
-          ariaLabel="Quick edit scheduled job"
-          onClose={() => setQuickEdit(null)}
-          maxWidthPx={520}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Quick edit</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setQuickEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Overrides apply to this job only. Changing start/duration recalculates downstream jobs for the crew.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Start date override
-                </label>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={quickEdit.startDateOverride}
-                  onChange={(e) => setQuickEdit((prev) => (prev ? { ...prev, startDateOverride: e.target.value } : prev))}
-                />
-                <p className={styles.hint} style={{ marginTop: 6 }}>
-                  Leave blank to auto-calculate from lane availability.
-                </p>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Duration (days)
-                </label>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step={scheduleMode === 'v2' ? 1 : 0.5}
-                  min={scheduleMode === 'v2' ? 1 : 0.5}
-                  className={styles.input}
-                  value={quickEdit.durationDays}
-                  onChange={(e) => setQuickEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                />
-                <p className={styles.hint} style={{ marginTop: 6 }}>
-                  1 day = {WORK_HOURS_PER_DAY}h. {scheduleMode === 'v2' ? 'Whole days only.' : 'Use 0.5 increments.'}
-                </p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setQuickEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItems.find((i) => i.id === quickEdit.id) ?? null;
-                  if (!item) {
-                    setQuickEdit(null);
-                    return;
-                  }
-
-                  const start = quickEdit.startDateOverride.trim();
-                  const daysRaw = quickEdit.durationDays.trim();
-                  const days = daysRaw ? Number(daysRaw) : NaN;
-                  if (scheduleMode === 'v2') {
-                    if (item.itemType === 'downtime') {
-                      setQuickEdit(null);
-                      return;
-                    }
-                    let projectUuid: string;
-                    try {
-                      projectUuid = uuidFromAppId(item.projectId, 'proj');
-                    } catch {
-                      toast.error('Invalid project ID for quick edit.');
-                      return;
-                    }
-                    const durationDays = Number.isFinite(days) && days > 0 ? Math.max(1, Math.round(days)) : null;
-
-                    void (async () => {
-                      let ok = true;
-                      if (durationDays != null) {
-                        ok = await queueSetDurationJob(
-                          projectUuid,
-                          durationDays,
-                          { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
-                        );
-                        if (!ok) return;
-                      }
-                      if (start) {
-                        ok = await queuePinJob(
-                          projectUuid,
-                          start,
-                          { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
-                        );
-                        if (!ok) return;
-                      } else if (item.mode === 'pinned') {
-                        ok = await queueUnpinJob(
-                          projectUuid,
-                          { successToast: 'Job unpinned.', errorToast: 'Failed to unpin job.' },
-                        );
-                        if (!ok) return;
-                      }
-                      setQuickEdit(null);
-                    })();
-                    return;
-                  }
-
-                  const durationHoursOverride = Number.isFinite(days) && days > 0 ? days * WORK_HOURS_PER_DAY : null;
-
-                  const nextItems = scheduleItems.map((i) => {
-                    if (i.id !== item.id) return i;
-                    return {
-                      ...i,
-                      startDateOverride: start ? start : undefined,
-                      durationHoursOverride: durationHoursOverride ?? undefined,
-                      updatedAt: new Date().toISOString(),
-                    };
-                  });
-
-                  void persist(nextItems, { successToast: 'Job updated.' }).then((ok) => {
-                    if (ok) setQuickEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {commitmentEdit ? (
-        <Modal
-          open
-          ariaLabel={commitmentEdit.mode === 'lock' ? 'Confirm schedule' : 'Reschedule'}
-          onClose={() => setCommitmentEdit(null)}
-          maxWidthPx={560}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-                {commitmentEdit.mode === 'lock' ? 'Confirm schedule' : 'Reschedule'}
-              </h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
-              <div>
-                <div style={{ marginBottom: 8, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Commitment type</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className={styles.buttonSecondary}
-                    aria-pressed={commitmentEdit.commitmentType === 'week_of'}
-                    onClick={() =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              commitmentType: 'week_of',
-                              flexDays: '4',
-                              hardLock: false,
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    Week-of
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.buttonSecondary}
-                    aria-pressed={commitmentEdit.commitmentType === 'fixed_date'}
-                    onClick={() =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              commitmentType: 'fixed_date',
-                              flexDays: '1',
-                              hardLock: true,
-                            }
-                          : prev,
-                      )
-                    }
-                  >
-                    Fixed date
-                  </button>
-                </div>
-              </div>
-
-              {commitmentEdit.commitmentType === 'week_of' ? (
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Week-of date
-                  </label>
-                  <input
-                    type="date"
-                    className={styles.input}
-                    value={commitmentEdit.weekOfDate}
-                    onChange={(e) =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              weekOfDate: startOfWeekMonday(e.target.value),
-                            }
-                          : prev,
-                      )
-                    }
-                  />
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
-                    Date is snapped to Monday of the selected week.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Start date
-                  </label>
-                  <input
-                    type="date"
-                    className={styles.input}
-                    value={commitmentEdit.startDate}
-                    onChange={(e) =>
-                      setCommitmentEdit((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              startDate: snapToWeekdayYmd(e.target.value),
-                            }
-                          : prev,
-                      )
-                    }
-                  />
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
-                    Date snaps forward to a weekday; holiday handling is enforced server-side.
-                  </p>
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Approx duration (days)
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    step={1}
-                    min={1}
-                    className={styles.input}
-                    value={commitmentEdit.durationDays}
-                    onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    Flex days
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    step={1}
-                    min={0}
-                    className={styles.input}
-                    value={commitmentEdit.flexDays}
-                    onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, flexDays: e.target.value } : prev))}
-                  />
-                </div>
-              </div>
-
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={commitmentEdit.hardLock}
-                  onChange={(e) => setCommitmentEdit((prev) => (prev ? { ...prev, hardLock: e.target.checked } : prev))}
-                />
-                Hard lock date (prevents auto movement)
-              </label>
-
-              {(() => {
-                const datePart =
-                  commitmentEdit.commitmentType === 'week_of'
-                    ? isYmd(commitmentEdit.weekOfDate)
-                      ? `Week of ${formatShortDate(startOfWeekMonday(commitmentEdit.weekOfDate))}`
-                      : 'Week of —'
-                    : isYmd(commitmentEdit.startDate)
-                      ? `Starts ${formatShortDate(commitmentEdit.startDate)}`
-                      : 'Starts —';
-                const duration = parsePositiveInt(commitmentEdit.durationDays);
-                const flexRaw = Number(commitmentEdit.flexDays.trim());
-                const flex = Number.isFinite(flexRaw) ? Math.max(0, Math.trunc(flexRaw)) : null;
-                return (
-                  <p className={styles.hint}>
-                    Planned: {datePart} · ~{duration ?? '—'} days · flex {flex ?? '—'} working days
-                  </p>
-                );
-              })()}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setCommitmentEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                disabled={(() => {
-                  const validDuration = parsePositiveInt(commitmentEdit.durationDays) !== null;
-                  const flexRaw = Number(commitmentEdit.flexDays.trim());
-                  const validFlex = Number.isFinite(flexRaw) && Math.trunc(flexRaw) >= 0;
-                  const validDate = commitmentEdit.commitmentType === 'week_of' ? isYmd(commitmentEdit.weekOfDate) : isYmd(commitmentEdit.startDate);
-                  return !(validDuration && validFlex && validDate);
-                })()}
-                onClick={() => {
-                  const item = scheduleItemById.get(commitmentEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-
-                  const durationDays = parsePositiveInt(commitmentEdit.durationDays);
-                  if (durationDays === null) {
-                    toast.error('Enter a valid duration in whole days.');
-                    return;
-                  }
-
-                  const flexRaw = Number(commitmentEdit.flexDays.trim());
-                  if (!Number.isFinite(flexRaw)) {
-                    toast.error('Enter a valid flex value.');
-                    return;
-                  }
-                  const flexDays = Math.max(0, Math.trunc(flexRaw));
-
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-
-                  const payload =
-                    commitmentEdit.commitmentType === 'week_of'
-                      ? {
-                          job_id: jobUuid,
-                          commitment_type: 'week_of' as const,
-                          week_of_date: startOfWeekMonday(commitmentEdit.weekOfDate),
-                          duration_days: durationDays,
-                          flex_days: flexDays,
-                          hard_lock: commitmentEdit.hardLock,
-                          today,
-                        }
-                      : {
-                          job_id: jobUuid,
-                          commitment_type: 'fixed_date' as const,
-                          start_date: snapToWeekdayYmd(commitmentEdit.startDate),
-                          duration_days: durationDays,
-                          flex_days: flexDays,
-                          hard_lock: commitmentEdit.hardLock,
-                          today,
-                        };
-
-                  const runMutation =
-                    commitmentEdit.mode === 'lock'
-                      ? (force: boolean) => lockJobSchedule({ ...payload, force })
-                      : (force: boolean) => rescheduleJob({ ...payload, force });
-
-                  const successToast = commitmentEdit.mode === 'lock' ? 'Schedule locked.' : 'Schedule updated.';
-                  void runWithCommitConfirmation(runMutation, {
-                    successToast,
-                    errorToast: 'Failed to save schedule commitment.',
-                  }).then((ok) => {
-                    if (ok) setCommitmentEdit(null);
-                  });
-                }}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {durationEdit ? (
-        <Modal open ariaLabel="Set job duration" onClose={() => setDurationEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Set duration</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDurationEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Duration is stored as whole working days.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Duration (days)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  step={1}
-                  min={1}
-                  className={styles.input}
-                  value={durationEdit.durationDays}
-                  onChange={(e) => setDurationEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDurationEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItemById.get(durationEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-                  const daysRaw = durationEdit.durationDays.trim();
-                  const days = Number(daysRaw);
-                  if (!Number.isFinite(days) || days <= 0) {
-                    toast.error('Enter a valid duration in days.');
-                    return;
-                  }
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-                  const durationDays = Math.max(1, Math.round(days));
-                  void queueSetDurationJob(
-                    jobUuid,
-                    durationDays,
-                    { successToast: 'Duration updated.', errorToast: 'Failed to update duration.' },
-                  ).then((ok) => {
-                    if (ok) setDurationEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {pinEdit ? (
-        <Modal open ariaLabel="Pin job" onClose={() => setPinEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Pin job</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setPinEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Pinned starts snap forward to the next working day if needed.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Start date
-                </label>
-                <input
-                  type="date"
-                  className={styles.input}
-                  value={pinEdit.requestedStart}
-                  onChange={(e) => setPinEdit((prev) => (prev ? { ...prev, requestedStart: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setPinEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItemById.get(pinEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-                  const start = pinEdit.requestedStart.trim();
-                  if (!isYmd(start)) {
-                    toast.error('Select a valid start date.');
-                    return;
-                  }
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-                  void queuePinJob(
-                    jobUuid,
-                    start,
-                    { successToast: 'Job pinned.', errorToast: 'Failed to pin job.' },
-                  ).then((ok) => {
-                    if (ok) setPinEdit(null);
-                  });
-                }}
-              >
-                Pin job
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {daysRemainingEdit ? (
-        <Modal open ariaLabel="Set days remaining" onClose={() => setDaysRemainingEdit(null)} maxWidthPx={480}>
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Days remaining</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDaysRemainingEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <p className={styles.hint} style={{ marginTop: 10 }}>
-              Updates the forecast duration for this in-progress job.
-            </p>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Days remaining
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  step={1}
-                  min={1}
-                  className={styles.input}
-                  value={daysRemainingEdit.daysRemaining}
-                  onChange={(e) => setDaysRemainingEdit((prev) => (prev ? { ...prev, daysRemaining: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDaysRemainingEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const item = scheduleItemById.get(daysRemainingEdit.id) ?? null;
-                  if (!item || item.itemType === 'downtime') {
-                    toast.error('Scheduled job not found.');
-                    return;
-                  }
-                  const daysRaw = daysRemainingEdit.daysRemaining.trim();
-                  const days = Number(daysRaw);
-                  if (!Number.isFinite(days) || days <= 0) {
-                    toast.error('Enter a valid number of days.');
-                    return;
-                  }
-                  const jobUuid = resolveProjectUuid(item);
-                  if (!jobUuid) return;
-                  const daysRemaining = Math.max(1, Math.round(days));
-                  void queueSetDaysRemainingJob(
-                    jobUuid,
-                    daysRemaining,
-                    { successToast: 'Days remaining updated.', errorToast: 'Failed to update days remaining.' },
-                  ).then((ok) => {
-                    if (ok) setDaysRemainingEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {downtimeEdit ? (
-        <Modal
-          open
-          ariaLabel={downtimeEdit.mode === 'create' ? 'Add downtime' : 'Edit downtime'}
-          onClose={() => setDowntimeEdit(null)}
-          maxWidthPx={520}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-                {downtimeEdit.mode === 'create' ? 'Add downtime' : 'Edit downtime'}
-              </h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDowntimeEdit(null)}>
-                Close
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Duration (days)
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  step={1}
-                  min={1}
-                  className={styles.input}
-                  value={downtimeEdit.durationDays}
-                  onChange={(e) => setDowntimeEdit((prev) => (prev ? { ...prev, durationDays: e.target.value } : prev))}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Reason
-                </label>
-                <select
-                  className={styles.input}
-                  value={downtimeEdit.reason}
-                  onChange={(e) => setDowntimeEdit((prev) => (prev ? { ...prev, reason: e.target.value } : prev))}
-                >
-                  <option value="weather">Weather</option>
-                  <option value="materials">Materials</option>
-                  <option value="site">Site</option>
-                  <option value="staff">Staff</option>
-                  <option value="travel">Travel</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Note
-                </label>
-                <textarea
-                  className={styles.input}
-                  rows={3}
-                  value={downtimeEdit.note}
-                  onChange={(e) => setDowntimeEdit((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setDowntimeEdit(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  const daysRaw = downtimeEdit.durationDays.trim();
-                  const days = Number(daysRaw);
-                  if (!Number.isFinite(days) || days <= 0) {
-                    toast.error('Enter a valid duration in days.');
-                    return;
-                  }
-                  const durationDays = Math.max(1, Math.round(days));
-                  const reason = downtimeEdit.reason || 'other';
-                  const note = downtimeEdit.note.trim();
-
-                  if (downtimeEdit.mode === 'create') {
-                    const crewUuid = resolveCrewUuid(downtimeEdit.crewId);
-                    if (!crewUuid) return;
-                    void runWithCommitConfirmation(
-                      (force) =>
-                        createDowntime({
-                          crew_id: crewUuid,
-                          position: downtimeEdit.position,
-                          duration_days: durationDays,
-                          reason,
-                          note: note || null,
-                          force,
-                          today,
-                        }),
-                      { successToast: 'Downtime added.', errorToast: 'Failed to add downtime.' },
-                    ).then((ok) => {
-                      if (ok) setDowntimeEdit(null);
-                    });
-                    return;
-                  }
-
-                  if (!downtimeEdit.downtimeId) {
-                    toast.error('Downtime record not found.');
-                    return;
-                  }
-
-                  void runWithCommitConfirmation(
-                    (force) =>
-                      updateDowntime({
-                        downtime_id: downtimeEdit.downtimeId as string,
-                        duration_days: durationDays,
-                        reason,
-                        note: note || null,
-                        force,
-                        today,
-                      }),
-                    { successToast: 'Downtime updated.', errorToast: 'Failed to update downtime.' },
-                  ).then((ok) => {
-                    if (ok) setDowntimeEdit(null);
-                  });
-                }}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {finishEarlyPrompt ? (
-        <Modal
-          open
-          ariaLabel="Finish early options"
-          onClose={() => setFinishEarlyPrompt(null)}
-          maxWidthPx={560}
-        >
-          <div style={{ padding: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: '0.02em', textTransform: 'uppercase' }}>Finished early</h2>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
-                Close
-              </button>
-            </div>
-
-            {(() => {
-              const scheduleItem = scheduleItemById.get(finishEarlyPrompt.scheduleItemId) ?? null;
-              const project = scheduleItem?.projectId ? projectsById.get(scheduleItem.projectId) ?? null : null;
-              const jobName = scheduleItem?.itemType === 'job' ? safeProjectName(project) : 'Job';
-              const endInclusive = finishEarlyPrompt.forecastEndExclusive
-                ? endInclusiveFromExclusive(finishEarlyPrompt.forecastEndExclusive, finishEarlyPrompt.forecastEndExclusive)
-                : null;
-              const forecastLabel = endInclusive ? formatShortDate(endInclusive) : '—';
-              return (
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ fontWeight: 700 }}>{jobName}</div>
-                  <p className={styles.hint} style={{ marginTop: 6 }}>
-                    Finished on {formatShortDate(finishEarlyPrompt.actualFinish)} — {finishEarlyPrompt.freedDays} working day
-                    {finishEarlyPrompt.freedDays === 1 ? '' : 's'} freed (forecast end {forecastLabel}).
-                  </p>
-                </div>
-              );
-            })()}
-
-            {finishEarlyPrompt.impacts?.length ? (
-              <div style={{ marginTop: 12 }}>
-                <div className={styles.hint} style={{ fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                  Pull forward preview
-                </div>
-                <pre className={styles.note} style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>
-                  {formatCommitImpactList(finishEarlyPrompt.impacts)}
-                </pre>
-              </div>
-            ) : null}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-              <button type="button" className={styles.buttonSecondary} onClick={() => setFinishEarlyPrompt(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                onClick={() => {
-                  void runWithCommitConfirmation(
-                    (force) =>
-                      markJobDone({
-                        job_id: finishEarlyPrompt.jobId,
-                        finish_early_action: 'keep_schedule',
-                        force,
-                        today,
-                      }),
-                    { successToast: 'Buffer added. Schedule held.', errorToast: 'Failed to keep schedule as-is.' },
-                  ).then((ok) => {
-                    if (ok) setFinishEarlyPrompt(null);
-                  });
-                }}
-              >
-                Keep schedule as-is
-              </button>
-              <button
-                type="button"
-                className={styles.buttonSecondary}
-                style={{ background: 'var(--portal-accent)', borderColor: 'rgba(var(--portal-accent-rgb), 0.6)', color: 'var(--portal-text-inverse)' }}
-                onClick={() => {
-                  void runWithCommitConfirmation(
-                    (force) =>
-                      markJobDone({
-                        job_id: finishEarlyPrompt.jobId,
-                        finish_early_action: 'pull_forward',
-                        force,
-                        today,
-                      }),
-                    { successToast: 'Schedule pulled forward.', errorToast: 'Failed to pull schedule forward.' },
-                  ).then((ok) => {
-                    if (ok) setFinishEarlyPrompt(null);
-                  });
-                }}
-              >
-                Pull forward
-              </button>
-            </div>
-          </div>
-        </Modal>
       ) : null}
       </div>
     </main>

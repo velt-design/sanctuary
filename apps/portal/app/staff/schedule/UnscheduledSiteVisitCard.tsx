@@ -1,5 +1,8 @@
 import type { SiteVisitCalendarItem } from '@/lib/types/siteVisits';
-import styles from './schedule.module.css';
+import sharedStyles from './schedule.module.css';
+import siteVisitsStyles from './scheduleSiteVisits.module.css';
+
+const styles = { ...sharedStyles, ...siteVisitsStyles };
 
 function waitingLabel(createdAt: string | null): string {
   if (!createdAt) return 'Waiting —';

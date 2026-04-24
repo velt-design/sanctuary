@@ -100,7 +100,10 @@ describe('ProjectPageFrame masthead layout', () => {
     expect(mastheadSlot.dataset.projectMastheadSlotSticky).toBeUndefined();
     expect(rendered.container.querySelector('[data-testid="mock-pipeline"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Projects');
+    expect(rendered.container.textContent).toContain('Design Workbench');
     expect(rendered.container.textContent).toContain('Delete project');
+    const workbenchLink = rendered.container.querySelector('a[href="/staff/projects/proj_123/design-workbench"]');
+    expect(workbenchLink).not.toBeNull();
 
     rendered.unmount();
   });
@@ -123,6 +126,7 @@ describe('ProjectPageFrame masthead layout', () => {
     expect(mastheadSlot.dataset.projectMastheadSlotSticky).toBe('true');
     expect(rendered.container.querySelector('[data-testid="mock-pipeline"]')).toBeNull();
     expect(rendered.container.textContent).not.toContain('Projects');
+    expect(rendered.container.textContent).not.toContain('Design Workbench');
     expect(rendered.container.textContent).not.toContain('Delete project');
     expect(rendered.container.textContent).toContain('Test project');
     expect(rendered.container.textContent?.toLowerCase()).toContain('lead');

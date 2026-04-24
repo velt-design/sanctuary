@@ -34,8 +34,7 @@ create index if not exists schedule_items_by_crew_start
 create unique index if not exists schedule_unique_project
   on public.schedule_items(project_id);
 
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on table public.schedule_crews to anon, authenticated;
-grant select, insert, update, delete on table public.schedule_items to anon, authenticated;
+-- Access control is managed by the forward migrations under `supabase/migrations/`.
+-- Do not grant blanket anon/authenticated table access from this legacy snapshot.
 
 select pg_notify('pgrst', 'reload schema');

@@ -1,7 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import {
+  buildAccessStatusHref,
+  buildLoginHref,
+  currentRequestPathWithSearch,
+  getSafeCallbackUrl,
+  type PortalAccessLookup,
+  resolvePortalAccessState,
+  toAccessStatusQueryState,
+} from '@/lib/portalAccess';
 
 const PUBLIC_FILE = /\.(.*)$/;
+
+type CookieToSet = {
+  name: string;
+  value: string;
+  options?: Record<string, unknown>;
+};
+
+type NormalizedRoute =
+  | { action: 'next'; pathname: string }
+  | { action: 'rewrite'; pathname: string }
+  | { action: 'redirect'; pathname: string; permanent?: boolean };
 
 function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_ANON_KEY'): string {
   const value = process.env[name];
@@ -9,33 +29,129 @@ function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_AN
   return '';
 }
 
-async function applySupabaseSession(req: NextRequest, res: NextResponse) {
+function isPortalPublicPath(path: string): boolean {
+  return path === '/login' || path.startsWith('/login/') || path === '/access-status' || path.startsWith('/access-status/');
+}
+
+function isPortalProtectedPath(path: string): boolean {
+  return (
+    path === '/dashboard' ||
+    path.startsWith('/dashboard/') ||
+    path === '/staff' ||
+    path.startsWith('/staff/') ||
+    path === '/admin' ||
+    path.startsWith('/admin/') ||
+    path === '/pricebook' ||
+    path.startsWith('/pricebook/')
+  );
+}
+
+function isPricebookPath(path: string): boolean {
+  return path === '/pricebook' || path.startsWith('/pricebook/');
+}
+
+function normalizePortalRoute(path: string): NormalizedRoute {
+  if (path === '/staff/login' || path.startsWith('/staff/login/')) {
+    const stripped = path.replace(/^\/staff\/login/, '');
+    return { action: 'redirect', pathname: stripped ? `/login${stripped}` : '/login' };
+  }
+
+  if (path === '/staff/pricebook' || path.startsWith('/staff/pricebook/')) {
+    const stripped = path.replace(/^\/staff\/pricebook/, '');
+    return { action: 'redirect', pathname: stripped ? `/pricebook${stripped}` : '/pricebook', permanent: true };
+  }
+
+  if (path === '/imports' || path.startsWith('/imports/')) {
+    const stripped = path.replace(/^\/imports/, '');
+    return { action: 'rewrite', pathname: stripped ? `/admin/imports${stripped}` : '/admin/imports' };
+  }
+
+  if (path === '/') {
+    return { action: 'redirect', pathname: '/dashboard', permanent: true };
+  }
+
+  if (
+    path === '/staff' ||
+    path.startsWith('/staff/') ||
+    path === '/admin' ||
+    path.startsWith('/admin/') ||
+    path === '/pricebook' ||
+    path.startsWith('/pricebook/') ||
+    path === '/dashboard' ||
+    path.startsWith('/dashboard/') ||
+    isPortalPublicPath(path)
+  ) {
+    return { action: 'next', pathname: path };
+  }
+
+  return { action: 'rewrite', pathname: `/staff${path}` };
+}
+
+function withPathname(req: NextRequest, pathname: string): URL {
+  const url = req.nextUrl.clone();
+  url.pathname = pathname;
+  return url;
+}
+
+function withLocalHref(req: NextRequest, href: string): URL {
+  return new URL(href, req.url);
+}
+
+function buildNormalizedResponse(req: NextRequest, route: NormalizedRoute): NextResponse {
+  const url = withPathname(req, route.pathname);
+
+  if (route.action === 'rewrite') {
+    return NextResponse.rewrite(url);
+  }
+
+  if (route.action === 'redirect') {
+    return NextResponse.redirect(url, route.permanent ? 308 : 307);
+  }
+
+  return NextResponse.next();
+}
+
+function createProxySupabase(req: NextRequest) {
   const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
   const anonKey = requiredEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  if (!url || !anonKey) return res;
+  const cookiesToSet: CookieToSet[] = [];
+
+  if (!url || !anonKey) {
+    return {
+      supabase: null,
+      apply(response: NextResponse) {
+        return response;
+      },
+    };
+  }
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {
         return req.cookies.getAll();
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, options);
-        });
+      setAll(nextCookies) {
+        for (const cookie of nextCookies) {
+          cookiesToSet.push(cookie);
+        }
       },
     },
   });
 
-  await supabase.auth.getSession();
-  return res;
+  return {
+    supabase: supabase as unknown as PortalAccessLookup,
+    apply(response: NextResponse) {
+      for (const cookie of cookiesToSet) {
+        response.cookies.set(cookie.name, cookie.value, cookie.options);
+      }
+      return response;
+    },
+  };
 }
 
 export async function proxy(req: NextRequest) {
-  const url = req.nextUrl.clone();
-  const path = url.pathname;
+  const path = req.nextUrl.pathname;
 
-  // Never touch Next internals / API / static files
   if (
     path.startsWith('/_next') ||
     path.startsWith('/api') ||
@@ -44,49 +160,86 @@ export async function proxy(req: NextRequest) {
     path === '/sitemap.xml' ||
     PUBLIC_FILE.test(path)
   ) {
-    const res = NextResponse.next();
-    return applySupabaseSession(req, res);
+    return NextResponse.next();
   }
 
-  // Legacy: /staff/pricebook -> /pricebook
-  if (path === '/staff/pricebook' || path.startsWith('/staff/pricebook/')) {
-    const stripped = path.replace(/^\/staff\/pricebook/, '');
-    url.pathname = stripped ? `/pricebook${stripped}` : '/pricebook';
-    const res = NextResponse.redirect(url, 308);
-    return applySupabaseSession(req, res);
+  const normalized = normalizePortalRoute(path);
+  if (normalized.action === 'redirect') {
+    return buildNormalizedResponse(req, normalized);
   }
 
-  // Clean: /imports -> /admin/imports
-  if (path === '/imports' || path.startsWith('/imports/')) {
-    const stripped = path.replace(/^\/imports/, '');
-    url.pathname = stripped ? `/admin/imports${stripped}` : '/admin/imports';
-    const res = NextResponse.rewrite(url);
-    return applySupabaseSession(req, res);
+  const originalCallback = currentRequestPathWithSearch(req.nextUrl);
+  const normalizedPath = normalized.pathname;
+  const isLoginPath = normalizedPath === '/login' || normalizedPath.startsWith('/login/');
+  const isAccessStatusPath = normalizedPath === '/access-status' || normalizedPath.startsWith('/access-status/');
+  const isAdminPath = normalizedPath === '/admin' || normalizedPath.startsWith('/admin/');
+  const isPricebookProtectedPath = isPricebookPath(normalizedPath);
+  const requiresAccessCheck = isLoginPath || isAccessStatusPath || isPortalProtectedPath(normalizedPath);
+
+  if (!requiresAccessCheck) {
+    return buildNormalizedResponse(req, normalized);
   }
 
-  // Keep these routes as-is
-  if (
-    path === '/staff' || path.startsWith('/staff/') ||
-    path === '/admin' || path.startsWith('/admin/') ||
-    path === '/pricebook' || path.startsWith('/pricebook/') ||
-    path === '/dashboard' || path.startsWith('/dashboard/') ||
-    path === '/login' || path.startsWith('/login/')
-  ) {
-    const res = NextResponse.next();
-    return applySupabaseSession(req, res);
+  const proxySupabase = createProxySupabase(req);
+  if (!proxySupabase.supabase) {
+    return buildNormalizedResponse(req, normalized);
   }
 
-  // Clean root -> staff projects
-  if (path === '/') {
-    url.pathname = '/dashboard';
-    const res = NextResponse.redirect(url, 308);
-    return applySupabaseSession(req, res);
+  const accessState = await resolvePortalAccessState(proxySupabase.supabase);
+
+  if (isLoginPath) {
+    if (accessState.kind === 'authenticated') {
+      return proxySupabase.apply(NextResponse.redirect(withLocalHref(req, getSafeCallbackUrl(req.nextUrl.searchParams.get('callbackUrl')))));
+    }
+
+    if (accessState.kind === 'no_access' || accessState.kind === 'lookup_failed') {
+      return proxySupabase.apply(
+        NextResponse.redirect(
+          withLocalHref(
+            req,
+            buildAccessStatusHref({
+              state: toAccessStatusQueryState(accessState.kind),
+              callbackUrl: req.nextUrl.searchParams.get('callbackUrl'),
+            }),
+          ),
+        ),
+      );
+    }
+
+    return proxySupabase.apply(buildNormalizedResponse(req, normalized));
   }
 
-  // Clean paths -> /staff/*
-  url.pathname = `/staff${path}`;
-  const res = NextResponse.rewrite(url);
-  return applySupabaseSession(req, res);
+  if (isAccessStatusPath) {
+    if (accessState.kind === 'authenticated') {
+      return proxySupabase.apply(NextResponse.redirect(withLocalHref(req, getSafeCallbackUrl(req.nextUrl.searchParams.get('callbackUrl')))));
+    }
+
+    return proxySupabase.apply(buildNormalizedResponse(req, normalized));
+  }
+
+  if (accessState.kind === 'unauthenticated') {
+    return proxySupabase.apply(NextResponse.redirect(withLocalHref(req, buildLoginHref(originalCallback))));
+  }
+
+  if (accessState.kind === 'no_access' || accessState.kind === 'lookup_failed') {
+    return proxySupabase.apply(
+      NextResponse.redirect(
+        withLocalHref(
+          req,
+          buildAccessStatusHref({
+            state: toAccessStatusQueryState(accessState.kind),
+            callbackUrl: originalCallback,
+          }),
+        ),
+      ),
+    );
+  }
+
+  if ((isAdminPath || isPricebookProtectedPath) && accessState.session.role !== 'admin') {
+    return proxySupabase.apply(NextResponse.redirect(withPathname(req, '/staff/calculator')));
+  }
+
+  return proxySupabase.apply(buildNormalizedResponse(req, normalized));
 }
 
 export const config = {

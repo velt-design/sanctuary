@@ -1,5 +1,18 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
+import type {
+  DeckPresetRect,
+  DeckElevationMode,
+  DeckKind,
+  DeckPresetType,
+  DeckShape,
+  DeckSurfaceMaterial,
+  HouseFirstDeckDraft,
+  HouseFirstOpeningDraft,
+  HouseFirstRoofDraft,
+  WallOpeningHostSide,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   isPrimaryFlashingLengthAutoLinked,
   normalizeFlashingsStateForUi,
@@ -12,6 +25,8 @@ import {
 } from './drawingSheet';
 import type {
   CalculatorFlashingsState,
+  CalculatorHouseAttachmentStrategy,
+  CalculatorHouseRoofMaterial,
   CalculatorInputs,
   CalculatorModuleInputs,
   CalculatorModuleOverrides,
@@ -22,9 +37,14 @@ import {
   migrateLegacyCalculatorInputsToV2,
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
   normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPreset,
+  type CalculatorHouseStoreyMode,
+  type CalculatorHouseFootprintMode,
   type CalculatorHouseFootprintParams,
+  type CalculatorHouseFootprintPolygonPoint,
 } from '@/lib/types/calculator';
 
 type AnyRecord = Record<string, unknown>;
@@ -39,6 +59,11 @@ export type EstimateDrawingOverrides = {
 export type EstimateDrawingDraft = {
   inputs: CalculatorInputs;
   overrides: EstimateDrawingOverrides;
+  houseFirst?: {
+    roof?: HouseFirstRoofDraft | null;
+    decks?: HouseFirstDeckDraft[] | null;
+    openings?: HouseFirstOpeningDraft[] | null;
+  };
 };
 
 export type EstimateDrawingFieldTarget =
@@ -86,6 +111,10 @@ export type EstimateDrawingFieldApplyResult =
 
 export type EstimateDrawingFootprintEdit =
   | {
+      type: 'mode';
+      mode: CalculatorHouseFootprintMode;
+    }
+  | {
       type: 'preset';
       preset: CalculatorModuleInputs['houseFootprintPreset'];
     }
@@ -101,6 +130,14 @@ export type EstimateDrawingFootprintEdit =
       type: 'param';
       key: keyof CalculatorHouseFootprintParams;
       value: string;
+    }
+  | {
+      type: 'polygon';
+      polygon: CalculatorHouseFootprintPolygonPoint[];
+    }
+  | {
+      type: 'custom_polygon';
+      polygon: CalculatorHouseFootprintPolygonPoint[];
     };
 
 export type EstimateDrawingModuleFieldEdit =
@@ -183,6 +220,18 @@ export type EditableModuleFieldKey =
   | 'houseConnectionType'
   | 'postConnectionType'
   | 'ground'
+  | 'houseStoreyMode'
+  | 'houseRoofMaterial'
+  | 'houseAttachmentStrategy'
+  | 'houseEaveHeightM'
+  | 'houseWallHeightM'
+  | 'houseRoofPitchDeg'
+  | 'houseSoffitDepthMm'
+  | 'houseFasciaHeightMm'
+  | 'houseGutterWidthMm'
+  | 'houseGutterDepthMm'
+  | 'houseGutterProjectionMm'
+  | 'houseEaveOverhangMm'
   | 'boxGutterHouseEdge'
   | 'boxGutterFarEdge'
   | 'downpipeCount'
@@ -197,6 +246,12 @@ function isRecord(value: unknown): value is AnyRecord {
 function cloneValue<T>(value: T): T {
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function trimNullableString(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function asString(value: unknown): string | null {
@@ -231,12 +286,47 @@ function normalizePitchInput(value: string): string {
   return rounded.toFixed(1).replace(/\.?0+$/, '') || '0';
 }
 
+function seedHouseFootprintPolygon(module: CalculatorModuleInputs): CalculatorHouseFootprintPolygonPoint[] {
+  const lengthM = Number.parseFloat(module.lengthM);
+  const projectionM = Number.parseFloat(module.projectionM);
+  const points = buildHouseFootprintPresetSideLocalPoints({
+    pergolaWidthMm: Number.isFinite(lengthM) && lengthM > 0 ? Math.round(lengthM * 1000) : 6000,
+    pergolaDepthMm: Number.isFinite(projectionM) && projectionM > 0 ? Math.round(projectionM * 1000) : 3000,
+    preset: normalizeHouseFootprintPreset(module.houseFootprintPreset),
+    params: normalizeHouseFootprintParams(module.houseFootprintParams),
+    attachmentSide: normalizeAttachmentSide(module.attachmentSide),
+  });
+  return points.map((point) => ({
+    alongM: normalizeLengthInput(String(point.alongM)),
+    depthM: normalizeLengthInput(String(point.depthM)),
+  }));
+}
+
+function resolveHouseFootprintDimensionMm(value: string, fallbackMm: number): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed * 1000) : fallbackMm;
+}
+
+function validateHouseFootprintPolygonEdit(
+  module: CalculatorModuleInputs,
+  polygon: CalculatorHouseFootprintPolygonPoint[],
+): { ok: true } | { ok: false; error: string } {
+  const validation = buildCustomHouseFootprintPolygon({
+    pergolaWidthMm: resolveHouseFootprintDimensionMm(module.lengthM, 6000),
+    pergolaDepthMm: resolveHouseFootprintDimensionMm(module.projectionM, 3000),
+    polygon,
+    params: normalizeHouseFootprintParams(module.houseFootprintParams),
+    attachmentSide: normalizeAttachmentSide(module.attachmentSide),
+  });
+  return validation.ok ? { ok: true } : { ok: false, error: validation.error };
+}
+
 function isPortalPergolaStyle(value: unknown): value is CalculatorModuleInputs['pergolaStyle'] {
   return value === 'pitched' || value === 'gable' || value === 'hip' || value === 'hip_corner';
 }
 
 function isPortalRoofMaterial(value: unknown): value is CalculatorModuleInputs['roofMaterial'] {
-  return value === 'acrylic' || value === 'timber' || value === 'mixed';
+  return value === 'acrylic' || value === 'timber' || value === 'mixed' || value === 'insulated' || value === 'louvre';
 }
 
 function isHouseConnectionType(value: unknown): value is CalculatorModuleInputs['houseConnectionType'] {
@@ -285,6 +375,49 @@ function isBoxGutter(value: unknown): value is CalculatorModuleInputs['boxGutter
 
 function isOverhangSupportBeamProfile(value: unknown): value is CalculatorModuleInputs['overhangSupportBeamProfile'] {
   return value === '150x50' || value === '200x50' || value === 'RHS 150x50x3';
+}
+
+function isHouseStoreyMode(value: unknown): value is CalculatorHouseStoreyMode {
+  return value === 'single_storey' || value === 'double_storey' || value === 'custom';
+}
+
+function isHouseRoofMaterial(value: unknown): value is CalculatorHouseRoofMaterial {
+  return (
+    value === 'corrugated_iron' ||
+    value === 'trapezoidal_5_rib' ||
+    value === 'eurotray_300' ||
+    value === 'eurotray_500' ||
+    value === 'shingles'
+  );
+}
+
+function isHouseAttachmentStrategy(value: unknown): value is CalculatorHouseAttachmentStrategy {
+  return (
+    value === 'soffit_brackets' ||
+    value === 'fascia_under_gutter' ||
+    value === 'facade_ledger' ||
+    value === 'post_supported_tieback' ||
+    value === 'none'
+  );
+}
+
+function normalizeNumericOverrideInput(
+  value: unknown,
+  options: { positive: boolean; unitLabel: string },
+): { ok: true; value: string | null } | { ok: false; error: string } {
+  const trimmed = String(value ?? '').trim();
+  if (!trimmed) return { ok: true, value: null };
+  const parsed = Number(trimmed);
+  const valid = Number.isFinite(parsed) && (options.positive ? parsed > 0 : parsed >= 0);
+  if (!valid) {
+    return {
+      ok: false,
+      error: options.positive
+        ? `Enter a positive ${options.unitLabel} value.`
+        : `Enter a ${options.unitLabel} value of 0 or more.`,
+    };
+  }
+  return { ok: true, value: trimmed };
 }
 
 function normalizeOverrideValue(value: string | undefined): string | undefined {
@@ -409,6 +542,46 @@ function setDraftModuleField(
       if (!isHouseConnectionType(value)) return { ok: false, error: 'Choose a supported house connection.' };
       updated.houseConnectionType = value;
       break;
+    case 'houseStoreyMode':
+      if (!isHouseStoreyMode(value)) return { ok: false, error: 'Choose a supported house storey mode.' };
+      updated.houseStoreyMode = value;
+      break;
+    case 'houseRoofMaterial':
+      if (!isHouseRoofMaterial(value)) return { ok: false, error: 'Choose a supported house roof material.' };
+      updated.houseRoofMaterial = value;
+      break;
+    case 'houseAttachmentStrategy':
+      if (value === 'auto' || String(value ?? '').trim() === '') {
+        delete updated.houseAttachmentStrategy;
+      } else {
+        if (!isHouseAttachmentStrategy(value)) return { ok: false, error: 'Choose a supported house attachment strategy.' };
+        updated.houseAttachmentStrategy = value;
+      }
+      break;
+    case 'houseEaveHeightM':
+    case 'houseWallHeightM': {
+      const normalized = normalizeNumericOverrideInput(value, { positive: true, unitLabel: 'metre' });
+      if (!normalized.ok) return normalized;
+      if (normalized.value === null) delete updatedRecord[key];
+      else updatedRecord[key] = normalized.value;
+      break;
+    }
+    case 'houseRoofPitchDeg':
+    case 'houseSoffitDepthMm':
+    case 'houseFasciaHeightMm':
+    case 'houseGutterWidthMm':
+    case 'houseGutterDepthMm':
+    case 'houseGutterProjectionMm':
+    case 'houseEaveOverhangMm': {
+      const normalized = normalizeNumericOverrideInput(value, {
+        positive: false,
+        unitLabel: key === 'houseRoofPitchDeg' ? 'degree' : 'millimetre',
+      });
+      if (!normalized.ok) return normalized;
+      if (normalized.value === null) delete updatedRecord[key];
+      else updatedRecord[key] = normalized.value;
+      break;
+    }
     case 'postConnectionType':
       if (!isPostConnectionType(value)) return { ok: false, error: 'Choose a supported post connection.' };
       updated.postConnectionType = value;
@@ -527,6 +700,159 @@ function normalizeOverrides(overrides: EstimateDrawingOverrides | null | undefin
   };
 }
 
+function normalizeHouseFirstRoofDraft(
+  roof: HouseFirstRoofDraft | null | undefined,
+): HouseFirstRoofDraft | null {
+  if (!roof) return null;
+
+  const openGableEndIds = Array.isArray(roof.openGableEndIds)
+    ? [...new Set(
+      roof.openGableEndIds
+        .filter((candidate): candidate is string => typeof candidate === 'string')
+        .map((candidate) => candidate.trim())
+        .filter((candidate) => candidate.length > 0),
+    )]
+    : [];
+
+  const appendage = roof.appendage
+    ? {
+        ...(typeof roof.appendage.enabled === 'boolean' ? { enabled: roof.appendage.enabled } : null),
+        ...(roof.appendage.form ? { form: roof.appendage.form } : null),
+        ...(roof.appendage.hostEdge ? { hostEdge: roof.appendage.hostEdge } : null),
+        ...(trimNullableString(roof.appendage.pitchDeg ?? null)
+          ? { pitchDeg: trimNullableString(roof.appendage.pitchDeg ?? null) }
+          : null),
+        ...(trimNullableString(roof.appendage.dropMm ?? null)
+          ? { dropMm: trimNullableString(roof.appendage.dropMm ?? null) }
+          : null),
+      }
+    : null;
+
+  const normalized: HouseFirstRoofDraft = {
+    ...(roof.form ? { form: roof.form } : null),
+    ...(trimNullableString(roof.primaryPitchDeg ?? null)
+      ? { primaryPitchDeg: trimNullableString(roof.primaryPitchDeg ?? null) }
+      : null),
+    ...(roof.material ? { material: roof.material } : null),
+    ...(roof.primaryFallDirection ? { primaryFallDirection: roof.primaryFallDirection } : null),
+    ...(roof.ridgeAxis ? { ridgeAxis: roof.ridgeAxis } : null),
+    ...(openGableEndIds.length ? { openGableEndIds } : null),
+    ...(appendage && Object.keys(appendage).length ? { appendage } : null),
+  };
+
+  return Object.keys(normalized).length ? normalized : null;
+}
+
+function isDeckKind(value: unknown): value is DeckKind {
+  return value === 'deck' || value === 'landing';
+}
+
+function isDeckShape(value: unknown): value is DeckShape {
+  return value === 'preset' || value === 'custom';
+}
+
+function isDeckPresetType(value: unknown): value is DeckPresetType {
+  return value === 'rect_attached' || value === 'rect_detached';
+}
+
+function isDeckElevationMode(value: unknown): value is DeckElevationMode {
+  return value === 'ground' || value === 'stepped' || value === 'aligned_to_threshold';
+}
+
+function isDeckSurfaceMaterial(value: unknown): value is DeckSurfaceMaterial {
+  return value === 'timber_decking' || value === 'composite' || value === 'concrete';
+}
+
+function normalizeDeckPresetRect(
+  value: DeckPresetRect | null | undefined,
+): DeckPresetRect | null {
+  if (!value || typeof value !== 'object') return null;
+  const widthM = trimNullableString(value.widthM ?? null);
+  const depthM = trimNullableString(value.depthM ?? null);
+  const centerOffsetM = trimNullableString(value.centerOffsetM ?? null);
+  const detachedGapM = trimNullableString(value.detachedGapM ?? null);
+  if (!widthM || !depthM || !centerOffsetM) return null;
+  return {
+    widthM,
+    depthM,
+    centerOffsetM,
+    ...(detachedGapM ? { detachedGapM } : null),
+  };
+}
+
+function normalizeHouseFirstDeckDraft(
+  deck: HouseFirstDeckDraft | null | undefined,
+): HouseFirstDeckDraft | null {
+  if (!deck || typeof deck.id !== 'string' || deck.id.trim().length === 0) return null;
+  const outline = normalizeHouseFootprintPolygon(deck.outline);
+  const normalized: HouseFirstDeckDraft = {
+    id: deck.id.trim(),
+    ...(trimNullableString(deck.name ?? null) ? { name: trimNullableString(deck.name ?? null) } : null),
+    ...(isDeckKind(deck.kind) ? { kind: deck.kind } : null),
+    ...(isDeckShape(deck.shape) ? { shape: deck.shape } : null),
+    ...(isDeckPresetType(deck.presetType) ? { presetType: deck.presetType } : null),
+    ...(normalizeDeckPresetRect(deck.presetRect) ? { presetRect: normalizeDeckPresetRect(deck.presetRect) } : null),
+    ...(outline.length ? { outline } : null),
+    ...(isDeckElevationMode(deck.elevationMode) ? { elevationMode: deck.elevationMode } : null),
+    ...(trimNullableString(deck.levelOffsetMm ?? null)
+      ? { levelOffsetMm: trimNullableString(deck.levelOffsetMm ?? null) }
+      : null),
+    ...(typeof deck.hostEdgeId === 'string' && deck.hostEdgeId.trim()
+      ? { hostEdgeId: deck.hostEdgeId.trim() }
+      : null),
+    ...(typeof deck.isAttached === 'boolean' ? { isAttached: deck.isAttached } : null),
+    ...(isDeckSurfaceMaterial(deck.surfaceMaterial) ? { surfaceMaterial: deck.surfaceMaterial } : null),
+  };
+  return normalized;
+}
+
+function isWallOpeningHostSide(value: unknown): value is WallOpeningHostSide {
+  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
+}
+
+function normalizeHouseFirstOpeningDraft(
+  opening: HouseFirstOpeningDraft | null | undefined,
+): HouseFirstOpeningDraft | null {
+  if (!opening || typeof opening.id !== 'string' || opening.id.trim().length === 0) return null;
+  const label = trimNullableString(opening.label ?? null);
+  const widthM = trimNullableString(opening.widthM ?? null);
+  const heightM = trimNullableString(opening.heightM ?? null);
+  const sillHeightM = trimNullableString(opening.sillHeightM ?? null);
+  const offsetAlongWallM = trimNullableString(opening.offsetAlongWallM ?? null);
+  return {
+    id: opening.id.trim(),
+    ...(label ? { label } : null),
+    kind: 'window',
+    ...(isWallOpeningHostSide(opening.wallId) ? { wallId: opening.wallId } : null),
+    ...(typeof opening.hostEdgeId === 'string' && opening.hostEdgeId.trim()
+      ? { hostEdgeId: opening.hostEdgeId.trim() }
+      : null),
+    ...(widthM ? { widthM } : null),
+    ...(heightM ? { heightM } : null),
+    ...(sillHeightM ? { sillHeightM } : null),
+    ...(offsetAlongWallM ? { offsetAlongWallM } : null),
+  };
+}
+
+function normalizeHouseFirstDraft(
+  value: EstimateDrawingDraft['houseFirst'] | null | undefined,
+): EstimateDrawingDraft['houseFirst'] | undefined {
+  const roof = normalizeHouseFirstRoofDraft(value?.roof);
+  const decks = (value?.decks ?? [])
+    .map((deck) => normalizeHouseFirstDeckDraft(deck))
+    .filter((deck): deck is HouseFirstDeckDraft => Boolean(deck));
+  const openings = (value?.openings ?? [])
+    .map((opening) => normalizeHouseFirstOpeningDraft(opening))
+    .filter((opening): opening is HouseFirstOpeningDraft => Boolean(opening));
+  return roof || decks.length || openings.length
+    ? {
+        ...(roof ? { roof } : null),
+        ...(decks.length ? { decks } : null),
+        ...(openings.length ? { openings } : null),
+      }
+    : undefined;
+}
+
 export function stripClientFacingModulePrefix(value: string): string {
   return value.replace(/^\s*M\d+\s*-\s*/i, '').trim();
 }
@@ -552,6 +878,7 @@ export function buildEstimateDrawingDraftFromSnapshot(snapshot: Record<string, u
   return {
     inputs,
     overrides: resolveEstimateDrawingOverridesFromSnapshot(snapshot),
+    houseFirst: undefined,
   };
 }
 
@@ -562,7 +889,12 @@ export function estimateDrawingDraftMatchesSnapshot(
   const current = buildEstimateDrawingDraftFromSnapshot(snapshot);
   if (!draft && !current) return true;
   if (!draft || !current) return false;
-  return JSON.stringify(draft.inputs) === JSON.stringify(current.inputs) && JSON.stringify(normalizeOverrides(draft.overrides)) === JSON.stringify(normalizeOverrides(current.overrides));
+  return (
+    JSON.stringify(draft.inputs) === JSON.stringify(current.inputs) &&
+    JSON.stringify(normalizeOverrides(draft.overrides)) === JSON.stringify(normalizeOverrides(current.overrides)) &&
+    JSON.stringify(normalizeHouseFirstDraft(draft.houseFirst)) ===
+      JSON.stringify(normalizeHouseFirstDraft(current.houseFirst))
+  );
 }
 
 export function estimateDrawingDraftTouchesGeometry(
@@ -571,7 +903,11 @@ export function estimateDrawingDraftTouchesGeometry(
 ): boolean {
   const current = buildEstimateDrawingDraftFromSnapshot(snapshot);
   if (!draft || !current) return false;
-  return JSON.stringify(draft.inputs) !== JSON.stringify(current.inputs);
+  return (
+    JSON.stringify(draft.inputs) !== JSON.stringify(current.inputs) ||
+    JSON.stringify(normalizeHouseFirstDraft(draft.houseFirst)) !==
+      JSON.stringify(normalizeHouseFirstDraft(current.houseFirst))
+  );
 }
 
 export function resolveEstimateDrawingNoteValue(overrides: EstimateDrawingOverrides | null | undefined): string {
@@ -605,6 +941,42 @@ export function mergeEstimateDrawingDraftIntoSnapshot(
   }
   next.outputs = outputs;
   return next;
+}
+
+export function updateEstimateDrawingHouseFirstRoofDraft(input: {
+  draft: EstimateDrawingDraft;
+  roof: HouseFirstRoofDraft | null;
+}): EstimateDrawingDraft {
+  const nextDraft = cloneValue(input.draft);
+  nextDraft.houseFirst = normalizeHouseFirstDraft({
+    ...(nextDraft.houseFirst ?? {}),
+    roof: input.roof,
+  });
+  return nextDraft;
+}
+
+export function updateEstimateDrawingHouseFirstDeckDrafts(input: {
+  draft: EstimateDrawingDraft;
+  decks: HouseFirstDeckDraft[] | null;
+}): EstimateDrawingDraft {
+  const nextDraft = cloneValue(input.draft);
+  nextDraft.houseFirst = normalizeHouseFirstDraft({
+    ...(nextDraft.houseFirst ?? {}),
+    decks: input.decks,
+  });
+  return nextDraft;
+}
+
+export function updateEstimateDrawingHouseFirstOpeningDrafts(input: {
+  draft: EstimateDrawingDraft;
+  openings: HouseFirstOpeningDraft[] | null;
+}): EstimateDrawingDraft {
+  const nextDraft = cloneValue(input.draft);
+  nextDraft.houseFirst = normalizeHouseFirstDraft({
+    ...(nextDraft.houseFirst ?? {}),
+    openings: input.openings,
+  });
+  return nextDraft;
 }
 
 export function buildEstimateDrawingSheetMetaOverrides(input: {
@@ -824,6 +1196,12 @@ export function applyEstimateDrawingFootprintEdit(input: {
   if (!module) return { ok: false, error: 'This drawing footprint no longer maps to a module input.' };
 
   switch (input.edit.type) {
+    case 'mode':
+      module.houseFootprintMode = normalizeHouseFootprintMode(input.edit.mode) as CalculatorModuleInputs['houseFootprintMode'];
+      if (module.houseFootprintMode === 'custom_polygon' && !normalizeHouseFootprintPolygon(module.houseFootprintPolygon).length) {
+        module.houseFootprintPolygon = seedHouseFootprintPolygon(module) as CalculatorModuleInputs['houseFootprintPolygon'];
+      }
+      return { ok: true, draft: nextDraft };
     case 'preset':
       module.houseFootprintPreset = normalizeHouseFootprintPreset(input.edit.preset) as CalculatorModuleInputs['houseFootprintPreset'];
       return { ok: true, draft: nextDraft };
@@ -840,6 +1218,23 @@ export function applyEstimateDrawingFootprintEdit(input: {
         ...normalizeHouseFootprintParams(module.houseFootprintParams),
         [input.edit.key]: input.edit.value,
       };
+      return { ok: true, draft: nextDraft };
+    case 'polygon':
+      {
+        const nextPolygon = normalizeHouseFootprintPolygon(input.edit.polygon);
+        const validation = validateHouseFootprintPolygonEdit(module, nextPolygon);
+        if (!validation.ok) return validation;
+        module.houseFootprintPolygon = nextPolygon as CalculatorModuleInputs['houseFootprintPolygon'];
+      }
+      return { ok: true, draft: nextDraft };
+    case 'custom_polygon':
+      {
+        const nextPolygon = normalizeHouseFootprintPolygon(input.edit.polygon);
+        const validation = validateHouseFootprintPolygonEdit(module, nextPolygon);
+        if (!validation.ok) return validation;
+        module.houseFootprintMode = 'custom_polygon' as CalculatorModuleInputs['houseFootprintMode'];
+        module.houseFootprintPolygon = nextPolygon as CalculatorModuleInputs['houseFootprintPolygon'];
+      }
       return { ok: true, draft: nextDraft };
     default:
       return { ok: false, error: 'Unsupported footprint edit.' };

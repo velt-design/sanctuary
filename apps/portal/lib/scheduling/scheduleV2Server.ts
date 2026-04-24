@@ -1,8 +1,9 @@
 import 'server-only';
 
-import { supabaseServer } from '@/lib/supabaseClient';
+import { logPortalServerWarn, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { addDaysYmd, diffDaysYmd, isYmd, todayYmd } from '@/lib/scheduling/date';
-import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
+import { WORK_HOURS_PER_DAY } from '@/lib/scheduling/duration';
 import { SCHEDULING_READY_PROJECT_STATUS, normalizeSchedulingProjectStatus } from '@/lib/scheduling/readiness';
 import {
   addWorkingDays,
@@ -39,9 +40,21 @@ type EstimateRowLite = {
   status: string | null;
   created_at: string | null;
   version: number | null;
-  inputs?: unknown;
-  outputs: unknown;
+  duration_days: number | null;
+  crew_hours: number | null;
 };
+
+type BoardProjectEstimateDiagnostics = {
+  scheduledProjectCount: number;
+  readyProjectRowCount: number;
+  scheduledProjectRowCount: number;
+  projectCount: number;
+  estimateCount: number;
+  archivedProjectFilterRetried: boolean;
+};
+
+const SCHEDULE_PROJECT_SELECT = 'id, name, pipeline_stage, follow_up_date';
+const SCHEDULE_ESTIMATE_SELECT = 'id, project_id, status, created_at, version, duration_days, crew_hours';
 
 export type CrewRow = {
   id: string;
@@ -229,18 +242,17 @@ export function computeDriftStatusPatches(input: {
   return patches;
 }
 
-export async function applyDriftStatusPatches(input: {
+export function computeJobsWithDriftStatus(input: {
   jobs: ScheduledJob[];
   recompute: RecomputeResult;
   region: string;
   calendar: WorkingDayIndex;
   nowIso?: string;
-}): Promise<ScheduledJob[]> {
+}): ScheduledJob[] {
   const patches = computeDriftStatusPatches(input);
   const patchByJobId = new Map(patches.map((patch) => [patch.jobId, patch]));
-  const previousByJobId = new Map(input.jobs.map((job) => [job.id, job]));
 
-  const nextJobs = input.jobs.map((job) => {
+  return input.jobs.map((job) => {
     const patch = patchByJobId.get(job.id);
     if (!patch) return job;
     return {
@@ -250,6 +262,17 @@ export async function applyDriftStatusPatches(input: {
       clientUpdateNeededAt: patch.clientUpdateNeededAt,
     };
   });
+}
+
+export async function applyDriftStatusPatches(input: {
+  jobs: ScheduledJob[];
+  recompute: RecomputeResult;
+  region: string;
+  calendar: WorkingDayIndex;
+  nowIso?: string;
+}): Promise<ScheduledJob[]> {
+  const previousByJobId = new Map(input.jobs.map((job) => [job.id, job]));
+  const nextJobs = computeJobsWithDriftStatus(input);
 
   for (const job of nextJobs) {
     const prev = previousByJobId.get(job.id);
@@ -262,7 +285,7 @@ export async function applyDriftStatusPatches(input: {
 
     if (prevStatus === nextStatus && prevNeededAt === nextNeededAt) continue;
 
-    const updateRes = await supabaseServer
+    const updateRes = await supabaseServiceRole
       .from('scheduled_jobs')
       .update({
         client_update_status: nextStatus,
@@ -331,11 +354,11 @@ export function mapScheduleItemRow(row: any): CrewScheduleItem {
 }
 
 export async function loadScheduledJobRow(jobIdOrScheduledJobId: string): Promise<any | null> {
-  const byProjectRes = await supabaseServer.from('scheduled_jobs').select('*').eq('job_id', jobIdOrScheduledJobId).maybeSingle();
+  const byProjectRes = await supabaseServiceRole.from('scheduled_jobs').select('*').eq('job_id', jobIdOrScheduledJobId).maybeSingle();
   if (byProjectRes.error) throw byProjectRes.error;
   if (byProjectRes.data) return byProjectRes.data;
 
-  const byIdRes = await supabaseServer.from('scheduled_jobs').select('*').eq('id', jobIdOrScheduledJobId).maybeSingle();
+  const byIdRes = await supabaseServiceRole.from('scheduled_jobs').select('*').eq('id', jobIdOrScheduledJobId).maybeSingle();
   if (byIdRes.error) throw byIdRes.error;
   return byIdRes.data ?? null;
 }
@@ -351,7 +374,7 @@ export async function appendPlannedCommitmentHistory(input: {
   hardLock: boolean;
   changedBy: string | null;
 }) {
-  const res = await supabaseServer.from('planned_commitment_history').insert({
+  const res = await supabaseServiceRole.from('planned_commitment_history').insert({
     scheduled_job_id: input.scheduledJobId,
     event_type: input.eventType,
     commitment_type: input.commitmentType,
@@ -366,9 +389,9 @@ export async function appendPlannedCommitmentHistory(input: {
 }
 
 export async function loadCalendar(): Promise<{ holidays: NzHoliday[]; closures: CompanyClosure[]; calendar: WorkingDayIndex }> {
-  const holidaysRes = await supabaseServer.from('nz_holidays').select('date, name, scope, region');
+  const holidaysRes = await supabaseServiceRole.from('nz_holidays').select('date, name, scope, region');
   if (holidaysRes.error) throw holidaysRes.error;
-  const closuresRes = await supabaseServer.from('company_closures').select('date, name, region');
+  const closuresRes = await supabaseServiceRole.from('company_closures').select('date, name, region');
   if (closuresRes.error) throw closuresRes.error;
 
   const holidays: NzHoliday[] = (Array.isArray(holidaysRes.data) ? holidaysRes.data : []).map((row: any): NzHoliday => ({
@@ -391,12 +414,12 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
   const today = typeof options?.today === 'string' && isYmd(options.today) ? options.today : todayYmd();
   const crewId = typeof options?.crewId === 'string' && options.crewId.trim() ? options.crewId.trim() : null;
 
-  let crewsQuery = supabaseServer
+  let crewsQuery = supabaseServiceRole
     .from('schedule_crews')
     .select('id, name, color, sort_order, is_active, calendar_region, base_available_date')
     .order('sort_order', { ascending: true });
-  let itemsQuery = supabaseServer.from('crew_schedule_items').select('id, crew_id, item_type, job_id, downtime_id, position').order('position', { ascending: true });
-  let jobsQuery = supabaseServer.from('scheduled_jobs').select(
+  let itemsQuery = supabaseServiceRole.from('crew_schedule_items').select('id, crew_id, item_type, job_id, downtime_id, position').order('position', { ascending: true });
+  let jobsQuery = supabaseServiceRole.from('scheduled_jobs').select(
     [
       'id',
       'job_id',
@@ -422,7 +445,7 @@ export async function loadScheduleContext(options?: { crewId?: string; today?: s
       'client_update_ack_by',
     ].join(','),
   );
-  let downtimesQuery = supabaseServer.from('crew_downtimes').select('id, crew_id, duration_days, reason, note');
+  let downtimesQuery = supabaseServiceRole.from('crew_downtimes').select('id, crew_id, duration_days, reason, note');
 
   if (crewId) {
     crewsQuery = crewsQuery.eq('id', crewId);
@@ -472,15 +495,13 @@ export function getLatestSchedulableEstimate(estimates: EstimateRowLite[]): Esti
 
 export function durationDaysFromEstimate(estimate: EstimateRowLite | null): number {
   if (!estimate) return 1;
-  const derived = deriveDurationHoursFromEstimate(
-    {
-      id: estimate.id,
-      projectId: estimate.project_id,
-      outputs: estimate.outputs ?? {},
-    } as any,
-  );
-  const hours = derived.durationHours;
-  return Math.max(1, Math.ceil(hours / WORK_HOURS_PER_DAY));
+  if (typeof estimate.duration_days === 'number' && Number.isFinite(estimate.duration_days) && estimate.duration_days > 0) {
+    return Math.max(1, Math.ceil(estimate.duration_days));
+  }
+  if (typeof estimate.crew_hours === 'number' && Number.isFinite(estimate.crew_hours) && estimate.crew_hours > 0) {
+    return Math.max(1, Math.ceil(estimate.crew_hours / WORK_HOURS_PER_DAY));
+  }
+  return 1;
 }
 
 export function recomputeForCrew(input: {
@@ -574,7 +595,7 @@ export async function applyJobForecastUpdates(updates: { id: string; forecast_st
     const chunk = updates.slice(index, index + chunkSize);
     await Promise.all(
       chunk.map(async (update) => {
-        const res = await supabaseServer
+        const res = await supabaseServiceRole
           .from('scheduled_jobs')
           .update({
             forecast_start: update.forecast_start,
@@ -724,31 +745,118 @@ export function formatCrewScheduleBlocks(input: {
 
 export async function listProjectsAndEstimates(): Promise<{ projects: ProjectRowLite[]; estimates: EstimateRowLite[] }> {
   const [projectsRes, estimatesRes] = await Promise.all([
-    supabaseServer.from('projects').select('id, name, pipeline_stage, follow_up_date'),
-    supabaseServer.from('estimates').select('id, project_id, status, created_at, version, outputs'),
+    supabaseServiceRole.from('projects').select(SCHEDULE_PROJECT_SELECT),
+    supabaseServiceRole.from('estimates').select(SCHEDULE_ESTIMATE_SELECT),
   ]);
   if (projectsRes.error) throw projectsRes.error;
   if (estimatesRes.error) throw estimatesRes.error;
 
-  const projects: ProjectRowLite[] = (Array.isArray(projectsRes.data) ? projectsRes.data : []).map((row: any) => ({
+  return {
+    projects: mapProjectRows(projectsRes.data),
+    estimates: mapEstimateRows(estimatesRes.data),
+  };
+}
+
+function mapProjectRows(rows: unknown): ProjectRowLite[] {
+  return (Array.isArray(rows) ? rows : []).map((row: any) => ({
     id: String(row?.id ?? ''),
     name: String(row?.name ?? ''),
     pipeline_stage: typeof row?.pipeline_stage === 'string' ? row.pipeline_stage : null,
     follow_up_date: typeof row?.follow_up_date === 'string' ? row.follow_up_date : null,
   }));
+}
 
-  const estimates: EstimateRowLite[] = (Array.isArray(estimatesRes.data) ? estimatesRes.data : []).map((row: any) => ({
+function mapEstimateRows(rows: unknown): EstimateRowLite[] {
+  return (Array.isArray(rows) ? rows : []).map((row: any) => ({
     id: String(row?.id ?? ''),
     project_id: String(row?.project_id ?? ''),
     status: typeof row?.status === 'string' ? row.status : null,
     created_at: typeof row?.created_at === 'string' ? row.created_at : null,
     version: typeof row?.version === 'number' && Number.isFinite(row.version) ? row.version : null,
-    outputs: row?.outputs ?? null,
+    duration_days: typeof row?.duration_days === 'number' && Number.isFinite(row.duration_days) ? row.duration_days : null,
+    crew_hours: typeof row?.crew_hours === 'number' && Number.isFinite(row.crew_hours) ? row.crew_hours : null,
   }));
+}
+
+function uniqueSortedIds(ids: Iterable<unknown>): string[] {
+  return Array.from(new Set(Array.from(ids, (id) => (typeof id === 'string' ? id.trim() : '')).filter(Boolean))).sort();
+}
+
+async function listSchedulingReadyProjects(diagnostics?: PortalServerLogContext | null): Promise<{ data: unknown[]; archivedProjectFilterRetried: boolean }> {
+  const withArchiveFilter = await supabaseServiceRole
+    .from('projects')
+    .select(SCHEDULE_PROJECT_SELECT)
+    .eq('pipeline_stage', SCHEDULING_READY_PROJECT_STATUS)
+    .is('archived_at', null);
+
+  if (!withArchiveFilter.error) {
+    return {
+      data: Array.isArray(withArchiveFilter.data) ? withArchiveFilter.data : [],
+      archivedProjectFilterRetried: false,
+    };
+  }
+
+  if (!isMissingSchemaError(withArchiveFilter.error)) {
+    throw withArchiveFilter.error;
+  }
+
+  if (diagnostics) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.board.archived_project_filter_retry',
+      message: 'Schedule board project archived_at filter failed; retrying without archived project filter.',
+      error: withArchiveFilter.error,
+    });
+  }
+
+  const withoutArchiveFilter = await supabaseServiceRole.from('projects').select(SCHEDULE_PROJECT_SELECT).eq('pipeline_stage', SCHEDULING_READY_PROJECT_STATUS);
+  if (withoutArchiveFilter.error) throw withoutArchiveFilter.error;
+
+  return {
+    data: Array.isArray(withoutArchiveFilter.data) ? withoutArchiveFilter.data : [],
+    archivedProjectFilterRetried: true,
+  };
+}
+
+export async function listBoardProjectsAndEstimates(input?: {
+  scheduledProjectIds?: Iterable<string>;
+  diagnostics?: PortalServerLogContext | null;
+}): Promise<{ projects: ProjectRowLite[]; estimates: EstimateRowLite[]; diagnostics: BoardProjectEstimateDiagnostics }> {
+  const scheduledProjectIds = uniqueSortedIds(input?.scheduledProjectIds ?? []);
+
+  const scheduledProjectsPromise = scheduledProjectIds.length
+    ? supabaseServiceRole.from('projects').select(SCHEDULE_PROJECT_SELECT).in('id', scheduledProjectIds)
+    : Promise.resolve({ data: [], error: null });
+  const readyProjectsPromise = listSchedulingReadyProjects(input?.diagnostics ?? null);
+
+  const [scheduledProjectsRes, readyProjectsRes] = await Promise.all([scheduledProjectsPromise, readyProjectsPromise]);
+  if (scheduledProjectsRes.error) throw scheduledProjectsRes.error;
+
+  const projectsById = new Map<string, ProjectRowLite>();
+  for (const project of [...mapProjectRows(scheduledProjectsRes.data), ...mapProjectRows(readyProjectsRes.data)]) {
+    if (project.id) projectsById.set(project.id, project);
+  }
+
+  const projects = Array.from(projectsById.values());
+  const readyProjectIds = uniqueSortedIds(mapProjectRows(readyProjectsRes.data).map((project) => project.id));
+  const estimateProjectIds = uniqueSortedIds([...scheduledProjectIds, ...readyProjectIds]);
+  const estimatesRes = estimateProjectIds.length
+    ? await supabaseServiceRole.from('estimates').select(SCHEDULE_ESTIMATE_SELECT).in('project_id', estimateProjectIds)
+    : { data: [], error: null };
+  if (estimatesRes.error) throw estimatesRes.error;
+
+  const estimates = mapEstimateRows(estimatesRes.data);
 
   return {
     projects,
     estimates,
+    diagnostics: {
+      scheduledProjectCount: scheduledProjectIds.length,
+      readyProjectRowCount: Array.isArray(readyProjectsRes.data) ? readyProjectsRes.data.length : 0,
+      scheduledProjectRowCount: Array.isArray(scheduledProjectsRes.data) ? scheduledProjectsRes.data.length : 0,
+      projectCount: projects.length,
+      estimateCount: estimates.length,
+      archivedProjectFilterRetried: readyProjectsRes.archivedProjectFilterRetried,
+    },
   };
 }
 

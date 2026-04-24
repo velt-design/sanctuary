@@ -326,10 +326,8 @@ for each row execute function public.set_updated_at();
 create unique index if not exists schedule_unique_project on public.schedule_items(project_id);
 create index if not exists schedule_items_by_crew_start on public.schedule_items(crew_id, start_date);
 
--- DEV GRANTS (keep dev simple; tighten later)
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on all tables in schema public to anon, authenticated;
-alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated;
+-- Access control is managed by the forward migrations under `supabase/migrations/`.
+-- Do not grant blanket anon/authenticated table access from this legacy snapshot.
 
 -- Force schema reload
 select pg_notify('pgrst', 'reload schema');

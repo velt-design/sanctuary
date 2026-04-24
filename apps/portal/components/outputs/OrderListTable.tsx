@@ -1,6 +1,6 @@
 'use client';
 
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import type { AcrylicLine, HardwareLine, PowdercoatLine } from '@/lib/outputs/types';
 
 type PowdercoatProps = {
@@ -111,4 +111,3 @@ export default function OrderListTable({ title, kind, rows }: Props) {
     </section>
   );
 }
-

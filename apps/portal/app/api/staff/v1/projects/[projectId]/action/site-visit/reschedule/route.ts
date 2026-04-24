@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import {
   isMissingColumnError,
   isUniqueViolation,
@@ -9,19 +9,19 @@ import {
   parseIso,
   salespersonSchemaMismatchMessage,
 } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 
 export const runtime = 'nodejs';
 
-async function loadEventRow(projectUuid: string, eventUuid: string): Promise<{ data: any | null; error: any | null }> {
+async function loadEventRow(supabase: SupabaseClient, projectUuid: string, eventUuid: string): Promise<{ data: any | null; error: any | null }> {
   const selects = ['id, status, scheduled_start, notes, updated_at', 'id, status, scheduled_start, updated_at', 'id, status, scheduled_start'] as const;
 
   let lastErr: any | null = null;
   for (const select of selects) {
     for (const orderByUpdatedAt of [true, false] as const) {
-      const q = supabaseServer.from('site_visit_events').select(select).eq('project_id', projectUuid).eq('id', eventUuid);
+      const q = supabase.from('site_visit_events').select(select).eq('project_id', projectUuid).eq('id', eventUuid);
       const res = orderByUpdatedAt ? await (q as any).order('updated_at', { ascending: false }).limit(1) : await (q as any).limit(1);
       if (!res.error) {
         const rows = Array.isArray(res.data) ? res.data : [];
@@ -38,10 +38,15 @@ async function loadEventRow(projectUuid: string, eventUuid: string): Promise<{ d
   return { data: null, error: lastErr };
 }
 
-async function safeUpdate(eventUuid: string, projectUuid: string, patchIn: Record<string, any>): Promise<{ ok: boolean; error?: any }> {
+async function safeUpdate(
+  supabase: SupabaseClient,
+  eventUuid: string,
+  projectUuid: string,
+  patchIn: Record<string, any>,
+): Promise<{ ok: boolean; error?: any }> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const res = await supabaseServer.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
+    const res = await supabase.from('site_visit_events').update(patch as any).eq('project_id', projectUuid).eq('id', eventUuid);
     if (!res.error) return { ok: true };
     if (isMissingColumnError(res.error)) {
       const missing = missingColumnFromError(res.error);
@@ -62,8 +67,9 @@ async function safeUpdate(eventUuid: string, projectUuid: string, patchIn: Recor
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -97,12 +103,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const notifyCustomer = Boolean(body.notifyCustomer);
 
-  const prevRes = await loadEventRow(projectUuid, eventUuid);
+  const prevRes = await loadEventRow(supabase, projectUuid, eventUuid);
   if (prevRes.error || !prevRes.data) return jsonError('Site visit not found', 404);
 
   const prevStatus = String((prevRes.data as any).status ?? '').toUpperCase();
 
-  const updateRes = await safeUpdate(eventUuid, projectUuid, {
+  const updateRes = await safeUpdate(supabase, eventUuid, projectUuid, {
     scheduled_start: start,
     scheduled_end: end,
     status: prevStatus === 'CONFIRMED' ? 'RESCHEDULED' : prevStatus,
@@ -120,7 +126,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       const subject = (await loadEmailTemplateSubject(templateId)) ?? 'Site visit rescheduled';
       const idempotencyKey = makeIdempotencyKey([projectUuid, 'email', templateId, eventUuid, start]);
 
-      const insertRes = await supabaseServer.from('email_outbox').insert({
+      const insertRes = await supabase.from('email_outbox').insert({
         project_id: projectUuid,
         contact_id: info.contactId,
         email_type: templateId,
@@ -136,7 +142,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         return jsonError('Failed to queue reschedule email', 500);
       }
 
-      await supabaseServer
+      await supabase
         .from('site_visit_events')
         .update({ customer_notified: true, last_notified_at: new Date().toISOString() } as any)
         .eq('project_id', projectUuid)
@@ -144,7 +150,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         .then(async (r) => {
           if (!r.error) return;
           if (!isMissingColumnError(r.error)) return;
-          await safeUpdate(eventUuid, projectUuid, { customer_notified: true, last_notified_at: new Date().toISOString() });
+          await safeUpdate(supabase, eventUuid, projectUuid, { customer_notified: true, last_notified_at: new Date().toISOString() });
         });
     }
   }

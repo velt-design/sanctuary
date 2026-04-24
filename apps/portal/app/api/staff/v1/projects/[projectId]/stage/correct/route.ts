@@ -1,6 +1,5 @@
-import { jsonError, jsonOk, requireAdminSession } from '@/lib/api/adminApi';
+import { jsonError, jsonOk, requireAdminContext } from '@/lib/api/adminApi';
 import { PIPELINE_STAGES, STAGE_TASKS, type PipelineStageKey, type TaskKey } from '@/lib/projects/pipelineDefinition';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -42,8 +41,9 @@ async function parseOptionalJson(req: Request): Promise<any> {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const body = await parseOptionalJson(req);
   const toStage = normaliseStage(body?.toStage ?? body?.stage);
@@ -59,7 +59,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid projectId', 400);
   }
 
-  const prevRes = await supabaseServer
+  const prevRes = await supabase
     .from('projects')
     .select('id, pipeline_stage, name')
     .eq('id', projectUuid)
@@ -78,7 +78,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     if (siteVisitTier) updatePayload.site_visit_priority_tier = siteVisitTier;
   }
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('projects')
     .update(updatePayload as any)
     .eq('id', projectUuid)
@@ -95,7 +95,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     const manualTaskKeys = manualTaskKeysFromStage(targetStage);
 
     if (manualTaskKeys.length) {
-      const resetRes = await supabaseServer
+      const resetRes = await supabase
         .from('project_task_checks')
         .delete()
         .eq('project_id', projectUuid)
@@ -103,7 +103,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         .select('task_key');
 
       if (resetRes.error) {
-        await supabaseServer.from('projects').update({ pipeline_stage: fromStage } as any).eq('id', projectUuid);
+        await supabase.from('projects').update({ pipeline_stage: fromStage } as any).eq('id', projectUuid);
         return jsonError(resetRes.error.message ?? 'Failed to reset manual task checkmarks', 500);
       }
       resetManualTaskCount = Array.isArray(resetRes.data) ? resetRes.data.length : 0;
@@ -111,7 +111,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   const reasonRaw = typeof body?.reason === 'string' ? body.reason.trim() : '';
-  const auditRes = await supabaseServer.from('audit_events').insert({
+  const auditRes = await supabase.from('audit_events').insert({
     project_id: projectUuid,
     type: 'project.stage_corrected',
     idempotency_key: `project.stage_corrected:${projectUuid}:${crypto.randomUUID()}`,

@@ -2366,18 +2366,14 @@
 
 .moduleViewsStageModel {
   margin-top: 0;
-  min-height: 590px;
-  padding: 18px;
-  border-color: var(--mv-stage-border);
-  border-radius: 20px;
-  background:
-    radial-gradient(circle at top left, rgba(222, 214, 185, 0.16), transparent 32%),
-    var(--mv-stage-bg);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    0 10px 24px rgba(41, 39, 29, 0.05);
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   align-content: stretch;
-  justify-items: stretch;
+  justify-items: start;
   text-align: left;
 }
 
@@ -2453,7 +2449,7 @@
 }
 
 .modulePlanFrameModel {
-  height: 100%;
+  width: max-content;
   gap: 0;
 }
 
@@ -2462,7 +2458,8 @@
 }
 
 .modulePlanCanvasModel {
-  min-height: 100%;
+  min-height: 0;
+  width: max-content;
 }
 
 .moduleFootprintToolbar {
@@ -2610,6 +2607,14 @@
   display: block;
 }
 
+.modulePlanSvgModel {
+  display: block;
+  width: auto;
+  max-width: none;
+  height: auto;
+  overflow: visible;
+}
+
 .modulePlanSvgSheetFootprint {
   cursor: default;
 }
@@ -2654,8 +2659,8 @@
 }
 
 .moduleFootprintResizeEdge {
-  stroke: rgba(47, 56, 47, 0.9);
-  stroke-width: 0.92;
+  stroke: rgba(47, 56, 47, 0.82);
+  stroke-width: 0.96;
   stroke-linecap: round;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
@@ -2766,6 +2771,89 @@
   stroke-width: 0.6;
 }
 
+.moduleFootprintCustomPreviewEdge {
+  stroke: var(--mv-accent-olive);
+  stroke-width: 1.12;
+  stroke-dasharray: 2.2 1.5;
+}
+
+.moduleFootprintCustomActiveEdge {
+  stroke: rgba(34, 40, 34, 0.96);
+  stroke-width: 1.34;
+}
+
+.moduleFootprintCustomClosePreviewEdge {
+  stroke: rgba(31, 91, 107, 0.95);
+  stroke-width: 1.34;
+  stroke-dasharray: none;
+}
+
+.moduleFootprintCustomInvalidEdge {
+  stroke: rgba(168, 60, 43, 0.92);
+  stroke-width: 1.32;
+}
+
+.moduleFootprintCustomLatestVertex {
+  fill: rgba(255, 255, 255, 0.98);
+  stroke: var(--mv-line-primary);
+  stroke-width: 0.82;
+}
+
+.moduleFootprintCustomPendingVertex {
+  stroke: var(--mv-accent-olive);
+  stroke-width: 0.72;
+}
+
+.moduleFootprintCustomHoverVertex {
+  stroke: rgba(95, 118, 74, 0.78);
+  stroke-width: 0.58;
+}
+
+.moduleFootprintCustomHoverVertex {
+  fill: rgba(255, 255, 255, 0.72);
+}
+
+.moduleFootprintCustomInvalidVertex {
+  fill: rgba(255, 255, 255, 0.98);
+  stroke: rgba(168, 60, 43, 0.96);
+  stroke-width: 0.86;
+}
+
+.moduleFootprintLandingMarker {
+  color: rgba(31, 91, 107, 0.84);
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+.moduleFootprintLandingMarker line {
+  stroke: currentColor;
+  stroke-width: 0.54;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleFootprintLandingMarker circle {
+  fill: currentColor;
+  stroke: #fff;
+  stroke-width: 0.32;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleFootprintCustomCloseTarget {
+  fill: none;
+  stroke: rgba(31, 91, 107, 0.9);
+  stroke-width: 0.5;
+  stroke-dasharray: 1.2 0.8;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleFootprintCustomCloseTargetHover {
+  stroke: rgba(31, 91, 107, 1);
+  stroke-dasharray: none;
+  stroke-width: 0.72;
+}
+
 .moduleFootprintHandleHit {
   fill: transparent;
   cursor: grab;
@@ -2774,6 +2862,11 @@
 
 .moduleFootprintHandleHit:active {
   cursor: grabbing;
+}
+
+.moduleFootprintHandleHit.moduleFootprintCustomCloseHit,
+.moduleFootprintHandleHit.moduleFootprintCustomCloseHit:active {
+  cursor: pointer;
 }
 
 .moduleFootprintValueBadgeRect {
@@ -2925,6 +3018,125 @@
   pointer-events: all;
 }
 
+.moduleHouseFirstFootprintShape,
+.moduleHouseFirstDeckShape {
+  fill: rgba(36, 56, 82, 0.06);
+  stroke: rgba(45, 62, 82, 0.58);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstDeckShape {
+  fill: rgba(44, 86, 112, 0.08);
+  stroke: rgba(37, 102, 146, 0.68);
+}
+
+.moduleHouseFirstDeckShapeMuted {
+  fill: rgba(44, 86, 112, 0.04);
+  stroke: rgba(37, 102, 146, 0.28);
+}
+
+.moduleHouseFirstShapeMuted {
+  fill-opacity: 0.42;
+  stroke-opacity: 0.42;
+}
+
+.moduleHouseFirstShapeSelected {
+  fill: rgba(var(--accentRgb), 0.18);
+  stroke: rgba(var(--accentRgb), 0.96);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleHouseFirstDrivingWitness {
+  stroke: rgba(var(--accentRgb), 0.76);
+}
+
+.moduleHouseFirstRelationshipWitness {
+  stroke: rgba(37, 102, 146, 0.72);
+}
+
+.moduleHouseFirstShapeInvalid {
+  fill: rgba(180, 56, 45, 0.09);
+  stroke: rgba(182, 63, 50, 0.82);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleHouseFirstShapeHit {
+  fill: transparent;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.moduleHouseFirstCustomEdge {
+  stroke: rgba(47, 111, 150, 0.62);
+  stroke-width: var(--mv-line-secondary-width);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleHouseFirstCustomEdgeActive {
+  stroke: rgba(var(--accentRgb), 0.9);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleHouseFirstInvalidBadge {
+  fill: rgba(182, 63, 50, 0.92);
+  font-size: 1.95px;
+  font-weight: 700;
+}
+
+.moduleHouseFirstDraggableBadge,
+.moduleHouseFirstDeferredBadge {
+  font-size: 1.62px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  paint-order: stroke fill;
+  stroke: rgba(248, 248, 244, 0.96);
+  stroke-width: 0.24;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.moduleHouseFirstDraggableBadge {
+  fill: rgba(var(--accentRgb), 0.94);
+}
+
+.moduleHouseFirstDeferredBadge {
+  fill: rgba(47, 111, 150, 0.82);
+}
+
+.moduleHouseFirstCustomEdgeHit {
+  stroke: transparent;
+  stroke-width: 1.8;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.moduleHouseFirstPreviewShape {
+  fill: rgba(var(--accentRgb), 0.12);
+  stroke: rgba(var(--accentRgb), 0.94);
+  stroke-width: var(--mv-line-major-width);
+  stroke-linejoin: round;
+  stroke-dasharray: 1.4 0.9;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstSnapTarget {
+  stroke: rgba(37, 102, 146, 0.58);
+  stroke-width: var(--mv-line-major-width);
+  stroke-linecap: round;
+  stroke-dasharray: 1 0.85;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstSnapTargetSnapped {
+  stroke: rgba(var(--accentRgb), 0.98);
+}
+
 .modulePergolaContextHit {
   fill: transparent;
   cursor: pointer;
@@ -2978,11 +3190,13 @@
 
 .modulePlanFill {
   fill: var(--mv-structure-fill);
+  pointer-events: none;
 }
 
 .modulePlanPrimaryZone {
   fill: var(--mv-panel-fill-soft);
   opacity: 0.12;
+  pointer-events: none;
 }
 
 .modulePlanPerimeter {
@@ -2993,6 +3207,7 @@
   stroke-miterlimit: 1.5;
   stroke-width: var(--mv-line-major-width);
   vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .modulePlanMemberBand,
@@ -3004,6 +3219,7 @@
   stroke-miterlimit: 1.5;
   stroke-width: var(--mv-line-secondary-width);
   vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .modulePlanBoxInset {
@@ -3082,6 +3298,66 @@
   vector-effect: non-scaling-stroke;
 }
 
+.modulePlanHouseSurface {
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.modulePlanHouseFootprint {
+  fill: var(--mv-house-fill);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.modulePlanHouseRoof {
+  fill: var(--mv-panel-fill-subtle);
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.modulePlanHouseSoffit {
+  fill: var(--mv-overhang-fill);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.modulePlanHouseFascia,
+.modulePlanHouseAttachmentZone {
+  fill: none;
+  stroke: var(--mv-accent-olive);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.modulePlanHouseLine {
+  fill: none;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.modulePlanHouseWallSemantic {
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-emphasis-width);
+}
+
+.modulePlanHouseGutter {
+  stroke: var(--mv-line-tertiary);
+  stroke-width: var(--mv-line-tertiary-width);
+}
+
+.modulePlanHouseRoofFeature {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.modulePlanHouseAttachmentTarget {
+  stroke: var(--mv-line-annotation);
+  stroke-width: var(--mv-line-annotation-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
 .modulePlanOverhangZone {
   fill: var(--mv-overhang-fill);
   stroke: var(--mv-line-hidden);
@@ -3158,6 +3434,33 @@
   stroke-linecap: square;
   opacity: 0.82;
   vector-effect: non-scaling-stroke;
+}
+
+.moduleHouseFirstDrivingDimensionLine {
+  stroke: rgba(var(--accentRgb), 0.94);
+}
+
+.moduleHouseFirstDrivingDimensionTick {
+  stroke: rgba(var(--accentRgb), 0.94);
+}
+
+.moduleHouseFirstDrivingDimensionText {
+  fill: rgba(var(--accentRgb), 0.98);
+  font-weight: 700;
+}
+
+.moduleHouseFirstRelationshipDimensionLine {
+  stroke: rgba(37, 102, 146, 0.9);
+  stroke-dasharray: 1.15 0.8;
+}
+
+.moduleHouseFirstRelationshipDimensionTick {
+  stroke: rgba(37, 102, 146, 0.9);
+}
+
+.moduleHouseFirstRelationshipDimensionText {
+  fill: rgba(37, 102, 146, 0.96);
+  font-weight: 600;
 }
 
 .moduleDimGuide {
@@ -3324,6 +3627,66 @@
   stroke-width: var(--mv-line-annotation-width);
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionHouseSurface {
+  stroke-linejoin: round;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionHouseWallSemantic {
+  fill: var(--mv-house-fill);
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleSectionHouseRoof {
+  fill: var(--mv-panel-fill-subtle);
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-secondary-width);
+}
+
+.moduleSectionHouseSoffit {
+  fill: var(--mv-overhang-fill);
+  stroke: var(--mv-line-hidden);
+  stroke-width: var(--mv-line-hidden-width);
+}
+
+.moduleSectionHouseFascia,
+.moduleSectionHouseAttachmentZone {
+  fill: none;
+  stroke: var(--mv-accent-olive);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.moduleSectionHouseLine {
+  fill: none;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleSectionHouseReference {
+  stroke: var(--mv-line-primary);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleSectionHouseGutter {
+  stroke: var(--mv-line-tertiary);
+  stroke-width: var(--mv-line-tertiary-width);
+}
+
+.moduleSectionHouseRoofFeature {
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.moduleSectionHouseAttachmentTarget {
+  stroke: var(--mv-line-annotation);
+  stroke-width: var(--mv-line-annotation-width);
+  stroke-dasharray: var(--mv-dash-guide);
 }
 
 .moduleSectionOverhangPost {

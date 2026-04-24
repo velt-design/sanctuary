@@ -3,7 +3,12 @@ import 'server-only';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { PDFDocument, rgb, type Color, type PDFImage } from 'pdf-lib';
-import { formatQuoteIntroText, formatQuoteLineDescription, formatQuoteTermsText } from '@sp/quote-format';
+import {
+  formatQuoteIntroText,
+  formatQuoteLineDescription,
+  formatQuoteTermsText,
+  type QuoteLineDescriptionEntry,
+} from '@sp/quote-format';
 import { BRAND_ACCENT_PDF_RGB } from '@sp/theme';
 import { paymentDetailsLines } from '@/lib/payments/paymentDetails';
 import fontkit from './fontkit';
@@ -14,7 +19,7 @@ import {
   type TableBounds,
   type TotalsBounds,
 } from './pdfLayout';
-import type { QuoteStatus, QuoteVersionDetail } from './types';
+import type { QuoteVersionDetail } from './types';
 import { fromCents } from './utils';
 
 const PAGE_WIDTH = 595.28; // A4
@@ -40,7 +45,6 @@ type PdfQuoteViewModel = {
   header: {
     quoteNumber: string;
     versionNumber: number;
-    status: QuoteStatus;
   };
   client: {
     name?: string;
@@ -52,7 +56,7 @@ type PdfQuoteViewModel = {
   intro?: string;
   items: Array<{
     heading: string;
-    bullets: string[];
+    entries: QuoteLineDescriptionEntry[];
     qty: number;
     qtyText: string;
     unitPrice: string;
@@ -253,14 +257,14 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
   }
 
   const items = quote.lineItems.map((item, index) => {
-    const { heading, bullets } = formatQuoteLineDescription(item.description, index);
+    const { heading, entries } = formatQuoteLineDescription(item.description, index);
     const rawQty = Number.isFinite(item.qty) ? item.qty : 0;
     const displayQty = Math.ceil(rawQty);
     const amountCents = Number.isFinite(item.lineTotalIncGstCents) ? item.lineTotalIncGstCents : 0;
     const unitPriceCents = displayQty > 0 ? Math.round(amountCents / displayQty) : 0;
     return {
       heading,
-      bullets,
+      entries,
       qty: displayQty,
       qtyText: String(displayQty),
       unitPrice: formatMoneyFromCents(unitPriceCents),
@@ -282,7 +286,6 @@ function buildPdfQuoteViewModel(quote: QuoteVersionDetail): PdfQuoteViewModel {
     header: {
       quoteNumber: quote.quoteRef,
       versionNumber: quote.versionNumber,
-      status: quote.status,
     },
     client,
     warehouseAddressLines: addressLines(WAREHOUSE_ADDRESS),
@@ -418,8 +421,8 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
 
   type RowLayout = {
     headingLines: string[];
-    bulletLines: string[][];
-    bulletLineCount: number;
+    entryLines: Array<{ kind: QuoteLineDescriptionEntry['kind']; lines: string[] }>;
+    entryLineCount: number;
     blockHeight: number;
     qtyText: string;
     unitPrice: string;
@@ -428,19 +431,37 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
 
   const rowLayouts: RowLayout[] = vm.items.map((item) => {
     const headingLines = wrapText(fontMedium, item.heading, theme.sizes.descHeading, descW);
-    const bulletLines = item.bullets.map((bullet) =>
-      wrapText(fontRegular, bullet, theme.sizes.bullet, descW - bulletIndent),
-    );
-    const bulletLineCount = bulletLines.reduce((sum, lines) => sum + lines.length, 0);
+    const entryLines = item.entries.map((entry) => ({
+      kind: entry.kind,
+      lines: wrapText(
+        entry.kind === 'section' ? fontMedium : fontRegular,
+        entry.text,
+        entry.kind === 'section' ? theme.sizes.descHeading : theme.sizes.bullet,
+        entry.kind === 'section' ? descW : descW - bulletIndent,
+      ),
+    }));
+    const entryLineCount = entryLines.reduce((sum, entry) => sum + entry.lines.length, 0);
     const contentHeight =
       headingLines.length * theme.lineHeights.descHeading +
-      (bulletLineCount ? theme.spacing.bulletGap + bulletLineCount * theme.lineHeights.bullet : 0);
-    const lastLineHeight = bulletLineCount ? theme.lineHeights.bullet : theme.lineHeights.descHeading;
+      (entryLineCount
+        ? theme.spacing.bulletGap +
+          entryLines.reduce(
+            (sum, entry) =>
+              sum + entry.lines.length * (entry.kind === 'section' ? theme.lineHeights.descHeading : theme.lineHeights.bullet),
+            0,
+          )
+        : 0);
+    const lastEntry = entryLines[entryLines.length - 1];
+    const lastLineHeight = lastEntry
+      ? lastEntry.kind === 'section'
+        ? theme.lineHeights.descHeading
+        : theme.lineHeights.bullet
+      : theme.lineHeights.descHeading;
     const blockHeight = contentHeight - lastLineHeight + theme.spacing.itemSeparatorOffset;
     return {
       headingLines,
-      bulletLines,
-      bulletLineCount,
+      entryLines,
+      entryLineCount,
       blockHeight,
       qtyText: item.qtyText,
       unitPrice: item.unitPrice,
@@ -569,34 +590,6 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
     }
   };
 
-  const drawStatusBadge = (text: string, x: number, y: number) => {
-    const safeText = toText(text) ?? 'DRAFT';
-    const size = theme.sizes.status;
-    const paddingX = 5;
-    const paddingY = 2;
-    const width = measureText(fontMedium, safeText, size) + paddingX * 2;
-    const height = size + paddingY * 2;
-
-    page.drawRectangle({
-      x,
-      y: y - paddingY,
-      width,
-      height,
-      borderWidth: 0.6,
-      borderColor: theme.colors.accent,
-    });
-
-    drawTextSafe(safeText, {
-      x: x + paddingX,
-      y,
-      size,
-      font: fontMedium,
-      color: theme.colors.accent,
-    });
-
-    return y - paddingY;
-  };
-
   const itemsHeaderUnderlineOffset = 6;
 
   const layoutItemsTable = (params: { topY: number; rows: RowLayout[] }): TableBounds => {
@@ -622,12 +615,13 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         rowY -= theme.lineHeights.descHeading;
       });
 
-      if (row.bulletLineCount) {
+      if (row.entryLineCount) {
         rowY -= theme.spacing.bulletGap;
-        row.bulletLines.forEach((lines) => {
-          lines.forEach(() => {
+        row.entryLines.forEach((entry) => {
+          const lineHeight = entry.kind === 'section' ? theme.lineHeights.descHeading : theme.lineHeights.bullet;
+          entry.lines.forEach(() => {
             lastBaselineY = rowY;
-            rowY -= theme.lineHeights.bullet;
+            rowY -= lineHeight;
           });
         });
       }
@@ -710,12 +704,13 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
         rowY -= theme.lineHeights.descHeading;
       });
 
-      if (row.bulletLineCount) {
+      if (row.entryLineCount) {
         rowY -= theme.spacing.bulletGap;
-        row.bulletLines.forEach((lines) => {
-          lines.forEach((line, lineIndex) => {
+        row.entryLines.forEach((entry) => {
+          const lineHeight = entry.kind === 'section' ? theme.lineHeights.descHeading : theme.lineHeights.bullet;
+          entry.lines.forEach((line, lineIndex) => {
             lastBaselineY = rowY;
-            if (lineIndex === 0) {
+            if (entry.kind === 'bullet' && lineIndex === 0) {
               drawTextSafe('- ', {
                 x: descX,
                 y: rowY,
@@ -725,13 +720,13 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
               });
             }
             drawTextSafe(line, {
-              x: descX + bulletIndent,
+              x: entry.kind === 'section' ? descX : descX + bulletIndent,
               y: rowY,
-              size: theme.sizes.bullet,
-              font: fontRegular,
-              color: theme.colors.textMuted,
+              size: entry.kind === 'section' ? theme.sizes.descHeading : theme.sizes.bullet,
+              font: entry.kind === 'section' ? fontMedium : fontRegular,
+              color: entry.kind === 'section' ? theme.colors.textPrimary : theme.colors.textMuted,
             });
-            rowY -= theme.lineHeights.bullet;
+            rowY -= lineHeight;
           });
         });
       }
@@ -1046,9 +1041,8 @@ async function generateQuotePdf(quote: QuoteVersionDetail, options: GeneratePdfO
   });
 
   leftY -= theme.lineHeights.ref;
-  leftY -= theme.spacing.headerRefToStatus;
-
-  const leftBottomY = drawStatusBadge(vm.header.status, CONTENT_X0, leftY);
+  // Workflow state is useful internally, but not on the customer-facing PDF.
+  const leftBottomY = leftY;
 
   // Header right column
   let rightY = cursorY;

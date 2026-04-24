@@ -1,20 +1,20 @@
 import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
+import { createRouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
-import {
-  applyDriftStatusPatches,
-  computeRangeHolidays,
-  computeRangeIntersection,
-  formatCrewScheduleBlocks,
-  isMissingSchemaError,
-  loadScheduleContext,
-  recomputeForCrew,
-} from '@/lib/scheduling/scheduleV2Server';
+import { isScheduleSchemaNotReadyError } from '@/lib/scheduling/scheduleBoardServer';
+import { loadScheduleGanttResponse } from '@/lib/scheduling/scheduleGanttServer';
+import { logScheduleEndpointTelemetry } from '@/lib/scheduling/scheduleServerTelemetry';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/gantt');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) {
+    const payload = { error: 'Unauthorized' };
+    logScheduleEndpointTelemetry(diagnostics, { view: 'gantt', status: 401, payload, meta: { reason: 'unauthorized' } });
+    return jsonError(payload.error, 401, diagnostics);
+  }
 
   const url = new URL(req.url);
   const rangeStart = url.searchParams.get('rangeStart') ?? '';
@@ -22,84 +22,32 @@ export async function GET(req: Request) {
   const today = url.searchParams.get('today');
 
   if (!isYmd(rangeStart) || !isYmd(rangeEnd)) {
-    return jsonError('rangeStart and rangeEnd are required YYYY-MM-DD values.', 400);
+    const payload = { error: 'rangeStart and rangeEnd are required YYYY-MM-DD values.' };
+    logScheduleEndpointTelemetry(diagnostics, { view: 'gantt', status: 400, payload, meta: { reason: 'invalid_range' } });
+    return jsonError(payload.error, 400, diagnostics);
   }
 
-  let ctx;
   try {
-    ctx = await loadScheduleContext({ today: today && isYmd(today) ? today : undefined });
-  } catch (err) {
-    if (isMissingSchemaError(err)) {
-      const detail = process.env.NODE_ENV !== 'production' ? ` (${(err as any)?.message ?? 'missing schema'})` : '';
-      return jsonError(`Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.${detail}`, 501);
-    }
-    return jsonError('Failed to load schedule data', 500);
-  }
-
-  const items: any[] = [];
-  const conflicts: any[] = [];
-
-  for (const crewRow of ctx.crews) {
-    const crewItems = ctx.items.filter((item) => item.crewId === crewRow.id);
-    const crewJobs = ctx.jobs.filter((job) => job.crewId === crewRow.id);
-    const crewDowntimes = ctx.downtimes.filter((dt) => dt.crewId === crewRow.id);
-    const recompute = recomputeForCrew({
-      crewRow,
-      items: crewItems,
-      jobs: crewJobs,
-      downtimes: crewDowntimes,
-      calendar: ctx.calendar,
-      today: ctx.today,
+    const gantt = await loadScheduleGanttResponse({
+      rangeStart,
+      rangeEnd,
+      today: today && isYmd(today) ? today : undefined,
     });
-
-    let jobsWithDrift;
-    try {
-      jobsWithDrift = await applyDriftStatusPatches({
-        jobs: crewJobs,
-        recompute,
-        region: crewRow.calendar_region || 'Auckland',
-        calendar: ctx.calendar,
-      });
-    } catch (err) {
-      if (isMissingSchemaError(err)) {
-        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
-      }
-      return jsonError('Failed to evaluate schedule drift', 500);
+    logScheduleEndpointTelemetry(diagnostics, {
+      view: 'gantt',
+      status: 200,
+      payload: gantt,
+      meta: { rangeStart, rangeEnd, today: today ?? null },
+    });
+    return jsonOk(gantt, 200, diagnostics);
+  } catch (err) {
+    if (isScheduleSchemaNotReadyError(err)) {
+      const payload = { error: err.message };
+      logScheduleEndpointTelemetry(diagnostics, { view: 'gantt', status: 501, payload, meta: { reason: 'schema_not_ready', rangeStart, rangeEnd } });
+      return jsonError(err.message, 501, diagnostics);
     }
-
-    const jobsById = new Map(jobsWithDrift.map((job) => [job.id, job]));
-    const downtimesById = new Map(crewDowntimes.map((dt) => [dt.id, dt]));
-    const formatted = formatCrewScheduleBlocks({ crewRow, recompute, jobsById, downtimesById });
-
-    for (const block of formatted.items) {
-      if (computeRangeIntersection(block.start, block.end_exclusive, rangeStart, rangeEnd)) {
-        items.push({ ...block, crew_id: crewRow.id });
-      }
-    }
-
-    conflicts.push(...formatted.conflicts.filter((c) => isYmd(c.pinned_start) && c.pinned_start >= rangeStart && c.pinned_start <= rangeEnd));
+    const payload = { error: 'Failed to load schedule data' };
+    logScheduleEndpointTelemetry(diagnostics, { view: 'gantt', status: 500, payload, meta: { reason: 'unknown', rangeStart, rangeEnd } });
+    return jsonError(payload.error, 500, diagnostics);
   }
-
-  const holidays = computeRangeHolidays({ holidays: ctx.holidays, closures: ctx.closures, rangeStart, rangeEnd });
-
-  const crews = ctx.crews.map((crew) => ({
-    id: crew.id,
-    name: crew.name,
-    color: crew.color,
-    is_active: typeof crew.is_active === 'boolean' ? crew.is_active : true,
-    sort_order: crew.sort_order,
-    calendar_region: crew.calendar_region,
-    base_available_date: crew.base_available_date,
-  }));
-
-  return jsonOk({
-    generated_at: new Date().toISOString(),
-    range_start: rangeStart,
-    range_end: rangeEnd,
-    crews,
-    items,
-    holidays: holidays.holidays,
-    closures: holidays.closures,
-    conflicts,
-  });
 }

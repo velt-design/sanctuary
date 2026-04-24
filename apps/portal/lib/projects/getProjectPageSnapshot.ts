@@ -1,9 +1,10 @@
 import 'server-only';
 
-import { supabaseServer } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { logPortalServerError, type PortalServerLogContext } from '@/lib/api/routeDiagnostics';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid, isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
-import { ensureInvoiceRetryScheduledFromLatestFailure } from '@/lib/invoices/server';
 import {
   isManualTaskKey,
   normalizePipelineStageKey,
@@ -174,11 +175,28 @@ function mapAuditToActivity(row: any): ProjectActivityItem | null {
   };
 }
 
-export async function getProjectPageSnapshot(projectId: string): Promise<ProjectPageSnapshot | null> {
+function logSnapshotError(context: PortalServerLogContext | undefined, message: string, error: unknown, query?: string) {
+  logPortalServerError(
+    context ?? { route: 'project_snapshot', method: 'GET' },
+    {
+      event: 'project_snapshot.query_failed',
+      message,
+      error,
+      extra: query ? { query } : undefined,
+    },
+  );
+}
+
+export async function getProjectPageSnapshot(
+  projectId: string,
+  diagnostics?: PortalServerLogContext,
+  supabase?: SupabaseClient,
+): Promise<ProjectPageSnapshot | null> {
+  const client = supabase ?? (await getSupabaseServerAuth());
   const projectUuid = safeUuidFromAppId(projectId, 'proj');
   if (!projectUuid) return null;
 
-  const { data: projectRow, error: projectError } = await supabaseServer
+  const { data: projectRow, error: projectError } = await client
     .from('projects')
     .select('*')
     .eq('id', projectUuid)
@@ -209,80 +227,80 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
 
   const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes] = await Promise.all([
     contactUuid
-      ? supabaseServer.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
+      ? client.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
-    supabaseServer
+    client
       .from('site_visit_events')
       .select('id,status,scheduled_start')
       .eq('project_id', projectUuid)
       .maybeSingle(),
-    supabaseServer
+    client
       .from('estimates')
       .select('id')
       .eq('project_id', projectUuid)
       .limit(1),
-    supabaseServer
+    client
       .from('schedule_items')
       .select('id,start_date')
       .eq('project_id', projectUuid)
       .limit(1),
-    supabaseServer
+    client
       .from('quote_versions')
       .select('id, quotes!inner(project_id)')
       .eq('status', 'ACCEPTED')
       .eq('quotes.project_id', projectUuid)
       .limit(1),
-    supabaseServer
+    client
       .from('deposit_invoices')
       .select('id')
       .eq('project_id', projectUuid)
       .eq('status', 'OPEN')
       .limit(1)
       .maybeSingle(),
-    supabaseServer
+    client
       .from('project_task_checks')
       .select('task_key')
       .eq('project_id', projectUuid),
-    supabaseServer
+    client
       .from('email_outbox')
       .select('id,subject,to_email,status,sent_at,created_at,email_type')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false }),
-    supabaseServer
+    client
       .from('audit_events')
       .select('id,type,payload,created_at')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false })
       .limit(50),
-    supabaseServer.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
+    client.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
   ]);
 
   if (emailRes?.error) {
-    console.error('[project_snapshot] email_outbox query failed', emailRes.error);
+    logSnapshotError(diagnostics, 'email_outbox query failed', emailRes.error, 'email_outbox');
   }
   if (auditRes?.error) {
-    console.error('[project_snapshot] audit_events query failed', auditRes.error);
+    logSnapshotError(diagnostics, 'audit_events query failed', auditRes.error, 'audit_events');
   }
   if (siteVisitRes?.error) {
-    console.error('[project_snapshot] site_visit_events query failed', siteVisitRes.error);
+    logSnapshotError(diagnostics, 'site_visit_events query failed', siteVisitRes.error, 'site_visit_events');
   }
   if (estimateRes?.error) {
-    console.error('[project_snapshot] estimates query failed', estimateRes.error);
+    logSnapshotError(diagnostics, 'estimates query failed', estimateRes.error, 'estimates');
   }
   if (scheduleRes?.error) {
-    console.error('[project_snapshot] schedule_items query failed', scheduleRes.error);
+    logSnapshotError(diagnostics, 'schedule_items query failed', scheduleRes.error, 'schedule_items');
   }
   if (acceptedQuoteRes?.error) {
-    console.error('[project_snapshot] accepted quote query failed', acceptedQuoteRes.error);
+    logSnapshotError(diagnostics, 'accepted quote query failed', acceptedQuoteRes.error, 'quote_versions');
   }
   if (openInvoiceRes?.error) {
-    console.error('[project_snapshot] open deposit invoice query failed', openInvoiceRes.error);
+    logSnapshotError(diagnostics, 'open deposit invoice query failed', openInvoiceRes.error, 'deposit_invoices');
   }
   if (manualRes?.error) {
-    console.error('[project_snapshot] project_task_checks query failed', manualRes.error);
+    logSnapshotError(diagnostics, 'project_task_checks query failed', manualRes.error, 'project_task_checks');
   }
   if (jobPackRes?.error) {
-    console.error('[project_snapshot] job_pack_generations query failed', jobPackRes.error);
+    logSnapshotError(diagnostics, 'job_pack_generations query failed', jobPackRes.error, 'job_pack_generations');
   }
 
   const contact = contactRes?.data ?? null;
@@ -312,15 +330,6 @@ export async function getProjectPageSnapshot(projectId: string): Promise<Project
     : Boolean(acceptedQuoteRes?.data);
   const hasJobPacks = Boolean(jobPackRes?.data);
   const hasOpenDepositInvoice = Boolean(openInvoiceRes?.data);
-  const openInvoiceId = hasOpenDepositInvoice && typeof (openInvoiceRes?.data as any)?.id === 'string'
-    ? String((openInvoiceRes?.data as any).id)
-    : null;
-
-  if (openInvoiceId) {
-    void ensureInvoiceRetryScheduledFromLatestFailure(openInvoiceId, null).catch((error) => {
-      console.error('[project_snapshot] failed to schedule invoice retry', { openInvoiceId, error });
-    });
-  }
 
   const manualCompleted = new Set<TaskKey>();
   for (const row of Array.isArray(manualRes?.data) ? manualRes.data : []) {

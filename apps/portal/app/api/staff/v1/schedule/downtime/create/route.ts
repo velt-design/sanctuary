@@ -1,7 +1,9 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitCreateDowntime } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -11,7 +13,6 @@ import {
   loadScheduleContext,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
@@ -26,11 +27,12 @@ function normalizeReason(value: unknown): string {
 }
 
 export async function POST(req: Request) {
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/downtime/create');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = parsed.body ?? {};
 
   const crewId = typeof body.crew_id === 'string' ? body.crew_id.trim() : '';
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
   const note = typeof body.note === 'string' ? body.note.trim() : null;
   const force = Boolean(body.force);
 
-  if (!crewId) return jsonError('crew_id is required', 400);
+  if (!crewId) return jsonError('crew_id is required', 400, diagnostics);
 
   const durationDays = typeof durationRaw === 'number' && Number.isFinite(durationRaw) ? Math.max(1, Math.trunc(durationRaw)) : 1;
 
@@ -49,13 +51,15 @@ export async function POST(req: Request) {
     ctx = await loadScheduleContext({ crewId, today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: err });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load schedule data', 500);
+    logPortalServerError(diagnostics, { status: 500, message: 'Failed to load schedule data', error: err });
+    return jsonError('Failed to load schedule data', 500, diagnostics);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404);
+  if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
 
   const downtimeId = tempId('temp_dt');
   const downtimes = [...crewCtx.downtimes, { id: downtimeId, crewId, durationDays, reason, note }];
@@ -90,45 +94,26 @@ export async function POST(req: Request) {
   });
 
   if (impacts.length && !force) {
-    return jsonOk({ requires_confirmation: true, impacts });
+    return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  const insertDowntimeRes = await supabaseServer
-    .from('crew_downtimes')
-    .insert({
-      crew_id: crewId,
-      duration_days: durationDays,
-      reason,
-      note,
-    } as any)
-    .select('id')
-    .single();
-  if (insertDowntimeRes.error) return jsonError('Failed to create downtime', 500);
-  const actualDowntimeId = insertDowntimeRes.data?.id ?? null;
-  if (!actualDowntimeId) return jsonError('Failed to resolve downtime id', 500);
+  const commitRes = await commitCreateDowntime({
+    diagnostics,
+    crewId,
+    durationDays,
+    reason,
+    note,
+    insertPosition: position,
+    positions: applyScheduleItemPositions(items.filter((item) => item.id !== newItem.id)),
+    forecastUpdates: afterRecompute.job_updates,
+  });
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
 
-  let newScheduleItemId: string | null = null;
-  for (const item of items) {
-    if (item.id === newItem.id) {
-      const insertItemRes = await supabaseServer
-        .from('crew_schedule_items')
-        .insert({
-          crew_id: crewId,
-          item_type: 'downtime',
-          downtime_id: actualDowntimeId,
-          position: item.position,
-        } as any)
-        .select('id')
-        .single();
-      if (insertItemRes.error) return jsonError('Failed to insert schedule item', 500);
-      newScheduleItemId = insertItemRes.data?.id ?? null;
-    } else {
-      await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-    }
-  }
+  const actualDowntimeId = commitRes.data.downtime_id;
+  const newScheduleItemId = commitRes.data.schedule_item_id;
 
   const updatedItems = items.map((item) => {
-    if (item.id === newItem.id && newScheduleItemId) {
+    if (item.id === newItem.id) {
       return { ...item, id: newScheduleItemId, downtimeId: actualDowntimeId };
     }
     return item.downtimeId === downtimeId ? { ...item, downtimeId: actualDowntimeId } : item;
@@ -144,8 +129,6 @@ export async function POST(req: Request) {
     today: ctx.today,
   });
 
-  await applyJobForecastUpdates(finalRecompute.job_updates);
-
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
     recompute: finalRecompute,
@@ -159,5 +142,5 @@ export async function POST(req: Request) {
     schedule: formatted,
     conflicts: formatted.conflicts,
     next_available_date: formatted.next_available_date,
-  });
+  }, 200, diagnostics);
 }

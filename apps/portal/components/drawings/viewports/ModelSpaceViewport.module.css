@@ -1,64 +1,6 @@
 .viewport {
   min-width: 0;
   display: grid;
-  gap: 12px;
-}
-
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px 16px;
-  padding: 12px 14px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.94)),
-    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.05), transparent 42%);
-}
-
-.toolbarGroup {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.toolbarMeta {
-  display: grid;
-  gap: 2px;
-  margin-right: 8px;
-  min-width: 0;
-}
-
-.eyebrow {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(var(--portal-text-rgb), 0.55);
-}
-
-.title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: rgba(var(--portal-text-rgb), 0.92);
-}
-
-.subtitle {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: rgba(var(--portal-text-rgb), 0.68);
-}
-
-.field {
-  display: grid;
-  gap: 4px;
 }
 
 .fieldLabel {
@@ -69,25 +11,30 @@
   color: rgba(var(--portal-text-rgb), 0.54);
 }
 
-.select,
-.toolbarButton {
-  min-height: 36px;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 12px;
-  background: rgba(var(--portal-text-rgb), 0.03);
+.input,
+.overlayButton,
+.confirmButton {
+  min-height: 30px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 8px;
+  background: rgba(var(--portal-bg-rgb), 0.92);
   color: rgba(var(--portal-text-rgb), 0.88);
   font: inherit;
   font-size: 12px;
   font-weight: 700;
 }
 
-.select {
-  min-width: 170px;
-  padding: 8px 12px;
+.input {
+  width: 92px;
+  padding: 6px 8px;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
-.toolbarButton {
-  padding: 8px 12px;
+.overlayButton,
+.confirmButton {
+  padding: 6px 10px;
   cursor: pointer;
   transition:
     border-color 140ms ease,
@@ -95,39 +42,60 @@
     transform 140ms ease;
 }
 
-.toolbarButton:hover {
-  border-color: rgba(var(--portal-text-rgb), 0.18);
+.overlayButton:hover,
+.confirmButton:hover {
+  border-color: rgba(var(--portal-text-rgb), 0.2);
   transform: translateY(-1px);
+}
+
+.overlayButton:disabled,
+.confirmButton:disabled,
+.input:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+  transform: none;
+}
+
+.confirmButton {
+  align-self: end;
+  background: rgba(var(--accentRgb), 0.12);
+  border-color: rgba(var(--accentRgb), 0.28);
 }
 
 .zoomLabel {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 56px;
-  min-height: 36px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: rgba(var(--portal-text-rgb), 0.05);
+  min-width: 48px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: rgba(var(--portal-bg-rgb), 0.88);
   font-size: 12px;
   font-weight: 700;
   color: rgba(var(--portal-text-rgb), 0.76);
 }
 
 .error {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 3;
+  max-width: min(480px, calc(100% - 24px));
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
   border: 1px solid rgba(185, 28, 28, 0.18);
-  background: rgba(254, 242, 242, 0.92);
+  background: rgba(254, 242, 242, 0.94);
   color: rgb(153, 27, 27);
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .scroller {
-  overflow: auto;
-  min-height: 620px;
+  position: relative;
+  overflow: hidden;
+  min-height: calc(100vh - 250px);
   border: 1px solid rgba(var(--portal-text-rgb), 0.08);
   border-radius: 24px;
   background:
@@ -136,13 +104,30 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),
     0 14px 32px rgba(30, 34, 24, 0.04);
+  cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.scrollerPanning {
+  cursor: grabbing;
+}
+
+.scroller[data-draw-outline-active="true"] {
+  border-color: rgba(var(--accentRgb), 0.2);
 }
 
 .scaleFrame {
-  min-width: 100%;
+  width: max-content;
+  transform-origin: top left;
+  will-change: transform;
 }
 
 .canvas {
+  width: max-content;
   padding: 14px;
 }
 
@@ -150,6 +135,174 @@
   width: 100%;
   height: auto;
   display: block;
+}
+
+.canvas :global(svg[data-model-space-svg]) {
+  width: auto;
+  max-width: none;
+}
+
+.canvasControls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
+.drawRedrawBar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
+.drawStatus {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  max-width: min(560px, calc(100% - 300px));
+  padding: 8px 10px;
+  border: 1px solid rgba(var(--accentRgb), 0.24);
+  border-radius: 8px;
+  background: rgba(var(--portal-bg-rgb), 0.94);
+  color: rgba(var(--portal-text-rgb), 0.84);
+  box-shadow: 0 10px 24px rgba(30, 34, 24, 0.1);
+  pointer-events: none;
+}
+
+.drawStatusText {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.drawStatusMeta {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: rgba(var(--portal-text-rgb), 0.58);
+}
+
+.deckInteractionHint {
+  position: absolute;
+  top: 58px;
+  left: 12px;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  max-width: min(520px, calc(100% - 300px));
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(30, 34, 24, 0.08);
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
+.deckInteractionHintEligible {
+  border: 1px solid rgba(var(--accentRgb), 0.24);
+  background: rgba(var(--portal-bg-rgb), 0.94);
+}
+
+.deckInteractionHintDeferred {
+  border: 1px solid rgba(37, 102, 146, 0.2);
+  background: rgba(244, 249, 252, 0.96);
+}
+
+.deckInteractionHintStatus {
+  border: 1px solid rgba(37, 102, 146, 0.24);
+  background: rgba(239, 247, 252, 0.97);
+}
+
+.deckInteractionHintTitle {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.7);
+}
+
+.deckInteractionHintText {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgba(var(--portal-text-rgb), 0.84);
+}
+
+.drawPopover {
+  position: absolute;
+  top: 66px;
+  left: 12px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: end;
+  gap: 8px;
+  max-width: min(420px, calc(100% - 24px));
+  min-height: 74px;
+  padding: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 8px;
+  background: rgba(var(--portal-bg-rgb), 0.94);
+  box-shadow: 0 12px 28px rgba(30, 34, 24, 0.12);
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
+.dimensionPopover {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  gap: 6px;
+  min-width: 128px;
+  padding: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 8px;
+  background: rgba(var(--portal-bg-rgb), 0.96);
+  box-shadow: 0 12px 28px rgba(30, 34, 24, 0.12);
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
+.drawHint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.popoverField {
+  display: grid;
+  gap: 4px;
+}
+
+.drawActions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .placeholder {
@@ -179,24 +332,37 @@
 }
 
 @media (max-width: 900px) {
-  .toolbar {
-    align-items: stretch;
-  }
-
-  .toolbarGroup {
-    width: 100%;
-  }
-
-  .select {
-    min-width: 0;
-    width: 100%;
-  }
-
   .scroller {
-    min-height: 520px;
+    min-height: calc(100vh - 220px);
   }
 
   .canvas {
     padding: 10px;
+  }
+
+  .canvasControls {
+    top: 8px;
+    right: 8px;
+  }
+
+  .drawRedrawBar {
+    top: 8px;
+    left: 8px;
+  }
+
+  .drawPopover {
+    top: 58px;
+    left: 8px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .drawStatus {
+    top: 8px;
+    left: 8px;
+    max-width: calc(100% - 112px);
+  }
+
+  .confirmButton {
+    grid-column: 1 / -1;
   }
 }

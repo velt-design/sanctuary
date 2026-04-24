@@ -1,8 +1,8 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitPlannedCommitment } from '@/lib/scheduling/scheduleCommands';
 import {
-  appendPlannedCommitmentHistory,
-  applyJobForecastUpdates,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -18,7 +18,6 @@ import {
   startOfWeekMondayYmd,
   type PlannedCommitmentType,
 } from '@/lib/scheduling/scheduleV2Server';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 type CommitmentEventType = 'lock' | 'reschedule';
 
@@ -104,15 +103,16 @@ function parseInput(body: any): { ok: true; value: ParsedCommitmentInput } | { o
 }
 
 export async function runCommitmentMutation(req: Request, eventType: CommitmentEventType) {
+  const diagnostics = createRouteDiagnostics(req, `/api/staff/v1/schedule/job/${eventType === 'lock' ? 'lock' : 'reschedule'}`);
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   const parsedBody = await parseJsonBody(req);
-  if (!parsedBody.ok) return jsonError(parsedBody.error, 400);
+  if (!parsedBody.ok) return jsonError(parsedBody.error, 400, diagnostics);
   const body = parsedBody.body ?? {};
 
   const parsed = parseInput(body);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const input = parsed.value;
 
   let jobRow: any = null;
@@ -120,12 +120,14 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
     jobRow = await loadScheduledJobRow(input.jobId);
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: err });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load scheduled job', 500);
+    logPortalServerError(diagnostics, { status: 500, message: 'Failed to load scheduled job', error: err });
+    return jsonError('Failed to load scheduled job', 500, diagnostics);
   }
 
-  if (!jobRow) return jsonError('Scheduled job not found', 404);
+  if (!jobRow) return jsonError('Scheduled job not found', 404, diagnostics);
 
   const crewId = String(jobRow.crew_id);
 
@@ -134,13 +136,15 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
     ctx = await loadScheduleContext({ crewId, today: input.today });
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: err });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load schedule data', 500);
+    logPortalServerError(diagnostics, { status: 500, message: 'Failed to load schedule data', error: err });
+    return jsonError('Failed to load schedule data', 500, diagnostics);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404);
+  if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
 
   const region = crewCtx.crewRow.calendar_region || 'Auckland';
   const plannedStart = input.commitmentType === 'fixed_date' ? snapToday(input.plannedStart, region, ctx.calendar) : input.plannedStart;
@@ -187,7 +191,7 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
   });
 
   if (impacts.length && !input.force) {
-    return jsonOk({ requires_confirmation: true, impacts });
+    return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
   const updatePayload: any = {
@@ -206,19 +210,11 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
   };
   if (input.hardLock) updatePayload.forecast_start = plannedStart;
 
-  const updateRes = await supabaseServer.from('scheduled_jobs').update(updatePayload).eq('id', jobRow.id);
-  if (updateRes.error) {
-    if (isMissingSchemaError(updateRes.error)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
-    }
-    return jsonError('Failed to update planned commitment', 500);
-  }
-
-  await applyJobForecastUpdates(afterRecompute.job_updates);
-
-  try {
-    await appendPlannedCommitmentHistory({
-      scheduledJobId: String(jobRow.id),
+  const commitRes = await commitPlannedCommitment({
+    diagnostics,
+    scheduledJobId: String(jobRow.id),
+    jobPatch: updatePayload,
+    history: {
       eventType,
       commitmentType: input.commitmentType,
       plannedWeekStart: input.commitmentType === 'week_of' ? input.plannedWeekStart : null,
@@ -227,13 +223,10 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
       plannedFlexDays: input.plannedFlexDays,
       hardLock: input.hardLock,
       changedBy: actor,
-    });
-  } catch (err) {
-    if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
-    }
-    return jsonError('Failed to record commitment history', 500);
-  }
+    },
+    forecastUpdates: afterRecompute.job_updates,
+  });
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
@@ -248,5 +241,5 @@ export async function runCommitmentMutation(req: Request, eventType: CommitmentE
     schedule: formatted,
     conflicts: formatted.conflicts,
     next_available_date: formatted.next_available_date,
-  });
+  }, 200, diagnostics);
 }

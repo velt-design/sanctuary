@@ -1,7 +1,9 @@
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitScheduleReorder } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -11,16 +13,16 @@ import {
   reorderItems,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/items/reorder');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = parsed.body ?? {};
 
   const crewId = typeof body.crew_id === 'string' ? body.crew_id.trim() : '';
@@ -29,20 +31,46 @@ export async function POST(req: Request) {
   const newPositionRaw = body.new_position;
   const force = Boolean(body.force);
 
-  if (!crewId) return jsonError('crew_id is required', 400);
+  if (!crewId) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.validation_failed',
+      status: 400,
+      message: 'crew_id is required',
+      extra: { reason: 'missing_crew_id' },
+    });
+    return jsonError('crew_id is required', 400, diagnostics);
+  }
 
   let ctx;
   try {
     ctx = await loadScheduleContext({ crewId, today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, {
+        status: 501,
+        message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+        error: err,
+      });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load schedule data', 500);
+    logPortalServerError(diagnostics, {
+      status: 500,
+      message: 'Failed to load schedule data',
+      error: err,
+    });
+    return jsonError('Failed to load schedule data', 500, diagnostics);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404);
+  if (!crewCtx) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.validation_failed',
+      status: 404,
+      message: 'Crew not found',
+      extra: { reason: 'crew_not_found', crewId },
+    });
+    return jsonError('Crew not found', 404, diagnostics);
+  }
 
   let nextItems = crewCtx.items.slice();
   if (orderedIds && orderedIds.length) {
@@ -50,14 +78,28 @@ export async function POST(req: Request) {
   } else if (moveItemId) {
     const sorted = nextItems.slice().sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
     const idx = sorted.findIndex((item) => item.id === moveItemId);
-    if (idx === -1) return jsonError('item_id not found in crew schedule', 404);
+    if (idx === -1) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.reorder.validation_failed',
+        status: 404,
+        message: 'item_id not found in crew schedule',
+        extra: { reason: 'item_not_found', crewId, itemId: moveItemId },
+      });
+      return jsonError('item_id not found in crew schedule', 404, diagnostics);
+    }
     const [moving] = sorted.splice(idx, 1);
     const newPosition = typeof newPositionRaw === 'number' && Number.isFinite(newPositionRaw) ? Math.trunc(newPositionRaw) : sorted.length;
     const insertAt = Math.max(0, Math.min(newPosition, sorted.length));
     sorted.splice(insertAt, 0, moving);
     nextItems = sorted.map((item, index) => ({ ...item, position: index }));
   } else {
-    return jsonError('ordered_item_ids or item_id is required', 400);
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.validation_failed',
+      status: 400,
+      message: 'ordered_item_ids or item_id is required',
+      extra: { reason: 'missing_reorder_payload', crewId },
+    });
+    return jsonError('ordered_item_ids or item_id is required', 400, diagnostics);
   }
 
   const afterRecompute = recomputeForCrew({
@@ -80,14 +122,29 @@ export async function POST(req: Request) {
   });
 
   if (impacts.length && !force) {
-    return jsonOk({ requires_confirmation: true, impacts });
+    return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  for (const item of nextItems) {
-    await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+  const commitRes = await commitScheduleReorder({
+    diagnostics,
+    crewId,
+    positions: applyScheduleItemPositions(nextItems),
+    forecastUpdates: afterRecompute.job_updates,
+  });
+  if (!commitRes.ok) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.reorder.commit_failed',
+      status: commitRes.status,
+      message: commitRes.responseMessage,
+      error: commitRes.error,
+      extra: {
+        crewId,
+        positionCount: nextItems.length,
+        forecastUpdateCount: afterRecompute.job_updates.length,
+      },
+    });
+    return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
   }
-
-  await applyJobForecastUpdates(afterRecompute.job_updates);
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
@@ -102,5 +159,5 @@ export async function POST(req: Request) {
     schedule: formatted,
     conflicts: formatted.conflicts,
     next_available_date: formatted.next_available_date,
-  });
+  }, 200, diagnostics);
 }

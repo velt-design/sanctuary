@@ -1,11 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type WheelEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent } from 'react';
 import type { AttachmentSide } from '@sp/costing';
 import {
   ModuleDrawingRenderer,
+  type HouseFirstPlanShapeDragStartMeta,
+  type ModuleDrawingInteractiveFieldMap,
+  type ModulePlanInteractionProps,
+  type ModulePlanResizeDragMeta,
+  type ModulePlanResizeFieldId,
   canEditHouseFootprintPlan,
   type HouseFootprintEditorDragMeta,
+  type HouseFootprintVertexDragMeta,
+  type ModuleFootprintCanvasPoint,
+  type ModuleFootprintCanvasPointResolver,
   type ModuleFootprintEditorProps,
   type ModuleViewsStatus,
   type ModuleViewsTab,
@@ -13,10 +21,46 @@ import {
 import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
-import { normalizeHouseFootprintParams, type CalculatorHouseFootprintParams } from '@/lib/types/calculator';
+import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
+import type {
+  HouseFirstDeckDraft,
+  HouseFirstOpeningDraft,
+  WorkbenchHouseSelection,
+  WorkbenchMode,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import {
+  normalizeHouseFootprintParams,
+  type CalculatorHouseFootprintParams,
+  type CalculatorHouseFootprintPolygonPoint,
+} from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
+import {
+  resizeCustomPolygonEdge,
+  type HouseFirstPlanDeckInteraction,
+  type HouseFirstPlanCustomEdgeCandidate,
+  type HouseFirstPlanPresetDimensionAnnotation,
+  type PlanPoint,
+} from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+import { blockNativeSelectionEvent } from './nativeSelection';
 import styles from './ModelSpaceViewport.module.css';
+import {
+  cancelDrawOutlineTool,
+  confirmDrawOutlineSegment,
+  createInactiveDrawOutlineState,
+  deriveDrawOutlineViewModel,
+  finishSuccessfulDrawOutlineCommit,
+  hoverDrawOutlinePoint,
+  isDrawOutlineActive,
+  prepareDrawOutlineClose,
+  selectDrawOutlinePoint,
+  setDrawOutlineAngleDraft,
+  setDrawOutlineDistanceDraft,
+  startDrawOutlineTool,
+  undoDrawOutline,
+  type DrawOutlineDiagnosticState,
+  type DrawOutlineToolState,
+  type DrawOutlineTransitionResult,
+} from './drawOutlineToolState';
 
 type FootprintDragSession = HouseFootprintEditorDragMeta & {
   pointerId: number;
@@ -25,11 +69,299 @@ type FootprintDragSession = HouseFootprintEditorDragMeta & {
   startParams: CalculatorHouseFootprintParams;
 };
 
-const MIN_MODEL_ZOOM = 1;
+type FootprintVertexDragSession = HouseFootprintVertexDragMeta & {
+  pointerId: number;
+  startSvgX: number;
+  startSvgY: number;
+  startPolygon: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>;
+};
+
+type PlanFieldDragSession = ModulePlanResizeDragMeta & {
+  pointerId: number;
+  startSvgX: number;
+  startSvgY: number;
+  startValueM: number;
+  field: EstimateDrawingField;
+};
+
+type PanDragSession = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startPanX: number;
+  startPanY: number;
+};
+
+type TouchPointerSnapshot = {
+  pointerId: number;
+  clientX: number;
+  clientY: number;
+};
+
+type PinchZoomSession = {
+  firstPointerId: number;
+  secondPointerId: number;
+  startMidpointX: number;
+  startMidpointY: number;
+  startDistance: number;
+  startZoom: number;
+  startPanX: number;
+  startPanY: number;
+};
+
+type WebKitGestureSession = {
+  startAnchorX: number;
+  startAnchorY: number;
+  startZoom: number;
+  startPanX: number;
+  startPanY: number;
+};
+
+type NativeGestureEvent = Event & {
+  scale?: number;
+  clientX?: number;
+  clientY?: number;
+};
+
+type DrawOutlinePointerSession = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startPanX: number;
+  startPanY: number;
+  startPoint: ModuleFootprintCanvasPoint;
+  hasPanned: boolean;
+};
+
+type DrawPopoverPosition = {
+  left: number;
+  top: number;
+};
+
+type HouseFirstDimensionEditorState = {
+  annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate;
+  value: string;
+};
+
+type DeckDragSession = {
+  pointerId: number;
+  deckId: string;
+  startSvgX: number;
+  startSvgY: number;
+  startPolygon: PlanPoint[];
+  startCenterOffsetM: number;
+  interaction: HouseFirstPlanDeckInteraction;
+  svgInteraction: HouseFirstPlanShapeDragStartMeta['deckInteraction'];
+};
+
+type DeckPreviewState = {
+  deckId: string;
+  polygon: PlanPoint[];
+  centerOffsetM: number;
+  snapped: boolean;
+};
+
+type DeckInteractionTelemetry = {
+  selectedDeckId: string | null;
+  housePolygonSource: 'custom_saved' | 'preset_derived' | null;
+  selectedDeckType: 'none' | 'attached_preset_rect' | 'detached_preset_rect' | 'custom_outline' | 'preset_unresolved';
+  dragEligible: boolean;
+  dragReason: string | null;
+  hostEdgeResolvable: boolean;
+  relationshipDimensionsAvailable: boolean;
+  snapState: 'idle' | 'free' | 'snapped';
+  snapMessage: string | null;
+};
+
+type DeckInteractionHintState = {
+  title: string;
+  detail: string;
+  tone: 'eligible' | 'deferred' | 'status';
+};
+
+type ModelSpaceRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type ModelSpaceGesture =
+  | 'idle'
+  | 'mouse-pan'
+  | 'wheel-pan'
+  | 'wheel-zoom'
+  | 'pinch-zoom'
+  | 'trackpad-pinch'
+  | 'draw-click-candidate'
+  | 'draw-panning';
+
+type ModelSpacePinchSource = 'none' | 'touch-pointer' | 'wheel' | 'webkit-gesture';
+
+const MIN_MODEL_ZOOM = 0.25;
 const MAX_MODEL_ZOOM = 4;
+const FIT_VIEW_MARGIN_PX = 24;
+const DRAW_POPOVER_MARGIN_PX = 12;
+const DRAW_POPOVER_GAP_PX = 14;
+const DRAW_OUTLINE_PAN_THRESHOLD_PX = 5;
+const WHEEL_LINE_DELTA_PX = 16;
+const WHEEL_PAGE_DELTA_PX = 240;
+const WHEEL_ZOOM_SENSITIVITY = 0.0012;
+const WHEEL_GESTURE_IDLE_MS = 600;
+const DECK_SNAP_TOLERANCE_M = 0.25;
+
+function drawOutlineStatusText(state: DrawOutlineDiagnosticState): string {
+  switch (state) {
+    case 'first-point':
+      return 'Draw outline: click first corner';
+    case 'placing':
+      return 'Draw outline: click next corner or enter distance and angle';
+    case 'pending-segment':
+      return 'Draw outline: confirm segment or undo';
+    case 'close-ready':
+      return 'Draw outline: close shape or add another corner';
+    case 'close-hovered':
+      return 'Draw outline: release on first corner to close';
+    case 'error':
+      return 'Draw outline: fix issue or undo';
+    case 'inactive':
+    default:
+      return '';
+  }
+}
 
 function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
+}
+
+function clampValue(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function isViewportNavigationControlTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest('button,input,select,textarea,[contenteditable="true"],[data-draw-outline-controls]'),
+    )
+  );
+}
+
+function isViewportEditHitTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        '[data-plan-resize-handle-hit],[data-editable-field-id],[data-house-first-shape-hit],[data-house-first-custom-edge-hit],[data-house-first-plan-dimension],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex],[data-footprint-custom-vertex-hit],[data-footprint-custom-close-hit]',
+      ),
+    )
+  );
+}
+
+function isViewportMousePanIgnoredTarget(target: EventTarget | null): boolean {
+  return isViewportNavigationControlTarget(target) || isViewportEditHitTarget(target);
+}
+
+function normalizeWheelDeltaPixels(event: Pick<WheelEvent<Element>, 'deltaMode' | 'deltaX' | 'deltaY'>): {
+  deltaX: number;
+  deltaY: number;
+} {
+  const multiplier = event.deltaMode === 1 ? WHEEL_LINE_DELTA_PX : event.deltaMode === 2 ? WHEEL_PAGE_DELTA_PX : 1;
+  return {
+    deltaX: event.deltaX * multiplier,
+    deltaY: event.deltaY * multiplier,
+  };
+}
+
+function resolveTouchMidpoint(first: TouchPointerSnapshot, second: TouchPointerSnapshot): { x: number; y: number } {
+  return {
+    x: (first.clientX + second.clientX) / 2,
+    y: (first.clientY + second.clientY) / 2,
+  };
+}
+
+function resolveTouchDistance(first: TouchPointerSnapshot, second: TouchPointerSnapshot): number {
+  return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+}
+
+function resolveTouchPointerPair(pointers: Map<number, TouchPointerSnapshot>): [TouchPointerSnapshot, TouchPointerSnapshot] | null {
+  if (pointers.size !== 2) return null;
+  const pair = Array.from(pointers.values());
+  const first = pair[0];
+  const second = pair[1];
+  return first && second ? [first, second] : null;
+}
+
+function parseModelSpaceRect(value: string | null | undefined): ModelSpaceRect | null {
+  const parts = value
+    ?.trim()
+    .split(/[\s,]+/)
+    .map((part) => Number.parseFloat(part));
+  if (!parts || parts.length !== 4 || parts.some((part) => !Number.isFinite(part))) return null;
+  const [x, y, width, height] = parts as [number, number, number, number];
+  if (width <= 0 || height <= 0) return null;
+  return { x, y, width, height };
+}
+
+function resolveModelSpaceFocusTargetRect(input: { scaleFrame: HTMLDivElement; frameRect: DOMRect; zoom: number }): ModelSpaceRect | null {
+  const focusTarget = input.scaleFrame.querySelector('[data-model-space-focus-target]');
+  if (!focusTarget) return null;
+  const safeZoom = Math.max(input.zoom, 0.001);
+  const targetRect = focusTarget.getBoundingClientRect();
+  const width = targetRect.width / safeZoom;
+  const height = targetRect.height / safeZoom;
+  if (width <= 0 || height <= 0) return null;
+  return {
+    x: (targetRect.left - input.frameRect.left) / safeZoom,
+    y: (targetRect.top - input.frameRect.top) / safeZoom,
+    width,
+    height,
+  };
+}
+
+function resolveModelSpaceSvgFocusRect(input: {
+  scaleFrame: HTMLDivElement;
+  frameRect: DOMRect;
+  zoom: number;
+}): ModelSpaceRect | null {
+  const svg = input.scaleFrame.querySelector<SVGSVGElement>('svg[data-model-space-svg]');
+  const viewBox = parseModelSpaceRect(svg?.dataset.modelSpaceViewBox ?? svg?.getAttribute('viewBox'));
+  const focusBox = parseModelSpaceRect(svg?.dataset.modelSpaceFocusBox);
+  if (!svg || !viewBox || !focusBox) return null;
+
+  const safeZoom = Math.max(input.zoom, 0.001);
+  const svgRect = svg.getBoundingClientRect();
+  const svgWidth = (svgRect.width > 0 ? svgRect.width / safeZoom : 0) || Number.parseFloat(svg.getAttribute('width') ?? '');
+  const svgHeight = (svgRect.height > 0 ? svgRect.height / safeZoom : 0) || Number.parseFloat(svg.getAttribute('height') ?? '');
+  if (svgWidth <= 0 || svgHeight <= 0) return null;
+
+  const svgLeft = svgRect.width > 0 ? (svgRect.left - input.frameRect.left) / safeZoom : 0;
+  const svgTop = svgRect.height > 0 ? (svgRect.top - input.frameRect.top) / safeZoom : 0;
+  const cssPerUnitX = svgWidth / viewBox.width;
+  const cssPerUnitY = svgHeight / viewBox.height;
+
+  return {
+    x: svgLeft + (focusBox.x - viewBox.x) * cssPerUnitX,
+    y: svgTop + (focusBox.y - viewBox.y) * cssPerUnitY,
+    width: focusBox.width * cssPerUnitX,
+    height: focusBox.height * cssPerUnitY,
+  };
+}
+
+function resolveModelSpaceSvgRect(input: { scaleFrame: HTMLDivElement; frameRect: DOMRect; zoom: number }): ModelSpaceRect | null {
+  const svg = input.scaleFrame.querySelector<SVGSVGElement>('svg[data-model-space-svg]');
+  if (!svg) return null;
+  const safeZoom = Math.max(input.zoom, 0.001);
+  const svgRect = svg.getBoundingClientRect();
+  const width = (svgRect.width > 0 ? svgRect.width / safeZoom : 0) || Number.parseFloat(svg.getAttribute('width') ?? '');
+  const height = (svgRect.height > 0 ? svgRect.height / safeZoom : 0) || Number.parseFloat(svg.getAttribute('height') ?? '');
+  if (width <= 0 || height <= 0) return null;
+  return {
+    x: svgRect.width > 0 ? (svgRect.left - input.frameRect.left) / safeZoom : 0,
+    y: svgRect.height > 0 ? (svgRect.top - input.frameRect.top) / safeZoom : 0,
+    width,
+    height,
+  };
 }
 
 function formatHouseFootprintParamValue(value: number): string {
@@ -43,6 +375,38 @@ function parseHouseFootprintParamValue(value: string | undefined, fallback: numb
 
 function snapHouseFootprintValue(value: number): number {
   return Math.round(value * 1000) / 1000;
+}
+
+function parsePolygonMetres(value: string | undefined): number {
+  const parsed = Number.parseFloat(value ?? '');
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatPolygonMetres(value: number): string {
+  return formatHouseFootprintParamValue(snapHouseFootprintValue(value));
+}
+
+function moveCustomPolygonVertex(
+  polygon: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>,
+  vertexIndex: number,
+  nextAlongM: number,
+  nextDepthM: number,
+): NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']> {
+  const points = polygon.map((point) => ({
+    alongM: parsePolygonMetres(point.alongM),
+    depthM: parsePolygonMetres(point.depthM),
+  }));
+  if (points.length < 3 || vertexIndex < 0 || vertexIndex >= points.length) return polygon;
+  points[vertexIndex] = { alongM: nextAlongM, depthM: nextDepthM };
+
+  return points.map((point) => ({
+    alongM: formatPolygonMetres(point.alongM),
+    depthM: formatPolygonMetres(point.depthM),
+  }));
+}
+
+function formatDrawingFieldValue(value: number): string {
+  return value.toFixed(3).replace(/\.?0+$/, '') || '0';
 }
 
 function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
@@ -61,41 +425,250 @@ async function resolveCommitResult(
   return await action;
 }
 
+function formatDeckPresetValue(value: number): string {
+  return value.toFixed(3).replace(/\.?0+$/, '') || '0';
+}
+
+function resolveDeckHostReferenceCenterOffset(input: {
+  annotation: HouseFirstPlanPresetDimensionAnnotation;
+  nextValue: string;
+}): { ok: true; centerOffsetM: string } | { ok: false; error: string } {
+  const interaction = input.annotation.deckInteraction;
+  const nextGapM = Number.parseFloat(input.nextValue);
+  if (!interaction) return { ok: false, error: 'Deck relationship metadata is unavailable.' };
+  if (!Number.isFinite(nextGapM) || nextGapM < 0) return { ok: false, error: 'Enter a non-negative offset.' };
+
+  const maxGapM = Math.max(0, interaction.hostSpanM - interaction.deckWidthM);
+  if (nextGapM > maxGapM + 1e-6) {
+    return { ok: false, error: 'Offset must stay within the host edge span.' };
+  }
+
+  const availableHalfSpanM = Math.max(0, (interaction.hostSpanM - interaction.deckWidthM) / 2);
+  const centerOffsetM =
+    input.annotation.fieldKey === 'hostStartGapM'
+      ? nextGapM - availableHalfSpanM
+      : input.annotation.fieldKey === 'hostEndGapM'
+        ? availableHalfSpanM - nextGapM
+        : Number.NaN;
+
+  if (!Number.isFinite(centerOffsetM)) {
+    return { ok: false, error: 'Unsupported deck relationship dimension.' };
+  }
+
+  return {
+    ok: true,
+    centerOffsetM: formatDeckPresetValue(clampValue(centerOffsetM, interaction.minCenterOffsetM, interaction.maxCenterOffsetM)),
+  };
+}
+
+function translateDeckPolygon(polygon: PlanPoint[], interaction: HouseFirstPlanDeckInteraction, deltaOffsetM: number): PlanPoint[] {
+  const dx = interaction.hostEdgeEnd.x - interaction.hostEdgeStart.x;
+  const dy = interaction.hostEdgeEnd.y - interaction.hostEdgeStart.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= 1e-6 || Math.abs(deltaOffsetM) <= 1e-6) return polygon;
+  const unitX = dx / length;
+  const unitY = dy / length;
+  return polygon.map((point) => ({
+    x: point.x + unitX * deltaOffsetM,
+    y: point.y + unitY * deltaOffsetM,
+  }));
+}
+
+function resolveDeckPreviewState(input: {
+  session: DeckDragSession;
+  nextSvgX: number;
+  nextSvgY: number;
+}): DeckPreviewState {
+  const svgDx = input.session.svgInteraction.hostEdgeEnd.x - input.session.svgInteraction.hostEdgeStart.x;
+  const svgDy = input.session.svgInteraction.hostEdgeEnd.y - input.session.svgInteraction.hostEdgeStart.y;
+  const svgLength = Math.hypot(svgDx, svgDy);
+  const axisX = svgLength > 1e-6 ? svgDx / svgLength : 1;
+  const axisY = svgLength > 1e-6 ? svgDy / svgLength : 0;
+  const deltaSvgX = input.nextSvgX - input.session.startSvgX;
+  const deltaSvgY = input.nextSvgY - input.session.startSvgY;
+  const deltaSvgAlong = deltaSvgX * axisX + deltaSvgY * axisY;
+  const metresPerSvgUnit = svgLength > 1e-6 ? input.session.interaction.hostSpanM / svgLength : 0;
+  const unclampedCenterOffsetM = input.session.startCenterOffsetM + deltaSvgAlong * metresPerSvgUnit;
+  const clampedCenterOffsetM = clampValue(
+    unclampedCenterOffsetM,
+    input.session.interaction.minCenterOffsetM,
+    input.session.interaction.maxCenterOffsetM,
+  );
+
+  const snapTargets = [input.session.interaction.minCenterOffsetM, input.session.interaction.maxCenterOffsetM];
+  const snappedCenterOffsetM = snapTargets.find(
+    (candidate) => Math.abs(clampedCenterOffsetM - candidate) <= DECK_SNAP_TOLERANCE_M,
+  );
+  const centerOffsetM = snappedCenterOffsetM ?? clampedCenterOffsetM;
+  const deltaOffsetM = centerOffsetM - input.session.startCenterOffsetM;
+
+  return {
+    deckId: input.session.deckId,
+    polygon: translateDeckPolygon(input.session.startPolygon, input.session.interaction, deltaOffsetM),
+    centerOffsetM,
+    snapped: snappedCenterOffsetM !== undefined,
+  };
+}
+
 export default function ModelSpaceViewport({
   view,
+  workbenchDisplayMode = 'pergolas',
   status,
   planModel,
   sectionModel,
   planViewModel,
+  drawOutlineRequestId,
+  drawOutlineMode,
+  drawOutlineSeedPolygon,
+  fitViewKey = view,
   viewportTransform,
   onViewportTransformChange,
+  editableFields,
+  onCommitField,
   onCommitFootprintEdit,
+  onCommitCustomPolygon,
+  onSelectHouseFirstTarget,
+  onCommitHouseFirstFootprintDimension,
+  onCommitHouseFirstDeckDimension,
+  onCommitHouseFirstOpeningDimension,
+  pendingAttachedDeckHostEdgePick = false,
+  onPickAttachedDeckHostEdge,
+  onDeckInteractionTelemetryChange,
 }: {
   view: ModuleViewsTab;
+  workbenchDisplayMode?: WorkbenchMode;
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
+  drawOutlineRequestId?: number;
+  drawOutlineMode?: 'footprint' | 'deck' | null;
+  drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
+  fitViewKey?: string;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange?: (next: DrawingWorkbenchViewportTransform) => void;
+  editableFields?: EstimateDrawingField[];
+  onCommitField?: (
+    field: EstimateDrawingField,
+    nextValue: string,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onCommitFootprintEdit?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitCustomPolygon?: (
+    polygon: CalculatorHouseFootprintPolygonPoint[],
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onSelectHouseFirstTarget?: (selection: WorkbenchHouseSelection) => void;
+  onCommitHouseFirstFootprintDimension?: (
+    edit: EstimateDrawingFootprintEdit,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitHouseFirstDeckDimension?: (
+    deckId: string,
+    patch: Partial<HouseFirstDeckDraft>,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitHouseFirstOpeningDimension?: (
+    openingId: string,
+    patch: Partial<HouseFirstOpeningDraft>,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  pendingAttachedDeckHostEdgePick?: boolean;
+  onPickAttachedDeckHostEdge?: (side: AttachmentSide) => void;
+  onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const scaleFrameRef = useRef<HTMLDivElement | null>(null);
+  const drawPopoverRef = useRef<HTMLDivElement | null>(null);
+  const dimensionPopoverRef = useRef<HTMLDivElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
-  const syncingScrollRef = useRef(false);
+  const drawOutlineCanvasPointResolverRef = useRef<ModuleFootprintCanvasPointResolver | null>(null);
+  const drawOutlinePointerSessionRef = useRef<DrawOutlinePointerSession | null>(null);
+  const activeTouchPointersRef = useRef<Map<number, TouchPointerSnapshot>>(new Map());
+  const pinchZoomSessionRef = useRef<PinchZoomSession | null>(null);
+  const webKitGestureSessionRef = useRef<WebKitGestureSession | null>(null);
+  const wheelGestureIdleTimeoutRef = useRef<number | null>(null);
+  const lastDrawOutlineRequestIdRef = useRef<number | undefined>(undefined);
+  const userAdjustedViewportRef = useRef(false);
+  const autoFitKeyRef = useRef<string | null>(null);
   const [footprintError, setFootprintError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<string | null>(null);
   const [footprintHoveredAttachmentSide, setFootprintHoveredAttachmentSide] = useState<AttachmentSide | null>(null);
   const [footprintHoveredHandleId, setFootprintHoveredHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintActiveHandleId, setFootprintActiveHandleId] = useState<HouseFootprintHandleId | null>(null);
   const [footprintContextHovered, setFootprintContextHovered] = useState(false);
   const [footprintDragSession, setFootprintDragSession] = useState<FootprintDragSession | null>(null);
+  const [footprintVertexDragSession, setFootprintVertexDragSession] = useState<FootprintVertexDragSession | null>(null);
+  const [drawOutlineState, setDrawOutlineState] = useState<DrawOutlineToolState>(() => createInactiveDrawOutlineState());
+  const [drawOutlineLandingPoint, setDrawOutlineLandingPoint] = useState<ModuleFootprintCanvasPoint | null>(null);
+  const [drawOutlinePointerSession, setDrawOutlinePointerSession] = useState<DrawOutlinePointerSession | null>(null);
+  const [drawPopoverPosition, setDrawPopoverPosition] = useState<DrawPopoverPosition | null>(null);
+  const [activeTouchCount, setActiveTouchCount] = useState(0);
+  const [pinchZoomActive, setPinchZoomActive] = useState(false);
+  const [pinchSource, setPinchSource] = useState<ModelSpacePinchSource>('none');
+  const [viewportNavigationGesture, setViewportNavigationGesture] = useState<ModelSpaceGesture>('idle');
+  const [panDragSession, setPanDragSession] = useState<PanDragSession | null>(null);
+  const [planHoveredResizeFieldId, setPlanHoveredResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
+  const [planActiveResizeFieldId, setPlanActiveResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
+  const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldDragSession | null>(null);
+  const [houseFirstActiveCustomEdgeId, setHouseFirstActiveCustomEdgeId] = useState<string | null>(null);
+  const [houseFirstDimensionEditor, setHouseFirstDimensionEditor] = useState<HouseFirstDimensionEditorState | null>(null);
+  const [houseFirstDimensionPopoverPosition, setHouseFirstDimensionPopoverPosition] = useState<DrawPopoverPosition | null>(null);
+  const [deckDragSession, setDeckDragSession] = useState<DeckDragSession | null>(null);
+  const [deckPreviewState, setDeckPreviewState] = useState<DeckPreviewState | null>(null);
+  const [deckInteractionHint, setDeckInteractionHint] = useState<DeckInteractionHintState | null>(null);
+
+  useEffect(() => {
+    drawOutlinePointerSessionRef.current = drawOutlinePointerSession;
+  }, [drawOutlinePointerSession]);
+
+  useEffect(
+    () => () => {
+      if (wheelGestureIdleTimeoutRef.current !== null) {
+        window.clearTimeout(wheelGestureIdleTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!pendingAttachedDeckHostEdgePick) {
+      setFootprintHoveredAttachmentSide(null);
+    }
+  }, [pendingAttachedDeckHostEdgePick]);
 
   const zoom = clampZoom(viewportTransform.zoom);
+  const editableFieldMap = useMemo(() => {
+    const next = new Map<string, EstimateDrawingField>();
+    for (const field of editableFields ?? []) {
+      if (!field.svgFieldId) continue;
+      next.set(field.svgFieldId, field);
+    }
+    return next;
+  }, [editableFields]);
+  const modelInteractiveFields = useMemo<ModuleDrawingInteractiveFieldMap>(() => {
+    const next: ModuleDrawingInteractiveFieldMap = {};
+    for (const field of editableFieldMap.values()) {
+      if (!field.svgFieldId) continue;
+      next[field.svgFieldId] = {
+        fieldId: field.id,
+      };
+    }
+    return next;
+  }, [editableFieldMap]);
   const canEditFootprint = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(planModel);
+  const canCommitCustomPolygon = view === 'plan' && Boolean(planModel) && Boolean(onCommitCustomPolygon);
+  const deckOutlineMode = drawOutlineMode === 'deck';
   const canRotatePlan = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && planModel?.roofType !== 'hip_corner';
+  const canEditPlanDimensions =
+    view === 'plan' &&
+    Boolean(planModel) &&
+    Boolean(onCommitField) &&
+    (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
+  const showHouseSectionPlaceholder = workbenchDisplayMode === 'house' && view === 'section';
   const showPlanViewport = view === 'plan' && Boolean(planModel);
+  const showSectionViewport = view === 'section' && Boolean(sectionModel) && !showHouseSectionPlaceholder;
+  const showDrawingViewport = showPlanViewport || showSectionViewport;
+  const modelSpaceAutoFitReady = showDrawingViewport;
+  const modelSpaceAutoFitKey = `${fitViewKey}:${view}:${modelSpaceAutoFitReady ? 'ready' : 'empty'}`;
+  const interactionError = fieldError ?? footprintError;
 
   const commitFootprintEdit = useCallback(
     async (edit: EstimateDrawingFootprintEdit) => {
@@ -104,10 +677,237 @@ export default function ModelSpaceViewport({
       }
       const result = await resolveCommitResult(onCommitFootprintEdit(edit));
       setFootprintError(result.ok ? null : result.error ?? 'Unable to update the drawing draft.');
+      if (result.ok) setFieldError(null);
       return result;
     },
     [onCommitFootprintEdit],
   );
+
+  const commitFieldEdit = useCallback(
+    async (field: EstimateDrawingField, nextValue: string) => {
+      if (!onCommitField) {
+        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
+      }
+      const result = await resolveCommitResult(onCommitField(field, nextValue));
+      setFieldError(result.ok ? null : result.error ?? 'Unable to update the drawing draft.');
+      if (result.ok) setFootprintError(null);
+      return result;
+    },
+    [onCommitField],
+  );
+
+  const closeHouseFirstDimensionEditor = useCallback(() => {
+    setHouseFirstDimensionEditor(null);
+    setHouseFirstDimensionPopoverPosition(null);
+  }, []);
+
+  const activateHouseFirstDimensionEditor = useCallback(
+    (
+      annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+      target: SVGTextElement,
+    ) => {
+      void target;
+      setFootprintError(null);
+      setFieldError(null);
+      setHouseFirstDimensionEditor({
+        annotation,
+        value: annotation.rawValue,
+      });
+    },
+    [],
+  );
+
+  const handleHouseFirstShapeSelect = useCallback(
+    (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => {
+      closeHouseFirstDimensionEditor();
+      setHouseFirstActiveCustomEdgeId(null);
+      if (!onSelectHouseFirstTarget) return;
+      onSelectHouseFirstTarget(
+        target.ownerKind === 'footprint'
+          ? { kind: 'footprint', targetId: target.ownerId }
+          : target.ownerKind === 'opening'
+            ? { kind: 'opening', targetId: target.ownerId }
+            : { kind: 'deck', targetId: target.ownerId },
+      );
+    },
+    [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
+  );
+
+  const handleHouseFirstCustomEdgeSelect = useCallback(
+    (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => {
+      closeHouseFirstDimensionEditor();
+      setHouseFirstActiveCustomEdgeId(`${target.ownerId}:edge:${target.edgeIndex}`);
+      onSelectHouseFirstTarget?.(
+        target.ownerKind === 'footprint'
+          ? { kind: 'footprint', targetId: target.ownerId }
+          : { kind: 'deck', targetId: target.ownerId },
+      );
+    },
+    [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
+  );
+
+  const handleHouseFirstShapeDragStart = useCallback(
+    (
+      meta: HouseFirstPlanShapeDragStartMeta,
+      event: { pointerId: number; clientX: number; clientY: number },
+    ) => {
+      if (!onCommitHouseFirstDeckDimension) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+      const overlayShape = planViewModel?.houseFirst?.shapes.find(
+        (shape) => shape.ownerKind === 'deck' && shape.ownerId === meta.ownerId,
+      );
+      if (!overlayShape?.deckInteraction) return;
+
+      closeHouseFirstDimensionEditor();
+      setFieldError(null);
+      setFootprintError(null);
+      setDeckPreviewState(null);
+      setDeckInteractionHint({
+        title: 'Deck drag',
+        detail: 'Drag along the host edge. Snap previews lock to the host-edge limits.',
+        tone: 'status',
+      });
+      setDeckDragSession({
+        pointerId: event.pointerId,
+        deckId: meta.ownerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startPolygon: overlayShape.polygon,
+        startCenterOffsetM: overlayShape.deckInteraction.centerOffsetM,
+        interaction: overlayShape.deckInteraction,
+        svgInteraction: meta.deckInteraction,
+      });
+    },
+    [closeHouseFirstDimensionEditor, onCommitHouseFirstDeckDimension, planViewModel],
+  );
+
+  const commitHouseFirstDimensionEdit = useCallback(
+    async (editor: HouseFirstDimensionEditorState): Promise<boolean> => {
+      const nextValue = editor.value.trim();
+      const annotation = editor.annotation;
+      const houseFootprintDimensionCommit = onCommitHouseFirstFootprintDimension ?? onCommitFootprintEdit;
+      let result:
+        | {
+            ok: boolean;
+            error?: string;
+          }
+        | undefined;
+
+      if (annotation.targetKind === 'house_preset_param') {
+        result = houseFootprintDimensionCommit
+          ? await resolveCommitResult(
+              houseFootprintDimensionCommit({
+                type: 'param',
+                key: annotation.fieldKey as keyof CalculatorHouseFootprintParams,
+                value: nextValue,
+              }),
+            )
+          : { ok: false, error: 'House footprint dimensions are not editable in this view.' };
+      } else if (annotation.targetKind === 'house_custom_edge') {
+        const polygon = resizeCustomPolygonEdge({
+          polygon: annotation.localPolygon,
+          edgeIndex: annotation.edgeIndex,
+          nextLengthM: nextValue,
+        });
+        result = polygon
+          ? houseFootprintDimensionCommit
+            ? await resolveCommitResult(
+                houseFootprintDimensionCommit({
+                  type: 'polygon',
+                  polygon,
+                }),
+              )
+            : { ok: false, error: 'House footprint dimensions are not editable in this view.' }
+          : { ok: false, error: 'Enter a positive edge length.' };
+      } else if (annotation.targetKind === 'deck_preset_param') {
+        result = onCommitHouseFirstDeckDimension
+          ? await resolveCommitResult(
+              onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                presetRect: {
+                  [annotation.fieldKey]: nextValue,
+                } as unknown as HouseFirstDeckDraft['presetRect'],
+              }),
+            )
+          : { ok: false, error: 'Deck dimensions are not editable in this view.' };
+      } else if (annotation.targetKind === 'deck_custom_edge') {
+        const polygon = resizeCustomPolygonEdge({
+          polygon: annotation.localPolygon,
+          edgeIndex: annotation.edgeIndex,
+          nextLengthM: nextValue,
+        });
+        result =
+          polygon && onCommitHouseFirstDeckDimension
+            ? await resolveCommitResult(
+                onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                  shape: 'custom',
+                  outline: polygon,
+                }),
+              )
+            : { ok: false, error: polygon ? 'Deck dimensions are not editable in this view.' : 'Enter a positive edge length.' };
+      } else if (annotation.targetKind === 'deck_host_edge_reference') {
+        const resolvedCenterOffset = resolveDeckHostReferenceCenterOffset({
+          annotation,
+          nextValue,
+        });
+        result =
+          resolvedCenterOffset.ok && onCommitHouseFirstDeckDimension
+            ? await resolveCommitResult(
+                onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                  presetRect: {
+                    centerOffsetM: resolvedCenterOffset.centerOffsetM,
+                  } as unknown as HouseFirstDeckDraft['presetRect'],
+                }),
+              )
+            : {
+                ok: false,
+                error:
+                  resolvedCenterOffset.ok
+                    ? 'Deck dimensions are not editable in this view.'
+                    : resolvedCenterOffset.error,
+              };
+      } else if (annotation.targetKind === 'opening_param') {
+        result = onCommitHouseFirstOpeningDimension
+          ? await resolveCommitResult(
+              onCommitHouseFirstOpeningDimension(annotation.ownerId, {
+                [annotation.fieldKey]: nextValue,
+              } as Partial<HouseFirstOpeningDraft>),
+            )
+          : { ok: false, error: 'Window dimensions are not editable in this view.' };
+      } else {
+        result = { ok: false, error: 'Unsupported dimension target.' };
+      }
+
+      if (!result?.ok) {
+        setFieldError(result?.error ?? 'Unable to update the dimension.');
+        return false;
+      }
+
+      setFieldError(null);
+      setFootprintError(null);
+      closeHouseFirstDimensionEditor();
+      return true;
+    },
+    [
+      closeHouseFirstDimensionEditor,
+      onCommitFootprintEdit,
+      onCommitHouseFirstDeckDimension,
+      onCommitHouseFirstOpeningDimension,
+      onCommitHouseFirstFootprintDimension,
+    ],
+  );
+
+  const applyDrawOutlineTransition = useCallback((result: DrawOutlineTransitionResult) => {
+    setDrawOutlineState(result.state);
+    if (!isDrawOutlineActive(result.state)) {
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+    }
+    if (result.error !== undefined) setFootprintError(result.error);
+  }, []);
 
   const updateViewportTransform = useCallback(
     (next: Partial<DrawingWorkbenchViewportTransform>) => {
@@ -121,69 +921,259 @@ export default function ModelSpaceViewport({
     [onViewportTransformChange, viewportTransform.panX, viewportTransform.panY, zoom],
   );
 
+  const clearTouchNavigation = useCallback(() => {
+    activeTouchPointersRef.current.clear();
+    pinchZoomSessionRef.current = null;
+    setActiveTouchCount(0);
+    setPinchZoomActive(false);
+    setPinchSource((current) => (current === 'touch-pointer' ? 'none' : current));
+    setViewportNavigationGesture((current) => (current === 'pinch-zoom' ? 'idle' : current));
+  }, []);
+
+  const clearWebKitGestureNavigation = useCallback(() => {
+    webKitGestureSessionRef.current = null;
+    setPinchZoomActive(false);
+    setPinchSource((current) => (current === 'webkit-gesture' ? 'none' : current));
+    setViewportNavigationGesture((current) => (current === 'trackpad-pinch' ? 'idle' : current));
+  }, []);
+
+  const markTransientViewportGesture = useCallback((gesture: 'wheel-pan' | 'wheel-zoom', source: ModelSpacePinchSource = 'none') => {
+    setViewportNavigationGesture(gesture);
+    setPinchSource(source);
+    if (wheelGestureIdleTimeoutRef.current !== null) {
+      window.clearTimeout(wheelGestureIdleTimeoutRef.current);
+    }
+    wheelGestureIdleTimeoutRef.current = window.setTimeout(() => {
+      wheelGestureIdleTimeoutRef.current = null;
+      setViewportNavigationGesture((current) => (current === gesture ? 'idle' : current));
+      setPinchSource((current) => (current === source ? 'none' : current));
+    }, WHEEL_GESTURE_IDLE_MS);
+  }, []);
+
+  const resolveViewportAnchor = useCallback((clientX: number, clientY: number): { x: number; y: number } | null => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return null;
+    const rect = scroller.getBoundingClientRect();
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  }, []);
+
+  const resolveViewportAnchorFromGestureEvent = useCallback((event: NativeGestureEvent): { x: number; y: number } | null => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return null;
+    const rect = scroller.getBoundingClientRect();
+    if (Number.isFinite(event.clientX) && Number.isFinite(event.clientY)) {
+      return {
+        x: Number(event.clientX) - rect.left,
+        y: Number(event.clientY) - rect.top,
+      };
+    }
+    const width = scroller.clientWidth || rect.width;
+    const height = scroller.clientHeight || rect.height;
+    return {
+      x: Math.max(0, width / 2),
+      y: Math.max(0, height / 2),
+    };
+  }, []);
+
+  const applyAnchoredViewportZoom = useCallback(
+    (input: {
+      nextZoom: number;
+      startZoom: number;
+      startPanX: number;
+      startPanY: number;
+      startAnchorX: number;
+      startAnchorY: number;
+      currentAnchorX: number;
+      currentAnchorY: number;
+    }) => {
+      const nextZoom = clampZoom(input.nextZoom);
+      const safeStartZoom = Math.max(input.startZoom, 0.001);
+      const contentAnchorX = (input.startAnchorX - input.startPanX) / safeStartZoom;
+      const contentAnchorY = (input.startAnchorY - input.startPanY) / safeStartZoom;
+      updateViewportTransform({
+        zoom: nextZoom,
+        panX: input.currentAnchorX - contentAnchorX * nextZoom,
+        panY: input.currentAnchorY - contentAnchorY * nextZoom,
+      });
+    },
+    [updateViewportTransform],
+  );
+
   const handleZoomChange = useCallback(
     (delta: number) => {
+      userAdjustedViewportRef.current = true;
       updateViewportTransform({ zoom: clampZoom(zoom + delta) });
     },
     [updateViewportTransform, zoom],
   );
 
-  const handleResetView = useCallback(() => {
+  const measureFitViewTransform = useCallback((): DrawingWorkbenchViewportTransform | null => {
+    const scroller = scrollerRef.current;
+    const scaleFrame = scaleFrameRef.current;
+    if (!scroller || !scaleFrame) return null;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const frameRect = scaleFrame.getBoundingClientRect();
+    const scrollerWidth = scroller.clientWidth || scrollerRect.width;
+    const scrollerHeight = scroller.clientHeight || scrollerRect.height;
+    if (scrollerWidth <= 0 || scrollerHeight <= 0) return null;
+
+    const focusRect =
+      resolveModelSpaceFocusTargetRect({ scaleFrame, frameRect, zoom }) ??
+      resolveModelSpaceSvgFocusRect({ scaleFrame, frameRect, zoom });
+    const svgRect = focusRect ? null : resolveModelSpaceSvgRect({ scaleFrame, frameRect, zoom });
+    const frameWidth =
+      scaleFrame.offsetWidth || scaleFrame.scrollWidth || (frameRect.width > 0 ? frameRect.width / Math.max(zoom, 0.001) : 0);
+    const frameHeight =
+      scaleFrame.offsetHeight || scaleFrame.scrollHeight || (frameRect.height > 0 ? frameRect.height / Math.max(zoom, 0.001) : 0);
+    const frameFallback = frameWidth > 0 && frameHeight > 0 ? { x: 0, y: 0, width: frameWidth, height: frameHeight } : null;
+    const targetRect = focusRect ?? svgRect ?? frameFallback;
+    if (!targetRect) return null;
+
+    const availableWidth = Math.max(1, scrollerWidth - FIT_VIEW_MARGIN_PX * 2);
+    const availableHeight = Math.max(1, scrollerHeight - FIT_VIEW_MARGIN_PX * 2);
+    const nextZoom = clampZoom(Math.min(availableWidth / targetRect.width, availableHeight / targetRect.height));
+    return {
+      zoom: nextZoom,
+      panX: scrollerWidth / 2 - (targetRect.x + targetRect.width / 2) * nextZoom,
+      panY: scrollerHeight / 2 - (targetRect.y + targetRect.height / 2) * nextZoom,
+    };
+  }, [zoom]);
+
+  const fitViewportToContent = useCallback((): boolean => {
+    const next = measureFitViewTransform();
+    if (!next) return false;
+    updateViewportTransform(next);
+    return true;
+  }, [measureFitViewTransform, updateViewportTransform]);
+
+  const handleFitView = useCallback(() => {
     setFootprintError(null);
-    updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
-  }, [updateViewportTransform]);
+    setFieldError(null);
+    setPanDragSession(null);
+    clearTouchNavigation();
+    clearWebKitGestureNavigation();
+    userAdjustedViewportRef.current = false;
+    if (fitViewportToContent()) {
+      autoFitKeyRef.current = modelSpaceAutoFitKey;
+    } else {
+      updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
+    }
+  }, [clearTouchNavigation, clearWebKitGestureNavigation, fitViewportToContent, modelSpaceAutoFitKey, updateViewportTransform]);
 
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
-      if (!event.ctrlKey && !event.metaKey) return;
+      if (isViewportNavigationControlTarget(event.target)) return;
+      const delta = normalizeWheelDeltaPixels(event);
+      if (delta.deltaX === 0 && delta.deltaY === 0) return;
       event.preventDefault();
-      handleZoomChange(event.deltaY < 0 ? 0.2 : -0.2);
+      userAdjustedViewportRef.current = true;
+      if (event.ctrlKey || event.metaKey) {
+        const anchor = resolveViewportAnchor(event.clientX, event.clientY);
+        if (!anchor) return;
+        const nextZoom = clampZoom(zoom * Math.exp(-delta.deltaY * WHEEL_ZOOM_SENSITIVITY));
+        if (nextZoom === zoom) return;
+        markTransientViewportGesture('wheel-zoom', 'wheel');
+        applyAnchoredViewportZoom({
+          nextZoom,
+          startZoom: zoom,
+          startPanX: viewportTransform.panX,
+          startPanY: viewportTransform.panY,
+          startAnchorX: anchor.x,
+          startAnchorY: anchor.y,
+          currentAnchorX: anchor.x,
+          currentAnchorY: anchor.y,
+        });
+        return;
+      }
+      markTransientViewportGesture('wheel-pan');
+      updateViewportTransform({
+        panX: viewportTransform.panX - delta.deltaX,
+        panY: viewportTransform.panY - delta.deltaY,
+      });
     },
-    [handleZoomChange],
+    [
+      applyAnchoredViewportZoom,
+      markTransientViewportGesture,
+      resolveViewportAnchor,
+      updateViewportTransform,
+      viewportTransform.panX,
+      viewportTransform.panY,
+      zoom,
+    ],
   );
-
-  const handleScroll = useCallback(() => {
-    if (syncingScrollRef.current) return;
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    updateViewportTransform({
-      panX: scroller.scrollLeft,
-      panY: scroller.scrollTop,
-    });
-  }, [updateViewportTransform]);
-
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller) return;
-    const nextLeft = Math.max(0, viewportTransform.panX);
-    const nextTop = Math.max(0, viewportTransform.panY);
-    if (Math.abs(scroller.scrollLeft - nextLeft) < 1 && Math.abs(scroller.scrollTop - nextTop) < 1) return;
-    syncingScrollRef.current = true;
-    scroller.scrollLeft = nextLeft;
-    scroller.scrollTop = nextTop;
-    const timeoutId = window.setTimeout(() => {
-      syncingScrollRef.current = false;
-    }, 0);
-    return () => window.clearTimeout(timeoutId);
-  }, [viewportTransform.panX, viewportTransform.panY, zoom]);
 
   const handleFootprintPresetSelect = useCallback(
     async (preset: NonNullable<ModulePlanModel['houseFootprintPreset']>) => {
+      setFieldError(null);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
       await commitFootprintEdit({ type: 'preset', preset });
     },
     [commitFootprintEdit],
   );
 
+  const startDrawOutlineSession = useCallback(() => {
+    setFieldError(null);
+    setFootprintHoveredHandleId(null);
+    setFootprintActiveHandleId(null);
+    setFootprintDragSession(null);
+    setFootprintVertexDragSession(null);
+    setDrawOutlineLandingPoint(null);
+    drawOutlinePointerSessionRef.current = null;
+    setDrawOutlinePointerSession(null);
+    applyDrawOutlineTransition(startDrawOutlineTool());
+  }, [applyDrawOutlineTransition]);
+
+  useEffect(() => {
+    if (drawOutlineRequestId === undefined || drawOutlineRequestId <= 0 || drawOutlineRequestId === lastDrawOutlineRequestIdRef.current) return;
+    lastDrawOutlineRequestIdRef.current = drawOutlineRequestId;
+    if ((!canEditFootprint && !canCommitCustomPolygon) || view !== 'plan') return;
+    startDrawOutlineSession();
+  }, [canCommitCustomPolygon, canEditFootprint, drawOutlineRequestId, startDrawOutlineSession, view]);
+
+  const handleFootprintModeSelect = useCallback(
+    async (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => {
+      setFieldError(null);
+      setFootprintHoveredHandleId(null);
+      setFootprintActiveHandleId(null);
+      setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
+      setFootprintError(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      if (mode === 'custom_polygon') {
+        startDrawOutlineSession();
+        return;
+      }
+      setDrawOutlineState(createInactiveDrawOutlineState());
+      await commitFootprintEdit({ type: 'mode', mode });
+    },
+    [commitFootprintEdit, startDrawOutlineSession],
+  );
+
   const handleFootprintRotate = useCallback(
     async (delta: -1 | 1) => {
+      setFieldError(null);
       setFootprintHoveredAttachmentSide(null);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
       await commitFootprintEdit({ type: 'rotate', delta });
     },
@@ -192,10 +1182,16 @@ export default function ModelSpaceViewport({
 
   const handleFootprintAttachmentSideSelect = useCallback(
     async (side: AttachmentSide) => {
+      setFieldError(null);
       setFootprintHoveredAttachmentSide(side);
       setFootprintHoveredHandleId(null);
       setFootprintActiveHandleId(null);
       setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
+      setDrawOutlineLandingPoint(null);
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
       await commitFootprintEdit({ type: 'attachment_side', side });
     },
@@ -209,6 +1205,7 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
+      setFieldError(null);
       setFootprintError(null);
       setFootprintContextHovered(true);
       setFootprintActiveHandleId(meta.handleId);
@@ -223,6 +1220,492 @@ export default function ModelSpaceViewport({
     },
     [canEditFootprint, planModel],
   );
+
+  const handleFootprintVertexDragStart = useCallback(
+    (meta: HouseFootprintVertexDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+      setFieldError(null);
+      setFootprintError(null);
+      setFootprintContextHovered(true);
+      setFootprintDragSession(null);
+      setFootprintVertexDragSession({
+        ...meta,
+        pointerId: event.pointerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startPolygon: planModel.houseFootprintPolygon ?? [],
+      });
+    },
+    [canEditFootprint, planModel],
+  );
+
+  const handleFootprintEdgeAdd = useCallback(
+    async (edgeIndex: number) => {
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
+      const polygon = planModel.houseFootprintPolygon ?? [];
+      if (polygon.length < 3) return;
+      const start = polygon[edgeIndex];
+      const end = polygon[(edgeIndex + 1) % polygon.length];
+      if (!start || !end) return;
+      const next = [...polygon];
+      next.splice(edgeIndex + 1, 0, {
+        alongM: formatPolygonMetres((parsePolygonMetres(start.alongM) + parsePolygonMetres(end.alongM)) / 2),
+        depthM: formatPolygonMetres((parsePolygonMetres(start.depthM) + parsePolygonMetres(end.depthM)) / 2),
+      });
+      await commitFootprintEdit({ type: 'polygon', polygon: next });
+    },
+    [canEditFootprint, commitFootprintEdit, planModel],
+  );
+
+  const handleFootprintVertexDelete = useCallback(
+    async (vertexIndex: number) => {
+      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
+      const polygon = planModel.houseFootprintPolygon ?? [];
+      if (polygon.length <= 3 || vertexIndex < 0 || vertexIndex >= polygon.length) return;
+      await commitFootprintEdit({ type: 'polygon', polygon: polygon.filter((_, index) => index !== vertexIndex) });
+    },
+    [canEditFootprint, commitFootprintEdit, planModel],
+  );
+
+  const handleDrawOutlinePointSelect = useCallback(
+    (rawPoint: ModuleFootprintCanvasPoint) => {
+      const point = {
+        alongM: parsePolygonMetres(rawPoint.alongM),
+        depthM: parsePolygonMetres(rawPoint.depthM),
+      };
+      if (!Number.isFinite(point.alongM) || !Number.isFinite(point.depthM)) return;
+      setDrawOutlineLandingPoint(rawPoint);
+      applyDrawOutlineTransition(selectDrawOutlinePoint(drawOutlineState, point));
+    },
+    [applyDrawOutlineTransition, drawOutlineState],
+  );
+
+  const handleDrawOutlineCanvasPointerDown = useCallback(
+    (rawPoint: ModuleFootprintCanvasPoint, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!Number.isFinite(rawPoint.numericAlongM) || !Number.isFinite(rawPoint.numericDepthM)) return;
+      const nextSession = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startPanX: viewportTransform.panX,
+        startPanY: viewportTransform.panY,
+        startPoint: rawPoint,
+        hasPanned: false,
+      };
+      setDrawOutlineLandingPoint(rawPoint);
+      drawOutlinePointerSessionRef.current = nextSession;
+      setDrawOutlinePointerSession(nextSession);
+    },
+    [viewportTransform.panX, viewportTransform.panY],
+  );
+
+  const handleDrawOutlineConfirmSegment = useCallback(() => {
+    applyDrawOutlineTransition(confirmDrawOutlineSegment(drawOutlineState));
+  }, [applyDrawOutlineTransition, drawOutlineState]);
+
+  const handleDrawOutlineUndo = useCallback(() => {
+    applyDrawOutlineTransition(undoDrawOutline(drawOutlineState));
+  }, [applyDrawOutlineTransition, drawOutlineState]);
+
+  const handleDrawOutlineCancel = useCallback(() => {
+    applyDrawOutlineTransition(cancelDrawOutlineTool());
+  }, [applyDrawOutlineTransition]);
+
+  const handleDrawOutlineClose = useCallback(async () => {
+    const closeResult = prepareDrawOutlineClose(drawOutlineState);
+    if (!closeResult.ok) {
+      if (closeResult.error) setFootprintError(closeResult.error);
+      return;
+    }
+    const result =
+      deckOutlineMode && onCommitCustomPolygon
+        ? await resolveCommitResult(onCommitCustomPolygon(closeResult.polygon))
+        : await commitFootprintEdit({ type: 'custom_polygon', polygon: closeResult.polygon });
+    if (result.ok) {
+      applyDrawOutlineTransition(finishSuccessfulDrawOutlineCommit());
+    }
+  }, [applyDrawOutlineTransition, commitFootprintEdit, deckOutlineMode, drawOutlineState, onCommitCustomPolygon]);
+
+  const handleDrawOutlinePointHover = useCallback(
+    (rawPoint: ModuleFootprintCanvasPoint | null) => {
+      if (!rawPoint) {
+        setDrawOutlineLandingPoint(null);
+        applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
+        return;
+      }
+      const point = {
+        alongM: parsePolygonMetres(rawPoint.alongM),
+        depthM: parsePolygonMetres(rawPoint.depthM),
+      };
+      if (
+        !Number.isFinite(point.alongM) ||
+        !Number.isFinite(point.depthM) ||
+        !Number.isFinite(rawPoint.numericAlongM) ||
+        !Number.isFinite(rawPoint.numericDepthM)
+      ) {
+        setDrawOutlineLandingPoint(null);
+        applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
+        return;
+      }
+      setDrawOutlineLandingPoint(rawPoint);
+      applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, point));
+    },
+    [applyDrawOutlineTransition, drawOutlineState],
+  );
+
+  const clearViewportEditSessions = useCallback(() => {
+    setPanDragSession(null);
+    setFootprintDragSession(null);
+    setFootprintVertexDragSession(null);
+    setFootprintActiveHandleId(null);
+    setPlanFieldDragSession(null);
+    setPlanActiveResizeFieldId(null);
+  }, []);
+
+  const startPinchZoomSessionFromActiveTouches = useCallback(() => {
+    const pair = resolveTouchPointerPair(activeTouchPointersRef.current);
+    const midpoint = pair ? resolveTouchMidpoint(pair[0], pair[1]) : null;
+    const anchor = midpoint ? resolveViewportAnchor(midpoint.x, midpoint.y) : null;
+    if (!pair || !anchor) return;
+    const distance = resolveTouchDistance(pair[0], pair[1]);
+    if (distance <= 0) return;
+    pinchZoomSessionRef.current = {
+      firstPointerId: pair[0].pointerId,
+      secondPointerId: pair[1].pointerId,
+      startMidpointX: anchor.x,
+      startMidpointY: anchor.y,
+      startDistance: distance,
+      startZoom: zoom,
+      startPanX: viewportTransform.panX,
+      startPanY: viewportTransform.panY,
+    };
+    userAdjustedViewportRef.current = true;
+    drawOutlinePointerSessionRef.current = null;
+    setDrawOutlinePointerSession(null);
+    setDrawOutlineState((current) => hoverDrawOutlinePoint(current, null).state);
+    setPinchZoomActive(true);
+    setPinchSource('touch-pointer');
+    setViewportNavigationGesture('pinch-zoom');
+  }, [resolveViewportAnchor, viewportTransform.panX, viewportTransform.panY, zoom]);
+
+  const handleScrollerPointerDownCapture = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'touch' && !isViewportNavigationControlTarget(event.target)) {
+        activeTouchPointersRef.current.set(event.pointerId, {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        });
+        setActiveTouchCount(activeTouchPointersRef.current.size);
+        if (activeTouchPointersRef.current.size === 2 && !pinchZoomSessionRef.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          clearViewportEditSessions();
+          startPinchZoomSessionFromActiveTouches();
+          return;
+        }
+      }
+
+      if (!isDrawOutlineActive(drawOutlineState) || event.button !== 0 || isViewportMousePanIgnoredTarget(event.target)) return;
+      const point = drawOutlineCanvasPointResolverRef.current?.(event.clientX, event.clientY) ?? null;
+      if (!point) {
+        setDrawOutlineLandingPoint(null);
+        return;
+      }
+      event.preventDefault();
+      handleDrawOutlineCanvasPointerDown(point, {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+    },
+    [clearViewportEditSessions, drawOutlineState, handleDrawOutlineCanvasPointerDown, startPinchZoomSessionFromActiveTouches],
+  );
+
+  const handleScrollerPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isDrawOutlineActive(drawOutlineState) || isViewportMousePanIgnoredTarget(event.target)) return;
+      if (drawOutlinePointerSessionRef.current?.hasPanned) return;
+      handleDrawOutlinePointHover(drawOutlineCanvasPointResolverRef.current?.(event.clientX, event.clientY) ?? null);
+    },
+    [drawOutlineState, handleDrawOutlinePointHover],
+  );
+
+  const handleScrollerPointerLeave = useCallback(
+    () => {
+      if (!isDrawOutlineActive(drawOutlineState)) return;
+      handleDrawOutlinePointHover(null);
+    },
+    [drawOutlineState, handleDrawOutlinePointHover],
+  );
+
+  const handleCanvasPanStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (event.pointerType === 'touch') return;
+      if (event.button !== 0 || isDrawOutlineActive(drawOutlineState)) return;
+      if (isViewportMousePanIgnoredTarget(event.target)) return;
+      userAdjustedViewportRef.current = true;
+      setViewportNavigationGesture('mouse-pan');
+      setPanDragSession({
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startPanX: viewportTransform.panX,
+        startPanY: viewportTransform.panY,
+      });
+    },
+    [drawOutlineState, viewportTransform.panX, viewportTransform.panY],
+  );
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const shouldHandleGestureEvent = (event: Event): boolean => {
+      if (isViewportNavigationControlTarget(event.target)) return false;
+      return event.target instanceof Node ? scroller.contains(event.target) : true;
+    };
+
+    const handleGestureStart = (event: Event) => {
+      if (!shouldHandleGestureEvent(event)) return;
+      const gestureEvent = event as NativeGestureEvent;
+      const anchor = resolveViewportAnchorFromGestureEvent(gestureEvent);
+      if (!anchor) return;
+      event.preventDefault();
+      clearTouchNavigation();
+      clearViewportEditSessions();
+      webKitGestureSessionRef.current = {
+        startAnchorX: anchor.x,
+        startAnchorY: anchor.y,
+        startZoom: zoom,
+        startPanX: viewportTransform.panX,
+        startPanY: viewportTransform.panY,
+      };
+      userAdjustedViewportRef.current = true;
+      setPinchZoomActive(true);
+      setPinchSource('webkit-gesture');
+      setViewportNavigationGesture('trackpad-pinch');
+    };
+
+    const handleGestureChange = (event: Event) => {
+      if (!shouldHandleGestureEvent(event)) return;
+      const session = webKitGestureSessionRef.current;
+      if (!session) return;
+      const scale = Number((event as NativeGestureEvent).scale ?? 1);
+      if (!Number.isFinite(scale) || scale <= 0) return;
+      event.preventDefault();
+      applyAnchoredViewportZoom({
+        nextZoom: session.startZoom * scale,
+        startZoom: session.startZoom,
+        startPanX: session.startPanX,
+        startPanY: session.startPanY,
+        startAnchorX: session.startAnchorX,
+        startAnchorY: session.startAnchorY,
+        currentAnchorX: session.startAnchorX,
+        currentAnchorY: session.startAnchorY,
+      });
+    };
+
+    const handleGestureEnd = () => {
+      clearWebKitGestureNavigation();
+    };
+
+    scroller.addEventListener('gesturestart', handleGestureStart);
+    scroller.addEventListener('gesturechange', handleGestureChange);
+    scroller.addEventListener('gestureend', handleGestureEnd);
+    scroller.addEventListener('gesturecancel', handleGestureEnd);
+
+    return () => {
+      scroller.removeEventListener('gesturestart', handleGestureStart);
+      scroller.removeEventListener('gesturechange', handleGestureChange);
+      scroller.removeEventListener('gestureend', handleGestureEnd);
+      scroller.removeEventListener('gesturecancel', handleGestureEnd);
+    };
+  }, [
+    applyAnchoredViewportZoom,
+    clearTouchNavigation,
+    clearViewportEditSessions,
+    clearWebKitGestureNavigation,
+    resolveViewportAnchorFromGestureEvent,
+    viewportTransform.panX,
+    viewportTransform.panY,
+    zoom,
+  ]);
+
+  useEffect(() => {
+    userAdjustedViewportRef.current = false;
+    autoFitKeyRef.current = null;
+    clearTouchNavigation();
+    clearWebKitGestureNavigation();
+  }, [clearTouchNavigation, clearWebKitGestureNavigation, modelSpaceAutoFitKey]);
+
+  const handlePlanFieldDragStart = useCallback(
+    (meta: ModulePlanResizeDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
+      if (!canEditPlanDimensions || !planModel) return;
+      const field = editableFieldMap.get(meta.fieldId);
+      if (!field) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+
+      const fallbackValue = meta.fieldId === 'plan:lengthA' ? planModel.lengthA : planModel.spanA;
+      const startValueM = Number.parseFloat(field.rawValue);
+
+      setFootprintError(null);
+      setFieldError(null);
+      setPlanActiveResizeFieldId(meta.fieldId);
+      setPlanHoveredResizeFieldId(meta.fieldId);
+      setPlanFieldDragSession({
+        ...meta,
+        pointerId: event.pointerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startValueM: Number.isFinite(startValueM) ? startValueM : fallbackValue,
+        field,
+      });
+    },
+    [canEditPlanDimensions, editableFieldMap, planModel],
+  );
+
+  const drawOutlineActiveForPointerListeners = isDrawOutlineActive(drawOutlineState);
+
+  useEffect(() => {
+    if (!drawOutlineActiveForPointerListeners) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const session = drawOutlinePointerSessionRef.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+      const deltaX = event.clientX - session.startClientX;
+      const deltaY = event.clientY - session.startClientY;
+      const distance = Math.hypot(deltaX, deltaY);
+      if (distance < DRAW_OUTLINE_PAN_THRESHOLD_PX && !session.hasPanned) return;
+
+      userAdjustedViewportRef.current = true;
+      updateViewportTransform({
+        panX: session.startPanX + deltaX,
+        panY: session.startPanY + deltaY,
+      });
+      if (!session.hasPanned) {
+        const nextSession = {
+          ...session,
+          hasPanned: true,
+        };
+        drawOutlinePointerSessionRef.current = nextSession;
+        setDrawOutlinePointerSession(nextSession);
+        setDrawOutlineState((current) => hoverDrawOutlinePoint(current, null).state);
+      }
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      const latestSession = drawOutlinePointerSessionRef.current;
+      if (!latestSession || event.pointerId !== latestSession.pointerId) return;
+      const shouldSelect = event.type === 'pointerup' && !latestSession.hasPanned;
+      const startPoint = latestSession.startPoint;
+      drawOutlinePointerSessionRef.current = null;
+      setDrawOutlinePointerSession(null);
+      if (shouldSelect) handleDrawOutlinePointSelect(startPoint);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [drawOutlineActiveForPointerListeners, handleDrawOutlinePointSelect, updateViewportTransform]);
+
+  useEffect(() => {
+    if (activeTouchCount <= 0) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const current = activeTouchPointersRef.current.get(event.pointerId);
+      if (!current) return;
+      activeTouchPointersRef.current.set(event.pointerId, {
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      });
+
+      const session = pinchZoomSessionRef.current;
+      if (!session) return;
+      const first = activeTouchPointersRef.current.get(session.firstPointerId);
+      const second = activeTouchPointersRef.current.get(session.secondPointerId);
+      if (!first || !second) return;
+      const distance = resolveTouchDistance(first, second);
+      if (distance <= 0) return;
+      const midpoint = resolveTouchMidpoint(first, second);
+      const anchor = resolveViewportAnchor(midpoint.x, midpoint.y);
+      if (!anchor) return;
+      event.preventDefault();
+      applyAnchoredViewportZoom({
+        nextZoom: session.startZoom * (distance / Math.max(session.startDistance, 0.001)),
+        startZoom: session.startZoom,
+        startPanX: session.startPanX,
+        startPanY: session.startPanY,
+        startAnchorX: session.startMidpointX,
+        startAnchorY: session.startMidpointY,
+        currentAnchorX: anchor.x,
+        currentAnchorY: anchor.y,
+      });
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (!activeTouchPointersRef.current.has(event.pointerId)) return;
+      const session = pinchZoomSessionRef.current;
+      if (session && (event.pointerId === session.firstPointerId || event.pointerId === session.secondPointerId)) {
+        clearTouchNavigation();
+        return;
+      }
+      activeTouchPointersRef.current.delete(event.pointerId);
+      setActiveTouchCount(activeTouchPointersRef.current.size);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [activeTouchCount, applyAnchoredViewportZoom, clearTouchNavigation, resolveViewportAnchor]);
+
+  useEffect(() => {
+    if (!panDragSession) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== panDragSession.pointerId) return;
+      updateViewportTransform({
+        panX: panDragSession.startPanX + event.clientX - panDragSession.startClientX,
+        panY: panDragSession.startPanY + event.clientY - panDragSession.startClientY,
+      });
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== panDragSession.pointerId) return;
+      setPanDragSession(null);
+      setViewportNavigationGesture((current) => (current === 'mouse-pan' ? 'idle' : current));
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [panDragSession, updateViewportTransform]);
 
   useEffect(() => {
     if (!footprintDragSession || !onCommitFootprintEdit) return;
@@ -287,6 +1770,7 @@ export default function ModelSpaceViewport({
     const handlePointerEnd = (event: PointerEvent) => {
       if (event.pointerId !== footprintDragSession.pointerId) return;
       setFootprintDragSession(null);
+      setFootprintVertexDragSession(null);
       setFootprintActiveHandleId(null);
       setFootprintHoveredHandleId(null);
       setFootprintContextHovered(false);
@@ -304,24 +1788,527 @@ export default function ModelSpaceViewport({
   }, [commitFootprintEdit, footprintDragSession, onCommitFootprintEdit]);
 
   useEffect(() => {
+    if (!footprintVertexDragSession || !onCommitFootprintEdit) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== footprintVertexDragSession.pointerId) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+
+      const deltaSvgX = nextPoint.x - footprintVertexDragSession.startSvgX;
+      const deltaSvgY = nextPoint.y - footprintVertexDragSession.startSvgY;
+      const deltaAlongM =
+        (deltaSvgX * footprintVertexDragSession.alongAxisX + deltaSvgY * footprintVertexDragSession.alongAxisY) /
+        Math.max(footprintVertexDragSession.scale, 0.001);
+      const deltaDepthM =
+        (deltaSvgX * footprintVertexDragSession.depthAxisX + deltaSvgY * footprintVertexDragSession.depthAxisY) /
+        Math.max(footprintVertexDragSession.scale, 0.001);
+      const startPoint = footprintVertexDragSession.startPolygon[footprintVertexDragSession.vertexIndex];
+      if (!startPoint) return;
+      const nextPolygon = moveCustomPolygonVertex(
+        footprintVertexDragSession.startPolygon,
+        footprintVertexDragSession.vertexIndex,
+        snapHouseFootprintValue(parsePolygonMetres(startPoint.alongM) + deltaAlongM),
+        snapHouseFootprintValue(parsePolygonMetres(startPoint.depthM) + deltaDepthM),
+      );
+      void commitFootprintEdit({ type: 'polygon', polygon: nextPolygon });
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== footprintVertexDragSession.pointerId) return;
+      setFootprintVertexDragSession(null);
+      setFootprintContextHovered(false);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [commitFootprintEdit, footprintVertexDragSession, onCommitFootprintEdit]);
+
+  useEffect(() => {
+    if (!planFieldDragSession || !onCommitField) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== planFieldDragSession.pointerId) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+
+      const deltaSvgX = nextPoint.x - planFieldDragSession.startSvgX;
+      const deltaSvgY = nextPoint.y - planFieldDragSession.startSvgY;
+      const deltaUnits = deltaSvgX * planFieldDragSession.axisX + deltaSvgY * planFieldDragSession.axisY;
+      const deltaM = (deltaUnits / Math.max(planFieldDragSession.scale, 0.001)) * planFieldDragSession.deltaMultiplier;
+      const unclampedValueM = planFieldDragSession.startValueM + deltaM;
+      const nextValueM = Number.isFinite(planFieldDragSession.maxValueM)
+        ? Math.min(Math.max(unclampedValueM, planFieldDragSession.minValueM), planFieldDragSession.maxValueM)
+        : Math.max(unclampedValueM, planFieldDragSession.minValueM);
+
+      void commitFieldEdit(planFieldDragSession.field, formatDrawingFieldValue(nextValueM));
+    };
+
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (event.pointerId !== planFieldDragSession.pointerId) return;
+      setPlanFieldDragSession(null);
+      setPlanActiveResizeFieldId(null);
+      setPlanHoveredResizeFieldId(null);
+      setPanDragSession(null);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+    };
+  }, [commitFieldEdit, onCommitField, planFieldDragSession]);
+
+  useEffect(() => {
+    if (!deckDragSession || !onCommitHouseFirstDeckDimension) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== deckDragSession.pointerId) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+      const preview = resolveDeckPreviewState({
+        session: deckDragSession,
+        nextSvgX: nextPoint.x,
+        nextSvgY: nextPoint.y,
+      });
+      setDeckPreviewState(preview);
+      setDeckInteractionHint({
+        title: preview.snapped ? 'Snap preview' : 'Free placement',
+        detail: preview.snapped
+          ? 'Release to snap the deck to the host-edge limit.'
+          : 'Release to keep this offset without snapping.',
+        tone: 'status',
+      });
+    };
+
+    const finishDrag = async (event: PointerEvent) => {
+      if (event.pointerId !== deckDragSession.pointerId) return;
+      const preview = deckPreviewState;
+      setDeckDragSession(null);
+      setDeckPreviewState(null);
+      if (!preview) return;
+
+      const result = await resolveCommitResult(
+        onCommitHouseFirstDeckDimension(deckDragSession.deckId, {
+          presetRect: {
+            centerOffsetM: formatDeckPresetValue(preview.centerOffsetM),
+          } as unknown as HouseFirstDeckDraft['presetRect'],
+        }),
+      );
+      setFieldError(result.ok ? null : result.error ?? 'Unable to update the deck position.');
+      if (result.ok) setFootprintError(null);
+      setDeckInteractionHint(
+        result.ok
+          ? {
+              title: preview.snapped ? 'Deck snapped' : 'Deck moved',
+              detail: preview.snapped
+                ? 'The deck is now aligned to the host-edge limit.'
+                : 'The deck kept a free offset without snapping.',
+              tone: 'status',
+            }
+          : {
+              title: 'Deck move blocked',
+              detail: result.error ?? 'Unable to update the deck position.',
+              tone: 'deferred',
+            },
+      );
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', finishDrag);
+    window.addEventListener('pointercancel', finishDrag);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', finishDrag);
+      window.removeEventListener('pointercancel', finishDrag);
+    };
+  }, [deckDragSession, deckPreviewState, onCommitHouseFirstDeckDimension]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isDrawOutlineActive(drawOutlineState) && event.key === 'Enter') {
+        event.preventDefault();
+        handleDrawOutlineConfirmSegment();
+        return;
+      }
+      if (isDrawOutlineActive(drawOutlineState) && event.key === 'Backspace') {
+        event.preventDefault();
+        handleDrawOutlineUndo();
+        return;
+      }
       if (event.key !== 'Escape') return;
+      if (isDrawOutlineActive(drawOutlineState)) {
+        event.preventDefault();
+        handleDrawOutlineCancel();
+        return;
+      }
+      if (deckDragSession) {
+        event.preventDefault();
+        setDeckDragSession(null);
+        setDeckPreviewState(null);
+        return;
+      }
       setFootprintDragSession(null);
       setFootprintActiveHandleId(null);
       setFootprintHoveredHandleId(null);
       setFootprintContextHovered(false);
+      setPlanFieldDragSession(null);
+      setPlanActiveResizeFieldId(null);
+      setPlanHoveredResizeFieldId(null);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deckDragSession, drawOutlineState, handleDrawOutlineCancel, handleDrawOutlineConfirmSegment, handleDrawOutlineUndo]);
+
+  const drawOutlineViewModel = useMemo(
+    () => deriveDrawOutlineViewModel(drawOutlineState, Boolean(isDrawOutlineActive(drawOutlineState) && interactionError)),
+    [drawOutlineState, interactionError],
+  );
+  const activeDrawOutlineState = drawOutlineViewModel.activeState;
+  const drawOutlinePendingPoint = drawOutlineViewModel.pendingPoint;
+  const drawOutlinePreviewPointKind = drawOutlineViewModel.previewPointKind;
+  const drawOutlineConfirmedPointCount = drawOutlineViewModel.confirmedPointCount;
+  const drawOutlineCloseReady = drawOutlineViewModel.closeReady;
+  const drawOutlineCloseHovered = drawOutlineViewModel.closeHovered;
+  const drawOutlinePopoverAnchorPointCount = drawOutlineViewModel.popoverAnchorPointCount;
+  const drawOutlinePreviewPolygon = drawOutlineViewModel.previewPolygon;
+  const activeDrawOutlineLandingPoint = drawOutlineViewModel.isActive ? drawOutlineLandingPoint : null;
+  const drawOutlineGesture = drawOutlinePointerSession
+    ? drawOutlinePointerSession.hasPanned
+      ? 'panning'
+      : 'click-candidate'
+    : 'idle';
+  const modelSpaceGesture: ModelSpaceGesture =
+    drawOutlineGesture === 'click-candidate'
+      ? 'draw-click-candidate'
+      : drawOutlineGesture === 'panning'
+        ? 'draw-panning'
+        : pinchZoomActive
+          ? pinchSource === 'webkit-gesture'
+            ? 'trackpad-pinch'
+            : 'pinch-zoom'
+          : panDragSession
+            ? 'mouse-pan'
+            : viewportNavigationGesture;
+  const drawOutlineHasError = drawOutlineViewModel.diagnosticState === 'error';
+  const drawOutlineDiagnosticState = drawOutlineViewModel.diagnosticState;
+  const drawOutlineStatusCopy = drawOutlineStatusText(drawOutlineDiagnosticState);
+  const isCustomPolygonFootprint = view === 'plan' && (planModel?.houseFootprintMode ?? 'preset') === 'custom_polygon';
+  const hasExistingCustomPolygon = isCustomPolygonFootprint && (planModel?.houseFootprintPolygon?.length ?? 0) >= 3;
+  const hasDeckSeedPolygon = deckOutlineMode && (drawOutlineSeedPolygon?.length ?? 0) >= 3;
+  const canRedrawDrawOutline =
+    ((canEditFootprint && hasExistingCustomPolygon) || (canCommitCustomPolygon && hasDeckSeedPolygon)) &&
+    !drawOutlineViewModel.isActive;
+  const drawOutlineRedrawActive = drawOutlineViewModel.isActive && (hasExistingCustomPolygon || hasDeckSeedPolygon);
+  const drawOutlineDraftSource = drawOutlineViewModel.isActive ? 'active-draft' : planModel?.houseConnectionType === 'none' ? 'none' : 'persisted';
+
+  const handleDrawOutlineRedraw = useCallback(() => {
+    if (!canRedrawDrawOutline) return;
+    startDrawOutlineSession();
+  }, [canRedrawDrawOutline, startDrawOutlineSession]);
+
+  useEffect(() => {
+    if (!drawOutlineViewModel.isActive && drawOutlineLandingPoint) setDrawOutlineLandingPoint(null);
+  }, [drawOutlineLandingPoint, drawOutlineViewModel.isActive]);
+
+  useEffect(() => {
+    if (!modelSpaceAutoFitReady) return;
+    if (autoFitKeyRef.current === modelSpaceAutoFitKey) return;
+    if (fitViewportToContent()) autoFitKeyRef.current = modelSpaceAutoFitKey;
+  }, [fitViewportToContent, modelSpaceAutoFitKey, modelSpaceAutoFitReady]);
+
+  useEffect(() => {
+    if (!drawOutlineViewModel.isActive) {
+      setDrawPopoverPosition(null);
+      return;
+    }
+
+    const pointCount = drawOutlinePopoverAnchorPointCount;
+    if (pointCount < 1) {
+      setDrawPopoverPosition(null);
+      return;
+    }
+
+    const scroller = scrollerRef.current;
+    const popover = drawPopoverRef.current;
+    const anchor = scroller?.querySelector(`[data-footprint-custom-vertex="${pointCount - 1}"]`);
+    if (!scroller || !popover || !anchor) return;
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const anchorRect = anchor.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const scrollerWidth = scroller.clientWidth || scrollerRect.width;
+    const scrollerHeight = scroller.clientHeight || scrollerRect.height;
+    const popoverWidth = popover.offsetWidth || popoverRect.width;
+    const popoverHeight = popover.offsetHeight || popoverRect.height;
+
+    if (scrollerWidth <= 0 || scrollerHeight <= 0 || popoverWidth <= 0 || popoverHeight <= 0) return;
+
+    const anchorLeft = anchorRect.left - scrollerRect.left;
+    const anchorRight = anchorRect.right - scrollerRect.left;
+    const anchorCenterY = anchorRect.top - scrollerRect.top + anchorRect.height / 2;
+    let left = anchorRight + DRAW_POPOVER_GAP_PX;
+    let top = anchorCenterY - popoverHeight / 2;
+
+    if (left + popoverWidth + DRAW_POPOVER_MARGIN_PX > scrollerWidth) {
+      left = anchorLeft - popoverWidth - DRAW_POPOVER_GAP_PX;
+    }
+    if (left < DRAW_POPOVER_MARGIN_PX) {
+      left = Math.min(Math.max(anchorRight + DRAW_POPOVER_GAP_PX, DRAW_POPOVER_MARGIN_PX), scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX);
+    }
+
+    left = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(left, scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX));
+    top = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(top, scrollerHeight - popoverHeight - DRAW_POPOVER_MARGIN_PX));
+
+    setDrawPopoverPosition((current) => {
+      if (current && Math.abs(current.left - left) < 0.5 && Math.abs(current.top - top) < 0.5) return current;
+      return { left, top };
+    });
+  }, [drawOutlinePopoverAnchorPointCount, drawOutlineViewModel.isActive, viewportTransform.panX, viewportTransform.panY, zoom]);
+
+  const houseFirstPlanOverlay =
+    view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.houseFirst ?? null : null;
+  const houseFirstPreviewOverlay = useMemo(
+    () =>
+      deckPreviewState && deckDragSession
+        ? {
+            ownerId: deckPreviewState.deckId,
+            polygon: deckPreviewState.polygon,
+            hostEdge: {
+              start: deckDragSession.interaction.hostEdgeStart,
+              end: deckDragSession.interaction.hostEdgeEnd,
+              snapped: deckPreviewState.snapped,
+            },
+          }
+        : null,
+    [deckDragSession, deckPreviewState],
+  );
+  const selectedDeckShape = useMemo(
+    () =>
+      houseFirstPlanOverlay?.shapes.find(
+        (shape) => shape.ownerKind === 'deck' && shape.selected,
+      ) ?? null,
+    [houseFirstPlanOverlay],
+  );
+  const selectedDeckRelationshipDimensionsAvailable = useMemo(
+    () =>
+      selectedDeckShape
+        ? (houseFirstPlanOverlay?.presetAnnotations ?? []).some(
+            (annotation) =>
+              annotation.ownerKind === 'deck' &&
+              annotation.ownerId === selectedDeckShape.ownerId &&
+              annotation.targetKind === 'deck_host_edge_reference',
+          )
+        : false,
+    [houseFirstPlanOverlay, selectedDeckShape],
+  );
+  const selectedDeckType = useMemo<DeckInteractionTelemetry['selectedDeckType']>(() => {
+    if (!selectedDeckShape) return 'none';
+    if (selectedDeckShape.custom) return 'custom_outline';
+    if (selectedDeckShape.deckInteraction) return 'attached_preset_rect';
+    const hasDetachedGapAnnotation = (houseFirstPlanOverlay?.presetAnnotations ?? []).some(
+      (annotation) =>
+        annotation.ownerKind === 'deck' &&
+        annotation.ownerId === selectedDeckShape.ownerId &&
+        annotation.fieldKey === 'detachedGapM',
+    );
+    return hasDetachedGapAnnotation ? 'detached_preset_rect' : 'preset_unresolved';
+  }, [houseFirstPlanOverlay, selectedDeckShape]);
+
+  useEffect(() => {
+    if (!selectedDeckShape?.deckDragEligibility) {
+      setDeckInteractionHint(null);
+      return;
+    }
+    setDeckInteractionHint({
+      title:
+        selectedDeckShape.deckDragEligibility.eligible
+          ? 'Attached preset deck'
+          : selectedDeckType === 'custom_outline'
+            ? 'Custom deck'
+            : selectedDeckType === 'detached_preset_rect'
+              ? 'Detached preset deck'
+              : 'Deck interaction',
+      detail: selectedDeckShape.deckDragEligibility.reason,
+      tone: selectedDeckShape.deckDragEligibility.eligible ? 'eligible' : 'deferred',
+    });
+  }, [selectedDeckShape?.deckDragEligibility, selectedDeckType]);
+
+  useEffect(() => {
+    onDeckInteractionTelemetryChange?.({
+      selectedDeckId: selectedDeckShape?.ownerId ?? null,
+      housePolygonSource: houseFirstPlanOverlay?.housePolygonSource ?? null,
+      selectedDeckType,
+      dragEligible: selectedDeckShape?.deckDragEligibility?.eligible ?? false,
+      dragReason: selectedDeckShape?.deckDragEligibility?.reason ?? null,
+      hostEdgeResolvable: Boolean(selectedDeckShape?.deckInteraction),
+      relationshipDimensionsAvailable: selectedDeckRelationshipDimensionsAvailable,
+      snapState: deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'free') : 'idle',
+      snapMessage:
+        deckPreviewState && selectedDeckShape?.deckDragEligibility?.eligible
+          ? deckPreviewState.snapped
+            ? 'Snap preview active on the host edge limit.'
+            : 'Free placement preview. Release to keep the current offset.'
+          : null,
+    });
+  }, [
+    deckPreviewState,
+    houseFirstPlanOverlay?.housePolygonSource,
+    onDeckInteractionTelemetryChange,
+    selectedDeckRelationshipDimensionsAvailable,
+    selectedDeckShape,
+    selectedDeckType,
+  ]);
+
+  const handleNativeSelectionCapture = useCallback((event: Event) => {
+    blockNativeSelectionEvent(event);
   }, []);
 
+  useEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+    const handleSelectStart = (event: Event) => handleNativeSelectionCapture(event);
+    const handleDragStart = (event: Event) => handleNativeSelectionCapture(event);
+    node.addEventListener('selectstart', handleSelectStart, true);
+    node.addEventListener('dragstart', handleDragStart, true);
+    return () => {
+      node.removeEventListener('selectstart', handleSelectStart, true);
+      node.removeEventListener('dragstart', handleDragStart, true);
+    };
+  }, [handleNativeSelectionCapture]);
+
+  useEffect(() => {
+    if (!houseFirstPlanOverlay?.customEdgeCandidates.some((candidate) => candidate.id === houseFirstActiveCustomEdgeId)) {
+      setHouseFirstActiveCustomEdgeId(null);
+    }
+  }, [houseFirstActiveCustomEdgeId, houseFirstPlanOverlay]);
+
+  useEffect(() => {
+    const selectedDeckStillVisible =
+      deckDragSession &&
+      houseFirstPlanOverlay?.shapes.some(
+        (shape) => shape.ownerKind === 'deck' && shape.ownerId === deckDragSession.deckId && shape.selected,
+      );
+    if (!selectedDeckStillVisible) {
+      setDeckDragSession(null);
+      setDeckPreviewState(null);
+    }
+  }, [deckDragSession, houseFirstPlanOverlay]);
+
+  useEffect(() => {
+    if (!houseFirstDimensionEditor) return;
+    const annotationId = houseFirstDimensionEditor.annotation.id;
+    const stillVisible = Boolean(
+      houseFirstPlanOverlay?.presetAnnotations.some((annotation) => annotation.id === annotationId) ||
+        houseFirstPlanOverlay?.customEdgeCandidates.some((annotation) => annotation.id === annotationId),
+    );
+    if (!stillVisible) closeHouseFirstDimensionEditor();
+  }, [closeHouseFirstDimensionEditor, houseFirstDimensionEditor, houseFirstPlanOverlay]);
+
+  useEffect(() => {
+    const annotation = houseFirstDimensionEditor?.annotation;
+    const scroller = scrollerRef.current;
+    const popover = dimensionPopoverRef.current;
+    if (!annotation || !scroller || !popover) {
+      setHouseFirstDimensionPopoverPosition(null);
+      return;
+    }
+
+    const escapedId =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(annotation.id)
+        : annotation.id.replace(/"/g, '\\"');
+    const target = scroller.querySelector(
+      `[data-editable-field-id="${escapedId}"]`,
+    ) as SVGGraphicsElement | null;
+    if (!target) {
+      setHouseFirstDimensionPopoverPosition(null);
+      return;
+    }
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const scrollerWidth = scroller.clientWidth || scrollerRect.width;
+    const scrollerHeight = scroller.clientHeight || scrollerRect.height;
+    const popoverWidth = popover.offsetWidth || popoverRect.width;
+    const popoverHeight = popover.offsetHeight || popoverRect.height;
+    if (scrollerWidth <= 0 || scrollerHeight <= 0 || popoverWidth <= 0 || popoverHeight <= 0) {
+      setHouseFirstDimensionPopoverPosition(null);
+      return;
+    }
+
+    const anchorLeft = targetRect.left - scrollerRect.left;
+    const anchorRight = targetRect.right - scrollerRect.left;
+    const anchorCenterY = targetRect.top - scrollerRect.top + targetRect.height / 2;
+    let left = anchorRight + DRAW_POPOVER_GAP_PX;
+    let top = anchorCenterY - popoverHeight / 2;
+    if (left + popoverWidth + DRAW_POPOVER_MARGIN_PX > scrollerWidth) {
+      left = anchorLeft - popoverWidth - DRAW_POPOVER_GAP_PX;
+    }
+    if (left < DRAW_POPOVER_MARGIN_PX) {
+      left = Math.min(
+        Math.max(anchorRight + DRAW_POPOVER_GAP_PX, DRAW_POPOVER_MARGIN_PX),
+        scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX,
+      );
+    }
+    left = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(left, scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX));
+    top = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(top, scrollerHeight - popoverHeight - DRAW_POPOVER_MARGIN_PX));
+    setHouseFirstDimensionPopoverPosition({ left, top });
+  }, [houseFirstDimensionEditor, viewportTransform.panX, viewportTransform.panY, zoom]);
+
+  const houseFirstDimensionPopoverStyle = useMemo(
+    () =>
+      houseFirstDimensionPopoverPosition
+        ? {
+            left: `${houseFirstDimensionPopoverPosition.left}px`,
+            top: `${houseFirstDimensionPopoverPosition.top}px`,
+          }
+        : undefined,
+    [houseFirstDimensionPopoverPosition],
+  );
+
   const footprintEditor = useMemo<ModuleFootprintEditorProps | undefined>(() => {
-    if (!canEditFootprint && !canRotatePlan) return undefined;
+    if (!canEditFootprint && !canRotatePlan && !deckOutlineMode) return undefined;
+    const customPolygonOverride =
+      deckOutlineMode && !drawOutlineViewModel.isActive
+        ? drawOutlineSeedPolygon ?? []
+        : drawOutlinePreviewPolygon;
     return {
-      available: canEditFootprint,
+      available: canEditFootprint || deckOutlineMode,
       surface: 'model',
       isEditing: true,
+      allowAttachmentSideCanvasSelect: pendingAttachedDeckHostEdgePick,
+      attachmentSideCanvasActiveSide: pendingAttachedDeckHostEdgePick ? null : undefined,
+      allowResizeEdgeDrag: false,
+      customPolygonOverride,
+      customPolygonOpen: drawOutlineViewModel.isActive,
+      customPolygonConfirmedPointCount: drawOutlineConfirmedPointCount,
+      customPolygonPreviewPointKind: drawOutlinePreviewPointKind,
+      customPolygonCloseReady: drawOutlineCloseReady,
+      customPolygonCloseHovered: drawOutlineCloseHovered,
+      customPolygonLandingPoint: activeDrawOutlineLandingPoint,
+      customPolygonHasError: drawOutlineHasError,
+      hideHouseFootprint: deckOutlineMode ? false : drawOutlineViewModel.hideHouseFootprint,
       isContextHovered: footprintContextHovered,
       hoveredAttachmentSide: footprintHoveredAttachmentSide,
       hoveredHandleId: footprintHoveredHandleId,
@@ -331,88 +2318,333 @@ export default function ModelSpaceViewport({
       onContextHoverChange: (hovered) => setFootprintContextHovered(hovered),
       onContextPopoverHoverChange: () => undefined,
       onAttachmentSideHover: (side) => setFootprintHoveredAttachmentSide(side),
-      onAttachmentSideSelect: (side) => void handleFootprintAttachmentSideSelect(side),
+      onAttachmentSideSelect: (side) =>
+        pendingAttachedDeckHostEdgePick && onPickAttachedDeckHostEdge
+          ? onPickAttachedDeckHostEdge(side)
+          : void handleFootprintAttachmentSideSelect(side),
       onHandleHover: (handleId) => setFootprintHoveredHandleId(handleId),
-      onHandleDragStart: handleFootprintDragStart,
-      onPresetSelect: (preset) => void handleFootprintPresetSelect(preset),
-      onRotate: (delta) => void handleFootprintRotate(delta),
+      onHandleDragStart: deckOutlineMode ? () => undefined : handleFootprintDragStart,
+      onVertexDragStart: deckOutlineMode ? undefined : handleFootprintVertexDragStart,
+      onVertexDelete: deckOutlineMode ? undefined : (vertexIndex) => void handleFootprintVertexDelete(vertexIndex),
+      onEdgeAdd: deckOutlineMode ? undefined : (edgeIndex) => void handleFootprintEdgeAdd(edgeIndex),
+      onPresetSelect: deckOutlineMode ? () => undefined : (preset) => void handleFootprintPresetSelect(preset),
+      onModeSelect: deckOutlineMode ? undefined : (mode) => void handleFootprintModeSelect(mode),
+      onRotate: deckOutlineMode ? () => undefined : (delta) => void handleFootprintRotate(delta),
+      onCanvasPointSelect: undefined,
+      onCanvasPointPointerDown: undefined,
+      onCanvasPointHover: undefined,
+      onCanvasPointResolverChange: (resolver) => {
+        drawOutlineCanvasPointResolverRef.current = resolver;
+      },
+      onCloseStartSelect: drawOutlineViewModel.isActive ? () => void handleDrawOutlineClose() : undefined,
       onSvgMount: (node) => {
         footprintSvgRef.current = node;
       },
     };
   }, [
+    canCommitCustomPolygon,
     canEditFootprint,
     canRotatePlan,
+    deckOutlineMode,
+    drawOutlineCloseHovered,
+    drawOutlineCloseReady,
+    drawOutlineConfirmedPointCount,
+    drawOutlineHasError,
+    activeDrawOutlineLandingPoint,
+    drawOutlinePreviewPointKind,
+    drawOutlinePreviewPolygon,
+    drawOutlineSeedPolygon,
+    drawOutlineViewModel.hideHouseFootprint,
+    drawOutlineViewModel.isActive,
     footprintActiveHandleId,
     footprintContextHovered,
     footprintHoveredAttachmentSide,
     footprintHoveredHandleId,
     handleFootprintAttachmentSideSelect,
     handleFootprintDragStart,
+    handleFootprintEdgeAdd,
+    handleFootprintModeSelect,
     handleFootprintPresetSelect,
     handleFootprintRotate,
+    handleFootprintVertexDelete,
+    handleFootprintVertexDragStart,
+    handleDrawOutlineClose,
+    onPickAttachedDeckHostEdge,
+    pendingAttachedDeckHostEdgePick,
   ]);
+
+  const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
+    if (!canEditPlanDimensions) return undefined;
+    return {
+      available: true,
+      hoveredResizeFieldId: planHoveredResizeFieldId,
+      activeResizeFieldId: planActiveResizeFieldId,
+      onResizeFieldHover: (fieldId) => setPlanHoveredResizeFieldId(fieldId),
+      onResizeFieldDragStart: handlePlanFieldDragStart,
+      onSvgMount: (node) => {
+        footprintSvgRef.current = node;
+      },
+    };
+  }, [canEditPlanDimensions, handlePlanFieldDragStart, planActiveResizeFieldId, planHoveredResizeFieldId]);
 
   const scaleFrameStyle = useMemo(
     () => ({
-      width: `${zoom * 100}%`,
+      transform: `translate(${viewportTransform.panX}px, ${viewportTransform.panY}px) scale(${zoom})`,
     }),
-    [zoom],
+    [viewportTransform.panX, viewportTransform.panY, zoom],
   );
-
-  const planStats = planViewModel
-    ? `${planViewModel.primarySize.lengthA?.toFixed(1) ?? '?'}m x ${planViewModel.primarySize.spanA?.toFixed(1) ?? '?'}m`
-    : null;
+  const drawPopoverStyle = useMemo(
+    () =>
+      drawPopoverPosition
+        ? {
+            left: `${drawPopoverPosition.left}px`,
+            top: `${drawPopoverPosition.top}px`,
+          }
+        : undefined,
+    [drawPopoverPosition],
+  );
 
   return (
     <section className={styles.viewport} aria-label={`${view === 'plan' ? 'Plan' : 'Section'} model space viewport`} style={moduleDrawingThemeCssVariables('model')}>
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarGroup}>
-          <div className={styles.toolbarMeta}>
-            <p className={styles.eyebrow}>Model Space</p>
-            <h3 className={styles.title}>{showPlanViewport ? 'Live plan viewport' : 'Drawing-space viewer'}</h3>
-            <p className={styles.subtitle}>
-              {showPlanViewport
-                ? planStats
-                  ? `${planStats}. The configurator rail drives the live draft while this viewport stays focused on the geometry.`
-                  : 'The configurator rail drives the live draft while this viewport stays focused on the geometry.'
-                : 'Section model-space editing lands in a later milestone. Use Sheet View for the generated section for now.'}
-            </p>
-          </div>
-        </div>
-
-        <div className={styles.toolbarGroup}>
-          <button type="button" className={styles.toolbarButton} onClick={() => handleZoomChange(-0.2)}>
-            Zoom out
+      <div
+        ref={scrollerRef}
+        data-model-space-scroller
+        data-draw-outline-active={drawOutlineViewModel.isActive ? 'true' : 'false'}
+        data-draw-outline-state={drawOutlineDiagnosticState}
+        data-draw-outline-point-count={drawOutlineConfirmedPointCount}
+        data-draw-outline-has-pending-point={drawOutlinePendingPoint ? 'true' : 'false'}
+        data-draw-outline-preview-kind={drawOutlinePreviewPointKind ?? 'none'}
+        data-draw-outline-close-ready={drawOutlineCloseReady ? 'true' : 'false'}
+        data-draw-outline-close-hovered={drawOutlineCloseHovered ? 'true' : 'false'}
+        data-draw-outline-has-landing-point={activeDrawOutlineLandingPoint ? 'true' : 'false'}
+        data-draw-outline-landing-along-m={activeDrawOutlineLandingPoint?.alongM ?? ''}
+        data-draw-outline-landing-depth-m={activeDrawOutlineLandingPoint?.depthM ?? ''}
+        data-draw-outline-gesture={drawOutlineGesture}
+        data-draw-outline-pan-threshold-px={DRAW_OUTLINE_PAN_THRESHOLD_PX}
+        data-draw-outline-angle-mode={drawOutlineViewModel.angleMode}
+        data-draw-outline-has-error={drawOutlineHasError ? 'true' : 'false'}
+        data-draw-outline-can-redraw={canRedrawDrawOutline ? 'true' : 'false'}
+        data-draw-outline-redraw-active={drawOutlineRedrawActive ? 'true' : 'false'}
+        data-draw-outline-draft-source={drawOutlineDraftSource}
+        data-model-space-gesture={modelSpaceGesture}
+        data-model-space-active-touch-count={activeTouchCount}
+        data-model-space-pinch-active={pinchZoomActive ? 'true' : 'false'}
+        data-model-space-pinch-source={pinchSource}
+        data-model-space-auto-fit-key={modelSpaceAutoFitKey}
+        data-model-space-auto-fit-ready={modelSpaceAutoFitReady ? 'true' : 'false'}
+        data-house-first-deck-drag-active={deckDragSession ? 'true' : 'false'}
+        data-house-first-deck-snap-state={deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'free') : 'idle'}
+        data-house-first-selected-deck-id={selectedDeckShape?.ownerId ?? ''}
+        data-house-first-selected-deck-type={selectedDeckType}
+        data-house-first-selected-deck-drag-eligible={
+          selectedDeckShape?.deckDragEligibility?.eligible ? 'true' : 'false'
+        }
+        data-house-first-selected-deck-host-edge-resolvable={
+          selectedDeckShape?.deckInteraction ? 'true' : 'false'
+        }
+        data-house-first-selected-deck-relationship-dims={
+          selectedDeckRelationshipDimensionsAvailable ? 'true' : 'false'
+        }
+        data-house-first-selected-deck-drag-reason={
+          selectedDeckShape?.deckDragEligibility?.reason ?? ''
+        }
+        data-native-selection-suppressed="true"
+        className={`${styles.scroller} ${
+          modelSpaceGesture === 'mouse-pan' || modelSpaceGesture === 'pinch-zoom' || modelSpaceGesture === 'trackpad-pinch'
+            ? styles.scrollerPanning
+            : ''
+        }`}
+        onPointerDownCapture={handleScrollerPointerDownCapture}
+        onPointerMove={handleScrollerPointerMove}
+        onPointerLeave={handleScrollerPointerLeave}
+        onPointerDown={handleCanvasPanStart}
+        onWheel={handleWheel}
+      >
+        <div className={styles.canvasControls} onPointerDown={(event) => event.stopPropagation()}>
+          <button type="button" className={styles.overlayButton} onClick={() => handleZoomChange(-0.1)}>
+            -
           </button>
           <span className={styles.zoomLabel}>{Math.round(zoom * 100)}%</span>
-          <button type="button" className={styles.toolbarButton} onClick={() => handleZoomChange(0.2)}>
-            Zoom in
+          <button type="button" className={styles.overlayButton} onClick={() => handleZoomChange(0.1)}>
+            +
           </button>
-          <button type="button" className={styles.toolbarButton} onClick={handleResetView}>
-            Reset view
+          <button type="button" className={styles.overlayButton} onClick={handleFitView}>
+            Fit view
           </button>
         </div>
-      </div>
 
-      {footprintError ? <p className={styles.error}>{footprintError}</p> : null}
+        {canRedrawDrawOutline ? (
+          <div className={styles.drawRedrawBar} data-draw-outline-redraw-entry="true" onPointerDown={(event) => event.stopPropagation()}>
+            <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineRedraw}>
+              Redraw outline
+            </button>
+          </div>
+        ) : null}
 
-      <div ref={scrollerRef} className={styles.scroller} onScroll={handleScroll} onWheel={handleWheel}>
-        <div className={styles.scaleFrame} style={scaleFrameStyle}>
+        {drawOutlineViewModel.isActive ? (
+          <div
+            className={styles.drawStatus}
+            aria-label="Draw outline status"
+            data-draw-outline-status="true"
+            data-draw-outline-status-state={drawOutlineDiagnosticState}
+          >
+            <span className={styles.drawStatusText}>{drawOutlineStatusCopy}</span>
+            <span className={styles.drawStatusMeta}>Esc cancels</span>
+          </div>
+        ) : null}
+
+        {!drawOutlineViewModel.isActive && deckInteractionHint ? (
+          <div
+            className={[
+              styles.deckInteractionHint,
+              deckInteractionHint.tone === 'eligible'
+                ? styles.deckInteractionHintEligible
+                : deckInteractionHint.tone === 'deferred'
+                  ? styles.deckInteractionHintDeferred
+                  : styles.deckInteractionHintStatus,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            aria-label="Deck interaction hint"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <span className={styles.deckInteractionHintTitle}>{deckInteractionHint.title}</span>
+            <span className={styles.deckInteractionHintText}>{deckInteractionHint.detail}</span>
+          </div>
+        ) : null}
+
+        {interactionError ? <p className={styles.error}>{interactionError}</p> : null}
+
+        {activeDrawOutlineState ? (
+          <div
+            ref={drawPopoverRef}
+            className={styles.drawPopover}
+            aria-label="Draw house outline controls"
+            data-draw-outline-controls="true"
+            data-draw-popover-anchor={drawPopoverPosition ? 'vertex' : 'default'}
+            style={drawPopoverStyle}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <p className={styles.drawHint}>
+              {activeDrawOutlineState.points.length
+                ? `${activeDrawOutlineState.points.length} point${activeDrawOutlineState.points.length === 1 ? '' : 's'} placed`
+                : 'Click first corner'}
+            </p>
+            <label className={styles.popoverField}>
+              <span className={styles.fieldLabel}>Distance (m)</span>
+              <input
+                className={styles.input}
+                inputMode="decimal"
+                value={activeDrawOutlineState.distanceDraft}
+                disabled={!activeDrawOutlineState.points.length}
+                onChange={(event) =>
+                  setDrawOutlineState((current) => setDrawOutlineDistanceDraft(current, event.target.value).state)
+                }
+              />
+            </label>
+            <label className={styles.popoverField}>
+              <span className={styles.fieldLabel}>Angle (deg)</span>
+              <input
+                className={styles.input}
+                inputMode="decimal"
+                value={activeDrawOutlineState.angleDraft}
+                disabled={!activeDrawOutlineState.points.length}
+                onChange={(event) =>
+                  setDrawOutlineState((current) => setDrawOutlineAngleDraft(current, event.target.value).state)
+                }
+              />
+            </label>
+            <button type="button" className={styles.confirmButton} onClick={handleDrawOutlineConfirmSegment} disabled={!activeDrawOutlineState.points.length}>
+              Confirm
+            </button>
+            <div className={styles.drawActions}>
+              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineClose}>
+                Close
+              </button>
+              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineUndo} disabled={!activeDrawOutlineState.points.length}>
+                Undo
+              </button>
+              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineCancel}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {houseFirstDimensionEditor ? (
+          <div
+            ref={dimensionPopoverRef}
+            className={styles.dimensionPopover}
+            aria-label="Edit plan dimension"
+            style={houseFirstDimensionPopoverStyle}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <label className={styles.popoverField}>
+              <span className={styles.fieldLabel}>Dimension (m)</span>
+              <input
+                autoFocus
+                className={styles.input}
+                inputMode="decimal"
+                value={houseFirstDimensionEditor.value}
+                onChange={(event) =>
+                  setHouseFirstDimensionEditor((current) =>
+                    current
+                      ? {
+                          ...current,
+                          value: event.target.value,
+                        }
+                      : current,
+                  )
+                }
+                onBlur={() => {
+                  if (!houseFirstDimensionEditor) return;
+                  void commitHouseFirstDimensionEdit(houseFirstDimensionEditor);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeHouseFirstDimensionEditor();
+                    return;
+                  }
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  if (!houseFirstDimensionEditor) return;
+                  void commitHouseFirstDimensionEdit(houseFirstDimensionEditor);
+                }}
+              />
+            </label>
+          </div>
+        ) : null}
+
+        <div ref={scaleFrameRef} data-model-space-scale-frame className={styles.scaleFrame} style={scaleFrameStyle}>
           <div className={styles.canvas}>
-            {showPlanViewport ? (
+            {showDrawingViewport ? (
               <ModuleDrawingRenderer
                 view={view}
                 status={status}
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="model"
-                footprintEditor={footprintEditor}
+                displayMode={workbenchDisplayMode}
+                interactiveFields={showPlanViewport ? modelInteractiveFields : undefined}
+                footprintEditor={showPlanViewport ? footprintEditor : undefined}
+                planInteraction={showPlanViewport ? planInteraction : undefined}
+                houseFirstPlanOverlay={showPlanViewport ? houseFirstPlanOverlay : null}
+                houseFirstPreviewOverlay={showPlanViewport ? houseFirstPreviewOverlay : null}
+                activeHouseFirstCustomEdgeId={houseFirstActiveCustomEdgeId}
+                onHouseFirstShapeSelect={showPlanViewport ? handleHouseFirstShapeSelect : undefined}
+                onHouseFirstShapeDragStart={showPlanViewport ? handleHouseFirstShapeDragStart : undefined}
+                onHouseFirstCustomEdgeSelect={showPlanViewport ? handleHouseFirstCustomEdgeSelect : undefined}
+                onHouseFirstDimensionActivate={showPlanViewport ? activateHouseFirstDimensionEditor : undefined}
               />
+            ) : showHouseSectionPlaceholder ? (
+              <div className={styles.placeholder}>
+                <p className={styles.placeholderTitle}>House mode section view is not available yet.</p>
+              </div>
             ) : (
               <div className={styles.placeholder}>
-                <p className={styles.placeholderTitle}>Section model space is staged for a later milestone.</p>
-                <p className={styles.placeholderText}>Switch to Sheet View to review the generated section while we finish the shared section and elevation foundation.</p>
+                <p className={styles.placeholderTitle}>Waiting for valid model-space geometry.</p>
+                <p className={styles.placeholderText}>Resolve the current drawing inputs to restore the generated model-space view.</p>
               </div>
             )}
           </div>

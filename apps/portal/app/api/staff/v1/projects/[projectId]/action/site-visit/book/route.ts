@@ -1,7 +1,7 @@
 import { automationRunner } from '@/lib/automation/AutomationRunner';
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, loadProjectAndContact, missingColumnFromError, parseIso, salespersonSchemaMismatchMessage } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -21,14 +21,18 @@ function isOnConflictConstraintMissing(error: unknown): boolean {
   return code === '42P10' || (msg.includes('on conflict') && msg.includes('no unique'));
 }
 
-async function manualUpsertByProjectId(projectUuid: string, payloadIn: Record<string, any>): Promise<{ id: string | null; error: any | null }> {
+async function manualUpsertByProjectId(
+  supabase: SupabaseClient,
+  projectUuid: string,
+  payloadIn: Record<string, any>,
+): Promise<{ id: string | null; error: any | null }> {
   const payload = { ...payloadIn };
   const patch: any = { ...payload };
   delete patch.project_id;
 
   // Try update first (works even without a unique constraint).
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const updateRes = await supabaseServer
+    const updateRes = await supabase
       .from('site_visit_events')
       .update(patch as any)
       .eq('project_id', projectUuid)
@@ -60,7 +64,7 @@ async function manualUpsertByProjectId(projectUuid: string, payloadIn: Record<st
   // No rows to update, fall back to insert.
   const insertPayload: any = { project_id: projectUuid, ...patch };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const insertRes = await supabaseServer.from('site_visit_events').insert(insertPayload as any).select('id').single();
+    const insertRes = await supabase.from('site_visit_events').insert(insertPayload as any).select('id').single();
     if (!insertRes.error) return { id: typeof (insertRes.data as any)?.id === 'string' ? (insertRes.data as any).id : null, error: null };
 
     if (isMissingColumnError(insertRes.error)) {
@@ -83,11 +87,15 @@ async function manualUpsertByProjectId(projectUuid: string, payloadIn: Record<st
   return { id: null, error: { message: 'Insert failed after retries', code: 'CLIENT_RETRY' } };
 }
 
-async function upsertSiteVisitEventByProjectWithRetry(projectUuid: string, payloadIn: Record<string, any>): Promise<{ id: string | null; error: any | null }> {
+async function upsertSiteVisitEventByProjectWithRetry(
+  supabase: SupabaseClient,
+  projectUuid: string,
+  payloadIn: Record<string, any>,
+): Promise<{ id: string | null; error: any | null }> {
   const payload = { ...payloadIn };
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const res = await supabaseServer
+    const res = await supabase
       .from('site_visit_events')
       .upsert(payload as any, { onConflict: 'project_id' })
       .select('id')
@@ -96,7 +104,7 @@ async function upsertSiteVisitEventByProjectWithRetry(projectUuid: string, paylo
     if (!res.error) return { id: typeof (res.data as any)?.id === 'string' ? (res.data as any).id : null, error: null };
 
     if (isOnConflictConstraintMissing(res.error)) {
-      return manualUpsertByProjectId(projectUuid, payload);
+      return manualUpsertByProjectId(supabase, projectUuid, payload);
     }
 
     if (isMissingColumnError(res.error)) {
@@ -121,8 +129,9 @@ async function upsertSiteVisitEventByProjectWithRetry(projectUuid: string, paylo
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -147,7 +156,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   if (!salespersonId) return jsonError('salespersonId is required', 400);
   if (!SALES_PEOPLE.some((p) => p.id === salespersonId)) return jsonError('Invalid salespersonId', 400);
 
-  const prev = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
+  const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
   if (prev.error || !prev.data) return jsonError('Project not found', 404);
   const stage = normalizeProjectStatus((prev.data as any).pipeline_stage).status;
   if (stage !== 'SITE_VISIT') return jsonError('Invalid stage transition (expected SITE_VISIT)', 409);
@@ -165,7 +174,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       ...(notes ? { notes } : null),
     };
 
-    const upsertRes = await upsertSiteVisitEventByProjectWithRetry(projectUuid, payload);
+    const upsertRes = await upsertSiteVisitEventByProjectWithRetry(supabase, projectUuid, payload);
     if (upsertRes.error) {
       const schemaMsg = salespersonSchemaMismatchMessage(upsertRes.error);
       if (schemaMsg) return jsonError(schemaMsg, 500);
@@ -185,7 +194,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   });
 
   // Ensure assigned salesperson + notes are persisted even if the automation schema is behind.
-  await upsertSiteVisitEventByProjectWithRetry(projectUuid, {
+  await upsertSiteVisitEventByProjectWithRetry(supabase, projectUuid, {
     project_id: projectUuid,
     status: 'CONFIRMED',
     scheduled_start: start,

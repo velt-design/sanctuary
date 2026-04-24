@@ -11,9 +11,11 @@ function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_AN
 
 let cachedServer: SupabaseClient | null = null;
 let cachedAnon: SupabaseClient | null = null;
+let cachedServiceRole: SupabaseClient | null = null;
 let cachedUrl = '';
 let cachedServerKey = '';
 let cachedAnonKey = '';
+let cachedServiceRoleKey = '';
 
 export function getSupabaseAnon(): SupabaseClient {
   const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
@@ -28,6 +30,9 @@ export function getSupabaseAnon(): SupabaseClient {
   return cachedAnon;
 }
 
+// Compatibility client for untouched server callers. New code should prefer
+// `supabaseServiceRole` for server-owned operations or `getSupabaseServerAuth()`
+// from `@/lib/supabase/serverClient` for auth-bound access.
 export function getSupabaseServer(): SupabaseClient {
   const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
@@ -40,6 +45,20 @@ export function getSupabaseServer(): SupabaseClient {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
   return cachedServer;
+}
+
+// Use this client for server-owned operational reads and writes.
+export function getSupabaseServiceRole(): SupabaseClient {
+  const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
+  const key = requiredEnv('SUPABASE_SERVICE_ROLE_KEY');
+
+  if (cachedServiceRole && cachedUrl === url && cachedServiceRoleKey === key) return cachedServiceRole;
+  cachedUrl = url;
+  cachedServiceRoleKey = key;
+  cachedServiceRole = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return cachedServiceRole;
 }
 
 function bindIfFunction<T>(value: T, ctx: any): T {
@@ -60,5 +79,12 @@ export const supabaseServer: SupabaseClient = new Proxy({} as SupabaseClient, {
   },
 });
 
-// Back-compat: prefer `supabaseServer` in route handlers.
+export const supabaseServiceRole: SupabaseClient = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    const client = getSupabaseServiceRole() as any;
+    return bindIfFunction(client[prop], client);
+  },
+});
+
+// Back-compat alias for untouched callers. Do not use in new code.
 export const supabase: SupabaseClient = supabaseServer;

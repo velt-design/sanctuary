@@ -22,10 +22,7 @@ export const PORTAL_LOCAL_FIRST_MUTATIONS = {
   designRequestCreate: 'portal.designRequest.create',
   quoteCreateFromEstimate: 'portal.quote.createFromEstimate',
   quoteUpdateDraft: 'portal.quote.updateDraft',
-  projectDetailsUpdate: 'portal.project.details.update',
   estimateNotesUpdate: 'portal.estimate.notes.update',
-  projectTaskToggle: 'portal.project.tasks.toggle',
-  contactUpdate: 'portal.contact.update',
 } as const;
 
 export type PortalEstimatePayload = {
@@ -92,33 +89,16 @@ export type PortalProjectDetailsDraft = {
   nextActionDate: string;
 };
 
-export type PortalProjectDetailsMutationPayload = {
-  projectId: string;
-  contactId: string | null;
-  draft: PortalProjectDetailsDraft;
-};
-
 export type PortalEstimateNotesMutationPayload = {
   estimateId: string;
   projectId: string;
   internalNotes: string;
 };
 
-export type PortalProjectTaskToggleMutationPayload = {
-  projectId: string;
-  taskKey: string;
-  completed: boolean;
-};
-
 export type PortalContactDraft = {
   displayName: string;
   email: string;
   phone: string;
-};
-
-export type PortalContactUpdateMutationPayload = {
-  contactId: string;
-  draft: PortalContactDraft;
 };
 
 function makeLocalToken(): string {
@@ -261,14 +241,6 @@ export function buildCalculatorDraftEntityKey(draftSessionKey: string): string {
   return `calculator:draft:${draftSessionKey}`;
 }
 
-export function buildProjectDetailsEntityKey(projectId: string): string {
-  return `project:details:${projectId}`;
-}
-
-export function buildProjectDetailsDraftEntityKey(projectId: string): string {
-  return `project:details:draft:${projectId}`;
-}
-
 export function buildEstimateEntityKey(estimateId: string): string {
   return `estimate:detail:${estimateId}`;
 }
@@ -287,22 +259,6 @@ export function buildEstimateDrawingDraftEntityKey(estimateId: string): string {
 
 export function buildQuoteEntityKey(quoteVersionId: string): string {
   return `quote:detail:${quoteVersionId}`;
-}
-
-export function buildProjectTasksEntityKey(projectId: string): string {
-  return `project:tasks:${projectId}`;
-}
-
-export function buildProjectTasksDraftEntityKey(projectId: string): string {
-  return `project:tasks:draft:${projectId}`;
-}
-
-export function buildContactEntityKey(contactId: string): string {
-  return `contact:detail:${contactId}`;
-}
-
-export function buildContactDraftEntityKey(contactId: string): string {
-  return `contact:detail:draft:${contactId}`;
 }
 
 export function createLocalEstimateId(): string {

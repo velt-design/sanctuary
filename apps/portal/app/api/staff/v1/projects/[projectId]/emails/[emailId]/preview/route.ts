@@ -1,7 +1,6 @@
-import { jsonError, jsonOk, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { renderTemplate } from '@/lib/emails/renderTemplate';
 import { isPortalTransactionalTemplateId, portalTransactionalTemplateBaseName } from '@/lib/emails/transactionalTemplates';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { isUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { renderWebsiteAutoresponder, isWebsiteAutoresponderTemplateId } from '@/lib/sharedEmails';
 
@@ -29,8 +28,9 @@ function renderDbTemplate(templateHtml: string, vars: Record<string, unknown>): 
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ projectId: string; emailId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -44,7 +44,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
   const emailUuid = String(emailId ?? '').trim();
   if (!isUuid(emailUuid)) return jsonError('Invalid emailId', 400);
 
-  const outboxRes = await supabaseServer
+  const outboxRes = await supabase
     .from('email_outbox')
     .select('id, project_id, template_id, variables')
     .eq('id', emailUuid)
@@ -79,7 +79,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   // Fallback: render DB template with simple {{var}} replacement
-  const tplRes = await supabaseServer.from('email_templates').select('id, body_html').eq('id', templateId).single();
+  const tplRes = await supabase.from('email_templates').select('id, body_html').eq('id', templateId).single();
   if (tplRes.error || !tplRes.data) {
     return jsonOk({ html: `<p>Preview not available for template: ${escapeHtml(templateId || 'unknown')}</p>` });
   }

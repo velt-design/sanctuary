@@ -28,6 +28,12 @@
       "@sp/costing/*": [
         "../../packages/costing/src/*"
       ],
+      "@sp/geometry": [
+        "../../packages/geometry/src/index.ts"
+      ],
+      "@sp/geometry/*": [
+        "../../packages/geometry/src/*"
+      ],
       "@sp/quote-format": [
         "../../packages/quote-format/src/index.ts"
       ],

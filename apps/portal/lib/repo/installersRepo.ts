@@ -4,14 +4,6 @@ import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRunti
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
 
-const DEFAULT_SEED: Array<{ name: string; color: string; sort_order: number; short_code: string | null }> = [
-  { name: 'Jayden', color: PORTAL_DEFAULT_ACCENT_HEX, sort_order: 1, short_code: 'JW' },
-  { name: 'David', color: '#1F6E8C', sort_order: 2, short_code: 'DH' },
-  { name: 'Alistair', color: '#2A9D8F', sort_order: 3, short_code: 'AW' },
-  { name: 'Eder', color: '#E09F3E', sort_order: 4, short_code: null },
-  { name: 'Jesse', color: '#6D597A', sort_order: 5, short_code: 'JI' },
-];
-
 function toPostgrestError(value: unknown): PostgrestErrorLike | null {
   if (!value || typeof value !== 'object') return null;
   const v = value as any;
@@ -55,59 +47,7 @@ function installerFromRow(row: any): Installer {
   };
 }
 
-async function ensureSeededIfEmpty(): Promise<void> {
-  const supabase = getSupabaseBrowser();
-  const existing = await supabase.from('schedule_crews').select('id,name,color,sort_order').order('sort_order', { ascending: true });
-  if (existing.error) throw wrapError('schedule_crews', existing.error);
-  const rows = Array.isArray(existing.data) ? (existing.data as any[]) : [];
-
-  if (!rows.length) {
-    const insert = await supabase.from('schedule_crews').insert(DEFAULT_SEED as any);
-    if (insert.error) throw wrapError('schedule_crews', insert.error);
-    return;
-  }
-
-  const expectedNames = new Set(DEFAULT_SEED.map((c) => c.name));
-  const hasAnyExpected = rows.some((r) => typeof r?.name === 'string' && expectedNames.has(r.name));
-  const byName = new Map<string, { id: string }>();
-  for (const r of rows) {
-    if (typeof r?.name === 'string' && typeof r?.id === 'string') byName.set(r.name, { id: r.id });
-  }
-
-  const hasLegacy = !hasAnyExpected && byName.has('Crew 1') && byName.has('Crew 2') && byName.has('Crew 3');
-  if (!hasLegacy) return;
-
-  const legacyMap: Array<{ legacy: string; next: (typeof DEFAULT_SEED)[number] }> = [
-    { legacy: 'Crew 1', next: DEFAULT_SEED[0] },
-    { legacy: 'Crew 2', next: DEFAULT_SEED[1] },
-    { legacy: 'Crew 3', next: DEFAULT_SEED[2] },
-  ];
-
-  for (const m of legacyMap) {
-    const row = byName.get(m.legacy);
-    if (!row) continue;
-    const update = await supabase
-      .from('schedule_crews')
-      .update({ name: m.next.name, color: m.next.color, sort_order: m.next.sort_order, short_code: m.next.short_code } as any)
-      .eq('id', row.id);
-    if (update.error) throw wrapError('schedule_crews', update.error);
-  }
-
-  const namesAfter = new Set<string>(DEFAULT_SEED.slice(0, 3).map((c) => c.name));
-  for (const r of rows) {
-    if (typeof r?.name === 'string') namesAfter.add(r.name);
-  }
-
-  const missing = DEFAULT_SEED.filter((c) => !namesAfter.has(c.name));
-  if (missing.length) {
-    const insert = await supabase.from('schedule_crews').insert(missing as any);
-    if (insert.error) throw wrapError('schedule_crews', insert.error);
-  }
-}
-
 export async function listInstallers(opts?: { activeOnly?: boolean }): Promise<Installer[]> {
-  await ensureSeededIfEmpty();
-
   const supabase = getSupabaseBrowser();
   const { data, error } = await supabase.from('schedule_crews').select('*').order('sort_order', { ascending: true });
   if (error) throw wrapError('schedule_crews', error);

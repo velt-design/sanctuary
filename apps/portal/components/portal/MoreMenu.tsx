@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 
 export type MoreMenuItem = {
   label: string;

@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import styles from '@/app/staff/projects/projects.module.css';
+import Modal from '@/components/ui/modal/Modal';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { NEXT_ACTION_TYPE_ORDER, nextActionTypeLabel } from '@/lib/types/project';
 import { setNextAction } from '../actions';
 
@@ -40,11 +41,17 @@ export default function SetNextActionModal(props: {
     return exists ? ACTION_OPTIONS : [...ACTION_OPTIONS, { value: actionLabel, label: actionLabel }];
   }, [actionLabel]);
 
-  if (!props.open) return null;
-
   return (
-    <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-label="Set next action">
-      <div className={styles.modal}>
+    <Modal
+      open={props.open}
+      onClose={() => props.onOpenChange(false)}
+      ariaLabel="Set next action"
+      overlayClassName={styles.modalOverlay}
+      panelClassName={styles.modal}
+      closeOnBackdrop={!pending}
+      closeOnEsc={!pending}
+    >
+      <div>
         <div className={styles.modalHeader}>
           <div>
             <div className={styles.modalTitle}>Set next action</div>
@@ -52,7 +59,12 @@ export default function SetNextActionModal(props: {
               Applies to this project.
             </div>
           </div>
-          <button type="button" className={styles.modalClose} onClick={() => props.onOpenChange(false)}>
+          <button
+            type="button"
+            className={styles.modalClose}
+            onClick={() => props.onOpenChange(false)}
+            disabled={pending}
+          >
             Close
           </button>
         </div>
@@ -126,6 +138,6 @@ export default function SetNextActionModal(props: {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

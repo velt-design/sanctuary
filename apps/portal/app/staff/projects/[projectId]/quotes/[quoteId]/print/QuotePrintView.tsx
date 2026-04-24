@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Quote } from '@/lib/types/quote';
 import { quoteCustomerTotalIncGst, quoteLabel, quoteStatusLabel } from '@/lib/types/quote';
+import { formatPortalDate } from '@/lib/format/portalDateTime';
 import { getQuote } from '@/lib/repo/quotesRepo';
 import styles from '../../../../projects.module.css';
 
@@ -69,7 +70,7 @@ export default function QuotePrintView({ projectId, quoteId }: { projectId: stri
             {content.heading?.trim() ? content.heading : title}
           </h1>
           <p className={styles.subtitle} style={{ marginTop: 0 }}>
-            {quoteStatusLabel(quote.status)} · {new Date(quote.createdAt).toLocaleDateString()} · {quoteLabel(quote)}
+            {quoteStatusLabel(quote.status)} · {formatPortalDate(quote.createdAt)} · {quoteLabel(quote)}
           </p>
         </div>
       </section>

@@ -1,11 +1,11 @@
-import { jsonError, jsonOk, parseJsonBody, requireAdminSession } from '@/lib/api/adminApi';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { jsonError, jsonOk, parseJsonBody, requireAdminContext } from '@/lib/api/adminApi';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  const auth = await requireAdminSession();
+  const auth = await requireAdminContext();
   if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return parsed.response;
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
   for (let index = 0; index < orderedIds.length; index += 1) {
     const crewId = orderedIds[index];
-    const updateRes = await supabaseServer.from('schedule_crews').update({ sort_order: index + 1 } as any).eq('id', crewId);
+    const updateRes = await supabase.from('schedule_crews').update({ sort_order: index + 1 } as any).eq('id', crewId);
     if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to reorder crews', 500);
   }
 

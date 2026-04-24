@@ -17,6 +17,27 @@
   --portal-bg-surface-rgb: 246, 247, 244;
   --portal-border: #D0D4CC;
   --portal-border-rgb: 208, 212, 204;
+  --portal-bg-elevated: #FBFCF9;
+  --portal-bg-elevated-rgb: 251, 252, 249;
+  --portal-space-1: 6px;
+  --portal-space-2: 10px;
+  --portal-space-3: 14px;
+  --portal-space-4: 18px;
+  --portal-space-5: 24px;
+  --portal-space-6: 32px;
+  --portal-radius-sm: 10px;
+  --portal-radius-md: 14px;
+  --portal-radius-lg: 18px;
+  --portal-radius-xl: 24px;
+  --portal-radius-pill: 999px;
+  --portal-shadow-card: 0 18px 48px rgba(var(--portal-text-rgb), 0.08);
+  --portal-shadow-elevated: 0 26px 80px rgba(var(--portal-text-rgb), 0.14);
+  --portal-shadow-dialog: 0 28px 90px rgba(var(--portal-text-rgb), 0.22);
+  --portal-focus-ring: 0 0 0 4px rgba(var(--portal-accent-rgb), 0.14);
+  --portal-status-success-rgb: 22, 163, 74;
+  --portal-status-warning-rgb: 180, 83, 9;
+  --portal-status-danger-rgb: 185, 28, 28;
+  --portal-status-info-rgb: 2, 132, 199;
   --accentRed: var(--portal-accent);
   --accentRgb: var(--portal-accent-rgb);
   --fg: var(--portal-text);
@@ -39,6 +60,9 @@ body {
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
   background: var(--portal-bg-page);
   color: var(--portal-text);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Portal layout utilities */

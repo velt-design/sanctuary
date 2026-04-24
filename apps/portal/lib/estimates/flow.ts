@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { supabaseServer } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { computeEstimateEditability } from './editability';
 import type { EstimateEditability, EstimateFlowState } from './types';
@@ -54,12 +55,17 @@ function isDraftStatus(value: unknown): boolean {
   return typeof value === 'string' && value.trim().toLowerCase() === 'draft';
 }
 
-export async function loadProjectEstimateFlowMaps(projectUuid: string, estimateRows?: EstimateRowLite[]): Promise<EstimateFlowMaps> {
+export async function loadProjectEstimateFlowMaps(
+  projectUuid: string,
+  estimateRows?: EstimateRowLite[],
+  supabase?: SupabaseClient,
+): Promise<EstimateFlowMaps> {
+  const client = supabase ?? (await getSupabaseServerAuth());
   const estimates =
     estimateRows ??
     (
       (
-        await supabaseServer
+        await client
           .from('estimates')
           .select('id, status, created_at')
           .eq('project_id', projectUuid)
@@ -76,7 +82,7 @@ export async function loadProjectEstimateFlowMaps(projectUuid: string, estimateR
     };
   }
 
-  const quoteVersionsRes = await supabaseServer
+  const quoteVersionsRes = await client
     .from('quote_versions')
     .select('id, source_estimate_version_id, status, sent_at, created_at, version_number, quotes(quote_ref)')
     .in('source_estimate_version_id', estimateIds);
@@ -87,7 +93,7 @@ export async function loadProjectEstimateFlowMaps(projectUuid: string, estimateR
 
   let sendLogs: QuoteSendLogRow[] = [];
   if (quoteVersionIds.length) {
-    const sendLogsRes = await supabaseServer
+    const sendLogsRes = await client
       .from('quote_send_logs')
       .select('quote_version_id, status, sent_at, created_at')
       .in('quote_version_id', quoteVersionIds);
@@ -96,7 +102,7 @@ export async function loadProjectEstimateFlowMaps(projectUuid: string, estimateR
   }
 
   let jobPackGenerations: JobPackGenerationRow[] = [];
-  const jobPackGenerationsRes = await supabaseServer
+  const jobPackGenerationsRes = await client
     .from('job_pack_generations')
     .select('estimate_id, quote_version_id, created_at')
     .in('estimate_id', estimateIds);
@@ -187,4 +193,3 @@ export function estimateFlowStateFor(
 ): EstimateFlowState {
   return flowByEstimateId.get(estimateUuid) ?? emptyFlowState();
 }
-

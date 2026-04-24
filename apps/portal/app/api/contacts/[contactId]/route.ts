@@ -1,69 +1,25 @@
+import { createRouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
-import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
-import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
+import { uuidFromAppId } from '@/lib/supabase/mappers';
+import { isRecord, mapContact, readString, updateContactWithRetry } from '../_shared';
 
 export const runtime = 'nodejs';
 
-type AnyRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is AnyRecord {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readString(value: unknown): string | null {
-  if (value == null) return null;
-  return String(value).trim();
-}
-
-async function updateContactWithRetry(contactUuid: string, payloadIn: Record<string, any>) {
-  const payload = { ...payloadIn };
-  if (!Object.keys(payload).length) return { data: null, error: null };
-
-  for (let attempt = 0; attempt < 6; attempt += 1) {
-    const res = await supabaseServer.from('contacts').update(payload).eq('id', contactUuid).select('*').single();
-    if (!res.error && res.data) return res;
-
-    const missing = missingColumnFromError(res.error);
-    if (missing && missing in payload) {
-      delete payload[missing];
-      if (!Object.keys(payload).length) return { data: null, error: null };
-      continue;
-    }
-
-    return res;
-  }
-
-  return { data: null, error: { message: 'Supabase update failed after retries', code: 'CLIENT_RETRY' } };
-}
-
-function mapContact(row: AnyRecord) {
-  const createdAt = typeof row.created_at === 'string' ? row.created_at : new Date().toISOString();
-  const updatedAt = typeof row.updated_at === 'string' ? row.updated_at : createdAt;
-  return {
-    id: appIdFromUuid('ct', String(row.id ?? '')),
-    displayName: typeof row.name === 'string' ? row.name.trim() : '',
-    email: typeof row.email === 'string' ? row.email : '',
-    phone: typeof row.phone === 'string' ? row.phone : '',
-    createdAt,
-    updatedAt,
-  };
-}
-
 export async function PATCH(req: Request, ctx: { params: Promise<{ contactId: string }> }) {
+  const diagnostics = createRouteDiagnostics(req, '/api/contacts/[contactId]');
   const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  if (!session) return jsonError('Unauthorized', 401, diagnostics);
 
   let contactUuid: string;
   try {
     const { contactId } = await ctx.params;
     contactUuid = uuidFromAppId(contactId, 'ct');
   } catch {
-    return jsonError('Invalid contactId', 400);
+    return jsonError('Invalid contactId', 400, diagnostics);
   }
 
   const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = isRecord(parsed.body) ? parsed.body : {};
 
   const displayName = readString(body.displayName);
@@ -71,7 +27,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ contactId: st
   const phone = readString(body.phone);
 
   if (displayName !== null && !displayName) {
-    return jsonError('Contact name is required', 400);
+    return jsonError('Contact name is required', 400, diagnostics);
   }
 
   const patch: Record<string, any> = {
@@ -85,10 +41,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ contactId: st
   if (updateRes.error || !updateRes.data) {
     const message = updateRes.error?.message ?? 'Failed to update contact';
     if (typeof message === 'string' && message.toLowerCase().includes('not found')) {
-      return jsonError('Contact not found', 404);
+      return jsonError('Contact not found', 404, diagnostics);
     }
-    return jsonError(message, 500);
+    return jsonError(message, 500, diagnostics);
   }
 
-  return jsonOk({ contact: mapContact(updateRes.data as AnyRecord) });
+  return jsonOk({ contact: mapContact(updateRes.data) }, 200, diagnostics);
 }

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { jsonError, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, requireStaffContext } from '@/lib/api/staffApi';
 import { emptyEstimateEditability } from '@/lib/estimates/editability';
 import { buildVersionLabelMap, mapEstimateDetail } from '@/lib/estimates/server';
 import { generateJobPackPdf } from '@/lib/jobPacks/pdf';
 import { isMissingSchemaError, listPowdercoatProfileOptions, loadLatestJobPackGenerationForEstimate, loadPowdercoatOverrideState } from '@/lib/jobPacks/server';
 import { JOB_PACK_SHEETS, type JobPackSheetKey, buildWorkbook } from '@/lib/jobPacks/workbook';
 import type { JobPackPowdercoatOverrideState } from '@/lib/jobPacks/types';
-import { supabaseServer } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
@@ -21,9 +21,9 @@ function parseSheet(value: string | null): JobPackSheetKey | null {
   return match ? match.key : null;
 }
 
-async function resolveVersionLabel(row: any): Promise<string> {
+async function resolveVersionLabel(supabase: SupabaseClient, row: any): Promise<string> {
   if (!row?.project_id) return 'V-';
-  const res = await supabaseServer
+  const res = await supabase
     .from('estimates')
     .select('id, created_at, outputs, version')
     .eq('project_id', row.project_id)
@@ -34,8 +34,9 @@ async function resolveVersionLabel(row: any): Promise<string> {
 }
 
 export async function GET(req: Request) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const url = new URL(req.url);
   const estimateId = url.searchParams.get('estimateId')?.trim() || '';
@@ -53,14 +54,14 @@ export async function GET(req: Request) {
     return jsonError('Invalid estimateId', 400);
   }
 
-  const estimateRes = await supabaseServer.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
+  const estimateRes = await supabase.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
   if (estimateRes.error) return jsonError(estimateRes.error.message ?? 'Failed to load estimate', 500);
   if (!estimateRes.data) return jsonError('Estimate not found', 404);
 
   const generation = await loadLatestJobPackGenerationForEstimate(estimateUuid);
   if (!generation) return jsonError('Generate a job pack from a sent quote before downloading PDFs.', 409);
 
-  const versionLabel = await resolveVersionLabel(estimateRes.data);
+  const versionLabel = await resolveVersionLabel(supabase, estimateRes.data);
   const detail = mapEstimateDetail(estimateRes.data, versionLabel, emptyEstimateEditability());
 
   let overrides: JobPackPowdercoatOverrideState = { version: null, rows: [] };

@@ -1,11 +1,10 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
 import { buildVersionLabelMap, extractVersionNumber, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
-import { syncDraftQuoteVersionsFromEstimate } from '@/lib/quotes/server';
-import { supabaseServer } from '@/lib/supabaseClient';
-import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
+import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -38,12 +37,12 @@ function estimateLockedResponse(editability: Awaited<ReturnType<typeof loadEstim
   );
 }
 
-async function updateEstimateWithRetry(estimateUuid: string, payloadIn: Record<string, any>) {
+async function updateEstimateWithRetry(supabase: SupabaseClient, estimateUuid: string, payloadIn: Record<string, any>) {
   const payload = { ...payloadIn };
   if (!Object.keys(payload).length) return { data: null, error: null };
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const res = await supabaseServer.from('estimates').update(payload).eq('id', estimateUuid).select('*').single();
+    const res = await supabase.from('estimates').update(payload).eq('id', estimateUuid).select('*').single();
     if (!res.error && res.data) return res;
 
     const missing = missingColumnFromError(res.error);
@@ -59,9 +58,9 @@ async function updateEstimateWithRetry(estimateUuid: string, payloadIn: Record<s
   return { data: null, error: { message: 'Supabase update failed after retries', code: 'CLIENT_RETRY' } };
 }
 
-async function resolveVersionLabel(row: any): Promise<string> {
+async function resolveVersionLabel(supabase: SupabaseClient, row: any): Promise<string> {
   if (!row?.project_id) return 'V-';
-  const all = await supabaseServer
+  const all = await supabase
     .from('estimates')
     .select('id, created_at, outputs')
     .eq('project_id', row.project_id)
@@ -73,8 +72,9 @@ async function resolveVersionLabel(row: any): Promise<string> {
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ estimateId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let estimateUuid: string;
   try {
@@ -84,11 +84,11 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estimateId: st
     return jsonError('Invalid estimateId', 400);
   }
 
-  const res = await supabaseServer.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
+  const res = await supabase.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
   if (res.error) return jsonError(res.error.message ?? 'Failed to load estimate', 500);
   if (!res.data) return jsonError('Estimate not found', 404);
 
-  const label = await resolveVersionLabel(res.data);
+  const label = await resolveVersionLabel(supabase, res.data);
   const flowMaps = await loadProjectEstimateFlowMaps(String(res.data.project_id ?? ''));
   const editability = flowMaps.editabilityByEstimateId.get(estimateUuid) ?? (await loadEstimateEditability(estimateUuid));
   const estimate = mapEstimateDetail(res.data, label, editability, estimateFlowStateFor(flowMaps.flowByEstimateId, estimateUuid));
@@ -96,8 +96,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ estimateId: st
 }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let estimateUuid: string;
   try {
@@ -111,7 +112,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
   if (!parsed.ok) return jsonError(parsed.error, 400);
   const body: AnyRecord = parsed.body ?? {};
 
-  const res = await supabaseServer.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
+  const res = await supabase.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
   if (res.error) return jsonError(res.error.message ?? 'Failed to load estimate', 500);
   if (!res.data) return jsonError('Estimate not found', 404);
 
@@ -165,23 +166,12 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
 
   if (!('updated_at' in patch)) patch.updated_at = now;
 
-  const updateRes = await updateEstimateWithRetry(estimateUuid, patch);
+  const updateRes = await updateEstimateWithRetry(supabase, estimateUuid, patch);
   if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update estimate', 500);
 
   const row = updateRes.data ?? res.data;
-  let syncedQuoteVersionIds: string[] = [];
-  if (estimateUpdate) {
-    try {
-      const refreshedDraftQuotes = await syncDraftQuoteVersionsFromEstimate(appIdFromUuid('est', estimateUuid));
-      syncedQuoteVersionIds = refreshedDraftQuotes.map((quote) => quote.id);
-    } catch (error) {
-      console.error('[estimate_update] failed to sync draft quotes from design', {
-        estimateId: estimateUuid,
-        error,
-      });
-    }
-  }
-  const label = await resolveVersionLabel(row);
+  const syncedQuoteVersionIds: string[] = [];
+  const label = await resolveVersionLabel(supabase, row);
   const flowMaps = await loadProjectEstimateFlowMaps(String(row?.project_id ?? ''));
   const editability = flowMaps.editabilityByEstimateId.get(estimateUuid) ?? (await loadEstimateEditability(estimateUuid));
   const estimate = mapEstimateDetail(row, label, editability, estimateFlowStateFor(flowMaps.flowByEstimateId, estimateUuid));

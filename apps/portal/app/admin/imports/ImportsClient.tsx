@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import { importExportFile, readJsonFile, type ImportResult } from '@/lib/export/json';
 import { persistImportResultToDb } from '@/lib/export/importPersist';
 import type { Contact } from '@/lib/types/contact';

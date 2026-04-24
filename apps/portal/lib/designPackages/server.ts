@@ -2,7 +2,7 @@ import 'server-only';
 
 import { buildVersionLabelMap, extractVersionNumber } from '@/lib/estimates/server';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 import { buildDesignPackageDesignerLookups } from './designers';
 import type {
@@ -137,6 +137,7 @@ function designRequestTaskKey(projectUuid: string, requestVersion: number): stri
 }
 
 async function syncDesignRequestTaskStatus(projectUuid: string, requestVersion: number, requestStatus: DesignRequestStatus, nowIso: string) {
+  const supabase = await getSupabaseServerAuth();
   const idempotencyKey = designRequestTaskKey(projectUuid, requestVersion);
   const taskStatus = requestStatus === 'DONE' ? 'DONE' : requestStatus === 'CANCELLED' ? 'SKIPPED' : 'OPEN';
   const taskPatch: Record<string, unknown> = {
@@ -144,7 +145,7 @@ async function syncDesignRequestTaskStatus(projectUuid: string, requestVersion: 
     completed_at: requestStatus === 'DONE' || requestStatus === 'CANCELLED' ? nowIso : null,
   };
 
-  const taskRes = await supabaseServer
+  const taskRes = await supabase
     .from('tasks')
     .update(taskPatch as any)
     .eq('project_id', projectUuid)
@@ -157,8 +158,9 @@ async function syncDesignRequestTaskStatus(projectUuid: string, requestVersion: 
 }
 
 async function syncDesignRequestTaskPriority(projectUuid: string, requestVersion: number, dueAt: string | null) {
+  const supabase = await getSupabaseServerAuth();
   const idempotencyKey = designRequestTaskKey(projectUuid, requestVersion);
-  const taskRes = await supabaseServer
+  const taskRes = await supabase
     .from('tasks')
     .update({ due_at: dueAt } as any)
     .eq('project_id', projectUuid)
@@ -230,7 +232,8 @@ function rowVersionForDesignRequestRow(input: {
 
 async function loadEstimateVersionLabels(projectIds: string[]): Promise<Map<string, string>> {
   if (!projectIds.length) return new Map();
-  const res = await supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const res = await supabase
     .from('estimates')
     .select('id, project_id, created_at, outputs')
     .in('project_id', projectIds)
@@ -264,7 +267,8 @@ async function loadEstimateVersionLabels(projectIds: string[]): Promise<Map<stri
 }
 
 async function loadRawDesignRequestsForProjects(projectIds?: string[]): Promise<DesignRequestRow[]> {
-  const query = supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const query = supabase
     .from('design_package_requests')
     .select(
       [
@@ -298,7 +302,8 @@ async function loadRawDesignRequestsForProjects(projectIds?: string[]): Promise<
 }
 
 async function loadRawDesignRequestById(requestUuid: string): Promise<DesignRequestRow | null> {
-  const res = await supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const res = await supabase
     .from('design_package_requests')
     .select(
       [
@@ -335,25 +340,26 @@ async function hydrateDesignListRows(requests: DesignRequestRow[]): Promise<Pick
       rows: [],
     };
   }
+  const supabase = await getSupabaseServerAuth();
 
   const projectIds = Array.from(new Set(requests.map((row) => row.project_id).filter(Boolean)));
   const estimateIds = Array.from(new Set(requests.map((row) => row.estimate_id).filter((value): value is string => Boolean(value))));
 
   const [projectsRes, siteVisitsRes, quoteVersionsRes, estimateLabels] = await Promise.all([
     projectIds.length
-      ? supabaseServer
+      ? supabase
           .from('projects')
           .select('id, name, site_address, contacts ( name )')
           .in('id', projectIds)
       : Promise.resolve({ data: [], error: null } as any),
     projectIds.length
-      ? supabaseServer
+      ? supabase
           .from('site_visit_events')
           .select('project_id, status, assigned_sales_owner_id, updated_at')
           .in('project_id', projectIds)
       : Promise.resolve({ data: [], error: null } as any),
     estimateIds.length
-      ? supabaseServer
+      ? supabase
           .from('quote_versions')
           .select('source_estimate_version_id, sent_at, quotes ( project_id, quote_ref )')
           .in('source_estimate_version_id', estimateIds)
@@ -487,6 +493,15 @@ export async function loadDesignPackages(): Promise<DesignPackagesResponse> {
   };
 }
 
+export async function loadProjectDesignPackageRows(projectId: string): Promise<DesignListRow[]> {
+  const projectUuid = uuidFromAppId(projectId, 'proj');
+  const requests = await loadRawDesignRequestsForProjects([projectUuid]);
+  const hydrated = await hydrateDesignListRows(requests);
+  return hydrated.rows
+    .slice()
+    .sort((left, right) => right.requestVersion - left.requestVersion || right.updatedAt.localeCompare(left.updatedAt));
+}
+
 export async function loadDesignPackageRow(requestUuid: string): Promise<DesignListRow | null> {
   const request = await loadRawDesignRequestById(requestUuid);
   if (!request) return null;
@@ -495,7 +510,8 @@ export async function loadDesignPackageRow(requestUuid: string): Promise<DesignL
 }
 
 async function loadProjectEstimate(projectUuid: string, estimateUuid: string): Promise<EstimateRow> {
-  const res = await supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const res = await supabase
     .from('estimates')
     .select('id, project_id, created_at, outputs, total_true_cost_inc_gst')
     .eq('id', estimateUuid)
@@ -561,6 +577,7 @@ export async function createDesignRequest(params: {
   requestNote?: string | null;
   priorityTier?: DesignRequestPriorityTier | null;
 }): Promise<{ requestId: string }> {
+  const supabase = await getSupabaseServerAuth();
   const projectUuid = uuidFromAppId(params.projectId, 'proj');
   const estimateUuid = uuidFromAppId(params.estimateId, 'est');
   const previewData = await loadProjectDesignRequestPreviewInternal(projectUuid, estimateUuid);
@@ -570,7 +587,7 @@ export async function createDesignRequest(params: {
   const selectedTier = params.priorityTier ?? previewData.tier;
   const dueAt = dueAtForTier(selectedTier);
 
-  const insertRes = await supabaseServer
+  const insertRes = await supabase
     .from('design_package_requests')
     .insert({
       project_id: projectUuid,
@@ -597,7 +614,7 @@ export async function createDesignRequest(params: {
 
   const requestUuid = String(insertRes.data.id);
   const taskKey = designRequestTaskKey(projectUuid, previewData.nextVersion);
-  const taskRes = await supabaseServer.from('tasks').upsert(
+  const taskRes = await supabase.from('tasks').upsert(
     {
       project_id: projectUuid,
       type: 'CREATE_DESIGN_PACKAGE',
@@ -624,7 +641,8 @@ export async function createDesignRequest(params: {
 }
 
 async function requireExistingRequest(requestUuid: string): Promise<DesignRequestRow> {
-  const res = await supabaseServer
+  const supabase = await getSupabaseServerAuth();
+  const res = await supabase
     .from('design_package_requests')
     .select(
       [
@@ -656,6 +674,7 @@ async function requireExistingRequest(requestUuid: string): Promise<DesignReques
 }
 
 export async function markDesignRequestStarted(requestId: string): Promise<{ requestId: string }> {
+  const supabase = await getSupabaseServerAuth();
   const requestUuid = uuidFromAppId(requestId, 'dpr');
   const current = await requireExistingRequest(requestUuid);
   const status = asStatus(current.status);
@@ -666,7 +685,7 @@ export async function markDesignRequestStarted(requestId: string): Promise<{ req
   };
   if (!trimString(current.started_at)) patch.started_at = nowDate().toISOString();
 
-  const updateRes = await supabaseServer.from('design_package_requests').update(patch as any).eq('id', requestUuid);
+  const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
   await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'IN_PROGRESS', nowDate().toISOString());
 
@@ -674,6 +693,7 @@ export async function markDesignRequestStarted(requestId: string): Promise<{ req
 }
 
 export async function markDesignRequestDone(requestId: string): Promise<{ requestId: string; projectUuid: string }> {
+  const supabase = await getSupabaseServerAuth();
   const requestUuid = uuidFromAppId(requestId, 'dpr');
   const current = await requireExistingRequest(requestUuid);
   const status = asStatus(current.status);
@@ -687,7 +707,7 @@ export async function markDesignRequestDone(requestId: string): Promise<{ reques
   };
   if (!trimString(current.started_at)) patch.started_at = nowIso;
 
-  const updateRes = await supabaseServer.from('design_package_requests').update(patch as any).eq('id', requestUuid);
+  const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
   await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), 'DONE', nowIso);
 
@@ -698,6 +718,7 @@ export async function setDesignRequestStatus(
   requestId: string,
   nextStatus: Exclude<DesignRequestStatus, 'IN_PROGRESS' | 'DONE'>,
 ): Promise<DesignRequestMutationResponse> {
+  const supabase = await getSupabaseServerAuth();
   const requestUuid = uuidFromAppId(requestId, 'dpr');
   const current = await requireExistingRequest(requestUuid);
   const currentStatus = asStatus(current.status);
@@ -718,7 +739,7 @@ export async function setDesignRequestStatus(
     patch.cancelled_at = nowIso;
   }
 
-  const updateRes = await supabaseServer.from('design_package_requests').update(patch as any).eq('id', requestUuid);
+  const updateRes = await supabase.from('design_package_requests').update(patch as any).eq('id', requestUuid);
   if (updateRes.error) throw updateRes.error;
   await syncDesignRequestTaskStatus(current.project_id, Math.max(1, Number(current.request_version ?? 1) || 1), nextStatus, nowIso);
   return { ok: true, requestId: appRequestId(requestUuid) };
@@ -728,6 +749,7 @@ export async function setDesignRequestPriorityTier(
   requestId: string,
   nextTier: DesignRequestPriorityTier,
 ): Promise<DesignRequestMutationResponse> {
+  const supabase = await getSupabaseServerAuth();
   const requestUuid = uuidFromAppId(requestId, 'dpr');
   const current = await requireExistingRequest(requestUuid);
   const currentTier = asPriorityTier(current.priority_tier);
@@ -735,7 +757,7 @@ export async function setDesignRequestPriorityTier(
 
   const status = asStatus(current.status);
   const dueAt = status === 'DONE' || status === 'CANCELLED' ? trimString(current.due_at) : dueAtForTier(nextTier);
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('design_package_requests')
     .update({
       priority_tier: nextTier,
@@ -752,11 +774,12 @@ export async function setDesignRequestAssignedDesigner(
   requestId: string,
   designerId: string | null,
 ): Promise<DesignRequestMutationResponse> {
+  const supabase = await getSupabaseServerAuth();
   const requestUuid = uuidFromAppId(requestId, 'dpr');
   await requireExistingRequest(requestUuid);
 
   const normalized = trimString(designerId) ?? null;
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('design_package_requests')
     .update({ assigned_designer: normalized } as any)
     .eq('id', requestUuid);
@@ -766,11 +789,12 @@ export async function setDesignRequestAssignedDesigner(
 }
 
 export async function updateDesignRequestDesignerNote(requestId: string, note: string | null): Promise<{ requestId: string }> {
+  const supabase = await getSupabaseServerAuth();
   const requestUuid = uuidFromAppId(requestId, 'dpr');
   await requireExistingRequest(requestUuid);
 
   const normalized = trimString(note) ?? null;
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('design_package_requests')
     .update({ designer_note: normalized } as any)
     .eq('id', requestUuid);
@@ -788,6 +812,7 @@ export async function loadDesignRequestForLegacyProjectCard(projectId: string): 
   createdAt: string;
   completedAt: string | null;
 } | null> {
+  const supabase = await getSupabaseServerAuth();
   const projectUuid = uuidFromAppId(projectId, 'proj');
   try {
     const requests = await loadRawDesignRequestsForProjects([projectUuid]);
@@ -807,7 +832,7 @@ export async function loadDesignRequestForLegacyProjectCard(projectId: string): 
     if (!isMissingSchemaError(error)) throw error;
   }
 
-  const legacyRes = await supabaseServer.from('design_package_tickets').select('*').eq('project_id', projectUuid).maybeSingle();
+  const legacyRes = await supabase.from('design_package_tickets').select('*').eq('project_id', projectUuid).maybeSingle();
   if (legacyRes.error) {
     if (isMissingSchemaError(legacyRes.error)) return null;
     throw legacyRes.error;
@@ -826,6 +851,7 @@ export async function loadDesignRequestForLegacyProjectCard(projectId: string): 
 }
 
 export async function markDesignRequestOrLegacyTicketDoneByUuid(rawId: string): Promise<{ projectUuid: string }> {
+  const supabase = await getSupabaseServerAuth();
   try {
     const request = await requireExistingRequest(rawId);
     const done = await markDesignRequestDone(appRequestId(request.id));
@@ -838,11 +864,11 @@ export async function markDesignRequestOrLegacyTicketDoneByUuid(rawId: string): 
     }
   }
 
-  const ticketRes = await supabaseServer.from('design_package_tickets').select('id, project_id').eq('id', rawId).maybeSingle();
+  const ticketRes = await supabase.from('design_package_tickets').select('id, project_id').eq('id', rawId).maybeSingle();
   if (ticketRes.error) throw ticketRes.error;
   if (!ticketRes.data) throw new Error('Design request not found');
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabase
     .from('design_package_tickets')
     .update({ status: 'DONE', completed_at: new Date().toISOString() } as any)
     .eq('id', rawId);

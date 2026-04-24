@@ -3,9 +3,10 @@ import './globals.css';
 import PortalAuthProvider from '@/components/auth/PortalAuthProvider';
 import { ToastProvider } from '@/components/ui/toast/ToastProvider';
 import PortalShell from '@/components/layout/PortalShell';
-import { Suspense, type CSSProperties } from 'react';
+import type { CSSProperties } from 'react';
 import { Providers } from './providers';
-import { getPortalSession } from '@/lib/auth';
+import { getPortalAccessState } from '@/lib/auth';
+import { initialPortalAuthStateFromAccess } from '@/lib/portalAccess';
 import { loadPortalThemeForUser, portalThemeStyleVars } from '@/lib/theme/server';
 
 export const metadata: Metadata = {
@@ -15,9 +16,10 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   let cssVars: CSSProperties = {} as CSSProperties;
+  const accessState = await getPortalAccessState();
+
   try {
-    const session = await getPortalSession();
-    const theme = await loadPortalThemeForUser(session?.user.id ?? null);
+    const theme = await loadPortalThemeForUser(accessState.kind === 'authenticated' ? accessState.session.user.id : null);
     cssVars = portalThemeStyleVars(theme) as CSSProperties;
   } catch {
     cssVars = {} as CSSProperties;
@@ -27,11 +29,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" style={cssVars}>
       <body>
         <Providers>
-          <PortalAuthProvider>
+          <PortalAuthProvider initialAuthState={initialPortalAuthStateFromAccess(accessState)}>
             <ToastProvider>
-              <Suspense fallback={null}>
-                <PortalShell>{children}</PortalShell>
-              </Suspense>
+              <PortalShell>{children}</PortalShell>
             </ToastProvider>
           </PortalAuthProvider>
         </Providers>

@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { randomUUID } from 'crypto';
-import { supabaseServer } from '@/lib/supabaseClient';
+import { supabaseServiceRole } from '@/lib/supabaseClient';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { buildVersionLabelMap } from '@/lib/estimates/server';
 import type { Estimate } from '@/lib/types/estimate';
@@ -13,6 +13,7 @@ import {
   normalizeDepositPercent,
 } from './defaults';
 import { buildQuoteLineItemsFromEstimate } from './mapping';
+import { buildQuoteRefreshPreview, type QuoteRefreshMode, type QuoteRefreshPreview } from './refresh';
 import { lineTotalCents, totalsFromLineItems } from './utils';
 import { generateQuotePdfBytes, quotePdfFilename } from './pdf';
 import {
@@ -92,7 +93,7 @@ function schemaMissingError(): Error {
 
 export async function insertAuditEvent(params: { projectId: string; type: string; payload?: unknown }) {
   try {
-    await supabaseServer.from('audit_events').insert({
+    await supabaseServiceRole.from('audit_events').insert({
       project_id: params.projectId,
       type: params.type,
       idempotency_key: `${params.type}:${params.projectId}:${randomUUID()}`,
@@ -105,10 +106,10 @@ export async function insertAuditEvent(params: { projectId: string; type: string
 }
 
 export async function updateProjectStage(projectUuid: string, toStage: string, quoteId?: string | null) {
-  const prev = await supabaseServer.from('projects').select('pipeline_stage').eq('id', projectUuid).single();
+  const prev = await supabaseServiceRole.from('projects').select('pipeline_stage').eq('id', projectUuid).single();
   const fromStage = typeof prev.data?.pipeline_stage === 'string' ? prev.data.pipeline_stage : null;
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('projects')
     .update({ pipeline_stage: toStage } as any)
     .eq('id', projectUuid)
@@ -197,7 +198,7 @@ function mapSendLogRow(row: any): QuoteSendLog {
 }
 
 async function loadEstimateLabels(projectUuid: string): Promise<Map<string, string>> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('estimates')
     .select('id, created_at, outputs')
     .eq('project_id', projectUuid)
@@ -211,7 +212,7 @@ async function loadEstimateLabels(projectUuid: string): Promise<Map<string, stri
 }
 
 async function loadProjectCustomerName(projectUuid: string): Promise<string | null> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('projects')
     .select('contacts ( name )')
     .eq('id', projectUuid)
@@ -226,7 +227,7 @@ async function loadProjectCustomerName(projectUuid: string): Promise<string | nu
 }
 
 async function loadEstimate(estimateUuid: string): Promise<Estimate | null> {
-  const res = await supabaseServer.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
+  const res = await supabaseServiceRole.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
   if (res.error || !res.data) return null;
 
   const row = res.data as any;
@@ -270,7 +271,7 @@ async function loadEstimate(estimateUuid: string): Promise<Estimate | null> {
 }
 
 async function ensureQuote(projectUuid: string, actor: string | null): Promise<{ id: string; quoteRef: string }> {
-  const existing = await supabaseServer.from('quotes').select('id, quote_ref').eq('project_id', projectUuid).maybeSingle();
+  const existing = await supabaseServiceRole.from('quotes').select('id, quote_ref').eq('project_id', projectUuid).maybeSingle();
   if (existing.error) {
     if (missingTableError(existing.error)) throw schemaMissingError();
     throw new Error(errorMessage(existing.error, 'Failed to load quote'));
@@ -279,7 +280,7 @@ async function ensureQuote(projectUuid: string, actor: string | null): Promise<{
     return { id: String(existing.data.id), quoteRef: String(existing.data.quote_ref ?? '') };
   }
 
-  const refRes = await supabaseServer.rpc('next_quote_ref');
+  const refRes = await supabaseServiceRole.rpc('next_quote_ref');
   if (refRes.error || !refRes.data) {
     if (missingTableError(refRes.error)) throw schemaMissingError();
     throw new Error(errorMessage(refRes.error, 'Failed to allocate quote ref'));
@@ -287,7 +288,7 @@ async function ensureQuote(projectUuid: string, actor: string | null): Promise<{
   const quoteRef = String(refRes.data ?? '').trim();
   if (!quoteRef) throw new Error('Failed to allocate quote ref');
 
-  const insertRes = await supabaseServer
+  const insertRes = await supabaseServiceRole
     .from('quotes')
     .insert({ project_id: projectUuid, quote_ref: quoteRef, created_by: actor } as any)
     .select('id, quote_ref')
@@ -298,7 +299,7 @@ async function ensureQuote(projectUuid: string, actor: string | null): Promise<{
     throw new Error(errorMessage(insertRes.error, 'Failed to create quote'));
   }
 
-  await supabaseServer
+  await supabaseServiceRole
     .from('projects')
     .update({ quote_ref: quoteRef } as any)
     .eq('id', projectUuid)
@@ -308,7 +309,7 @@ async function ensureQuote(projectUuid: string, actor: string | null): Promise<{
 }
 
 async function nextVersionNumber(quoteUuid: string): Promise<number> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('quote_versions')
     .select('version_number')
     .eq('quote_id', quoteUuid)
@@ -328,66 +329,69 @@ function extractEstimateText(estimate: Estimate, keys: string[]): string | null 
   return null;
 }
 
-function buildGeneratedDraftQuotePatchFromEstimate(
-  estimate: Estimate,
-): Parameters<typeof updateDraftQuoteVersion>[1] {
-  const mapping = buildQuoteLineItemsFromEstimate(estimate);
-  const depositPercent = 50;
-  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
-  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+export async function syncDraftQuoteVersionsFromEstimate(
+  _estimateVersionId: string,
+): Promise<QuoteVersionDetail[]> {
+  return [];
+}
 
-  return {
-    introText,
-    termsText: termsSource,
-    depositPercent,
-    lineItems: mapping.items.map((item) => ({
+function normalizeDraftLineItems(
+  lineItems: Array<{ description: string; qty: number; unitPriceIncGstCents: number }>,
+): Omit<QuoteLineItem, 'id'>[] {
+  return lineItems.map((item, idx) => {
+    const qty = Number.isFinite(item.qty) ? item.qty : 0;
+    const unitPrice = Number.isFinite(item.unitPriceIncGstCents) ? Math.round(item.unitPriceIncGstCents) : 0;
+    return {
+      description: String(item.description ?? ''),
+      qty,
+      unitPriceIncGstCents: unitPrice,
+      lineTotalIncGstCents: lineTotalCents(qty, unitPrice),
+      sortOrder: idx,
+    };
+  });
+}
+
+function totalsFromNormalizedLineItems(items: Omit<QuoteLineItem, 'id'>[]) {
+  return totalsFromLineItems(
+    items.map((item) => ({
+      id: 'tmp',
       description: item.description,
       qty: item.qty,
       unitPriceIncGstCents: item.unitPriceIncGstCents,
+      lineTotalIncGstCents: item.lineTotalIncGstCents,
+      sortOrder: item.sortOrder,
     })),
-  };
+  );
 }
 
-export async function syncDraftQuoteVersionsFromEstimate(
-  estimateVersionId: string,
-): Promise<QuoteVersionDetail[]> {
-  const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
-  const estimate = await loadEstimate(estimateUuid);
-  if (!estimate) throw new Error('Estimate not found');
-
-  const draftVersionsRes = await supabaseServer
-    .from('quote_versions')
-    .select('id')
-    .eq('source_estimate_version_id', estimateUuid)
-    .eq('status', 'DRAFT')
-    .order('created_at', { ascending: false });
-
-  if (draftVersionsRes.error) {
-    if (missingTableError(draftVersionsRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(draftVersionsRes.error, 'Failed to load draft quotes'));
+async function replaceQuoteLineItems(quoteVersionUuid: string, items: Omit<QuoteLineItem, 'id'>[]): Promise<void> {
+  const deleteRes = await supabaseServiceRole.from('quote_line_items').delete().eq('quote_version_id', quoteVersionUuid);
+  if (deleteRes.error) {
+    if (missingTableError(deleteRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(deleteRes.error, 'Failed to update line items'));
   }
 
-  const draftQuoteVersionIds = (Array.isArray(draftVersionsRes.data) ? draftVersionsRes.data : [])
-    .map((row) => String((row as any)?.id ?? '').trim())
-    .filter(Boolean);
+  if (!items.length) return;
 
-  if (!draftQuoteVersionIds.length) return [];
-
-  const patch = buildGeneratedDraftQuotePatchFromEstimate(estimate);
-  const refreshedQuotes: QuoteVersionDetail[] = [];
-
-  for (const quoteVersionUuid of draftQuoteVersionIds) {
-    const refreshedQuote = await updateDraftQuoteVersion(appIdFromUuid('qv', quoteVersionUuid), patch);
-    refreshedQuotes.push(refreshedQuote);
+  const payload = items.map((item) => ({
+    quote_version_id: quoteVersionUuid,
+    sort_order: item.sortOrder,
+    description: item.description,
+    qty: item.qty,
+    unit_price_inc_gst_cents: item.unitPriceIncGstCents,
+    line_total_inc_gst_cents: item.lineTotalIncGstCents,
+  }));
+  const insertRes = await supabaseServiceRole.from('quote_line_items').insert(payload as any);
+  if (insertRes.error) {
+    if (missingTableError(insertRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(insertRes.error, 'Failed to update line items'));
   }
-
-  return refreshedQuotes;
 }
 
 export async function listQuoteVersionsForProject(projectId: string): Promise<QuoteVersion[]> {
   const projectUuid = uuidFromAppId(projectId, 'proj');
 
-  const quoteRes = await supabaseServer
+  const quoteRes = await supabaseServiceRole
     .from('quotes')
     .select('id, quote_ref')
     .eq('project_id', projectUuid)
@@ -403,7 +407,7 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
   if (!quoteUuid) return [];
   const quoteRef = String(quoteRes.data.quote_ref ?? '');
 
-  const versionsRes = await supabaseServer
+  const versionsRes = await supabaseServiceRole
     .from('quote_versions')
     .select('*')
     .eq('quote_id', quoteUuid)
@@ -424,7 +428,7 @@ export async function listQuoteVersionsForProject(projectId: string): Promise<Qu
 export async function getQuoteVersionDetail(quoteVersionId: string): Promise<QuoteVersionDetail | null> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
 
-  const versionRes = await supabaseServer
+  const versionRes = await supabaseServiceRole
     .from('quote_versions')
     .select('*, quotes!inner(id, project_id, quote_ref)')
     .eq('id', quoteVersionUuid)
@@ -442,9 +446,9 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
 
   const [estimateLabels, lineItemsRes, logsRes, projectRes] = await Promise.all([
     loadEstimateLabels(projectUuid),
-    supabaseServer.from('quote_line_items').select('*').eq('quote_version_id', quoteVersionUuid).order('sort_order', { ascending: true }),
-    supabaseServer.from('quote_send_logs').select('*').eq('quote_version_id', quoteVersionUuid).order('created_at', { ascending: false }),
-    supabaseServer
+    supabaseServiceRole.from('quote_line_items').select('*').eq('quote_version_id', quoteVersionUuid).order('sort_order', { ascending: true }),
+    supabaseServiceRole.from('quote_send_logs').select('*').eq('quote_version_id', quoteVersionUuid).order('created_at', { ascending: false }),
+    supabaseServiceRole
       .from('projects')
       .select('*, contacts ( id, name, email, phone, address )')
       .eq('id', projectUuid)
@@ -461,12 +465,12 @@ export async function getQuoteVersionDetail(quoteVersionId: string): Promise<Quo
 
   // Keep quote rendering resilient to schema drift in the optional relation select above.
   if (!projectRow && projectRes?.error) {
-    const fallbackProjectRes = await supabaseServer.from('projects').select('*').eq('id', projectUuid).maybeSingle();
+    const fallbackProjectRes = await supabaseServiceRole.from('projects').select('*').eq('id', projectUuid).maybeSingle();
     if (fallbackProjectRes.data) {
       projectRow = fallbackProjectRes.data as any;
       const contactId = firstTrimmedString(projectRow?.contact_id, projectRow?.contactId);
       if (contactId) {
-        const fallbackContactRes = await supabaseServer.from('contacts').select('*').eq('id', contactId).maybeSingle();
+        const fallbackContactRes = await supabaseServiceRole.from('contacts').select('*').eq('id', contactId).maybeSingle();
         contactRow = fallbackContactRes.data as any;
       }
     }
@@ -536,7 +540,7 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
   const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
   const customerName = await loadProjectCustomerName(projectUuid);
 
-  const insertRes = await supabaseServer
+  const insertRes = await supabaseServiceRole
     .from('quote_versions')
     .insert({
       quote_id: quote.id,
@@ -572,7 +576,7 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
       unit_price_inc_gst_cents: item.unitPriceIncGstCents,
       line_total_inc_gst_cents: item.lineTotalIncGstCents,
     }));
-    const lineRes = await supabaseServer.from('quote_line_items').insert(payload as any);
+    const lineRes = await supabaseServiceRole.from('quote_line_items').insert(payload as any);
     if (lineRes.error) {
       if (missingTableError(lineRes.error)) throw schemaMissingError();
       throw new Error(errorMessage(lineRes.error, 'Failed to create line items'));
@@ -606,7 +610,7 @@ export async function updateDraftQuoteVersion(
 ): Promise<QuoteVersionDetail> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
 
-  const versionRes = await supabaseServer
+  const versionRes = await supabaseServiceRole
     .from('quote_versions')
     .select('id, status, quote_id, terms_text, deposit_percent')
     .eq('id', quoteVersionUuid)
@@ -619,28 +623,8 @@ export async function updateDraftQuoteVersion(
   if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
 
   const lineItems = Array.isArray(patch.lineItems) ? patch.lineItems : [];
-  const normalizedLineItems: Omit<QuoteLineItem, 'id'>[] = lineItems.map((item, idx) => {
-    const qty = Number.isFinite(item.qty) ? item.qty : 0;
-    const unitPrice = Number.isFinite(item.unitPriceIncGstCents) ? Math.round(item.unitPriceIncGstCents) : 0;
-    return {
-      description: String(item.description ?? ''),
-      qty,
-      unitPriceIncGstCents: unitPrice,
-      lineTotalIncGstCents: lineTotalCents(qty, unitPrice),
-      sortOrder: idx,
-    };
-  });
-
-  const totals = totalsFromLineItems(
-    normalizedLineItems.map((item) => ({
-      id: 'tmp',
-      description: item.description,
-      qty: item.qty,
-      unitPriceIncGstCents: item.unitPriceIncGstCents,
-      lineTotalIncGstCents: item.lineTotalIncGstCents,
-      sortOrder: item.sortOrder,
-    })),
-  );
+  const normalizedLineItems = normalizeDraftLineItems(lineItems);
+  const totals = totalsFromNormalizedLineItems(normalizedLineItems);
 
   const existingDepositPercent = normalizeDepositPercent((versionRes.data as any)?.deposit_percent, 50);
   const nextDepositPercent = patch.depositPercent === undefined
@@ -675,7 +659,7 @@ export async function updateDraftQuoteVersion(
 
   Object.keys(updatePayload).forEach((key) => updatePayload[key] === undefined && delete updatePayload[key]);
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('quote_versions')
     .update(updatePayload)
     .eq('id', quoteVersionUuid)
@@ -686,27 +670,7 @@ export async function updateDraftQuoteVersion(
     throw new Error(errorMessage(updateRes.error, 'Failed to update quote'));
   }
 
-  const deleteRes = await supabaseServer.from('quote_line_items').delete().eq('quote_version_id', quoteVersionUuid);
-  if (deleteRes.error) {
-    if (missingTableError(deleteRes.error)) throw schemaMissingError();
-    throw new Error(errorMessage(deleteRes.error, 'Failed to update line items'));
-  }
-
-  if (normalizedLineItems.length) {
-    const payload = normalizedLineItems.map((item) => ({
-      quote_version_id: quoteVersionUuid,
-      sort_order: item.sortOrder,
-      description: item.description,
-      qty: item.qty,
-      unit_price_inc_gst_cents: item.unitPriceIncGstCents,
-      line_total_inc_gst_cents: item.lineTotalIncGstCents,
-    }));
-    const insertRes = await supabaseServer.from('quote_line_items').insert(payload as any);
-    if (insertRes.error) {
-      if (missingTableError(insertRes.error)) throw schemaMissingError();
-      throw new Error(errorMessage(insertRes.error, 'Failed to update line items'));
-    }
-  }
+  await replaceQuoteLineItems(quoteVersionUuid, normalizedLineItems);
 
   let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
   if (!detail) throw new Error('Failed to load quote');
@@ -719,9 +683,193 @@ export async function updateDraftQuoteVersion(
   return detail;
 }
 
+export async function refreshDraftQuoteVersionFromEstimate(
+  quoteVersionId: string,
+  estimateVersionId: string,
+  actor: string | null,
+  mode: QuoteRefreshMode = 'full_rebuild',
+): Promise<QuoteVersionDetail> {
+  const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
+  const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
+
+  const versionRes = await supabaseServiceRole
+    .from('quote_versions')
+    .select('id, status, quote_id, quotes!inner(project_id)')
+    .eq('id', quoteVersionUuid)
+    .single();
+  if (versionRes.error) {
+    if (missingTableError(versionRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(versionRes.error, 'Quote not found'));
+  }
+  if (!versionRes.data) throw new Error('Quote not found');
+  if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
+
+  const currentDetail = await getQuoteVersionDetail(quoteVersionId);
+  if (!currentDetail) throw new Error('Quote not found');
+
+  const estimate = await loadEstimate(estimateUuid);
+  if (!estimate) throw new Error('Estimate not found');
+
+  const projectUuid = String((versionRes.data as any)?.quotes?.project_id ?? '');
+  const estimateLabels = projectUuid ? await loadEstimateLabels(projectUuid) : new Map<string, string>();
+  const estimateLabelRaw = estimateLabels.get(estimateUuid) ?? currentDetail.sourceEstimateVersionLabel;
+  const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
+
+  const mapping = buildQuoteLineItemsFromEstimate(estimate);
+  const generatedDetail: QuoteVersionDetail = {
+    ...currentDetail,
+    sourceEstimateVersionId: estimateVersionId,
+    sourceEstimateVersionLabel: estimateLabel,
+    lineItems: mapping.items.map((item, idx) => ({
+      id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+      lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
+      sortOrder: idx,
+    })),
+    totals: currentDetail.totals,
+  };
+  const depositPercent = 50;
+  const introText = extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO;
+  const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
+  const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
+  generatedDetail.depositPercent = depositPercent;
+  generatedDetail.introText = introText;
+  generatedDetail.termsText = termsText;
+  generatedDetail.reference = null;
+  generatedDetail.expiresAt = null;
+
+  const preview = buildQuoteRefreshPreview({
+    current: currentDetail,
+    generated: generatedDetail,
+    mode,
+  });
+  const normalizedLineItems = normalizeDraftLineItems(
+    preview.proposedQuote.lineItems.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+    })),
+  );
+  const totals = totalsFromNormalizedLineItems(normalizedLineItems);
+
+  const updatePayload: any = {
+    source_estimate_version_id: estimateUuid,
+    total_inc_gst_cents: totals.totalIncGstCents,
+    total_ex_gst_cents: totals.totalExGstCents,
+    gst_cents: totals.gstCents,
+    pdf_file_id: null,
+    render_hash: null,
+    preview_base_payload: null,
+    preview_rendered_at: null,
+  };
+
+  if (mode === 'full_rebuild') {
+    updatePayload.reference = null;
+    updatePayload.intro_text = introText;
+    updatePayload.terms_text = termsText;
+    updatePayload.deposit_percent = depositPercent;
+    updatePayload.expires_at = null;
+  }
+
+  const updateRes = await supabaseServiceRole
+    .from('quote_versions')
+    .update(updatePayload as any)
+    .eq('id', quoteVersionUuid)
+    .select('id')
+    .single();
+  if (updateRes.error || !updateRes.data) {
+    if (missingTableError(updateRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(updateRes.error, 'Failed to refresh quote'));
+  }
+
+  await replaceQuoteLineItems(quoteVersionUuid, normalizedLineItems);
+
+  if (projectUuid) {
+    await insertAuditEvent({
+      projectId: projectUuid,
+      type: 'quote.refreshed_from_estimate',
+      payload: { quoteVersionId: quoteVersionUuid, estimateVersionId: estimateUuid, mode },
+    });
+  }
+
+  let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
+  if (!detail) throw new Error('Failed to load quote');
+  try {
+    await refreshQuoteArtifactsAfterMutation(detail.id, actor);
+    detail = (await getQuoteVersionDetail(detail.id)) ?? detail;
+  } catch (error) {
+    console.error('[quote_artifacts] failed to refresh after estimate refresh', { quoteVersionId: detail.id, error });
+  }
+  return detail;
+}
+
+export async function previewDraftQuoteRefreshFromEstimate(
+  quoteVersionId: string,
+  estimateVersionId: string,
+  mode: QuoteRefreshMode = 'full_rebuild',
+): Promise<QuoteRefreshPreview> {
+  const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
+  const estimateUuid = uuidFromAppId(estimateVersionId, 'est');
+
+  const versionRes = await supabaseServiceRole
+    .from('quote_versions')
+    .select('id, status, quotes!inner(project_id)')
+    .eq('id', quoteVersionUuid)
+    .single();
+  if (versionRes.error) {
+    if (missingTableError(versionRes.error)) throw schemaMissingError();
+    throw new Error(errorMessage(versionRes.error, 'Quote not found'));
+  }
+  if (!versionRes.data) throw new Error('Quote not found');
+  if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
+
+  const currentDetail = await getQuoteVersionDetail(quoteVersionId);
+  if (!currentDetail) throw new Error('Quote not found');
+
+  const estimate = await loadEstimate(estimateUuid);
+  if (!estimate) throw new Error('Estimate not found');
+
+  const projectUuid = String((versionRes.data as any)?.quotes?.project_id ?? '');
+  const estimateLabels = projectUuid ? await loadEstimateLabels(projectUuid) : new Map<string, string>();
+  const estimateLabelRaw = estimateLabels.get(estimateUuid) ?? currentDetail.sourceEstimateVersionLabel;
+  const estimateLabel = estimateLabelRaw.startsWith('Estimate') ? estimateLabelRaw : `Estimate ${estimateLabelRaw}`;
+  const mapping = buildQuoteLineItemsFromEstimate(estimate);
+
+  const generatedDetail: QuoteVersionDetail = {
+    ...currentDetail,
+    sourceEstimateVersionId: estimateVersionId,
+    sourceEstimateVersionLabel: estimateLabel,
+    lineItems: mapping.items.map((item, idx) => ({
+      id: currentDetail.lineItems[idx]?.id ?? `${currentDetail.id}:line:${idx + 1}`,
+      description: item.description,
+      qty: item.qty,
+      unitPriceIncGstCents: item.unitPriceIncGstCents,
+      lineTotalIncGstCents: lineTotalCents(item.qty, item.unitPriceIncGstCents),
+      sortOrder: idx,
+    })),
+    totals: currentDetail.totals,
+    reference: null,
+    introText: extractEstimateText(estimate, ['introText', 'intro_text']) ?? DEFAULT_QUOTE_INTRO,
+    termsText: applyDepositPercentToTerms(
+      extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS,
+      50,
+    ),
+    depositPercent: 50,
+    expiresAt: null,
+  };
+
+  return buildQuoteRefreshPreview({
+    current: currentDetail,
+    generated: generatedDetail,
+    mode,
+  });
+}
+
 export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<void> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('quote_versions')
     .select('id, status, quote_id, quotes!inner(project_id)')
     .eq('id', quoteVersionUuid)
@@ -733,7 +881,7 @@ export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<v
   if (!res.data) throw new Error('Quote not found');
   if (String(res.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Only drafts can be deleted');
 
-  const deleteRes = await supabaseServer.from('quote_versions').delete().eq('id', quoteVersionUuid);
+  const deleteRes = await supabaseServiceRole.from('quote_versions').delete().eq('id', quoteVersionUuid);
   if (deleteRes.error) {
     if (missingTableError(deleteRes.error)) throw schemaMissingError();
     throw new Error(errorMessage(deleteRes.error, 'Failed to delete quote'));
@@ -747,7 +895,7 @@ export async function deleteDraftQuoteVersion(quoteVersionId: string): Promise<v
 
 export async function reviseQuoteVersion(quoteVersionId: string, actor: string | null): Promise<QuoteVersionDetail> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
-  const versionRes = await supabaseServer
+  const versionRes = await supabaseServiceRole
     .from('quote_versions')
     .select('*')
     .eq('id', quoteVersionUuid)
@@ -763,7 +911,7 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
   }
 
   const quoteUuid = String(versionRes.data.quote_id ?? '');
-  const projectRes = await supabaseServer.from('quotes').select('project_id, quote_ref').eq('id', quoteUuid).single();
+  const projectRes = await supabaseServiceRole.from('quotes').select('project_id, quote_ref').eq('id', quoteUuid).single();
   if (projectRes.error) {
     if (missingTableError(projectRes.error)) throw schemaMissingError();
     throw new Error(errorMessage(projectRes.error, 'Quote not found'));
@@ -771,7 +919,7 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
   if (!projectRes.data) throw new Error('Quote not found');
 
   const nextVersion = await nextVersionNumber(quoteUuid);
-  const lineItemsRes = await supabaseServer.from('quote_line_items').select('*').eq('quote_version_id', quoteVersionUuid).order('sort_order', { ascending: true });
+  const lineItemsRes = await supabaseServiceRole.from('quote_line_items').select('*').eq('quote_version_id', quoteVersionUuid).order('sort_order', { ascending: true });
   if (lineItemsRes.error) {
     if (missingTableError(lineItemsRes.error)) throw schemaMissingError();
     throw new Error(errorMessage(lineItemsRes.error, 'Failed to load quote items'));
@@ -788,7 +936,7 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
   const inheritedTermsText = typeof versionRes.data.terms_text === 'string' ? versionRes.data.terms_text : null;
   const termsText = inheritedTermsText ? applyDepositPercentToTerms(inheritedTermsText, inheritedDepositPercent) : null;
 
-  const insertRes = await supabaseServer
+  const insertRes = await supabaseServiceRole
     .from('quote_versions')
     .insert({
       quote_id: quoteUuid,
@@ -823,7 +971,7 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
       unit_price_inc_gst_cents: item.unitPriceIncGstCents,
       line_total_inc_gst_cents: item.lineTotalIncGstCents,
     }));
-    const insertItems = await supabaseServer.from('quote_line_items').insert(payload as any);
+    const insertItems = await supabaseServiceRole.from('quote_line_items').insert(payload as any);
     if (insertItems.error) {
       if (missingTableError(insertItems.error)) throw schemaMissingError();
       throw new Error(errorMessage(insertItems.error, 'Failed to revise line items'));
@@ -876,7 +1024,7 @@ export async function createFileArtifact(params: {
   const contentType = params.contentType.trim() || 'application/octet-stream';
   const contentBase64 = params.content.toString('base64');
 
-  const fileRes = await supabaseServer
+  const fileRes = await supabaseServiceRole
     .from('file_artifacts')
     .insert({
       project_id: params.projectUuid,
@@ -901,7 +1049,7 @@ export async function createFileArtifact(params: {
 }
 
 async function loadFileContent(fileUuid: string): Promise<{ filename: string; content: Buffer } | null> {
-  const res = await supabaseServer.from('file_artifacts').select('filename, content_base64').eq('id', fileUuid).single();
+  const res = await supabaseServiceRole.from('file_artifacts').select('filename, content_base64').eq('id', fileUuid).single();
   if (res.error) {
     if (missingTableError(res.error)) return null;
     throw new Error(errorMessage(res.error, 'Failed to load PDF'));
@@ -947,7 +1095,7 @@ function buildStoredPreviewBasePayload(detail: QuoteVersionDetail): QuotePreview
 async function loadQuoteArtifactRow(
   quoteVersionId: string,
 ): Promise<{ renderHash: string | null; previewBase: QuotePreviewBasePayload | null }> {
-  const res = await supabaseServer
+  const res = await supabaseServiceRole
     .from('quote_versions')
     .select('render_hash, preview_base_payload')
     .eq('id', uuidFromAppId(quoteVersionId, 'qv'))
@@ -978,7 +1126,7 @@ async function persistQuoteArtifacts(params: {
   };
   if (params.pdfFileUuid !== undefined) payload.pdf_file_id = params.pdfFileUuid;
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('quote_versions')
     .update(payload as any)
     .eq('id', uuidFromAppId(params.quoteVersionId, 'qv'));
@@ -989,7 +1137,7 @@ async function persistQuoteArtifacts(params: {
 }
 
 export async function clearQuoteArtifacts(quoteVersionId: string): Promise<void> {
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('quote_versions')
     .update({
       pdf_file_id: null,
@@ -1153,7 +1301,7 @@ export async function insertSendLog(params: {
     sent_at: params.sentAt ?? null,
   };
 
-  const res = await supabaseServer.from('quote_send_logs').insert(payload).select('id').single();
+  const res = await supabaseServiceRole.from('quote_send_logs').insert(payload).select('id').single();
   if (res.error) {
     if (missingTableError(res.error)) throw schemaMissingError();
     throw new Error(errorMessage(res.error, 'Failed to log email'));
@@ -1163,7 +1311,7 @@ export async function insertSendLog(params: {
 
 export async function markQuoteAccepted(quoteVersionId: string, actor: string | null): Promise<QuoteAcceptResult> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
-  const versionRes = await supabaseServer
+  const versionRes = await supabaseServiceRole
     .from('quote_versions')
     .select('id, status, quote_id')
     .eq('id', quoteVersionUuid)
@@ -1175,7 +1323,7 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
   if (!versionRes.data) throw new Error('Quote not found');
   if (String(versionRes.data.status ?? '').toUpperCase() !== 'SENT') throw new Error('Only sent quotes can be accepted');
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('quote_versions')
     .update({ status: 'ACCEPTED', accepted_at: new Date().toISOString() } as any)
     .eq('id', quoteVersionUuid);
@@ -1184,7 +1332,7 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
     throw new Error(errorMessage(updateRes.error, 'Failed to update quote'));
   }
 
-  const quoteRes = await supabaseServer.from('quotes').select('project_id').eq('id', versionRes.data.quote_id).single();
+  const quoteRes = await supabaseServiceRole.from('quotes').select('project_id').eq('id', versionRes.data.quote_id).single();
   if (quoteRes.error) {
     if (missingTableError(quoteRes.error)) throw schemaMissingError();
     throw new Error(errorMessage(quoteRes.error, 'Quote not found'));
@@ -1216,7 +1364,7 @@ export async function markQuoteAccepted(quoteVersionId: string, actor: string | 
 
 export async function markQuoteDeclined(quoteVersionId: string, actor: string | null): Promise<QuoteVersionDetail> {
   const quoteVersionUuid = uuidFromAppId(quoteVersionId, 'qv');
-  const versionRes = await supabaseServer
+  const versionRes = await supabaseServiceRole
     .from('quote_versions')
     .select('id, status, quote_id')
     .eq('id', quoteVersionUuid)
@@ -1229,7 +1377,7 @@ export async function markQuoteDeclined(quoteVersionId: string, actor: string | 
   const currentStatus = String(versionRes.data.status ?? '').toUpperCase();
   if (currentStatus !== 'SENT' && currentStatus !== 'ACCEPTED') throw new Error('Only sent or accepted quotes can be declined');
 
-  const updateRes = await supabaseServer
+  const updateRes = await supabaseServiceRole
     .from('quote_versions')
     .update({ status: 'DECLINED' } as any)
     .eq('id', quoteVersionUuid);
@@ -1238,7 +1386,7 @@ export async function markQuoteDeclined(quoteVersionId: string, actor: string | 
     throw new Error(errorMessage(updateRes.error, 'Failed to update quote'));
   }
 
-  const quoteRes = await supabaseServer.from('quotes').select('project_id').eq('id', versionRes.data.quote_id).single();
+  const quoteRes = await supabaseServiceRole.from('quotes').select('project_id').eq('id', versionRes.data.quote_id).single();
   if (quoteRes.error) {
     if (missingTableError(quoteRes.error)) throw schemaMissingError();
     throw new Error(errorMessage(quoteRes.error, 'Quote not found'));

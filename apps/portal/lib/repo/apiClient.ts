@@ -3,12 +3,14 @@ import { saveTracker } from '@/lib/sync/saveTracker';
 export class ApiError extends Error {
   status: number;
   body: unknown;
+  requestId: string | null;
 
-  constructor(message: string, opts: { status: number; body: unknown }) {
+  constructor(message: string, opts: { status: number; body: unknown; requestId?: string | null }) {
     super(message);
     this.name = 'ApiError';
     this.status = opts.status;
     this.body = opts.body;
+    this.requestId = opts.requestId ?? null;
   }
 }
 
@@ -38,7 +40,7 @@ export async function apiJson<T>(path: string, init?: RequestInit & { skipSaveTr
     const body = await parseJsonSafe(res);
     if (!res.ok) {
       const msg = typeof (body as any)?.error === 'string' ? String((body as any).error) : `Request failed (${res.status})`;
-      throw new ApiError(msg, { status: res.status, body });
+      throw new ApiError(msg, { status: res.status, body, requestId: res.headers.get('x-portal-request-id') });
     }
     return body as T;
   };

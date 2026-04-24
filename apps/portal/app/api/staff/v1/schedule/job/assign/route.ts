@@ -1,7 +1,9 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn, type RouteDiagnostics } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitAssignJob } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -16,64 +18,254 @@ import {
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
 import { isSchedulingReadyProjectStatus } from '@/lib/scheduling/readiness';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
+
+const ASSIGN_REPAIR_MIGRATION_MESSAGE =
+  'Schedule assign repair migration is not applied. Apply supabase/migrations/20260414_000001_schedule_v2_assign_existing_job_repair.sql, then refresh.';
+
+type ForecastUpdate = {
+  id: string;
+  forecast_start: string | null;
+  forecast_end_exclusive: string | null;
+  forecast_duration_days: number;
+};
+
+type AssignmentKind = 'new_assignment' | 'existing_repair' | 'move';
+type AssignFailurePhase = 'load_scheduled_job' | 'load_project' | 'load_estimates' | 'load_schedule_context' | 'commit_rpc';
+
+type AssignDiagnostic = {
+  phase: AssignFailurePhase;
+  requestId: string;
+  assignmentKind?: AssignmentKind;
+  targetRawForecastCount?: number;
+  targetForecastCount?: number;
+  targetForecastNonUuidCount?: number;
+  sourceRawForecastCount?: number;
+  sourceForecastCount?: number;
+  sourceForecastNonUuidCount?: number;
+  targetPositionCount?: number;
+  initialForecastPresent?: boolean;
+  sanitizedTempForecastPresent?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+  errorDetails?: string;
+  errorHint?: string;
+};
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim());
+}
 
 function tempId(prefix: string): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function errorMessage(error: unknown): string {
+  return typeof (error as { message?: unknown })?.message === 'string' ? ((error as { message?: string }).message ?? '').trim() : '';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function assignErrorDetails(error: unknown): Pick<AssignDiagnostic, 'errorCode' | 'errorMessage' | 'errorDetails' | 'errorHint'> {
+  if (error instanceof Error) {
+    return { errorMessage: error.message || undefined };
+  }
+  if (typeof error === 'string' && error.trim()) {
+    return { errorMessage: error.trim() };
+  }
+  if (!isRecord(error)) return {};
+
+  const code = typeof error.code === 'string' && error.code.trim() ? error.code.trim() : undefined;
+  const message = typeof error.message === 'string' && error.message.trim() ? error.message.trim() : undefined;
+  const details = typeof error.details === 'string' && error.details.trim() ? error.details.trim() : undefined;
+  const hint = typeof error.hint === 'string' && error.hint.trim() ? error.hint.trim() : undefined;
+  return {
+    errorCode: code,
+    errorMessage: message,
+    errorDetails: details,
+    errorHint: hint,
+  };
+}
+
+function assignFailureDiagnostic(
+  diagnostics: RouteDiagnostics,
+  phase: AssignFailurePhase,
+  error?: unknown,
+  extra?: Partial<AssignDiagnostic>,
+): AssignDiagnostic {
+  return {
+    ...(extra ?? {}),
+    phase,
+    requestId: diagnostics.requestId,
+    ...assignErrorDetails(error),
+  };
+}
+
+function jsonAssignFailure(
+  message: string,
+  status: number,
+  diagnostics: RouteDiagnostics,
+  phase: AssignFailurePhase,
+  error?: unknown,
+  extra?: Partial<AssignDiagnostic>,
+) {
+  return jsonError(message, status, diagnostics, {
+    diagnostic: assignFailureDiagnostic(diagnostics, phase, error, extra),
+  });
+}
+
+function isOldAssignRepairRpcError(error: unknown): boolean {
+  const message = errorMessage(error).toLowerCase();
+  return message.includes('p_assignment.job_id is required');
+}
+
+function splitNewAssignmentForecast(input: {
+  updates: ForecastUpdate[];
+  jobRecordId: string;
+  hasExistingJob: boolean;
+}): {
+  targetForecastUpdates: ForecastUpdate[];
+  initialForecast: ForecastUpdate | null;
+} {
+  if (input.hasExistingJob) {
+    return {
+      targetForecastUpdates: input.updates,
+      initialForecast: null,
+    };
+  }
+
+  const initialForecast = input.updates.find((update) => update.id === input.jobRecordId) ?? null;
+  if (!initialForecast) {
+    return {
+      targetForecastUpdates: input.updates,
+      initialForecast: null,
+    };
+  }
+
+  return {
+    targetForecastUpdates: input.updates.filter((update) => update.id !== input.jobRecordId),
+    initialForecast,
+  };
+}
+
+function filterUuidForecastUpdates(updates: ForecastUpdate[]): ForecastUpdate[] {
+  return updates.filter((update) => isUuid(update.id));
+}
+
+function fallbackExistingJobModel(input: {
+  scheduledJobId: string;
+  projectId: string;
+  crewId: string;
+  durationDays: number;
+}) {
+  return {
+    id: input.scheduledJobId,
+    jobId: input.projectId,
+    crewId: input.crewId,
+    mode: 'floating' as const,
+    plannedStart: null,
+    plannedDurationDays: null,
+    forecastStart: null,
+    forecastDurationDays: input.durationDays,
+    forecastEndExclusive: null,
+    actualStart: null,
+    actualFinish: null,
+    status: 'not_started' as const,
+    daysRemaining: null,
+  };
+}
+
 export async function POST(req: Request) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/job/assign');
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = parsed.body ?? {};
 
   const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : '';
   const crewId = typeof body.crew_id === 'string' ? body.crew_id.trim() : '';
   const positionRaw = body.position;
   const force = Boolean(body.force);
+  const requestedPosition = typeof positionRaw === 'number' && Number.isFinite(positionRaw) ? Math.trunc(positionRaw) : null;
 
-  if (!jobId || !crewId) return jsonError('job_id and crew_id are required', 400);
+  if (!jobId || !crewId) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.validation_failed',
+      status: 400,
+      message: 'job_id and crew_id are required',
+      extra: {
+        reason: 'missing_job_or_crew',
+        jobId: jobId || null,
+        crewId: crewId || null,
+        requestedPosition,
+      },
+    });
+    return jsonError('job_id and crew_id are required', 400, diagnostics);
+  }
 
   let existingJob: any = null;
-  const existingRes = await supabaseServer.from('scheduled_jobs').select('id, crew_id, forecast_duration_days').eq('job_id', jobId).maybeSingle();
+  const existingRes = await supabase.from('scheduled_jobs').select('id, crew_id, forecast_duration_days').eq('job_id', jobId).maybeSingle();
   if (existingRes.error) {
     if (isMissingSchemaError(existingRes.error)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: existingRes.error });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load scheduled job', 500);
+    logPortalServerError(diagnostics, { status: 500, message: 'Failed to load scheduled job', error: existingRes.error });
+    return jsonAssignFailure('Failed to load scheduled job', 500, diagnostics, 'load_scheduled_job', existingRes.error);
   }
   existingJob = existingRes.data ?? null;
 
-  const isMove = Boolean(existingJob && existingJob.crew_id && existingJob.crew_id !== crewId);
+  const existingScheduledJobId = existingJob?.id ? String(existingJob.id) : null;
+  const existingCrewId = existingJob?.crew_id ? String(existingJob.crew_id) : null;
+  const isMove = Boolean(existingJob && existingCrewId && existingCrewId !== crewId);
 
   let durationDays = ensureForecastDurationDays(existingJob?.forecast_duration_days ?? null, 1);
   if (!existingJob) {
-    const projectRes = await supabaseServer.from('projects').select('id, pipeline_stage').eq('id', jobId).maybeSingle();
+    const projectRes = await supabase.from('projects').select('id, pipeline_stage').eq('id', jobId).maybeSingle();
     if (projectRes.error) {
       if (isMissingSchemaError(projectRes.error)) {
-        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+        logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: projectRes.error });
+        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
       }
-      return jsonError('Failed to load project', 500);
+      logPortalServerError(diagnostics, { status: 500, message: 'Failed to load project', error: projectRes.error });
+      return jsonAssignFailure('Failed to load project', 500, diagnostics, 'load_project', projectRes.error);
     }
-    if (!projectRes.data) return jsonError('Project not found', 404);
+    if (!projectRes.data) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.validation_failed',
+        status: 404,
+        message: 'Project not found',
+        extra: { reason: 'project_not_found', jobId, crewId, requestedPosition },
+      });
+      return jsonError('Project not found', 404, diagnostics);
+    }
     if (!isSchedulingReadyProjectStatus(projectRes.data.pipeline_stage)) {
-      return jsonError('Only deposit-stage projects can be scheduled.', 409);
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.validation_failed',
+        status: 409,
+        message: 'Only deposit-stage projects can be scheduled.',
+        extra: { reason: 'project_not_scheduling_ready', jobId, crewId, requestedPosition },
+      });
+      return jsonError('Only deposit-stage projects can be scheduled.', 409, diagnostics);
     }
 
-    const estimatesRes = await supabaseServer
+    const estimatesRes = await supabase
       .from('estimates')
-      .select('id, project_id, status, created_at, version, inputs, outputs')
+      .select('id, project_id, status, created_at, version, duration_days, crew_hours, inputs, outputs')
       .eq('project_id', jobId);
     if (estimatesRes.error) {
       if (isMissingSchemaError(estimatesRes.error)) {
-        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+        logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: estimatesRes.error });
+        return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
       }
-      return jsonError('Failed to load estimates', 500);
+      logPortalServerError(diagnostics, { status: 500, message: 'Failed to load estimates', error: estimatesRes.error });
+      return jsonAssignFailure('Failed to load estimates', 500, diagnostics, 'load_estimates', estimatesRes.error);
     }
     const estimates = Array.isArray(estimatesRes.data) ? estimatesRes.data : [];
     const latest = getLatestSchedulableEstimate(estimates as any);
@@ -85,20 +277,56 @@ export async function POST(req: Request) {
     ctx = await loadScheduleContext({ today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, { status: 501, message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', error: err });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load schedule data', 500);
+    logPortalServerError(diagnostics, { status: 500, message: 'Failed to load schedule data', error: err });
+    return jsonAssignFailure('Failed to load schedule data', 500, diagnostics, 'load_schedule_context', err);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404);
+  if (!crewCtx) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.validation_failed',
+      status: 404,
+      message: 'Crew not found',
+      extra: { reason: 'crew_not_found', jobId, crewId, scheduledJobId: existingScheduledJobId, requestedPosition },
+    });
+    return jsonError('Crew not found', 404, diagnostics);
+  }
 
-  const existingItem = existingJob ? crewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingJob?.id) : null;
-  if (existingItem && !isMove) return jsonError('Job is already scheduled in this crew', 409);
+  const existingTargetItem = existingScheduledJobId
+    ? crewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingScheduledJobId) ?? null
+    : null;
+  if (existingTargetItem && !isMove) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.validation_failed',
+      status: 409,
+      message: 'Job is already scheduled in this crew. Refresh the board.',
+      extra: {
+        reason: 'already_scheduled_same_crew',
+        jobId,
+        crewId,
+        scheduledJobId: existingScheduledJobId,
+        requestedPosition,
+        targetItemPresent: true,
+        sourceCrewId: existingCrewId,
+        sourceItemPresent: true,
+      },
+    });
+    return jsonError('Job is already scheduled in this crew. Refresh the board.', 409, diagnostics);
+  }
 
-  const jobRecordId = existingJob?.id ?? tempId('temp_job');
+  const jobRecordId = existingScheduledJobId ?? tempId('temp_job');
+  const existingJobModel = existingScheduledJobId
+    ? crewCtx.jobs.find((job) => job.id === existingScheduledJobId) ??
+      ctx.jobs.find((job) => job.id === existingScheduledJobId) ??
+      fallbackExistingJobModel({ scheduledJobId: existingScheduledJobId, projectId: jobId, crewId: existingCrewId ?? crewId, durationDays })
+    : null;
   const newJob = existingJob
-    ? crewCtx.jobs.find((job) => job.id === existingJob.id) ?? null
+    ? existingJobModel
+      ? { ...existingJobModel, crewId }
+      : null
     : {
         id: jobRecordId,
         jobId,
@@ -115,7 +343,14 @@ export async function POST(req: Request) {
         daysRemaining: null,
       };
 
-  const jobs = newJob && !existingJob ? [...crewCtx.jobs, newJob] : crewCtx.jobs.map((job) => (job.id === newJob?.id ? (newJob as any) : job));
+  const jobs =
+    newJob && !existingJob
+      ? [...crewCtx.jobs, newJob]
+      : newJob
+        ? crewCtx.jobs.some((job) => job.id === newJob.id)
+          ? crewCtx.jobs.map((job) => (job.id === newJob.id ? (newJob as any) : job))
+          : [...crewCtx.jobs, newJob]
+        : crewCtx.jobs;
   const position = typeof positionRaw === 'number' && Number.isFinite(positionRaw) ? Math.trunc(positionRaw) : crewCtx.items.length;
   const newItem = {
     id: tempId('temp_item'),
@@ -146,88 +381,248 @@ export async function POST(req: Request) {
     calendar: ctx.calendar,
   });
 
-  if (isMove && existingJob?.crew_id) {
-    const oldCrewId = String(existingJob.crew_id);
+  let sourceCrewId: string | null = null;
+  let sourceFormatted: ReturnType<typeof formatCrewScheduleBlocks> | null = null;
+  let sourceItemId: string | null = null;
+  let sourcePositions: Array<{ id: string; position: number }> = [];
+  let sourceForecastUpdates: Array<{ id: string; forecast_start: string | null; forecast_end_exclusive: string | null; forecast_duration_days: number }> = [];
+  let repairedMissingSourceItem = false;
+
+  if (isMove && existingScheduledJobId && existingCrewId) {
+    const oldCrewId = existingCrewId;
+    sourceCrewId = oldCrewId;
     const oldCrewCtx = buildCrewContext(ctx, oldCrewId);
-    if (!oldCrewCtx) return jsonError('Source crew not found', 404);
-    const oldItems = removeItem(oldCrewCtx.items, (item) => item.itemType === 'job' && item.jobId === existingJob.id);
-    const oldJobs = oldCrewCtx.jobs.filter((job) => job.id !== existingJob.id);
-    const oldAfter = recomputeForCrew({
-      crewRow: oldCrewCtx.crewRow,
-      items: oldItems,
-      jobs: oldJobs,
-      downtimes: oldCrewCtx.downtimes,
-      calendar: ctx.calendar,
-      today: ctx.today,
+    if (!oldCrewCtx) {
+      repairedMissingSourceItem = true;
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.consistency_repair',
+        status: 200,
+        message: 'Repairing scheduled job with missing source crew context',
+        extra: {
+          reason: 'missing_source_crew_repaired',
+          jobId,
+          crewId,
+          scheduledJobId: existingScheduledJobId,
+          sourceCrewId,
+          requestedPosition,
+          targetItemPresent: Boolean(existingTargetItem),
+          sourceItemPresent: false,
+        },
+      });
+    } else {
+      sourceItemId = oldCrewCtx.items.find((item) => item.itemType === 'job' && item.jobId === existingScheduledJobId)?.id ?? null;
+      if (!sourceItemId) {
+        repairedMissingSourceItem = true;
+        logPortalServerWarn(diagnostics, {
+          event: 'schedule.assign.consistency_repair',
+          status: 200,
+          message: 'Repairing scheduled job with missing source queue item',
+          extra: {
+            reason: 'missing_source_queue_item_repaired',
+            jobId,
+            crewId,
+            scheduledJobId: existingScheduledJobId,
+            sourceCrewId,
+            requestedPosition,
+            targetItemPresent: Boolean(existingTargetItem),
+            sourceItemPresent: false,
+          },
+        });
+      } else {
+        const oldItems = removeItem(oldCrewCtx.items, (item) => item.itemType === 'job' && item.jobId === existingScheduledJobId);
+        const oldJobs = oldCrewCtx.jobs.filter((job) => job.id !== existingScheduledJobId);
+        const oldAfter = recomputeForCrew({
+          crewRow: oldCrewCtx.crewRow,
+          items: oldItems,
+          jobs: oldJobs,
+          downtimes: oldCrewCtx.downtimes,
+          calendar: ctx.calendar,
+          today: ctx.today,
+        });
+        const oldImpacts = computeCommitImpacts({
+          before: oldCrewCtx.recompute,
+          after: oldAfter,
+          jobMetaById: buildJobMetaMap(oldCrewCtx.jobs),
+          today: ctx.today,
+          horizonDays: 10,
+          region: oldCrewCtx.crewRow.calendar_region || 'Auckland',
+          calendar: ctx.calendar,
+        });
+        impacts = [...impacts, ...oldImpacts];
+        sourcePositions = applyScheduleItemPositions(oldItems);
+        sourceForecastUpdates = oldAfter.job_updates;
+        sourceFormatted = formatCrewScheduleBlocks({
+          crewRow: oldCrewCtx.crewRow,
+          recompute: oldAfter,
+          jobsById: new Map(oldJobs.map((job) => [job.id, job])),
+          downtimesById: oldCrewCtx.downtimesById,
+        });
+      }
+    }
+  }
+
+  if (existingJob && !isMove && !existingTargetItem) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.consistency_repair',
+      status: 200,
+      message: 'Repairing scheduled job with missing target queue item',
+      extra: {
+        reason: 'missing_target_queue_item_repaired',
+        jobId,
+        crewId,
+        scheduledJobId: existingScheduledJobId,
+        sourceCrewId: existingCrewId,
+        requestedPosition,
+        targetItemPresent: false,
+        sourceItemPresent: false,
+      },
     });
-    const oldImpacts = computeCommitImpacts({
-      before: oldCrewCtx.recompute,
-      after: oldAfter,
-      jobMetaById: buildJobMetaMap(oldCrewCtx.jobs),
-      today: ctx.today,
-      horizonDays: 10,
-      region: oldCrewCtx.crewRow.calendar_region || 'Auckland',
-      calendar: ctx.calendar,
-    });
-    impacts = [...impacts, ...oldImpacts];
+  }
+
+  if (repairedMissingSourceItem) {
+    sourceItemId = null;
+    sourcePositions = [];
+    sourceForecastUpdates = [];
+    sourceFormatted = null;
   }
 
   if (impacts.length && !force) {
-    return jsonOk({ requires_confirmation: true, impacts });
+    return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  let sourceCrewId: string | null = null;
-  let sourceFormatted: ReturnType<typeof formatCrewScheduleBlocks> | null = null;
-
-  let scheduledJobId = existingJob?.id ?? null;
-  if (!existingJob) {
-    const insertRes = await supabaseServer
-      .from('scheduled_jobs')
-      .insert({
-        job_id: jobId,
-        crew_id: crewId,
-        mode: 'floating',
-        forecast_duration_days: durationDays,
-        status: 'not_started',
-      } as any)
-      .select('id')
-      .single();
-    if (insertRes.error) return jsonError('Failed to create scheduled job', 500);
-    scheduledJobId = insertRes.data?.id ?? null;
-  }
-
-  if (!scheduledJobId) return jsonError('Failed to resolve scheduled job id', 500);
-
-  let newScheduleItemId: string | null = null;
-  const finalizedItems = items.map((item) => (item.id === newItem.id ? { ...item, jobId: scheduledJobId } : item));
-
-  for (const item of finalizedItems) {
-    if (item.id === newItem.id) {
-      const insertItemRes = await supabaseServer
-        .from('crew_schedule_items')
-        .insert({
-          crew_id: crewId,
-          item_type: 'job',
-          job_id: scheduledJobId,
-          position: item.position,
-        } as any)
-        .select('id')
-        .single();
-      if (insertItemRes.error) return jsonError('Failed to insert schedule item', 500);
-      newScheduleItemId = insertItemRes.data?.id ?? null;
-    } else {
-      await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-    }
-  }
-
-  const updatedJobs = jobs.map((job) => (job.id === jobRecordId ? { ...job, id: scheduledJobId! } : job));
-  const updatedItems = finalizedItems.map((item) => {
-    if (item.id === newItem.id && newScheduleItemId) {
-      return { ...item, id: newScheduleItemId, jobId: scheduledJobId! };
-    }
-    return item.jobId === jobRecordId ? { ...item, jobId: scheduledJobId! } : item;
+  const assignmentKind: AssignmentKind = isMove && sourceCrewId && sourceItemId ? 'move' : existingJob ? 'existing_repair' : 'new_assignment';
+  const targetForecastCommit = splitNewAssignmentForecast({
+    updates: afterRecompute.job_updates,
+    jobRecordId,
+    hasExistingJob: Boolean(existingJob),
   });
-  let finalRecompute = recomputeForCrew({
+  const targetForecastUpdatesForCommit = filterUuidForecastUpdates(targetForecastCommit.targetForecastUpdates);
+  const sourceForecastUpdatesForCommit = filterUuidForecastUpdates(sourceForecastUpdates);
+  const targetForecastNonUuidCount = targetForecastCommit.targetForecastUpdates.length - targetForecastUpdatesForCommit.length;
+  const sourceForecastNonUuidCount = sourceForecastUpdates.length - sourceForecastUpdatesForCommit.length;
+  const targetPositions = applyScheduleItemPositions(items.filter((item) => item.id !== newItem.id));
+  const assignCommitDiagnostics = {
+    assignmentKind,
+    targetRawForecastCount: afterRecompute.job_updates.length,
+    targetForecastCount: targetForecastUpdatesForCommit.length,
+    targetForecastNonUuidCount,
+    sourceRawForecastCount: sourceForecastUpdates.length,
+    sourceForecastCount: sourceForecastUpdatesForCommit.length,
+    sourceForecastNonUuidCount,
+    targetPositionCount: targetPositions.length,
+    initialForecastPresent: Boolean(targetForecastCommit.initialForecast),
+    sanitizedTempForecastPresent: Boolean(targetForecastCommit.initialForecast?.id.startsWith('temp_job_')),
+  };
+  if (targetForecastNonUuidCount > 0 || sourceForecastNonUuidCount > 0) {
+    logPortalServerWarn(diagnostics, {
+      event: 'schedule.assign.forecast_updates_sanitized',
+      status: 200,
+      message: 'Filtered non-UUID forecast updates before assign commit',
+      extra: {
+        reason: 'non_uuid_forecast_updates_filtered',
+        ...assignCommitDiagnostics,
+        jobId,
+        crewId,
+        scheduledJobId: existingScheduledJobId,
+        sourceCrewId,
+        requestedPosition: position,
+      },
+    });
+  }
+
+  const commitRes = await commitAssignJob({
+    diagnostics,
+    targetCrewId: crewId,
+    targetInsertPosition: position,
+    targetPositions,
+    targetForecastUpdates: targetForecastUpdatesForCommit,
+    ...(existingJob
+      ? { scheduledJobId: String(existingJob.id) }
+      : {
+          jobId,
+          forecastDurationDays: targetForecastCommit.initialForecast?.forecast_duration_days ?? durationDays,
+          initialForecastStart: targetForecastCommit.initialForecast?.forecast_start,
+          initialForecastEndExclusive: targetForecastCommit.initialForecast?.forecast_end_exclusive,
+        }),
+    ...(isMove && sourceCrewId && sourceItemId
+      ? {
+          move: {
+            sourceCrewId,
+            sourceJobItemId: sourceItemId,
+            sourcePositions,
+            sourceForecastUpdates: sourceForecastUpdatesForCommit,
+          },
+        }
+      : null),
+  });
+  if (!commitRes.ok) {
+    const usesExistingJobRepairPath = Boolean(existingJob && !(isMove && sourceCrewId && sourceItemId));
+    if (usesExistingJobRepairPath && isOldAssignRepairRpcError(commitRes.error)) {
+      logPortalServerWarn(diagnostics, {
+        event: 'schedule.assign.schema_revision_missing',
+        status: 501,
+        message: ASSIGN_REPAIR_MIGRATION_MESSAGE,
+        error: commitRes.error,
+        extra: {
+          reason: 'old_assign_repair_rpc_revision',
+          ...assignCommitDiagnostics,
+          jobId,
+          crewId,
+          scheduledJobId: existingScheduledJobId,
+          sourceCrewId,
+          requestedPosition: position,
+          targetItemPresent: Boolean(existingTargetItem),
+          sourceItemPresent: Boolean(sourceItemId),
+        },
+      });
+      return jsonError(ASSIGN_REPAIR_MIGRATION_MESSAGE, 501, diagnostics);
+    }
+
+    const logInput = {
+      event: 'schedule.assign.commit_failed',
+      status: commitRes.status,
+      message: commitRes.responseMessage,
+      error: commitRes.error,
+      extra: {
+        reason: 'commit_failed',
+        ...assignCommitDiagnostics,
+        jobId,
+        crewId,
+        scheduledJobId: existingScheduledJobId,
+        sourceCrewId,
+        requestedPosition: position,
+        targetItemPresent: Boolean(existingTargetItem),
+        sourceItemPresent: Boolean(sourceItemId),
+      },
+    };
+    if (commitRes.status === 501) {
+      logPortalServerWarn(diagnostics, logInput);
+      return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
+    } else {
+      logPortalServerError(diagnostics, logInput);
+    }
+    return jsonAssignFailure(commitRes.responseMessage, commitRes.status, diagnostics, 'commit_rpc', commitRes.error, assignCommitDiagnostics);
+  }
+
+  const scheduledJobId = commitRes.data.scheduled_job_id;
+  const newScheduleItemId = commitRes.data.schedule_item_id;
+
+  const updatedJobs = jobs.map((job) =>
+    job.id === jobRecordId
+      ? {
+          ...job,
+          id: scheduledJobId,
+          crewId,
+        }
+      : job,
+  );
+  const updatedItems = items.map((item) => {
+    if (item.id === newItem.id) {
+      return { ...item, id: newScheduleItemId, jobId: scheduledJobId };
+    }
+    return item.jobId === jobRecordId ? { ...item, jobId: scheduledJobId } : item;
+  });
+  const finalRecompute = recomputeForCrew({
     crewRow: crewCtx.crewRow,
     items: updatedItems,
     jobs: updatedJobs,
@@ -235,46 +630,6 @@ export async function POST(req: Request) {
     calendar: ctx.calendar,
     today: ctx.today,
   });
-
-  await applyJobForecastUpdates(finalRecompute.job_updates);
-
-  if (isMove && existingJob?.crew_id) {
-    const oldCrewId = String(existingJob.crew_id);
-    sourceCrewId = oldCrewId;
-    await supabaseServer.from('scheduled_jobs').update({ crew_id: crewId } as any).eq('id', scheduledJobId);
-    await supabaseServer.from('crew_schedule_items').delete().eq('job_id', scheduledJobId).eq('crew_id', oldCrewId);
-
-    const oldCrewCtx = buildCrewContext(ctx, oldCrewId);
-    if (oldCrewCtx) {
-      const oldItems = removeItem(oldCrewCtx.items, (item) => item.itemType === 'job' && item.jobId === scheduledJobId);
-      for (const item of oldItems) {
-        await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
-      }
-      const oldAfter = recomputeForCrew({
-        crewRow: oldCrewCtx.crewRow,
-        items: oldItems,
-        jobs: oldCrewCtx.jobs.filter((job) => job.id !== scheduledJobId),
-        downtimes: oldCrewCtx.downtimes,
-        calendar: ctx.calendar,
-        today: ctx.today,
-      });
-      await applyJobForecastUpdates(oldAfter.job_updates);
-      sourceFormatted = formatCrewScheduleBlocks({
-        crewRow: oldCrewCtx.crewRow,
-        recompute: oldAfter,
-        jobsById: new Map(oldCrewCtx.jobs.filter((job) => job.id !== scheduledJobId).map((job) => [job.id, job])),
-        downtimesById: oldCrewCtx.downtimesById,
-      });
-    }
-    finalRecompute = recomputeForCrew({
-      crewRow: crewCtx.crewRow,
-      items: updatedItems,
-      jobs: updatedJobs.map((job) => (job.id === scheduledJobId ? { ...job, crewId } : job)),
-      downtimes: crewCtx.downtimes,
-      calendar: ctx.calendar,
-      today: ctx.today,
-    });
-  }
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
@@ -295,5 +650,5 @@ export async function POST(req: Request) {
           source_schedule: sourceFormatted,
         }
       : null),
-  });
+  }, 200, diagnostics);
 }

@@ -29,6 +29,7 @@ import {
 import { getDrawingSheetViewportMm } from '@/lib/estimates/drawingSheetLayout';
 import { normalizeHouseFootprintParams, type CalculatorHouseFootprintParams } from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
+import { blockNativeSelectionEvent } from '@/components/drawings/viewports/nativeSelection';
 import styles from './EstimateDrawingSheet.module.css';
 
 type LegendSourceClass =
@@ -791,6 +792,8 @@ export default function EstimateDrawingSheet({
       available: canEditFootprint,
       surface: 'sheet',
       isEditing: showHouseControls,
+      allowAttachmentSideCanvasSelect: true,
+      allowResizeEdgeDrag: true,
       isContextHovered: showHousePopover,
       hoveredAttachmentSide: footprintHoveredAttachmentSide,
       hoveredHandleId: footprintHoveredHandleId,
@@ -859,9 +862,31 @@ export default function EstimateDrawingSheet({
       } as CSSProperties)
     : undefined;
 
+  const handleNativeSelectionCapture = useCallback((event: Event) => {
+    blockNativeSelectionEvent(event);
+  }, []);
+
+  useEffect(() => {
+    const node = sheetViewportRef.current;
+    if (!node) return;
+    const handleSelectStart = (event: Event) => handleNativeSelectionCapture(event);
+    const handleDragStart = (event: Event) => handleNativeSelectionCapture(event);
+    node.addEventListener('selectstart', handleSelectStart, true);
+    node.addEventListener('dragstart', handleDragStart, true);
+    return () => {
+      node.removeEventListener('selectstart', handleSelectStart, true);
+      node.removeEventListener('dragstart', handleDragStart, true);
+    };
+  }, [handleNativeSelectionCapture]);
+
   return (
     <div className={styles.sheetShell}>
-      <div ref={sheetViewportRef} className={styles.sheetViewport} style={viewportStyle}>
+      <div
+        ref={sheetViewportRef}
+        className={styles.sheetViewport}
+        style={viewportStyle}
+        data-native-selection-suppressed="true"
+      >
         <div className={styles.sheetStage}>
           <section className={styles.sheetPaper} style={moduleDrawingThemeCssVariables('sheet')} aria-label={`${viewLabel} A3 drawing sheet`}>
             <div className={styles.sheetUpper}>

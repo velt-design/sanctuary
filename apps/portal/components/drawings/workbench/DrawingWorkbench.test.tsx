@@ -121,13 +121,15 @@ describe('DrawingWorkbench', () => {
       />,
     );
 
-    expect(markup).toContain('Drawing workbench');
+    expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('Sheet View');
     expect(markup).toContain('Model Space');
+    expect(markup).not.toContain('3D View');
     expect(markup).not.toContain('next landing zone');
     expect(markup).toContain('aria-label="Plan view A3 drawing sheet"');
     expect(markup).not.toContain('Sheet Preview');
     expect(markup).not.toContain('Pergola style');
+    expect(markup).not.toContain('Drawing Workbench</');
   });
 
   it('renders the model-space viewport without sheet furniture when model mode is active', () => {
@@ -158,10 +160,95 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('aria-label="Plan model space viewport"');
-    expect(markup).toContain('Reset view');
+    expect(markup).toContain('Fit view');
     expect(markup).not.toContain('Live configurator surface');
     expect(markup).not.toContain('A3 drawing sheet');
     expect(markup).not.toContain('Open full calculator');
     expect(markup).not.toContain('Rotate +90');
+  });
+
+  it('passes house display mode to model space without changing sheet view', () => {
+    const drawing = makeDrawingModule();
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+
+    const sheetMarkup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="sheet"
+        workbenchDisplayMode="house"
+        onViewportModeChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        meta={meta}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+    const modelMarkup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="model"
+        workbenchDisplayMode="house"
+        onViewportModeChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        meta={meta}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(sheetMarkup).toContain('aria-label="Plan view A3 drawing sheet"');
+    expect(sheetMarkup).toContain('data-plan-primary-fill="true"');
+    expect(modelMarkup).toContain('aria-label="Plan model space viewport"');
+    expect(modelMarkup).not.toContain('data-plan-primary-fill="true"');
+  });
+
+  it('exposes the hidden 3D viewport mode only when explicitly enabled', () => {
+    const drawing = makeDrawingModule();
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+
+    const markup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="sheet"
+        availableViewportModes={['sheet', 'model', 'geometry3d']}
+        onViewportModeChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        meta={meta}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('3D View');
   });
 });

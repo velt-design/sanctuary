@@ -1,6 +1,6 @@
 'use client';
 
-import styles from '@/app/staff/projects/projects.module.css';
+import styles from '@/components/ui/surface/PortalSurface.module.css';
 import type { InstallPhase } from '@/lib/outputs/types';
 
 function formatMoney(n: number): string {
@@ -45,4 +45,3 @@ export default function InstallPhasesTable({ phases }: { phases: InstallPhase[] 
     </section>
   );
 }
-

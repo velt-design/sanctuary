@@ -1,7 +1,9 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
+import { createRouteDiagnostics, logPortalServerError, logPortalServerWarn } from '@/lib/api/routeDiagnostics';
 import { isYmd } from '@/lib/scheduling/date';
+import { commitScheduleUnassign } from '@/lib/scheduling/scheduleCommands';
 import {
-  applyJobForecastUpdates,
+  applyScheduleItemPositions,
   buildCrewContext,
   buildJobMetaMap,
   computeCommitImpacts,
@@ -11,37 +13,55 @@ import {
   removeItem,
   recomputeForCrew,
 } from '@/lib/scheduling/scheduleV2Server';
-import { supabaseServer } from '@/lib/supabaseClient';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const diagnostics = createRouteDiagnostics(req, '/api/staff/v1/schedule/job/unassign');
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   const parsed = await parseJsonBody(req);
-  if (!parsed.ok) return jsonError(parsed.error, 400);
+  if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
   const body = parsed.body ?? {};
 
   const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : '';
   const force = Boolean(body.force);
 
-  if (!jobId) return jsonError('job_id is required', 400);
+  if (!jobId) return jsonError('job_id is required', 400, diagnostics);
 
-  const byProjectRes = await supabaseServer.from('scheduled_jobs').select('*').eq('job_id', jobId).maybeSingle();
+  const byProjectRes = await supabase.from('scheduled_jobs').select('*').eq('job_id', jobId).maybeSingle();
   if (byProjectRes.error) {
     if (isMissingSchemaError(byProjectRes.error)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, {
+        status: 501,
+        message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+        error: byProjectRes.error,
+      });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load scheduled job', 500);
+    logPortalServerError(diagnostics, {
+      status: 500,
+      message: 'Failed to load scheduled job',
+      error: byProjectRes.error,
+    });
+    return jsonError('Failed to load scheduled job', 500, diagnostics);
   }
   let jobRow = byProjectRes.data;
   if (!jobRow) {
-    const byIdRes = await supabaseServer.from('scheduled_jobs').select('*').eq('id', jobId).maybeSingle();
-    if (byIdRes.error) return jsonError('Failed to load scheduled job', 500);
+    const byIdRes = await supabase.from('scheduled_jobs').select('*').eq('id', jobId).maybeSingle();
+    if (byIdRes.error) {
+      logPortalServerError(diagnostics, {
+        status: 500,
+        message: 'Failed to load scheduled job',
+        error: byIdRes.error,
+      });
+      return jsonError('Failed to load scheduled job', 500, diagnostics);
+    }
     jobRow = byIdRes.data;
   }
-  if (!jobRow) return jsonOk({ ok: true });
+  if (!jobRow) return jsonOk({ ok: true }, 200, diagnostics);
 
   const crewId = String(jobRow.crew_id);
 
@@ -50,14 +70,25 @@ export async function POST(req: Request) {
     ctx = await loadScheduleContext({ crewId, today: typeof body.today === 'string' && isYmd(body.today) ? body.today : undefined });
   } catch (err) {
     if (isMissingSchemaError(err)) {
-      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501);
+      logPortalServerWarn(diagnostics, {
+        status: 501,
+        message: 'Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.',
+        error: err,
+      });
+      return jsonError('Schedule schema is not upgraded yet. Run latest schedule migrations then refresh.', 501, diagnostics);
     }
-    return jsonError('Failed to load schedule data', 500);
+    logPortalServerError(diagnostics, {
+      status: 500,
+      message: 'Failed to load schedule data',
+      error: err,
+    });
+    return jsonError('Failed to load schedule data', 500, diagnostics);
   }
 
   const crewCtx = buildCrewContext(ctx, crewId);
-  if (!crewCtx) return jsonError('Crew not found', 404);
+  if (!crewCtx) return jsonError('Crew not found', 404, diagnostics);
 
+  const removedItem = crewCtx.items.find((item) => item.itemType === 'job' && item.jobId === jobRow.id) ?? null;
   const items = removeItem(crewCtx.items, (item) => item.itemType === 'job' && item.jobId === jobRow.id);
   const jobs = crewCtx.jobs.filter((job) => job.id !== jobRow.id);
 
@@ -81,17 +112,26 @@ export async function POST(req: Request) {
   });
 
   if (impacts.length && !force) {
-    return jsonOk({ requires_confirmation: true, impacts });
+    return jsonOk({ requires_confirmation: true, impacts }, 200, diagnostics);
   }
 
-  await supabaseServer.from('crew_schedule_items').delete().eq('job_id', jobRow.id);
-  await supabaseServer.from('scheduled_jobs').delete().eq('id', jobRow.id);
-
-  for (const item of items) {
-    await supabaseServer.from('crew_schedule_items').update({ position: item.position } as any).eq('id', item.id);
+  if (!removedItem) {
+    logPortalServerError(diagnostics, {
+      status: 500,
+      message: 'Failed to unassign scheduled job',
+      extra: { scheduledJobId: String(jobRow.id), reason: 'missing_queue_item' },
+    });
+    return jsonError('Failed to unassign scheduled job', 500, diagnostics);
   }
 
-  await applyJobForecastUpdates(afterRecompute.job_updates);
+  const commitRes = await commitScheduleUnassign({
+    diagnostics,
+    scheduledJobId: String(jobRow.id),
+    jobItemId: removedItem.id,
+    positions: applyScheduleItemPositions(items),
+    forecastUpdates: afterRecompute.job_updates,
+  });
+  if (!commitRes.ok) return jsonError(commitRes.responseMessage, commitRes.status, diagnostics);
 
   const formatted = formatCrewScheduleBlocks({
     crewRow: crewCtx.crewRow,
@@ -106,5 +146,5 @@ export async function POST(req: Request) {
     schedule: formatted,
     conflicts: formatted.conflicts,
     next_available_date: formatted.next_available_date,
-  });
+  }, 200, diagnostics);
 }

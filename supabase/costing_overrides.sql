@@ -54,9 +54,7 @@ begin
   end if;
 end $$;
 
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on table public.material_cost_overrides to anon, authenticated;
-grant select, insert, update, delete on table public.install_action_minutes_overrides to anon, authenticated;
-grant select, insert, update, delete on table public.install_driver_curve_overrides to anon, authenticated;
+-- Access control is managed by the forward migrations under `supabase/migrations/`.
+-- Do not grant blanket anon/authenticated table access from this legacy snapshot.
 
 select pg_notify('pgrst', 'reload schema');

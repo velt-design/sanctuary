@@ -1,14 +1,19 @@
 import type { Estimate } from '@/lib/types/estimate';
-import type { Project } from '@/lib/types/project';
 import type { Installer, ScheduleItem, ScheduledBar, SchedulingIssue } from '@/lib/types/scheduling';
 import { addWorkHours, diffDaysYmd, nextWorkdayYmd, todayYmd, type WorkCursor } from './date';
 import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from './duration';
 
-function safeProjectName(project: Project | null | undefined): string {
+export type ScheduleProjectLike = {
+  projectName?: string;
+  name?: string;
+  status?: string;
+};
+
+function safeProjectName(project: ScheduleProjectLike | null | undefined): string {
   return project?.projectName ?? project?.name ?? 'Untitled project';
 }
 
-function safeProjectStatus(project: Project | null | undefined): string {
+function safeProjectStatus(project: ScheduleProjectLike | null | undefined): string {
   return project?.status ?? 'NEW';
 }
 
@@ -46,7 +51,7 @@ export function buildScheduleBars(input: {
   today?: string; // YYYY-MM-DD
   installers: Installer[];
   scheduleItems: ScheduleItem[];
-  projectsById: Map<string, Project>;
+  projectsById: Map<string, ScheduleProjectLike>;
   estimatesById: Map<string, Estimate>;
 }): ScheduleBuildResult {
   const issues: SchedulingIssue[] = [];

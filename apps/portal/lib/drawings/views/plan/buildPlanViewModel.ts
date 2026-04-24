@@ -1,12 +1,18 @@
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
+import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
+import type { HouseModel, WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import {
+  buildHouseFirstPlanOverlay,
+  type HouseFirstPlanOverlay,
+} from './houseFirstPlanOverlay';
 
 export type PlanViewModel = {
   moduleId: string;
   moduleLabel: string;
   hasGeometry: boolean;
-  roofType: DrawingAssemblyModel['roof']['roofType'];
-  pergolaStyle: DrawingAssemblyModel['roof']['pergolaStyle'];
-  rotationQuarterTurns: DrawingAssemblyModel['roof']['drawingRotationQuarterTurns'];
+  roofType: ModulePlanModel['roofType'] | null;
+  pergolaStyle: ModulePlanModel['pergolaStyle'] | null;
+  rotationQuarterTurns: ModulePlanModel['drawingRotationQuarterTurns'];
   primarySize: {
     lengthA: number | null;
     spanA: number | null;
@@ -15,8 +21,8 @@ export type PlanViewModel = {
   };
   houseContext: {
     visible: boolean;
-    attachmentSide: DrawingAssemblyModel['houseContext']['attachmentSide'];
-    preset: DrawingAssemblyModel['houseContext']['footprintPreset'];
+    attachmentSide: ModulePlanModel['attachmentSide'] | 'rear';
+    preset: ModulePlanModel['houseFootprintPreset'] | null;
     supportsFootprints: boolean;
     editable: boolean;
   };
@@ -31,43 +37,80 @@ export type PlanViewModel = {
     sheetPrimaryDimensionsPinned: 'left_bottom';
     suppressDocumentAnnotationsInModelSpace: true;
   };
-  planModel: DrawingAssemblyModel['planModel'];
+  houseFirst: HouseFirstPlanOverlay | null;
+  planModel: ModulePlanModel | null;
 };
 
-export function buildPlanViewModel(assembly: DrawingAssemblyModel | null): PlanViewModel | null {
-  if (!assembly || !assembly.planModel) return null;
+type PlanViewModelSource =
+  | DrawingAssemblyModel
+  | {
+      moduleId: string;
+      moduleLabel: string;
+      planModel: ModulePlanModel | null;
+      canEditHouseFootprint?: boolean;
+      house?: HouseModel | null;
+      activeHouseSelection?: WorkbenchHouseSelection | null;
+      includeHouseFirstOverlay?: boolean;
+      moduleLengthM?: string | null;
+      moduleProjectionM?: string | null;
+    };
+
+function isDrawingAssemblyModel(source: PlanViewModelSource): source is DrawingAssemblyModel {
+  return 'roof' in source && 'houseContext' in source && 'capabilities' in source;
+}
+
+export function buildPlanViewModel(source: PlanViewModelSource | null): PlanViewModel | null {
+  if (!source) return null;
+
+  const planModel = source.planModel;
+  if (!planModel) return null;
+
+  const moduleId = isDrawingAssemblyModel(source) ? source.id : source.moduleId;
+  const moduleLabel = isDrawingAssemblyModel(source) ? source.label : source.moduleLabel;
+  const canEditHouseFootprint = isDrawingAssemblyModel(source)
+    ? source.capabilities.canEditHouseFootprint
+    : Boolean(source.canEditHouseFootprint);
 
   return {
-    moduleId: assembly.id,
-    moduleLabel: assembly.label,
+    moduleId,
+    moduleLabel,
     hasGeometry: true,
-    roofType: assembly.roof.roofType,
-    pergolaStyle: assembly.roof.pergolaStyle,
-    rotationQuarterTurns: assembly.roof.drawingRotationQuarterTurns,
+    roofType: planModel.roofType,
+    pergolaStyle: planModel.pergolaStyle,
+    rotationQuarterTurns: planModel.drawingRotationQuarterTurns,
     primarySize: {
-      lengthA: assembly.roof.footprint.lengthA,
-      spanA: assembly.roof.footprint.spanA,
-      lengthB: assembly.roof.footprint.lengthB,
-      spanB: assembly.roof.footprint.spanB,
+      lengthA: planModel.lengthA,
+      spanA: planModel.spanA,
+      lengthB: planModel.lengthB,
+      spanB: planModel.spanB,
     },
     houseContext: {
-      visible: assembly.houseContext.connectionType !== 'none',
-      attachmentSide: assembly.houseContext.attachmentSide,
-      preset: assembly.houseContext.footprintPreset,
-      supportsFootprints: assembly.houseContext.supportsFootprints,
-      editable: assembly.capabilities.canEditHouseFootprint,
+      visible: planModel.houseConnectionType !== 'none',
+      attachmentSide: planModel.attachmentSide,
+      preset: planModel.houseFootprintPreset,
+      supportsFootprints: planModel.supportsHouseFootprints,
+      editable: canEditHouseFootprint,
     },
     structure: {
-      rafterCountA: assembly.structure.rafters.countA,
-      rafterSpacingA: assembly.structure.rafters.spacingA,
-      hasRidgeBeam: assembly.structure.ridgeBeam.present,
-      soffitBracketCount: assembly.houseContext.soffitBrackets.count,
+      rafterCountA: planModel.rafterCountA,
+      rafterSpacingA: planModel.rafterSpacingA,
+      hasRidgeBeam: planModel.ridgeBeamDepthM > 0 && planModel.ridgeBeamWidthM > 0,
+      soffitBracketCount: planModel.soffitBracketPositionsA.length,
     },
     annotations: {
       keepTextUpright: true,
       sheetPrimaryDimensionsPinned: 'left_bottom',
       suppressDocumentAnnotationsInModelSpace: true,
     },
-    planModel: assembly.planModel,
+    houseFirst:
+      !isDrawingAssemblyModel(source) && source.includeHouseFirstOverlay
+        ? buildHouseFirstPlanOverlay({
+            house: source.house,
+            selection: source.activeHouseSelection ?? { kind: 'house', targetId: null },
+            moduleLengthM: source.moduleLengthM,
+            moduleProjectionM: source.moduleProjectionM,
+          })
+        : null,
+    planModel,
   };
 }

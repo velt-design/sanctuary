@@ -1,20 +1,20 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
 import { buildVersionLabelMap, calculatorSnapshotFromRow, extractVersionNumber, mapEstimateDetail, mapEstimateMeta } from '@/lib/estimates/server';
-import { supabaseServer } from '@/lib/supabaseClient';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
 type AnyRecord = Record<string, unknown>;
 
-async function insertEstimateWithRetry(payload: Record<string, any>) {
+async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record<string, any>) {
   const working: Record<string, any> = { ...payload };
 
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    const res = await supabaseServer.from('estimates').insert(working).select('*').single();
+    const res = await supabase.from('estimates').insert(working).select('*').single();
     if (!res.error && res.data) return res;
 
     const missing = missingColumnFromError(res.error);
@@ -30,8 +30,9 @@ async function insertEstimateWithRetry(payload: Record<string, any>) {
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -41,7 +42,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid projectId', 400);
   }
 
-  const res = await supabaseServer
+  const res = await supabase
     .from('estimates')
     .select('id, project_id, created_at, status, created_by, summary_json, summary, outputs, warnings, costing_manifest, costing_rules, total_true_cost_ex_gst, total_true_cost_inc_gst')
     .eq('project_id', projectUuid)
@@ -62,8 +63,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -81,7 +83,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   if (isRecord(body?.calculator_snapshot)) snapshot = body.calculator_snapshot as Record<string, unknown>;
 
   if (!snapshot) {
-    const latest = await supabaseServer
+    const latest = await supabase
       .from('estimates')
       .select('inputs, outputs, warnings, costing_manifest, costing_rules')
       .eq('project_id', projectUuid)
@@ -95,7 +97,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('No calculator result found. Open calculator and generate one first.', 409);
   }
 
-  const existing = await supabaseServer
+  const existing = await supabase
     .from('estimates')
     .select('id, outputs, created_at')
     .eq('project_id', projectUuid)
@@ -114,7 +116,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
 
   const inputs = isRecord(snapshot.inputs) ? (snapshot.inputs as AnyRecord) : {};
   const outputs = isRecord(snapshot.outputs) ? (snapshot.outputs as AnyRecord) : {};
-  const createdBy = typeof session.user?.email === 'string' ? session.user.email.trim() : null;
+  const createdBy = typeof auth.session.user?.email === 'string' ? auth.session.user.email.trim() : null;
 
   const payload: Record<string, any> = {
     project_id: projectUuid,
@@ -131,7 +133,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     }),
   };
 
-  const insertRes = await insertEstimateWithRetry(payload);
+  const insertRes = await insertEstimateWithRetry(supabase, payload);
   if (insertRes.error || !insertRes.data) {
     return jsonError(insertRes.error?.message ?? 'Failed to create estimate', 500);
   }

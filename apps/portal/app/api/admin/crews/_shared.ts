@@ -1,4 +1,6 @@
-import { supabaseServer } from '@/lib/supabaseClient';
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 
 export type AdminCrew = {
   id: string;
@@ -12,6 +14,10 @@ export type AdminCrew = {
 };
 
 const CREW_SELECT = 'id,name,color,is_active,sort_order,calendar_region,base_available_date';
+
+async function resolveSupabaseClient(supabase?: SupabaseClient): Promise<SupabaseClient> {
+  return supabase ?? (await getSupabaseServerAuth());
+}
 
 function toStringValue(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -43,12 +49,13 @@ function normalizeCrewRow(row: any): Omit<AdminCrew, 'scheduled_item_count'> {
   };
 }
 
-async function loadVisibleProjectIds(projectIds: string[]): Promise<Set<string>> {
+async function loadVisibleProjectIds(projectIds: string[], supabase?: SupabaseClient): Promise<Set<string>> {
   if (!projectIds.length) return new Set<string>();
+  const client = await resolveSupabaseClient(supabase);
 
-  let projectsRes = await supabaseServer.from('projects').select('id').in('id', projectIds).is('archived_at', null);
+  let projectsRes = await client.from('projects').select('id').in('id', projectIds).is('archived_at', null);
   if (projectsRes.error && isMissingArchivedAtError(projectsRes.error)) {
-    projectsRes = await supabaseServer.from('projects').select('id').in('id', projectIds);
+    projectsRes = await client.from('projects').select('id').in('id', projectIds);
   }
   if (projectsRes.error) throw projectsRes.error;
 
@@ -59,8 +66,9 @@ async function loadVisibleProjectIds(projectIds: string[]): Promise<Set<string>>
   return visibleIds;
 }
 
-async function countV2BoardJobsForCrew(crewId: string): Promise<number | null> {
-  const itemRowsRes = await supabaseServer.from('crew_schedule_items').select('job_id').eq('crew_id', crewId).eq('item_type', 'job');
+async function countV2BoardJobsForCrew(crewId: string, supabase?: SupabaseClient): Promise<number | null> {
+  const client = await resolveSupabaseClient(supabase);
+  const itemRowsRes = await client.from('crew_schedule_items').select('job_id').eq('crew_id', crewId).eq('item_type', 'job');
   if (itemRowsRes.error) {
     if (isMissingRelationError(itemRowsRes.error)) return null;
     throw itemRowsRes.error;
@@ -72,14 +80,14 @@ async function countV2BoardJobsForCrew(crewId: string): Promise<number | null> {
   );
   if (!scheduledJobIds.length) return 0;
 
-  const jobsRes = await supabaseServer.from('scheduled_jobs').select('id,job_id').in('id', scheduledJobIds).eq('crew_id', crewId);
+  const jobsRes = await client.from('scheduled_jobs').select('id,job_id').in('id', scheduledJobIds).eq('crew_id', crewId);
   if (jobsRes.error) throw jobsRes.error;
 
   const scheduledJobs = Array.isArray(jobsRes.data) ? jobsRes.data : [];
   const projectIds = Array.from(
     new Set(scheduledJobs.map((row: any) => (typeof row?.job_id === 'string' ? row.job_id : '')).filter(Boolean)),
   );
-  const visibleProjectIds = await loadVisibleProjectIds(projectIds);
+  const visibleProjectIds = await loadVisibleProjectIds(projectIds, client);
   if (!visibleProjectIds.size) return 0;
 
   const projectByScheduledJobId = new Map<string, string>();
@@ -100,8 +108,9 @@ async function countV2BoardJobsForCrew(crewId: string): Promise<number | null> {
   return count;
 }
 
-async function countLegacyBoardJobsForCrew(crewId: string): Promise<number | null> {
-  const rowsRes = await supabaseServer.from('schedule_items').select('project_id').eq('crew_id', crewId);
+async function countLegacyBoardJobsForCrew(crewId: string, supabase?: SupabaseClient): Promise<number | null> {
+  const client = await resolveSupabaseClient(supabase);
+  const rowsRes = await client.from('schedule_items').select('project_id').eq('crew_id', crewId);
   if (rowsRes.error) {
     if (isMissingRelationError(rowsRes.error)) return null;
     throw rowsRes.error;
@@ -109,7 +118,7 @@ async function countLegacyBoardJobsForCrew(crewId: string): Promise<number | nul
 
   const rows = Array.isArray(rowsRes.data) ? rowsRes.data : [];
   const projectIds = Array.from(new Set(rows.map((row: any) => (typeof row?.project_id === 'string' ? row.project_id : '')).filter(Boolean)));
-  const visibleProjectIds = await loadVisibleProjectIds(projectIds);
+  const visibleProjectIds = await loadVisibleProjectIds(projectIds, client);
   if (!visibleProjectIds.size) return 0;
 
   let count = 0;
@@ -120,24 +129,26 @@ async function countLegacyBoardJobsForCrew(crewId: string): Promise<number | nul
   return count;
 }
 
-export async function countScheduledItemsForCrew(crewId: string): Promise<number> {
-  const v2Count = await countV2BoardJobsForCrew(crewId);
+export async function countScheduledItemsForCrew(crewId: string, supabase?: SupabaseClient): Promise<number> {
+  const client = await resolveSupabaseClient(supabase);
+  const v2Count = await countV2BoardJobsForCrew(crewId, client);
   if (typeof v2Count === 'number') return v2Count;
 
-  const legacyCount = await countLegacyBoardJobsForCrew(crewId);
+  const legacyCount = await countLegacyBoardJobsForCrew(crewId, client);
   if (typeof legacyCount === 'number') return legacyCount;
 
   return 0;
 }
 
-export async function listCrewsWithCounts(): Promise<AdminCrew[]> {
-  const crewsRes = await supabaseServer.from('schedule_crews').select(CREW_SELECT).order('sort_order', { ascending: true }).order('name', { ascending: true });
+export async function listCrewsWithCounts(supabase?: SupabaseClient): Promise<AdminCrew[]> {
+  const client = await resolveSupabaseClient(supabase);
+  const crewsRes = await client.from('schedule_crews').select(CREW_SELECT).order('sort_order', { ascending: true }).order('name', { ascending: true });
   if (crewsRes.error) throw crewsRes.error;
 
   const crewRows = Array.isArray(crewsRes.data) ? crewsRes.data : [];
   const base = crewRows.map(normalizeCrewRow);
 
-  const counts = await Promise.all(base.map((crew) => countScheduledItemsForCrew(crew.id)));
+  const counts = await Promise.all(base.map((crew) => countScheduledItemsForCrew(crew.id, client)));
 
   return base.map((crew, index) => ({
     ...crew,
@@ -145,13 +156,14 @@ export async function listCrewsWithCounts(): Promise<AdminCrew[]> {
   }));
 }
 
-export async function readCrewByIdWithCount(crewId: string): Promise<AdminCrew | null> {
-  const res = await supabaseServer.from('schedule_crews').select(CREW_SELECT).eq('id', crewId).maybeSingle();
+export async function readCrewByIdWithCount(crewId: string, supabase?: SupabaseClient): Promise<AdminCrew | null> {
+  const client = await resolveSupabaseClient(supabase);
+  const res = await client.from('schedule_crews').select(CREW_SELECT).eq('id', crewId).maybeSingle();
   if (res.error) throw res.error;
   if (!res.data) return null;
 
   const normalized = normalizeCrewRow(res.data);
-  const count = await countScheduledItemsForCrew(normalized.id);
+  const count = await countScheduledItemsForCrew(normalized.id, client);
   return {
     ...normalized,
     scheduled_item_count: count,

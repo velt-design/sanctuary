@@ -1,31 +1,56 @@
 .root {
-  /* Keep PageHeader spacing controlled by the page layout (no implicit margins). */
+  display: grid;
+  gap: 10px;
 }
 
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
 
-.title {
-  margin: 0;
-  font-size: 20px;
-  line-height: 1;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+.identity {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
 }
 
-@media (min-width: 768px) {
-  .title {
-    font-size: 24px;
-  }
+.title {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 32px);
+  line-height: 0.98;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: rgba(var(--portal-text-rgb), 0.98);
+}
+
+.subtitle {
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(var(--portal-text-rgb), 0.68);
+}
+
+.meta {
+  color: rgba(var(--portal-text-rgb), 0.66);
+  font-size: 13px;
 }
 
 .right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
+@media (max-width: 767px) {
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .right {
+    justify-content: flex-start;
+  }
+}

@@ -1,13 +1,12 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { getSupabaseBrowser } from '@/lib/supabase/browserClient';
 import { fetchPortalRole } from '@/lib/queries/auth';
 import type { PortalRole } from '@/lib/authTypes';
-
-type PortalAuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+import { type PortalAuthInitialState, type PortalAuthStatus, type PortalAuthUser, toPortalAuthUser } from '@/lib/portalAccess';
 
 const ROLE_CACHE_KEY = 'sanctuary-portal:portal-role-cache:v1';
 
@@ -53,7 +52,7 @@ function clearCachedRole() {
 
 type PortalAuthState = {
   status: PortalAuthStatus;
-  user: User | null;
+  user: PortalAuthUser | null;
   role: PortalRole | null;
   email: string | null;
   isAdmin: boolean;
@@ -63,15 +62,28 @@ type PortalAuthState = {
 
 const PortalAuthContext = createContext<PortalAuthState | null>(null);
 
-export default function PortalAuthProvider({ children }: { children: React.ReactNode }) {
+export default function PortalAuthProvider({
+  children,
+  initialAuthState,
+}: {
+  children: React.ReactNode;
+  initialAuthState?: PortalAuthInitialState;
+}) {
   const router = useRouter();
   const supabase = useMemo(() => getSupabaseBrowser(), []);
   const applyNonceRef = useRef(0);
-  const [state, setState] = useState<{ status: PortalAuthStatus; user: User | null; role: PortalRole | null }>({
-    status: 'loading',
-    user: null,
-    role: null,
-  });
+  const [state, setState] = useState<{ status: PortalAuthStatus; user: PortalAuthUser | null; role: PortalRole | null }>(
+    initialAuthState ?? {
+      status: 'loading',
+      user: null,
+      role: null,
+    },
+  );
+  const stateRef = useRef(state);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const applySession = useCallback(
     async (session: Session | null) => {
@@ -84,12 +96,14 @@ export default function PortalAuthProvider({ children }: { children: React.React
         return;
       }
 
-      const user = session.user;
+      const user = toPortalAuthUser(session.user);
       const cached = readCachedRole(user.id);
+      const previousState = stateRef.current;
+      const sameUser = previousState.user?.id === user.id;
 
       if (cached?.role) {
         setState({ status: 'authenticated', user, role: cached.role });
-      } else {
+      } else if (!(sameUser && previousState.status !== 'unauthenticated')) {
         setState({ status: 'loading', user, role: null });
       }
 
@@ -107,7 +121,7 @@ export default function PortalAuthProvider({ children }: { children: React.React
           if (cached?.role) {
             setState({ status: 'authenticated', user, role: cached.role });
           } else {
-            setState({ status: 'loading', user, role: null });
+            setState({ status: 'lookup_failed', user, role: null });
           }
           return;
         }
@@ -116,9 +130,7 @@ export default function PortalAuthProvider({ children }: { children: React.React
       if (!stillCurrent()) return;
       if (!role) {
         clearCachedRole();
-        await supabase.auth.signOut();
-        if (!stillCurrent()) return;
-        setState({ status: 'unauthenticated', user: null, role: null });
+        setState({ status: 'no_access', user, role: null });
         return;
       }
 

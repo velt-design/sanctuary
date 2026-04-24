@@ -1,19 +1,20 @@
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { isMissingColumnError, missingColumnFromError, salespersonSchemaMismatchMessage } from '@/lib/api/siteVisitsServer';
-import { supabaseServer } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
 
 export const runtime = 'nodejs';
 
 async function safeUpdate(
+  supabase: SupabaseClient,
   projectUuid: string,
   eventUuid: string,
   patchIn: Record<string, any>,
 ): Promise<{ ok: boolean; found: boolean; error?: any }> {
   const patch = { ...patchIn };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const res = await supabaseServer
+    const res = await supabase
       .from('site_visit_events')
       .update(patch as any)
       .eq('project_id', projectUuid)
@@ -43,8 +44,9 @@ async function safeUpdate(
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401);
+  const auth = await requireStaffContext();
+  if (!auth.ok) return auth.response;
+  const supabase = auth.supabase;
 
   let projectUuid: string;
   try {
@@ -72,7 +74,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     return jsonError('Invalid siteVisitEventId', 400);
   }
 
-  const updateRes = await safeUpdate(projectUuid, eventUuid, { assigned_sales_owner_id: salespersonId, assigned_sales_owner: salespersonId });
+  const updateRes = await safeUpdate(supabase, projectUuid, eventUuid, { assigned_sales_owner_id: salespersonId, assigned_sales_owner: salespersonId });
   if (!updateRes.ok) {
     const schemaMsg = salespersonSchemaMismatchMessage(updateRes.error);
     return jsonError(schemaMsg ?? 'Failed to assign salesperson', 500);

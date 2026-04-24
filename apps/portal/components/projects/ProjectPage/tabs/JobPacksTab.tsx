@@ -6,20 +6,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
 import legacy from '@/app/staff/projects/projects.module.css';
 import styles from './JobPacksTab.module.css';
+import { formatPortalDate } from '@/lib/format/portalDateTime';
 import { estimateDetailQueryOptions } from '@/lib/queries/projectEstimates';
 import { generatedJobPacksByProjectQueryOptions } from '@/lib/queries/jobPacks';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { coerceJobPackSheet, useJobPackSpreadsheetAdapter, type JobPackSheetKey } from './useJobPackSpreadsheetAdapter';
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatPortalDate(value, { fallback: '-' });
 }
 
 function statusLabel(status: string): string {
@@ -57,7 +51,7 @@ export default function JobPacksTab({ projectId }: { projectId: string }) {
     (next: {
       estimateId?: string | null;
       sheet?: JobPackSheetKey | null;
-      tab?: 'job-packs' | 'estimates' | 'quotes' | 'invoices' | 'emails' | 'files';
+      tab?: 'job-packs' | 'estimates' | 'quotes' | 'invoices' | 'emails';
     }) => {
       const qs = new URLSearchParams(searchParams.toString());
       const nextTab = next.tab ?? 'job-packs';

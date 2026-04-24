@@ -2,14 +2,17 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { HouseFirstPlanOverlay } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import ModuleViewsCard, {
   ModuleDrawingRenderer,
   type HouseFootprintHandleId,
   getModuleDrawingScaleDiagnostics,
   getSuggestedModuleDrawingScale,
+  resolvePlanSvgPointerFootprintPoint,
   resolveModuleDrawingScaleState,
 } from './ModuleViewsCard';
+import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -100,15 +103,31 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
 function makeFootprintEditor(overrides: Partial<{
   isEditing: boolean;
   isContextHovered: boolean;
-  surface: 'card' | 'sheet';
+  surface: 'card' | 'sheet' | 'model';
+  allowAttachmentSideCanvasSelect: boolean;
+  allowResizeEdgeDrag: boolean;
   hoveredHandleId: HouseFootprintHandleId | null;
   activeHandleId: HouseFootprintHandleId | null;
+  customPolygonOverride: ModulePlanModel['houseFootprintPolygon'] | null;
+  customPolygonOpen: boolean;
+  customPolygonConfirmedPointCount: number;
+  customPolygonPreviewPointKind: 'pending' | 'hover' | null;
+  customPolygonCloseReady: boolean;
+  customPolygonCloseHovered: boolean;
 }> = {}) {
   return {
     available: true,
     isEditing: overrides.isEditing ?? false,
     isContextHovered: overrides.isContextHovered ?? false,
     surface: overrides.surface ?? 'card',
+    allowAttachmentSideCanvasSelect: overrides.allowAttachmentSideCanvasSelect ?? true,
+    allowResizeEdgeDrag: overrides.allowResizeEdgeDrag ?? true,
+    customPolygonOverride: overrides.customPolygonOverride,
+    customPolygonOpen: overrides.customPolygonOpen,
+    customPolygonConfirmedPointCount: overrides.customPolygonConfirmedPointCount,
+    customPolygonPreviewPointKind: overrides.customPolygonPreviewPointKind,
+    customPolygonCloseReady: overrides.customPolygonCloseReady,
+    customPolygonCloseHovered: overrides.customPolygonCloseHovered,
     hoveredAttachmentSide: null,
     hoveredHandleId: overrides.hoveredHandleId ?? null,
     activeHandleId: overrides.activeHandleId ?? null,
@@ -148,6 +167,70 @@ function extractDebugRect(markup: string, marker: string): { minX: number; maxX:
   };
 }
 
+function extractSvgTag(markup: string, ariaLabel: string): string {
+  const labelIndex = markup.indexOf(`aria-label="${ariaLabel}"`);
+  expect(labelIndex).toBeGreaterThanOrEqual(0);
+  const start = markup.lastIndexOf('<svg', labelIndex);
+  const end = markup.indexOf('>', labelIndex);
+  expect(start).toBeGreaterThanOrEqual(0);
+  expect(end).toBeGreaterThan(start);
+  return markup.slice(start, end + 1);
+}
+
+function extractSvgNumberAttribute(svgTag: string, attr: string): number {
+  const match = svgTag.match(new RegExp(`${attr}="([^"]+)"`));
+  expect(match?.[1]).toBeTruthy();
+  return Number.parseFloat(match?.[1] ?? '0');
+}
+
+function extractSvgStringAttribute(svgTag: string, attr: string): string {
+  const match = svgTag.match(new RegExp(`${attr}="([^"]+)"`));
+  expect(match?.[1]).toBeTruthy();
+  return match?.[1] ?? '';
+}
+
+function parseSvgRect(value: string): { x: number; y: number; width: number; height: number } {
+  const parts = value.split(/\s+/).map((part) => Number.parseFloat(part));
+  expect(parts).toHaveLength(4);
+  const [x, y, width, height] = parts as [number, number, number, number];
+  return { x, y, width, height };
+}
+
+function extractHouseClipRect(markup: string): { x: number; y: number; width: number; height: number } {
+  const clipStart = markup.indexOf('<clipPath');
+  expect(clipStart).toBeGreaterThanOrEqual(0);
+  const clipEnd = markup.indexOf('</clipPath>', clipStart);
+  expect(clipEnd).toBeGreaterThan(clipStart);
+  const clipMarkup = markup.slice(clipStart, clipEnd);
+  const rectMatch = clipMarkup.match(/<rect[^>]*>/);
+  expect(rectMatch?.[0]).toBeTruthy();
+  const rectTag = rectMatch?.[0] ?? '';
+  return {
+    x: extractSvgNumberAttribute(rectTag, 'x'),
+    y: extractSvgNumberAttribute(rectTag, 'y'),
+    width: extractSvgNumberAttribute(rectTag, 'width'),
+    height: extractSvgNumberAttribute(rectTag, 'height'),
+  };
+}
+
+function expectRectCloseTo(actual: { x: number; y: number; width: number; height: number }, expected: { x: number; y: number; width: number; height: number }) {
+  expect(actual.x).toBeCloseTo(expected.x, 3);
+  expect(actual.y).toBeCloseTo(expected.y, 3);
+  expect(actual.width).toBeCloseTo(expected.width, 3);
+  expect(actual.height).toBeCloseTo(expected.height, 3);
+}
+
+function expectPointerPointCloseTo(
+  actual: ReturnType<typeof resolvePlanSvgPointerFootprintPoint>,
+  expected: { alongM: number; depthM: number; formattedAlongM?: string; formattedDepthM?: string },
+): void {
+  expect(actual).not.toBeNull();
+  expect(actual?.numeric.alongM).toBeCloseTo(expected.alongM, 6);
+  expect(actual?.numeric.depthM).toBeCloseTo(expected.depthM, 6);
+  expect(actual?.formatted.alongM).toBe(expected.formattedAlongM ?? String(expected.alongM));
+  expect(actual?.formatted.depthM).toBe(expected.formattedDepthM ?? String(expected.depthM));
+}
+
 function extractPlanPrimaryDimensionGroup(markup: string, side: 'bottom' | 'left'): string {
   const marker = `data-plan-primary-dim="${side}"`;
   const markerIndex = markup.indexOf(marker);
@@ -166,6 +249,94 @@ function extractSheetAnnotationSegment(markup: string, marker: string, nextMarke
 }
 
 describe('ModuleViewsCard', () => {
+  it('converts plan SVG root pointer points to house footprint metres for every attachment side', () => {
+    const model = makeDrawingModule().planModel!;
+    const baseInput = {
+      rotationCenter: { x: 30, y: 15 },
+      rotationTurns: 0,
+      footprintRect: { x: 0, y: 0, width: 60, height: 30 },
+      scale: 10,
+      lengthA: 6,
+      spanA: 3,
+      houseFootprintPreset: model.houseFootprintPreset,
+      houseFootprintParams: model.houseFootprintParams,
+    };
+
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'rear', rootPoint: { x: 20, y: -10 } }),
+      { alongM: 2, depthM: 1 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'front', rootPoint: { x: 40, y: 40 } }),
+      { alongM: 2, depthM: 1 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'left', rootPoint: { x: -20, y: 20 } }),
+      { alongM: 1, depthM: 2 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({ ...baseInput, attachmentSide: 'right', rootPoint: { x: 80, y: 10 } }),
+      { alongM: 1, depthM: 2 },
+    );
+  });
+
+  it('converts plan SVG pointer points through drawing rotation and footprint offsets', () => {
+    const model = makeDrawingModule().planModel!;
+    const commonInput = {
+      rotationCenter: { x: 30, y: 15 },
+      footprintRect: { x: 0, y: 0, width: 60, height: 30 },
+      scale: 10,
+      attachmentSide: 'rear' as const,
+      lengthA: 6,
+      spanA: 3,
+      houseFootprintPreset: model.houseFootprintPreset,
+    };
+
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({
+        ...commonInput,
+        rotationTurns: 1,
+        rootPoint: { x: 5, y: 25 },
+        houseFootprintParams: model.houseFootprintParams,
+      }),
+      { alongM: 2, depthM: 1 },
+    );
+    expectPointerPointCloseTo(
+      resolvePlanSvgPointerFootprintPoint({
+        ...commonInput,
+        rotationTurns: 0,
+        rootPoint: { x: 25, y: -12.5 },
+        houseFootprintParams: {
+          ...model.houseFootprintParams,
+          widthM: '6',
+          offsetXM: '0.5',
+          setbackM: '0.25',
+        },
+      }),
+      { alongM: 2, depthM: 1 },
+    );
+  });
+
+  it('does not resolve plan SVG pointer points for hip-corner plans', () => {
+    const model = makeDrawingModule().planModel!;
+
+    expect(
+      resolvePlanSvgPointerFootprintPoint({
+        rootPoint: { x: 20, y: -10 },
+        rotationCenter: { x: 30, y: 15 },
+        rotationTurns: 0,
+        footprintRect: { x: 0, y: 0, width: 60, height: 30 },
+        scale: 10,
+        attachmentSide: 'rear',
+        lengthA: 6,
+        spanA: 3,
+        houseFootprintPreset: model.houseFootprintPreset,
+        houseFootprintParams: model.houseFootprintParams,
+        isHipCorner: true,
+      }),
+    ).toBeNull();
+  });
+
   it('renders the extracted plan renderer inside the calculator card chrome', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
@@ -224,6 +395,137 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-debug-crop="bounds-section"');
   });
 
+  it('renders plan model space with a content-sized SVG viewport', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+
+    expect(svgTag).toContain('data-model-space-svg="plan"');
+    expect(svgTag).toContain('data-model-space-view-box=');
+    expect(svgTag).toContain('data-model-space-world-box=');
+    expect(svgTag).toContain('data-model-space-focus-box=');
+    expect(markup).toContain('data-model-space-focus-target="true"');
+    expect(svgTag).toContain('overflow="visible"');
+    expect(svgTag).not.toContain('viewBox="0 0 120 90"');
+    expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
+    expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
+    expect(markup).not.toContain('data-debug-crop=');
+  });
+
+  it('renders section model space with a content-sized SVG viewport', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module section view');
+
+    expect(svgTag).toContain('data-model-space-svg="section"');
+    expect(svgTag).toContain('data-model-space-view-box=');
+    expect(svgTag).toContain('data-model-space-world-box=');
+    expect(svgTag).toContain('data-model-space-focus-box=');
+    expect(markup).toContain('data-model-space-focus-target="true"');
+    expect(svgTag).toContain('overflow="visible"');
+    expect(svgTag).not.toContain('viewBox="0 0 120 90"');
+    expect(extractSvgNumberAttribute(svgTag, 'width')).toBeGreaterThan(120);
+    expect(extractSvgNumberAttribute(svgTag, 'height')).toBeGreaterThan(90);
+    expect(markup).not.toContain('data-debug-crop=');
+  });
+
+  it('keeps oversized context out of the rendered plan model-space viewport size', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'oversized-context',
+            kind: 'footprint',
+            boundary: [
+              { x: -80, y: -60 },
+              { x: 140, y: -60 },
+              { x: 140, y: 0 },
+              { x: -80, y: 0 },
+            ],
+          },
+        ],
+        lines: [],
+      },
+    };
+    const baseMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+
+    const baseSvgTag = extractSvgTag(baseMarkup, 'Module plan view');
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+    const viewBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-view-box'));
+    const worldBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-world-box'));
+    const focusBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-focus-box'));
+
+    expect(markup).toContain('data-model-space-focus-target="true"');
+    expect(viewBox).toEqual(focusBox);
+    expect(worldBox.width).toBeGreaterThan(viewBox.width);
+    expect(worldBox.height).toBeGreaterThan(viewBox.height);
+    expectRectCloseTo(extractHouseClipRect(markup), worldBox);
+    expect(extractSvgNumberAttribute(svgTag, 'width')).toBe(extractSvgNumberAttribute(baseSvgTag, 'width'));
+    expect(extractSvgNumberAttribute(svgTag, 'height')).toBe(extractSvgNumberAttribute(baseSvgTag, 'height'));
+  });
+
+  it('keeps card and sheet plan house clipping unchanged', () => {
+    const drawing = makeDrawingModule();
+    const cardMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="card"
+      />,
+    );
+    const sheetMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    expect(extractHouseClipRect(cardMarkup)).toEqual({ x: 0, y: 0, width: 120, height: 90 });
+    expect(extractHouseClipRect(sheetMarkup)).toEqual({ x: 0, y: 0, width: 120, height: 86 });
+  });
+
   it('centers plan sheet geometry vertically within the viewport', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
@@ -278,6 +580,132 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('House side');
   });
 
+  it('renders semantic house context overlays in plan drawings', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -1.8 },
+              { x: 6, y: -1.8 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+          {
+            id: 'house-attachment-zone',
+            kind: 'attachment_zone',
+            boundary: [
+              { x: 0, y: -0.05 },
+              { x: 6, y: -0.05 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+        ],
+        lines: [
+          {
+            id: 'house-gutter',
+            kind: 'gutter',
+            line: { start: { x: 0, y: -0.45 }, end: { x: 6, y: -0.45 } },
+          },
+          {
+            id: 'house-roof-feature',
+            kind: 'roof_feature',
+            line: { start: { x: 0, y: -1.1 }, end: { x: 6, y: -1.1 } },
+          },
+          {
+            id: 'house-attachment-target',
+            kind: 'attachment_target',
+            line: { start: { x: 0, y: 0 }, end: { x: 6, y: 0 } },
+          },
+        ],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+      />,
+    );
+
+    expect(markup).toContain('data-house-plan-surface="footprint"');
+    expect(markup).toContain('data-house-plan-surface="attachment_zone"');
+    expect(markup).toContain('data-house-plan-line="gutter"');
+    expect(markup).toContain('data-house-plan-line="roof_feature"');
+    expect(markup).toContain('data-house-plan-line="attachment_target"');
+  });
+
+  it('renders semantic house context overlays in section drawings', () => {
+    const drawing = makeDrawingModule();
+    const sectionModel: ModuleSectionModel = {
+      ...drawing.sectionModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-wall',
+            kind: 'wall',
+            boundary: [
+              { x: 0, y: 0 },
+              { x: 0.03, y: 0 },
+              { x: 0.03, y: 2.4 },
+              { x: 0, y: 2.4 },
+            ],
+          },
+          {
+            id: 'house-attachment-zone',
+            kind: 'attachment_zone',
+            boundary: [
+              { x: -0.02, y: 2.22 },
+              { x: 0.02, y: 2.22 },
+              { x: 0.02, y: 2.4 },
+              { x: -0.02, y: 2.4 },
+            ],
+          },
+        ],
+        lines: [
+          {
+            id: 'house-gutter',
+            kind: 'gutter',
+            line: { start: { x: -0.45, y: 2.4 }, end: { x: -0.45, y: 2.4 } },
+          },
+          {
+            id: 'house-roof-feature',
+            kind: 'roof_feature',
+            line: { start: { x: -0.55, y: 2.9 }, end: { x: 0.15, y: 2.65 } },
+          },
+          {
+            id: 'house-attachment-target',
+            kind: 'attachment_target',
+            line: { start: { x: 0, y: 2.4 }, end: { x: 0, y: 2.4 } },
+          },
+        ],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={sectionModel}
+      />,
+    );
+
+    expect(markup).toContain('data-house-section-surface="wall"');
+    expect(markup).toContain('data-house-section-surface="attachment_zone"');
+    expect(markup).toContain('data-house-section-line="gutter"');
+    expect(markup).toContain('data-house-section-line="roof_feature"');
+    expect(markup).toContain('data-house-section-line="attachment_target"');
+  });
+
   it('applies quarter-turn rotation as a final plan transform', () => {
     const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
     const markup = renderToStaticMarkup(
@@ -325,6 +753,7 @@ describe('ModuleViewsCard', () => {
     );
 
     expect(markup).toContain('House footprint editor');
+    expect(markup).toContain('aria-label="House footprint mode"');
     expect(markup).toContain('aria-label="House footprint preset"');
     expect(markup).toContain('Rotate -90');
     expect(markup).toContain('Attached edge');
@@ -335,6 +764,38 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('Attached edge</text>');
     expect(markup).not.toContain('House side</text>');
     expect(markup).toContain('clipPath');
+  });
+
+  it('renders custom outline mode without preset resize handles in the card editor', () => {
+    const drawing = makeDrawingModule();
+    const planModel = {
+      ...drawing.planModel!,
+      houseFootprintMode: 'custom_polygon' as const,
+      houseFootprintPolygon: [
+        { alongM: '0', depthM: '2.4' },
+        { alongM: '6', depthM: '2.4' },
+        { alongM: '6', depthM: '0' },
+        { alongM: '3', depthM: '0' },
+        { alongM: '3', depthM: '1.2' },
+        { alongM: '0', depthM: '1.2' },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleViewsCard
+        moduleLabel="M1"
+        view="plan"
+        onViewChange={() => undefined}
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        footprintEditor={makeFootprintEditor({ isEditing: true })}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="House footprint mode"');
+    expect(markup).toContain('aria-label="House footprint preset"');
+    expect(markup).not.toContain('data-footprint-handle="bandDepth"');
   });
 
   it('renders U-shape handle affordances on both parallel legs', () => {
@@ -395,6 +856,31 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('data-footprint-handle=');
   });
 
+  it('suppresses model-space footprint canvas hits when the interaction capabilities are disabled', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        footprintEditor={makeFootprintEditor({
+          surface: 'model',
+          isEditing: true,
+          allowAttachmentSideCanvasSelect: false,
+          allowResizeEdgeDrag: false,
+          activeHandleId: 'bandDepth',
+        })}
+      />,
+    );
+
+    expect(markup).not.toContain('data-footprint-edge=');
+    expect(markup).not.toContain('data-footprint-resize-edge-hit=');
+    expect(markup).not.toContain('data-footprint-resize-edge=');
+    expect(markup).toContain('Band depth: 1.80m');
+  });
+
   it('renders the sheet pergola rotate popover separately from the house popover', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
@@ -437,6 +923,187 @@ describe('ModuleViewsCard', () => {
 
     expect(bottomGroup).toContain('>3.00m<');
     expect(leftGroup).toContain('>6.00m<');
+  });
+
+  it('renders model-space resize handles only on the model presentation', () => {
+    const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
+    const modelMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        interactiveFields={{
+          'plan:lengthA': { fieldId: 'plan:lengthA' },
+          'plan:spanA': { fieldId: 'plan:spanA' },
+        }}
+        planInteraction={{
+          available: true,
+          hoveredResizeFieldId: null,
+          activeResizeFieldId: null,
+          onResizeFieldHover: () => undefined,
+          onResizeFieldDragStart: () => undefined,
+          onSvgMount: () => undefined,
+        }}
+      />,
+    );
+    const sheetMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    expect(modelMarkup).toContain('data-plan-resize-handle-hit="plan:lengthA"');
+    expect(modelMarkup).toContain('data-plan-resize-handle-hit="plan:spanA"');
+    expect(modelMarkup).toContain('data-editable-field-id="plan:lengthA"');
+    expect(modelMarkup).toContain('data-editable-field-id="plan:spanA"');
+    expect(sheetMarkup).not.toContain('data-plan-resize-handle-hit=');
+  });
+
+  it('renders house-first deck targets above the pergola plan fill in model space', () => {
+    const drawing = makeDrawingModule();
+    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+      shapes: [
+        {
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 6, y: 0 },
+            { x: 6, y: 3 },
+            { x: 0, y: 3 },
+          ],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        houseFirstPlanOverlay={houseFirstPlanOverlay}
+      />,
+    );
+
+    const pergolaFillIndex = markup.indexOf('data-plan-primary-fill="true"');
+    const deckHitIndex = markup.indexOf('data-house-first-shape-hit="deck:deck-1"');
+    expect(pergolaFillIndex).toBeGreaterThanOrEqual(0);
+    expect(deckHitIndex).toBeGreaterThan(pergolaFillIndex);
+  });
+
+  it('renders custom draw preview edges and vertex aid markers in model space', () => {
+    const drawing = makeDrawingModule();
+    const hoverMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        footprintEditor={makeFootprintEditor({
+          surface: 'model',
+          isEditing: true,
+          customPolygonOverride: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '2', depthM: '0' },
+            { alongM: '2', depthM: '1' },
+            { alongM: '0', depthM: '1' },
+          ],
+          customPolygonOpen: true,
+          customPolygonConfirmedPointCount: 3,
+          customPolygonPreviewPointKind: 'hover',
+          customPolygonCloseReady: true,
+          customPolygonCloseHovered: true,
+        })}
+      />,
+    );
+    const pendingMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        footprintEditor={makeFootprintEditor({
+          surface: 'model',
+          isEditing: true,
+          customPolygonOverride: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '2', depthM: '0' },
+            { alongM: '2', depthM: '1' },
+          ],
+          customPolygonOpen: true,
+          customPolygonConfirmedPointCount: 2,
+          customPolygonPreviewPointKind: 'pending',
+        })}
+      />,
+    );
+
+    expect(hoverMarkup).toContain('data-footprint-custom-edge-kind="confirmed"');
+    expect(hoverMarkup).toContain('data-footprint-custom-preview-edge="hover"');
+    expect(hoverMarkup).toContain('data-footprint-custom-preview-vertex="hover"');
+    expect(hoverMarkup).toContain('data-footprint-custom-latest-vertex="true"');
+    expect(hoverMarkup).toContain('data-footprint-custom-close-target="0"');
+    expect(hoverMarkup).toContain('data-footprint-custom-close-hovered="true"');
+    expect(pendingMarkup).toContain('data-footprint-custom-preview-edge="pending"');
+    expect(pendingMarkup).toContain('data-footprint-custom-preview-vertex="pending"');
+  });
+
+  it('hides preset footprint affordances while a model-space draw outline draft is open', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
+    const renderDraft = (customPolygonOverride: ModulePlanModel['houseFootprintPolygon'], confirmedPointCount: number) =>
+      renderToStaticMarkup(
+        <ModuleDrawingRenderer
+          view="plan"
+          status="ready"
+          planModel={drawing.planModel}
+          sectionModel={drawing.sectionModel}
+          presentation="model"
+          footprintEditor={makeFootprintEditor({
+            surface: 'model',
+            isEditing: true,
+            customPolygonOverride,
+            customPolygonOpen: true,
+            customPolygonConfirmedPointCount: confirmedPointCount,
+          })}
+        />,
+      );
+
+    const emptyDraftMarkup = renderDraft([], 0);
+    expect(emptyDraftMarkup).not.toContain('data-footprint-edge=');
+    expect(emptyDraftMarkup).not.toContain('data-footprint-resize-edge-hit=');
+    expect(emptyDraftMarkup).not.toContain('data-footprint-custom-vertex=');
+
+    const onePointMarkup = renderDraft([{ alongM: '0', depthM: '0' }], 1);
+    expect(onePointMarkup).toContain('data-footprint-custom-vertex="0"');
+    expect(onePointMarkup).toContain('data-footprint-custom-latest-vertex="true"');
+    expect(onePointMarkup).not.toContain('data-footprint-edge=');
+    expect(onePointMarkup).not.toContain('data-footprint-resize-edge-hit=');
+
+    const threePointMarkup = renderDraft(
+      [
+        { alongM: '0', depthM: '0' },
+        { alongM: '2', depthM: '0' },
+        { alongM: '2', depthM: '1' },
+      ],
+      3,
+    );
+    expect(threePointMarkup).toContain('data-footprint-custom-edge-kind="confirmed"');
+    expect(threePointMarkup).not.toContain('data-footprint-resize-edge-hit=');
   });
 
   it('renders fall and spacing annotations in page space for rotated sheet plans', () => {

@@ -22,6 +22,12 @@
       "@/*": [
         "./*"
       ],
+      "@sp/geometry": [
+        "./packages/geometry/src/index.ts"
+      ],
+      "@sp/geometry/*": [
+        "./packages/geometry/src/*"
+      ],
       "@sp/theme": [
         "./packages/theme/src/index.ts"
       ],
