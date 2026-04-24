@@ -1,5 +1,5 @@
-import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { ModuleViewsTab } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import type {
   DeckPresetRect,

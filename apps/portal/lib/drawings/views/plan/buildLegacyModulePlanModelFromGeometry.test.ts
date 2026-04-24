@@ -3,7 +3,7 @@ import type { CostOutputV1 } from '@sp/costing';
 import { buildPlanViewModel as buildGeometryPlanViewModel, normalizeGeometryConfig, solveAssembly3D } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildRawGeometryModuleInput } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
-import { buildModulePlanModel } from '@/app/staff/calculator/moduleViews';
+import { buildModulePlanModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import { buildLegacyModulePlanModelFromGeometry } from './buildLegacyModulePlanModelFromGeometry';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {

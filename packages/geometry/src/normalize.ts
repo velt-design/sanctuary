@@ -9,9 +9,11 @@ import type {
   GutterAssemblyMode,
   GeometryConfig,
   HouseAttachmentStrategy,
+  HouseDeckConfig,
   HouseFootprintMode,
   HouseFootprintPreset,
   HouseModelConfig,
+  HouseOpeningConfig,
   HouseRoofAppendageForm,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
@@ -429,7 +431,7 @@ function buildHouseModelConfig(input: {
     pergolaDepthMm: 1000,
     attachmentSide: input.attachmentSide,
   });
-  const decks =
+  const decks: HouseDeckConfig[] =
     (input.rawHouseContext.decks ?? [])
       .map((deck) => {
         if (!deck?.id) return null;
@@ -446,7 +448,7 @@ function buildHouseModelConfig(input: {
               depthM: number;
             } => point.alongM !== null && point.depthM !== null,
           );
-        return {
+        const normalizedDeck: HouseDeckConfig = {
           id: deck.id,
           name: deck.name ?? null,
           kind: deck.kind === 'landing' ? 'landing' : 'deck',
@@ -528,9 +530,10 @@ function buildHouseModelConfig(input: {
               }
             : null,
         };
+        return normalizedDeck;
       })
       .filter((deck): deck is NonNullable<typeof deck> => Boolean(deck));
-  const openings =
+  const openings: HouseOpeningConfig[] =
     (input.rawHouseContext.openings ?? [])
       .map((opening) => {
         if (!opening?.id) return null;
@@ -540,7 +543,7 @@ function buildHouseModelConfig(input: {
           opening.wallId === 'right'
             ? opening.wallId
             : 'rear';
-        return {
+        const normalizedOpening: HouseOpeningConfig = {
           id: opening.id,
           label: opening.label?.trim() || null,
           kind: opening.kind === 'window' ? 'window' : 'window',
@@ -558,6 +561,7 @@ function buildHouseModelConfig(input: {
               }
             : null,
         };
+        return normalizedOpening;
       })
       .filter((opening): opening is NonNullable<typeof opening> => Boolean(opening));
 

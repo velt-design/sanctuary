@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { PIPELINE_STAGES, type PipelineStageKey } from '@/lib/projects/pipelineDefinition';
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 
 type StepState = 'done' | 'current' | 'todo' | 'inactive';
 

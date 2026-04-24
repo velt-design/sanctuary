@@ -38,7 +38,7 @@ export function formatPortalDateTime(value: Date | string | number | null | unde
   if (value == null || value === '') return fallback;
   const date = coerceDate(value);
   if (!date) return typeof value === 'string' ? value : fallback;
-  return new Intl.DateTimeFormat(PORTAL_LOCALE, {
+  const parts = new Intl.DateTimeFormat(PORTAL_LOCALE, {
     timeZone: PORTAL_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
@@ -47,7 +47,17 @@ export function formatPortalDateTime(value: Date | string | number | null | unde
     minute: '2-digit',
     second: '2-digit',
     hour12: true,
-  }).format(date);
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === 'year')?.value ?? '0000';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+  const hour = parts.find((part) => part.type === 'hour')?.value ?? '12';
+  const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
+  const second = parts.find((part) => part.type === 'second')?.value ?? '00';
+  const dayPeriod = (parts.find((part) => part.type === 'dayPeriod')?.value ?? '').toLowerCase();
+
+  return `${day}/${month}/${year}, ${hour}:${minute}:${second} ${dayPeriod}`.trim();
 }
 
 export function formatPortalDate(value: Date | string | number | null | undefined, options: PortalFormatOptions = {}): string {
@@ -68,12 +78,18 @@ export function formatPortalTime(value: Date | string | number | null | undefine
   if (value == null || value === '') return fallback;
   const date = coerceDate(value);
   if (!date) return typeof value === 'string' ? value : fallback;
-  return new Intl.DateTimeFormat(PORTAL_LOCALE, {
+  const parts = new Intl.DateTimeFormat(PORTAL_LOCALE, {
     timeZone: PORTAL_TIME_ZONE,
     hour: 'numeric',
     minute: '2-digit',
     hour12: true,
-  }).format(date);
+  }).formatToParts(date);
+
+  const hour = parts.find((part) => part.type === 'hour')?.value ?? '12';
+  const minute = parts.find((part) => part.type === 'minute')?.value ?? '00';
+  const dayPeriod = (parts.find((part) => part.type === 'dayPeriod')?.value ?? '').toLowerCase();
+
+  return `${hour}:${minute} ${dayPeriod}`.trim();
 }
 
 export { PORTAL_LOCALE, PORTAL_TIME_ZONE };

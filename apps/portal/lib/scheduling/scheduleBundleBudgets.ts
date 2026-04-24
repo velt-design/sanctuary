@@ -4,8 +4,8 @@ import vm from 'node:vm';
 import zlib from 'node:zlib';
 
 const SCHEDULE_ROUTE_KEY = '/staff/schedule/page';
-const CLIENT_REFERENCE_MANIFEST = 'server/app/staff/schedule/page_client-reference-manifest.js';
-const REACT_LOADABLE_MANIFEST = 'server/app/staff/schedule/page/react-loadable-manifest.json';
+const CLIENT_REFERENCE_MANIFEST = 'server/app/(portal)/staff/schedule/page_client-reference-manifest.js';
+const REACT_LOADABLE_MANIFEST = 'server/app/(portal)/staff/schedule/page/react-loadable-manifest.json';
 
 export const SCHEDULE_BUNDLE_BUDGETS = {
   initialRawBytes: 750_000,

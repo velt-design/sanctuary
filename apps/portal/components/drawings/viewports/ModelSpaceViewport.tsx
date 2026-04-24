@@ -17,8 +17,8 @@ import {
   type ModuleFootprintEditorProps,
   type ModuleViewsStatus,
   type ModuleViewsTab,
-} from '@/app/staff/calculator/ModuleViewsCard';
-import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+} from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';

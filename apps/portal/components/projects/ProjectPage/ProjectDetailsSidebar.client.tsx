@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 import { apiJson } from '@/lib/repo/apiClient';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';

@@ -4,7 +4,7 @@ import {
   buildModuleSectionModel,
   type ModulePlanModel,
   type ModuleSectionModel,
-} from '../../app/staff/calculator/moduleViews';
+} from '@/app/(portal)/staff/calculator/moduleViews';
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from './costingPayload';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculatorInputsToV2 } from '@/lib/types/calculator';

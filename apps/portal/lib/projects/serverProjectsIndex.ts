@@ -8,6 +8,12 @@ import type { Project } from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { nowIso } from '@/lib/utils/time';
 
+const PROJECT_INDEX_SELECT =
+  'id,name,created_at,updated_at,contact_id,region,quote_ref,site_address,pipeline_stage,archived_at,follow_up_date,next_action_type,deposit_amount_cents,deposit_paid_date,final_payment_date,notes';
+const PROJECT_INDEX_FALLBACK_SELECT =
+  'id,name,created_at,updated_at,contact_id,region,quote_ref,site_address,pipeline_stage,follow_up_date,next_action_type,deposit_amount_cents,deposit_paid_date,final_payment_date,notes';
+const CONTACT_INDEX_SELECT = 'id,name,email,phone,created_at,updated_at';
+
 function toPostgrestError(value: unknown): { code?: string; message?: string } | null {
   if (!value || typeof value !== 'object') return null;
   const v = value as { code?: string; message?: string };
@@ -81,22 +87,45 @@ function mapProjectRow(row: Record<string, unknown>): Project {
   };
 }
 
+async function loadProjects(client: SupabaseClient): Promise<Project[]> {
+  const initialProjectsRes = await client
+    .from('projects')
+    .select(PROJECT_INDEX_SELECT)
+    .is('archived_at', null)
+    .order('created_at', { ascending: false });
+  let projectsData = Array.isArray(initialProjectsRes.data)
+    ? (initialProjectsRes.data as Record<string, unknown>[])
+    : null;
+  let projectsError = initialProjectsRes.error;
+  if (projectsError && missingColumnFromError(projectsError) === 'archived_at') {
+    const fallbackProjectsRes = await client
+      .from('projects')
+      .select(PROJECT_INDEX_FALLBACK_SELECT)
+      .order('created_at', { ascending: false });
+    projectsData = Array.isArray(fallbackProjectsRes.data)
+      ? (fallbackProjectsRes.data as Record<string, unknown>[])
+      : null;
+    projectsError = fallbackProjectsRes.error;
+  }
+  if (projectsError) throw projectsError;
+  return (projectsData ?? []).map((row) => mapProjectRow(row));
+}
+
+async function loadContacts(client: SupabaseClient): Promise<Contact[]> {
+  const contactsRes = await client.from('contacts').select(CONTACT_INDEX_SELECT).order('name', { ascending: true });
+  if (contactsRes.error) throw contactsRes.error;
+  return sortContacts((Array.isArray(contactsRes.data) ? contactsRes.data : []).map((row) => mapContactRow(row as Record<string, unknown>)));
+}
+
 export async function loadProjectsIndexData(supabase?: SupabaseClient): Promise<{
   projects: Project[];
   contacts: Contact[];
 }> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  let projectsRes = await client.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
-  if (projectsRes.error && missingColumnFromError(projectsRes.error) === 'archived_at') {
-    projectsRes = await client.from('projects').select('*').order('created_at', { ascending: false });
-  }
-  if (projectsRes.error) throw projectsRes.error;
-
-  const contactsRes = await client.from('contacts').select('*').order('name', { ascending: true });
-  if (contactsRes.error) throw contactsRes.error;
+  const [projects, contacts] = await Promise.all([loadProjects(client), loadContacts(client)]);
 
   return {
-    projects: (Array.isArray(projectsRes.data) ? projectsRes.data : []).map((row) => mapProjectRow(row as Record<string, unknown>)),
-    contacts: sortContacts((Array.isArray(contactsRes.data) ? contactsRes.data : []).map((row) => mapContactRow(row as Record<string, unknown>))),
+    projects,
+    contacts,
   };
 }

@@ -884,21 +884,29 @@ function buildDeckPresetAnnotations(input: {
           : { alongM: referenceFrame.edgeCoordinate, depthM: deckAxisEnd }
         : null;
 
-    if (hostEdgeStartLocal && deckStartLocal && hostEdgeEndLocal && deckEndLocal) {
-      const hostStartGapM = Math.max(0, deckAxisStart! - referenceFrame.start);
-      const hostEndGapM = Math.max(0, referenceFrame.end - deckAxisEnd!);
+    if (
+      referenceFrame &&
+      deckAxisStart !== null &&
+      deckAxisEnd !== null &&
+      hostEdgeStartLocal &&
+      deckStartLocal &&
+      hostEdgeEndLocal &&
+      deckEndLocal
+    ) {
+      const hostStartGapM = Math.max(0, deckAxisStart - referenceFrame.start);
+      const hostEndGapM = Math.max(0, referenceFrame.end - deckAxisEnd);
       const minimumVisibleGapM = 0.001;
       const visibleDeckStartLocal =
         hostStartGapM <= ZERO_DIMENSION_EPSILON_M
           ? referenceFrame.axis === 'along'
-            ? { alongM: deckAxisStart! + minimumVisibleGapM, depthM: referenceFrame.edgeCoordinate }
-            : { alongM: referenceFrame.edgeCoordinate, depthM: deckAxisStart! + minimumVisibleGapM }
+            ? { alongM: deckAxisStart + minimumVisibleGapM, depthM: referenceFrame.edgeCoordinate }
+            : { alongM: referenceFrame.edgeCoordinate, depthM: deckAxisStart + minimumVisibleGapM }
           : deckStartLocal;
       const visibleDeckEndLocal =
         hostEndGapM <= ZERO_DIMENSION_EPSILON_M
           ? referenceFrame.axis === 'along'
-            ? { alongM: deckAxisEnd! - minimumVisibleGapM, depthM: referenceFrame.edgeCoordinate }
-            : { alongM: referenceFrame.edgeCoordinate, depthM: deckAxisEnd! - minimumVisibleGapM }
+            ? { alongM: deckAxisEnd - minimumVisibleGapM, depthM: referenceFrame.edgeCoordinate }
+            : { alongM: referenceFrame.edgeCoordinate, depthM: deckAxisEnd - minimumVisibleGapM }
           : deckEndLocal;
       relationshipAnnotations.push(
         makeAnnotation({

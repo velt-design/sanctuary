@@ -1,4 +1,4 @@
-import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import type { ModuleViewsTab } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
 import type { WorkbenchHouseSelection, WorkbenchMode } from './houseFirstWorkbenchModel';
 
 export type DrawingWorkbenchViewportMode = 'sheet' | 'model' | 'geometry3d';
@@ -111,15 +111,16 @@ export function normalizeDrawingWorkbenchUiState(
 ): DrawingWorkbenchUiState {
   const workbenchMode = normalizeWorkbenchMode(state.workbenchMode);
   const activeHouseSelection = normalizeActiveHouseSelection(state.activeHouseSelection);
+  const defaultHouseSelection: WorkbenchHouseSelection = { kind: 'house', targetId: null };
   const normalizedHouseSelection =
     activeHouseSelection.kind === 'deck' &&
     activeHouseSelection.targetId &&
     !(input.deckIds ?? []).includes(activeHouseSelection.targetId)
-      ? { kind: 'house', targetId: null }
+      ? defaultHouseSelection
       : activeHouseSelection.kind === 'opening' &&
           activeHouseSelection.targetId &&
           !(input.openingIds ?? []).includes(activeHouseSelection.targetId)
-        ? { kind: 'house', targetId: null }
+        ? defaultHouseSelection
         : activeHouseSelection;
   return {
     ...state,
@@ -127,7 +128,7 @@ export function normalizeDrawingWorkbenchUiState(
     activeModuleIndex: clampDrawingWorkbenchModuleIndex(state.activeModuleIndex, input.moduleCount),
     activeHouseSelection:
       workbenchMode === 'pergolas'
-        ? { kind: 'house', targetId: null }
+        ? defaultHouseSelection
         : normalizedHouseSelection,
     activePergolaId:
       workbenchMode === 'house'

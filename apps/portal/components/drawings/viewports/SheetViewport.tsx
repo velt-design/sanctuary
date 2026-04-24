@@ -1,7 +1,7 @@
 'use client';
 
-import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import SheetComposer, { type SheetComposerDocument } from '@/components/drawings/sheets/SheetComposer';

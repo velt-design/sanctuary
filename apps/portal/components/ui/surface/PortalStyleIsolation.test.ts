@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = path.resolve(process.cwd(), 'apps/portal');
-const PROJECT_CSS_IMPORT = ['@/app/staff/projects/', 'projects.module.css'].join('');
+const PROJECT_CSS_IMPORT = ['@/app/(portal)/staff/projects/', 'projects.module.css'].join('');
 
 function walk(dir: string, files: string[] = []): string[] {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -26,7 +26,7 @@ function normalizePath(filePath: string): string {
 describe('portal shared styles', () => {
   it('keeps projects.module.css isolated to project-specific surfaces', () => {
     const allowedPrefixes = [
-      'apps/portal/app/staff/projects/',
+      'apps/portal/app/(portal)/staff/projects/',
       'apps/portal/components/projects/',
     ];
 

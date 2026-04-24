@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProjectEmailLog } from '@/lib/projects/types';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 
 function formatTime(value: string): string {
   return formatPortalDateTime(value);

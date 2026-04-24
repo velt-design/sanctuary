@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import styles from '@/app/staff/schedule/schedule.module.css';
+import styles from '@/app/(portal)/staff/schedule/schedule.module.css';
 
 const POPOVER_WIDTH = 280;
 const POPOVER_MAX_HEIGHT = 320;

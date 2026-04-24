@@ -1,4 +1,4 @@
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 
 export default function PlaceholderTab({
   title,

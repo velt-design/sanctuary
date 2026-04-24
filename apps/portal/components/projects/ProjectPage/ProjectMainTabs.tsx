@@ -9,7 +9,7 @@ import InvoicesTab from './tabs/InvoicesTab';
 import JobPacksTab from './tabs/JobPacksTab';
 import QuotesTab from './tabs/QuotesTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 import layout from './ProjectPage.module.css';
 import { depositInvoicesByProjectQueryOptions } from '@/lib/queries/invoices';
 import { estimateMetasByProjectQueryOptions } from '@/lib/queries/projectEstimates';

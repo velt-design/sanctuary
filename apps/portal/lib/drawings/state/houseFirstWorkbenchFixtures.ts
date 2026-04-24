@@ -140,6 +140,8 @@ export function makeHouseFirstOnePergolaFixture(): WorkbenchProjectModel {
         primaryPitchDeg: '22.5',
         primaryFallDirection: 'positive_y',
         ridgeAxis: 'x',
+        openGableEndIds: [],
+        terminalEnds: [],
         appendage: {
           enabled: false,
           form: 'mono',

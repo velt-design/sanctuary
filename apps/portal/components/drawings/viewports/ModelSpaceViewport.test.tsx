@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
-import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
+import type { ModulePlanModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';

@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SpreadsheetPageTemplate from '@/components/spreadsheet/SpreadsheetPageTemplate';
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 import styles from './JobPacksTab.module.css';
 import { formatPortalDate } from '@/lib/format/portalDateTime';
 import { estimateDetailQueryOptions } from '@/lib/queries/projectEstimates';

@@ -3,7 +3,7 @@ import {
   RAFTER_SPACING_MM_MAX,
   resolveMonoSlopeShape,
   resolvePayloadPanelOrientation,
-} from '@/app/staff/calculator/infillCompute';
+} from '@/app/(portal)/staff/calculator/infillCompute';
 import type {
   CalculatorFlashingBand,
   CalculatorFlashingPurpose,

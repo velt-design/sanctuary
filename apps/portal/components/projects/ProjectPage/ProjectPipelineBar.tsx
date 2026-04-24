@@ -8,7 +8,7 @@ import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 import { invalidateProjectReadCaches, patchProjectListItem, patchProjectSnapshot } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import LegacyChevronPipeline from '@/components/projects/legacyStyle/LegacyChevronPipeline';

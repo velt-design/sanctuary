@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast/ToastProvider';
-import legacy from '@/app/staff/projects/projects.module.css';
+import legacy from '@/app/(portal)/staff/projects/projects.module.css';
 import styles from './QuotesTab.module.css';
 import QuotePdfInlinePreview from './QuotePdfInlinePreview';
 import type { EstimateDetail, EstimateMeta } from '@/lib/estimates/types';

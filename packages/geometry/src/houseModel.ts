@@ -1057,7 +1057,7 @@ function buildHouseRoofPerimeterEdges(input: {
   const monoRoofPlaneEquation = monoRoofPlane
     ? roofSolidPlaneEquationFromPlane(monoRoofPlane.plane)
     : null;
-  const baseEdges = input.footprint.map((wallStart, index) => {
+  const baseEdges: HouseRoofPerimeterEdge[] = input.footprint.map((wallStart, index) => {
     const wallEnd = input.footprint[(index + 1) % input.footprint.length]!;
     const eaveStartXY = input.eavePolygon[index]!;
     const eaveEndXY = input.eavePolygon[(index + 1) % input.eavePolygon.length]!;
@@ -6433,7 +6433,7 @@ function buildHouseOpenings(input: {
       ) {
         return null;
       }
-      return {
+      const normalizedOpening: HouseOpening3D = {
         ...opening,
         kind: 'window',
         wallId:
@@ -6451,6 +6451,7 @@ function buildHouseOpenings(input: {
         validationCodes: opening.validationCodes ?? [],
         validationMessage: opening.validationMessage ?? null,
       };
+      return normalizedOpening;
     })
     .filter((opening): opening is HouseOpening3D => opening !== null);
 }

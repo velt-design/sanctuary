@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import { buildSectionViewModel as buildGeometrySectionViewModel, normalizeGeometryConfig, solveAssembly3D } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import { buildModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import { buildModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import { buildRawGeometryModuleInput } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
 import { buildLegacyModuleSectionModelFromGeometry } from './buildLegacyModuleSectionModelFromGeometry';
 

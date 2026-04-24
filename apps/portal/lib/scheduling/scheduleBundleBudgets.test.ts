@@ -35,7 +35,7 @@ function generousBudgets(overrides?: Partial<ScheduleBundleBudgets>): Partial<Sc
 function createFixtureNextDir() {
   const nextDir = path.join(tempDir, '.next');
   writeFile(
-    path.join(nextDir, 'server/app/staff/schedule/page_client-reference-manifest.js'),
+    path.join(nextDir, 'server/app/(portal)/staff/schedule/page_client-reference-manifest.js'),
     `globalThis.__RSC_MANIFEST = {
       "/staff/schedule/page": {
         clientModules: {
@@ -47,7 +47,7 @@ function createFixtureNextDir() {
     };`,
   );
   writeFile(
-    path.join(nextDir, 'server/app/staff/schedule/page/react-loadable-manifest.json'),
+    path.join(nextDir, 'server/app/(portal)/staff/schedule/page/react-loadable-manifest.json'),
     JSON.stringify({
       101: { id: 101, files: ['static/chunks/lazy-a.js', 'static/chunks/lazy-shared.css'] },
       202: { id: 202, files: ['/_next/static/chunks/lazy-shared.css', 'static/chunks/lazy-b.js'] },

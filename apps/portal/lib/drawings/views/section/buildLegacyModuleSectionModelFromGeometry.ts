@@ -1,6 +1,6 @@
 import type { RoofType } from '@sp/costing';
 import type { GeometrySectionMember2D, GeometrySectionViewModel, Line2, Polygon2 } from '@sp/geometry';
-import type { ModuleSectionHouseContext, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { ModuleSectionHouseContext, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   normalizeAttachmentSide,

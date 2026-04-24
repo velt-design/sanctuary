@@ -1,11 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const fromMock = vi.fn();
+const getSupabaseServerAuthMock = vi.fn();
 
-vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServiceRole: {
-    from: fromMock,
-  },
+vi.mock('@/lib/supabase/serverClient', () => ({
+  getSupabaseServerAuth: (...args: unknown[]) => getSupabaseServerAuthMock(...args),
 }));
 
 function createQuery(result: { data: any; error: any }) {
@@ -20,11 +18,11 @@ function createQuery(result: { data: any; error: any }) {
 describe('loadProjectsIndexData', () => {
   beforeEach(() => {
     vi.resetModules();
-    fromMock.mockReset();
+    getSupabaseServerAuthMock.mockReset();
   });
 
-  it('loads projects and contacts through the explicit service-role client', async () => {
-    fromMock.mockImplementation((table: string) => {
+  it('loads projects and contacts through the server-auth client', async () => {
+    const fromMock = vi.fn().mockImplementation((table: string) => {
       if (table === 'projects') {
         return createQuery({
           data: [
@@ -60,6 +58,7 @@ describe('loadProjectsIndexData', () => {
 
       throw new Error(`Unexpected table ${table}`);
     });
+    getSupabaseServerAuthMock.mockResolvedValue({ from: fromMock });
 
     const { loadProjectsIndexData } = await import('./serverProjectsIndex');
     await expect(loadProjectsIndexData()).resolves.toEqual({
@@ -83,12 +82,13 @@ describe('loadProjectsIndexData', () => {
         },
       ],
     });
+    expect(getSupabaseServerAuthMock).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the archived_at fallback query behavior unchanged', async () => {
     let projectCall = 0;
 
-    fromMock.mockImplementation((table: string) => {
+    const fromMock = vi.fn().mockImplementation((table: string) => {
       if (table === 'projects') {
         projectCall += 1;
         if (projectCall === 1) {
@@ -117,6 +117,7 @@ describe('loadProjectsIndexData', () => {
 
       throw new Error(`Unexpected table ${table}`);
     });
+    getSupabaseServerAuthMock.mockResolvedValue({ from: fromMock });
 
     const { loadProjectsIndexData } = await import('./serverProjectsIndex');
     const data = await loadProjectsIndexData();

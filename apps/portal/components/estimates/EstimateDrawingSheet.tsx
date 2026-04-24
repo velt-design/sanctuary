@@ -9,10 +9,10 @@ import {
   type ModuleFootprintEditorProps,
   resolveModuleDrawingScaleState,
   type ModuleDrawingInteractiveFieldMap,
-} from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import drawingStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
+} from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
+import drawingStyles from '@/app/(portal)/staff/calculator/CalculatorGrid.module.css';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
 import {
   type EstimateDrawingField,

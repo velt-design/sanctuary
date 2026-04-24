@@ -1,5 +1,5 @@
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
-import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
+import type { ModulePlanModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import type { HouseModel, WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   buildHouseFirstPlanOverlay,

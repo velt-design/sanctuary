@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { ModuleViewsTab } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
 import {
   FLASHING_BANDS,
   FLASHING_BAND_OPTIONS,

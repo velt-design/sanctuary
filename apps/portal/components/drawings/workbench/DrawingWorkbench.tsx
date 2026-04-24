@@ -1,8 +1,9 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
@@ -15,11 +16,12 @@ import type {
   WorkbenchHouseSelection,
   WorkbenchMode,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import SheetViewport from '@/components/drawings/viewports/SheetViewport';
-import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
-import Geometry3DViewport from '@/components/drawings/viewports/Geometry3DViewport';
 import ViewportModeSwitch from './ViewportModeSwitch';
 import styles from './DrawingWorkbench.module.css';
+
+const SheetViewport = dynamic(() => import('@/components/drawings/viewports/SheetViewport'));
+const ModelSpaceViewport = dynamic(() => import('@/components/drawings/viewports/ModelSpaceViewport'));
+const Geometry3DViewport = dynamic(() => import('@/components/drawings/viewports/Geometry3DViewport'));
 
 const VIEW_OPTIONS: Array<{ id: ModuleViewsTab; label: string }> = [
   { id: 'plan', label: 'Plan' },

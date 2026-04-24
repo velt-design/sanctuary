@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Modal from '@/components/ui/modal/Modal';
 import type { SiteVisitCalendarItem, SiteVisitCalendarPerson } from '@/lib/types/siteVisits';
-import styles from '@/app/staff/schedule/schedule.module.css';
+import styles from '@/app/(portal)/staff/schedule/schedule.module.css';
 import { DEFAULT_DURATION_MINUTES, MINUTES_STEP, WORK_END_HOUR, WORK_START_HOUR } from '@/components/schedule/site-visits/siteVisits.constants';
 
 const LINK_NONE = '__none__';

@@ -1,6 +1,6 @@
 import type { RoofType } from '@sp/costing';
 import type { GeometryPlanMember2D, GeometryPlanViewModel, Line2, Polygon2 } from '@sp/geometry';
-import type { ModulePlanHouseContext, ModulePlanModel } from '@/app/staff/calculator/moduleViews';
+import type { ModulePlanHouseContext, ModulePlanModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_DRAWING_ROTATION_QUARTER_TURNS,

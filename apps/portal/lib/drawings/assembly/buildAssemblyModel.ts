@@ -1,5 +1,5 @@
 import type { CostOutputV1 } from '@sp/costing';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { DrawingAssemblyFallVector, DrawingAssemblyModel } from './types';
 

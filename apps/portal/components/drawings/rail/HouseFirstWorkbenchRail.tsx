@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/staff/calculator/ModuleViewsCard';
+import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
 import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import {
   normalizeHouseFootprintParams,

@@ -1,5 +1,5 @@
-import type { ModuleViewsStatus } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { ModuleViewsStatus } from '@/app/(portal)/staff/calculator/ModuleViewsCard';
+import type { ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
 import {
   buildPlanViewModel as buildGeometryPlanViewModel,
   buildSectionViewModel as buildGeometrySectionViewModel,

@@ -129,7 +129,7 @@ function pickPrimaryEdgeInterval(intervals: EdgeInterval[]): EdgeInterval | null
 
 function edgeCandidatesForHousePolygon(housePolygon: LocalPolygonPoint[]): HostEdgeCandidate[] {
   const bounds = computeHouseBounds(housePolygon);
-  return housePolygon.flatMap((point, index) => {
+  return housePolygon.flatMap<HostEdgeCandidate>((point, index) => {
     const nextPoint = housePolygon[(index + 1) % housePolygon.length];
     if (!nextPoint) return [];
     const sourceEdgeId = `footprint-edge-${index + 1}`;
