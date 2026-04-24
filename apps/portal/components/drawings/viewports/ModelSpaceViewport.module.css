@@ -27,6 +27,9 @@
 .input {
   width: 92px;
   padding: 6px 8px;
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 .overlayButton,
@@ -104,6 +107,9 @@
   cursor: grab;
   overscroll-behavior: contain;
   touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .scrollerPanning {
@@ -144,6 +150,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
 }
 
 .drawRedrawBar {
@@ -154,6 +163,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
 }
 
 .drawStatus {
@@ -189,6 +201,53 @@
   color: rgba(var(--portal-text-rgb), 0.58);
 }
 
+.deckInteractionHint {
+  position: absolute;
+  top: 58px;
+  left: 12px;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  max-width: min(520px, calc(100% - 300px));
+  padding: 8px 10px;
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(30, 34, 24, 0.08);
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
+.deckInteractionHintEligible {
+  border: 1px solid rgba(var(--accentRgb), 0.24);
+  background: rgba(var(--portal-bg-rgb), 0.94);
+}
+
+.deckInteractionHintDeferred {
+  border: 1px solid rgba(37, 102, 146, 0.2);
+  background: rgba(244, 249, 252, 0.96);
+}
+
+.deckInteractionHintStatus {
+  border: 1px solid rgba(37, 102, 146, 0.24);
+  background: rgba(239, 247, 252, 0.97);
+}
+
+.deckInteractionHintTitle {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.7);
+}
+
+.deckInteractionHintText {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: rgba(var(--portal-text-rgb), 0.84);
+}
+
 .drawPopover {
   position: absolute;
   top: 66px;
@@ -205,6 +264,25 @@
   border-radius: 8px;
   background: rgba(var(--portal-bg-rgb), 0.94);
   box-shadow: 0 12px 28px rgba(30, 34, 24, 0.12);
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
+}
+
+.dimensionPopover {
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  gap: 6px;
+  min-width: 128px;
+  padding: 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.12);
+  border-radius: 8px;
+  background: rgba(var(--portal-bg-rgb), 0.96);
+  box-shadow: 0 12px 28px rgba(30, 34, 24, 0.12);
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
 }
 
 .drawHint {

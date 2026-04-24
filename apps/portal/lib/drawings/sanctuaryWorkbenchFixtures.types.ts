@@ -1,4 +1,5 @@
 import type { DesignRequestPriorityTier, DesignRequestStatus } from '@/lib/designPackages/types';
+import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { EstimateStatus } from '@/lib/estimates/types';
 
 export type SanctuaryGeometryWorkbenchFixtureEstimate = {
@@ -19,6 +20,7 @@ export type SanctuaryGeometryWorkbenchFixture = {
   slug: string;
   label: string;
   snapshot: Record<string, unknown>;
+  draft?: EstimateDrawingDraft;
   moduleLabels?: string[];
   estimate: SanctuaryGeometryWorkbenchFixtureEstimate;
   request: SanctuaryGeometryWorkbenchFixtureRequest;

@@ -45,13 +45,13 @@ export type ModuleSectionHouseLine2D = ModuleHouseLine2D<ModuleSectionHouseLineK
 
 export type ModulePlanHouseSurface = {
   id: string;
-  kind: 'footprint' | 'roof' | 'soffit' | 'fascia' | 'attachment_zone';
+  kind: 'footprint' | 'roof' | 'soffit' | 'fascia' | 'deck' | 'attachment_zone';
   boundary: ModuleHousePoint2D[];
 };
 
 export type ModuleSectionHouseSurface = {
   id: string;
-  kind: 'wall' | 'roof' | 'soffit' | 'fascia' | 'attachment_zone';
+  kind: 'wall' | 'roof' | 'soffit' | 'fascia' | 'deck' | 'attachment_zone';
   boundary: ModuleHousePoint2D[];
 };
 

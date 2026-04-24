@@ -11,6 +11,7 @@ describe('sanctuary workbench fixtures', () => {
       'gable-standard',
       'box-standard',
       'gable-u-hipped-screenshot',
+      'mono-join-screenshot',
     ]);
   });
 
@@ -25,6 +26,7 @@ describe('sanctuary workbench fixtures', () => {
     for (const fixture of listSanctuaryGeometryWorkbenchFixtures()) {
       const store = buildDrawingWorkbenchStore({
         snapshot: fixture.snapshot,
+        draft: fixture.draft,
         ui: createDrawingWorkbenchUiState(),
         moduleLabels: fixture.moduleLabels,
       });

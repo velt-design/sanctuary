@@ -210,6 +210,7 @@ describe('EstimateDrawingSheet', () => {
     expect(markup).toContain('Note');
     expect(markup).toContain('Do not scale off portal preview.');
     expect(markup).toContain('Verify all dimensions on site.');
+    expect(markup).toContain('data-native-selection-suppressed="true"');
   });
 
   it('keeps soffit brackets as a dedicated plan legend item using drawing-system samples', () => {

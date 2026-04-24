@@ -6,6 +6,7 @@ import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEd
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import { buildDrawingWorkbenchStore } from './drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from './drawingWorkbenchUiState';
+import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchFixtures';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -161,6 +162,9 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeSectionModel?.leftEdgeHeightM).toBeCloseTo(2.4);
     expect(store.derived.activeSectionModel?.rightEdgeHeightM).toBeCloseTo(2.1);
     expect(store.derived.activePlanViewModel?.annotations.suppressDocumentAnnotationsInModelSpace).toBe(true);
+    expect(store.persisted.projectModel.house?.id).toBe('house-main');
+    expect(store.derived.house?.footprint.preset).toBe('straight');
+    expect(store.derived.pergolas).toHaveLength(1);
     expect(store.derived.status).toBe('ready');
   });
 
@@ -276,5 +280,453 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeAssemblyModel?.moduleInput.gableEndFramesMode).toBe('none');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableHouseEdgeGutter).toBe('our');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableOuterEdgeGutter).toBe('our');
+  });
+
+  it('normalizes workbench selection state when switching between house and pergolas modes', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Shared House',
+        quoteRef: 'Q-2000',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [
+          { id: 'pergola-1', label: 'Pergola 1' },
+          { id: 'pergola-2', label: 'Pergola 2' },
+        ],
+        modules: [
+          makeModule({ pergolaId: 'pergola-1', houseFootprintPreset: 'straight' }),
+          makeModule({ pergolaId: 'pergola-2', houseFootprintPreset: 'straight', lengthM: '4.5' }),
+        ],
+      },
+      outputs: {
+        pergolas: [{ id: 'pergola-1', modules: [makeResult(), makeResult({ lengthA: 4.5 })] }],
+      },
+    } satisfies Record<string, unknown>;
+
+    const pergolaStore = buildDrawingWorkbenchStore({
+      snapshot,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'pergolas',
+        activePergolaId: 'missing',
+        activeHouseSelection: { kind: 'roof', targetId: 'roof-1' },
+      }),
+    });
+
+    expect(pergolaStore.ui.workbenchMode).toBe('pergolas');
+    expect(pergolaStore.ui.activePergolaId).toBe('pergola-1');
+    expect(pergolaStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(pergolaStore.derived.activePergola?.id).toBe('pergola-1');
+
+    const houseStore = buildDrawingWorkbenchStore({
+      snapshot,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activePergolaId: 'pergola-2',
+        activeHouseSelection: { kind: 'footprint', targetId: 'house-main' },
+      }),
+    });
+
+    expect(houseStore.ui.workbenchMode).toBe('house');
+    expect(houseStore.ui.activePergolaId).toBeNull();
+    expect(houseStore.ui.activeHouseSelection).toEqual({ kind: 'footprint', targetId: 'house-main' });
+  });
+
+  it('preserves stable deck ids and normalizes invalid deck selection state', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      decks: [
+        {
+          id: 'deck-a',
+          name: 'Deck A',
+          kind: 'deck',
+          shape: 'preset',
+          presetType: 'rect_attached',
+          presetRect: {
+            widthM: '3.6',
+            depthM: '3',
+            centerOffsetM: '0',
+            detachedGapM: null,
+          },
+          outline: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '3.6', depthM: '0' },
+            { alongM: '3.6', depthM: '3' },
+            { alongM: '0', depthM: '3' },
+          ],
+          elevationMode: 'aligned_to_threshold',
+          levelOffsetMm: '0',
+          hostEdgeId: 'rear',
+          isAttached: true,
+          surfaceMaterial: 'timber_decking',
+        },
+        {
+          id: 'deck-b',
+          name: 'Deck B',
+          kind: 'deck',
+          shape: 'custom',
+          outline: [
+            { alongM: '8', depthM: '2' },
+            { alongM: '11', depthM: '2' },
+            { alongM: '11', depthM: '5' },
+            { alongM: '8', depthM: '5' },
+          ],
+          elevationMode: 'stepped',
+          levelOffsetMm: '350',
+          isAttached: false,
+          surfaceMaterial: 'composite',
+        },
+      ],
+    };
+
+    const selectedStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'deck', targetId: 'deck-b' },
+      }),
+    });
+
+    expect(selectedStore.derived.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
+    expect(selectedStore.derived.activeDeckId).toBe('deck-b');
+    expect(selectedStore.ui.activeHouseSelection).toEqual({ kind: 'deck', targetId: 'deck-b' });
+
+    const removedDraft = structuredClone(draft);
+    removedDraft.houseFirst = {
+      decks: draft.houseFirst?.decks?.filter((deck) => deck.id !== 'deck-b') ?? [],
+    };
+
+    const removedStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: removedDraft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'deck', targetId: 'deck-b' },
+      }),
+    });
+
+    expect(removedStore.derived.decks.map((deck) => deck.id)).toEqual(['deck-a']);
+    expect(removedStore.derived.activeDeckId).toBeNull();
+    expect(removedStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+
+    const pergolaStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'pergolas',
+        activeHouseSelection: { kind: 'deck', targetId: 'deck-a' },
+      }),
+    });
+
+    expect(pergolaStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(pergolaStore.derived.activeDeckId).toBeNull();
+  });
+
+  it('preserves stable opening ids and normalizes invalid opening selection state', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-1',
+          label: 'Window 1',
+          kind: 'window',
+          wallId: 'rear',
+          widthM: '1.8',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.6',
+        },
+      ],
+    };
+
+    const selectedStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'opening', targetId: 'opening-1' },
+      }),
+    });
+
+    expect(selectedStore.derived.openingCount).toBe(1);
+    expect(selectedStore.derived.activeOpeningId).toBe('opening-1');
+    expect(selectedStore.ui.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-1' });
+
+    const removedDraft = structuredClone(draft);
+    removedDraft.houseFirst = {
+      openings: [],
+    };
+
+    const removedStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: removedDraft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'opening', targetId: 'opening-1' },
+      }),
+    });
+
+    expect(removedStore.derived.activeOpeningId).toBeNull();
+    expect(removedStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+  });
+
+  it('marks the shared house as low confidence when legacy modules disagree on house context', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Conflict House',
+        quoteRef: 'Q-2001',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [
+          { id: 'pergola-1', label: 'Pergola 1' },
+          { id: 'pergola-2', label: 'Pergola 2' },
+        ],
+        modules: [
+          makeModule({ pergolaId: 'pergola-1', houseFootprintPreset: 'straight' }),
+          makeModule({ pergolaId: 'pergola-2', houseFootprintPreset: 'u_shape', houseRoofMaterial: 'shingles' }),
+        ],
+      },
+      outputs: {
+        pergolas: [{ id: 'pergola-1', modules: [makeResult(), makeResult()] }],
+      },
+    } satisfies Record<string, unknown>;
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(store.derived.house?.footprint.preset).toBe('straight');
+    expect(store.derived.houseIsLowConfidence).toBe(true);
+    expect(store.derived.migrationWarningCount).toBeGreaterThan(0);
+  });
+
+  it('exposes shared roof diagnostics through derived store state', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+    draft.houseFirst = {
+      roof: {
+        form: 'gable',
+      },
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(store.derived.roofForm).toBe('gable');
+    expect(store.derived.roofValidationStatus).toBe('valid');
+    expect(store.derived.roofValidationCode).toBeNull();
+    expect(store.derived.roofValidationMessage).toBeNull();
+    expect(store.derived.roofAppendageStatus).toBe('off');
+  });
+
+  it('exposes orthogonal mono presets as valid through derived store state', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(store.derived.roofForm).toBe('mono');
+    expect(store.derived.roofValidationStatus).toBe('valid');
+    expect(store.derived.roofValidationCode).toBeNull();
+    expect(store.derived.roofValidationMessage).toBeNull();
+  });
+
+  it('derives active-side deck support diagnostics for attached and detached deck scenarios', () => {
+    const attachedFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_threshold_attached');
+    const detachedFixture = makeHouseFirstDeckSupportSnapshotFixture('detached_rear_near_house');
+
+    const attachedStore = buildDrawingWorkbenchStore({
+      snapshot: attachedFixture.snapshot,
+      draft: attachedFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+    const detachedStore = buildDrawingWorkbenchStore({
+      snapshot: detachedFixture.snapshot,
+      draft: detachedFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(attachedStore.derived.activeDeckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: true,
+        resolvedClassification: 'threshold_attached',
+        deckBracketEligible: true,
+      }),
+    );
+    expect(detachedStore.derived.activeDeckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: true,
+        resolvedClassification: 'ground_supported',
+        deckBracketEligible: false,
+      }),
+    );
+  });
+
+  it('limits active-side deck support diagnostics to the current host side and downgrades warning-heavy decks', () => {
+    const sideFixture = makeHouseFirstDeckSupportSnapshotFixture('left_threshold_attached');
+    const nonRelevantFixture = makeHouseFirstDeckSupportSnapshotFixture(
+      'left_non_relevant_when_rear_active',
+    );
+    const warningFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_warning_heavy_attached');
+
+    const sideStore = buildDrawingWorkbenchStore({
+      snapshot: sideFixture.snapshot,
+      draft: sideFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+    const nonRelevantStore = buildDrawingWorkbenchStore({
+      snapshot: nonRelevantFixture.snapshot,
+      draft: nonRelevantFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+    const warningStore = buildDrawingWorkbenchStore({
+      snapshot: warningFixture.snapshot,
+      draft: warningFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(sideStore.derived.activeDeckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'left',
+        hasRelevantDeck: true,
+        resolvedClassification: 'threshold_attached',
+        deckBracketEligible: true,
+      }),
+    );
+    expect(nonRelevantStore.derived.activeDeckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: false,
+        resolvedClassification: 'none',
+        deckBracketEligible: false,
+      }),
+    );
+    expect(warningStore.derived.activeDeckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: true,
+        resolvedClassification: 'threshold_attached',
+        deckBracketEligible: false,
+      }),
+    );
+    expect(warningStore.derived.activeDeckSupport?.warningCodes).toContain(
+      'threshold_alignment_offset',
+    );
+  });
+
+  it('derives active deck interaction diagnostics for attached, detached, and custom decks', () => {
+    const attachedFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_threshold_attached');
+    const detachedFixture = makeHouseFirstDeckSupportSnapshotFixture('detached_rear_near_house');
+    const customFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_threshold_attached');
+
+    if (!customFixture.draft?.houseFirst?.decks?.[0]) {
+      throw new Error('Expected house-first deck drafts in fixture.');
+    }
+
+    customFixture.draft.houseFirst.decks[0] = {
+      ...customFixture.draft.houseFirst.decks[0],
+      shape: 'custom',
+      outline: [
+        { alongM: '0', depthM: '0' },
+        { alongM: '4', depthM: '0' },
+        { alongM: '4', depthM: '-3' },
+        { alongM: '0', depthM: '-3' },
+      ],
+    };
+
+    const attachedStore = buildDrawingWorkbenchStore({
+      snapshot: attachedFixture.snapshot,
+      draft: attachedFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'deck', targetId: 'deck-1' },
+      }),
+    });
+    const detachedStore = buildDrawingWorkbenchStore({
+      snapshot: detachedFixture.snapshot,
+      draft: detachedFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'deck', targetId: 'deck-1' },
+      }),
+    });
+    const customStore = buildDrawingWorkbenchStore({
+      snapshot: customFixture.snapshot,
+      draft: customFixture.draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'deck', targetId: 'deck-1' },
+      }),
+    });
+
+    expect(attachedStore.derived.activeDeckInteraction).toEqual({
+      selectedDeckType: 'attached_preset_rect',
+      dragEligible: true,
+      dragReason: 'Drag the selected deck body to move it along the host edge, or click dimensions to edit.',
+      hostEdgeResolvable: true,
+      relationshipDimensionsAvailable: true,
+    });
+    expect(detachedStore.derived.activeDeckInteraction).toEqual({
+      selectedDeckType: 'detached_preset_rect',
+      dragEligible: false,
+      dragReason: 'Drag and snap currently apply only to attached preset rectangular decks.',
+      hostEdgeResolvable: true,
+      relationshipDimensionsAvailable: false,
+    });
+    expect(customStore.derived.activeDeckInteraction).toEqual({
+      selectedDeckType: 'custom_outline',
+      dragEligible: false,
+      dragReason: 'Custom deck dragging is deferred. Use dimensions or redraw the outline.',
+      hostEdgeResolvable: true,
+      relationshipDimensionsAvailable: false,
+    });
   });
 });

@@ -228,8 +228,11 @@ function buildHouseSectionObjects(assembly: Assembly3D, sliceXMm: number, refere
   }
 
   const surfaces = [
-    ...model.wallSegments.map((segment) => buildHouseSectionSurface(segment.id, 'wall', segment.boundary, sliceXMm, segment.metadata)),
+    ...model.wallSegments
+      .filter((segment) => segment.metadata?.houseWallMode !== 'open_gable_frame')
+      .map((segment) => buildHouseSectionSurface(segment.id, 'wall', segment.boundary, sliceXMm, segment.metadata)),
     ...model.roofPlanes.map((roofPlane) => buildHouseSectionSurface(roofPlane.id, 'roof', roofPlane.boundary, sliceXMm, roofPlane.metadata)),
+    ...(model.decks ?? []).map((deck) => buildHouseSectionSurface(deck.id, 'deck', deck.boundary, sliceXMm, deck.metadata)),
     ...(model.eave.soffitPolygons ?? []).map((polygon, index) => buildHouseSectionSurface(`house-soffit-${index + 1}`, 'soffit', polygon, sliceXMm, model.eave.metadata)),
     ...(model.eave.fasciaPolygons ?? []).map((polygon, index) => buildHouseSectionSurface(`house-fascia-${index + 1}`, 'fascia', polygon, sliceXMm, model.eave.metadata)),
     ...(model.attachmentTarget?.zone?.boundary

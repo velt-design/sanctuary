@@ -8,6 +8,13 @@ import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenc
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { DrawingWorkbenchViewportMode, DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { CalculatorHouseFootprintPolygonPoint, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type {
+  HouseFirstDeckDraft,
+  HouseFirstOpeningDraft,
+  WorkbenchHouseSelection,
+  WorkbenchMode,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
 import Geometry3DViewport from '@/components/drawings/viewports/Geometry3DViewport';
@@ -19,6 +26,8 @@ const VIEW_OPTIONS: Array<{ id: ModuleViewsTab; label: string }> = [
   { id: 'section', label: 'Section' },
 ];
 
+type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+
 type DrawingWorkbenchProps = {
   moduleLabel: string;
   modules: Array<{ id: string; label: string }>;
@@ -27,6 +36,7 @@ type DrawingWorkbenchProps = {
   view: ModuleViewsTab;
   onViewChange: (view: ModuleViewsTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;
+  workbenchDisplayMode?: WorkbenchMode;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   availableViewportModes?: DrawingWorkbenchViewportMode[];
   status: ModuleViewsStatus;
@@ -36,6 +46,8 @@ type DrawingWorkbenchProps = {
   geometryPreview?: GeometryPreviewState | null;
   viewportTransform: DrawingWorkbenchViewportTransform;
   drawOutlineRequestId?: number;
+  drawOutlineMode?: 'footprint' | 'deck' | null;
+  drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[];
   onViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   meta: EstimateDrawingSheetMeta;
   backHref?: string;
@@ -53,6 +65,34 @@ type DrawingWorkbenchProps = {
   onCommitFootprintEdit?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitCustomPolygon?: (
+    polygon: CalculatorHouseFootprintPolygonPoint[],
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onSelectHouseFirstTarget?: (selection: WorkbenchHouseSelection) => void;
+  onCommitHouseFirstFootprintDimension?: (
+    edit: EstimateDrawingFootprintEdit,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitHouseFirstDeckDimension?: (
+    deckId: string,
+    patch: Partial<HouseFirstDeckDraft>,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitHouseFirstOpeningDimension?: (
+    openingId: string,
+    patch: Partial<HouseFirstOpeningDraft>,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  pendingAttachedDeckHostEdgePick?: boolean;
+  onPickAttachedDeckHostEdge?: (side: AttachmentSide) => void;
+  onDeckInteractionTelemetryChange?: (telemetry: {
+    selectedDeckId: string | null;
+    housePolygonSource: 'custom_saved' | 'preset_derived' | null;
+    selectedDeckType: 'none' | 'attached_preset_rect' | 'detached_preset_rect' | 'custom_outline' | 'preset_unresolved';
+    dragEligible: boolean;
+    dragReason: string | null;
+    hostEdgeResolvable: boolean;
+    relationshipDimensionsAvailable: boolean;
+    snapState: 'idle' | 'free' | 'snapped';
+    snapMessage: string | null;
+  }) => void;
 };
 
 export default function DrawingWorkbench({
@@ -63,6 +103,7 @@ export default function DrawingWorkbench({
   view,
   onViewChange,
   viewportMode,
+  workbenchDisplayMode = 'pergolas',
   onViewportModeChange,
   availableViewportModes,
   status,
@@ -72,6 +113,8 @@ export default function DrawingWorkbench({
   geometryPreview,
   viewportTransform,
   drawOutlineRequestId,
+  drawOutlineMode,
+  drawOutlineSeedPolygon,
   onViewportTransformChange,
   meta,
   backHref,
@@ -81,6 +124,14 @@ export default function DrawingWorkbench({
   onCommitField,
   onCommitModelField,
   onCommitFootprintEdit,
+  onCommitCustomPolygon,
+  onSelectHouseFirstTarget,
+  onCommitHouseFirstFootprintDimension,
+  onCommitHouseFirstDeckDimension,
+  onCommitHouseFirstOpeningDimension,
+  pendingAttachedDeckHostEdgePick = false,
+  onPickAttachedDeckHostEdge,
+  onDeckInteractionTelemetryChange,
 }: DrawingWorkbenchProps) {
   void moduleLabel;
   void modules;
@@ -138,20 +189,36 @@ export default function DrawingWorkbench({
         ) : viewportMode === 'model' ? (
           <ModelSpaceViewport
             view={view}
+            workbenchDisplayMode={workbenchDisplayMode}
             status={status}
             planModel={planModel}
             sectionModel={sectionModel}
             planViewModel={planViewModel}
             drawOutlineRequestId={drawOutlineRequestId}
+            drawOutlineMode={drawOutlineMode}
+            drawOutlineSeedPolygon={drawOutlineSeedPolygon}
             fitViewKey={`${activeModuleIndex}:${view}`}
             viewportTransform={viewportTransform}
             onViewportTransformChange={onViewportTransformChange}
             editableFields={modelEditableFields}
             onCommitField={onCommitModelField}
             onCommitFootprintEdit={onCommitFootprintEdit}
+            onCommitCustomPolygon={onCommitCustomPolygon}
+            onSelectHouseFirstTarget={onSelectHouseFirstTarget}
+            onCommitHouseFirstFootprintDimension={onCommitHouseFirstFootprintDimension}
+            onCommitHouseFirstDeckDimension={onCommitHouseFirstDeckDimension}
+            onCommitHouseFirstOpeningDimension={onCommitHouseFirstOpeningDimension}
+            pendingAttachedDeckHostEdgePick={pendingAttachedDeckHostEdgePick}
+            onPickAttachedDeckHostEdge={onPickAttachedDeckHostEdge}
+            onDeckInteractionTelemetryChange={onDeckInteractionTelemetryChange}
           />
         ) : (
-          <Geometry3DViewport geometryPreview={geometryPreview} />
+          <Geometry3DViewport
+            geometryPreview={geometryPreview}
+            displayMode={workbenchDisplayMode}
+            pendingAttachedDeckHostEdgePick={pendingAttachedDeckHostEdgePick}
+            onPickAttachedDeckHostEdge={onPickAttachedDeckHostEdge}
+          />
         )}
       </div>
     </section>

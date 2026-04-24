@@ -26,7 +26,12 @@ import type {
   GeometryPreviewMode,
   GeometryPreviewState,
 } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
+import type { WorkbenchMode } from "@/lib/drawings/state/houseFirstWorkbenchModel";
+import { blockNativeSelectionEvent } from "./nativeSelection";
 import styles from "./Geometry3DViewport.module.css";
+
+const HOUSE_DISPLAY_LAYER_IDS = new Set(["house", "house_roof_materials"]);
+type AttachmentSide = "rear" | "front" | "left" | "right";
 
 type SceneBounds = {
   min: Point3;
@@ -34,6 +39,17 @@ type SceneBounds = {
   center: Point3;
   size: number;
 };
+
+function sceneForDisplayMode(
+  scene: ViewerSceneModel,
+  displayMode: WorkbenchMode,
+): ViewerSceneModel {
+  if (displayMode !== "house") return scene;
+  return {
+    ...scene,
+    layers: scene.layers.filter((layer) => HOUSE_DISPLAY_LAYER_IDS.has(layer.id)),
+  };
+}
 
 type SectionCutState = {
   enabled: boolean;
@@ -98,6 +114,16 @@ type HouseRoofViewportDiagnostics = {
   expectedSolidCount: number;
   renderedSolidCount: number;
   skippedSolidCount: number;
+};
+
+type HouseOpeningViewportDiagnostics = {
+  totalCount: number;
+  validCount: number;
+  hostEdgeResolvedCount: number;
+  hostEdgeUnresolvedCount: number;
+  renderedMarkerCount: number;
+  skippedInvalidCount: number;
+  unresolvedValidCount: number;
 };
 
 const LAYER_COLORS: Record<string, string> = {
@@ -387,6 +413,32 @@ function collectHouseRoofViewportDiagnostics(
   };
 }
 
+function collectHouseOpeningViewportDiagnostics(
+  scene: ViewerSceneModel | null,
+): HouseOpeningViewportDiagnostics {
+  if (!scene) {
+    return {
+      totalCount: 0,
+      validCount: 0,
+      hostEdgeResolvedCount: 0,
+      hostEdgeUnresolvedCount: 0,
+      renderedMarkerCount: 0,
+      skippedInvalidCount: 0,
+      unresolvedValidCount: 0,
+    };
+  }
+
+  return {
+    totalCount: sceneMetadataNumber(scene, "houseOpeningCount") ?? 0,
+    validCount: sceneMetadataNumber(scene, "houseOpeningValidCount") ?? 0,
+    hostEdgeResolvedCount: sceneMetadataNumber(scene, "houseOpeningHostEdgeResolvedCount") ?? 0,
+    hostEdgeUnresolvedCount: sceneMetadataNumber(scene, "houseOpeningHostEdgeUnresolvedCount") ?? 0,
+    renderedMarkerCount: sceneMetadataNumber(scene, "houseOpeningRenderedMarkerCount") ?? 0,
+    skippedInvalidCount: sceneMetadataNumber(scene, "houseOpeningSkippedInvalidCount") ?? 0,
+    unresolvedValidCount: sceneMetadataNumber(scene, "houseOpeningUnresolvedValidCount") ?? 0,
+  };
+}
+
 function buildLineGeometry(points: Point3[]): THREE.BufferGeometry {
   const finitePoints = points.filter(isFinitePoint);
   if (finitePoints.length < 2) return new THREE.BufferGeometry();
@@ -447,6 +499,170 @@ export function buildRenderMeshGeometry(mesh: RenderMesh3D | undefined): THREE.B
 
 function vectorFromPoint(point: Point3): THREE.Vector3 {
   return new THREE.Vector3(point.x, point.y, point.z);
+}
+
+function offsetPolygon(points: Point3[], normal: Point3, distanceMm: number): Point3[] {
+  return points.map((point) => ({
+    x: point.x + normal.x * distanceMm,
+    y: point.y + normal.y * distanceMm,
+    z: point.z + normal.z * distanceMm,
+  }));
+}
+
+function metadataStringValue(
+  metadata: ViewerSceneHouseSurfaceSolidObject["metadata"] | undefined,
+  key: string,
+): string | null {
+  const value = metadata?.[key];
+  return typeof value === "string" ? value : null;
+}
+
+function metadataNumberValue(
+  metadata: ViewerSceneHouseSurfaceSolidObject["metadata"] | undefined,
+  key: string,
+): number | null {
+  const value = metadata?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function metadataAttachmentSide(
+  metadata: ViewerSceneObject["metadata"],
+  key: string,
+): AttachmentSide | null {
+  const value = metadata?.[key];
+  return value === "rear" || value === "front" || value === "left" || value === "right"
+    ? value
+    : null;
+}
+
+type DeckMaterialKey = "timber_decking" | "composite" | "concrete";
+
+function resolveDeckMaterial(
+  object: ViewerSceneHouseSurfaceSolidObject,
+): DeckMaterialKey {
+  const material = metadataStringValue(object.metadata, "deckSurfaceMaterial");
+  if (material === "composite" || material === "concrete") return material;
+  return "timber_decking";
+}
+
+function resolveDeckPalette(material: DeckMaterialKey) {
+  if (material === "composite") {
+    return {
+      topColor: "#a8b095",
+      baseColor: "#7f8672",
+      grooveColor: "#68705f",
+      outlineColor: "#56604f",
+      selectedColor: "#2f6f96",
+    };
+  }
+  if (material === "concrete") {
+    return {
+      topColor: "#b7b9bc",
+      baseColor: "#94979b",
+      grooveColor: "#8e9296",
+      outlineColor: "#6e7276",
+      selectedColor: "#2f6f96",
+    };
+  }
+  return {
+    topColor: "#c8bc7b",
+    baseColor: "#9c8e58",
+    grooveColor: "#8a7b45",
+    outlineColor: "#776a3a",
+    selectedColor: "#2f6f96",
+  };
+}
+
+function buildDeckVisualFrame(
+  object: ViewerSceneHouseSurfaceSolidObject,
+): {
+  center: THREE.Vector3;
+  normal: THREE.Vector3;
+  widthDir: THREE.Vector3;
+  depthDir: THREE.Vector3;
+  minWidth: number;
+  maxWidth: number;
+  minDepth: number;
+  maxDepth: number;
+} | null {
+  if (object.boundary.length < 4) return null;
+  const widthMm = metadataNumberValue(object.metadata, "deckPresetRectWidthMm");
+  if (widthMm === null || widthMm <= 0) return null;
+  const normal = normalizeNonZeroVector(vectorFromPoint(object.plane.normal));
+  if (!normal) return null;
+  const centerPoint = centroid(object.boundary);
+  const center = vectorFromPoint(centerPoint);
+  const edges = object.boundary.map((point, index) => {
+    const next = object.boundary[(index + 1) % object.boundary.length]!;
+    const vector = new THREE.Vector3(next.x - point.x, next.y - point.y, next.z - point.z);
+    return {
+      length: vector.length(),
+      direction: normalizeNonZeroVector(vector),
+    };
+  });
+  const widthEdge = edges
+    .filter((edge): edge is { length: number; direction: THREE.Vector3 } => Boolean(edge.direction))
+    .sort((left, right) => Math.abs(left.length - widthMm) - Math.abs(right.length - widthMm))[0];
+  if (!widthEdge) return null;
+  const widthDir = widthEdge.direction;
+  const depthDir = normalizeNonZeroVector(new THREE.Vector3().crossVectors(normal, widthDir));
+  if (!depthDir) return null;
+
+  const projected = object.boundary.map((point) => {
+    const relative = new THREE.Vector3(point.x - center.x, point.y - center.y, point.z - center.z);
+    return {
+      width: relative.dot(widthDir),
+      depth: relative.dot(depthDir),
+    };
+  });
+  return {
+    center,
+    normal,
+    widthDir,
+    depthDir,
+    minWidth: Math.min(...projected.map((point) => point.width)),
+    maxWidth: Math.max(...projected.map((point) => point.width)),
+    minDepth: Math.min(...projected.map((point) => point.depth)),
+    maxDepth: Math.max(...projected.map((point) => point.depth)),
+  };
+}
+
+function buildDeckGrooveLines(
+  object: ViewerSceneHouseSurfaceSolidObject,
+): Array<{ id: string; start: Point3; end: Point3 }> {
+  const material = resolveDeckMaterial(object);
+  if (material === "concrete") return [];
+  const frame = buildDeckVisualFrame(object);
+  if (!frame) return [];
+  const spacingMm = material === "composite" ? 160 : 140;
+  const usableDepth = frame.maxDepth - frame.minDepth;
+  if (usableDepth <= spacingMm * 1.25) return [];
+  const insetMm = 24;
+  const lines: Array<{ id: string; start: Point3; end: Point3 }> = [];
+  let index = 0;
+  for (
+    let depth = frame.minDepth + spacingMm;
+    depth <= frame.maxDepth - spacingMm * 0.5;
+    depth += spacingMm
+  ) {
+    index += 1;
+    const start = frame.center
+      .clone()
+      .addScaledVector(frame.widthDir, frame.minWidth + insetMm)
+      .addScaledVector(frame.depthDir, depth)
+      .addScaledVector(frame.normal, 2);
+    const end = frame.center
+      .clone()
+      .addScaledVector(frame.widthDir, frame.maxWidth - insetMm)
+      .addScaledVector(frame.depthDir, depth)
+      .addScaledVector(frame.normal, 2);
+    lines.push({
+      id: `${object.id}-deck-groove-${index}`,
+      start: { x: start.x, y: start.y, z: start.z },
+      end: { x: end.x, y: end.y, z: end.z },
+    });
+  }
+  return lines;
 }
 
 function normalizeNonZeroVector(vector: THREE.Vector3): THREE.Vector3 | null {
@@ -1879,6 +2095,19 @@ function objectSummary(
   ];
 }
 
+function pickableAttachedDeckHostEdgeSide(
+  object: ViewerSceneObject | null,
+): AttachmentSide | null {
+  if (!object) return null;
+  if (object.type === "house_surface_solid" && object.kind === "wall") {
+    return metadataAttachmentSide(object.metadata, "hostEdgeSide");
+  }
+  if (object.type === "house_surface" && object.kind === "wall") {
+    return metadataAttachmentSide(object.metadata, "hostEdgeSide");
+  }
+  return null;
+}
+
 function MemberObject({
   object,
   color,
@@ -2461,10 +2690,15 @@ function HouseSurfaceObject({
       ? 0.32
       : object.kind === "wall"
         ? 0.2
+        : object.kind === "opening_marker"
+          ? 0.52
         : object.kind === "attachment_zone" ||
             object.kind === "attachment_plane"
           ? 0.4
           : 0.26;
+  const surfaceColor = object.kind === "opening_marker" ? "#95b9cf" : color;
+  const materialSide =
+    object.kind === "wall" ? THREE.FrontSide : THREE.DoubleSide;
 
   return (
     <mesh
@@ -2480,11 +2714,11 @@ function HouseSurfaceObject({
     >
       <primitive attach="geometry" object={geometry} />
       <meshStandardMaterial
-        color={color}
+        color={surfaceColor}
         transparent
         opacity={opacity}
         depthWrite={false}
-        side={THREE.DoubleSide}
+        side={materialSide}
         clippingPlanes={clippingPlanes}
       />
     </mesh>
@@ -2508,6 +2742,7 @@ function HouseLineObject({
     () => buildLineGeometry(linePoints(object.line)),
     [object.line],
   );
+  const lineColor = object.kind === "opening_outline" ? "#325872" : color;
   return (
     <line
       data-testid={`scene-object-${object.id}`}
@@ -2521,7 +2756,7 @@ function HouseLineObject({
       }}
     >
       <primitive attach="geometry" object={geometry} />
-      <lineBasicMaterial color={color} clippingPlanes={clippingPlanes} />
+      <lineBasicMaterial color={lineColor} clippingPlanes={clippingPlanes} />
     </line>
   );
 }
@@ -2529,20 +2764,28 @@ function HouseLineObject({
 function HouseSurfaceSolidObject({
   object,
   color,
+  selected,
   onSelect,
   onFocus,
   clippingPlanes,
 }: {
   object: ViewerSceneHouseSurfaceSolidObject;
   color: string;
+  selected: boolean;
   onSelect: (id: string) => void;
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
 }) {
   const geometry = useMemo(
-    () =>
-      buildRenderMeshGeometry(object.renderMesh) ??
-      buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm),
+    () => {
+      if (object.kind === "wall") {
+        return buildPolygonGeometry(object.boundary);
+      }
+      return (
+        buildRenderMeshGeometry(object.renderMesh) ??
+        buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm)
+      );
+    },
     [object.boundary, object.plane, object.renderMesh, object.thicknessMm],
   );
   const opacity =
@@ -2551,9 +2794,47 @@ function HouseSurfaceSolidObject({
       : object.kind === "wall"
         ? 0.58
         : 0.72;
+  const materialSide =
+    object.kind === "wall" ? THREE.FrontSide : THREE.DoubleSide;
+  const isDeck = object.kind === "deck";
+  const deckMaterial = isDeck ? resolveDeckMaterial(object) : null;
+  const deckPalette = isDeck && deckMaterial ? resolveDeckPalette(deckMaterial) : null;
+  const deckMuted = isDeck && !selected;
+  const bodyOpacity = isDeck ? (selected ? 0.82 : 0.4) : opacity;
+  const topOpacity = isDeck ? (selected ? 0.98 : 0.74) : opacity;
+  const outlineOpacity = isDeck ? (selected ? 1 : 0.58) : 1;
+  const grooveOpacity = isDeck ? (selected ? 0.8 : 0.32) : 1;
+  const topBoundary = useMemo(() => {
+    if (!isDeck) return [];
+    return offsetPolygon(object.boundary, object.plane.normal, 1.5);
+  }, [isDeck, object.boundary, object.plane.normal]);
+  const topGeometry = useMemo(
+    () => (topBoundary.length ? buildPolygonGeometry(topBoundary) : emptyGeometry()),
+    [topBoundary],
+  );
+  const outlineGeometry = useMemo(
+    () => (isDeck ? buildClosedLineGeometry(offsetPolygon(object.boundary, object.plane.normal, 3)) : emptyGeometry()),
+    [isDeck, object.boundary, object.plane.normal],
+  );
+  const selectedOutlineGeometry = useMemo(
+    () =>
+      isDeck && selected
+        ? buildClosedLineGeometry(offsetPolygon(object.boundary, object.plane.normal, 6))
+        : emptyGeometry(),
+    [isDeck, object.boundary, object.plane.normal, selected],
+  );
+  const deckGrooveLines = useMemo(() => (isDeck ? buildDeckGrooveLines(object) : []), [isDeck, object]);
+  const deckGrooveGeometries = useMemo(
+    () =>
+      deckGrooveLines.map((line) => ({
+        id: line.id,
+        geometry: buildLineGeometry([line.start, line.end]),
+      })),
+    [deckGrooveLines],
+  );
 
   return (
-    <mesh
+    <group
       data-testid={`scene-object-${object.id}`}
       onClick={(event) => {
         event.stopPropagation();
@@ -2564,15 +2845,63 @@ function HouseSurfaceSolidObject({
         onFocus(object.id);
       }}
     >
-      <primitive attach="geometry" object={geometry} />
-      <meshStandardMaterial
-        color={color}
-        transparent
-        opacity={opacity}
-        side={THREE.DoubleSide}
-        clippingPlanes={clippingPlanes}
-      />
-    </mesh>
+      <mesh>
+        <primitive attach="geometry" object={geometry} />
+        <meshStandardMaterial
+          color={deckPalette?.baseColor ?? color}
+          transparent
+          opacity={bodyOpacity}
+          depthWrite={false}
+          side={materialSide}
+          clippingPlanes={clippingPlanes}
+        />
+      </mesh>
+      {isDeck ? (
+        <>
+          <mesh>
+            <primitive attach="geometry" object={topGeometry} />
+            <meshStandardMaterial
+              color={selected ? deckPalette?.selectedColor ?? color : deckPalette?.topColor ?? color}
+              transparent
+              opacity={topOpacity}
+              depthWrite={false}
+              side={THREE.DoubleSide}
+              clippingPlanes={clippingPlanes}
+            />
+          </mesh>
+          <line data-testid={`scene-object-${object.id}-deck-outline`}>
+            <primitive attach="geometry" object={outlineGeometry} />
+            <lineBasicMaterial
+              color={selected ? deckPalette?.selectedColor ?? "#2f6f96" : deckPalette?.outlineColor ?? color}
+              transparent
+              opacity={outlineOpacity}
+              clippingPlanes={clippingPlanes}
+            />
+          </line>
+          {deckGrooveGeometries.length ? (
+            <group data-testid={`scene-object-${object.id}-deck-grooves`}>
+              {deckGrooveGeometries.map((line) => (
+                <line key={line.id}>
+                  <primitive attach="geometry" object={line.geometry} />
+                  <lineBasicMaterial
+                    color={deckPalette?.grooveColor ?? color}
+                    transparent
+                    opacity={grooveOpacity}
+                    clippingPlanes={clippingPlanes}
+                  />
+                </line>
+              ))}
+            </group>
+          ) : null}
+          {selected ? (
+            <line data-testid={`scene-object-${object.id}-deck-outline-selected`}>
+              <primitive attach="geometry" object={selectedOutlineGeometry} />
+              <lineBasicMaterial color={deckPalette?.selectedColor ?? "#2f6f96"} clippingPlanes={clippingPlanes} />
+            </line>
+          ) : null}
+        </>
+      ) : null}
+    </group>
   );
 }
 
@@ -2672,12 +3001,14 @@ function HouseLinearSolidObject({
 function SceneObjectNode({
   object,
   color,
+  selected,
   onSelect,
   onFocus,
   clippingPlanes,
 }: {
   object: ViewerSceneObject;
   color: string;
+  selected: boolean;
   onSelect: (id: string) => void;
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
@@ -2760,6 +3091,7 @@ function SceneObjectNode({
       <HouseSurfaceSolidObject
         object={object}
         color={color}
+        selected={selected}
         onSelect={onSelect}
         onFocus={onFocus}
         clippingPlanes={clippingPlanes}
@@ -3031,8 +3363,14 @@ function MeasurementProbeOverlay({
 
 export default function Geometry3DViewport({
   geometryPreview,
+  displayMode = "pergolas",
+  pendingAttachedDeckHostEdgePick = false,
+  onPickAttachedDeckHostEdge,
 }: {
   geometryPreview?: GeometryPreviewState | null;
+  displayMode?: WorkbenchMode;
+  pendingAttachedDeckHostEdgePick?: boolean;
+  onPickAttachedDeckHostEdge?: (side: AttachmentSide) => void;
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<
@@ -3065,7 +3403,6 @@ export default function Geometry3DViewport({
       focusMode: "scene",
     }),
   );
-  const [cameraBindingVersion, setCameraBindingVersion] = useState(0);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -3079,9 +3416,28 @@ export default function Geometry3DViewport({
       canvasContained: false,
     },
   );
+  const handleNativeSelectionCapture = useCallback((event: Event) => {
+    blockNativeSelectionEvent(event);
+  }, []);
+  useEffect(() => {
+    const node = canvasShellRef.current;
+    if (!node) return;
+    const handleSelectStart = (event: Event) => handleNativeSelectionCapture(event);
+    const handleDragStart = (event: Event) => handleNativeSelectionCapture(event);
+    node.addEventListener("selectstart", handleSelectStart, true);
+    node.addEventListener("dragstart", handleDragStart, true);
+    return () => {
+      node.removeEventListener("selectstart", handleSelectStart, true);
+      node.removeEventListener("dragstart", handleDragStart, true);
+    };
+  }, [handleNativeSelectionCapture]);
 
-  const scene =
+  const rawScene =
     geometryPreview?.kind === "ready" ? geometryPreview.scene : null;
+  const scene = useMemo(
+    () => (rawScene ? sceneForDisplayMode(rawScene, displayMode) : null),
+    [displayMode, rawScene],
+  );
   const datumOrigin =
     geometryPreview?.kind === "ready"
       ? geometryPreview.assembly.datum.origin
@@ -3120,12 +3476,13 @@ export default function Geometry3DViewport({
       geometryPreview.config.family,
       geometryPreview.config.connection.type,
       geometryPreview.config.connection.attachmentSide,
+      displayMode,
       geometryPreview.config.dimensions.lengthMm,
       geometryPreview.config.dimensions.projectionMm,
       boundsSignature,
       layerSignature,
     ].join(":");
-  }, [geometryPreview, scene, sceneBounds]);
+  }, [displayMode, geometryPreview, scene, sceneBounds]);
   const selectedObject = useMemo(
     () => allObjects.find((object) => object.id === selectedObjectId) ?? null,
     [allObjects, selectedObjectId],
@@ -3133,6 +3490,10 @@ export default function Geometry3DViewport({
   const finiteBounds = useMemo(() => allSceneBoundsFinite(sceneBounds), [sceneBounds]);
   const houseRoofDiagnostics = useMemo(
     () => collectHouseRoofViewportDiagnostics(scene),
+    [scene],
+  );
+  const houseOpeningDiagnostics = useMemo(
+    () => collectHouseOpeningViewportDiagnostics(scene),
     [scene],
   );
   const selectedMember =
@@ -3218,6 +3579,10 @@ export default function Geometry3DViewport({
     },
     [sceneBounds],
   );
+
+  const syncViewportBindings = useCallback(() => {
+    applyCameraPose(cameraState);
+  }, [applyCameraPose, cameraState]);
 
   const fitScene = useCallback(() => {
     if (!sceneBounds) return;
@@ -3323,9 +3688,11 @@ export default function Geometry3DViewport({
     (controls: OrbitControlsImpl | null) => {
       if (controlsRef.current === controls) return;
       controlsRef.current = controls;
-      setCameraBindingVersion((current) => current + 1);
+      if (controls) {
+        syncViewportBindings();
+      }
     },
-    [],
+    [syncViewportBindings],
   );
 
   const handleCanvasCreated = useCallback(
@@ -3334,9 +3701,9 @@ export default function Geometry3DViewport({
       resetRendererState(gl);
       cameraRef.current = camera as THREE.PerspectiveCamera;
       cameraRef.current.up.set(0, 0, 1);
-      setCameraBindingVersion((current) => current + 1);
+      syncViewportBindings();
     },
-    [],
+    [syncViewportBindings],
   );
 
   const assignMeasurementAnchor = useCallback(
@@ -3371,13 +3738,26 @@ export default function Geometry3DViewport({
 
   const handleObjectSelect = useCallback(
     (id: string) => {
+      const object = allObjects.find((entry) => entry.id === id) ?? null;
+      if (pendingAttachedDeckHostEdgePick) {
+        const pickedSide = pickableAttachedDeckHostEdgeSide(object);
+        if (pickedSide && onPickAttachedDeckHostEdge) {
+          onPickAttachedDeckHostEdge(pickedSide);
+        }
+        return;
+      }
       setSelectedObjectId(id);
       if (!measurement.enabled) return;
-      const object = allObjects.find((entry) => entry.id === id);
       if (!object) return;
       assignMeasurementAnchor(buildMeasurementAnchor(object), "selection");
     },
-    [allObjects, assignMeasurementAnchor, measurement.enabled],
+    [
+      allObjects,
+      assignMeasurementAnchor,
+      measurement.enabled,
+      onPickAttachedDeckHostEdge,
+      pendingAttachedDeckHostEdgePick,
+    ],
   );
 
   const useDatumOriginAnchor = useCallback(() => {
@@ -3519,7 +3899,7 @@ export default function Geometry3DViewport({
         rendererRef.current?.domElement,
       ),
     );
-  }, [cameraBindingVersion, sceneKey, sectionCut.enabled, allObjects.length]);
+  }, [sceneKey, sectionCut.enabled, allObjects.length]);
 
   useEffect(() => {
     return () => {
@@ -3538,7 +3918,7 @@ export default function Geometry3DViewport({
 
   useEffect(() => {
     applyCameraPose(cameraState);
-  }, [applyCameraPose, cameraBindingVersion, cameraState]);
+  }, [applyCameraPose, cameraState]);
 
   const clippingPlanes = useMemo(
     () =>
@@ -3626,6 +4006,20 @@ export default function Geometry3DViewport({
     );
   }
 
+  if (!scene) {
+    return (
+      <section
+        className={styles.state}
+        aria-label="3D geometry viewport unavailable"
+      >
+        <h3 className={styles.stateTitle}>3D View Unavailable</h3>
+        <p className={styles.stateText}>
+          This workbench context did not provide a renderable geometry scene.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section
       className={styles.viewport}
@@ -3635,10 +4029,15 @@ export default function Geometry3DViewport({
         ref={canvasShellRef}
         className={styles.canvasShell}
         data-testid="geometry-3d-canvas-shell"
-        onClick={() => setSelectedObjectId(null)}
+        data-native-selection-suppressed="true"
+        onClick={() => {
+          if (pendingAttachedDeckHostEdgePick) return;
+          setSelectedObjectId(null);
+        }}
       >
         <div
           className={styles.canvasToolbar}
+          data-allow-native-selection="true"
           onClick={(event) => event.stopPropagation()}
           onDoubleClick={(event) => event.stopPropagation()}
         >
@@ -3655,6 +4054,11 @@ export default function Geometry3DViewport({
           </div>
           <div className={styles.toolbarSpacer} />
           <div className={styles.toolbarGroup}>
+            {pendingAttachedDeckHostEdgePick ? (
+              <span className={styles.activeToolbarButton}>
+                Pick house side for new deck
+              </span>
+            ) : null}
             <button
               type="button"
               className={styles.resetButton}
@@ -3696,6 +4100,7 @@ export default function Geometry3DViewport({
           <aside
             className={styles.workspacePanel}
             data-testid="workspace-panel"
+            data-allow-native-selection="true"
             onClick={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
           >
@@ -3727,7 +4132,7 @@ export default function Geometry3DViewport({
               <div className={styles.panel}>
                 <p className={styles.eyebrow}>Layers</p>
                 <div className={styles.layerList}>
-                  {geometryPreview.scene.layers.map((layer) => (
+                  {scene.layers.map((layer) => (
                     <label key={layer.id} className={styles.layerItem}>
                       <input
                         type="checkbox"
@@ -4120,6 +4525,13 @@ export default function Geometry3DViewport({
           data-house-roof-solid-expected-count={String(houseRoofDiagnostics.expectedSolidCount)}
           data-house-roof-solid-rendered-count={String(houseRoofDiagnostics.renderedSolidCount)}
           data-house-roof-solid-skipped-count={String(houseRoofDiagnostics.skippedSolidCount)}
+          data-house-opening-count={String(houseOpeningDiagnostics.totalCount)}
+          data-house-opening-valid-count={String(houseOpeningDiagnostics.validCount)}
+          data-house-opening-host-edge-resolved-count={String(houseOpeningDiagnostics.hostEdgeResolvedCount)}
+          data-house-opening-host-edge-unresolved-count={String(houseOpeningDiagnostics.hostEdgeUnresolvedCount)}
+          data-house-opening-rendered-marker-count={String(houseOpeningDiagnostics.renderedMarkerCount)}
+          data-house-opening-skipped-invalid-count={String(houseOpeningDiagnostics.skippedInvalidCount)}
+          data-house-opening-unresolved-valid-count={String(houseOpeningDiagnostics.unresolvedValidCount)}
           data-clipping-enabled={String(sectionCut.enabled)}
           data-selected-object-id={selectedObjectId ?? ""}
           data-shell-width={String(rectDiagnostic.shellWidth)}
@@ -4176,7 +4588,7 @@ export default function Geometry3DViewport({
               />
             </group>
           ) : null}
-          {overlayVisibility.roofFallVectors
+          {displayMode === "pergolas" && overlayVisibility.roofFallVectors
             ? geometryPreview.assembly.roofPlanes.map((roofPlane) => {
                 const start = centroid(roofPlane.boundary);
                 const normalizedFall = pointToVector({
@@ -4242,13 +4654,14 @@ export default function Geometry3DViewport({
               markerRadiusMm={measurementMarkerRadiusMm}
             />
           ) : null}
-          {geometryPreview.scene.layers.flatMap((layer) =>
+          {scene.layers.flatMap((layer) =>
             layerVisibility[layer.id] !== false
               ? layer.objects.map((object) => (
                   <SceneObjectNode
                     key={object.id}
                     object={object}
                     color={LAYER_COLORS[layer.id] ?? "#6c7a86"}
+                    selected={selectedObjectId === object.id}
                     onSelect={handleObjectSelect}
                     onFocus={focusObjectById}
                     clippingPlanes={clippingPlanes}

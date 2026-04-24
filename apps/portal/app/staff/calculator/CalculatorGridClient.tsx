@@ -6315,6 +6315,8 @@ export default function CalculatorGridClient({
                     ? {
                         available: true,
                         isEditing: isFootprintEditing,
+                        allowAttachmentSideCanvasSelect: true,
+                        allowResizeEdgeDrag: true,
                         hoveredAttachmentSide: footprintHoveredAttachmentSide,
                         hoveredHandleId: footprintHoveredHandleId,
                         activeHandleId: footprintActiveHandleId,

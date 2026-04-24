@@ -27,10 +27,11 @@ export default function DesignWorkbenchFixtureClient({
     () =>
       buildDrawingWorkbenchStore({
         snapshot: fixture.snapshot,
+        draft: fixture.draft,
         ui,
         moduleLabels: fixture.moduleLabels,
       }),
-    [fixture.moduleLabels, fixture.snapshot, ui],
+    [fixture.draft, fixture.moduleLabels, fixture.snapshot, ui],
   );
   const modules = store.persisted.modules.map((module) => ({
     id: module.id,
@@ -59,9 +60,10 @@ export default function DesignWorkbenchFixtureClient({
         estimateId: fixture.estimate.id,
         designRequestId: fixture.request.id,
         snapshot: fixture.snapshot,
+        draft: fixture.draft,
         moduleIndex: store.derived.activeModuleIndex,
       }),
-    [fixture.estimate.id, fixture.request.id, fixture.slug, fixture.snapshot, store.derived.activeModuleIndex],
+    [fixture.draft, fixture.estimate.id, fixture.request.id, fixture.slug, fixture.snapshot, store.derived.activeModuleIndex],
   );
 
   if (!activeModule) {

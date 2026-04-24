@@ -8,6 +8,7 @@ import {
   buildEstimateDrawingDraftFromSnapshot,
   deriveEstimateDrawingEditableFields,
   resolveEstimateDrawingOverridesFromSnapshot,
+  updateEstimateDrawingHouseFirstDeckDrafts,
 } from './drawingEdits';
 import { buildEstimateDrawingModules } from './moduleDrawing';
 
@@ -314,5 +315,42 @@ describe('drawingEdits', () => {
     expect(mixedRoof.ok).toBe(true);
     if (!mixedRoof.ok) return;
     expect(mixedRoof.draft.inputs.modules[0]?.roofMaterial).toBe('mixed');
+  });
+
+  it('round-trips presetRect deck drafts through house-first deck updates', () => {
+    const snapshot = makeSnapshot(makeModule());
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+
+    const nextDraft = updateEstimateDrawingHouseFirstDeckDrafts({
+      draft,
+      decks: [
+        {
+          id: 'deck-1',
+          shape: 'preset',
+          presetType: 'rect_detached',
+          presetRect: {
+            widthM: '3.6',
+            depthM: '3',
+            centerOffsetM: '0.4',
+            detachedGapM: '0.6',
+          },
+          outline: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '3.6', depthM: '0' },
+            { alongM: '3.6', depthM: '3' },
+            { alongM: '0', depthM: '3' },
+          ],
+          isAttached: false,
+          surfaceMaterial: 'composite',
+        },
+      ],
+    });
+
+    expect(nextDraft.houseFirst?.decks?.[0]?.presetRect).toEqual({
+      widthM: '3.6',
+      depthM: '3',
+      centerOffsetM: '0.4',
+      detachedGapM: '0.6',
+    });
   });
 });

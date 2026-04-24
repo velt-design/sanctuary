@@ -3018,6 +3018,125 @@
   pointer-events: all;
 }
 
+.moduleHouseFirstFootprintShape,
+.moduleHouseFirstDeckShape {
+  fill: rgba(36, 56, 82, 0.06);
+  stroke: rgba(45, 62, 82, 0.58);
+  stroke-width: var(--mv-line-guide-width);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstDeckShape {
+  fill: rgba(44, 86, 112, 0.08);
+  stroke: rgba(37, 102, 146, 0.68);
+}
+
+.moduleHouseFirstDeckShapeMuted {
+  fill: rgba(44, 86, 112, 0.04);
+  stroke: rgba(37, 102, 146, 0.28);
+}
+
+.moduleHouseFirstShapeMuted {
+  fill-opacity: 0.42;
+  stroke-opacity: 0.42;
+}
+
+.moduleHouseFirstShapeSelected {
+  fill: rgba(var(--accentRgb), 0.18);
+  stroke: rgba(var(--accentRgb), 0.96);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleHouseFirstDrivingWitness {
+  stroke: rgba(var(--accentRgb), 0.76);
+}
+
+.moduleHouseFirstRelationshipWitness {
+  stroke: rgba(37, 102, 146, 0.72);
+}
+
+.moduleHouseFirstShapeInvalid {
+  fill: rgba(180, 56, 45, 0.09);
+  stroke: rgba(182, 63, 50, 0.82);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleHouseFirstShapeHit {
+  fill: transparent;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.moduleHouseFirstCustomEdge {
+  stroke: rgba(47, 111, 150, 0.62);
+  stroke-width: var(--mv-line-secondary-width);
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+
+.moduleHouseFirstCustomEdgeActive {
+  stroke: rgba(var(--accentRgb), 0.9);
+  stroke-width: var(--mv-line-major-width);
+}
+
+.moduleHouseFirstInvalidBadge {
+  fill: rgba(182, 63, 50, 0.92);
+  font-size: 1.95px;
+  font-weight: 700;
+}
+
+.moduleHouseFirstDraggableBadge,
+.moduleHouseFirstDeferredBadge {
+  font-size: 1.62px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  paint-order: stroke fill;
+  stroke: rgba(248, 248, 244, 0.96);
+  stroke-width: 0.24;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.moduleHouseFirstDraggableBadge {
+  fill: rgba(var(--accentRgb), 0.94);
+}
+
+.moduleHouseFirstDeferredBadge {
+  fill: rgba(47, 111, 150, 0.82);
+}
+
+.moduleHouseFirstCustomEdgeHit {
+  stroke: transparent;
+  stroke-width: 1.8;
+  cursor: pointer;
+  pointer-events: all;
+}
+
+.moduleHouseFirstPreviewShape {
+  fill: rgba(var(--accentRgb), 0.12);
+  stroke: rgba(var(--accentRgb), 0.94);
+  stroke-width: var(--mv-line-major-width);
+  stroke-linejoin: round;
+  stroke-dasharray: 1.4 0.9;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstSnapTarget {
+  stroke: rgba(37, 102, 146, 0.58);
+  stroke-width: var(--mv-line-major-width);
+  stroke-linecap: round;
+  stroke-dasharray: 1 0.85;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstSnapTargetSnapped {
+  stroke: rgba(var(--accentRgb), 0.98);
+}
+
 .modulePergolaContextHit {
   fill: transparent;
   cursor: pointer;
@@ -3071,11 +3190,13 @@
 
 .modulePlanFill {
   fill: var(--mv-structure-fill);
+  pointer-events: none;
 }
 
 .modulePlanPrimaryZone {
   fill: var(--mv-panel-fill-soft);
   opacity: 0.12;
+  pointer-events: none;
 }
 
 .modulePlanPerimeter {
@@ -3086,6 +3207,7 @@
   stroke-miterlimit: 1.5;
   stroke-width: var(--mv-line-major-width);
   vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .modulePlanMemberBand,
@@ -3097,6 +3219,7 @@
   stroke-miterlimit: 1.5;
   stroke-width: var(--mv-line-secondary-width);
   vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }
 
 .modulePlanBoxInset {
@@ -3311,6 +3434,33 @@
   stroke-linecap: square;
   opacity: 0.82;
   vector-effect: non-scaling-stroke;
+}
+
+.moduleHouseFirstDrivingDimensionLine {
+  stroke: rgba(var(--accentRgb), 0.94);
+}
+
+.moduleHouseFirstDrivingDimensionTick {
+  stroke: rgba(var(--accentRgb), 0.94);
+}
+
+.moduleHouseFirstDrivingDimensionText {
+  fill: rgba(var(--accentRgb), 0.98);
+  font-weight: 700;
+}
+
+.moduleHouseFirstRelationshipDimensionLine {
+  stroke: rgba(37, 102, 146, 0.9);
+  stroke-dasharray: 1.15 0.8;
+}
+
+.moduleHouseFirstRelationshipDimensionTick {
+  stroke: rgba(37, 102, 146, 0.9);
+}
+
+.moduleHouseFirstRelationshipDimensionText {
+  fill: rgba(37, 102, 146, 0.96);
+  font-weight: 600;
 }
 
 .moduleDimGuide {

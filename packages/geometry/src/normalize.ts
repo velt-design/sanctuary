@@ -12,6 +12,9 @@ import type {
   HouseFootprintMode,
   HouseFootprintPreset,
   HouseModelConfig,
+  HouseRoofAppendageForm,
+  HouseRoofPrimaryFallDirection,
+  HouseRoofRidgeAxis,
   HouseRoofForm,
   HouseRoofMaterial,
   HouseStoreyMode,
@@ -23,10 +26,21 @@ import type {
   RoofFallDirection,
   RoofMaterial,
 } from './contracts';
-import { buildCustomHouseFootprintPolygon, buildHouseFootprintPolygon } from './footprints';
+import {
+  buildCustomHouseFootprintPolygon,
+  buildHouseFootprintPolygon,
+  houseFootprintSideLocalToWorldPolygon,
+  resolveHouseFootprintFrame,
+} from './footprints';
 import { makeDatumFrame } from './math3d';
 import { parseAssemblyMemberProfile } from './profiles';
-import { metresToMillimetres, parseNonNegativeInteger, parseNonNegativeNumber, parsePositiveNumber } from './units';
+import {
+  metresToMillimetres,
+  parseFiniteNumber,
+  parseNonNegativeInteger,
+  parseNonNegativeNumber,
+  parsePositiveNumber,
+} from './units';
 
 export type NormalizeGeometryConfigErrorCode = 'unsupported_family' | 'unsupported_variant' | 'missing_required_input' | 'invalid_numeric_input';
 
@@ -92,8 +106,46 @@ function resolveHouseWallConstruction(value: HouseWallConstruction | null | unde
 }
 
 function resolveHouseRoofForm(value: HouseRoofForm | null | undefined): HouseRoofForm {
-  if (value === 'hipped') return value;
+  if (value === 'flat' || value === 'mono' || value === 'gable' || value === 'hipped') {
+    return value;
+  }
   return 'hipped';
+}
+
+function resolveHouseRoofPrimaryFallDirection(
+  value: HouseRoofPrimaryFallDirection | null | undefined,
+): HouseRoofPrimaryFallDirection {
+  if (
+    value === 'negative_x' ||
+    value === 'positive_x' ||
+    value === 'negative_y'
+  ) {
+    return value;
+  }
+  return 'positive_y';
+}
+
+function resolveHouseRoofRidgeAxis(
+  value: HouseRoofRidgeAxis | null | undefined,
+): HouseRoofRidgeAxis {
+  return value === 'y' ? 'y' : 'x';
+}
+
+function resolveHouseOpenGableEndIds(
+  value: string[] | null | undefined,
+): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const ids = value
+    .filter((candidate): candidate is string => typeof candidate === 'string')
+    .map((candidate) => candidate.trim())
+    .filter((candidate) => candidate.length > 0);
+  return ids.length ? [...new Set(ids)] : null;
+}
+
+function resolveHouseRoofAppendageForm(
+  value: HouseRoofAppendageForm | null | undefined,
+): HouseRoofAppendageForm {
+  return value === 'flat' ? 'flat' : 'mono';
 }
 
 function resolveHouseRoofMaterial(value: HouseRoofMaterial | null | undefined): HouseRoofMaterial {
@@ -356,6 +408,7 @@ function buildHouseModelConfig(input: {
   rawHouseContext: RawGeometryModuleInput['houseContext'];
   footprint: GeometryConfig['houseContext']['footprint'];
   connectionType: ConnectionType;
+  attachmentSide: AttachmentSide;
   houseUndersideMm: number | null;
   referenceUndersideMm: number | null;
 }): HouseModelConfig | null {
@@ -371,6 +424,142 @@ function buildHouseModelConfig(input: {
   const wallHeightMm = resolveOptionalMetresToMillimetres(input.rawHouseContext.wallHeightM) ?? eaveHeightMm;
   const roofPitchDeg = resolveOptionalDegrees(input.rawHouseContext.roofPitchDeg) ?? DEFAULT_HOUSE_ROOF_PITCH_DEG;
   const rawEave = input.rawHouseContext.eave;
+  const deckFrame = resolveHouseFootprintFrame({
+    pergolaWidthMm: 1000,
+    pergolaDepthMm: 1000,
+    attachmentSide: input.attachmentSide,
+  });
+  const decks =
+    (input.rawHouseContext.decks ?? [])
+      .map((deck) => {
+        if (!deck?.id) return null;
+        const outlinePoints = (deck.outline ?? [])
+          .map((point) => ({
+            alongM: parseFiniteNumber(point.alongM),
+            depthM: parseFiniteNumber(point.depthM),
+          }))
+          .filter(
+            (
+              point,
+            ): point is {
+              alongM: number;
+              depthM: number;
+            } => point.alongM !== null && point.depthM !== null,
+          );
+        return {
+          id: deck.id,
+          name: deck.name ?? null,
+          kind: deck.kind === 'landing' ? 'landing' : 'deck',
+          shape: deck.shape === 'custom' ? 'custom' : 'preset',
+          presetType:
+            deck.presetType === 'rect_attached' || deck.presetType === 'rect_detached'
+              ? deck.presetType
+              : null,
+          presetRect:
+            deck.presetRect &&
+            resolveOptionalMillimetres(deck.presetRect.widthMm) !== null &&
+            resolveOptionalMillimetres(deck.presetRect.depthMm) !== null &&
+            resolveOptionalMillimetres(deck.presetRect.centerOffsetMm) !== null
+              ? {
+                  widthMm: resolveOptionalMillimetres(deck.presetRect.widthMm) ?? 0,
+                  depthMm: resolveOptionalMillimetres(deck.presetRect.depthMm) ?? 0,
+                  centerOffsetMm: resolveOptionalMillimetres(deck.presetRect.centerOffsetMm) ?? 0,
+                  detachedGapMm: resolveOptionalMillimetres(deck.presetRect.detachedGapMm) ?? 0,
+                }
+              : null,
+          outline:
+            outlinePoints.length >= 3
+              ? houseFootprintSideLocalToWorldPolygon({
+                  points: outlinePoints,
+                  frame: deckFrame,
+                  resolved: {
+                    widthM: 1,
+                    offsetXM: 0,
+                    setbackM: 0,
+                    bandDepthM: 1,
+                    returnRunM: 1,
+                    recessWidthM: 1,
+                    recessDepthM: 1,
+                    leftLegRunM: 1,
+                    rightLegRunM: 1,
+                    sideRunM: 1,
+                  },
+                })
+              : null,
+          elevationMode:
+            deck.elevationMode === 'aligned_to_threshold' || deck.elevationMode === 'stepped'
+              ? deck.elevationMode
+              : 'ground',
+          levelOffsetMm: resolveOptionalMillimetres(deck.levelOffsetMm),
+          topSurfaceElevationMm:
+            typeof deck.topSurfaceElevationMm === 'number' && Number.isFinite(deck.topSurfaceElevationMm)
+              ? Math.round(deck.topSurfaceElevationMm)
+              : resolveOptionalMillimetres(deck.levelOffsetMm) ?? 0,
+          hostEdgeId: deck.hostEdgeId ?? null,
+          isAttached: Boolean(deck.isAttached),
+          surfaceMaterial:
+            deck.surfaceMaterial === 'composite' || deck.surfaceMaterial === 'concrete'
+              ? deck.surfaceMaterial
+              : 'timber_decking',
+          supportContext: deck.supportContext
+            ? {
+                classification:
+                  deck.supportContext.classification === 'threshold_attached'
+                    ? 'threshold_attached'
+                    : deck.supportContext.classification === 'ground_supported'
+                      ? 'ground_supported'
+                      : 'mixed_or_unclear',
+                nearestHouseEdgeId: deck.supportContext.nearestHouseEdgeId ?? null,
+                nearestHouseEdgeDistanceMm: resolveOptionalMillimetres(
+                  deck.supportContext.nearestHouseEdgeDistanceMm,
+                ),
+                attachmentContactLengthMm: resolveOptionalMillimetres(
+                  deck.supportContext.attachmentContactLengthMm,
+                ),
+                warningCodes: deck.supportContext.warningCodes ?? [],
+                warningMessages: deck.supportContext.warningMessages ?? [],
+              }
+            : null,
+          validation: deck.validation
+            ? {
+                status: deck.validation.status === 'invalid' ? 'invalid' : 'valid',
+                codes: deck.validation.codes ?? [],
+                messages: deck.validation.messages ?? [],
+              }
+            : null,
+        };
+      })
+      .filter((deck): deck is NonNullable<typeof deck> => Boolean(deck));
+  const openings =
+    (input.rawHouseContext.openings ?? [])
+      .map((opening) => {
+        if (!opening?.id) return null;
+        const wallId =
+          opening.wallId === 'front' ||
+          opening.wallId === 'left' ||
+          opening.wallId === 'right'
+            ? opening.wallId
+            : 'rear';
+        return {
+          id: opening.id,
+          label: opening.label?.trim() || null,
+          kind: opening.kind === 'window' ? 'window' : 'window',
+          wallId,
+          hostEdgeId: typeof opening.hostEdgeId === 'string' ? opening.hostEdgeId.trim() || null : null,
+          widthMm: resolveOptionalMillimetres(opening.widthMm),
+          heightMm: resolveOptionalMillimetres(opening.heightMm),
+          sillHeightMm: resolveOptionalMillimetres(opening.sillHeightMm),
+          offsetAlongWallMm: resolveOptionalMillimetres(opening.offsetAlongWallMm),
+          validation: opening.validation
+            ? {
+                status: opening.validation.status === 'invalid' ? 'invalid' : 'valid',
+                codes: opening.validation.codes ?? [],
+                message: opening.validation.message ?? null,
+              }
+            : null,
+        };
+      })
+      .filter((opening): opening is NonNullable<typeof opening> => Boolean(opening));
 
   return {
     footprint: input.footprint,
@@ -381,6 +570,22 @@ function buildHouseModelConfig(input: {
     eaveHeightMm,
     wallHeightMm,
     roofPitchDeg,
+    roofPrimaryFallDirection: resolveHouseRoofPrimaryFallDirection(
+      input.rawHouseContext.roofPrimaryFallDirection,
+    ),
+    roofRidgeAxis: resolveHouseRoofRidgeAxis(input.rawHouseContext.roofRidgeAxis),
+    openGableEndIds: resolveHouseOpenGableEndIds(input.rawHouseContext.openGableEndIds),
+    roofAppendage: input.rawHouseContext.roofAppendage
+      ? {
+          enabled: Boolean(input.rawHouseContext.roofAppendage.enabled),
+          form: resolveHouseRoofAppendageForm(input.rawHouseContext.roofAppendage.form),
+          hostEdge: input.rawHouseContext.roofAppendage.hostEdge ?? 'rear',
+          pitchDeg: resolveOptionalDegrees(input.rawHouseContext.roofAppendage.pitchDeg),
+          dropMm: resolveOptionalMillimetres(input.rawHouseContext.roofAppendage.dropMm),
+        }
+      : null,
+    decks,
+    openings,
     attachmentStrategy: resolveHouseAttachmentStrategy(input.rawHouseContext.attachmentStrategy, input.connectionType),
     eave: {
       soffitDepthMm: resolveMillimetresWithDefault(rawEave?.soffitDepthMm, DEFAULT_HOUSE_SOFFIT_DEPTH_MM),
@@ -475,6 +680,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
     rawHouseContext: input.houseContext,
     footprint: houseFootprint,
     connectionType,
+    attachmentSide,
     houseUndersideMm,
     referenceUndersideMm,
   });

@@ -22,10 +22,18 @@ import {
   getViewBoxUnitsPerMm,
   type DrawingSheetFitResult,
 } from '@/lib/estimates/drawingSheetLayout';
+import type {
+  HouseFirstPlanDeckInteraction,
+  HouseFirstPlanCustomEdgeCandidate,
+  HouseFirstPlanOverlay,
+  HouseFirstPlanPresetDimensionAnnotation,
+  PlanPoint,
+} from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
 type ModuleDrawingPresentation = 'card' | 'minimal' | 'sheet' | 'model';
+export type ModuleDrawingDisplayMode = 'house' | 'pergolas';
 export type { HouseFootprintHandleId } from './moduleViews';
 
 export type HouseFootprintEditorDragMeta = {
@@ -86,6 +94,25 @@ export type ModulePlanInteractionProps = {
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
+export type HouseFirstPlanShapeDragStartMeta = {
+  ownerKind: 'deck';
+  ownerId: string;
+  deckInteraction: HouseFirstPlanDeckInteraction & {
+    hostEdgeStart: Point;
+    hostEdgeEnd: Point;
+  };
+};
+
+type HouseFirstPlanPreviewOverlay = {
+  ownerId: string;
+  polygon: PlanPoint[];
+  hostEdge: {
+    start: PlanPoint;
+    end: PlanPoint;
+    snapped: boolean;
+  } | null;
+};
+
 export type ModuleFootprintCanvasPointResolver = (clientX: number, clientY: number) => ModuleFootprintCanvasPoint | null;
 
 type GeometryConsistency = {
@@ -98,6 +125,9 @@ export type ModuleFootprintEditorProps = {
   available: boolean;
   isEditing: boolean;
   surface?: ModuleFootprintEditorSurface;
+  allowAttachmentSideCanvasSelect?: boolean;
+  attachmentSideCanvasActiveSide?: AttachmentSide | null;
+  allowResizeEdgeDrag?: boolean;
   customPolygonOverride?: ModulePlanModel['houseFootprintPolygon'] | null;
   customPolygonOpen?: boolean;
   customPolygonConfirmedPointCount?: number;
@@ -159,9 +189,23 @@ type ModuleDrawingRendererProps = {
   sheetViewportMm?: { widthMm: number; heightMm: number };
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
+  displayMode?: ModuleDrawingDisplayMode;
   footprintEditor?: ModuleFootprintEditorProps;
   planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
+  houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
+  activeHouseFirstCustomEdgeId?: string | null;
+  onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  onHouseFirstShapeDragStart?: (
+    meta: HouseFirstPlanShapeDragStartMeta,
+    event: { pointerId: number; clientX: number; clientY: number },
+  ) => void;
+  onHouseFirstCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
+  onHouseFirstDimensionActivate?: (
+    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+    target: SVGTextElement,
+  ) => void;
+  houseFirstPreviewOverlay?: HouseFirstPlanPreviewOverlay | null;
 };
 
 type ModuleDrawingInteractiveField = {
@@ -311,9 +355,17 @@ export function ModuleDrawingRenderer({
   sheetViewportMm,
   interactiveFields,
   showDebugOverlays,
+  displayMode = 'pergolas',
   footprintEditor,
   planInteraction,
   sheetPlanInteraction,
+  houseFirstPlanOverlay,
+  activeHouseFirstCustomEdgeId,
+  onHouseFirstShapeSelect,
+  onHouseFirstShapeDragStart,
+  onHouseFirstCustomEdgeSelect,
+  onHouseFirstDimensionActivate,
+  houseFirstPreviewOverlay,
 }: ModuleDrawingRendererProps) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
@@ -425,9 +477,17 @@ export function ModuleDrawingRenderer({
               scaleDiagnostics={sheetScaleDiagnostics}
               interactiveFields={interactiveFields}
               showDebugOverlays={effectiveShowDebugOverlays}
+              displayMode={displayMode}
               footprintEditor={footprintEditor}
               planInteraction={planInteraction}
               sheetPlanInteraction={sheetPlanInteraction}
+              houseFirstPlanOverlay={houseFirstPlanOverlay}
+              activeHouseFirstCustomEdgeId={activeHouseFirstCustomEdgeId}
+              onHouseFirstShapeSelect={onHouseFirstShapeSelect}
+              onHouseFirstShapeDragStart={onHouseFirstShapeDragStart}
+              onHouseFirstCustomEdgeSelect={onHouseFirstCustomEdgeSelect}
+              onHouseFirstDimensionActivate={onHouseFirstDimensionActivate}
+              houseFirstPreviewOverlay={houseFirstPreviewOverlay}
             />
           </div>
           {isCompact ? null : (
@@ -569,6 +629,9 @@ type TickDimensionProps = {
   showTermBars?: boolean;
   presentation?: ModuleDrawingPresentation;
   interactiveField?: ModuleDrawingInteractiveField;
+  lineClassName?: string;
+  tickClassName?: string;
+  textClassName?: string;
 };
 
 type DimensionPresentationSpec = {
@@ -2592,6 +2655,9 @@ function TickDimension({
   showTermBars = false,
   presentation = 'card',
   interactiveField,
+  lineClassName,
+  tickClassName,
+  textClassName,
 }: TickDimensionProps) {
   const geometry = resolveTickDimensionGeometry({
     x1,
@@ -2608,7 +2674,13 @@ function TickDimension({
 
   return (
     <g>
-      <line x1={geometry.lineStartX} y1={geometry.lineStartY} x2={geometry.lineEndX} y2={geometry.lineEndY} className={styles.moduleDimLine} />
+      <line
+        x1={geometry.lineStartX}
+        y1={geometry.lineStartY}
+        x2={geometry.lineEndX}
+        y2={geometry.lineEndY}
+        className={[styles.moduleDimLine, lineClassName].filter(Boolean).join(' ')}
+      />
       {geometry.termBar1 && geometry.termBar2 ? (
         <>
           <line
@@ -2627,13 +2699,31 @@ function TickDimension({
           />
         </>
       ) : null}
-      <line x1={geometry.tick1StartX} y1={geometry.tick1StartY} x2={geometry.tick1EndX} y2={geometry.tick1EndY} className={styles.moduleDimTick} />
-      <line x1={geometry.tick2StartX} y1={geometry.tick2StartY} x2={geometry.tick2EndX} y2={geometry.tick2EndY} className={styles.moduleDimTick} />
+      <line
+        x1={geometry.tick1StartX}
+        y1={geometry.tick1StartY}
+        x2={geometry.tick1EndX}
+        y2={geometry.tick1EndY}
+        className={[styles.moduleDimTick, tickClassName].filter(Boolean).join(' ')}
+      />
+      <line
+        x1={geometry.tick2StartX}
+        y1={geometry.tick2StartY}
+        x2={geometry.tick2EndX}
+        y2={geometry.tick2EndY}
+        className={[styles.moduleDimTick, tickClassName].filter(Boolean).join(' ')}
+      />
       <text
         x={geometry.labelX}
         y={geometry.labelY}
         textAnchor="middle"
-        className={interactiveField ? `${styles.moduleDimText} ${styles.moduleDimTextEditable}` : styles.moduleDimText}
+        className={[
+          styles.moduleDimText,
+          interactiveField ? styles.moduleDimTextEditable : '',
+          textClassName,
+        ]
+          .filter(Boolean)
+          .join(' ')}
         transform={typeof geometry.labelRotate === 'number' ? `rotate(${geometry.labelRotate} ${geometry.labelX} ${geometry.labelY})` : undefined}
         data-editable-field-id={interactiveField?.fieldId}
         tabIndex={interactiveField?.onActivate ? 0 : undefined}
@@ -2682,6 +2772,265 @@ function estimateTickDimensionBounds(
       rotateDeg: geometry.labelRotate,
     }),
   ]);
+}
+
+function renderHouseFirstDimension(
+  annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+  onActivate?: (
+    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+    target: SVGTextElement,
+  ) => void,
+) {
+  const emphasis =
+    'emphasis' in annotation ? annotation.emphasis : annotation.targetKind === 'deck_custom_edge' ? 'relationship' : 'driving';
+  const lineClassName =
+    emphasis === 'relationship'
+      ? styles.moduleHouseFirstRelationshipDimensionLine
+      : styles.moduleHouseFirstDrivingDimensionLine;
+  const tickClassName =
+    emphasis === 'relationship'
+      ? styles.moduleHouseFirstRelationshipDimensionTick
+      : styles.moduleHouseFirstDrivingDimensionTick;
+  const textClassName =
+    emphasis === 'relationship'
+      ? styles.moduleHouseFirstRelationshipDimensionText
+      : styles.moduleHouseFirstDrivingDimensionText;
+  return (
+    <g
+      key={annotation.id}
+      data-house-first-plan-dimension={annotation.id}
+      data-house-first-dimension-emphasis={emphasis}
+    >
+      <line
+        x1={annotation.witnessStart.x}
+        y1={annotation.witnessStart.y}
+        x2={annotation.lineStart.x}
+        y2={annotation.lineStart.y}
+        className={
+          emphasis === 'relationship'
+            ? `${styles.moduleDimWitness} ${styles.moduleHouseFirstRelationshipWitness}`
+            : `${styles.moduleDimWitness} ${styles.moduleHouseFirstDrivingWitness}`
+        }
+      />
+      <line
+        x1={annotation.witnessEnd.x}
+        y1={annotation.witnessEnd.y}
+        x2={annotation.lineEnd.x}
+        y2={annotation.lineEnd.y}
+        className={
+          emphasis === 'relationship'
+            ? `${styles.moduleDimWitness} ${styles.moduleHouseFirstRelationshipWitness}`
+            : `${styles.moduleDimWitness} ${styles.moduleHouseFirstDrivingWitness}`
+        }
+      />
+      <TickDimension
+        x1={annotation.lineStart.x}
+        y1={annotation.lineStart.y}
+        x2={annotation.lineEnd.x}
+        y2={annotation.lineEnd.y}
+        label={annotation.displayValue}
+        presentation="model"
+        lineClassName={lineClassName}
+        tickClassName={tickClassName}
+        textClassName={textClassName}
+        interactiveField={
+          onActivate
+            ? {
+                fieldId: annotation.id,
+                onActivate: (_fieldId, target) => onActivate(annotation, target),
+              }
+            : undefined
+        }
+      />
+    </g>
+  );
+}
+
+function renderHouseFirstPlanOverlay(input: {
+  shapes: Array<HouseFirstPlanOverlay['shapes'][number] & { points: Point[] }>;
+  previewShape: {
+    ownerId: string;
+    points: Point[];
+    hostEdge: { start: Point; end: Point; snapped: boolean } | null;
+  } | null;
+  customEdgeCandidates: Array<HouseFirstPlanCustomEdgeCandidate & {
+    witnessStart: Point;
+    witnessEnd: Point;
+    lineStart: Point;
+    lineEnd: Point;
+  }>;
+  presetAnnotations: Array<HouseFirstPlanPresetDimensionAnnotation & {
+    witnessStart: Point;
+    witnessEnd: Point;
+    lineStart: Point;
+    lineEnd: Point;
+  }>;
+  activeCustomEdgeId: string | null;
+  onShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  onShapeDragStart?: (
+    meta: HouseFirstPlanShapeDragStartMeta,
+    event: { pointerId: number; clientX: number; clientY: number },
+  ) => void;
+  onCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
+  onDimensionActivate?: (
+    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+    target: SVGTextElement,
+  ) => void;
+}) {
+  const { shapes, previewShape, customEdgeCandidates, presetAnnotations, activeCustomEdgeId, onShapeSelect, onShapeDragStart, onCustomEdgeSelect, onDimensionActivate } = input;
+
+  return (
+    <>
+      {shapes.length
+        ? shapes.map((shape) => (
+            <g key={`house-first-shape-${shape.ownerKind}-${shape.ownerId}`}>
+              <polygon
+                points={toPointsAttr(shape.points)}
+                data-house-first-shape={`${shape.ownerKind}:${shape.ownerId}`}
+                data-house-first-shape-muted={shape.muted ? 'true' : 'false'}
+                data-house-first-shape-invalid={shape.invalid ? 'true' : 'false'}
+                className={[
+                  shape.ownerKind === 'deck' || shape.ownerKind === 'opening'
+                    ? styles.moduleHouseFirstDeckShape
+                    : styles.moduleHouseFirstFootprintShape,
+                  shape.muted ? styles.moduleHouseFirstShapeMuted : '',
+                  shape.invalid ? styles.moduleHouseFirstShapeInvalid : '',
+                  shape.selected ? styles.moduleHouseFirstShapeSelected : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              />
+              <polygon
+                points={toPointsAttr(shape.points)}
+                data-house-first-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
+                data-house-first-shape-draggable={
+                  shape.ownerKind === 'deck' && shape.deckDragEligibility?.eligible ? 'true' : 'false'
+                }
+                data-house-first-shape-drag-reason={
+                  shape.ownerKind === 'deck' ? (shape.deckDragEligibility?.reason ?? '') : ''
+                }
+                className={styles.moduleHouseFirstShapeHit}
+                onClick={() => onShapeSelect?.({ ownerKind: shape.ownerKind, ownerId: shape.ownerId })}
+                onPointerDown={(event) => {
+                  if (event.button !== 0 || !shape.selected || shape.ownerKind !== 'deck' || !shape.deckInteraction) return;
+                  onShapeDragStart?.(
+                    {
+                      ownerKind: 'deck',
+                      ownerId: shape.ownerId,
+                      deckInteraction: {
+                        ...shape.deckInteraction,
+                        hostEdgeStart: shape.deckInteraction.hostEdgeStart,
+                        hostEdgeEnd: shape.deckInteraction.hostEdgeEnd,
+                      },
+                    },
+                    {
+                      pointerId: event.pointerId,
+                      clientX: event.clientX,
+                      clientY: event.clientY,
+                    },
+                  );
+                }}
+              />
+              {(shape.ownerKind === 'deck' || shape.ownerKind === 'opening') && shape.selected && shape.invalid ? (
+                <text
+                  x={shape.points.reduce((sum, point) => sum + point.x, 0) / Math.max(shape.points.length, 1)}
+                  y={shape.points.reduce((sum, point) => sum + point.y, 0) / Math.max(shape.points.length, 1)}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  className={styles.moduleHouseFirstInvalidBadge}
+                >
+                  {shape.invalidMessage?.includes('house interior')
+                    ? 'Inside house'
+                    : shape.invalidMessage?.includes('overlap each other')
+                      ? 'Overlaps deck'
+                      : shape.invalidMessage?.includes('host edge')
+                        ? 'Missing host edge'
+                        : shape.ownerKind === 'opening'
+                          ? 'Invalid opening'
+                          : 'Invalid deck'}
+                </text>
+              ) : null}
+              {shape.ownerKind === 'deck' && shape.selected && shape.deckDragEligibility ? (
+                <text
+                  x={shape.points.reduce((sum, point) => sum + point.x, 0) / Math.max(shape.points.length, 1)}
+                  y={Math.min(...shape.points.map((point) => point.y)) - 1.8}
+                  textAnchor="middle"
+                  className={
+                    shape.deckDragEligibility.eligible
+                      ? styles.moduleHouseFirstDraggableBadge
+                      : styles.moduleHouseFirstDeferredBadge
+                  }
+                >
+                  {shape.deckDragEligibility.eligible ? 'Drag deck' : 'Dims only'}
+                </text>
+              ) : null}
+            </g>
+          ))
+        : null}
+      {previewShape ? (
+        <g data-house-first-preview-owner={previewShape.ownerId}>
+          {previewShape.hostEdge ? (
+            <line
+              x1={previewShape.hostEdge.start.x}
+              y1={previewShape.hostEdge.start.y}
+              x2={previewShape.hostEdge.end.x}
+              y2={previewShape.hostEdge.end.y}
+              data-house-first-snap-target={previewShape.hostEdge.snapped ? 'snapped' : 'preview'}
+              className={
+                previewShape.hostEdge.snapped
+                  ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetSnapped}`
+                  : styles.moduleHouseFirstSnapTarget
+              }
+            />
+          ) : null}
+          <polygon
+            points={toPointsAttr(previewShape.points)}
+            data-house-first-preview-shape={previewShape.ownerId}
+            className={styles.moduleHouseFirstPreviewShape}
+          />
+        </g>
+      ) : null}
+      {customEdgeCandidates.length
+        ? customEdgeCandidates.map((annotation) => (
+            <g key={`house-first-edge-${annotation.id}`}>
+              <line
+                x1={annotation.witnessStart.x}
+                y1={annotation.witnessStart.y}
+                x2={annotation.witnessEnd.x}
+                y2={annotation.witnessEnd.y}
+                data-house-first-custom-edge={annotation.id}
+                className={
+                  annotation.id === activeCustomEdgeId
+                    ? `${styles.moduleHouseFirstCustomEdge} ${styles.moduleHouseFirstCustomEdgeActive}`
+                    : styles.moduleHouseFirstCustomEdge
+                }
+              />
+              <line
+                x1={annotation.witnessStart.x}
+                y1={annotation.witnessStart.y}
+                x2={annotation.witnessEnd.x}
+                y2={annotation.witnessEnd.y}
+                data-house-first-custom-edge-hit={annotation.id}
+                className={styles.moduleHouseFirstCustomEdgeHit}
+                onClick={() =>
+                  onCustomEdgeSelect?.({
+                    ownerKind: annotation.ownerKind,
+                    ownerId: annotation.ownerId,
+                    edgeIndex: annotation.edgeIndex,
+                  })
+                }
+              />
+            </g>
+          ))
+        : null}
+      {presetAnnotations.length ? presetAnnotations.map((annotation) => renderHouseFirstDimension(annotation, onDimensionActivate)) : null}
+      {customEdgeCandidates.length
+        ? customEdgeCandidates
+            .filter((annotation) => annotation.id === activeCustomEdgeId)
+            .map((annotation) => renderHouseFirstDimension(annotation, onDimensionActivate))
+        : null}
+    </>
+  );
 }
 
 function estimatePinnedSheetPlanPrimaryDimensionBounds(input: {
@@ -3858,9 +4207,17 @@ function PlanSvg({
   scaleDiagnostics,
   interactiveFields,
   showDebugOverlays,
+  displayMode = 'pergolas',
   footprintEditor,
   planInteraction,
   sheetPlanInteraction,
+  houseFirstPlanOverlay,
+  activeHouseFirstCustomEdgeId,
+  onHouseFirstShapeSelect,
+  onHouseFirstShapeDragStart,
+  onHouseFirstCustomEdgeSelect,
+  onHouseFirstDimensionActivate,
+  houseFirstPreviewOverlay,
 }: {
   model: ModulePlanModel;
   idBase: string;
@@ -3871,13 +4228,28 @@ function PlanSvg({
   scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
+  displayMode?: ModuleDrawingDisplayMode;
   footprintEditor?: ModuleFootprintEditorProps;
   planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
+  houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
+  activeHouseFirstCustomEdgeId?: string | null;
+  onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  onHouseFirstShapeDragStart?: (
+    meta: HouseFirstPlanShapeDragStartMeta,
+    event: { pointerId: number; clientX: number; clientY: number },
+  ) => void;
+  onHouseFirstCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
+  onHouseFirstDimensionActivate?: (
+    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+    target: SVGTextElement,
+  ) => void;
+  houseFirstPreviewOverlay?: HouseFirstPlanPreviewOverlay | null;
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
   const isModel = presentation === 'model';
+  const showPergolaGeometry = !(isModel && displayMode === 'house');
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
@@ -3999,6 +4371,9 @@ function PlanSvg({
   const hatchId = `${idBase}_house_hatch`;
   const houseClipId = `${idBase}_house_clip`;
   const editorSurface = footprintEditor?.surface ?? 'card';
+  const allowAttachmentSideCanvasSelect = footprintEditor?.allowAttachmentSideCanvasSelect ?? true;
+  const attachmentSideCanvasActiveSide = footprintEditor?.attachmentSideCanvasActiveSide ?? attachmentSide;
+  const allowResizeEdgeDrag = footprintEditor?.allowResizeEdgeDrag ?? true;
   const canEditFootprint =
     Boolean(footprintEditor?.available) &&
     canEditHouseFootprintPlan(model) &&
@@ -4022,6 +4397,54 @@ function PlanSvg({
     start: planHousePointToSvg(line.line.start, x, y, scale),
     end: planHousePointToSvg(line.line.end, x, y, scale),
   }));
+  const houseFirstOverlayShapes =
+    presentation === 'model'
+      ? (houseFirstPlanOverlay?.shapes ?? []).map((shape) => ({
+          ...shape,
+          points: shape.polygon.map((point) => planHousePointToSvg(point, x, y, scale)),
+          deckInteraction: shape.deckInteraction
+            ? {
+                ...shape.deckInteraction,
+                hostEdgeStart: planHousePointToSvg(shape.deckInteraction.hostEdgeStart, x, y, scale),
+                hostEdgeEnd: planHousePointToSvg(shape.deckInteraction.hostEdgeEnd, x, y, scale),
+              }
+            : null,
+        }))
+      : [];
+  const houseFirstPresetAnnotations =
+    presentation === 'model'
+      ? (houseFirstPlanOverlay?.presetAnnotations ?? []).map((annotation) => ({
+          ...annotation,
+          witnessStart: planHousePointToSvg(annotation.witnessStart, x, y, scale),
+          witnessEnd: planHousePointToSvg(annotation.witnessEnd, x, y, scale),
+          lineStart: planHousePointToSvg(annotation.lineStart, x, y, scale),
+          lineEnd: planHousePointToSvg(annotation.lineEnd, x, y, scale),
+        }))
+      : [];
+  const houseFirstCustomEdgeCandidates =
+    presentation === 'model'
+      ? (houseFirstPlanOverlay?.customEdgeCandidates ?? []).map((annotation) => ({
+          ...annotation,
+          witnessStart: planHousePointToSvg(annotation.witnessStart, x, y, scale),
+          witnessEnd: planHousePointToSvg(annotation.witnessEnd, x, y, scale),
+          lineStart: planHousePointToSvg(annotation.lineStart, x, y, scale),
+          lineEnd: planHousePointToSvg(annotation.lineEnd, x, y, scale),
+        }))
+      : [];
+  const houseFirstPreviewShape =
+    presentation === 'model' && houseFirstPreviewOverlay
+      ? {
+          ownerId: houseFirstPreviewOverlay.ownerId,
+          points: houseFirstPreviewOverlay.polygon.map((point) => planHousePointToSvg(point, x, y, scale)),
+          hostEdge: houseFirstPreviewOverlay.hostEdge
+            ? {
+                start: planHousePointToSvg(houseFirstPreviewOverlay.hostEdge.start, x, y, scale),
+                end: planHousePointToSvg(houseFirstPreviewOverlay.hostEdge.end, x, y, scale),
+                snapped: houseFirstPreviewOverlay.hostEdge.snapped,
+              }
+            : null,
+        }
+      : null;
   const hasSemanticPlanHouseContext =
     !customPolygonOverrideActive && !hideHouseFootprint && (semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0);
 
@@ -4170,9 +4593,9 @@ function PlanSvg({
       (Boolean(footprintEditor?.isContextHovered) || Boolean(footprintEditor?.hoveredHandleId) || Boolean(footprintEditor?.activeHandleId)));
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor && !isModelFootprintEditor;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
-  const showModelPrimaryDimensions = !isSheet;
+  const showModelPrimaryDimensions = !isSheet && showPergolaGeometry;
   const showModelSecondaryAnnotations = !isSheet && !isModel;
-  const showPlanResizeHandles = isModel && Boolean(planInteraction?.available) && !isHipCorner;
+  const showPlanResizeHandles = isModel && showPergolaGeometry && Boolean(planInteraction?.available) && !isHipCorner;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
   const bottomDimensionLabel = formatMetres(primaryDimensionSwap ? model.spanA : model.lengthA);
   const leftDimensionLabel = formatMetres(primaryDimensionSwap ? model.lengthA : model.spanA);
@@ -4419,110 +4842,126 @@ function PlanSvg({
           </>
         ) : null}
 
-        <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} />
-        {!isHipCorner ? (
+        {showPergolaGeometry ? (
           <>
-            <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanPrimaryZone} />
-            <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanPrimaryZone} />
-            <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
-            <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
-            <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
-            <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + topFrameW} className={styles.modulePlanMemberEdge} />
-            <line x1={x + sideFrameW} y1={y + aH - gutterW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-            <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-            <line x1={x + aW - sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-          </>
-        ) : (
-          <>
-            <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
-            {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanMemberEdge} /> : null}
-          </>
-        )}
+            <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} data-plan-primary-fill="true" />
+            {!isHipCorner ? (
+              <>
+                <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanPrimaryZone} />
+                <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanPrimaryZone} />
+                <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+                <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+                <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
+                <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + topFrameW} className={styles.modulePlanMemberEdge} />
+                <line x1={x + sideFrameW} y1={y + aH - gutterW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+                <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+                <line x1={x + aW - sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+              </>
+            ) : (
+              <>
+                <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
+                {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanMemberEdge} /> : null}
+              </>
+            )}
 
-        {model.boxPerimeterEnabled ? <polygon points={toPointsAttr(insetPoints)} className={styles.modulePlanBoxInset} /> : null}
-        {hasFullLengthRidge && ridgeBandWidth > 0 ? <rect x={ridgeBandX} y={ridgeBandY} width={ridgeBandWidth} height={ridgeBandW} className={styles.modulePlanRidgeBand} /> : null}
-        {model.roofType === 'hip' ? (
-          <>
-            <line x1={hipRidgeStartX} y1={gableMidY} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanRidge} />
-            <line x1={x} y1={y} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
-            <line x1={x + aW} y1={y} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
-            <line x1={x} y1={y + aH} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
-            <line x1={x + aW} y1={y + aH} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
-          </>
-        ) : null}
-        {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
+            {model.boxPerimeterEnabled ? <polygon points={toPointsAttr(insetPoints)} className={styles.modulePlanBoxInset} /> : null}
+            {hasFullLengthRidge && ridgeBandWidth > 0 ? <rect x={ridgeBandX} y={ridgeBandY} width={ridgeBandWidth} height={ridgeBandW} className={styles.modulePlanRidgeBand} /> : null}
+            {model.roofType === 'hip' ? (
+              <>
+                <line x1={hipRidgeStartX} y1={gableMidY} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanRidge} />
+                <line x1={x} y1={y} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
+                <line x1={x + aW} y1={y} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
+                <line x1={x} y1={y + aH} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
+                <line x1={x + aW} y1={y + aH} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
+              </>
+            ) : null}
+            {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
 
-        {interiorRafterXsA.map((rx) => (
-          <rect
-            key={`rafter_a_${rx.toFixed(3)}`}
-            x={rx - rafterW / 2}
-            y={yTopInner}
-            width={rafterW}
-            height={Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner)}
-            className={styles.modulePlanRafter}
-          />
-        ))}
-        {isHipCorner
-          ? interiorRafterXsB.map((rx) => (
+            {interiorRafterXsA.map((rx) => (
               <rect
-                key={`rafter_b_${rx.toFixed(3)}`}
+                key={`rafter_a_${rx.toFixed(3)}`}
                 x={rx - rafterW / 2}
-                y={splitY + topFrameW}
+                y={yTopInner}
                 width={rafterW}
-                height={Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))}
+                height={Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner)}
                 className={styles.modulePlanRafter}
               />
-            ))
-          : null}
-
-        {model.houseConnectionType === 'soffit' && soffitXs.length > 0 && !hasSemanticPlanHouseContext ? (
-          <>
-            <line x1={soffitGuideStart.x} y1={soffitGuideStart.y} x2={soffitGuideEnd.x} y2={soffitGuideEnd.y} className={styles.modulePlanSoffitGuide} />
-            {soffitBracketLines.map((line, idx) => (
-              <line
-                key={`bracket_${idx}`}
-                x1={line.start.x}
-                y1={line.start.y}
-                x2={line.end.x}
-                y2={line.end.y}
-                className={styles.modulePlanSoffitBracket}
-              />
             ))}
+            {isHipCorner
+              ? interiorRafterXsB.map((rx) => (
+                  <rect
+                    key={`rafter_b_${rx.toFixed(3)}`}
+                    x={rx - rafterW / 2}
+                    y={splitY + topFrameW}
+                    width={rafterW}
+                    height={Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))}
+                    className={styles.modulePlanRafter}
+                  />
+                ))
+              : null}
+
+            {model.houseConnectionType === 'soffit' && soffitXs.length > 0 && !hasSemanticPlanHouseContext ? (
+              <>
+                <line x1={soffitGuideStart.x} y1={soffitGuideStart.y} x2={soffitGuideEnd.x} y2={soffitGuideEnd.y} className={styles.modulePlanSoffitGuide} />
+                {soffitBracketLines.map((line, idx) => (
+                  <line
+                    key={`bracket_${idx}`}
+                    x1={line.start.x}
+                    y1={line.start.y}
+                    x2={line.end.x}
+                    y2={line.end.y}
+                    className={styles.modulePlanSoffitBracket}
+                  />
+                ))}
+              </>
+            ) : null}
+
+            {model.overhangEnabled && overhangDepth > 0 ? <rect x={overhangX} y={overhangY} width={overhangWidth} height={overhangDepth} className={styles.modulePlanOverhangZone} /> : null}
+            {model.boxPerimeterEnabled && showModelSecondaryAnnotations ? (
+              <>
+                <line x1={centerX} y1={y + 2.8} x2={centerX} y2={(isHipCorner ? bottomY : y + aH) - 2.8} className={styles.modulePlanInternalAngle} />
+                <text x={centerX + 2.5} y={centerY + 0.5} className={styles.modulePlanAngleText}>
+                  internal roof angle
+                </text>
+              </>
+            ) : null}
+
+            {showModelSecondaryAnnotations ? <line x1={fallStart.x} y1={fallStart.y} x2={fallEnd.x} y2={fallEnd.y} className={styles.moduleFallLine} /> : null}
+            {showModelSecondaryAnnotations && isGableLike ? (
+              <>
+                <ArrowHead x={fallStart.x} y={fallStart.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up'} presentation={presentation} />
+                <ArrowHead x={fallEnd.x} y={fallEnd.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down'} presentation={presentation} />
+                <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
+                  fall both sides
+                </text>
+              </>
+            ) : showModelSecondaryAnnotations ? (
+              <>
+                <ArrowHead
+                  x={model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x}
+                  y={model.slopeDirection === 'toward_house' ? fallStart.y : fallEnd.y}
+                  direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : model.slopeDirection === 'toward_house' ? 'up' : 'down'}
+                  presentation={presentation}
+                />
+                <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
+                  fall
+                </text>
+              </>
+            ) : null}
           </>
         ) : null}
 
-        {model.overhangEnabled && overhangDepth > 0 ? <rect x={overhangX} y={overhangY} width={overhangWidth} height={overhangDepth} className={styles.modulePlanOverhangZone} /> : null}
-        {model.boxPerimeterEnabled && showModelSecondaryAnnotations ? (
-          <>
-            <line x1={centerX} y1={y + 2.8} x2={centerX} y2={(isHipCorner ? bottomY : y + aH) - 2.8} className={styles.modulePlanInternalAngle} />
-            <text x={centerX + 2.5} y={centerY + 0.5} className={styles.modulePlanAngleText}>
-              internal roof angle
-            </text>
-          </>
-        ) : null}
-
-        {showModelSecondaryAnnotations ? <line x1={fallStart.x} y1={fallStart.y} x2={fallEnd.x} y2={fallEnd.y} className={styles.moduleFallLine} /> : null}
-        {showModelSecondaryAnnotations && isGableLike ? (
-          <>
-            <ArrowHead x={fallStart.x} y={fallStart.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up'} presentation={presentation} />
-            <ArrowHead x={fallEnd.x} y={fallEnd.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down'} presentation={presentation} />
-            <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
-              fall both sides
-            </text>
-          </>
-        ) : showModelSecondaryAnnotations ? (
-          <>
-            <ArrowHead
-              x={model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x}
-              y={model.slopeDirection === 'toward_house' ? fallStart.y : fallEnd.y}
-              direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : model.slopeDirection === 'toward_house' ? 'up' : 'down'}
-              presentation={presentation}
-            />
-            <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
-              fall
-            </text>
-          </>
-        ) : null}
+        {renderHouseFirstPlanOverlay({
+          shapes: houseFirstOverlayShapes,
+          previewShape: houseFirstPreviewShape,
+          customEdgeCandidates: houseFirstCustomEdgeCandidates,
+          presetAnnotations: houseFirstPresetAnnotations,
+          activeCustomEdgeId: activeHouseFirstCustomEdgeId ?? null,
+          onShapeSelect: onHouseFirstShapeSelect,
+          onShapeDragStart: onHouseFirstShapeDragStart,
+          onCustomEdgeSelect: onHouseFirstCustomEdgeSelect,
+          onDimensionActivate: onHouseFirstDimensionActivate,
+        })}
 
         {showPergolaHoverTarget ? (
           <polygon
@@ -4626,7 +5065,7 @@ function PlanSvg({
           </g>
         )}
 
-        {isHipCorner && model.lengthB && model.spanB ? (
+        {showPergolaGeometry && isHipCorner && model.lengthB && model.spanB ? (
           <>
             <line x1={x} y1={bottomY} x2={x} y2={secondaryDimY} className={styles.moduleDimWitness} />
             <line x1={x + bW} y1={bottomY} x2={x + bW} y2={secondaryDimY} className={styles.moduleDimWitness} />
@@ -4678,9 +5117,9 @@ function PlanSvg({
             })()
           : null}
 
-        {showFootprintControls
+        {showFootprintControls && allowAttachmentSideCanvasSelect
           ? edgeFrames.map(({ side, frame: edgeFrame }) => {
-              const isActiveEdge = side === attachmentSide;
+              const isActiveEdge = side === attachmentSideCanvasActiveSide;
               const isHoveredEdge = side === footprintEditor?.hoveredAttachmentSide;
               return (
                 <g key={`footprint-edge-${side}`}>
@@ -4723,7 +5162,7 @@ function PlanSvg({
             })
           : null}
 
-        {editorSurface !== 'card' && canEditFootprint
+        {editorSurface !== 'card' && canEditFootprint && allowResizeEdgeDrag
           ? resizeEdgeSpecs.map((edge) => {
               const isActiveEdge = edge.id === footprintEditor?.activeHandleId;
               const isHoveredEdge = edge.id === footprintEditor?.hoveredHandleId;

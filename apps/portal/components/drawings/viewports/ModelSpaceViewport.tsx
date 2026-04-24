@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import type { AttachmentSide } from '@sp/costing';
 import {
   ModuleDrawingRenderer,
+  type HouseFirstPlanShapeDragStartMeta,
   type ModuleDrawingInteractiveFieldMap,
   type ModulePlanInteractionProps,
   type ModulePlanResizeDragMeta,
@@ -21,8 +22,26 @@ import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
-import { normalizeHouseFootprintParams, type CalculatorHouseFootprintParams } from '@/lib/types/calculator';
+import type {
+  HouseFirstDeckDraft,
+  HouseFirstOpeningDraft,
+  WorkbenchHouseSelection,
+  WorkbenchMode,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import {
+  normalizeHouseFootprintParams,
+  type CalculatorHouseFootprintParams,
+  type CalculatorHouseFootprintPolygonPoint,
+} from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
+import {
+  resizeCustomPolygonEdge,
+  type HouseFirstPlanDeckInteraction,
+  type HouseFirstPlanCustomEdgeCandidate,
+  type HouseFirstPlanPresetDimensionAnnotation,
+  type PlanPoint,
+} from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+import { blockNativeSelectionEvent } from './nativeSelection';
 import styles from './ModelSpaceViewport.module.css';
 import {
   cancelDrawOutlineTool,
@@ -119,6 +138,47 @@ type DrawPopoverPosition = {
   top: number;
 };
 
+type HouseFirstDimensionEditorState = {
+  annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate;
+  value: string;
+};
+
+type DeckDragSession = {
+  pointerId: number;
+  deckId: string;
+  startSvgX: number;
+  startSvgY: number;
+  startPolygon: PlanPoint[];
+  startCenterOffsetM: number;
+  interaction: HouseFirstPlanDeckInteraction;
+  svgInteraction: HouseFirstPlanShapeDragStartMeta['deckInteraction'];
+};
+
+type DeckPreviewState = {
+  deckId: string;
+  polygon: PlanPoint[];
+  centerOffsetM: number;
+  snapped: boolean;
+};
+
+type DeckInteractionTelemetry = {
+  selectedDeckId: string | null;
+  housePolygonSource: 'custom_saved' | 'preset_derived' | null;
+  selectedDeckType: 'none' | 'attached_preset_rect' | 'detached_preset_rect' | 'custom_outline' | 'preset_unresolved';
+  dragEligible: boolean;
+  dragReason: string | null;
+  hostEdgeResolvable: boolean;
+  relationshipDimensionsAvailable: boolean;
+  snapState: 'idle' | 'free' | 'snapped';
+  snapMessage: string | null;
+};
+
+type DeckInteractionHintState = {
+  title: string;
+  detail: string;
+  tone: 'eligible' | 'deferred' | 'status';
+};
+
 type ModelSpaceRect = {
   x: number;
   y: number;
@@ -148,6 +208,7 @@ const WHEEL_LINE_DELTA_PX = 16;
 const WHEEL_PAGE_DELTA_PX = 240;
 const WHEEL_ZOOM_SENSITIVITY = 0.0012;
 const WHEEL_GESTURE_IDLE_MS = 600;
+const DECK_SNAP_TOLERANCE_M = 0.25;
 
 function drawOutlineStatusText(state: DrawOutlineDiagnosticState): string {
   switch (state) {
@@ -173,6 +234,10 @@ function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
 }
 
+function clampValue(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
 function isViewportNavigationControlTarget(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
@@ -187,7 +252,7 @@ function isViewportEditHitTarget(target: EventTarget | null): boolean {
     target instanceof Element &&
     Boolean(
       target.closest(
-        '[data-plan-resize-handle-hit],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex],[data-footprint-custom-vertex-hit],[data-footprint-custom-close-hit]',
+        '[data-plan-resize-handle-hit],[data-editable-field-id],[data-house-first-shape-hit],[data-house-first-custom-edge-hit],[data-house-first-plan-dimension],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex],[data-footprint-custom-vertex-hit],[data-footprint-custom-close-hit]',
       ),
     )
   );
@@ -360,26 +425,125 @@ async function resolveCommitResult(
   return await action;
 }
 
+function formatDeckPresetValue(value: number): string {
+  return value.toFixed(3).replace(/\.?0+$/, '') || '0';
+}
+
+function resolveDeckHostReferenceCenterOffset(input: {
+  annotation: HouseFirstPlanPresetDimensionAnnotation;
+  nextValue: string;
+}): { ok: true; centerOffsetM: string } | { ok: false; error: string } {
+  const interaction = input.annotation.deckInteraction;
+  const nextGapM = Number.parseFloat(input.nextValue);
+  if (!interaction) return { ok: false, error: 'Deck relationship metadata is unavailable.' };
+  if (!Number.isFinite(nextGapM) || nextGapM < 0) return { ok: false, error: 'Enter a non-negative offset.' };
+
+  const maxGapM = Math.max(0, interaction.hostSpanM - interaction.deckWidthM);
+  if (nextGapM > maxGapM + 1e-6) {
+    return { ok: false, error: 'Offset must stay within the host edge span.' };
+  }
+
+  const availableHalfSpanM = Math.max(0, (interaction.hostSpanM - interaction.deckWidthM) / 2);
+  const centerOffsetM =
+    input.annotation.fieldKey === 'hostStartGapM'
+      ? nextGapM - availableHalfSpanM
+      : input.annotation.fieldKey === 'hostEndGapM'
+        ? availableHalfSpanM - nextGapM
+        : Number.NaN;
+
+  if (!Number.isFinite(centerOffsetM)) {
+    return { ok: false, error: 'Unsupported deck relationship dimension.' };
+  }
+
+  return {
+    ok: true,
+    centerOffsetM: formatDeckPresetValue(clampValue(centerOffsetM, interaction.minCenterOffsetM, interaction.maxCenterOffsetM)),
+  };
+}
+
+function translateDeckPolygon(polygon: PlanPoint[], interaction: HouseFirstPlanDeckInteraction, deltaOffsetM: number): PlanPoint[] {
+  const dx = interaction.hostEdgeEnd.x - interaction.hostEdgeStart.x;
+  const dy = interaction.hostEdgeEnd.y - interaction.hostEdgeStart.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= 1e-6 || Math.abs(deltaOffsetM) <= 1e-6) return polygon;
+  const unitX = dx / length;
+  const unitY = dy / length;
+  return polygon.map((point) => ({
+    x: point.x + unitX * deltaOffsetM,
+    y: point.y + unitY * deltaOffsetM,
+  }));
+}
+
+function resolveDeckPreviewState(input: {
+  session: DeckDragSession;
+  nextSvgX: number;
+  nextSvgY: number;
+}): DeckPreviewState {
+  const svgDx = input.session.svgInteraction.hostEdgeEnd.x - input.session.svgInteraction.hostEdgeStart.x;
+  const svgDy = input.session.svgInteraction.hostEdgeEnd.y - input.session.svgInteraction.hostEdgeStart.y;
+  const svgLength = Math.hypot(svgDx, svgDy);
+  const axisX = svgLength > 1e-6 ? svgDx / svgLength : 1;
+  const axisY = svgLength > 1e-6 ? svgDy / svgLength : 0;
+  const deltaSvgX = input.nextSvgX - input.session.startSvgX;
+  const deltaSvgY = input.nextSvgY - input.session.startSvgY;
+  const deltaSvgAlong = deltaSvgX * axisX + deltaSvgY * axisY;
+  const metresPerSvgUnit = svgLength > 1e-6 ? input.session.interaction.hostSpanM / svgLength : 0;
+  const unclampedCenterOffsetM = input.session.startCenterOffsetM + deltaSvgAlong * metresPerSvgUnit;
+  const clampedCenterOffsetM = clampValue(
+    unclampedCenterOffsetM,
+    input.session.interaction.minCenterOffsetM,
+    input.session.interaction.maxCenterOffsetM,
+  );
+
+  const snapTargets = [input.session.interaction.minCenterOffsetM, input.session.interaction.maxCenterOffsetM];
+  const snappedCenterOffsetM = snapTargets.find(
+    (candidate) => Math.abs(clampedCenterOffsetM - candidate) <= DECK_SNAP_TOLERANCE_M,
+  );
+  const centerOffsetM = snappedCenterOffsetM ?? clampedCenterOffsetM;
+  const deltaOffsetM = centerOffsetM - input.session.startCenterOffsetM;
+
+  return {
+    deckId: input.session.deckId,
+    polygon: translateDeckPolygon(input.session.startPolygon, input.session.interaction, deltaOffsetM),
+    centerOffsetM,
+    snapped: snappedCenterOffsetM !== undefined,
+  };
+}
+
 export default function ModelSpaceViewport({
   view,
+  workbenchDisplayMode = 'pergolas',
   status,
   planModel,
   sectionModel,
   planViewModel,
   drawOutlineRequestId,
+  drawOutlineMode,
+  drawOutlineSeedPolygon,
   fitViewKey = view,
   viewportTransform,
   onViewportTransformChange,
   editableFields,
   onCommitField,
   onCommitFootprintEdit,
+  onCommitCustomPolygon,
+  onSelectHouseFirstTarget,
+  onCommitHouseFirstFootprintDimension,
+  onCommitHouseFirstDeckDimension,
+  onCommitHouseFirstOpeningDimension,
+  pendingAttachedDeckHostEdgePick = false,
+  onPickAttachedDeckHostEdge,
+  onDeckInteractionTelemetryChange,
 }: {
   view: ModuleViewsTab;
+  workbenchDisplayMode?: WorkbenchMode;
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   drawOutlineRequestId?: number;
+  drawOutlineMode?: 'footprint' | 'deck' | null;
+  drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
   fitViewKey?: string;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange?: (next: DrawingWorkbenchViewportTransform) => void;
@@ -391,10 +555,29 @@ export default function ModelSpaceViewport({
   onCommitFootprintEdit?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitCustomPolygon?: (
+    polygon: CalculatorHouseFootprintPolygonPoint[],
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onSelectHouseFirstTarget?: (selection: WorkbenchHouseSelection) => void;
+  onCommitHouseFirstFootprintDimension?: (
+    edit: EstimateDrawingFootprintEdit,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitHouseFirstDeckDimension?: (
+    deckId: string,
+    patch: Partial<HouseFirstDeckDraft>,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  onCommitHouseFirstOpeningDimension?: (
+    openingId: string,
+    patch: Partial<HouseFirstOpeningDraft>,
+  ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
+  pendingAttachedDeckHostEdgePick?: boolean;
+  onPickAttachedDeckHostEdge?: (side: AttachmentSide) => void;
+  onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const scaleFrameRef = useRef<HTMLDivElement | null>(null);
   const drawPopoverRef = useRef<HTMLDivElement | null>(null);
+  const dimensionPopoverRef = useRef<HTMLDivElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
   const drawOutlineCanvasPointResolverRef = useRef<ModuleFootprintCanvasPointResolver | null>(null);
   const drawOutlinePointerSessionRef = useRef<DrawOutlinePointerSession | null>(null);
@@ -425,6 +608,12 @@ export default function ModelSpaceViewport({
   const [planHoveredResizeFieldId, setPlanHoveredResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planActiveResizeFieldId, setPlanActiveResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldDragSession | null>(null);
+  const [houseFirstActiveCustomEdgeId, setHouseFirstActiveCustomEdgeId] = useState<string | null>(null);
+  const [houseFirstDimensionEditor, setHouseFirstDimensionEditor] = useState<HouseFirstDimensionEditorState | null>(null);
+  const [houseFirstDimensionPopoverPosition, setHouseFirstDimensionPopoverPosition] = useState<DrawPopoverPosition | null>(null);
+  const [deckDragSession, setDeckDragSession] = useState<DeckDragSession | null>(null);
+  const [deckPreviewState, setDeckPreviewState] = useState<DeckPreviewState | null>(null);
+  const [deckInteractionHint, setDeckInteractionHint] = useState<DeckInteractionHintState | null>(null);
 
   useEffect(() => {
     drawOutlinePointerSessionRef.current = drawOutlinePointerSession;
@@ -438,6 +627,12 @@ export default function ModelSpaceViewport({
     },
     [],
   );
+
+  useEffect(() => {
+    if (!pendingAttachedDeckHostEdgePick) {
+      setFootprintHoveredAttachmentSide(null);
+    }
+  }, [pendingAttachedDeckHostEdgePick]);
 
   const zoom = clampZoom(viewportTransform.zoom);
   const editableFieldMap = useMemo(() => {
@@ -459,14 +654,17 @@ export default function ModelSpaceViewport({
     return next;
   }, [editableFieldMap]);
   const canEditFootprint = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(planModel);
+  const canCommitCustomPolygon = view === 'plan' && Boolean(planModel) && Boolean(onCommitCustomPolygon);
+  const deckOutlineMode = drawOutlineMode === 'deck';
   const canRotatePlan = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && planModel?.roofType !== 'hip_corner';
   const canEditPlanDimensions =
     view === 'plan' &&
     Boolean(planModel) &&
     Boolean(onCommitField) &&
     (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
+  const showHouseSectionPlaceholder = workbenchDisplayMode === 'house' && view === 'section';
   const showPlanViewport = view === 'plan' && Boolean(planModel);
-  const showSectionViewport = view === 'section' && Boolean(sectionModel);
+  const showSectionViewport = view === 'section' && Boolean(sectionModel) && !showHouseSectionPlaceholder;
   const showDrawingViewport = showPlanViewport || showSectionViewport;
   const modelSpaceAutoFitReady = showDrawingViewport;
   const modelSpaceAutoFitKey = `${fitViewKey}:${view}:${modelSpaceAutoFitReady ? 'ready' : 'empty'}`;
@@ -496,6 +694,209 @@ export default function ModelSpaceViewport({
       return result;
     },
     [onCommitField],
+  );
+
+  const closeHouseFirstDimensionEditor = useCallback(() => {
+    setHouseFirstDimensionEditor(null);
+    setHouseFirstDimensionPopoverPosition(null);
+  }, []);
+
+  const activateHouseFirstDimensionEditor = useCallback(
+    (
+      annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+      target: SVGTextElement,
+    ) => {
+      void target;
+      setFootprintError(null);
+      setFieldError(null);
+      setHouseFirstDimensionEditor({
+        annotation,
+        value: annotation.rawValue,
+      });
+    },
+    [],
+  );
+
+  const handleHouseFirstShapeSelect = useCallback(
+    (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => {
+      closeHouseFirstDimensionEditor();
+      setHouseFirstActiveCustomEdgeId(null);
+      if (!onSelectHouseFirstTarget) return;
+      onSelectHouseFirstTarget(
+        target.ownerKind === 'footprint'
+          ? { kind: 'footprint', targetId: target.ownerId }
+          : target.ownerKind === 'opening'
+            ? { kind: 'opening', targetId: target.ownerId }
+            : { kind: 'deck', targetId: target.ownerId },
+      );
+    },
+    [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
+  );
+
+  const handleHouseFirstCustomEdgeSelect = useCallback(
+    (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => {
+      closeHouseFirstDimensionEditor();
+      setHouseFirstActiveCustomEdgeId(`${target.ownerId}:edge:${target.edgeIndex}`);
+      onSelectHouseFirstTarget?.(
+        target.ownerKind === 'footprint'
+          ? { kind: 'footprint', targetId: target.ownerId }
+          : { kind: 'deck', targetId: target.ownerId },
+      );
+    },
+    [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
+  );
+
+  const handleHouseFirstShapeDragStart = useCallback(
+    (
+      meta: HouseFirstPlanShapeDragStartMeta,
+      event: { pointerId: number; clientX: number; clientY: number },
+    ) => {
+      if (!onCommitHouseFirstDeckDimension) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!startPoint) return;
+      const overlayShape = planViewModel?.houseFirst?.shapes.find(
+        (shape) => shape.ownerKind === 'deck' && shape.ownerId === meta.ownerId,
+      );
+      if (!overlayShape?.deckInteraction) return;
+
+      closeHouseFirstDimensionEditor();
+      setFieldError(null);
+      setFootprintError(null);
+      setDeckPreviewState(null);
+      setDeckInteractionHint({
+        title: 'Deck drag',
+        detail: 'Drag along the host edge. Snap previews lock to the host-edge limits.',
+        tone: 'status',
+      });
+      setDeckDragSession({
+        pointerId: event.pointerId,
+        deckId: meta.ownerId,
+        startSvgX: startPoint.x,
+        startSvgY: startPoint.y,
+        startPolygon: overlayShape.polygon,
+        startCenterOffsetM: overlayShape.deckInteraction.centerOffsetM,
+        interaction: overlayShape.deckInteraction,
+        svgInteraction: meta.deckInteraction,
+      });
+    },
+    [closeHouseFirstDimensionEditor, onCommitHouseFirstDeckDimension, planViewModel],
+  );
+
+  const commitHouseFirstDimensionEdit = useCallback(
+    async (editor: HouseFirstDimensionEditorState): Promise<boolean> => {
+      const nextValue = editor.value.trim();
+      const annotation = editor.annotation;
+      const houseFootprintDimensionCommit = onCommitHouseFirstFootprintDimension ?? onCommitFootprintEdit;
+      let result:
+        | {
+            ok: boolean;
+            error?: string;
+          }
+        | undefined;
+
+      if (annotation.targetKind === 'house_preset_param') {
+        result = houseFootprintDimensionCommit
+          ? await resolveCommitResult(
+              houseFootprintDimensionCommit({
+                type: 'param',
+                key: annotation.fieldKey as keyof CalculatorHouseFootprintParams,
+                value: nextValue,
+              }),
+            )
+          : { ok: false, error: 'House footprint dimensions are not editable in this view.' };
+      } else if (annotation.targetKind === 'house_custom_edge') {
+        const polygon = resizeCustomPolygonEdge({
+          polygon: annotation.localPolygon,
+          edgeIndex: annotation.edgeIndex,
+          nextLengthM: nextValue,
+        });
+        result = polygon
+          ? houseFootprintDimensionCommit
+            ? await resolveCommitResult(
+                houseFootprintDimensionCommit({
+                  type: 'polygon',
+                  polygon,
+                }),
+              )
+            : { ok: false, error: 'House footprint dimensions are not editable in this view.' }
+          : { ok: false, error: 'Enter a positive edge length.' };
+      } else if (annotation.targetKind === 'deck_preset_param') {
+        result = onCommitHouseFirstDeckDimension
+          ? await resolveCommitResult(
+              onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                presetRect: {
+                  [annotation.fieldKey]: nextValue,
+                } as unknown as HouseFirstDeckDraft['presetRect'],
+              }),
+            )
+          : { ok: false, error: 'Deck dimensions are not editable in this view.' };
+      } else if (annotation.targetKind === 'deck_custom_edge') {
+        const polygon = resizeCustomPolygonEdge({
+          polygon: annotation.localPolygon,
+          edgeIndex: annotation.edgeIndex,
+          nextLengthM: nextValue,
+        });
+        result =
+          polygon && onCommitHouseFirstDeckDimension
+            ? await resolveCommitResult(
+                onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                  shape: 'custom',
+                  outline: polygon,
+                }),
+              )
+            : { ok: false, error: polygon ? 'Deck dimensions are not editable in this view.' : 'Enter a positive edge length.' };
+      } else if (annotation.targetKind === 'deck_host_edge_reference') {
+        const resolvedCenterOffset = resolveDeckHostReferenceCenterOffset({
+          annotation,
+          nextValue,
+        });
+        result =
+          resolvedCenterOffset.ok && onCommitHouseFirstDeckDimension
+            ? await resolveCommitResult(
+                onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                  presetRect: {
+                    centerOffsetM: resolvedCenterOffset.centerOffsetM,
+                  } as unknown as HouseFirstDeckDraft['presetRect'],
+                }),
+              )
+            : {
+                ok: false,
+                error:
+                  resolvedCenterOffset.ok
+                    ? 'Deck dimensions are not editable in this view.'
+                    : resolvedCenterOffset.error,
+              };
+      } else if (annotation.targetKind === 'opening_param') {
+        result = onCommitHouseFirstOpeningDimension
+          ? await resolveCommitResult(
+              onCommitHouseFirstOpeningDimension(annotation.ownerId, {
+                [annotation.fieldKey]: nextValue,
+              } as Partial<HouseFirstOpeningDraft>),
+            )
+          : { ok: false, error: 'Window dimensions are not editable in this view.' };
+      } else {
+        result = { ok: false, error: 'Unsupported dimension target.' };
+      }
+
+      if (!result?.ok) {
+        setFieldError(result?.error ?? 'Unable to update the dimension.');
+        return false;
+      }
+
+      setFieldError(null);
+      setFootprintError(null);
+      closeHouseFirstDimensionEditor();
+      return true;
+    },
+    [
+      closeHouseFirstDimensionEditor,
+      onCommitFootprintEdit,
+      onCommitHouseFirstDeckDimension,
+      onCommitHouseFirstOpeningDimension,
+      onCommitHouseFirstFootprintDimension,
+    ],
   );
 
   const applyDrawOutlineTransition = useCallback((result: DrawOutlineTransitionResult) => {
@@ -736,9 +1137,9 @@ export default function ModelSpaceViewport({
   useEffect(() => {
     if (drawOutlineRequestId === undefined || drawOutlineRequestId <= 0 || drawOutlineRequestId === lastDrawOutlineRequestIdRef.current) return;
     lastDrawOutlineRequestIdRef.current = drawOutlineRequestId;
-    if (!canEditFootprint || view !== 'plan') return;
+    if ((!canEditFootprint && !canCommitCustomPolygon) || view !== 'plan') return;
     startDrawOutlineSession();
-  }, [canEditFootprint, drawOutlineRequestId, startDrawOutlineSession, view]);
+  }, [canCommitCustomPolygon, canEditFootprint, drawOutlineRequestId, startDrawOutlineSession, view]);
 
   const handleFootprintModeSelect = useCallback(
     async (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => {
@@ -920,11 +1321,14 @@ export default function ModelSpaceViewport({
       if (closeResult.error) setFootprintError(closeResult.error);
       return;
     }
-    const result = await commitFootprintEdit({ type: 'custom_polygon', polygon: closeResult.polygon });
+    const result =
+      deckOutlineMode && onCommitCustomPolygon
+        ? await resolveCommitResult(onCommitCustomPolygon(closeResult.polygon))
+        : await commitFootprintEdit({ type: 'custom_polygon', polygon: closeResult.polygon });
     if (result.ok) {
       applyDrawOutlineTransition(finishSuccessfulDrawOutlineCommit());
     }
-  }, [applyDrawOutlineTransition, commitFootprintEdit, drawOutlineState]);
+  }, [applyDrawOutlineTransition, commitFootprintEdit, deckOutlineMode, drawOutlineState, onCommitCustomPolygon]);
 
   const handleDrawOutlinePointHover = useCallback(
     (rawPoint: ModuleFootprintCanvasPoint | null) => {
@@ -1471,6 +1875,74 @@ export default function ModelSpaceViewport({
   }, [commitFieldEdit, onCommitField, planFieldDragSession]);
 
   useEffect(() => {
+    if (!deckDragSession || !onCommitHouseFirstDeckDimension) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== deckDragSession.pointerId) return;
+      const svg = footprintSvgRef.current;
+      if (!svg) return;
+      const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!nextPoint) return;
+      const preview = resolveDeckPreviewState({
+        session: deckDragSession,
+        nextSvgX: nextPoint.x,
+        nextSvgY: nextPoint.y,
+      });
+      setDeckPreviewState(preview);
+      setDeckInteractionHint({
+        title: preview.snapped ? 'Snap preview' : 'Free placement',
+        detail: preview.snapped
+          ? 'Release to snap the deck to the host-edge limit.'
+          : 'Release to keep this offset without snapping.',
+        tone: 'status',
+      });
+    };
+
+    const finishDrag = async (event: PointerEvent) => {
+      if (event.pointerId !== deckDragSession.pointerId) return;
+      const preview = deckPreviewState;
+      setDeckDragSession(null);
+      setDeckPreviewState(null);
+      if (!preview) return;
+
+      const result = await resolveCommitResult(
+        onCommitHouseFirstDeckDimension(deckDragSession.deckId, {
+          presetRect: {
+            centerOffsetM: formatDeckPresetValue(preview.centerOffsetM),
+          } as unknown as HouseFirstDeckDraft['presetRect'],
+        }),
+      );
+      setFieldError(result.ok ? null : result.error ?? 'Unable to update the deck position.');
+      if (result.ok) setFootprintError(null);
+      setDeckInteractionHint(
+        result.ok
+          ? {
+              title: preview.snapped ? 'Deck snapped' : 'Deck moved',
+              detail: preview.snapped
+                ? 'The deck is now aligned to the host-edge limit.'
+                : 'The deck kept a free offset without snapping.',
+              tone: 'status',
+            }
+          : {
+              title: 'Deck move blocked',
+              detail: result.error ?? 'Unable to update the deck position.',
+              tone: 'deferred',
+            },
+      );
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', finishDrag);
+    window.addEventListener('pointercancel', finishDrag);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', finishDrag);
+      window.removeEventListener('pointercancel', finishDrag);
+    };
+  }, [deckDragSession, deckPreviewState, onCommitHouseFirstDeckDimension]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isDrawOutlineActive(drawOutlineState) && event.key === 'Enter') {
         event.preventDefault();
@@ -1488,6 +1960,12 @@ export default function ModelSpaceViewport({
         handleDrawOutlineCancel();
         return;
       }
+      if (deckDragSession) {
+        event.preventDefault();
+        setDeckDragSession(null);
+        setDeckPreviewState(null);
+        return;
+      }
       setFootprintDragSession(null);
       setFootprintActiveHandleId(null);
       setFootprintHoveredHandleId(null);
@@ -1499,7 +1977,7 @@ export default function ModelSpaceViewport({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [drawOutlineState, handleDrawOutlineCancel, handleDrawOutlineConfirmSegment, handleDrawOutlineUndo]);
+  }, [deckDragSession, drawOutlineState, handleDrawOutlineCancel, handleDrawOutlineConfirmSegment, handleDrawOutlineUndo]);
 
   const drawOutlineViewModel = useMemo(
     () => deriveDrawOutlineViewModel(drawOutlineState, Boolean(isDrawOutlineActive(drawOutlineState) && interactionError)),
@@ -1536,8 +2014,11 @@ export default function ModelSpaceViewport({
   const drawOutlineStatusCopy = drawOutlineStatusText(drawOutlineDiagnosticState);
   const isCustomPolygonFootprint = view === 'plan' && (planModel?.houseFootprintMode ?? 'preset') === 'custom_polygon';
   const hasExistingCustomPolygon = isCustomPolygonFootprint && (planModel?.houseFootprintPolygon?.length ?? 0) >= 3;
-  const canRedrawDrawOutline = canEditFootprint && hasExistingCustomPolygon && !drawOutlineViewModel.isActive;
-  const drawOutlineRedrawActive = drawOutlineViewModel.isActive && hasExistingCustomPolygon;
+  const hasDeckSeedPolygon = deckOutlineMode && (drawOutlineSeedPolygon?.length ?? 0) >= 3;
+  const canRedrawDrawOutline =
+    ((canEditFootprint && hasExistingCustomPolygon) || (canCommitCustomPolygon && hasDeckSeedPolygon)) &&
+    !drawOutlineViewModel.isActive;
+  const drawOutlineRedrawActive = drawOutlineViewModel.isActive && (hasExistingCustomPolygon || hasDeckSeedPolygon);
   const drawOutlineDraftSource = drawOutlineViewModel.isActive ? 'active-draft' : planModel?.houseConnectionType === 'none' ? 'none' : 'persisted';
 
   const handleDrawOutlineRedraw = useCallback(() => {
@@ -1604,13 +2085,222 @@ export default function ModelSpaceViewport({
     });
   }, [drawOutlinePopoverAnchorPointCount, drawOutlineViewModel.isActive, viewportTransform.panX, viewportTransform.panY, zoom]);
 
+  const houseFirstPlanOverlay =
+    view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.houseFirst ?? null : null;
+  const houseFirstPreviewOverlay = useMemo(
+    () =>
+      deckPreviewState && deckDragSession
+        ? {
+            ownerId: deckPreviewState.deckId,
+            polygon: deckPreviewState.polygon,
+            hostEdge: {
+              start: deckDragSession.interaction.hostEdgeStart,
+              end: deckDragSession.interaction.hostEdgeEnd,
+              snapped: deckPreviewState.snapped,
+            },
+          }
+        : null,
+    [deckDragSession, deckPreviewState],
+  );
+  const selectedDeckShape = useMemo(
+    () =>
+      houseFirstPlanOverlay?.shapes.find(
+        (shape) => shape.ownerKind === 'deck' && shape.selected,
+      ) ?? null,
+    [houseFirstPlanOverlay],
+  );
+  const selectedDeckRelationshipDimensionsAvailable = useMemo(
+    () =>
+      selectedDeckShape
+        ? (houseFirstPlanOverlay?.presetAnnotations ?? []).some(
+            (annotation) =>
+              annotation.ownerKind === 'deck' &&
+              annotation.ownerId === selectedDeckShape.ownerId &&
+              annotation.targetKind === 'deck_host_edge_reference',
+          )
+        : false,
+    [houseFirstPlanOverlay, selectedDeckShape],
+  );
+  const selectedDeckType = useMemo<DeckInteractionTelemetry['selectedDeckType']>(() => {
+    if (!selectedDeckShape) return 'none';
+    if (selectedDeckShape.custom) return 'custom_outline';
+    if (selectedDeckShape.deckInteraction) return 'attached_preset_rect';
+    const hasDetachedGapAnnotation = (houseFirstPlanOverlay?.presetAnnotations ?? []).some(
+      (annotation) =>
+        annotation.ownerKind === 'deck' &&
+        annotation.ownerId === selectedDeckShape.ownerId &&
+        annotation.fieldKey === 'detachedGapM',
+    );
+    return hasDetachedGapAnnotation ? 'detached_preset_rect' : 'preset_unresolved';
+  }, [houseFirstPlanOverlay, selectedDeckShape]);
+
+  useEffect(() => {
+    if (!selectedDeckShape?.deckDragEligibility) {
+      setDeckInteractionHint(null);
+      return;
+    }
+    setDeckInteractionHint({
+      title:
+        selectedDeckShape.deckDragEligibility.eligible
+          ? 'Attached preset deck'
+          : selectedDeckType === 'custom_outline'
+            ? 'Custom deck'
+            : selectedDeckType === 'detached_preset_rect'
+              ? 'Detached preset deck'
+              : 'Deck interaction',
+      detail: selectedDeckShape.deckDragEligibility.reason,
+      tone: selectedDeckShape.deckDragEligibility.eligible ? 'eligible' : 'deferred',
+    });
+  }, [selectedDeckShape?.deckDragEligibility, selectedDeckType]);
+
+  useEffect(() => {
+    onDeckInteractionTelemetryChange?.({
+      selectedDeckId: selectedDeckShape?.ownerId ?? null,
+      housePolygonSource: houseFirstPlanOverlay?.housePolygonSource ?? null,
+      selectedDeckType,
+      dragEligible: selectedDeckShape?.deckDragEligibility?.eligible ?? false,
+      dragReason: selectedDeckShape?.deckDragEligibility?.reason ?? null,
+      hostEdgeResolvable: Boolean(selectedDeckShape?.deckInteraction),
+      relationshipDimensionsAvailable: selectedDeckRelationshipDimensionsAvailable,
+      snapState: deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'free') : 'idle',
+      snapMessage:
+        deckPreviewState && selectedDeckShape?.deckDragEligibility?.eligible
+          ? deckPreviewState.snapped
+            ? 'Snap preview active on the host edge limit.'
+            : 'Free placement preview. Release to keep the current offset.'
+          : null,
+    });
+  }, [
+    deckPreviewState,
+    houseFirstPlanOverlay?.housePolygonSource,
+    onDeckInteractionTelemetryChange,
+    selectedDeckRelationshipDimensionsAvailable,
+    selectedDeckShape,
+    selectedDeckType,
+  ]);
+
+  const handleNativeSelectionCapture = useCallback((event: Event) => {
+    blockNativeSelectionEvent(event);
+  }, []);
+
+  useEffect(() => {
+    const node = scrollerRef.current;
+    if (!node) return;
+    const handleSelectStart = (event: Event) => handleNativeSelectionCapture(event);
+    const handleDragStart = (event: Event) => handleNativeSelectionCapture(event);
+    node.addEventListener('selectstart', handleSelectStart, true);
+    node.addEventListener('dragstart', handleDragStart, true);
+    return () => {
+      node.removeEventListener('selectstart', handleSelectStart, true);
+      node.removeEventListener('dragstart', handleDragStart, true);
+    };
+  }, [handleNativeSelectionCapture]);
+
+  useEffect(() => {
+    if (!houseFirstPlanOverlay?.customEdgeCandidates.some((candidate) => candidate.id === houseFirstActiveCustomEdgeId)) {
+      setHouseFirstActiveCustomEdgeId(null);
+    }
+  }, [houseFirstActiveCustomEdgeId, houseFirstPlanOverlay]);
+
+  useEffect(() => {
+    const selectedDeckStillVisible =
+      deckDragSession &&
+      houseFirstPlanOverlay?.shapes.some(
+        (shape) => shape.ownerKind === 'deck' && shape.ownerId === deckDragSession.deckId && shape.selected,
+      );
+    if (!selectedDeckStillVisible) {
+      setDeckDragSession(null);
+      setDeckPreviewState(null);
+    }
+  }, [deckDragSession, houseFirstPlanOverlay]);
+
+  useEffect(() => {
+    if (!houseFirstDimensionEditor) return;
+    const annotationId = houseFirstDimensionEditor.annotation.id;
+    const stillVisible = Boolean(
+      houseFirstPlanOverlay?.presetAnnotations.some((annotation) => annotation.id === annotationId) ||
+        houseFirstPlanOverlay?.customEdgeCandidates.some((annotation) => annotation.id === annotationId),
+    );
+    if (!stillVisible) closeHouseFirstDimensionEditor();
+  }, [closeHouseFirstDimensionEditor, houseFirstDimensionEditor, houseFirstPlanOverlay]);
+
+  useEffect(() => {
+    const annotation = houseFirstDimensionEditor?.annotation;
+    const scroller = scrollerRef.current;
+    const popover = dimensionPopoverRef.current;
+    if (!annotation || !scroller || !popover) {
+      setHouseFirstDimensionPopoverPosition(null);
+      return;
+    }
+
+    const escapedId =
+      typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(annotation.id)
+        : annotation.id.replace(/"/g, '\\"');
+    const target = scroller.querySelector(
+      `[data-editable-field-id="${escapedId}"]`,
+    ) as SVGGraphicsElement | null;
+    if (!target) {
+      setHouseFirstDimensionPopoverPosition(null);
+      return;
+    }
+
+    const scrollerRect = scroller.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const popoverRect = popover.getBoundingClientRect();
+    const scrollerWidth = scroller.clientWidth || scrollerRect.width;
+    const scrollerHeight = scroller.clientHeight || scrollerRect.height;
+    const popoverWidth = popover.offsetWidth || popoverRect.width;
+    const popoverHeight = popover.offsetHeight || popoverRect.height;
+    if (scrollerWidth <= 0 || scrollerHeight <= 0 || popoverWidth <= 0 || popoverHeight <= 0) {
+      setHouseFirstDimensionPopoverPosition(null);
+      return;
+    }
+
+    const anchorLeft = targetRect.left - scrollerRect.left;
+    const anchorRight = targetRect.right - scrollerRect.left;
+    const anchorCenterY = targetRect.top - scrollerRect.top + targetRect.height / 2;
+    let left = anchorRight + DRAW_POPOVER_GAP_PX;
+    let top = anchorCenterY - popoverHeight / 2;
+    if (left + popoverWidth + DRAW_POPOVER_MARGIN_PX > scrollerWidth) {
+      left = anchorLeft - popoverWidth - DRAW_POPOVER_GAP_PX;
+    }
+    if (left < DRAW_POPOVER_MARGIN_PX) {
+      left = Math.min(
+        Math.max(anchorRight + DRAW_POPOVER_GAP_PX, DRAW_POPOVER_MARGIN_PX),
+        scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX,
+      );
+    }
+    left = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(left, scrollerWidth - popoverWidth - DRAW_POPOVER_MARGIN_PX));
+    top = Math.max(DRAW_POPOVER_MARGIN_PX, Math.min(top, scrollerHeight - popoverHeight - DRAW_POPOVER_MARGIN_PX));
+    setHouseFirstDimensionPopoverPosition({ left, top });
+  }, [houseFirstDimensionEditor, viewportTransform.panX, viewportTransform.panY, zoom]);
+
+  const houseFirstDimensionPopoverStyle = useMemo(
+    () =>
+      houseFirstDimensionPopoverPosition
+        ? {
+            left: `${houseFirstDimensionPopoverPosition.left}px`,
+            top: `${houseFirstDimensionPopoverPosition.top}px`,
+          }
+        : undefined,
+    [houseFirstDimensionPopoverPosition],
+  );
+
   const footprintEditor = useMemo<ModuleFootprintEditorProps | undefined>(() => {
-    if (!canEditFootprint && !canRotatePlan) return undefined;
+    if (!canEditFootprint && !canRotatePlan && !deckOutlineMode) return undefined;
+    const customPolygonOverride =
+      deckOutlineMode && !drawOutlineViewModel.isActive
+        ? drawOutlineSeedPolygon ?? []
+        : drawOutlinePreviewPolygon;
     return {
-      available: canEditFootprint,
+      available: canEditFootprint || deckOutlineMode,
       surface: 'model',
       isEditing: true,
-      customPolygonOverride: drawOutlinePreviewPolygon,
+      allowAttachmentSideCanvasSelect: pendingAttachedDeckHostEdgePick,
+      attachmentSideCanvasActiveSide: pendingAttachedDeckHostEdgePick ? null : undefined,
+      allowResizeEdgeDrag: false,
+      customPolygonOverride,
       customPolygonOpen: drawOutlineViewModel.isActive,
       customPolygonConfirmedPointCount: drawOutlineConfirmedPointCount,
       customPolygonPreviewPointKind: drawOutlinePreviewPointKind,
@@ -1618,7 +2308,7 @@ export default function ModelSpaceViewport({
       customPolygonCloseHovered: drawOutlineCloseHovered,
       customPolygonLandingPoint: activeDrawOutlineLandingPoint,
       customPolygonHasError: drawOutlineHasError,
-      hideHouseFootprint: drawOutlineViewModel.hideHouseFootprint,
+      hideHouseFootprint: deckOutlineMode ? false : drawOutlineViewModel.hideHouseFootprint,
       isContextHovered: footprintContextHovered,
       hoveredAttachmentSide: footprintHoveredAttachmentSide,
       hoveredHandleId: footprintHoveredHandleId,
@@ -1628,15 +2318,18 @@ export default function ModelSpaceViewport({
       onContextHoverChange: (hovered) => setFootprintContextHovered(hovered),
       onContextPopoverHoverChange: () => undefined,
       onAttachmentSideHover: (side) => setFootprintHoveredAttachmentSide(side),
-      onAttachmentSideSelect: (side) => void handleFootprintAttachmentSideSelect(side),
+      onAttachmentSideSelect: (side) =>
+        pendingAttachedDeckHostEdgePick && onPickAttachedDeckHostEdge
+          ? onPickAttachedDeckHostEdge(side)
+          : void handleFootprintAttachmentSideSelect(side),
       onHandleHover: (handleId) => setFootprintHoveredHandleId(handleId),
-      onHandleDragStart: handleFootprintDragStart,
-      onVertexDragStart: handleFootprintVertexDragStart,
-      onVertexDelete: (vertexIndex) => void handleFootprintVertexDelete(vertexIndex),
-      onEdgeAdd: (edgeIndex) => void handleFootprintEdgeAdd(edgeIndex),
-      onPresetSelect: (preset) => void handleFootprintPresetSelect(preset),
-      onModeSelect: (mode) => void handleFootprintModeSelect(mode),
-      onRotate: (delta) => void handleFootprintRotate(delta),
+      onHandleDragStart: deckOutlineMode ? () => undefined : handleFootprintDragStart,
+      onVertexDragStart: deckOutlineMode ? undefined : handleFootprintVertexDragStart,
+      onVertexDelete: deckOutlineMode ? undefined : (vertexIndex) => void handleFootprintVertexDelete(vertexIndex),
+      onEdgeAdd: deckOutlineMode ? undefined : (edgeIndex) => void handleFootprintEdgeAdd(edgeIndex),
+      onPresetSelect: deckOutlineMode ? () => undefined : (preset) => void handleFootprintPresetSelect(preset),
+      onModeSelect: deckOutlineMode ? undefined : (mode) => void handleFootprintModeSelect(mode),
+      onRotate: deckOutlineMode ? () => undefined : (delta) => void handleFootprintRotate(delta),
       onCanvasPointSelect: undefined,
       onCanvasPointPointerDown: undefined,
       onCanvasPointHover: undefined,
@@ -1649,8 +2342,10 @@ export default function ModelSpaceViewport({
       },
     };
   }, [
+    canCommitCustomPolygon,
     canEditFootprint,
     canRotatePlan,
+    deckOutlineMode,
     drawOutlineCloseHovered,
     drawOutlineCloseReady,
     drawOutlineConfirmedPointCount,
@@ -1658,6 +2353,7 @@ export default function ModelSpaceViewport({
     activeDrawOutlineLandingPoint,
     drawOutlinePreviewPointKind,
     drawOutlinePreviewPolygon,
+    drawOutlineSeedPolygon,
     drawOutlineViewModel.hideHouseFootprint,
     drawOutlineViewModel.isActive,
     footprintActiveHandleId,
@@ -1673,6 +2369,8 @@ export default function ModelSpaceViewport({
     handleFootprintVertexDelete,
     handleFootprintVertexDragStart,
     handleDrawOutlineClose,
+    onPickAttachedDeckHostEdge,
+    pendingAttachedDeckHostEdgePick,
   ]);
 
   const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
@@ -1706,8 +2404,6 @@ export default function ModelSpaceViewport({
     [drawPopoverPosition],
   );
 
-  void planViewModel;
-
   return (
     <section className={styles.viewport} aria-label={`${view === 'plan' ? 'Plan' : 'Section'} model space viewport`} style={moduleDrawingThemeCssVariables('model')}>
       <div
@@ -1736,6 +2432,23 @@ export default function ModelSpaceViewport({
         data-model-space-pinch-source={pinchSource}
         data-model-space-auto-fit-key={modelSpaceAutoFitKey}
         data-model-space-auto-fit-ready={modelSpaceAutoFitReady ? 'true' : 'false'}
+        data-house-first-deck-drag-active={deckDragSession ? 'true' : 'false'}
+        data-house-first-deck-snap-state={deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'free') : 'idle'}
+        data-house-first-selected-deck-id={selectedDeckShape?.ownerId ?? ''}
+        data-house-first-selected-deck-type={selectedDeckType}
+        data-house-first-selected-deck-drag-eligible={
+          selectedDeckShape?.deckDragEligibility?.eligible ? 'true' : 'false'
+        }
+        data-house-first-selected-deck-host-edge-resolvable={
+          selectedDeckShape?.deckInteraction ? 'true' : 'false'
+        }
+        data-house-first-selected-deck-relationship-dims={
+          selectedDeckRelationshipDimensionsAvailable ? 'true' : 'false'
+        }
+        data-house-first-selected-deck-drag-reason={
+          selectedDeckShape?.deckDragEligibility?.reason ?? ''
+        }
+        data-native-selection-suppressed="true"
         className={`${styles.scroller} ${
           modelSpaceGesture === 'mouse-pan' || modelSpaceGesture === 'pinch-zoom' || modelSpaceGesture === 'trackpad-pinch'
             ? styles.scrollerPanning
@@ -1777,6 +2490,26 @@ export default function ModelSpaceViewport({
           >
             <span className={styles.drawStatusText}>{drawOutlineStatusCopy}</span>
             <span className={styles.drawStatusMeta}>Esc cancels</span>
+          </div>
+        ) : null}
+
+        {!drawOutlineViewModel.isActive && deckInteractionHint ? (
+          <div
+            className={[
+              styles.deckInteractionHint,
+              deckInteractionHint.tone === 'eligible'
+                ? styles.deckInteractionHintEligible
+                : deckInteractionHint.tone === 'deferred'
+                  ? styles.deckInteractionHintDeferred
+                  : styles.deckInteractionHintStatus,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            aria-label="Deck interaction hint"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <span className={styles.deckInteractionHintTitle}>{deckInteractionHint.title}</span>
+            <span className={styles.deckInteractionHintText}>{deckInteractionHint.detail}</span>
           </div>
         ) : null}
 
@@ -1838,6 +2571,51 @@ export default function ModelSpaceViewport({
           </div>
         ) : null}
 
+        {houseFirstDimensionEditor ? (
+          <div
+            ref={dimensionPopoverRef}
+            className={styles.dimensionPopover}
+            aria-label="Edit plan dimension"
+            style={houseFirstDimensionPopoverStyle}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <label className={styles.popoverField}>
+              <span className={styles.fieldLabel}>Dimension (m)</span>
+              <input
+                autoFocus
+                className={styles.input}
+                inputMode="decimal"
+                value={houseFirstDimensionEditor.value}
+                onChange={(event) =>
+                  setHouseFirstDimensionEditor((current) =>
+                    current
+                      ? {
+                          ...current,
+                          value: event.target.value,
+                        }
+                      : current,
+                  )
+                }
+                onBlur={() => {
+                  if (!houseFirstDimensionEditor) return;
+                  void commitHouseFirstDimensionEdit(houseFirstDimensionEditor);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeHouseFirstDimensionEditor();
+                    return;
+                  }
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  if (!houseFirstDimensionEditor) return;
+                  void commitHouseFirstDimensionEdit(houseFirstDimensionEditor);
+                }}
+              />
+            </label>
+          </div>
+        ) : null}
+
         <div ref={scaleFrameRef} data-model-space-scale-frame className={styles.scaleFrame} style={scaleFrameStyle}>
           <div className={styles.canvas}>
             {showDrawingViewport ? (
@@ -1847,10 +2625,22 @@ export default function ModelSpaceViewport({
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="model"
+                displayMode={workbenchDisplayMode}
                 interactiveFields={showPlanViewport ? modelInteractiveFields : undefined}
                 footprintEditor={showPlanViewport ? footprintEditor : undefined}
                 planInteraction={showPlanViewport ? planInteraction : undefined}
+                houseFirstPlanOverlay={showPlanViewport ? houseFirstPlanOverlay : null}
+                houseFirstPreviewOverlay={showPlanViewport ? houseFirstPreviewOverlay : null}
+                activeHouseFirstCustomEdgeId={houseFirstActiveCustomEdgeId}
+                onHouseFirstShapeSelect={showPlanViewport ? handleHouseFirstShapeSelect : undefined}
+                onHouseFirstShapeDragStart={showPlanViewport ? handleHouseFirstShapeDragStart : undefined}
+                onHouseFirstCustomEdgeSelect={showPlanViewport ? handleHouseFirstCustomEdgeSelect : undefined}
+                onHouseFirstDimensionActivate={showPlanViewport ? activateHouseFirstDimensionEditor : undefined}
               />
+            ) : showHouseSectionPlaceholder ? (
+              <div className={styles.placeholder}>
+                <p className={styles.placeholderTitle}>House mode section view is not available yet.</p>
+              </div>
             ) : (
               <div className={styles.placeholder}>
                 <p className={styles.placeholderTitle}>Waiting for valid model-space geometry.</p>

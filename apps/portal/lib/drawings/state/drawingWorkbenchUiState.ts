@@ -1,4 +1,5 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import type { WorkbenchHouseSelection, WorkbenchMode } from './houseFirstWorkbenchModel';
 
 export type DrawingWorkbenchViewportMode = 'sheet' | 'model' | 'geometry3d';
 
@@ -24,7 +25,10 @@ export type DrawingWorkbenchViewportTransform = {
 };
 
 export type DrawingWorkbenchUiState = {
+  workbenchMode: WorkbenchMode;
   activeModuleIndex: number;
+  activeHouseSelection: WorkbenchHouseSelection;
+  activePergolaId: string | null;
   activeView: ModuleViewsTab;
   viewportMode: DrawingWorkbenchViewportMode;
   selection: DrawingWorkbenchSelectionState;
@@ -37,7 +41,10 @@ export function createDrawingWorkbenchUiState(
   overrides: Partial<DrawingWorkbenchUiState> = {},
 ): DrawingWorkbenchUiState {
   return {
+    workbenchMode: 'house',
     activeModuleIndex: 0,
+    activeHouseSelection: { kind: 'house', targetId: null },
+    activePergolaId: null,
     activeView: 'plan',
     viewportMode: 'sheet',
     selection: { kind: 'none', targetId: null },
@@ -46,6 +53,36 @@ export function createDrawingWorkbenchUiState(
     viewportTransform: { zoom: 1, panX: 0, panY: 0 },
     ...overrides,
   };
+}
+
+function normalizeWorkbenchMode(value: DrawingWorkbenchUiState['workbenchMode']): WorkbenchMode {
+  return value === 'pergolas' ? 'pergolas' : 'house';
+}
+
+function normalizeActiveHouseSelection(value: WorkbenchHouseSelection | null | undefined): WorkbenchHouseSelection {
+  switch (value?.kind) {
+    case 'footprint':
+    case 'roof':
+    case 'deck':
+    case 'opening':
+    case 'attachment_zone':
+      return {
+        kind: value.kind,
+        targetId: value.targetId ?? null,
+      };
+    case 'house':
+    default:
+      return { kind: 'house', targetId: null };
+  }
+}
+
+function normalizeActivePergolaId(
+  value: string | null | undefined,
+  pergolaIds: string[],
+): string | null {
+  if (!pergolaIds.length) return null;
+  if (value && pergolaIds.includes(value)) return value;
+  return pergolaIds[0] ?? null;
 }
 
 export function clampDrawingWorkbenchModuleIndex(index: number, moduleCount: number): number {
@@ -65,11 +102,37 @@ export function clampDrawingWorkbenchViewportTransform(
 
 export function normalizeDrawingWorkbenchUiState(
   state: DrawingWorkbenchUiState,
-  moduleCount: number,
+  input: {
+    moduleCount: number;
+    pergolaIds?: string[];
+    deckIds?: string[];
+    openingIds?: string[];
+  },
 ): DrawingWorkbenchUiState {
+  const workbenchMode = normalizeWorkbenchMode(state.workbenchMode);
+  const activeHouseSelection = normalizeActiveHouseSelection(state.activeHouseSelection);
+  const normalizedHouseSelection =
+    activeHouseSelection.kind === 'deck' &&
+    activeHouseSelection.targetId &&
+    !(input.deckIds ?? []).includes(activeHouseSelection.targetId)
+      ? { kind: 'house', targetId: null }
+      : activeHouseSelection.kind === 'opening' &&
+          activeHouseSelection.targetId &&
+          !(input.openingIds ?? []).includes(activeHouseSelection.targetId)
+        ? { kind: 'house', targetId: null }
+        : activeHouseSelection;
   return {
     ...state,
-    activeModuleIndex: clampDrawingWorkbenchModuleIndex(state.activeModuleIndex, moduleCount),
+    workbenchMode,
+    activeModuleIndex: clampDrawingWorkbenchModuleIndex(state.activeModuleIndex, input.moduleCount),
+    activeHouseSelection:
+      workbenchMode === 'pergolas'
+        ? { kind: 'house', targetId: null }
+        : normalizedHouseSelection,
+    activePergolaId:
+      workbenchMode === 'house'
+        ? null
+        : normalizeActivePergolaId(state.activePergolaId, input.pergolaIds ?? []),
     viewportTransform: clampDrawingWorkbenchViewportTransform(state.viewportTransform),
   };
 }

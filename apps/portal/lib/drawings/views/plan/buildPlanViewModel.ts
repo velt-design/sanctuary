@@ -1,5 +1,10 @@
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
+import type { HouseModel, WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import {
+  buildHouseFirstPlanOverlay,
+  type HouseFirstPlanOverlay,
+} from './houseFirstPlanOverlay';
 
 export type PlanViewModel = {
   moduleId: string;
@@ -32,6 +37,7 @@ export type PlanViewModel = {
     sheetPrimaryDimensionsPinned: 'left_bottom';
     suppressDocumentAnnotationsInModelSpace: true;
   };
+  houseFirst: HouseFirstPlanOverlay | null;
   planModel: ModulePlanModel | null;
 };
 
@@ -42,6 +48,11 @@ type PlanViewModelSource =
       moduleLabel: string;
       planModel: ModulePlanModel | null;
       canEditHouseFootprint?: boolean;
+      house?: HouseModel | null;
+      activeHouseSelection?: WorkbenchHouseSelection | null;
+      includeHouseFirstOverlay?: boolean;
+      moduleLengthM?: string | null;
+      moduleProjectionM?: string | null;
     };
 
 function isDrawingAssemblyModel(source: PlanViewModelSource): source is DrawingAssemblyModel {
@@ -91,6 +102,15 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
       sheetPrimaryDimensionsPinned: 'left_bottom',
       suppressDocumentAnnotationsInModelSpace: true,
     },
+    houseFirst:
+      !isDrawingAssemblyModel(source) && source.includeHouseFirstOverlay
+        ? buildHouseFirstPlanOverlay({
+            house: source.house,
+            selection: source.activeHouseSelection ?? { kind: 'house', targetId: null },
+            moduleLengthM: source.moduleLengthM,
+            moduleProjectionM: source.moduleProjectionM,
+          })
+        : null,
     planModel,
   };
 }

@@ -55,6 +55,44 @@ function fillInputByLabel(container: HTMLElement, label: string, value: string) 
   });
 }
 
+function clickElement(target: Element): void {
+  act(() => {
+    target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+  });
+}
+
+function clickPlanFootprintEdge(container: HTMLElement, side: 'rear' | 'front' | 'left' | 'right') {
+  const edge = container.querySelector(`[data-footprint-edge="${side}"]`);
+  if (!(edge instanceof Element)) throw new Error(`Missing footprint edge: ${side}`);
+  clickElement(edge);
+}
+
+function fillPlanDimensionInput(container: HTMLElement, value: string, commit: 'enter' | 'blur' = 'enter') {
+  const input = container.querySelector('[aria-label="Edit plan dimension"] input') as HTMLInputElement | null;
+  if (!input) throw new Error('Missing plan dimension input.');
+  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+  if (!valueSetter) throw new Error('Missing HTMLInputElement value setter.');
+  act(() => {
+    valueSetter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  if (commit === 'enter') {
+    act(() => {
+      input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Enter' }));
+    });
+    return;
+  }
+  act(() => {
+    input.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
+  });
+}
+
+function readLabeledValue(container: HTMLElement, label: string): string | null {
+  const labelNode = Array.from(container.querySelectorAll('span')).find((node) => node.textContent?.trim() === label);
+  return labelNode?.nextElementSibling?.textContent?.trim() ?? null;
+}
+
 async function flushAsyncWork() {
   await act(async () => {
     await Promise.resolve();
@@ -97,6 +135,57 @@ function buildEstimateDetail(input?: {
       draftQuoteCount: 0,
     },
     ...input?.overrides,
+  };
+}
+
+function buildMultiModuleEstimateDetail(): EstimateDetail {
+  const estimate = buildEstimateDetail();
+  const snapshot = structuredClone(estimate.calculatorSnapshot) as {
+    inputs?: {
+      pergolas?: Array<{ id: string; label: string }>;
+      modules?: Array<Record<string, unknown>>;
+    };
+    outputs?: {
+      pergolas?: Array<{ id: string; modules: Array<Record<string, unknown>> }>;
+    };
+  } | null;
+  if (!snapshot?.inputs?.modules?.[0] || !snapshot.outputs?.pergolas?.[0]?.modules?.[0]) {
+    throw new Error('Expected base mono fixture snapshot.');
+  }
+
+  snapshot.inputs.pergolas = [
+    { id: 'pergola-1', label: 'Pergola 1' },
+    { id: 'pergola-2', label: 'Pergola 2' },
+  ];
+  snapshot.inputs.modules = [
+    structuredClone(snapshot.inputs.modules[0]),
+    {
+      ...structuredClone(snapshot.inputs.modules[0]),
+      pergolaId: 'pergola-2',
+      lengthM: '4.5',
+      projectionM: '2.5',
+    },
+  ];
+  snapshot.outputs.pergolas = [
+    {
+      id: 'pergola-1',
+      modules: [
+        structuredClone(snapshot.outputs.pergolas[0].modules[0]),
+        {
+          ...structuredClone(snapshot.outputs.pergolas[0].modules[0]),
+          derived: {
+            ...(snapshot.outputs.pergolas[0].modules[0].derived as Record<string, unknown>),
+            length_m: 4.5,
+            projection_m: 2.5,
+          },
+        },
+      ],
+    },
+  ];
+
+  return {
+    ...estimate,
+    calculatorSnapshot: snapshot as Record<string, unknown>,
   };
 }
 
@@ -187,7 +276,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     __setLocalFirstStorageAdapterForTests(null);
   });
 
-  it('renders the editable Sanctuary workbench shell for supported mono estimates and supports local view toggles', async () => {
+  it('renders the house-first hidden workbench shell and keeps the Sanctuary editor behind pergolas mode', async () => {
     const estimate = buildEstimateDetail();
 
     const rendered = renderIntoDocument(
@@ -199,21 +288,32 @@ describe('DesignWorkbenchEstimateClient', () => {
       />,
     );
 
+    expect(rendered.container.textContent).toContain('House Configurator');
+    expect(rendered.container.textContent).toContain('Footprint');
+    expect(rendered.container.textContent).toContain('Migration diagnostics');
+    expect(rendered.container.textContent).toContain('Derived houses');
+    expect(rendered.container.textContent).toContain('Pergolas');
+    expect(rendered.container.textContent).toContain('Sheet View');
+    expect(rendered.container.textContent).toContain('Model Space');
+    expect(rendered.container.textContent).toContain('3D View');
+    expect(rendered.container.textContent).toContain('Back to Project');
+    expect(rendered.container.textContent).not.toContain('Sanctuary Controls');
+
+    expect(rendered.container.textContent).toContain('Workspace panel');
+    expect(rendered.container.textContent).not.toContain('Inspection');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).toBeNull();
+
+    clickButtonByText(rendered.container, 'Pergolas');
+    await flushAsyncWork();
+
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Sanctuary Controls');
     expect(rendered.container.textContent).toContain('Geometry');
     expect(rendered.container.textContent).toContain('House / Context');
     expect(rendered.container.textContent).toContain('Overrides');
     expect(rendered.container.textContent).toContain('Ledger override');
-    expect(rendered.container.textContent).toContain('Sheet View');
-    expect(rendered.container.textContent).toContain('Model Space');
-    expect(rendered.container.textContent).toContain('3D View');
-    expect(rendered.container.textContent).toContain('Back to Project');
-    expect(rendered.container.textContent).not.toContain('Flashings');
-    expect(rendered.container.textContent).not.toContain('Rotate +90');
-
-    expect(rendered.container.textContent).toContain('Workspace panel');
-    expect(rendered.container.textContent).not.toContain('Inspection');
-    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
     clickButtonByText(rendered.container, 'Workspace panel');
     expect(rendered.container.textContent).toContain('Snapshot Validated');
     expect(rendered.container.textContent).toContain('Inspection');
@@ -226,10 +326,9 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Reset');
+    expect(rendered.container.textContent).toContain('Fit view');
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).not.toBeNull();
-    expect(rendered.container.textContent).not.toContain('Rotate +90');
 
     clickButtonByText(rendered.container, 'Section');
     await flushAsyncWork();
@@ -249,6 +348,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       />,
     );
 
+    clickButtonByText(gableRendered.container, 'Pergolas');
     expect(gableRendered.container.textContent).toContain('Pergola family');
     expect(gableRendered.container.textContent).not.toContain('not supported for Sanctuary editing yet');
     gableRendered.unmount();
@@ -261,6 +361,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       />,
     );
 
+    clickButtonByText(boxRendered.container, 'Pergolas');
     const pitchInput = boxRendered.container.querySelector('[aria-label="Roof pitch (deg)"]') as HTMLInputElement | null;
     expect(boxRendered.container.textContent).toContain('Box perimeter');
     expect(pitchInput?.disabled).toBe(true);
@@ -284,6 +385,8 @@ describe('DesignWorkbenchEstimateClient', () => {
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
 
+    expect(rendered.container.textContent).toContain('House Configurator');
+    clickButtonByText(rendered.container, 'Pergolas');
     expect(rendered.container.textContent).toContain('Editing Deferred');
     expect(rendered.container.textContent).toContain('not supported for Sanctuary editing yet');
     expect(rendered.container.textContent).not.toContain('Pergola family');
@@ -313,10 +416,10 @@ describe('DesignWorkbenchEstimateClient', () => {
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
 
-    const lengthInput = rendered.container.querySelector('[aria-label="Roof length (m)"]') as HTMLInputElement | null;
+    const footprintSelect = rendered.container.querySelector('[aria-label="House footprint"]') as HTMLSelectElement | null;
     expect(rendered.container.textContent).toContain('Read Only');
     expect(rendered.container.textContent).toContain('Locked by quote send.');
-    expect(lengthInput?.disabled).toBe(true);
+    expect(footprintSelect?.disabled).toBe(true);
 
     clickButtonByText(rendered.container, 'Model Space');
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
@@ -334,6 +437,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     expect(getLocalFirstWorkingCopy(entityKey)).toBeNull();
 
+    clickButtonByText(rendered.container, 'Pergolas');
+    await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Roof material', 'timber');
     await flushAsyncWork();
 
@@ -408,7 +513,7 @@ describe('DesignWorkbenchEstimateClient', () => {
   });
 
   it('writes house/context edits into the local working copy', async () => {
-    const estimate = buildEstimateDetail();
+    const estimate = buildMultiModuleEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
 
     const rendered = renderIntoDocument(
@@ -420,6 +525,359 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[0]?.houseFootprintPreset).toBe('u_shape');
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[1]?.houseFootprintPreset).toBe('u_shape');
+    rendered.unmount();
+  });
+
+  it('writes shared roof edits into the local working copy and surfaces blocked topology', async () => {
+    const estimate = buildMultiModuleEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    expect(rendered.container.textContent).toContain('Mono fall direction');
+    expect(rendered.container.textContent).not.toContain('Gable ridge orientation');
+    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    await flushAsyncWork();
+    fillInputByLabel(rendered.container, 'Roof pitch (deg)', '18');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof?.form).toBe('gable');
+    expect(rendered.container.textContent).not.toContain('Mono fall direction');
+    expect(rendered.container.textContent).toContain('Gable ridge orientation');
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
+    expect(rendered.container.textContent).toContain('Roof status');
+    expect(rendered.container.textContent).toContain('Ready');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+
+    changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).toContain('Ready');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+
+    rendered.unmount();
+  });
+
+  it('surfaces appendage invalid diagnostics without changing the house roof family set', async () => {
+    const estimate = buildMultiModuleEstimateDetail();
+    const snapshot = structuredClone(estimate.calculatorSnapshot) as {
+      inputs?: { modules?: Array<Record<string, unknown>> };
+    } | null;
+    for (const module of snapshot?.inputs?.modules ?? []) {
+      module.houseConnectionType = 'facade';
+      module.houseAttachmentStrategy = 'facade_ledger';
+    }
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient
+        estimate={{
+          ...estimate,
+          calculatorSnapshot: (snapshot ?? estimate.calculatorSnapshot) as Record<string, unknown>,
+        }}
+        projectName="Deck Build"
+        siteAddress="1 Test Street"
+      />,
+    );
+
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Appendage band', 'enabled');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
+    expect(readLabeledValue(rendered.container, 'Roof appendage')).toBe('invalid');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_appendage');
+    expect(rendered.container.textContent).toContain(
+      'Appendage bands are currently limited to straight or rectangular house footprints.',
+    );
+
+    rendered.unmount();
+  });
+
+  it('shows orthogonal mono presets as ready in house mode diagnostics', async () => {
+    const estimate = buildEstimateDetail();
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
+    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Ready');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+    expect(rendered.container.textContent).not.toContain('Mono roofs currently require eave-based house attachment on an outer footprint edge for this footprint.');
+
+    rendered.unmount();
+  });
+
+  it('adds, selects, and removes shared decks while updating diagnostics', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    expect(readLabeledValue(rendered.container, 'Deck count')).toBe('0');
+    expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('none');
+
+    clickButtonByText(rendered.container, 'Add attached');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
+    expect(rendered.container.textContent).toContain('Click a house side in Model Space plan or 3D View');
+
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+    clickPlanFootprintEdge(rendered.container, 'rear');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual(['deck-1']);
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.presetRect).toEqual({
+      widthM: '6',
+      depthM: '3',
+      centerOffsetM: '0',
+    });
+    expect(readLabeledValue(rendered.container, 'Deck count')).toBe('1');
+    expect(readLabeledValue(rendered.container, 'Active host side')).toBe('rear');
+    expect(readLabeledValue(rendered.container, 'Active-side deck present')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Deck support class')).toBe('threshold_attached');
+    expect(readLabeledValue(rendered.container, 'Deck bracket eligible')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, '3D deck class')).toBe('threshold_attached');
+    expect(readLabeledValue(rendered.container, '3D deck bracket')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-1');
+    expect(readLabeledValue(rendered.container, 'House polygon source')).toBe('preset_derived');
+    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('attached_preset_rect');
+    expect(readLabeledValue(rendered.container, 'Deck drag eligible')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Deck host-edge resolvable')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Deck relationship dims')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Model-space house polygon')).toBe('preset_derived');
+    expect(readLabeledValue(rendered.container, 'Model-space deck type')).toBe('attached_preset_rect');
+    expect(readLabeledValue(rendered.container, 'Model-space drag eligible')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Model-space relationship dims')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Model-space snap state')).toBe('idle');
+
+    clickButtonByText(rendered.container, 'Add detached');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual([
+      'deck-1',
+      'deck-2',
+    ]);
+    expect(readLabeledValue(rendered.container, 'Deck count')).toBe('2');
+    expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-2');
+    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('detached_preset_rect');
+    expect(readLabeledValue(rendered.container, 'Deck drag eligible')).toBe('No');
+    expect(readLabeledValue(rendered.container, 'Deck relationship dims')).toBe('No');
+
+    clickButtonByText(rendered.container, 'Deck 1');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-1');
+    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('attached_preset_rect');
+
+    clickButtonByText(rendered.container, 'Remove deck');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual(['deck-2']);
+    expect(readLabeledValue(rendered.container, 'Deck count')).toBe('1');
+    expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('none');
+    rendered.unmount();
+  });
+
+  it('adds windows in house mode, selects them in model space, and commits width edits through plan dimensions', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Window Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    expect(readLabeledValue(rendered.container, 'Opening count')).toBe('0');
+    expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('none');
+
+    clickButtonByText(rendered.container, 'Add window');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.map((opening: any) => opening.id)).toEqual([
+      'opening-1',
+    ]);
+    expect(readLabeledValue(rendered.container, 'Opening count')).toBe('1');
+    expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
+
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+
+    const openingShape = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    if (!(openingShape instanceof Element)) throw new Error('Missing window opening shape.');
+    clickElement(openingShape);
+    await flushAsyncWork();
+
+    const widthLabel = rendered.container.querySelector('[data-editable-field-id="opening-1:widthM"]');
+    if (!(widthLabel instanceof Element)) throw new Error('Missing window width dimension.');
+    clickElement(widthLabel);
+    fillPlanDimensionInput(rendered.container, '2.4');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]?.widthM).toBe('2.4');
+    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:widthM"]')?.textContent).toContain('2.40m');
+
+    clickButtonByText(rendered.container, 'Remove window');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings ?? []).toEqual([]);
+    expect(readLabeledValue(rendered.container, 'Opening count')).toBe('0');
+    expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('none');
+
+    rendered.unmount();
+  });
+
+  it('shows 3D window marker diagnostics for valid and invalid shared-house windows', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Window Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add window');
+    await flushAsyncWork();
+
+    fillInputByLabel(rendered.container, 'Window width (m)', '20');
+    await flushAsyncWork();
+
+    clickButtonByText(rendered.container, 'Add window');
+    await flushAsyncWork();
+
+    const openingDrafts = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings ?? [];
+    expect(openingDrafts.map((opening: any) => opening.id)).toEqual(['opening-1', 'opening-2']);
+
+    fillInputByLabel(rendered.container, 'Window width (m)', '2.4');
+    fillInputByLabel(rendered.container, 'Window height (m)', '1.2');
+    fillInputByLabel(rendered.container, 'Sill height (m)', '0.9');
+    fillInputByLabel(rendered.container, 'Offset along wall (m)', '1.1');
+    await flushAsyncWork();
+
+    clickButtonByText(rendered.container, '3D View');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, '3D window count')).toBe('2');
+    expect(readLabeledValue(rendered.container, '3D valid windows')).toBe('1');
+    expect(readLabeledValue(rendered.container, '3D host edges resolved')).toBe('1');
+    expect(readLabeledValue(rendered.container, '3D host edges unresolved')).toBe('0');
+    expect(readLabeledValue(rendered.container, '3D rendered markers')).toBe('1');
+    expect(readLabeledValue(rendered.container, '3D skipped invalid')).toBe('1');
+    expect(readLabeledValue(rendered.container, '3D unresolved valid')).toBe('0');
+
+    rendered.unmount();
+  });
+
+  it('starts attached deck host-edge picking in 3D without creating a deck immediately', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas-shell"]')).not.toBeNull();
+
+    clickButtonByText(rendered.container, 'Add attached');
+    await flushAsyncWork();
+
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas-shell"]')).not.toBeNull();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
+    expect(rendered.container.textContent).toContain('Pick house side for new deck');
+
+    rendered.unmount();
+  });
+
+  it('auto-switches from sheet view to model-space plan for attached deck host-edge picking and can cancel', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Sheet View');
+    await flushAsyncWork();
+
+    clickButtonByText(rendered.container, 'Add attached');
+    await flushAsyncWork();
+
+    expect(rendered.container.querySelector('[data-footprint-edge="right"]')).not.toBeNull();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
+
+    clickButtonByText(rendered.container, 'Cancel');
+    await flushAsyncWork();
+
+    expect(rendered.container.querySelector('[data-footprint-edge="right"]')).toBeNull();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
+    expect(rendered.container.textContent).not.toContain('Click a house side in Model Space plan or 3D View');
+
+    rendered.unmount();
+  });
+
+  it('edits preset decks and hides deck controls in pergolas mode', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add attached');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+    clickPlanFootprintEdge(rendered.container, 'rear');
+    await flushAsyncWork();
+
+    fillInputByLabel(rendered.container, 'Width (m)', '20');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.presetRect?.widthM).toBe('6');
+
+    changeSelectByLabel(rendered.container, 'Deck placement', 'detached');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.isAttached).toBe(false);
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.hostEdgeId).toBe('rear');
+
+    fillInputByLabel(rendered.container, 'Detached gap (m)', '0.05');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.presetRect?.detachedGapM).toBe('0.2');
+
+    changeSelectByLabel(rendered.container, 'Shape', 'custom');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.shape).toBe('custom');
+    expect(rendered.container.querySelector('[aria-label="Width (m)"]')).toBeNull();
+
+    changeSelectByLabel(rendered.container, 'Shape', 'preset');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.shape).toBe('preset');
+    expect(rendered.container.querySelector('[aria-label="Width (m)"]')).not.toBeNull();
+    expect(readLabeledValue(rendered.container, 'Invalid decks')).toBe('0');
+
+    clickButtonByText(rendered.container, 'Pergolas');
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).toContain('Pergola Mode');
+    expect(rendered.container.textContent).not.toContain('Add attached');
+    expect(rendered.container.textContent).not.toContain('Deck placement');
     rendered.unmount();
   });
 
@@ -431,6 +889,8 @@ describe('DesignWorkbenchEstimateClient', () => {
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
 
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Ledger override', '100x50');
     await flushAsyncWork();
@@ -447,6 +907,8 @@ describe('DesignWorkbenchEstimateClient', () => {
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
 
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
@@ -506,8 +968,26 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(rendered.container.textContent).toContain('Draft overlay note for hidden route');
-    expect(rendered.container.textContent).not.toContain('Rotate +90');
 
+    rendered.unmount();
+  });
+
+  it('shows mode diagnostics while keeping pergola fallback editing available', async () => {
+    const estimate = buildEstimateDetail();
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    expect(rendered.container.textContent).toContain('Migration diagnostics');
+    expect(rendered.container.textContent).toContain('Derived houses');
+    expect(rendered.container.textContent).toContain('Low confidence');
+
+    clickButtonByText(rendered.container, 'Pergolas');
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).toContain('Pergola Mode');
+    expect(rendered.container.textContent).toContain('Sanctuary Controls');
     rendered.unmount();
   });
 });

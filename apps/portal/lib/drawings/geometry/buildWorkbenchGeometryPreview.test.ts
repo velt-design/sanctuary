@@ -5,10 +5,61 @@ import {
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
+import { makeHouseFirstDeckSupportSnapshotFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
 import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 
-function requireFixture(slug: 'mono-standard' | 'gable-standard' | 'box-standard') {
+function makeScreenshotStyleUHouseFootprint() {
+  return [
+    { x: -2800, y: 7200, z: 0 },
+    { x: 8800, y: 7200, z: 0 },
+    { x: 8800, y: 400, z: 0 },
+    { x: 7000, y: 400, z: 0 },
+    { x: 7000, y: 5400, z: 0 },
+    { x: -1000, y: 5400, z: 0 },
+    { x: -1000, y: 400, z: 0 },
+    { x: -2800, y: 400, z: 0 },
+  ];
+}
+
+function pointDistanceToSegment2D(
+  candidate: { x: number; y: number },
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= 1e-6) return Math.hypot(candidate.x - start.x, candidate.y - start.y);
+  const ratio = Math.min(
+    Math.max(((candidate.x - start.x) * dx + (candidate.y - start.y) * dy) / lengthSq, 0),
+    1,
+  );
+  const projectedX = start.x + dx * ratio;
+  const projectedY = start.y + dy * ratio;
+  return Math.hypot(candidate.x - projectedX, candidate.y - projectedY);
+}
+
+function sourceEdgeLineFromFootprint(sourceEdgeId: string) {
+  const footprint = makeScreenshotStyleUHouseFootprint();
+  const match = /^footprint-edge-(\d+)$/.exec(sourceEdgeId);
+  if (!match) return null;
+  const index = Number(match[1]) - 1;
+  if (!Number.isInteger(index) || index < 0 || index >= footprint.length) return null;
+  return {
+    start: footprint[index]!,
+    end: footprint[(index + 1) % footprint.length]!,
+  };
+}
+
+function requireFixture(
+  slug:
+    | 'mono-standard'
+    | 'gable-standard'
+    | 'box-standard'
+    | 'gable-u-hipped-screenshot'
+    | 'mono-join-screenshot',
+) {
   const fixture = getSanctuaryGeometryWorkbenchFixture(slug);
   if (!fixture) {
     throw new Error(`Missing fixture ${slug}`);
@@ -514,5 +565,242 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.assembly.roofCladdingPanels.some((panel) => panel.id === 'outer-acrylic-panel-1')).toBe(true);
     expect(preview.scene.layers.find((layer) => layer.id === 'roof_cladding')?.visibleByDefault).toBe(true);
     expect(preview.scene.layers.find((layer) => layer.id === 'roof_planes')?.visibleByDefault).toBe(false);
+  });
+
+  it('keeps the screenshot-style complex house roof fixture on the supported hipped baseline', () => {
+    const fixture = requireFixture('gable-u-hipped-screenshot');
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    const houseObjects =
+      preview.scene.layers.find((layer) => layer.id === 'house')?.objects ?? [];
+    const joinSourceEdgeId =
+      houseObjects.find(
+        (object) => object.type === 'house_line' && object.kind === 'attachment_target',
+      )?.metadata?.sourceEdgeId ?? null;
+    const joinEdgeEaveObjects = houseObjects.filter((object) => {
+      if (
+        object.type !== 'house_surface_solid' &&
+        object.type !== 'house_linear_solid'
+      ) {
+        return false;
+      }
+      const sourceEdgeId = String(object.metadata?.sourceEdgeId ?? '');
+      if (!joinSourceEdgeId || sourceEdgeId !== joinSourceEdgeId) return false;
+      return (
+        (object.type === 'house_surface_solid' &&
+          (object.kind === 'soffit' || object.kind === 'fascia')) ||
+        (object.type === 'house_linear_solid' && object.kind === 'gutter')
+      );
+    });
+
+    expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
+    expect(preview.scene.metadata?.houseRoofTopologyValleyCount).toBe(2);
+    expect(preview.scene.metadata?.houseRoofTopologyInternalEaveHeightSegmentCount).toBe(0);
+    expect(Number(preview.scene.metadata?.houseRoofSolidExpectedCount ?? 0)).toBeGreaterThan(0);
+    expect(Number(preview.scene.metadata?.houseRoofSolidSkippedCount ?? 0)).toBe(0);
+    expect(joinEdgeEaveObjects).toHaveLength(0);
+  });
+
+  it('renders the screenshot-style mono join fixture through the ready preview path', () => {
+    const fixture = requireFixture('mono-join-screenshot');
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
+    expect(
+      preview.scene.layers
+        .flatMap((layer) => layer.objects)
+        .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
+    ).toBe(true);
+  });
+
+  it('exposes deck support diagnostics for active-side attached and detached deck contexts', () => {
+    const attachedFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_threshold_attached');
+    const detachedFixture = makeHouseFirstDeckSupportSnapshotFixture('detached_rear_near_house');
+
+    const attachedPreview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: 'est_preview',
+      snapshot: attachedFixture.snapshot,
+      draft: attachedFixture.draft,
+      moduleIndex: 0,
+    });
+    const detachedPreview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: 'est_preview',
+      snapshot: detachedFixture.snapshot,
+      draft: detachedFixture.draft,
+      moduleIndex: 0,
+    });
+
+    expect(attachedPreview.kind).toBe('ready');
+    if (attachedPreview.kind !== 'ready') return;
+    expect(attachedPreview.deckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: true,
+        resolvedClassification: 'threshold_attached',
+        deckBracketEligible: true,
+      }),
+    );
+
+    expect(detachedPreview.kind).toBe('ready');
+    if (detachedPreview.kind !== 'ready') return;
+    expect(detachedPreview.deckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: true,
+        resolvedClassification: 'ground_supported',
+        deckBracketEligible: false,
+      }),
+    );
+  });
+
+  it('keeps warning-heavy and non-relevant deck contexts visible but not eligible in preview diagnostics', () => {
+    const warningFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_warning_heavy_attached');
+    const nonRelevantFixture = makeHouseFirstDeckSupportSnapshotFixture(
+      'left_non_relevant_when_rear_active',
+    );
+
+    const warningPreview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: 'est_preview',
+      snapshot: warningFixture.snapshot,
+      draft: warningFixture.draft,
+      moduleIndex: 0,
+    });
+    const nonRelevantPreview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: 'est_preview',
+      snapshot: nonRelevantFixture.snapshot,
+      draft: nonRelevantFixture.draft,
+      moduleIndex: 0,
+    });
+
+    expect(warningPreview.kind).toBe('ready');
+    if (warningPreview.kind !== 'ready') return;
+    expect(warningPreview.deckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: true,
+        resolvedClassification: 'threshold_attached',
+        deckBracketEligible: false,
+      }),
+    );
+    expect(warningPreview.deckSupport.warningCodes).toContain('threshold_alignment_offset');
+
+    expect(nonRelevantPreview.kind).toBe('ready');
+    if (nonRelevantPreview.kind !== 'ready') return;
+    expect(nonRelevantPreview.deckSupport).toEqual(
+      expect.objectContaining({
+        activeHostSide: 'rear',
+        hasRelevantDeck: false,
+        resolvedClassification: 'none',
+        deckBracketEligible: false,
+      }),
+    );
+  });
+
+  it('builds a ready preview with house scene objects present', () => {
+    const fixture = requireFixture('mono-standard');
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+
+    const houseObjects = preview.scene.layers.find((layer) => layer.id === 'house')?.objects ?? [];
+    expect(houseObjects.length).toBeGreaterThan(0);
+  });
+
+  it('renders valid shared-house window markers and reports opening diagnostics in 3D preview metadata', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.houseFirst = {
+        openings: [
+          {
+            id: 'opening-valid',
+            label: 'Kitchen window',
+            kind: 'window',
+            wallId: 'rear',
+            widthM: '2.4',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '1.1',
+          },
+          {
+            id: 'opening-invalid',
+            label: 'Bad window',
+            kind: 'window',
+            wallId: 'rear',
+            widthM: '20',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '0.2',
+          },
+        ],
+      };
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+
+    const houseObjects = preview.scene.layers.find((layer) => layer.id === 'house')?.objects ?? [];
+    const marker = houseObjects.find(
+      (object) => object.type === 'house_surface' && object.kind === 'opening_marker',
+    );
+    const outlines = houseObjects.filter(
+      (object) =>
+        object.type === 'house_line' &&
+        object.kind === 'opening_outline' &&
+        object.metadata?.openingId === 'opening-valid',
+    );
+
+    expect(marker?.metadata?.openingId).toBe('opening-valid');
+    expect(marker?.metadata?.openingWallId).toBe('rear');
+    expect(marker?.metadata?.openingHostEdgeId).toBe('footprint-edge-3');
+    expect(marker?.metadata?.resolvedHostEdgeId).toBe('footprint-edge-3');
+    expect(outlines).toHaveLength(4);
+    expect(preview.scene.metadata?.houseOpeningCount).toBe(2);
+    expect(preview.scene.metadata?.houseOpeningValidCount).toBe(1);
+    expect(preview.scene.metadata?.houseOpeningHostEdgeResolvedCount).toBe(1);
+    expect(preview.scene.metadata?.houseOpeningHostEdgeUnresolvedCount).toBe(0);
+    expect(preview.scene.metadata?.houseOpeningRenderedMarkerCount).toBe(1);
+    expect(preview.scene.metadata?.houseOpeningSkippedInvalidCount).toBe(1);
+    expect(preview.scene.metadata?.houseOpeningUnresolvedValidCount).toBe(0);
   });
 });

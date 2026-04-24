@@ -9,6 +9,9 @@
   min-width: 0;
   height: var(--sheet-preview-height, 792px);
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .sheetStage {
@@ -19,6 +22,9 @@
   height: 792px;
   transform: translateX(-50%) scale(var(--sheet-preview-scale, 1));
   transform-origin: top center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .sheetPaper {
@@ -32,6 +38,9 @@
   color: var(--mv-sheet-text);
   font-family: var(--mv-font-sans);
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .sheetUpper {
@@ -81,6 +90,9 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
 }
 
 .sheetModuleLabelInput {
@@ -96,6 +108,9 @@
   line-height: 0.98;
   letter-spacing: -0.02em;
   color: var(--mv-sheet-heading);
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 .sheetModuleLabelInput:focus,
@@ -183,6 +198,9 @@
   padding: 8px 4px 6px 2px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .sheetInteractionError {
@@ -207,6 +225,9 @@
   right: 16px;
   z-index: 3;
   pointer-events: none;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
 }
 
 .sheetFootprintActionButton,
@@ -250,6 +271,9 @@
   background: rgba(244, 244, 239, 0.94);
   box-shadow: 0 10px 24px rgba(47, 56, 47, 0.07);
   pointer-events: auto;
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
 }
 
 .sheetFootprintToolbarField {
@@ -467,6 +491,9 @@
   font-size: 6.95pt;
   line-height: 1.3;
   color: var(--mv-sheet-muted);
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 .noteLine {
@@ -573,6 +600,9 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.96);
   box-shadow: 0 12px 24px rgba(50, 55, 47, 0.18);
+  user-select: auto;
+  -webkit-user-select: auto;
+  -webkit-touch-callout: default;
 }
 
 .overlayEditorInput {
@@ -583,6 +613,9 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--mv-sheet-heading);
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 @media print {

@@ -106,8 +106,21 @@ export type ProfileShape = "rectangular" | "c-channel" | "custom";
 export type RoofCladdingMaterial = "acrylic";
 export type HouseStoreyMode = "single_storey" | "double_storey" | "custom";
 export type HouseWallConstruction = "timber_frame";
-export type HouseRoofForm = "hipped";
-export type HouseRoofFeatureKind = "ridge" | "hip" | "valley";
+export type HouseRoofForm = "flat" | "mono" | "gable" | "hipped";
+export type HouseRoofPrimaryFallDirection = "positive_x" | "negative_x" | "positive_y" | "negative_y";
+export type HouseRoofRidgeAxis = "x" | "y";
+export type HouseRoofAppendageForm = "flat" | "mono";
+export type HouseRoofFeatureKind = "ridge" | "hip" | "valley" | "gable_end_frame";
+export type HouseDeckKind = "deck" | "landing";
+export type HouseDeckShape = "preset" | "custom";
+export type HouseDeckPresetType = "rect_attached" | "rect_detached";
+export type HouseDeckElevationMode = "ground" | "stepped" | "aligned_to_threshold";
+export type HouseDeckSurfaceMaterial = "timber_decking" | "composite" | "concrete";
+export type HouseDeckSupportClassification =
+  | "ground_supported"
+  | "threshold_attached"
+  | "mixed_or_unclear";
+export type HouseOpeningKind = "window";
 export type HouseRoofMaterial =
   | "corrugated_iron"
   | "trapezoidal_5_rib"
@@ -210,8 +223,71 @@ export type HouseModelConfig = {
   eaveHeightMm?: number | null;
   wallHeightMm?: number | null;
   roofPitchDeg?: number | null;
+  roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
+  roofRidgeAxis?: HouseRoofRidgeAxis | null;
+  openGableEndIds?: string[] | null;
+  roofAppendage?: {
+    enabled?: boolean | null;
+    form?: HouseRoofAppendageForm | null;
+    hostEdge?: AttachmentSide | null;
+    pitchDeg?: number | null;
+    dropMm?: number | null;
+  } | null;
+  decks?: HouseDeckConfig[] | null;
+  openings?: HouseOpeningConfig[] | null;
   eave?: HouseEaveConfig | null;
   attachmentStrategy?: HouseAttachmentStrategy | null;
+};
+
+export type HouseDeckConfig = {
+  id: string;
+  name?: string | null;
+  kind?: HouseDeckKind | null;
+  shape?: HouseDeckShape | null;
+  presetType?: HouseDeckPresetType | null;
+  presetRect?: {
+    widthMm: number;
+    depthMm: number;
+    centerOffsetMm: number;
+    detachedGapMm: number;
+  } | null;
+  outline?: Polygon3 | null;
+  elevationMode?: HouseDeckElevationMode | null;
+  levelOffsetMm?: number | null;
+  topSurfaceElevationMm?: number | null;
+  hostEdgeId?: string | null;
+  isAttached?: boolean | null;
+  surfaceMaterial?: HouseDeckSurfaceMaterial | null;
+  supportContext?: {
+    classification?: HouseDeckSupportClassification | null;
+    nearestHouseEdgeId?: string | null;
+    nearestHouseEdgeDistanceMm?: number | null;
+    attachmentContactLengthMm?: number | null;
+    warningCodes?: string[] | null;
+    warningMessages?: string[] | null;
+  } | null;
+  validation?: {
+    status?: "valid" | "invalid" | null;
+    codes?: string[] | null;
+    messages?: string[] | null;
+  } | null;
+};
+
+export type HouseOpeningConfig = {
+  id: string;
+  label?: string | null;
+  kind?: HouseOpeningKind | null;
+  wallId?: AttachmentSide | null;
+  hostEdgeId?: string | null;
+  widthMm?: number | null;
+  heightMm?: number | null;
+  sillHeightMm?: number | null;
+  offsetAlongWallMm?: number | null;
+  validation?: {
+    status?: "valid" | "invalid" | null;
+    codes?: string[] | null;
+    message?: string | null;
+  } | null;
 };
 
 export type AssemblyMemberProfile = {
@@ -319,6 +395,65 @@ export type RawGeometryModuleInput = {
     wallConstruction?: HouseWallConstruction | null;
     roofForm?: HouseRoofForm | null;
     roofMaterial?: HouseRoofMaterial | null;
+    roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
+    roofRidgeAxis?: HouseRoofRidgeAxis | null;
+    openGableEndIds?: string[] | null;
+    roofAppendage?: {
+      enabled?: boolean | null;
+      form?: HouseRoofAppendageForm | null;
+      hostEdge?: AttachmentSide | null;
+      pitchDeg?: string | number | null;
+      dropMm?: string | number | null;
+    } | null;
+    decks?: Array<{
+      id: string;
+      name?: string | null;
+      kind?: HouseDeckKind | null;
+      shape?: HouseDeckShape | null;
+      presetType?: HouseDeckPresetType | null;
+      presetRect?: {
+        widthMm?: string | number | null;
+        depthMm?: string | number | null;
+        centerOffsetMm?: string | number | null;
+        detachedGapMm?: string | number | null;
+      } | null;
+      outline?: HouseFootprintPolygonPointInput[] | null;
+      elevationMode?: HouseDeckElevationMode | null;
+      levelOffsetMm?: string | number | null;
+      topSurfaceElevationMm?: number | null;
+      hostEdgeId?: string | null;
+      isAttached?: boolean | null;
+      surfaceMaterial?: HouseDeckSurfaceMaterial | null;
+      supportContext?: {
+        classification?: HouseDeckSupportClassification | null;
+        nearestHouseEdgeId?: string | null;
+        nearestHouseEdgeDistanceMm?: number | null;
+        attachmentContactLengthMm?: number | null;
+        warningCodes?: string[] | null;
+        warningMessages?: string[] | null;
+      } | null;
+      validation?: {
+        status?: "valid" | "invalid" | null;
+        codes?: string[] | null;
+        messages?: string[] | null;
+      } | null;
+    }> | null;
+    openings?: Array<{
+      id: string;
+      label?: string | null;
+      kind?: HouseOpeningKind | null;
+      wallId?: AttachmentSide | null;
+      hostEdgeId?: string | null;
+      widthMm?: string | number | null;
+      heightMm?: string | number | null;
+      sillHeightMm?: string | number | null;
+      offsetAlongWallMm?: string | number | null;
+      validation?: {
+        status?: "valid" | "invalid" | null;
+        codes?: string[] | null;
+        message?: string | null;
+      } | null;
+    }> | null;
     attachmentStrategy?: HouseAttachmentStrategy | null;
     eaveHeightM?: string | number | null;
     wallHeightM?: string | number | null;
@@ -577,7 +712,7 @@ export type HouseRoofMaterialVisual3D = {
   metadata?: GeometryMetadata;
 };
 
-export type HouseSurfaceSolidKind = "wall" | "roof" | "soffit" | "fascia";
+export type HouseSurfaceSolidKind = "wall" | "roof" | "soffit" | "fascia" | "deck";
 export type HouseLinearSolidKind = "gutter";
 
 export type RenderMesh3D = {
@@ -611,6 +746,45 @@ export type HouseEnvelopeSolids3D = {
   linearSolids: HouseLinearSolid3D[];
 };
 
+export type HouseDeck3D = {
+  id: string;
+  name?: string | null;
+  kind: HouseDeckKind;
+  shape: HouseDeckShape;
+  presetType?: HouseDeckPresetType | null;
+  presetRect?: {
+    widthMm: number;
+    depthMm: number;
+    centerOffsetMm: number;
+    detachedGapMm: number;
+  } | null;
+  boundary: Polygon3;
+  plane: Plane3;
+  topSurfaceElevationMm: number;
+  elevationMode: HouseDeckElevationMode;
+  hostEdgeId?: string | null;
+  isAttached: boolean;
+  surfaceMaterial: HouseDeckSurfaceMaterial;
+  supportClassification: HouseDeckSupportClassification;
+  metadata?: GeometryMetadata;
+};
+
+export type HouseOpening3D = {
+  id: string;
+  label?: string | null;
+  kind: HouseOpeningKind;
+  wallId: AttachmentSide;
+  hostEdgeId?: string | null;
+  widthMm: number;
+  heightMm: number;
+  sillHeightMm: number;
+  offsetAlongWallMm: number;
+  validationStatus: "valid" | "invalid";
+  validationCodes?: string[] | null;
+  validationMessage?: string | null;
+  metadata?: GeometryMetadata;
+};
+
 export type HouseModel3D = {
   footprint: Polygon3;
   wallSegments: HouseWallSegment3D[];
@@ -619,6 +793,8 @@ export type HouseModel3D = {
   roofFlashings?: RoofFlashing3D[] | null;
   roofMaterial?: HouseRoofMaterial | null;
   roofMaterialVisuals?: HouseRoofMaterialVisual3D[] | null;
+  decks?: HouseDeck3D[] | null;
+  openings?: HouseOpening3D[] | null;
   solids?: HouseEnvelopeSolids3D | null;
   eave: HouseEaveGeometry3D;
   attachmentTarget?: HouseAttachmentTarget3D | null;
@@ -693,6 +869,7 @@ export type GeometryPlanHouseSurfaceKind =
   | "roof"
   | "soffit"
   | "fascia"
+  | "deck"
   | "attachment_zone";
 
 export type GeometryPlanHouseLineKind =
@@ -797,6 +974,7 @@ export type GeometrySectionHouseSurfaceKind =
   | "roof"
   | "soffit"
   | "fascia"
+  | "deck"
   | "attachment_zone";
 
 export type GeometrySectionHouseLineKind =
@@ -908,12 +1086,15 @@ export type ViewerSceneHouseSurfaceKind =
   | "roof"
   | "soffit"
   | "fascia"
+  | "deck"
+  | "opening_marker"
   | "attachment_zone"
   | "attachment_plane";
 export type ViewerSceneHouseLineKind =
   | "gutter"
   | "roof_outline"
   | "roof_feature"
+  | "opening_outline"
   | "attachment_target";
 
 export type ViewerSceneMemberPrismObject = {

@@ -70,7 +70,7 @@ describe('DesignWorkbenchFixtureClient', () => {
     });
 
     expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Reset');
+    expect(rendered.container.textContent).toContain('Fit view');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
     clickButtonByText(rendered.container, 'Section');

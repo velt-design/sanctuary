@@ -44,6 +44,19 @@ function makeFrontHouseFootprint(input: { offsetX: number; width: number; facade
   ];
 }
 
+function makeScreenshotStyleUHouseFootprint(): Polygon3 {
+  return [
+    { x: -2800, y: 7200, z: 0 },
+    { x: 8800, y: 7200, z: 0 },
+    { x: 8800, y: 400, z: 0 },
+    { x: 7000, y: 400, z: 0 },
+    { x: 7000, y: 5400, z: 0 },
+    { x: -1000, y: 5400, z: 0 },
+    { x: -1000, y: 400, z: 0 },
+    { x: -2800, y: 400, z: 0 },
+  ];
+}
+
 function makeLeftHouseFootprint(input: { offsetY: number; width: number; facadeX: number; depth: number }): Polygon3 {
   return [
     { x: input.facadeX - input.depth, y: input.offsetY, z: 0 },
@@ -76,6 +89,36 @@ function pointsForViewerObject(object: ViewerSceneObject) {
     return object.renderMesh?.vertices ?? [object.centerline.start, object.centerline.end];
   }
   return object.boundary;
+}
+
+function polygonIsHorizontal(boundary: Polygon3): boolean {
+  const z = boundary[0]?.z;
+  return typeof z === "number" && boundary.every((candidate) => Math.abs(candidate.z - z) <= 1e-6);
+}
+
+function pointDistanceToSegment2D(candidate: { x: number; y: number }, start: { x: number; y: number }, end: { x: number; y: number }): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= 1e-6) return Math.hypot(candidate.x - start.x, candidate.y - start.y);
+  const ratio = Math.min(
+    Math.max(((candidate.x - start.x) * dx + (candidate.y - start.y) * dy) / lengthSq, 0),
+    1,
+  );
+  const projectedX = start.x + dx * ratio;
+  const projectedY = start.y + dy * ratio;
+  return Math.hypot(candidate.x - projectedX, candidate.y - projectedY);
+}
+
+function sourceEdgeLineFromFootprint(sourceEdgeId: string, footprint: Polygon3) {
+  const match = /^footprint-edge-(\d+)$/.exec(sourceEdgeId);
+  if (!match) return null;
+  const index = Number(match[1]) - 1;
+  if (!Number.isInteger(index) || index < 0 || index >= footprint.length) return null;
+  return {
+    start: footprint[index]!,
+    end: footprint[(index + 1) % footprint.length]!,
+  };
 }
 
 function addHouseModelContext(
@@ -216,11 +259,12 @@ describe("buildViewerSceneModel", () => {
         "house_surface_solid:soffit",
         "house_surface_solid:fascia",
         "house_linear_solid:gutter",
-        "house_surface:attachment_zone",
         "house_line:roof_feature",
         "house_line:attachment_target",
       ]),
     );
+    expect(objectKinds).not.toContain("house_surface:attachment_zone");
+    expect(objectKinds).not.toContain("house_surface:attachment_plane");
     expect(objects.some((object) => object.id === "house-wall-plane")).toBe(false);
     expect(objects.some((object) => object.id === "house-fascia-line")).toBe(false);
     expect(objects.some((object) => object.id === "house-roof-edge-line")).toBe(false);
@@ -250,7 +294,8 @@ describe("buildViewerSceneModel", () => {
     const houseRoofFlashing = roofFlashingLayer?.objects.find(
       (object) =>
         object.type === "roof_flashing" &&
-        object.metadata?.source === "house_model",
+        object.metadata?.source === "house_model" &&
+        typeof object.metadata?.sourceFeatureId === "string",
     );
     expect(roofFlashingLayer?.visibleByDefault).toBe(true);
     expect(houseRoofFlashing).toMatchObject({
@@ -267,6 +312,107 @@ describe("buildViewerSceneModel", () => {
       throw new Error("Expected house roof flashing object.");
     }
     expect(houseRoofFlashing.wings).toHaveLength(2);
+  });
+
+  it("renders valid window markers on supported house walls and skips invalid openings", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const config = addHouseModelContext(fixture.config, {
+      lengthMm: 7200,
+      eaveHeightMm: 2400,
+      strategy: "fascia_under_gutter",
+    });
+    config.houseContext.model = {
+      ...config.houseContext.model!,
+      openings: [
+        {
+          id: "window-rear",
+          label: "Rear window",
+          kind: "window",
+          wallId: "rear",
+          hostEdgeId: "footprint-edge-1",
+          widthMm: 2400,
+          heightMm: 1200,
+          sillHeightMm: 900,
+          offsetAlongWallMm: 1100,
+          validation: {
+            status: "valid",
+            codes: [],
+            message: null,
+          },
+        },
+        {
+          id: "window-left",
+          label: "Left window",
+          kind: "window",
+          wallId: "left",
+          hostEdgeId: "footprint-edge-4",
+          widthMm: 1800,
+          heightMm: 1200,
+          sillHeightMm: 900,
+          offsetAlongWallMm: 300,
+          validation: {
+            status: "valid",
+            codes: [],
+            message: null,
+          },
+        },
+        {
+          id: "window-invalid",
+          label: "Invalid window",
+          kind: "window",
+          wallId: "rear",
+          hostEdgeId: "footprint-edge-1",
+          widthMm: 1200,
+          heightMm: 1200,
+          sillHeightMm: 900,
+          offsetAlongWallMm: 200,
+          validation: {
+            status: "invalid",
+            codes: ["overlapping_openings"],
+            message: "Windows on the same wall cannot overlap.",
+          },
+        },
+      ],
+    };
+
+    const solveResult = solveAssembly3D(config);
+    if (!solveResult.ok) {
+      throw new Error(solveResult.error);
+    }
+
+    const scene = buildViewerSceneModel(solveResult.value);
+    const houseObjects = scene.layers.find((layer) => layer.id === "house")?.objects ?? [];
+    const markerIds = houseObjects
+      .filter((object) => object.type === "house_surface" && object.kind === "opening_marker")
+      .map((object) => String(object.metadata?.openingId ?? ""));
+    const rearMarker = houseObjects.find(
+      (object) =>
+        object.type === "house_surface" &&
+        object.kind === "opening_marker" &&
+        object.metadata?.openingId === "window-rear",
+    );
+    const rearOutlineCount = houseObjects.filter(
+      (object) =>
+        object.type === "house_line" &&
+        object.kind === "opening_outline" &&
+        object.metadata?.openingId === "window-rear",
+    ).length;
+
+    expect(markerIds).toEqual(expect.arrayContaining(["window-rear", "window-left"]));
+    expect(markerIds).not.toContain("window-invalid");
+    expect(rearMarker?.metadata).toMatchObject({
+      openingWallId: "rear",
+      openingHostEdgeId: "footprint-edge-1",
+      resolvedHostEdgeId: "footprint-edge-1",
+    });
+    expect(rearOutlineCount).toBe(4);
+    expect(scene.metadata?.houseOpeningCount).toBe(3);
+    expect(scene.metadata?.houseOpeningValidCount).toBe(2);
+    expect(scene.metadata?.houseOpeningHostEdgeResolvedCount).toBe(2);
+    expect(scene.metadata?.houseOpeningHostEdgeUnresolvedCount).toBe(0);
+    expect(scene.metadata?.houseOpeningRenderedMarkerCount).toBe(2);
+    expect(scene.metadata?.houseOpeningSkippedInvalidCount).toBe(1);
+    expect(scene.metadata?.houseOpeningUnresolvedValidCount).toBe(0);
   });
 
   it("renders moved semantic house attachment targets at the projected facade", () => {
@@ -719,6 +865,160 @@ describe("buildViewerSceneModel", () => {
     });
 
     const points = houseObjects.flatMap(pointsForViewerObject);
+    expect(points.every((point) => Number.isFinite(point.x))).toBe(true);
+    expect(points.every((point) => Number.isFinite(point.y))).toBe(true);
+    expect(points.every((point) => Number.isFinite(point.z))).toBe(true);
+  });
+
+  it("renders screenshot-style mono join house geometry without fallback outlines", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const config = structuredClone(fixture.config);
+    config.dimensions.lengthMm = 5000;
+    config.dimensions.projectionMm = 5000;
+    config.connection = {
+      ...config.connection,
+      type: "fascia",
+      attachmentSide: "front",
+    };
+    config.houseContext = {
+      ...config.houseContext,
+      attachmentStrategy: "fascia_under_gutter",
+      model: {
+        footprint: makeScreenshotStyleUHouseFootprint(),
+        storeyMode: "single_storey",
+        wallConstruction: "timber_frame",
+        roofForm: "mono",
+        roofMaterial: "trapezoidal_5_rib",
+        eaveHeightMm: 2500,
+        wallHeightMm: 2500,
+        roofPitchDeg: 20,
+        roofPrimaryFallDirection: "positive_y",
+        roofRidgeAxis: "x",
+        attachmentStrategy: "fascia_under_gutter",
+        eave: {
+          soffitDepthMm: 450,
+          fasciaHeightMm: 300,
+          gutterWidthMm: 125,
+          gutterDepthMm: 90,
+          gutterProjectionMm: 125,
+          eaveOverhangMm: 1000,
+        },
+      },
+    };
+
+    const solveResult = solveAssembly3D(config);
+    if (!solveResult.ok) {
+      throw new Error(solveResult.error);
+    }
+
+    const scene = buildViewerSceneModel(solveResult.value);
+    const houseObjects =
+      scene.layers.find((layer) => layer.id === "house")?.objects ?? [];
+    const joinSourceEdgeId =
+      houseObjects.find(
+        (object) => object.type === "house_line" && object.kind === "attachment_target",
+      )?.metadata?.sourceEdgeId ?? null;
+    const joinEdgeEaveObjects = houseObjects.filter((object) => {
+      if (
+        object.type !== "house_surface_solid" &&
+        object.type !== "house_linear_solid"
+      ) {
+        return false;
+      }
+      const sourceEdgeId = String(object.metadata?.sourceEdgeId ?? "");
+      if (!joinSourceEdgeId || sourceEdgeId !== joinSourceEdgeId) return false;
+      return (
+        (object.type === "house_surface_solid" &&
+          (object.kind === "soffit" || object.kind === "fascia")) ||
+        (object.type === "house_linear_solid" && object.kind === "gutter")
+      );
+    });
+    const roofMaterialObjects =
+      scene.layers.find((layer) => layer.id === "house_roof_materials")?.objects ?? [];
+    const roofFlashingObjects =
+      scene.layers.find((layer) => layer.id === "roof_flashings")?.objects ?? [];
+    const soffitObjects = houseObjects.filter(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "soffit",
+    );
+    const fasciaObjects = houseObjects.filter(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "fascia",
+    );
+    const gutterObjects = houseObjects.filter(
+      (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
+        object.type === "house_linear_solid" && object.kind === "gutter",
+    );
+    const monoPerimeterFlashings = roofFlashingObjects.filter(
+      (object): object is Extract<ViewerSceneObject, { type: "roof_flashing" }> =>
+        object.type === "roof_flashing" &&
+        typeof object.metadata?.flashingRole === "string",
+    );
+
+    expect(solveResult.value.house.model?.metadata).toMatchObject({
+      roofForm: "mono",
+      roofGeometry: "footprint_mono",
+      roofQaStatus: "valid",
+      roofPrimaryFallDirection: "positive_y",
+    });
+    expect(
+      houseObjects.some(
+        (object) =>
+          object.type === "house_surface_solid" && object.kind === "roof",
+      ),
+    ).toBe(true);
+    expect(
+      houseObjects.some(
+        (object) =>
+          object.type === "house_line" && object.kind === "roof_outline",
+      ),
+    ).toBe(false);
+    expect(joinEdgeEaveObjects).toHaveLength(0);
+    expect(soffitObjects.length).toBeGreaterThan(0);
+    expect(fasciaObjects).toHaveLength(1);
+    expect(gutterObjects).toHaveLength(1);
+    expect(soffitObjects.every((object) => !polygonIsHorizontal(object.boundary))).toBe(true);
+    expect(monoPerimeterFlashings.map((object) => object.metadata?.sourceEdgeId)).toEqual([
+      "footprint-edge-2",
+      "footprint-edge-3",
+      "footprint-edge-4",
+      "footprint-edge-5",
+      "footprint-edge-6",
+      "footprint-edge-7",
+      "footprint-edge-8",
+    ]);
+    expect(
+      monoPerimeterFlashings.find(
+        (object) => object.metadata?.sourceEdgeId === "footprint-edge-5",
+      )?.metadata,
+    ).toMatchObject({
+      flashingRole: "house_apron",
+      flashingTreatment: "house_perimeter_folded",
+      houseRoofPerimeterRole: "house_apron_edge",
+      position: "house_apron",
+    });
+    const screenshotFootprint = makeScreenshotStyleUHouseFootprint();
+    expect(monoPerimeterFlashings.every((object) => object.wings.length === 2)).toBe(true);
+    expect(
+      monoPerimeterFlashings.every((object) => {
+        const sourceEdgeId = String(object.metadata?.sourceEdgeId ?? "");
+        const sourceEdge = sourceEdgeLineFromFootprint(sourceEdgeId, screenshotFootprint);
+        if (!sourceEdge) return false;
+        return object.wings.every((wing) =>
+          wing.boundary.every(
+            (candidate) => pointDistanceToSegment2D(candidate, sourceEdge.start, sourceEdge.end) <= 1600,
+          ),
+        );
+      }),
+    ).toBe(true);
+    expect(roofMaterialObjects.length).toBeGreaterThan(0);
+    expect(scene.metadata).toMatchObject({
+      houseRoofQaStatus: "valid",
+      houseRoofSolidSkippedCount: 0,
+    });
+
+    const points = [...houseObjects, ...roofMaterialObjects].flatMap(pointsForViewerObject);
+    expect(points.length).toBeGreaterThan(0);
     expect(points.every((point) => Number.isFinite(point.x))).toBe(true);
     expect(points.every((point) => Number.isFinite(point.y))).toBe(true);
     expect(points.every((point) => Number.isFinite(point.z))).toBe(true);

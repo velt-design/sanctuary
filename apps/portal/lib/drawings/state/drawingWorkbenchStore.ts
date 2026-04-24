@@ -17,6 +17,18 @@ import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/pla
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
+import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
+import {
+  buildWorkbenchDeckSupportDiagnostic,
+  resolveWorkbenchDeckSupportActiveSide,
+  type WorkbenchDeckSupportDiagnostic,
+} from './deckSupportDiagnostics';
+import type {
+  HouseFirstMigrationWarning,
+  HouseModel,
+  PergolaModel,
+  WorkbenchProjectModel,
+} from './houseFirstWorkbenchModel';
 
 export type DrawingWorkbenchModuleEntry = {
   id: string;
@@ -28,11 +40,20 @@ export type DrawingWorkbenchModuleEntry = {
   sectionModel: ModuleSectionModel | null;
 };
 
+export type WorkbenchDeckInteractionDiagnostic = {
+  selectedDeckType: 'none' | 'attached_preset_rect' | 'detached_preset_rect' | 'custom_outline' | 'preset_unresolved';
+  dragEligible: boolean;
+  dragReason: string | null;
+  hostEdgeResolvable: boolean;
+  relationshipDimensionsAvailable: boolean;
+};
+
 export type DrawingWorkbenchStore = {
   persisted: {
     snapshot: Record<string, unknown> | null;
     ignoreModuleResults: boolean;
     modules: DrawingWorkbenchModuleEntry[];
+    projectModel: WorkbenchProjectModel;
   };
   ui: DrawingWorkbenchUiState;
   derived: {
@@ -44,14 +65,93 @@ export type DrawingWorkbenchStore = {
     activePlanModel: ModulePlanModel | null;
     activeSectionModel: ModuleSectionModel | null;
     activeModuleLabel: string;
+    house: HouseModel | null;
+    houseCount: number;
+    decks: HouseModel['decks'];
+    openings: HouseModel['openings'];
+    activeDeckId: string | null;
+    activeDeck: HouseModel['decks'][number] | null;
+    activeOpeningId: string | null;
+    activeOpening: HouseModel['openings'][number] | null;
+    deckCount: number;
+    openingCount: number;
+    invalidOpeningCount: number;
+    attachedDeckCount: number;
+    detachedDeckCount: number;
+    invalidDeckCount: number;
+    deckSupportWarningCount: number;
+    activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
+    activeDeckInteraction: WorkbenchDeckInteractionDiagnostic | null;
+    roofForm: HouseModel['roof']['form'] | null;
+    roofValidationStatus: HouseModel['roof']['validation']['status'] | null;
+    roofValidationCode: HouseModel['roof']['validation']['code'] | null;
+    roofValidationMessage: string | null;
+    roofAppendageEnabled: boolean;
+    roofAppendageStatus: 'valid' | 'invalid' | 'off';
+    pergolas: PergolaModel[];
+    activePergolaId: string | null;
+    activePergola: PergolaModel | null;
+    migrationWarnings: HouseFirstMigrationWarning[];
+    migrationWarningCount: number;
+    houseIsLowConfidence: boolean;
     status: ModuleViewsStatus;
   };
 };
+
+function buildDeckInteractionDiagnostic(
+  deck: HouseModel['decks'][number] | null,
+): WorkbenchDeckInteractionDiagnostic | null {
+  if (!deck) return null;
+  const hostEdgeResolvable =
+    deck.hostEdgeId === 'rear' ||
+    deck.hostEdgeId === 'front' ||
+    deck.hostEdgeId === 'left' ||
+    deck.hostEdgeId === 'right';
+
+  if (deck.shape === 'custom') {
+    return {
+      selectedDeckType: 'custom_outline',
+      dragEligible: false,
+      dragReason: 'Custom deck dragging is deferred. Use dimensions or redraw the outline.',
+      hostEdgeResolvable,
+      relationshipDimensionsAvailable: false,
+    };
+  }
+
+  if (!deck.isAttached || deck.presetType === 'rect_detached') {
+    return {
+      selectedDeckType: 'detached_preset_rect',
+      dragEligible: false,
+      dragReason: 'Drag and snap currently apply only to attached preset rectangular decks.',
+      hostEdgeResolvable,
+      relationshipDimensionsAvailable: false,
+    };
+  }
+
+  if (!hostEdgeResolvable || deck.presetType !== 'rect_attached' || !deck.presetRect) {
+    return {
+      selectedDeckType: 'preset_unresolved',
+      dragEligible: false,
+      dragReason: 'This attached deck needs a resolvable host edge before drag and relationship dims are available.',
+      hostEdgeResolvable,
+      relationshipDimensionsAvailable: false,
+    };
+  }
+
+  return {
+    selectedDeckType: 'attached_preset_rect',
+    dragEligible: true,
+    dragReason: 'Drag the selected deck body to move it along the host edge, or click dimensions to edit.',
+    hostEdgeResolvable: true,
+    relationshipDimensionsAvailable: true,
+  };
+}
 
 function buildGeometryDerivedModels(input: {
   drawingModule: EstimateDrawingModule;
   moduleInput: EstimateDrawingModule['input'];
   moduleResult: EstimateDrawingModule['result'];
+  sharedHouse: HouseModel | null;
 }): {
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
@@ -63,6 +163,7 @@ function buildGeometryDerivedModels(input: {
     moduleId: input.drawingModule.id,
     module: input.moduleInput,
     result: input.moduleResult,
+    sharedHouse: input.sharedHouse,
   });
   const normalized = normalizeGeometryConfig(rawInput);
   if (!normalized.ok) {
@@ -107,7 +208,17 @@ export function buildDrawingWorkbenchStore(input: {
   const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
-  const ui = normalizeDrawingWorkbenchUiState(input.ui, drawingModules.length);
+  const projectModel = buildHouseFirstWorkbenchProjectModel({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    ignoreModuleResults: input.ignoreModuleResults,
+  });
+  const ui = normalizeDrawingWorkbenchUiState(input.ui, {
+    moduleCount: drawingModules.length,
+    pergolaIds: projectModel.pergolas.map((pergola) => pergola.id),
+    deckIds: projectModel.house?.decks.map((deck) => deck.id) ?? [],
+    openingIds: projectModel.house?.openings.map((opening) => opening.id) ?? [],
+  });
   const modules = drawingModules.map((drawingModule, index) => {
     const label = input.moduleLabels?.[index] ?? drawingModule.label;
     const geometryModule = coerceHiddenWorkbenchGableBaseline(drawingModule.input);
@@ -122,10 +233,11 @@ export function buildDrawingWorkbenchStore(input: {
       result: resolved.ok ? resolved.moduleResult : null,
     };
     const geometryModels = resolved.ok
-      ? buildGeometryDerivedModels({
+        ? buildGeometryDerivedModels({
           drawingModule: resolvedDrawingModule,
           moduleInput: geometryModule,
           moduleResult: resolved.moduleResult,
+          sharedHouse: projectModel.house,
         })
       : {
           planModel: null,
@@ -151,6 +263,11 @@ export function buildDrawingWorkbenchStore(input: {
         moduleLabel: label,
         planModel: geometryModels.planModel,
         canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
+        house: projectModel.house,
+        activeHouseSelection: ui.activeHouseSelection,
+        includeHouseFirstOverlay: ui.workbenchMode === 'house',
+        moduleLengthM: geometryModule.lengthM,
+        moduleProjectionM: geometryModule.projectionM,
       }),
       planModel: geometryModels.planModel,
       sectionModel: geometryModels.sectionModel,
@@ -158,12 +275,39 @@ export function buildDrawingWorkbenchStore(input: {
   });
 
   const activeModule = modules[ui.activeModuleIndex] ?? null;
+  const activePergola =
+    projectModel.pergolas.find((pergola) => pergola.id === ui.activePergolaId) ??
+    projectModel.pergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
+    projectModel.pergolas[0] ??
+    null;
+  const decks = projectModel.house?.decks ?? [];
+  const openings = projectModel.house?.openings ?? [];
+  const activeDeck =
+    ui.workbenchMode === 'house' && ui.activeHouseSelection.kind === 'deck'
+      ? decks.find((deck) => deck.id === ui.activeHouseSelection.targetId) ?? null
+      : null;
+  const activeOpening =
+    ui.workbenchMode === 'house' && ui.activeHouseSelection.kind === 'opening'
+      ? openings.find((opening) => opening.id === ui.activeHouseSelection.targetId) ?? null
+      : null;
+  const deckSupportWarningCount = decks.reduce(
+    (sum, deck) => sum + deck.supportContext.warningCodes.length,
+    0,
+  );
+  const activeDeckSupport = activeModule
+    ? buildWorkbenchDeckSupportDiagnostic({
+        activeHostSide: resolveWorkbenchDeckSupportActiveSide(activeModule.assemblyModel.moduleInput),
+        decks,
+      })
+    : null;
+  const activeDeckInteraction = buildDeckInteractionDiagnostic(activeDeck);
 
   return {
     persisted: {
       snapshot: effectiveSnapshot,
       ignoreModuleResults: Boolean(input.ignoreModuleResults),
       modules,
+      projectModel,
     },
     ui,
     derived: {
@@ -175,6 +319,39 @@ export function buildDrawingWorkbenchStore(input: {
       activePlanModel: activeModule?.planModel ?? null,
       activeSectionModel: activeModule?.sectionModel ?? null,
       activeModuleLabel: activeModule?.label ?? 'Module',
+      house: projectModel.house,
+      houseCount: projectModel.house ? 1 : 0,
+      decks,
+      openings,
+      activeDeckId: activeDeck?.id ?? null,
+      activeDeck,
+      activeOpeningId: activeOpening?.id ?? null,
+      activeOpening,
+      deckCount: decks.length,
+      openingCount: openings.length,
+      invalidOpeningCount: openings.filter((opening) => opening.validation.status === 'invalid').length,
+      attachedDeckCount: decks.filter((deck) => deck.isAttached).length,
+      detachedDeckCount: decks.filter((deck) => !deck.isAttached).length,
+      invalidDeckCount: decks.filter((deck) => deck.validation.status === 'invalid').length,
+      deckSupportWarningCount,
+      activeDeckSupport,
+      activeDeckInteraction,
+      roofForm: projectModel.house?.roof.form ?? null,
+      roofValidationStatus: projectModel.house?.roof.validation.status ?? null,
+      roofValidationCode: projectModel.house?.roof.validation.code ?? null,
+      roofValidationMessage: projectModel.house?.roof.validation.message ?? null,
+      roofAppendageEnabled: Boolean(projectModel.house?.roof.appendage.enabled),
+      roofAppendageStatus: projectModel.house?.roof.appendage.enabled
+        ? projectModel.house?.roof.validation.code === 'invalid_appendage'
+          ? 'invalid'
+          : 'valid'
+        : 'off',
+      pergolas: projectModel.pergolas,
+      activePergolaId: activePergola?.id ?? null,
+      activePergola,
+      migrationWarnings: projectModel.warnings,
+      migrationWarningCount: projectModel.warnings.length,
+      houseIsLowConfidence: Boolean(projectModel.house?.lowConfidence),
       status:
         ui.activeView === 'section'
           ? activeModule?.sectionModel

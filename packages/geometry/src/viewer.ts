@@ -21,6 +21,7 @@ import type {
   ViewerSceneRoofCladdingPanelObject,
   ViewerSceneRoofFlashingObject,
   ViewerSceneRoofPlaneObject,
+  Vector3,
 } from "./contracts";
 import {
   GEOMETRY_EPSILON,
@@ -29,6 +30,7 @@ import {
   normalizeVector,
   planeFromPoints,
   polygonArea,
+  subtractPoints,
 } from "./math3d";
 
 const MIN_VIEWER_HOUSE_SURFACE_AREA_MM2 = 1;
@@ -214,6 +216,26 @@ function pointFromOrigin(
     y: origin.y + xAxis.y * xScale + yAxis.y * yScale,
     z: origin.z + xAxis.z * xScale + yAxis.z * yScale,
   };
+}
+
+function offsetPointAlongVector(
+  origin: Point3,
+  vector: Vector3,
+  distanceMm: number,
+): Point3 {
+  return {
+    x: origin.x + vector.x * distanceMm,
+    y: origin.y + vector.y * distanceMm,
+    z: origin.z + vector.z * distanceMm,
+  };
+}
+
+function offsetPolygonAlongNormal(
+  boundary: Polygon3,
+  normal: Vector3,
+  distanceMm: number,
+): Polygon3 {
+  return boundary.map((point) => offsetPointAlongVector(point, normal, distanceMm));
 }
 
 function buildHouseWallBoundary(assembly: Assembly3D, plane: Plane3): Polygon3 {
@@ -552,6 +574,109 @@ function buildHouseRoofOutlineObjects(
     .filter((object): object is ViewerSceneHouseLineObject => object !== null);
 }
 
+function resolveWindowHostWallSegment(input: {
+  model: NonNullable<Assembly3D["house"]["model"]>;
+  hostEdgeId: string | null | undefined;
+}): NonNullable<Assembly3D["house"]["model"]>["wallSegments"][number] | null {
+  const hostEdgeId =
+    typeof input.hostEdgeId === "string" && input.hostEdgeId.trim().length > 0
+      ? input.hostEdgeId.trim()
+      : null;
+  if (!hostEdgeId) return null;
+  return (
+    input.model.wallSegments.find((segment) => {
+      if (segment.metadata?.houseWallMode === "open_gable_frame") return false;
+      return segment.sourceEdgeId === hostEdgeId;
+    }) ?? null
+  );
+}
+
+function buildHouseOpeningMarkerObjects(
+  model: NonNullable<Assembly3D["house"]["model"]>,
+): ViewerSceneObject[] {
+  const objects: ViewerSceneObject[] = [];
+  for (const opening of model.openings ?? []) {
+    if (opening.kind !== "window" || opening.validationStatus !== "valid") continue;
+    const wallSegment = resolveWindowHostWallSegment({
+      model,
+      hostEdgeId: opening.hostEdgeId,
+    });
+    if (!wallSegment) continue;
+    const widthMm = Math.max(0, opening.widthMm);
+    const heightMm = Math.max(0, opening.heightMm);
+    if (widthMm <= GEOMETRY_EPSILON || heightMm <= GEOMETRY_EPSILON) continue;
+
+    const wallAxis = normalizeVector(subtractPoints(wallSegment.line.end, wallSegment.line.start));
+    const verticalAxis = normalizeVector(wallSegment.plane.yAxis);
+    const normal = normalizeVector(wallSegment.plane.normal);
+    if (
+      magnitude(wallAxis) <= GEOMETRY_EPSILON ||
+      magnitude(verticalAxis) <= GEOMETRY_EPSILON ||
+      magnitude(normal) <= GEOMETRY_EPSILON
+    ) {
+      continue;
+    }
+
+    const baseStart = offsetPointAlongVector(
+      wallSegment.line.start,
+      wallAxis,
+      Math.max(0, opening.offsetAlongWallMm),
+    );
+    const lowerStart = offsetPointAlongVector(baseStart, verticalAxis, Math.max(0, opening.sillHeightMm));
+    const lowerEnd = offsetPointAlongVector(lowerStart, wallAxis, widthMm);
+    const upperEnd = offsetPointAlongVector(lowerEnd, verticalAxis, heightMm);
+    const upperStart = offsetPointAlongVector(lowerStart, verticalAxis, heightMm);
+    const markerBoundary = offsetPolygonAlongNormal(
+      [lowerStart, lowerEnd, upperEnd, upperStart],
+      normal,
+      4,
+    );
+    const markerPlane = planeFromPolygon(markerBoundary);
+    if (!markerPlane) continue;
+
+    const metadata = {
+      ...(opening.metadata ?? {}),
+      openingId: opening.id,
+      openingLabel: opening.label ?? opening.id,
+      openingWallId: opening.wallId,
+      openingHostEdgeId: opening.hostEdgeId ?? null,
+      sourceWallId: wallSegment.id,
+      resolvedHostEdgeId: wallSegment.sourceEdgeId ?? null,
+      openingValidationStatus: opening.validationStatus,
+      openingValidationCodes: opening.validationCodes?.join(",") ?? null,
+      openingValidationMessage: opening.validationMessage ?? null,
+    };
+
+    const surface = buildHouseSurfaceObject({
+      id: `${opening.id}-marker`,
+      sourceId: opening.id,
+      kind: "opening_marker",
+      boundary: markerBoundary,
+      plane: markerPlane,
+      metadata,
+    });
+    if (surface) objects.push(surface);
+
+    const edges: Array<[Point3, Point3]> = [
+      [markerBoundary[0]!, markerBoundary[1]!],
+      [markerBoundary[1]!, markerBoundary[2]!],
+      [markerBoundary[2]!, markerBoundary[3]!],
+      [markerBoundary[3]!, markerBoundary[0]!],
+    ];
+    for (const [index, [start, end]] of edges.entries()) {
+      const outline = buildHouseLineObject({
+        id: `${opening.id}-outline-${index + 1}`,
+        sourceId: opening.id,
+        kind: "opening_outline",
+        line: { start, end },
+        metadata,
+      });
+      if (outline) objects.push(outline);
+    }
+  }
+  return objects;
+}
+
 function buildHouseModelObjects(
   assembly: Assembly3D,
 ): ViewerSceneObject[] | null {
@@ -596,6 +721,7 @@ function buildHouseModelObjects(
     }
   } else {
     for (const wall of model.wallSegments) {
+      if (wall.metadata?.houseWallMode === "open_gable_frame") continue;
       const object = buildHouseSurfaceObject({
         id: wall.id,
         sourceId: wall.id,
@@ -654,6 +780,18 @@ function buildHouseModelObjects(
       if (object) objects.push(object);
     }
 
+    for (const deck of model.decks ?? []) {
+      const object = buildHouseSurfaceObject({
+        id: deck.id,
+        sourceId: deck.id,
+        kind: "deck",
+        boundary: deck.boundary,
+        plane: deck.plane,
+        metadata: deck.metadata,
+      });
+      if (object) objects.push(object);
+    }
+
     for (const [index, gutterLine] of (model.eave.gutterLines ?? []).entries()) {
       const object = buildHouseLineObject({
         id: `house-gutter-line-${index + 1}`,
@@ -670,6 +808,7 @@ function buildHouseModelObjects(
   }
 
   objects.push(...buildHouseRoofOutlineObjects(model));
+  objects.push(...buildHouseOpeningMarkerObjects(model));
 
   for (const feature of model.roofFeatures ?? []) {
     const object = buildHouseLineObject({
@@ -698,41 +837,6 @@ function buildHouseModelObjects(
       },
     });
     if (object) objects.push(object);
-  }
-  if (target?.zone?.boundary && target.zone.plane) {
-    const object = buildHouseSurfaceObject({
-      id: "house-attachment-target-zone",
-      kind: "attachment_zone",
-      boundary: target.zone.boundary,
-      plane: target.zone.plane,
-      metadata: {
-        strategy: target.strategy,
-        sourceEdgeId: target.sourceEdgeId ?? null,
-        topZMm: target.zone.topZMm ?? null,
-        bottomZMm: target.zone.bottomZMm ?? null,
-      },
-    });
-    if (object) objects.push(object);
-  }
-  if (target?.kind === "plane" && target.plane) {
-    const sourceWall = model.wallSegments.find(
-      (wall) =>
-        wall.sourceEdgeId === target.sourceEdgeId ||
-        wall.id === target.sourceEdgeId,
-    );
-    if (sourceWall) {
-      const object = buildHouseSurfaceObject({
-        id: "house-attachment-target-plane",
-        kind: "attachment_plane",
-        boundary: sourceWall.boundary,
-        plane: target.plane,
-        metadata: {
-          strategy: target.strategy,
-          sourceEdgeId: target.sourceEdgeId ?? null,
-        },
-      });
-      if (object) objects.push(object);
-    }
   }
 
   return objects;
@@ -959,7 +1063,10 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
   return layers;
 }
 
-function buildViewerSceneMetadata(assembly: Assembly3D): GeometryMetadata | undefined {
+function buildViewerSceneMetadata(
+  assembly: Assembly3D,
+  layers: ViewerSceneLayer[],
+): GeometryMetadata | undefined {
   const model = assembly.house.model;
   if (!model) return undefined;
 
@@ -972,6 +1079,31 @@ function buildViewerSceneMetadata(assembly: Assembly3D): GeometryMetadata | unde
   const skippedRoofSolidCount = qaAllowsRoofSolids
     ? Math.max(0, expectedRoofSolidCount - sceneRoofSolidCount)
     : expectedRoofSolidCount;
+  const totalOpeningCount = model.openings?.length ?? 0;
+  const validOpeningCount =
+    model.openings?.filter((opening) => opening.validationStatus === "valid").length ?? 0;
+  const resolvedOpeningHostEdgeCount =
+    model.openings?.filter(
+      (opening) =>
+        opening.validationStatus === "valid" &&
+        typeof opening.hostEdgeId === "string" &&
+        opening.hostEdgeId.trim().length > 0,
+    ).length ?? 0;
+  const skippedInvalidOpeningCount = Math.max(0, totalOpeningCount - validOpeningCount);
+  const renderedOpeningMarkerCount = new Set(
+    layers
+      .flatMap((layer) => layer.objects)
+      .filter(
+        (object): object is ViewerSceneHouseSurfaceObject =>
+          object.type === "house_surface" && object.kind === "opening_marker",
+      )
+      .map((object) => metadataString(object.metadata, "openingId"))
+      .filter((openingId): openingId is string => Boolean(openingId)),
+  ).size;
+  const unresolvedValidOpeningCount = Math.max(
+    0,
+    validOpeningCount - renderedOpeningMarkerCount,
+  );
 
   return sortMetadata({
     houseRoofQaStatus: qaStatus,
@@ -985,12 +1117,20 @@ function buildViewerSceneMetadata(assembly: Assembly3D): GeometryMetadata | unde
     houseRoofSolidExpectedCount: expectedRoofSolidCount,
     houseRoofSolidSceneCount: qaAllowsRoofSolids ? sceneRoofSolidCount : 0,
     houseRoofSolidSkippedCount: skippedRoofSolidCount,
+    houseOpeningCount: totalOpeningCount,
+    houseOpeningValidCount: validOpeningCount,
+    houseOpeningHostEdgeResolvedCount: resolvedOpeningHostEdgeCount,
+    houseOpeningHostEdgeUnresolvedCount: Math.max(0, validOpeningCount - resolvedOpeningHostEdgeCount),
+    houseOpeningRenderedMarkerCount: renderedOpeningMarkerCount,
+    houseOpeningSkippedInvalidCount: skippedInvalidOpeningCount,
+    houseOpeningUnresolvedValidCount: unresolvedValidOpeningCount,
   });
 }
 
 export function buildViewerSceneModel(assembly: Assembly3D): ViewerSceneModel {
+  const layers = buildLayers(assembly);
   return {
-    layers: buildLayers(assembly),
-    metadata: buildViewerSceneMetadata(assembly),
+    layers,
+    metadata: buildViewerSceneMetadata(assembly, layers),
   };
 }

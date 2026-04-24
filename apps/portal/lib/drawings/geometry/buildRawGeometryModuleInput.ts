@@ -1,5 +1,6 @@
 import type { CostOutputV1 } from '@sp/costing';
 import type { RawGeometryModuleInput } from '@sp/geometry';
+import type { HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
@@ -73,6 +74,28 @@ function resolveFootprintPolygon(module: CalculatorModuleInputs): RawGeometryMod
 function resolveOptionalOverride(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function resolveSharedHouseRoofFallDirection(
+  house: HouseModel | null | undefined,
+): RawGeometryModuleInput['houseContext']['roofPrimaryFallDirection'] {
+  if (!house) return undefined;
+  switch (house.roof.primaryFallDirection) {
+    case 'positive_x':
+    case 'negative_x':
+    case 'negative_y':
+      return house.roof.primaryFallDirection;
+    case 'positive_y':
+    default:
+      return 'positive_y';
+  }
+}
+
+function resolveSharedHouseRoofRidgeAxis(
+  house: HouseModel | null | undefined,
+): RawGeometryModuleInput['houseContext']['roofRidgeAxis'] {
+  if (!house) return undefined;
+  return house.roof.ridgeAxis === 'y' ? 'y' : 'x';
 }
 
 function resolveDerivedRoofPitchDeg(module: CalculatorModuleInputs, result: CostOutputV1 | null): number | null {
@@ -173,8 +196,9 @@ export function buildRawGeometryModuleInput(input: {
   moduleId?: string | null;
   module: CalculatorModuleInputs;
   result: CostOutputV1 | null;
+  sharedHouse?: HouseModel | null;
 }): RawGeometryModuleInput {
-  const { projectId, estimateId, designRequestId = null, moduleId = null, module, result } = input;
+  const { projectId, estimateId, designRequestId = null, moduleId = null, module, result, sharedHouse = null } = input;
 
   return {
     projectId,
@@ -218,23 +242,94 @@ export function buildRawGeometryModuleInput(input: {
       drainage: resolveStructuralDrainage(result),
     },
     houseContext: {
-      footprintMode: resolveFootprintMode(module),
-      footprintPreset: resolveFootprintPreset(module),
-      footprintParams: resolveFootprintParams(module),
-      footprintPolygon: resolveFootprintPolygon(module),
-      storeyMode: module.houseStoreyMode ?? null,
-      roofMaterial: normalizeHouseRoofMaterial(module.houseRoofMaterial),
-      attachmentStrategy: module.houseAttachmentStrategy ?? null,
-      eaveHeightM: resolveOptionalOverride(module.houseEaveHeightM),
-      wallHeightM: resolveOptionalOverride(module.houseWallHeightM),
-      roofPitchDeg: resolveOptionalOverride(module.houseRoofPitchDeg),
+      footprintMode: sharedHouse?.footprint.mode ?? resolveFootprintMode(module),
+      footprintPreset: sharedHouse?.footprint.preset ?? resolveFootprintPreset(module),
+      footprintParams: sharedHouse?.footprint.params ?? resolveFootprintParams(module),
+      footprintPolygon:
+        sharedHouse && sharedHouse.footprint.polygon.length
+          ? sharedHouse.footprint.polygon
+          : resolveFootprintPolygon(module),
+      storeyMode: sharedHouse?.storeyMode ?? module.houseStoreyMode ?? null,
+      roofForm: sharedHouse?.roof.form ?? null,
+      roofMaterial: sharedHouse?.roof.material ?? normalizeHouseRoofMaterial(module.houseRoofMaterial),
+      roofPrimaryFallDirection: resolveSharedHouseRoofFallDirection(sharedHouse),
+      roofRidgeAxis: resolveSharedHouseRoofRidgeAxis(sharedHouse),
+      openGableEndIds: sharedHouse?.roof.openGableEndIds ?? null,
+      roofAppendage: sharedHouse?.roof.appendage.enabled
+        ? {
+            enabled: true,
+            form: sharedHouse.roof.appendage.form,
+            hostEdge: sharedHouse.roof.appendage.hostEdge,
+            pitchDeg: resolveOptionalOverride(sharedHouse.roof.appendage.pitchDeg),
+            dropMm: resolveOptionalOverride(sharedHouse.roof.appendage.dropMm),
+          }
+        : null,
+      decks:
+        sharedHouse?.decks.map((deck) => ({
+          id: deck.id,
+          name: deck.name,
+          kind: deck.kind,
+          shape: deck.shape,
+          presetType: deck.presetType,
+          presetRect: deck.presetRect
+            ? {
+                widthMm: Math.round(Number(deck.presetRect.widthM) * 1000),
+                depthMm: Math.round(Number(deck.presetRect.depthM) * 1000),
+                centerOffsetMm: Math.round(Number(deck.presetRect.centerOffsetM) * 1000),
+                detachedGapMm: Math.round(Number(deck.presetRect.detachedGapM ?? '0') * 1000),
+              }
+            : null,
+          outline: deck.outline,
+          elevationMode: deck.elevationMode,
+          levelOffsetMm: resolveOptionalOverride(deck.levelOffsetMm) ?? '0',
+          hostEdgeId: deck.hostEdgeId,
+          isAttached: deck.isAttached,
+          surfaceMaterial: deck.surfaceMaterial,
+          topSurfaceElevationMm: deck.topSurfaceElevationMm,
+          supportContext: {
+            classification: deck.supportContext.classification,
+            nearestHouseEdgeId: deck.supportContext.nearestHouseEdgeId,
+            nearestHouseEdgeDistanceMm: deck.supportContext.nearestHouseEdgeDistanceMm,
+            attachmentContactLengthMm: deck.supportContext.attachmentContactLengthMm,
+            warningCodes: deck.supportContext.warningCodes,
+            warningMessages: deck.supportContext.warningMessages,
+          },
+          validation: {
+            status: deck.validation.status,
+            codes: deck.validation.codes,
+            messages: deck.validation.messages,
+          },
+        })) ?? null,
+      openings:
+        sharedHouse?.openings.map((opening) => ({
+          id: opening.id,
+          label: opening.label,
+          kind: opening.kind === 'window' ? 'window' : 'window',
+          wallId: opening.wallId,
+          hostEdgeId: opening.hostEdgeId,
+          widthMm: Math.round(Number(opening.widthM) * 1000),
+          heightMm: Math.round(Number(opening.heightM) * 1000),
+          sillHeightMm: Math.round(Number(opening.sillHeightM) * 1000),
+          offsetAlongWallMm: Math.round(Number(opening.offsetAlongWallM) * 1000),
+          validation: {
+            status: opening.validation.status,
+            codes: opening.validation.codes,
+            message: opening.validation.message,
+          },
+        })) ?? null,
+      attachmentStrategy: sharedHouse?.attachmentStrategy ?? module.houseAttachmentStrategy ?? null,
+      eaveHeightM: resolveOptionalOverride(sharedHouse?.eaveHeightM ?? module.houseEaveHeightM),
+      wallHeightM: resolveOptionalOverride(sharedHouse?.wallHeightM ?? module.houseWallHeightM),
+      roofPitchDeg: resolveOptionalOverride(sharedHouse?.roof.primaryPitchDeg ?? module.houseRoofPitchDeg),
       eave: {
-        soffitDepthMm: resolveOptionalOverride(module.houseSoffitDepthMm),
-        fasciaHeightMm: resolveOptionalOverride(module.houseFasciaHeightMm),
-        gutterWidthMm: resolveOptionalOverride(module.houseGutterWidthMm),
-        gutterDepthMm: resolveOptionalOverride(module.houseGutterDepthMm),
-        gutterProjectionMm: resolveOptionalOverride(module.houseGutterProjectionMm),
-        eaveOverhangMm: resolveOptionalOverride(module.houseEaveOverhangMm),
+        soffitDepthMm: resolveOptionalOverride(sharedHouse?.soffitDepthMm ?? module.houseSoffitDepthMm),
+        fasciaHeightMm: resolveOptionalOverride(sharedHouse?.fasciaHeightMm ?? module.houseFasciaHeightMm),
+        gutterWidthMm: resolveOptionalOverride(sharedHouse?.gutterWidthMm ?? module.houseGutterWidthMm),
+        gutterDepthMm: resolveOptionalOverride(sharedHouse?.gutterDepthMm ?? module.houseGutterDepthMm),
+        gutterProjectionMm: resolveOptionalOverride(
+          sharedHouse?.gutterProjectionMm ?? module.houseGutterProjectionMm,
+        ),
+        eaveOverhangMm: resolveOptionalOverride(sharedHouse?.eaveOverhangMm ?? module.houseEaveOverhangMm),
       },
     },
     dimensions: {

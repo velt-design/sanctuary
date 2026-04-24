@@ -1,5 +1,6 @@
 export * from './contracts';
 export * from './footprints';
+export * from './houseRoofCapabilities';
 export { normalizeGeometryConfig } from './normalize';
 export type {
   NormalizeGeometryConfigErrorCode,

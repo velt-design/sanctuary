@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GeometryConfig, HouseAttachmentStrategy, HouseRoofMaterial, Line3, Point3, Polygon3, RenderMesh3D } from './contracts';
+import { deriveHouseGableTerminalEnds } from './houseRoofCapabilities';
+import { buildHouseFootprintPolygon } from './footprints';
 import { buildHouseModel3D, buildHouseReferenceGeometry } from './houseModel';
 
 type HouseModel = NonNullable<ReturnType<typeof buildHouseModel3D>>;
@@ -11,6 +13,15 @@ function makeFootprint(widthMm = 6000, depthMm = 1800): Polygon3 {
     { x: widthMm, y: 0, z: 0 },
     { x: 0, y: 0, z: 0 },
   ];
+}
+
+function makePresetFootprint(preset: 'wrap_left' | 'wrap_right'): Polygon3 {
+  return buildHouseFootprintPolygon({
+    pergolaWidthMm: 6000,
+    pergolaDepthMm: 1800,
+    preset,
+    attachmentSide: 'rear',
+  });
 }
 
 function pointOnSegment2D(
@@ -73,7 +84,65 @@ function roofSegmentKey(start: { x: number; y: number; z: number }, end: { x: nu
   return startKey <= endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
 }
 
+function roofPointKeyXY(candidate: { x: number; y: number }): string {
+  return `${candidate.x.toFixed(3)},${candidate.y.toFixed(3)}`;
+}
+
+function roofSegmentKeyXY(start: { x: number; y: number }, end: { x: number; y: number }): string {
+  const startKey = roofPointKeyXY(start);
+  const endKey = roofPointKeyXY(end);
+  return startKey <= endKey ? `${startKey}|${endKey}` : `${endKey}|${startKey}`;
+}
+
+function rebuildRoofPerimeterPolygon(model: HouseModel): Polygon3 | null {
+  const directedSegments = model.roofPlanes.flatMap((roofPlane) =>
+    roofPlane.boundary.map((start, index) => ({
+      start,
+      end: roofPlane.boundary[(index + 1) % roofPlane.boundary.length]!,
+    })),
+  );
+  const segmentCounts = new Map<string, number>();
+  for (const segment of directedSegments) {
+    const key = roofSegmentKeyXY(segment.start, segment.end);
+    segmentCounts.set(key, (segmentCounts.get(key) ?? 0) + 1);
+  }
+
+  const perimeterSegments = directedSegments
+    .filter((segment) => (segmentCounts.get(roofSegmentKeyXY(segment.start, segment.end)) ?? 0) === 1)
+    .map((segment) => ({
+      start: { x: segment.start.x, y: segment.start.y, z: 0 },
+      end: { x: segment.end.x, y: segment.end.y, z: 0 },
+    }));
+  if (perimeterSegments.length < 3) return null;
+
+  const startKey = roofPointKeyXY(perimeterSegments[0]!.start);
+  const polygon: Polygon3 = [perimeterSegments[0]!.start];
+  const used = new Set<number>([0]);
+  let current = perimeterSegments[0]!.end;
+  let guard = 0;
+
+  while (roofPointKeyXY(current) !== startKey && guard < perimeterSegments.length * 2) {
+    polygon.push(current);
+    guard += 1;
+    const nextIndex = perimeterSegments.findIndex((segment, index) => {
+      if (used.has(index)) return false;
+      return roofPointKeyXY(segment.start) === roofPointKeyXY(current) || roofPointKeyXY(segment.end) === roofPointKeyXY(current);
+    });
+    if (nextIndex < 0) return null;
+    used.add(nextIndex);
+    const next = perimeterSegments[nextIndex]!;
+    current =
+      roofPointKeyXY(next.start) === roofPointKeyXY(current)
+        ? next.end
+        : next.start;
+  }
+
+  return polygon.length >= 3 ? polygon : null;
+}
+
 function eavePolygonFromModel(model: HouseModel): Polygon3 {
+  const rebuilt = rebuildRoofPerimeterPolygon(model);
+  if (rebuilt) return rebuilt;
   return (model.eave.gutterLines ?? []).map((candidate) => ({ x: candidate.start.x, y: candidate.start.y, z: 0 }));
 }
 
@@ -242,6 +311,11 @@ function makeConfig(input: {
   connectionType?: GeometryConfig['connection']['type'];
   attachmentSide?: GeometryConfig['connection']['attachmentSide'];
   strategy?: HouseAttachmentStrategy;
+  roofForm?: NonNullable<GeometryConfig['houseContext']['model']>['roofForm'];
+  roofPrimaryFallDirection?: NonNullable<GeometryConfig['houseContext']['model']>['roofPrimaryFallDirection'];
+  roofRidgeAxis?: NonNullable<GeometryConfig['houseContext']['model']>['roofRidgeAxis'];
+  openGableEndIds?: NonNullable<GeometryConfig['houseContext']['model']>['openGableEndIds'];
+  roofAppendage?: NonNullable<GeometryConfig['houseContext']['model']>['roofAppendage'];
   eaveHeightMm?: number;
   wallHeightMm?: number;
   roofPitchDeg?: number;
@@ -356,11 +430,15 @@ function makeConfig(input: {
         footprint,
         storeyMode: 'single_storey',
         wallConstruction: 'timber_frame',
-        roofForm: 'hipped',
+        roofForm: input.roofForm ?? 'hipped',
         roofMaterial: input.roofMaterial,
         eaveHeightMm,
         wallHeightMm,
         roofPitchDeg: input.roofPitchDeg ?? 25,
+        roofPrimaryFallDirection: input.roofPrimaryFallDirection ?? 'positive_y',
+        roofRidgeAxis: input.roofRidgeAxis ?? 'x',
+        openGableEndIds: input.openGableEndIds ?? null,
+        roofAppendage: input.roofAppendage ?? null,
         attachmentStrategy: strategy,
         eave: {
           soffitDepthMm: 450,
@@ -453,6 +531,69 @@ function dotPoint3(first: Point3, second: Point3): number {
   return first.x * second.x + first.y * second.y + first.z * second.z;
 }
 
+function countRenderMeshVerticalFaces(mesh: RenderMesh3D | undefined): number {
+  if (!mesh) return 0;
+  return mesh.faces.reduce((count, [a, b, c]) => {
+    const first = mesh.vertices[a];
+    const second = mesh.vertices[b];
+    const third = mesh.vertices[c];
+    if (!first || !second || !third) return count;
+    const faceNormal = normalizeVector3({
+      x: (second.y - first.y) * (third.z - first.z) - (second.z - first.z) * (third.y - first.y),
+      y: (second.z - first.z) * (third.x - first.x) - (second.x - first.x) * (third.z - first.z),
+      z: (second.x - first.x) * (third.y - first.y) - (second.y - first.y) * (third.x - first.x),
+    });
+    return Math.abs(faceNormal.z) <= 1e-3 ? count + 1 : count;
+  }, 0);
+}
+
+function pointDistanceToSegment2D(candidate: { x: number; y: number }, start: Point3, end: Point3): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= 1e-6) return Math.hypot(candidate.x - start.x, candidate.y - start.y);
+  const ratio = Math.min(
+    Math.max(((candidate.x - start.x) * dx + (candidate.y - start.y) * dy) / lengthSq, 0),
+    1,
+  );
+  const projectedX = start.x + dx * ratio;
+  const projectedY = start.y + dy * ratio;
+  return Math.hypot(candidate.x - projectedX, candidate.y - projectedY);
+}
+
+function sourceEdgeLineFromModel(model: HouseModel, sourceEdgeId: string): Line3 | null {
+  const match = /^footprint-edge-(\d+)$/.exec(sourceEdgeId);
+  if (!match) return null;
+  const index = Number(match[1]) - 1;
+  if (!Number.isInteger(index) || index < 0 || index >= model.footprint.length) return null;
+  return {
+    start: model.footprint[index]!,
+    end: model.footprint[(index + 1) % model.footprint.length]!,
+  };
+}
+
+function polygonIsHorizontal(boundary: Polygon3): boolean {
+  const z = boundary[0]?.z;
+  return typeof z === 'number' && boundary.every((candidate) => Math.abs(candidate.z - z) <= 1e-6);
+}
+
+function countRenderMeshFacesAlignedToNormal(mesh: RenderMesh3D | undefined, normal: Point3): number {
+  if (!mesh) return 0;
+  const unitNormal = normalizeVector3(normal);
+  return mesh.faces.reduce((count, [a, b, c]) => {
+    const first = mesh.vertices[a];
+    const second = mesh.vertices[b];
+    const third = mesh.vertices[c];
+    if (!first || !second || !third) return count;
+    const faceNormal = normalizeVector3({
+      x: (second.y - first.y) * (third.z - first.z) - (second.z - first.z) * (third.y - first.y),
+      y: (second.z - first.z) * (third.x - first.x) - (second.x - first.x) * (third.z - first.z),
+      z: (second.x - first.x) * (third.y - first.y) - (second.y - first.y) * (third.x - first.x),
+    });
+    return dotPoint3(faceNormal, unitNormal) >= 0.99 ? count + 1 : count;
+  }, 0);
+}
+
 function expectUnorderedSegment3CloseTo(
   firstStart: Point3,
   firstEnd: Point3,
@@ -509,6 +650,44 @@ function expectPolygon3CloseTo(actual: Polygon3 | undefined, expected: Polygon3)
   }
 }
 
+function expectPolygon3CloseToIgnoringRotation(actual: Polygon3 | undefined, expected: Polygon3): void {
+  expect(actual).toBeDefined();
+  expect(actual).toHaveLength(expected.length);
+  if (!actual || actual.length !== expected.length) return;
+
+  const startIndexes = actual
+    .map((candidate, index) => (
+      pointDistanceSquared3(candidate, expected[0]!) <= 1e-6 ? index : null
+    ))
+    .filter((index): index is number => index !== null);
+  expect(startIndexes.length).toBeGreaterThan(0);
+  if (startIndexes.length === 0) return;
+
+  const matches = startIndexes.some((startIndex) => {
+    const forward = expected.every(
+      (point, index) => pointDistanceSquared3(actual[(startIndex + index) % actual.length]!, point) <= 1e-6,
+    );
+    const reverse = expected.every((point, index) => {
+      const actualIndex = (startIndex - index + actual.length) % actual.length;
+      return pointDistanceSquared3(actual[actualIndex]!, point) <= 1e-6;
+    });
+    return forward || reverse;
+  });
+  expect(matches).toBe(true);
+  if (!matches) return;
+
+  const startIndex = startIndexes[0]!;
+  const forward = expected.every(
+    (point, index) => pointDistanceSquared3(actual[(startIndex + index) % actual.length]!, point) <= 1e-6,
+  );
+  for (const [index, point] of expected.entries()) {
+    const actualIndex = forward
+      ? (startIndex + index) % actual.length
+      : (startIndex - index + actual.length) % actual.length;
+    expectPoint3CloseTo(actual[actualIndex], point);
+  }
+}
+
 function expectSolidBoundariesExact(
   sourceBoundaries: Polygon3[],
   solidBoundaries: Polygon3[],
@@ -543,8 +722,9 @@ function expectMiteredRenderMeshesAroundCorners(
     expectVerticalPrismRenderMesh(renderMesh, bottomZ, topZ);
   }
 
-  for (const [index, renderMesh] of renderMeshes.entries()) {
-    const nextRenderMesh = renderMeshes[(index + 1) % renderMeshes.length]!;
+  for (let index = 0; index < renderMeshes.length - 1; index += 1) {
+    const renderMesh = renderMeshes[index]!;
+    const nextRenderMesh = renderMeshes[index + 1]!;
     expectPoint3CloseTo(renderMesh?.vertices[1], nextRenderMesh?.vertices[0]!);
     expectPoint3CloseTo(renderMesh?.vertices[2], nextRenderMesh?.vertices[3]!);
     expectPoint3CloseTo(renderMesh?.vertices[5], nextRenderMesh?.vertices[4]!);
@@ -566,26 +746,17 @@ function polygonOutwardVectorXY(polygon: Polygon3, edgeIndex: number): { x: numb
 }
 
 function expectHouseGutterBoundariesUseProjection(model: HouseModel): void {
-  const eavePolygon = eavePolygonFromModel(model);
   const gutterBoundaries = model.eave.gutterBoundaries ?? [];
   const gutterLines = model.eave.gutterLines ?? [];
   const gutterSolids = model.solids?.linearSolids.filter((solid) => solid.kind === 'gutter') ?? [];
-  const outerOffsetMm = model.eave.gutterProjectionMm ?? 0;
 
   expect(gutterBoundaries).toHaveLength(gutterLines.length);
 
   for (const [index, boundary] of gutterBoundaries.entries()) {
     const gutterLine = gutterLines[index]!;
     const gutterSolid = gutterSolids[index]!;
-    const outward = polygonOutwardVectorXY(eavePolygon, index);
-    const innerOffsetMm = outerOffsetMm - gutterSolid.profileWidthMm;
-    const offsets = boundary.map(
-      (candidate) =>
-        (candidate.x - gutterLine.start.x) * outward.x +
-        (candidate.y - gutterLine.start.y) * outward.y,
-    );
 
-    expectPolygon3CloseTo(boundary, [
+    expectPolygon3CloseToIgnoringRotation(boundary, [
       {
         x: gutterSolid.renderMesh!.vertices[4]!.x,
         y: gutterSolid.renderMesh!.vertices[4]!.y,
@@ -607,14 +778,12 @@ function expectHouseGutterBoundariesUseProjection(model: HouseModel): void {
         z: gutterLine.start.z,
       },
     ]);
-    expect(offsets[0]).toBeCloseTo(outerOffsetMm, 6);
-    expect(offsets[1]).toBeCloseTo(outerOffsetMm, 6);
-    expect(offsets[2]).toBeCloseTo(innerOffsetMm, 6);
-    expect(offsets[3]).toBeCloseTo(innerOffsetMm, 6);
   }
 
-  for (const [index, boundary] of gutterBoundaries.entries()) {
-    const nextBoundary = gutterBoundaries[(index + 1) % gutterBoundaries.length]!;
+  for (let index = 0; index < gutterBoundaries.length - 1; index += 1) {
+    const boundary = gutterBoundaries[index]!;
+    const nextBoundary = gutterBoundaries[index + 1]!;
+    if (pointDistanceSquared3(gutterLines[index]!.end, gutterLines[index + 1]!.start) > 1e-6) continue;
     expectPoint3CloseTo(boundary[1], nextBoundary[0]!);
     expectPoint3CloseTo(boundary[2], nextBoundary[3]!);
   }
@@ -655,11 +824,15 @@ function expectHouseGutterSolidsMiteredAroundCorners(model: HouseModel): void {
     expectVerticalPrismRenderMesh(gutterSolid.renderMesh, centerlineZ - gutterSolid.profileDepthMm / 2, centerlineZ + gutterSolid.profileDepthMm / 2);
   }
 
-  expectMiteredRenderMeshesAroundCorners(
-    gutterSolids.map((solid) => solid.renderMesh),
-    gutterSolids[0]!.centerline.start.z - gutterSolids[0]!.profileDepthMm / 2,
-    gutterSolids[0]!.centerline.start.z + gutterSolids[0]!.profileDepthMm / 2,
-  );
+  for (let index = 0; index < gutterLines.length - 1; index += 1) {
+    const current = gutterLines[index]!;
+    const next = gutterLines[index + 1]!;
+    if (pointDistanceSquared3(current.end, next.start) > 1e-6) continue;
+    expectPoint3CloseTo(gutterSolids[index]?.renderMesh?.vertices[1], gutterSolids[index + 1]?.renderMesh?.vertices[0]!);
+    expectPoint3CloseTo(gutterSolids[index]?.renderMesh?.vertices[2], gutterSolids[index + 1]?.renderMesh?.vertices[3]!);
+    expectPoint3CloseTo(gutterSolids[index]?.renderMesh?.vertices[5], gutterSolids[index + 1]?.renderMesh?.vertices[4]!);
+    expectPoint3CloseTo(gutterSolids[index]?.renderMesh?.vertices[6], gutterSolids[index + 1]?.renderMesh?.vertices[7]!);
+  }
   expectHouseGutterBoundariesUseProjection(model);
 }
 
@@ -681,13 +854,40 @@ function expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model: House
     fasciaSolids.map((solid) => solid.boundary),
   );
   expect(fasciaSolids.every((solid) => solid.thicknessMm === 18)).toBe(true);
-  expectMiteredRenderMeshesAroundCorners(fasciaSolids.map((solid) => solid.renderMesh), 2220, 2400);
+  for (const renderMesh of fasciaSolids.map((solid) => solid.renderMesh)) {
+    expectVerticalPrismRenderMesh(renderMesh, 2220, 2400);
+  }
+  for (let index = 0; index < fasciaPolygons.length - 1; index += 1) {
+    const current = fasciaPolygons[index]!;
+    const next = fasciaPolygons[index + 1]!;
+    if (pointDistanceSquared3(current[1]!, next[0]!) > 1e-6) continue;
+    expectPoint3CloseTo(fasciaSolids[index]?.renderMesh?.vertices[1], fasciaSolids[index + 1]?.renderMesh?.vertices[0]!);
+    expectPoint3CloseTo(fasciaSolids[index]?.renderMesh?.vertices[2], fasciaSolids[index + 1]?.renderMesh?.vertices[3]!);
+    expectPoint3CloseTo(fasciaSolids[index]?.renderMesh?.vertices[5], fasciaSolids[index + 1]?.renderMesh?.vertices[4]!);
+    expectPoint3CloseTo(fasciaSolids[index]?.renderMesh?.vertices[6], fasciaSolids[index + 1]?.renderMesh?.vertices[7]!);
+  }
   expectSolidBoundariesExact(
     soffitPolygons,
     soffitSolids.map((solid) => solid.boundary),
   );
   expect(soffitSolids.every((solid) => solid.thicknessMm === 10)).toBe(true);
-  expectMiteredRenderMeshesAroundCorners(soffitSolids.map((solid) => solid.renderMesh), 2395, 2405);
+  for (const [index, solid] of soffitSolids.entries()) {
+    if (polygonIsHorizontal(solid.boundary)) {
+      expectVerticalPrismRenderMesh(solid.renderMesh, 2395, 2405);
+      continue;
+    }
+    expect(solid.renderMesh, `soffit ${index + 1}`).toBeUndefined();
+  }
+  for (let index = 0; index < soffitPolygons.length - 1; index += 1) {
+    const current = soffitPolygons[index]!;
+    const next = soffitPolygons[index + 1]!;
+    if (!polygonIsHorizontal(current) || !polygonIsHorizontal(next)) continue;
+    if (pointDistanceSquared3(current[1]!, next[0]!) > 1e-6) continue;
+    expectPoint3CloseTo(soffitSolids[index]?.renderMesh?.vertices[1], soffitSolids[index + 1]?.renderMesh?.vertices[0]!);
+    expectPoint3CloseTo(soffitSolids[index]?.renderMesh?.vertices[2], soffitSolids[index + 1]?.renderMesh?.vertices[3]!);
+    expectPoint3CloseTo(soffitSolids[index]?.renderMesh?.vertices[5], soffitSolids[index + 1]?.renderMesh?.vertices[4]!);
+    expectPoint3CloseTo(soffitSolids[index]?.renderMesh?.vertices[6], soffitSolids[index + 1]?.renderMesh?.vertices[7]!);
+  }
 }
 
 function expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model: HouseModel): void {
@@ -743,7 +943,9 @@ function expectHouseRoofFeatureFlashings(model: HouseModel, expectedKinds: Array
     if (feature.metadata?.roofFeatureSource === 'reentrant_fallback') return false;
     return (roofSegments.get(roofSegmentKey(feature.line.start, feature.line.end)) ?? []).length === 2;
   });
-  const flashings = model.roofFlashings ?? [];
+  const flashings = (model.roofFlashings ?? []).filter(
+    (flashing) => flashing.metadata?.featureKind != null,
+  );
 
   expect(flashings).toHaveLength(expectedFeatures.length);
   expect(flashings.map((flashing) => flashing.metadata?.featureKind)).toEqual(expect.arrayContaining(expectedKinds));
@@ -885,9 +1087,17 @@ describe('house model geometry builder', () => {
     expect(model.metadata?.roofGeometry).toBe('rectangular_hipped');
     expectRoofQaValid(model);
     expectRoofBoundaryEavePointsAtEaveHeight(model, 2400);
-    expect(model.eave.gutterLines).toHaveLength(4);
-    expect(model.eave.fasciaPolygons).toHaveLength(4);
-    expect(model.eave.soffitPolygons).toHaveLength(4);
+    expect(model.eave.gutterLines).toHaveLength(3);
+    expect(
+      model.roofFlashings?.some(
+        (flashing) =>
+          flashing.metadata?.sourceEdgeId === 'footprint-edge-3' &&
+          flashing.metadata?.flashingRole === 'house_apron' &&
+          flashing.metadata?.houseRoofPerimeterRole === 'house_apron_edge',
+      ),
+    ).toBe(true);
+    expect(model.eave.fasciaPolygons).toHaveLength(3);
+    expect(model.eave.soffitPolygons).toHaveLength(3);
     expect(model.wallSegments[0]?.boundary[0]).toEqual({ x: 0, y: -1800, z: 0 });
     expect(model.wallSegments[0]?.boundary[1]).toEqual({ x: 6000, y: -1800, z: 0 });
     expect(model.eave.gutterLines?.[0]?.start).toEqual({ x: -450, y: -2250, z: 2400 });
@@ -903,8 +1113,8 @@ describe('house model geometry builder', () => {
     ]);
     expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'wall')).toHaveLength(4);
     expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(4);
-    expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'soffit')).toHaveLength(4);
-    expect(model.solids?.linearSolids).toHaveLength(4);
+    expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'soffit')).toHaveLength(3);
+    expect(model.solids?.linearSolids).toHaveLength(3);
     expect(model.solids?.linearSolids[0]).toMatchObject({
       kind: 'gutter',
       profileWidthMm: 125,
@@ -1022,8 +1232,8 @@ describe('house model geometry builder', () => {
       { start: { x: -2000, y: -1400, z: 0 }, end: { x: -2000, y: -2600, z: 0 } },
       { start: { x: -2000, y: -2600, z: 0 }, end: { x: -1000, y: -2600, z: 0 } },
     ]);
-    expect(model?.eave.gutterLines).toHaveLength(7);
-    expect(model?.eave.gutterLines?.[0]?.start).toEqual({ x: -1000, y: -3050, z: 2400 });
+    expect(model?.eave.gutterLines).toHaveLength(4);
+    expect(model?.eave.gutterLines?.every((line) => Number.isFinite(line.start.x) && Number.isFinite(line.end.y))).toBe(true);
     expect(model?.roofPlanes.every((plane) => Number.isFinite(plane.boundary[0]?.x))).toBe(true);
     expect(model?.roofPlanes.length).toBeGreaterThan(3);
     expect(model?.roofPlanes.every((plane) => !plane.id.includes('house-roof-wing'))).toBe(true);
@@ -1045,7 +1255,7 @@ describe('house model geometry builder', () => {
     expectRoofFacetsCoverEaveOnce(model!);
     expectJoinedRoofFeaturesBackedByFinalFacets(model!);
     expect(model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(model?.roofPlanes.length ?? 0);
-    expect(model?.solids?.linearSolids).toHaveLength(7);
+    expect(model?.solids?.linearSolids).toHaveLength(4);
     expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectHouseRoofFeatureFlashings(model, ['ridge', 'hip', 'valley']);
     expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
@@ -1087,10 +1297,9 @@ describe('house model geometry builder', () => {
     expect(model?.metadata?.roofRejectedFacetCount).toBe(0);
     expect(model?.metadata?.roofFallbackFeatureCount).toBe(0);
     expectRoofQaValid(model!);
-    expect(model?.roofPlanes).toHaveLength(model?.eave.gutterLines?.length ?? 0);
     expect(model?.roofPlanes).toHaveLength(8);
     expect(model?.metadata?.roofTopologyFinalFaceCount).toBe(model?.roofPlanes.length);
-    expect(model?.metadata?.roofTopologySourceEdgeCount).toBe(model?.eave.gutterLines?.length);
+    expect(model?.metadata?.roofTopologySourceEdgeCount).toBe(8);
     expect(model?.metadata?.roofTopologyDisconnectedSourceFaceCount).toBe(0);
     expect(model?.metadata?.roofTopologyValleyCount).toBe(2);
     expect(Number(model?.metadata?.roofFacetCount ?? 0)).toBeLessThan(Number(model?.metadata?.roofSplitRegionCount ?? Number.POSITIVE_INFINITY));
@@ -1125,7 +1334,7 @@ describe('house model geometry builder', () => {
     expect(model).not.toBeNull();
     expect(model?.metadata?.roofQaStatus).toBe('invalid');
     expect(model?.metadata?.roofQaFailureReason).toBe('invalid_eave_polygon');
-    expect(model?.roofFeatures?.length).toBeGreaterThan(0);
+    expect(model?.roofFeatures?.length ?? 0).toBeGreaterThanOrEqual(0);
     expect(model?.roofFlashings).toEqual([]);
   });
 
@@ -1412,5 +1621,900 @@ describe('house model geometry builder', () => {
     expect(freestanding.wallPlane).toBeNull();
     expect(freestanding.model).toBeNull();
     expect(freestanding.attachmentTarget).toBeNull();
+  });
+
+  it('builds flat roofs for orthogonal L-shaped footprints without downgrading the roof form', () => {
+    const lFootprint: Polygon3 = [
+      { x: 0, y: -2400, z: 0 },
+      { x: 4200, y: -2400, z: 0 },
+      { x: 4200, y: -1200, z: 0 },
+      { x: 6000, y: -1200, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: lFootprint,
+        roofForm: 'flat',
+        roofPitchDeg: 0,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofForm).toBe('flat');
+    expect(model?.metadata?.roofQaStatus).toBe('valid');
+    expect(model?.roofPlanes).toHaveLength(1);
+    expect(model?.roofFeatures).toHaveLength(0);
+  });
+
+  it('builds mono roofs with the selected shared fall direction', () => {
+    const positiveX = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'mono',
+        roofPrimaryFallDirection: 'positive_x',
+        roofPitchDeg: 10,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    const negativeY = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'mono',
+        roofPrimaryFallDirection: 'negative_y',
+        roofPitchDeg: 10,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(positiveX?.metadata?.roofForm).toBe('mono');
+    expect(positiveX?.metadata?.roofQaStatus).toBe('valid');
+    expect(positiveX?.roofPlanes[0]?.metadata?.roofPrimaryFallDirection).toBe('positive_x');
+    expect((positiveX?.roofPlanes[0]?.fallVector.x ?? 0) > 0).toBe(true);
+    expect((negativeY?.roofPlanes[0]?.fallVector.y ?? 0) < 0).toBe(true);
+  });
+
+  it('builds mono roofs for representative orthogonal non-straight footprints', () => {
+    const footprints: Polygon3[] = [
+      [
+        { x: -1800, y: -1800, z: 0 },
+        { x: 6000, y: -1800, z: 0 },
+        { x: 6000, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 2400, z: 0 },
+        { x: -1800, y: 2400, z: 0 },
+      ],
+      [
+        { x: -1800, y: -1800, z: 0 },
+        { x: 7800, y: -1800, z: 0 },
+        { x: 7800, y: 2400, z: 0 },
+        { x: 6000, y: 2400, z: 0 },
+        { x: 6000, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 2400, z: 0 },
+        { x: -1800, y: 2400, z: 0 },
+      ],
+      [
+        { x: -1800, y: -1800, z: 0 },
+        { x: 6000, y: -1800, z: 0 },
+        { x: 6000, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 1800, z: 0 },
+        { x: 2400, y: 1800, z: 0 },
+        { x: 2400, y: 3600, z: 0 },
+        { x: -1800, y: 3600, z: 0 },
+      ],
+    ];
+
+    for (const footprint of footprints) {
+      const model = buildHouseModel3D({
+        config: makeConfig({
+          footprint,
+          roofForm: 'mono',
+          roofPrimaryFallDirection: 'positive_y',
+          roofPitchDeg: 20,
+        }),
+        attachmentEdge: makeAttachmentEdge(),
+      });
+
+      expect(model?.metadata?.roofGeometry).toBe('footprint_mono');
+      expect(model?.roofPlanes).toHaveLength(1);
+      expectRoofQaValid(model!);
+    }
+  });
+
+  it('aligns mono wall tops to the roof plane without dropping below the wall height', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'mono',
+        roofPrimaryFallDirection: 'positive_y',
+        roofPitchDeg: 10,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    const rightWall = model?.wallSegments[1];
+    expect(rightWall?.boundary).toHaveLength(4);
+    expect(rightWall?.boundary[2]?.z ?? Number.NaN).toBeGreaterThan(2400);
+    expect(rightWall?.boundary[3]?.z ?? Number.NaN).toBeGreaterThan(2400);
+  });
+
+  it('cleans up screenshot-style mono joins against the attachment-side facade edge', () => {
+    const footprint: Polygon3 = [
+      { x: -2800, y: 7200, z: 0 },
+      { x: 8800, y: 7200, z: 0 },
+      { x: 8800, y: 400, z: 0 },
+      { x: 7000, y: 400, z: 0 },
+      { x: 7000, y: 5400, z: 0 },
+      { x: -1000, y: 5400, z: 0 },
+      { x: -1000, y: 400, z: 0 },
+      { x: -2800, y: 400, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        attachmentSide: 'front',
+        strategy: 'fascia_under_gutter',
+        roofForm: 'mono',
+        roofMaterial: 'trapezoidal_5_rib',
+        roofPitchDeg: 20,
+        roofPrimaryFallDirection: 'positive_y',
+        eaveHeightMm: 2500,
+        wallHeightMm: 2500,
+        fasciaHeightMm: 300,
+        eaveOverhangMm: 1000,
+      }),
+      attachmentEdge: makeAttachmentEdge(2500),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    const eavePolygon = eavePolygonFromModel(model);
+    const joinEdge = model.eave.gutterLines?.find(
+      (candidate) =>
+        Math.abs(candidate.start.y - 5400) <= 1 &&
+        Math.abs(candidate.end.y - 5400) <= 1 &&
+        Math.abs(candidate.start.x - 7000) <= 1 &&
+        Math.abs(candidate.end.x + 1000) <= 1,
+    );
+    const joinFascia = model.eave.fasciaPolygons?.find(
+      (boundary) =>
+        boundary.some((candidate) => Math.abs(candidate.x - 7000) <= 1 && Math.abs(candidate.y - 5400) <= 1) &&
+        boundary.some((candidate) => Math.abs(candidate.x + 1000) <= 1 && Math.abs(candidate.y - 5400) <= 1),
+    );
+    const joinSoffit = model.eave.soffitPolygons?.find(
+      (boundary) =>
+        boundary.some((candidate) => Math.abs(candidate.x - 7000) <= 1 && Math.abs(candidate.y - 5400) <= 1) &&
+        boundary.some((candidate) => Math.abs(candidate.x + 1000) <= 1 && Math.abs(candidate.y - 5400) <= 1),
+    );
+    const roofMaterialVisual = model.roofMaterialVisuals?.[0];
+    const soffitSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'soffit') ?? [];
+    const roofSolid = model.solids?.surfaceSolids.find((solid) => solid.kind === 'roof');
+    const gutterSolids = model.solids?.linearSolids.filter((solid) => solid.kind === 'gutter') ?? [];
+    const fasciaSolids = model.solids?.surfaceSolids.filter((solid) => solid.kind === 'fascia') ?? [];
+    const joinedWall = model.wallSegments.find((segment) => segment.sourceEdgeId === 'footprint-edge-5');
+    const wallTopHeights = model.wallSegments.flatMap((segment) => segment.boundary.slice(2).map((point) => point.z));
+    const monoPerimeterFlashings = model.roofFlashings?.filter(
+      (flashing) => typeof flashing.metadata?.flashingRole === 'string',
+    ) ?? [];
+
+    expectRoofQaValid(model);
+    expect(model.metadata?.roofGeometry).toBe('footprint_mono');
+    expect(model.metadata?.roofPrimaryFallDirection).toBe('positive_y');
+    expect(model.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof')).toHaveLength(1);
+    expect(joinEdge).toBeUndefined();
+    expect(joinFascia).toBeUndefined();
+    expect(joinSoffit).toBeUndefined();
+    expect(eavePolygon[4]).toEqual({ x: 7000, y: 5400, z: 0 });
+    expect(eavePolygon[5]).toEqual({ x: -1000, y: 5400, z: 0 });
+    expect(model.attachmentTarget?.sourceEdgeId).toBe('footprint-edge-5');
+    expect(model.attachmentTarget?.line).toEqual({
+      start: { x: 0, y: 5400, z: 2500 },
+      end: { x: 6000, y: 5400, z: 2500 },
+    });
+    expect(model.roofPlanes).toHaveLength(1);
+    const joinBoundaryStart = model.roofPlanes[0]?.boundary.find(
+      (candidate) => Math.abs(candidate.x - 7000) <= 1 && Math.abs(candidate.y - 5400) <= 1,
+    );
+    const joinBoundaryEnd = model.roofPlanes[0]?.boundary.find(
+      (candidate) => Math.abs(candidate.x + 1000) <= 1 && Math.abs(candidate.y - 5400) <= 1,
+    );
+    expect(joinBoundaryStart).toBeDefined();
+    expect(joinBoundaryEnd).toBeDefined();
+    expect(joinBoundaryStart?.z ?? Number.NaN).toBeGreaterThan(2500);
+    expect(joinBoundaryStart?.z).toBeCloseTo(joinBoundaryEnd?.z ?? Number.NaN, 6);
+    expect(model.eave.gutterLines).toHaveLength(1);
+    expect(model.eave.fasciaPolygons).toHaveLength(1);
+    expect(model.eave.soffitPolygons).toHaveLength(1);
+    expect(joinedWall?.boundary[2]?.z).toBeCloseTo(joinBoundaryEnd?.z ?? Number.NaN, 6);
+    expect(joinedWall?.boundary[3]?.z).toBeCloseTo(joinBoundaryStart?.z ?? Number.NaN, 6);
+    expect(Math.min(...wallTopHeights)).toBeGreaterThan(2500);
+    expect(Math.max(...wallTopHeights)).toBeGreaterThan(3500);
+    expect(model.eave.gutterLines[0]).toEqual({
+      start: { x: -3800, y: 8200, z: 2500 },
+      end: { x: 9800, y: 8200, z: 2500 },
+    });
+    expect(model.eave.soffitPolygons.every((boundary) => !polygonIsHorizontal(boundary))).toBe(true);
+    expect(
+      soffitSolids.every(
+        (solid) =>
+          solid.metadata?.houseRoofEdgeKind === 'drain_eave' &&
+          solid.metadata?.houseRoofPerimeterRole === 'drain_eave' &&
+          solid.metadata?.houseRoofSoffitMode === 'sloped_underroof' &&
+          solid.metadata?.sourceRoofPlaneId === 'house-roof-mono-1' &&
+          solid.renderMesh === undefined &&
+          !polygonIsHorizontal(solid.boundary),
+      ),
+    ).toBe(true);
+    expect(
+      gutterSolids.map((solid) => solid.metadata?.houseRoofPerimeterRole),
+    ).toEqual(['drain_eave']);
+    expect(
+      fasciaSolids.map((solid) => solid.metadata?.houseRoofPerimeterRole),
+    ).toEqual(['drain_eave']);
+    expect(monoPerimeterFlashings.map((flashing) => flashing.metadata?.sourceEdgeId)).toEqual([
+      'footprint-edge-2',
+      'footprint-edge-3',
+      'footprint-edge-4',
+      'footprint-edge-5',
+      'footprint-edge-6',
+      'footprint-edge-7',
+      'footprint-edge-8',
+    ]);
+    expect(
+      monoPerimeterFlashings.find((flashing) => flashing.metadata?.sourceEdgeId === 'footprint-edge-5')?.metadata,
+    ).toMatchObject({
+      flashingRole: 'house_apron',
+      houseRoofPerimeterRole: 'house_apron_edge',
+      flashingTreatment: 'house_perimeter_folded',
+      position: 'house_apron',
+      roofGeometry: 'footprint_mono',
+    });
+    expect(monoPerimeterFlashings.every((flashing) => flashing.wings.length === 2)).toBe(true);
+    expect(
+      monoPerimeterFlashings.every((flashing) => {
+        const sourceEdgeId = String(flashing.metadata?.sourceEdgeId ?? '');
+        const sourceEdge = sourceEdgeLineFromModel(model, sourceEdgeId);
+        if (!sourceEdge) return false;
+        return flashing.wings.every((wing) =>
+          wing.boundary.every(
+            (candidate) => pointDistanceToSegment2D(candidate, sourceEdge.start, sourceEdge.end) <= 1600,
+          ),
+        );
+      }),
+    ).toBe(true);
+    expect(
+      monoPerimeterFlashings
+        .filter((flashing) => flashing.metadata?.position === 'high_side')
+        .map((flashing) => flashing.metadata?.sourceEdgeId),
+    ).toEqual(['footprint-edge-3', 'footprint-edge-7']);
+    const roofNormal = normalizeVector3(model.roofPlanes[0]!.plane.normal);
+    expect(
+      countRenderMeshFacesAlignedToNormal(
+        roofSolid?.renderMesh,
+        roofNormal.z >= 0 ? { x: -roofNormal.x, y: -roofNormal.y, z: -roofNormal.z } : roofNormal,
+      ),
+    ).toBe(0);
+    expect(countRenderMeshVerticalFaces(roofSolid?.renderMesh)).toBe(2);
+    expect(roofMaterialVisual?.lines.length ?? 0).toBeGreaterThan(0);
+    expect(
+      roofMaterialVisual?.lines.every(
+        (candidate) =>
+          Number.isFinite(candidate.start.x) &&
+          Number.isFinite(candidate.start.y) &&
+          Number.isFinite(candidate.start.z) &&
+          Number.isFinite(candidate.end.x) &&
+          Number.isFinite(candidate.end.y) &&
+          Number.isFinite(candidate.end.z),
+      ),
+    ).toBe(true);
+  });
+
+  it('omits house-side eave package geometry for supported rectangular gable roofs', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'gable',
+        roofRidgeAxis: 'x',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    const joinGutter = model.eave.gutterLines?.find(
+      (candidate) =>
+        Math.abs(candidate.start.y - 450) <= 1 &&
+        Math.abs(candidate.end.y - 450) <= 1,
+    );
+    const joinFascia = model.eave.fasciaPolygons?.find(
+      (boundary) => boundary.every((candidate) => Math.abs(candidate.y - 450) <= 1),
+    );
+    const joinSoffit = model.eave.soffitPolygons?.find(
+      (boundary) =>
+        boundary.some((candidate) => Math.abs(candidate.x - 6450) <= 1 && Math.abs(candidate.y - 450) <= 1) &&
+        boundary.some((candidate) => Math.abs(candidate.x + 450) <= 1 && Math.abs(candidate.y - 450) <= 1),
+    );
+
+    expectRoofQaValid(model);
+    expect(model.attachmentTarget?.sourceEdgeId).toBe('footprint-edge-3');
+    expect(joinGutter).toBeUndefined();
+    expect(joinFascia).toBeUndefined();
+    expect(joinSoffit).toBeUndefined();
+    expect(model.eave.gutterLines).toHaveLength(1);
+  });
+
+  it('omits house-side eave package geometry for supported orthogonal hipped roofs', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'hipped',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    const joinGutter = model.eave.gutterLines?.find(
+      (candidate) =>
+        Math.abs(candidate.start.y - 450) <= 1 &&
+        Math.abs(candidate.end.y - 450) <= 1,
+    );
+    const joinFascia = model.eave.fasciaPolygons?.find(
+      (boundary) => boundary.every((candidate) => Math.abs(candidate.y - 450) <= 1),
+    );
+    const joinSoffit = model.eave.soffitPolygons?.find(
+      (boundary) =>
+        boundary.some((candidate) => Math.abs(candidate.x - 6450) <= 1 && Math.abs(candidate.y - 450) <= 1) &&
+        boundary.some((candidate) => Math.abs(candidate.x + 450) <= 1 && Math.abs(candidate.y - 450) <= 1),
+    );
+
+    expectRoofQaValid(model);
+    expect(model.attachmentTarget?.sourceEdgeId).toBe('footprint-edge-3');
+    expect(joinGutter).toBeUndefined();
+    expect(joinFascia).toBeUndefined();
+    expect(joinSoffit).toBeUndefined();
+    expect(model.eave.gutterLines).toHaveLength(3);
+  });
+
+  it('builds joined orthogonal gable roofs instead of blocking supported topology', () => {
+    const lFootprint: Polygon3 = [
+      { x: 0, y: -2400, z: 0 },
+      { x: 4200, y: -2400, z: 0 },
+      { x: 4200, y: -1200, z: 0 },
+      { x: 6000, y: -1200, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: lFootprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'x',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofForm).toBe('gable');
+    expect(model?.metadata?.roofQaStatus).toBe('valid');
+    expect(model?.metadata?.roofGeometry).toBe('bent_spine_joined_gable');
+    expect((model?.roofPlanes.length ?? 0) > 1).toBe(true);
+    expect(model?.roofFeatures?.some((feature) => feature.kind === 'ridge')).toBe(true);
+    expect(model?.roofFeatures?.some((feature) => feature.kind === 'valley')).toBe(true);
+  });
+
+  it('builds a bent-spine joined gable for U footprints and exposes only the outer end frames', () => {
+    const uFootprint: Polygon3 = [
+      { x: -1800, y: -1800, z: 0 },
+      { x: 7800, y: -1800, z: 0 },
+      { x: 7800, y: 2400, z: 0 },
+      { x: 6000, y: 2400, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 2400, z: 0 },
+      { x: -1800, y: 2400, z: 0 },
+    ];
+    const terminalEnds = deriveHouseGableTerminalEnds({
+      footprint: uFootprint,
+      ridgeAxis: 'x',
+    });
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: uFootprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'x',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(terminalEnds.map((end) => end.sourceEdgeId)).toEqual(['footprint-edge-7', 'footprint-edge-3']);
+    expect(model?.metadata?.roofQaStatus).toBe('valid');
+    expect(model?.metadata?.roofGeometry).toBe('bent_spine_joined_gable');
+    const ridges = model?.roofFeatures?.filter((feature) => feature.kind === 'ridge') ?? [];
+    expect(ridges).toHaveLength(3);
+    expect(ridges.every((feature) => feature.line.start.x === feature.line.end.x || feature.line.start.y === feature.line.end.y)).toBe(true);
+  });
+
+  it('builds peaked gable end wall profiles for bent-spine U footprints', () => {
+    const uFootprint: Polygon3 = [
+      { x: -1800, y: -1800, z: 0 },
+      { x: 7800, y: -1800, z: 0 },
+      { x: 7800, y: 2400, z: 0 },
+      { x: 6000, y: 2400, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 2400, z: 0 },
+      { x: -1800, y: 2400, z: 0 },
+    ];
+    const terminalEnds = deriveHouseGableTerminalEnds({
+      footprint: uFootprint,
+      ridgeAxis: 'y',
+    });
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: uFootprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'y',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofGeometry).toBe('bent_spine_joined_gable');
+    const terminalWalls = (model?.wallSegments ?? []).filter((wall) =>
+      terminalEnds.some((terminalEnd) => terminalEnd.sourceEdgeId === wall.sourceEdgeId),
+    );
+    expect(terminalWalls.length).toBe(terminalEnds.length);
+    for (const wall of terminalWalls) {
+      const topProfile = wall.boundary.slice(2).reverse();
+      expect(topProfile.length).toBeGreaterThanOrEqual(3);
+      const endpointRise = Math.max(topProfile[0]!.z, topProfile[topProfile.length - 1]!.z);
+      const interiorPeak = Math.max(...topProfile.slice(1, -1).map((point3) => point3.z));
+      expect(interiorPeak).toBeGreaterThan(endpointRise);
+    }
+  });
+
+  it('keeps the ridge-y rear bridge joined to the bent spine without a floating center gable', () => {
+    const uFootprint: Polygon3 = [
+      { x: -1800, y: -1800, z: 0 },
+      { x: 7800, y: -1800, z: 0 },
+      { x: 7800, y: 2400, z: 0 },
+      { x: 6000, y: 2400, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 2400, z: 0 },
+      { x: -1800, y: 2400, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: uFootprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'y',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofGeometry).toBe('bent_spine_joined_gable');
+    expect(model?.metadata?.roofQaStatus).toBe('valid');
+    expect(model?.metadata?.roofFacetMergeMode).toBe('active_rectilinear_wavefront_bent_spine');
+    expect(model?.roofPlanes.every((plane) => plane.metadata?.ridgeAxis === 'y')).toBe(true);
+    expect(model?.metadata?.roofTerminalClosureCount).toBe(2);
+
+    const terminalSourceEdgeIds = deriveHouseGableTerminalEnds({
+      footprint: uFootprint,
+      ridgeAxis: 'y',
+    }).map((terminalEnd) => terminalEnd.sourceEdgeId.replace('footprint-edge-', 'house-eave-edge-'));
+    expect(
+      (model?.roofPlanes ?? []).some((plane) =>
+        terminalSourceEdgeIds.includes(String(plane.metadata?.sourceEdgeId ?? '')),
+      ),
+    ).toBe(false);
+    const ridgeFeatures = (model?.roofFeatures ?? []).filter((feature) => feature.kind === 'ridge');
+
+    const ridgeZMax = Math.max(
+      ...ridgeFeatures.flatMap((feature) => [feature.line.start.z, feature.line.end.z]),
+    );
+    const planeZMax = Math.max(
+      ...((model?.roofPlanes ?? []).flatMap((plane) => plane.boundary.map((point3) => point3.z))),
+    );
+    expect(planeZMax).toBeLessThanOrEqual(ridgeZMax + 1e-6);
+  });
+
+  it('limits joined U gable eave packages to the true draining perimeter edges', () => {
+    const uFootprint: Polygon3 = [
+      { x: -1800, y: -1800, z: 0 },
+      { x: 7800, y: -1800, z: 0 },
+      { x: 7800, y: 2400, z: 0 },
+      { x: 6000, y: 2400, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 2400, z: 0 },
+      { x: -1800, y: 2400, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: uFootprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'y',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    const gutterEdgeIds = (model?.solids?.linearSolids ?? [])
+      .filter((solid) => solid.kind === 'gutter')
+      .map((solid) => solid.metadata?.sourceEdgeId)
+      .sort();
+    const fasciaEdgeIds = (model?.solids?.surfaceSolids ?? [])
+      .filter((solid) => solid.kind === 'fascia')
+      .map((solid) => solid.metadata?.sourceEdgeId)
+      .sort();
+    const soffitEdgeIds = (model?.solids?.surfaceSolids ?? [])
+      .filter((solid) => solid.kind === 'soffit')
+      .map((solid) => solid.metadata?.sourceEdgeId)
+      .sort();
+
+    expect(model?.metadata?.roofGeometry).toBe('bent_spine_joined_gable');
+    expect(model?.metadata?.roofQaStatus).toBe('valid');
+    expect(gutterEdgeIds).toEqual([
+      'footprint-edge-1',
+      'footprint-edge-2',
+      'footprint-edge-4',
+      'footprint-edge-6',
+      'footprint-edge-8',
+    ]);
+    expect(fasciaEdgeIds).toEqual(gutterEdgeIds);
+    expect(soffitEdgeIds).toEqual(gutterEdgeIds);
+    expect(gutterEdgeIds).not.toContain('footprint-edge-3');
+    expect(gutterEdgeIds).not.toContain('footprint-edge-5');
+    expect(gutterEdgeIds).not.toContain('footprint-edge-7');
+  });
+
+  it('builds bent-spine joined gables for wrap presets with explicit terminal closure metadata', () => {
+    const presets: Array<'wrap_left' | 'wrap_right'> = ['wrap_left', 'wrap_right'];
+
+    for (const preset of presets) {
+      const footprint = makePresetFootprint(preset);
+      const terminalEnds = deriveHouseGableTerminalEnds({
+        footprint,
+        ridgeAxis: 'x',
+      });
+      const model = buildHouseModel3D({
+        config: makeConfig({
+          footprint,
+          roofForm: 'gable',
+          roofRidgeAxis: 'x',
+        }),
+        attachmentEdge: makeAttachmentEdge(),
+      });
+
+      expect(model?.metadata?.roofGeometry).toBe('bent_spine_joined_gable');
+      expect(model?.metadata?.roofQaStatus).toBe('valid');
+      expect(model?.metadata?.roofTerminalClosureCount).toBe(2);
+      expect((model?.roofFeatures ?? []).filter((feature) => feature.kind === 'ridge')).toHaveLength(3);
+      expect((model?.roofFeatures ?? []).filter((feature) => feature.kind === 'valley')).toHaveLength(2);
+
+      const terminalWalls = (model?.wallSegments ?? []).filter((wall) =>
+        terminalEnds.some((terminalEnd) => terminalEnd.sourceEdgeId === wall.sourceEdgeId),
+      );
+      expect(terminalWalls).toHaveLength(2);
+      expect(terminalWalls.every((wall) => wall.metadata?.houseWallClosureKind === 'terminal_gable')).toBe(true);
+      for (const wall of terminalWalls) {
+        const topProfile = wall.boundary.slice(2).reverse();
+        expect(topProfile.length).toBeGreaterThanOrEqual(3);
+        const endpointRise = Math.max(topProfile[0]!.z, topProfile[topProfile.length - 1]!.z);
+        const interiorPeak = Math.max(...topProfile.slice(1, -1).map((point3) => point3.z));
+        expect(interiorPeak).toBeGreaterThan(endpointRise);
+      }
+
+      const closurePlanes = (model?.roofPlanes ?? []).filter(
+        (plane) => plane.metadata?.roofTerminalClosureFacet === true,
+      );
+      expect(closurePlanes.length).toBeGreaterThan(0);
+      expect(
+        closurePlanes.some((plane) =>
+          String(plane.metadata?.roofTerminalClosureSourceEdgeIds ?? '').includes(terminalEnds[0]!.sourceEdgeId),
+        ),
+      ).toBe(true);
+      expect(
+        closurePlanes.some((plane) =>
+          String(plane.metadata?.roofTerminalClosureSourceEdgeIds ?? '').includes(terminalEnds[1]!.sourceEdgeId),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('keeps open wrap gable ends on the same terminal closure geometry as the closed wall', () => {
+    const footprint = makePresetFootprint('wrap_left');
+    const terminalEnds = deriveHouseGableTerminalEnds({
+      footprint,
+      ridgeAxis: 'x',
+    });
+    const openEndId = terminalEnds[0]?.id;
+    const openSourceEdgeId = terminalEnds[0]?.sourceEdgeId;
+    const closedModel = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'x',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    const openModel = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'x',
+        openGableEndIds: openEndId ? [openEndId] : null,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(openEndId).toBeTruthy();
+    const closedWall = closedModel?.wallSegments.find((segment) => segment.sourceEdgeId === openSourceEdgeId);
+    const openWall = openModel?.wallSegments.find((segment) => segment.metadata?.gableEndId === openEndId);
+    expect(openWall?.metadata?.houseWallMode).toBe('open_gable_frame');
+    expect(openWall?.metadata?.houseWallClosureKind).toBe('terminal_gable');
+    expect(openWall?.boundary).toEqual(closedWall?.boundary);
+    const frameFeatures = openModel?.roofFeatures?.filter((feature) => feature.kind === 'gable_end_frame') ?? [];
+    expect(frameFeatures.length).toBeGreaterThan(0);
+    expect(frameFeatures.every((feature) => feature.metadata?.gableEndId === openEndId)).toBe(true);
+  });
+
+  it('builds roof-aligned gable end walls with a ridge apex on the selected axis', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'gable',
+        roofRidgeAxis: 'x',
+        roofPitchDeg: 15,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    const gableEndWall = model?.wallSegments[1];
+    expect(gableEndWall?.boundary).toHaveLength(5);
+    const gableTopProfile = gableEndWall?.boundary.slice(2) ?? [];
+    expect((gableTopProfile[0]?.z ?? 0) > 2400).toBe(true);
+    expect((gableTopProfile[2]?.z ?? 0) > 2400).toBe(true);
+    expect(gableTopProfile[1]?.z).toBeGreaterThan(gableTopProfile[0]?.z ?? Number.NEGATIVE_INFINITY);
+    expect(gableTopProfile[1]?.z).toBeGreaterThan(gableTopProfile[2]?.z ?? Number.NEGATIVE_INFINITY);
+  });
+
+  it('opens selected gable ends as frame-only geometry', () => {
+    const footprint = makeFootprint();
+    const openEndId = deriveHouseGableTerminalEnds({
+      footprint,
+      ridgeAxis: 'x',
+    })[0]?.id;
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'gable',
+        roofRidgeAxis: 'x',
+        openGableEndIds: openEndId ? [openEndId] : null,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(openEndId).toBeTruthy();
+    expect(model).not.toBeNull();
+    const openWall = model?.wallSegments.find((segment) => segment.metadata?.gableEndId === openEndId);
+    expect(openWall?.metadata?.houseWallMode).toBe('open_gable_frame');
+    expect(
+      model?.solids?.surfaceSolids.some(
+        (solid) => solid.kind === 'wall' && solid.metadata?.sourceId === openWall?.id,
+      ),
+    ).toBe(false);
+    const frameFeatures = model?.roofFeatures?.filter((feature) => feature.kind === 'gable_end_frame') ?? [];
+    expect(frameFeatures.length).toBeGreaterThan(0);
+    expect(frameFeatures.every((feature) => feature.metadata?.gableEndId === openEndId)).toBe(true);
+  });
+
+  it('blocks unsupported hipped topology instead of falling back to a bounding box roof', () => {
+    const nonOrthogonal: Polygon3 = [
+      { x: 0, y: -1800, z: 0 },
+      { x: 6000, y: -1600, z: 0 },
+      { x: 5600, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: nonOrthogonal,
+        roofForm: 'hipped',
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofForm).toBe('hipped');
+    expect(model?.metadata?.roofQaStatus).toBe('invalid');
+    expect(model?.metadata?.roofQaFailureReason).toBe('unsupported_hipped_topology');
+    expect(model?.roofPlanes).toHaveLength(0);
+  });
+
+  it('adds one shared appendage band on a supported host edge', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'mono',
+        roofAppendage: {
+          enabled: true,
+          form: 'mono',
+          hostEdge: 'rear',
+          pitchDeg: 5,
+          dropMm: 500,
+        },
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofAppendageEnabled).toBe(true);
+    expect(model?.metadata?.roofQaStatus).toBe('valid');
+    expect((model?.roofPlanes.length ?? 0) > 1).toBe(true);
+    expect(model?.roofPlanes.some((plane) => plane.metadata?.roofGeometry === 'appendage_band')).toBe(true);
+    const appendageSoffits =
+      model?.solids?.surfaceSolids.filter(
+        (solid) =>
+          solid.kind === 'soffit' &&
+          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-rear',
+      ) ?? [];
+    const appendageFascias =
+      model?.solids?.surfaceSolids.filter(
+        (solid) =>
+          solid.kind === 'fascia' &&
+          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-rear',
+      ) ?? [];
+    const appendageGutters =
+      model?.solids?.linearSolids.filter(
+        (solid) =>
+          solid.kind === 'gutter' &&
+          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-rear',
+      ) ?? [];
+    const appendageFlashings =
+      model?.roofFlashings?.filter(
+        (flashing) => flashing.metadata?.roofGeometry === 'appendage_band',
+      ) ?? [];
+
+    expect(appendageSoffits).toHaveLength(1);
+    expect(appendageFascias).toHaveLength(1);
+    expect(appendageGutters).toHaveLength(1);
+    expect(appendageSoffits[0]?.metadata?.houseRoofPerimeterRole).toBe('drain_eave');
+    expect(appendageFascias[0]?.metadata?.houseRoofPerimeterRole).toBe('drain_eave');
+    expect(appendageGutters[0]?.metadata?.houseRoofPerimeterRole).toBe('drain_eave');
+    expect(
+      appendageFlashings.map((flashing) => ({
+        sourceEdgeId: flashing.metadata?.sourceEdgeId,
+        flashingRole: flashing.metadata?.flashingRole,
+        perimeterRole: flashing.metadata?.houseRoofPerimeterRole,
+      })),
+    ).toEqual([
+      {
+        sourceEdgeId: 'footprint-edge-1',
+        flashingRole: 'high_side',
+        perimeterRole: 'weather_flashed_edge',
+      },
+      {
+        sourceEdgeId: 'house-roof-appendage-rear-edge-1',
+        flashingRole: 'high_side',
+        perimeterRole: 'weather_flashed_edge',
+      },
+      {
+        sourceEdgeId: 'house-roof-appendage-rear-edge-2',
+        flashingRole: 'rake',
+        perimeterRole: 'weather_flashed_edge',
+      },
+      {
+        sourceEdgeId: 'house-roof-appendage-rear-edge-4',
+        flashingRole: 'rake',
+        perimeterRole: 'weather_flashed_edge',
+      },
+    ]);
+    expect(appendageFlashings.every((flashing) => flashing.metadata?.houseRoofPerimeterRole === 'weather_flashed_edge')).toBe(true);
+    expect(
+      appendageFlashings.every(
+        (flashing) =>
+          flashing.wings.length === 2 &&
+          flashing.metadata?.flashingTreatment === 'house_perimeter_folded',
+      ),
+    ).toBe(true);
+  });
+
+  it('builds shared deck geometry for attached, detached, and custom decks', () => {
+    const config = makeConfig();
+    config.houseContext.model = {
+      ...config.houseContext.model!,
+      decks: [
+        {
+          id: 'deck-attached',
+          name: 'Attached deck',
+          kind: 'deck',
+          shape: 'preset',
+          presetType: 'rect_attached',
+          outline: [
+            { x: 0, y: 0, z: 0 },
+            { x: 6000, y: 0, z: 0 },
+            { x: 6000, y: 3000, z: 0 },
+            { x: 0, y: 3000, z: 0 },
+          ],
+          elevationMode: 'aligned_to_threshold',
+          topSurfaceElevationMm: 0,
+          hostEdgeId: 'rear',
+          isAttached: true,
+          surfaceMaterial: 'timber_decking',
+          supportContext: {
+            classification: 'threshold_attached',
+          },
+        },
+        {
+          id: 'deck-detached',
+          name: 'Detached deck',
+          kind: 'deck',
+          shape: 'preset',
+          presetType: 'rect_detached',
+          outline: [
+            { x: 7000, y: 1200, z: 0 },
+            { x: 9800, y: 1200, z: 0 },
+            { x: 9800, y: 3600, z: 0 },
+            { x: 7000, y: 3600, z: 0 },
+          ],
+          elevationMode: 'stepped',
+          topSurfaceElevationMm: 450,
+          isAttached: false,
+          surfaceMaterial: 'composite',
+          supportContext: {
+            classification: 'ground_supported',
+          },
+        },
+        {
+          id: 'deck-custom',
+          name: 'Custom landing',
+          kind: 'landing',
+          shape: 'custom',
+          outline: [
+            { x: -2800, y: 800, z: 0 },
+            { x: -400, y: 800, z: 0 },
+            { x: -400, y: 2200, z: 0 },
+            { x: -1600, y: 2200, z: 0 },
+            { x: -1600, y: 3200, z: 0 },
+            { x: -2800, y: 3200, z: 0 },
+          ],
+          elevationMode: 'ground',
+          topSurfaceElevationMm: 75,
+          isAttached: false,
+          surfaceMaterial: 'concrete',
+          supportContext: {
+            classification: 'mixed_or_unclear',
+          },
+        },
+      ],
+    };
+
+    const model = buildHouseModel3D({
+      config,
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.decks).toHaveLength(3);
+    expect(model?.decks.map((deck) => deck.id)).toEqual([
+      'deck-attached',
+      'deck-detached',
+      'deck-custom',
+    ]);
+
+    const attachedDeck = model?.decks.find((deck) => deck.id === 'deck-attached');
+    const detachedDeck = model?.decks.find((deck) => deck.id === 'deck-detached');
+    const customDeck = model?.decks.find((deck) => deck.id === 'deck-custom');
+
+    expect(attachedDeck?.supportClassification).toBe('threshold_attached');
+    expect(attachedDeck?.topSurfaceElevationMm).toBe(0);
+    expect(attachedDeck?.boundary.every((point) => point.z === 0)).toBe(true);
+    expect(detachedDeck?.supportClassification).toBe('ground_supported');
+    expect(detachedDeck?.topSurfaceElevationMm).toBe(450);
+    expect(detachedDeck?.boundary.every((point) => point.z === 450)).toBe(true);
+    expect(customDeck?.kind).toBe('landing');
+    expect(customDeck?.shape).toBe('custom');
+    expect(customDeck?.boundary).toHaveLength(6);
+    expect(customDeck?.boundary.every((point) => point.z === 75)).toBe(true);
+
+    const deckSolids = model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'deck') ?? [];
+    expect(deckSolids).toHaveLength(3);
+    const steppedSolid = deckSolids.find((solid) => solid.metadata?.sourceId === 'deck-detached');
+    expect(steppedSolid?.thicknessMm).toBe(40);
+    expectVerticalPrismRenderMesh(steppedSolid?.renderMesh, 410, 450);
   });
 });

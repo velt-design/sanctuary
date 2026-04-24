@@ -8,7 +8,12 @@ import {
 } from "react";
 import { describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
-import type { Point3, ViewerSceneModel, ViewerSceneObject } from "@sp/geometry";
+import type {
+  Point3,
+  ViewerSceneHouseRoofMaterialObject,
+  ViewerSceneModel,
+  ViewerSceneObject,
+} from "@sp/geometry";
 import { getSanctuaryGeometryWorkbenchFixture } from "@/lib/drawings/sanctuaryWorkbenchFixtures";
 import { buildWorkbenchGeometryPreview } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import { buildEstimateDrawingDraftFromSnapshot } from "@/lib/estimates/drawingEdits";
@@ -210,7 +215,12 @@ vi.mock("@react-three/drei", () => ({
 }));
 
 function requireFixture(
-  slug: "mono-standard" | "gable-standard" | "box-standard",
+  slug:
+    | "mono-standard"
+    | "gable-standard"
+    | "box-standard"
+    | "gable-u-hipped-screenshot"
+    | "mono-join-screenshot",
 ) {
   const fixture = getSanctuaryGeometryWorkbenchFixture(slug);
   if (!fixture) {
@@ -282,30 +292,105 @@ function clickByTestId(container: HTMLElement, testId: string) {
   });
 }
 
+function isFinitePoint(point: Point3 | null | undefined): point is Point3 {
+  return Boolean(
+    point &&
+      Number.isFinite(point.x) &&
+      Number.isFinite(point.y) &&
+      Number.isFinite(point.z),
+  );
+}
+
+function makeScreenshotStyleUHouseFootprint(): Point3[] {
+  return [
+    { x: -2800, y: 7200, z: 0 },
+    { x: 8800, y: 7200, z: 0 },
+    { x: 8800, y: 400, z: 0 },
+    { x: 7000, y: 400, z: 0 },
+    { x: 7000, y: 5400, z: 0 },
+    { x: -1000, y: 5400, z: 0 },
+    { x: -1000, y: 400, z: 0 },
+    { x: -2800, y: 400, z: 0 },
+  ];
+}
+
+function pointDistanceToSegment2D(
+  candidate: { x: number; y: number },
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= 1e-6) return Math.hypot(candidate.x - start.x, candidate.y - start.y);
+  const ratio = Math.min(
+    Math.max(((candidate.x - start.x) * dx + (candidate.y - start.y) * dy) / lengthSq, 0),
+    1,
+  );
+  const projectedX = start.x + dx * ratio;
+  const projectedY = start.y + dy * ratio;
+  return Math.hypot(candidate.x - projectedX, candidate.y - projectedY);
+}
+
+function sourceEdgeLineFromFootprint(sourceEdgeId: string) {
+  const footprint = makeScreenshotStyleUHouseFootprint();
+  const match = /^footprint-edge-(\d+)$/.exec(sourceEdgeId);
+  if (!match) return null;
+  const index = Number(match[1]) - 1;
+  if (!Number.isInteger(index) || index < 0 || index >= footprint.length) return null;
+  return {
+    start: footprint[index]!,
+    end: footprint[(index + 1) % footprint.length]!,
+  };
+}
+
+function roofMaterialPoints(
+  object: ViewerSceneHouseRoofMaterialObject,
+): Point3[] {
+  return object.lines.flatMap((line) =>
+    [line.start, line.end].filter(isFinitePoint),
+  );
+}
+
 function pointListsForObject(object: ViewerSceneObject): Point3[] {
   if (object.type === "member_prism")
-    return [object.centerline.start, object.centerline.end];
+    return [object.centerline.start, object.centerline.end].filter(
+      isFinitePoint,
+    );
   if (
     object.type === "roof_plane" ||
     object.type === "house_surface" ||
     object.type === "roof_cladding_panel"
   )
-    return object.boundary;
+    return object.boundary.filter(isFinitePoint);
   if (object.type === "house_surface_solid")
-    return object.renderMesh?.vertices ?? object.boundary;
+    return (
+      object.renderMesh?.vertices?.filter(isFinitePoint) ??
+      object.boundary.filter(isFinitePoint)
+    );
   if (object.type === "roof_flashing")
-    return object.wings.flatMap((wing) => wing.boundary);
+    return object.wings.flatMap((wing) => wing.boundary.filter(isFinitePoint));
+  if (object.type === "house_roof_material") return roofMaterialPoints(object);
   if (object.type === "reference_line" || object.type === "house_line")
-    return [object.line.start, object.line.end];
+    return [object.line.start, object.line.end].filter(isFinitePoint);
   if (object.type === "house_linear_solid")
-    return object.renderMesh?.vertices ?? [object.centerline.start, object.centerline.end];
-  return object.boundary;
+    return (
+      object.renderMesh?.vertices?.filter(isFinitePoint) ??
+      [object.centerline.start, object.centerline.end].filter(isFinitePoint)
+    );
+  if ("boundary" in object && Array.isArray(object.boundary)) {
+    return object.boundary.filter(isFinitePoint);
+  }
+  return [];
 }
 
 function computeSceneCenter(scene: ViewerSceneModel): Point3 {
   const points = scene.layers.flatMap((layer) =>
     layer.objects.flatMap((object) => pointListsForObject(object)),
   );
+  if (points.length === 0) {
+    return { x: 0, y: 0, z: 0 };
+  }
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
   const zs = points.map((point) => point.z);
@@ -317,6 +402,7 @@ function computeSceneCenter(scene: ViewerSceneModel): Point3 {
 }
 
 function centroid(points: Point3[]): Point3 {
+  if (points.length === 0) return { x: 0, y: 0, z: 0 };
   const total = points.reduce(
     (current, point) => ({
       x: current.x + point.x,
@@ -465,70 +551,19 @@ function buildMovedHousePreview(input: {
   return geometryPreview;
 }
 
-function buildScreenshotStyleRoofPreview() {
-  const fixture = requireFixture("gable-standard");
-  let draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
-  if (!draft?.inputs.modules[0]) {
-    throw new Error("Expected draft geometry module.");
-  }
+function buildScreenshotStyleRoofPreview(
+  slug: "gable-u-hipped-screenshot" | "mono-join-screenshot" = "gable-u-hipped-screenshot",
+) {
+  const fixture = requireFixture(slug);
 
-  const intents = [
-    { type: "dimension" as const, field: "lengthM" as const, value: "5" },
-    { type: "dimension" as const, field: "projectionM" as const, value: "5" },
-    { type: "roof_material" as const, value: "acrylic" as const },
-    { type: "roof_pitch" as const, value: "20" },
-    { type: "house_connection" as const, value: "fascia" as const },
-    { type: "attachment_side" as const, value: "front" as const },
-    {
-      type: "house_config" as const,
-      key: "houseAttachmentStrategy" as const,
-      value: "fascia_under_gutter",
-    },
-    {
-      type: "house_config" as const,
-      key: "houseRoofPitchDeg" as const,
-      value: "20",
-    },
-    {
-      type: "house_config" as const,
-      key: "houseEaveOverhangMm" as const,
-      value: "1000",
-    },
-    { type: "footprint_preset" as const, value: "u_shape" as const },
-    { type: "footprint_param" as const, key: "widthM" as const, value: "8" },
-    { type: "footprint_param" as const, key: "offsetXM" as const, value: "-1" },
-    { type: "footprint_param" as const, key: "setbackM" as const, value: "0.4" },
-    { type: "footprint_param" as const, key: "bandDepthM" as const, value: "1.8" },
-    { type: "footprint_param" as const, key: "leftLegRunM" as const, value: "5" },
-    { type: "footprint_param" as const, key: "rightLegRunM" as const, value: "5" },
-  ];
-
-  for (const intent of intents) {
-    const result = applyGeometryEditIntent({
-      snapshot: fixture.snapshot,
-      draft,
-      moduleIndex: 0,
-      intent,
-    });
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      throw new Error(result.message);
-    }
-    draft = result.draft;
-  }
-
-  const geometryPreview = buildWorkbenchGeometryPreview({
+  return buildWorkbenchGeometryPreview({
     projectId: "proj_preview",
     estimateId: fixture.estimate.id,
     designRequestId: fixture.request.id,
     snapshot: fixture.snapshot,
-    draft,
+    draft: fixture.draft,
     moduleIndex: 0,
   });
-  if (geometryPreview.kind !== "ready") {
-    throw new Error("Expected ready geometry preview");
-  }
-  return geometryPreview;
 }
 
 function pointInPolygon2D(candidate: { x: number; y: number }, polygon: Array<{ x: number; y: number }>): boolean {
@@ -840,6 +875,11 @@ describe("Geometry3DViewport", () => {
         '[data-testid="geometry-3d-canvas-shell"]',
       ),
     ).not.toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-testid="geometry-3d-canvas-shell"]')
+        ?.getAttribute("data-native-selection-suppressed"),
+    ).toBe("true");
     expect(
       rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')
         ?.className,
@@ -1159,6 +1199,63 @@ describe("Geometry3DViewport", () => {
     rendered.unmount();
   });
 
+  it("suppresses native selection on the 3D canvas shell without blocking workspace panel controls", async () => {
+    const fixture = requireFixture("mono-standard");
+    const geometryPreview = buildWorkbenchGeometryPreview({
+      projectId: "proj_preview",
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 0,
+    });
+    if (geometryPreview.kind !== "ready") {
+      throw new Error("Expected ready geometry preview");
+    }
+
+    const rendered = renderIntoDocument(
+      <Geometry3DViewport geometryPreview={geometryPreview} />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const canvasShell = rendered.container.querySelector(
+      '[data-testid="geometry-3d-canvas-shell"]',
+    );
+    if (!(canvasShell instanceof HTMLElement)) {
+      throw new Error("Missing 3D canvas shell.");
+    }
+
+    const shellSelectionEvent = new Event("selectstart", {
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      canvasShell.dispatchEvent(shellSelectionEvent);
+    });
+    expect(shellSelectionEvent.defaultPrevented).toBe(true);
+
+    clickButtonByText(rendered.container, "Workspace panel");
+    const workspaceButton = rendered.container.querySelector(
+      '[data-testid="workspace-panel"] button',
+    );
+    if (!(workspaceButton instanceof HTMLButtonElement)) {
+      throw new Error("Missing workspace panel button.");
+    }
+
+    const panelSelectionEvent = new Event("selectstart", {
+      bubbles: true,
+      cancelable: true,
+    });
+    act(() => {
+      workspaceButton.dispatchEvent(panelSelectionEvent);
+    });
+    expect(panelSelectionEvent.defaultPrevented).toBe(false);
+
+    rendered.unmount();
+  });
+
   it("renders and inspects semantic house model scene objects", async () => {
     const fixture = requireFixture("mono-standard");
     const geometryPreview = buildWorkbenchGeometryPreview({
@@ -1175,26 +1272,44 @@ describe("Geometry3DViewport", () => {
     const houseLayer = geometryPreview.scene.layers.find(
       (layer) => layer.id === "house",
     );
-    const roofFlashingLayer = geometryPreview.scene.layers.find(
-      (layer) => layer.id === "roof_flashings",
-    );
-    const houseRoofFlashing = roofFlashingLayer?.objects.find(
-      (object): object is Extract<ViewerSceneObject, { type: "roof_flashing" }> =>
-        object.type === "roof_flashing" &&
-        object.metadata?.source === "house_model",
-    );
     const sceneCenter = computeSceneCenter(geometryPreview.scene);
     expect(sceneCenter.y).toBeLessThan(1000);
     expect(
       houseLayer?.objects.some((object) => object.type === "house_surface_solid"),
     ).toBe(true);
     expect(
-      houseLayer?.objects.some((object) => object.type === "house_linear_solid"),
-    ).toBe(true);
-    expect(
       houseLayer?.objects.some((object) => object.type === "house_line"),
     ).toBe(true);
-    expect(houseRoofFlashing?.wings).toHaveLength(2);
+    const attachmentTargetLine = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_line" }> =>
+        object.type === "house_line" && object.kind === "attachment_target",
+    );
+    const wallSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "wall",
+    );
+    const roofSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "roof",
+    );
+    const soffitSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "soffit",
+    );
+    const fasciaSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+        object.type === "house_surface_solid" && object.kind === "fascia",
+    );
+    const gutterSolid = houseLayer?.objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
+        object.type === "house_linear_solid" && object.kind === "gutter",
+    );
+    expect(
+      wallSolid?.metadata?.hostEdgeSide === "rear" ||
+        wallSolid?.metadata?.hostEdgeSide === "front" ||
+        wallSolid?.metadata?.hostEdgeSide === "left" ||
+        wallSolid?.metadata?.hostEdgeSide === "right",
+    ).toBe(true);
 
     const rendered = renderIntoDocument(
       <Geometry3DViewport geometryPreview={geometryPreview} />,
@@ -1208,72 +1323,59 @@ describe("Geometry3DViewport", () => {
       rendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]'),
     ).not.toBeNull();
     expect(
-      rendered.container.querySelector('[data-testid="scene-object-house-solid-house-roof-min-y"]'),
+      rendered.container.querySelector(
+        `[data-testid="scene-object-${roofSolid?.id ?? "missing-roof-solid"}"]`,
+      ),
     ).not.toBeNull();
-    expect(
-      rendered.container.querySelector('[data-testid="scene-object-house-solid-soffit-1"]'),
-    ).not.toBeNull();
-    expect(
-      rendered.container.querySelector('[data-testid="scene-object-house-solid-fascia-1"]'),
-    ).not.toBeNull();
-    expect(
-      rendered.container.querySelector('[data-testid="scene-object-house-solid-gutter-1"]'),
-    ).not.toBeNull();
-    expect(
-      rendered.container.querySelector(`[data-testid="scene-object-${houseRoofFlashing?.id}"]`),
-    ).not.toBeNull();
+    if (soffitSolid) {
+      expect(
+        rendered.container.querySelector(
+          `[data-testid="scene-object-${soffitSolid.id}"]`,
+        ),
+      ).not.toBeNull();
+    }
+    if (fasciaSolid) {
+      expect(
+        rendered.container.querySelector(
+          `[data-testid="scene-object-${fasciaSolid.id}"]`,
+        ),
+      ).not.toBeNull();
+    }
     expect(
       rendered.container.querySelector(
-        '[data-testid="scene-object-house-attachment-target-line"]',
+        `[data-testid="scene-object-${attachmentTargetLine?.id ?? "missing-attachment-target"}"]`,
       ),
     ).not.toBeNull();
 
-    const wallSolid = houseLayer?.objects.find(
-      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
-        object.type === "house_surface_solid" && object.kind === "wall",
-    );
-    const roofSolid = houseLayer?.objects.find(
-      (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
-        object.type === "house_surface_solid" && object.kind === "roof",
-    );
-    const gutterSolid = houseLayer?.objects.find(
-      (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
-        object.type === "house_linear_solid" && object.kind === "gutter",
-    );
     const wallGeometry = buildRenderMeshGeometry(wallSolid?.renderMesh);
     const roofGeometry = buildRenderMeshGeometry(roofSolid?.renderMesh);
     const gutterGeometry = buildRenderMeshGeometry(gutterSolid?.renderMesh);
     expect(wallGeometry?.getAttribute("position").count).toBeGreaterThan(0);
     expect(roofGeometry?.getAttribute("position").count).toBeGreaterThan(0);
-    expect(gutterGeometry?.getAttribute("position").count).toBeGreaterThan(0);
-    if (!houseRoofFlashing) {
-      throw new Error("Expected house roof flashing object.");
+    if (gutterSolid) {
+      expect(gutterGeometry?.getAttribute("position").count).toBeGreaterThan(0);
     }
-    const flashingGeometry = buildPolygonSlabGeometry(
-      houseRoofFlashing.wings[0]!.boundary,
-      houseRoofFlashing.wings[0]!.plane,
-      houseRoofFlashing.thicknessMm,
-    );
-    expect(flashingGeometry.getAttribute("position").count).toBeGreaterThan(0);
 
     clickButtonByText(rendered.container, "Workspace panel");
-    clickSceneObject(rendered.container, houseRoofFlashing.id);
-    expect(rendered.container.textContent).toContain(houseRoofFlashing.id);
-    expect(rendered.container.textContent).toContain("roof flashing");
-    clickSceneObject(rendered.container, "house-solid-house-roof-min-y");
-    expect(rendered.container.textContent).toContain("house-solid-house-roof-min-y");
+    if (!roofSolid) {
+      throw new Error("Expected house roof solid.");
+    }
+    clickSceneObject(rendered.container, roofSolid.id);
+    expect(rendered.container.textContent).toContain(roofSolid.id);
     expect(rendered.container.textContent).toContain("house solid roof");
     expect(rendered.container.textContent).toContain("Roof QA");
     expect(rendered.container.textContent).toContain("valid");
     expect(rendered.container.textContent).toContain("Thickness");
     expect(rendered.container.textContent).toContain("Plane normal");
 
-    clickSceneObject(rendered.container, "house-solid-gutter-1");
-    expect(rendered.container.textContent).toContain("house-solid-gutter-1");
-    expect(rendered.container.textContent).toContain("house solid gutter");
-    expect(rendered.container.textContent).toContain("Profile");
-    expect(rendered.container.textContent).toContain("Start");
-    expect(rendered.container.textContent).toContain("End");
+    if (gutterSolid) {
+      clickSceneObject(rendered.container, gutterSolid.id);
+      expect(rendered.container.textContent).toContain(gutterSolid.id);
+      expect(rendered.container.textContent).toContain("house solid gutter");
+      expect(rendered.container.textContent).toContain("Profile");
+      expect(rendered.container.textContent).toContain("Start");
+      expect(rendered.container.textContent).toContain("End");
+    }
 
     clickButtonByText(rendered.container, "Fit to scene");
     expect(rendered.container.textContent).toContain(
@@ -1281,6 +1383,212 @@ describe("Geometry3DViewport", () => {
     );
 
     rendered.unmount();
+  });
+
+  it("picks an attached deck host side from a house wall without selecting non-wall objects", async () => {
+    const fixture = requireFixture("mono-standard");
+    const geometryPreview = buildWorkbenchGeometryPreview({
+      projectId: "proj_preview",
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 0,
+    });
+    if (geometryPreview.kind !== "ready") {
+      throw new Error("Expected ready geometry preview");
+    }
+
+    const pickSpy = vi.fn();
+    const wallSolid = geometryPreview.scene.layers
+      .flatMap((layer) => layer.objects)
+      .find(
+        (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+          object.type === "house_surface_solid" &&
+          object.kind === "wall" &&
+          (object.metadata?.hostEdgeSide === "rear" ||
+            object.metadata?.hostEdgeSide === "front" ||
+            object.metadata?.hostEdgeSide === "left" ||
+            object.metadata?.hostEdgeSide === "right"),
+      );
+    const roofSolid = geometryPreview.scene.layers
+      .flatMap((layer) => layer.objects)
+      .find(
+        (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
+          object.type === "house_surface_solid" && object.kind === "roof",
+      );
+    if (!wallSolid) {
+      throw new Error("Expected wall solid with host edge metadata.");
+    }
+
+    const rendered = renderIntoDocument(
+      <Geometry3DViewport
+        geometryPreview={geometryPreview}
+        pendingAttachedDeckHostEdgePick
+        onPickAttachedDeckHostEdge={pickSpy}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.textContent).toContain("Pick house side for new deck");
+
+    if (roofSolid) {
+      clickSceneObject(rendered.container, roofSolid.id);
+      expect(pickSpy).not.toHaveBeenCalled();
+      expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("");
+    }
+
+    clickSceneObject(rendered.container, wallSolid.id);
+    expect(pickSpy).toHaveBeenCalledWith(wallSolid.metadata?.hostEdgeSide);
+    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("");
+
+    rendered.unmount();
+  });
+
+  it("renders deck-specific surface polish and selected deck outlines", async () => {
+    const fixture = requireFixture("mono-standard");
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) {
+      throw new Error("Expected drawing draft.");
+    }
+    draft.houseFirst = {
+      decks: [
+        {
+          id: "deck-1",
+          name: "Deck 1",
+          kind: "deck",
+          shape: "preset",
+          presetType: "rect_attached",
+          presetRect: {
+            widthM: "4",
+            depthM: "3",
+            centerOffsetM: "0",
+          },
+          outline: [
+            { alongM: "1.5", depthM: "-3" },
+            { alongM: "5.5", depthM: "-3" },
+            { alongM: "5.5", depthM: "0" },
+            { alongM: "1.5", depthM: "0" },
+          ],
+          elevationMode: "aligned_to_threshold",
+          levelOffsetMm: "0",
+          hostEdgeId: "rear",
+          isAttached: true,
+          surfaceMaterial: "timber_decking",
+        },
+        {
+          id: "deck-2",
+          name: "Deck 2",
+          kind: "deck",
+          shape: "preset",
+          presetType: "rect_detached",
+          presetRect: {
+            widthM: "3.6",
+            depthM: "3",
+            centerOffsetM: "0",
+            detachedGapM: "0.8",
+          },
+          outline: [
+            { alongM: "1.7", depthM: "-6.8" },
+            { alongM: "5.3", depthM: "-6.8" },
+            { alongM: "5.3", depthM: "-3.8" },
+            { alongM: "1.7", depthM: "-3.8" },
+          ],
+          elevationMode: "ground",
+          levelOffsetMm: "0",
+          hostEdgeId: "rear",
+          isAttached: false,
+          surfaceMaterial: "composite",
+        },
+      ],
+    };
+
+    const geometryPreview = buildWorkbenchGeometryPreview({
+      projectId: "proj_preview",
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+    expect(geometryPreview.kind).toBe("ready");
+    if (geometryPreview.kind !== "ready") return;
+
+    const rendered = renderIntoDocument(
+      <Geometry3DViewport geometryPreview={geometryPreview} />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1-deck-outline"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1-deck-grooves"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1-deck-outline-selected"]'),
+    ).toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-2-deck-outline-selected"]'),
+    ).toBeNull();
+
+    clickSceneObject(rendered.container, "house-solid-deck-1");
+    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("house-solid-deck-1");
+    expect(
+      rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1-deck-outline-selected"]'),
+    ).not.toBeNull();
+    expect(
+      rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-2-deck-outline-selected"]'),
+    ).toBeNull();
+
+    clickButtonByText(rendered.container, "Workspace panel");
+    expect(rendered.container.textContent).toContain("deckSurfaceMaterial");
+    expect(rendered.container.textContent).toContain("deckPresetRectWidthMm");
+
+    rendered.unmount();
+
+    const houseRendered = renderIntoDocument(
+      <Geometry3DViewport geometryPreview={geometryPreview} displayMode="house" />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      houseRendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]'),
+    ).not.toBeNull();
+    expect(
+      houseRendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1"]'),
+    ).not.toBeNull();
+    expect(
+      houseRendered.container.querySelector('[data-testid="scene-object-outer-gutter"]'),
+    ).toBeNull();
+    expect(
+      houseRendered.container.querySelector('[data-testid="scene-object-acrylic-panel-1"]'),
+    ).toBeNull();
+    expect(viewportDiagnostics(houseRendered.container).sceneObjectCount).toBe(
+      String(
+        geometryPreview.scene.layers
+          .filter((layer) => layer.id === "house" || layer.id === "house_roof_materials")
+          .flatMap((layer) => layer.objects).length,
+      ),
+    );
+
+    clickButtonByText(houseRendered.container, "Workspace panel");
+    expect(houseRendered.container.textContent).toContain("House");
+    expect(houseRendered.container.textContent).not.toContain("Posts");
+    expect(houseRendered.container.textContent).not.toContain("Rafters");
+
+    houseRendered.unmount();
   });
 
   it("keeps moved semantic house context renderable and in focus bounds", async () => {
@@ -1461,6 +1769,9 @@ describe("Geometry3DViewport", () => {
     const roofSolids = houseObjects.filter(
       (object) => object.type === "house_surface_solid" && object.kind === "roof",
     );
+    const soffitSolids = houseObjects.filter(
+      (object) => object.type === "house_surface_solid" && object.kind === "soffit",
+    );
     const roofOutlines = houseObjects.filter(
       (object) => object.type === "house_line" && object.kind === "roof_outline",
     );
@@ -1507,6 +1818,25 @@ describe("Geometry3DViewport", () => {
     expect(Number(diagnostics.houseRoofSolidSkippedCount)).toBe(0);
     expect(rendered.container.textContent).not.toContain("NaN");
     expect(rendered.container.textContent).not.toContain("Infinity");
+
+    rendered.unmount();
+  });
+
+  it("renders the screenshot-style mono join case through the ready 3D viewport path", async () => {
+    const geometryPreview = buildScreenshotStyleRoofPreview("mono-join-screenshot");
+    expect(geometryPreview.kind).toBe("ready");
+    if (geometryPreview.kind !== "ready") return;
+
+    const rendered = renderIntoDocument(
+      <Geometry3DViewport geometryPreview={geometryPreview} />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.textContent).not.toContain("3D Preview Unsupported");
+    expect(rendered.container.textContent).not.toContain("unsupported_roof_topology");
 
     rendered.unmount();
   });

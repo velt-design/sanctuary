@@ -2,6 +2,11 @@ import 'server-only';
 
 import type { CostOutputV1, RoofType } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import {
+  buildEstimateDrawingDraftFromSnapshot,
+  updateEstimateDrawingHouseFirstRoofDraft,
+  type EstimateDrawingDraft,
+} from '@/lib/estimates/drawingEdits';
 import type { SanctuaryGeometryWorkbenchFixture } from './sanctuaryWorkbenchFixtures.types';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -149,6 +154,105 @@ function makeSnapshot(module: CalculatorModuleInputs, result: CostOutputV1, labe
   } satisfies Record<string, unknown>;
 }
 
+function makeHouseRoofDraftFixtureDraft(input: {
+  snapshot: Record<string, unknown>;
+  roof: NonNullable<EstimateDrawingDraft['houseFirst']>['roof'];
+}): EstimateDrawingDraft {
+  const draft = buildEstimateDrawingDraftFromSnapshot(input.snapshot);
+  if (!draft) {
+    throw new Error('Expected drawing draft from fixture snapshot.');
+  }
+  return updateEstimateDrawingHouseFirstRoofDraft({
+    draft,
+    roof: input.roof,
+  });
+}
+
+function makeScreenshotStyleUSnapshot(): Record<string, unknown> {
+  return makeSnapshot(
+    makeModule({
+      pergolaStyle: 'gable',
+      roofMaterial: 'acrylic',
+      lengthM: '5',
+      projectionM: '5',
+      roofPitchDeg: '20',
+      postCutHeightM: '2.5',
+      houseConnectionType: 'fascia',
+      attachmentSide: 'front',
+      houseAttachmentStrategy: 'fascia_under_gutter',
+      houseFootprintMode: 'preset',
+      houseFootprintPreset: 'u_shape',
+      houseFootprintParams: {
+        widthM: '8',
+        offsetXM: '-1',
+        setbackM: '0.4',
+        bandDepthM: '1.8',
+        returnRunM: '2.4',
+        recessWidthM: '2.4',
+        recessDepthM: '1.2',
+        leftLegRunM: '5',
+        rightLegRunM: '5',
+        sideRunM: '2.4',
+      },
+      houseRoofPitchDeg: '20',
+      houseFasciaHeightMm: '300',
+      houseEaveOverhangMm: '1000',
+      gableEndFramesMode: 'outer_end_only',
+      gableHouseEdgeGutter: 'house',
+      gableOuterEdgeGutter: 'our',
+    }),
+    makeResult({
+      roofType: 'gable',
+      lengthA: 5,
+      spanA: 5,
+      roofPitchDegUsed: 20,
+      heightHouseSideM: 2.5,
+      heightOuterSideM: 2.5,
+      gutterType: 'SP Gutter',
+      rafterCount: 10,
+      rafterSpacingMm: 556,
+      ridgeBeamProfileUsed: '50x150',
+    }),
+    'Gable U Hipped Screenshot',
+  );
+}
+
+function makeGableUHippedScreenshotFixtureSource(): {
+  snapshot: Record<string, unknown>;
+  draft: EstimateDrawingDraft;
+} {
+  const snapshot = makeScreenshotStyleUSnapshot();
+  return {
+    snapshot,
+    draft: makeHouseRoofDraftFixtureDraft({
+      snapshot,
+      roof: {
+        form: 'hipped',
+        primaryPitchDeg: '20',
+      },
+    }),
+  };
+}
+
+function makeMonoJoinScreenshotFixtureSource(): {
+  snapshot: Record<string, unknown>;
+  draft: EstimateDrawingDraft;
+} {
+  const snapshot = makeScreenshotStyleUSnapshot();
+  return {
+    snapshot,
+    draft: makeHouseRoofDraftFixtureDraft({
+      snapshot,
+      roof: {
+        form: 'mono',
+        material: 'trapezoidal_5_rib',
+        primaryPitchDeg: '20',
+        primaryFallDirection: 'positive_y',
+      },
+    }),
+  };
+}
+
 const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'mono-standard',
@@ -286,52 +390,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'gable-u-hipped-screenshot',
     label: 'Gable U Hipped Screenshot',
-    snapshot: makeSnapshot(
-      makeModule({
-        pergolaStyle: 'gable',
-        roofMaterial: 'acrylic',
-        lengthM: '5',
-        projectionM: '5',
-        roofPitchDeg: '20',
-        postCutHeightM: '2.5',
-        houseConnectionType: 'fascia',
-        attachmentSide: 'front',
-        houseAttachmentStrategy: 'fascia_under_gutter',
-        houseFootprintMode: 'preset',
-        houseFootprintPreset: 'u_shape',
-        houseFootprintParams: {
-          widthM: '8',
-          offsetXM: '-1',
-          setbackM: '0.4',
-          bandDepthM: '1.8',
-          returnRunM: '2.4',
-          recessWidthM: '2.4',
-          recessDepthM: '1.2',
-          leftLegRunM: '5',
-          rightLegRunM: '5',
-          sideRunM: '2.4',
-        },
-        houseRoofPitchDeg: '20',
-        houseFasciaHeightMm: '300',
-        houseEaveOverhangMm: '1000',
-        gableEndFramesMode: 'outer_end_only',
-        gableHouseEdgeGutter: 'house',
-        gableOuterEdgeGutter: 'our',
-      }),
-      makeResult({
-        roofType: 'gable',
-        lengthA: 5,
-        spanA: 5,
-        roofPitchDegUsed: 20,
-        heightHouseSideM: 2.5,
-        heightOuterSideM: 2.5,
-        gutterType: 'SP Gutter',
-        rafterCount: 10,
-        rafterSpacingMm: 556,
-        ridgeBeamProfileUsed: '50x150',
-      }),
-      'Gable U Hipped Screenshot',
-    ),
+    ...makeGableUHippedScreenshotFixtureSource(),
     moduleLabels: ['M1 - Gable U Hipped Screenshot - 5m x 5m - Acrylic'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000124',
@@ -341,6 +400,24 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
     },
     request: {
       id: 'dpr_00000000-0000-4000-8000-000000000124',
+      requestVersion: 1,
+      status: 'OPEN',
+      priorityTier: 'TIER_2',
+    },
+  },
+  {
+    slug: 'mono-join-screenshot',
+    label: 'Mono Join Screenshot',
+    ...makeMonoJoinScreenshotFixtureSource(),
+    moduleLabels: ['M1 - Mono Join Screenshot - 5m x 5m - Trapezoidal 5 Rib'],
+    estimate: {
+      id: 'est_00000000-0000-4000-8000-000000000125',
+      versionLabel: 'V-FIX-U2',
+      status: 'draft',
+      createdAt: '2026-04-22T00:00:00.000Z',
+    },
+    request: {
+      id: 'dpr_00000000-0000-4000-8000-000000000125',
       requestVersion: 1,
       status: 'OPEN',
       priorityTier: 'TIER_2',

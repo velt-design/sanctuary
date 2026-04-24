@@ -4,12 +4,12 @@ Date: 2026-04-15
 Status: Living plan
 Depends on:
 
-- `docs/drawing-workbench-spec.md`
-- `docs/drawing-workbench-execution-board.md`
+- `docs/house-first-design-workbench-implementation-plan.md`
+- `docs/house-first-design-workbench-execution-board.md`
 
 ## Objective
 
-Make Model Space outline drawing feel like a polished, reliable CAD-style editing tool instead of a partial overlay on top of generated drawings.
+Support house-mode footprint editing inside the canonical house-first workbench direction by making Model Space outline drawing feel like a polished, reliable CAD-style editing tool instead of a partial overlay on top of generated drawings.
 
 The end state should support:
 
@@ -20,6 +20,8 @@ The end state should support:
 - reliable panning and zooming while drawing
 - robust validation with actionable errors
 - browser-level regression coverage for the real user flow
+
+This is a tactical implementation note, not a competing workbench spec. It supports the house-first plan and execution board by tightening one important part of house-mode model-space editing.
 
 ## Current State
 

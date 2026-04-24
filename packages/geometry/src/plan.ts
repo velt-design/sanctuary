@@ -144,6 +144,12 @@ function buildPlanHouseObjects(assembly: Assembly3D): {
       boundary: toPolygon2(polygon),
       metadata: withKindMetadata('fascia', model.eave.metadata),
     })),
+    ...(model.decks ?? []).map((deck) => ({
+      id: deck.id,
+      kind: 'deck' as const,
+      boundary: toPolygon2(deck.boundary),
+      metadata: withKindMetadata('deck', deck.metadata),
+    })),
   ];
 
   if (model.attachmentTarget?.zone?.boundary) {

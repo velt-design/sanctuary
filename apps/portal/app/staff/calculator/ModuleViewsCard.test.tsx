@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { HouseFirstPlanOverlay } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import ModuleViewsCard, {
   ModuleDrawingRenderer,
@@ -103,6 +104,8 @@ function makeFootprintEditor(overrides: Partial<{
   isEditing: boolean;
   isContextHovered: boolean;
   surface: 'card' | 'sheet' | 'model';
+  allowAttachmentSideCanvasSelect: boolean;
+  allowResizeEdgeDrag: boolean;
   hoveredHandleId: HouseFootprintHandleId | null;
   activeHandleId: HouseFootprintHandleId | null;
   customPolygonOverride: ModulePlanModel['houseFootprintPolygon'] | null;
@@ -117,6 +120,8 @@ function makeFootprintEditor(overrides: Partial<{
     isEditing: overrides.isEditing ?? false,
     isContextHovered: overrides.isContextHovered ?? false,
     surface: overrides.surface ?? 'card',
+    allowAttachmentSideCanvasSelect: overrides.allowAttachmentSideCanvasSelect ?? true,
+    allowResizeEdgeDrag: overrides.allowResizeEdgeDrag ?? true,
     customPolygonOverride: overrides.customPolygonOverride,
     customPolygonOpen: overrides.customPolygonOpen,
     customPolygonConfirmedPointCount: overrides.customPolygonConfirmedPointCount,
@@ -851,6 +856,31 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('data-footprint-handle=');
   });
 
+  it('suppresses model-space footprint canvas hits when the interaction capabilities are disabled', () => {
+    const drawing = makeDrawingModule({ houseFootprintPreset: 'recess_left' });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        footprintEditor={makeFootprintEditor({
+          surface: 'model',
+          isEditing: true,
+          allowAttachmentSideCanvasSelect: false,
+          allowResizeEdgeDrag: false,
+          activeHandleId: 'bandDepth',
+        })}
+      />,
+    );
+
+    expect(markup).not.toContain('data-footprint-edge=');
+    expect(markup).not.toContain('data-footprint-resize-edge-hit=');
+    expect(markup).not.toContain('data-footprint-resize-edge=');
+    expect(markup).toContain('Band depth: 1.80m');
+  });
+
   it('renders the sheet pergola rotate popover separately from the house popover', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
@@ -933,6 +963,46 @@ describe('ModuleViewsCard', () => {
     expect(modelMarkup).toContain('data-editable-field-id="plan:lengthA"');
     expect(modelMarkup).toContain('data-editable-field-id="plan:spanA"');
     expect(sheetMarkup).not.toContain('data-plan-resize-handle-hit=');
+  });
+
+  it('renders house-first deck targets above the pergola plan fill in model space', () => {
+    const drawing = makeDrawingModule();
+    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+      shapes: [
+        {
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 6, y: 0 },
+            { x: 6, y: 3 },
+            { x: 0, y: 3 },
+          ],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        houseFirstPlanOverlay={houseFirstPlanOverlay}
+      />,
+    );
+
+    const pergolaFillIndex = markup.indexOf('data-plan-primary-fill="true"');
+    const deckHitIndex = markup.indexOf('data-house-first-shape-hit="deck:deck-1"');
+    expect(pergolaFillIndex).toBeGreaterThanOrEqual(0);
+    expect(deckHitIndex).toBeGreaterThan(pergolaFillIndex);
   });
 
   it('renders custom draw preview edges and vertex aid markers in model space', () => {

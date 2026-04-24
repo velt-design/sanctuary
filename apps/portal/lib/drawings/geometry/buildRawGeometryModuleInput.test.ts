@@ -2,6 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
+import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
+import { makeHouseFirstDeckSupportProjectFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
+import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 
@@ -260,6 +264,218 @@ describe('buildRawGeometryModuleInput', () => {
           gutterProjectionMm: '135',
           eaveOverhangMm: '650',
         },
+      }),
+    );
+  });
+
+  it('maps shared house roof overrides into raw house context', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected draft');
+    draft.houseFirst = {
+      roof: {
+        form: 'gable',
+        primaryPitchDeg: '18',
+        primaryFallDirection: 'negative_x',
+        ridgeAxis: 'y',
+        appendage: {
+          enabled: true,
+          hostEdge: 'front',
+          pitchDeg: '4',
+          dropMm: '500',
+        },
+      },
+    };
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule(),
+      result: makeResult(),
+      sharedHouse: projectModel.house,
+    });
+
+    expect(raw.houseContext.roofForm).toBe('gable');
+    expect(raw.houseContext.roofPitchDeg).toBe('18');
+    expect(raw.houseContext.roofPrimaryFallDirection).toBe('negative_x');
+    expect(raw.houseContext.roofRidgeAxis).toBe('y');
+    expect(raw.houseContext.roofAppendage).toEqual({
+      enabled: true,
+      form: 'mono',
+      hostEdge: 'front',
+      pitchDeg: '4',
+      dropMm: '500',
+    });
+  });
+
+  it('maps shared house decks into raw house context', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected draft');
+    draft.houseFirst = {
+      decks: [
+        {
+          id: 'deck-1',
+          name: 'Detached deck',
+          kind: 'deck',
+          shape: 'preset',
+          presetType: 'rect_detached',
+          presetRect: {
+            widthM: '3.6',
+            depthM: '3',
+            centerOffsetM: '0',
+            detachedGapM: '0.6',
+          },
+          outline: [
+            { alongM: '1.7', depthM: '-3.6' },
+            { alongM: '5.3', depthM: '-3.6' },
+            { alongM: '5.3', depthM: '-0.6' },
+            { alongM: '1.7', depthM: '-0.6' },
+          ],
+          elevationMode: 'stepped',
+          levelOffsetMm: '350',
+          hostEdgeId: 'rear',
+          isAttached: false,
+          surfaceMaterial: 'composite',
+        },
+      ],
+    };
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule(),
+      result: makeResult(),
+      sharedHouse: projectModel.house,
+    });
+
+    expect(raw.houseContext.decks).toEqual([
+      expect.objectContaining({
+        id: 'deck-1',
+        name: 'Detached deck',
+        kind: 'deck',
+        shape: 'preset',
+        presetType: 'rect_detached',
+        presetRect: {
+          widthMm: 3600,
+          depthMm: 3000,
+          centerOffsetMm: 0,
+          detachedGapMm: 600,
+        },
+        elevationMode: 'stepped',
+        levelOffsetMm: '350',
+        hostEdgeId: 'rear',
+        isAttached: false,
+        surfaceMaterial: 'composite',
+        supportContext: expect.objectContaining({
+          classification: 'mixed_or_unclear',
+        }),
+        validation: expect.objectContaining({
+          status: 'valid',
+        }),
+      }),
+    ]);
+  });
+
+  it('maps shared house windows into raw house context', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected draft');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-1',
+          label: 'Kitchen window',
+          kind: 'window',
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '1.1',
+        },
+      ],
+    };
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule(),
+      result: makeResult(),
+      sharedHouse: projectModel.house,
+    });
+
+    expect(raw.houseContext.openings).toEqual([
+      {
+        id: 'opening-1',
+        label: 'Kitchen window',
+        kind: 'window',
+        wallId: 'rear',
+        hostEdgeId: 'footprint-edge-3',
+        widthMm: 2400,
+        heightMm: 1200,
+        sillHeightMm: 900,
+        offsetAlongWallMm: 1100,
+        validation: {
+          status: 'valid',
+          codes: [],
+          message: null,
+        },
+      },
+    ]);
+  });
+
+  it('preserves deck support metadata from the fixture matrix in raw house context', () => {
+    const wrapFixture = makeHouseFirstDeckSupportProjectFixture({
+      id: 'rear_wrap_multi_edge',
+    });
+    const warningFixture = makeHouseFirstDeckSupportProjectFixture({
+      id: 'rear_warning_heavy_attached',
+    });
+
+    const wrapRaw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        attachmentSide: wrapFixture.activeHostSide,
+      }),
+      result: makeResult(),
+      sharedHouse: wrapFixture.projectModel.house,
+    });
+    const warningRaw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        attachmentSide: warningFixture.activeHostSide,
+      }),
+      result: makeResult(),
+      sharedHouse: warningFixture.projectModel.house,
+    });
+
+    expect(wrapRaw.houseContext.decks[0]?.supportContext).toEqual(
+      expect.objectContaining({
+        classification: 'threshold_attached',
+        nearestHouseEdgeId: 'left',
+      }),
+    );
+    expect(warningRaw.houseContext.decks[0]?.supportContext).toEqual(
+      expect.objectContaining({
+        classification: 'threshold_attached',
+        warningCodes: ['threshold_alignment_offset', 'insufficient_host_edge_contact'],
       }),
     );
   });
