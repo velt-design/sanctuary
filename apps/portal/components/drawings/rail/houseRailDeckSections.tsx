@@ -150,7 +150,7 @@ export function buildHouseRailDeckSections({
   deckButtons.push(
     <SelectField
       key="deck-host-edge"
-      label="Host edge"
+      label={activeDeck.isAttached ? 'Host edge' : 'Witness / snap edge'}
       value={activeDeck.hostEdgeId ?? house?.footprint.attachmentSide ?? 'rear'}
       options={ATTACHMENT_SIDE_OPTIONS}
       disabled={disabled}
@@ -158,7 +158,7 @@ export function buildHouseRailDeckSections({
       helperText={
         activeDeck.isAttached
           ? 'The snapped preset rectangle rebuilds fully outside this edge.'
-          : 'This edge is the current witness reference for width, depth, and floating-placement dimensions.'
+          : 'This edge is the current witness reference for floating dimensions and a manual snap target hint.'
       }
       onCommit={(value) =>
         runDeckAction(

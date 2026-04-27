@@ -29,7 +29,10 @@ export type HouseFirstPlanDeckInteraction = {
   kind: 'preset_rect';
   placement: 'snapped' | 'floating';
   houseAttachmentSide: AttachmentSide;
-  hostEdgeId: AttachmentSide;
+  semanticPlacementSide: AttachmentSide | null;
+  semanticWitnessSide: AttachmentSide;
+  placementEdgeId: string | null;
+  witnessEdgeId: string;
   hostEdgeStart: PlanPoint;
   hostEdgeEnd: PlanPoint;
   hostSpanM: number;
@@ -46,7 +49,7 @@ export type HouseFirstPlanDeckInteraction = {
 
 export type HouseFirstPlanDeckReferenceFrame = {
   hostEdgeId: AttachmentSide;
-  sourceEdgeId: string | null;
+  sourceEdgeId: string;
   axis: 'along' | 'depth';
   spanStartM: number;
   spanEndM: number;
@@ -242,6 +245,10 @@ function normalizeSourceEdgeId(value: string | null | undefined): string | null 
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return /^footprint-edge-\d+$/.test(trimmed) ? trimmed : null;
+}
+
+function isSemanticAttachmentSide(value: string | null | undefined): value is AttachmentSide {
+  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
 }
 
 function pointsAlmostEqual(a: PlanPoint, b: PlanPoint, tolerance = 0.01): boolean {
@@ -673,44 +680,96 @@ function buildDeckReferenceFrames(input: {
       moduleProjectionM: input.moduleProjectionM,
       unitFrame: true,
     });
+  const localPolygon = referenceHousePolygon.map((point) => ({
+    alongM: Number(point.alongM),
+    depthM: Number(point.depthM),
+  }));
+  const alongValues = localPolygon.map((point) => point.alongM);
+  const depthValues = localPolygon.map((point) => point.depthM);
+  const bounds = {
+    minAlongM: Math.min(...alongValues),
+    maxAlongM: Math.max(...alongValues),
+    minDepthM: Math.min(...depthValues),
+    maxDepthM: Math.max(...depthValues),
+  };
 
-  return (['rear', 'front', 'left', 'right'] as const)
-    .map((hostEdgeId) => {
-      const frame = resolveDeckHostEdgeFrame({
-        housePolygon: referenceHousePolygon,
-        hostEdgeId,
-      });
-      if (!frame) return null;
-      const edgeStartLocal =
-        frame.axis === 'along'
-          ? { alongM: frame.start, depthM: frame.edgeCoordinate }
-          : { alongM: frame.edgeCoordinate, depthM: frame.start };
-      const edgeEndLocal =
-        frame.axis === 'along'
-          ? { alongM: frame.end, depthM: frame.edgeCoordinate }
-          : { alongM: frame.edgeCoordinate, depthM: frame.end };
-      const outwardProbeLocal =
-        frame.outwardAxis === 'along'
+  return localPolygon.flatMap((point, index) => {
+    const nextPoint = localPolygon[(index + 1) % localPolygon.length];
+    if (!nextPoint) return [];
+    const sourceEdgeId = `footprint-edge-${index + 1}`;
+    const frame =
+      Math.abs(point.depthM - nextPoint.depthM) <= ZERO_DIMENSION_EPSILON_M &&
+      Math.abs(point.depthM - bounds.minDepthM) <= ZERO_DIMENSION_EPSILON_M
+        ? {
+            hostEdgeId: 'rear' as const,
+            sourceEdgeId,
+            axis: 'along' as const,
+            spanStartM: Math.min(point.alongM, nextPoint.alongM),
+            spanEndM: Math.max(point.alongM, nextPoint.alongM),
+            edgeCoordinateM: bounds.minDepthM,
+            outwardDirection: -1 as const,
+          }
+        : Math.abs(point.depthM - nextPoint.depthM) <= ZERO_DIMENSION_EPSILON_M &&
+            Math.abs(point.depthM - bounds.maxDepthM) <= ZERO_DIMENSION_EPSILON_M
           ? {
-              alongM: frame.edgeCoordinate + frame.outwardDirection,
-              depthM: frame.axis === 'along' ? frame.start : frame.start,
+              hostEdgeId: 'front' as const,
+              sourceEdgeId,
+              axis: 'along' as const,
+              spanStartM: Math.min(point.alongM, nextPoint.alongM),
+              spanEndM: Math.max(point.alongM, nextPoint.alongM),
+              edgeCoordinateM: bounds.maxDepthM,
+              outwardDirection: 1 as const,
             }
-          : {
-              alongM: frame.axis === 'along' ? frame.start : frame.edgeCoordinate,
-              depthM: frame.edgeCoordinate + frame.outwardDirection,
-            };
-      const edgeStart = toWorld(edgeStartLocal);
-      const edgeEnd = toWorld(edgeEndLocal);
-      const outwardProbe = toWorld(outwardProbeLocal);
-      const alongUnit = normalizeVector(edgeEnd.x - edgeStart.x, edgeEnd.y - edgeStart.y);
-      const outwardUnit = normalizeVector(outwardProbe.x - edgeStart.x, outwardProbe.y - edgeStart.y);
-      return {
-        hostEdgeId,
+          : Math.abs(point.alongM - nextPoint.alongM) <= ZERO_DIMENSION_EPSILON_M &&
+              Math.abs(point.alongM - bounds.minAlongM) <= ZERO_DIMENSION_EPSILON_M
+            ? {
+                hostEdgeId: 'left' as const,
+                sourceEdgeId,
+                axis: 'depth' as const,
+                spanStartM: Math.min(point.depthM, nextPoint.depthM),
+                spanEndM: Math.max(point.depthM, nextPoint.depthM),
+                edgeCoordinateM: bounds.minAlongM,
+                outwardDirection: -1 as const,
+              }
+            : Math.abs(point.alongM - nextPoint.alongM) <= ZERO_DIMENSION_EPSILON_M &&
+                Math.abs(point.alongM - bounds.maxAlongM) <= ZERO_DIMENSION_EPSILON_M
+              ? {
+                  hostEdgeId: 'right' as const,
+                  sourceEdgeId,
+                  axis: 'depth' as const,
+                  spanStartM: Math.min(point.depthM, nextPoint.depthM),
+                  spanEndM: Math.max(point.depthM, nextPoint.depthM),
+                  edgeCoordinateM: bounds.maxAlongM,
+                  outwardDirection: 1 as const,
+                }
+              : null;
+    if (!frame) return [];
+
+    const edgeStartLocal =
+      frame.axis === 'along'
+        ? { alongM: frame.spanStartM, depthM: frame.edgeCoordinateM }
+        : { alongM: frame.edgeCoordinateM, depthM: frame.spanStartM };
+    const edgeEndLocal =
+      frame.axis === 'along'
+        ? { alongM: frame.spanEndM, depthM: frame.edgeCoordinateM }
+        : { alongM: frame.edgeCoordinateM, depthM: frame.spanEndM };
+    const outwardProbeLocal =
+      frame.axis === 'along'
+        ? { alongM: frame.spanStartM, depthM: frame.edgeCoordinateM + frame.outwardDirection }
+        : { alongM: frame.edgeCoordinateM + frame.outwardDirection, depthM: frame.spanStartM };
+    const edgeStart = toWorld(edgeStartLocal);
+    const edgeEnd = toWorld(edgeEndLocal);
+    const outwardProbe = toWorld(outwardProbeLocal);
+    const alongUnit = normalizeVector(edgeEnd.x - edgeStart.x, edgeEnd.y - edgeStart.y);
+    const outwardUnit = normalizeVector(outwardProbe.x - edgeStart.x, outwardProbe.y - edgeStart.y);
+    return [
+      {
+        hostEdgeId: frame.hostEdgeId,
         sourceEdgeId: frame.sourceEdgeId,
         axis: frame.axis,
-        spanStartM: frame.start,
-        spanEndM: frame.end,
-        edgeCoordinateM: frame.edgeCoordinate,
+        spanStartM: frame.spanStartM,
+        spanEndM: frame.spanEndM,
+        edgeCoordinateM: frame.edgeCoordinateM,
         outwardDirection: frame.outwardDirection,
         hostEdgeStart: edgeStart,
         hostEdgeEnd: edgeEnd,
@@ -718,27 +777,25 @@ function buildDeckReferenceFrames(input: {
         alongUnitY: alongUnit.y,
         outwardUnitX: outwardUnit.x,
         outwardUnitY: outwardUnit.y,
-      } satisfies HouseFirstPlanDeckReferenceFrame;
-    })
-    .filter((frame): frame is HouseFirstPlanDeckReferenceFrame => Boolean(frame));
+      } satisfies HouseFirstPlanDeckReferenceFrame,
+    ];
+  });
 }
 
-function resolveWorldHostEdgeFrame(input: {
-  housePolygon: PlanPoint[];
-  hostEdgeId: string | null | undefined;
-}): HouseFirstPlanDeckReferenceFrame | null {
-  if (!input.housePolygon.length) return null;
+function buildWorldDeckReferenceFrames(housePolygon: PlanPoint[]): HouseFirstPlanDeckReferenceFrame[] {
+  if (!housePolygon.length) return [];
 
-  const xValues = input.housePolygon.map((point) => point.x);
-  const yValues = input.housePolygon.map((point) => point.y);
+  const xValues = housePolygon.map((point) => point.x);
+  const yValues = housePolygon.map((point) => point.y);
   const bounds = {
     minX: Math.min(...xValues),
     maxX: Math.max(...xValues),
     minY: Math.min(...yValues),
     maxY: Math.max(...yValues),
   };
-  const candidates = input.housePolygon.flatMap((point, index) => {
-    const nextPoint = input.housePolygon[(index + 1) % input.housePolygon.length];
+
+  return housePolygon.flatMap((point, index) => {
+    const nextPoint = housePolygon[(index + 1) % housePolygon.length];
     if (!nextPoint) return [];
     const sourceEdgeId = `footprint-edge-${index + 1}`;
     if (Math.abs(point.y - nextPoint.y) <= ZERO_DIMENSION_EPSILON_M && Math.abs(point.y - bounds.minY) <= ZERO_DIMENSION_EPSILON_M) {
@@ -827,6 +884,15 @@ function resolveWorldHostEdgeFrame(input: {
     }
     return [];
   });
+}
+
+function resolveWorldHostEdgeFrame(input: {
+  housePolygon: PlanPoint[];
+  hostEdgeId: string | null | undefined;
+}): HouseFirstPlanDeckReferenceFrame | null {
+  if (!input.housePolygon.length) return null;
+
+  const candidates = buildWorldDeckReferenceFrames(input.housePolygon);
 
   const exactHostEdgeId = normalizeSourceEdgeId(input.hostEdgeId);
   if (exactHostEdgeId) {
@@ -873,18 +939,13 @@ function resolveWorldHostEdgeFrame(input: {
   };
 }
 
-function buildWorldDeckReferenceFrames(housePolygon: PlanPoint[]): HouseFirstPlanDeckReferenceFrame[] {
-  return (['rear', 'front', 'left', 'right'] as const)
-    .map((hostEdgeId) => resolveWorldHostEdgeFrame({ housePolygon, hostEdgeId }))
-    .filter((frame): frame is HouseFirstPlanDeckReferenceFrame => Boolean(frame));
-}
-
 function projectWorldPolygonToReferenceFrame(input: {
   polygon: PlanPoint[];
   frame: HouseFirstPlanDeckReferenceFrame;
 }): {
   alongMinM: number;
   alongMaxM: number;
+  outwardMinM: number;
   nearGapM: number;
   widthM: number;
   depthM: number;
@@ -900,17 +961,103 @@ function projectWorldPolygonToReferenceFrame(input: {
   );
   const alongMinM = Math.min(...alongValues);
   const alongMaxM = Math.max(...alongValues);
-  const nearGapM = Math.max(0, Math.min(...outwardValues));
-  const depthM = Math.max(0, Math.max(...outwardValues) - Math.min(...outwardValues));
+  const outwardMinM = Math.min(...outwardValues);
+  const nearGapM = Math.max(0, outwardMinM);
+  const depthM = Math.max(0, Math.max(...outwardValues) - outwardMinM);
   const centerOffsetM = ((alongMinM + alongMaxM) / 2) - ((input.frame.spanStartM + input.frame.spanEndM) / 2);
   return {
     alongMinM,
     alongMaxM,
+    outwardMinM,
     nearGapM,
     widthM: Math.max(0, alongMaxM - alongMinM),
     depthM,
     centerOffsetM,
   };
+}
+
+function resolveDeckReferenceFrameForPolygon(input: {
+  polygon: PlanPoint[];
+  referenceFrames: HouseFirstPlanDeckReferenceFrame[];
+  requestedEdgeId: string | null | undefined;
+}): HouseFirstPlanDeckReferenceFrame | null {
+  if (!input.referenceFrames.length || !input.polygon.length) return null;
+
+  const exactHostEdgeId = normalizeSourceEdgeId(input.requestedEdgeId);
+  if (exactHostEdgeId) {
+    return input.referenceFrames.find((frame) => frame.sourceEdgeId === exactHostEdgeId) ?? null;
+  }
+
+  if (!input.requestedEdgeId) {
+    return (
+      input.referenceFrames
+        .map((frame) => {
+          const projection = projectWorldPolygonToReferenceFrame({ polygon: input.polygon, frame });
+          if (!projection) return null;
+          const frameMidpointM = (frame.spanStartM + frame.spanEndM) / 2;
+          const deckMidpointM = (projection.alongMinM + projection.alongMaxM) / 2;
+          return {
+            frame,
+            overlapPenaltyM: Math.max(0, -projection.outwardMinM),
+            outsidePenaltyM: projection.nearGapM,
+            spanPenaltyM: Math.max(0, frame.spanStartM - projection.alongMinM) + Math.max(0, projection.alongMaxM - frame.spanEndM),
+            midpointDistanceM: Math.abs(deckMidpointM - frameMidpointM),
+          };
+        })
+        .filter((candidate): candidate is {
+          frame: HouseFirstPlanDeckReferenceFrame;
+          overlapPenaltyM: number;
+          outsidePenaltyM: number;
+          spanPenaltyM: number;
+          midpointDistanceM: number;
+        } => Boolean(candidate))
+        .sort((left, right) =>
+          left.overlapPenaltyM - right.overlapPenaltyM ||
+          left.spanPenaltyM - right.spanPenaltyM ||
+          left.outsidePenaltyM - right.outsidePenaltyM ||
+          left.midpointDistanceM - right.midpointDistanceM,
+        )[0]?.frame ?? null
+    );
+  }
+
+  const requestedSide =
+    input.requestedEdgeId === 'front' || input.requestedEdgeId === 'left' || input.requestedEdgeId === 'right'
+      ? input.requestedEdgeId
+      : 'rear';
+  const sideFrames = input.referenceFrames.filter((frame) => frame.hostEdgeId === requestedSide);
+  const candidates = sideFrames.length ? sideFrames : input.referenceFrames;
+  return (
+    candidates
+      .map((frame) => {
+        const projection = projectWorldPolygonToReferenceFrame({ polygon: input.polygon, frame });
+        if (!projection) return null;
+        const frameMidpointM = (frame.spanStartM + frame.spanEndM) / 2;
+        const deckMidpointM = (projection.alongMinM + projection.alongMaxM) / 2;
+        const overlapPenaltyM = Math.max(0, -projection.outwardMinM);
+        const outsidePenaltyM = projection.nearGapM;
+        const spanPenaltyM = Math.max(0, frame.spanStartM - projection.alongMinM) + Math.max(0, projection.alongMaxM - frame.spanEndM);
+        return {
+          frame,
+          overlapPenaltyM,
+          outsidePenaltyM,
+          spanPenaltyM,
+          midpointDistanceM: Math.abs(deckMidpointM - frameMidpointM),
+        };
+      })
+      .filter((candidate): candidate is {
+        frame: HouseFirstPlanDeckReferenceFrame;
+        overlapPenaltyM: number;
+        outsidePenaltyM: number;
+        spanPenaltyM: number;
+        midpointDistanceM: number;
+      } => Boolean(candidate))
+      .sort((left, right) =>
+        left.overlapPenaltyM - right.overlapPenaltyM ||
+        left.spanPenaltyM - right.spanPenaltyM ||
+        left.outsidePenaltyM - right.outsidePenaltyM ||
+        left.midpointDistanceM - right.midpointDistanceM,
+      )[0]?.frame ?? null
+  );
 }
 
 function resolveWorldCrossEdgeReference(input: {
@@ -929,8 +1076,7 @@ function resolveWorldCrossEdgeReference(input: {
       ? (['left', 'right'] as const)
       : (['rear', 'front'] as const);
   const candidates = candidateEdgeIds
-    .map((hostEdgeId) => input.referenceFrames.find((frame) => frame.hostEdgeId === hostEdgeId) ?? null)
-    .filter((frame): frame is HouseFirstPlanDeckReferenceFrame => Boolean(frame))
+    .flatMap((hostEdgeId) => input.referenceFrames.filter((frame) => frame.hostEdgeId === hostEdgeId))
     .map((frame) => ({
       hostEdgeId: frame.hostEdgeId,
       frame,
@@ -1372,6 +1518,13 @@ function buildDeckPresetAnnotations(input: {
   const widthStart = first;
   const widthEnd = second;
   const depthEnd = third;
+  const legacyDetachedGapM = Number(presetRect.detachedGapM ?? '0');
+  const preserveLegacyDetachedGap =
+    !input.deck.isAttached &&
+    !input.deck.floatingRect &&
+    !normalizeSourceEdgeId(input.deck.hostEdgeId) &&
+    Number.isFinite(legacyDetachedGapM) &&
+    legacyDetachedGapM > ZERO_DIMENSION_EPSILON_M;
 
   const drivingAnnotations: Array<HouseFirstPlanPresetDimensionAnnotation | null> = [
     makeAnnotation({
@@ -1413,13 +1566,30 @@ function buildDeckPresetAnnotations(input: {
       moduleLengthM: input.moduleLengthM,
       moduleProjectionM: input.moduleProjectionM,
     });
-  const referenceFrame =
-    input.deck.hostEdgeId === 'rear' ||
-    input.deck.hostEdgeId === 'front' ||
-    input.deck.hostEdgeId === 'left' ||
-    input.deck.hostEdgeId === 'right'
-      ? referenceFrames.find((frame) => frame.hostEdgeId === input.deck.hostEdgeId) ?? null
+  const placement = input.deckInteraction?.placement ?? resolveDeckPlacementMode(input.deck.isAttached);
+  const resolvedPlacementEdgeId =
+    normalizeSourceEdgeId(input.deck.hostEdgeId) || isSemanticAttachmentSide(input.deck.hostEdgeId)
+      ? input.deck.hostEdgeId
       : null;
+  const resolvedWitnessEdgeId = normalizeSourceEdgeId(input.deck.hostEdgeId);
+  if (placement === 'snapped' && !input.deckInteraction?.placementEdgeId && !resolvedPlacementEdgeId) {
+    return drivingAnnotations.filter(
+      (annotation): annotation is HouseFirstPlanPresetDimensionAnnotation => Boolean(annotation),
+    );
+  }
+  const referenceFrame =
+    (placement === 'snapped'
+      ? input.deckInteraction?.placementEdgeId
+      : input.deckInteraction?.witnessEdgeId)
+      ? referenceFrames.find((frame) =>
+          frame.sourceEdgeId ===
+          (placement === 'snapped' ? input.deckInteraction?.placementEdgeId : input.deckInteraction?.witnessEdgeId),
+        ) ?? null
+      : resolveDeckReferenceFrameForPolygon({
+          polygon: input.deckPolygon,
+          referenceFrames,
+          requestedEdgeId: placement === 'snapped' ? resolvedPlacementEdgeId : resolvedWitnessEdgeId,
+        });
   const referenceProjection = referenceFrame
     ? projectWorldPolygonToReferenceFrame({
         polygon: input.deckPolygon,
@@ -1435,7 +1605,6 @@ function buildDeckPresetAnnotations(input: {
         polygon: input.deckPolygon,
       }));
   if (referenceFrame && referenceProjection) {
-    const placement = input.deckInteraction?.placement ?? resolveDeckPlacementMode(input.deck.isAttached);
     const pointOnFrame = (frame: HouseFirstPlanDeckReferenceFrame, alongM: number, outM: number): PlanPoint => ({
       x: frame.hostEdgeStart.x + frame.alongUnitX * (alongM - frame.spanStartM) + frame.outwardUnitX * outM,
       y: frame.hostEdgeStart.y + frame.alongUnitY * (alongM - frame.spanStartM) + frame.outwardUnitY * outM,
@@ -1489,7 +1658,12 @@ function buildDeckPresetAnnotations(input: {
         );
     } else {
       const centerAlongM = (referenceProjection.alongMinM + referenceProjection.alongMaxM) / 2;
-      const referenceEdgeGapM = Number(presetRect.detachedGapM ?? formatRawMetres(referenceProjection.nearGapM));
+      const referenceEdgeGapM =
+        input.deckInteraction?.referenceEdgeGapM && input.deckInteraction.referenceEdgeGapM > ZERO_DIMENSION_EPSILON_M
+          ? input.deckInteraction.referenceEdgeGapM
+          : preserveLegacyDetachedGap
+            ? legacyDetachedGapM
+            : Number(presetRect.detachedGapM ?? formatRawMetres(referenceProjection.nearGapM));
       relationshipAnnotations.push(
         makeAnnotation({
           id: `${input.deck.id}:referenceEdgeGapM`,
@@ -1562,16 +1736,6 @@ function buildPresetDeckInteraction(input: {
   if (input.deck.shape !== 'preset' || !input.deck.presetRect) return null;
   if (input.deckPolygon.length < 4) return null;
 
-  const hostEdgeId = input.deck.hostEdgeId;
-  if (
-    hostEdgeId !== 'rear' &&
-    hostEdgeId !== 'front' &&
-    hostEdgeId !== 'left' &&
-    hostEdgeId !== 'right'
-  ) {
-    return null;
-  }
-
   const referenceFrames =
     input.geometryHouseLookup.footprintPolygon?.length
       ? buildWorldDeckReferenceFrames(input.geometryHouseLookup.footprintPolygon)
@@ -1581,26 +1745,53 @@ function buildPresetDeckInteraction(input: {
           moduleLengthM: input.moduleLengthM,
           moduleProjectionM: input.moduleProjectionM,
         });
-  const primaryFrame = referenceFrames.find((frame) => frame.hostEdgeId === hostEdgeId);
-  if (!primaryFrame) return null;
+  const resolvedPlacementEdgeId =
+    normalizeSourceEdgeId(input.deck.hostEdgeId) || isSemanticAttachmentSide(input.deck.hostEdgeId)
+      ? input.deck.hostEdgeId
+      : null;
+  const resolvedWitnessEdgeId = normalizeSourceEdgeId(input.deck.hostEdgeId);
+  const placementFrame = input.deck.isAttached && resolvedPlacementEdgeId
+    ? resolveDeckReferenceFrameForPolygon({
+        polygon: input.deckPolygon,
+        referenceFrames,
+        requestedEdgeId: resolvedPlacementEdgeId,
+      })
+    : null;
+  if (input.deck.isAttached && !placementFrame) return null;
+  const witnessFrame =
+    resolveDeckReferenceFrameForPolygon({
+      polygon: input.deckPolygon,
+      referenceFrames,
+      requestedEdgeId: input.deck.isAttached ? resolvedPlacementEdgeId : resolvedWitnessEdgeId,
+    }) ??
+    placementFrame;
+  const interactionFrame = placementFrame ?? witnessFrame;
+  if (!interactionFrame || !witnessFrame) return null;
 
   const widthM = Number(input.deck.presetRect.widthM);
   const depthM = Number(input.deck.presetRect.depthM);
+  const legacyDetachedGapM = Number(input.deck.presetRect.detachedGapM ?? '0');
+  const preserveLegacyDetachedGap =
+    !input.deck.isAttached &&
+    !input.deck.floatingRect &&
+    !normalizeSourceEdgeId(input.deck.hostEdgeId) &&
+    Number.isFinite(legacyDetachedGapM) &&
+    legacyDetachedGapM > ZERO_DIMENSION_EPSILON_M;
   const referenceProjection = projectWorldPolygonToReferenceFrame({
     polygon: input.deckPolygon,
-    frame: primaryFrame,
+    frame: witnessFrame,
   });
   const centerOffsetM = input.deck.isAttached
     ? Number(input.deck.presetRect.centerOffsetM)
     : referenceProjection
       ? (referenceProjection.alongMinM + referenceProjection.alongMaxM) / 2 -
-        ((primaryFrame.spanStartM + primaryFrame.spanEndM) / 2)
+        ((witnessFrame.spanStartM + witnessFrame.spanEndM) / 2)
       : Number(input.deck.presetRect.centerOffsetM);
   const referenceEdgeGapM = input.deck.isAttached
     ? 0
     : referenceProjection
-      ? referenceProjection.nearGapM
-      : Number(input.deck.presetRect.detachedGapM ?? '0');
+      ? Math.max(referenceProjection.nearGapM, preserveLegacyDetachedGap ? legacyDetachedGapM : 0)
+      : legacyDetachedGapM;
   if (
     !Number.isFinite(widthM) ||
     !Number.isFinite(depthM) ||
@@ -1610,7 +1801,7 @@ function buildPresetDeckInteraction(input: {
     return null;
   }
 
-  const hostSpanM = Math.max(0, primaryFrame.spanEndM - primaryFrame.spanStartM);
+  const hostSpanM = Math.max(0, interactionFrame.spanEndM - interactionFrame.spanStartM);
   const availableHalfSpanM =
     widthM <= hostSpanM + ZERO_DIMENSION_EPSILON_M ? Math.max(0, (hostSpanM - widthM) / 2) : 0;
 
@@ -1618,9 +1809,12 @@ function buildPresetDeckInteraction(input: {
     kind: 'preset_rect',
     placement: resolveDeckPlacementMode(input.deck.isAttached),
     houseAttachmentSide: input.house.footprint.attachmentSide,
-    hostEdgeId,
-    hostEdgeStart: primaryFrame.hostEdgeStart,
-    hostEdgeEnd: primaryFrame.hostEdgeEnd,
+    semanticPlacementSide: placementFrame?.hostEdgeId ?? null,
+    semanticWitnessSide: witnessFrame.hostEdgeId,
+    placementEdgeId: placementFrame?.sourceEdgeId ?? null,
+    witnessEdgeId: witnessFrame.sourceEdgeId,
+    hostEdgeStart: interactionFrame.hostEdgeStart,
+    hostEdgeEnd: interactionFrame.hostEdgeEnd,
     hostSpanM,
     deckWidthM: widthM,
     deckDepthM: depthM,
@@ -1631,7 +1825,7 @@ function buildPresetDeckInteraction(input: {
     renderedCenter: resolvePolygonCenter(input.deckPolygon),
     referenceFrames,
     crossEdgeReference: resolveWorldCrossEdgeReference({
-      primaryFrame,
+      primaryFrame: witnessFrame,
       referenceFrames,
       polygon: input.deckPolygon,
     }),

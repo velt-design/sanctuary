@@ -591,6 +591,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     expect(rendered.container.textContent).toContain('Mono fall direction');
     expect(rendered.container.textContent).not.toContain('Gable ridge orientation');
+    const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
+    expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual(['mono', 'gable']);
     changeSelectByLabel(rendered.container, 'Roof form', 'gable');
     await flushAsyncWork();
     fillInputByLabel(rendered.container, 'Roof pitch (deg)', '18');
@@ -609,6 +611,29 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(rendered.container.textContent).toContain('Ready');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+
+    rendered.unmount();
+  });
+
+  it('keeps legacy flat roofs readable but view-only in house mode', async () => {
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient
+        estimate={buildEstimateDetail({ fixtureSlug: 'box-standard' })}
+        projectName="Deck Build"
+        siteAddress="1 Test Street"
+      />,
+    );
+
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
+    expect(rendered.container.textContent).toContain('Current roof family');
+    expect(rendered.container.textContent).toContain('View-only for now');
+    expect(rendered.container.textContent).toContain(
+      'Only mono and gable are first-pass editable in house mode for this milestone.',
+    );
+    expect(rendered.container.querySelector('[aria-label="Roof form"]')).toBeNull();
+    expect(rendered.container.textContent).not.toContain('Roof pitch (deg)');
 
     rendered.unmount();
   });
@@ -650,7 +675,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('shows orthogonal mono presets as ready in house mode diagnostics', async () => {
+  it('shows orthogonal mono presets as non-blocked in house mode diagnostics', async () => {
     const estimate = buildEstimateDetail();
 
     const rendered = renderIntoDocument(
@@ -662,7 +687,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
-    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Ready');
+    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Approximate');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
     expect(rendered.container.textContent).not.toContain('Mono roofs currently require eave-based house attachment on an outer footprint edge for this footprint.');
 

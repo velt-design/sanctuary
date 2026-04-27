@@ -442,6 +442,7 @@ function HouseFirstViewportHarness({
       <div data-testid="house-width">{house.footprint.params.widthM}</div>
       <div data-testid="deck-width">{house.decks[0]?.presetRect?.widthM ?? ''}</div>
       <div data-testid="deck-center-offset">{house.decks[0]?.presetRect?.centerOffsetM ?? ''}</div>
+      <div data-testid="deck-host-edge">{house.decks[0]?.hostEdgeId ?? ''}</div>
       <div data-testid="deck-is-attached">{house.decks[0]?.isAttached ? 'true' : 'false'}</div>
       <div data-testid="deck-floating-center-along">{house.decks[0]?.floatingRect?.centerAlongM ?? ''}</div>
       <div data-testid="deck-floating-center-depth">{house.decks[0]?.floatingRect?.centerDepthM ?? ''}</div>
@@ -3538,6 +3539,67 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
+  it('maps vertical deck dragging consistently through the model-space house projection', async () => {
+    const renderDraggedDepth = async (pointerUpY: number) => {
+      const deck = makeHouseFirstDeck({
+        isAttached: false,
+        presetType: 'rect_detached',
+        presetRect: {
+          widthM: '4',
+          depthM: '3',
+          centerOffsetM: '0',
+          detachedGapM: '0.6',
+        },
+      });
+      const baseHouse = makeHouseFirstHouse();
+      const resolvedDeck = resolveDeckPresetGeometry({
+        deck: deck as any,
+        housePolygon: baseHouse.footprint.polygon,
+      });
+      const rendered = renderIntoDocument(
+        <HouseFirstViewportHarness
+          initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+          initialHouse={makeHouseFirstHouse({
+            decks: [
+              {
+                ...deck,
+                hostEdgeId: resolvedDeck.hostEdgeId,
+                floatingRect: resolvedDeck.floatingRect,
+                presetRect: resolvedDeck.presetRect,
+                outline: resolvedDeck.outline,
+              },
+            ],
+          })}
+        />,
+      );
+
+      const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+      const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+      if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
+      installSvgPointMock(svg);
+
+      dispatchPointer(deckHit, 'pointerdown', { pointerId: 23, button: 0, clientX: 50, clientY: 50 });
+      dispatchPointer(window, 'pointermove', { pointerId: 23, button: 0, buttons: 1, clientX: 50, clientY: pointerUpY });
+      dispatchPointer(window, 'pointerup', { pointerId: 23, button: 0, clientX: 50, clientY: pointerUpY });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      const centerDepth = Number.parseFloat(
+        rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent ?? '',
+      );
+      rendered.unmount();
+      return centerDepth;
+    };
+
+    const draggedDownDepth = await renderDraggedDepth(5000);
+    const draggedUpDepth = await renderDraggedDepth(-5000);
+
+    expect(Number.isFinite(draggedDownDepth)).toBe(true);
+    expect(Number.isFinite(draggedUpDepth)).toBe(true);
+    expect(draggedDownDepth).toBeLessThan(draggedUpDepth);
+  });
+
   it('keeps floating decks visually free while dragging them without live-snapping the deck body', async () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
@@ -3599,6 +3661,70 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
       'The deck stayed in floating placement with witness dimensions.',
     );
+
+    rendered.unmount();
+  });
+
+  it('snaps a floating preset deck onto the exact left house edge on release', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      hostEdgeId: null,
+      presetRect: {
+        widthM: '3',
+        depthM: '2',
+        centerOffsetM: '0',
+        detachedGapM: '0.5',
+      },
+      floatingRect: {
+        centerAlongM: '-1',
+        centerDepthM: '1.2',
+        widthM: '3',
+        depthM: '2',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 24, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: 50.1, clientY: 50.1 });
+
+    expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
+    expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 50.1, clientY: 50.1 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
+    expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('footprint-edge-4');
+    expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
 
     rendered.unmount();
   });

@@ -152,6 +152,7 @@ type DeckDragSession = {
   deckId: string;
   startSvgX: number;
   startSvgY: number;
+  startPlanPoint: PlanPoint | null;
   startCenter: PlanPoint;
   startPolygon: PlanPoint[];
   startWidthM: number;
@@ -163,7 +164,10 @@ type DeckDragSession = {
 type DeckPreviewState = {
   deckId: string;
   polygon: PlanPoint[];
-  hostEdgeId: AttachmentSide;
+  semanticPlacementSide: AttachmentSide | null;
+  semanticWitnessSide: AttachmentSide;
+  placementEdgeId: string | null;
+  witnessEdgeId: string;
   hostEdgeStart: PlanPoint;
   hostEdgeEnd: PlanPoint;
   centerOffsetM: number;
@@ -592,7 +596,10 @@ function resolveDeckCrossEdgeCenterOffset(input: {
   if (!interaction?.crossEdgeReference) return { ok: false, error: 'Deck witness metadata is unavailable.' };
   if (!Number.isFinite(nextGapM) || nextGapM < 0) return { ok: false, error: 'Enter a non-negative gap.' };
 
-  const primaryFrame = interaction.referenceFrames.find((frame) => frame.hostEdgeId === interaction.hostEdgeId);
+  const primaryFrame =
+    interaction.placementEdgeId
+      ? interaction.referenceFrames.find((frame) => frame.sourceEdgeId === interaction.placementEdgeId)
+      : interaction.referenceFrames.find((frame) => frame.sourceEdgeId === interaction.witnessEdgeId);
   if (!primaryFrame) return { ok: false, error: 'Deck host metadata is unavailable.' };
 
   const crossFrame = interaction.crossEdgeReference.frame;
@@ -614,6 +621,14 @@ function resolveDeckCrossEdgeCenterOffset(input: {
     ok: true,
     centerOffsetM: formatDeckPresetValue(centerAlongM - hostMidpointM),
   };
+}
+
+function findDeckReferenceFrameById(
+  frames: HouseFirstPlanDeckReferenceFrame[],
+  edgeId: string | null | undefined,
+): HouseFirstPlanDeckReferenceFrame | null {
+  if (!edgeId) return null;
+  return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
 }
 
 function translatePolygon(
@@ -733,6 +748,39 @@ function projectPointToDeckReferenceFrame(
   };
 }
 
+function scoreDeckReferenceFrameForPolygon(input: {
+  polygon: PlanPoint[];
+  frame: HouseFirstPlanDeckReferenceFrame;
+}): {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  overlapPenaltyM: number;
+  spanPenaltyM: number;
+  outsidePenaltyM: number;
+  midpointDistanceM: number;
+} | null {
+  if (!input.polygon.length) return null;
+  const alongValues = input.polygon.map((point) => {
+    const projection = projectPointToDeckReferenceFrame(point, input.frame);
+    return projection.alongM;
+  });
+  const outwardValues = input.polygon.map((point) => {
+    const projection = projectPointToDeckReferenceFrame(point, input.frame);
+    return projection.outwardM;
+  });
+  const alongMinM = Math.min(...alongValues);
+  const alongMaxM = Math.max(...alongValues);
+  const outwardMinM = Math.min(...outwardValues);
+  const frameMidpointM = (input.frame.spanStartM + input.frame.spanEndM) / 2;
+  const deckMidpointM = (alongMinM + alongMaxM) / 2;
+  return {
+    frame: input.frame,
+    overlapPenaltyM: Math.max(0, -outwardMinM),
+    spanPenaltyM: Math.max(0, input.frame.spanStartM - alongMinM) + Math.max(0, alongMaxM - input.frame.spanEndM),
+    outsidePenaltyM: Math.max(0, outwardMinM),
+    midpointDistanceM: Math.abs(deckMidpointM - frameMidpointM),
+  };
+}
+
 function buildDeckPreviewPolygon(input: {
   frame: HouseFirstPlanDeckReferenceFrame;
   deckWidthM: number;
@@ -774,23 +822,27 @@ function buildDeckPreviewPolygon(input: {
 
 function resolveDeckReferenceFrameFromCenter(input: {
   center: PlanPoint;
-  deckDepthM: number;
+  polygon: PlanPoint[];
   frames: HouseFirstPlanDeckReferenceFrame[];
-  previousHostEdgeId: AttachmentSide;
+  previousHostEdgeId: string;
 }): HouseFirstPlanDeckReferenceFrame {
-  const scoredFrames = input.frames.map((frame) => {
-    const projection = projectPointToDeckReferenceFrame(input.center, frame);
-    return {
-      frame,
-      gapM: Math.abs(projection.outwardM - input.deckDepthM / 2),
-    };
-  });
-  const previous = scoredFrames.find((candidate) => candidate.frame.hostEdgeId === input.previousHostEdgeId) ?? scoredFrames[0]!;
+  const scoredFrames =
+    input.frames
+      .map((frame) => scoreDeckReferenceFrameForPolygon({ polygon: input.polygon, frame }))
+      .filter((candidate): candidate is NonNullable<ReturnType<typeof scoreDeckReferenceFrameForPolygon>> => Boolean(candidate));
+  const previous = scoredFrames.find((candidate) => candidate.frame.sourceEdgeId === input.previousHostEdgeId) ?? scoredFrames[0]!;
   const nearest =
-    [...scoredFrames].sort((left, right) => left.gapM - right.gapM)[0] ?? previous;
+    [...scoredFrames].sort((left, right) =>
+      left.overlapPenaltyM - right.overlapPenaltyM ||
+      left.spanPenaltyM - right.spanPenaltyM ||
+      left.outsidePenaltyM - right.outsidePenaltyM ||
+      left.midpointDistanceM - right.midpointDistanceM,
+    )[0] ?? previous;
   if (
-    nearest.frame.hostEdgeId !== previous.frame.hostEdgeId &&
-    nearest.gapM + DECK_REFERENCE_SWITCH_HYSTERESIS_M >= previous.gapM
+    nearest.frame.sourceEdgeId !== previous.frame.sourceEdgeId &&
+    Math.abs(nearest.overlapPenaltyM - previous.overlapPenaltyM) <= 1e-6 &&
+    Math.abs(nearest.spanPenaltyM - previous.spanPenaltyM) <= 1e-6 &&
+    nearest.outsidePenaltyM + DECK_REFERENCE_SWITCH_HYSTERESIS_M >= previous.outsidePenaltyM
   ) {
     return previous.frame;
   }
@@ -801,6 +853,7 @@ function resolveDeckPreviewState(input: {
   session: DeckDragSession;
   nextSvgX: number;
   nextSvgY: number;
+  nextPlanPoint: PlanPoint | null;
   previousPreviewState: DeckPreviewState | null;
 }): DeckPreviewState {
   const svgDx = input.nextSvgX - input.session.startSvgX;
@@ -809,20 +862,31 @@ function resolveDeckPreviewState(input: {
   const interactionSvgDy = input.session.svgInteraction.hostEdgeEnd.y - input.session.svgInteraction.hostEdgeStart.y;
   const svgLength = Math.hypot(interactionSvgDx, interactionSvgDy);
   const metresPerSvgUnit = svgLength > 1e-6 ? input.session.interaction.hostSpanM / svgLength : 0;
+  const planDx =
+    input.session.startPlanPoint && input.nextPlanPoint
+      ? input.nextPlanPoint.x - input.session.startPlanPoint.x
+      : svgDx * metresPerSvgUnit;
+  const planDy =
+    input.session.startPlanPoint && input.nextPlanPoint
+      ? input.nextPlanPoint.y - input.session.startPlanPoint.y
+      : svgDy * metresPerSvgUnit;
   const center = {
-    x: input.session.startCenter.x + svgDx * metresPerSvgUnit,
-    y: input.session.startCenter.y + svgDy * metresPerSvgUnit,
+    x: input.session.startCenter.x + planDx,
+    y: input.session.startCenter.y + planDy,
   };
-  const translatedPolygon = translatePolygon(input.session.startPolygon, svgDx * metresPerSvgUnit, svgDy * metresPerSvgUnit);
-  const currentHostEdgeId = input.previousPreviewState?.hostEdgeId ?? input.session.interaction.hostEdgeId;
+  const translatedPolygon = translatePolygon(input.session.startPolygon, planDx, planDy);
+  const currentHostEdgeId =
+    input.previousPreviewState?.placementEdgeId ??
+    input.previousPreviewState?.witnessEdgeId ??
+    input.session.interaction.placementEdgeId ??
+    input.session.interaction.witnessEdgeId;
   const candidateFrame = resolveDeckReferenceFrameFromCenter({
     center,
-    deckDepthM: input.session.startDepthM,
+    polygon: translatedPolygon,
     frames: input.session.interaction.referenceFrames,
     previousHostEdgeId: currentHostEdgeId,
   });
-  const anchoredFrame =
-    input.session.interaction.referenceFrames.find((frame) => frame.hostEdgeId === currentHostEdgeId) ?? candidateFrame;
+  const anchoredFrame = findDeckReferenceFrameById(input.session.interaction.referenceFrames, currentHostEdgeId) ?? candidateFrame;
   const anchoredProjection = projectPointToDeckReferenceFrame(center, anchoredFrame);
   const anchoredRawGapM = Math.max(0, anchoredProjection.outwardM - input.session.startDepthM / 2);
   const startedFloating = input.session.interaction.placement === 'floating';
@@ -855,10 +919,12 @@ function resolveDeckPreviewState(input: {
         : anchoredSnapEligible
           ? anchoredFrame
           : null;
-  const frame = placement === 'snapped' ? anchoredFrame : snapFrame ?? candidateFrame;
-  const projection = frame.hostEdgeId === anchoredFrame.hostEdgeId ? anchoredProjection : candidateProjection;
+  const witnessFrame = placement === 'snapped' ? anchoredFrame : candidateFrame;
+  const frame = placement === 'snapped' ? anchoredFrame : snapFrame ?? witnessFrame;
+  const witnessProjection = witnessFrame.sourceEdgeId === anchoredFrame.sourceEdgeId ? anchoredProjection : candidateProjection;
+  const projection = frame.sourceEdgeId === witnessFrame.sourceEdgeId ? witnessProjection : anchoredProjection;
   const rawCenterOffsetM = projection.alongM - ((frame.spanStartM + frame.spanEndM) / 2);
-  const rawGapM = frame.hostEdgeId === anchoredFrame.hostEdgeId ? anchoredRawGapM : candidateRawGapM;
+  const rawGapM = frame.sourceEdgeId === witnessFrame.sourceEdgeId ? candidateRawGapM : anchoredRawGapM;
   const snapEligible = snapFrame !== null;
   const releasePlacement = placement === 'snapped' || snapEligible ? 'snapped' : 'floating';
   const centerOffsetM = placement === 'snapped'
@@ -872,7 +938,10 @@ function resolveDeckPreviewState(input: {
 
   return {
     deckId: input.session.deckId,
-    hostEdgeId: frame.hostEdgeId,
+    semanticPlacementSide: releasePlacement === 'snapped' ? frame.hostEdgeId : null,
+    semanticWitnessSide: witnessFrame.hostEdgeId,
+    placementEdgeId: releasePlacement === 'snapped' ? frame.sourceEdgeId : null,
+    witnessEdgeId: witnessFrame.sourceEdgeId,
     hostEdgeStart: frame.hostEdgeStart,
     hostEdgeEnd: frame.hostEdgeEnd,
     centerOffsetM,
@@ -1005,6 +1074,7 @@ export default function ModelSpaceViewport({
   const dimensionPopoverRef = useRef<HTMLDivElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
   const drawOutlineCanvasPointResolverRef = useRef<ModuleFootprintCanvasPointResolver | null>(null);
+  const planPointResolverRef = useRef<((clientX: number, clientY: number) => PlanPoint | null) | null>(null);
   const drawOutlinePointerSessionRef = useRef<DrawOutlinePointerSession | null>(null);
   const lastDeckTelemetrySignatureRef = useRef<string | null>(null);
   const activeTouchPointersRef = useRef<Map<number, TouchPointerSnapshot>>(new Map());
@@ -1177,6 +1247,7 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
+      const startPlanPoint = planPointResolverRef.current?.(event.clientX, event.clientY) ?? null;
       if (meta.ownerKind === 'deck') {
         if (!onCommitHouseFirstDeckDimension) return;
         const overlayShape = planViewModel?.houseFirst?.shapes.find(
@@ -1200,6 +1271,7 @@ export default function ModelSpaceViewport({
           deckId: meta.ownerId,
           startSvgX: startPoint.x,
           startSvgY: startPoint.y,
+          startPlanPoint,
           startCenter: overlayShape.deckInteraction.renderedCenter,
           startPolygon: overlayShape.polygon,
           startWidthM: overlayShape.deckInteraction.deckWidthM,
@@ -1331,7 +1403,7 @@ export default function ModelSpaceViewport({
             if (!Number.isFinite(nextGapM) || nextGapM < 0) {
               return { ok: false as const, error: 'Enter a non-negative gap.' };
             }
-            const primaryFrame = interaction.referenceFrames.find((frame) => frame.hostEdgeId === interaction.hostEdgeId);
+            const primaryFrame = findDeckReferenceFrameById(interaction.referenceFrames, interaction.witnessEdgeId);
             if (!primaryFrame) {
               return { ok: false as const, error: 'Deck host metadata is unavailable.' };
             }
@@ -2452,10 +2524,12 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
+      const nextPlanPoint = planPointResolverRef.current?.(event.clientX, event.clientY) ?? null;
       const preview = resolveDeckPreviewState({
         session: deckDragSession,
         nextSvgX: nextPoint.x,
         nextSvgY: nextPoint.y,
+        nextPlanPoint,
         previousPreviewState: deckPreviewState,
       });
       setDeckPreviewState(preview);
@@ -2484,7 +2558,7 @@ export default function ModelSpaceViewport({
 
       const result = await resolveCommitResult(
         onCommitHouseFirstDeckDimension(deckDragSession.deckId, {
-          hostEdgeId: preview.hostEdgeId,
+          hostEdgeId: preview.releasePlacement === 'snapped' ? preview.placementEdgeId : preview.witnessEdgeId,
           isAttached: preview.releasePlacement === 'snapped',
           presetType: preview.releasePlacement === 'snapped' ? 'rect_attached' : 'rect_detached',
           ...(preview.releasePlacement === 'snapped' && deckDragSession.interaction.placement === 'floating'
@@ -3119,6 +3193,9 @@ export default function ModelSpaceViewport({
       activeResizeFieldId: planActiveResizeFieldId,
       onResizeFieldHover: (fieldId) => setPlanHoveredResizeFieldId(fieldId),
       onResizeFieldDragStart: handlePlanFieldDragStart,
+      onPlanPointResolverChange: (resolver) => {
+        planPointResolverRef.current = resolver;
+      },
       onSvgMount: (node) => {
         footprintSvgRef.current = node;
       },

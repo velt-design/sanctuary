@@ -9,9 +9,9 @@ import type { FieldErrors, RunRoofCommit } from './houseRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
   ActionButton,
+  EDITABLE_ROOF_FORM_OPTIONS,
   NumberField,
   ROOF_FALL_DIRECTION_OPTIONS,
-  ROOF_FORM_OPTIONS,
   ROOF_MATERIAL_OPTIONS,
   ROOF_RIDGE_AXIS_OPTIONS,
   SelectField,
@@ -19,6 +19,7 @@ import {
   buildRoofDraftFromHouse,
   labelForRoofApproximationReason,
   labelForRoofFieldSource,
+  labelForRoofForm,
 } from './houseRailShared';
 import styles from './ConfiguratorRail.module.css';
 
@@ -39,55 +40,83 @@ export function buildHouseRailRoofSections({
   const roofCapabilities = house?.roof.capabilities ?? null;
   const roofProvenance = house?.roof.provenance ?? null;
   const approximationReasons = house?.roof.validation.approximationReasons ?? [];
-  const appendageHelperText = roofCapabilities?.appendageSupported
-    ? 'One lower appendage band is supported in this milestone.'
-    : 'Appendage bands are limited to straight or rectangular house footprints in this milestone.';
-  const fields: ReactNode[] = [
-    <SelectField
-      key="roof-form"
-      label="Roof form"
-      value={roofDraft.form ?? 'mono'}
-      options={ROOF_FORM_OPTIONS}
-      disabled={disabled}
-      error={fieldErrors['roof-form']}
-      onCommit={(value) =>
-        runRoofCommit('roof-form', {
-          ...roofDraft,
-          form: value as typeof roofDraft.form,
-        })
-      }
-    />,
-    <NumberField
-      key="roof-pitch"
-      label="Roof pitch (deg)"
-      value={roofDraft.primaryPitchDeg ?? ''}
-      disabled={disabled}
-      error={fieldErrors['roof-pitch']}
-      helperText="Shared roof pitch for the main house roof."
-      onCommit={(value) =>
-        runRoofCommit('roof-pitch', {
-          ...roofDraft,
-          primaryPitchDeg: value,
-        })
-      }
-    />,
-    <SelectField
-      key="roof-material"
-      label="Roof material"
-      value={roofDraft.material ?? 'corrugated_iron'}
-      options={ROOF_MATERIAL_OPTIONS}
-      disabled={disabled}
-      error={fieldErrors['roof-material']}
-      onCommit={(value) =>
-        runRoofCommit('roof-material', {
-          ...roofDraft,
-          material: value as CalculatorHouseRoofMaterial,
-        })
-      }
-    />,
-  ];
+  const roofFormEditable = roofDraft.form === 'mono' || roofDraft.form === 'gable';
+  const selectedFormSupported = roofCapabilities?.selectedFormSupported ?? roofFormEditable;
+  const canEditSelectedRoofForm = roofFormEditable && selectedFormSupported;
+  const canShowAppendageControls = roofFormEditable;
+  const appendageHelperText =
+    house?.roof.validation.code === 'invalid_appendage'
+      ? 'The current appendage remains editable so you can disable it or adjust it after the footprint changes.'
+      : roofCapabilities?.appendageSupported
+        ? 'One lower appendage band is supported in this milestone.'
+        : 'Appendage bands are limited to straight or rectangular house footprints in this milestone.';
+  const fields: ReactNode[] = [];
 
-  if (roofCapabilities?.controls.primaryFallDirection ?? (roofDraft.form === 'mono')) {
+  if (roofFormEditable) {
+    fields.push(
+      <SelectField
+        key="roof-form"
+        label="Roof form"
+        value={roofDraft.form ?? 'mono'}
+        options={EDITABLE_ROOF_FORM_OPTIONS}
+        disabled={disabled}
+        error={fieldErrors['roof-form']}
+        onCommit={(value) =>
+          runRoofCommit('roof-form', {
+            ...roofDraft,
+            form: value as typeof roofDraft.form,
+          })
+        }
+      />,
+    );
+  } else {
+    fields.push(
+      <SummarySection
+        key="roof-edit-scope"
+        title="Editing Scope"
+        items={[
+          { label: 'Current roof family', value: labelForRoofForm(roofDraft.form) },
+          { label: 'Editing status', value: 'View-only for now' },
+        ]}
+        hint="Only mono and gable are first-pass editable in house mode for this milestone."
+      />,
+    );
+  }
+
+  if (canEditSelectedRoofForm) {
+    fields.push(
+      <NumberField
+        key="roof-pitch"
+        label="Roof pitch (deg)"
+        value={roofDraft.primaryPitchDeg ?? ''}
+        disabled={disabled}
+        error={fieldErrors['roof-pitch']}
+        helperText="Shared roof pitch for the main house roof."
+        onCommit={(value) =>
+          runRoofCommit('roof-pitch', {
+            ...roofDraft,
+            primaryPitchDeg: value,
+          })
+        }
+      />,
+      <SelectField
+        key="roof-material"
+        label="Roof material"
+        value={roofDraft.material ?? 'corrugated_iron'}
+        options={ROOF_MATERIAL_OPTIONS}
+        disabled={disabled}
+        error={fieldErrors['roof-material']}
+        onCommit={(value) =>
+          runRoofCommit('roof-material', {
+            ...roofDraft,
+            material: value as CalculatorHouseRoofMaterial,
+          })
+        }
+      />,
+    );
+  }
+
+  if (canEditSelectedRoofForm && (roofCapabilities?.controls.primaryFallDirection ?? (roofDraft.form === 'mono'))) {
     fields.push(
       <SelectField
         key="roof-fall-direction"
@@ -106,7 +135,7 @@ export function buildHouseRailRoofSections({
     );
   }
 
-  if (roofCapabilities?.controls.ridgeAxis ?? (roofDraft.form === 'gable')) {
+  if (canEditSelectedRoofForm && (roofCapabilities?.controls.ridgeAxis ?? (roofDraft.form === 'gable'))) {
     fields.push(
       <SelectField
         key="roof-ridge-axis"
@@ -125,7 +154,7 @@ export function buildHouseRailRoofSections({
     );
   }
 
-  if (roofDraft.form === 'gable' && house?.roof.capabilities.selectedFormSupported) {
+  if (roofDraft.form === 'gable' && canEditSelectedRoofForm) {
     if (house.roof.terminalEnds.length > 0) {
       fields.push(
         <div key="gable-end-frames" className={styles.field}>
@@ -161,31 +190,39 @@ export function buildHouseRailRoofSections({
     }
   }
 
-  fields.push(
-    <SelectField
-      key="appendage-enabled"
-      label="Appendage band"
-      value={roofDraft.appendage?.enabled ? 'enabled' : 'disabled'}
-      options={[
-        { label: 'Off', value: 'disabled' },
-        { label: 'On', value: 'enabled' },
-      ]}
-      disabled={disabled}
-      error={fieldErrors['appendage-enabled']}
-      helperText={appendageHelperText}
-      onCommit={(value) =>
-        runRoofCommit('appendage-enabled', {
-          ...roofDraft,
-          appendage: {
-            ...(roofDraft.appendage ?? {}),
-            enabled: value === 'enabled',
-          },
-        })
-      }
-    />,
-  );
+  if (canShowAppendageControls) {
+    fields.push(
+      <SelectField
+        key="appendage-enabled"
+        label="Appendage band"
+        value={roofDraft.appendage?.enabled ? 'enabled' : 'disabled'}
+        options={[
+          { label: 'Off', value: 'disabled' },
+          { label: 'On', value: 'enabled' },
+        ]}
+        disabled={disabled}
+        error={fieldErrors['appendage-enabled']}
+        helperText={appendageHelperText}
+        onCommit={(value) =>
+          runRoofCommit('appendage-enabled', {
+            ...roofDraft,
+            appendage: {
+              ...(roofDraft.appendage ?? {}),
+              enabled: value === 'enabled',
+            },
+          })
+        }
+      />,
+    );
+  } else if (canEditSelectedRoofForm && !roofCapabilities?.appendageSupported) {
+    fields.push(
+      <p key="appendage-disabled-hint" className={styles.fieldHint}>
+        {appendageHelperText}
+      </p>,
+    );
+  }
 
-  if (roofDraft.appendage?.enabled) {
+  if (roofDraft.appendage?.enabled && canShowAppendageControls) {
     fields.push(
       <SelectField
         key="appendage-host-edge"

@@ -92,6 +92,7 @@ export type ModulePlanInteractionProps = {
     meta: ModulePlanResizeDragMeta,
     event: { pointerId: number; clientX: number; clientY: number },
   ) => void;
+  onPlanPointResolverChange?: ((resolver: ((clientX: number, clientY: number) => PlanPoint | null) | null) => void) | undefined;
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
@@ -4923,6 +4924,26 @@ function PlanSvg({
       }
       : null;
   };
+  const resolveRawPlanClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): PlanPoint | null => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm || !Number.isFinite(scale) || scale <= 0) return null;
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = clientX;
+    svgPoint.y = clientY;
+    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
+    const unrotatedPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
+    const projectedX = (unrotatedPoint.x - x) / scale;
+    const projectedY = (unrotatedPoint.y - y) / scale;
+    const rawY =
+      planHouseProjectionOptions.invertY && typeof planHouseProjectionOptions.maxWorldY === 'number'
+        ? planHouseProjectionOptions.maxWorldY - projectedY
+        : projectedY;
+    if (!Number.isFinite(projectedX) || !Number.isFinite(rawY)) return null;
+    return {
+      x: projectedX,
+      y: rawY,
+    };
+  };
   const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): ModuleFootprintCanvasPoint | null =>
     resolvePlanClientPoint(event.currentTarget, event.clientX, event.clientY);
   const handlePlanSvgPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -4963,6 +4984,7 @@ function PlanSvg({
           footprintEditor?.onSvgMount?.(node);
           planInteraction?.onSvgMount?.(node);
           footprintEditor?.onCanvasPointResolverChange?.(node ? (clientX, clientY) => resolvePlanClientPoint(node, clientX, clientY) : null);
+          planInteraction?.onPlanPointResolverChange?.(node ? (clientX, clientY) => resolveRawPlanClientPoint(node, clientX, clientY) : null);
         }}
         onPointerDown={handlePlanSvgPointerDown}
         onPointerMove={handlePlanSvgPointerMove}

@@ -5,8 +5,8 @@ import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenc
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import HouseFirstWorkbenchRail from './HouseFirstWorkbenchRail';
 
-function buildRailState() {
-  const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+function buildRailState(fixtureSlug: 'mono-standard' | 'box-standard' = 'mono-standard') {
+  const fixture = getSanctuaryGeometryWorkbenchFixture(fixtureSlug);
   if (!fixture) throw new Error('Expected Sanctuary fixture.');
   const store = buildDrawingWorkbenchStore({
     snapshot: fixture.snapshot,
@@ -78,5 +78,39 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).not.toContain('Add deck');
     expect(markup).not.toContain('Add window');
     expect(markup).not.toContain('Add slider');
+  });
+
+  it('shows legacy flat roofs as view-only in the house-mode roof section', () => {
+    const { house, pergolas, warnings } = buildRailState('box-standard');
+    const markup = renderToStaticMarkup(
+      <HouseFirstWorkbenchRail
+        workbenchMode="house"
+        house={house}
+        pergolas={pergolas}
+        warnings={warnings}
+        canEditFootprint
+        canStartDrawOutline
+        onStartDrawOutline={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+        onCommitRoofDraft={() => ({ ok: true })}
+        onSelectDeck={() => undefined}
+        onSelectOpening={() => undefined}
+        onAddDeck={() => ({ ok: true })}
+        onAddOpening={() => ({ ok: true })}
+        onRemoveDeck={() => ({ ok: true })}
+        onRemoveOpening={() => ({ ok: true })}
+        onCommitDeckPatch={() => ({ ok: true })}
+        onCommitOpeningPatch={() => ({ ok: true })}
+        onStartDeckOutline={() => ({ ok: true })}
+        pergolaFallback={<div>Fallback rail</div>}
+      />,
+    );
+
+    expect(markup).toContain('Current roof family');
+    expect(markup).toContain('Flat');
+    expect(markup).toContain('View-only for now');
+    expect(markup).toContain('Only mono and gable are first-pass editable in house mode for this milestone.');
+    expect(markup).not.toContain('aria-label="Roof form"');
+    expect(markup).not.toContain('Roof pitch (deg)');
   });
 });

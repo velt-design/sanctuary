@@ -1127,6 +1127,154 @@ describe('houseFirstPlanOverlay', () => {
     expect(deckShape?.deckInteraction?.renderedCenter).toEqual(renderedCenter);
   });
 
+  it('resolves floating and snapped preset decks against exact side edges instead of merged side buckets', () => {
+    const baseHouse = makeHouse({
+      footprint: {
+        mode: 'preset',
+        preset: 'straight',
+      },
+    });
+    const floatingDeck = makeDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      hostEdgeId: null,
+      presetRect: {
+        widthM: '3',
+        depthM: '2',
+        centerOffsetM: '0',
+        detachedGapM: '0.5',
+      },
+      floatingRect: {
+        centerAlongM: '-2.0',
+        centerDepthM: '1.2',
+        widthM: '3',
+        depthM: '2',
+      },
+    });
+    const resolvedFloatingDeck = resolveDeckPresetGeometry({
+      deck: floatingDeck,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const floatingOverlay = buildHouseFirstPlanOverlay({
+      house: makeHouse({
+        footprint: baseHouse.footprint,
+        decks: [
+          {
+            ...floatingDeck,
+            floatingRect: resolvedFloatingDeck.floatingRect,
+            outline: resolvedFloatingDeck.outline,
+            presetRect: resolvedFloatingDeck.presetRect,
+          },
+        ],
+      }),
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+    });
+
+    const floatingInteraction = floatingOverlay?.shapes.find(
+      (shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1',
+    )?.deckInteraction;
+    expect(floatingInteraction?.placement).toBe('floating');
+    expect(floatingInteraction?.semanticWitnessSide).toBe('left');
+    expect(floatingInteraction?.witnessEdgeId).toMatch(/^footprint-edge-\d+$/);
+    expect(floatingInteraction?.referenceEdgeGapM).toBeGreaterThan(0);
+
+    const leftEdgeId = floatingInteraction?.witnessEdgeId;
+    expect(leftEdgeId).toBeTruthy();
+    if (!leftEdgeId) return;
+
+    const snappedDeck = makeDeck({
+      hostEdgeId: leftEdgeId,
+      presetRect: {
+        widthM: '3',
+        depthM: '2',
+        centerOffsetM: '0',
+      },
+    });
+    const resolvedSnappedDeck = resolveDeckPresetGeometry({
+      deck: snappedDeck,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const snappedOverlay = buildHouseFirstPlanOverlay({
+      house: makeHouse({
+        footprint: baseHouse.footprint,
+        decks: [
+          {
+            ...snappedDeck,
+            hostEdgeId: resolvedSnappedDeck.hostEdgeId,
+            outline: resolvedSnappedDeck.outline,
+            presetRect: resolvedSnappedDeck.presetRect,
+          },
+        ],
+      }),
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+    });
+
+    const snappedInteraction = snappedOverlay?.shapes.find(
+      (shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1',
+    )?.deckInteraction;
+    expect(snappedInteraction?.placement).toBe('snapped');
+    expect(snappedInteraction?.semanticPlacementSide).toBe('left');
+    expect(snappedInteraction?.placementEdgeId).toBe(leftEdgeId);
+  });
+
+  it('resolves floating preset witness geometry against the exact right-side edge', () => {
+    const baseHouse = makeHouse({
+      footprint: {
+        mode: 'preset',
+        preset: 'straight',
+      },
+    });
+    const floatingDeck = makeDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      hostEdgeId: null,
+      presetRect: {
+        widthM: '3',
+        depthM: '2',
+        centerOffsetM: '0',
+        detachedGapM: '0.5',
+      },
+      floatingRect: {
+        centerAlongM: '8',
+        centerDepthM: '1.2',
+        widthM: '3',
+        depthM: '2',
+      },
+    });
+    const resolvedFloatingDeck = resolveDeckPresetGeometry({
+      deck: floatingDeck,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const overlay = buildHouseFirstPlanOverlay({
+      house: makeHouse({
+        footprint: baseHouse.footprint,
+        decks: [
+          {
+            ...floatingDeck,
+            floatingRect: resolvedFloatingDeck.floatingRect,
+            outline: resolvedFloatingDeck.outline,
+            presetRect: resolvedFloatingDeck.presetRect,
+          },
+        ],
+      }),
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+    });
+
+    const floatingInteraction = overlay?.shapes.find(
+      (shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1',
+    )?.deckInteraction;
+    expect(floatingInteraction?.placement).toBe('floating');
+    expect(floatingInteraction?.semanticWitnessSide).toBe('right');
+    expect(floatingInteraction?.witnessEdgeId).toMatch(/^footprint-edge-\d+$/);
+    expect(floatingInteraction?.referenceEdgeGapM).toBeGreaterThan(0);
+  });
+
   it('builds custom edge candidates for selected custom polygons without preset annotations', () => {
     const house = makeHouse({
       footprint: {
