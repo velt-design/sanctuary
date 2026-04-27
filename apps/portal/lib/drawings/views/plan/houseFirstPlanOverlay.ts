@@ -28,6 +28,7 @@ export type HouseFirstPlanHousePolygonSource = 'custom_saved' | 'preset_derived'
 export type HouseFirstPlanDeckInteraction = {
   kind: 'preset_rect';
   placement: 'snapped' | 'floating';
+  houseAttachmentSide: AttachmentSide;
   hostEdgeId: AttachmentSide;
   hostEdgeStart: PlanPoint;
   hostEdgeEnd: PlanPoint;
@@ -38,6 +39,7 @@ export type HouseFirstPlanDeckInteraction = {
   referenceEdgeGapM: number;
   minCenterOffsetM: number;
   maxCenterOffsetM: number;
+  renderedCenter: PlanPoint;
   referenceFrames: HouseFirstPlanDeckReferenceFrame[];
   crossEdgeReference: HouseFirstPlanDeckCrossEdgeReference | null;
 };
@@ -367,6 +369,21 @@ function midpoint(start: PlanPoint, end: PlanPoint): PlanPoint {
   return {
     x: (start.x + end.x) / 2,
     y: (start.y + end.y) / 2,
+  };
+}
+
+function resolvePolygonCenter(polygon: PlanPoint[]): PlanPoint {
+  if (!polygon.length) return { x: 0, y: 0 };
+  const sum = polygon.reduce(
+    (accumulator, point) => ({
+      x: accumulator.x + point.x,
+      y: accumulator.y + point.y,
+    }),
+    { x: 0, y: 0 },
+  );
+  return {
+    x: sum.x / polygon.length,
+    y: sum.y / polygon.length,
   };
 }
 
@@ -1569,8 +1586,21 @@ function buildPresetDeckInteraction(input: {
 
   const widthM = Number(input.deck.presetRect.widthM);
   const depthM = Number(input.deck.presetRect.depthM);
-  const centerOffsetM = Number(input.deck.presetRect.centerOffsetM);
-  const referenceEdgeGapM = input.deck.isAttached ? 0 : Number(input.deck.presetRect.detachedGapM ?? '0');
+  const referenceProjection = projectWorldPolygonToReferenceFrame({
+    polygon: input.deckPolygon,
+    frame: primaryFrame,
+  });
+  const centerOffsetM = input.deck.isAttached
+    ? Number(input.deck.presetRect.centerOffsetM)
+    : referenceProjection
+      ? (referenceProjection.alongMinM + referenceProjection.alongMaxM) / 2 -
+        ((primaryFrame.spanStartM + primaryFrame.spanEndM) / 2)
+      : Number(input.deck.presetRect.centerOffsetM);
+  const referenceEdgeGapM = input.deck.isAttached
+    ? 0
+    : referenceProjection
+      ? referenceProjection.nearGapM
+      : Number(input.deck.presetRect.detachedGapM ?? '0');
   if (
     !Number.isFinite(widthM) ||
     !Number.isFinite(depthM) ||
@@ -1587,6 +1617,7 @@ function buildPresetDeckInteraction(input: {
   return {
     kind: 'preset_rect',
     placement: resolveDeckPlacementMode(input.deck.isAttached),
+    houseAttachmentSide: input.house.footprint.attachmentSide,
     hostEdgeId,
     hostEdgeStart: primaryFrame.hostEdgeStart,
     hostEdgeEnd: primaryFrame.hostEdgeEnd,
@@ -1597,6 +1628,7 @@ function buildPresetDeckInteraction(input: {
     referenceEdgeGapM,
     minCenterOffsetM: -availableHalfSpanM,
     maxCenterOffsetM: availableHalfSpanM,
+    renderedCenter: resolvePolygonCenter(input.deckPolygon),
     referenceFrames,
     crossEdgeReference: resolveWorldCrossEdgeReference({
       primaryFrame,
@@ -1624,7 +1656,7 @@ function buildDeckDragEligibility(input: {
   }
   return {
     eligible: true,
-    reason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
+    reason: 'Drag the selected deck body to move it freely. Release near a house edge to snap it back, or click dimensions to edit.',
   };
 }
 

@@ -462,7 +462,7 @@ describe('houseFirstPlanOverlay', () => {
       overlay?.shapes.find((shape) => shape.ownerKind === 'deck')?.deckDragEligibility,
     ).toEqual({
       eligible: true,
-      reason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
+      reason: 'Drag the selected deck body to move it freely. Release near a house edge to snap it back, or click dimensions to edit.',
     });
   });
 
@@ -1070,6 +1070,61 @@ describe('houseFirstPlanOverlay', () => {
     expect(overlay?.presetAnnotations.map((annotation) => annotation.fieldKey)).toEqual(
       expect.arrayContaining(['hostStartGapM', 'hostEndGapM']),
     );
+  });
+
+  it('derives floating preset interaction from the rendered deck geometry instead of stale witness metadata', () => {
+    const baseHouse = makeHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: makeDeck({
+        isAttached: false,
+        presetType: 'rect_detached',
+        presetRect: {
+          widthM: '4',
+          depthM: '3',
+          centerOffsetM: '0',
+          detachedGapM: '0.6',
+        },
+      }),
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const house = makeHouse({
+      decks: [
+        {
+          ...makeDeck({
+            isAttached: false,
+            presetType: 'rect_detached',
+            presetRect: {
+              widthM: '4',
+              depthM: '3',
+              centerOffsetM: '99',
+              detachedGapM: '9',
+            },
+            floatingRect: resolvedDeck.floatingRect,
+            outline: resolvedDeck.outline,
+          }),
+        },
+      ],
+    });
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+    });
+
+    const deckShape = overlay?.shapes.find((shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1');
+    const renderedCenter = (deckShape?.polygon ?? []).reduce(
+      (accumulator, point, _, polygon) => ({
+        x: accumulator.x + point.x / Math.max(polygon.length, 1),
+        y: accumulator.y + point.y / Math.max(polygon.length, 1),
+      }),
+      { x: 0, y: 0 },
+    );
+    expect(deckShape?.deckInteraction?.placement).toBe('floating');
+    expect(deckShape?.deckInteraction?.referenceEdgeGapM).not.toBeCloseTo(9, 6);
+    expect(deckShape?.deckInteraction?.referenceEdgeGapM).toBeGreaterThanOrEqual(0);
+    expect(deckShape?.deckInteraction?.renderedCenter).toEqual(renderedCenter);
   });
 
   it('builds custom edge candidates for selected custom polygons without preset annotations', () => {

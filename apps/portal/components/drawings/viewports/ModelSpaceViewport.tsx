@@ -153,6 +153,7 @@ type DeckDragSession = {
   startSvgX: number;
   startSvgY: number;
   startCenter: PlanPoint;
+  startPolygon: PlanPoint[];
   startWidthM: number;
   startDepthM: number;
   interaction: HouseFirstPlanDeckInteraction;
@@ -168,7 +169,8 @@ type DeckPreviewState = {
   centerOffsetM: number;
   referenceEdgeGapM: number;
   placement: 'snapped' | 'floating';
-  snapped: boolean;
+  snapEligible: boolean;
+  releasePlacement: 'snapped' | 'floating';
 };
 
 type OpeningSvgInteraction = Extract<HouseFirstPlanShapeDragStartMeta, { ownerKind: 'opening' }>['openingInteraction'];
@@ -641,6 +643,71 @@ function resolvePolygonCenter(polygon: PlanPoint[]): PlanPoint {
   };
 }
 
+function planPointToDeckLocal(point: PlanPoint, attachmentSide: AttachmentSide): {
+  alongM: number;
+  depthM: number;
+} {
+  // Plan overlay deck polygons are rendered in a unit attachment frame with zero offset/setback.
+  if (attachmentSide === 'front') {
+    return { alongM: point.x, depthM: point.y - 1 };
+  }
+  if (attachmentSide === 'left') {
+    return { alongM: point.y, depthM: -point.x };
+  }
+  if (attachmentSide === 'right') {
+    return { alongM: point.y, depthM: point.x - 1 };
+  }
+  return { alongM: point.x, depthM: -point.y };
+}
+
+function inferFloatingRectFromPlanPolygon(input: {
+  polygon: PlanPoint[];
+  attachmentSide: AttachmentSide;
+}): {
+  centerAlongM: string;
+  centerDepthM: string;
+  widthM: string;
+  depthM: string;
+} | null {
+  if (!input.polygon.length) return null;
+  const localPolygon = input.polygon.map((point) => planPointToDeckLocal(point, input.attachmentSide));
+  const alongValues = localPolygon.map((point) => point.alongM);
+  const depthValues = localPolygon.map((point) => point.depthM);
+  const minAlongM = Math.min(...alongValues);
+  const maxAlongM = Math.max(...alongValues);
+  const minDepthM = Math.min(...depthValues);
+  const maxDepthM = Math.max(...depthValues);
+  if (![minAlongM, maxAlongM, minDepthM, maxDepthM].every(Number.isFinite)) return null;
+
+  return {
+    centerAlongM: formatDeckPresetValue((minAlongM + maxAlongM) / 2),
+    centerDepthM: formatDeckPresetValue((minDepthM + maxDepthM) / 2),
+    widthM: formatDeckPresetValue(Math.max(0, maxAlongM - minAlongM)),
+    depthM: formatDeckPresetValue(Math.max(0, maxDepthM - minDepthM)),
+  };
+}
+
+function buildFloatingRectFromPlanCenter(input: {
+  center: PlanPoint;
+  attachmentSide: AttachmentSide;
+  widthM: number;
+  depthM: number;
+}): {
+  centerAlongM: string;
+  centerDepthM: string;
+  widthM: string;
+  depthM: string;
+} | null {
+  if (!Number.isFinite(input.widthM) || !Number.isFinite(input.depthM)) return null;
+  const localCenter = planPointToDeckLocal(input.center, input.attachmentSide);
+  return {
+    centerAlongM: formatDeckPresetValue(localCenter.alongM),
+    centerDepthM: formatDeckPresetValue(localCenter.depthM),
+    widthM: formatDeckPresetValue(input.widthM),
+    depthM: formatDeckPresetValue(input.depthM),
+  };
+}
+
 function clampPresetDeckCenterOffset(input: {
   centerOffsetM: number;
   frame: HouseFirstPlanDeckReferenceFrame;
@@ -715,7 +782,7 @@ function resolveDeckReferenceFrameFromCenter(input: {
     const projection = projectPointToDeckReferenceFrame(input.center, frame);
     return {
       frame,
-      gapM: Math.max(0, projection.outwardM - input.deckDepthM / 2),
+      gapM: Math.abs(projection.outwardM - input.deckDepthM / 2),
     };
   });
   const previous = scoredFrames.find((candidate) => candidate.frame.hostEdgeId === input.previousHostEdgeId) ?? scoredFrames[0]!;
@@ -746,29 +813,62 @@ function resolveDeckPreviewState(input: {
     x: input.session.startCenter.x + svgDx * metresPerSvgUnit,
     y: input.session.startCenter.y + svgDy * metresPerSvgUnit,
   };
+  const translatedPolygon = translatePolygon(input.session.startPolygon, svgDx * metresPerSvgUnit, svgDy * metresPerSvgUnit);
   const currentHostEdgeId = input.previousPreviewState?.hostEdgeId ?? input.session.interaction.hostEdgeId;
-  const frame = resolveDeckReferenceFrameFromCenter({
+  const candidateFrame = resolveDeckReferenceFrameFromCenter({
     center,
     deckDepthM: input.session.startDepthM,
     frames: input.session.interaction.referenceFrames,
     previousHostEdgeId: currentHostEdgeId,
   });
-  const projection = projectPointToDeckReferenceFrame(center, frame);
+  const anchoredFrame =
+    input.session.interaction.referenceFrames.find((frame) => frame.hostEdgeId === currentHostEdgeId) ?? candidateFrame;
+  const anchoredProjection = projectPointToDeckReferenceFrame(center, anchoredFrame);
+  const anchoredRawGapM = Math.max(0, anchoredProjection.outwardM - input.session.startDepthM / 2);
+  const startedFloating = input.session.interaction.placement === 'floating';
+  const previousPlacement = input.previousPreviewState?.placement ?? input.session.interaction.placement;
+  const placement =
+    startedFloating || previousPlacement === 'floating'
+      ? 'floating'
+      : anchoredRawGapM > DECK_UNSNAP_TOLERANCE_M
+        ? 'floating'
+        : 'snapped';
+  const candidateProjection =
+    placement === 'snapped' ? anchoredProjection : projectPointToDeckReferenceFrame(center, candidateFrame);
+  const candidateRawGapM =
+    placement === 'snapped'
+      ? anchoredRawGapM
+      : Math.max(0, candidateProjection.outwardM - input.session.startDepthM / 2);
+  const candidateSnapEligible =
+    placement !== 'snapped' &&
+    candidateProjection.outwardM >= 0 &&
+    candidateRawGapM <= DECK_SNAP_TOLERANCE_M;
+  const anchoredSnapEligible =
+    placement !== 'snapped' &&
+    anchoredProjection.outwardM >= 0 &&
+    anchoredRawGapM <= DECK_SNAP_TOLERANCE_M;
+  const snapFrame =
+    placement === 'snapped'
+      ? anchoredFrame
+      : candidateSnapEligible
+        ? candidateFrame
+        : anchoredSnapEligible
+          ? anchoredFrame
+          : null;
+  const frame = placement === 'snapped' ? anchoredFrame : snapFrame ?? candidateFrame;
+  const projection = frame.hostEdgeId === anchoredFrame.hostEdgeId ? anchoredProjection : candidateProjection;
   const rawCenterOffsetM = projection.alongM - ((frame.spanStartM + frame.spanEndM) / 2);
-  const snappedThreshold =
-    input.previousPreviewState?.snapped && input.previousPreviewState.hostEdgeId === frame.hostEdgeId
-      ? DECK_UNSNAP_TOLERANCE_M
-      : DECK_SNAP_TOLERANCE_M;
-  const rawGapM = Math.max(0, projection.outwardM - input.session.startDepthM / 2);
-  const snapped = rawGapM <= snappedThreshold;
-  const centerOffsetM = snapped
+  const rawGapM = frame.hostEdgeId === anchoredFrame.hostEdgeId ? anchoredRawGapM : candidateRawGapM;
+  const snapEligible = snapFrame !== null;
+  const releasePlacement = placement === 'snapped' || snapEligible ? 'snapped' : 'floating';
+  const centerOffsetM = placement === 'snapped'
     ? clampPresetDeckCenterOffset({
         centerOffsetM: rawCenterOffsetM,
         frame,
         deckWidthM: input.session.startWidthM,
       })
     : rawCenterOffsetM;
-  const referenceEdgeGapM = snapped ? 0 : rawGapM;
+  const referenceEdgeGapM = releasePlacement === 'snapped' ? 0 : rawGapM;
 
   return {
     deckId: input.session.deckId,
@@ -777,15 +877,19 @@ function resolveDeckPreviewState(input: {
     hostEdgeEnd: frame.hostEdgeEnd,
     centerOffsetM,
     referenceEdgeGapM,
-    placement: snapped ? 'snapped' : 'floating',
-    snapped,
-    polygon: buildDeckPreviewPolygon({
-      frame,
-      deckWidthM: input.session.startWidthM,
-      deckDepthM: input.session.startDepthM,
-      centerOffsetM,
-      referenceEdgeGapM,
-    }),
+    placement,
+    snapEligible,
+    releasePlacement,
+    polygon:
+      placement === 'snapped'
+        ? buildDeckPreviewPolygon({
+            frame,
+            deckWidthM: input.session.startWidthM,
+            deckDepthM: input.session.startDepthM,
+            centerOffsetM,
+            referenceEdgeGapM,
+          })
+        : translatedPolygon,
   };
 }
 
@@ -1088,7 +1192,7 @@ export default function ModelSpaceViewport({
         setDeckPreviewState(null);
         setDeckInteractionHint({
           title: 'Deck drag',
-          detail: 'Drag the deck toward another house edge or into floating placement.',
+          detail: 'Drag the deck freely. Release near a house edge to snap it back.',
           tone: 'status',
         });
         setDeckDragSession({
@@ -1096,7 +1200,8 @@ export default function ModelSpaceViewport({
           deckId: meta.ownerId,
           startSvgX: startPoint.x,
           startSvgY: startPoint.y,
-          startCenter: resolvePolygonCenter(overlayShape.polygon),
+          startCenter: overlayShape.deckInteraction.renderedCenter,
+          startPolygon: overlayShape.polygon,
           startWidthM: overlayShape.deckInteraction.deckWidthM,
           startDepthM: overlayShape.deckInteraction.deckDepthM,
           interaction: overlayShape.deckInteraction,
@@ -1176,9 +1281,26 @@ export default function ModelSpaceViewport({
             : { ok: false, error: 'House footprint dimensions are not editable in this view.' }
           : { ok: false, error: 'Enter a positive edge length.' };
       } else if (annotation.targetKind === 'deck_preset_param') {
+        const floatingRectPatch =
+          annotation.deckInteraction?.placement === 'floating' &&
+          (annotation.fieldKey === 'widthM' || annotation.fieldKey === 'depthM')
+            ? buildFloatingRectFromPlanCenter({
+                center: annotation.deckInteraction.renderedCenter,
+                attachmentSide: annotation.deckInteraction.houseAttachmentSide,
+                widthM:
+                  annotation.fieldKey === 'widthM'
+                    ? Number.parseFloat(nextValue)
+                    : annotation.deckInteraction.deckWidthM,
+                depthM:
+                  annotation.fieldKey === 'depthM'
+                    ? Number.parseFloat(nextValue)
+                    : annotation.deckInteraction.deckDepthM,
+              })
+            : null;
         result = onCommitHouseFirstDeckDimension
           ? await resolveCommitResult(
               onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                ...(floatingRectPatch ? { floatingRect: floatingRectPatch } : null),
                 presetRect: {
                   [annotation.fieldKey]: nextValue,
                 } as unknown as HouseFirstDeckDraft['presetRect'],
@@ -1201,6 +1323,68 @@ export default function ModelSpaceViewport({
               )
             : { ok: false, error: polygon ? 'Deck dimensions are not editable in this view.' : 'Enter a positive edge length.' };
       } else if (annotation.targetKind === 'deck_host_edge_reference') {
+        const floatingRelationshipPatch = (() => {
+          const interaction = annotation.deckInteraction;
+          if (!interaction || interaction.placement !== 'floating') return null;
+          if (annotation.fieldKey === 'referenceEdgeGapM') {
+            const nextGapM = Number.parseFloat(nextValue);
+            if (!Number.isFinite(nextGapM) || nextGapM < 0) {
+              return { ok: false as const, error: 'Enter a non-negative gap.' };
+            }
+            const primaryFrame = interaction.referenceFrames.find((frame) => frame.hostEdgeId === interaction.hostEdgeId);
+            if (!primaryFrame) {
+              return { ok: false as const, error: 'Deck host metadata is unavailable.' };
+            }
+            const deltaGapM = nextGapM - interaction.referenceEdgeGapM;
+            const nextCenter = {
+              x: interaction.renderedCenter.x + primaryFrame.outwardUnitX * deltaGapM,
+              y: interaction.renderedCenter.y + primaryFrame.outwardUnitY * deltaGapM,
+            };
+            const floatingRect = buildFloatingRectFromPlanCenter({
+              center: nextCenter,
+              attachmentSide: interaction.houseAttachmentSide,
+              widthM: interaction.deckWidthM,
+              depthM: interaction.deckDepthM,
+            });
+            if (!floatingRect) {
+              return { ok: false as const, error: 'Unable to update the floating deck position.' };
+            }
+            return {
+              ok: true as const,
+              floatingRect,
+            };
+          }
+          if (annotation.fieldKey === 'crossEdgeGapM') {
+            const nextGapM = Number.parseFloat(nextValue);
+            if (!Number.isFinite(nextGapM) || nextGapM < 0) {
+              return { ok: false as const, error: 'Enter a non-negative gap.' };
+            }
+            const crossFrame = interaction.crossEdgeReference?.frame;
+            if (!crossFrame) {
+              return { ok: false as const, error: 'Deck witness metadata is unavailable.' };
+            }
+            const currentGapM = Number.parseFloat(annotation.rawValue);
+            const deltaGapM = nextGapM - (Number.isFinite(currentGapM) ? currentGapM : 0);
+            const nextCenter = {
+              x: interaction.renderedCenter.x + crossFrame.outwardUnitX * deltaGapM,
+              y: interaction.renderedCenter.y + crossFrame.outwardUnitY * deltaGapM,
+            };
+            const floatingRect = buildFloatingRectFromPlanCenter({
+              center: nextCenter,
+              attachmentSide: interaction.houseAttachmentSide,
+              widthM: interaction.deckWidthM,
+              depthM: interaction.deckDepthM,
+            });
+            if (!floatingRect) {
+              return { ok: false as const, error: 'Unable to update the floating deck position.' };
+            }
+            return {
+              ok: true as const,
+              floatingRect,
+            };
+          }
+          return null;
+        })();
         const resolvedRelationship =
           annotation.fieldKey === 'hostStartGapM' || annotation.fieldKey === 'hostEndGapM'
             ? resolveDeckHostReferenceCenterOffset({
@@ -1216,7 +1400,9 @@ export default function ModelSpaceViewport({
                 ? { ok: true as const, centerOffsetM: '' }
                 : { ok: false as const, error: 'Unsupported deck relationship dimension.' };
         result =
-          resolvedRelationship.ok && onCommitHouseFirstDeckDimension
+          resolvedRelationship.ok &&
+          (!floatingRelationshipPatch || floatingRelationshipPatch.ok) &&
+          onCommitHouseFirstDeckDimension
             ? await resolveCommitResult(
                 onCommitHouseFirstDeckDimension(annotation.ownerId, {
                   ...(annotation.fieldKey === 'referenceEdgeGapM'
@@ -1224,11 +1410,17 @@ export default function ModelSpaceViewport({
                         isAttached: false,
                         // `rect_detached` remains the legacy persistence shape for PR1.
                         presetType: 'rect_detached',
+                        ...(floatingRelationshipPatch && 'floatingRect' in floatingRelationshipPatch && floatingRelationshipPatch.floatingRect
+                          ? { floatingRect: floatingRelationshipPatch.floatingRect }
+                          : null),
                         presetRect: {
                           detachedGapM: nextValue,
                         } as unknown as HouseFirstDeckDraft['presetRect'],
                       }
                     : {
+                        ...(floatingRelationshipPatch && 'floatingRect' in floatingRelationshipPatch && floatingRelationshipPatch.floatingRect
+                          ? { floatingRect: floatingRelationshipPatch.floatingRect }
+                          : null),
                         presetRect: {
                           centerOffsetM: resolvedRelationship.centerOffsetM,
                         } as unknown as HouseFirstDeckDraft['presetRect'],
@@ -1238,7 +1430,9 @@ export default function ModelSpaceViewport({
             : {
                 ok: false,
                 error:
-                  resolvedRelationship.ok
+                  floatingRelationshipPatch && !floatingRelationshipPatch.ok
+                    ? floatingRelationshipPatch.error
+                    : resolvedRelationship.ok
                     ? 'Deck dimensions are not editable in this view.'
                     : resolvedRelationship.error,
               };
@@ -2266,8 +2460,8 @@ export default function ModelSpaceViewport({
       });
       setDeckPreviewState(preview);
       setDeckInteractionHint({
-        title: preview.snapped ? 'Snap preview' : 'Floating placement',
-        detail: preview.snapped
+        title: preview.releasePlacement === 'snapped' ? 'Snap preview' : 'Floating placement',
+        detail: preview.releasePlacement === 'snapped'
           ? 'Release to snap the deck to the house edge.'
           : 'Release to keep this deck in floating placement.',
         tone: 'status',
@@ -2280,21 +2474,33 @@ export default function ModelSpaceViewport({
       setDeckDragSession(null);
       setDeckPreviewState(null);
       if (!preview) return;
+      const floatingRect =
+        preview.releasePlacement === 'floating'
+          ? inferFloatingRectFromPlanPolygon({
+              polygon: preview.polygon,
+              attachmentSide: deckDragSession.interaction.houseAttachmentSide,
+            })
+          : null;
 
       const result = await resolveCommitResult(
         onCommitHouseFirstDeckDimension(deckDragSession.deckId, {
           hostEdgeId: preview.hostEdgeId,
-          isAttached: preview.placement === 'snapped',
-          presetType: preview.placement === 'snapped' ? 'rect_attached' : 'rect_detached',
-          ...(preview.placement === 'snapped' && deckDragSession.interaction.placement === 'floating'
+          isAttached: preview.releasePlacement === 'snapped',
+          presetType: preview.releasePlacement === 'snapped' ? 'rect_attached' : 'rect_detached',
+          ...(preview.releasePlacement === 'snapped' && deckDragSession.interaction.placement === 'floating'
             ? { elevationMode: 'aligned_to_threshold' as const }
-            : preview.placement === 'floating' && deckDragSession.interaction.placement === 'snapped'
+            : preview.releasePlacement === 'floating' && deckDragSession.interaction.placement === 'snapped'
               ? { elevationMode: 'ground' as const }
               : null),
+          floatingRect,
           presetRect: {
             centerOffsetM: formatDeckPresetValue(preview.centerOffsetM),
-            detachedGapM: preview.placement === 'floating' ? formatDeckPresetValue(preview.referenceEdgeGapM) : null,
+            detachedGapM:
+              preview.releasePlacement === 'floating'
+                ? formatDeckPresetValue(preview.referenceEdgeGapM)
+                : null,
           } as unknown as HouseFirstDeckDraft['presetRect'],
+          ...(preview.releasePlacement === 'snapped' ? { floatingRect: null } : null),
         }),
       );
       setFieldError(result.ok ? null : result.error ?? 'Unable to update the deck position.');
@@ -2302,8 +2508,8 @@ export default function ModelSpaceViewport({
       setDeckInteractionHint(
         result.ok
           ? {
-              title: preview.snapped ? 'Deck snapped' : 'Deck moved',
-              detail: preview.snapped
+              title: preview.releasePlacement === 'snapped' ? 'Deck snapped' : 'Deck moved',
+              detail: preview.releasePlacement === 'snapped'
                 ? 'The deck is now snapped to the selected house edge.'
                 : 'The deck stayed in floating placement with witness dimensions.',
               tone: 'status',
@@ -2566,7 +2772,7 @@ export default function ModelSpaceViewport({
             hostEdge: {
               start: deckPreviewState.hostEdgeStart,
               end: deckPreviewState.hostEdgeEnd,
-              snapped: deckPreviewState.snapped,
+              snapped: deckPreviewState.snapEligible,
             },
           }
         : openingPreviewState && openingDragSession
@@ -2665,11 +2871,13 @@ export default function ModelSpaceViewport({
       dragReason: selectedDeckShape?.deckDragEligibility?.reason ?? null,
       hostEdgeResolvable: Boolean(selectedDeckShape?.deckInteraction),
       relationshipDimensionsAvailable: selectedDeckRelationshipDimensionsAvailable,
-      snapState: deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'floating') : 'idle',
+      snapState: deckPreviewState ? (deckPreviewState.placement === 'snapped' ? 'snapped' : 'floating') : 'idle',
       snapMessage:
         deckPreviewState && selectedDeckShape?.deckDragEligibility?.eligible
-          ? deckPreviewState.snapped
-            ? 'Snap preview active on the host edge limit.'
+          ? deckPreviewState.releasePlacement === 'snapped'
+            ? deckPreviewState.placement === 'snapped'
+              ? 'Snap preview active on the host edge limit.'
+              : 'Snap is available on release near the house edge.'
             : 'Floating placement preview. Release to keep the current witness offset.'
           : null,
     } satisfies DeckInteractionTelemetry;
@@ -2968,7 +3176,7 @@ export default function ModelSpaceViewport({
         data-model-space-auto-fit-key={modelSpaceAutoFitKey}
         data-model-space-auto-fit-ready={modelSpaceAutoFitReady ? 'true' : 'false'}
         data-house-first-deck-drag-active={deckDragSession ? 'true' : 'false'}
-        data-house-first-deck-snap-state={deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'floating') : 'idle'}
+        data-house-first-deck-snap-state={deckPreviewState ? (deckPreviewState.placement === 'snapped' ? 'snapped' : 'floating') : 'idle'}
         data-house-first-opening-drag-active={openingDragSession ? 'true' : 'false'}
         data-house-first-selected-deck-id={selectedDeckShape?.ownerId ?? ''}
         data-house-first-selected-deck-type={selectedDeckType}
