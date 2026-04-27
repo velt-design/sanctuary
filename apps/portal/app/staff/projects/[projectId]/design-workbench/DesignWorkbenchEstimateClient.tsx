@@ -792,6 +792,9 @@ export default function DesignWorkbenchEstimateClient({
           drawOutlineRequestId={drawOutlineRequestId}
           drawOutlineMode={drawOutlineMode}
           drawOutlineSeedPolygon={drawOutlineSeedPolygon ?? undefined}
+          onDrawOutlineRequestConsumed={(requestId) =>
+            setDrawOutlineRequestId((current) => (current === requestId ? 0 : current))
+          }
           onModelViewportTransformChange={handleModelViewportTransformChange}
           onGeometryViewportStateChange={handleGeometryViewportStateChange}
           meta={meta}

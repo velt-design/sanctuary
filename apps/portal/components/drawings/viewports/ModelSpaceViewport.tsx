@@ -48,7 +48,6 @@ import styles from './ModelSpaceViewport.module.css';
 import { CLOSE_START_TOLERANCE_M, MIN_OUTLINE_SEGMENT_M, distanceBetweenOutlinePoints } from './drawOutlineToolGeometry';
 import {
   cancelDrawOutlineTool,
-  confirmDrawOutlineSegment,
   createInactiveDrawOutlineState,
   deriveDrawOutlineViewModel,
   finishSuccessfulDrawOutlineCommit,
@@ -57,11 +56,9 @@ import {
   prepareDrawOutlineClose,
   selectDrawOutlinePoint,
   armDrawOutlineDistanceLock,
-  setDrawOutlineAngleDraft,
   setDrawOutlineDistanceDraft,
   startDrawOutlineTool,
   undoDrawOutline,
-  type DrawOutlineDiagnosticState,
   type DrawOutlinePoint,
   type DrawOutlineToolState,
   type DrawOutlineTransitionResult,
@@ -245,26 +242,6 @@ const DECK_SNAP_TOLERANCE_M = 0.25;
 const DECK_UNSNAP_TOLERANCE_M = 0.4;
 const DECK_REFERENCE_SWITCH_HYSTERESIS_M = 0.2;
 
-function drawOutlineStatusText(state: DrawOutlineDiagnosticState): string {
-  switch (state) {
-    case 'first-point':
-      return 'Draw outline: click first corner';
-    case 'placing':
-      return 'Draw outline: click next corner or enter distance and angle';
-    case 'locked-distance':
-      return 'Draw outline: click next corner at locked distance';
-    case 'close-ready':
-      return 'Draw outline: close shape or add another corner';
-    case 'close-hovered':
-      return 'Draw outline: release on first corner to close';
-    case 'error':
-      return 'Draw outline: fix issue or undo';
-    case 'inactive':
-    default:
-      return '';
-  }
-}
-
 function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
 }
@@ -277,9 +254,29 @@ function isViewportNavigationControlTarget(target: EventTarget | null): boolean 
   return (
     target instanceof Element &&
     Boolean(
-      target.closest('button,input,select,textarea,[contenteditable="true"],[data-draw-outline-controls]'),
+      target.closest('button,input,select,textarea,[contenteditable="true"],[data-draw-outline-distance-hud]'),
     )
   );
+}
+
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
+function isDrawOutlineDistanceKey(event: KeyboardEvent): boolean {
+  return !event.altKey && !event.ctrlKey && !event.metaKey && (/^[0-9]$/.test(event.key) || event.key === '.');
+}
+
+function appendDrawOutlineDistanceDraft(currentDraft: string, key: string): string {
+  if (key === '.') {
+    if (currentDraft.includes('.')) return currentDraft;
+    return currentDraft ? `${currentDraft}.` : '0.';
+  }
+  return `${currentDraft}${key}`;
 }
 
 function isViewportEditHitTarget(target: EventTarget | null): boolean {
@@ -845,6 +842,7 @@ export default function ModelSpaceViewport({
   autoFitOnReady = true,
   viewportTransform,
   onViewportTransformChange,
+  onConsumeDrawOutlineRequest,
   editableFields,
   onCommitField,
   onCommitFootprintEdit,
@@ -868,6 +866,7 @@ export default function ModelSpaceViewport({
   autoFitOnReady?: boolean;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange?: (next: DrawingWorkbenchViewportTransform) => void;
+  onConsumeDrawOutlineRequest?: (requestId: number) => void;
   editableFields?: EstimateDrawingField[];
   onCommitField?: (
     field: EstimateDrawingField,
@@ -1499,11 +1498,21 @@ export default function ModelSpaceViewport({
   }, [applyDrawOutlineTransition]);
 
   useEffect(() => {
-    if (drawOutlineRequestId === undefined || drawOutlineRequestId <= 0 || drawOutlineRequestId === lastDrawOutlineRequestIdRef.current) return;
+    if (drawOutlineRequestId === undefined || drawOutlineRequestId <= 0) {
+      lastDrawOutlineRequestIdRef.current = undefined;
+      return;
+    }
+    if (drawOutlineRequestId === lastDrawOutlineRequestIdRef.current) return;
     lastDrawOutlineRequestIdRef.current = drawOutlineRequestId;
     if ((!canEditFootprint && !canCommitCustomPolygon) || view !== 'plan') return;
     startDrawOutlineSession();
-  }, [canCommitCustomPolygon, canEditFootprint, drawOutlineRequestId, startDrawOutlineSession, view]);
+    onConsumeDrawOutlineRequest?.(drawOutlineRequestId);
+  }, [canCommitCustomPolygon, canEditFootprint, drawOutlineRequestId, onConsumeDrawOutlineRequest, startDrawOutlineSession, view]);
+
+  useEffect(() => {
+    if (view === 'plan' || !isDrawOutlineActive(drawOutlineState)) return;
+    applyDrawOutlineTransition(cancelDrawOutlineTool());
+  }, [applyDrawOutlineTransition, drawOutlineState, view]);
 
   const handleFootprintModeSelect = useCallback(
     async (mode: NonNullable<Required<ModulePlanModel>['houseFootprintMode']>) => {
@@ -1672,10 +1681,6 @@ export default function ModelSpaceViewport({
     },
     [drawOutlineState, viewportTransform.panX, viewportTransform.panY],
   );
-
-  const handleDrawOutlineConfirmSegment = useCallback(() => {
-    applyDrawOutlineTransition(confirmDrawOutlineSegment(drawOutlineState));
-  }, [applyDrawOutlineTransition, drawOutlineState]);
 
   const handleDrawOutlineUndo = useCallback(() => {
     applyDrawOutlineTransition(undoDrawOutline(drawOutlineState));
@@ -2370,20 +2375,49 @@ export default function ModelSpaceViewport({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isDrawOutlineActive(drawOutlineState) && event.key === 'Enter') {
-        return;
-      }
-      if (isDrawOutlineActive(drawOutlineState) && event.key === 'Backspace') {
-        event.preventDefault();
-        handleDrawOutlineUndo();
-        return;
+      if (isEditableKeyboardTarget(event.target)) return;
+
+      if (isDrawOutlineActive(drawOutlineState)) {
+        const activeState = drawOutlineState;
+        if (isDrawOutlineDistanceKey(event) && activeState.points.length > 0) {
+          event.preventDefault();
+          setFootprintError(null);
+          setDrawOutlineState((current) => setDrawOutlineDistanceDraft(current, appendDrawOutlineDistanceDraft(activeState.distanceDraft, event.key)).state);
+          return;
+        }
+        if (event.key === 'Enter') {
+          if (!activeState.distanceDraft) return;
+          event.preventDefault();
+          const result = armDrawOutlineDistanceLock(drawOutlineState);
+          if (result.error) {
+            setFootprintError(result.error);
+            return;
+          }
+          applyDrawOutlineTransition(result);
+          return;
+        }
+        if (event.key === 'Backspace') {
+          event.preventDefault();
+          if (activeState.distanceDraft) {
+            setFootprintError(null);
+            setDrawOutlineState((current) => setDrawOutlineDistanceDraft(current, activeState.distanceDraft.slice(0, -1)).state);
+            return;
+          }
+          handleDrawOutlineUndo();
+          return;
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          if (activeState.distanceDraft) {
+            setFootprintError(null);
+            setDrawOutlineState((current) => setDrawOutlineDistanceDraft(current, '').state);
+            return;
+          }
+          handleDrawOutlineCancel();
+          return;
+        }
       }
       if (event.key !== 'Escape') return;
-      if (isDrawOutlineActive(drawOutlineState)) {
-        event.preventDefault();
-        handleDrawOutlineCancel();
-        return;
-      }
       if (deckDragSession) {
         event.preventDefault();
         setDeckDragSession(null);
@@ -2447,7 +2481,8 @@ export default function ModelSpaceViewport({
             : viewportNavigationGesture;
   const drawOutlineHasError = drawOutlineViewModel.diagnosticState === 'error';
   const drawOutlineDiagnosticState = drawOutlineViewModel.diagnosticState;
-  const drawOutlineStatusCopy = drawOutlineStatusText(drawOutlineDiagnosticState);
+  const drawOutlineTypingDistanceDraft = activeDrawOutlineState?.distanceDraft ?? '';
+  const showDrawOutlineDistanceHud = Boolean(activeDrawOutlineState && drawOutlineTypingDistanceDraft);
   const drawOutlineLockedDistanceDraft = drawOutlineViewModel.lockedDistanceDraft;
   const drawOutlinePreviewSource = drawOutlineViewModel.previewSource;
   const isCustomPolygonFootprint = view === 'plan' && (planModel?.houseFootprintMode ?? 'preset') === 'custom_polygon';
@@ -2476,7 +2511,7 @@ export default function ModelSpaceViewport({
   }, [autoFitOnReady, fitViewportToContent, modelSpaceAutoFitKey, modelSpaceAutoFitReady]);
 
   useEffect(() => {
-    if (!drawOutlineViewModel.isActive) {
+    if (!showDrawOutlineDistanceHud) {
       setDrawPopoverPosition(null);
       return;
     }
@@ -2522,7 +2557,7 @@ export default function ModelSpaceViewport({
       if (current && Math.abs(current.left - left) < 0.5 && Math.abs(current.top - top) < 0.5) return current;
       return { left, top };
     });
-  }, [drawOutlinePopoverAnchorPointCount, drawOutlineViewModel.isActive, viewportTransform.panX, viewportTransform.panY, zoom]);
+  }, [drawOutlinePopoverAnchorPointCount, showDrawOutlineDistanceHud, viewportTransform.panX, viewportTransform.panY, zoom]);
 
   const houseFirstPlanOverlay =
     view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.houseFirst ?? null : null;
@@ -2922,8 +2957,10 @@ export default function ModelSpaceViewport({
         data-draw-outline-pan-threshold-px={DRAW_OUTLINE_PAN_THRESHOLD_PX}
         data-draw-outline-angle-mode={drawOutlineViewModel.angleMode}
         data-draw-outline-preview-source={drawOutlinePreviewSource}
+        data-draw-outline-distance-draft={drawOutlineTypingDistanceDraft}
         data-draw-outline-locked-distance-draft={drawOutlineLockedDistanceDraft ?? ''}
         data-draw-outline-length-locked={drawOutlineLockedDistanceDraft ? 'true' : 'false'}
+        data-draw-outline-distance-hud-active={showDrawOutlineDistanceHud ? 'true' : 'false'}
         data-draw-outline-has-error={drawOutlineHasError ? 'true' : 'false'}
         data-draw-outline-can-redraw={canRedrawDrawOutline ? 'true' : 'false'}
         data-draw-outline-redraw-active={drawOutlineRedrawActive ? 'true' : 'false'}
@@ -2992,18 +3029,6 @@ export default function ModelSpaceViewport({
           </div>
         ) : null}
 
-        {drawOutlineViewModel.isActive ? (
-          <div
-            className={styles.drawStatus}
-            aria-label="Draw outline status"
-            data-draw-outline-status="true"
-            data-draw-outline-status-state={drawOutlineDiagnosticState}
-          >
-            <span className={styles.drawStatusText}>{drawOutlineStatusCopy}</span>
-            <span className={styles.drawStatusMeta}>Esc cancels</span>
-          </div>
-        ) : null}
-
         {!drawOutlineViewModel.isActive && deckInteractionHint ? (
           <div
             className={[
@@ -3026,91 +3051,18 @@ export default function ModelSpaceViewport({
 
         {interactionError ? <p className={styles.error}>{interactionError}</p> : null}
 
-        {activeDrawOutlineState ? (
+        {showDrawOutlineDistanceHud ? (
           <div
             ref={drawPopoverRef}
-            className={styles.drawPopover}
-            aria-label="Draw house outline controls"
-            data-draw-outline-controls="true"
-            data-draw-popover-anchor={drawPopoverPosition ? 'vertex' : 'default'}
+            className={styles.drawDistanceHud}
+            aria-label="Draw outline distance HUD"
+            data-draw-outline-distance-hud="true"
+            data-draw-distance-hud-anchor={drawPopoverPosition ? 'vertex' : 'default'}
             style={drawPopoverStyle}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <p className={styles.drawHint}>
-              {activeDrawOutlineState.points.length
-                ? `${activeDrawOutlineState.points.length} point${activeDrawOutlineState.points.length === 1 ? '' : 's'} placed`
-                : 'Click first corner'}
-            </p>
-            <label className={styles.popoverField}>
-              <span className={styles.fieldLabel}>Distance (m)</span>
-              <input
-                className={styles.input}
-                inputMode="decimal"
-                value={activeDrawOutlineState.distanceDraft}
-                disabled={!activeDrawOutlineState.points.length}
-                onChange={(event) =>
-                  setDrawOutlineState((current) => setDrawOutlineDistanceDraft(current, event.target.value).state)
-                }
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    handleDrawOutlineCancel();
-                    return;
-                  }
-                  if (event.key !== 'Enter') return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  const result = armDrawOutlineDistanceLock(drawOutlineState);
-                  if (result.error) {
-                    setFootprintError(result.error);
-                    return;
-                  }
-                  applyDrawOutlineTransition(result);
-                }}
-              />
-            </label>
-            <label className={styles.popoverField}>
-              <span className={styles.fieldLabel}>Angle (deg)</span>
-              <input
-                className={styles.input}
-                inputMode="decimal"
-                value={activeDrawOutlineState.angleDraft}
-                disabled={!activeDrawOutlineState.points.length}
-                onChange={(event) =>
-                  setDrawOutlineState((current) => setDrawOutlineAngleDraft(current, event.target.value).state)
-                }
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    handleDrawOutlineCancel();
-                  }
-                }}
-              />
-            </label>
-            {drawOutlineLockedDistanceDraft ? (
-              <p className={styles.drawHint}>Next click uses locked length {drawOutlineLockedDistanceDraft}m.</p>
-            ) : null}
-            <button
-              type="button"
-              className={styles.confirmButton}
-              onClick={handleDrawOutlineConfirmSegment}
-              disabled={!drawOutlineViewModel.hasPendingPoint}
-            >
-              Confirm
-            </button>
-            <div className={styles.drawActions}>
-              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineClose}>
-                Close
-              </button>
-              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineUndo} disabled={!activeDrawOutlineState.points.length}>
-                Undo
-              </button>
-              <button type="button" className={styles.overlayButton} onClick={handleDrawOutlineCancel}>
-                Cancel
-              </button>
-            </div>
+            <span className={styles.drawDistanceHudValue}>{drawOutlineTypingDistanceDraft}m</span>
+            <span className={styles.drawDistanceHudMeta}>Enter to lock</span>
           </div>
         ) : null}
 

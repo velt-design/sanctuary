@@ -52,6 +52,7 @@ type DrawingWorkbenchProps = {
   drawOutlineRequestId?: number;
   drawOutlineMode?: 'footprint' | 'deck' | null;
   drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[];
+  onDrawOutlineRequestConsumed?: (requestId: number) => void;
   onModelViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
   onGeometryViewportStateChange?: (state: Geometry3DViewportState) => void;
   meta: EstimateDrawingSheetMeta;
@@ -122,6 +123,7 @@ export default function DrawingWorkbench({
   drawOutlineRequestId,
   drawOutlineMode,
   drawOutlineSeedPolygon,
+  onDrawOutlineRequestConsumed,
   onModelViewportTransformChange,
   onGeometryViewportStateChange,
   meta,
@@ -203,6 +205,7 @@ export default function DrawingWorkbench({
             drawOutlineRequestId={drawOutlineRequestId}
             drawOutlineMode={drawOutlineMode}
             drawOutlineSeedPolygon={drawOutlineSeedPolygon}
+            onConsumeDrawOutlineRequest={onDrawOutlineRequestConsumed}
             fitViewKey={modelViewportKey ?? `${activeModuleIndex}:${view}`}
             autoFitOnReady={modelViewportAutoFitOnReady}
             viewportTransform={modelViewportTransform}

@@ -1,3 +1,4 @@
+import { act, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
@@ -5,6 +6,8 @@ import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { renderIntoDocument } from '../../../../../test/reactHarness';
 import DrawingWorkbench from './DrawingWorkbench';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -91,6 +94,20 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
       pergolas: [{ id: 'pergola-1', modules: [makeResult()] }],
     },
   })[0]!;
+}
+
+function makeCustomPolygonPlanModel() {
+  const drawing = makeDrawingModule();
+  return {
+    ...drawing.planModel!,
+    houseFootprintMode: 'custom_polygon' as const,
+    houseFootprintPolygon: [
+      { alongM: '0', depthM: '2.4' },
+      { alongM: '6', depthM: '2.4' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '0', depthM: '0' },
+    ],
+  };
 }
 
 describe('DrawingWorkbench', () => {
@@ -250,5 +267,97 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('3D View');
+  });
+
+  it('does not restart a consumed custom-footprint outline request after switching to 3D view and back', async () => {
+    function Harness() {
+      const drawing = makeDrawingModule();
+      const meta = buildEstimateDrawingSheetMeta({
+        moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+        view: 'plan',
+      });
+      const [viewportMode, setViewportMode] = useState<DrawingWorkbenchViewportMode>('model');
+      const [drawOutlineRequestId, setDrawOutlineRequestId] = useState(0);
+
+      return (
+        <div>
+          <button type="button" onClick={() => setDrawOutlineRequestId((current) => current + 1)}>
+            Start outline
+          </button>
+          <button type="button" onClick={() => setViewportMode('geometry3d')}>
+            Show 3D
+          </button>
+          <button type="button" onClick={() => setViewportMode('model')}>
+            Show model
+          </button>
+          <DrawingWorkbench
+            moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+            modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+            activeModuleIndex={0}
+            onActiveModuleIndexChange={() => undefined}
+            view="plan"
+            onViewChange={() => undefined}
+            viewportMode={viewportMode}
+            availableViewportModes={['model', 'geometry3d']}
+            onViewportModeChange={setViewportMode}
+            status="ready"
+            planModel={makeCustomPolygonPlanModel()}
+            sectionModel={drawing.sectionModel}
+            modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+            onModelViewportTransformChange={() => undefined}
+            meta={meta}
+            drawOutlineRequestId={drawOutlineRequestId}
+            onDrawOutlineRequestConsumed={(requestId) =>
+              setDrawOutlineRequestId((current) => (current === requestId ? 0 : current))
+            }
+            onCommitFootprintEdit={() => ({ ok: true })}
+          />
+        </div>
+      );
+    }
+
+    const rendered = renderIntoDocument(<Harness />);
+    const clickByText = (text: string) => {
+      const button = Array.from(rendered.container.querySelectorAll('button')).find((candidate) => candidate.textContent === text);
+      if (!(button instanceof HTMLButtonElement)) throw new Error(`Missing button: ${text}`);
+      act(() => {
+        button.click();
+      });
+    };
+    const getScroller = () => rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
+    clickByText('Start outline');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getScroller()?.dataset.drawOutlineActive).toBe('true');
+    expect(getScroller()?.dataset.drawOutlineRedrawActive).toBe('true');
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    });
+    expect(getScroller()?.dataset.drawOutlineActive).toBe('false');
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Redraw outline');
+
+    clickByText('Show 3D');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(rendered.container.querySelector('[data-model-space-scroller]')).toBeNull();
+
+    clickByText('Show model');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(getScroller()?.dataset.drawOutlineActive).toBe('false');
+    expect(getScroller()?.dataset.drawOutlineRedrawActive).toBe('false');
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Redraw outline');
+
+    rendered.unmount();
   });
 });

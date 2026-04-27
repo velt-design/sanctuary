@@ -244,6 +244,7 @@ export function armDrawOutlineDistanceLock(state: DrawOutlineToolState): DrawOut
     state: normalizeDrawOutlineState({
       ...state,
       pendingPoint: null,
+      distanceDraft: '',
       angleDraft: '',
       lockedDistanceDraft: formatOutlineNumber(distance),
       previewSource: state.hoverPoint ? 'locked-distance' : 'none',
