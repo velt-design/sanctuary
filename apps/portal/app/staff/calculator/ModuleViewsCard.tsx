@@ -93,6 +93,7 @@ export type ModulePlanInteractionProps = {
     event: { pointerId: number; clientX: number; clientY: number },
   ) => void;
   onPlanPointResolverChange?: ((resolver: ((clientX: number, clientY: number) => PlanPoint | null) | null) => void) | undefined;
+  onDeckDragPointResolverChange?: ((resolver: ((clientX: number, clientY: number) => PlanPoint | null) | null) => void) | undefined;
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
@@ -4944,6 +4945,25 @@ function PlanSvg({
       y: rawY,
     };
   };
+  const resolveDeckDragClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): PlanPoint | null => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm || !Number.isFinite(scale) || scale <= 0) return null;
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = clientX;
+    svgPoint.y = clientY;
+    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
+    const unrotatedPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
+    const projectedX = (unrotatedPoint.x - x) / scale;
+    const projectedY = (unrotatedPoint.y - y) / scale;
+    if (!Number.isFinite(projectedX) || !Number.isFinite(projectedY)) return null;
+    return {
+      x: projectedX,
+      // Model house plan rendering flips Y for presentation. Drag-space uses
+      // the same visual orientation as the cursor so deck previews follow
+      // direct manipulation even when the underlying plan geometry keeps raw Y.
+      y: planHouseProjectionOptions.invertY ? -projectedY : projectedY,
+    };
+  };
   const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): ModuleFootprintCanvasPoint | null =>
     resolvePlanClientPoint(event.currentTarget, event.clientX, event.clientY);
   const handlePlanSvgPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -4985,6 +5005,7 @@ function PlanSvg({
           planInteraction?.onSvgMount?.(node);
           footprintEditor?.onCanvasPointResolverChange?.(node ? (clientX, clientY) => resolvePlanClientPoint(node, clientX, clientY) : null);
           planInteraction?.onPlanPointResolverChange?.(node ? (clientX, clientY) => resolveRawPlanClientPoint(node, clientX, clientY) : null);
+          planInteraction?.onDeckDragPointResolverChange?.(node ? (clientX, clientY) => resolveDeckDragClientPoint(node, clientX, clientY) : null);
         }}
         onPointerDown={handlePlanSvgPointerDown}
         onPointerMove={handlePlanSvgPointerMove}

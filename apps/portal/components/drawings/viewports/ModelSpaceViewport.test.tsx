@@ -367,6 +367,18 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
   };
 }
 
+function polygonCentroidY(element: Element | null): number {
+  const pointsAttr = element?.getAttribute('points');
+  if (!pointsAttr) throw new Error('Missing polygon points.');
+  const pairs = pointsAttr
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(',').map((value) => Number.parseFloat(value)));
+  const ys = pairs.map(([, y]) => y).filter((value): value is number => Number.isFinite(value));
+  if (!ys.length) throw new Error('Missing polygon Y coordinates.');
+  return ys.reduce((sum, value) => sum + value, 0) / ys.length;
+}
+
 function makeHouseFirstOpening(overrides: Partial<WallOpeningModel> = {}): WallOpeningModel {
   return {
     id: 'opening-1',
@@ -3539,8 +3551,8 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('maps vertical deck dragging consistently through the model-space house projection', async () => {
-    const renderDraggedDepth = async (pointerUpY: number) => {
+  it('moves the floating deck preview in the same on-screen vertical direction as the pointer', async () => {
+    const renderDraggedPreviewY = async (pointerMoveY: number) => {
       const deck = makeHouseFirstDeck({
         isAttached: false,
         presetType: 'rect_detached',
@@ -3579,25 +3591,22 @@ describe('ModelSpaceViewport', () => {
       installSvgPointMock(svg);
 
       dispatchPointer(deckHit, 'pointerdown', { pointerId: 23, button: 0, clientX: 50, clientY: 50 });
-      dispatchPointer(window, 'pointermove', { pointerId: 23, button: 0, buttons: 1, clientX: 50, clientY: pointerUpY });
-      dispatchPointer(window, 'pointerup', { pointerId: 23, button: 0, clientX: 50, clientY: pointerUpY });
+      dispatchPointer(window, 'pointermove', { pointerId: 23, button: 0, buttons: 1, clientX: 50, clientY: pointerMoveY });
+      const previewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+      dispatchPointer(window, 'pointerup', { pointerId: 23, button: 0, clientX: 50, clientY: pointerMoveY });
       await act(async () => {
         await Promise.resolve();
       });
-
-      const centerDepth = Number.parseFloat(
-        rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent ?? '',
-      );
       rendered.unmount();
-      return centerDepth;
+      return previewY;
     };
 
-    const draggedDownDepth = await renderDraggedDepth(5000);
-    const draggedUpDepth = await renderDraggedDepth(-5000);
+    const draggedDownPreviewY = await renderDraggedPreviewY(5000);
+    const draggedUpPreviewY = await renderDraggedPreviewY(-5000);
 
-    expect(Number.isFinite(draggedDownDepth)).toBe(true);
-    expect(Number.isFinite(draggedUpDepth)).toBe(true);
-    expect(draggedDownDepth).toBeLessThan(draggedUpDepth);
+    expect(Number.isFinite(draggedDownPreviewY)).toBe(true);
+    expect(Number.isFinite(draggedUpPreviewY)).toBe(true);
+    expect(draggedDownPreviewY).toBeGreaterThan(draggedUpPreviewY);
   });
 
   it('keeps floating decks visually free while dragging them without live-snapping the deck body', async () => {

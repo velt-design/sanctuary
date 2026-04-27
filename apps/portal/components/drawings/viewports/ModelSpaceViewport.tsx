@@ -152,7 +152,7 @@ type DeckDragSession = {
   deckId: string;
   startSvgX: number;
   startSvgY: number;
-  startPlanPoint: PlanPoint | null;
+  startDragPlanPoint: PlanPoint | null;
   startCenter: PlanPoint;
   startPolygon: PlanPoint[];
   startWidthM: number;
@@ -853,7 +853,7 @@ function resolveDeckPreviewState(input: {
   session: DeckDragSession;
   nextSvgX: number;
   nextSvgY: number;
-  nextPlanPoint: PlanPoint | null;
+  nextDragPlanPoint: PlanPoint | null;
   previousPreviewState: DeckPreviewState | null;
 }): DeckPreviewState {
   const svgDx = input.nextSvgX - input.session.startSvgX;
@@ -863,12 +863,12 @@ function resolveDeckPreviewState(input: {
   const svgLength = Math.hypot(interactionSvgDx, interactionSvgDy);
   const metresPerSvgUnit = svgLength > 1e-6 ? input.session.interaction.hostSpanM / svgLength : 0;
   const planDx =
-    input.session.startPlanPoint && input.nextPlanPoint
-      ? input.nextPlanPoint.x - input.session.startPlanPoint.x
+    input.session.startDragPlanPoint && input.nextDragPlanPoint
+      ? input.nextDragPlanPoint.x - input.session.startDragPlanPoint.x
       : svgDx * metresPerSvgUnit;
   const planDy =
-    input.session.startPlanPoint && input.nextPlanPoint
-      ? input.nextPlanPoint.y - input.session.startPlanPoint.y
+    input.session.startDragPlanPoint && input.nextDragPlanPoint
+      ? input.nextDragPlanPoint.y - input.session.startDragPlanPoint.y
       : svgDy * metresPerSvgUnit;
   const center = {
     x: input.session.startCenter.x + planDx,
@@ -1075,6 +1075,7 @@ export default function ModelSpaceViewport({
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
   const drawOutlineCanvasPointResolverRef = useRef<ModuleFootprintCanvasPointResolver | null>(null);
   const planPointResolverRef = useRef<((clientX: number, clientY: number) => PlanPoint | null) | null>(null);
+  const deckDragPointResolverRef = useRef<((clientX: number, clientY: number) => PlanPoint | null) | null>(null);
   const drawOutlinePointerSessionRef = useRef<DrawOutlinePointerSession | null>(null);
   const lastDeckTelemetrySignatureRef = useRef<string | null>(null);
   const activeTouchPointersRef = useRef<Map<number, TouchPointerSnapshot>>(new Map());
@@ -1247,7 +1248,10 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
-      const startPlanPoint = planPointResolverRef.current?.(event.clientX, event.clientY) ?? null;
+      const startDragPlanPoint =
+        deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
+        planPointResolverRef.current?.(event.clientX, event.clientY) ??
+        null;
       if (meta.ownerKind === 'deck') {
         if (!onCommitHouseFirstDeckDimension) return;
         const overlayShape = planViewModel?.houseFirst?.shapes.find(
@@ -1271,7 +1275,7 @@ export default function ModelSpaceViewport({
           deckId: meta.ownerId,
           startSvgX: startPoint.x,
           startSvgY: startPoint.y,
-          startPlanPoint,
+          startDragPlanPoint,
           startCenter: overlayShape.deckInteraction.renderedCenter,
           startPolygon: overlayShape.polygon,
           startWidthM: overlayShape.deckInteraction.deckWidthM,
@@ -2524,12 +2528,15 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
-      const nextPlanPoint = planPointResolverRef.current?.(event.clientX, event.clientY) ?? null;
+      const nextDragPlanPoint =
+        deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
+        planPointResolverRef.current?.(event.clientX, event.clientY) ??
+        null;
       const preview = resolveDeckPreviewState({
         session: deckDragSession,
         nextSvgX: nextPoint.x,
         nextSvgY: nextPoint.y,
-        nextPlanPoint,
+        nextDragPlanPoint,
         previousPreviewState: deckPreviewState,
       });
       setDeckPreviewState(preview);
@@ -3195,6 +3202,9 @@ export default function ModelSpaceViewport({
       onResizeFieldDragStart: handlePlanFieldDragStart,
       onPlanPointResolverChange: (resolver) => {
         planPointResolverRef.current = resolver;
+      },
+      onDeckDragPointResolverChange: (resolver) => {
+        deckDragPointResolverRef.current = resolver;
       },
       onSvgMount: (node) => {
         footprintSvgRef.current = node;
