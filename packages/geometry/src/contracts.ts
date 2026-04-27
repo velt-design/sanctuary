@@ -277,6 +277,7 @@ export type HouseOpeningConfig = {
   id: string;
   label?: string | null;
   kind?: HouseOpeningKind | null;
+  panelCount?: 2 | 3 | 4 | null;
   wallId?: AttachmentSide | null;
   hostEdgeId?: string | null;
   widthMm?: number | null;
@@ -442,6 +443,7 @@ export type RawGeometryModuleInput = {
       id: string;
       label?: string | null;
       kind?: HouseOpeningKind | null;
+      panelCount?: 2 | 3 | 4 | string | number | null;
       wallId?: AttachmentSide | null;
       hostEdgeId?: string | null;
       widthMm?: string | number | null;
@@ -773,6 +775,7 @@ export type HouseOpening3D = {
   id: string;
   label?: string | null;
   kind: HouseOpeningKind;
+  panelCount: 2 | 3 | 4 | null;
   wallId: AttachmentSide;
   hostEdgeId?: string | null;
   widthMm: number;

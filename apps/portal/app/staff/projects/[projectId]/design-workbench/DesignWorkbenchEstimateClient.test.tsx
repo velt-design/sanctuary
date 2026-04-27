@@ -700,6 +700,7 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     await flushAsyncWork();
     expect(readLabeledValue(rendered.container, 'Opening count')).toBe('0');
+    expect(readLabeledValue(rendered.container, 'Slider openings')).toBe('0');
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('none');
 
     clickButtonByText(rendered.container, 'Add window');
@@ -709,6 +710,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       'opening-1',
     ]);
     expect(readLabeledValue(rendered.container, 'Opening count')).toBe('1');
+    expect(readLabeledValue(rendered.container, 'Slider openings')).toBe('0');
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
 
     clickButtonByText(rendered.container, 'Model Space');
@@ -779,6 +781,37 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('adds sliders in house mode and preserves slider-specific panel count edits', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Slider Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add slider');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Opening count')).toBe('1');
+    expect(readLabeledValue(rendered.container, 'Slider openings')).toBe('1');
+    expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+      kind: 'slider',
+      panelCount: 2,
+      widthM: '2.4',
+      heightM: '2.1',
+      sillHeightM: '0',
+    });
+
+    changeSelectByLabel(rendered.container, 'Panel count', '4');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]?.panelCount).toBe(4);
+
+    rendered.unmount();
+  });
+
   it('preserves a typed opening kind when editing non-kind fields from a local working copy', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
@@ -797,6 +830,7 @@ describe('DesignWorkbenchEstimateClient', () => {
               id: 'opening-1',
               label: 'Rear slider',
               kind: 'slider',
+              panelCount: 4,
               wallId: 'rear',
               widthM: '2.4',
               heightM: '2.1',
@@ -831,6 +865,7 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     const openingDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0];
     expect(openingDraft?.kind).toBe('slider');
+    expect(openingDraft?.panelCount).toBe(4);
     expect(openingDraft?.widthM).toBe('2.8');
 
     rendered.unmount();

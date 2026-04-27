@@ -10,7 +10,10 @@ import type {
   HouseFirstOpeningDraft,
   HouseModel,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import { normalizeWallOpeningKind } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import {
+  normalizeWallOpeningKind,
+  resolveOpeningPanelCount,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
 
 export function toDeckDrafts(house: HouseModel | null | undefined): HouseFirstDeckDraft[] {
   return (house?.decks ?? []).map((deck) => ({
@@ -38,9 +41,10 @@ export function nextDeckId(existing: HouseFirstDeckDraft[]): string {
 
 export function toOpeningDrafts(house: HouseModel | null | undefined): HouseFirstOpeningDraft[] {
   return (house?.openings ?? []).map((opening) => ({
+    kind: normalizeWallOpeningKind(opening.kind),
     id: opening.id,
     label: opening.label,
-    kind: normalizeWallOpeningKind(opening.kind),
+    panelCount: resolveOpeningPanelCount(normalizeWallOpeningKind(opening.kind), opening.panelCount),
     wallId: opening.wallId,
     hostEdgeId: opening.hostEdgeId,
     widthM: opening.widthM,

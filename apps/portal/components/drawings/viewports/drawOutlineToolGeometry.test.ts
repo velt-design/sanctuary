@@ -20,6 +20,8 @@ function makeState(overrides: Partial<DrawOutlineActiveToolState>): DrawOutlineA
     distanceDraft: '',
     angleDraft: '',
     angleMode: 'absolute',
+    lockedDistanceDraft: null,
+    previewSource: 'none',
     ...overrides,
   };
 }

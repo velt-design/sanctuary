@@ -372,6 +372,7 @@ function makeHouseFirstOpening(overrides: Partial<WallOpeningModel> = {}): WallO
     id: 'opening-1',
     label: 'Window 1',
     kind: 'window',
+    panelCount: null,
     wallId: 'rear',
     hostEdgeId: 'rear',
     widthM: '1.8',
@@ -603,8 +604,26 @@ function getDrawOutlineStatus(container: HTMLElement): HTMLElement | null {
   return container.querySelector('[aria-label="Draw outline status"]');
 }
 
+function getDrawOutlineControls(container: HTMLElement): HTMLElement {
+  const controls = container.querySelector('[aria-label="Draw house outline controls"]') as HTMLElement | null;
+  if (!controls) throw new Error('Missing draw outline controls.');
+  return controls;
+}
+
+function getDrawOutlineInputs(container: HTMLElement): { distanceInput: HTMLInputElement; angleInput: HTMLInputElement } {
+  const controls = getDrawOutlineControls(container);
+  const inputs = Array.from(controls.querySelectorAll('input')) as HTMLInputElement[];
+  const [distanceInput, angleInput] = inputs;
+  if (!distanceInput || !angleInput) throw new Error('Missing draw outline inputs.');
+  return { distanceInput, angleInput };
+}
+
 function getDrawOutlineLandingMarker(container: HTMLElement): SVGElement | null {
   return container.querySelector('[data-draw-outline-landing-marker="true"]') as SVGElement | null;
+}
+
+function getDrawOutlineLockedRadiusMarker(container: HTMLElement): SVGElement | null {
+  return container.querySelector('[data-draw-outline-locked-radius="true"]') as SVGElement | null;
 }
 
 function expectFiniteDrawOutlineLanding(container: HTMLElement): { alongM: number; depthM: number } {
@@ -1784,9 +1803,7 @@ describe('ModelSpaceViewport', () => {
 
     dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
-    clickButtonByText(rendered.container, 'Confirm');
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
-    clickButtonByText(rendered.container, 'Confirm');
 
     await act(async () => {
       clickButtonByText(rendered.container, 'Close');
@@ -2427,7 +2444,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('prefers typed pending draw outline previews over hover previews', () => {
+  it('arms a one-segment distance lock from the distance input and places the next point at that radius', () => {
     const drawing = makeDrawingModule();
     const commitFootprintEdit = vi.fn(() => ({ ok: true }));
     const renderViewport = (drawOutlineRequestId = 0) => (
@@ -2454,40 +2471,47 @@ describe('ModelSpaceViewport', () => {
     installSvgPointMock(svg);
 
     dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
-    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
     dispatchPointer(svg, 'pointermove', { clientX: 75, clientY: 48 });
+    const { distanceInput } = getDrawOutlineInputs(rendered.container);
+    fillAndCommitDimensionInput(distanceInput, '2', 'enter');
 
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
-      drawOutlineState: 'pending-segment',
+      drawOutlineState: 'locked-distance',
       drawOutlinePointCount: '1',
-      drawOutlineHasPendingPoint: 'true',
-      drawOutlinePreviewKind: 'pending',
+      drawOutlineHasPendingPoint: 'false',
+      drawOutlinePreviewKind: 'locked-distance',
       drawOutlineCloseReady: 'false',
       drawOutlineCloseHovered: 'false',
       drawOutlineHasLandingPoint: 'true',
       drawOutlineAngleMode: 'absolute',
       drawOutlineHasError: 'false',
+      drawOutlinePreviewSource: 'locked-distance',
+      drawOutlineLengthLocked: 'true',
+      drawOutlineLockedDistanceDraft: '2',
     });
     expectFiniteDrawOutlineLanding(rendered.container);
-    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('pending-segment');
-    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: confirm segment or undo');
-    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="pending"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-footprint-custom-preview-vertex="pending"]')).not.toBeNull();
+    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('locked-distance');
+    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: click next corner at locked distance');
+    expect(rendered.container.textContent).toContain('Next click uses locked length 2m.');
+    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="locked-distance"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-preview-vertex="locked-distance"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).toBeNull();
+    expect(getDrawOutlineLockedRadiusMarker(rendered.container)).not.toBeNull();
+    expect(getDrawOutlineLockedRadiusMarker(rendered.container)?.querySelector('line')).not.toBeNull();
+    expect(getDrawOutlineLockedRadiusMarker(rendered.container)?.querySelector('circle')).toBeNull();
     expect(commitFootprintEdit).not.toHaveBeenCalled();
 
-    clickButtonByText(rendered.container, 'Undo');
-    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="pending"]')).toBeNull();
-    dispatchPointer(svg, 'pointermove', { clientX: 75, clientY: 48 });
+    dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       drawOutlineState: 'placing',
-      drawOutlinePreviewKind: 'hover',
+      drawOutlinePointCount: '2',
+      drawOutlinePreviewKind: 'none',
       drawOutlineHasPendingPoint: 'false',
-      drawOutlineHasLandingPoint: 'true',
+      drawOutlineLengthLocked: 'false',
+      drawOutlineLockedDistanceDraft: '',
     });
-    expectFiniteDrawOutlineLanding(rendered.container);
-    expect(getDrawOutlineStatus(rendered.container)?.getAttribute('data-draw-outline-status-state')).toBe('placing');
-    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).not.toBeNull();
+    expect(getDrawOutlineLockedRadiusMarker(rendered.container)).toBeNull();
+    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="locked-distance"]')).toBeNull();
     expect(commitFootprintEdit).not.toHaveBeenCalled();
 
     rendered.unmount();
@@ -2522,10 +2546,8 @@ describe('ModelSpaceViewport', () => {
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
     expect(rendered.container.querySelector('[data-footprint-custom-close-target]')).toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-close-hit]')).toBeNull();
-    clickButtonByText(rendered.container, 'Confirm');
     expect(rendered.container.querySelector('[data-footprint-custom-active-edge="true"]')?.getAttribute('data-footprint-custom-edge')).toBe('0');
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
-    clickButtonByText(rendered.container, 'Confirm');
 
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       drawOutlineState: 'close-ready',
@@ -2549,12 +2571,10 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(svg, 'pointermove', { clientX: 75, clientY: 58 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       drawOutlineState: 'close-ready',
-      drawOutlinePreviewKind: 'hover',
       drawOutlineCloseHovered: 'false',
     });
     expect(rendered.container.querySelector('[data-footprint-custom-close-hovered="true"]')).toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-close-preview="true"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="hover"]')).not.toBeNull();
 
     dispatchPointer(svg, 'pointermove', { clientX: 45.05, clientY: 28.05 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
@@ -2566,6 +2586,136 @@ describe('ModelSpaceViewport', () => {
     expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: release on first corner to close');
     expect(rendered.container.querySelector('[data-footprint-custom-close-hovered="true"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-close-preview="true"]')).not.toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('constrains draw outline clicks to world-axis right angles while shift is held', async () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    dispatchPointer(svg, 'pointermove', { clientX: 92, clientY: 38, shiftKey: true });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'placing',
+      drawOutlinePreviewKind: 'hover',
+      drawOutlinePreviewSource: 'hover',
+    });
+    expect(getDrawOutlineStatus(rendered.container)?.textContent).toContain('Draw outline: click next corner or enter distance and angle');
+
+    dispatchDrawClick(svg, { button: 0, clientX: 92, clientY: 38, shiftKey: true });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlinePointCount: '2',
+      drawOutlinePreviewKind: 'none',
+      drawOutlineHasPendingPoint: 'false',
+    });
+
+    dispatchPointer(svg, 'pointermove', { clientX: 78, clientY: 76, shiftKey: true });
+    dispatchDrawClick(svg, { button: 0, clientX: 78, clientY: 76, shiftKey: true });
+
+    await act(async () => {
+      clickButtonByText(rendered.container, 'Close');
+      await Promise.resolve();
+    });
+
+    expect(commitFootprintEdit).toHaveBeenCalledTimes(1);
+    const polygon = (commitFootprintEdit.mock.calls as unknown as Array<[{ type: 'custom_polygon'; polygon: Array<{ alongM: string; depthM: string }> }]>)[0]?.[0]
+      ?.polygon;
+    if (!polygon) throw new Error('Missing committed polygon.');
+    const [first, second, third] = polygon.map((point) => ({
+      alongM: Number.parseFloat(point.alongM),
+      depthM: Number.parseFloat(point.depthM),
+    }));
+    expect(second?.depthM).toBeCloseTo(first?.depthM ?? Number.NaN, 3);
+    expect(third?.alongM).toBeCloseTo(second?.alongM ?? Number.NaN, 3);
+
+    rendered.unmount();
+  });
+
+  it('places a locked segment on the nearest world axis when shift is held', async () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    const { distanceInput } = getDrawOutlineInputs(rendered.container);
+    fillAndCommitDimensionInput(distanceInput, '2', 'enter');
+    dispatchPointer(svg, 'pointermove', { clientX: 54, clientY: 84, shiftKey: true });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'locked-distance',
+      drawOutlineLengthLocked: 'true',
+    });
+
+    dispatchDrawClick(svg, { button: 0, clientX: 54, clientY: 84, shiftKey: true });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineState: 'placing',
+      drawOutlinePointCount: '2',
+      drawOutlineLengthLocked: 'false',
+    });
+    expect(distanceInput.value).toBe('');
+
+    dispatchDrawClick(svg, { button: 0, clientX: 78, clientY: 76 });
+    await act(async () => {
+      clickButtonByText(rendered.container, 'Close');
+      await Promise.resolve();
+    });
+
+    expect(commitFootprintEdit).toHaveBeenCalledTimes(1);
+    const polygon = (commitFootprintEdit.mock.calls as unknown as Array<[{ type: 'custom_polygon'; polygon: Array<{ alongM: string; depthM: string }> }]>)[0]?.[0]
+      ?.polygon;
+    if (!polygon) throw new Error('Missing committed polygon.');
+    const [first, second] = polygon.map((point) => ({
+      alongM: Number.parseFloat(point.alongM),
+      depthM: Number.parseFloat(point.depthM),
+    }));
+    expect(second?.alongM).toBeCloseTo(first?.alongM ?? Number.NaN, 3);
+    expect(Math.abs((second?.depthM ?? Number.NaN) - (first?.depthM ?? Number.NaN))).toBeCloseTo(2, 3);
 
     rendered.unmount();
   });
@@ -2681,9 +2831,7 @@ describe('ModelSpaceViewport', () => {
 
     dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
-    clickButtonByText(rendered.container, 'Confirm');
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
-    clickButtonByText(rendered.container, 'Confirm');
 
     const genericStartHit = rendered.container.querySelector('[data-footprint-custom-vertex-hit="0"]');
     if (!genericStartHit) throw new Error('Missing generic start vertex hit target.');
@@ -2759,9 +2907,7 @@ describe('ModelSpaceViewport', () => {
     dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
     expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 28 });
-    clickButtonByText(rendered.container, 'Confirm');
     dispatchDrawClick(svg, { button: 0, clientX: 75, clientY: 48 });
-    clickButtonByText(rendered.container, 'Confirm');
 
     await act(async () => {
       clickButtonByText(rendered.container, 'Close');

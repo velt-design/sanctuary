@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  armDrawOutlineDistanceLock,
   cancelDrawOutlineTool,
   confirmDrawOutlineSegment,
   deriveDrawOutlineViewModel,
@@ -23,9 +24,7 @@ function makeClosedTriangleState(): DrawOutlineToolState {
   let state = startDrawOutlineTool().state;
   state = selectDrawOutlinePoint(state, { alongM: 0, depthM: 0 }).state;
   state = selectDrawOutlinePoint(state, { alongM: 3, depthM: 0 }).state;
-  state = confirmDrawOutlineSegment(state).state;
   state = selectDrawOutlinePoint(state, { alongM: 3, depthM: 2 }).state;
-  state = confirmDrawOutlineSegment(state).state;
   return state;
 }
 
@@ -38,6 +37,7 @@ describe('drawOutlineToolState', () => {
       diagnosticState: 'first-point',
       confirmedPointCount: 0,
       angleMode: 'relative',
+      previewSource: 'none',
     });
 
     const cancelled = cancelDrawOutlineTool();
@@ -47,6 +47,7 @@ describe('drawOutlineToolState', () => {
       diagnosticState: 'inactive',
       confirmedPointCount: 0,
       angleMode: 'none',
+      previewSource: 'none',
     });
   });
 
@@ -58,73 +59,111 @@ describe('drawOutlineToolState', () => {
       confirmedPointCount: 1,
       angleMode: 'absolute',
       previewPointKind: null,
+      previewSource: 'none',
     });
   });
 
-  it('creates a pending segment with distance and angle drafts from a second selected point', () => {
+  it('confirms a second clicked point immediately into the point list', () => {
     let state = startDrawOutlineTool().state;
     state = selectDrawOutlinePoint(state, { alongM: 0, depthM: 0 }).state;
     const selected = selectDrawOutlinePoint(state, { alongM: 3, depthM: 0 });
 
     expect(selected.error).toBeNull();
     expect(activeState(selected.state)).toMatchObject({
-      distanceDraft: '3',
-      angleDraft: '0',
+      points: [
+        { alongM: 0, depthM: 0 },
+        { alongM: 3, depthM: 0 },
+      ],
+      pendingPoint: null,
+      distanceDraft: '',
+      angleDraft: '',
       angleMode: 'absolute',
+      lockedDistanceDraft: null,
     });
     expect(deriveDrawOutlineViewModel(selected.state, false)).toMatchObject({
-      diagnosticState: 'pending-segment',
-      previewPointKind: 'pending',
-      hasPendingPoint: true,
-    });
-  });
-
-  it('confirms a pending segment into the point list', () => {
-    let state = startDrawOutlineTool().state;
-    state = selectDrawOutlinePoint(state, { alongM: 0, depthM: 0 }).state;
-    state = selectDrawOutlinePoint(state, { alongM: 3, depthM: 0 }).state;
-    const confirmed = confirmDrawOutlineSegment(state);
-
-    expect(confirmed.error).toBeNull();
-    expect(activeState(confirmed.state).points).toEqual([
-      { alongM: 0, depthM: 0 },
-      { alongM: 3, depthM: 0 },
-    ]);
-    expect(deriveDrawOutlineViewModel(confirmed.state, false)).toMatchObject({
       diagnosticState: 'placing',
+      confirmedPointCount: 2,
       previewPointKind: null,
       hasPendingPoint: false,
-      angleMode: 'relative',
+      previewSource: 'none',
     });
   });
 
-  it('creates a typed pending segment from distance and angle drafts', () => {
+  it('still creates a keyboard-confirmable pending segment from distance and angle drafts', () => {
     let state = startDrawOutlineTool().state;
     state = selectDrawOutlinePoint(state, { alongM: 0, depthM: 0 }).state;
     state = setDrawOutlineDistanceDraft(state, '2').state;
     state = setDrawOutlineAngleDraft(state, '90').state;
 
     expect(deriveDrawOutlineViewModel(state, false)).toMatchObject({
-      diagnosticState: 'pending-segment',
+      diagnosticState: 'placing',
       pendingPoint: { alongM: 0, depthM: 2 },
       previewPointKind: 'pending',
       hasPendingPoint: true,
+      previewSource: 'none',
     });
+
+    const confirmed = confirmDrawOutlineSegment(state);
+    expect(confirmed.error).toBeNull();
+    expect(activeState(confirmed.state).points).toEqual([
+      { alongM: 0, depthM: 0 },
+      { alongM: 0, depthM: 2 },
+    ]);
   });
 
-  it('undo clears pending draft before removing confirmed points', () => {
+  it('arms a one-segment distance lock after the first point', () => {
     let state = startDrawOutlineTool().state;
     state = selectDrawOutlinePoint(state, { alongM: 0, depthM: 0 }).state;
     state = setDrawOutlineDistanceDraft(state, '2').state;
-    state = setDrawOutlineAngleDraft(state, '0').state;
+
+    const locked = armDrawOutlineDistanceLock(state);
+    expect(locked.error).toBeNull();
+    expect(activeState(locked.state)).toMatchObject({
+      lockedDistanceDraft: '2',
+      angleDraft: '',
+      previewSource: 'none',
+    });
+    expect(deriveDrawOutlineViewModel(locked.state, false)).toMatchObject({
+      diagnosticState: 'locked-distance',
+      lockedDistanceDraft: '2',
+      previewSource: 'none',
+      previewPointKind: null,
+    });
+  });
+
+  it('exposes locked-distance hover previews through the view model', () => {
+    let state = startDrawOutlineTool().state;
+    state = selectDrawOutlinePoint(state, { alongM: 0, depthM: 0 }).state;
+    state = setDrawOutlineDistanceDraft(state, '2').state;
+    state = armDrawOutlineDistanceLock(state).state;
+    state = hoverDrawOutlinePoint(state, { alongM: 0, depthM: 2 }).state;
+
+    expect(deriveDrawOutlineViewModel(state, false)).toMatchObject({
+      diagnosticState: 'locked-distance',
+      previewPointKind: 'locked-distance',
+      previewSource: 'locked-distance',
+      hoverPreviewPoint: { alongM: 0, depthM: 2 },
+    });
+  });
+
+  it('undo clears an armed length lock before removing confirmed points', () => {
+    let state = startDrawOutlineTool().state;
+    state = selectDrawOutlinePoint(state, { alongM: 0, depthM: 0 }).state;
+    state = setDrawOutlineDistanceDraft(state, '2').state;
+    state = armDrawOutlineDistanceLock(state).state;
 
     state = undoDrawOutline(state).state;
     expect(activeState(state)).toMatchObject({
       points: [{ alongM: 0, depthM: 0 }],
       distanceDraft: '',
       angleDraft: '',
+      lockedDistanceDraft: null,
     });
-    expect(deriveDrawOutlineViewModel(state, false).diagnosticState).toBe('placing');
+    expect(deriveDrawOutlineViewModel(state, false)).toMatchObject({
+      diagnosticState: 'placing',
+      previewPointKind: null,
+      previewSource: 'none',
+    });
 
     state = undoDrawOutline(state).state;
     expect(activeState(state).points).toEqual([]);

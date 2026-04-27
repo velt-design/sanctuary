@@ -131,6 +131,20 @@ function resolveHouseRoofRidgeAxis(
   return value === 'y' ? 'y' : 'x';
 }
 
+function resolveHouseOpeningPanelCount(
+  kind: 'window' | 'hinged_door' | 'slider' | 'stacker',
+  value: unknown,
+): 2 | 3 | 4 | null {
+  if (kind !== 'slider') return null;
+  const parsed =
+    typeof value === 'string'
+      ? Number.parseInt(value, 10)
+      : typeof value === 'number'
+        ? Math.round(value)
+        : NaN;
+  return parsed === 3 || parsed === 4 ? parsed : 2;
+}
+
 function resolveHouseOpenGableEndIds(
   value: string[] | null | undefined,
 ): string[] | null {
@@ -551,6 +565,7 @@ function buildHouseModelConfig(input: {
           id: opening.id,
           label: opening.label?.trim() || null,
           kind,
+          panelCount: resolveHouseOpeningPanelCount(kind, opening.panelCount),
           wallId,
           hostEdgeId: typeof opening.hostEdgeId === 'string' ? opening.hostEdgeId.trim() || null : null,
           widthMm: resolveOptionalMillimetres(opening.widthMm),

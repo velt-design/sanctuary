@@ -554,6 +554,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
           id: 'opening-slider',
           label: 'Slider',
           kind: 'slider',
+          panelCount: 3,
           wallId: 'rear',
           widthM: '2.4',
           heightM: '2.1',
@@ -593,5 +594,52 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       'hinged_door',
       'window',
     ]);
+    expect(projectModel.house?.openings[0]?.panelCount).toBe(3);
+    expect(projectModel.house?.openings[1]?.panelCount).toBeNull();
+    expect(projectModel.house?.openings[2]?.panelCount).toBeNull();
+  });
+
+  it('enforces simple slider corner clearance while leaving window validation shared', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-slider-clearance',
+          label: 'Corner slider',
+          kind: 'slider',
+          panelCount: 2,
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.1',
+        },
+        {
+          id: 'opening-window-clearance',
+          label: 'Corner window',
+          kind: 'window',
+          wallId: 'rear',
+          widthM: '1.2',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.1',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.openings[0]?.validation).toMatchObject({
+      status: 'invalid',
+      codes: ['insufficient_corner_clearance'],
+      message: 'Sliders need at least 0.3m clearance from each wall corner.',
+    });
+    expect(projectModel.house?.openings[1]?.validation.status).toBe('valid');
   });
 });

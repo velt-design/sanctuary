@@ -75,6 +75,7 @@ export type DrawingWorkbenchStore = {
     activeOpening: HouseModel['openings'][number] | null;
     deckCount: number;
     openingCount: number;
+    sliderOpeningCount: number;
     invalidOpeningCount: number;
     snappedPresetDeckCount: number;
     freePresetDeckCount: number;
@@ -320,6 +321,7 @@ export function buildDrawingWorkbenchStore(input: {
       activeOpening,
       deckCount: decks.length,
       openingCount: openings.length,
+      sliderOpeningCount: openings.filter((opening) => opening.kind === 'slider').length,
       invalidOpeningCount: openings.filter((opening) => opening.validation.status === 'invalid').length,
       snappedPresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && deck.isAttached).length,
       freePresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && !deck.isAttached).length,

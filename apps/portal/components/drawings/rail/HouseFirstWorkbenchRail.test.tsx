@@ -55,6 +55,7 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Openings');
     expect(markup).toContain('Add deck');
     expect(markup).toContain('Add window');
+    expect(markup).toContain('Add slider');
   });
 
   it('keeps pergola fallback isolated from the house-mode sections', () => {
@@ -73,5 +74,6 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Fallback rail');
     expect(markup).not.toContain('Add deck');
     expect(markup).not.toContain('Add window');
+    expect(markup).not.toContain('Add slider');
   });
 });

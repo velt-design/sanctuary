@@ -7,6 +7,7 @@ import type {
   HouseFirstRoofDraft,
   HouseModel,
   PergolaModel,
+  WallOpeningKind,
   WorkbenchMode,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 
@@ -28,7 +29,7 @@ export type HouseFirstWorkbenchRailProps = {
   onSelectDeck?: (deckId: string | null) => void;
   onSelectOpening?: (openingId: string | null) => void;
   onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
-  onAddOpening?: () => Promise<CommitResult> | CommitResult;
+  onAddOpening?: (kind: Extract<WallOpeningKind, 'window' | 'slider'>) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
   onCommitDeckPatch?: (

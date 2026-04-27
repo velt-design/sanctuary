@@ -46,6 +46,8 @@ export type DeckValidationCode =
   | 'unsupported_house_intersection';
 export type WallOpeningKind = 'window' | 'hinged_door' | 'slider' | 'stacker';
 export const WALL_OPENING_KINDS = ['window', 'hinged_door', 'slider', 'stacker'] as const;
+export type SliderPanelCount = 2 | 3 | 4;
+export const SLIDER_PANEL_COUNTS = [2, 3, 4] as const;
 export type WallOpeningHostSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 export type WallOpeningValidationCode =
   | 'missing_host_wall'
@@ -54,6 +56,7 @@ export type WallOpeningValidationCode =
   | 'invalid_sill_height'
   | 'offset_out_of_bounds'
   | 'span_exceeds_wall'
+  | 'insufficient_corner_clearance'
   | 'overlapping_openings';
 export type HouseAttachmentZoneKind = 'wall' | 'soffit' | 'fascia' | 'roof_edge';
 export type HouseModelConfidence = 'high' | 'low';
@@ -137,6 +140,7 @@ export type WallOpeningModel = {
   id: string;
   label: string;
   kind: WallOpeningKind;
+  panelCount: SliderPanelCount | null;
   wallId: WallOpeningHostSide | null;
   hostEdgeId: string | null;
   widthM: string;
@@ -254,6 +258,7 @@ export type HouseFirstOpeningDraft = {
   id: string;
   label?: string | null;
   kind?: WallOpeningKind | null;
+  panelCount?: SliderPanelCount | null;
   wallId?: WallOpeningHostSide | null;
   hostEdgeId?: string | null;
   widthM?: string | null;
@@ -268,6 +273,27 @@ export function isWallOpeningKind(value: unknown): value is WallOpeningKind {
 
 export function normalizeWallOpeningKind(value: unknown): WallOpeningKind {
   return isWallOpeningKind(value) ? value : 'window';
+}
+
+export function isSliderPanelCount(value: unknown): value is SliderPanelCount {
+  return typeof value === 'number' && SLIDER_PANEL_COUNTS.includes(value as SliderPanelCount);
+}
+
+export function normalizeSliderPanelCount(value: unknown): SliderPanelCount | null {
+  if (isSliderPanelCount(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    return isSliderPanelCount(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+export function resolveOpeningPanelCount(
+  kind: WallOpeningKind,
+  value: unknown,
+): SliderPanelCount | null {
+  if (kind !== 'slider') return null;
+  return normalizeSliderPanelCount(value) ?? 2;
 }
 
 export type WorkbenchProjectModel = {

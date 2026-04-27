@@ -1,12 +1,10 @@
 import {
-  absoluteAngleDeg,
   buildDrawOutlinePreviewPolygon,
   distanceBetweenOutlinePoints,
   formatOutlineNumber,
   hasDrawOutlineDraft,
   isFiniteOutlinePoint,
   MIN_OUTLINE_SEGMENT_M,
-  normalizeAngleDeg,
   outlinePointsToPolygon,
   resolveDrawOutlineHoverPoint,
   resolvePendingOutlinePoint,
@@ -164,10 +162,6 @@ export function selectDrawOutlinePoint(state: DrawOutlineToolState, point: DrawO
   }
 
   const previous = state.points[state.points.length - 2];
-  const absoluteAngle = absoluteAngleDeg(start, point);
-  const nextAngleMode: DrawOutlineAngleMode = previous ? state.angleMode : 'absolute';
-  const angle =
-    nextAngleMode === 'relative' && previous ? normalizeAngleDeg(absoluteAngle - absoluteAngleDeg(previous, start)) : normalizeAngleDeg(absoluteAngle);
 
   return {
     state: normalizeDrawOutlineState({
@@ -175,9 +169,9 @@ export function selectDrawOutlinePoint(state: DrawOutlineToolState, point: DrawO
       points: [...state.points, point],
       pendingPoint: null,
       hoverPoint: null,
-      distanceDraft: formatOutlineNumber(distance),
-      angleDraft: formatOutlineNumber(angle),
-      angleMode: previous ? nextAngleMode : 'absolute',
+      distanceDraft: '',
+      angleDraft: '',
+      angleMode: previous ? 'relative' : 'absolute',
       lockedDistanceDraft: null,
       previewSource: 'none',
     }),

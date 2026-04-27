@@ -2309,7 +2309,6 @@ type FootprintCanvasLayout = {
   customEdges: FootprintCustomEdgeSpec[];
   landingPoint: Point | null;
   lockedDistanceCenter: Point | null;
-  lockedDistanceRadius: number | null;
   sideTurns: number;
 };
 
@@ -2559,13 +2558,6 @@ function resolveFootprintCanvasLayout(input: {
   const latestConfirmedVertex =
     customPolygonConfirmedPointCount > 0 ? customVertices[customPolygonConfirmedPointCount - 1] ?? null : null;
   const lockedDistanceCenter = latestConfirmedVertex?.point ?? null;
-  const lockedDistanceRadius =
-    input.customPolygonLockedDistanceM !== null &&
-    input.customPolygonLockedDistanceM !== undefined &&
-    landingPoint &&
-    lockedDistanceCenter
-      ? Math.hypot(landingPoint.x - lockedDistanceCenter.x, landingPoint.y - lockedDistanceCenter.y)
-      : null;
   const handles = customPolygonOpen ? [] : localLayout.handles.map((handle): FootprintHandleSpec => {
     const point = mapLocalFootprintPointToPlan({
       point: handle.point,
@@ -2635,7 +2627,6 @@ function resolveFootprintCanvasLayout(input: {
     customEdges,
     landingPoint,
     lockedDistanceCenter,
-    lockedDistanceRadius,
     sideTurns,
   };
 }
@@ -2992,6 +2983,16 @@ function renderHouseFirstPlanOverlay(input: {
                   .filter(Boolean)
                   .join(' ')}
               />
+              {shape.detailSegments.map((segment, index) => (
+                <line
+                  key={`house-first-shape-detail-${shape.ownerKind}-${shape.ownerId}-${index + 1}`}
+                  x1={segment.start.x}
+                  y1={segment.start.y}
+                  x2={segment.end.x}
+                  y2={segment.end.y}
+                  className={styles.moduleHouseFirstOpeningDetail}
+                />
+              ))}
               <polygon
                 points={toPointsAttr(shape.points)}
                 data-house-first-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
@@ -3091,7 +3092,7 @@ function renderHouseFirstPlanOverlay(input: {
                   {(shape.ownerKind === 'deck' ? shape.deckDragEligibility?.eligible : shape.openingDragEligibility?.eligible)
                     ? shape.ownerKind === 'deck'
                       ? 'Drag deck'
-                      : 'Drag window'
+                      : 'Drag opening'
                     : 'Dims only'}
                 </text>
               ) : null}
@@ -3441,6 +3442,8 @@ function measurePlanAnnotatedBounds(input: {
           customPolygonPreviewPointKind: input.footprintEditor?.customPolygonPreviewPointKind,
           customPolygonCloseReady: input.footprintEditor?.customPolygonCloseReady,
           customPolygonCloseHovered: input.footprintEditor?.customPolygonCloseHovered,
+          customPolygonLandingPoint: input.footprintEditor?.customPolygonLandingPoint,
+          customPolygonLockedDistanceM: input.footprintEditor?.customPolygonLockedDistanceM,
           hideHouseFootprint,
         })
       : null;
@@ -4561,6 +4564,7 @@ function PlanSvg({
           customPolygonCloseReady: footprintEditor?.customPolygonCloseReady,
           customPolygonCloseHovered: footprintEditor?.customPolygonCloseHovered,
           customPolygonLandingPoint: footprintEditor?.customPolygonLandingPoint,
+          customPolygonLockedDistanceM: footprintEditor?.customPolygonLockedDistanceM,
           hideHouseFootprint,
         })
       : null;
@@ -4631,6 +4635,10 @@ function PlanSvg({
       ? rawHouseFirstOverlayShapes.map((shape) => ({
           ...shape,
           points: shape.polygon.map((point) => planHousePointProjector(point)),
+          detailSegments: shape.detailSegments.map((segment) => ({
+            start: planHousePointProjector(segment.start),
+            end: planHousePointProjector(segment.end),
+          })),
           deckInteraction: shape.deckInteraction
             ? {
                 ...shape.deckInteraction,
@@ -5507,19 +5515,20 @@ function PlanSvg({
         {editorSurface !== 'card' &&
         canEditFootprint &&
         footprintCanvasLayout?.lockedDistanceCenter &&
-        footprintCanvasLayout.lockedDistanceRadius &&
-        footprintCanvasLayout.lockedDistanceRadius > 0 ? (
+        footprintCanvasLayout?.landingPoint &&
+        footprintEditor?.customPolygonLockedDistanceM !== null &&
+        footprintEditor?.customPolygonLockedDistanceM !== undefined ? (
           <g
             pointerEvents="none"
             aria-hidden="true"
             data-draw-outline-locked-radius="true"
             className={styles.moduleFootprintLandingMarker}
           >
-            <circle
-              cx={footprintCanvasLayout.lockedDistanceCenter.x}
-              cy={footprintCanvasLayout.lockedDistanceCenter.y}
-              r={footprintCanvasLayout.lockedDistanceRadius}
-              fill="none"
+            <line
+              x1={footprintCanvasLayout.lockedDistanceCenter.x}
+              y1={footprintCanvasLayout.lockedDistanceCenter.y}
+              x2={footprintCanvasLayout.landingPoint.x}
+              y2={footprintCanvasLayout.landingPoint.y}
               strokeDasharray="3 2"
             />
           </g>

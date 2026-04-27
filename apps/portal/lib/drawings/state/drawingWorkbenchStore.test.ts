@@ -460,6 +460,7 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(selectedStore.derived.openingCount).toBe(1);
+    expect(selectedStore.derived.sliderOpeningCount).toBe(0);
     expect(selectedStore.derived.activeOpeningId).toBe('opening-1');
     expect(selectedStore.ui.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-1' });
 

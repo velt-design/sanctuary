@@ -23,6 +23,10 @@ import type {
   HouseFirstRoofDraft,
   HouseModel,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import {
+  normalizeWallOpeningKind,
+  resolveOpeningPanelCount,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CalculatorHouseFootprintPolygonPoint, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { CommitResult, DrawOutlineTarget } from './houseWorkbenchClientTypes';
 import {
@@ -279,21 +283,28 @@ export function useHouseMutationActions({
       const house = store.derived.house;
       const currentOpenings = resolveCurrentOpeningDrafts(drawingDraft, house);
       return commitSharedHouseOpeningDrafts(
-        currentOpenings.map((opening) =>
-          opening.id === openingId
-            ? {
-                ...opening,
-                ...patch,
-                ...(patch.wallId !== undefined ? { hostEdgeId: null } : null),
-              }
-            : opening,
-        ),
+        currentOpenings.map((opening) => {
+          if (opening.id !== openingId) return opening;
+          const nextKind = patch.kind === undefined
+            ? normalizeWallOpeningKind(opening.kind)
+            : normalizeWallOpeningKind(patch.kind);
+          return {
+            ...opening,
+            ...patch,
+            kind: nextKind,
+            panelCount:
+              patch.panelCount !== undefined || patch.kind !== undefined
+                ? resolveOpeningPanelCount(nextKind, patch.panelCount ?? opening.panelCount)
+                : opening.panelCount ?? resolveOpeningPanelCount(nextKind, opening.panelCount),
+            ...(patch.wallId !== undefined ? { hostEdgeId: null } : null),
+          };
+        }),
       );
     },
     [commitSharedHouseOpeningDrafts, drawingDraft, store.derived.house],
   );
 
-  const addSharedHouseOpening = useCallback(async (): Promise<CommitResult> => {
+  const addSharedHouseOpening = useCallback(async (kind: 'window' | 'slider'): Promise<CommitResult> => {
     const house = store.derived.house;
     if (!house) {
       return { ok: false, error: 'Shared house context is not available yet.' };
@@ -301,15 +312,33 @@ export function useHouseMutationActions({
     const currentOpenings = resolveCurrentOpeningDrafts(drawingDraft, house);
     const openingId = nextOpeningId(currentOpenings);
     const wallId = house.footprint.attachmentSide ?? 'rear';
+    const baseOpening: HouseFirstOpeningDraft =
+      kind === 'slider'
+        ? {
+            id: openingId,
+            label: `Slider ${currentOpenings.filter((opening) => normalizeWallOpeningKind(opening.kind) === 'slider').length + 1}`,
+            kind: 'slider',
+            panelCount: 2,
+            wallId,
+            widthM: '2.4',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '0.6',
+          }
+        : {
+            id: openingId,
+            label: `Window ${currentOpenings.filter((opening) => normalizeWallOpeningKind(opening.kind) === 'window').length + 1}`,
+            kind: 'window',
+            panelCount: null,
+            wallId,
+            widthM: '1.8',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '0.6',
+          };
     const nextOpening: HouseFirstOpeningDraft = {
-      id: openingId,
-      label: `Window ${currentOpenings.length + 1}`,
-      kind: 'window',
-      wallId,
-      widthM: '1.8',
-      heightM: '1.2',
-      sillHeightM: '0.9',
-      offsetAlongWallM: '0.6',
+      ...baseOpening,
+      panelCount: resolveOpeningPanelCount(kind, baseOpening.panelCount),
     };
     const result = await commitSharedHouseOpeningDrafts([...currentOpenings, nextOpening]);
     if (!result.ok) return result;

@@ -391,6 +391,10 @@ export default function DesignWorkbenchEstimateClient({
               <span className={styles.diagnosticValue}>{store.derived.openingCount}</span>
             </div>
             <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Slider openings</span>
+              <span className={styles.diagnosticValue}>{store.derived.sliderOpeningCount}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Invalid openings</span>
               <span className={styles.diagnosticValue}>{store.derived.invalidOpeningCount}</span>
             </div>

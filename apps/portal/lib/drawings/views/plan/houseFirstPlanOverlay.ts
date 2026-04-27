@@ -80,10 +80,16 @@ export type PlanPoint = {
   y: number;
 };
 
+export type PlanSegment = {
+  start: PlanPoint;
+  end: PlanPoint;
+};
+
 export type HouseFirstPlanShapeOverlay = {
   ownerKind: 'footprint' | 'deck' | 'opening';
   ownerId: string;
   polygon: PlanPoint[];
+  detailSegments: PlanSegment[];
   selected: boolean;
   custom: boolean;
   muted: boolean;
@@ -983,6 +989,33 @@ function buildOpeningPolygonFromGeometryFrame(input: {
   ];
 }
 
+function buildSliderDetailSegments(input: {
+  frame: GeometryOpeningFrame;
+  widthM: number;
+  offsetAlongWallM: number;
+  panelCount: 2 | 3 | 4 | null;
+}): PlanSegment[] {
+  const panelCount = input.panelCount ?? 2;
+  if (panelCount <= 1 || input.widthM <= ZERO_DIMENSION_EPSILON_M) return [];
+  const segments: PlanSegment[] = [];
+  for (let index = 1; index < panelCount; index += 1) {
+    const alongM = input.offsetAlongWallM + (input.widthM * index) / panelCount;
+    const wallPoint = {
+      x: input.frame.hostEdgeStart.x + input.frame.alongUnitX * alongM,
+      y: input.frame.hostEdgeStart.y + input.frame.alongUnitY * alongM,
+    };
+    const innerPoint = {
+      x: wallPoint.x - input.frame.outwardUnitX * OPENING_PLAN_THICKNESS_M,
+      y: wallPoint.y - input.frame.outwardUnitY * OPENING_PLAN_THICKNESS_M,
+    };
+    segments.push({
+      start: wallPoint,
+      end: innerPoint,
+    });
+  }
+  return segments;
+}
+
 function buildOpeningPresetAnnotations(input: {
   opening: HouseModel['openings'][number];
   openingPolygon: PlanPoint[];
@@ -1748,6 +1781,7 @@ export function buildHouseFirstPlanOverlay(input: {
       ownerKind: 'footprint',
       ownerId: house.id,
       polygon: footprintPolygon,
+      detailSegments: [],
       selected: input.selection.kind === 'footprint',
       custom: house.footprint.mode === 'custom_polygon',
       muted: input.selection.kind === 'deck',
@@ -1786,6 +1820,7 @@ export function buildHouseFirstPlanOverlay(input: {
       ownerKind: 'deck',
       ownerId: deck.id,
       polygon: deckPolygon,
+      detailSegments: [],
       selected,
       custom: deck.shape === 'custom',
       muted: house.decks.length > 1 && !selected,
@@ -1822,6 +1857,18 @@ export function buildHouseFirstPlanOverlay(input: {
             offsetAlongWallM,
           })
         : [];
+    const detailSegments =
+      opening.kind === 'slider' &&
+      openingFrame &&
+      Number.isFinite(widthM) &&
+      Number.isFinite(offsetAlongWallM)
+        ? buildSliderDetailSegments({
+            frame: openingFrame,
+            widthM,
+            offsetAlongWallM,
+            panelCount: opening.panelCount,
+          })
+        : [];
     const openingInteraction = selected
       ? buildOpeningInteraction({
           opening,
@@ -1832,6 +1879,7 @@ export function buildHouseFirstPlanOverlay(input: {
       ownerKind: 'opening',
       ownerId: opening.id,
       polygon: openingPolygon,
+      detailSegments,
       selected,
       custom: false,
       muted: house.openings.length > 1 && !selected,

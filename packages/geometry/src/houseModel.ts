@@ -6443,6 +6443,12 @@ function buildHouseOpenings(input: {
       return {
         ...opening,
         kind,
+        panelCount:
+          kind === 'slider'
+            ? opening.panelCount === 3 || opening.panelCount === 4
+              ? opening.panelCount
+              : 2
+            : null,
         wallId:
           opening.wallId === 'front' ||
           opening.wallId === 'left' ||
@@ -7216,12 +7222,24 @@ export function buildHouseModel3D(input: {
         heightMm: finiteNumber(opening.heightMm, 0),
         sillHeightMm: finiteNumber(opening.sillHeightMm, 0),
         offsetAlongWallMm: finiteNumber(opening.offsetAlongWallMm, 0),
+        panelCount:
+          opening.kind === 'slider'
+            ? opening.panelCount === 3 || opening.panelCount === 4
+              ? opening.panelCount
+              : 2
+            : null,
         validationStatus: opening.validation?.status === 'invalid' ? 'invalid' : 'valid',
         validationCodes: opening.validation?.codes ?? [],
         validationMessage: opening.validation?.message ?? null,
         metadata: {
           openingLabel: opening.label ?? opening.id,
           openingKind: opening.kind ?? 'window',
+          openingPanelCount:
+            opening.kind === 'slider'
+              ? opening.panelCount === 3 || opening.panelCount === 4
+                ? opening.panelCount
+                : 2
+              : null,
           openingWallId: opening.wallId ?? 'rear',
           openingHostEdgeId: opening.hostEdgeId ?? null,
           openingWidthMm: finiteNumber(opening.widthMm, 0),

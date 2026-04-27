@@ -11,9 +11,13 @@ import type {
   HouseFirstDeckDraft,
   HouseFirstOpeningDraft,
   HouseFirstRoofDraft,
+  SliderPanelCount,
   WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import { normalizeWallOpeningKind } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import {
+  normalizeWallOpeningKind,
+  resolveOpeningPanelCount,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   isPrimaryFlashingLengthAutoLinked,
   normalizeFlashingsStateForUi,
@@ -815,15 +819,18 @@ function normalizeHouseFirstOpeningDraft(
   opening: HouseFirstOpeningDraft | null | undefined,
 ): HouseFirstOpeningDraft | null {
   if (!opening || typeof opening.id !== 'string' || opening.id.trim().length === 0) return null;
+  const kind = normalizeWallOpeningKind(opening.kind);
   const label = trimNullableString(opening.label ?? null);
   const widthM = trimNullableString(opening.widthM ?? null);
   const heightM = trimNullableString(opening.heightM ?? null);
   const sillHeightM = trimNullableString(opening.sillHeightM ?? null);
   const offsetAlongWallM = trimNullableString(opening.offsetAlongWallM ?? null);
+  const panelCount = resolveOpeningPanelCount(kind, opening.panelCount);
   return {
     id: opening.id.trim(),
     ...(label ? { label } : null),
-    kind: normalizeWallOpeningKind(opening.kind),
+    kind,
+    ...(panelCount !== null ? { panelCount: panelCount as SliderPanelCount } : null),
     ...(isWallOpeningHostSide(opening.wallId) ? { wallId: opening.wallId } : null),
     ...(typeof opening.hostEdgeId === 'string' && opening.hostEdgeId.trim()
       ? { hostEdgeId: opening.hostEdgeId.trim() }

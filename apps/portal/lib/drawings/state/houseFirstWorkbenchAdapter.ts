@@ -48,7 +48,10 @@ import type {
   PergolaModel,
   WorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
-import { normalizeWallOpeningKind } from './houseFirstWorkbenchModel';
+import {
+  normalizeWallOpeningKind,
+  resolveOpeningPanelCount,
+} from './houseFirstWorkbenchModel';
 import {
   buildDeckReferenceHousePolygon,
   parseDeckLocalPolygon,
@@ -594,6 +597,7 @@ function resolveAttachmentZoneKind(module: CalculatorModuleInputs): HouseAttachm
 
 const MIN_WINDOW_WIDTH_M = 0.3;
 const MIN_WINDOW_HEIGHT_M = 0.3;
+const MIN_SLIDER_CORNER_CLEARANCE_M = 0.3;
 
 function formatOpeningMetres(value: number): string {
   return String(Math.round(value * 1000) / 1000);
@@ -646,6 +650,7 @@ function buildSharedOpenings(input: {
           });
     const wallId = frame?.hostEdge ?? requestedWallId;
     const hostEdgeId = frame?.sourceEdgeId ?? exactHostEdgeId;
+    const panelCount = resolveOpeningPanelCount(kind, draft.panelCount);
     const widthM = parseFiniteOpeningMetres(draft.widthM, 1.8);
     const heightM = parseFiniteOpeningMetres(draft.heightM, 1.2);
     const sillHeightM = parseFiniteOpeningMetres(draft.sillHeightM, 0.9);
@@ -667,6 +672,22 @@ function buildSharedOpenings(input: {
       offsetAlongWallM + widthM > wallSpanM + 1e-6
     ) {
       codes.push('span_exceeds_wall');
+    }
+    if (
+      kind === 'slider' &&
+      frame &&
+      Number.isFinite(widthM) &&
+      Number.isFinite(offsetAlongWallM) &&
+      offsetAlongWallM >= 0 &&
+      widthM >= 0
+    ) {
+      const rightClearanceM = wallSpanM - (offsetAlongWallM + widthM);
+      if (
+        offsetAlongWallM < MIN_SLIDER_CORNER_CLEARANCE_M - 1e-6 ||
+        rightClearanceM < MIN_SLIDER_CORNER_CLEARANCE_M - 1e-6
+      ) {
+        codes.push('insufficient_corner_clearance');
+      }
     }
 
     const intervalStart = offsetAlongWallM;
@@ -697,14 +718,17 @@ function buildSharedOpenings(input: {
                 ? 'Opening offset must stay on the selected wall.'
                 : codes[0] === 'span_exceeds_wall'
                   ? 'Opening width extends beyond the selected wall span.'
-                  : codes[0] === 'overlapping_openings'
-                    ? 'Openings on the same wall cannot overlap.'
-                    : null;
+                  : codes[0] === 'insufficient_corner_clearance'
+                    ? `Sliders need at least ${MIN_SLIDER_CORNER_CLEARANCE_M.toFixed(1)}m clearance from each wall corner.`
+                    : codes[0] === 'overlapping_openings'
+                      ? 'Openings on the same wall cannot overlap.'
+                      : null;
 
     const opening: HouseModel['openings'][number] = {
       id: draft.id.trim(),
       label: draft.label?.trim() || `Window ${openings.length + 1}`,
       kind,
+      panelCount,
       wallId,
       hostEdgeId,
       widthM: formatOpeningMetres(widthM),

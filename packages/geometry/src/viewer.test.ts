@@ -344,6 +344,7 @@ describe("buildViewerSceneModel", () => {
           id: "window-left",
           label: "Left slider",
           kind: "slider",
+          panelCount: 3,
           wallId: "left",
           hostEdgeId: "footprint-edge-4",
           widthMm: 1800,
@@ -418,9 +419,20 @@ describe("buildViewerSceneModel", () => {
     expect(markerIds).not.toContain("window-invalid");
     expect(rearMarker?.metadata).toMatchObject({
       openingKind: "window",
+      openingPanelCount: null,
       openingWallId: "rear",
       openingHostEdgeId: "footprint-edge-1",
       resolvedHostEdgeId: "footprint-edge-1",
+    });
+    const sliderMarker = houseObjects.find(
+      (object) =>
+        object.type === "house_surface" &&
+        object.kind === "opening_marker" &&
+        object.metadata?.openingId === "window-left",
+    );
+    expect(sliderMarker?.metadata).toMatchObject({
+      openingKind: "slider",
+      openingPanelCount: 3,
     });
     expect(rearOutlineCount).toBe(4);
     expect(scene.metadata?.houseOpeningCount).toBe(4);

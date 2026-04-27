@@ -639,6 +639,7 @@ function buildHouseOpeningMarkerObjects(
       openingId: opening.id,
       openingLabel: opening.label ?? opening.id,
       openingKind: opening.kind,
+      openingPanelCount: opening.panelCount ?? null,
       openingWallId: opening.wallId,
       openingHostEdgeId: opening.hostEdgeId ?? null,
       sourceWallId: wallSegment.id,

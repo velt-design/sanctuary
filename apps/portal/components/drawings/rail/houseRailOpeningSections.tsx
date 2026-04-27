@@ -1,15 +1,31 @@
 import type { ReactNode } from 'react';
-import type { HouseFirstOpeningDraft, HouseModel, WallOpeningHostSide } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type {
+  HouseFirstOpeningDraft,
+  HouseModel,
+  SliderPanelCount,
+  WallOpeningHostSide,
+} from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './houseRailTypes';
 import { ATTACHMENT_SIDE_OPTIONS, ActionButton, NumberField, TextField, SelectField } from './houseRailShared';
 import styles from './ConfiguratorRail.module.css';
+
+const OPENING_TYPE_OPTIONS = [
+  { label: 'Window', value: 'window' },
+  { label: 'Slider', value: 'slider' },
+] as const;
+
+const SLIDER_PANEL_COUNT_OPTIONS = [
+  { label: '2 panels', value: '2' },
+  { label: '3 panels', value: '3' },
+  { label: '4 panels', value: '4' },
+] as const;
 
 type BuildHouseRailOpeningSectionsInput = {
   activeOpeningId?: string | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
   house: HouseModel | null;
-  onAddOpening?: () => Promise<CommitResult> | CommitResult;
+  onAddOpening?: (kind: 'window' | 'slider') => Promise<CommitResult> | CommitResult;
   onCommitOpeningPatch?: (
     openingId: string,
     patch: Partial<HouseFirstOpeningDraft>,
@@ -41,8 +57,19 @@ export function buildHouseRailOpeningSections({
         onClick={() =>
           void runDeckAction(
             'opening-add-window',
-            onAddOpening?.(),
+            onAddOpening?.('window'),
             'Unable to add a window.',
+          )
+        }
+      />
+      <ActionButton
+        label="Add slider"
+        disabled={disabled}
+        onClick={() =>
+          void runDeckAction(
+            'opening-add-slider',
+            onAddOpening?.('slider'),
+            'Unable to add a slider.',
           )
         }
       />
@@ -52,11 +79,20 @@ export function buildHouseRailOpeningSections({
   if (!activeOpening) {
     sections.push(
       <p key="opening-empty" className={styles.empty}>
-        Add a shared window to start editing host-wall openings in house mode.
+        Add a shared opening to start editing host-wall openings in house mode.
       </p>,
     );
     return sections;
   }
+
+  const activeOpeningTypeLabel =
+    activeOpening.kind === 'slider'
+      ? 'Slider'
+      : activeOpening.kind === 'hinged_door'
+        ? 'Hinged door'
+        : activeOpening.kind === 'stacker'
+          ? 'Stacker'
+          : 'Window';
 
   sections.push(
     <div key="opening-list" className={styles.buttonRow}>
@@ -89,6 +125,27 @@ export function buildHouseRailOpeningSections({
         )
       }
     />,
+    activeOpening.kind === 'window' || activeOpening.kind === 'slider' ? (
+      <SelectField
+        key="opening-kind"
+        label="Opening type"
+        value={activeOpening.kind}
+        options={[...OPENING_TYPE_OPTIONS]}
+        disabled={disabled}
+        error={fieldErrors[`opening-kind-${activeOpening.id}`]}
+        onCommit={(value) =>
+          runDeckAction(
+            `opening-kind-${activeOpening.id}`,
+            onCommitOpeningPatch?.(activeOpening.id, { kind: value as 'window' | 'slider' }),
+            'Unable to update the opening type.',
+          )
+        }
+      />
+    ) : (
+      <p key="opening-kind-readonly" className={styles.fieldHint}>
+        {`Opening type: ${activeOpeningTypeLabel}. Family-specific editing for this opening is deferred in this slice.`}
+      </p>
+    ),
     <SelectField
       key="opening-wall"
       label="Host wall"
@@ -104,6 +161,28 @@ export function buildHouseRailOpeningSections({
         )
       }
     />,
+    ...(activeOpening.kind === 'slider'
+      ? [
+          <SelectField
+            key="opening-panel-count"
+            label="Panel count"
+            value={String(activeOpening.panelCount ?? 2)}
+            options={[...SLIDER_PANEL_COUNT_OPTIONS]}
+            disabled={disabled}
+            error={fieldErrors[`opening-panel-count-${activeOpening.id}`]}
+            helperText="Simple panel count only for now. Leaf direction and stack behavior come later."
+            onCommit={(value) =>
+              runDeckAction(
+                `opening-panel-count-${activeOpening.id}`,
+                onCommitOpeningPatch?.(activeOpening.id, {
+                  panelCount: Number.parseInt(value, 10) as SliderPanelCount,
+                }),
+                'Unable to update the slider panel count.',
+              )
+            }
+          />,
+        ]
+      : []),
     <NumberField
       key="opening-width"
       label="Opening width (m)"

@@ -473,6 +473,7 @@ describe('houseFirstPlanOverlay', () => {
           id: 'opening-1',
           label: 'Window 1',
           kind: 'window',
+          panelCount: null,
           wallId: 'rear',
           hostEdgeId: 'footprint-edge-1',
           widthM: '1.8',
@@ -505,6 +506,41 @@ describe('houseFirstPlanOverlay', () => {
     expect(overlay?.presetAnnotations.every((annotation) => annotation.targetKind === 'opening_param')).toBe(true);
   });
 
+  it('adds lightweight panel cue segments for selected slider openings', () => {
+    const house = makeHouse({
+      openings: [
+        {
+          id: 'opening-slider',
+          label: 'Slider 1',
+          kind: 'slider',
+          panelCount: 4,
+          wallId: 'rear',
+          hostEdgeId: 'footprint-edge-1',
+          widthM: '2.4',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.6',
+          validation: {
+            status: 'valid',
+            codes: [],
+            message: null,
+          },
+        },
+      ],
+    });
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'opening', targetId: 'opening-slider' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+    });
+
+    const sliderShape = overlay?.shapes.find((shape) => shape.ownerId === 'opening-slider');
+    expect(sliderShape?.detailSegments).toHaveLength(3);
+    expect(sliderShape?.detailSegments.every((segment) => segment.start.y !== segment.end.y)).toBe(true);
+  });
+
   it('anchors opening polygons to the resolved wall line instead of the roof or gutter line', () => {
     const house = makeHouse({
       openings: [
@@ -512,6 +548,7 @@ describe('houseFirstPlanOverlay', () => {
           id: 'opening-1',
           label: 'Window 1',
           kind: 'window',
+          panelCount: null,
           wallId: 'rear',
           hostEdgeId: 'footprint-edge-1',
           widthM: '1.8',
@@ -579,6 +616,7 @@ describe('houseFirstPlanOverlay', () => {
           id: 'opening-1',
           label: 'Window 1',
           kind: 'window',
+          panelCount: null,
           wallId: 'rear',
           hostEdgeId: 'footprint-edge-1',
           widthM: '1.8',
@@ -685,6 +723,7 @@ describe('houseFirstPlanOverlay', () => {
             id: 'opening-debug',
             label: 'Debug window',
             kind: 'window',
+            panelCount: null,
             wallId: 'rear',
             widthM: '1.8',
             heightM: '1.2',
@@ -790,6 +829,7 @@ describe('houseFirstPlanOverlay', () => {
             id: 'opening-valid',
             label: 'Kitchen window',
             kind: 'window',
+            panelCount: null,
             wallId: 'rear',
             widthM: '2.4',
             heightM: '1.2',

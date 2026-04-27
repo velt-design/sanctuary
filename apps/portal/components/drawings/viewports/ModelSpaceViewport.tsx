@@ -45,8 +45,8 @@ import {
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import { blockNativeSelectionEvent } from './nativeSelection';
 import styles from './ModelSpaceViewport.module.css';
+import { CLOSE_START_TOLERANCE_M, MIN_OUTLINE_SEGMENT_M, distanceBetweenOutlinePoints } from './drawOutlineToolGeometry';
 import {
-  CLOSE_START_TOLERANCE_M,
   cancelDrawOutlineTool,
   confirmDrawOutlineSegment,
   createInactiveDrawOutlineState,
@@ -3092,7 +3092,12 @@ export default function ModelSpaceViewport({
             {drawOutlineLockedDistanceDraft ? (
               <p className={styles.drawHint}>Next click uses locked length {drawOutlineLockedDistanceDraft}m.</p>
             ) : null}
-            <button type="button" className={styles.confirmButton} onClick={handleDrawOutlineConfirmSegment} disabled={!activeDrawOutlineState.points.length}>
+            <button
+              type="button"
+              className={styles.confirmButton}
+              onClick={handleDrawOutlineConfirmSegment}
+              disabled={!drawOutlineViewModel.hasPendingPoint}
+            >
               Confirm
             </button>
             <div className={styles.drawActions}>

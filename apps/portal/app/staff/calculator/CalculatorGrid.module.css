@@ -3069,6 +3069,14 @@
   pointer-events: all;
 }
 
+.moduleHouseFirstOpeningDetail {
+  stroke: rgba(28, 83, 118, 0.66);
+  stroke-width: var(--mv-line-secondary-width);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 .moduleHouseFirstCustomEdge {
   stroke: rgba(47, 111, 150, 0.62);
   stroke-width: var(--mv-line-secondary-width);
