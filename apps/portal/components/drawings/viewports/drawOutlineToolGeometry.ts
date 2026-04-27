@@ -51,7 +51,7 @@ export function resolvePendingOutlinePoint(state: DrawOutlineActiveToolState): D
 }
 
 export function hasDrawOutlineDraft(state: DrawOutlineActiveToolState): boolean {
-  return Boolean(state.pendingPoint || state.distanceDraft || state.angleDraft);
+  return Boolean(state.pendingPoint || state.distanceDraft || state.angleDraft || state.lockedDistanceDraft);
 }
 
 export function resolveDrawOutlineHoverPoint(points: DrawOutlinePoint[], point: DrawOutlinePoint): DrawOutlineHoverPoint {

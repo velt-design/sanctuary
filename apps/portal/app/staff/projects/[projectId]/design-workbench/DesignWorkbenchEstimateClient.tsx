@@ -1,55 +1,32 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import HouseFirstWorkbenchRail from '@/components/drawings/rail/HouseFirstWorkbenchRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import {
-  applyGeometryEditIntent,
   buildGeometryEditState,
-  translateEstimateDrawingFieldToGeometryIntent,
-  type GeometryEditIntent,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
-import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
-import { buildEstimateDrawingDraftEntityKey } from '@/lib/localFirst/portalEntities';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   createDrawingWorkbenchUiState,
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
-  buildDeckReferenceHousePolygon,
-  buildRectangularDeckOutline,
-  inferDeckPresetRectFromOutline,
-  sanitizeDeckPresetRect,
-} from '@/lib/drawings/state/houseFirstDeckPresets';
-import {
-  applyEstimateDrawingFootprintEdit,
-  buildEstimateDrawingDraftFromSnapshot,
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
-  estimateDrawingDraftMatchesSnapshot,
-  updateEstimateDrawingHouseFirstDeckDrafts,
-  updateEstimateDrawingHouseFirstOpeningDrafts,
-  updateEstimateDrawingHouseFirstRoofDraft,
-  type EstimateDrawingDraft,
-  type EstimateDrawingField,
-  type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
-import type {
-  HouseFirstDeckDraft,
-  HouseFirstOpeningDraft,
-  HouseFirstRoofDraft,
-  HouseModel,
-  WorkbenchHouseSelection,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import { normalizeWallOpeningKind } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
-import type { CalculatorHouseFootprintPolygonPoint, CalculatorModuleInputs } from '@/lib/types/calculator';
+import {
+  type DeckInteractionTelemetry,
+  type DrawOutlineTarget,
+} from './houseWorkbenchClientTypes';
+import { useHouseDraftPersistence } from './useHouseDraftPersistence';
+import { useHouseMutationActions } from './useHouseMutationActions';
+import { useHouseWorkbenchSelection } from './useHouseWorkbenchSelection';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type DesignWorkbenchEstimateClientProps = {
@@ -57,24 +34,6 @@ type DesignWorkbenchEstimateClientProps = {
   projectName: string;
   siteAddress?: string | null;
   backHref?: string;
-};
-
-type CommitResult = { ok: boolean; error?: string };
-
-type DrawOutlineTarget =
-  | { kind: 'footprint'; deckId: null }
-  | { kind: 'deck'; deckId: string };
-
-type DeckInteractionTelemetry = {
-  selectedDeckId: string | null;
-  housePolygonSource: 'custom_saved' | 'preset_derived' | null;
-  selectedDeckType: 'none' | 'preset_snapped' | 'preset_free' | 'custom_outline' | 'preset_unresolved';
-  dragEligible: boolean;
-  dragReason: string | null;
-  hostEdgeResolvable: boolean;
-  relationshipDimensionsAvailable: boolean;
-  snapState: 'idle' | 'free' | 'snapped';
-  snapMessage: string | null;
 };
 
 const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
@@ -103,129 +62,6 @@ function geometryViewportStatesEqual(
   );
 }
 
-function toDeckDrafts(house: HouseModel | null | undefined): HouseFirstDeckDraft[] {
-  return (house?.decks ?? []).map((deck) => ({
-    id: deck.id,
-    name: deck.name,
-    kind: deck.kind,
-    shape: deck.shape,
-    presetType: deck.presetType,
-    presetRect: deck.presetRect,
-    outline: deck.outline,
-    elevationMode: deck.elevationMode,
-    levelOffsetMm: deck.levelOffsetMm,
-    hostEdgeId: deck.hostEdgeId,
-    isAttached: deck.isAttached,
-    surfaceMaterial: deck.surfaceMaterial,
-  }));
-}
-
-function nextDeckId(existing: HouseFirstDeckDraft[]): string {
-  const used = new Set(existing.map((deck) => deck.id));
-  let index = existing.length + 1;
-  while (used.has(`deck-${index}`)) index += 1;
-  return `deck-${index}`;
-}
-
-function toOpeningDrafts(house: HouseModel | null | undefined): HouseFirstOpeningDraft[] {
-  return (house?.openings ?? []).map((opening) => ({
-    id: opening.id,
-    label: opening.label,
-    kind: normalizeWallOpeningKind(opening.kind),
-    wallId: opening.wallId,
-    hostEdgeId: opening.hostEdgeId,
-    widthM: opening.widthM,
-    heightM: opening.heightM,
-    sillHeightM: opening.sillHeightM,
-    offsetAlongWallM: opening.offsetAlongWallM,
-  }));
-}
-
-function nextOpeningId(existing: HouseFirstOpeningDraft[]): string {
-  const used = new Set(existing.map((opening) => opening.id));
-  let index = existing.length + 1;
-  while (used.has(`opening-${index}`)) index += 1;
-  return `opening-${index}`;
-}
-
-function houseLocalPolygon(input: {
-  house: HouseModel;
-  moduleLengthM: string | undefined;
-  moduleProjectionM: string | undefined;
-}): Array<{ alongM: string; depthM: string }> {
-  if (input.house.footprint.mode === 'custom_polygon' && input.house.footprint.polygon.length) {
-    return input.house.footprint.polygon;
-  }
-  const widthMm = Math.round((Number(input.moduleLengthM) || 6) * 1000);
-  const depthMm = Math.round((Number(input.moduleProjectionM) || 3) * 1000);
-  return buildHouseFootprintPresetSideLocalPoints({
-    pergolaWidthMm: widthMm,
-    pergolaDepthMm: depthMm,
-    preset: input.house.footprint.preset,
-    params: input.house.footprint.params,
-    attachmentSide: input.house.footprint.attachmentSide,
-  }).map((point) => ({
-    alongM: String(point.alongM),
-    depthM: String(point.depthM),
-  }));
-}
-
-function deckReferenceHousePolygon(input: {
-  house: HouseModel;
-  moduleLengthM: string | undefined;
-  moduleProjectionM: string | undefined;
-}): Array<{ alongM: string; depthM: string }> {
-  return buildDeckReferenceHousePolygon({
-    housePolygon: houseLocalPolygon(input),
-    footprintParams: input.house.footprint.params,
-  });
-}
-
-function resolveDeckDraftGeometry(input: {
-  deck: HouseFirstDeckDraft;
-  housePolygon: Array<{ alongM: string; depthM: string }>;
-}): HouseFirstDeckDraft {
-  const attached = Boolean(input.deck.isAttached);
-  const fallbackHostEdgeId = input.deck.hostEdgeId ?? 'rear';
-  const hostEdgeId = input.deck.shape === 'preset' ? fallbackHostEdgeId : input.deck.hostEdgeId ?? null;
-  const inferredPresetRect =
-    input.deck.shape === 'preset'
-      ? inferDeckPresetRectFromOutline({
-          housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
-          attached,
-          outline: input.deck.outline,
-        })
-      : null;
-  const presetRect =
-    input.deck.shape === 'preset'
-      ? sanitizeDeckPresetRect({
-          housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
-          attached,
-          presetRect: input.deck.presetRect ?? inferredPresetRect,
-          fallbackPresetRect: inferredPresetRect,
-        })
-      : input.deck.presetRect ?? inferredPresetRect;
-  const outline =
-    input.deck.shape === 'preset'
-      ? buildRectangularDeckOutline({
-          housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
-          attached,
-          presetRect,
-          fallbackPresetRect: inferredPresetRect,
-        })
-      : input.deck.outline ?? [];
-
-  return {
-    ...input.deck,
-    hostEdgeId,
-    presetRect,
-    outline,
-  };
-}
-
 export default function DesignWorkbenchEstimateClient({
   estimate,
   projectName,
@@ -245,12 +81,10 @@ export default function DesignWorkbenchEstimateClient({
     kind: 'footprint',
     deckId: null,
   });
-  const baseDraft = useMemo(() => buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot), [estimate.calculatorSnapshot]);
-  const drawingWorkingCopy = useLocalWorkingCopy<EstimateDrawingDraft | null>(
-    buildEstimateDrawingDraftEntityKey(estimate.id),
-    baseDraft,
-  );
-  const drawingDraft = drawingWorkingCopy.value;
+  const { drawingDraft, persistDrawingDraftLocally } = useHouseDraftPersistence({
+    estimateId: estimate.id,
+    snapshot: estimate.calculatorSnapshot,
+  });
 
   const store = useMemo(
     () =>
@@ -444,533 +278,31 @@ export default function DesignWorkbenchEstimateClient({
     },
     [geometryViewportSurfaceKey],
   );
-
-  const persistDrawingDraftLocally = useCallback(
-    async (nextDraft: EstimateDrawingDraft) => {
-      if (estimateDrawingDraftMatchesSnapshot(nextDraft, estimate.calculatorSnapshot)) {
-        await drawingWorkingCopy.clearWorkingCopy();
-      } else {
-        await drawingWorkingCopy.setWorkingCopy(nextDraft);
-      }
-    },
-    [drawingWorkingCopy, estimate.calculatorSnapshot],
-  );
-
-  const commitSharedHouseFootprintEdit = useCallback(
-    async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
-      }
-
-      let nextDraft = drawingDraft;
-      for (let moduleIndex = 0; moduleIndex < nextDraft.inputs.modules.length; moduleIndex += 1) {
-        const result = applyEstimateDrawingFootprintEdit({
-          draft: nextDraft,
-          moduleIndex,
-          edit,
-        });
-        if (!result.ok) return { ok: false, error: result.error };
-        nextDraft = result.draft;
-      }
-
-      await persistDrawingDraftLocally(nextDraft);
-      return { ok: true };
-    },
-    [drawingDraft, persistDrawingDraftLocally],
-  );
-
-  const commitSharedHouseRoofDraft = useCallback(
-    async (roof: HouseFirstRoofDraft): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
-      }
-
-      const nextDraft = updateEstimateDrawingHouseFirstRoofDraft({
-        draft: structuredClone(drawingDraft),
-        roof,
-      });
-      const material = roof.material;
-      const pitchDeg = roof.primaryPitchDeg?.trim() ?? '';
-      for (const module of nextDraft.inputs.modules) {
-        if (!module) continue;
-        if (material) {
-          module.houseRoofMaterial = material;
-        }
-        if (pitchDeg) {
-          module.houseRoofPitchDeg = pitchDeg;
-        } else {
-          delete module.houseRoofPitchDeg;
-        }
-      }
-
-      await persistDrawingDraftLocally(nextDraft);
-      return { ok: true };
-    },
-    [drawingDraft, persistDrawingDraftLocally],
-  );
-
-  const commitSharedHouseDeckDrafts = useCallback(
-    async (decks: HouseFirstDeckDraft[]): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
-      }
-      const nextDraft = updateEstimateDrawingHouseFirstDeckDrafts({
-        draft: structuredClone(drawingDraft),
-        decks,
-      });
-      await persistDrawingDraftLocally(nextDraft);
-      return { ok: true };
-    },
-    [drawingDraft, persistDrawingDraftLocally],
-  );
-
-  const commitSharedHouseOpeningDrafts = useCallback(
-    async (openings: HouseFirstOpeningDraft[]): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
-      }
-      const nextDraft = updateEstimateDrawingHouseFirstOpeningDrafts({
-        draft: structuredClone(drawingDraft),
-        openings,
-      });
-      await persistDrawingDraftLocally(nextDraft);
-      return { ok: true };
-    },
-    [drawingDraft, persistDrawingDraftLocally],
-  );
-
-  const commitSharedHouseDeckPatch = useCallback(
-    async (deckId: string, patch: Partial<HouseFirstDeckDraft>): Promise<CommitResult> => {
-      const house = store.derived.house;
-      const currentDecks =
-        drawingDraft?.houseFirst?.decks?.map((deck) => ({ ...deck })) ??
-        toDeckDrafts(house);
-      const housePolygon = house
-        ? deckReferenceHousePolygon({
-            house,
-            moduleLengthM: activeModuleInput?.lengthM,
-            moduleProjectionM: activeModuleInput?.projectionM,
-          })
-        : [];
-      const nextDecks = currentDecks.map((deck) =>
-        deck.id === deckId
-          ? resolveDeckDraftGeometry({
-              deck: {
-                ...deck,
-                ...patch,
-                presetRect:
-                  patch.presetRect === undefined
-                    ? deck.presetRect
-                    : patch.presetRect === null
-                      ? null
-                      : {
-                          ...(deck.presetRect ?? {}),
-                          ...patch.presetRect,
-                        },
-                shape:
-                  patch.outline && patch.outline.length
-                    ? 'custom'
-                    : patch.shape ?? deck.shape ?? 'preset',
-              },
-              housePolygon,
-            })
-          : deck,
-      );
-      return commitSharedHouseDeckDrafts(nextDecks);
-    },
-    [
-      activeModuleInput?.lengthM,
-      activeModuleInput?.projectionM,
-      commitSharedHouseDeckDrafts,
-      drawingDraft?.houseFirst?.decks,
-      store.derived.house,
-    ],
-  );
-
-  const addSharedHouseDeck = useCallback(
-    async (
-      mode: 'preset' | 'custom_outline',
-    ): Promise<CommitResult> => {
-      const house = store.derived.house;
-      if (!house) {
-        return { ok: false, error: 'Shared house context is not available yet.' };
-      }
-      const currentDecks =
-        drawingDraft?.houseFirst?.decks?.map((deck) => ({ ...deck })) ??
-        toDeckDrafts(house);
-      const deckId = nextDeckId(currentDecks);
-      const hostEdge = house.footprint.attachmentSide ?? 'rear';
-      const housePolygon = deckReferenceHousePolygon({
-        house,
-        moduleLengthM: activeModuleInput?.lengthM,
-        moduleProjectionM: activeModuleInput?.projectionM,
-      });
-      const baseDeck: HouseFirstDeckDraft = {
-        id: deckId,
-        name: `Deck ${currentDecks.length + 1}`,
-        kind: 'deck',
-        shape: mode === 'custom_outline' ? 'custom' : 'preset',
-        presetType: mode === 'preset' ? 'rect_attached' : null,
-        elevationMode: mode === 'preset' ? 'aligned_to_threshold' : 'ground',
-        levelOffsetMm: '0',
-        hostEdgeId: hostEdge,
-        isAttached: mode === 'preset',
-        surfaceMaterial: 'timber_decking',
-      };
-      const nextDeck =
-        mode === 'custom_outline'
-          ? {
-              ...baseDeck,
-              outline: [],
-            }
-          : resolveDeckDraftGeometry({
-              deck: {
-                ...baseDeck,
-                presetRect: sanitizeDeckPresetRect({
-                  housePolygon,
-                  hostEdgeId: hostEdge,
-                  attached: mode === 'preset',
-                  presetRect: null,
-                }),
-              },
-              housePolygon,
-            });
-      const result = await commitSharedHouseDeckDrafts([...currentDecks, nextDeck]);
-      if (!result.ok) return result;
-      setUi((current) => ({
-        ...current,
-        workbenchMode: 'house',
-        activeHouseSelection: { kind: 'deck', targetId: deckId },
-      }));
-      if (mode === 'custom_outline') {
-        setDrawOutlineTarget({ kind: 'deck', deckId });
-        setDrawOutlineRequestId((current) => current + 1);
-        setUi((current) => ({
-          ...current,
-          viewportMode: 'model',
-          activeView: 'plan',
-        }));
-      }
-      return { ok: true };
-    },
-    [
-      activeModuleInput?.lengthM,
-      activeModuleInput?.projectionM,
-      commitSharedHouseDeckDrafts,
-      drawingDraft?.houseFirst?.decks,
-      store.derived.house,
-    ],
-  );
-
-  const commitSharedHouseOpeningPatch = useCallback(
-    async (openingId: string, patch: Partial<HouseFirstOpeningDraft>): Promise<CommitResult> => {
-      const house = store.derived.house;
-      const currentOpenings =
-        drawingDraft?.houseFirst?.openings?.map((opening) => ({ ...opening })) ??
-        toOpeningDrafts(house);
-      return commitSharedHouseOpeningDrafts(
-        currentOpenings.map((opening) =>
-          opening.id === openingId
-            ? {
-                ...opening,
-                ...patch,
-                ...(patch.wallId !== undefined ? { hostEdgeId: null } : null),
-              }
-            : opening,
-        ),
-      );
-    },
-    [commitSharedHouseOpeningDrafts, drawingDraft?.houseFirst?.openings, store.derived.house],
-  );
-
-  const addSharedHouseOpening = useCallback(async (): Promise<CommitResult> => {
-    const house = store.derived.house;
-    if (!house) {
-      return { ok: false, error: 'Shared house context is not available yet.' };
-    }
-    const currentOpenings =
-      drawingDraft?.houseFirst?.openings?.map((opening) => ({ ...opening })) ??
-      toOpeningDrafts(house);
-    const openingId = nextOpeningId(currentOpenings);
-    const wallId = house.footprint.attachmentSide ?? 'rear';
-    const nextOpening: HouseFirstOpeningDraft = {
-      id: openingId,
-      label: `Window ${currentOpenings.length + 1}`,
-      kind: 'window',
-      wallId,
-      widthM: '1.8',
-      heightM: '1.2',
-      sillHeightM: '0.9',
-      offsetAlongWallM: '0.6',
-    };
-    const result = await commitSharedHouseOpeningDrafts([...currentOpenings, nextOpening]);
-    if (!result.ok) return result;
-    setUi((current) => ({
-      ...current,
-      workbenchMode: 'house',
-      activeHouseSelection: { kind: 'opening', targetId: openingId },
-    }));
-    return { ok: true };
-  }, [commitSharedHouseOpeningDrafts, drawingDraft?.houseFirst?.openings, store.derived.house]);
-
-  const removeSharedHouseOpening = useCallback(
-    async (openingId: string): Promise<CommitResult> => {
-      const currentOpenings =
-        drawingDraft?.houseFirst?.openings?.map((opening) => ({ ...opening })) ??
-        toOpeningDrafts(store.derived.house);
-      const result = await commitSharedHouseOpeningDrafts(
-        currentOpenings.filter((opening) => opening.id !== openingId),
-      );
-      if (!result.ok) return result;
-      setUi((current) => ({
-        ...current,
-        activeHouseSelection:
-          current.activeHouseSelection.kind === 'opening' && current.activeHouseSelection.targetId === openingId
-            ? { kind: 'house', targetId: null }
-            : current.activeHouseSelection,
-      }));
-      return { ok: true };
-    },
-    [commitSharedHouseOpeningDrafts, drawingDraft?.houseFirst?.openings, store.derived.house],
-  );
-
-  const runAddSharedHouseDeck = useCallback(
-    async (mode: 'preset' | 'custom_outline'): Promise<CommitResult> => {
-      return addSharedHouseDeck(mode);
-    },
-    [addSharedHouseDeck],
-  );
-
-  const removeSharedHouseDeck = useCallback(
-    async (deckId: string): Promise<CommitResult> => {
-      const currentDecks =
-        drawingDraft?.houseFirst?.decks?.map((deck) => ({ ...deck })) ??
-        toDeckDrafts(store.derived.house);
-      const nextDecks = currentDecks.filter((deck) => deck.id !== deckId);
-      const result = await commitSharedHouseDeckDrafts(nextDecks);
-      if (!result.ok) return result;
-      setUi((current) => ({
-        ...current,
-        activeHouseSelection:
-          current.activeHouseSelection.kind === 'deck' && current.activeHouseSelection.targetId === deckId
-            ? { kind: 'house', targetId: null }
-            : current.activeHouseSelection,
-      }));
-      if (drawOutlineTarget.kind === 'deck' && drawOutlineTarget.deckId === deckId) {
-        setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-      }
-      return { ok: true };
-    },
-    [commitSharedHouseDeckDrafts, drawOutlineTarget, drawingDraft?.houseFirst?.decks, store.derived.house],
-  );
-
-  const startDeckOutlineEditor = useCallback(
-    (deckId: string): CommitResult => {
-      setDrawOutlineTarget({ kind: 'deck', deckId });
-      setUi((current) => ({
-        ...current,
-        workbenchMode: 'house',
-        viewportMode: 'model',
-        activeView: 'plan',
-        activeHouseSelection: { kind: 'deck', targetId: deckId },
-      }));
-      setDrawOutlineRequestId((current) => current + 1);
-      return { ok: true };
-    },
-    [],
-  );
-
-  const commitSharedDeckCustomPolygon = useCallback(
-    async (polygon: CalculatorHouseFootprintPolygonPoint[]): Promise<CommitResult> => {
-      if (drawOutlineTarget.kind !== 'deck') {
-        return { ok: false, error: 'No deck outline target is active.' };
-      }
-      return commitSharedHouseDeckPatch(drawOutlineTarget.deckId, {
-        shape: 'custom',
-        outline: polygon,
-      });
-    },
-    [commitSharedHouseDeckPatch, drawOutlineTarget],
-  );
-
-  const commitDrawingField = useCallback(
-    async (field: EstimateDrawingField, nextValue: string): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
-      }
-
-      const intent = translateEstimateDrawingFieldToGeometryIntent(field, nextValue);
-      if (!intent) {
-        return { ok: false, error: 'This drawing field is not supported in the geometry-backed workbench yet.' };
-      }
-
-      const result = applyGeometryEditIntent({
-        snapshot: estimate.calculatorSnapshot,
-        draft: drawingDraft,
-        moduleIndex: store.derived.activeModuleIndex,
-        intent,
-      });
-
-      if (!result.ok) return { ok: false, error: result.message };
-      await persistDrawingDraftLocally(result.draft);
-      return { ok: true };
-    },
-    [drawingDraft, estimate.calculatorSnapshot, persistDrawingDraftLocally, store.derived.activeModuleIndex],
-  );
-
-  const commitGeometryIntent = useCallback(
-    async (intent: GeometryEditIntent): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
-      }
-
-      const result = applyGeometryEditIntent({
-        snapshot: estimate.calculatorSnapshot,
-        draft: drawingDraft,
-        moduleIndex: store.derived.activeModuleIndex,
-        intent,
-      });
-
-      if (!result.ok) {
-        return {
-          ok: false,
-          error: result.message,
-        };
-      }
-      await persistDrawingDraftLocally(result.draft);
-      return { ok: true };
-    },
-    [drawingDraft, estimate.calculatorSnapshot, persistDrawingDraftLocally, store.derived.activeModuleIndex],
-  );
-
-  const startDrawOutlineEditor = useCallback((): CommitResult => {
-    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setUi((current) => ({
-      ...current,
-      workbenchMode: 'house',
-      viewportMode: 'model',
-      activeView: 'plan',
-      activeHouseSelection: { kind: 'footprint', targetId: null },
-    }));
-    setDrawOutlineRequestId((current) => current + 1);
-    return { ok: true };
-  }, []);
-
-  const selectSharedHouseDeck = useCallback((deckId: string | null) => {
-    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setUi((current) => ({
-      ...current,
-      workbenchMode: 'house',
-      activeHouseSelection: deckId ? { kind: 'deck', targetId: deckId } : { kind: 'house', targetId: null },
-    }));
-  }, []);
-
-  const selectSharedHouseOpening = useCallback((openingId: string | null) => {
-    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setUi((current) => ({
-      ...current,
-      workbenchMode: 'house',
-      activeHouseSelection: openingId ? { kind: 'opening', targetId: openingId } : { kind: 'house', targetId: null },
-    }));
-  }, []);
-
-  const selectHouseFirstTarget = useCallback((selection: WorkbenchHouseSelection) => {
-    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setUi((current) => ({
-      ...current,
-      workbenchMode: 'house',
-      activeHouseSelection: selection,
-    }));
-  }, []);
-
-  const commitHouseFirstFootprintDimension = useCallback(
-    async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> => commitSharedHouseFootprintEdit(edit),
-    [commitSharedHouseFootprintEdit],
-  );
-
-  const commitHouseFirstDeckDimension = useCallback(
-    async (deckId: string, patch: Partial<HouseFirstDeckDraft>): Promise<CommitResult> => {
-      if (!drawingDraft) {
-        return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
-      }
-      const house = store.derived.house;
-      const currentDecks =
-        drawingDraft.houseFirst?.decks?.map((deck) => ({ ...deck })) ??
-        toDeckDrafts(house);
-      const housePolygon = house
-        ? deckReferenceHousePolygon({
-            house,
-            moduleLengthM: activeModuleInput?.lengthM,
-            moduleProjectionM: activeModuleInput?.projectionM,
-          })
-        : [];
-      const nextDecks = currentDecks.map((deck) =>
-        deck.id === deckId
-          ? resolveDeckDraftGeometry({
-              deck: {
-                ...deck,
-                ...patch,
-                presetRect:
-                  patch.presetRect === undefined
-                    ? deck.presetRect
-                    : patch.presetRect === null
-                      ? null
-                      : {
-                          ...(deck.presetRect ?? {}),
-                          ...patch.presetRect,
-                        },
-                shape:
-                  patch.outline && patch.outline.length
-                    ? 'custom'
-                    : patch.shape ?? deck.shape ?? 'preset',
-              },
-              housePolygon,
-            })
-          : deck,
-      );
-      const nextDraft = updateEstimateDrawingHouseFirstDeckDrafts({
-        draft: structuredClone(drawingDraft),
-        decks: nextDecks,
-      });
-      const previewStore = buildDrawingWorkbenchStore({
-        snapshot: estimate.calculatorSnapshot,
-        draft: nextDraft,
-        ui,
-      });
-      const nextDeck = previewStore.derived.house?.decks.find((deck) => deck.id === deckId);
-      if (nextDeck?.validation.status === 'invalid') {
-        return {
-          ok: false,
-          error: nextDeck.validation.message ?? 'Unable to update the deck dimension.',
-        };
-      }
-      await persistDrawingDraftLocally(nextDraft);
-      return { ok: true };
-    },
-    [
-      activeModuleInput?.lengthM,
-      activeModuleInput?.projectionM,
-      drawingDraft,
-      estimate.calculatorSnapshot,
-      persistDrawingDraftLocally,
-      store.derived.house,
-      ui,
-    ],
-  );
-
-  const commitHouseFirstOpeningDimension = useCallback(
-    async (openingId: string, patch: Partial<HouseFirstOpeningDraft>): Promise<CommitResult> =>
-      commitSharedHouseOpeningPatch(openingId, patch),
-    [commitSharedHouseOpeningPatch],
-  );
+  const houseSelectionActions = useHouseWorkbenchSelection({
+    setUi,
+    setDrawOutlineTarget,
+    setDrawOutlineRequestId,
+  });
+  const houseActions = useHouseMutationActions({
+    activeModuleInput,
+    drawingDraft,
+    drawOutlineTarget,
+    persistDrawingDraftLocally,
+    setDrawOutlineTarget,
+    setUi,
+    snapshot: estimate.calculatorSnapshot,
+    startDeckOutlineEditor: houseSelectionActions.startDeckOutlineEditor,
+    store,
+    ui,
+  });
 
   const workbenchFieldCommit =
     !isLocked && supportsSanctuaryEditing && store.ui.workbenchMode === 'pergolas'
-      ? commitDrawingField
+      ? houseActions.commitDrawingField
       : undefined;
   const workbenchFootprintCommit =
     !isLocked && store.ui.workbenchMode === 'house' && store.ui.viewportMode === 'model'
-      ? commitSharedHouseFootprintEdit
+      ? houseActions.commitSharedHouseFootprintEdit
       : undefined;
   const pergolaFallbackRail =
     supportsSanctuaryEditing && activeModuleInput ? (
@@ -980,8 +312,8 @@ export default function DesignWorkbenchEstimateClient({
         view={store.ui.activeView}
         disabled={isLocked}
         canStartDrawOutline={!isLocked}
-        onStartDrawOutline={startDrawOutlineEditor}
-        onCommitGeometryEdit={!isLocked ? commitGeometryIntent : undefined}
+        onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
+        onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
       />
     ) : (
       <section className={styles.notice}>
@@ -1014,12 +346,7 @@ export default function DesignWorkbenchEstimateClient({
               aria-selected={store.ui.workbenchMode === 'house'}
               className={`${styles.modeButton} ${store.ui.workbenchMode === 'house' ? styles.modeButtonActive : ''}`}
               onClick={() => {
-                setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-                setUi((current) => ({
-                  ...current,
-                  workbenchMode: 'house',
-                  activeHouseSelection: { kind: 'house', targetId: null },
-                }));
+                houseSelectionActions.selectHouseWorkbenchMode();
               }}
             >
               House
@@ -1030,15 +357,9 @@ export default function DesignWorkbenchEstimateClient({
               aria-selected={store.ui.workbenchMode === 'pergolas'}
               className={`${styles.modeButton} ${store.ui.workbenchMode === 'pergolas' ? styles.modeButtonActive : ''}`}
               onClick={() => {
-                setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-                setUi((current) => ({
-                  ...current,
-                  workbenchMode: 'pergolas',
-                  activePergolaId:
-                    store.derived.activePergolaId ??
-                    activeModule.drawingModule.input.pergolaId ??
-                    current.activePergolaId,
-                }));
+                houseSelectionActions.selectPergolaWorkbenchMode(
+                  store.derived.activePergolaId ?? activeModule.drawingModule.input.pergolaId ?? null,
+                );
               }}
             >
               Pergolas
@@ -1387,18 +708,18 @@ export default function DesignWorkbenchEstimateClient({
           disabled={isLocked}
           canEditFootprint={Boolean(activeModule.assemblyModel.capabilities.canEditHouseFootprint)}
           canStartDrawOutline={!isLocked}
-          onStartDrawOutline={startDrawOutlineEditor}
-          onCommitFootprintEdit={!isLocked ? commitSharedHouseFootprintEdit : undefined}
-          onCommitRoofDraft={!isLocked ? commitSharedHouseRoofDraft : undefined}
-          onSelectDeck={selectSharedHouseDeck}
-          onSelectOpening={selectSharedHouseOpening}
-          onAddDeck={!isLocked ? runAddSharedHouseDeck : undefined}
-          onAddOpening={!isLocked ? addSharedHouseOpening : undefined}
-          onRemoveDeck={!isLocked ? removeSharedHouseDeck : undefined}
-          onRemoveOpening={!isLocked ? removeSharedHouseOpening : undefined}
-          onCommitDeckPatch={!isLocked ? commitSharedHouseDeckPatch : undefined}
-          onCommitOpeningPatch={!isLocked ? commitSharedHouseOpeningPatch : undefined}
-          onStartDeckOutline={!isLocked ? startDeckOutlineEditor : undefined}
+          onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
+          onCommitFootprintEdit={!isLocked ? houseActions.commitSharedHouseFootprintEdit : undefined}
+          onCommitRoofDraft={!isLocked ? houseActions.commitSharedHouseRoofDraft : undefined}
+          onSelectDeck={houseSelectionActions.selectSharedHouseDeck}
+          onSelectOpening={houseSelectionActions.selectSharedHouseOpening}
+          onAddDeck={!isLocked ? houseActions.addSharedHouseDeck : undefined}
+          onAddOpening={!isLocked ? houseActions.addSharedHouseOpening : undefined}
+          onRemoveDeck={!isLocked ? houseActions.removeSharedHouseDeck : undefined}
+          onRemoveOpening={!isLocked ? houseActions.removeSharedHouseOpening : undefined}
+          onCommitDeckPatch={!isLocked ? houseActions.commitSharedHouseDeckPatch : undefined}
+          onCommitOpeningPatch={!isLocked ? houseActions.commitSharedHouseOpeningPatch : undefined}
+          onStartDeckOutline={!isLocked ? houseSelectionActions.startDeckOutlineEditor : undefined}
           pergolaFallback={pergolaFallbackRail}
         />
 
@@ -1474,11 +795,11 @@ export default function DesignWorkbenchEstimateClient({
           modelEditableFields={store.ui.workbenchMode === 'pergolas' ? drawingEditableFields : []}
           onCommitModelField={workbenchFieldCommit}
           onCommitFootprintEdit={workbenchFootprintCommit}
-          onCommitCustomPolygon={!isLocked ? commitSharedDeckCustomPolygon : undefined}
-          onSelectHouseFirstTarget={!isLocked ? selectHouseFirstTarget : undefined}
-          onCommitHouseFirstFootprintDimension={!isLocked ? commitHouseFirstFootprintDimension : undefined}
-          onCommitHouseFirstDeckDimension={!isLocked ? commitHouseFirstDeckDimension : undefined}
-          onCommitHouseFirstOpeningDimension={!isLocked ? commitHouseFirstOpeningDimension : undefined}
+          onCommitCustomPolygon={!isLocked ? houseActions.commitSharedDeckCustomPolygon : undefined}
+          onSelectHouseFirstTarget={!isLocked ? houseSelectionActions.selectHouseFirstTarget : undefined}
+          onCommitHouseFirstFootprintDimension={!isLocked ? houseActions.commitHouseFirstFootprintDimension : undefined}
+          onCommitHouseFirstDeckDimension={!isLocked ? houseActions.commitHouseFirstDeckDimension : undefined}
+          onCommitHouseFirstOpeningDimension={!isLocked ? houseActions.commitHouseFirstOpeningDimension : undefined}
           onDeckInteractionTelemetryChange={setDeckInteractionTelemetry}
         />
         </div>

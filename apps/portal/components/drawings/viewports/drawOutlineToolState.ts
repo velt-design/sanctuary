@@ -27,7 +27,14 @@ export type DrawOutlinePolygonPoint = {
 
 export type DrawOutlineAngleMode = 'relative' | 'absolute';
 
-export type DrawOutlineActiveStatus = 'first-point' | 'placing' | 'pending-segment' | 'close-ready' | 'close-hovered';
+export type DrawOutlinePreviewSource = 'none' | 'hover' | 'locked-distance';
+
+export type DrawOutlineActiveStatus =
+  | 'first-point'
+  | 'placing'
+  | 'locked-distance'
+  | 'close-ready'
+  | 'close-hovered';
 
 export type DrawOutlineDiagnosticState = 'inactive' | DrawOutlineActiveStatus | 'error';
 
@@ -49,6 +56,8 @@ export type DrawOutlineActiveToolState = {
   distanceDraft: string;
   angleDraft: string;
   angleMode: DrawOutlineAngleMode;
+  lockedDistanceDraft: string | null;
+  previewSource: DrawOutlinePreviewSource;
 };
 
 export type DrawOutlineToolState = DrawOutlineInactiveState | DrawOutlineActiveToolState;
@@ -76,7 +85,7 @@ export type DrawOutlineViewModel = {
   isActive: boolean;
   pendingPoint: DrawOutlinePoint | null;
   hoverPreviewPoint: DrawOutlinePoint | null;
-  previewPointKind: 'pending' | 'hover' | null;
+  previewPointKind: 'pending' | 'hover' | 'locked-distance' | null;
   confirmedPointCount: number;
   closeReady: boolean;
   closeHovered: boolean;
@@ -86,6 +95,8 @@ export type DrawOutlineViewModel = {
   angleMode: DrawOutlineAngleMode | 'none';
   hasPendingPoint: boolean;
   hideHouseFootprint: boolean;
+  lockedDistanceDraft: string | null;
+  previewSource: DrawOutlinePreviewSource;
 };
 
 export function createInactiveDrawOutlineState(): DrawOutlineToolState {
@@ -103,6 +114,8 @@ export function startDrawOutlineTool(): DrawOutlineTransitionResult {
       distanceDraft: '',
       angleDraft: '',
       angleMode: 'relative',
+      lockedDistanceDraft: null,
+      previewSource: 'none',
     }),
     error: null,
   };
@@ -133,6 +146,8 @@ export function selectDrawOutlinePoint(state: DrawOutlineToolState, point: DrawO
         distanceDraft: '',
         angleDraft: '',
         angleMode: 'absolute',
+        lockedDistanceDraft: null,
+        previewSource: 'none',
       }),
       error: null,
     };
@@ -157,11 +172,14 @@ export function selectDrawOutlinePoint(state: DrawOutlineToolState, point: DrawO
   return {
     state: normalizeDrawOutlineState({
       ...state,
-      pendingPoint: point,
+      points: [...state.points, point],
+      pendingPoint: null,
       hoverPoint: null,
       distanceDraft: formatOutlineNumber(distance),
       angleDraft: formatOutlineNumber(angle),
       angleMode: previous ? nextAngleMode : 'absolute',
+      lockedDistanceDraft: null,
+      previewSource: 'none',
     }),
     error: null,
   };
@@ -169,8 +187,8 @@ export function selectDrawOutlinePoint(state: DrawOutlineToolState, point: DrawO
 
 export function hoverDrawOutlinePoint(state: DrawOutlineToolState, point: DrawOutlinePoint | null): DrawOutlineTransitionResult {
   if (!isDrawOutlineActive(state)) return { state };
-  if (!point || !state.points.length || hasDrawOutlineDraft(state) || !isFiniteOutlinePoint(point)) {
-    return { state: normalizeDrawOutlineState({ ...state, hoverPoint: null }) };
+  if (!point || !state.points.length || !isFiniteOutlinePoint(point)) {
+    return { state: normalizeDrawOutlineState({ ...state, hoverPoint: null, previewSource: 'none' }) };
   }
 
   const nextHoverPoint = resolveDrawOutlineHoverPoint(state.points, point);
@@ -188,6 +206,7 @@ export function hoverDrawOutlinePoint(state: DrawOutlineToolState, point: DrawOu
     state: normalizeDrawOutlineState({
       ...state,
       hoverPoint: nextHoverPoint,
+      previewSource: state.lockedDistanceDraft ? 'locked-distance' : 'hover',
     }),
   };
 }
@@ -199,6 +218,8 @@ export function setDrawOutlineDistanceDraft(state: DrawOutlineToolState, distanc
       ...state,
       distanceDraft,
       pendingPoint: null,
+      lockedDistanceDraft: null,
+      previewSource: state.hoverPoint ? 'hover' : 'none',
     }),
   };
 }
@@ -210,7 +231,30 @@ export function setDrawOutlineAngleDraft(state: DrawOutlineToolState, angleDraft
       ...state,
       angleDraft,
       pendingPoint: null,
+      lockedDistanceDraft: null,
+      previewSource: state.hoverPoint ? 'hover' : 'none',
     }),
+  };
+}
+
+export function armDrawOutlineDistanceLock(state: DrawOutlineToolState): DrawOutlineTransitionResult {
+  if (!isDrawOutlineActive(state)) return { state };
+  if (!state.points.length) {
+    return { state, error: 'Place the first point before locking a segment length.' };
+  }
+  const distance = Number.parseFloat(state.distanceDraft);
+  if (!Number.isFinite(distance) || distance < MIN_OUTLINE_SEGMENT_M) {
+    return { state, error: 'Enter a valid segment distance.' };
+  }
+  return {
+    state: normalizeDrawOutlineState({
+      ...state,
+      pendingPoint: null,
+      angleDraft: '',
+      lockedDistanceDraft: formatOutlineNumber(distance),
+      previewSource: state.hoverPoint ? 'locked-distance' : 'none',
+    }),
+    error: null,
   };
 }
 
@@ -233,6 +277,8 @@ export function confirmDrawOutlineSegment(state: DrawOutlineToolState): DrawOutl
       distanceDraft: '',
       angleDraft: '',
       angleMode: 'relative',
+      lockedDistanceDraft: null,
+      previewSource: 'none',
     }),
     error: null,
   };
@@ -240,7 +286,7 @@ export function confirmDrawOutlineSegment(state: DrawOutlineToolState): DrawOutl
 
 export function undoDrawOutline(state: DrawOutlineToolState): DrawOutlineTransitionResult {
   if (!isDrawOutlineActive(state)) return { state };
-  if (state.pendingPoint || state.distanceDraft || state.angleDraft) {
+  if (state.lockedDistanceDraft || state.pendingPoint || state.distanceDraft || state.angleDraft) {
     return {
       state: normalizeDrawOutlineState({
         ...state,
@@ -248,6 +294,8 @@ export function undoDrawOutline(state: DrawOutlineToolState): DrawOutlineTransit
         hoverPoint: null,
         distanceDraft: '',
         angleDraft: '',
+        lockedDistanceDraft: null,
+        previewSource: 'none',
       }),
       error: null,
     };
@@ -259,6 +307,8 @@ export function undoDrawOutline(state: DrawOutlineToolState): DrawOutlineTransit
       points: state.points.slice(0, -1),
       hoverPoint: null,
       angleMode: state.points.length <= 2 ? 'absolute' : state.angleMode,
+      lockedDistanceDraft: null,
+      previewSource: 'none',
     }),
     error: null,
   };
@@ -293,12 +343,20 @@ export function deriveDrawOutlineViewModel(state: DrawOutlineToolState, hasInter
       angleMode: 'none',
       hasPendingPoint: false,
       hideHouseFootprint: false,
+      lockedDistanceDraft: null,
+      previewSource: 'none',
     };
   }
 
   const pendingPoint = resolvePendingOutlinePoint(normalizedState);
-  const hoverPreviewPoint = !pendingPoint && !hasDrawOutlineDraft(normalizedState) ? normalizedState.hoverPoint?.point ?? null : null;
-  const previewPointKind: 'pending' | 'hover' | null = pendingPoint ? 'pending' : hoverPreviewPoint ? 'hover' : null;
+  const hoverPreviewPoint = !pendingPoint ? normalizedState.hoverPoint?.point ?? null : null;
+  const previewPointKind: 'pending' | 'hover' | 'locked-distance' | null = pendingPoint
+    ? 'pending'
+    : hoverPreviewPoint
+      ? normalizedState.previewSource === 'locked-distance'
+        ? 'locked-distance'
+        : 'hover'
+      : null;
   const confirmedPointCount = normalizedState.points.length;
   const closeReady = confirmedPointCount >= 3;
   const closeHovered = Boolean(closeReady && normalizedState.hoverPoint?.closeHovered && hoverPreviewPoint);
@@ -321,23 +379,33 @@ export function deriveDrawOutlineViewModel(state: DrawOutlineToolState, hasInter
     angleMode: normalizedState.angleMode,
     hasPendingPoint: Boolean(pendingPoint),
     hideHouseFootprint: previewPolygon.length < 3,
+    lockedDistanceDraft: normalizedState.lockedDistanceDraft,
+    previewSource: normalizedState.previewSource,
   };
 }
 
 function normalizeDrawOutlineState(state: DrawOutlineToolState): DrawOutlineToolState {
   if (!isDrawOutlineActive(state)) return state;
   const pendingPoint = resolvePendingOutlinePoint(state);
-  const hoverPreviewPoint = !pendingPoint && !hasDrawOutlineDraft(state) ? state.hoverPoint?.point ?? null : null;
+  const hoverPreviewPoint = !pendingPoint ? state.hoverPoint?.point ?? null : null;
   const closeReady = state.points.length >= 3;
   const closeHovered = Boolean(closeReady && state.hoverPoint?.closeHovered && hoverPreviewPoint);
   const status: DrawOutlineActiveStatus = closeHovered
     ? 'close-hovered'
-    : pendingPoint
-      ? 'pending-segment'
+    : state.lockedDistanceDraft
+      ? 'locked-distance'
       : closeReady
         ? 'close-ready'
         : state.points.length === 0
           ? 'first-point'
           : 'placing';
-  return { ...state, status };
+  return {
+    ...state,
+    status,
+    previewSource: state.hoverPoint
+      ? state.lockedDistanceDraft
+        ? 'locked-distance'
+        : 'hover'
+      : 'none',
+  };
 }

@@ -31,6 +31,7 @@ import { blockNativeSelectionEvent } from "./nativeSelection";
 import styles from "./Geometry3DViewport.module.css";
 
 const ORBIT_MOUSE_DISABLED = -1 as THREE.MOUSE;
+const ORBIT_ZOOM_SPEED = 2.85;
 
 const HOUSE_DISPLAY_LAYER_IDS = new Set(["house", "house_roof_materials"]);
 type SceneBounds = {
@@ -3616,7 +3617,7 @@ export default function Geometry3DViewport({
       controls.zoomToCursor = true;
       controls.rotateSpeed = 0.72;
       controls.panSpeed = 0.9;
-      controls.zoomSpeed = 0.95;
+      controls.zoomSpeed = ORBIT_ZOOM_SPEED;
       controls.minDistance = Math.max(sceneBounds.size * 0.18, 250);
       controls.maxDistance = Math.max(sceneBounds.size * 14, 14000);
       controls.minPolarAngle = 0.04;
@@ -4730,7 +4731,7 @@ export default function Geometry3DViewport({
             zoomToCursor
             rotateSpeed={0.72}
             panSpeed={0.9}
-            zoomSpeed={0.95}
+            zoomSpeed={ORBIT_ZOOM_SPEED}
             minDistance={
               sceneBounds ? Math.max(sceneBounds.size * 0.18, 250) : 250
             }

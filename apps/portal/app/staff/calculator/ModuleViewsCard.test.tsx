@@ -158,6 +158,36 @@ function extractPolygonPoints(markup: string, dataAttribute: string, value: stri
   });
 }
 
+function extractAllPolygonPoints(markup: string, dataAttribute: string, value: string): Array<Array<{ x: number; y: number }>> {
+  const pattern = new RegExp(`points="([^"]+)"[^>]*${dataAttribute}="${value}"`, 'g');
+  return [...markup.matchAll(pattern)].map((match) =>
+    (match[1] ?? '').split(' ').map((pair) => {
+      const [x, y] = pair.split(',');
+      return {
+        x: Number(x),
+        y: Number(y),
+      };
+    }),
+  );
+}
+
+function extractAllLinePoints(markup: string, dataAttribute: string, value: string): Array<Array<{ x: number; y: number }>> {
+  const pattern = new RegExp(
+    `<line[^>]*x1="([^"]+)"[^>]*y1="([^"]+)"[^>]*x2="([^"]+)"[^>]*y2="([^"]+)"[^>]*${dataAttribute}="${value}"`,
+    'g',
+  );
+  return [...markup.matchAll(pattern)].map((match) => [
+    {
+      x: Number(match[1]),
+      y: Number(match[2]),
+    },
+    {
+      x: Number(match[3]),
+      y: Number(match[4]),
+    },
+  ]);
+}
+
 function extractDebugRect(markup: string, marker: string): { minX: number; maxX: number; minY: number; maxY: number } {
   const markerIndex = markup.indexOf(`data-debug-crop="${marker}"`);
   expect(markerIndex).toBeGreaterThanOrEqual(0);
@@ -842,6 +872,164 @@ describe('ModuleViewsCard', () => {
     expect(modelFootprintPoints[0]?.y).toBeGreaterThan(modelFootprintPoints[2]?.y);
     expect(cardFootprintPoints[0]?.y).toBeLessThan(cardFootprintPoints[2]?.y);
     expect(modelOpeningPoints[0]?.y).toBeLessThan(modelOpeningPoints[2]?.y);
+  });
+
+  it('keeps house-mode roof and gutter geometry inside the projected model-space clip box', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -6 },
+              { x: 6, y: -6 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+          {
+            id: 'roof-top',
+            kind: 'roof',
+            boundary: [
+              { x: 0, y: -6 },
+              { x: 6, y: -6 },
+              { x: 6, y: -4 },
+              { x: 0, y: -4 },
+            ],
+          },
+          {
+            id: 'roof-spine',
+            kind: 'roof',
+            boundary: [
+              { x: 0, y: -4 },
+              { x: 3, y: -4 },
+              { x: 3, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+          {
+            id: 'roof-bottom',
+            kind: 'roof',
+            boundary: [
+              { x: 3, y: -2 },
+              { x: 6, y: -2 },
+              { x: 6, y: 0 },
+              { x: 3, y: 0 },
+            ],
+          },
+        ],
+        lines: [
+          {
+            id: 'gutter-bottom',
+            kind: 'gutter',
+            line: { start: { x: 0, y: -6 }, end: { x: 6, y: -6 } },
+          },
+          {
+            id: 'wall-bottom',
+            kind: 'wall_segment',
+            line: { start: { x: 0, y: 0 }, end: { x: 6, y: 0 } },
+          },
+        ],
+      },
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        displayMode="house"
+      />,
+    );
+
+    const clipRect = extractHouseClipRect(markup);
+    const roofPolygons = extractAllPolygonPoints(markup, 'data-house-plan-surface', 'roof');
+    const gutterLines = extractAllLinePoints(markup, 'data-house-plan-line', 'gutter');
+    const worldBox = parseSvgRect(extractSvgStringAttribute(extractSvgTag(markup, 'Module plan view'), 'data-model-space-world-box'));
+
+    expectRectCloseTo(clipRect, worldBox);
+    expect(roofPolygons.length).toBeGreaterThan(0);
+    expect(gutterLines.length).toBeGreaterThan(0);
+
+    for (const polygon of roofPolygons) {
+      for (const point of polygon) {
+        expect(point.x).toBeGreaterThanOrEqual(clipRect.x);
+        expect(point.x).toBeLessThanOrEqual(clipRect.x + clipRect.width);
+        expect(point.y).toBeGreaterThanOrEqual(clipRect.y);
+        expect(point.y).toBeLessThanOrEqual(clipRect.y + clipRect.height);
+      }
+    }
+
+    for (const line of gutterLines) {
+      for (const point of line) {
+        expect(point.x).toBeGreaterThanOrEqual(clipRect.x);
+        expect(point.x).toBeLessThanOrEqual(clipRect.x + clipRect.width);
+        expect(point.y).toBeGreaterThanOrEqual(clipRect.y);
+        expect(point.y).toBeLessThanOrEqual(clipRect.y + clipRect.height);
+      }
+    }
+  });
+
+  it('expands the house-mode model-space focus box to the projected house geometry', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -6 },
+              { x: 6, y: -6 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+          {
+            id: 'roof-main',
+            kind: 'roof',
+            boundary: [
+              { x: 0, y: -6 },
+              { x: 6, y: -6 },
+              { x: 6, y: -4 },
+              { x: 0, y: -4 },
+            ],
+          },
+        ],
+        lines: [],
+      },
+    };
+
+    const pergolaMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+    const houseMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        displayMode="house"
+      />,
+    );
+
+    const pergolaFocusBox = parseSvgRect(extractSvgStringAttribute(extractSvgTag(pergolaMarkup, 'Module plan view'), 'data-model-space-focus-box'));
+    const houseFocusBox = parseSvgRect(extractSvgStringAttribute(extractSvgTag(houseMarkup, 'Module plan view'), 'data-model-space-focus-box'));
+
+    expect(houseFocusBox.height).toBeGreaterThan(pergolaFocusBox.height);
   });
 
   it('shows the edit-footprint trigger for eligible calculator plan views', () => {

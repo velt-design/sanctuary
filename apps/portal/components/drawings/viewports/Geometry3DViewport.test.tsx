@@ -916,6 +916,7 @@ describe("Geometry3DViewport", () => {
       rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')
         ?.className,
     ).toContain("canvas");
+    expect((mockOrbitControls as { zoomSpeed?: number } | null)?.zoomSpeed).toBeCloseTo(2.85, 6);
     expect(viewportDiagnostics(rendered.container).finiteBounds).toBe("true");
     expect(
       Number(viewportDiagnostics(rendered.container).sceneObjectCount),

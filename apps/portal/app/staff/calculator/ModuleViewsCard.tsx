@@ -141,10 +141,11 @@ export type ModuleFootprintEditorProps = {
   customPolygonOverride?: ModulePlanModel['houseFootprintPolygon'] | null;
   customPolygonOpen?: boolean;
   customPolygonConfirmedPointCount?: number;
-  customPolygonPreviewPointKind?: 'pending' | 'hover' | null;
+  customPolygonPreviewPointKind?: 'pending' | 'hover' | 'locked-distance' | null;
   customPolygonCloseReady?: boolean;
   customPolygonCloseHovered?: boolean;
   customPolygonLandingPoint?: ModuleFootprintCanvasPoint | null;
+  customPolygonLockedDistanceM?: number | null;
   customPolygonHasError?: boolean;
   hideHouseFootprint?: boolean;
   isContextHovered?: boolean;
@@ -1816,6 +1817,52 @@ function planHousePointToSvg(
   };
 }
 
+function resolvePlanHouseProjectionMaxWorldY(input: {
+  surfaces?: Array<{ boundary: Point[] }>;
+  lines?: Array<{ line: { start: Point; end: Point } }>;
+  overlayShapes?: Array<{ polygon: Point[] }>;
+  presetAnnotations?: Array<{ witnessStart: Point; witnessEnd: Point; lineStart: Point; lineEnd: Point }>;
+  customEdgeCandidates?: Array<{ witnessStart: Point; witnessEnd: Point; lineStart: Point; lineEnd: Point }>;
+  previewShape?: { polygon: Point[]; hostEdge: { start: Point; end: Point } | null } | null;
+}): number | null {
+  const yValues = [
+    ...(input.surfaces ?? []).flatMap((surface) => surface.boundary.map((point) => point.y)),
+    ...(input.lines ?? []).flatMap((line) => [line.line.start.y, line.line.end.y]),
+    ...(input.overlayShapes ?? []).flatMap((shape) => shape.polygon.map((point) => point.y)),
+    ...(input.presetAnnotations ?? []).flatMap((annotation) => [
+      annotation.witnessStart.y,
+      annotation.witnessEnd.y,
+      annotation.lineStart.y,
+      annotation.lineEnd.y,
+    ]),
+    ...(input.customEdgeCandidates ?? []).flatMap((annotation) => [
+      annotation.witnessStart.y,
+      annotation.witnessEnd.y,
+      annotation.lineStart.y,
+      annotation.lineEnd.y,
+    ]),
+    ...(input.previewShape
+      ? [
+          ...input.previewShape.polygon.map((point) => point.y),
+          ...(input.previewShape.hostEdge ? [input.previewShape.hostEdge.start.y, input.previewShape.hostEdge.end.y] : []),
+        ]
+      : []),
+  ];
+  return yValues.length ? Math.max(...yValues) : null;
+}
+
+function resolvePlanHouseProjectionOptions(input: {
+  presentation: ModuleDrawingPresentation;
+  displayMode?: ModuleDrawingDisplayMode;
+  houseProjectionMaxWorldY?: number | null;
+}): { invertY: boolean; maxWorldY: number | null } {
+  const invertY = input.presentation === 'model' && input.displayMode === 'house';
+  return {
+    invertY,
+    maxWorldY: invertY ? input.houseProjectionMaxWorldY ?? null : null,
+  };
+}
+
 function planRotationTurnsForPresentation(input: {
   roofType: ModulePlanModel['roofType'];
   drawingRotationQuarterTurns: ModulePlanModel['drawingRotationQuarterTurns'];
@@ -2232,7 +2279,7 @@ type FootprintResizeEdgeSpec = {
 
 type FootprintCustomVertexSpec = {
   index: number;
-  kind: 'confirmed' | 'pending' | 'hover';
+  kind: 'confirmed' | 'pending' | 'hover' | 'locked-distance';
   isLatestConfirmed: boolean;
   isCloseReady: boolean;
   isCloseHovered: boolean;
@@ -2247,7 +2294,7 @@ type FootprintCustomVertexSpec = {
 type FootprintCustomEdgeSpec = {
   index: number;
   kind: 'confirmed' | 'preview';
-  previewPointKind: 'pending' | 'hover' | null;
+  previewPointKind: 'pending' | 'hover' | 'locked-distance' | null;
   isClosePreview: boolean;
   isActive: boolean;
   start: Point;
@@ -2261,6 +2308,8 @@ type FootprintCanvasLayout = {
   customVertices: FootprintCustomVertexSpec[];
   customEdges: FootprintCustomEdgeSpec[];
   landingPoint: Point | null;
+  lockedDistanceCenter: Point | null;
+  lockedDistanceRadius: number | null;
   sideTurns: number;
 };
 
@@ -2391,10 +2440,11 @@ function resolveFootprintCanvasLayout(input: {
   customPolygonOverride?: ModulePlanModel['houseFootprintPolygon'] | null;
   customPolygonOpen?: boolean;
   customPolygonConfirmedPointCount?: number;
-  customPolygonPreviewPointKind?: 'pending' | 'hover' | null;
+  customPolygonPreviewPointKind?: 'pending' | 'hover' | 'locked-distance' | null;
   customPolygonCloseReady?: boolean;
   customPolygonCloseHovered?: boolean;
   customPolygonLandingPoint?: ModuleFootprintCanvasPoint | null;
+  customPolygonLockedDistanceM?: number | null;
   hideHouseFootprint?: boolean;
 }): FootprintCanvasLayout {
   const { model, rect, scale, rotationCenter, rotationTurns } = input;
@@ -2506,6 +2556,16 @@ function resolveFootprintCanvasLayout(input: {
           }];
         })
       : [];
+  const latestConfirmedVertex =
+    customPolygonConfirmedPointCount > 0 ? customVertices[customPolygonConfirmedPointCount - 1] ?? null : null;
+  const lockedDistanceCenter = latestConfirmedVertex?.point ?? null;
+  const lockedDistanceRadius =
+    input.customPolygonLockedDistanceM !== null &&
+    input.customPolygonLockedDistanceM !== undefined &&
+    landingPoint &&
+    lockedDistanceCenter
+      ? Math.hypot(landingPoint.x - lockedDistanceCenter.x, landingPoint.y - lockedDistanceCenter.y)
+      : null;
   const handles = customPolygonOpen ? [] : localLayout.handles.map((handle): FootprintHandleSpec => {
     const point = mapLocalFootprintPointToPlan({
       point: handle.point,
@@ -2574,6 +2634,8 @@ function resolveFootprintCanvasLayout(input: {
     customVertices,
     customEdges,
     landingPoint,
+    lockedDistanceCenter,
+    lockedDistanceRadius,
     sideTurns,
   };
 }
@@ -3286,8 +3348,10 @@ function measurePlanAnnotatedBounds(input: {
   y: number;
   scale: number;
   presentation?: ModuleDrawingPresentation;
+  displayMode?: ModuleDrawingDisplayMode;
   frame: PlanSheetFrame;
   includeHouseContext?: boolean;
+  houseProjectionMaxWorldY?: number | null;
   footprintEditor?: Pick<
     ModuleFootprintEditorProps,
     | 'customPolygonOverride'
@@ -3299,7 +3363,7 @@ function measurePlanAnnotatedBounds(input: {
     | 'hideHouseFootprint'
   >;
 }): AnnotatedBounds {
-  const { model, x, y, scale, presentation = 'sheet', frame } = input;
+  const { model, x, y, scale, presentation = 'sheet', displayMode = 'pergolas', frame } = input;
   const includeHouseContext = input.includeHouseContext ?? true;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
@@ -3408,13 +3472,20 @@ function measurePlanAnnotatedBounds(input: {
     start: pointOnAttachmentFrame(footprintFrame, sx, -2.3),
     end: pointOnAttachmentFrame(footprintFrame, sx, 0.1),
   }));
+  const semanticHouseProjectionOptions = resolvePlanHouseProjectionOptions({
+    presentation,
+    displayMode,
+    houseProjectionMaxWorldY: input.houseProjectionMaxWorldY,
+  });
   const semanticHouseSurfacePoints = includeHouseContext
-    ? (model.houseContext?.surfaces ?? []).map((surface) => surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale)))
+    ? (model.houseContext?.surfaces ?? []).map((surface) =>
+        surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale, semanticHouseProjectionOptions)),
+      )
     : [];
   const semanticHouseLines = includeHouseContext
     ? (model.houseContext?.lines ?? []).map((line) => ({
-        start: planHousePointToSvg(line.line.start, baseX, baseY, scale),
-        end: planHousePointToSvg(line.line.end, baseX, baseY, scale),
+        start: planHousePointToSvg(line.line.start, baseX, baseY, scale, semanticHouseProjectionOptions),
+        end: planHousePointToSvg(line.line.end, baseX, baseY, scale, semanticHouseProjectionOptions),
       }))
     : [];
   const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
@@ -3668,8 +3739,10 @@ function measurePlanModelSpaceFocusBounds(input: {
   x: number;
   y: number;
   scale: number;
+  displayMode?: ModuleDrawingDisplayMode;
+  houseProjectionMaxWorldY?: number | null;
 }): AnnotatedBounds {
-  const { model, x, y, scale } = input;
+  const { model, x, y, scale, displayMode = 'pergolas' } = input;
   const isHipCorner = model.roofType === 'hip_corner';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
   const rotationFrame = resolvePlanRotationFrame({
@@ -3731,6 +3804,24 @@ function measurePlanModelSpaceFocusBounds(input: {
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, baseX, bW);
   const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
   const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
+  const semanticHouseProjectionOptions = resolvePlanHouseProjectionOptions({
+    presentation: 'model',
+    displayMode,
+    houseProjectionMaxWorldY: input.houseProjectionMaxWorldY,
+  });
+  const semanticHouseSurfacePoints =
+    displayMode === 'house'
+      ? (model.houseContext?.surfaces ?? []).map((surface) =>
+          surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale, semanticHouseProjectionOptions)),
+        )
+      : [];
+  const semanticHouseLines =
+    displayMode === 'house'
+      ? (model.houseContext?.lines ?? []).map((line) => ({
+          start: planHousePointToSvg(line.line.start, baseX, baseY, scale, semanticHouseProjectionOptions),
+          end: planHousePointToSvg(line.line.end, baseX, baseY, scale, semanticHouseProjectionOptions),
+        }))
+      : [];
   const yTopInner = baseY + topFrameW;
   const yBottomInner = baseY + aH - gutterW;
   const dimensionOffsets = { bottom: 7.8, secondary: 5.4, side: 5.6, hipSide: 5.9 };
@@ -3738,6 +3829,8 @@ function measurePlanModelSpaceFocusBounds(input: {
   const secondaryDimY = dimBaseY + dimensionOffsets.secondary;
 
   const localBounds = unionBounds([
+    ...semanticHouseSurfacePoints.map((points) => boundsFromPoints(points, 0.25)),
+    ...semanticHouseLines.map((line) => boundsFromLine(line.start.x, line.start.y, line.end.x, line.end.y, 0.25)),
     boundsFromPoints(primaryPoints, 0.35),
     hipInner ? boundsFromPoints(hipInner, 0.35) : null,
     model.boxPerimeterEnabled ? boundsFromPoints(insetPoints, 0.35) : null,
@@ -3866,13 +3959,34 @@ function resolvePlanModelSpaceLayout(
     | 'customPolygonCloseHovered'
     | 'hideHouseFootprint'
   >,
+  options?: {
+    displayMode?: ModuleDrawingDisplayMode;
+    houseProjectionMaxWorldY?: number | null;
+  },
 ): ResolvedModelSpaceLayout {
   const frame = getPlanModelSpaceFrame(model.roofType === 'hip_corner');
   const scale = MODEL_SPACE_UNITS_PER_METRE;
   const x = 0;
   const y = 0;
-  const annotatedBounds = measurePlanAnnotatedBounds({ model, x, y, scale, presentation: 'model', frame, footprintEditor });
-  const focusBounds = measurePlanModelSpaceFocusBounds({ model, x, y, scale });
+  const annotatedBounds = measurePlanAnnotatedBounds({
+    model,
+    x,
+    y,
+    scale,
+    presentation: 'model',
+    displayMode: options?.displayMode,
+    frame,
+    houseProjectionMaxWorldY: options?.houseProjectionMaxWorldY,
+    footprintEditor,
+  });
+  const focusBounds = measurePlanModelSpaceFocusBounds({
+    model,
+    x,
+    y,
+    scale,
+    displayMode: options?.displayMode,
+    houseProjectionMaxWorldY: options?.houseProjectionMaxWorldY,
+  });
   const svgMetrics = resolveModelSpaceSvgMetrics(focusBounds);
   const focusMetrics = resolveModelSpaceFocusMetrics(focusBounds);
   const worldMetrics = resolveModelSpaceWorldMetrics(annotatedBounds);
@@ -4324,13 +4438,35 @@ function PlanSvg({
   const isSheet = presentation === 'sheet';
   const isModel = presentation === 'model';
   const showPergolaGeometry = !(isModel && displayMode === 'house');
+  const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
+  const rawSemanticPlanHouseSurfaces = model.houseContext?.surfaces ?? [];
+  const rawSemanticPlanHouseLines = model.houseContext?.lines ?? [];
+  const rawHouseFirstOverlayShapes = presentation === 'model' ? houseFirstPlanOverlay?.shapes ?? [] : [];
+  const rawHouseFirstPresetAnnotations = presentation === 'model' ? houseFirstPlanOverlay?.presetAnnotations ?? [] : [];
+  const rawHouseFirstCustomEdgeCandidates = presentation === 'model' ? houseFirstPlanOverlay?.customEdgeCandidates ?? [] : [];
+  const rawHouseFirstPreviewShape = presentation === 'model' ? houseFirstPreviewOverlay : null;
+  const housePlanProjectionMaxY = isModelHouseDisplay
+    ? resolvePlanHouseProjectionMaxWorldY({
+        surfaces: rawSemanticPlanHouseSurfaces,
+        lines: rawSemanticPlanHouseLines,
+        overlayShapes: rawHouseFirstOverlayShapes,
+        presetAnnotations: rawHouseFirstPresetAnnotations,
+        customEdgeCandidates: rawHouseFirstCustomEdgeCandidates,
+        previewShape: rawHouseFirstPreviewShape,
+      })
+    : null;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
   const planSheetFrame = isSheet ? getPlanSheetFrame(isHipCorner) : null;
   const total = getPlanRealExtents(model);
   const sheetLayout = isSheet ? resolvePlanSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
-  const modelSpaceLayout = isModel ? resolvePlanModelSpaceLayout(model, footprintEditor) : null;
+  const modelSpaceLayout = isModel
+    ? resolvePlanModelSpaceLayout(model, footprintEditor, {
+        displayMode,
+        houseProjectionMaxWorldY: housePlanProjectionMaxY,
+      })
+    : null;
   const layout = sheetLayout ?? modelSpaceLayout ?? resolvePlanFitBox(total.widthM, total.heightM, presentation, isHipCorner);
   const modelSvgStyle = modelSpaceLayout
     ? {
@@ -4462,53 +4598,18 @@ function PlanSvg({
   const isSheetFootprintEditor = presentation === 'sheet' && editorSurface === 'sheet' && Boolean(footprintEditor?.available);
   const isModelFootprintEditor = presentation === 'model' && editorSurface === 'model' && Boolean(footprintEditor?.available);
   const isEditingFootprint = canEditFootprint && Boolean(footprintEditor?.isEditing);
-  const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
   const houseClipRect = isSheet
     ? (sheetLayout?.outerField ?? getSheetDrawingField())
     : isModel && modelSpaceLayout
       ? modelSpaceLayout.worldBox
       : { x: 0, y: 0, width: 120, height: 90 };
-  const rawSemanticPlanHouseSurfaces = model.houseContext?.surfaces ?? [];
-  const rawSemanticPlanHouseLines = model.houseContext?.lines ?? [];
-  const rawHouseFirstOverlayShapes = presentation === 'model' ? houseFirstPlanOverlay?.shapes ?? [] : [];
-  const rawHouseFirstPresetAnnotations = presentation === 'model' ? houseFirstPlanOverlay?.presetAnnotations ?? [] : [];
-  const rawHouseFirstCustomEdgeCandidates = presentation === 'model' ? houseFirstPlanOverlay?.customEdgeCandidates ?? [] : [];
-  const rawHouseFirstPreviewShape = presentation === 'model' ? houseFirstPreviewOverlay : null;
-  const housePlanProjectionMaxY = isModelHouseDisplay
-    ? Math.max(
-        ...[
-          ...rawSemanticPlanHouseSurfaces.flatMap((surface) => surface.boundary.map((point) => point.y)),
-          ...rawSemanticPlanHouseLines.flatMap((line) => [line.line.start.y, line.line.end.y]),
-          ...rawHouseFirstOverlayShapes.flatMap((shape) => shape.polygon.map((point) => point.y)),
-          ...rawHouseFirstPresetAnnotations.flatMap((annotation) => [
-            annotation.witnessStart.y,
-            annotation.witnessEnd.y,
-            annotation.lineStart.y,
-            annotation.lineEnd.y,
-          ]),
-          ...rawHouseFirstCustomEdgeCandidates.flatMap((annotation) => [
-            annotation.witnessStart.y,
-            annotation.witnessEnd.y,
-            annotation.lineStart.y,
-            annotation.lineEnd.y,
-          ]),
-          ...(rawHouseFirstPreviewShape
-            ? [
-                ...rawHouseFirstPreviewShape.polygon.map((point) => point.y),
-                ...(rawHouseFirstPreviewShape.hostEdge
-                  ? [rawHouseFirstPreviewShape.hostEdge.start.y, rawHouseFirstPreviewShape.hostEdge.end.y]
-                  : []),
-              ]
-            : []),
-          0,
-        ],
-      )
-    : null;
+  const planHouseProjectionOptions = resolvePlanHouseProjectionOptions({
+    presentation,
+    displayMode,
+    houseProjectionMaxWorldY: housePlanProjectionMaxY,
+  });
   const planHousePointProjector = (point: Point) =>
-    planHousePointToSvg(point, x, y, scale, {
-      invertY: isModelHouseDisplay,
-      maxWorldY: housePlanProjectionMaxY,
-    });
+    planHousePointToSvg(point, x, y, scale, planHouseProjectionOptions);
   const selectedOpeningHostEdgeId =
     rawHouseFirstOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
   const toneHouseRoofContext = Boolean(selectedOpeningHostEdgeId);
@@ -5403,6 +5504,27 @@ function PlanSvg({
             ))
           : null}
 
+        {editorSurface !== 'card' &&
+        canEditFootprint &&
+        footprintCanvasLayout?.lockedDistanceCenter &&
+        footprintCanvasLayout.lockedDistanceRadius &&
+        footprintCanvasLayout.lockedDistanceRadius > 0 ? (
+          <g
+            pointerEvents="none"
+            aria-hidden="true"
+            data-draw-outline-locked-radius="true"
+            className={styles.moduleFootprintLandingMarker}
+          >
+            <circle
+              cx={footprintCanvasLayout.lockedDistanceCenter.x}
+              cy={footprintCanvasLayout.lockedDistanceCenter.y}
+              r={footprintCanvasLayout.lockedDistanceRadius}
+              fill="none"
+              strokeDasharray="3 2"
+            />
+          </g>
+        ) : null}
+
         {editorSurface !== 'card' && canEditFootprint && footprintCanvasLayout?.landingPoint && footprintEditor?.customPolygonLandingPoint ? (
           <g
             pointerEvents="none"
@@ -5448,18 +5570,30 @@ function PlanSvg({
                 <circle
                   cx={vertex.point.x}
                   cy={vertex.point.y}
-                  r={vertex.isLatestConfirmed ? 1.16 : vertex.kind === 'pending' || vertex.kind === 'hover' ? 1.08 : 1.02}
+                  r={
+                    vertex.isLatestConfirmed
+                      ? 1.16
+                      : vertex.kind === 'pending' || vertex.kind === 'hover' || vertex.kind === 'locked-distance'
+                        ? 1.08
+                        : 1.02
+                  }
                   data-footprint-custom-vertex={vertex.index}
                   data-footprint-custom-vertex-kind={vertex.kind}
                   data-footprint-custom-latest-vertex={vertex.isLatestConfirmed ? 'true' : undefined}
-                  data-footprint-custom-preview-vertex={vertex.kind === 'pending' || vertex.kind === 'hover' ? vertex.kind : undefined}
+                  data-footprint-custom-preview-vertex={
+                    vertex.kind === 'pending' || vertex.kind === 'hover' || vertex.kind === 'locked-distance'
+                      ? vertex.kind
+                      : undefined
+                  }
                   data-footprint-custom-close-ready={vertex.isCloseReady ? 'true' : undefined}
                   data-footprint-custom-invalid={customPolygonHasError ? 'true' : undefined}
                   className={[
                     styles.moduleFootprintHandle,
                     vertex.isLatestConfirmed ? styles.moduleFootprintCustomLatestVertex : '',
                     vertex.kind === 'pending' ? styles.moduleFootprintCustomPendingVertex : '',
-                    vertex.kind === 'hover' ? styles.moduleFootprintCustomHoverVertex : '',
+                    vertex.kind === 'hover' || vertex.kind === 'locked-distance'
+                      ? styles.moduleFootprintCustomHoverVertex
+                      : '',
                     customPolygonHasError ? styles.moduleFootprintCustomInvalidVertex : '',
                   ]
                     .filter(Boolean)

@@ -976,6 +976,7 @@ describe('ModelSpaceViewport', () => {
 
     const next = onViewportTransformChange.mock.calls.at(-1)?.[0];
     expect(next?.zoom).toBeGreaterThan(viewportTransform.zoom);
+    expect(next?.zoom).toBeCloseTo(Math.exp(120 * 0.0036), 6);
     expect(next?.panX).toBeLessThan(viewportTransform.panX);
     expect(next?.panY).toBeLessThan(viewportTransform.panY);
     expect(getDrawOutlineDiagnostics(rendered.container).modelSpaceGesture).toBe('wheel-zoom');
@@ -984,7 +985,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('pans the model-space viewport with non-modifier wheel input', () => {
+  it('zooms the model-space viewport with plain wheel input', () => {
     const drawing = makeDrawingModule();
     const viewportTransform = { zoom: 1.25, panX: 20, panY: -10 };
     const onViewportTransformChange = vi.fn();
@@ -1009,15 +1010,40 @@ describe('ModelSpaceViewport', () => {
     if (!resizeHit) throw new Error('Missing plan resize hit target.');
     dispatchWheel(resizeHit, { deltaX: 12, deltaY: 30, clientX: 100, clientY: 80 });
 
-    expect(onViewportTransformChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        zoom: viewportTransform.zoom,
-        panX: 8,
-        panY: -40,
-      }),
+    const next = onViewportTransformChange.mock.calls.at(-1)?.[0];
+    expect(next?.zoom).toBeLessThan(viewportTransform.zoom);
+    expect(next?.panX).not.toBe(viewportTransform.panX);
+    expect(next?.panY).not.toBe(viewportTransform.panY);
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpaceGesture).toBe('wheel-zoom');
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpacePinchSource).toBe('wheel');
+
+    rendered.unmount();
+  });
+
+  it('zooms the section model-space viewport with plain wheel input', () => {
+    const drawing = makeDrawingModule();
+    const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
+    const onViewportTransformChange = vi.fn();
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="section"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+      />,
     );
-    expect(getDrawOutlineDiagnostics(rendered.container).modelSpaceGesture).toBe('wheel-pan');
-    expect(getDrawOutlineDiagnostics(rendered.container).modelSpacePinchSource).toBe('none');
+    onViewportTransformChange.mockClear();
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!scroller) throw new Error('Missing model-space scroller.');
+    dispatchWheel(scroller, { deltaY: -60, clientX: 120, clientY: 90 });
+
+    const next = onViewportTransformChange.mock.calls.at(-1)?.[0];
+    expect(next?.zoom).toBeGreaterThan(viewportTransform.zoom);
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpaceGesture).toBe('wheel-zoom');
+    expect(getDrawOutlineDiagnostics(rendered.container).modelSpacePinchSource).toBe('wheel');
 
     rendered.unmount();
   });

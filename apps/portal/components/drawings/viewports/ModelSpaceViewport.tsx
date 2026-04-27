@@ -46,6 +46,7 @@ import {
 import { blockNativeSelectionEvent } from './nativeSelection';
 import styles from './ModelSpaceViewport.module.css';
 import {
+  CLOSE_START_TOLERANCE_M,
   cancelDrawOutlineTool,
   confirmDrawOutlineSegment,
   createInactiveDrawOutlineState,
@@ -55,11 +56,13 @@ import {
   isDrawOutlineActive,
   prepareDrawOutlineClose,
   selectDrawOutlinePoint,
+  armDrawOutlineDistanceLock,
   setDrawOutlineAngleDraft,
   setDrawOutlineDistanceDraft,
   startDrawOutlineTool,
   undoDrawOutline,
   type DrawOutlineDiagnosticState,
+  type DrawOutlinePoint,
   type DrawOutlineToolState,
   type DrawOutlineTransitionResult,
 } from './drawOutlineToolState';
@@ -236,7 +239,7 @@ const DRAW_POPOVER_GAP_PX = 14;
 const DRAW_OUTLINE_PAN_THRESHOLD_PX = 5;
 const WHEEL_LINE_DELTA_PX = 16;
 const WHEEL_PAGE_DELTA_PX = 240;
-const WHEEL_ZOOM_SENSITIVITY = 0.0012;
+const WHEEL_ZOOM_SENSITIVITY = 0.0036;
 const WHEEL_GESTURE_IDLE_MS = 600;
 const DECK_SNAP_TOLERANCE_M = 0.25;
 const DECK_UNSNAP_TOLERANCE_M = 0.4;
@@ -248,8 +251,8 @@ function drawOutlineStatusText(state: DrawOutlineDiagnosticState): string {
       return 'Draw outline: click first corner';
     case 'placing':
       return 'Draw outline: click next corner or enter distance and angle';
-    case 'pending-segment':
-      return 'Draw outline: confirm segment or undo';
+    case 'locked-distance':
+      return 'Draw outline: click next corner at locked distance';
     case 'close-ready':
       return 'Draw outline: close shape or add another corner';
     case 'close-hovered':
@@ -416,6 +419,91 @@ function parsePolygonMetres(value: string | undefined): number {
 
 function formatPolygonMetres(value: number): string {
   return formatHouseFootprintParamValue(snapHouseFootprintValue(value));
+}
+
+function buildCanvasPointFromOutlinePoint(point: DrawOutlinePoint): ModuleFootprintCanvasPoint {
+  return {
+    alongM: formatPolygonMetres(point.alongM),
+    depthM: formatPolygonMetres(point.depthM),
+    numericAlongM: point.alongM,
+    numericDepthM: point.depthM,
+  };
+}
+
+function parseDrawOutlineCanvasPoint(rawPoint: ModuleFootprintCanvasPoint): DrawOutlinePoint | null {
+  const point = {
+    alongM: parsePolygonMetres(rawPoint.alongM),
+    depthM: parsePolygonMetres(rawPoint.depthM),
+  };
+  return Number.isFinite(point.alongM) && Number.isFinite(point.depthM) ? point : null;
+}
+
+function constrainOutlinePointToWorldAxes(start: DrawOutlinePoint, point: DrawOutlinePoint): DrawOutlinePoint {
+  const deltaAlongM = point.alongM - start.alongM;
+  const deltaDepthM = point.depthM - start.depthM;
+  return Math.abs(deltaAlongM) >= Math.abs(deltaDepthM)
+    ? { alongM: point.alongM, depthM: start.depthM }
+    : { alongM: start.alongM, depthM: point.depthM };
+}
+
+function resolveDrawOutlinePreviewPoint(input: {
+  rawPoint: ModuleFootprintCanvasPoint;
+  state: DrawOutlineToolState;
+  shiftKey: boolean;
+}): ModuleFootprintCanvasPoint | null {
+  if (!isDrawOutlineActive(input.state)) {
+    return input.rawPoint;
+  }
+
+  const parsedPoint = parseDrawOutlineCanvasPoint(input.rawPoint);
+  if (!parsedPoint) return null;
+
+  const confirmedPoints = input.state.points;
+  if (!confirmedPoints.length) {
+    return buildCanvasPointFromOutlinePoint(parsedPoint);
+  }
+
+  if (confirmedPoints.length >= 3) {
+    const firstPoint = confirmedPoints[0];
+    if (firstPoint && distanceBetweenOutlinePoints(firstPoint, parsedPoint) <= CLOSE_START_TOLERANCE_M) {
+      return buildCanvasPointFromOutlinePoint(firstPoint);
+    }
+  }
+
+  const startPoint = confirmedPoints[confirmedPoints.length - 1]!;
+  let resolvedPoint = input.shiftKey ? constrainOutlinePointToWorldAxes(startPoint, parsedPoint) : parsedPoint;
+  const lockedDistanceM = Number.parseFloat(input.state.lockedDistanceDraft ?? '');
+
+  if (Number.isFinite(lockedDistanceM) && lockedDistanceM >= MIN_OUTLINE_SEGMENT_M) {
+    const deltaAlongM = resolvedPoint.alongM - startPoint.alongM;
+    const deltaDepthM = resolvedPoint.depthM - startPoint.depthM;
+    if (Math.abs(deltaAlongM) <= 1e-9 && Math.abs(deltaDepthM) <= 1e-9) {
+      return null;
+    }
+    if (input.shiftKey) {
+      if (Math.abs(deltaAlongM) >= Math.abs(deltaDepthM)) {
+        resolvedPoint = {
+          alongM: startPoint.alongM + Math.sign(deltaAlongM || 1) * lockedDistanceM,
+          depthM: startPoint.depthM,
+        };
+      } else {
+        resolvedPoint = {
+          alongM: startPoint.alongM,
+          depthM: startPoint.depthM + Math.sign(deltaDepthM || 1) * lockedDistanceM,
+        };
+      }
+    } else {
+      const distanceM = Math.hypot(deltaAlongM, deltaDepthM);
+      if (distanceM < 1e-9) return null;
+      const scale = lockedDistanceM / distanceM;
+      resolvedPoint = {
+        alongM: startPoint.alongM + deltaAlongM * scale,
+        depthM: startPoint.depthM + deltaDepthM * scale,
+      };
+    }
+  }
+
+  return buildCanvasPointFromOutlinePoint(resolvedPoint);
 }
 
 function moveCustomPolygonVertex(
@@ -1354,17 +1442,10 @@ export default function ModelSpaceViewport({
       if (delta.deltaX === 0 && delta.deltaY === 0) return;
       event.preventDefault();
       userAdjustedViewportRef.current = true;
-      if (!event.ctrlKey && !event.metaKey) {
-        markTransientViewportGesture('wheel-pan', 'none');
-        updateViewportTransform({
-          panX: viewportTransform.panX - delta.deltaX,
-          panY: viewportTransform.panY - delta.deltaY,
-        });
-        return;
-      }
       const anchor = resolveViewportAnchor(event.clientX, event.clientY);
       if (!anchor) return;
-      const nextZoom = clampZoom(zoom * Math.exp(-delta.deltaY * WHEEL_ZOOM_SENSITIVITY));
+      const zoomDelta = Math.abs(delta.deltaY) >= Math.abs(delta.deltaX) ? delta.deltaY : delta.deltaX;
+      const nextZoom = clampZoom(zoom * Math.exp(-zoomDelta * WHEEL_ZOOM_SENSITIVITY));
       if (nextZoom === zoom) return;
       markTransientViewportGesture('wheel-zoom', 'wheel');
       applyAnchoredViewportZoom({
@@ -1556,11 +1637,8 @@ export default function ModelSpaceViewport({
 
   const handleDrawOutlinePointSelect = useCallback(
     (rawPoint: ModuleFootprintCanvasPoint) => {
-      const point = {
-        alongM: parsePolygonMetres(rawPoint.alongM),
-        depthM: parsePolygonMetres(rawPoint.depthM),
-      };
-      if (!Number.isFinite(point.alongM) || !Number.isFinite(point.depthM)) return;
+      const point = parseDrawOutlineCanvasPoint(rawPoint);
+      if (!point) return;
       setDrawOutlineLandingPoint(rawPoint);
       applyDrawOutlineTransition(selectDrawOutlinePoint(drawOutlineState, point));
     },
@@ -1568,22 +1646,31 @@ export default function ModelSpaceViewport({
   );
 
   const handleDrawOutlineCanvasPointerDown = useCallback(
-    (rawPoint: ModuleFootprintCanvasPoint, event: { pointerId: number; clientX: number; clientY: number }) => {
+    (
+      rawPoint: ModuleFootprintCanvasPoint,
+      event: { pointerId: number; clientX: number; clientY: number; shiftKey: boolean },
+    ) => {
       if (!Number.isFinite(rawPoint.numericAlongM) || !Number.isFinite(rawPoint.numericDepthM)) return;
+      const resolvedPoint = resolveDrawOutlinePreviewPoint({
+        rawPoint,
+        state: drawOutlineState,
+        shiftKey: event.shiftKey,
+      });
+      if (!resolvedPoint) return;
       const nextSession = {
         pointerId: event.pointerId,
         startClientX: event.clientX,
         startClientY: event.clientY,
         startPanX: viewportTransform.panX,
         startPanY: viewportTransform.panY,
-        startPoint: rawPoint,
+        startPoint: resolvedPoint,
         hasPanned: false,
       };
-      setDrawOutlineLandingPoint(rawPoint);
+      setDrawOutlineLandingPoint(resolvedPoint);
       drawOutlinePointerSessionRef.current = nextSession;
       setDrawOutlinePointerSession(nextSession);
     },
-    [viewportTransform.panX, viewportTransform.panY],
+    [drawOutlineState, viewportTransform.panX, viewportTransform.panY],
   );
 
   const handleDrawOutlineConfirmSegment = useCallback(() => {
@@ -1614,27 +1701,24 @@ export default function ModelSpaceViewport({
   }, [applyDrawOutlineTransition, commitFootprintEdit, deckOutlineMode, drawOutlineState, onCommitCustomPolygon]);
 
   const handleDrawOutlinePointHover = useCallback(
-    (rawPoint: ModuleFootprintCanvasPoint | null) => {
+    (rawPoint: ModuleFootprintCanvasPoint | null, shiftKey = false) => {
       if (!rawPoint) {
         setDrawOutlineLandingPoint(null);
         applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
         return;
       }
-      const point = {
-        alongM: parsePolygonMetres(rawPoint.alongM),
-        depthM: parsePolygonMetres(rawPoint.depthM),
-      };
-      if (
-        !Number.isFinite(point.alongM) ||
-        !Number.isFinite(point.depthM) ||
-        !Number.isFinite(rawPoint.numericAlongM) ||
-        !Number.isFinite(rawPoint.numericDepthM)
-      ) {
+      const resolvedPoint = resolveDrawOutlinePreviewPoint({
+        rawPoint,
+        state: drawOutlineState,
+        shiftKey,
+      });
+      const point = resolvedPoint ? parseDrawOutlineCanvasPoint(resolvedPoint) : null;
+      if (!resolvedPoint || !point) {
         setDrawOutlineLandingPoint(null);
         applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
         return;
       }
-      setDrawOutlineLandingPoint(rawPoint);
+      setDrawOutlineLandingPoint(resolvedPoint);
       applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, point));
     },
     [applyDrawOutlineTransition, drawOutlineState],
@@ -1704,16 +1788,20 @@ export default function ModelSpaceViewport({
         pointerId: event.pointerId,
         clientX: event.clientX,
         clientY: event.clientY,
+        shiftKey: event.shiftKey,
       });
     },
     [clearViewportEditSessions, drawOutlineState, handleDrawOutlineCanvasPointerDown, startPinchZoomSessionFromActiveTouches],
   );
 
-  const handleScrollerPointerMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
+    const handleScrollerPointerMove = useCallback(
+      (event: ReactPointerEvent<HTMLDivElement>) => {
       if (!isDrawOutlineActive(drawOutlineState) || isViewportMousePanIgnoredTarget(event.target)) return;
       if (drawOutlinePointerSessionRef.current?.hasPanned) return;
-      handleDrawOutlinePointHover(drawOutlineCanvasPointResolverRef.current?.(event.clientX, event.clientY) ?? null);
+      handleDrawOutlinePointHover(
+        drawOutlineCanvasPointResolverRef.current?.(event.clientX, event.clientY) ?? null,
+        event.shiftKey,
+      );
     },
     [drawOutlineState, handleDrawOutlinePointHover],
   );
@@ -2283,8 +2371,6 @@ export default function ModelSpaceViewport({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isDrawOutlineActive(drawOutlineState) && event.key === 'Enter') {
-        event.preventDefault();
-        handleDrawOutlineConfirmSegment();
         return;
       }
       if (isDrawOutlineActive(drawOutlineState) && event.key === 'Backspace') {
@@ -2325,7 +2411,6 @@ export default function ModelSpaceViewport({
     deckDragSession,
     drawOutlineState,
     handleDrawOutlineCancel,
-    handleDrawOutlineConfirmSegment,
     handleDrawOutlineUndo,
     openingDragSession,
   ]);
@@ -2363,6 +2448,8 @@ export default function ModelSpaceViewport({
   const drawOutlineHasError = drawOutlineViewModel.diagnosticState === 'error';
   const drawOutlineDiagnosticState = drawOutlineViewModel.diagnosticState;
   const drawOutlineStatusCopy = drawOutlineStatusText(drawOutlineDiagnosticState);
+  const drawOutlineLockedDistanceDraft = drawOutlineViewModel.lockedDistanceDraft;
+  const drawOutlinePreviewSource = drawOutlineViewModel.previewSource;
   const isCustomPolygonFootprint = view === 'plan' && (planModel?.houseFootprintMode ?? 'preset') === 'custom_polygon';
   const hasExistingCustomPolygon = isCustomPolygonFootprint && (planModel?.houseFootprintPolygon?.length ?? 0) >= 3;
   const hasDeckSeedPolygon = deckOutlineMode && (drawOutlineSeedPolygon?.length ?? 0) >= 3;
@@ -2719,6 +2806,10 @@ export default function ModelSpaceViewport({
       customPolygonCloseReady: drawOutlineCloseReady,
       customPolygonCloseHovered: drawOutlineCloseHovered,
       customPolygonLandingPoint: activeDrawOutlineLandingPoint,
+      customPolygonLockedDistanceM:
+        drawOutlineLockedDistanceDraft && Number.isFinite(Number.parseFloat(drawOutlineLockedDistanceDraft))
+          ? Number.parseFloat(drawOutlineLockedDistanceDraft)
+          : null,
       customPolygonHasError: drawOutlineHasError,
       hideHouseFootprint: deckOutlineMode ? false : drawOutlineViewModel.hideHouseFootprint,
       isContextHovered: footprintContextHovered,
@@ -2760,6 +2851,7 @@ export default function ModelSpaceViewport({
     drawOutlineConfirmedPointCount,
     drawOutlineHasError,
     activeDrawOutlineLandingPoint,
+    drawOutlineLockedDistanceDraft,
     drawOutlinePreviewPointKind,
     drawOutlinePreviewPolygon,
     drawOutlineSeedPolygon,
@@ -2829,6 +2921,9 @@ export default function ModelSpaceViewport({
         data-draw-outline-gesture={drawOutlineGesture}
         data-draw-outline-pan-threshold-px={DRAW_OUTLINE_PAN_THRESHOLD_PX}
         data-draw-outline-angle-mode={drawOutlineViewModel.angleMode}
+        data-draw-outline-preview-source={drawOutlinePreviewSource}
+        data-draw-outline-locked-distance-draft={drawOutlineLockedDistanceDraft ?? ''}
+        data-draw-outline-length-locked={drawOutlineLockedDistanceDraft ? 'true' : 'false'}
         data-draw-outline-has-error={drawOutlineHasError ? 'true' : 'false'}
         data-draw-outline-can-redraw={canRedrawDrawOutline ? 'true' : 'false'}
         data-draw-outline-redraw-active={drawOutlineRedrawActive ? 'true' : 'false'}
@@ -2956,6 +3051,23 @@ export default function ModelSpaceViewport({
                 onChange={(event) =>
                   setDrawOutlineState((current) => setDrawOutlineDistanceDraft(current, event.target.value).state)
                 }
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleDrawOutlineCancel();
+                    return;
+                  }
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const result = armDrawOutlineDistanceLock(drawOutlineState);
+                  if (result.error) {
+                    setFootprintError(result.error);
+                    return;
+                  }
+                  applyDrawOutlineTransition(result);
+                }}
               />
             </label>
             <label className={styles.popoverField}>
@@ -2968,8 +3080,18 @@ export default function ModelSpaceViewport({
                 onChange={(event) =>
                   setDrawOutlineState((current) => setDrawOutlineAngleDraft(current, event.target.value).state)
                 }
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleDrawOutlineCancel();
+                  }
+                }}
               />
             </label>
+            {drawOutlineLockedDistanceDraft ? (
+              <p className={styles.drawHint}>Next click uses locked length {drawOutlineLockedDistanceDraft}m.</p>
+            ) : null}
             <button type="button" className={styles.confirmButton} onClick={handleDrawOutlineConfirmSegment} disabled={!activeDrawOutlineState.points.length}>
               Confirm
             </button>
