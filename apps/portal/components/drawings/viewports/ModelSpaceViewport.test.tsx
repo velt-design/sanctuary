@@ -2258,7 +2258,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('pans instead of placing a draw outline point after crossing the drag threshold outside the pergola outline', () => {
+  it('cancels draw outline point placement after crossing the left-drag threshold outside the pergola outline', () => {
     const drawing = makeDrawingModule();
     const commitFootprintEdit = vi.fn(() => ({ ok: true }));
     const onViewportTransformChange = vi.fn();
@@ -2294,15 +2294,10 @@ describe('ModelSpaceViewport', () => {
       drawOutlineActive: 'true',
       drawOutlineState: 'first-point',
       drawOutlinePointCount: '0',
-      drawOutlineGesture: 'panning',
+      drawOutlineGesture: 'drag-cancelled',
       drawOutlinePreviewKind: 'none',
     });
-    expect(onViewportTransformChange).toHaveBeenCalledWith(
-      expect.objectContaining({
-        panX: viewportTransform.panX + 16,
-        panY: viewportTransform.panY + 10,
-      }),
-    );
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
 
     dispatchPointer(window, 'pointerup', { pointerId: 11, button: 0, clientX: 36, clientY: -2 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
@@ -2357,7 +2352,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('keeps inactive model-space drag panning unchanged', () => {
+  it('starts inactive model-space panning only from the right mouse button', () => {
     const drawing = makeDrawingModule();
     const onViewportTransformChange = vi.fn();
     const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
@@ -2381,7 +2376,18 @@ describe('ModelSpaceViewport', () => {
     if (!scroller) throw new Error('Missing model-space scroller.');
 
     dispatchPointer(scroller, 'pointerdown', { pointerId: 13, button: 0, clientX: 100, clientY: 120 });
-    dispatchPointer(window, 'pointermove', { pointerId: 13, button: 0, clientX: 116, clientY: 130 });
+    dispatchPointer(window, 'pointermove', { pointerId: 13, button: 0, buttons: 1, clientX: 116, clientY: 130 });
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 13, button: 0, clientX: 116, clientY: 130 });
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      drawOutlineActive: 'false',
+      drawOutlineGesture: 'idle',
+      modelSpaceGesture: 'idle',
+    });
+
+    dispatchPointer(scroller, 'pointerdown', { pointerId: 14, button: 2, clientX: 100, clientY: 120 });
+    dispatchPointer(window, 'pointermove', { pointerId: 14, button: 2, buttons: 2, clientX: 116, clientY: 130 });
     expect(onViewportTransformChange).toHaveBeenCalledWith(
       expect.objectContaining({
         panX: viewportTransform.panX + 16,
@@ -2389,7 +2395,7 @@ describe('ModelSpaceViewport', () => {
       }),
     );
 
-    dispatchPointer(window, 'pointerup', { pointerId: 13, button: 0, clientX: 116, clientY: 130 });
+    dispatchPointer(window, 'pointerup', { pointerId: 14, button: 2, clientX: 116, clientY: 130 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       drawOutlineActive: 'false',
       drawOutlineGesture: 'idle',
@@ -2565,6 +2571,87 @@ describe('ModelSpaceViewport', () => {
     expect(getDrawOutlineLockedRadiusMarker(rendered.container)).toBeNull();
     expect(rendered.container.querySelector('[data-footprint-custom-preview-edge="locked-distance"]')).toBeNull();
     expect(commitFootprintEdit).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('right-drags a selected house-first opening hit target to pan instead of starting opening drag', async () => {
+    const house = makeHouseFirstHouse({
+      openings: [makeHouseFirstOpening()],
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness initialHouse={house} initialSelection={{ kind: 'opening', targetId: 'opening-1' }} />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const openingHit = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(openingHit, 'pointerdown', { pointerId: 62, button: 2, clientX: 50, clientY: 50 });
+    expect(scroller.dataset.modelSpaceGesture).toBe('mouse-pan');
+
+    dispatchPointer(window, 'pointermove', { pointerId: 62, button: 2, buttons: 2, clientX: 250, clientY: 50 });
+    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 62, button: 2, clientX: 250, clientY: 50 });
+    expect(scroller.dataset.modelSpaceGesture).toBe('idle');
+    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).toBe('0.6');
+
+    rendered.unmount();
+  });
+
+  it('right-drags custom-vertex hit targets to pan instead of moving a footprint vertex', () => {
+    const drawing = makeDrawingModule();
+    const commitFootprintEdit = vi.fn(() => ({ ok: true }));
+    const onViewportTransformChange = vi.fn();
+    const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
+    const renderViewport = (drawOutlineRequestId = 0) => (
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={makePlanModelWithHouseContext()}
+        sectionModel={drawing.sectionModel}
+        planViewModel={null}
+        drawOutlineRequestId={drawOutlineRequestId}
+        viewportTransform={viewportTransform}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={commitFootprintEdit}
+      />
+    );
+
+    const rendered = renderIntoDocument(renderViewport());
+    rendered.rerender(renderViewport(1));
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing module plan SVG.');
+    installSvgPointMock(svg);
+
+    dispatchDrawClick(svg, { button: 0, clientX: 45, clientY: 28 });
+    const vertexHit = rendered.container.querySelector('[data-footprint-custom-vertex-hit="0"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!vertexHit || !scroller) throw new Error('Missing custom vertex hit target.');
+
+    onViewportTransformChange.mockClear();
+    dispatchPointer(vertexHit, 'pointerdown', { pointerId: 63, button: 2, clientX: 45, clientY: 28 });
+    dispatchPointer(window, 'pointermove', { pointerId: 63, button: 2, buttons: 2, clientX: 61, clientY: 40 });
+
+    expect(scroller.dataset.modelSpaceGesture).toBe('mouse-pan');
+    expect(onViewportTransformChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        panX: viewportTransform.panX + 16,
+        panY: viewportTransform.panY + 12,
+      }),
+    );
+    expect(commitFootprintEdit).not.toHaveBeenCalled();
+    expect(rendered.container.querySelector('[data-footprint-custom-vertex="0"]')).not.toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 63, button: 2, clientX: 61, clientY: 40 });
+    expect(scroller.dataset.modelSpaceGesture).toBe('idle');
 
     rendered.unmount();
   });
@@ -3039,7 +3126,7 @@ describe('ModelSpaceViewport', () => {
       ),
     ).toBeNull();
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Drag the selected deck body to move it near the house edge or out in free space',
+      'Drag the selected deck body to move it near the house edge or into floating placement',
     );
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
       'preset_snapped',
@@ -3383,7 +3470,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('treats free preset decks as fully interactive and exposes witness dimensions', async () => {
+  it('treats floating preset decks as fully interactive and exposes witness dimensions', async () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
       presetType: 'rect_detached',
@@ -3421,13 +3508,13 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')).toBeNull();
     expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
-      'preset_free',
+      'preset_floating',
     );
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-relationship"]')?.textContent).toBe(
       'true',
     );
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'move it near the house edge or out in free space',
+      'move it near the house edge or into floating placement',
     );
 
     rendered.unmount();

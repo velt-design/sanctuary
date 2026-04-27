@@ -2,6 +2,7 @@ import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import type {
+  DeckFloatingPresetRect,
   DeckPresetRect,
   DeckElevationMode,
   DeckKind,
@@ -785,6 +786,23 @@ function normalizeDeckPresetRect(
   };
 }
 
+function normalizeDeckFloatingPresetRect(
+  value: DeckFloatingPresetRect | null | undefined,
+): DeckFloatingPresetRect | null {
+  if (!value || typeof value !== 'object') return null;
+  const centerAlongM = trimNullableString(value.centerAlongM ?? null);
+  const centerDepthM = trimNullableString(value.centerDepthM ?? null);
+  const widthM = trimNullableString(value.widthM ?? null);
+  const depthM = trimNullableString(value.depthM ?? null);
+  if (!centerAlongM || !centerDepthM || !widthM || !depthM) return null;
+  return {
+    centerAlongM,
+    centerDepthM,
+    widthM,
+    depthM,
+  };
+}
+
 function normalizeHouseFirstDeckDraft(
   deck: HouseFirstDeckDraft | null | undefined,
 ): HouseFirstDeckDraft | null {
@@ -797,6 +815,9 @@ function normalizeHouseFirstDeckDraft(
     ...(isDeckShape(deck.shape) ? { shape: deck.shape } : null),
     ...(isDeckPresetType(deck.presetType) ? { presetType: deck.presetType } : null),
     ...(normalizeDeckPresetRect(deck.presetRect) ? { presetRect: normalizeDeckPresetRect(deck.presetRect) } : null),
+    ...(normalizeDeckFloatingPresetRect(deck.floatingRect)
+      ? { floatingRect: normalizeDeckFloatingPresetRect(deck.floatingRect) }
+      : null),
     ...(outline.length ? { outline } : null),
     ...(isDeckElevationMode(deck.elevationMode) ? { elevationMode: deck.elevationMode } : null),
     ...(trimNullableString(deck.levelOffsetMm ?? null)

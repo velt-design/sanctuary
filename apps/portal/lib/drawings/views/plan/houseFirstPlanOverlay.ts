@@ -9,6 +9,7 @@ import type {
   HouseModel,
   WorkbenchHouseSelection,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import { resolveDeckPlacementMode } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   buildDeckReferenceHousePolygon,
   resolveDeckHostEdgeFrame,
@@ -26,7 +27,7 @@ export type HouseFirstPlanHousePolygonSource = 'custom_saved' | 'preset_derived'
 
 export type HouseFirstPlanDeckInteraction = {
   kind: 'preset_rect';
-  placement: 'snapped' | 'free';
+  placement: 'snapped' | 'floating';
   hostEdgeId: AttachmentSide;
   hostEdgeStart: PlanPoint;
   hostEdgeEnd: PlanPoint;
@@ -1417,7 +1418,7 @@ function buildDeckPresetAnnotations(input: {
         polygon: input.deckPolygon,
       }));
   if (referenceFrame && referenceProjection) {
-    const placement = input.deckInteraction?.placement ?? (input.deck.isAttached ? 'snapped' : 'free');
+    const placement = input.deckInteraction?.placement ?? resolveDeckPlacementMode(input.deck.isAttached);
     const pointOnFrame = (frame: HouseFirstPlanDeckReferenceFrame, alongM: number, outM: number): PlanPoint => ({
       x: frame.hostEdgeStart.x + frame.alongUnitX * (alongM - frame.spanStartM) + frame.outwardUnitX * outM,
       y: frame.hostEdgeStart.y + frame.alongUnitY * (alongM - frame.spanStartM) + frame.outwardUnitY * outM,
@@ -1585,7 +1586,7 @@ function buildPresetDeckInteraction(input: {
 
   return {
     kind: 'preset_rect',
-    placement: input.deck.isAttached ? 'snapped' : 'free',
+    placement: resolveDeckPlacementMode(input.deck.isAttached),
     hostEdgeId,
     hostEdgeStart: primaryFrame.hostEdgeStart,
     hostEdgeEnd: primaryFrame.hostEdgeEnd,
@@ -1623,7 +1624,7 @@ function buildDeckDragEligibility(input: {
   }
   return {
     eligible: true,
-    reason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
+    reason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
   };
 }
 

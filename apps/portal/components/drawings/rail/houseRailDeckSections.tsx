@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { HouseFirstDeckDraft, HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import { resolveDeckPlacementMode, type HouseFirstDeckDraft, type HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './houseRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
@@ -46,6 +46,7 @@ export function buildHouseRailDeckSections({
   runDeckAction,
 }: BuildHouseRailDeckSectionsInput): ReactNode[] {
   const activeDeck = house?.decks.find((deck) => deck.id === activeDeckId) ?? house?.decks[0] ?? null;
+  const activeDeckPlacement = activeDeck ? resolveDeckPlacementMode(activeDeck.isAttached) : null;
   const deckValidationSummary = activeDeck ? resolveDeckValidationSummary(activeDeck) : null;
   const deckWarningSummaries = activeDeck ? resolveDeckWarningSummaries(activeDeck) : [];
   const deckButtons: ReactNode[] = [
@@ -101,13 +102,13 @@ export function buildHouseRailDeckSections({
     <div key="deck-active-summary" className={styles.inlineMeta}>
       <span className={styles.inlineLabel}>Editing</span>
       <span className={styles.inlineValue}>
-        {activeDeck.isAttached ? 'Snapped to house edge' : 'Free in space'}{' '}
+        {activeDeckPlacement === 'snapped' ? 'Snapped to house edge' : 'Floating relative to house'}{' '}
         {activeDeck.shape === 'preset' ? 'rectangular preset' : 'custom outline'}
       </span>
     </div>,
     <p key="deck-selection-hint" className={styles.fieldHint}>
       {activeDeck.shape === 'preset'
-        ? 'Only the selected deck shows active dimensions in plan/model space. Rectangular presets can be dragged in Model Space, snap to the house edge, or sit free in space with witness dimensions.'
+        ? 'Only the selected deck shows active dimensions in plan/model space. Rectangular presets can be dragged in Model Space, snap to the house edge, or sit in floating placement with witness dimensions.'
         : 'Only the selected deck shows active dimensions in plan/model space. Secondary decks stay visible but muted.'}
     </p>,
     activeDeck.shape === 'custom' ? (
@@ -157,7 +158,7 @@ export function buildHouseRailDeckSections({
       helperText={
         activeDeck.isAttached
           ? 'The snapped preset rectangle rebuilds fully outside this edge.'
-          : 'This edge is the sticky house reference for width, depth, and free-space witness dimensions.'
+          : 'This edge is the current witness reference for width, depth, and floating-placement dimensions.'
       }
       onCommit={(value) =>
         runDeckAction(
@@ -275,7 +276,7 @@ export function buildHouseRailDeckSections({
     if (activeDeck.isAttached) {
       deckButtons.push(
         <p key="deck-model-space-hint" className={styles.fieldHint}>
-          In Model Space, select this deck to edit width/depth plus host-edge start and end gaps. Drag the deck body to move it along the house edge or pull it free into space.
+          In Model Space, select this deck to edit width/depth plus host-edge start and end gaps. Drag the deck body to move it along the house edge or pull it into floating placement.
         </p>,
       );
     }
@@ -288,7 +289,7 @@ export function buildHouseRailDeckSections({
           value={activeDeck.presetRect?.detachedGapM ?? ''}
           disabled={disabled}
           error={fieldErrors[`deck-detached-gap-${activeDeck.id}`]}
-          helperText="Perpendicular clearance from the sticky house reference edge."
+          helperText="Perpendicular clearance from the current witness reference edge."
           onCommit={(value) =>
             runDeckAction(
               `deck-detached-gap-${activeDeck.id}`,

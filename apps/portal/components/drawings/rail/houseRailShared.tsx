@@ -125,7 +125,7 @@ export function resolveDeckValidationSummary(deck: HouseModel['decks'][number]):
     return 'Preset decks snapped to the house need a host edge before the rectangle can rebuild cleanly.';
   }
   if (codes.has('detached_threshold_alignment')) {
-    return 'Free decks cannot stay threshold aligned. Use ground or stepped elevation instead.';
+    return 'Floating decks cannot stay threshold aligned. Use ground or stepped elevation instead.';
   }
   if (codes.has('self_intersecting_outline')) {
     return 'This custom outline folds back through itself. Redraw the outline or switch back to a rectangular preset.';
@@ -143,7 +143,7 @@ export function resolveDeckWarningSummaries(deck: HouseModel['decks'][number]): 
       case 'insufficient_host_edge_contact':
         return 'The deck barely contacts the selected host edge. Widen it or reduce the center offset to keep the snapped placement legible.';
       case 'detached_too_close_to_house':
-        return 'This free deck is sitting too close to the house. Increase the reference edge gap or pull it farther out into space.';
+        return 'This floating deck is sitting too close to the house. Increase the reference edge gap or pull it farther out into space.';
       case 'threshold_alignment_offset':
         return 'Threshold-aligned decks should stay close to the house datum. Reduce the level offset if this is meant to read as a snapped landing.';
       case 'unsupported_house_intersection':

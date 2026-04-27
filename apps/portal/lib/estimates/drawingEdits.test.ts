@@ -334,6 +334,12 @@ describe('drawingEdits', () => {
             centerOffsetM: '0.4',
             detachedGapM: '0.6',
           },
+          floatingRect: {
+            centerAlongM: '5',
+            centerDepthM: '-2.1',
+            widthM: '3.6',
+            depthM: '3',
+          },
           outline: [
             { alongM: '0', depthM: '0' },
             { alongM: '3.6', depthM: '0' },
@@ -351,6 +357,12 @@ describe('drawingEdits', () => {
       depthM: '3',
       centerOffsetM: '0.4',
       detachedGapM: '0.6',
+    });
+    expect(nextDraft.houseFirst?.decks?.[0]?.floatingRect).toEqual({
+      centerAlongM: '5',
+      centerDepthM: '-2.1',
+      widthM: '3.6',
+      depthM: '3',
     });
   });
 });

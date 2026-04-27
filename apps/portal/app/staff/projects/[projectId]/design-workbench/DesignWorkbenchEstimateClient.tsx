@@ -403,8 +403,8 @@ export default function DesignWorkbenchEstimateClient({
               <span className={styles.diagnosticValue}>{store.derived.snappedPresetDeckCount}</span>
             </div>
             <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Preset decks free</span>
-              <span className={styles.diagnosticValue}>{store.derived.freePresetDeckCount}</span>
+              <span className={styles.diagnosticLabel}>Preset decks floating</span>
+              <span className={styles.diagnosticValue}>{store.derived.floatingPresetDeckCount}</span>
             </div>
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Custom decks</span>

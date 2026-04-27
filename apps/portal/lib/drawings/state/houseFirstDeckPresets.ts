@@ -3,7 +3,11 @@ import type {
   CalculatorHouseFootprintParams,
   CalculatorHouseFootprintPolygonPoint,
 } from '@/lib/types/calculator';
-import type { DeckPresetRect, HouseFirstDeckDraft } from './houseFirstWorkbenchModel';
+import type {
+  DeckFloatingPresetRect,
+  DeckPresetRect,
+  HouseFirstDeckDraft,
+} from './houseFirstWorkbenchModel';
 
 type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 
@@ -55,6 +59,12 @@ function clamp(value: number, min: number, max: number): number {
 function normalizeHostEdgeId(value: string | null | undefined): AttachmentSide {
   if (value === 'front' || value === 'left' || value === 'right') return value;
   return 'rear';
+}
+
+function resolveDeckGeometryHostEdgeId(value: string | null | undefined): string {
+  const exactHostEdgeId = normalizeExactHostEdgeId(value);
+  if (exactHostEdgeId) return exactHostEdgeId;
+  return normalizeHostEdgeId(value);
 }
 
 export function parseDeckLocalPolygon(
@@ -391,6 +401,39 @@ export function sanitizeDeckPresetRect(input: {
   };
 }
 
+export function sanitizeDeckFloatingPresetRect(
+  value: Partial<DeckFloatingPresetRect> | null | undefined,
+  fallbackValue?: DeckFloatingPresetRect | null | undefined,
+): DeckFloatingPresetRect | null {
+  const widthM = Math.max(
+    MIN_DECK_WIDTH_M,
+    parseFiniteDeckMetres(value?.widthM ?? null) ??
+      parseFiniteDeckMetres(fallbackValue?.widthM ?? null) ??
+      DEFAULT_DETACHED_DECK_WIDTH_M,
+  );
+  const depthM = Math.max(
+    MIN_DECK_DEPTH_M,
+    parseFiniteDeckMetres(value?.depthM ?? null) ??
+      parseFiniteDeckMetres(fallbackValue?.depthM ?? null) ??
+      DEFAULT_DETACHED_DECK_DEPTH_M,
+  );
+  const centerAlongM =
+    parseFiniteDeckMetres(value?.centerAlongM ?? null) ??
+    parseFiniteDeckMetres(fallbackValue?.centerAlongM ?? null);
+  const centerDepthM =
+    parseFiniteDeckMetres(value?.centerDepthM ?? null) ??
+    parseFiniteDeckMetres(fallbackValue?.centerDepthM ?? null);
+
+  if (!Number.isFinite(centerAlongM) || !Number.isFinite(centerDepthM)) return null;
+
+  return {
+    centerAlongM: formatDeckMetres(centerAlongM),
+    centerDepthM: formatDeckMetres(centerDepthM),
+    widthM: formatDeckMetres(widthM),
+    depthM: formatDeckMetres(depthM),
+  };
+}
+
 export function buildRectangularDeckOutline(input: {
   housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
   hostEdgeId: string | null | undefined;
@@ -444,6 +487,31 @@ export function buildRectangularDeckOutline(input: {
   ];
 }
 
+export function buildFloatingDeckOutline(input: {
+  floatingRect: Partial<DeckFloatingPresetRect> | null | undefined;
+}): CalculatorHouseFootprintPolygonPoint[] {
+  const floatingRect = sanitizeDeckFloatingPresetRect(input.floatingRect);
+  if (!floatingRect) return [];
+
+  const centerAlongM = Number(floatingRect.centerAlongM);
+  const centerDepthM = Number(floatingRect.centerDepthM);
+  const widthM = Number(floatingRect.widthM);
+  const depthM = Number(floatingRect.depthM);
+  const halfWidthM = widthM / 2;
+  const halfDepthM = depthM / 2;
+  const minAlong = centerAlongM - halfWidthM;
+  const maxAlong = centerAlongM + halfWidthM;
+  const minDepth = centerDepthM - halfDepthM;
+  const maxDepth = centerDepthM + halfDepthM;
+
+  return [
+    { alongM: formatDeckMetres(minAlong), depthM: formatDeckMetres(minDepth) },
+    { alongM: formatDeckMetres(maxAlong), depthM: formatDeckMetres(minDepth) },
+    { alongM: formatDeckMetres(maxAlong), depthM: formatDeckMetres(maxDepth) },
+    { alongM: formatDeckMetres(minAlong), depthM: formatDeckMetres(maxDepth) },
+  ];
+}
+
 export function inferDeckPresetRectFromOutline(input: {
   housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
   hostEdgeId: string | null | undefined;
@@ -486,16 +554,38 @@ export function inferDeckPresetRectFromOutline(input: {
   });
 }
 
+export function inferDeckFloatingPresetRectFromOutline(input: {
+  outline: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+}): DeckFloatingPresetRect | null {
+  const outline = parseDeckLocalPolygon(input.outline);
+  if (outline.length < 3) return null;
+
+  const alongValues = outline.map((point) => point.alongM);
+  const depthValues = outline.map((point) => point.depthM);
+  const minAlong = Math.min(...alongValues);
+  const maxAlong = Math.max(...alongValues);
+  const minDepth = Math.min(...depthValues);
+  const maxDepth = Math.max(...depthValues);
+
+  return sanitizeDeckFloatingPresetRect({
+    centerAlongM: formatDeckMetres((minAlong + maxAlong) / 2),
+    centerDepthM: formatDeckMetres((minDepth + maxDepth) / 2),
+    widthM: formatDeckMetres(Math.max(MIN_DECK_WIDTH_M, maxAlong - minAlong)),
+    depthM: formatDeckMetres(Math.max(MIN_DECK_DEPTH_M, maxDepth - minDepth)),
+  });
+}
+
 export function resolveDeckPresetGeometry(input: {
   deck: HouseFirstDeckDraft;
   housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
 }): {
   hostEdgeId: AttachmentSide | string | null;
   presetRect: DeckPresetRect | null;
+  floatingRect: DeckFloatingPresetRect | null;
   outline: CalculatorHouseFootprintPolygonPoint[];
 } {
   const attached = Boolean(input.deck.isAttached);
-  const fallbackHostEdgeId = normalizeHostEdgeId(input.deck.hostEdgeId);
+  const fallbackHostEdgeId = resolveDeckGeometryHostEdgeId(input.deck.hostEdgeId);
   const hostEdgeId = input.deck.shape === 'preset' ? fallbackHostEdgeId : input.deck.hostEdgeId ?? null;
   const inferredPresetRect =
     input.deck.shape === 'preset'
@@ -512,11 +602,13 @@ export function resolveDeckPresetGeometry(input: {
           housePolygon: input.housePolygon,
           hostEdgeId: fallbackHostEdgeId,
           attached,
+          // Floating presets still keep the legacy edge-relative presetRect for compatibility,
+          // but PR2 stops using it as the geometry source of truth.
           presetRect: input.deck.presetRect ?? inferredPresetRect,
           fallbackPresetRect: inferredPresetRect,
         })
       : input.deck.presetRect ?? inferredPresetRect;
-  const outline =
+  const legacyPresetOutline =
     input.deck.shape === 'preset'
       ? buildRectangularDeckOutline({
           housePolygon: input.housePolygon,
@@ -525,11 +617,30 @@ export function resolveDeckPresetGeometry(input: {
           presetRect,
           fallbackPresetRect: inferredPresetRect,
         })
-      : input.deck.outline ?? [];
+      : [];
+  const inferredFloatingRectFromOutline =
+    input.deck.shape === 'preset' && !attached
+      ? inferDeckFloatingPresetRectFromOutline({
+          outline: input.deck.outline?.length ? input.deck.outline : legacyPresetOutline,
+        })
+      : null;
+  const floatingRect =
+    input.deck.shape === 'preset' && !attached
+      ? sanitizeDeckFloatingPresetRect(input.deck.floatingRect ?? inferredFloatingRectFromOutline, inferredFloatingRectFromOutline)
+      : null;
+  const outline =
+    input.deck.shape !== 'preset'
+      ? input.deck.outline ?? []
+      : attached
+        ? legacyPresetOutline
+        : buildFloatingDeckOutline({
+            floatingRect: floatingRect ?? inferredFloatingRectFromOutline,
+          });
 
   return {
     hostEdgeId,
     presetRect,
+    floatingRect,
     outline,
   };
 }

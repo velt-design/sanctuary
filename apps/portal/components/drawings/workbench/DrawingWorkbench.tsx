@@ -89,12 +89,12 @@ type DrawingWorkbenchProps = {
   onDeckInteractionTelemetryChange?: (telemetry: {
     selectedDeckId: string | null;
     housePolygonSource: 'custom_saved' | 'preset_derived' | null;
-    selectedDeckType: 'none' | 'preset_snapped' | 'preset_free' | 'custom_outline' | 'preset_unresolved';
+    selectedDeckType: 'none' | 'preset_snapped' | 'preset_floating' | 'custom_outline' | 'preset_unresolved';
     dragEligible: boolean;
     dragReason: string | null;
     hostEdgeResolvable: boolean;
     relationshipDimensionsAvailable: boolean;
-    snapState: 'idle' | 'free' | 'snapped';
+    snapState: 'idle' | 'floating' | 'snapped';
     snapMessage: string | null;
   }) => void;
 };

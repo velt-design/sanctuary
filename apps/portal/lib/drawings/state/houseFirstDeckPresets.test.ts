@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildDeckReferenceHousePolygon,
+  buildFloatingDeckOutline,
   buildRectangularDeckOutline,
+  inferDeckFloatingPresetRectFromOutline,
   inferDeckPresetRectFromOutline,
+  resolveDeckPresetGeometry,
   sanitizeDeckPresetRect,
 } from './houseFirstDeckPresets';
 
@@ -137,7 +140,7 @@ describe('houseFirstDeckPresets', () => {
     ).toEqual({
       widthM: '3.6',
       depthM: '3',
-      centerOffsetM: '2.2',
+      centerOffsetM: '4',
       detachedGapM: '0.2',
     });
   });
@@ -219,5 +222,126 @@ describe('houseFirstDeckPresets', () => {
       { alongM: '0', depthM: '6' },
       { alongM: '0', depthM: '2' },
     ]);
+  });
+
+  it('builds floating preset outlines from local-space world rects', () => {
+    expect(
+      buildFloatingDeckOutline({
+        floatingRect: {
+          centerAlongM: '6.5',
+          centerDepthM: '5.5',
+          widthM: '4',
+          depthM: '2',
+        },
+      }),
+    ).toEqual([
+      { alongM: '4.5', depthM: '4.5' },
+      { alongM: '8.5', depthM: '4.5' },
+      { alongM: '8.5', depthM: '6.5' },
+      { alongM: '4.5', depthM: '6.5' },
+    ]);
+  });
+
+  it('infers floating preset rects directly from detached outlines', () => {
+    expect(
+      inferDeckFloatingPresetRectFromOutline({
+        outline: [
+          { alongM: '2.2', depthM: '-3.6' },
+          { alongM: '5.8', depthM: '-3.6' },
+          { alongM: '5.8', depthM: '-0.6' },
+          { alongM: '2.2', depthM: '-0.6' },
+        ],
+      }),
+    ).toEqual({
+      centerAlongM: '4',
+      centerDepthM: '-2.1',
+      widthM: '3.6',
+      depthM: '3',
+    });
+  });
+
+  it('hydrates legacy detached presets into floating rects without moving them', () => {
+    const legacyOutline = [
+      { alongM: '2.2', depthM: '-3.6' },
+      { alongM: '5.8', depthM: '-3.6' },
+      { alongM: '5.8', depthM: '-0.6' },
+      { alongM: '2.2', depthM: '-0.6' },
+    ];
+
+    expect(
+      resolveDeckPresetGeometry({
+        deck: {
+          id: 'deck-1',
+          shape: 'preset',
+          presetType: 'rect_detached',
+          hostEdgeId: 'rear',
+          isAttached: false,
+          outline: legacyOutline,
+        },
+        housePolygon: HOUSE_POLYGON,
+      }),
+    ).toEqual({
+      hostEdgeId: 'rear',
+      presetRect: {
+        widthM: '3.6',
+        depthM: '3',
+        centerOffsetM: '0',
+        detachedGapM: '0.6',
+      },
+      floatingRect: {
+        centerAlongM: '4',
+        centerDepthM: '-2.1',
+        widthM: '3.6',
+        depthM: '3',
+      },
+      outline: legacyOutline,
+    });
+  });
+
+  it('uses floating preset rects as the geometry source of truth for detached presets', () => {
+    expect(
+      resolveDeckPresetGeometry({
+        deck: {
+          id: 'deck-2',
+          shape: 'preset',
+          presetType: 'rect_detached',
+          hostEdgeId: 'rear',
+          isAttached: false,
+          presetRect: {
+            widthM: '3.6',
+            depthM: '3',
+            centerOffsetM: '0',
+            detachedGapM: '0.6',
+          },
+          floatingRect: {
+            centerAlongM: '7',
+            centerDepthM: '5',
+            widthM: '4',
+            depthM: '2',
+          },
+        },
+        housePolygon: HOUSE_POLYGON,
+      }),
+    ).toEqual({
+      hostEdgeId: 'rear',
+      presetRect: {
+        widthM: '3.6',
+        depthM: '3',
+        centerOffsetM: '0',
+        detachedGapM: '0.6',
+      },
+      floatingRect: {
+        centerAlongM: '7',
+        centerDepthM: '5',
+        widthM: '4',
+        depthM: '2',
+      },
+      outline: [
+        { alongM: '5', depthM: '4' },
+        { alongM: '9', depthM: '4' },
+        { alongM: '9', depthM: '6' },
+        { alongM: '5', depthM: '6' },
+      ],
+    });
   });
 });

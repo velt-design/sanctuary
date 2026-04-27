@@ -798,6 +798,7 @@ function buildSharedDecks(input: {
             ? 'rect_attached'
             : null,
       presetRect: presetGeometry.presetRect,
+      floatingRect: presetGeometry.floatingRect,
       outline,
       elevationMode:
         draft.elevationMode === 'aligned_to_threshold' || draft.elevationMode === 'stepped'

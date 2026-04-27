@@ -437,10 +437,10 @@ test('drawing workbench draw outline fixture places the first point at the landi
 
   const transformBeforeDrag = await scaleFrame.evaluate((node) => getComputedStyle(node).transform);
   await page.mouse.move(hoverPoint.x, hoverPoint.y);
-  await page.mouse.down();
+  await page.mouse.down({ button: 'right' });
   await page.mouse.move(hoverPoint.x + 34, hoverPoint.y + 18);
-  await expect(scroller).toHaveAttribute('data-draw-outline-gesture', 'panning');
-  await page.mouse.up();
+  await expect(scroller).toHaveAttribute('data-model-space-gesture', 'mouse-pan');
+  await page.mouse.up({ button: 'right' });
   await expect(scroller).toHaveAttribute('data-draw-outline-gesture', 'idle');
   await expect(scroller).toHaveAttribute('data-draw-outline-point-count', '0');
   await expect(scroller).toHaveAttribute('data-draw-outline-state', 'first-point');
@@ -465,6 +465,22 @@ test('drawing workbench draw outline fixture places the first point at the landi
   await expect(modelViewport.locator('[data-footprint-custom-latest-vertex="true"]')).toHaveCount(1);
   await expect(modelViewport.locator('[data-footprint-edge]').first()).toHaveCount(0);
   await expect(modelViewport.locator('[data-footprint-resize-edge-hit]').first()).toHaveCount(0);
+
+  const firstVertexHit = modelViewport.locator('[data-footprint-custom-vertex-hit="0"]').first();
+  await expect(firstVertexHit).toHaveCount(1);
+  const firstVertexBox = await firstVertexHit.boundingBox();
+  expect(firstVertexBox).not.toBeNull();
+  if (!firstVertexBox) throw new Error('Missing first vertex hit target bounds.');
+
+  const transformBeforeOverlayDrag = await scaleFrame.evaluate((node) => getComputedStyle(node).transform);
+  await page.mouse.move(firstVertexBox.x + firstVertexBox.width / 2, firstVertexBox.y + firstVertexBox.height / 2);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(firstVertexBox.x + firstVertexBox.width / 2 + 28, firstVertexBox.y + firstVertexBox.height / 2 + 16);
+  await expect(scroller).toHaveAttribute('data-model-space-gesture', 'mouse-pan');
+  await page.mouse.up({ button: 'right' });
+  await expect(scroller).toHaveAttribute('data-draw-outline-point-count', '1');
+  const transformAfterOverlayDrag = await scaleFrame.evaluate((node) => getComputedStyle(node).transform);
+  expect(transformAfterOverlayDrag).not.toBe(transformBeforeOverlayDrag);
 
   const outsidePoint = await planSvg.evaluate((svg) => {
     const ctm = svg.getScreenCTM();

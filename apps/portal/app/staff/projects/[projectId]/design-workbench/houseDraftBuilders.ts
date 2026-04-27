@@ -1,9 +1,7 @@
 import { buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import {
   buildDeckReferenceHousePolygon,
-  buildRectangularDeckOutline,
-  inferDeckPresetRectFromOutline,
-  sanitizeDeckPresetRect,
+  resolveDeckPresetGeometry,
 } from '@/lib/drawings/state/houseFirstDeckPresets';
 import type {
   HouseFirstDeckDraft,
@@ -23,6 +21,7 @@ export function toDeckDrafts(house: HouseModel | null | undefined): HouseFirstDe
     shape: deck.shape,
     presetType: deck.presetType,
     presetRect: deck.presetRect,
+    floatingRect: deck.floatingRect,
     outline: deck.outline,
     elevationMode: deck.elevationMode,
     levelOffsetMm: deck.levelOffsetMm,
@@ -98,43 +97,16 @@ export function resolveDeckDraftGeometry(input: {
   deck: HouseFirstDeckDraft;
   housePolygon: Array<{ alongM: string; depthM: string }>;
 }): HouseFirstDeckDraft {
-  const attached = Boolean(input.deck.isAttached);
-  const fallbackHostEdgeId = input.deck.hostEdgeId ?? 'rear';
-  const hostEdgeId = input.deck.shape === 'preset' ? fallbackHostEdgeId : input.deck.hostEdgeId ?? null;
-  const inferredPresetRect =
-    input.deck.shape === 'preset'
-      ? inferDeckPresetRectFromOutline({
-          housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
-          attached,
-          outline: input.deck.outline,
-        })
-      : null;
-  const presetRect =
-    input.deck.shape === 'preset'
-      ? sanitizeDeckPresetRect({
-          housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
-          attached,
-          presetRect: input.deck.presetRect ?? inferredPresetRect,
-          fallbackPresetRect: inferredPresetRect,
-        })
-      : input.deck.presetRect ?? inferredPresetRect;
-  const outline =
-    input.deck.shape === 'preset'
-      ? buildRectangularDeckOutline({
-          housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
-          attached,
-          presetRect,
-          fallbackPresetRect: inferredPresetRect,
-        })
-      : input.deck.outline ?? [];
+  const resolved = resolveDeckPresetGeometry({
+    deck: input.deck,
+    housePolygon: input.housePolygon,
+  });
 
   return {
     ...input.deck,
-    hostEdgeId,
-    presetRect,
-    outline,
+    hostEdgeId: resolved.hostEdgeId,
+    presetRect: resolved.presetRect,
+    floatingRect: resolved.floatingRect,
+    outline: resolved.outline,
   };
 }

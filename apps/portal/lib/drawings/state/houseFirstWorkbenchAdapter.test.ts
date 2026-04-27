@@ -313,6 +313,71 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       centerOffsetM: '1',
       detachedGapM: '0.6',
     });
+    expect(projectModel.house?.decks[1]?.floatingRect).toEqual({
+      centerAlongM: '4',
+      centerDepthM: '-2.1',
+      widthM: '3.6',
+      depthM: '3',
+    });
+  });
+
+  it('uses floating preset rects as detached preset geometry without discarding legacy preset fields', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      decks: [
+        {
+          id: 'deck-floating',
+          name: 'Floating deck',
+          kind: 'deck',
+          shape: 'preset',
+          presetType: 'rect_detached',
+          presetRect: {
+            widthM: '3.6',
+            depthM: '3',
+            centerOffsetM: '0.4',
+            detachedGapM: '0.6',
+          },
+          floatingRect: {
+            centerAlongM: '8',
+            centerDepthM: '5',
+            widthM: '4',
+            depthM: '2',
+          },
+          elevationMode: 'ground',
+          levelOffsetMm: '0',
+          hostEdgeId: 'rear',
+          isAttached: false,
+          surfaceMaterial: 'composite',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.decks[0]?.presetRect).toEqual({
+      widthM: '3.6',
+      depthM: '3',
+      centerOffsetM: '0.4',
+      detachedGapM: '0.6',
+    });
+    expect(projectModel.house?.decks[0]?.floatingRect).toEqual({
+      centerAlongM: '8',
+      centerDepthM: '5',
+      widthM: '4',
+      depthM: '2',
+    });
+    expect(projectModel.house?.decks[0]?.outline).toEqual([
+      { alongM: '6', depthM: '4' },
+      { alongM: '10', depthM: '4' },
+      { alongM: '10', depthM: '6' },
+      { alongM: '6', depthM: '6' },
+    ]);
   });
 
   it('preserves custom deck outlines and clamps attached preset width to the host edge length', () => {

@@ -29,6 +29,7 @@ import type {
   PergolaModel,
   WorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
+import { resolveDeckPlacementMode } from './houseFirstWorkbenchModel';
 
 export type DrawingWorkbenchModuleEntry = {
   id: string;
@@ -41,7 +42,7 @@ export type DrawingWorkbenchModuleEntry = {
 };
 
 export type WorkbenchDeckInteractionDiagnostic = {
-  selectedDeckType: 'none' | 'preset_snapped' | 'preset_free' | 'custom_outline' | 'preset_unresolved';
+  selectedDeckType: 'none' | 'preset_snapped' | 'preset_floating' | 'custom_outline' | 'preset_unresolved';
   dragEligible: boolean;
   dragReason: string | null;
   hostEdgeResolvable: boolean;
@@ -78,7 +79,7 @@ export type DrawingWorkbenchStore = {
     sliderOpeningCount: number;
     invalidOpeningCount: number;
     snappedPresetDeckCount: number;
-    freePresetDeckCount: number;
+    floatingPresetDeckCount: number;
     customDeckCount: number;
     invalidDeckCount: number;
     deckSupportWarningCount: number;
@@ -131,9 +132,9 @@ function buildDeckInteractionDiagnostic(
   }
 
   return {
-    selectedDeckType: deck.isAttached ? 'preset_snapped' : 'preset_free',
+    selectedDeckType: resolveDeckPlacementMode(deck.isAttached) === 'snapped' ? 'preset_snapped' : 'preset_floating',
     dragEligible: true,
-    dragReason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
+    dragReason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
     hostEdgeResolvable: true,
     relationshipDimensionsAvailable: true,
   };
@@ -324,7 +325,7 @@ export function buildDrawingWorkbenchStore(input: {
       sliderOpeningCount: openings.filter((opening) => opening.kind === 'slider').length,
       invalidOpeningCount: openings.filter((opening) => opening.validation.status === 'invalid').length,
       snappedPresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && deck.isAttached).length,
-      freePresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && !deck.isAttached).length,
+      floatingPresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && !deck.isAttached).length,
       customDeckCount: decks.filter((deck) => deck.shape === 'custom').length,
       invalidDeckCount: decks.filter((deck) => deck.validation.status === 'invalid').length,
       deckSupportWarningCount,

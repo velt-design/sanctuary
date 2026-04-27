@@ -167,7 +167,7 @@ type DeckPreviewState = {
   hostEdgeEnd: PlanPoint;
   centerOffsetM: number;
   referenceEdgeGapM: number;
-  placement: 'snapped' | 'free';
+  placement: 'snapped' | 'floating';
   snapped: boolean;
 };
 
@@ -194,12 +194,12 @@ type OpeningPreviewState = {
 type DeckInteractionTelemetry = {
   selectedDeckId: string | null;
   housePolygonSource: 'custom_saved' | 'preset_derived' | null;
-  selectedDeckType: 'none' | 'preset_snapped' | 'preset_free' | 'custom_outline' | 'preset_unresolved';
+  selectedDeckType: 'none' | 'preset_snapped' | 'preset_floating' | 'custom_outline' | 'preset_unresolved';
   dragEligible: boolean;
   dragReason: string | null;
   hostEdgeResolvable: boolean;
   relationshipDimensionsAvailable: boolean;
-  snapState: 'idle' | 'free' | 'snapped';
+  snapState: 'idle' | 'floating' | 'snapped';
   snapMessage: string | null;
 };
 
@@ -223,8 +223,7 @@ type ModelSpaceGesture =
   | 'wheel-zoom'
   | 'pinch-zoom'
   | 'trackpad-pinch'
-  | 'draw-click-candidate'
-  | 'draw-panning';
+  | 'draw-click-candidate';
 
 type ModelSpacePinchSource = 'none' | 'touch-pointer' | 'wheel' | 'webkit-gesture';
 
@@ -292,6 +291,10 @@ function isViewportEditHitTarget(target: EventTarget | null): boolean {
 
 function isViewportMousePanIgnoredTarget(target: EventTarget | null): boolean {
   return isViewportNavigationControlTarget(target) || isViewportEditHitTarget(target);
+}
+
+function isSecondaryMouseButton(event: Pick<PointerEvent, 'button'> | Pick<ReactPointerEvent<Element>, 'button'>): boolean {
+  return event.button === 2;
 }
 
 function normalizeWheelDeltaPixels(event: Pick<WheelEvent<Element>, 'deltaMode' | 'deltaX' | 'deltaY'>): {
@@ -774,7 +777,7 @@ function resolveDeckPreviewState(input: {
     hostEdgeEnd: frame.hostEdgeEnd,
     centerOffsetM,
     referenceEdgeGapM,
-    placement: snapped ? 'snapped' : 'free',
+    placement: snapped ? 'snapped' : 'floating',
     snapped,
     polygon: buildDeckPreviewPolygon({
       frame,
@@ -1085,7 +1088,7 @@ export default function ModelSpaceViewport({
         setDeckPreviewState(null);
         setDeckInteractionHint({
           title: 'Deck drag',
-          detail: 'Drag the deck anywhere. It will magnetize to a house edge when you bring it close enough.',
+          detail: 'Drag the deck toward another house edge or into floating placement.',
           tone: 'status',
         });
         setDeckDragSession({
@@ -1219,6 +1222,7 @@ export default function ModelSpaceViewport({
                   ...(annotation.fieldKey === 'referenceEdgeGapM'
                     ? {
                         isAttached: false,
+                        // `rect_detached` remains the legacy persistence shape for PR1.
                         presetType: 'rect_detached',
                         presetRect: {
                           detachedGapM: nextValue,
@@ -1822,8 +1826,8 @@ export default function ModelSpaceViewport({
   const handleCanvasPanStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.pointerType === 'touch') return;
-      if ((event.button !== 0 && event.button !== 2) || isDrawOutlineActive(drawOutlineState)) return;
-      if (isViewportMousePanIgnoredTarget(event.target)) return;
+      if (!isSecondaryMouseButton(event)) return;
+      if (isViewportNavigationControlTarget(event.target)) return;
       event.preventDefault();
       userAdjustedViewportRef.current = true;
       setViewportNavigationGesture('mouse-pan');
@@ -1835,7 +1839,7 @@ export default function ModelSpaceViewport({
         startPanY: viewportTransform.panY,
       });
     },
-    [drawOutlineState, viewportTransform.panX, viewportTransform.panY],
+    [viewportTransform.panX, viewportTransform.panY],
   );
 
   useEffect(() => {
@@ -1961,12 +1965,6 @@ export default function ModelSpaceViewport({
       const deltaY = event.clientY - session.startClientY;
       const distance = Math.hypot(deltaX, deltaY);
       if (distance < DRAW_OUTLINE_PAN_THRESHOLD_PX && !session.hasPanned) return;
-
-      userAdjustedViewportRef.current = true;
-      updateViewportTransform({
-        panX: session.startPanX + deltaX,
-        panY: session.startPanY + deltaY,
-      });
       if (!session.hasPanned) {
         const nextSession = {
           ...session,
@@ -1997,7 +1995,7 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [drawOutlineActiveForPointerListeners, handleDrawOutlinePointSelect, updateViewportTransform]);
+  }, [drawOutlineActiveForPointerListeners, handleDrawOutlinePointSelect]);
 
   useEffect(() => {
     if (activeTouchCount <= 0) return;
@@ -2268,10 +2266,10 @@ export default function ModelSpaceViewport({
       });
       setDeckPreviewState(preview);
       setDeckInteractionHint({
-        title: preview.snapped ? 'Snap preview' : 'Free placement',
+        title: preview.snapped ? 'Snap preview' : 'Floating placement',
         detail: preview.snapped
           ? 'Release to snap the deck to the house edge.'
-          : 'Release to keep this deck free in space.',
+          : 'Release to keep this deck in floating placement.',
         tone: 'status',
       });
     };
@@ -2288,14 +2286,14 @@ export default function ModelSpaceViewport({
           hostEdgeId: preview.hostEdgeId,
           isAttached: preview.placement === 'snapped',
           presetType: preview.placement === 'snapped' ? 'rect_attached' : 'rect_detached',
-          ...(preview.placement === 'snapped' && deckDragSession.interaction.placement === 'free'
+          ...(preview.placement === 'snapped' && deckDragSession.interaction.placement === 'floating'
             ? { elevationMode: 'aligned_to_threshold' as const }
-            : preview.placement === 'free' && deckDragSession.interaction.placement === 'snapped'
+            : preview.placement === 'floating' && deckDragSession.interaction.placement === 'snapped'
               ? { elevationMode: 'ground' as const }
               : null),
           presetRect: {
             centerOffsetM: formatDeckPresetValue(preview.centerOffsetM),
-            detachedGapM: preview.placement === 'free' ? formatDeckPresetValue(preview.referenceEdgeGapM) : null,
+            detachedGapM: preview.placement === 'floating' ? formatDeckPresetValue(preview.referenceEdgeGapM) : null,
           } as unknown as HouseFirstDeckDraft['presetRect'],
         }),
       );
@@ -2307,7 +2305,7 @@ export default function ModelSpaceViewport({
               title: preview.snapped ? 'Deck snapped' : 'Deck moved',
               detail: preview.snapped
                 ? 'The deck is now snapped to the selected house edge.'
-                : 'The deck stayed free in space with witness dimensions.',
+                : 'The deck stayed in floating placement with witness dimensions.',
               tone: 'status',
             }
           : {
@@ -2464,21 +2462,19 @@ export default function ModelSpaceViewport({
   const activeDrawOutlineLandingPoint = drawOutlineViewModel.isActive ? drawOutlineLandingPoint : null;
   const drawOutlineGesture = drawOutlinePointerSession
     ? drawOutlinePointerSession.hasPanned
-      ? 'panning'
+      ? 'drag-cancelled'
       : 'click-candidate'
     : 'idle';
   const modelSpaceGesture: ModelSpaceGesture =
     drawOutlineGesture === 'click-candidate'
       ? 'draw-click-candidate'
-      : drawOutlineGesture === 'panning'
-        ? 'draw-panning'
-        : pinchZoomActive
-          ? pinchSource === 'webkit-gesture'
-            ? 'trackpad-pinch'
-            : 'pinch-zoom'
-          : panDragSession
-            ? 'mouse-pan'
-            : viewportNavigationGesture;
+      : pinchZoomActive
+        ? pinchSource === 'webkit-gesture'
+          ? 'trackpad-pinch'
+          : 'pinch-zoom'
+        : panDragSession
+          ? 'mouse-pan'
+          : viewportNavigationGesture;
   const drawOutlineHasError = drawOutlineViewModel.diagnosticState === 'error';
   const drawOutlineDiagnosticState = drawOutlineViewModel.diagnosticState;
   const drawOutlineTypingDistanceDraft = activeDrawOutlineState?.distanceDraft ?? '';
@@ -2617,7 +2613,7 @@ export default function ModelSpaceViewport({
     if (!selectedDeckShape) return 'none';
     if (selectedDeckShape.custom) return 'custom_outline';
     if (selectedDeckShape.deckInteraction) {
-      return selectedDeckShape.deckInteraction.placement === 'snapped' ? 'preset_snapped' : 'preset_free';
+      return selectedDeckShape.deckInteraction.placement === 'snapped' ? 'preset_snapped' : 'preset_floating';
     }
     return 'preset_unresolved';
   }, [houseFirstPlanOverlay, selectedDeckShape]);
@@ -2637,13 +2633,13 @@ export default function ModelSpaceViewport({
     const nextHint: DeckInteractionHintState = {
       title:
         selectedDeckShape.deckDragEligibility.eligible
-          ? selectedDeckType === 'preset_free'
-            ? 'Free preset deck'
+          ? selectedDeckType === 'preset_floating'
+            ? 'Floating preset deck'
             : 'Snapped preset deck'
           : selectedDeckType === 'custom_outline'
             ? 'Custom deck'
-            : selectedDeckType === 'preset_free'
-              ? 'Free preset deck'
+            : selectedDeckType === 'preset_floating'
+              ? 'Floating preset deck'
               : 'Deck interaction',
       detail: selectedDeckShape.deckDragEligibility.reason,
       tone: selectedDeckShape.deckDragEligibility.eligible ? 'eligible' : 'deferred',
@@ -2669,12 +2665,12 @@ export default function ModelSpaceViewport({
       dragReason: selectedDeckShape?.deckDragEligibility?.reason ?? null,
       hostEdgeResolvable: Boolean(selectedDeckShape?.deckInteraction),
       relationshipDimensionsAvailable: selectedDeckRelationshipDimensionsAvailable,
-      snapState: deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'free') : 'idle',
+      snapState: deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'floating') : 'idle',
       snapMessage:
         deckPreviewState && selectedDeckShape?.deckDragEligibility?.eligible
           ? deckPreviewState.snapped
             ? 'Snap preview active on the host edge limit.'
-            : 'Free placement preview. Release to keep the current offset.'
+            : 'Floating placement preview. Release to keep the current witness offset.'
           : null,
     } satisfies DeckInteractionTelemetry;
     const signature = [
@@ -2972,7 +2968,7 @@ export default function ModelSpaceViewport({
         data-model-space-auto-fit-key={modelSpaceAutoFitKey}
         data-model-space-auto-fit-ready={modelSpaceAutoFitReady ? 'true' : 'false'}
         data-house-first-deck-drag-active={deckDragSession ? 'true' : 'false'}
-        data-house-first-deck-snap-state={deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'free') : 'idle'}
+        data-house-first-deck-snap-state={deckPreviewState ? (deckPreviewState.snapped ? 'snapped' : 'floating') : 'idle'}
         data-house-first-opening-drag-active={openingDragSession ? 'true' : 'false'}
         data-house-first-selected-deck-id={selectedDeckShape?.ownerId ?? ''}
         data-house-first-selected-deck-type={selectedDeckType}

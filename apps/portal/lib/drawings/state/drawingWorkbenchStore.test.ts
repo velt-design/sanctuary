@@ -711,14 +711,14 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(attachedStore.derived.activeDeckInteraction).toEqual({
       selectedDeckType: 'preset_snapped',
       dragEligible: true,
-      dragReason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
+      dragReason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
       hostEdgeResolvable: true,
       relationshipDimensionsAvailable: true,
     });
     expect(detachedStore.derived.activeDeckInteraction).toEqual({
-      selectedDeckType: 'preset_free',
+      selectedDeckType: 'preset_floating',
       dragEligible: true,
-      dragReason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
+      dragReason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
       hostEdgeResolvable: true,
       relationshipDimensionsAvailable: true,
     });

@@ -22,6 +22,9 @@ export type HouseRoofRidgeAxis = 'x' | 'y';
 export type HouseRoofAppendageForm = 'flat' | 'mono';
 export type DeckKind = 'deck' | 'landing';
 export type DeckShape = 'preset' | 'custom';
+export type DeckPlacementMode = 'snapped' | 'floating';
+// `rect_attached` / `rect_detached` remain the legacy persistence values in PR1.
+// They are not the long-term canonical placement semantics for preset decks.
 export type DeckPresetType = 'rect_attached' | 'rect_detached';
 export type DeckElevationMode = 'ground' | 'stepped' | 'aligned_to_threshold';
 export type DeckSurfaceMaterial = 'timber_decking' | 'composite' | 'concrete';
@@ -31,7 +34,16 @@ export type DeckPresetRect = {
   centerOffsetM: string;
   detachedGapM?: string | null;
 };
+export type DeckFloatingPresetRect = {
+  centerAlongM: string;
+  centerDepthM: string;
+  widthM: string;
+  depthM: string;
+};
 export type DeckSupportClassification = 'ground_supported' | 'threshold_attached' | 'mixed_or_unclear';
+export function resolveDeckPlacementMode(isAttached: boolean): DeckPlacementMode {
+  return isAttached ? 'snapped' : 'floating';
+}
 export type DeckSupportWarningCode =
   | 'insufficient_host_edge_contact'
   | 'detached_too_close_to_house'
@@ -113,9 +125,13 @@ export type DeckModel = {
   shape: DeckShape;
   presetType: DeckPresetType | null;
   presetRect: DeckPresetRect | null;
+  // Floating preset decks use this local-space rectangle as their geometry source of truth.
+  // `presetRect` remains the legacy edge-relative compatibility shape for PR2.
+  floatingRect?: DeckFloatingPresetRect | null;
   outline: CalculatorHouseFootprintPolygonPoint[];
   elevationMode: DeckElevationMode;
   levelOffsetMm: string;
+  // Floating preset decks may retain an optional witness edge for dimensions and future resnap hints.
   hostEdgeId: string | null;
   isAttached: boolean;
   surfaceMaterial: DeckSurfaceMaterial;
@@ -246,6 +262,8 @@ export type HouseFirstDeckDraft = {
   shape?: DeckShape | null;
   presetType?: DeckPresetType | null;
   presetRect?: DeckPresetRect | null;
+  // Floating preset decks persist a local-space rectangle even while legacy edge-relative fields remain.
+  floatingRect?: DeckFloatingPresetRect | null;
   outline?: CalculatorHouseFootprintPolygonPoint[] | null;
   elevationMode?: DeckElevationMode | null;
   levelOffsetMm?: string | null;

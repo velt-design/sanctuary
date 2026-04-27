@@ -5261,6 +5261,7 @@ function PlanSvg({
                 onPointerEnter={() => planInteraction?.onResizeFieldHover(handle.fieldId)}
                 onPointerLeave={() => planInteraction?.onResizeFieldHover(null)}
                 onPointerDown={(event: ReactPointerEvent<SVGLineElement>) => {
+                  if (event.button !== 0) return;
                   event.preventDefault();
                   event.stopPropagation();
                   planInteraction?.onResizeFieldDragStart(
@@ -5444,6 +5445,7 @@ function PlanSvg({
                     onPointerEnter={() => footprintEditor?.onHandleHover(edge.id)}
                     onPointerLeave={() => footprintEditor?.onHandleHover(null)}
                     onPointerDown={(event: ReactPointerEvent<SVGLineElement>) => {
+                      if (event.button !== 0) return;
                       event.preventDefault();
                       event.stopPropagation();
                       footprintEditor?.onHandleDragStart(
@@ -5620,6 +5622,7 @@ function PlanSvg({
                     footprintEditor?.onVertexDelete?.(vertex.index);
                   }}
                   onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
+                    if (event.button !== 0) return;
                     event.preventDefault();
                     event.stopPropagation();
                     footprintEditor?.onVertexDragStart?.(
@@ -5648,6 +5651,7 @@ function PlanSvg({
                     data-footprint-custom-close-hovered={vertex.isCloseHovered ? 'true' : undefined}
                     className={`${styles.moduleFootprintHandleHit} ${styles.moduleFootprintCustomCloseHit}`}
                     onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
+                      if (event.button !== 0) return;
                       event.preventDefault();
                       event.stopPropagation();
                       footprintEditor?.onCloseStartSelect?.();
@@ -5698,6 +5702,7 @@ function PlanSvg({
                       footprintEditor?.onHandleHover(null);
                     }}
                     onPointerDown={(event: ReactPointerEvent<SVGCircleElement>) => {
+                      if (event.button !== 0) return;
                       event.preventDefault();
                       event.stopPropagation();
                       footprintEditor?.onHandleDragStart(

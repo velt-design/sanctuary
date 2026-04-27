@@ -462,7 +462,7 @@ describe('houseFirstPlanOverlay', () => {
       overlay?.shapes.find((shape) => shape.ownerKind === 'deck')?.deckDragEligibility,
     ).toEqual({
       eligible: true,
-      reason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
+      reason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
     });
   });
 
