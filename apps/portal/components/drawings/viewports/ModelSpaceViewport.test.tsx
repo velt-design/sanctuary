@@ -13,6 +13,7 @@ import { resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPr
 import type {
   DeckModel,
   HouseModel,
+  WallOpeningModel,
   WorkbenchHouseSelection,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import { dispatchPointer, renderIntoDocument } from '../../../../../test/reactHarness';
@@ -342,6 +343,26 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
   };
 }
 
+function makeHouseFirstOpening(overrides: Partial<WallOpeningModel> = {}): WallOpeningModel {
+  return {
+    id: 'opening-1',
+    label: 'Window 1',
+    kind: 'window',
+    wallId: 'rear',
+    hostEdgeId: 'rear',
+    widthM: '1.8',
+    heightM: '1.2',
+    sillHeightM: '0.9',
+    offsetAlongWallM: '0.6',
+    validation: {
+      status: 'valid',
+      codes: [],
+      message: null,
+    },
+    ...overrides,
+  };
+}
+
 function clickElement(target: Element): void {
   act(() => {
     target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -405,6 +426,7 @@ function HouseFirstViewportHarness({
       </div>
       <div data-testid="deck-telemetry-snap">{deckTelemetry?.snapState ?? 'idle'}</div>
       <div data-testid="deck-telemetry-message">{deckTelemetry?.snapMessage ?? 'none'}</div>
+      <div data-testid="opening-offset">{house.openings[0]?.offsetAlongWallM ?? ''}</div>
       <div data-testid="footprint-edge-0">
         {(() => {
           const polygon = house.footprint.polygon;
@@ -450,13 +472,18 @@ function HouseFirstViewportHarness({
                 },
               };
             }
+            if (edit.type === 'polygon') {
+              return {
+                ...current,
+                footprint: {
+                  ...current.footprint,
+                  mode: 'custom_polygon',
+                  polygon: edit.polygon,
+                },
+              };
+            }
             return {
               ...current,
-              footprint: {
-                ...current.footprint,
-                mode: 'custom_polygon',
-                polygon: edit.polygon,
-              },
             };
           });
           return { ok: true };
@@ -490,6 +517,31 @@ function HouseFirstViewportHarness({
                 outline: resolvedDeck.outline,
               };
             }),
+          }));
+          return { ok: true };
+        }}
+        onCommitHouseFirstOpeningDimension={(openingId, patch) => {
+          setHouse((current) => ({
+            ...current,
+            openings: current.openings.map((opening) =>
+              opening.id === openingId
+                ? {
+                    ...opening,
+                    ...(patch.label !== undefined ? { label: patch.label ?? opening.label } : null),
+                    ...(patch.kind !== undefined ? { kind: patch.kind ?? opening.kind } : null),
+                    ...(patch.wallId !== undefined ? { wallId: patch.wallId ?? opening.wallId } : null),
+                    ...(patch.hostEdgeId !== undefined ? { hostEdgeId: patch.hostEdgeId ?? opening.hostEdgeId } : null),
+                    ...(patch.widthM !== undefined ? { widthM: patch.widthM ?? opening.widthM } : null),
+                    ...(patch.heightM !== undefined ? { heightM: patch.heightM ?? opening.heightM } : null),
+                    ...(patch.sillHeightM !== undefined
+                      ? { sillHeightM: patch.sillHeightM ?? opening.sillHeightM }
+                      : null),
+                    ...(patch.offsetAlongWallM !== undefined
+                      ? { offsetAlongWallM: patch.offsetAlongWallM ?? opening.offsetAlongWallM }
+                      : null),
+                  }
+                : opening,
+            ),
           }));
           return { ok: true };
         }}
@@ -693,7 +745,7 @@ describe('ModelSpaceViewport', () => {
     expect(markup).toContain('data-model-space-active-touch-count="0"');
     expect(markup).toContain('data-model-space-pinch-active="false"');
     expect(markup).toContain('data-model-space-pinch-source="none"');
-    expect(markup).toContain('data-model-space-auto-fit-key="plan:plan:ready"');
+    expect(markup).toContain('data-model-space-auto-fit-key="plan:ready"');
     expect(markup).toContain('data-model-space-auto-fit-ready="true"');
     expect(markup).toContain('data-native-selection-suppressed="true"');
     expect(markup).toContain('data-draw-outline-can-redraw="false"');
@@ -1449,7 +1501,7 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
-      modelSpaceAutoFitKey: 'module-1:plan:plan:empty',
+      modelSpaceAutoFitKey: 'module-1:plan:empty',
       modelSpaceAutoFitReady: 'false',
     });
     expect(onViewportTransformChange).not.toHaveBeenCalled();
@@ -1459,7 +1511,7 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
-      modelSpaceAutoFitKey: 'module-1:plan:plan:ready',
+      modelSpaceAutoFitKey: 'module-1:plan:ready',
       modelSpaceAutoFitReady: 'true',
     });
     expect(onViewportTransformChange).toHaveBeenCalledTimes(1);
@@ -1468,6 +1520,45 @@ describe('ModelSpaceViewport', () => {
     rendered.rerender(renderViewport({ ...drawing.planModel!, lengthA: drawing.planModel!.lengthA + 1 }));
     await act(async () => {
       await Promise.resolve();
+    });
+    expect(onViewportTransformChange).not.toHaveBeenCalled();
+
+    rectSpy.mockRestore();
+    rendered.unmount();
+  });
+
+  it('skips first-visit auto-fit when the current surface already has a persisted transform', async () => {
+    const drawing = makeDrawingModule();
+    const onViewportTransformChange = vi.fn();
+    const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScroller !== undefined) return makeRect(0, 0, 600, 400);
+      if (this instanceof HTMLElement && this.dataset.modelSpaceScaleFrame !== undefined) return makeRect(0, 0, 1200, 900);
+      return makeRect(0, 0, 0, 0);
+    });
+
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        fitViewKey="house:0:plan"
+        autoFitOnReady={false}
+        viewportTransform={{ zoom: 1.35, panX: 48, panY: -26 }}
+        onViewportTransformChange={onViewportTransformChange}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
+      modelSpaceAutoFitKey: 'house:0:plan:ready',
+      modelSpaceAutoFitReady: 'true',
     });
     expect(onViewportTransformChange).not.toHaveBeenCalled();
 
@@ -1510,7 +1601,7 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
-      modelSpaceAutoFitKey: 'module-1:section:section:ready',
+      modelSpaceAutoFitKey: 'module-1:section:ready',
       modelSpaceAutoFitReady: 'true',
     });
     expect(onViewportTransformChange).toHaveBeenCalled();
@@ -2744,6 +2835,41 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
+  it('drags a selected house-first window along its host wall in model space', async () => {
+    const house = makeHouseFirstHouse({
+      openings: [makeHouseFirstOpening()],
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness initialHouse={house} initialSelection={{ kind: 'opening', targetId: 'opening-1' }} />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const openingHit = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
+    expect(scroller.dataset.houseFirstSelectedOpeningDragEligible).toBe('true');
+
+    dispatchPointer(openingHit, 'pointerdown', { pointerId: 61, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 61, button: 0, buttons: 1, clientX: 250, clientY: 50 });
+
+    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).not.toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 61, button: 0, clientX: 250, clientY: 50 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).toBe('4.2');
+
+    rendered.unmount();
+  });
+
   it('keeps attached preset deck interaction active on preset houses without a stored footprint polygon', async () => {
     const baseHouse = makeHouseFirstHouse();
     const deck = makeHouseFirstDeck();
@@ -2889,6 +3015,7 @@ describe('ModelSpaceViewport', () => {
         initialSelection={{ kind: 'footprint', targetId: 'house-main' }}
         initialHouse={makeHouseFirstHouse({
           footprint: {
+            ...makeHouseFirstHouse().footprint,
             mode: 'custom_polygon',
             polygon: [
               { alongM: '0', depthM: '0' },

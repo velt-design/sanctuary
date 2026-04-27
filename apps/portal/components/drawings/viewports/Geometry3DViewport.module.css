@@ -1,5 +1,6 @@
 .viewport {
   position: relative;
+  display: grid;
   min-height: 38rem;
   height: 100%;
 }
@@ -124,10 +125,11 @@
 
 .canvasShell {
   position: relative;
+  display: grid;
   isolation: isolate;
   contain: layout paint;
-  height: clamp(38rem, 62vh, 56rem);
-  min-height: 38rem;
+  height: 100%;
+  min-height: inherit;
   border: 1px solid rgba(27, 31, 35, 0.12);
   border-radius: 1rem;
   overflow: hidden;

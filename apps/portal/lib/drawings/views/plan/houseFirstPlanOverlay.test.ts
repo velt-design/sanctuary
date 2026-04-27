@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { DeckModel, HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
+import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
   buildHouseFirstPlanOverlay,
   resizeCustomPolygonEdge,
@@ -167,6 +172,20 @@ function signedArea(polygon: Array<{ alongM: string; depthM: string }>): number 
     area += Number(current.alongM) * Number(next.depthM) - Number(next.alongM) * Number(current.depthM);
   }
   return area / 2;
+}
+
+function makeDraft(snapshot: Record<string, unknown> | null, mutate: (draft: EstimateDrawingDraft) => void) {
+  const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+  if (!draft) throw new Error('Expected draft from snapshot.');
+  mutate(draft);
+  return draft;
+}
+
+function toScenePolygonMetres(points: Array<{ x: number; y: number }>) {
+  return points.map((point) => ({
+    x: Number(point.x.toFixed(3)),
+    y: Number(point.y.toFixed(3)),
+  }));
 }
 
 describe('houseFirstPlanOverlay', () => {
@@ -408,6 +427,130 @@ describe('houseFirstPlanOverlay', () => {
       reason:
         'This attached deck needs a resolvable host edge before drag and relationship dims are available.',
     });
+  });
+
+  it('keeps screenshot-style plan deck and footprint overlays aligned with the geometry preview scene', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('gable-u-hipped-screenshot');
+    expect(fixture).not.toBeNull();
+    if (!fixture) return;
+
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.houseFirst = {
+        decks: [
+          {
+            id: 'deck-debug',
+            name: 'Debug deck',
+            kind: 'deck',
+            shape: 'preset',
+            presetType: 'rect_attached',
+            presetRect: {
+              widthM: '3.6',
+              depthM: '2.4',
+              centerOffsetM: '0',
+              detachedGapM: null,
+            },
+            elevationMode: 'aligned_to_threshold',
+            levelOffsetMm: '0',
+            hostEdgeId: 'rear',
+            isAttached: true,
+            surfaceMaterial: 'timber_decking',
+          },
+        ],
+        openings: [
+          {
+            id: 'opening-debug',
+            label: 'Debug window',
+            kind: 'window',
+            wallId: 'rear',
+            widthM: '1.8',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '0.6',
+          },
+        ],
+      };
+    });
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: {
+        ...createDrawingWorkbenchUiState(),
+        activeModuleIndex: 0,
+        activeHouseTab: 'house',
+        activeHouseSelection: { kind: 'opening', targetId: 'opening-debug' },
+        viewportMode: 'model_space',
+        activeView: 'plan',
+        workbenchMode: 'house',
+      },
+    });
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: fixture.estimate.id,
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house: store.derived.house,
+      selection: { kind: 'opening', targetId: 'opening-debug' },
+      moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
+      moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),
+    });
+
+    const deckShape = overlay?.shapes.find((shape) => shape.ownerId === 'deck-debug');
+    const openingShape = overlay?.shapes.find((shape) => shape.ownerId === 'opening-debug');
+    const footprintShape = overlay?.shapes.find((shape) => shape.ownerKind === 'footprint');
+    const houseObjects = preview.scene.layers.find((layer) => layer.id === 'house')?.objects ?? [];
+    const deckSolidObject = houseObjects.find(
+      (object) => object.type === 'house_surface_solid' && object.kind === 'deck',
+    );
+    const openingObject = houseObjects.find(
+      (object) =>
+        object.type === 'house_surface' &&
+        object.kind === 'opening_marker' &&
+        object.metadata?.openingId === 'opening-debug',
+    );
+    const wallObjects = houseObjects
+      .filter(
+        (object): object is Extract<(typeof houseObjects)[number], { type: 'house_surface_solid'; kind: 'wall' }> =>
+          object.type === 'house_surface_solid' && object.kind === 'wall' && 'boundary' in object,
+      )
+      .sort((left, right) => {
+        const leftIndex = Number(String(left.metadata?.sourceEdgeId ?? '').replace('footprint-edge-', ''));
+        const rightIndex = Number(String(right.metadata?.sourceEdgeId ?? '').replace('footprint-edge-', ''));
+        return leftIndex - rightIndex;
+      });
+    const sceneDeckPolygon =
+      deckSolidObject && 'boundary' in deckSolidObject
+        ? toScenePolygonMetres(
+            deckSolidObject.boundary.map((point) => ({
+              x: point.x / 1000,
+              y: point.y / 1000,
+            })),
+          )
+        : null;
+    const sceneFootprintPolygon = toScenePolygonMetres(
+      wallObjects.map((object) => ({
+        x: object.boundary[0]!.x / 1000,
+        y: object.boundary[0]!.y / 1000,
+      })),
+    );
+
+    expect(deckShape?.polygon.length).toBeGreaterThan(0);
+    expect(footprintShape?.polygon.length).toBeGreaterThan(0);
+    expect(openingShape?.polygon.length).toBeGreaterThan(0);
+    expect(deckSolidObject).toBeDefined();
+    expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(sceneDeckPolygon);
+    expect(toScenePolygonMetres(footprintShape?.polygon ?? [])).toEqual(sceneFootprintPolygon);
+    expect(openingObject).toBeUndefined();
+    expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(1);
+    expect(store.derived.house?.openings[0]?.validation.status).toBe('invalid');
   });
 
   it('mutes secondary decks and carries deck invalidity on the selected deck only', () => {

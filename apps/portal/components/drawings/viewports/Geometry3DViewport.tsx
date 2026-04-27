@@ -30,6 +30,8 @@ import type { WorkbenchMode } from "@/lib/drawings/state/houseFirstWorkbenchMode
 import { blockNativeSelectionEvent } from "./nativeSelection";
 import styles from "./Geometry3DViewport.module.css";
 
+const ORBIT_MOUSE_DISABLED = -1 as THREE.MOUSE;
+
 const HOUSE_DISPLAY_LAYER_IDS = new Set(["house", "house_roof_materials"]);
 type AttachmentSide = "rear" | "front" | "left" | "right";
 
@@ -84,16 +86,20 @@ type MeasurementState = {
   lastEditedSlot: "a" | "b";
 };
 
-type GeometryCameraPreset = "iso" | "front" | "right" | "top" | "custom";
+export type GeometryCameraPreset = "iso" | "front" | "right" | "top" | "custom";
 
-type GeometryCameraFocusMode = "scene" | "selection" | "manual";
+export type GeometryCameraFocusMode = "scene" | "selection" | "manual";
 
-type GeometryCameraState = {
+export type GeometryCameraState = {
   position: Point3;
   target: Point3;
   distanceMm: number;
   viewPreset: GeometryCameraPreset;
   focusMode: GeometryCameraFocusMode;
+};
+
+export type Geometry3DViewportState = {
+  cameraState: GeometryCameraState;
 };
 
 type ViewportRectDiagnostics = {
@@ -1870,6 +1876,60 @@ function buildPresetCameraState({
   };
 }
 
+function defaultCameraStateForScene(input: {
+  sceneBounds: SceneBounds | null;
+  sceneFitDistance: number;
+}): GeometryCameraState {
+  if (!input.sceneBounds) {
+    return buildPresetCameraState({
+      target: { x: 0, y: 0, z: 500 },
+      distanceMm: fitDistanceForSize(2000),
+      viewPreset: "iso",
+      focusMode: "scene",
+    });
+  }
+  return buildPresetCameraState({
+    target: input.sceneBounds.center,
+    distanceMm: input.sceneFitDistance,
+    viewPreset: "iso",
+    focusMode: "scene",
+  });
+}
+
+function cameraStatesEqual(a: GeometryCameraState, b: GeometryCameraState): boolean {
+  return (
+    a.distanceMm === b.distanceMm &&
+    a.viewPreset === b.viewPreset &&
+    a.focusMode === b.focusMode &&
+    a.position.x === b.position.x &&
+    a.position.y === b.position.y &&
+    a.position.z === b.position.z &&
+    a.target.x === b.target.x &&
+    a.target.y === b.target.y &&
+    a.target.z === b.target.z
+  );
+}
+
+function clampCameraStateToScene(input: {
+  state: GeometryCameraState;
+  sceneBounds: SceneBounds | null;
+}): GeometryCameraState {
+  if (!input.sceneBounds) return input.state;
+  const minDistance = Math.max(input.sceneBounds.size * 0.18, 250);
+  const maxDistance = Math.max(input.sceneBounds.size * 14, 14000);
+  const nextDistance = Math.min(Math.max(input.state.distanceMm, minDistance), maxDistance);
+  if (nextDistance === input.state.distanceMm) return input.state;
+  return {
+    ...input.state,
+    position: positionFromDirection(
+      input.state.target,
+      directionFromCameraState(input.state),
+      nextDistance,
+    ),
+    distanceMm: nextDistance,
+  };
+}
+
 function formatMetadata(metadata: ViewerSceneObject["metadata"]): string {
   if (!metadata) return "None";
   return Object.entries(metadata)
@@ -3364,11 +3424,17 @@ function MeasurementProbeOverlay({
 export default function Geometry3DViewport({
   geometryPreview,
   displayMode = "pergolas",
+  viewportKey = "geometry3d",
+  viewportState,
+  onViewportStateChange,
   pendingAttachedDeckHostEdgePick = false,
   onPickAttachedDeckHostEdge,
 }: {
   geometryPreview?: GeometryPreviewState | null;
   displayMode?: WorkbenchMode;
+  viewportKey?: string;
+  viewportState?: Geometry3DViewportState | null;
+  onViewportStateChange?: (next: Geometry3DViewportState) => void;
   pendingAttachedDeckHostEdgePick?: boolean;
   onPickAttachedDeckHostEdge?: (side: AttachmentSide) => void;
 }) {
@@ -3395,18 +3461,21 @@ export default function Geometry3DViewport({
     snapMode: "selection",
     lastEditedSlot: "a",
   });
-  const [cameraState, setCameraState] = useState<GeometryCameraState>(() =>
-    buildPresetCameraState({
-      target: { x: 0, y: 0, z: 500 },
-      distanceMm: fitDistanceForSize(2000),
-      viewPreset: "iso",
-      focusMode: "scene",
-    }),
+  const [cameraState, setCameraState] = useState<GeometryCameraState>(
+    () =>
+      viewportState?.cameraState ??
+      buildPresetCameraState({
+        target: { x: 0, y: 0, z: 500 },
+        distanceMm: fitDistanceForSize(2000),
+        viewPreset: "iso",
+        focusMode: "scene",
+      }),
   );
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
+  const viewportRestoreSignatureRef = useRef<string | null>(null);
   const [rectDiagnostic, setRectDiagnostic] = useState<ViewportRectDiagnostics>(
     {
       shellWidth: 0,
@@ -3511,6 +3580,13 @@ export default function Geometry3DViewport({
         : fitDistanceForSize(2000),
     [sceneBounds],
   );
+  const persistCameraState = useCallback(
+    (nextState: GeometryCameraState) => {
+      setCameraState(nextState);
+      onViewportStateChange?.({ cameraState: nextState });
+    },
+    [onViewportStateChange],
+  );
   const initialCamera = useMemo(() => {
     if (!sceneBounds) {
       return {
@@ -3586,21 +3662,19 @@ export default function Geometry3DViewport({
 
   const fitScene = useCallback(() => {
     if (!sceneBounds) return;
-    setCameraState((current) => {
-      const direction = directionFromCameraState(current);
-      return {
-        position: positionFromDirection(
-          sceneBounds.center,
-          direction,
-          sceneFitDistance,
-        ),
-        target: sceneBounds.center,
-        distanceMm: sceneFitDistance,
-        viewPreset: current.viewPreset,
-        focusMode: "scene",
-      };
+    const direction = directionFromCameraState(cameraState);
+    persistCameraState({
+      position: positionFromDirection(
+        sceneBounds.center,
+        direction,
+        sceneFitDistance,
+      ),
+      target: sceneBounds.center,
+      distanceMm: sceneFitDistance,
+      viewPreset: cameraState.viewPreset,
+      focusMode: "scene",
     });
-  }, [sceneBounds, sceneFitDistance]);
+  }, [cameraState, persistCameraState, sceneBounds, sceneFitDistance]);
 
   const focusSelection = useCallback((object: ViewerSceneObject | null) => {
     if (!object) return;
@@ -3609,32 +3683,32 @@ export default function Geometry3DViewport({
       boundingSize(pointsForObject(object)),
     );
     setSelectedObjectId(object.id);
-    setCameraState((current) => ({
+    persistCameraState({
       position: positionFromDirection(
         target,
-        directionFromCameraState(current),
+        directionFromCameraState(cameraState),
         objectDistance,
       ),
       target,
       distanceMm: objectDistance,
-      viewPreset: current.viewPreset,
+      viewPreset: cameraState.viewPreset,
       focusMode: "selection",
-    }));
-  }, []);
+    });
+  }, [cameraState, persistCameraState]);
 
   const setViewPreset = useCallback(
     (viewPreset: Exclude<GeometryCameraPreset, "custom">) => {
-      setCameraState((current) => ({
-        ...current,
+      persistCameraState({
+        ...cameraState,
         position: positionFromDirection(
-          current.target,
+          cameraState.target,
           directionForPreset(viewPreset),
-          current.distanceMm,
+          cameraState.distanceMm,
         ),
         viewPreset,
-      }));
+      });
     },
-    [],
+    [cameraState, persistCameraState],
   );
 
   const focusObjectById = useCallback(
@@ -3851,14 +3925,6 @@ export default function Geometry3DViewport({
         snapMode: "selection",
         lastEditedSlot: "a",
       });
-      setCameraState(
-        buildPresetCameraState({
-          target: { x: 0, y: 0, z: 500 },
-          distanceMm: fitDistanceForSize(2000),
-          viewPreset: "iso",
-          focusMode: "scene",
-        }),
-      );
       return;
     }
     resetRendererState(rendererRef.current);
@@ -3882,15 +3948,41 @@ export default function Geometry3DViewport({
       snapMode: "selection",
       lastEditedSlot: "a",
     });
-    setCameraState(
-      buildPresetCameraState({
-        target: sceneBounds?.center ?? { x: 0, y: 0, z: 500 },
-        distanceMm: sceneFitDistance,
-        viewPreset: "iso",
-        focusMode: "scene",
+  }, [lengthMm, scene]);
+
+  const viewportRestoreSignature = `${viewportKey}:${
+    viewportState?.cameraState ? "saved" : sceneBounds ? "ready" : "empty"
+  }`;
+
+  useEffect(() => {
+    if (viewportRestoreSignatureRef.current === viewportRestoreSignature) return;
+    if (!viewportState?.cameraState && !sceneBounds) {
+      viewportRestoreSignatureRef.current = viewportRestoreSignature;
+      return;
+    }
+    viewportRestoreSignatureRef.current = viewportRestoreSignature;
+    setCameraState((current) => {
+      const nextState = clampCameraStateToScene({
+        state:
+          viewportState?.cameraState ??
+          defaultCameraStateForScene({
+            sceneBounds,
+            sceneFitDistance,
+          }),
+        sceneBounds,
+      });
+      return cameraStatesEqual(current, nextState) ? current : nextState;
+    });
+  }, [sceneBounds, sceneFitDistance, viewportRestoreSignature, viewportState]);
+
+  useEffect(() => {
+    setCameraState((current) =>
+      clampCameraStateToScene({
+        state: current,
+        sceneBounds,
       }),
     );
-  }, [lengthMm, scene, sceneBounds, sceneFitDistance, sceneKey]);
+  }, [sceneBounds]);
 
   useEffect(() => {
     setRectDiagnostic(
@@ -4030,6 +4122,7 @@ export default function Geometry3DViewport({
         className={styles.canvasShell}
         data-testid="geometry-3d-canvas-shell"
         data-native-selection-suppressed="true"
+        onContextMenu={(event) => event.preventDefault()}
         onClick={() => {
           if (pendingAttachedDeckHostEdgePick) return;
           setSelectedObjectId(null);
@@ -4542,7 +4635,6 @@ export default function Geometry3DViewport({
         />
 
         <Canvas
-          key={sceneKey}
           className={styles.canvas}
           camera={initialCamera}
           data-testid="geometry-3d-canvas"
@@ -4696,9 +4788,9 @@ export default function Geometry3DViewport({
             minPolarAngle={0.04}
             maxPolarAngle={Math.PI - 0.08}
             mouseButtons={{
-              LEFT: THREE.MOUSE.ROTATE,
+              LEFT: ORBIT_MOUSE_DISABLED,
               MIDDLE: THREE.MOUSE.DOLLY,
-              RIGHT: THREE.MOUSE.PAN,
+              RIGHT: THREE.MOUSE.ROTATE,
             }}
             touches={{
               ONE: THREE.TOUCH.ROTATE,
@@ -4735,7 +4827,7 @@ export default function Geometry3DViewport({
                   ? "selection"
                   : "manual";
 
-              setCameraState({
+              persistCameraState({
                 position: nextPosition,
                 target: nextTarget,
                 distanceMm: camera.position.distanceTo(controls.target),

@@ -1366,7 +1366,7 @@ function HouseModeRail({
         ))}
       </div>,
       <p key="opening-selection-hint" className={styles.fieldHint}>
-        Selected windows show width and along-wall offset dimensions in Model Space plan. Height and sill stay editable in the rail for this slice.
+        Selected windows show width and along-wall offset dimensions in Model Space plan. Drag the selected window body there to reposition it along the host wall. Height and sill stay editable in the rail for this slice.
       </p>,
       <TextField
         key="opening-label"

@@ -1,10 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
-import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import {
+  createDrawingWorkbenchUiState,
+  type DrawingWorkbenchViewportTransform,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
 import styles from './DesignWorkbenchEstimateClient.module.css';
@@ -16,6 +20,32 @@ type DesignWorkbenchFixtureClientProps = {
   backHref?: string;
 };
 
+const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
+
+function viewportTransformsEqual(
+  a: DrawingWorkbenchViewportTransform,
+  b: DrawingWorkbenchViewportTransform,
+): boolean {
+  return a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY;
+}
+
+function geometryViewportStatesEqual(
+  a: Geometry3DViewportState,
+  b: Geometry3DViewportState,
+): boolean {
+  return (
+    a.cameraState.distanceMm === b.cameraState.distanceMm &&
+    a.cameraState.viewPreset === b.cameraState.viewPreset &&
+    a.cameraState.focusMode === b.cameraState.focusMode &&
+    a.cameraState.position.x === b.cameraState.position.x &&
+    a.cameraState.position.y === b.cameraState.position.y &&
+    a.cameraState.position.z === b.cameraState.position.z &&
+    a.cameraState.target.x === b.cameraState.target.x &&
+    a.cameraState.target.y === b.cameraState.target.y &&
+    a.cameraState.target.z === b.cameraState.target.z
+  );
+}
+
 export default function DesignWorkbenchFixtureClient({
   fixture,
   projectName,
@@ -23,6 +53,12 @@ export default function DesignWorkbenchFixtureClient({
   backHref,
 }: DesignWorkbenchFixtureClientProps) {
   const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
+  const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
+    Record<string, DrawingWorkbenchViewportTransform>
+  >({});
+  const [geometryViewportStatesByKey, setGeometryViewportStatesByKey] = useState<
+    Record<string, Geometry3DViewportState>
+  >({});
   const store = useMemo(
     () =>
       buildDrawingWorkbenchStore({
@@ -33,6 +69,10 @@ export default function DesignWorkbenchFixtureClient({
       }),
     [fixture.draft, fixture.moduleLabels, fixture.snapshot, ui],
   );
+  useEffect(() => {
+    setModelViewportTransformsByKey({});
+    setGeometryViewportStatesByKey({});
+  }, [fixture.slug]);
   const modules = store.persisted.modules.map((module) => ({
     id: module.id,
     label: module.label,
@@ -64,6 +104,50 @@ export default function DesignWorkbenchFixtureClient({
         moduleIndex: store.derived.activeModuleIndex,
       }),
     [fixture.draft, fixture.estimate.id, fixture.request.id, fixture.slug, fixture.snapshot, store.derived.activeModuleIndex],
+  );
+  const modelViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
+  const geometryViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}`;
+  const activeModelViewportTransform =
+    modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
+  const activeGeometryViewportState =
+    geometryViewportStatesByKey[geometryViewportSurfaceKey] ?? null;
+  const shouldAutoFitModelViewport = !Object.prototype.hasOwnProperty.call(
+    modelViewportTransformsByKey,
+    modelViewportSurfaceKey,
+  );
+  const handleModelViewportTransformChange = useCallback(
+    (viewportTransform: DrawingWorkbenchViewportTransform) => {
+      setModelViewportTransformsByKey((current) => {
+        const existing = current[modelViewportSurfaceKey];
+        if (existing && viewportTransformsEqual(existing, viewportTransform)) return current;
+        return {
+          ...current,
+          [modelViewportSurfaceKey]: viewportTransform,
+        };
+      });
+      setUi((current) =>
+        viewportTransformsEqual(current.viewportTransform, viewportTransform)
+          ? current
+          : {
+              ...current,
+              viewportTransform,
+            },
+      );
+    },
+    [modelViewportSurfaceKey],
+  );
+  const handleGeometryViewportStateChange = useCallback(
+    (viewportState: Geometry3DViewportState) => {
+      setGeometryViewportStatesByKey((current) => {
+        const existing = current[geometryViewportSurfaceKey];
+        if (existing && geometryViewportStatesEqual(existing, viewportState)) return current;
+        return {
+          ...current,
+          [geometryViewportSurfaceKey]: viewportState,
+        };
+      });
+    },
+    [geometryViewportSurfaceKey],
   );
 
   if (!activeModule) {
@@ -138,13 +222,13 @@ export default function DesignWorkbenchFixtureClient({
             sectionModel={store.derived.activeSectionModel}
             planViewModel={store.derived.activePlanViewModel}
             geometryPreview={geometryPreview}
-            viewportTransform={store.ui.viewportTransform}
-            onViewportTransformChange={(viewportTransform) =>
-              setUi((current) => ({
-                ...current,
-                viewportTransform,
-              }))
-            }
+            modelViewportKey={modelViewportSurfaceKey}
+            modelViewportTransform={activeModelViewportTransform}
+            modelViewportAutoFitOnReady={shouldAutoFitModelViewport}
+            geometryViewportKey={geometryViewportSurfaceKey}
+            geometryViewportState={activeGeometryViewportState}
+            onModelViewportTransformChange={handleModelViewportTransformChange}
+            onGeometryViewportStateChange={handleGeometryViewportStateChange}
             meta={meta}
             backHref={backHref}
           />

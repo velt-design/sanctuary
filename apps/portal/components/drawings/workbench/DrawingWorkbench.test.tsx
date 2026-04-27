@@ -114,8 +114,8 @@ describe('DrawingWorkbench', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
-        onViewportTransformChange={() => undefined}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
         meta={meta}
         onCommitFootprintEdit={() => ({ ok: true })}
       />,
@@ -152,8 +152,8 @@ describe('DrawingWorkbench', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
-        onViewportTransformChange={() => undefined}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
         meta={meta}
         onCommitFootprintEdit={() => ({ ok: true })}
       />,
@@ -188,8 +188,8 @@ describe('DrawingWorkbench', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
-        onViewportTransformChange={() => undefined}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
         meta={meta}
         onCommitFootprintEdit={() => ({ ok: true })}
       />,
@@ -208,8 +208,8 @@ describe('DrawingWorkbench', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
-        onViewportTransformChange={() => undefined}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
         meta={meta}
         onCommitFootprintEdit={() => ({ ok: true })}
       />,
@@ -242,8 +242,8 @@ describe('DrawingWorkbench', () => {
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
-        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
-        onViewportTransformChange={() => undefined}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
         meta={meta}
         onCommitFootprintEdit={() => ({ ok: true })}
       />,

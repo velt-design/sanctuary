@@ -17,7 +17,9 @@ import type {
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
-import Geometry3DViewport from '@/components/drawings/viewports/Geometry3DViewport';
+import Geometry3DViewport, {
+  type Geometry3DViewportState,
+} from '@/components/drawings/viewports/Geometry3DViewport';
 import ViewportModeSwitch from './ViewportModeSwitch';
 import styles from './DrawingWorkbench.module.css';
 
@@ -44,11 +46,16 @@ type DrawingWorkbenchProps = {
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   geometryPreview?: GeometryPreviewState | null;
-  viewportTransform: DrawingWorkbenchViewportTransform;
+  modelViewportKey?: string;
+  modelViewportTransform: DrawingWorkbenchViewportTransform;
+  modelViewportAutoFitOnReady?: boolean;
+  geometryViewportKey?: string;
+  geometryViewportState?: Geometry3DViewportState | null;
   drawOutlineRequestId?: number;
   drawOutlineMode?: 'footprint' | 'deck' | null;
   drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[];
-  onViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
+  onModelViewportTransformChange: (transform: DrawingWorkbenchViewportTransform) => void;
+  onGeometryViewportStateChange?: (state: Geometry3DViewportState) => void;
   meta: EstimateDrawingSheetMeta;
   backHref?: string;
   editableFields?: EstimateDrawingField[];
@@ -111,11 +118,16 @@ export default function DrawingWorkbench({
   sectionModel,
   planViewModel,
   geometryPreview,
-  viewportTransform,
+  modelViewportKey,
+  modelViewportTransform,
+  modelViewportAutoFitOnReady = true,
+  geometryViewportKey,
+  geometryViewportState,
   drawOutlineRequestId,
   drawOutlineMode,
   drawOutlineSeedPolygon,
-  onViewportTransformChange,
+  onModelViewportTransformChange,
+  onGeometryViewportStateChange,
   meta,
   backHref,
   editableFields,
@@ -197,9 +209,10 @@ export default function DrawingWorkbench({
             drawOutlineRequestId={drawOutlineRequestId}
             drawOutlineMode={drawOutlineMode}
             drawOutlineSeedPolygon={drawOutlineSeedPolygon}
-            fitViewKey={`${activeModuleIndex}:${view}`}
-            viewportTransform={viewportTransform}
-            onViewportTransformChange={onViewportTransformChange}
+            fitViewKey={modelViewportKey ?? `${activeModuleIndex}:${view}`}
+            autoFitOnReady={modelViewportAutoFitOnReady}
+            viewportTransform={modelViewportTransform}
+            onViewportTransformChange={onModelViewportTransformChange}
             editableFields={modelEditableFields}
             onCommitField={onCommitModelField}
             onCommitFootprintEdit={onCommitFootprintEdit}
@@ -216,6 +229,9 @@ export default function DrawingWorkbench({
           <Geometry3DViewport
             geometryPreview={geometryPreview}
             displayMode={workbenchDisplayMode}
+            viewportKey={geometryViewportKey ?? `${workbenchDisplayMode}:${activeModuleIndex}`}
+            viewportState={geometryViewportState}
+            onViewportStateChange={onGeometryViewportStateChange}
             pendingAttachedDeckHostEdgePick={pendingAttachedDeckHostEdgePick}
             onPickAttachedDeckHostEdge={onPickAttachedDeckHostEdge}
           />

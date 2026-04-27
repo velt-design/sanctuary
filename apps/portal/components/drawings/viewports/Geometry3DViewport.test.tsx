@@ -5,6 +5,7 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
@@ -23,6 +24,7 @@ import Geometry3DViewport, {
   buildClippedProfileExtrusionGeometry,
   buildPolygonSlabGeometry,
   buildRenderMeshGeometry,
+  type Geometry3DViewportState,
 } from "./Geometry3DViewport";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
 
@@ -496,6 +498,36 @@ function viewportDiagnostics(container: HTMLElement) {
   ) as HTMLElement | null;
   if (!node) throw new Error("Missing viewport diagnostics.");
   return node.dataset;
+}
+
+function StoredGeometryViewportHarness({
+  geometryPreview,
+}: {
+  geometryPreview: ReturnType<typeof buildMovedHousePreview>;
+}) {
+  const [viewportState, setViewportState] =
+    useState<Geometry3DViewportState | null>(null);
+  const [mounted, setMounted] = useState(true);
+
+  return (
+    <div>
+      <button
+        type="button"
+        data-testid="toggle-geometry-viewport"
+        onClick={() => setMounted((current) => !current)}
+      >
+        toggle
+      </button>
+      {mounted ? (
+        <Geometry3DViewport
+          geometryPreview={geometryPreview}
+          viewportKey="house:0"
+          viewportState={viewportState}
+          onViewportStateChange={setViewportState}
+        />
+      ) : null}
+    </div>
+  );
 }
 
 function buildMovedHousePreview(input: {
@@ -1759,6 +1791,99 @@ describe("Geometry3DViewport", () => {
     const dispose = mockRendererDispose;
     rendered.unmount();
     expect(dispose?.mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("restores the persisted 3D camera across preview changes and remounts", async () => {
+    const frontPreview = buildMovedHousePreview({
+      side: "front",
+      strategy: "fascia_under_gutter",
+      widthM: "8",
+      offsetXM: "-1",
+      setbackM: "0.4",
+    });
+    const sidePreview = buildMovedHousePreview({
+      side: "left",
+      strategy: "facade_ledger",
+      widthM: "2",
+      offsetXM: "0.5",
+      setbackM: "0.3",
+    });
+
+    const rendered = renderIntoDocument(
+      <StoredGeometryViewportHarness geometryPreview={frontPreview} />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    clickButtonByText(rendered.container, "Top");
+    clickByTestId(rendered.container, "mock-orbit-end-manual");
+
+    const beforePreviewChangePosition = cameraPosition(rendered.container);
+    const beforePreviewChangeTarget = controlsTarget(rendered.container);
+
+    rendered.rerender(
+      <StoredGeometryViewportHarness geometryPreview={sidePreview} />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const afterPreviewChangePosition = cameraPosition(rendered.container);
+    const afterPreviewChangeTarget = controlsTarget(rendered.container);
+
+    expect(afterPreviewChangePosition.x).toBeCloseTo(
+      beforePreviewChangePosition.x,
+      6,
+    );
+    expect(afterPreviewChangePosition.y).toBeCloseTo(
+      beforePreviewChangePosition.y,
+      6,
+    );
+    expect(afterPreviewChangePosition.z).toBeCloseTo(
+      beforePreviewChangePosition.z,
+      6,
+    );
+    expect(afterPreviewChangeTarget.x).toBeCloseTo(
+      beforePreviewChangeTarget.x,
+      6,
+    );
+    expect(afterPreviewChangeTarget.y).toBeCloseTo(
+      beforePreviewChangeTarget.y,
+      6,
+    );
+    expect(afterPreviewChangeTarget.z).toBeCloseTo(
+      beforePreviewChangeTarget.z,
+      6,
+    );
+
+    clickByTestId(rendered.container, "toggle-geometry-viewport");
+    clickByTestId(rendered.container, "toggle-geometry-viewport");
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const afterRemountPosition = cameraPosition(rendered.container);
+    const afterRemountTarget = controlsTarget(rendered.container);
+
+    expect(afterRemountPosition.x).toBeCloseTo(
+      beforePreviewChangePosition.x,
+      6,
+    );
+    expect(afterRemountPosition.y).toBeCloseTo(
+      beforePreviewChangePosition.y,
+      6,
+    );
+    expect(afterRemountPosition.z).toBeCloseTo(
+      beforePreviewChangePosition.z,
+      6,
+    );
+    expect(afterRemountTarget.x).toBeCloseTo(beforePreviewChangeTarget.x, 6);
+    expect(afterRemountTarget.y).toBeCloseTo(beforePreviewChangeTarget.y, 6);
+    expect(afterRemountTarget.z).toBeCloseTo(beforePreviewChangeTarget.z, 6);
+
+    rendered.unmount();
   });
 
   it("keeps screenshot-style U roof QA diagnostics finite in the 3D viewport", async () => {

@@ -5,6 +5,7 @@ import { buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import HouseFirstWorkbenchRail from '@/components/drawings/rail/HouseFirstWorkbenchRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import {
   applyGeometryEditIntent,
   buildGeometryEditState,
@@ -15,7 +16,10 @@ import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWork
 import { useLocalWorkingCopy } from '@/lib/localFirst/useLocalWorkingCopy';
 import { buildEstimateDrawingDraftEntityKey } from '@/lib/localFirst/portalEntities';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
-import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import {
+  createDrawingWorkbenchUiState,
+  type DrawingWorkbenchViewportTransform,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
   buildDeckReferenceHousePolygon,
   buildRectangularDeckOutline,
@@ -79,6 +83,32 @@ type DeckInteractionTelemetry = {
   snapState: 'idle' | 'free' | 'snapped';
   snapMessage: string | null;
 };
+
+const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
+
+function viewportTransformsEqual(
+  a: DrawingWorkbenchViewportTransform,
+  b: DrawingWorkbenchViewportTransform,
+): boolean {
+  return a.zoom === b.zoom && a.panX === b.panX && a.panY === b.panY;
+}
+
+function geometryViewportStatesEqual(
+  a: Geometry3DViewportState,
+  b: Geometry3DViewportState,
+): boolean {
+  return (
+    a.cameraState.distanceMm === b.cameraState.distanceMm &&
+    a.cameraState.viewPreset === b.cameraState.viewPreset &&
+    a.cameraState.focusMode === b.cameraState.focusMode &&
+    a.cameraState.position.x === b.cameraState.position.x &&
+    a.cameraState.position.y === b.cameraState.position.y &&
+    a.cameraState.position.z === b.cameraState.position.z &&
+    a.cameraState.target.x === b.cameraState.target.x &&
+    a.cameraState.target.y === b.cameraState.target.y &&
+    a.cameraState.target.z === b.cameraState.target.z
+  );
+}
 
 function toDeckDrafts(house: HouseModel | null | undefined): HouseFirstDeckDraft[] {
   return (house?.decks ?? []).map((deck) => ({
@@ -210,6 +240,12 @@ export default function DesignWorkbenchEstimateClient({
   backHref,
 }: DesignWorkbenchEstimateClientProps) {
   const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
+  const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
+    Record<string, DrawingWorkbenchViewportTransform>
+  >({});
+  const [geometryViewportStatesByKey, setGeometryViewportStatesByKey] = useState<
+    Record<string, Geometry3DViewportState>
+  >({});
   const [deckInteractionTelemetry, setDeckInteractionTelemetry] = useState<DeckInteractionTelemetry | null>(null);
   const [drawOutlineRequestId, setDrawOutlineRequestId] = useState(0);
   const [drawOutlineTarget, setDrawOutlineTarget] = useState<DrawOutlineTarget>({
@@ -241,6 +277,8 @@ export default function DesignWorkbenchEstimateClient({
       activePergolaId: null,
       activeHouseSelection: { kind: 'house', targetId: null },
     }));
+    setModelViewportTransformsByKey({});
+    setGeometryViewportStatesByKey({});
     setDrawOutlineTarget({ kind: 'footprint', deckId: null });
     setPendingDeckCreation(null);
     setDeckInteractionTelemetry(null);
@@ -370,6 +408,50 @@ export default function DesignWorkbenchEstimateClient({
         moduleIndex: store.derived.activeModuleIndex,
       }),
     [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, store.derived.activeModuleIndex],
+  );
+  const modelViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
+  const geometryViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}`;
+  const activeModelViewportTransform =
+    modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
+  const activeGeometryViewportState =
+    geometryViewportStatesByKey[geometryViewportSurfaceKey] ?? null;
+  const shouldAutoFitModelViewport = !Object.prototype.hasOwnProperty.call(
+    modelViewportTransformsByKey,
+    modelViewportSurfaceKey,
+  );
+  const handleModelViewportTransformChange = useCallback(
+    (viewportTransform: DrawingWorkbenchViewportTransform) => {
+      setModelViewportTransformsByKey((current) => {
+        const existing = current[modelViewportSurfaceKey];
+        if (existing && viewportTransformsEqual(existing, viewportTransform)) return current;
+        return {
+          ...current,
+          [modelViewportSurfaceKey]: viewportTransform,
+        };
+      });
+      setUi((current) =>
+        viewportTransformsEqual(current.viewportTransform, viewportTransform)
+          ? current
+          : {
+              ...current,
+              viewportTransform,
+            },
+      );
+    },
+    [modelViewportSurfaceKey],
+  );
+  const handleGeometryViewportStateChange = useCallback(
+    (viewportState: Geometry3DViewportState) => {
+      setGeometryViewportStatesByKey((current) => {
+        const existing = current[geometryViewportSurfaceKey];
+        if (existing && geometryViewportStatesEqual(existing, viewportState)) return current;
+        return {
+          ...current,
+          [geometryViewportSurfaceKey]: viewportState,
+        };
+      });
+    },
+    [geometryViewportSurfaceKey],
   );
 
   const persistDrawingDraftLocally = useCallback(
@@ -1429,16 +1511,16 @@ export default function DesignWorkbenchEstimateClient({
           sectionModel={store.derived.activeSectionModel}
           planViewModel={store.derived.activePlanViewModel}
           geometryPreview={geometryPreview}
-          viewportTransform={store.ui.viewportTransform}
+          modelViewportKey={modelViewportSurfaceKey}
+          modelViewportTransform={activeModelViewportTransform}
+          modelViewportAutoFitOnReady={shouldAutoFitModelViewport}
+          geometryViewportKey={geometryViewportSurfaceKey}
+          geometryViewportState={activeGeometryViewportState}
           drawOutlineRequestId={drawOutlineRequestId}
           drawOutlineMode={drawOutlineMode}
           drawOutlineSeedPolygon={drawOutlineSeedPolygon ?? undefined}
-          onViewportTransformChange={(viewportTransform) =>
-            setUi((current) => ({
-              ...current,
-              viewportTransform,
-            }))
-          }
+          onModelViewportTransformChange={handleModelViewportTransformChange}
+          onGeometryViewportStateChange={handleGeometryViewportStateChange}
           meta={meta}
           backHref={backHref}
           modelEditableFields={store.ui.workbenchMode === 'pergolas' ? drawingEditableFields : []}

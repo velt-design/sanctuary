@@ -1,6 +1,8 @@
 import {
   buildCustomHouseFootprintPolygon,
   buildHouseFootprintPresetSideLocalPoints,
+  houseFootprintSideLocalPointToWorld,
+  resolveHouseFootprintFrame,
 } from '@sp/geometry';
 import type {
   HouseModel,
@@ -34,6 +36,18 @@ export type HouseFirstPlanDeckInteraction = {
   maxCenterOffsetM: number;
 };
 
+export type HouseFirstPlanOpeningInteraction = {
+  kind: 'opening';
+  hostEdgeId: AttachmentSide;
+  hostEdgeStart: PlanPoint;
+  hostEdgeEnd: PlanPoint;
+  hostSpanM: number;
+  openingWidthM: number;
+  offsetAlongWallM: number;
+  minOffsetAlongWallM: number;
+  maxOffsetAlongWallM: number;
+};
+
 export type PlanPoint = {
   x: number;
   y: number;
@@ -49,7 +63,14 @@ export type HouseFirstPlanShapeOverlay = {
   invalid: boolean;
   invalidMessage: string | null;
   deckInteraction: HouseFirstPlanDeckInteraction | null;
+  openingInteraction: HouseFirstPlanOpeningInteraction | null;
   deckDragEligibility:
+    | {
+        eligible: boolean;
+        reason: string;
+      }
+    | null;
+  openingDragEligibility:
     | {
         eligible: boolean;
         reason: string;
@@ -212,34 +233,32 @@ function localPointToPlanWorld(input: {
   setbackM: number;
   moduleLengthM: number;
   moduleProjectionM: number;
+  unitFrame?: boolean;
 }): PlanPoint {
-  const along = input.point.alongM + input.offsetXM;
-  const depth = input.point.depthM;
-
-  if (input.attachmentSide === 'front') {
-    return {
-      x: along,
-      y: input.moduleProjectionM + input.setbackM + depth,
-    };
-  }
-
-  if (input.attachmentSide === 'left') {
-    return {
-      x: -input.setbackM - depth,
-      y: along,
-    };
-  }
-
-  if (input.attachmentSide === 'right') {
-    return {
-      x: input.moduleLengthM + input.setbackM + depth,
-      y: along,
-    };
-  }
-
+  const frame = resolveHouseFootprintFrame({
+    pergolaWidthMm: Math.round((input.unitFrame ? 1 : input.moduleLengthM) * 1000),
+    pergolaDepthMm: Math.round((input.unitFrame ? 1 : input.moduleProjectionM) * 1000),
+    attachmentSide: input.attachmentSide,
+  });
+  const world = houseFootprintSideLocalPointToWorld({
+    point: input.point,
+    frame,
+    resolved: {
+      widthM: 1,
+      offsetXM: input.offsetXM,
+      setbackM: input.setbackM,
+      bandDepthM: 1,
+      returnRunM: 1,
+      recessWidthM: 1,
+      recessDepthM: 1,
+      leftLegRunM: 1,
+      rightLegRunM: 1,
+      sideRunM: 1,
+    },
+  });
   return {
-    x: along,
-    y: -input.setbackM - depth,
+    x: world.x / 1000,
+    y: world.y / 1000,
   };
 }
 
@@ -365,16 +384,17 @@ function buildDeckWorldPolygon(input: {
   moduleLengthM: number;
   moduleProjectionM: number;
 }): PlanPoint[] {
-  return buildWorldPolygon({
-    localPolygon: input.localPolygon,
-    attachmentSide: input.attachmentSide,
-    moduleLengthM: input.moduleLengthM,
-    moduleProjectionM: input.moduleProjectionM,
-    // Deck outlines are already authored in the house side-local frame.
-    // Unlike the house footprint, they do not apply footprint offset/setback.
-    offsetXM: 0,
-    setbackM: 0,
-  });
+  return input.localPolygon.map((point) =>
+    localPointToPlanWorld({
+      point,
+      attachmentSide: input.attachmentSide,
+      offsetXM: 0,
+      setbackM: 0,
+      moduleLengthM: input.moduleLengthM,
+      moduleProjectionM: input.moduleProjectionM,
+      unitFrame: true,
+    }),
+  );
 }
 
 function buildOpeningLocalPolygon(input: {
@@ -441,15 +461,17 @@ function buildOpeningPresetAnnotations(input: {
     input.wallFrame.axis === 'along'
       ? { alongM: input.wallFrame.start, depthM: input.wallFrame.edgeCoordinate }
       : { alongM: input.wallFrame.edgeCoordinate, depthM: input.wallFrame.start };
-  const toWorld = (point: LocalPoint) =>
-    localPointToPlanWorld({
+  const toWorld = (point: LocalPoint) => ({
+    ...localPointToPlanWorld({
       point,
       attachmentSide: input.house.footprint.attachmentSide,
-      offsetXM: input.offsetXM,
-      setbackM: input.setbackM,
+      offsetXM: 0,
+      setbackM: 0,
       moduleLengthM: input.moduleLengthM,
       moduleProjectionM: input.moduleProjectionM,
-    });
+      unitFrame: true,
+    }),
+  });
 
   return [
     makeAnnotation({
@@ -766,15 +788,17 @@ function buildDeckPresetAnnotations(input: {
   if (!presetRect) return [];
 
   const attachmentSide = input.house.footprint.attachmentSide;
-  const toWorld = (point: LocalPoint) =>
-    localPointToPlanWorld({
+  const toWorld = (point: LocalPoint) => ({
+    ...localPointToPlanWorld({
       point,
-      attachmentSide,
+      attachmentSide: input.house.footprint.attachmentSide,
       offsetXM: 0,
       setbackM: 0,
       moduleLengthM: input.moduleLengthM,
       moduleProjectionM: input.moduleProjectionM,
-    });
+      unitFrame: true,
+    }),
+  });
 
   const localOutline = parseLocalPolygon(input.deck.outline);
   if (localOutline.length < 4) return [];
@@ -884,7 +908,7 @@ function buildDeckPresetAnnotations(input: {
           : { alongM: referenceFrame.edgeCoordinate, depthM: deckAxisEnd }
         : null;
 
-    if (hostEdgeStartLocal && deckStartLocal && hostEdgeEndLocal && deckEndLocal) {
+    if (referenceFrame && hostEdgeStartLocal && deckStartLocal && hostEdgeEndLocal && deckEndLocal) {
       const hostStartGapM = Math.max(0, deckAxisStart! - referenceFrame.start);
       const hostEndGapM = Math.max(0, referenceFrame.end - deckAxisEnd!);
       const minimumVisibleGapM = 0.001;
@@ -1003,15 +1027,17 @@ function buildAttachedDeckInteraction(input: {
 
   const hostSpanM = Math.max(0, frame.end - frame.start);
   const availableHalfSpanM = widthM <= hostSpanM + ZERO_DIMENSION_EPSILON_M ? Math.max(0, (hostSpanM - widthM) / 2) : 0;
-  const toWorld = (point: LocalPoint) =>
-    localPointToPlanWorld({
+  const toWorld = (point: LocalPoint) => ({
+    ...localPointToPlanWorld({
       point,
       attachmentSide: input.house.footprint.attachmentSide,
       offsetXM: 0,
       setbackM: 0,
       moduleLengthM: input.moduleLengthM,
       moduleProjectionM: input.moduleProjectionM,
-    });
+      unitFrame: true,
+    }),
+  });
   const hostEdgeStart =
     frame.axis === 'along'
       ? toWorld({ alongM: frame.start, depthM: frame.edgeCoordinate })
@@ -1059,6 +1085,95 @@ function buildDeckDragEligibility(input: {
   return {
     eligible: true,
     reason: 'Drag the selected deck body to move it along the host edge, or click dimensions to edit.',
+  };
+}
+
+function buildOpeningInteraction(input: {
+  house: HouseModel;
+  houseLocalPolygon: LocalPoint[];
+  opening: HouseModel['openings'][number];
+  moduleLengthM: number;
+  moduleProjectionM: number;
+  offsetXM: number;
+  setbackM: number;
+}): HouseFirstPlanOpeningInteraction | null {
+  const hostEdgeId = input.opening.hostEdgeId ?? input.opening.wallId;
+  if (
+    hostEdgeId !== 'rear' &&
+    hostEdgeId !== 'front' &&
+    hostEdgeId !== 'left' &&
+    hostEdgeId !== 'right' &&
+    !/^footprint-edge-\d+$/.test(hostEdgeId ?? '')
+  ) {
+    return null;
+  }
+
+  const frame = resolveDeckHostEdgeFrame({
+    housePolygon: input.houseLocalPolygon.map((point) => ({
+      alongM: formatRawMetres(point.alongM),
+      depthM: formatRawMetres(point.depthM),
+    })),
+    hostEdgeId,
+  });
+  if (!frame) return null;
+
+  const widthM = Number(input.opening.widthM);
+  const offsetAlongWallM = Number(input.opening.offsetAlongWallM);
+  if (!Number.isFinite(widthM) || !Number.isFinite(offsetAlongWallM)) return null;
+
+  const hostSpanM = Math.max(0, frame.end - frame.start);
+  const toWorld = (point: LocalPoint) => ({
+    ...localPointToPlanWorld({
+      point,
+      attachmentSide: input.house.footprint.attachmentSide,
+      offsetXM: 0,
+      setbackM: 0,
+      moduleLengthM: input.moduleLengthM,
+      moduleProjectionM: input.moduleProjectionM,
+      unitFrame: true,
+    }),
+  });
+  const hostEdgeStart =
+    frame.axis === 'along'
+      ? toWorld({ alongM: frame.start, depthM: frame.edgeCoordinate })
+      : toWorld({ alongM: frame.edgeCoordinate, depthM: frame.start });
+  const hostEdgeEnd =
+    frame.axis === 'along'
+      ? toWorld({ alongM: frame.end, depthM: frame.edgeCoordinate })
+      : toWorld({ alongM: frame.edgeCoordinate, depthM: frame.end });
+
+  return {
+    kind: 'opening',
+    hostEdgeId: frame.hostEdge,
+    hostEdgeStart,
+    hostEdgeEnd,
+    hostSpanM,
+    openingWidthM: widthM,
+    offsetAlongWallM,
+    minOffsetAlongWallM: 0,
+    maxOffsetAlongWallM: Math.max(0, hostSpanM - widthM),
+  };
+}
+
+function buildOpeningDragEligibility(input: {
+  opening: HouseModel['openings'][number];
+  openingInteraction: HouseFirstPlanOpeningInteraction | null;
+}): HouseFirstPlanShapeOverlay['openingDragEligibility'] {
+  if (!input.openingInteraction) {
+    return {
+      eligible: false,
+      reason: 'This window needs a resolvable host wall before drag is available.',
+    };
+  }
+  if (input.openingInteraction.openingWidthM > input.openingInteraction.hostSpanM + ZERO_DIMENSION_EPSILON_M) {
+    return {
+      eligible: false,
+      reason: 'This window is wider than the selected wall span, so drag is blocked until the width is reduced.',
+    };
+  }
+  return {
+    eligible: true,
+    reason: 'Drag the selected window along the host wall, or click dimensions to edit.',
   };
 }
 
@@ -1186,7 +1301,9 @@ export function buildHouseFirstPlanOverlay(input: {
       invalid: false,
       invalidMessage: null,
       deckInteraction: null,
+      openingInteraction: null,
       deckDragEligibility: null,
+      openingDragEligibility: null,
     },
   ];
 
@@ -1217,14 +1334,17 @@ export function buildHouseFirstPlanOverlay(input: {
       invalid: deck.validation.status === 'invalid',
       invalidMessage: deck.validation.message,
       deckInteraction,
+      openingInteraction: null,
       deckDragEligibility: buildDeckDragEligibility({
         deck,
         deckInteraction,
       }),
+      openingDragEligibility: null,
     });
   }
 
   for (const opening of house.openings) {
+    const selected = input.selection.kind === 'opening' && input.selection.targetId === opening.id;
     const wallAnchor = opening.hostEdgeId ?? (opening.wallId as WallOpeningHostSide | null);
     const wallFrame = wallAnchor
       ? resolveDeckHostEdgeFrame({
@@ -1245,24 +1365,43 @@ export function buildHouseFirstPlanOverlay(input: {
             offsetAlongWallM,
           })
         : [];
+    const openingInteraction = selected
+      ? buildOpeningInteraction({
+          house,
+          houseLocalPolygon,
+          opening,
+          moduleLengthM,
+          moduleProjectionM,
+          offsetXM: resolved.offsetXM,
+          setbackM: resolved.setbackM,
+        })
+      : null;
     shapes.push({
       ownerKind: 'opening',
       ownerId: opening.id,
-      polygon: buildWorldPolygon({
-        localPolygon,
-        attachmentSide: house.footprint.attachmentSide,
-        moduleLengthM,
-        moduleProjectionM,
-        offsetXM: resolved.offsetXM,
-        setbackM: resolved.setbackM,
-      }),
-      selected: input.selection.kind === 'opening' && input.selection.targetId === opening.id,
+      polygon: localPolygon.map((point) =>
+        localPointToPlanWorld({
+          point,
+          attachmentSide: house.footprint.attachmentSide,
+          offsetXM: 0,
+          setbackM: 0,
+          moduleLengthM,
+          moduleProjectionM,
+          unitFrame: true,
+        }),
+      ),
+      selected,
       custom: false,
-      muted: house.openings.length > 1 && !(input.selection.kind === 'opening' && input.selection.targetId === opening.id),
+      muted: house.openings.length > 1 && !selected,
       invalid: opening.validation.status === 'invalid',
       invalidMessage: opening.validation.message,
       deckInteraction: null,
+      openingInteraction,
       deckDragEligibility: null,
+      openingDragEligibility: buildOpeningDragEligibility({
+        opening,
+        openingInteraction,
+      }),
     });
   }
 

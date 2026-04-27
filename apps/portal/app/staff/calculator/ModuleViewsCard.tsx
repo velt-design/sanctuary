@@ -24,6 +24,7 @@ import {
 } from '@/lib/estimates/drawingSheetLayout';
 import type {
   HouseFirstPlanDeckInteraction,
+  HouseFirstPlanOpeningInteraction,
   HouseFirstPlanCustomEdgeCandidate,
   HouseFirstPlanOverlay,
   HouseFirstPlanPresetDimensionAnnotation,
@@ -94,14 +95,23 @@ export type ModulePlanInteractionProps = {
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
-export type HouseFirstPlanShapeDragStartMeta = {
-  ownerKind: 'deck';
-  ownerId: string;
-  deckInteraction: HouseFirstPlanDeckInteraction & {
-    hostEdgeStart: Point;
-    hostEdgeEnd: Point;
-  };
-};
+export type HouseFirstPlanShapeDragStartMeta =
+  | {
+      ownerKind: 'deck';
+      ownerId: string;
+      deckInteraction: HouseFirstPlanDeckInteraction & {
+        hostEdgeStart: Point;
+        hostEdgeEnd: Point;
+      };
+    }
+  | {
+      ownerKind: 'opening';
+      ownerId: string;
+      openingInteraction: HouseFirstPlanOpeningInteraction & {
+        hostEdgeStart: Point;
+        hostEdgeEnd: Point;
+      };
+    };
 
 type HouseFirstPlanPreviewOverlay = {
   ownerId: string;
@@ -1798,6 +1808,18 @@ function planHousePointToSvg(point: Point, baseX: number, baseY: number, scale: 
   };
 }
 
+function planRotationTurnsForPresentation(input: {
+  roofType: ModulePlanModel['roofType'];
+  drawingRotationQuarterTurns: ModulePlanModel['drawingRotationQuarterTurns'];
+  presentation: ModuleDrawingPresentation;
+}): number {
+  if (input.roofType === 'hip_corner') return 0;
+  // Model space should track the geometry world orientation so it stays aligned
+  // with the 3D viewport; quarter-turn drawing rotation remains a sheet/card concern.
+  if (input.presentation === 'model') return 0;
+  return input.drawingRotationQuarterTurns;
+}
+
 function sectionHousePointToSvg(point: Point, xLeft: number, yGround: number, scale: number): Point {
   return {
     x: xLeft + point.x * scale,
@@ -2904,31 +2926,64 @@ function renderHouseFirstPlanOverlay(input: {
                 points={toPointsAttr(shape.points)}
                 data-house-first-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
                 data-house-first-shape-draggable={
-                  shape.ownerKind === 'deck' && shape.deckDragEligibility?.eligible ? 'true' : 'false'
+                  shape.ownerKind === 'deck'
+                    ? shape.deckDragEligibility?.eligible
+                      ? 'true'
+                      : 'false'
+                    : shape.ownerKind === 'opening'
+                      ? shape.openingDragEligibility?.eligible
+                        ? 'true'
+                        : 'false'
+                      : 'false'
                 }
                 data-house-first-shape-drag-reason={
-                  shape.ownerKind === 'deck' ? (shape.deckDragEligibility?.reason ?? '') : ''
+                  shape.ownerKind === 'deck'
+                    ? (shape.deckDragEligibility?.reason ?? '')
+                    : shape.ownerKind === 'opening'
+                      ? (shape.openingDragEligibility?.reason ?? '')
+                      : ''
                 }
                 className={styles.moduleHouseFirstShapeHit}
                 onClick={() => onShapeSelect?.({ ownerKind: shape.ownerKind, ownerId: shape.ownerId })}
                 onPointerDown={(event) => {
-                  if (event.button !== 0 || !shape.selected || shape.ownerKind !== 'deck' || !shape.deckInteraction) return;
-                  onShapeDragStart?.(
-                    {
-                      ownerKind: 'deck',
-                      ownerId: shape.ownerId,
-                      deckInteraction: {
-                        ...shape.deckInteraction,
-                        hostEdgeStart: shape.deckInteraction.hostEdgeStart,
-                        hostEdgeEnd: shape.deckInteraction.hostEdgeEnd,
+                  if (event.button !== 0 || !shape.selected) return;
+                  if (shape.ownerKind === 'deck' && shape.deckInteraction) {
+                    onShapeDragStart?.(
+                      {
+                        ownerKind: 'deck',
+                        ownerId: shape.ownerId,
+                        deckInteraction: {
+                          ...shape.deckInteraction,
+                          hostEdgeStart: shape.deckInteraction.hostEdgeStart,
+                          hostEdgeEnd: shape.deckInteraction.hostEdgeEnd,
+                        },
                       },
-                    },
-                    {
-                      pointerId: event.pointerId,
-                      clientX: event.clientX,
-                      clientY: event.clientY,
-                    },
-                  );
+                      {
+                        pointerId: event.pointerId,
+                        clientX: event.clientX,
+                        clientY: event.clientY,
+                      },
+                    );
+                    return;
+                  }
+                  if (shape.ownerKind === 'opening' && shape.openingInteraction) {
+                    onShapeDragStart?.(
+                      {
+                        ownerKind: 'opening',
+                        ownerId: shape.ownerId,
+                        openingInteraction: {
+                          ...shape.openingInteraction,
+                          hostEdgeStart: shape.openingInteraction.hostEdgeStart,
+                          hostEdgeEnd: shape.openingInteraction.hostEdgeEnd,
+                        },
+                      },
+                      {
+                        pointerId: event.pointerId,
+                        clientX: event.clientX,
+                        clientY: event.clientY,
+                      },
+                    );
+                  }
                 }}
               />
               {(shape.ownerKind === 'deck' || shape.ownerKind === 'opening') && shape.selected && shape.invalid ? (
@@ -2950,18 +3005,24 @@ function renderHouseFirstPlanOverlay(input: {
                           : 'Invalid deck'}
                 </text>
               ) : null}
-              {shape.ownerKind === 'deck' && shape.selected && shape.deckDragEligibility ? (
+              {(shape.ownerKind === 'deck' || shape.ownerKind === 'opening') &&
+              shape.selected &&
+              (shape.ownerKind === 'deck' ? shape.deckDragEligibility : shape.openingDragEligibility) ? (
                 <text
                   x={shape.points.reduce((sum, point) => sum + point.x, 0) / Math.max(shape.points.length, 1)}
                   y={Math.min(...shape.points.map((point) => point.y)) - 1.8}
                   textAnchor="middle"
                   className={
-                    shape.deckDragEligibility.eligible
+                    (shape.ownerKind === 'deck' ? shape.deckDragEligibility?.eligible : shape.openingDragEligibility?.eligible)
                       ? styles.moduleHouseFirstDraggableBadge
                       : styles.moduleHouseFirstDeferredBadge
                   }
                 >
-                  {shape.deckDragEligibility.eligible ? 'Drag deck' : 'Dims only'}
+                  {(shape.ownerKind === 'deck' ? shape.deckDragEligibility?.eligible : shape.openingDragEligibility?.eligible)
+                    ? shape.ownerKind === 'deck'
+                      ? 'Drag deck'
+                      : 'Drag window'
+                    : 'Dims only'}
                 </text>
               ) : null}
             </g>
@@ -3235,12 +3296,17 @@ function measurePlanAnnotatedBounds(input: {
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
+  const rotationTurns = planRotationTurnsForPresentation({
+    roofType: model.roofType,
+    drawingRotationQuarterTurns: model.drawingRotationQuarterTurns,
+    presentation,
+  });
   const rotationFrame = resolvePlanRotationFrame({
     x,
     y,
     width: model.lengthA * scale,
     height: model.spanA * scale,
-    turns: isHipCorner ? 0 : model.drawingRotationQuarterTurns,
+    turns: rotationTurns,
   });
   const baseX = rotationFrame.baseX;
   const baseY = rotationFrame.baseY;
@@ -3603,7 +3669,7 @@ function measurePlanModelSpaceFocusBounds(input: {
     y,
     width: model.lengthA * scale,
     height: model.spanA * scale,
-    turns: isHipCorner ? 0 : model.drawingRotationQuarterTurns,
+    turns: 0,
   });
   const baseX = rotationFrame.baseX;
   const baseY = rotationFrame.baseY;
@@ -4265,12 +4331,17 @@ function PlanSvg({
       }
     : undefined;
   const scale = layout.scale;
+  const rotationTurns = planRotationTurnsForPresentation({
+    roofType: model.roofType,
+    drawingRotationQuarterTurns: model.drawingRotationQuarterTurns,
+    presentation,
+  });
   const rotationFrame = resolvePlanRotationFrame({
     x: layout.x,
     y: layout.y,
     width: model.lengthA * scale,
     height: model.spanA * scale,
-    turns: isHipCorner ? 0 : model.drawingRotationQuarterTurns,
+    turns: rotationTurns,
   });
   const x = rotationFrame.baseX;
   const y = rotationFrame.baseY;

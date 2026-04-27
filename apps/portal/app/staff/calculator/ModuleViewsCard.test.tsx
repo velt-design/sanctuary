@@ -720,6 +720,23 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('rotate(90');
   });
 
+  it('keeps model-space plan orientation aligned to geometry instead of sheet rotation', () => {
+    const drawing = makeDrawingModule({ drawingRotationQuarterTurns: 1 });
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+      />,
+    );
+
+    expect(markup).not.toContain('rotate(90');
+    expect(markup).not.toContain('rotate(180');
+    expect(markup).not.toContain('rotate(270');
+  });
+
   it('shows the edit-footprint trigger for eligible calculator plan views', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
@@ -968,6 +985,7 @@ describe('ModuleViewsCard', () => {
   it('renders house-first deck targets above the pergola plan fill in model space', () => {
     const drawing = makeDrawingModule();
     const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+      housePolygonSource: 'preset_derived',
       shapes: [
         {
           ownerKind: 'deck',
@@ -983,6 +1001,10 @@ describe('ModuleViewsCard', () => {
           muted: false,
           invalid: false,
           invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: null,
+          deckDragEligibility: null,
+          openingDragEligibility: null,
         },
       ],
       presetAnnotations: [],
